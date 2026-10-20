@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   montarMissoes,
   ordenarMissoes,
+  perfilDaMissao,
+  perfisRepresentativos,
   rotuloCriterio,
   rotuloDoEscopo,
   rotuloDoPrazo,
@@ -177,5 +179,98 @@ describe("rotuloDoEscopo", () => {
     assert.equal(rotuloDoEscopo("guilda"), "da guilda");
     assert.equal(rotuloDoEscopo("turma"), "da turma");
     assert.equal(rotuloDoEscopo("aluno"), "");
+  });
+});
+
+describe("perfisRepresentativos — a regra do banco (20261021_20)", () => {
+  // Os dois alunos de produção em 20/10, anonimizados.
+  const espalhado = [
+    { nome: "Daredevil", afinidade: 13 },
+    { nome: "Seeker", afinidade: 17 },
+    { nome: "Survivor", afinidade: 13 },
+    { nome: "Achiever", afinidade: 17 },
+    { nome: "Socializer", afinidade: 13 },
+    { nome: "Conqueror", afinidade: 13 },
+    { nome: "Mastermind", afinidade: 13 },
+  ];
+
+  it("abaixo de 20 só entram os 2 primeiros, desempatando por nome como o SQL", () => {
+    assert.deepEqual(perfisRepresentativos(espalhado), ["achiever", "seeker"]);
+  });
+
+  it("o empate na fronteira do 2º lugar é decidido pelo nome, não pela ordem de chegada", () => {
+    const a = [
+      { nome: "Survivor", afinidade: 30 },
+      { nome: "Socializer", afinidade: 10 },
+      { nome: "Conqueror", afinidade: 10 },
+    ];
+    assert.deepEqual(perfisRepresentativos(a), ["survivor", "conqueror"]);
+    assert.deepEqual(perfisRepresentativos([...a].reverse()), ["survivor", "conqueror"]);
+  });
+
+  it("de 20 para cima entra mesmo fora dos 2 primeiros; afinidade 0 nunca entra", () => {
+    const a = [
+      { nome: "Mastermind", afinidade: 85 },
+      { nome: "Conqueror", afinidade: 60 },
+      { nome: "Seeker", afinidade: 20 },
+      { nome: "Survivor", afinidade: 19 },
+    ];
+    assert.deepEqual(perfisRepresentativos(a), ["mastermind", "conqueror", "seeker"]);
+    assert.deepEqual(perfisRepresentativos([{ nome: "Seeker", afinidade: 0 }]), []);
+  });
+});
+
+describe("perfilDaMissao", () => {
+  const perfis = [
+    { nome: "Mastermind", afinidade: 85 },
+    { nome: "Conqueror", afinidade: 60 },
+    { nome: "Survivor", afinidade: 5 },
+  ];
+
+  it("mantém o perfil ativo quando ele ainda é representativo", () => {
+    assert.equal(perfilDaMissao(perfis, "conqueror"), "conqueror");
+    assert.equal(perfilDaMissao(perfis, "Conqueror"), "conqueror");
+  });
+
+  it("perfil ativo velho, que deixou de ser representativo, cai no primeiro representativo", () => {
+    assert.equal(perfilDaMissao(perfis, "survivor"), "mastermind");
+    assert.equal(perfilDaMissao(perfis, null), "mastermind");
+  });
+
+  it("sem perfis ou sem nenhum representativo é null, como fn_perfil_da_missao", () => {
+    assert.equal(perfilDaMissao([], "seeker"), null);
+    assert.equal(perfilDaMissao(undefined, null), null);
+    assert.equal(perfilDaMissao([{ nome: "Seeker", afinidade: 0 }], "seeker"), null);
+  });
+
+  it("os dois alunos de produção: o perfil ativo salvo vale porque é representativo", () => {
+    // b49f…: mastermind 85, conqueror 60, perfil_ativo = mastermind.
+    assert.equal(perfilDaMissao(perfis, "mastermind"), "mastermind");
+    // 6ee7…: todos entre 13 e 17, perfil_ativo = achiever (representativo pelo desempate por nome).
+    const espalhado = ["Daredevil", "Mastermind", "Socializer", "Conqueror", "Survivor"].map((nome) => ({
+      nome,
+      afinidade: 13,
+    }));
+    espalhado.push({ nome: "Seeker", afinidade: 17 }, { nome: "Achiever", afinidade: 17 });
+    assert.equal(perfilDaMissao(espalhado, "achiever"), "achiever");
+    assert.equal(perfilDaMissao(espalhado, "daredevil"), "achiever");
+  });
+
+  it("perfil null em montarMissoes mostra só as missões sem perfil_alvo; undefined não filtra", () => {
+    const linhas = [linha({ id: 1, perfil_alvo: "mastermind" }), linha({ id: 2, perfil_alvo: null, slot: 2 })];
+    assert.deepEqual(
+      montarMissoes(linhas as never, [], { perfilAtivo: null, agora: AGORA }).map((m) => m.id),
+      [2],
+    );
+    assert.equal(montarMissoes(linhas as never, [], { agora: AGORA }).length, 2);
+  });
+
+  it("o filtro da lista usa o perfil resolvido: missão de coorte não representativa some", () => {
+    const linhas = [
+      { ...linha({ id: 1, perfil_alvo: "mastermind" }) },
+      { ...linha({ id: 2, perfil_alvo: "survivor", slot: 2 }) },
+    ];
+    const lista = montarMissoes(linhas as never, [], { perfilAtivo: perfilDaMissao(perfis, "survivor"), agora: AGORA });
+    assert.deepEqual(lista.map((m) => m.id), [1]);
   });
 });
