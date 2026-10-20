@@ -55,7 +55,7 @@ describe("critério", () => {
   // termina em `ELSE 0`: critério fora do CASE ranqueia a turma inteira em zero, em silêncio.
   // Os cinco entraram na view em `20261021_06` — medido antes: ranking de `acertos` mostrava
   // zero para todos, e `percentual` era reescrito para `pontuacao` ao abrir a edição.
-  it.each(["pontuacao", "tempo", "acertos", "percentual", "ranqueada", "missoes"])(
+  it.each(["pontuacao", "tempo", "acertos", "percentual", "ranqueada", "missoes", "elo"])(
     "%s é expressável e não é reescrito",
     (chave) => {
       expect(CRITERIOS.map((c) => c.chave)).toContain(chave);
@@ -147,6 +147,10 @@ describe("criar e editar um ranking (fase 5)", () => {
     expect(NATUREZA_DO_CRITERIO.percentual).toBe("estado");
     expect(avisoDoPeriodo("missoes")).toMatch(/Novo período/);
     expect(avisoDoPeriodo("percentual")).toMatch(/progresso atual/);
+    // Elo é estado: o rating de agora não reinicia com o período.
+    expect(NATUREZA_DO_CRITERIO.elo).toBe("estado");
+    expect(avisoDoPeriodo("elo")).toMatch(/não reinicia o rating/);
+    expect(oQueOTipoMede({ criterio: "elo", descricao: null })).toMatch(/Elo.*1000/);
   });
 
   it("o que o tipo mede: a descrição do catálogo vence, e sem ela há texto por critério", () => {

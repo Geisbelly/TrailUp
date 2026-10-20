@@ -227,12 +227,17 @@ Em ordem de desbloqueio, não de tamanho. Cada uma é mesclável sozinha.
 3. ~~**Rotação de período do ranking** — por bimestre, por mês, manual pelo professor?~~
    Decidido (2026-10-20): manual, o professor abre o período novo (fase 5).
 4. Herdadas do spec anterior: ~~**Elo versus escada acumulada**~~ — decidido (2026-10-20):
-   **Elo**, em PR próprio depois do #569. Segue aberto **medir o custo da LLM** da fase 6 antes
-   de ligá-la para todas as turmas.
+   **Elo**, feito no #570 (`20261021_18`, depois do #569): rating por aluno e turma em
+   `ranqueada_elo`, ao lado dos pontos (como o spec anterior pedia), ligado em
+   `fn_desafio_encerrar`, que é o fechamento dos dois caminhos de resposta. Só se move em
+   ranqueada com adversário (equipe 2), e hoje só a arena cria esse desafio: **o Elo só anda
+   quando a decisão 2 der um caminho competitivo ao app.** Segue aberto **medir o custo da LLM**
+   da fase 6 antes de ligá-la para todas as turmas.
 
 ## O que não entra
 
 - Reescrever a arena. Se ela revive, é extensão do que existe.
-- Elo. É tabela nova e muda o significado de `ranks`; decisão 4 primeiro.
+- ~~Elo.~~ Entrou no #570 depois da decisão 4, como tabela ao lado: `ranks` segue somando pontos,
+  e o Elo é um tipo de ranking a mais (`criterio = 'elo'`).
 - Tornar o limite de tempo do desafio autoritativo no banco. Precisa de registro de "questão
   aberta em", que não existe — está registrado na fase 8 e segue valendo.

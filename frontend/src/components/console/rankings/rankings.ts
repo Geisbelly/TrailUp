@@ -9,9 +9,9 @@ import { PERFIS_EM_ORDEM } from "../dashboard/perfilCores";
  * `percentual` existe no banco (é o `rank_tipo` 1, "Percentual Concluído") e o mobile já o
  * trata como percentual. `acertos` era oferecido aqui e não existia no CASE (todo ranking de
  * acertos mostrava zero para todos). Os dois ramos entraram na view em `20261021_06`, junto
- * com `ranqueada`; `missoes` entra na fase 7 (`20261021_08`). O vocabulário é fechado: o mobile compara contra estes literais.
+ * com `ranqueada`; `missoes` entra na fase 7 (`20261021_08`) e `elo` na `20261021_18`. O vocabulário é fechado: o mobile compara contra estes literais.
  */
-export type CriterioChave = "pontuacao" | "tempo" | "acertos" | "percentual" | "ranqueada" | "missoes";
+export type CriterioChave = "pontuacao" | "tempo" | "acertos" | "percentual" | "ranqueada" | "missoes" | "elo";
 
 export const CRITERIOS: { chave: CriterioChave; rotulo: string }[] = [
   { chave: "pontuacao", rotulo: "Pontuação" },
@@ -20,6 +20,7 @@ export const CRITERIOS: { chave: CriterioChave; rotulo: string }[] = [
   { chave: "percentual", rotulo: "Percentual" },
   { chave: "ranqueada", rotulo: "Ranqueada" },
   { chave: "missoes", rotulo: "Missões" },
+  { chave: "elo", rotulo: "Elo" },
 ];
 
 /** Critério vindo do banco é texto livre: o que não for conhecido cai em "pontuacao". */
@@ -93,6 +94,8 @@ export const NATUREZA_DO_CRITERIO: Record<CriterioChave, "soma" | "estado"> = {
   tempo: "estado",
   acertos: "estado",
   percentual: "estado",
+  // O rating é o de agora: um período novo guarda o pódio, mas não reinicia o Elo.
+  elo: "estado",
 };
 
 const O_QUE_MEDE: Record<CriterioChave, string> = {
@@ -102,6 +105,7 @@ const O_QUE_MEDE: Record<CriterioChave, string> = {
   tempo: "Tempo de estudo registrado na turma, em minutos.",
   acertos: "Percentual de acertos do aluno na turma.",
   percentual: "Quanto da trilha da turma o aluno já concluiu.",
+  elo: "Rating Elo dos desafios ranqueados contra adversário: ganhar de quem está acima vale mais. Começa em 1000.",
 };
 
 /** O que o tipo mede, para o seletor. A descrição do catálogo vence quando existe. */
@@ -111,6 +115,9 @@ export function oQueOTipoMede(tipo: { criterio: string | null; descricao: string
 
 /** Aviso do período, por natureza do critério: o que o professor precisa saber antes de criar. */
 export function avisoDoPeriodo(criterio: string | null | undefined): string {
+  if (criterioValido(criterio) === "elo") {
+    return "O Elo é o rating de agora: um período novo guarda o pódio no histórico, mas não reinicia o rating de ninguém.";
+  }
   return NATUREZA_DO_CRITERIO[criterioValido(criterio)] === "soma"
     ? "Cada período soma só o que acontece nele. Para recomeçar, use “Novo período”: o atual fecha e o pódio fica no histórico."
     : "Este tipo mostra o progresso atual de cada aluno: um período novo não zera as posições, mas guarda o pódio de agora no histórico.";
