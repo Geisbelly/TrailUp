@@ -5,6 +5,7 @@ import { SocialInviteCard } from "@/components/social/SocialInviteCard";
 import { SocialPersonCard } from "@/components/social/SocialPersonCard";
 import { SocialProfileModal } from "@/components/social/SocialProfileModal";
 import { PrivateChatModal } from "@/components/social/PrivateChatModal";
+import { ArenaSection } from "@/components/social/ArenaSection";
 import { GuildSection } from "@/components/social/GuildSection";
 import { MissoesDoDia } from "@/components/missoes/MissoesDoDia";
 import { EventoDaTurma } from "@/components/eventos/EventoDaTurma";
@@ -26,7 +27,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type Section = SocialPeopleSection | "guilds";
+type Section = SocialPeopleSection | "guilds" | "arena";
 
 function errorMessage(error: unknown) {
   const text = String((error as { message?: unknown })?.message ?? error ?? "").toLowerCase();
@@ -98,7 +99,7 @@ export default function SocialScreen() {
   useEffect(() => { void load(); }, [load]);
 
   const people = useMemo(() => {
-    if (!social || section === "guilds") return [];
+    if (!social || section === "guilds" || section === "arena") return [];
     const query = search.trim().toLocaleLowerCase("pt-BR");
     return peopleForSocialSection(social, section).filter((person) =>
       !query || `${person.nome} ${person.apelido ?? ""} ${person.guildaNome ?? ""}`.toLocaleLowerCase("pt-BR").includes(query),
@@ -110,6 +111,7 @@ export default function SocialScreen() {
     { key: "invites", label: "Convites", count: social ? social.incoming.length + social.outgoing.length : undefined },
     { key: "discover", label: "Encontrar", count: social?.candidates.length },
     { key: "guilds", label: "Guildas", count: social ? guilds.length : undefined },
+    { key: "arena", label: "Arena" },
     { key: "blocked", label: "Bloqueados" },
   ];
 
@@ -169,7 +171,7 @@ export default function SocialScreen() {
                 );
               })}
             </View>
-            {section !== "guilds" ? <View style={[styles.search, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            {section !== "guilds" && section !== "arena" ? <View style={[styles.search, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <MaterialCommunityIcons name="magnify" size={22} color={Color.colorWhite} />
               <TextInput value={search} onChangeText={setSearch} accessibilityLabel="Buscar pessoas" placeholder="Buscar por nome ou guilda" placeholderTextColor={palette.textMuted} style={[styles.searchInput, { color: palette.text }]} />
               {search ? <Pressable onPress={() => setSearch("")} accessibilityRole="button" accessibilityLabel="Limpar busca" style={styles.clearSearch}><MaterialCommunityIcons name="close" size={20} color={Color.colorWhite} /></Pressable> : null}
@@ -204,6 +206,8 @@ export default function SocialScreen() {
               <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>
               <Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={[styles.retryText, { color: palette.background }]}>Tentar novamente</Text></Pressable>
             </View>
+          ) : section === "arena" ? (
+            <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} />
           ) : section === "guilds" ? (
             <GuildSection guilds={guilds} janela={janela} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} />
           ) : people.length === 0 ? (

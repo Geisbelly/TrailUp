@@ -1,3 +1,5 @@
+import { normalizeMeuElo, type MeuElo } from "./arenaModel";
+
 /**
  * O desafio como a tela de jogo o lê — normalizado de `arena_desafio`.
  *
@@ -38,6 +40,14 @@ export type DesafioEmJogo = {
   params: ParamsDoDesafio;
   meuEstado: string | null;
   minhaEquipe: number | null;
+  /**
+   * Tem adversário (equipe 2): é da arena, responde-se por `arena_responder`, com uma tentativa
+   * por questão. Sem adversário é da guilda e vai por `guilda_desafio_responder`. Quem diz é o
+   * banco (`arena_desafio`, 20261021_19); o banco também recusa o caminho errado.
+   */
+  competitivo: boolean;
+  /** A minha variação de Elo nesta partida (20261021_19); só existe depois do fechamento. */
+  meuElo: MeuElo | null;
   questoes: QuestaoDoDesafio[];
 };
 
@@ -115,6 +125,8 @@ export function normalizeDesafio(valor: unknown): DesafioEmJogo | null {
     params: normalizeParams(row.params, dificuldade),
     meuEstado: textoOuNulo(row.meu_estado),
     minhaEquipe: Number.isFinite(Number(row.minha_equipe)) ? Number(row.minha_equipe) : null,
+    competitivo: row.competitivo === true,
+    meuElo: normalizeMeuElo(row.meu_elo),
     questoes: [...questoes].sort((a, b) => a.ordem - b.ordem),
   };
 }
@@ -136,7 +148,15 @@ export function proximaQuestao(desafio: DesafioEmJogo): QuestaoDoDesafio | null 
 export function tentativasIniciais(desafio: DesafioEmJogo, questaoId: number): number {
   const questao = desafio.questoes.find((q) => q.questaoId === questaoId);
   if (!questao) return 0;
-  return questao.minhaResposta === null ? desafio.params.tentativas : 0;
+  return questao.minhaResposta === null ? tentativasPorQuestao(desafio) : 0;
+}
+
+/**
+ * Na arena a primeira resposta vale (`arena_responder` grava uma vez e ignora as seguintes): uma
+ * partida que mexe no Elo não dá segunda chance. Na guilda vale o preset da dificuldade.
+ */
+export function tentativasPorQuestao(desafio: DesafioEmJogo): number {
+  return desafio.competitivo ? 1 : desafio.params.tentativas;
 }
 
 /** O resultado que a tela mostra ao fim: quantas acertei das que respondi. */

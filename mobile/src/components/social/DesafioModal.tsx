@@ -3,8 +3,15 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { FontFamily } from "@/styles/GlobalStyle";
-import { carregarDesafio, responderDesafio } from "@/services/social/guildService";
-import { placarDoAluno, proximaQuestao, type DesafioEmJogo, type QuestaoDoDesafio } from "@/services/social/desafioModel";
+import { carregarDesafio, responderDesafio, responderNaArena } from "@/services/social/guildService";
+import {
+  placarDoAluno,
+  proximaQuestao,
+  tentativasPorQuestao,
+  type DesafioEmJogo,
+  type QuestaoDoDesafio,
+} from "@/services/social/desafioModel";
+import { mensagemDaArena, rotuloDoElo } from "@/services/social/arenaModel";
 
 type Props = {
   visible: boolean;
@@ -37,8 +44,8 @@ export function DesafioModal({ visible, desafioId, accent, profile, onClose, onE
   // tela, e o banco só guarda o que recebe.
   const abertaEm = useRef<number>(0);
 
-  const carregar = useCallback(async () => {
-    if (!desafioId) return;
+  const carregar = useCallback(async (): Promise<DesafioEmJogo | null> => {
+    if (!desafioId) return null;
     setCarregando(true);
     setAviso(null);
     try {
@@ -46,21 +53,23 @@ export function DesafioModal({ visible, desafioId, accent, profile, onClose, onE
       setDesafio(d);
       if (!d) {
         setAviso("Este desafio não está disponível para você.");
-        return;
+        return null;
       }
       if (d.status === "encerrado") {
         setEncerrado("Este desafio já foi encerrado.");
         setQuestao(null);
-        return;
+        return d;
       }
       const prox = proximaQuestao(d);
       setQuestao(prox);
-      setRestantes(prox ? d.params.tentativas : null);
+      setRestantes(prox ? tentativasPorQuestao(d) : null);
       setSegundos(prox ? d.params.tempoSeg : null);
       abertaEm.current = Date.now();
+      return d;
     } catch (error) {
       console.warn("[Desafio] Falha ao carregar:", error);
       setAviso("Não foi possível abrir o desafio.");
+      return null;
     } finally {
       setCarregando(false);
     }
@@ -92,6 +101,10 @@ export function DesafioModal({ visible, desafioId, accent, profile, onClose, onE
     if (!texto) return;
     setEnviando(true);
     setAviso(null);
+    if (desafio.competitivo) {
+      await enviarNaArena(texto);
+      return;
+    }
     try {
       const r = (await responderDesafio(desafio.id, questao.questaoId, texto, Date.now() - abertaEm.current)) as {
         correta?: boolean;
@@ -144,6 +157,33 @@ export function DesafioModal({ visible, desafioId, accent, profile, onClose, onE
     }
   }
 
+  /**
+   * Arena: uma resposta por questão e nenhum `encerrou` no retorno. A partida fecha no banco
+   * quando o último aceito responde a última questão; a tela descobre recarregando.
+   */
+  async function enviarNaArena(texto: string) {
+    if (!desafio || !questao) return;
+    try {
+      const r = (await responderNaArena(desafio.id, questao.questaoId, texto, Date.now() - abertaEm.current)) as {
+        correta?: boolean;
+        registrada?: boolean;
+      };
+      setResposta("");
+      setRestantes(0);
+      setAviso(r.registrada === false ? "Esta questão já tinha resposta sua." : r.correta ? "Resposta correta!" : "Resposta incorreta.");
+      const d = await carregar();
+      if (d?.status === "encerrado") {
+        setEncerrado("Partida encerrada. O resultado está na Arena.");
+        onEncerrou?.();
+      }
+    } catch (error) {
+      setAviso(mensagemDaArena(error));
+      await carregar();
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   const placar = desafio ? placarDoAluno(desafio) : null;
 
   return (
@@ -157,6 +197,7 @@ export function DesafioModal({ visible, desafioId, accent, profile, onClose, onE
                 <Text style={[s.title, { color: palette.text }]}>Desafio</Text>
                 {desafio ? (
                   <Text style={[s.subtitle, { color: palette.textMuted }]}>
+                    {desafio.competitivo ? "Arena · " : ""}
                     {desafio.dificuldade === "dificil" ? "Difícil" : "Normal"} ·{" "}
                     {desafio.consequencia === "treino" ? "Treino" : desafio.consequencia === "evento" ? "Evento" : "Ranqueada"}
                     {placar ? ` · ${placar.respondidas}/${placar.total}` : ""}
@@ -176,6 +217,11 @@ export function DesafioModal({ visible, desafioId, accent, profile, onClose, onE
               {encerrado ? (
                 <View style={[s.caixa, { borderColor: accent }]}>
                   <Text style={[s.encerrado, { color: palette.text }]}>{encerrado}</Text>
+                  {desafio?.meuElo ? (
+                    <Text style={[s.encerrado, { color: desafio.meuElo.delta >= 0 ? "#62db9b" : "#ff9c9c" }]}>
+                      {rotuloDoElo(desafio.meuElo)} · agora {desafio.meuElo.ratingDepois}
+                    </Text>
+                  ) : null}
                   {placar ? (
                     <Text style={[s.subtitle, { color: palette.textMuted }]}>
                       Você acertou {placar.acertos} de {placar.respondidas} respondidas.
@@ -245,7 +291,9 @@ export function DesafioModal({ visible, desafioId, accent, profile, onClose, onE
                 <View style={[s.caixa, { borderColor: palette.border }]}>
                   <Text style={[s.encerrado, { color: palette.text }]}>Você respondeu tudo.</Text>
                   <Text style={[s.subtitle, { color: palette.textMuted }]}>
-                    Falta o resto da equipe para o desafio encerrar.
+                    {desafio.competitivo
+                      ? "A partida encerra quando todos responderem (e ninguém estiver com convite pendente)."
+                      : "Falta o resto da equipe para o desafio encerrar."}
                   </Text>
                 </View>
               ) : null}

@@ -73,6 +73,13 @@ Funcionalidade que entrou em produção sem passar pelo git:
 A arena é um subsistema inteiro — 8 funções — vivo em produção e invisível no
 repositório.
 
+> **Atualização (2026-10-20):** as 8 já têm fonte no git. `arena_desafio` (`20261021_13`),
+> `arena_encerrar` (`20261021_09`), `fn_arena_placar`/`fn_arena_equipes` (`20261018_04`) e,
+> com a volta da arena, `arena_desafio_criar`, `arena_listar`, `arena_convite_responder` e
+> `arena_responder` (`20261021_19`, corpos conferidos por md5 contra a produção). Continuam só
+> em produção duas dependências de `arena_desafio_criar`: `guilda_bloqueio_ativo` e
+> `fn_questao_liberada_para`.
+
 ## As 4 tabelas e views
 
 | objeto | origem | observação |
