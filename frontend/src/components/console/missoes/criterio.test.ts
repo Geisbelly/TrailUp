@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   CHAVE_DO_ALVO,
   METRICAS,
+  METRICAS_DE_GUILDA,
+  metricaSomaEmGuilda,
   criterioDeEntrega,
   criterioDeMeta,
   definicaoDaMetrica,
@@ -81,5 +83,25 @@ describe("rotuloDoCriterio", () => {
     expect(rotuloDoCriterio({ metrica: "evento_medalha" })).toBe("evento_medalha");
     expect(rotuloDoCriterio({ metrica: "minutos_no_dia", minutos: 10 })).toBe("Minutos no dia: 10");
     expect(rotuloDoCriterio({ metrica: "eventos_no_dia", minimo: 2, evento: "atividade_concluida" })).toBe("2 atividades no dia");
+  });
+});
+
+describe("METRICAS_DE_GUILDA", () => {
+  // Copiado de `METRICAS_SOMAVEIS` em `20261021_15`: o banco soma só estas na guilda, e a
+  // guarda recusa o resto com 22023. Oferecer outra aqui seria um erro de servidor na tela.
+  const SOMAVEIS_NO_BANCO = ["eventos_totais", "eventos_do_tipo", "atividades_concluidas", "eventos_no_dia", "minutos_no_dia"];
+
+  it("toda métrica de guilda desta tela soma no banco e existe no formulário", () => {
+    for (const m of METRICAS_DE_GUILDA) {
+      expect(SOMAVEIS_NO_BANCO).toContain(m);
+      expect(definicaoDaMetrica(m)).not.toBeNull();
+    }
+  });
+
+  it("percentual, sequência e acumulado de vida inteira não somam", () => {
+    for (const m of ["acertos_percentual", "trilha_percentual", "dias_seguidos", "minutos_totais", "topicos_concluidos"]) {
+      expect(metricaSomaEmGuilda(m)).toBe(false);
+    }
+    expect(metricaSomaEmGuilda("atividades_concluidas")).toBe(true);
   });
 });

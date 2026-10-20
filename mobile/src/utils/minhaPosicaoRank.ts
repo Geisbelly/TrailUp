@@ -17,6 +17,7 @@ export function formatarFalta(diferenca: number, criterio: string | null): strin
   if (criterio === "tempo") return formatRankScore(valor, "tempo");
   const n = Math.round(valor);
   if (criterio === "percentual") return `${n} ${n === 1 ? "ponto percentual" : "pontos percentuais"}`;
+  if (criterio === "elo") return `${n} ${n === 1 ? "ponto" : "pontos"} de Elo`;
   return `${n} ${n === 1 ? "ponto" : "pontos"}`;
 }
 

@@ -13,7 +13,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     rpc: sb.rpc,
     from: (tabela: string) => {
       const q: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "in", "order", "delete", "update", "insert", "maybeSingle", "single"]) {
+      for (const m of ["select", "eq", "in", "is", "order", "delete", "update", "insert", "maybeSingle", "single"]) {
         q[m] = (...args: unknown[]) => (sb.chamadas.push([tabela, m, ...args]), q);
       }
       q.then = (resolve: (v: unknown) => unknown) =>
@@ -81,6 +81,8 @@ const missaoDeEntrega: Missao = {
   criterioRotulo: "Concluir a atividade",
   origem: "professor",
   aprovacao: "nao_requer",
+  motivoRecusa: null,
+  escopo: "turma",
   ativa: true,
   caminho: "entrega",
   atividadeId: 41,
@@ -141,6 +143,15 @@ describe("mapearMissao", () => {
     });
   });
 
+  it("lê escopo e motivo da recusa; escopo ausente vira turma", () => {
+    expect(mapearMissao(linhaDeMeta(2, { escopo: "guilda", aprovacao: "recusada", motivo_recusa: "fora" }), null, 0, 0)).toMatchObject({
+      escopo: "guilda",
+      aprovacao: "recusada",
+      motivoRecusa: "fora",
+    });
+    expect(mapearMissao(linhaDeMeta(2), null, 0, 0)).toMatchObject({ escopo: "turma", motivoRecusa: null });
+  });
+
   it("descrição nula vira vazio em vez de 'null'", () => {
     expect(mapearMissao(linhaDeMeta(2, { descricao: null }), null, 0, 0).objetivo).toBe("");
   });
@@ -159,6 +170,15 @@ describe("listarMissoes", () => {
     expect(r[0]).toMatchObject({ caminho: "entrega", entregues: 1, total: 10, pontos: 50 });
     expect(r[1]).toMatchObject({ caminho: "meta", entregues: 0, total: 10 });
     expect(sb.chamadas.some((c) => c[0] === "missoes" && c[1] === "eq" && c[2] === "classe_id" && c[3] === 7)).toBe(true);
+  });
+
+  it("deixa a diária do sistema de fora (ela tem painel próprio) e pede escopo e motivo", async () => {
+    sb.respostas = { missoes: { data: [], error: null } };
+    await listarMissoes(7);
+    expect(sb.chamadas.some((c) => c[0] === "missoes" && c[1] === "is" && c[2] === "dia" && c[3] === null)).toBe(true);
+    const select = sb.chamadas.find((c) => c[0] === "missoes" && c[1] === "select");
+    expect(String(select![2])).toContain("escopo");
+    expect(String(select![2])).toContain("motivo_recusa");
   });
 
   it("sem missão não faz as outras consultas", async () => {
@@ -285,6 +305,13 @@ describe("duplicarMissao", () => {
     await duplicarMissao({ ...missaoDeEntrega, origem: "ia", caminho: "meta", atividadeId: null });
     const insert = sb.chamadas.find((c) => c[0] === "missoes" && c[1] === "insert");
     expect(insert![2]).toMatchObject({ origem: "professor" });
+  });
+
+  it("a cópia mantém o escopo — duplicar a proposta de guilda não a abre para a turma", async () => {
+    sb.respostas = { missoes: { data: { id: 13, classe_id: 7 }, error: null } };
+    await duplicarMissao({ ...missaoDeEntrega, origem: "ia", escopo: "guilda", caminho: "meta", atividadeId: null });
+    const insert = sb.chamadas.find((c) => c[0] === "missoes" && c[1] === "insert");
+    expect(insert![2]).toMatchObject({ escopo: "guilda", origem: "professor" });
   });
 
   it("propaga erro da função do banco", async () => {

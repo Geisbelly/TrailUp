@@ -78,6 +78,13 @@ SEM_SESSAO_POR_DECISAO: dict[str, str] = {
         "Mesma delegacao de `aprovacoes_pendentes`: `app_e_dono()` antes de "
         "qualquer leitura, e so o dono do sistema passa."
     ),
+    "guilda_configurar_turma": (
+        "Delega: a primeira instrucao do corpo e "
+        "`IF p_classe_id NOT IN (SELECT public.app_classes_do_professor()) ... "
+        "RAISE 'guilda_config_invalida'`, e `app_classes_do_professor()` resolve "
+        "as turmas pelo auth.uid(). Nada e lido nem gravado antes. Versionada em "
+        "20261021_17 (com a checagem de tamanho depois da conferencia)."
+    ),
 }
 
 

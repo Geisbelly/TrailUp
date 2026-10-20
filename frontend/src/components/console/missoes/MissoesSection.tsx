@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina } from "../comum/PaginaDoConsole";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
@@ -20,7 +21,8 @@ import { CartaoDaMissao } from "./CartaoDaMissao";
 import { FormularioDaMissao } from "./FormularioDaMissao";
 import { FORMULARIO_DE_MISSAO_VAZIO, prazoParaCampo, type FormularioDeMissao, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
 import { CHAVE_DO_ALVO, definicaoDaMetrica } from "./criterio";
-import { duplicarMissao, excluirMissao, listarMissoes, salvarMissao, type Missao } from "./missoesApi";
+import { MOTIVO_MAX, separarPorDecisao, validarMotivoDeRecusa } from "./aprovacao";
+import { decidirMissao, duplicarMissao, excluirMissao, listarMissoes, salvarMissao, type Missao } from "./missoesApi";
 import { lerMissoesDiarias, type ResumoDasMissoesDiarias } from "./missoesDiariasApi";
 import { PainelMissoesDiarias } from "./PainelMissoesDiarias";
 
@@ -38,6 +40,7 @@ const formularioDe = (m: Missao): FormularioDeMissao => ({
   // O critério já está em `missoes`; o formulário o reabre pela métrica e pelo alvo.
   metrica: metricaDoCriterio(m.criterio),
   alvo: alvoDoCriterio(m.criterio),
+  escopo: m.escopo,
 });
 
 function metricaDoCriterio(criterio: unknown): string {
@@ -70,6 +73,11 @@ export default function MissoesSection({ professorId }: { professorId?: string }
   const [resumoDiario, setResumoDiario] = useState<ResumoDasMissoesDiarias | null>(null);
   const [estadoDiario, setEstadoDiario] = useState<"carregando" | "ok" | "erro">("carregando");
   const [erroDiario, setErroDiario] = useState("");
+  const [decidindo, setDecidindo] = useState<number | null>(null);
+  const [recusando, setRecusando] = useState<Missao | null>(null);
+  const [motivo, setMotivo] = useState("");
+  const [erroDoMotivo, setErroDoMotivo] = useState<string | null>(null);
+  const { pendentes, demais } = separarPorDecisao(missoes);
 
 
   const carregar = useCallback(async (id: number) => {
@@ -142,6 +150,59 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     }
   };
 
+  const aprovar = async (m: Missao) => {
+    if (!turmaId) return;
+    setDecidindo(m.id);
+    try {
+      await decidirMissao(m.id, true);
+      toast.success("Missão aprovada. Ela passa a valer para os alunos.");
+      await carregar(turmaId);
+    } catch (e) {
+      toast.error(mensagem(e, "Não foi possível aprovar a missão."));
+    } finally {
+      setDecidindo(null);
+    }
+  };
+
+  const abrirRecusa = (m: Missao) => {
+    setMotivo("");
+    setErroDoMotivo(null);
+    setRecusando(m);
+  };
+
+  const recusar = async () => {
+    if (!recusando || !turmaId) return;
+    const v = validarMotivoDeRecusa(motivo);
+    if ("erro" in v) {
+      setErroDoMotivo(v.erro);
+      return;
+    }
+    setDecidindo(recusando.id);
+    try {
+      await decidirMissao(recusando.id, false, v.motivo);
+      toast.success("Missão recusada. Nenhum aluno vai vê-la.");
+      setRecusando(null);
+      await carregar(turmaId);
+    } catch (e) {
+      setErroDoMotivo(mensagem(e, "Não foi possível recusar a missão."));
+    } finally {
+      setDecidindo(null);
+    }
+  };
+
+  const cartao = (m: Missao) => (
+    <CartaoDaMissao
+      key={m.id}
+      missao={m}
+      onEditar={() => { setErroDoServidor(null); setForm({ inicial: formularioDe(m), editando: m, chave: Date.now() }); }}
+      onDuplicar={() => setAcao({ tipo: "duplicar", missao: m })}
+      onExcluir={() => setAcao({ tipo: "excluir", missao: m })}
+      onAprovar={() => void aprovar(m)}
+      onRecusar={() => abrirRecusa(m)}
+      decidindo={decidindo === m.id}
+    />
+  );
+
   return (
     <div>
       <CabecalhoDePagina
@@ -190,25 +251,56 @@ export default function MissoesSection({ professorId }: { professorId?: string }
           {estado === "ok" && topicos.length > 0 && missoes.length === 0 && (
             <EstadoVazioDaPagina icone={Flag} titulo="Nenhuma missão ainda" texto="Crie a primeira: objetivo, tópico, prazo e pontuação. Os itens você monta no editor do tópico." acao={{ rotulo: "Nova missão", onClick: abrirNova }} />
           )}
-          {estado === "ok" && missoes.length > 0 && (
-            <ul className="space-y-3">
-              {missoes.map((m) => (
-                <CartaoDaMissao
-                  key={m.id}
-                  missao={m}
-                  onEditar={() => { setErroDoServidor(null); setForm({ inicial: formularioDe(m), editando: m, chave: Date.now() }); }}
-                  onDuplicar={() => setAcao({ tipo: "duplicar", missao: m })}
-                  onExcluir={() => setAcao({ tipo: "excluir", missao: m })}
-                />
-              ))}
-            </ul>
+          {estado === "ok" && pendentes.length > 0 && (
+            <section aria-labelledby="missoes-pendentes" className="space-y-3">
+              <div>
+                <h2 id="missoes-pendentes" className="text-[15px] font-bold">Aguardam sua aprovação ({pendentes.length})</h2>
+                <p className="text-[12.5px] text-muted-foreground">Propostas que nenhum aluno vê enquanto você não aprovar.</p>
+              </div>
+              <ul className="space-y-3">{pendentes.map(cartao)}</ul>
+            </section>
           )}
+          {estado === "ok" && demais.length > 0 && <ul className="space-y-3">{demais.map(cartao)}</ul>}
         </div>
       )}
 
       {form && (
         <FormularioDaMissao key={form.chave} inicial={form.inicial} editando={form.editando !== null} topicos={topicos} salvando={salvando} erroDoServidor={erroDoServidor} onSalvar={(m, a) => void salvar(m, a)} onCancelar={() => setForm(null)} />
       )}
+
+      <AlertDialog open={recusando !== null} onOpenChange={(v) => !v && decidindo === null && setRecusando(null)}>
+        <AlertDialogContent className="max-w-[460px] rounded-[20px] bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[19px]">Recusar missão</AlertDialogTitle>
+            <AlertDialogDescription className="text-left text-[13px] leading-relaxed">
+              {`“${recusando?.titulo ?? ""}” não chega aos alunos. O motivo fica registrado junto da missão.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div>
+            <Textarea
+              aria-label="Motivo da recusa"
+              rows={3}
+              maxLength={MOTIVO_MAX}
+              value={motivo}
+              onChange={(e) => { setMotivo(e.target.value); setErroDoMotivo(null); }}
+              placeholder="Ex.: fora do conteúdo desta turma"
+              aria-invalid={!!erroDoMotivo}
+              className="rounded-[14px] bg-background"
+            />
+            {erroDoMotivo && <p role="alert" className="mt-1 text-xs text-destructive">{erroDoMotivo}</p>}
+          </div>
+          <AlertDialogFooter className="gap-3 sm:justify-between">
+            <AlertDialogCancel disabled={decidindo !== null} className="mt-0 rounded-full">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={decidindo !== null}
+              onClick={(e) => { e.preventDefault(); void recusar(); }}
+              className="rounded-full bg-destructive font-bold text-destructive-foreground hover:bg-destructive/90"
+            >
+              {decidindo !== null ? "Aguarde…" : "Recusar missão"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={acao !== null} onOpenChange={(v) => !v && !executando && setAcao(null)}>
         <AlertDialogContent className="max-w-[460px] rounded-[20px] bg-card">

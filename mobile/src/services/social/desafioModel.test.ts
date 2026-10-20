@@ -5,6 +5,7 @@ import {
   placarDoAluno,
   proximaQuestao,
   tentativasIniciais,
+  tentativasPorQuestao,
 } from "./desafioModel";
 
 const cru = (extra: Record<string, unknown> = {}) => ({
@@ -138,5 +139,20 @@ describe("placarDoAluno", () => {
     d.questoes[1].minhaResposta = "b";
     d.questoes[1].correta = false;
     assert.deepEqual(placarDoAluno(d), { respondidas: 2, acertos: 1, total: 2 });
+  });
+});
+
+describe("arena x guilda (20261021_19)", () => {
+  it("sem `competitivo` na resposta, é da guilda", () => {
+    assert.equal(normalizeDesafio(cru())!.competitivo, false);
+  });
+
+  it("na guilda vale o preset; na arena, uma tentativa", () => {
+    const normal = normalizeDesafio(cru({ dificuldade: "normal", params: { tentativas: 2 } }))!;
+    assert.equal(tentativasPorQuestao(normal), 2);
+    const arena = normalizeDesafio(cru({ dificuldade: "normal", params: { tentativas: 2 }, competitivo: true }))!;
+    assert.equal(arena.competitivo, true);
+    assert.equal(tentativasPorQuestao(arena), 1);
+    assert.equal(tentativasIniciais(arena, 20), 1);
   });
 });

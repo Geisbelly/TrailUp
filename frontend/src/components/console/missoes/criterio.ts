@@ -87,6 +87,18 @@ export const METRICAS: ReadonlyArray<{ chave: MetricaDeMissao } & Definicao> = [
   },
 ] as const;
 
+/**
+ * As que a missão de GUILDA aceita: o progresso da guilda é a soma dos membros
+ * (`20261021_15`), e só contagem soma — percentual somado passa de 100 e sequência somada não é
+ * de ninguém. O banco aceita mais cinco (`fn_missoes_guarda`); desta tela, só esta cabe.
+ * Na guilda ela conta **no período da missão**, não desde sempre.
+ */
+export const METRICAS_DE_GUILDA: ReadonlyArray<MetricaDeMissao> = ["atividades_concluidas"];
+
+export function metricaSomaEmGuilda(chave: string): boolean {
+  return (METRICAS_DE_GUILDA as ReadonlyArray<string>).includes(chave);
+}
+
 export function definicaoDaMetrica(chave: string): ({ chave: MetricaDeMissao } & Definicao) | null {
   return METRICAS.find((m) => m.chave === chave) ?? null;
 }

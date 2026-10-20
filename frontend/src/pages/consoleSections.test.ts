@@ -19,6 +19,7 @@ describe("consolePathForView", () => {
     expect(consolePathForView("personalizacoes")).toBe("/console/personalizacoes");
     expect(consolePathForView("ranks")).toBe("/console/ranks");
     expect(consolePathForView("batalhas")).toBe("/console/rank-de-batalhas");
+    expect(consolePathForView("guildas")).toBe("/console/guildas");
     expect(consolePathForView("missoes")).toBe("/console/missoes");
     expect(consolePathForView("conquistas")).toBe("/console/conquistas");
     expect(consolePathForView("notas")).toBe("/console/notas");
@@ -41,6 +42,7 @@ describe("consoleViewFromPathname", () => {
     expect(consoleViewFromPathname("/console/personalizacoes")).toBe("personalizacoes");
     expect(consoleViewFromPathname("/console/ranks")).toBe("ranks");
     expect(consoleViewFromPathname("/console/rank-de-batalhas")).toBe("batalhas");
+    expect(consoleViewFromPathname("/console/guildas")).toBe("guildas");
     expect(consoleViewFromPathname("/console/missoes")).toBe("missoes");
     expect(consoleViewFromPathname("/console/conquistas")).toBe("conquistas");
     expect(consoleViewFromPathname("/console/notas")).toBe("notas");

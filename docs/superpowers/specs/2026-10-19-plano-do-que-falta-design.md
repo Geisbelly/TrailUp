@@ -150,36 +150,128 @@ Em ordem de desbloqueio, não de tamanho. Cada uma é mesclável sozinha.
    `fn_desafio_params_efetivos` (fase 7), que já devolve `tempo_seg`, `tentativas` e
    `aposta_fator`. Mostra `tentativas_restantes` e `faltam` do retorno, e o resultado quando
    `encerrou` vem preenchido. **Primeira porque sem ela nada do stack paga ninguém.**
+   **Feita** — #563 (`20261021_13`, `_14`).
 2. **Eventos no mobile.** Cartão do evento aberto, as missões do evento, minha posição e a
    medalha ao encerrar. Leitura direta com RLS — regra de fronteira: não tem modelo de
-   linguagem no meio.
+   linguagem no meio. **Feita** — #564, sem migração.
 3. **A missão do professor no aluno.** Ampliar o filtro de `missoesDoDia` para `origem` e
    janela, mostrando prazo. Cuidado medido: hoje a chave da lista é `dia`; missão sem `dia`
-   precisa de outra ordenação.
+   precisa de outra ordenação. **Feita** — #564, sem migração.
 4. **Escopo e aprovação no console.** `escopo` deixa de ser tipo literal; tela de aprovação da
    missão de guilda. Fecha a missão de guilda do pedido original.
+   **Feita** — #567, com `20261021_15`. O console lê `escopo` (`aluno | turma | guilda`) em vez
+   do literal e oferece "A guilda, junta" no formulário; a pendente tem fila própria com Aprovar
+   e Recusar (motivo obrigatório); missão que não é do professor perdeu o "Editar" (o
+   `trg_missoes_guarda` descartava a mudança em silêncio); a diária do sistema saiu da lista.
+   **Decisão de produto: progresso da guilda = soma do progresso dos membros.** O avaliador
+   passou a cumprir a missão de guilda pela guilda: soma a contribuição de cada membro no
+   período da missão intersectado com a filiação datada de `guilda_membros`, e, quando atinge o
+   alvo, conclui e paga uma vez cada membro ativo. Só métricas que somam (contagem de evento,
+   atividades concluídas, minutos do dia); a guarda recusa o resto com 22023.
+   Pontos em aberto: quem entra na guilda pouco antes da conclusão recebe sem ter contribuído;
+   aluno sem guilda vê a missão de guilda da turma sem progresso; ninguém gera missão `pendente`
+   ainda (nenhum código grava `origem = 'ia'`).
 5. **Rank: os tipos novos e o período.** O console passa a oferecer ranqueada e missões ao
    criar um ranking, e a rotação de `periodo` entra — provavelmente no banco, por ser relógio
    (a regra de fronteira manda; a API hiberna, o Postgres não).
+   **Feita** — #568, com `20261021_16` (depois da `_15` do #567). **Decisão de produto: rotação
+   manual, o professor abre o período novo** — então não há relógio: o botão "Novo período" do
+   console chama `fn_rank_novo_periodo`, que trava a linha, congela a classificação em
+   `rank_podio_congelado`, fecha o atual (`fim = now()`) e abre o seguinte com o mesmo tipo e
+   turma. O ranking ganhou janela (`inicio`/`fim`, um só aberto por tipo + turma), e a view
+   filtra pela data do evento nos critérios de soma (pontos, ranqueada, missões); os de estado
+   (percentual, tempo, acertos) seguem sendo o progresso atual. O período fechado fica como
+   histórico só de leitura, com o pódio congelado (default a confirmar), e o banco recusa excluí-lo
+   (decisão da Geisbelly; só a cascata da turma o leva). O console também passou a
+   explicar o que cada tipo mede, exige turma ("Geral" dava 42501) e sugere o período; o mobile
+   vê só o período aberto.
 6. **Janela de formação de guilda no console.** As seis RPCs sem chamador, começando por medir
    o comportamento default de `guilda_criar` sem config.
+   **Feita** — #569, com `20261021_17` (depois da `_16` do #568). Medido: sem linha em
+   `guilda_config_turma`, `guilda_janela_aberta` devolve true, então a formação fica **sempre
+   aberta**, com tamanho 10. A janela barra criar, entrar, convidar e aceitar convite; sair e
+   dissolver não passam por ela. O console ganhou a aba Guildas:
+   - estado da janela (aberta, agendada, fechada, sempre aberta) pelo relógio do banco;
+   - tamanho máximo e as datas de abrir e fechar (em Brasília), com "Fechar agora" e
+     "Abrir sem prazo";
+   - tamanho abaixo de uma guilda existente é recusado, com o mínimo permitido na tela;
+   - as guildas ativas com os membros, e editar nome e descrição.
+
+   Decidido pela Geisbelly (2026-10-20), aplicado no mesmo PR:
+   1. Sair e dissolver **não** respeitam a janela fechada. Fica como está.
+   2. Tamanho abaixo do número de membros de uma guilda: **bloqueia.**
+      `guilda_configurar_turma` recusa com `guilda_tamanho_abaixo_dos_membros` (22023, mínimo no
+      HINT), travando as guildas antes de contar. Antes ela só baixava o limite.
+   3. "Fechar agora" **não** cancela convites pendentes. Fica como está; eles só não podem ser
+      aceitos com a janela fechada.
+   4. O aluno **vê** a janela no app: estado e datas em Brasília na tela de guildas, por
+      `guilda_janela_da_turma` (só janela e tamanho, só para colega da turma). Nada expunha as
+      datas ao aluno antes. `guilda_janela_fechada` virou texto amigável, com as datas.
+
+   Como `guilda_config_turma` não tem policy nem GRANT e `guilda_listar` só responde a colega
+   de turma, a leitura é uma RPC nova: `guilda_formacao_da_turma`, só para o professor.
+   Correção do levantamento: `guilda_congelar_composicao` **tem** chamador, porque
+   `evento_classe_abrir` a chama ao abrir um evento de guilda. `guilda_classe_atual` é
+   auxiliar de `guilda_criar`, e `guilda_cancelar_convite` é do aluno (mobile). Nenhuma das três
+   é do console.
 
 ## Decisões que não são minhas
 
 1. **Qual caminho de resposta fica** — `guilda_desafio_responder` (cobra tentativa, acumula
-   tempo) ou `arena_responder` (primeira resposta final). Recomendo o primeiro, porque é o que
-   torna "menos tentativas" real, e retirar o GRANT do outro.
-2. **A arena revive ou vira legado?** Seis RPCs sem chamador formam um segundo caminho de jogo
-   completo, com convite e adversário — coisas que o caminho de guilda não tem.
-   `arena_desafio` e `arena_professor_resumo` ficam de todo modo (a primeira é a leitura da
-   fase 1 deste plano; a segunda o console já usa).
-3. **Rotação de período do ranking** — por bimestre, por mês, manual pelo professor?
-4. Herdadas do spec anterior: **Elo versus escada acumulada**, e **medir o custo da LLM** da
-   fase 6 antes de ligá-la para todas as turmas.
+   tempo) ou `arena_responder` (primeira resposta final). Com a arena de volta (decisão 2), os
+   dois **ficam, cada um com o seu tipo de desafio**, e o banco cobra a separação
+   (`20261021_19`): cooperativo (sem equipe 2) só pelo `guilda_desafio_responder`; com
+   adversário só pelo `arena_responder`. Unificar ficou decidido como **não**, por agora (ver
+   "Decidido", item 1).
+2. ~~**A arena revive ou vira legado?**~~ Decidido (2026-10-20): **"A arena volta, com o Elo
+   valendo."** Feito no PR depois do #570 (`20261021_19`): as quatro funções que só existiam em
+   produção (`arena_desafio_criar`, `arena_listar`, `arena_convite_responder`,
+   `arena_responder`) passam a ter fonte no git, e o mobile ganha a aba **Arena** no Social
+   (duelo 1x1, dupla 2x2, guilda contra guilda; aceitar/recusar; jogar no `DesafioModal`).
+3. ~~**Rotação de período do ranking** — por bimestre, por mês, manual pelo professor?~~
+   Decidido (2026-10-20): manual, o professor abre o período novo (fase 5).
+4. Herdadas do spec anterior: ~~**Elo versus escada acumulada**~~ — decidido (2026-10-20):
+   **Elo**, feito no #570 (`20261021_18`, depois do #569): rating por aluno e turma em
+   `ranqueada_elo`, ao lado dos pontos (como o spec anterior pedia), ligado em
+   `fn_desafio_encerrar`, que é o fechamento dos dois caminhos de resposta. Só se move em
+   ranqueada com adversário (equipe 2), e só a arena cria esse desafio — que, com a decisão 2,
+   voltou a ter caminho no app. Segue aberto **medir o custo da LLM**
+   da fase 6 antes de ligá-la para todas as turmas.
+
+## Decidido
+
+As 10 decisões da arena e do Elo, abertas no #571. Resposta da Geisbelly (2026-10-20): **"Segue
+suas recomendações nas 10"**. As que mudam código foram aplicadas no próprio #571
+(`20261021_19`).
+
+1. **Os dois "responder" ficam separados**, cada um com o seu tipo de desafio, e o banco cobra a
+   separação. Não muda nada.
+2. **Tudo na arena vale Elo**, sem duelo de treino. Não muda nada.
+3. **O convite da arena tem janela própria de 24 h**, no lugar dos 30 min:
+   `arena_convite_expira_min` = 1440 em `app_config`, lido pela `fn_desafio_varrer_abandonados`
+   para desafio com equipe 2. O cooperativo continua com `desafio_encerra_apos_min` (30). A janela
+   conta de `created_at` e vale para a partida inteira.
+4. **Recusa fecha na hora**: quando a equipe 2 fica sem ninguém, `arena_convite_responder` fecha
+   como `sem_adversario`, sem Elo e sem esperar a varredura. Se a recusa deixa todo mundo
+   respondido e nenhum convite pendente, fecha com o resultado normal.
+5. **Limite diário contra o mesmo adversário: 3 partidas ranqueadas por dia** (horário de
+   Brasília), em `arena_limite_diario_mesmo_adversario` (0 desliga). Quem cobra é
+   `fn_arena_cobrar_limite_diario`, ao criar e ao aceitar, com o erro
+   `arena_limite_diario_adversario` (o HINT traz o limite). O mobile traduz. Conta só partida
+   aceita pelos dois em lados opostos, fora `sem_adversario`; convite pendente não conta.
+6. **Valores do Elo confirmados**: 1000, K 32, K 40 nas 10 primeiras partidas, média do time.
+   Não muda nada.
+7. **Quem nunca jogou aparece com 1000.** Não muda nada.
+8. **Desafio de evento não conta para o Elo.** Não muda nada.
+9. **Sem reset por período.** Não muda nada.
+10. **O aluno vê a variação de Elo** ("+20 Elo") no fim da partida e no histórico da aba Arena.
+    `arena_listar` e `arena_desafio` devolvem `meu_elo`, só a linha de `auth.uid()` em
+    `ranqueada_elo_partida`. A tabela continua sem grant para o cliente.
 
 ## O que não entra
 
 - Reescrever a arena. Se ela revive, é extensão do que existe.
-- Elo. É tabela nova e muda o significado de `ranks`; decisão 4 primeiro.
+- ~~Elo.~~ Entrou no #570 depois da decisão 4, como tabela ao lado: `ranks` segue somando pontos,
+  e o Elo é um tipo de ranking a mais (`criterio = 'elo'`).
 - Tornar o limite de tempo do desafio autoritativo no banco. Precisa de registro de "questão
   aberta em", que não existe — está registrado na fase 8 e segue valendo.
