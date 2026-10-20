@@ -27,6 +27,8 @@ Documentação que não pertence a um único serviço:
   que a telemetria coleta, com que limites, o que vira `tempo_gasto_min` e o
   estado medido da realimentação (2026-09-30). Leia antes de interpretar
   qualquer número de tempo de estudo.
+- **[Mapa ponta a ponta de dados, métricas e KPIs](./architecture/mapa-dados-metricas-kpis.md)** — inventário por aluno/professor, fluxos de cliente, banco, API e geração, fórmulas conhecidas e lacunas de evidência.
+
 
 - **[Schema não versionado](./architecture/schema-nao-versionado.md)** —
   inventário do que existe no banco de produção e não está descrito por
