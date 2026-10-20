@@ -12,6 +12,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { saveActivity } from "../trilha/topicsApi";
+import { aprovacaoDe, escopoDe, type EscopoDaMissao } from "./aprovacao";
 import { rotuloDoCriterio } from "./criterio";
 import { comCriterioDaAtividade, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
 
@@ -25,6 +26,10 @@ export type Missao = {
   criterioRotulo: string;
   origem: string;
   aprovacao: string;
+  /** Só preenchido em `recusada` (CHECK `missoes_recusa_tem_motivo`). */
+  motivoRecusa: string | null;
+  /** Quem cumpre: `aluno | turma | guilda`. */
+  escopo: EscopoDaMissao;
   ativa: boolean;
   /** `entrega` quando aponta uma atividade; `meta` quando o critério se basta. */
   caminho: "entrega" | "meta";
@@ -48,6 +53,8 @@ type LinhaDeMissao = {
   aprovacao: string;
   ativa: boolean;
   atividade_origem_id: number | null;
+  escopo?: string | null;
+  motivo_recusa?: string | null;
 };
 
 type LinhaDaAtividade = {
@@ -99,7 +106,9 @@ export function mapearMissao(
     criterio: m.criterio,
     criterioRotulo: rotuloDoCriterio(m.criterio),
     origem: m.origem,
-    aprovacao: m.aprovacao,
+    aprovacao: aprovacaoDe(m.aprovacao),
+    motivoRecusa: m.motivo_recusa ?? null,
+    escopo: escopoDe(m.escopo),
     ativa: m.ativa,
     caminho: m.atividade_origem_id == null ? "meta" : "entrega",
     atividadeId: m.atividade_origem_id,
@@ -115,8 +124,12 @@ export function mapearMissao(
 export async function listarMissoes(classeId: number): Promise<Missao[]> {
   const { data, error } = await supabase
     .from("missoes" as never)
-    .select("id, titulo, descricao, janela_fim, criterio, origem, aprovacao, ativa, atividade_origem_id")
+    .select("id, titulo, descricao, janela_fim, criterio, origem, aprovacao, motivo_recusa, escopo, ativa, atividade_origem_id")
     .eq("classe_id", classeId)
+    // A diária do sistema (com `dia`) tem painel próprio, `missoes_diarias_resumo`. Sem este
+    // filtro, cada coorte de cada dia viraria um cartão aqui — com um "Editar" que o gatilho
+    // ignora em silêncio, porque ela não é do professor.
+    .is("dia", null)
     .order("criado_em", { ascending: false });
   if (error) throw error;
   const missoes = (data ?? []) as unknown as LinhaDeMissao[];
@@ -268,7 +281,9 @@ export async function duplicarMissao(m: Missao): Promise<number> {
     .from("missoes" as never)
     .insert({
       classe_id: await classeDaMissao(m.id),
-      escopo: "turma",
+      // A cópia mantém quem cumpre: duplicar uma proposta de guilda não a transforma em
+      // missão da turma inteira.
+      escopo: m.escopo,
       origem: "professor",
       titulo: `${m.titulo} (cópia)`.slice(0, 120),
       descricao: m.objetivo,

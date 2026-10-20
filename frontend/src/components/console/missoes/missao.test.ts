@@ -31,6 +31,24 @@ describe("validarMissao", () => {
     expect(r.erros).toBeNull();
   });
 
+  it("o escopo do formulário vai para o payload; ausente é turma", () => {
+    expect(validarMissao(meta()).missao!.escopo).toBe("turma");
+    const g = validarMissao(meta({ escopo: "guilda", metrica: "atividades_concluidas", alvo: "6" }));
+    expect(g.ok).toBe(true);
+    expect(g.missao).toMatchObject({ escopo: "guilda", criterio: { metrica: "atividades_concluidas", minimo: 6 } });
+  });
+
+  it("guilda soma os membros: só meta, e só com métrica que soma", () => {
+    // Entrega não é número — o banco recusaria com 22023.
+    expect(validarMissao(base({ escopo: "guilda" })).erros!.caminho).toBeTruthy();
+    // Percentual somado passaria de 100; minutos_totais é de vida inteira.
+    for (const metrica of ["acertos_percentual", "trilha_percentual", "dias_seguidos", "minutos_totais", "topicos_concluidos"]) {
+      expect(validarMissao(meta({ escopo: "guilda", metrica })).erros!.metrica).toBeTruthy();
+    }
+    // Na turma, as mesmas seguem valendo.
+    expect(validarMissao(meta({ metrica: "acertos_percentual", alvo: "80" })).ok).toBe(true);
+  });
+
   it("prazo preenchido vira ISO; inválido é erro", () => {
     const ok = validarMissao(base({ prazo: "2026-10-20T23:59" }));
     expect(ok.atividade!.data_entrega).toBe(new Date("2026-10-20T23:59").toISOString());

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { METRICAS, definicaoDaMetrica } from "./criterio";
+import { METRICAS, definicaoDaMetrica, metricaSomaEmGuilda } from "./criterio";
 import { OBJETIVO_MAX, TITULO_MAX, validarMissao, type ErrosDaMissao, type FormularioDeMissao, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
 
 const rotulo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
@@ -15,6 +15,16 @@ const campo = "mt-2 rounded-[14px] bg-background";
 const CAMINHOS = [
   { chave: "entrega" as const, titulo: "Entrega", ajuda: "O aluno entrega e você corrige." },
   { chave: "meta" as const, titulo: "Meta", ajuda: "O app fecha sozinho quando o aluno atinge." },
+];
+
+/**
+ * Quem cumpre. `guilda` soma o progresso dos membros no período da missão (`20261021_15`), e
+ * por isso só existe como meta com métrica que soma. `aluno` é o escopo da diária do sistema
+ * e não é oferecido aqui.
+ */
+const ESCOPOS = [
+  { chave: "turma" as const, titulo: "Cada aluno da turma", ajuda: "Cada um cumpre a sua." },
+  { chave: "guilda" as const, titulo: "A guilda, junta", ajuda: "Soma o que os membros fazem no período." },
 ];
 
 /** "Nova missão" / "Editar missão". Quem monta usa `key` para remontar a cada abertura (o estado inicia de `inicial`). */
@@ -38,6 +48,14 @@ export function FormularioDaMissao({
   const [form, setForm] = useState(inicial);
   const [erros, setErros] = useState<ErrosDaMissao>({});
   const alterar = (parcial: Partial<FormularioDeMissao>) => setForm((f) => ({ ...f, ...parcial }));
+  const guilda = (form.escopo ?? "turma") === "guilda";
+  const metricasOferecidas = guilda ? METRICAS.filter((m) => metricaSomaEmGuilda(m.chave)) : METRICAS;
+  const escolherEscopo = (escopo: "turma" | "guilda") =>
+    alterar(
+      escopo === "guilda"
+        ? { escopo, caminho: "meta", metrica: metricaSomaEmGuilda(form.metrica) ? form.metrica : "" }
+        : { escopo },
+    );
 
   const salvar = () => {
     const r = validarMissao(form);
@@ -66,6 +84,32 @@ export function FormularioDaMissao({
             {erros.objetivo && <p className="mt-1 text-xs text-destructive">{erros.objetivo}</p>}
           </div>
 
+          <div role="radiogroup" aria-label="Quem cumpre a missão">
+            <span className={rotulo}>Quem cumpre *</span>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {ESCOPOS.map(({ chave, titulo, ajuda }) => {
+                const ativo = (form.escopo ?? "turma") === chave;
+                return (
+                  <button
+                    key={chave}
+                    type="button"
+                    role="radio"
+                    aria-checked={ativo}
+                    disabled={editando}
+                    onClick={() => escolherEscopo(chave)}
+                    className={`flex-1 min-w-[180px] rounded-[14px] border px-4 py-3 text-left ${
+                      ativo ? "border-primary bg-primary/15" : "border-border hover:border-primary/50"
+                    } ${editando ? "opacity-60" : ""}`}
+                  >
+                    <span className="block text-[13px] font-bold">{titulo}</span>
+                    <span className="mt-0.5 block text-[11.5px] text-muted-foreground">{ajuda}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {erros.escopo && <p className="mt-1 text-xs text-destructive">{erros.escopo}</p>}
+          </div>
+
           <div role="radiogroup" aria-label="Como a missão é concluída">
             <span className={rotulo}>Como ela é concluída *</span>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -77,11 +121,11 @@ export function FormularioDaMissao({
                     type="button"
                     role="radio"
                     aria-checked={ativo}
-                    disabled={editando}
+                    disabled={editando || (guilda && chave === "entrega")}
                     onClick={() => alterar({ caminho: chave })}
                     className={`flex-1 min-w-[180px] rounded-[14px] border px-4 py-3 text-left ${
                       ativo ? "border-primary bg-primary/15" : "border-border hover:border-primary/50"
-                    } ${editando ? "opacity-60" : ""}`}
+                    } ${editando || (guilda && chave === "entrega") ? "opacity-60" : ""}`}
                   >
                     <span className="block text-[13px] font-bold">{titulo}</span>
                     <span className="mt-0.5 block text-[11.5px] text-muted-foreground">{ajuda}</span>
@@ -89,6 +133,10 @@ export function FormularioDaMissao({
                 );
               })}
             </div>
+            {guilda && !editando && (
+              <p className="mt-1 text-[11.5px] text-muted-foreground">Na guilda a missão é uma meta: o progresso é a soma dos membros.</p>
+            )}
+            {erros.caminho && <p className="mt-1 text-xs text-destructive">{erros.caminho}</p>}
             {editando && (
               <p className="mt-1 text-[11.5px] text-muted-foreground">
                 Isso não muda depois de criada — a de entrega tem uma atividade atrás dela. Para trocar, crie outra.
@@ -139,11 +187,13 @@ export function FormularioDaMissao({
                   <Select value={form.metrica} onValueChange={(v) => alterar({ metrica: v })}>
                     <SelectTrigger className={campo} aria-label="O que ela mede"><SelectValue placeholder="Escolha a medida" /></SelectTrigger>
                     <SelectContent>
-                      {METRICAS.map((m) => <SelectItem key={m.chave} value={m.chave}>{m.rotulo}</SelectItem>)}
+                      {metricasOferecidas.map((m) => <SelectItem key={m.chave} value={m.chave}>{m.rotulo}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   {definicaoDaMetrica(form.metrica) && (
-                    <p className="mt-1 text-[11.5px] text-muted-foreground">{definicaoDaMetrica(form.metrica)!.ajuda}</p>
+                    <p className="mt-1 text-[11.5px] text-muted-foreground">
+                      {guilda ? "Soma do que os membros da guilda fazem no período da missão." : definicaoDaMetrica(form.metrica)!.ajuda}
+                    </p>
                   )}
                   {erros.metrica && <p className="mt-1 text-xs text-destructive">{erros.metrica}</p>}
                 </div>

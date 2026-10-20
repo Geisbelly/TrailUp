@@ -63,6 +63,7 @@ test("score formatting respects the actual criterion and unavailable values", ()
   // `ranqueada` é pontuação de verdade, e pode ser NEGATIVA: a derrota da arena desconta.
   assert.equal(formatRankScore(-3, "ranqueada"), "-3");
   assert.equal(formatRankScore(15, "ranqueada"), "15");
+  assert.equal(formatRankScore(1012, "elo"), "1012");
 });
 
 test("criterion label covers every criterion the view computes", () => {
@@ -73,6 +74,8 @@ test("criterion label covers every criterion the view computes", () => {
   // `ranqueada` é pontuação, então o padrão já serve.
   assert.equal(rotuloDoCriterio("ranqueada"), "Pontos");
   assert.equal(rotuloDoCriterio(null), "Pontos");
+  // `elo` (20261021_18) é rating, não pontos acumulados.
+  assert.equal(rotuloDoCriterio("elo"), "Elo");
 });
 
 test("podium belongs to rank detail, while the entry remains category navigation", () => {

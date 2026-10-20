@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Award, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
-import { Swords } from "lucide-react";
+import { Shield, Swords } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DESIGN_ART } from "@/lib/design-art";
 import { CONSOLE_SECTIONS, consolePathForView, type ConsoleView } from "@/pages/consoleSections";
@@ -19,6 +19,7 @@ const navigation = {
   personalizacoes: { label: "Personalizações", icon: Sparkles },
   ranks: { label: "Rankings", icon: Trophy },
   batalhas: { label: "Rank de batalhas", icon: Swords },
+  guildas: { label: "Guildas", icon: Shield },
   profile: { label: "Meus dados", icon: Settings },
   aprovacoes: { label: "Aprovações", icon: ShieldCheck },
 };

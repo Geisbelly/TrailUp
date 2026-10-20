@@ -34,3 +34,13 @@ test('erro de leitura de rank continua sendo reportado', async () => {
   const error = new Error('offline');
   await assert.rejects(loadRankMetadata(client([], error).db, { classeId: 54 }), error);
 });
+
+test('na turma, período encerrado fica de fora (só o atual aparece no app)', async () => {
+  const { db } = client([
+    { id: 14, classe_id: 65, fim: '2026-10-20T03:00:00Z', rank_tipo: { nome: 'Pontuação' } },
+    { id: 31, classe_id: 65, fim: null, rank_tipo: { nome: 'Pontuação' } },
+    { id: 32, classe_id: 65, rank_tipo: { nome: 'Missões' } },
+  ]);
+  const rows = await loadRankMetadata(db, { classeId: 65 });
+  assert.deepEqual(rows.map((r) => r.rank_id), [31, 32]);
+});

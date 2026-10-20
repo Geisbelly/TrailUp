@@ -28,6 +28,7 @@ src/utils/visitaDoTopico.test.ts
 src/services/pushNotifications.test.ts
 src/services/rankMetadata.test.ts
 src/services/social/guildModel.test.ts
+src/services/social/guildWindowModel.test.ts
 src/services/social/publicProfileModel.test.ts
 src/services/social/socialModel.test.ts
 src/services/studySessions.test.ts

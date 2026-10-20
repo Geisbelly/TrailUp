@@ -34,5 +34,7 @@ test("a diferença sai na unidade do critério", () => {
   assert.equal(formatarFalta(75, "tempo"), "1h 15min");
   assert.equal(formatarFalta(1, "percentual"), "1 ponto percentual");
   assert.equal(formatarFalta(12, "percentual"), "12 pontos percentuais");
+  assert.equal(formatarFalta(1, "elo"), "1 ponto de Elo");
+  assert.equal(formatarFalta(23.4, "elo"), "23 pontos de Elo");
   assert.equal(formatarFalta(1, "pontuacao"), "1 ponto");
 });
