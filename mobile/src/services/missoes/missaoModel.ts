@@ -127,6 +127,56 @@ export function rotuloDoEscopo(escopo: EscopoDaMissao): string {
   return "";
 }
 
+type PerfilComAfinidade = { nome?: string | null; afinidade?: number | null };
+
+/**
+ * Os perfis REPRESENTATIVOS do aluno, pela mesma regra do banco.
+ *
+ * É o `representativos` do laço de missão de `trg_eventos_aluno_after_iud` e, desde
+ * `20261021_20`, também o recorte de coorte de `fn_missao_diaria_gerar`:
+ *
+ *     afinidade >= 20  OU  (afinidade > 0 E está entre os 2 primeiros)
+ *     ordem: afinidade DESC, nome ASC
+ *
+ * O desempate por nome importa: `resolveRepresentativeBrainHexProfiles` (utils/brainHex) usa a
+ * mesma regra, mas desempata pela ordem em que as linhas chegaram, e o banco não garante essa
+ * ordem entre afinidades iguais. Aqui o desempate é o do SQL, para a tela e o gatilho
+ * concordarem sobre qual missão é do aluno.
+ */
+export function perfisRepresentativos(perfis: PerfilComAfinidade[] | null | undefined): string[] {
+  if (!Array.isArray(perfis)) return [];
+  return perfis
+    .map((p) => ({ nome: (p?.nome ?? "").trim(), af: Number(p?.afinidade ?? 0) || 0 }))
+    .filter((p) => p.nome !== "")
+    .sort((a, b) => (b.af !== a.af ? b.af - a.af : a.nome < b.nome ? -1 : a.nome > b.nome ? 1 : 0))
+    .filter((p, pos) => p.af >= 20 || (p.af > 0 && pos < 2))
+    .map((p) => p.nome.toLowerCase());
+}
+
+/**
+ * O PERFIL DA MISSÃO: o único perfil cujas missões diárias o aluno vê e cumpre.
+ *
+ * Decisão de produto (20/10): o banco avalia só as missões do perfil ativo. Esta função é a MESMA
+ * regra de `fn_perfil_da_missao` (`20261021_20`), que o gerador e os dois gatilhos de missão usam:
+ *
+ *     o `alunos.perfil_ativo` salvo, se ainda for representativo;
+ *     senão o 1º representativo (afinidade DESC, nome ASC);
+ *     senão `null`.
+ *
+ * Determinística e sem estado do app: as entradas são `alunos.perfil_ativo` e `aluno_perfil`, as
+ * mesmas do banco. Sem perfis (ainda não carregados, ou nenhum representativo) é `null`, como no
+ * banco — e `null` em `montarMissoes` mostra só as missões sem `perfil_alvo`.
+ */
+export function perfilDaMissao(
+  perfis: PerfilComAfinidade[] | null | undefined,
+  perfilAtivo?: string | null,
+): string | null {
+  const ativo = perfilAtivo ? perfilAtivo.trim().toLowerCase() : null;
+  const representativos = perfisRepresentativos(perfis);
+  if (ativo && representativos.includes(ativo)) return ativo;
+  return representativos[0] ?? null;
+}
+
 type LinhaMissao = {
   id: number;
   titulo: string | null;
@@ -152,11 +202,16 @@ export function montarMissoes(
   const porId = new Map<number, LinhaProgresso>();
   for (const p of progresso) porId.set(Number(p.missao_id), p);
 
-  const perfil = opcoes.perfilAtivo ? opcoes.perfilAtivo.toLowerCase() : null;
+  // `undefined` = sem filtro de perfil (chamador antigo). `null` = o aluno não tem perfil da
+  // missão: como no banco (`20261021_20`), nenhuma missão com `perfil_alvo` é dele.
+  const filtrarPerfil = opcoes.perfilAtivo !== undefined;
+  const perfil = opcoes.perfilAtivo ? opcoes.perfilAtivo.trim().toLowerCase() : null;
 
   const montadas = linhas
     // `perfil_alvo` é da diária por coorte: missão de outro perfil não é minha.
-    .filter((m) => !m.perfil_alvo || !perfil || m.perfil_alvo.toLowerCase() === perfil)
+    .filter(
+      (m) => !m.perfil_alvo || !filtrarPerfil || (perfil !== null && m.perfil_alvo.toLowerCase() === perfil),
+    )
     .map((m): MissaoDoAluno => {
       const p = porId.get(Number(m.id));
       return {
