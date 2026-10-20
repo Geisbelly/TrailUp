@@ -1,1 +1,2 @@
 src/services/social/guildChatModel.test.ts
+src/services/social/desafioModel.test.ts

@@ -34,3 +34,54 @@ describe("mensagemEhMinha", () => {
     assert.equal(mensagemEhMinha({ authorId: "me" }, "me"), true, "comparação é por igualdade, sem caso especial");
   });
 });
+
+describe("normalizeShare do desafio", () => {
+  const mensagem = (conteudo: Record<string, unknown>) =>
+    normalizeGuildMessages([
+      { id: "m1", guilda_id: "g1", autor_id: "a1", autor_nome: "Ana", tipo: "desafio",
+        texto: "Um novo desafio foi lançado!", conteudo, created_at: null },
+    ])[0];
+
+  it("o id é uuid e o cartão existe", () => {
+    // Era `Number(row.id)` com `isFinite && > 0`: uuid virava NaN e o share saía null, então
+    // o cartão NUNCA existia e o cliente não sabia de qual desafio a mensagem falava.
+    const m = mensagem({ id: "7f3a1b2c-0000-4000-8000-000000000001", quantidade: 3,
+                         dificuldade: "dificil", consequencia: "ranqueada" });
+    assert.ok(m.share, "o share do desafio não pode ser null");
+    assert.equal(m.share!.kind, "desafio");
+    assert.equal(m.share!.kind === "desafio" ? m.share!.desafioId : null,
+                 "7f3a1b2c-0000-4000-8000-000000000001");
+  });
+
+  it("o título é montado do payload, que não traz título nenhum", () => {
+    const m = mensagem({ id: "u-1", quantidade: 3, dificuldade: "dificil", consequencia: "ranqueada" });
+    assert.equal(m.share!.title, "Desafio · 3 questões · Difícil · Ranqueada");
+    const uma = mensagem({ id: "u-2", quantidade: 1, dificuldade: "normal", consequencia: "treino" });
+    assert.equal(uma.share!.title, "Desafio · 1 questão · Normal · Treino");
+  });
+
+  it("payload sem os eixos ainda rende cartão — a mensagem é de antes da fase 7", () => {
+    const m = mensagem({ id: "u-3" });
+    assert.equal(m.share!.title, "Desafio");
+    assert.equal(m.share!.kind === "desafio" ? m.share!.quantidade : "x", null);
+  });
+
+  it("sem id não há cartão — não dá para abrir desafio nenhum", () => {
+    assert.equal(mensagem({ quantidade: 3 }).share, null);
+  });
+
+  it("a questão continua com id numérico e título obrigatório", () => {
+    const q = normalizeGuildMessages([
+      { id: "m2", guilda_id: "g1", autor_id: "a1", tipo: "questao",
+        conteudo: { id: 1366, enunciado: "Quanto é 2+2?", tipo: "multipla", alternativas: ["3", "4"] },
+        created_at: null },
+    ])[0];
+    assert.equal(q.share!.kind, "questao");
+    assert.equal(q.share!.kind === "questao" ? q.share!.id : null, 1366);
+    // Questão sem enunciado continua sem cartão.
+    const vazia = normalizeGuildMessages([
+      { id: "m3", guilda_id: "g1", autor_id: "a1", tipo: "questao", conteudo: { id: 1 }, created_at: null },
+    ])[0];
+    assert.equal(vazia.share, null);
+  });
+});
