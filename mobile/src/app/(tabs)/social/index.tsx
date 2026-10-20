@@ -7,6 +7,7 @@ import { SocialProfileModal } from "@/components/social/SocialProfileModal";
 import { PrivateChatModal } from "@/components/social/PrivateChatModal";
 import { GuildSection } from "@/components/social/GuildSection";
 import { MissoesDoDia } from "@/components/missoes/MissoesDoDia";
+import { EventoDaTurma } from "@/components/eventos/EventoDaTurma";
 import type { GuildShareOption } from "@/components/social/GuildChatModal";
 import { StoreLauncher } from "@/components/loja/StoreLauncher";
 import { SocialLateralDesktop } from "@/components/web/SocialLateralDesktop";
@@ -174,6 +175,16 @@ export default function SocialScreen() {
           </View>
           <Envolve {...(desktop ? { style: styles.colunas } : {})}>
           <Envolve {...(desktop ? { style: styles.principal } : {})}>
+          {activeClasseId > 0 ? (
+            <EventoDaTurma
+              classeId={activeClasseId}
+              accent={palette.accent}
+              textColor={palette.text}
+              mutedColor={palette.textMuted}
+              surfaceColor={palette.surfaceElevated}
+              borderColor={palette.border}
+            />
+          ) : null}
           {activeClasseId > 0 ? (
             <MissoesDoDia
               classeId={activeClasseId}

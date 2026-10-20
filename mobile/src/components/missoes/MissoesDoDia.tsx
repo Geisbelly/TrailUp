@@ -2,7 +2,8 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { FontFamily } from "@/styles/GlobalStyle";
-import { carregarMissoesDoDia, type MissaoDoDia } from "@/services/missoes/missoesDoDia";
+import { carregarMissoesDoAluno } from "@/services/missoes/missoesDoDia";
+import { rotuloDoEscopo, rotuloDoPrazo, type MissaoDoAluno } from "@/services/missoes/missaoModel";
 
 type Props = {
   classeId: number;
@@ -15,7 +16,7 @@ type Props = {
 };
 
 export function MissoesDoDia({ classeId, perfil, accent, textColor, mutedColor, surfaceColor, borderColor }: Props) {
-  const [missoes, setMissoes] = useState<MissaoDoDia[]>([]);
+  const [missoes, setMissoes] = useState<MissaoDoAluno[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -24,9 +25,9 @@ export function MissoesDoDia({ classeId, perfil, accent, textColor, mutedColor, 
     setLoading(true);
     setErro(null);
     try {
-      setMissoes(await carregarMissoesDoDia(classeId, perfil));
+      setMissoes(await carregarMissoesDoAluno(classeId, perfil));
     } catch (e) {
-      setErro("Não foi possível carregar as missões do dia.");
+      setErro("Não foi possível carregar suas missões.");
       console.warn("[MissoesDoDia]", e);
     } finally {
       setLoading(false);
@@ -40,11 +41,11 @@ export function MissoesDoDia({ classeId, perfil, accent, textColor, mutedColor, 
   if (!classeId) return null;
 
   return (
-    <View style={[s.card, { backgroundColor: surfaceColor, borderColor }]} accessibilityLabel="Missões do dia">
+    <View style={[s.card, { backgroundColor: surfaceColor, borderColor }]} accessibilityLabel="Minhas missões">
       <View style={s.header}>
         <MaterialCommunityIcons name="flag-checkered" size={20} color={accent} />
-        <Text style={[s.title, { color: textColor }]}>Missões do dia</Text>
-        <Pressable accessibilityLabel="Atualizar missões do dia" onPress={() => void load()} hitSlop={8}>
+        <Text style={[s.title, { color: textColor }]}>Minhas missões</Text>
+        <Pressable accessibilityLabel="Atualizar minhas missões" onPress={() => void load()} hitSlop={8}>
           <MaterialCommunityIcons name="refresh" size={18} color={mutedColor} />
         </Pressable>
       </View>
@@ -57,7 +58,7 @@ export function MissoesDoDia({ classeId, perfil, accent, textColor, mutedColor, 
 
       {!loading && !erro && missoes.length === 0 ? (
         <Text style={[s.vazio, { color: mutedColor }]}>
-          Ainda não há missão para hoje. Elas aparecem depois da meia-noite.
+          Ainda não há missão para você. As do dia aparecem depois da meia-noite.
         </Text>
       ) : null}
 
@@ -82,8 +83,17 @@ export function MissoesDoDia({ classeId, perfil, accent, textColor, mutedColor, 
                 </Text>
               ) : null}
               <Text style={[s.meta, { color: mutedColor }]}>
-                {m.criterioRotulo}
-                {done ? " · cumprida" : m.progresso > 0 ? ` · ${m.progresso}%` : ""}
+                {[
+                  m.origem === "professor" ? "do professor" : "do dia",
+                  rotuloDoEscopo(m.escopo),
+                  m.criterioRotulo,
+                  // Só a do professor tem prazo que o aluno precisa ver; a do dia vence à
+                  // meia-noite e dizer "até hoje" nela seria ruído.
+                  m.origem === "professor" ? rotuloDoPrazo(m.prazo) : "",
+                  done ? "cumprida" : m.progresso > 0 ? `${m.progresso}%` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </Text>
             </View>
           );
