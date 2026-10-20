@@ -117,3 +117,5 @@ src/utils/gruposNotificacao.test.ts
 src/utils/activityType.test.ts
 src/utils/realtimeDeleteObservavel.test.ts
 src/utils/eixosDoDesafio.test.ts
+src/services/eventos/eventoModel.test.ts
+src/services/missoes/missaoModel.test.ts

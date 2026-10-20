@@ -1,99 +1,59 @@
 import { supabase } from "@/database/supabase";
+import { montarMissoes, type MissaoDoAluno } from "./missaoModel";
 
-export type MissaoDoDia = {
-  id: number;
-  titulo: string;
-  descricao: string;
-  progresso: number;
-  status: "pendente" | "em_andamento" | "concluida";
-  criterioRotulo: string;
-};
+export type { MissaoDoAluno } from "./missaoModel";
 
-type LinhaMissao = {
-  id: number;
-  titulo: string | null;
-  descricao: string | null;
-  criterio: unknown;
-  perfil_alvo: string | null;
-  dia: string | null;
-};
-
-type LinhaProgresso = {
-  missao_id: number;
-  status: string | null;
-  progresso: number | null;
-};
-
-function rotuloCriterio(criterio: unknown): string {
-  const c = criterio && typeof criterio === "object" ? (criterio as Record<string, unknown>) : null;
-  const metrica = String(c?.metrica ?? "");
-  if (metrica === "minutos_no_dia") return `${Number(c?.minutos) || "?"} min hoje`;
-  if (metrica === "eventos_no_dia") {
-    const n = Number(c?.minimo) || "?";
-    const ev = String(c?.evento ?? "");
-    if (ev.includes("atividade")) return `${n} atividade(s)`;
-    if (ev.includes("conteudo")) return `${n} conteúdo(s)`;
-    return `${n} ação(ões) na trilha`;
-  }
-  return metrica || "missão do dia";
-}
-
-function statusDe(s: string | null | undefined): MissaoDoDia["status"] {
-  const v = (s ?? "").toLowerCase();
-  if (v.includes("conclu")) return "concluida";
-  if (v.includes("andamento") || v.includes("progress")) return "em_andamento";
-  return "pendente";
-}
-
-/** Missões do dia da turma do aluno (origem sistema), com o progresso dele. */
-export async function carregarMissoesDoDia(classeId: number, perfilAtivo?: string | null): Promise<MissaoDoDia[]> {
-  // Mesmo fuso do cron (`America/Sao_Paulo`). `en-CA` devolve YYYY-MM-DD.
-  const dia = new Intl.DateTimeFormat("en-CA", {
+/** O dia de hoje no fuso do cron da diária (`America/Sao_Paulo`). `en-CA` dá YYYY-MM-DD. */
+function diaDeHoje(): string {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
 
-  const q = supabase
-    .from("missoes" as never)
-    .select("id, titulo, descricao, criterio, perfil_alvo, dia")
+/**
+ * As missões do aluno na turma: **a do dia e a do professor**.
+ *
+ * Antes isto buscava só `origem = 'sistema'` com `dia = hoje`, então a missão do professor —
+ * criada pelo console desde a fase 2, com `origem = 'professor'` e sem `dia` — **nunca
+ * aparecia para o aluno**. A policy `missoes_aluno_sel` sempre a liberou; era o filtro daqui
+ * que a escondia.
+ *
+ * O `or` é uma expressão só porque o PostgREST combina condições de nível diferente com `and`:
+ * `dia.eq.<hoje>` vale para a diária e `origem.eq.professor` para a do professor, e as duas
+ * precisam ser alternativas, não cumulativas.
+ *
+ * `ativa` e `aprovacao` NÃO são filtrados aqui de propósito: a policy já os cobre, e repetir
+ * a regra no cliente cria uma segunda fonte da verdade que envelhece sozinha.
+ */
+export async function carregarMissoesDoAluno(
+  classeId: number,
+  perfilAtivo?: string | null,
+): Promise<MissaoDoAluno[]> {
+  const dia = diaDeHoje();
+
+  const { data, error } = await supabase
+    .from("missoes")
+    .select("id, titulo, descricao, criterio, perfil_alvo, dia, slot, origem, escopo, janela_inicio, janela_fim" as never)
     .eq("classe_id", classeId)
-    .eq("origem", "sistema")
-    .eq("dia", dia)
-    .eq("ativa", true)
-    .order("slot", { ascending: true });
+    .or(`and(origem.eq.sistema,dia.eq.${dia}),origem.eq.professor`)
+    .limit(30);
 
-  const { data, error } = await q;
   if (error) throw error;
-  let linhas = (data ?? []) as LinhaMissao[];
+  const linhas = (data ?? []) as never[];
+  if (!linhas.length) return [];
 
-  if (perfilAtivo) {
-    const perfil = perfilAtivo.toLowerCase();
-    linhas = linhas.filter((m) => !m.perfil_alvo || m.perfil_alvo.toLowerCase() === perfil);
-  }
-
-  if (linhas.length === 0) return [];
-
-  const ids = linhas.map((m) => m.id);
+  const ids = linhas.map((m) => Number((m as Record<string, unknown>).id));
   const { data: prog, error: errProg } = await supabase
     .from("missao_aluno" as never)
     .select("missao_id, status, progresso")
     .in("missao_id", ids);
   if (errProg) throw errProg;
 
-  const porId = new Map<number, LinhaProgresso>();
-  for (const p of (prog ?? []) as LinhaProgresso[]) porId.set(Number(p.missao_id), p);
-
-  return linhas.map((m) => {
-    const p = porId.get(m.id);
-    return {
-      id: m.id,
-      titulo: m.titulo?.trim() || "Missão do dia",
-      descricao: m.descricao?.trim() || "",
-      progresso: Number(p?.progresso ?? 0),
-      status: statusDe(p?.status),
-      criterioRotulo: rotuloCriterio(m.criterio),
-    };
-  });
+  return montarMissoes(linhas as never, (prog ?? []) as never, { perfilAtivo });
 }
+
+/** @deprecated Nome antigo, de quando a lista era só a do dia. Use `carregarMissoesDoAluno`. */
+export const carregarMissoesDoDia = carregarMissoesDoAluno;
