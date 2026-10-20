@@ -5692,6 +5692,50 @@ export type Database = {
           },
         ]
       }
+      rank_podio_congelado: {
+        Row: {
+          aluno_id: string
+          classe_id: number
+          congelado_em: string
+          medalha: string | null
+          nome_aluno: string | null
+          percentual_do_lider: number | null
+          pontuacao: number
+          posicao: number
+          rank_id: number
+        }
+        Insert: {
+          aluno_id: string
+          classe_id: number
+          congelado_em?: string
+          medalha?: string | null
+          nome_aluno?: string | null
+          percentual_do_lider?: number | null
+          pontuacao?: number
+          posicao: number
+          rank_id: number
+        }
+        Update: {
+          aluno_id?: string
+          classe_id?: number
+          congelado_em?: string
+          medalha?: string | null
+          nome_aluno?: string | null
+          percentual_do_lider?: number | null
+          pontuacao?: number
+          posicao?: number
+          rank_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rank_podio_congelado_rank_id_fkey"
+            columns: ["rank_id"]
+            isOneToOne: false
+            referencedRelation: "ranks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rank_tipo: {
         Row: {
           created_at: string | null
@@ -5723,21 +5767,27 @@ export type Database = {
         Row: {
           classe_id: number | null
           created_at: string | null
+          fim: string | null
           id: number
+          inicio: string
           periodo: string | null
           tipo_id: number
         }
         Insert: {
           classe_id?: number | null
           created_at?: string | null
+          fim?: string | null
           id?: number
+          inicio?: string
           periodo?: string | null
           tipo_id: number
         }
         Update: {
           classe_id?: number | null
           created_at?: string | null
+          fim?: string | null
           id?: number
+          inicio?: string
           periodo?: string | null
           tipo_id?: number
         }
@@ -8080,7 +8130,9 @@ export type Database = {
           criterio: string | null
           descricao: string | null
           icone: number | null
+          inicio: string | null
           nome_rank: string | null
+          periodo: string | null
           rank_id: number | null
         }
         Relationships: [
@@ -8672,6 +8724,10 @@ export type Database = {
       fn_questao_resposta_em_lista: {
         Args: { p_valor: string }
         Returns: string[]
+      }
+      fn_rank_novo_periodo: {
+        Args: { p_periodo: string; p_rank_id: number }
+        Returns: Json
       }
       fn_rank_rebuild_for_classe: {
         Args: { p_classe_id: number }

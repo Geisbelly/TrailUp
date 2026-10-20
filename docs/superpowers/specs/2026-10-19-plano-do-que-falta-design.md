@@ -174,6 +174,17 @@ Em ordem de desbloqueio, não de tamanho. Cada uma é mesclável sozinha.
 5. **Rank: os tipos novos e o período.** O console passa a oferecer ranqueada e missões ao
    criar um ranking, e a rotação de `periodo` entra — provavelmente no banco, por ser relógio
    (a regra de fronteira manda; a API hiberna, o Postgres não).
+   **Feita** — #568, com `20261021_16` (depois da `_15` do #567). **Decisão de produto: rotação
+   manual, o professor abre o período novo** — então não há relógio: o botão "Novo período" do
+   console chama `fn_rank_novo_periodo`, que trava a linha, congela a classificação em
+   `rank_podio_congelado`, fecha o atual (`fim = now()`) e abre o seguinte com o mesmo tipo e
+   turma. O ranking ganhou janela (`inicio`/`fim`, um só aberto por tipo + turma), e a view
+   filtra pela data do evento nos critérios de soma (pontos, ranqueada, missões); os de estado
+   (percentual, tempo, acertos) seguem sendo o progresso atual. O período fechado fica como
+   histórico só de leitura, com o pódio congelado (default a confirmar), e o banco recusa excluí-lo
+   (decisão da Geisbelly; só a cascata da turma o leva). O console também passou a
+   explicar o que cada tipo mede, exige turma ("Geral" dava 42501) e sugere o período; o mobile
+   vê só o período aberto.
 6. **Janela de formação de guilda no console.** As seis RPCs sem chamador, começando por medir
    o comportamento default de `guilda_criar` sem config.
 
@@ -186,7 +197,8 @@ Em ordem de desbloqueio, não de tamanho. Cada uma é mesclável sozinha.
    completo, com convite e adversário — coisas que o caminho de guilda não tem.
    `arena_desafio` e `arena_professor_resumo` ficam de todo modo (a primeira é a leitura da
    fase 1 deste plano; a segunda o console já usa).
-3. **Rotação de período do ranking** — por bimestre, por mês, manual pelo professor?
+3. ~~**Rotação de período do ranking** — por bimestre, por mês, manual pelo professor?~~
+   Decidido (2026-10-20): manual, o professor abre o período novo (fase 5).
 4. Herdadas do spec anterior: **Elo versus escada acumulada**, e **medir o custo da LLM** da
    fase 6 antes de ligá-la para todas as turmas.
 
