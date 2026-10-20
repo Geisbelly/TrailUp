@@ -9,6 +9,7 @@ import { ArenaSection } from "@/components/social/ArenaSection";
 import { GuildSection } from "@/components/social/GuildSection";
 import { MissoesDoDia } from "@/components/missoes/MissoesDoDia";
 import { EventoDaTurma } from "@/components/eventos/EventoDaTurma";
+import { perfilDaMissao } from "@/services/missoes/missaoModel";
 import type { GuildShareOption } from "@/components/social/GuildChatModal";
 import { StoreLauncher } from "@/components/loja/StoreLauncher";
 import { SocialLateralDesktop } from "@/components/web/SocialLateralDesktop";
@@ -192,7 +193,7 @@ export default function SocialScreen() {
           {activeClasseId > 0 ? (
             <MissoesDoDia
               classeId={activeClasseId}
-              perfil={profile}
+              perfil={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)}
               accent={palette.accent}
               textColor={palette.text}
               mutedColor={palette.textMuted}
