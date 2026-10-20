@@ -1,6 +1,7 @@
 import { supabase } from "@/database/supabase";
 import { normalizeGuilds, type Guild } from "./guildModel";
 import { normalizeGuildMessages, type GuildMessage, type GuildShareKind } from "./guildChatModel";
+import { normalizeDesafio } from "./desafioModel";
 
 async function action(name: string, params: Record<string, unknown>) {
   const { data, error } = await supabase.rpc(name, params);
@@ -71,5 +72,36 @@ export async function criarDesafioGuilda(
     p_formato: formato,
     // A RPC recusa aliado em formato que não o usa, então não se manda "por garantia".
     ...(formato === "dupla" && aliado ? { p_aliado: aliado } : {}),
+  });
+}
+
+/**
+ * O desafio para a tela de jogo. `arena_desafio` é a única porta: `guilda_desafio_questoes`
+ * tem RLS ligada e **nenhuma policy**, então ler a tabela direto devolveria lista vazia em
+ * silêncio — e abri-la exporia `resposta_correta` antes de o aluno responder.
+ */
+export async function carregarDesafio(desafioId: string) {
+  const { data, error } = await supabase.rpc("arena_desafio", { p_desafio_id: desafioId });
+  if (error) throw error;
+  return normalizeDesafio(data);
+}
+
+/**
+ * Responder. É `guilda_desafio_responder` e não `arena_responder` porque só ela cobra
+ * `desafio_tentativas_*` — o "menos tentativas" do modo difícil — e acumula o tempo entre
+ * tentativas. O retorno traz `tentativas_restantes`, `faltam` e, quando a última resposta do
+ * último participante entra, `encerrou` com o resultado.
+ */
+export async function responderDesafio(
+  desafioId: string,
+  questaoId: number,
+  resposta: string,
+  tempoMs: number,
+) {
+  return action("guilda_desafio_responder", {
+    p_desafio_id: desafioId,
+    p_questao_id: questaoId,
+    p_resposta: resposta,
+    p_tempo_ms: Math.max(0, Math.round(tempoMs)),
   });
 }
