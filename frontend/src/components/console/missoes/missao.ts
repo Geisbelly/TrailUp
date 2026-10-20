@@ -17,7 +17,8 @@
 // Resolvido desde a primeira versão: missão sem tópico. `missoes` não tem `topico_id`, então o
 // caminho `meta` não pede tópico — era a limitação que o comentário antigo registrava.
 
-import { criterioDeEntrega, criterioDeMeta, definicaoDaMetrica, type MetricaDeMissao } from "./criterio";
+import type { EscopoDaMissao } from "./aprovacao";
+import { criterioDeEntrega, criterioDeMeta, definicaoDaMetrica, metricaSomaEmGuilda, type MetricaDeMissao } from "./criterio";
 
 export const TIPO_DA_MISSAO = "missao";
 export const TITULO_MAX = 80;
@@ -46,6 +47,11 @@ export type FormularioDeMissao = {
   metrica: string;
   /** Só em `meta`: o alvo numérico, na unidade da métrica. */
   alvo: string;
+  /**
+   * Quem cumpre. Ausente = `turma`. `guilda` soma o progresso dos membros (`20261021_15`) e
+   * por isso só aceita o caminho `meta` com métrica que soma.
+   */
+  escopo?: EscopoDaMissao;
 };
 
 export const FORMULARIO_DE_MISSAO_VAZIO: FormularioDeMissao = {
@@ -73,7 +79,7 @@ export type PayloadDaAtividade = {
 
 /** O que vai para `missoes`. `criterio` fica para depois em `entrega`: depende do id da atividade. */
 export type PayloadDaMissao = {
-  escopo: "turma";
+  escopo: EscopoDaMissao;
   origem: "professor";
   titulo: string;
   descricao: string;
@@ -83,7 +89,7 @@ export type PayloadDaMissao = {
 };
 
 export type ErrosDaMissao = Partial<
-  Record<"caminho" | "titulo" | "objetivo" | "topicoId" | "prazo" | "pontos" | "moedas" | "metrica" | "alvo", string>
+  Record<"escopo" | "caminho" | "titulo" | "objetivo" | "topicoId" | "prazo" | "pontos" | "moedas" | "metrica" | "alvo", string>
 >;
 
 export type ResultadoDaMissao = {
@@ -102,6 +108,11 @@ export function validarMissao(form: FormularioDeMissao): ResultadoDaMissao {
   const entrega = form.caminho === "entrega";
 
   if (form.caminho !== "entrega" && form.caminho !== "meta") erros.caminho = "Escolha entrega ou meta.";
+
+  const escopo = form.escopo ?? "turma";
+  if (escopo !== "turma" && escopo !== "guilda" && escopo !== "aluno") erros.escopo = "Escolha quem cumpre.";
+  // Guilda soma o progresso dos membros: entrega não é número, e o banco recusaria (22023).
+  if (escopo === "guilda" && entrega) erros.caminho = "Missão de guilda é uma meta: a guilda soma o que os membros fazem.";
 
   const titulo = form.titulo.trim();
   if (titulo.length < 3) erros.titulo = "Dê um título de pelo menos 3 letras.";
@@ -144,7 +155,9 @@ export function validarMissao(form: FormularioDeMissao): ResultadoDaMissao {
   if (!entrega) {
     const def = definicaoDaMetrica(form.metrica);
     if (!def) erros.metrica = "Escolha o que a missão mede.";
-    else metrica = def.chave;
+    else if (escopo === "guilda" && !metricaSomaEmGuilda(def.chave)) {
+      erros.metrica = "Na guilda o progresso é a soma dos membros; escolha uma medida que soma.";
+    } else metrica = def.chave;
 
     alvo = inteiro(form.alvo);
     if (!form.alvo.trim() || !Number.isInteger(alvo) || alvo < 1) {
@@ -157,7 +170,7 @@ export function validarMissao(form: FormularioDeMissao): ResultadoDaMissao {
   if (Object.keys(erros).length > 0) return { ok: false, missao: null, atividade: null, erros };
 
   const missao: PayloadDaMissao = {
-    escopo: "turma",
+    escopo,
     origem: "professor",
     titulo,
     descricao: objetivo,

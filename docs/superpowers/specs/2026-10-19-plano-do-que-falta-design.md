@@ -150,14 +150,27 @@ Em ordem de desbloqueio, não de tamanho. Cada uma é mesclável sozinha.
    `fn_desafio_params_efetivos` (fase 7), que já devolve `tempo_seg`, `tentativas` e
    `aposta_fator`. Mostra `tentativas_restantes` e `faltam` do retorno, e o resultado quando
    `encerrou` vem preenchido. **Primeira porque sem ela nada do stack paga ninguém.**
+   **Feita** — #563 (`20261021_13`, `_14`).
 2. **Eventos no mobile.** Cartão do evento aberto, as missões do evento, minha posição e a
    medalha ao encerrar. Leitura direta com RLS — regra de fronteira: não tem modelo de
-   linguagem no meio.
+   linguagem no meio. **Feita** — #564, sem migração.
 3. **A missão do professor no aluno.** Ampliar o filtro de `missoesDoDia` para `origem` e
    janela, mostrando prazo. Cuidado medido: hoje a chave da lista é `dia`; missão sem `dia`
-   precisa de outra ordenação.
+   precisa de outra ordenação. **Feita** — #564, sem migração.
 4. **Escopo e aprovação no console.** `escopo` deixa de ser tipo literal; tela de aprovação da
    missão de guilda. Fecha a missão de guilda do pedido original.
+   **Feita** — #567, com `20261021_15`. O console lê `escopo` (`aluno | turma | guilda`) em vez
+   do literal e oferece "A guilda, junta" no formulário; a pendente tem fila própria com Aprovar
+   e Recusar (motivo obrigatório); missão que não é do professor perdeu o "Editar" (o
+   `trg_missoes_guarda` descartava a mudança em silêncio); a diária do sistema saiu da lista.
+   **Decisão de produto: progresso da guilda = soma do progresso dos membros.** O avaliador
+   passou a cumprir a missão de guilda pela guilda: soma a contribuição de cada membro no
+   período da missão intersectado com a filiação datada de `guilda_membros`, e, quando atinge o
+   alvo, conclui e paga uma vez cada membro ativo. Só métricas que somam (contagem de evento,
+   atividades concluídas, minutos do dia); a guarda recusa o resto com 22023.
+   Pontos em aberto: quem entra na guilda pouco antes da conclusão recebe sem ter contribuído;
+   aluno sem guilda vê a missão de guilda da turma sem progresso; ninguém gera missão `pendente`
+   ainda (nenhum código grava `origem = 'ia'`).
 5. **Rank: os tipos novos e o período.** O console passa a oferecer ranqueada e missões ao
    criar um ranking, e a rotação de `periodo` entra — provavelmente no banco, por ser relógio
    (a regra de fronteira manda; a API hiberna, o Postgres não).
