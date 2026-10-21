@@ -1,11 +1,10 @@
 import type { ConquistaDaTurma } from "./conquistasApi";
 
 /**
- * Enquanto o gatilho que concede conquistas não ler `conquistas.ativa` (migration 20261016_01,
- * "aviso importante"), desativar só tira a conquista da lista da turma. Quando o gatilho for
- * ajustado e conferido ao vivo, vira `true` e o texto passa a prometer o que o protótipo promete.
+ * O gatilho que concede conquistas passou a ler `conquistas.ativa` (migration 20261017_06). Se a migration
+ * ainda não foi aplicada no banco, volte para `false`: o texto deixa de prometer o que o banco não faz.
  */
-export const GATILHO_RESPEITA_ATIVA = false;
+export const GATILHO_RESPEITA_ATIVA = true;
 
 export function rotuloDoTeto(total: number, teto: number): string {
   return `${total} de ${teto} conquistas desta turma`;
