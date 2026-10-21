@@ -65,14 +65,26 @@ def _normal(texto: str) -> str:
     return re.sub(r"\s+", " ", texto).strip()
 
 
-def test_encadeia_depois_da_19_e_e_a_unica_head() -> None:
+def test_encadeia_depois_da_19_sem_bifurcar_a_arvore() -> None:
+    """O invariante é **uma head só**, não que a head seja a `_20`.
+
+    Este teste exigia `get_heads() == ["20261021_20"]`, e por isso a primeira migration escrita
+    depois dela (a `_21`) o quebrou — sem que nada estivesse errado. Duas migrations com o mesmo
+    `down_revision` é o defeito de verdade: o Alembic passa a ter duas pontas e `upgrade head`
+    falha pedindo para escolher.
+    """
     assert _M20.revision == "20261021_20"
     assert _M20.down_revision == "20261021_19"
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
     cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-    assert ScriptDirectory.from_config(cfg).get_heads() == ["20261021_20"]
+    heads = ScriptDirectory.from_config(cfg).get_heads()
+    assert len(heads) == 1, f"a árvore bifurcou: {sorted(heads)}"
+    # E a `_20` continua no caminho até essa ponta — não ficou órfã num galho morto.
+    script = ScriptDirectory.from_config(cfg)
+    ancestrais = {r.revision for r in script.walk_revisions("base", heads[0])}
+    assert "20261021_20" in ancestrais
 
 
 # --- 1. gerador -------------------------------------------------------------------------
