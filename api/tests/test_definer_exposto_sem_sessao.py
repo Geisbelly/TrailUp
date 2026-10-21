@@ -68,6 +68,23 @@ SESSAO = ("auth.uid()", "auth.jwt()")
 # Linha nova aqui e decisao de produto, nao conveniencia: diga o que protege o
 # dado, ou revogue o EXECUTE.
 SEM_SESSAO_POR_DECISAO: dict[str, str] = {
+    "social_presenca_aluno": (
+        "Delega, e a checagem e a PRIMEIRA coisa do corpo: "
+        "`WHEN NOT public.app_pode_ver_aluno(p_aluno_id) THEN ... 'visivel', false`. "
+        "`app_pode_ver_aluno` usa `auth.uid()` direto (`p_aluno = auth.uid()` ou esta em "
+        "`app_alunos_do_professor()`/`app_colegas_de_turma()`), conferido na producao. Quem nao "
+        "pode ver recebe `online: false, visivel: false`, nao o estado real. Entrou nesta lista "
+        "em 21/10 porque a `20261021_23` acrescentou o GRANT que faltava na cadeia -- antes "
+        "nenhuma migracao concedia EXECUTE a ela, entao este portao a ignorava enquanto a "
+        "producao a expunha. O buraco era a ausencia do GRANT no Alembic, nao a funcao."
+    ),
+    "social_presenca_turma": (
+        "Mesma delegacao: `NOT EXISTS (SELECT 1 FROM public.app_minhas_classes() ...)` antes de "
+        "qualquer leitura, e devolve `[]` para turma que nao e do chamador. "
+        "`app_minhas_classes()` e a uniao de `app_classes_do_professor()` com "
+        "`app_classes_do_aluno()`, as duas resolvidas pelo `auth.uid()`. Mesma historia do GRANT "
+        "da `20261021_23` que a trouxe para a conta deste portao."
+    ),
     "aprovacoes_pendentes": (
         "Delega: a primeira instrucao do corpo e "
         "`IF NOT public.app_e_dono() THEN RAISE ... 42501`, e `app_e_dono()` "
