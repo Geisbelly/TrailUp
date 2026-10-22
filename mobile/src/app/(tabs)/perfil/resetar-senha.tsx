@@ -8,6 +8,7 @@ import { supabase } from "@/database/supabase";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 export default function ResetarSenhaScreen() {
   const embutido = useEmbutidoConfiguracoes();
@@ -16,8 +17,8 @@ export default function ResetarSenhaScreen() {
   const [confirmVisible, setConfirmVisible] = useState(false);
   const [doneVisible, setDoneVisible] = useState(false);
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
 
   const solicitarReset = async () => {

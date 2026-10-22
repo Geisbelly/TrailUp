@@ -5,6 +5,7 @@ import { router } from "expo-router";
 import React, { useMemo } from "react";
 import { View, useWindowDimensions } from "react-native";
 import { WebView } from "react-native-webview";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 const PIXI_CDNS = `
   <script src="https://cdn.jsdelivr.net/npm/pixi.js@7/dist/pixi.min.js"></script>
@@ -829,7 +830,7 @@ export const TrilhaMapaHero: React.FC = () => {
   const { grafo, classeAtual, mapTheme } = useTrilha();
   const { usuario } = useUsuario();
   const { width } = useWindowDimensions();
-  const profilePalette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null);
+  const profilePalette = getProfileShellPalette(perfilVisualDoAluno(usuario));
 
   const maxRows = useMemo(
     () => Math.max(1, ...grafo.levels.map((level) => level.length)),

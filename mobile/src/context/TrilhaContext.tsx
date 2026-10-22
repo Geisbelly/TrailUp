@@ -65,7 +65,7 @@ import {
   orderPersonalizationRecordsByTeacherContent,
 } from '@/utils/personalization';
 import { inferModoApresentacao } from '@/utils/presentationOrder';
-import { resolveActiveBrainHexProfile } from '@/utils/brainHex';
+import { perfilVisualDoAluno } from '@/utils/brainHex';
 import { houveVisita, payloadDeVisitaDoTopico } from '@/utils/visitaDoTopico';
 import { buildSupabasePublicStorageUrl, looksLikeStorageObjectPath } from '@/utils/supabaseStorage';
 import {
@@ -679,15 +679,10 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const [progressoItens, setProgressoItens] = useState<LinhaProgressoItem[]>([])
 
 
-  const perfil = useMemo(
-    () =>
-      resolveActiveBrainHexProfile(
-        usuario?.perfis ?? null,
-        usuario?.perfilAtivo,
-        'seeker',
-      ),
-    [usuario?.perfilAtivo, usuario?.perfis],
-  )
+  // UM so' lugar responde "qual e' o perfil do aluno" (ver `perfilVisualDoAluno`). Aqui ficava
+  // uma segunda resposta, com default 'seeker': enquanto `perfis` nao chegava do banco, o
+  // cabecalho e o guardiao da trilha saiam em verde por cima de um corpo roxo.
+  const perfil = useMemo(() => perfilVisualDoAluno(usuario), [usuario])
   const visual: Visual = pickVisual(perfil)
   const activeProfileKey = perfil
   const personalizationScope = `${usuario?.id ?? ''}:${classeAtual?.classe_id ?? ''}:${activeProfileKey}`

@@ -27,6 +27,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Section = SocialPeopleSection | "guilds" | "arena";
 
@@ -46,7 +47,7 @@ export default function SocialScreen() {
   const classeId = Number(classeAtual?.classe_id ?? 0);
   const [fallbackClasseId, setFallbackClasseId] = useState(0);
   const activeClasseId = classeId > 0 ? classeId : fallbackClasseId;
-  const profile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null;
+  const profile = perfilVisualDoAluno(usuario);
   const palette = getProfileShellPalette(profile);
   const [section, setSection] = useState<Section>("friends");
   const [search, setSearch] = useState("");

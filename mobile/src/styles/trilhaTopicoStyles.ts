@@ -315,11 +315,13 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
   },
+  // Sem cor aqui: preenchimento, borda e texto dos botoes vem da paleta do perfil, no ponto
+  // de uso. Cor fixa no estilo e' o que fazia "Guardar na Bag" ficar roxo-escuro numa tela
+  // azul de conqueror -- e ela volta calada se alguem puser um default de novo.
   button: {
     flex: 1,
     minHeight: 56,
     paddingVertical: 12,
-    backgroundColor: Color.colorDarkslategray100,
     borderWidth: 1,
     borderRadius: 999,
     alignItems: "center",
@@ -330,7 +332,6 @@ export const styles = StyleSheet.create({
     flex: 1,
     minHeight: 56,
     paddingVertical: 12,
-    backgroundColor: Color.colorDarkslategray200,
     borderWidth: 1,
     borderRadius: 999,
     alignItems: "center",
@@ -343,12 +344,10 @@ export const styles = StyleSheet.create({
   buttonText: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 15,
-    color: Color.colorWhite,
   },
   secondaryButtonText: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 15,
-    color: Color.colorAliceblue,
   },
   modalBackdrop: {
     flex: 1,

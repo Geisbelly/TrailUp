@@ -72,6 +72,17 @@ export default function DesbloqueioModal({ funcionalidade, color, onClose, bloqu
       return;
     }
 
+    // Nada ABRIU: o cadeado fica fechado e a troca nao acontece. Antes a sequencia rodava
+    // igual no modal bloqueado, e como o cadeado nesse caso é desenhado sem animacao (opacidade
+    // 1), os dois icones terminavam opacos no mesmo quadrado absoluto — o cadeado e o pódio um
+    // por cima do outro, que é o borrão que aparecia na tela.
+    if (bloqueado) {
+      entrada.setValue(1);
+      troca.setValue(0);
+      pulso.setValue(0);
+      return;
+    }
+
     // Com movimento reduzido a cerimônia acontece igual, só sem o percurso:
     // quem pediu menos animação continua sabendo que algo abriu.
     if (semMovimento) {
@@ -99,7 +110,7 @@ export default function DesbloqueioModal({ funcionalidade, color, onClose, bloqu
         }),
       ]),
     ]).start();
-  }, [entrada, pulso, semMovimento, troca, visivel]);
+  }, [bloqueado, entrada, pulso, semMovimento, troca, visivel]);
 
   if (!portao) return null;
 
@@ -153,13 +164,15 @@ export default function DesbloqueioModal({ funcionalidade, color, onClose, bloqu
             <Animated.View style={[s.icone, bloqueado ? undefined : cadeado]}>
               <MaterialCommunityIcons name={bloqueado ? "lock" : "lock-open-variant"} size={54} color={destaque} />
             </Animated.View>
-            <Animated.View style={[s.icone, simbolo]}>
-              <MaterialCommunityIcons
-                name={ICONE[portao.funcionalidade]}
-                size={54}
-                color={destaque}
-              />
-            </Animated.View>
+            {bloqueado ? null : (
+              <Animated.View style={[s.icone, simbolo]}>
+                <MaterialCommunityIcons
+                  name={ICONE[portao.funcionalidade]}
+                  size={54}
+                  color={destaque}
+                />
+              </Animated.View>
+            )}
           </View>
 
           <Text style={[s.titulo, { color: destaque }]}>{bloqueado ? `${portao.titulo} indisponível` : portao.titulo}</Text>

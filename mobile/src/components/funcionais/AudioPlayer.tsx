@@ -29,6 +29,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Props = {
   url: string;
@@ -85,8 +86,8 @@ export default function AudioPlayer({
 }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   // Quem narra é o guardião do perfil do MATERIAL, não o da pele escolhida. Ver `perfilDoMaterial`.
   const guiaQueNarra = useMemo(

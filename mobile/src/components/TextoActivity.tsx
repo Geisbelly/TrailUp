@@ -6,6 +6,7 @@ import { normalizeContentBlock } from "@/utils/contentBlocks";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Props = {
   atividade: any;
@@ -54,8 +55,8 @@ function normalizeMediaBlocks(atividade: any): ContentBlock[] {
 export default function TextoActivity({ atividade }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const mediaBlocks = useMemo(() => normalizeMediaBlocks(atividade), [atividade]);
 

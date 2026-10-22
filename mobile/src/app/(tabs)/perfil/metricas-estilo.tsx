@@ -19,6 +19,7 @@ import {
 } from "@/utils/profileMetricThemes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 export default function PerfilMetricasEstilo() {
   return <MetricasEstilo />;
@@ -34,8 +35,8 @@ export function MetricasEstilo({ embutido = false }: { embutido?: boolean }) {
   const headerGuideRef = useRef<View | null>(null);
   const optionsGuideRef = useRef<View | null>(null);
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const guideSteps = useMemo<SectionGuideStep[]>(
     () => [
@@ -134,7 +135,7 @@ export function MetricasEstilo({ embutido = false }: { embutido?: boolean }) {
         <HallBackground palette={palette} />
       </View>
       <SectionGuideButton
-        profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
+        profile={perfilVisualDoAluno(usuario)}
         sectionTitle="Visualização das métricas"
         steps={guideSteps}
         targetRefs={guideTargets}

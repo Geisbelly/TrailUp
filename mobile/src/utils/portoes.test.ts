@@ -68,13 +68,19 @@ test("portao fechado nunca gera cerimonia", () => {
   assert.deepEqual(cerimoniasPendentes(a, []), []);
 });
 
-test("a chave separa aluno, funcionalidade e versao", () => {
-  const a = chaveDaCerimonia("aluno-1", "rank");
-  const b = chaveDaCerimonia("aluno-2", "rank");
-  const c = chaveDaCerimonia("aluno-1", "social");
+test("a chave separa aluno, turma, funcionalidade e versao", () => {
+  const a = chaveDaCerimonia("aluno-1", "rank", 65);
+  const b = chaveDaCerimonia("aluno-2", "rank", 65);
+  const c = chaveDaCerimonia("aluno-1", "social", 65);
+  const d = chaveDaCerimonia("aluno-1", "rank", 66);
 
   assert.notEqual(a, b, "um aluno nao pode herdar a cerimonia de outro");
   assert.notEqual(a, c, "cada funcionalidade tem a sua");
+  assert.notEqual(
+    a,
+    d,
+    "o portao abre por TURMA: marcado como visto na turma 65, a 66 ainda deve a cerimonia",
+  );
   assert.ok(a.includes(`v${PORTOES_VERSAO}`), "mudar os portoes precisa reabrir a cerimonia");
 });
 

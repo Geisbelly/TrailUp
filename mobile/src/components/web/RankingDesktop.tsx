@@ -12,6 +12,7 @@ import { resumirMinhaPosicao } from "@/utils/minhaPosicaoRank";
 import { formatRankScore } from "@/utils/rankingPodium";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 // Mesma escolha de arte da lista de categorias do app (ranking/index.tsx).
 const arteDoCriterio = (criterio?: string | null) =>
@@ -26,7 +27,7 @@ const arteDoCriterio = (criterio?: string | null) =>
 export function RankingDesktop() {
   const { ranking, carregando } = useConquistaRank();
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome);
+  const palette = getProfileShellPalette(perfilVisualDoAluno(usuario));
   const ranks = ranking?.ranks ?? [];
   const [aberto, setAberto] = useState<number | null>(null);
   const alvoTour = useRef<View | null>(null);

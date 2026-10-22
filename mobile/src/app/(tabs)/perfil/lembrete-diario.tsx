@@ -22,6 +22,7 @@ import {
 } from "react-native";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 import { ApoioConfig, DuasColunasConfig, TextoApoio } from "@/components/web/SecaoConfigDesktop";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 // Mesmo `tipo` que o login cria automaticamente para todo aluno (ver
 // `notificacoes_registrar_login` / migracao 20260826_04) — salvar com esse
@@ -45,9 +46,9 @@ export default function LembreteDiarioScreen() {
   const palette = useMemo(
     () =>
       getProfileShellPalette(
-        usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null,
+        perfilVisualDoAluno(usuario),
       ),
-    [usuario?.perfilAtivo, usuario?.perfis],
+    [usuario],
   );
 
   const [carregando, setCarregando] = useState(true);

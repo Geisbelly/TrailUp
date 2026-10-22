@@ -15,6 +15,7 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Props = {
   alunoId: string;
@@ -38,8 +39,8 @@ export function UsarItemNaAtividade({
 }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const [itens, setItens] = useState<ItemUsavel[]>([]);
   const [permissoes, setPermissoes] = useState<Record<string, PermissaoDeUso>>({});

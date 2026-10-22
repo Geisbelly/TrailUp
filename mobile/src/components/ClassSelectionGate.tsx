@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Redirect, usePathname } from "expo-router";
+import { usePortoes } from "@/context/PortoesContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { EscolhaTurmaDesktop } from "@/components/web/EscolhaTurmaDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
@@ -11,6 +12,16 @@ export function ClassSelectionGate({ children }: { children: React.ReactNode }) 
   const { classeAtual, classes, carregando, erro, perfil, selecionarClasse, reload } = useTrilha();
   const pathname = usePathname();
   const desktop = useDesktopWeb();
+
+  // Os portões são por TURMA, e quem sabe a turma escolhida é o `TrilhaContext` — que mora
+  // ABAIXO do `PortoesProvider` (ele está no layout raiz, para a cerimônia existir em qualquer
+  // tela). Este é o ponto onde os dois se encontram: o portão fica no provider de cima, a
+  // turma vem do contexto de baixo, e nenhum dos dois precisa se mudar de lugar.
+  const { definirTurma } = usePortoes();
+  const classeId = classeAtual?.classe_id ?? null;
+  useEffect(() => {
+    definirTurma(classeId);
+  }, [classeId, definirTurma]);
 
   if (!classeAtual) {
     // Na web em tela larga (#346, protótipo v4) a escolha aparece dentro da moldura, em cartões.

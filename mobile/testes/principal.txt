@@ -128,4 +128,7 @@ src/utils/paletaPorPerfil.test.ts
 src/components/funcionais/mediaPlayers.paleta.test.tsx
 src/components/tipografiaDosBlocos.test.ts
 src/components/personalizacaoPorPerfil.test.ts
+src/components/DesbloqueioModal.icone.test.tsx
+src/styles/botoesDaTrilha.test.ts
+src/utils/perfilVisualUnico.test.ts
 src/utils/markdownDoProfessor.test.ts

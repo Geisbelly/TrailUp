@@ -29,6 +29,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 // Web em tela larga (#346): categorias fixas à esquerda e a categoria aberta
 // à direita. Nos demais casos (iOS/Android e web estreita) a tela é a de antes.
@@ -41,7 +42,7 @@ function RankingHome() {
   const { ranking, carregando, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
   const router = useRouter();
-  const profile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
+  const profile = perfilVisualDoAluno(usuario);
   const palette = getProfileShellPalette(profile);
   const ranks = ranking?.ranks ?? [];
   const headerRef = useRef<View | null>(null);

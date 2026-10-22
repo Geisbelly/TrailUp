@@ -67,7 +67,7 @@ export function IAHeaderTimer({
   const telaFocada = useIsFocused();
   const { usuario } = useUsuario();
   const perfis = usuario?.perfis ?? null;
-  const activeProfile = resolveActiveBrainHexProfile(perfis, usuario?.perfilAtivo, "seeker");
+  const activeProfile = resolveActiveBrainHexProfile(perfis, usuario?.perfilAtivo);
   const palette = useMemo(() => getProfileShellPalette(activeProfile), [activeProfile]);
   const hasTimerSignal = getBrainHexProfileCapabilities(activeProfile).hasTimer;
 

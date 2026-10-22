@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Props = {
   id?: string;
@@ -33,7 +34,7 @@ const NotificationItem = memo(function NotificationItem({
   const router = useRouter();
   const { usuario } = useUsuario();
   const palette = getProfileShellPalette(
-    usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome,
+    perfilVisualDoAluno(usuario),
   );
   const open = () => {
     if (onPress) return onPress();

@@ -17,6 +17,7 @@ import VideoPlayer from "@/components/funcionais/VideoPlayer";
 import { useUsuario } from "@/context/SessaoContext";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type StudyCard = {
   id?: string | number;
@@ -90,8 +91,8 @@ function buildCardMediaBlock(card: StudyCard) {
 export default function StudyCardsBlock({ payload, WebView, progressKey }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const cards = useMemo(() => normalizeCards(payload), [payload]);
   const [index, setIndex] = useState(0);

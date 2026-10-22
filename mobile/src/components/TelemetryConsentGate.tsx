@@ -22,6 +22,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 // O modulo da camera saiu daqui junto com o pedido de permissao: aceitar os
 // termos nao toca na camera. Quem carrega `expo-camera` e pede a permissao e
@@ -34,8 +35,8 @@ export function TelemetryConsentGate() {
   // neutro — que é o certo para quem ainda não tem perfil.
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(true);
