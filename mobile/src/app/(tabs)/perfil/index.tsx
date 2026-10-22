@@ -729,7 +729,9 @@ export default function PerfilHome() {
 
           {desktop ? (
             <View style={styles.colunas}>
-              <View style={styles.colunaIdentidade}>{identidade}</View>
+              <View style={[styles.colunaIdentidade, styles.colunaIdentidadeGrudada]}>
+                {identidade}
+              </View>
               <View style={styles.colunaPrincipal}>{principal}</View>
             </View>
           ) : (
@@ -771,7 +773,23 @@ const styles = StyleSheet.create({
   headerLargo: { paddingHorizontal: 32, paddingTop: 28 },
   bannerLargo: { height: 240, borderRadius: 20, overflow: "hidden" },
   colunas: { flexDirection: "row", gap: 20, alignItems: "flex-start", paddingHorizontal: 32, marginTop: 8 },
+  // A identidade é mais curta que a coluna de conteúdo: rolando as duas juntas, a esquerda
+  // acabava e deixava meia tela vazia ao lado do que ainda estava rolando. Grudada no topo, ela
+  // acompanha a leitura até o fim.
+  //
+  // `position: "sticky"` existe na web e não no React Native; o cast é o mesmo idioma do
+  // `lateralBatalhaDesktop` em `trilhaTopicoStyles`. O estilo só é aplicado quando
+  // `useDesktopWeb()` é verdadeiro, então o celular nunca o vê.
   colunaIdentidade: { flex: 4, minWidth: 0 },
+  colunaIdentidadeGrudada: {
+    position: "sticky" as "absolute",
+    // Respira abaixo da barra superior em vez de encostar nela.
+    top: 16,
+    // Identidade mais alta que a janela volta a rolar por dentro, senão o fim dela fica
+    // inalcançável — é o modo de falha que `sticky` tem e `fixed` não resolveria.
+    maxHeight: "100vh" as unknown as number,
+    overflowY: "auto" as unknown as "scroll",
+  },
   // Retrato de 160 px sobre o canto do banner: 72 px dele descem abaixo da borda, como no protótipo.
   retrato: { position: "absolute", left: 64, top: 28 + 240 - 88, zIndex: 5 },
   colunaPrincipal: { flex: 8, minWidth: 0 },

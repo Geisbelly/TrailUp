@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
+    "conferir-env": "node --import tsx scripts/conferir-env-do-build.mjs",
+    "eas-build-pre-install": "node --import tsx scripts/conferir-env-do-build.mjs",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",
