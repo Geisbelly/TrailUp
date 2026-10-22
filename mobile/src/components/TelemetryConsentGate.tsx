@@ -4,12 +4,15 @@ import {
   setTelemetryConsentRejected,
   TELEMETRY_CONSENT_VERSION,
 } from "@/utils/telemetryConsent";
+import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
+import { FontFamily } from "@/styles/GlobalStyle";
+import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import {
   registrarConsentimento,
   TABELA_DE_CONSENTIMENTO,
 } from "@/services/consentimentoRemoto";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Modal,
   Platform,
@@ -25,6 +28,15 @@ import {
 // `MetricasContext.setCameraOptIn`, acionado pelo toggle explicito.
 
 export function TelemetryConsentGate() {
+  // Este portão aparece DEPOIS do login, por cima do app, e era a única tela cheia que não
+  // seguia o perfil: tinha paleta própria (slate do Tailwind, botão azul) que não existe em
+  // lugar nenhum do sistema. Sem perfil hidratado ainda, `getProfileShellPalette` devolve o
+  // neutro — que é o certo para quem ainda não tem perfil.
+  const { usuario } = useUsuario();
+  const palette = useMemo(
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
+  );
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -122,67 +134,67 @@ export function TelemetryConsentGate() {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.backdrop}>
-        <View style={styles.card}>
-          <Text style={styles.title}>Termos de coleta para personalização</Text>
+        <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <Text style={[styles.title, { color: palette.text }]}>Termos de coleta para personalização</Text>
           <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.body}>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               Para adaptar conteúdo, interface e dificuldade, o TrailUp pode coletar
               sinais de estudo durante o uso do app.
             </Text>
-            <Text style={styles.sectionTitle}>Informações coletadas</Text>
-            <Text style={styles.body}>
+            <Text style={[styles.sectionTitle, { color: palette.accent }]}>Informações coletadas</Text>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               Câmera frontal durante sessões de estudo, com captura de 10 frames por
               minuto e envio em lote a cada 1 minuto.
             </Text>
-            <Text style={styles.body}>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               Tempo de leitura, tempo ativo/inativo, histórico recente de navegação,
               toques, rolagem e contexto do tópico/atividade.
             </Text>
-            <Text style={styles.body}>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               Respostas e desempenho em exercícios para ajuste pedagógico.
             </Text>
-            <Text style={styles.sectionTitle}>Como os dados são usados</Text>
-            <Text style={styles.body}>
+            <Text style={[styles.sectionTitle, { color: palette.accent }]}>Como os dados são usados</Text>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               Atenção, dificuldade, frustração e engajamento são estimados a partir do
               seu comportamento no app — tempo ativo e inativo, toques, rolagem,
               respostas e acertos — e também da sua expressão facial, quando a câmera
               está ligada. É isso que gera as recomendações e o conteúdo adaptativo.
             </Text>
-            <Text style={styles.sectionTitle}>Sobre a câmera, especificamente</Text>
-            <Text style={styles.body}>
+            <Text style={[styles.sectionTitle, { color: palette.accent }]}>Sobre a câmera, especificamente</Text>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               As imagens da câmera são analisadas para estimar sua expressão no
               momento do estudo. O programa localiza o rosto na imagem e classifica a
               expressão em categorias como neutro, concentrado, frustrado, ansioso ou
               cansado. Isso influencia o conteúdo e a dificuldade que o app te mostra
               depois.
             </Text>
-            <Text style={styles.body}>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               A análise é feita no servidor do próprio TrailUp, não em serviço de
               terceiros, e a imagem não sai dele para lugar nenhum.
             </Text>
-            <Text style={styles.body}>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               A imagem é usada e descartada na mesma hora. Não é gravada em lugar
               nenhum — nem no registro do lote, nem no log de decisão. Fica guardado
               só o resultado: a categoria estimada e o quanto o programa confia nela.
             </Text>
-            <Text style={styles.body}>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               O que você faz vale mais do que a sua cara. Se você errar várias vezes
               seguidas, por exemplo, isso conta mais do que a expressão de um
               instante — e a estimativa pela imagem é descartada nesse caso.
             </Text>
-            <Text style={styles.body}>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               A expressão estimada é um palpite, não um diagnóstico. Ela não vira
               nota, não é mostrada para o professor como avaliação sua, e pode errar.
             </Text>
-            <Text style={styles.sectionTitle}>Sua escolha</Text>
-            <Text style={styles.body}>
+            <Text style={[styles.sectionTitle, { color: palette.accent }]}>Sua escolha</Text>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               Se você aceitar, a coleta de uso, desempenho e chat começa — mas a
               câmera continua desligada. Ela só liga se você for em Perfil →
               Coleta e acessos e ativar; é lá que o aparelho pede a permissão. Se
               recusar, o app continua funcionando sem a coleta comportamental
               adaptativa.
             </Text>
-            <Text style={styles.body}>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
               Recusar não tira nenhum conteúdo de você e não muda sua nota. Você
               também pode aceitar o resto e desligar só a câmera, agora ou depois, em
               Perfil → Coleta e acessos.
@@ -190,7 +202,7 @@ export function TelemetryConsentGate() {
           </ScrollView>
           <View style={styles.actions}>
             <Pressable
-              style={[styles.button, styles.secondaryButton]}
+              style={[styles.button, styles.secondaryButton, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}
               disabled={saving}
               onPress={() => {
                 void handleReject();
@@ -198,10 +210,10 @@ export function TelemetryConsentGate() {
               accessibilityRole="button"
               accessibilityState={{ disabled: saving }}
             >
-              <Text style={styles.secondaryButtonText}>Recusar coleta</Text>
+              <Text style={[styles.secondaryButtonText, { color: palette.text }]}>Recusar coleta</Text>
             </Pressable>
             <Pressable
-              style={[styles.button, styles.primaryButton, saving ? styles.disabledButton : null]}
+              style={[styles.button, styles.primaryButton, { backgroundColor: palette.accent }, saving ? styles.disabledButton : null]}
               disabled={saving}
               onPress={() => {
                 void handleAccept();
@@ -209,7 +221,7 @@ export function TelemetryConsentGate() {
               accessibilityRole="button"
               accessibilityState={{ disabled: saving }}
             >
-              <Text style={styles.primaryButtonText}>
+              <Text style={[styles.primaryButtonText, { color: palette.background }]}>
                 {saving ? "Salvando..." : "Aceitar e continuar"}
               </Text>
             </Pressable>
@@ -223,22 +235,21 @@ export function TelemetryConsentGate() {
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(7, 16, 34, 0.72)",
+    // O veu continua neutro de proposito: ele escurece o app ATRAS do cartao, e tingi-lo com a
+    // cor do perfil competiria com o proprio cartao, que ja' e' a superficie do perfil.
+    backgroundColor: "rgba(0, 0, 0, 0.72)",
     justifyContent: "center",
     paddingHorizontal: 20,
   },
   card: {
     borderRadius: 24,
-    backgroundColor: "#0F172A",
     padding: 20,
     maxHeight: "82%",
     borderWidth: 1,
-    borderColor: "rgba(148, 163, 184, 0.24)",
   },
   title: {
-    color: "#F8FAFC",
+    fontFamily: FontFamily.inikaBold,
     fontSize: 22,
-    fontWeight: "700",
     marginBottom: 16,
   },
   scroll: {
@@ -248,14 +259,13 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   sectionTitle: {
-    color: "#E2E8F0",
+    fontFamily: FontFamily.inikaBold,
     fontSize: 15,
-    fontWeight: "700",
     marginTop: 14,
     marginBottom: 8,
   },
   body: {
-    color: "#CBD5E1",
+    fontFamily: FontFamily.interMedium,
     fontSize: 14,
     lineHeight: 21,
     marginBottom: 8,
@@ -273,21 +283,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 12,
   },
-  primaryButton: {
-    backgroundColor: "#2563EB",
-  },
+  primaryButton: {},
   primaryButtonText: {
-    color: "#F8FAFC",
+    fontFamily: FontFamily.inikaBold,
     fontSize: 14,
-    fontWeight: "700",
   },
   secondaryButton: {
-    backgroundColor: "#E2E8F0",
+    borderWidth: 1,
   },
   secondaryButtonText: {
-    color: "#0F172A",
+    fontFamily: FontFamily.inikaBold,
     fontSize: 14,
-    fontWeight: "700",
   },
   disabledButton: {
     opacity: 0.7,

@@ -1,7 +1,9 @@
 // src/components/activities/ActivityRenderer.tsx
-import React from 'react'
+import React, { useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { useUsuario } from '@/context/SessaoContext'
+import { FontFamily } from '@/styles/GlobalStyle'
+import { getProfileShellPalette } from '@/utils/profileShellTheme'
 import { questionActivityScope } from '@/utils/questionAnswerVisibility'
 import { activityRendererKey, normalizeActivityType } from '@/utils/activityType'
 
@@ -53,6 +55,11 @@ function ActivityRendererContent({
   classeId = null,
   alunoId = null,
 }: Props & { alunoId?: string | null }) {
+  const { usuario } = useUsuario();
+  const palette = useMemo(
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
+  );
   const [localReviewMode, setLocalReviewMode] = React.useState(reviewMode);
   const [retryLiberada, setRetryLiberada] = React.useState(false);
   const [novaTentativa, setNovaTentativa] = React.useState(0);
@@ -105,28 +112,28 @@ function ActivityRendererContent({
         <View style={summaryStyles.iconRow}>
           <Text style={summaryStyles.checkmark}>✓</Text>
         </View>
-        <Text style={summaryStyles.title}>
+        <Text style={[summaryStyles.title, { color: palette.text }]}>
           {atividade?.titulo ?? 'Atividade concluída'}
         </Text>
         {temAcertos && (
-          <Text style={summaryStyles.score}>
+          <Text style={[summaryStyles.score, { color: palette.textMuted }]}>
             {Math.round(acertosPct)}% de acertos
           </Text>
         )}
         <View style={summaryStyles.btnRow}>
           <Pressable
             onPress={() => onComplete?.({ completed: true })}
-            style={[summaryStyles.btn, summaryStyles.btnPrimary]}
+            style={[summaryStyles.btn, { backgroundColor: palette.accent, borderColor: palette.accent }]}
             accessibilityRole="button"
           >
-            <Text style={summaryStyles.btnPrimaryText}>Continuar</Text>
+            <Text style={[summaryStyles.btnPrimaryText, { color: palette.background }]}>Continuar</Text>
           </Pressable>
           <Pressable
             onPress={() => { userChoseReviewRef.current = true; setLocalReviewMode(true); }}
-            style={summaryStyles.btn}
+            style={[summaryStyles.btn, { borderColor: palette.border }]}
             accessibilityRole="button"
           >
-            <Text style={summaryStyles.btnSecondaryText}>Revisar respostas</Text>
+            <Text style={[summaryStyles.btnSecondaryText, { color: palette.textMuted }]}>Revisar respostas</Text>
           </Pressable>
         </View>
       </View>
@@ -168,6 +175,8 @@ const summaryStyles = StyleSheet.create({
     paddingHorizontal: 24,
     gap: 12,
   },
+  // O verde do "concluido" fica: ali a cor e' SIGNIFICADO (deu certo), nao identidade de
+  // perfil. Pintar o visto com o accent faria o acerto ficar vermelho para o daredevil.
   iconRow: {
     width: 56,
     height: 56,
@@ -181,14 +190,13 @@ const summaryStyles = StyleSheet.create({
     color: '#4ade80',
   },
   title: {
+    fontFamily: FontFamily.inikaBold,
     fontSize: 17,
-    fontWeight: '700',
-    color: '#e8e8e8',
     textAlign: 'center',
   },
   score: {
+    fontFamily: FontFamily.interMedium,
     fontSize: 14,
-    color: '#a0a0a0',
   },
   btnRow: {
     flexDirection: 'column',
@@ -201,19 +209,13 @@ const summaryStyles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#333',
-  },
-  btnPrimary: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
   },
   btnPrimaryText: {
-    color: '#fff',
-    fontWeight: '700',
+    fontFamily: FontFamily.inikaBold,
     fontSize: 15,
   },
   btnSecondaryText: {
-    color: '#a0a0a0',
+    fontFamily: FontFamily.interMedium,
     fontSize: 14,
   },
 });
