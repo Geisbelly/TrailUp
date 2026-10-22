@@ -14,6 +14,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { TelemetryConsentPreferences } from "@/utils/telemetryConsent";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type ToggleItem = {
   key: keyof TelemetryConsentPreferences;
@@ -70,8 +71,8 @@ export default function ColetaDadosScreen() {
     [],
   );
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const { telemetryPreferences, setTelemetryPreference, cameraPermission } = useMetricas();
   const [savingKey, setSavingKey] = useState<keyof TelemetryConsentPreferences | null>(null);
@@ -162,7 +163,7 @@ export default function ColetaDadosScreen() {
         <HallBackground palette={palette} />
       </View>
       <SectionGuideButton
-        profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
+        profile={perfilVisualDoAluno(usuario)}
         sectionTitle="Coleta e acessos"
         steps={guideSteps}
         targetRefs={guideTargets}

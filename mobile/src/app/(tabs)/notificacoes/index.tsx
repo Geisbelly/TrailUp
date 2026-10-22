@@ -33,6 +33,7 @@ import {
 import { JourneyHeading } from '@/components/JourneyHeading';
 import { NotificacoesDesktop } from "@/components/web/NotificacoesDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type FilterTab = "todas" | "nao_lidas" | "lidas";
 
@@ -54,11 +55,11 @@ function NotificacoesLista() {
   const { usuario } = useUsuario();
   const insets = useSafeAreaInsets();
   const palette = React.useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis],
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario],
   );
   const profileEmphasis = getProfileGuideEmphasis(
-    usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome,
+    perfilVisualDoAluno(usuario),
     "notifications",
   );
 
@@ -247,7 +248,7 @@ function NotificacoesLista() {
           collapsable={false}
         >
           <JourneyHeading title="Notificações" eyebrow="CAIXA DE ENTRADA" section="notifications" palette={palette} right={<SectionGuideButton
-            profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
+            profile={perfilVisualDoAluno(usuario)}
             sectionTitle="Notificações"
             steps={notificationsGuideSteps}
             targetRefs={notificationsGuideTargets}

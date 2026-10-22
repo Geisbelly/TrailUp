@@ -24,6 +24,7 @@ import { decodeInlineSvgDataUri } from "@/utils/inlineSvgDataUri";
 import { conteudoDeBloco, liberarImagensEmbutidas } from "@/utils/markdownDataUri";
 import tinycolor from "tinycolor2";
 import { resolveMediaUrl } from "@/utils/mediaPayload";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 // Fora do componente: a biblioteca memoiza o parser pela IDENTIDADE da
 // instancia (`useMemo(() => markdownit, [markdownit])`), entao uma instancia
@@ -153,8 +154,8 @@ function splitByH2(content: string): string[] {
 export function MarkdownBlock({ payload }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const markdownRules = useMemo(() => criarMarkdownRules(palette), [palette]);
 

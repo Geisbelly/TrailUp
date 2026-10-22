@@ -33,6 +33,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import tinycolor from "tinycolor2";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 interface LoadingScreenProps {
   forceShow?: boolean;
@@ -67,7 +68,7 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
   }, []);
 
   const activeProfile = autenticado
-    ? normalizeBrainHexProfile(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome)
+    ? normalizeBrainHexProfile(perfilVisualDoAluno(usuario))
     : null;
   const profileImg = activeProfile ? profileEmblems[activeProfile] : null;
 

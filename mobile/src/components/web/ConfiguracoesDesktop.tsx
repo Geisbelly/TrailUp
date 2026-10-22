@@ -20,6 +20,7 @@ import { useAcoesConta } from "@/hooks/useAcoesConta";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { filtrarGrupos, subtelaDaUrl, type IdSubtela, type Subtela } from "@/utils/subtelasConfiguracao";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 const pkg = require("../../../package.json");
 const PERIGO = "#ff8f8f";
@@ -61,7 +62,7 @@ const TELAS: Partial<Record<IdSubtela, () => React.ReactElement>> = {
  */
 export function ConfiguracoesDesktop() {
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null);
+  const palette = getProfileShellPalette(perfilVisualDoAluno(usuario));
   const { sub } = useLocalSearchParams<{ sub?: string }>();
   const aberta = subtelaDaUrl(sub);
   const [busca, setBusca] = useState("");

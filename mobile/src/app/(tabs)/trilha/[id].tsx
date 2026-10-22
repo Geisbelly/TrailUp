@@ -88,6 +88,7 @@ import {
   type AtividadeResolvida,
   type Conteudo,
 } from "@/utils/trilhaBlocks";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 /* --------------------------
    WebView loader (lazy, platform-aware)
@@ -357,8 +358,8 @@ export default function TrilhaConteudoScreen() {
     );
   }, [classeAtual, resolvedClasseId, topicoId]);
   const profilePalette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
 
   useEffect(() => {

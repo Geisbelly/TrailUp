@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Props = {
   url: string;
@@ -58,8 +59,8 @@ export default function VideoPlayer({
 }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const sourceUrl = String(url ?? "").trim();
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(

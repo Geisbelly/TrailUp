@@ -23,6 +23,7 @@ import AudioPlayer from "./funcionais/AudioPlayer";
 import VideoPlayer from "./funcionais/VideoPlayer";
 import { resolveMediaText, resolveMediaTitle, resolveMediaUrl } from "@/utils/mediaPayload";
 import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 function loadWebView(): React.ComponentType<any> | null {
   if (Platform.OS === "web") return null;
@@ -234,8 +235,8 @@ function renderAudio(block: ContentBlock, topicoId?: number | null) {
 export function ContentRenderer({ blocks, WebView, topicoId, onDeckProgressEvent }: Props) {
   const { usuario } = useUsuario();
   const palette = React.useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const resolvedWebView = WebView ?? DefaultWebView;
 

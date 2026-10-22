@@ -7,6 +7,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import tinycolor from "tinycolor2";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 export type DialogTone = "info" | "success" | "warning" | "error";
 export type DialogActionVariant = "primary" | "secondary" | "danger";
@@ -93,7 +94,7 @@ function getToneConfig(
 
 export function DialogProvider({ children }: { children: React.ReactNode }) {
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null);
+  const palette = getProfileShellPalette(perfilVisualDoAluno(usuario));
   const [dialog, setDialog] = useState<DialogState | null>(null);
 
   const gold = tinycolor(palette.accent).lighten(10).toHexString();

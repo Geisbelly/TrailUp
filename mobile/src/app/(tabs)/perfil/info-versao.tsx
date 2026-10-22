@@ -6,6 +6,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 const pkg = require("../../../../package.json");
 const appJson = require("../../../../app.json");
@@ -14,8 +15,8 @@ export default function InfoVersaoScreen() {
   const embutido = useEmbutidoConfiguracoes();
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
 
   return (

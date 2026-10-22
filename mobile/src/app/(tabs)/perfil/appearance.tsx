@@ -9,6 +9,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 import { ApoioConfig, CartaoConfig, DuasColunasConfig, TextoApoio } from "@/components/web/SecaoConfigDesktop";
 import { getBrainHexConfig } from "@/constants/profileImages";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 const ITEMS = [
   { label: "Perfil", value: "Automático" },
@@ -20,8 +21,8 @@ export default function Aparen() {
   const embutido = useEmbutidoConfiguracoes();
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
 
   // Embutida nas Configurações da web em tela larga (#346, protótipo v4): as opções num cartão, o perfil automático ao lado.

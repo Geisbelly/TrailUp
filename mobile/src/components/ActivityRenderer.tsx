@@ -11,6 +11,7 @@ import { UsarItemNaAtividade } from '@/components/loja/UsarItemNaAtividade'
 import QuestionActivity from './QuestionActivity'
 import TextoActivity from './TextoActivity'
 import VideoActivity from './VideoActivity'
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 export type ActivityCompletePayload = {
   correto?: boolean;
@@ -57,8 +58,8 @@ function ActivityRendererContent({
 }: Props & { alunoId?: string | null }) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const [localReviewMode, setLocalReviewMode] = React.useState(reviewMode);
   const [retryLiberada, setRetryLiberada] = React.useState(false);

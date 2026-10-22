@@ -184,7 +184,6 @@ export function IAMentorPanel({
   const profileName = resolveActiveBrainHexProfile(
     usuario?.perfis ?? null,
     usuario?.perfilAtivo,
-    "seeker",
   );
   const palette = useMemo(() => getProfileShellPalette(profileName), [profileName]);
   const guideConfig = useMemo(() => getBrainHexConfig(profileName), [profileName]);

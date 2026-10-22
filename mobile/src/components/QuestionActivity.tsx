@@ -18,6 +18,7 @@ import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayV
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Props = {
   atividade: any;
@@ -447,7 +448,7 @@ export default function QuestionActivity({
   }, [atividade, topicoIdProp]);
   const gradingRules = useMemo(() => resolveActivityGradingRules(atividade), [atividade]);
   const respostaAnterior = getQuestionPreviousAnswer(questao, atividade);
-  const perfilNome = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? '';
+  const perfilNome = perfilVisualDoAluno(usuario) ?? '';
   // Modal de resultado: quem fala com o aluno aqui e o guia do perfil, entao a
   // imagem e o guardiao, nao o simbolo abstrato do perfil.
   const perfilImage = getGuardianFaceImage(perfilNome);

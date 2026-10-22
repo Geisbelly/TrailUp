@@ -32,6 +32,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { estaNaTrilhaDeEstudo } from "@/utils/presencaDeEstudo";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import type { Funcionalidade } from "@/utils/portoes";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 function TourAwareTabBar(props: BottomTabBarProps) {
   const targetRef = useRef<View | null>(null);
@@ -66,7 +67,7 @@ export default function TabLayout() {
   // (auth) nao existe aluno para monitorar.
   useMonitorDeSessao();
 
-  const activeProfileName = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
+  const activeProfileName = perfilVisualDoAluno(usuario);
   const brainProfile = normalizeBrainHexProfile(activeProfileName) ?? undefined;
   const perfilImage =
     (brainProfile && brainHexImageMap[brainProfile] !== undefined
