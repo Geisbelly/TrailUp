@@ -116,10 +116,19 @@ def test_search_path_de_cada_uma_vai_verbatim() -> None:
     assert "SET search_path TO 'public', 'pg_temp'" in sql
 
 
-def test_a_divida_restante_e_so_a_issue_329() -> None:
-    """Com estas duas versionadas, sobra uma entrada — e ela é decisão, não esquecimento:
-    versionar `fn_auth_email_exists` como está registraria a enumeração de e-mail no Alembic."""
-    assert set(FORA_DO_ALEMBIC) == {"fn_auth_email_exists"}
+def test_as_duas_saem_da_divida_registrada() -> None:
+    """O que ESTA migration é responsável por mudar: as duas deixam de ser dívida registrada.
+
+    A primeira versão deste teste afirmava `set(FORA_DO_ALEMBIC) == {"fn_auth_email_exists"}` —
+    o inventário inteiro. Qualquer dívida nova e legítima registrada amanhã quebraria um teste
+    de MIGRATION, com mensagem apontando para a `_24`, que nada tem a ver. O inventário é
+    assunto do portão (`test_rpc_chamada_tem_migracao`); aqui só cabe o par que a `_24` pagou."""
+    assert "fn_atualizar_aluno_perfil" not in FORA_DO_ALEMBIC
+    assert "fn_cadastrar_aluno_com_perfis" not in FORA_DO_ALEMBIC
+    # `fn_auth_email_exists` era a última entrada e saiu em `20261021_28` — não por ter sido
+    # versionada, mas porque a #329 foi decidida e a função deixou de existir. A lista ficou
+    # vazia; quem cobra isso agora é o portão, não este teste de migration.
+    assert "fn_auth_email_exists" not in FORA_DO_ALEMBIC
 
 
 def test_o_downgrade_nao_remove_nada() -> None:

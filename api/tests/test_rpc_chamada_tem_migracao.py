@@ -1,11 +1,11 @@
 """Portao: RPC que o app chama tem de ser criada por alguma migracao.
 
-Toda RPC que o app chama tem de ser descrita por uma migracao. Hoje UMA das 85
-que os clientes chamam nao e -- `fn_auth_email_exists`, feita pelo painel do
-Supabase. As outras duas que sobravam (`fn_atualizar_aluno_perfil` e
-`fn_cadastrar_aluno_com_perfis`) entraram na `20261021_24`; esta fica de fora
-de proposito, porque e a issue #329 e versionar o texto atual registraria o
-defeito em vez de corrigi-lo.
+Toda RPC que o app chama tem de ser descrita por uma migracao, e hoje **todas
+sao**: `FORA_DO_ALEMBIC` esta vazia. O caminho foi, em ordem:
+`fn_atualizar_aluno_perfil` e `fn_cadastrar_aluno_com_perfis` versionadas na
+`20261021_24`, e `fn_auth_email_exists` -- a ultima -- REMOVIDA pela
+`20261021_28`, porque a issue #329 foi decidida pelo cadastro em uma etapa em
+vez de versionar o oraculo de enumeracao.
 
 ## O que este portao NAO promete (corrigido em 21/10)
 
@@ -118,10 +118,13 @@ CRIA_POR_TEMPLATE: dict[str, tuple[str, ...]] = {
 # RPCs que o app chama e que NENHUMA migracao cria. Entrada aqui e divida
 # registrada, nao permissao: trazer a funcao para o Alembic tira a linha.
 FORA_DO_ALEMBIC: dict[str, str] = {
-    "fn_auth_email_exists": (
-        "Criada pelo painel. E a issue #329: permite enumerar e-mail cadastrado "
-        "sem autenticar. Trazer para o Alembic so faz sentido junto da correcao."
-    ),
+    # VAZIA desde 21/10. A ultima entrada era `fn_auth_email_exists`, e ela nao saiu daqui por
+    # ter sido versionada: saiu porque a #329 foi DECIDIDA e a funcao deixou de existir. O
+    # cadastro passou a ser em uma etapa (`frontend/src/lib/cadastroEmUmaEtapa.ts`), nenhum
+    # cliente a chama, e `20261021_28` a remove do banco.
+    #
+    # Entrada nova aqui e divida registrada, nao permissao: diga por que a RPC nao pode nascer
+    # de migracao, ou crie a migracao.
 }
 
 
@@ -184,12 +187,23 @@ _ARGUMENTO_DE_BUSCA = re.compile(
 
 
 def _texto_emitido(arquivo: Path) -> str:
-    """O SQL que a migracao emite: o proprio .py mais cada .sql que ela executa inteiro."""
-    texto = arquivo.read_text(encoding="utf-8", errors="replace")
-    partes = [_ARGUMENTO_DE_BUSCA.sub("", texto)]
-    # A busca por `.sql` usa o texto ORIGINAL: o nome do arquivo nao vem de `.index(...)`.
-    if _EXECUTA_ARQUIVO_INTEIRO.search(texto):
-        for nome in sorted(set(_REFERENCIA_SQL.findall(texto))):
+    """O SQL que a migracao emite NO UPGRADE: o proprio .py mais cada .sql que ela executa inteiro.
+
+    O `downgrade()` fica de fora. Ele costuma recriar a versao ANTERIOR da funcao, e uma
+    migracao pode largar de vez no upgrade algo que o downgrade recria -- contar os dois faria
+    uma funcao que o upgrade nunca cria aparecer como versionada. O teste irmao
+    `test_definer_exposto_sem_sessao` ja corta o downgrade pelo mesmo motivo.
+
+    Hoje nao muda nada: com ou sem o corte, a cadeia mostra as MESMAS 209 funcoes, e o dominio
+    `guilda*`/`social*` as mesmas 39 -- medido. O corte e contra o caso futuro, e na direcao
+    certa (reprovar de mais, nunca aprovar de menos).
+    """
+    bruto = arquivo.read_text(encoding="utf-8", errors="replace")
+    upgrade = bruto.split("def downgrade")[0]
+    partes = [_ARGUMENTO_DE_BUSCA.sub("", upgrade)]
+    # O nome do .sql nao vem de `.index(...)`, entao aqui o texto do upgrade serve como esta.
+    if _EXECUTA_ARQUIVO_INTEIRO.search(upgrade):
+        for nome in sorted(set(_REFERENCIA_SQL.findall(upgrade))):
             externo = SQL_EXTERNO / nome
             if externo.exists():
                 partes.append(externo.read_text(encoding="utf-8", errors="replace"))

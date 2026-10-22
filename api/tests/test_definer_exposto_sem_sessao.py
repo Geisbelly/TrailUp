@@ -59,6 +59,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from tests.test_rpc_chamada_tem_migracao import _texto_emitido
+
 VERSOES = Path(__file__).resolve().parents[1] / "alembic" / "versions"
 
 # Marcas de que a funcao olha quem esta chamando.
@@ -68,6 +70,16 @@ SESSAO = ("auth.uid()", "auth.jwt()")
 # Linha nova aqui e decisao de produto, nao conveniencia: diga o que protege o
 # dado, ou revogue o EXECUTE.
 SEM_SESSAO_POR_DECISAO: dict[str, str] = {
+    "desafio_responder": (
+        "Despachante da 20261021_27: NAO confere sessao de proposito. Ele so olha se existe "
+        "`desafio_participantes.equipe = 2` e delega a `arena_responder` ou a "
+        "`guilda_desafio_responder` -- e e a funcao delegada que recusa, com a mensagem dela "
+        "(`arena_sem_permissao` / `guilda_desafio_sem_permissao`), as duas conferindo "
+        "`aluno_id = auth.uid()` e `estado = 'aceito'`. Guarda aqui criaria duas respostas "
+        "possiveis para o mesmo 'nao', e a do despachante seria sempre a pior: ele nao sabe de "
+        "tentativa restante nem de convite pendente. O que ele revela sem autenticar nada e se "
+        "um desafio tem equipe 2, e isso ja vem de `arena_desafio` para quem participa."
+    ),
     "social_presenca_aluno": (
         "Delega, e a checagem e a PRIMEIRA coisa do corpo: "
         "`WHEN NOT public.app_pode_ver_aluno(p_aluno_id) THEN ... 'visivel', false`. "
@@ -106,18 +118,25 @@ SEM_SESSAO_POR_DECISAO: dict[str, str] = {
 
 
 def _migracoes() -> list[tuple[str, str]]:
-    """Cada migracao, cortada antes de `def downgrade`.
+    """Cada migracao: o SQL que ela emite no upgrade, incluindo `.sql` externo.
 
-    O que esta no downgrade e a REVERSAO, nao o estado que fica. Sem o corte,
-    o `GRANT` que `20261018_04` usa para desfazer suas proprias revogacoes era
-    lido como se fosse o estado final -- e a funcao revogada continuava
-    aparecendo como exposta.
+    Duas coisas que este portao depende de ver, e a segunda ele nao via:
+
+    1. **O downgrade fica de fora.** O que esta la e a REVERSAO, nao o estado que fica. Sem o
+       corte, o `GRANT` que `20261018_04` usa para desfazer suas proprias revogacoes era lido
+       como estado final -- e a funcao revogada continuava aparecendo como exposta.
+    2. **O `.sql` externo entra.** Varias migracoes nao carregam o SQL no proprio `.py`: fazem
+       `op.execute(path.read_text(...))` sobre um arquivo de `docs/mobile/sql/`. Enquanto este
+       portao lia so o `.py`, ele nao achava o CORPO de 12 funcoes -- e `_desprotegidas()` PULA
+       quem nao tem corpo visivel ("so recebe GRANT aqui"). Resultado: ele aprovava por nao
+       enxergar. Quando a `20261021_23` versionou os GRANT que faltavam, tres dessas doze
+       passaram a reprovar com razao, e `guilda_bloqueio_ativo` entregava a qualquer aluno se
+       duas pessoas quaisquer se bloquearam. Ver `20261021_25`.
+
+    `_texto_emitido` (do portao de RPC) faz as duas coisas, e tambem tira o argumento de
+    `.index("CREATE OR REPLACE FUNCTION ...")`, que nao cria funcao nenhuma.
     """
-    saida: list[tuple[str, str]] = []
-    for f in sorted(VERSOES.glob("*.py")):
-        texto = f.read_text(encoding="utf-8", errors="replace")
-        saida.append((f.name, texto.split("def downgrade")[0]))
-    return saida
+    return [(f.name, _texto_emitido(f)) for f in sorted(VERSOES.glob("*.py"))]
 
 
 def _corpos(nome: str, texto: str) -> list[str]:

@@ -3788,6 +3788,18 @@ def _material_refs(state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _descricao_sem_resposta(descricao_limpa: str, verso: str) -> str:
+    """`descricao` do card, garantidamente sem a resposta (issue #191).
+
+    Devolve texto só quando o gerador mandou uma descrição que NÃO é o verso. Vazio em vez de
+    `None` porque a coluna `cards_personalizados.descricao` é `NOT NULL`.
+
+    Recebe o texto JÁ limpo: `_clean_text` e `_pick_string` são aninhados em
+    `_normalize_materiais`, e esta função fica no módulo para poder ser testada direto.
+    """
+    return "" if descricao_limpa == verso else descricao_limpa
+
+
 def _normalize_materiais(raw: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
     refs = _material_refs(state)
     out: dict[str, Any] = {}
@@ -3894,7 +3906,20 @@ def _normalize_materiais(raw: dict[str, Any], state: dict[str, Any]) -> dict[str
                     "frente": frente,
                     "verso": verso,
                     "titulo": _clean_text(_pick_string(item.get("titulo"), frente), max_chars=220),
-                    "descricao": _clean_text(_pick_string(item.get("descricao"), verso), max_chars=320),
+                    # A RESPOSTA NÃO VAI PARA `descricao` (issue #191).
+
+                    # `metadata.frente`/`verso` é a fonte — medido: o mobile lê o metadata primeiro
+                    # (`TrailupApiProvider.ts`) e só cai nas colunas como reserva. O código copiava o verso
+                    # para `descricao`, e isso é a armadilha que a issue descreve: um campo com nome de
+                    # legenda e conteúdo de resposta. Foi exatamente assim que o flashcard entregou a
+                    # resposta na frente (#190) — um consumidor novo tratou `descricao` pelo nome.
+
+                    # `titulo` continua com a pergunta: ali o nome não engana, serve de rótulo em listagem
+                    # e é a reserva que o cliente já usa. `descricao` só guarda texto quando o gerador
+                    # mandar algo que NÃO é o verso; senão fica vazia (a coluna é NOT NULL).
+                    "descricao": _descricao_sem_resposta(
+                        _clean_text(_pick_string(item.get("descricao")), max_chars=320), verso
+                    ),
                     "icone": _pick_string(item.get("icone")) or "*",
                     "dificuldade": _pick_string(item.get("dificuldade")) or "medio",
                     "xp": int(item.get("xp") or 10),

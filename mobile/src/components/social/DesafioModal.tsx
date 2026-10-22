@@ -3,13 +3,15 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { FontFamily } from "@/styles/GlobalStyle";
-import { carregarDesafio, responderDesafio, responderNaArena } from "@/services/social/guildService";
+import { carregarDesafio, responderDesafio } from "@/services/social/guildService";
 import {
   placarDoAluno,
   proximaQuestao,
+  respostaFoiCompetitiva,
   tentativasPorQuestao,
   type DesafioEmJogo,
   type QuestaoDoDesafio,
+  type RespostaDoDesafio,
 } from "@/services/social/desafioModel";
 import { mensagemDaArena, rotuloDoElo } from "@/services/social/arenaModel";
 
@@ -101,86 +103,96 @@ export function DesafioModal({ visible, desafioId, accent, profile, onClose, onE
     if (!texto) return;
     setEnviando(true);
     setAviso(null);
-    if (desafio.competitivo) {
-      await enviarNaArena(texto);
-      return;
-    }
     try {
-      const r = (await responderDesafio(desafio.id, questao.questaoId, texto, Date.now() - abertaEm.current)) as {
-        correta?: boolean;
-        tentativas_restantes?: number;
-        faltam?: number;
-        encerrou?: { resultado?: string } | null;
-      };
-      setResposta("");
-      setRestantes(Number(r.tentativas_restantes ?? 0));
-
-      if (r.encerrou) {
-        setEncerrado(
-          r.encerrou.resultado === "vitoria"
-            ? "Desafio encerrado: vitória!"
-            : r.encerrou.resultado === "empate"
-              ? "Desafio encerrado: empate."
-              : "Desafio encerrado.",
-        );
-        onEncerrou?.();
-      }
-
-      if (r.correta) {
-        setAviso("Resposta correta!");
-      } else if (Number(r.tentativas_restantes ?? 0) > 0) {
-        setAviso(`Resposta incorreta. Você ainda tem ${r.tentativas_restantes}.`);
-        abertaEm.current = Date.now();
-        setEnviando(false);
-        return;
-      } else {
-        setAviso("Resposta incorreta.");
-      }
-
-      // Recarrega para pegar a próxima questão e o gabarito desta, que o banco só revela
-      // depois de existir resposta minha.
-      await carregar();
-    } catch (error) {
-      const codigo = String((error as { message?: unknown })?.message ?? error);
-      setAviso(
-        codigo.includes("sem_tentativas")
-          ? "Suas tentativas nesta questão acabaram."
-          : codigo.includes("encerrado")
-            ? "O desafio foi encerrado."
-            : codigo.includes("sem_permissao")
-              ? "Você não está neste desafio."
-              : "Não foi possível registrar sua resposta.",
+      // UMA chamada: `desafio_responder` (20261021_27) olha se existe equipe 2 e despacha.
+      const r = await responderDesafio(
+        desafio.id,
+        questao.questaoId,
+        texto,
+        Date.now() - abertaEm.current,
+        desafio.competitivo,
       );
-      if (codigo.includes("sem_tentativas") || codigo.includes("encerrado")) await carregar();
+      // E o ramo segue o RETORNO, não o que esta tela supunha: se o adversário aceitou entre
+      // abrir o desafio e enviar a resposta, quem está certo é o banco.
+      if (respostaFoiCompetitiva(r, desafio.competitivo)) {
+        await aplicarRespostaDaArena(r);
+      } else {
+        await aplicarRespostaCooperativa(r);
+      }
+    } catch (error) {
+      // A mensagem usa a suposição da tela de propósito: no erro não há retorno para consultar,
+      // e os códigos dos dois caminhos não se confundem.
+      if (desafio.competitivo) {
+        setAviso(mensagemDaArena(error));
+        await carregar();
+      } else {
+        const codigo = String((error as { message?: unknown })?.message ?? error);
+        setAviso(
+          codigo.includes("sem_tentativas")
+            ? "Suas tentativas nesta questão acabaram."
+            : codigo.includes("encerrado")
+              ? "O desafio foi encerrado."
+              : codigo.includes("sem_permissao")
+                ? "Você não está neste desafio."
+                : "Não foi possível registrar sua resposta.",
+        );
+        if (codigo.includes("sem_tentativas") || codigo.includes("encerrado")) await carregar();
+      }
     } finally {
       setEnviando(false);
     }
+  }
+
+  /** Cooperativo: tentativas com feedback, e `encerrou` no próprio retorno. */
+  async function aplicarRespostaCooperativa(r: RespostaDoDesafio) {
+    setResposta("");
+    setRestantes(Number(r.tentativas_restantes ?? 0));
+
+    if (r.encerrou) {
+      setEncerrado(
+        r.encerrou.resultado === "vitoria"
+          ? "Desafio encerrado: vitória!"
+          : r.encerrou.resultado === "empate"
+            ? "Desafio encerrado: empate."
+            : "Desafio encerrado.",
+      );
+      onEncerrou?.();
+    }
+
+    if (r.correta) {
+      setAviso("Resposta correta!");
+    } else if (Number(r.tentativas_restantes ?? 0) > 0) {
+      // Ainda há tentativa: fica na mesma questão, sem recarregar.
+      setAviso(`Resposta incorreta. Você ainda tem ${r.tentativas_restantes}.`);
+      abertaEm.current = Date.now();
+      return;
+    } else {
+      setAviso("Resposta incorreta.");
+    }
+
+    // Recarrega para pegar a próxima questão e o gabarito desta, que o banco só revela
+    // depois de existir resposta minha.
+    await carregar();
   }
 
   /**
    * Arena: uma resposta por questão e nenhum `encerrou` no retorno. A partida fecha no banco
    * quando o último aceito responde a última questão; a tela descobre recarregando.
    */
-  async function enviarNaArena(texto: string) {
-    if (!desafio || !questao) return;
-    try {
-      const r = (await responderNaArena(desafio.id, questao.questaoId, texto, Date.now() - abertaEm.current)) as {
-        correta?: boolean;
-        registrada?: boolean;
-      };
-      setResposta("");
-      setRestantes(0);
-      setAviso(r.registrada === false ? "Esta questão já tinha resposta sua." : r.correta ? "Resposta correta!" : "Resposta incorreta.");
-      const d = await carregar();
-      if (d?.status === "encerrado") {
-        setEncerrado("Partida encerrada. O resultado está na Arena.");
-        onEncerrou?.();
-      }
-    } catch (error) {
-      setAviso(mensagemDaArena(error));
-      await carregar();
-    } finally {
-      setEnviando(false);
+  async function aplicarRespostaDaArena(r: RespostaDoDesafio) {
+    setResposta("");
+    setRestantes(0);
+    setAviso(
+      r.registrada === false
+        ? "Esta questão já tinha resposta sua."
+        : r.correta
+          ? "Resposta correta!"
+          : "Resposta incorreta.",
+    );
+    const d = await carregar();
+    if (d?.status === "encerrado") {
+      setEncerrado("Partida encerrada. O resultado está na Arena.");
+      onEncerrou?.();
     }
   }
 

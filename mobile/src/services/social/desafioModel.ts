@@ -168,3 +168,50 @@ export function placarDoAluno(desafio: DesafioEmJogo): { respondidas: number; ac
     total: desafio.questoes.length,
   };
 }
+
+/** O que o banco devolve ao responder, por qualquer um dos caminhos. */
+export type RespostaDoDesafio = {
+  correta?: boolean;
+  /** Só na arena: `false` quando já havia resposta sua nesta questão. */
+  registrada?: boolean;
+  /** Só no cooperativo. */
+  tentativas?: number;
+  tentativas_restantes?: number;
+  faltam?: number;
+  encerrou?: { resultado?: string } | null;
+  /** `desafio_responder` (20261021_27) diz qual regra valeu. Ausente no par antigo. */
+  competitivo?: boolean;
+};
+
+/**
+ * A função que o cliente pediu não existe neste banco.
+ *
+ * `desafio_responder` é de `20261021_27`: enquanto a migration não estiver aplicada, o
+ * PostgREST responde **PGRST202**. O serviço usa isto para cair no par antigo
+ * (`arena_responder`/`guilda_desafio_responder`), e é o que faz a ordem entre aplicar a
+ * migration e publicar o app deixar de importar — mesmo cuidado de `carregarJanelaDaFormacao`.
+ *
+ * Reconhece pelo código E pelo texto: o código é o sinal estável, mas em erro de rede embrulhado
+ * ele às vezes não vem, e aí só sobra a mensagem.
+ */
+export function ehFuncaoAusenteNoBanco(erro: unknown): boolean {
+  const e = (erro ?? {}) as { code?: unknown; message?: unknown };
+  if (String(e.code ?? "") === "PGRST202") return true;
+  const texto = String(e.message ?? erro ?? "").toLowerCase();
+  return texto.includes("could not find the function") || texto.includes("pgrst202");
+}
+
+/**
+ * Qual regra valeu de fato na resposta que o banco acabou de registrar.
+ *
+ * **Quem decide é o retorno, não o que a tela supunha.** O `competitivo` que a tela carregou
+ * pode estar velho: se o adversário aceitar entre a abertura do desafio e o envio da resposta, o
+ * desafio passa a ter equipe 2 e as regras mudam. Antes de `desafio_responder` isso fazia o
+ * cliente chamar a função errada e o aluno ver um 22023; agora o banco classifica na hora.
+ *
+ * `suposicao` é o fallback para o par antigo, que não devolve a chave.
+ */
+export function respostaFoiCompetitiva(resposta: RespostaDoDesafio, suposicao: boolean): boolean {
+  return typeof resposta.competitivo === "boolean" ? resposta.competitivo : suposicao;
+}
+

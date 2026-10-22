@@ -10,10 +10,18 @@ import { Hexagon, Eye, EyeOff, Mail, ArrowRight, Info, CheckCircle2, Lock } from
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  ehCredencialInvalida,
+  ehEmailNaoConfirmado,
+  mensagemDeAcesso,
+  normalizarEmail,
+  validarAcesso,
+} from "@/lib/cadastroEmUmaEtapa";
 
 const STORAGE_PREFIX = "pending-signup:";
 
-type Stage = "email" | "existing" | "new" | "confirm-sent" | "await-confirm" | "already";
+/** Uma etapa só (#329) — ver `CadastroAluno.tsx` e `lib/cadastroEmUmaEtapa.ts`. */
+type Stage = "acesso" | "confirm-sent" | "await-confirm" | "already";
 
 const CadastroProfessor = () => {
   const navigate = useNavigate();
@@ -26,10 +34,10 @@ const CadastroProfessor = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [termos, setTermos] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [stage, setStage] = useState<Stage>("email");
+  const [stage, setStage] = useState<Stage>("acesso");
   const [infoMessage, setInfoMessage] = useState("");
 
-  const emailLower = email.trim().toLowerCase();
+  const emailLower = normalizarEmail(email);
 
   const resendConfirmation = async (emailToSend: string) => {
     const { error } = await supabase.auth.resend({ type: "signup", email: emailToSend });
@@ -41,99 +49,77 @@ const CadastroProfessor = () => {
     return true;
   };
 
-  const handleCheckEmail = async () => {
-    if (!emailLower) {
-      toast.error("Informe o email.");
+  /** Caminho de conta existente, intocado: decide entre console, confirmação e pendência. */
+  const seguirComoContaExistente = async (signedUser: unknown) => {
+    const user = (signedUser as { id?: string } | null) ?? (await supabase.auth.getUser()).data.user;
+    if (!user) {
+      toast.error("Sessão não encontrada.");
       return;
     }
-    setIsLoading(true);
-    try {
-      const { data } = await supabase.rpc("fn_auth_email_exists", { p_email: emailLower });
-      const exists = data === true;
-      setStage(exists ? "existing" : "new");
-      setInfoMessage(
-        exists
-          ? "Já existe uma conta com este email. Informe a senha para continuar."
-          : "Email disponível. Crie uma senha para criar sua conta."
-      );
-    } catch (err) {
-      toast.error((err)?.message || "Erro ao validar email.");
-    } finally {
-      setIsLoading(false);
+
+    const { data: profRow } = await supabase.from("professor").select("id").eq("id", user.id).maybeSingle();
+    const u = user as { email_confirmed_at?: string | null; confirmed_at?: string | null };
+    const emailConfirmed = Boolean(u?.email_confirmed_at || u?.confirmed_at);
+
+    if (profRow?.id) {
+      if (!emailConfirmed) {
+        setStage("await-confirm");
+        setInfoMessage("Conta de professor encontrada. Confirme seu email para continuar.");
+        return;
+      }
+      navigate("/console");
+      return;
     }
+
+    // Usuário sem tipo definido: cria pendência para o fluxo de professor.
+    localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`, JSON.stringify({ tipo: "professor", email: emailLower }));
+    navigate("/auth/confirmacao");
+    setStage("confirm-sent");
+    setInfoMessage("Conta sem perfil. Finalize seu cadastro de professor.");
   };
 
-  const handleLoginExisting = async () => {
-    if (!senha) {
-      toast.error("Informe a senha.");
+  /**
+   * Entrar OU criar numa chamada só. `signIn` primeiro, e o `signUp` só depois de o login falhar
+   * por credencial inválida — quando já não se sabe se a conta existe. Ver
+   * `lib/cadastroEmUmaEtapa.ts` para o motivo (issue #329) e para a indistinção das mensagens.
+   */
+  const handleAcessar = async () => {
+    const dados = { email: emailLower, senha, confirmSenha, termos };
+    const erroEntrada = validarAcesso(dados, false);
+    if (erroEntrada) {
+      toast.error(erroEntrada);
       return;
     }
+
     setIsLoading(true);
     try {
       const { error: loginError, user: signedUser } = await signIn(emailLower, senha);
-      if (loginError) {
-        toast.error("Senha incorreta ou conta inválida.");
+
+      if (!loginError) {
+        await seguirComoContaExistente(signedUser);
         return;
       }
 
-      const user = signedUser ?? (await supabase.auth.getUser()).data.user;
-      if (!user) {
-        toast.error("Sessão não encontrada.");
+      if (ehEmailNaoConfirmado(loginError)) {
+        setStage("await-confirm");
+        setInfoMessage(mensagemDeAcesso(loginError));
         return;
       }
 
-      const [{ data: profRow }] = await Promise.all([
-        supabase.from("professor").select("id").eq("id", user.id).maybeSingle(),
-      ]);
-
-      const emailConfirmed = Boolean((user)?.email_confirmed_at || (user)?.confirmed_at);
-
-      if (profRow?.id) {
-        if (!emailConfirmed) {
-          setStage("await-confirm");
-          setInfoMessage("Conta de professor encontrada. Confirme seu email para continuar.");
-          return;
-        }
-        navigate("/console");
+      if (!ehCredencialInvalida(loginError)) {
+        toast.error(mensagemDeAcesso(loginError));
         return;
       }
 
+      const erroCriacao = validarAcesso(dados, true);
+      if (erroCriacao) {
+        toast.error(erroCriacao);
+        return;
+      }
 
-      // usuário sem tipo definido: cria pendência para fluxo de professor
-      localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`, JSON.stringify({ tipo: "professor", email: emailLower }));
-      navigate("/auth/confirmacao")
-      setStage("confirm-sent");
-      setInfoMessage("Conta sem perfil. Finalize seu cadastro de professor.");
-    } catch (err) {
-      toast.error((err)?.message || "Erro ao autenticar.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCreateNew = async () => {
-    if (!senha || !confirmSenha) {
-      toast.error("Informe e confirme a senha.");
-      return;
-    }
-    if (senha.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres.");
-      return;
-    }
-    if (senha !== confirmSenha) {
-      toast.error("As senhas não coincidem.");
-      return;
-    }
-    if (!termos) {
-      toast.error("É necessário aceitar os termos para continuar.");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await signUp(emailLower, senha, "professor");
-      if (error) {
-        toast.error(error.message || "Erro ao criar conta.");
+      const { error: signUpError } = await signUp(emailLower, senha, "professor");
+      if (signUpError) {
+        toast.error(mensagemDeAcesso(signUpError));
         return;
       }
 
@@ -141,14 +127,14 @@ const CadastroProfessor = () => {
       setStage("confirm-sent");
       setInfoMessage("Enviamos um link de confirmação. Após confirmar, conclua seu cadastro.");
     } catch (err) {
-      toast.error((err)?.message || "Erro ao criar conta.");
+      toast.error(mensagemDeAcesso(err));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const renderEmailStep = () => (
-    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleCheckEmail(); }}>
+  const renderAcessoStep = () => (
+    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleAcessar(); }}>
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <div className="relative group">
@@ -157,29 +143,14 @@ const CadastroProfessor = () => {
             id="email"
             type="email"
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setStage("email");
-              setInfoMessage("");
-            }}
+            onChange={(e) => { setEmail(e.target.value); setInfoMessage(""); }}
             placeholder="exemplo@email.com"
             required
             className="pl-10 bg-card/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-primary/20 focus:border-primary/50 transition-all"
           />
         </div>
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Validando..." : "Continuar"}
-        <ArrowRight className="w-4 h-4 ml-2" />
-      </Button>
-    </form>
-  );
 
-  const renderExistingStep = () => (
-    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleLoginExisting(); }}>
-      <div className="flex items-start gap-2 p-3 rounded-md border bg-muted/40 text-sm text-muted-foreground">
-        <Info className="w-4 h-4 mt-0.5 text-primary" /> {infoMessage}
-      </div>
       <div className="space-y-2">
         <Label htmlFor="senha">Senha</Label>
         <div className="relative group">
@@ -190,6 +161,7 @@ const CadastroProfessor = () => {
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
             required
+            placeholder="Mínimo 6 caracteres"
             className="pl-10 pr-10 bg-card/50 border-border text-foreground focus:ring-primary/20 focus:border-primary/50"
           />
           <Button
@@ -203,96 +175,59 @@ const CadastroProfessor = () => {
           </Button>
         </div>
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Entrando..." : "Entrar e continuar"}
-        <Mail className="w-4 h-4 ml-2" />
-      </Button>
-    </form>
-  );
 
-  const renderNewStep = () => (
-    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleCreateNew(); }}>
+      <div className="space-y-2">
+        <Label htmlFor="confirm-senha">Confirmar senha</Label>
+        <div className="relative group">
+          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <Input
+            id="confirm-senha"
+            type={showConfirm ? "text" : "password"}
+            value={confirmSenha}
+            onChange={(e) => setConfirmSenha(e.target.value)}
+            placeholder="Repita a senha (só para criar conta)"
+            className="pl-10 pr-10 bg-card/50 border-border text-foreground focus:ring-primary/20 focus:border-primary/50"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:text-foreground hover:bg-transparent"
+            onClick={() => setShowConfirm((s) => !s)}
+          >
+            {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-start space-x-2">
+        <Checkbox id="termos" checked={termos} onCheckedChange={(v) => setTermos(Boolean(v))} />
+        <Label htmlFor="termos" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+          Li e aceito os{" "}
+          <a href="/termos" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-primary transition-colors">
+            termos de uso
+          </a>{" "}
+          e a{" "}
+          <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-primary transition-colors">
+            política de privacidade
+          </a>
+          .
+        </Label>
+      </div>
+
       {infoMessage && (
         <div className="flex items-start gap-2 p-3 rounded-md border bg-muted/40 text-sm text-muted-foreground">
           <Info className="w-4 h-4 mt-0.5 text-primary" /> {infoMessage}
         </div>
       )}
-      <div className="space-y-2">
-        <Label htmlFor="senha">Senha</Label>
-        <div className="relative group">
-            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <Input
-              id="senha-new"
-              type={showSenha ? "text" : "password"}
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              required
-              className="pl-10 pr-10 bg-card/50 border-border text-foreground focus:ring-primary/20 focus:border-primary/50"
-              placeholder="Mínimo 6 caracteres"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:text-foreground hover:bg-transparent"
-              onClick={() => setShowSenha((s) => !s)}
-            >
-              {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </Button>
-          </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="confirm-senha">Confirmar senha</Label>
-        <div className="relative group">
-            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <Input
-              id="confirm-senha"
-              type={showConfirm ? "text" : "password"}
-              value={confirmSenha}
-              onChange={(e) => setConfirmSenha(e.target.value)}
-              required
-              className="pl-10 pr-10 bg-card/50 border-border text-foreground focus:ring-primary/20 focus:border-primary/50"
-              placeholder="Repita a senha"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:text-foreground hover:bg-transparent"
-              onClick={() => setShowConfirm((s) => !s)}
-            >
-              {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </Button>
-          </div>
-      </div>
-      <div className="flex items-start space-x-2">
-        <Checkbox id="termos" checked={termos} onCheckedChange={(v) => setTermos(Boolean(v))} />
-        <Label htmlFor="termos" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
-          Li e aceito os{" "}
-          <a 
-            href="/termos" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="underline underline-offset-2 hover:text-primary transition-colors"
-          >
-            termos de uso
-          </a>{" "}
-          e a{" "}
-          <a 
-            href="/privacidade" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="underline underline-offset-2 hover:text-primary transition-colors"
-          >
-            política de privacidade
-          </a>.
-        </Label>
-      </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Processando..." : "Criar conta e enviar confirmação"}
-        <Mail className="w-4 h-4 ml-2" />
+        {isLoading ? "Verificando..." : "Entrar ou criar conta"}
+        <ArrowRight className="w-4 h-4 ml-2" />
       </Button>
+      <p className="text-xs text-muted-foreground text-center">
+        Confirmar a senha e aceitar os termos é necessário apenas quando a conta é nova.
+      </p>
     </form>
   );
 
@@ -335,9 +270,7 @@ const CadastroProfessor = () => {
   );
 
   const renderCurrentStage = () => {
-    if (stage === "email") return renderEmailStep();
-    if (stage === "existing") return renderExistingStep();
-    if (stage === "new") return renderNewStep();
+    if (stage === "acesso") return renderAcessoStep();
     if (stage === "confirm-sent") return renderConfirmSent();
     if (stage === "await-confirm") return renderAwaitConfirm();
     if (stage === "already") return renderAlready();
@@ -352,7 +285,7 @@ const CadastroProfessor = () => {
           <div className="flex flex-col items-center text-center space-y-4 mb-6">
             <AuthBrand />
             <h1 className="text-3xl font-bold">Cadastro de Professor</h1>
-            <p className="text-muted-foreground">Inicie informando seu email.</p>
+            <p className="text-muted-foreground">Entre com seu e-mail e senha. Se ainda não tem conta, ela é criada na hora.</p>
           </div>
 
           {renderCurrentStage()}

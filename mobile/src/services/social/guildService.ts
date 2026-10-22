@@ -2,7 +2,7 @@ import { supabase } from "@/database/supabase";
 import { normalizeGuilds, type Guild } from "./guildModel";
 import { normalizeJanela, type JanelaDaFormacao } from "./guildWindowModel";
 import { normalizeGuildMessages, type GuildMessage, type GuildShareKind } from "./guildChatModel";
-import { normalizeDesafio } from "./desafioModel";
+import { ehFuncaoAusenteNoBanco, normalizeDesafio, type RespostaDoDesafio } from "./desafioModel";
 import { normalizeArena, type DesafioDaArena } from "./arenaModel";
 
 async function action(name: string, params: Record<string, unknown>) {
@@ -109,7 +109,16 @@ export async function carregarDesafio(desafioId: string) {
 }
 
 /**
- * Responder desafio da GUILDA (cooperativo, sem equipe 2). `guilda_desafio_responder` cobra
+ * Responder uma questão do desafio — **ponto de entrada único** (`desafio_responder`,
+ * `20261021_27`). O banco olha se existe equipe 2 e despacha para o caminho certo, devolvendo o
+ * payload de quem respondeu mais `competitivo`. O cliente não escolhe mais: escolher aqui dava
+ * erro 22023 quando o `competitivo` da tela estava velho (adversário aceitou no meio).
+ *
+ * `competitivo` ainda é pedido, e serve a uma coisa só: o recuo para o par antigo quando a
+ * migration não está aplicada (PGRST202).
+ *
+ * Os dois caminhos continuam com regras próprias, de propósito — não foram fundidos. No
+ * cooperativo `guilda_desafio_responder` cobra
  * `desafio_tentativas_*` — o "menos tentativas" do modo difícil — e acumula o tempo entre
  * tentativas. O retorno traz `tentativas_restantes`, `faltam` e, quando a última resposta do
  * último participante entra, `encerrou` com o resultado. Desafio com adversário é da arena: o
@@ -120,13 +129,28 @@ export async function responderDesafio(
   questaoId: number,
   resposta: string,
   tempoMs: number,
-) {
-  return action("guilda_desafio_responder", {
+  competitivo = false,
+): Promise<RespostaDoDesafio> {
+  const params = {
     p_desafio_id: desafioId,
     p_questao_id: questaoId,
     p_resposta: resposta,
     p_tempo_ms: Math.max(0, Math.round(tempoMs)),
-  });
+  };
+  try {
+    return (await action("desafio_responder", params)) as RespostaDoDesafio;
+  } catch (erro) {
+    if (!ehFuncaoAusenteNoBanco(erro)) throw erro;
+    // Banco ainda sem a `20261021_27`: segue pelo par antigo, com a suposição da tela. É o
+    // único momento em que o cliente volta a escolher o caminho.
+    //
+    // Os dois nomes são LITERAIS, e não um ternário dentro de `action(...)`, porque
+    // `test_rpc_chamada_tem_migracao` lê o primeiro literal passado ao wrapper. Escrito com
+    // ternário, o portão deixa de ver estas duas chamadas — o mesmo ponto cego que a leva de
+    // `20261021_21`..`_27` fechou no lado das migrations, recriado no cliente.
+    if (competitivo) return (await action("arena_responder", params)) as RespostaDoDesafio;
+    return (await action("guilda_desafio_responder", params)) as RespostaDoDesafio;
+  }
 }
 
 // ── Arena (20261021_19): desafio com adversário, que vale Elo ────────────────────────────
@@ -149,11 +173,7 @@ export const responderConviteDaArena = (desafioId: string, aceitar: boolean) =>
  * uma) e a partida fecha sozinha quando todo aceito respondeu tudo e ninguém está convidado;
  * é aí que o Elo mexe. O retorno é só `{ correta, registrada }`: o resultado vem de recarregar.
  */
+/** @deprecated Use `responderDesafio(..., true)`: o ponto de entrada é um só desde `20261021_27`. */
 export async function responderNaArena(desafioId: string, questaoId: number, resposta: string, tempoMs: number) {
-  return action("arena_responder", {
-    p_desafio_id: desafioId,
-    p_questao_id: questaoId,
-    p_resposta: resposta,
-    p_tempo_ms: Math.max(0, Math.round(tempoMs)),
-  });
+  return responderDesafio(desafioId, questaoId, resposta, tempoMs, true);
 }
