@@ -19,6 +19,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Props = {
   payload: ContentBlockPayload;
@@ -55,7 +56,7 @@ export function normalizePayload(payload: ContentBlockPayload): {
 
 export default function PresentationSlidesBlock({ payload: rawPayload, progressKey }: Props) {
   const { usuario } = useUsuario();
-  const perfilNome = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null;
+  const perfilNome = perfilVisualDoAluno(usuario);
   const palette = useMemo(() => getProfileShellPalette(perfilNome), [perfilNome]);
   const brainHexConfig = useMemo(() => getBrainHexConfig(perfilNome ?? undefined), [perfilNome]);
   const guideName = useMemo(() => getBrainHexGuideName(perfilNome), [perfilNome]);

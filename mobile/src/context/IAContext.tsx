@@ -538,7 +538,6 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
   const profileName = resolveActiveBrainHexProfile(
     usuario?.perfis ?? null,
     usuario?.perfilAtivo,
-    "seeker",
   );
   const guideName = getBrainHexGuideName(profileName);
   const modoNome = usuario?.modoOperacao_nome ?? usuario?.modoOperacao_descricao ?? null;

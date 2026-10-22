@@ -34,6 +34,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { RelatorioDesktop } from "@/components/web/RelatorioDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 // Verifique se o caminho da imagem está correto
 const appLogoSource = require("@/assets/images/trailup-brand-logo.png");
@@ -66,7 +67,7 @@ export default function RelatorioDadosScreen() {
   const reportSummaryGuideRef = useRef<View | null>(null);
   const reportButtonGuideRef = useRef<View | null>(null);
 
-  const perfilPrincipal = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? "conqueror";
+  const perfilPrincipal = perfilVisualDoAluno(usuario);
   const perfilConfig = getBrainHexConfig(perfilPrincipal);
   const palette = useMemo(() => getProfileShellPalette(perfilPrincipal), [perfilPrincipal]);
   const gold = useMemo(() => tinycolor(palette.accent).lighten(10).toHexString(), [palette.accent]);

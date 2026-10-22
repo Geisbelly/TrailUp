@@ -27,6 +27,7 @@ import {
 } from "@/utils/profileMetricThemes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 const pkg = require("../../../../package.json");
 
@@ -57,8 +58,8 @@ function SettingsLista() {
     [],
   );
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis],
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario],
   );
 
   useFocusEffect(
@@ -392,7 +393,7 @@ function SettingsLista() {
       style={[styles.outerWrapper, { backgroundColor: palette.background }]}
     >
       <SectionGuideButton
-        profile={usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome}
+        profile={perfilVisualDoAluno(usuario)}
         sectionTitle="Configurações"
         steps={settingsGuideSteps}
         targetRefs={settingsGuideTargets}

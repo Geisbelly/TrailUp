@@ -227,7 +227,21 @@ class ArtefatosPersonalizadosRepository:
             frente = self._pick_string(card.get("frente"), card.get("titulo")) or f"Card {idx}"
             verso = self._pick_string(card.get("verso"), card.get("descricao")) or frente
             titulo = self._pick_string(card.get("titulo"), frente) or f"Card {idx}"
-            descricao = self._pick_string(card.get("descricao"), verso) or verso
+
+            # A RESPOSTA NÃO VAI PARA `descricao` (issue #191).
+            #
+            # `metadata.frente`/`verso` é a fonte — medido: o mobile lê o metadata primeiro
+            # (`TrailupApiProvider.ts`) e só cai nas colunas como reserva. O código copiava o
+            # verso para `descricao`, e isso é a armadilha que a issue descreve: um campo com
+            # nome de legenda e conteúdo de resposta. Foi exatamente assim que o flashcard
+            # entregou a resposta na frente (#190) — um consumidor novo tratou `descricao` pelo
+            # nome.
+            #
+            # `titulo` continua com a pergunta: ali o nome não engana, serve de rótulo em
+            # listagem e é a reserva que o cliente já usa. `descricao` só guarda texto quando o
+            # gerador mandar algo que NÃO é o verso; senão fica vazia (a coluna é NOT NULL).
+            descricao_informada = self._pick_string(card.get("descricao")) or ""
+            descricao = "" if descricao_informada == verso else descricao_informada
 
             metadata = {
                 "personalizado": True,

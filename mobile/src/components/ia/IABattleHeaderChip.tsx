@@ -102,7 +102,6 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
   const profileName = resolveActiveBrainHexProfile(
     usuario?.perfis ?? null,
     usuario?.perfilAtivo,
-    "seeker",
   );
   const hasBattleSignal = getBrainHexProfileCapabilities(profileName).hasBattle;
   const palette = useMemo(() => getProfileShellPalette(profileName), [profileName]);

@@ -1,10 +1,11 @@
 import { useUsuario } from "@/context/SessaoContext";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { Stack } from "expo-router";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 export default function PerfilStack() {
     const { usuario } = useUsuario();
-    const palette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null);
+    const palette = getProfileShellPalette(perfilVisualDoAluno(usuario));
 
     return (
         <Stack

@@ -10,12 +10,24 @@ import { Hexagon, Eye, EyeOff, Mail, ArrowRight, Info, CheckCircle2, Download, S
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  ehCredencialInvalida,
+  ehEmailNaoConfirmado,
+  mensagemDeAcesso,
+  normalizarEmail,
+  validarAcesso,
+} from "@/lib/cadastroEmUmaEtapa";
 
 const STORAGE_PREFIX = "pending-signup:";
 const PLAY_STORE_LINK = import.meta.env.VITE_PLAY_STORE_LINK || "";
 const APK_LINK = import.meta.env.VITE_APK_URL || "";
 
-type Stage = "email" | "existing" | "new" | "confirm-sent" | "await-confirm" | "already";
+/**
+ * Uma etapa só para e-mail+senha (#329). Os estágios "email" / "existing" / "new" existiam
+ * porque `fn_auth_email_exists` dizia, ANTES do login, se o e-mail tinha conta — e dizia para
+ * qualquer pessoa na internet, sem limite. Agora quem decide é `signIn`/`signUp`.
+ */
+type Stage = "acesso" | "confirm-sent" | "await-confirm" | "already";
 
 const CadastroAluno = () => {
   const navigate = useNavigate();
@@ -28,10 +40,10 @@ const CadastroAluno = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [termos, setTermos] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [stage, setStage] = useState<Stage>("email");
+  const [stage, setStage] = useState<Stage>("acesso");
   const [infoMessage, setInfoMessage] = useState("");
 
-  const emailLower = email.trim().toLowerCase();
+  const emailLower = normalizarEmail(email);
 
   const resendConfirmation = async (emailLowercase: string) => {
     const { error } = await supabase.auth.resend({ type: "signup", email: emailLowercase });
@@ -43,95 +55,83 @@ const CadastroAluno = () => {
     return true;
   };
 
-  const handleCheckEmail = async () => {
-    if (!emailLower) {
-      toast.error("Informe o email.");
+  /** O que fazer quando o login deu certo: é o caminho de conta existente, intocado. */
+  const seguirComoContaExistente = async (signedUser: unknown) => {
+    const user = (signedUser as { id?: string } | null) ?? (await supabase.auth.getUser()).data.user;
+    if (!user) {
+      toast.error("Sessão não encontrada.");
       return;
     }
-    setIsLoading(true);
-    try {
-      const { data } = await supabase.rpc("fn_auth_email_exists", { p_email: emailLower });
-      const exists = data === true;
-      setStage(exists ? "existing" : "new");
-      setInfoMessage(
-        exists ? "Já existe uma conta com este email. Informe a senha para continuar." : "Email disponível. Crie uma senha para criar sua conta."
-      );
-    } catch (err) {
-      toast.error((err)?.message || "Erro ao validar email.");
-    } finally {
-      setIsLoading(false);
+
+    const { data: alunoRow } = await supabase.from("alunos").select("id").eq("id", user.id).maybeSingle();
+    const u = user as { email_confirmed_at?: string | null; confirmed_at?: string | null };
+    const emailConfirmed = Boolean(u?.email_confirmed_at ?? u?.confirmed_at);
+
+    if (alunoRow?.id) {
+      if (emailConfirmed) {
+        setStage("already");
+        setInfoMessage("Você já possui cadastro de aluno.");
+        return;
+      }
+      setStage("await-confirm");
+      setInfoMessage("Conta de aluno encontrada. Confirme seu email para continuar.");
+      return;
     }
+
+    localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`, JSON.stringify({ tipo: "aluno", email: emailLower }));
+    navigate("/auth/confirmacao");
+    setStage("confirm-sent");
+    setInfoMessage("Conta sem perfil. Finalize seu cadastro de aluno.");
   };
 
-  const handleLoginExisting = async () => {
-    if (!senha) {
-      toast.error("Informe a senha.");
+  /**
+   * Entrar OU criar, numa chamada só — e nesta ordem de propósito.
+   *
+   * `signIn` primeiro: sucesso já prova que a conta existe e a senha está certa, sem perguntar
+   * nada ao banco sobre o e-mail. Se falhar por credencial inválida, não se sabe se a conta não
+   * existe ou se a senha está errada — o Supabase não distingue, e é essa indistinção que
+   * substitui o oráculo que `fn_auth_email_exists` era.
+   */
+  const handleAcessar = async () => {
+    const dados = { email: emailLower, senha, confirmSenha, termos };
+    const erroEntrada = validarAcesso(dados, false);
+    if (erroEntrada) {
+      toast.error(erroEntrada);
       return;
     }
+
     setIsLoading(true);
     try {
       const { error: loginError, user: signedUser } = await signIn(emailLower, senha);
-      if (loginError) {
-        toast.error("Senha incorreta ou conta inválida.");
+
+      if (!loginError) {
+        await seguirComoContaExistente(signedUser);
         return;
       }
 
-      const user = signedUser ?? (await supabase.auth.getUser()).data.user;
-      if (!user) {
-        toast.error("Sessão não encontrada.");
-        return;
-      }
-
-      const { data: alunoRow } = await supabase.from("alunos").select("id").eq("id", user.id).maybeSingle();
-
-      const emailConfirmed = Boolean(user?.email_confirmed_at ?? user?.confirmed_at);
-
-      if (alunoRow?.id) {
-        if (emailConfirmed) {
-          setStage("already");
-          setInfoMessage("Você já possui cadastro de aluno.");
-          return;
-        }
+      if (ehEmailNaoConfirmado(loginError)) {
         setStage("await-confirm");
-        setInfoMessage("Conta de aluno encontrada. Confirme seu email para continuar.");
+        setInfoMessage(mensagemDeAcesso(loginError));
         return;
       }
 
+      if (!ehCredencialInvalida(loginError)) {
+        toast.error(mensagemDeAcesso(loginError));
+        return;
+      }
 
-      localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`, JSON.stringify({ tipo: "aluno", email: emailLower }));
-      navigate("/auth/confirmacao");
-      setStage("confirm-sent");
-      setInfoMessage("Conta sem perfil. Finalize seu cadastro de aluno.");
-    } catch (err) {
-      toast.error((err)?.message || "Erro ao autenticar.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      // Daqui para baixo é CRIAÇÃO. Exigir confirmação de senha e termos só agora não revela
+      // nada: a mesma exigência aparece para quem errou a senha de uma conta existente.
+      const erroCriacao = validarAcesso(dados, true);
+      if (erroCriacao) {
+        toast.error(erroCriacao);
+        return;
+      }
 
-  const handleCreateNew = async () => {
-    if (!senha || !confirmSenha) {
-      toast.error("Informe e confirme a senha.");
-      return;
-    }
-    if (senha.length < 6) {
-      toast.error("A senha deve ter pelo menos 6 caracteres.");
-      return;
-    }
-    if (senha !== confirmSenha) {
-      toast.error("As senhas não coincidem.");
-      return;
-    }
-    if (!termos) {
-      toast.error("É necessário aceitar os termos para continuar.");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await signUp(emailLower, senha, "aluno");
-      if (error) {
-        toast.error(error.message || "Erro ao criar conta.");
+      const { error: signUpError } = await signUp(emailLower, senha, "aluno");
+      if (signUpError) {
+        // `mensagemDeAcesso` devolve a MESMA frase de senha errada quando a conta já existe.
+        toast.error(mensagemDeAcesso(signUpError));
         return;
       }
 
@@ -139,14 +139,14 @@ const CadastroAluno = () => {
       setStage("confirm-sent");
       setInfoMessage("Enviamos um link de confirmação. Após confirmar, conclua seu cadastro.");
     } catch (err) {
-      toast.error((err )?.message || "Erro ao criar conta.");
+      toast.error(mensagemDeAcesso(err));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const renderEmailStep = () => (
-    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleCheckEmail(); }}>
+  const renderAcessoStep = () => (
+    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleAcessar(); }}>
       <div className="space-y-2">
         <Label htmlFor="email">Email</Label>
         <div className="relative group">
@@ -155,33 +155,17 @@ const CadastroAluno = () => {
             id="email"
             type="email"
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setStage("email");
-              setInfoMessage("");
-            }}
+            onChange={(e) => { setEmail(e.target.value); setInfoMessage(""); }}
             placeholder="exemplo@email.com"
             required
             className="pl-10 bg-card/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-primary/20 focus:border-primary/50 transition-all"
           />
         </div>
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Validando..." : "Continuar"}
-        <ArrowRight className="w-4 h-4 ml-2" />
-      </Button>
-    </form>
-  );
 
-  const renderExistingStep = () => (
-    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleLoginExisting(); }}>
-      <div className="flex items-start gap-2 p-3 rounded-md border bg-muted/40 text-sm text-muted-foreground">
-        <Info className="w-4 h-4 mt-0.5 text-primary" /> {infoMessage}
-      </div>
       <div className="space-y-2">
         <Label htmlFor="senha">Senha</Label>
-     
-          <div className="relative group">
+        <div className="relative group">
           <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input
             id="senha"
@@ -189,6 +173,7 @@ const CadastroAluno = () => {
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
             required
+            placeholder="Mínimo 6 caracteres"
             className="pl-10 pr-10 bg-card/50 border-border text-foreground focus:ring-primary/20 focus:border-primary/50"
           />
           <Button
@@ -201,101 +186,60 @@ const CadastroAluno = () => {
             {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </Button>
         </div>
-          {/* <Button type="button" variant="outline" onClick={() => setShowSenha((s) => !s)} className="shrink-0">
-            {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </Button> */}
-       
       </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Entrando..." : "Entrar e continuar"}
-        <Mail className="w-4 h-4 ml-2" />
-      </Button>
-    </form>
-  );
 
-  const renderNewStep = () => (
-    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleCreateNew(); }}>
+      <div className="space-y-2">
+        <Label htmlFor="confirm-senha">Confirmar senha</Label>
+        <div className="relative group">
+          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+          <Input
+            id="confirm-senha"
+            type={showConfirm ? "text" : "password"}
+            value={confirmSenha}
+            onChange={(e) => setConfirmSenha(e.target.value)}
+            placeholder="Repita a senha (só para criar conta)"
+            className="pl-10 pr-10 bg-card/50 border-border text-foreground focus:ring-primary/20 focus:border-primary/50"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:text-foreground hover:bg-transparent"
+            onClick={() => setShowConfirm((s) => !s)}
+          >
+            {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-start space-x-2">
+        <Checkbox id="termos" checked={termos} onCheckedChange={(v) => setTermos(Boolean(v))} />
+        <Label htmlFor="termos" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+          Li e aceito os{" "}
+          <a href="/termos" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-primary transition-colors">
+            termos de uso
+          </a>{" "}
+          e a{" "}
+          <a href="/privacidade" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-primary transition-colors">
+            política de privacidade
+          </a>
+          .
+        </Label>
+      </div>
+
       {infoMessage && (
         <div className="flex items-start gap-2 p-3 rounded-md border bg-muted/40 text-sm text-muted-foreground">
           <Info className="w-4 h-4 mt-0.5 text-primary" /> {infoMessage}
         </div>
       )}
-      <div className="space-y-2">
-        <Label htmlFor="senha">Senha</Label>
-        <div className="relative group">
-            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <Input
-              id="senha-new"
-              type={showSenha ? "text" : "password"}
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              required
-              className="pl-10 pr-10 bg-card/50 border-border text-foreground focus:ring-primary/20 focus:border-primary/50"
-              placeholder="Mínimo 6 caracteres"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:text-foreground hover:bg-transparent"
-              onClick={() => setShowSenha((s) => !s)}
-            >
-              {showSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </Button>
-          </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="confirm-senha">Confirmar senha</Label>
-        <div className="relative group">
-            <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <Input
-              id="confirm-senha"
-              type={showConfirm ? "text" : "password"}
-              value={confirmSenha}
-              onChange={(e) => setConfirmSenha(e.target.value)}
-              required
-              className="pl-10 pr-10 bg-card/50 border-border text-foreground focus:ring-primary/20 focus:border-primary/50"
-              placeholder="Repita a senha"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="absolute right-0 top-0 h-full w-10 text-muted-foreground hover:text-foreground hover:bg-transparent"
-              onClick={() => setShowConfirm((s) => !s)}
-            >
-              {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </Button>
-          </div>
-      </div>
-      <div className="flex items-start space-x-2">
-        <Checkbox id="termos" checked={termos} onCheckedChange={(v) => setTermos(Boolean(v))} />
-        <Label htmlFor="termos" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
-          Li e aceito os{" "}
-          <a 
-            href="/termos" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="underline underline-offset-2 hover:text-primary transition-colors"
-          >
-            termos de uso
-          </a>{" "}
-          e a{" "}
-          <a 
-            href="/privacidade" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="underline underline-offset-2 hover:text-primary transition-colors"
-          >
-            política de privacidade
-          </a>.
-        </Label>
-      </div>
 
       <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Processando..." : "Criar conta e enviar confirmação"}
-        <Mail className="w-4 h-4 ml-2" />
+        {isLoading ? "Verificando..." : "Entrar ou criar conta"}
+        <ArrowRight className="w-4 h-4 ml-2" />
       </Button>
+      <p className="text-xs text-muted-foreground text-center">
+        Confirmar a senha e aceitar os termos é necessário apenas quando a conta é nova.
+      </p>
     </form>
   );
 
@@ -345,9 +289,7 @@ const CadastroAluno = () => {
   );
 
   const renderCurrentStage = () => {
-    if (stage === "email") return renderEmailStep();
-    if (stage === "existing") return renderExistingStep();
-    if (stage === "new") return renderNewStep();
+    if (stage === "acesso") return renderAcessoStep();
     if (stage === "confirm-sent") return renderConfirmSent();
     if (stage === "await-confirm") return renderAwaitConfirm();
     if (stage === "already") return renderAlready();
@@ -362,7 +304,7 @@ const CadastroAluno = () => {
           <div className="flex flex-col items-center text-center space-y-4 mb-6">
             <AuthBrand />
             <h1 className="text-3xl font-bold">Cadastro de Aluno</h1>
-            <p className="text-muted-foreground">Inicie informando seu email.</p>
+            <p className="text-muted-foreground">Entre com seu e-mail e senha. Se ainda não tem conta, ela é criada na hora.</p>
           </div>
 
           {renderCurrentStage()}

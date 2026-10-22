@@ -36,6 +36,7 @@ import { formatFileSize } from "@/lib/utils";
 import { fonteDoTopico } from "./fonteDoTopico";
 import { formatoDaQuestao } from "./formatoDaQuestao";
 import { prazoDaAtividade, rotuloDoTipoDeAtividade } from "./atividades";
+import { prazoBancoParaLocal } from "@/lib/prazoDaAtividade";
 import { duplicateActivity, duplicateCard } from "./topicsApi";
 import {
   Plus,
@@ -1157,7 +1158,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                   </p>
                                 </div>
                                 <div className="flex gap-1">
-                                  <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => { setActivityForm({ ...a, id: a.id, descricao: a.descricao || "", tipo: a.tipo || "quiz", data_entrega: a.data_entrega || "" }); setSelectedActivityId(a.id.toString()); props.loadQuestions(a.id); }}><Pencil size={13} className="mr-1.5" />Editar</Button>
+                                  <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => { setActivityForm({ ...a, id: a.id, descricao: a.descricao || "", tipo: a.tipo || "quiz", /* `datetime-local` não aceita ISO com fuso: sem esta conversão o campo abre vazio (#177). */ data_entrega: prazoBancoParaLocal(a.data_entrega) }); setSelectedActivityId(a.id.toString()); props.loadQuestions(a.id); }}><Pencil size={13} className="mr-1.5" />Editar</Button>
                                   <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" disabled={duplicandoAtividade === aid} onClick={async () => {
                                     setDuplicandoAtividade(aid);
                                     try {
@@ -1249,6 +1250,18 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                               <div className="col-span-2 space-y-1">
                                 <Label className={darkLabelClass}>Instruções / Descrição</Label>
                                 <Textarea value={activityForm.descricao || ""} onChange={e => setActivityForm({...activityForm, descricao: e.target.value})} className={`${darkInputClass} col-span-2`} placeholder="Descrição" rows={2}/>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label className={darkLabelClass}>Prazo de entrega (opcional)</Label>
+                                <Input
+                                  type="datetime-local"
+                                  className={darkInputClass}
+                                  value={activityForm.data_entrega || ""}
+                                  onChange={(e) => setActivityForm({ ...activityForm, data_entrega: e.target.value })}
+                                />
+                                <p className="text-[11px] text-muted-foreground">
+                                  Vale no seu fuso. Deixe vazio para a atividade ficar sem prazo — atraso é aviso, não bloqueio.
+                                </p>
                               </div>
                             </div>
                             <Button size="sm" onClick={handleSaveActivityWithSync} className="w-full bg-muted hover:bg-muted mb-4">Salvar Detalhes</Button>

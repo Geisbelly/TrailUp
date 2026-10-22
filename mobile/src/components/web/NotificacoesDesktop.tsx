@@ -13,6 +13,7 @@ import { agruparPorData } from "@/utils/gruposNotificacao";
 import { iconeDaNotificacao } from "@/utils/iconeNotificacao";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Filtro = "todas" | "nao_lidas" | "lidas";
 const FILTROS: { id: Filtro; rotulo: string }[] = [
@@ -52,8 +53,8 @@ export function NotificacoesDesktop() {
   const { showConfirm, showDialog } = useDialog();
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis],
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario],
   );
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [aberta, setAberta] = useState<number | null>(null);

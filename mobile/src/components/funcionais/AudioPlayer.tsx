@@ -1,3 +1,4 @@
+import { getBrainHexGuideName } from "@/constants/profileImages";
 import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -5,7 +6,18 @@ import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import { type ImageCue } from "@/utils/audioImageCues";
 import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
 import { Ionicons } from "@expo/vector-icons";
-import { Audio, AVPlaybackStatus } from "expo-av";
+import { createAudioPlayer, setAudioModeAsync } from "expo-audio";
+import {
+  criarTocadorDeAudioWeb,
+  type TocadorDeAudioMinimo as TocadorDeAudio,
+} from "@/utils/tocadorDeAudioWeb";
+
+import {
+  AUDIO_PARADO,
+  estadoDeAudio,
+  segundosDeMillis,
+  type EstadoDeReproducao,
+} from "@/utils/estadoDeAudio";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,6 +29,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Props = {
   url: string;
@@ -26,14 +39,24 @@ type Props = {
   capaUrl?: string;
   imageCues?: ImageCue[];
   progressKey?: string;
+  /**
+   * Perfil BrainHex para o qual ESTE áudio foi gerado (`brainhex_profile_key` no metadata do
+   * bloco). Não é o perfil da tela: a pele é o `perfilAtivo`, que o aluno escolhe entre os
+   * representativos dele, enquanto o áudio foi narrado pelo guardião do perfil do material.
+   * Normalmente são o mesmo; quando não são, quem narrou não muda por causa da escolha de pele.
+   *
+   * Ausente em áudio do professor — e aí não há guardião nenhum a creditar.
+   */
+  perfilDoMaterial?: string | null;
 };
 
-type PlaybackState = {
-  isLoaded: boolean;
-  isPlaying: boolean;
-  durationMillis: number;
-  positionMillis: number;
-};
+/**
+ * O estado vem de `@/utils/estadoDeAudio`, e não é só reuso: o `expo-audio` reporta
+ * `currentTime`/`duration` em SEGUNDOS, enquanto este componente todo trabalha em
+ * milissegundos. A conversão fica num lugar só, com teste, porque errar o fator 1000 não quebra
+ * nada visivelmente — a barra fica parada e a retomada grava a posição errada.
+ */
+type PlaybackState = EstadoDeReproducao;
 
 function isHttpUrl(value: unknown): value is string {
   return typeof value === "string" && /^https?:\/\//i.test(value.trim());
@@ -51,24 +74,6 @@ function openExternalUrl(url?: string | null) {
   Linking.openURL(url).catch(() => null);
 }
 
-function normalizePlaybackStatus(status: AVPlaybackStatus): PlaybackState {
-  if (!status.isLoaded) {
-    return {
-      isLoaded: false,
-      isPlaying: false,
-      durationMillis: 0,
-      positionMillis: 0,
-    };
-  }
-
-  return {
-    isLoaded: true,
-    isPlaying: status.isPlaying,
-    durationMillis: status.durationMillis ?? 0,
-    positionMillis: status.positionMillis ?? 0,
-  };
-}
-
 export default function AudioPlayer({
   url,
   title = "Áudio",
@@ -77,14 +82,24 @@ export default function AudioPlayer({
   capaUrl,
   imageCues,
   progressKey,
+  perfilDoMaterial,
 }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
+  );
+  // Quem narra é o guardião do perfil do MATERIAL, não o da pele escolhida. Ver `perfilDoMaterial`.
+  const guiaQueNarra = useMemo(
+    () => (perfilDoMaterial ? getBrainHexGuideName(perfilDoMaterial) : null),
+    [perfilDoMaterial]
   );
   const sourceUrl = String(url ?? "").trim();
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const soundRef = useRef<TocadorDeAudio | null>(null);
+  // A assinatura do listener tem de ser guardada: `expo-audio` não tem o
+  // `setOnPlaybackStatusUpdate(null)` do `expo-av`, e listener que sobrevive ao player chama
+  // `setPlayback` depois de a tela sair.
+  const statusSubRef = useRef<{ remove: () => void } | null>(null);
   const resumePositionRef = useRef(0);
   const resumeLoadRef = useRef<Promise<number>>(Promise.resolve(0));
   const lastPersistedAtRef = useRef(0);
@@ -98,12 +113,7 @@ export default function AudioPlayer({
   const [resolvedCueUrls, setResolvedCueUrls] = useState<ImageCue[]>([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [playback, setPlayback] = useState<PlaybackState>({
-    isLoaded: false,
-    isPlaying: false,
-    durationMillis: 0,
-    positionMillis: 0,
-  });
+  const [playback, setPlayback] = useState<PlaybackState>(AUDIO_PARADO);
   const resumeStorageKey = useMemo(
     () => buildContentResumeKey(usuario?.id, "audio", progressKey ?? sourceUrl),
     [progressKey, sourceUrl, usuario?.id]
@@ -126,7 +136,7 @@ export default function AudioPlayer({
       if (!active) return;
       resumePositionRef.current = restored;
       setPlayback((current) => ({ ...current, positionMillis: resumePositionRef.current }));
-      if (soundRef.current) void soundRef.current.setPositionAsync(resumePositionRef.current);
+      if (soundRef.current) void soundRef.current.seekTo(segundosDeMillis(resumePositionRef.current));
       return restored;
     });
     resumeLoadRef.current = request.then((value) => value ?? 0);
@@ -177,9 +187,10 @@ export default function AudioPlayer({
 
     if (!currentSound) return;
 
-    currentSound.setOnPlaybackStatusUpdate(null);
+    statusSubRef.current?.remove();
+    statusSubRef.current = null;
     try {
-      await currentSound.unloadAsync();
+      currentSound.remove();
     } catch {}
   }, []);
 
@@ -191,12 +202,7 @@ export default function AudioPlayer({
       setResolvingUrl(false);
       setResolveError(null);
       setFailed(false);
-      setPlayback({
-        isLoaded: false,
-        isPlaying: false,
-        durationMillis: 0,
-        positionMillis: 0,
-      });
+      setPlayback(AUDIO_PARADO);
       return () => {
         active = false;
       };
@@ -252,9 +258,8 @@ export default function AudioPlayer({
       if (!playbackUrl) return null;
 
       if (soundRef.current) {
-        if (shouldPlay) {
-          await soundRef.current.playAsync();
-        }
+        // `play()` do `expo-audio` é síncrono (o `expo-av` devolvia Promise).
+        if (shouldPlay) soundRef.current.play();
         return soundRef.current;
       }
 
@@ -263,30 +268,47 @@ export default function AudioPlayer({
 
       try {
         const restoredPosition = await resumeLoadRef.current;
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          staysActiveInBackground: false,
-          shouldDuckAndroid: true,
-        });
+        // Os nomes do modo de áudio mudaram no `expo-audio` (`allowsRecordingIOS` ->
+        // `allowsRecording`, `playsInSilentModeIOS` -> `playsInSilentMode`,
+        // `staysActiveInBackground` -> `shouldPlayInBackground`, `shouldDuckAndroid` ->
+        // `interruptionMode`). Chave antiga é ignorada em silêncio, então tocar com a tela
+        // bloqueada ou em modo silencioso pararia de funcionar sem erro nenhum.
+        // O modo de áudio é do aparelho: silencioso, gravação, segundo plano, duck. Na web nada
+        // disso existe — quem decide é o navegador — e o ramo web do `expo-audio` não é usado
+        // aqui, então chamar isto só adicionaria um await que pode rejeitar à toa.
+        if (Platform.OS !== "web") {
+          await setAudioModeAsync({
+            allowsRecording: false,
+            playsInSilentMode: true,
+            shouldPlayInBackground: false,
+            interruptionMode: "duckOthers",
+          });
+        }
 
-        const { sound, status } = await Audio.Sound.createAsync(
-          { uri: playbackUrl },
-          {
-            shouldPlay,
-            progressUpdateIntervalMillis: 350,
-            positionMillis: restoredPosition,
-          }
-        );
-
+        // `createAudioPlayer` é síncrono e carrega em segundo plano — não há mais um `status`
+        // inicial para semear a tela. Quem preenche é o listener abaixo; até lá o estado fica
+        // `AUDIO_PARADO`, que é o mesmo que o `expo-av` reportava enquanto `isLoaded` era falso.
+        // Na web o tocador é o `<audio>` do HTML por trás do mesmo contrato (ver
+        // `tocadorDeAudioWeb`): a tela acima é uma só, no padrão do sistema, nas duas
+        // plataformas.
+        const sound: TocadorDeAudio =
+          Platform.OS === "web"
+            ? criarTocadorDeAudioWeb(playbackUrl)
+            : createAudioPlayer({ uri: playbackUrl }, { updateInterval: 350 });
         soundRef.current = sound;
-        setPlayback(normalizePlaybackStatus(status));
-        sound.setOnPlaybackStatusUpdate((nextStatus) => {
-          const normalized = normalizePlaybackStatus(nextStatus);
+
+        if (restoredPosition > 0) {
+          try {
+            await sound.seekTo(segundosDeMillis(restoredPosition));
+          } catch {}
+        }
+
+        statusSubRef.current = sound.addListener("playbackStatusUpdate", (nextStatus) => {
+          const normalized = estadoDeAudio(nextStatus);
           setPlayback(normalized);
           if (nextStatus.isLoaded && nextStatus.didJustFinish) {
             persistPosition(0);
-            void sound.setPositionAsync(0);
+            void sound.seekTo(0);
           } else if (nextStatus.isLoaded) {
             resumePositionRef.current = normalized.positionMillis;
             const now = Date.now();
@@ -296,6 +318,8 @@ export default function AudioPlayer({
             }
           }
         });
+
+        if (shouldPlay) sound.play();
 
         return sound;
       } catch {
@@ -317,19 +341,19 @@ export default function AudioPlayer({
     }
 
     if (playback.isPlaying) {
-      await soundRef.current.pauseAsync();
+      soundRef.current.pause();
       return;
     }
 
-    await soundRef.current.playAsync();
+    soundRef.current.play();
   }, [ensureSound, playback.isPlaying, playbackUrl]);
 
   const handleRestart = useCallback(async () => {
     const sound = await ensureSound(false);
     if (!sound) return;
-    await sound.setPositionAsync(0);
+    await sound.seekTo(0);
     persistPosition(0);
-    await sound.playAsync();
+    sound.play();
   }, [ensureSound, persistPosition]);
 
   const seekToRatio = useCallback(async (ratio: number, persist = false) => {
@@ -339,7 +363,7 @@ export default function AudioPlayer({
     setPlayback((current) => ({ ...current, positionMillis: nextPosition }));
     resumePositionRef.current = nextPosition;
     const sound = await ensureSound(false);
-    await sound?.setPositionAsync(nextPosition);
+    await sound?.seekTo(segundosDeMillis(nextPosition));
     if (persist) persistPosition(nextPosition);
   }, [ensureSound, persistPosition, playback.durationMillis]);
 
@@ -362,65 +386,6 @@ export default function AudioPlayer({
       Math.min(1, playback.positionMillis / Math.max(1, playback.durationMillis))
     );
   }, [playback.durationMillis, playback.positionMillis]);
-
-  if (Platform.OS === "web" && playbackUrl) {
-    return (
-      <View style={styles.wrapper}>
-        <View style={styles.header}>
-          {displayedImageUrl ? (
-            <Image source={{ uri: displayedImageUrl }} style={styles.coverImage} accessibilityIgnoresInvertColors />
-          ) : null}
-          <View style={styles.titleRow}>
-            <View
-              style={[
-                styles.iconBadge,
-                { backgroundColor: palette.accentMuted, borderColor: palette.border },
-              ]}
-            >
-              <Ionicons name="musical-notes-outline" size={16} color={palette.accent} />
-            </View>
-            <Text numberOfLines={1} style={[styles.title, { color: palette.text }]}>
-              {title}
-            </Text>
-          </View>
-
-          <Pressable
-            onPress={() => openExternalUrl(playbackUrl)}
-            style={[styles.iconButton, { borderColor: palette.border, backgroundColor: palette.surface }]}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir áudio"
-          >
-            <Ionicons name="open-outline" size={18} color={palette.textMuted} />
-          </Pressable>
-        </View>
-
-        {resolveError ? <Text style={styles.warningText}>{resolveError}</Text> : null}
-
-        <View style={[styles.audioShell, { borderColor: palette.border, backgroundColor: palette.surface }]}>
-          <audio
-            controls
-            preload="metadata"
-            src={playbackUrl}
-            style={{ width: "100%" }}
-            onLoadedMetadata={(event: any) => {
-              event.currentTarget.currentTime = resumePositionRef.current / 1000;
-            }}
-            onTimeUpdate={(event: any) => {
-              const position = Math.round(Number(event.currentTarget.currentTime || 0) * 1000);
-              resumePositionRef.current = position;
-              const now = Date.now();
-              if (now - lastPersistedAtRef.current >= 2000) {
-                lastPersistedAtRef.current = now;
-                persistPosition(position);
-              }
-            }}
-            onPause={(event: any) => persistPosition(Number(event.currentTarget.currentTime || 0) * 1000)}
-            onEnded={() => persistPosition(0)}
-          />
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.wrapper}>
@@ -542,6 +507,15 @@ export default function AudioPlayer({
         </View>
       </View>
 
+      {guiaQueNarra ? (
+        <View style={styles.narracaoRow}>
+          <Ionicons name="mic-outline" size={14} color={palette.accent} />
+          <Text style={[styles.narracaoText, { color: palette.textSubtle }]}>
+            Narrado por {guiaQueNarra}
+          </Text>
+        </View>
+      ) : null}
+
       {failed && fallbackText ? (
         <View
           style={[
@@ -609,8 +583,8 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
+    fontFamily: FontFamily.inikaBold,
     fontSize: 13,
-    fontWeight: "700",
   },
   iconButton: {
     width: 36,
@@ -622,6 +596,7 @@ const styles = StyleSheet.create({
   },
   warningText: {
     color: "#ffb3b3",
+    fontFamily: FontFamily.interMedium,
     fontSize: 12,
     lineHeight: 18,
   },
@@ -642,8 +617,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   metaTitle: {
+    fontFamily: FontFamily.inikaBold,
     fontSize: 13,
-    fontWeight: "600",
   },
   progressTrack: {
     height: 14,
@@ -667,6 +642,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   timeText: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 12,
+  },
+  narracaoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  narracaoText: {
+    fontFamily: FontFamily.interMedium,
     fontSize: 12,
   },
   primaryControl: {

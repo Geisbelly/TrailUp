@@ -1,9 +1,12 @@
 import { useUsuario } from "@/context/SessaoContext";
+import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
 import { Ionicons } from "@expo/vector-icons";
-import { AVPlaybackStatus, ResizeMode, Video as ExpoVideo } from "expo-av";
+import { VideoView, useVideoPlayer } from "expo-video";
+
+import { millisDeSegundos, segundosDeMillis } from "@/utils/estadoDeAudio";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,6 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Props = {
   url: string;
@@ -55,18 +59,43 @@ export default function VideoPlayer({
 }: Props) {
   const { usuario } = useUsuario();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const sourceUrl = String(url ?? "").trim();
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(
     isHttpUrl(sourceUrl) ? sourceUrl : null
   );
+
+  // Declarados aqui, e não mais abaixo: o `useVideoPlayer` precisa da URL, e os efeitos de
+  // listener precisam do player — os três têm de nascer antes de qualquer efeito usá-los.
+  const playbackUrl = resolvedUrl;
+  // Link do YouTube nunca foi tocado pelo player nativo: ele vai para o iframe (web) ou para a
+  // WebView (celular). Com o `expo-av` isso era automático, porque o `<Video>` só era MONTADO no
+  // ramo direto — nada carregava a URL no ramo do YouTube. O `useVideoPlayer` é um hook: roda
+  // sempre, mesmo quando a view que ele alimentaria não é renderizada. Dar a URL do YouTube a ele
+  // faz o player nativo baixar uma PÁGINA HTML como se fosse mídia, falhar, e o `statusChange`
+  // marcar `failed` — que `renderPlayer` consulta ANTES de escolher o iframe. O vídeo do
+  // professor sumia atrás de "Não foi possível reproduzir", sem o ramo do YouTube ter errado nada.
+  const isYouTube = useMemo(
+    () => Boolean(playbackUrl && /youtu\.be|youtube\.com/i.test(playbackUrl)),
+    [playbackUrl]
+  );
+  // `expo-video` separa o player da view: o `useVideoPlayer` cria (e libera) um player por
+  // fonte — ele é chaveado pelo `JSON.stringify` da source, então quando a URL resolve um player
+  // novo aparece e o antigo é liberado. Daí os listeners dependerem de `player`.
+  const player = useVideoPlayer(playbackUrl && !isYouTube ? { uri: playbackUrl } : null, (instancia) => {
+    // Em segundos no `expo-video`. 0.35s é o mesmo passo do `progressUpdateIntervalMillis: 350`
+    // que o `expo-av` usava — mudar isso muda a granularidade da telemetria de escuta.
+    instancia.timeUpdateEventInterval = 0.35;
+  });
+  // A retomada é aplicada UMA vez por player: `currentTime` antes do carregamento é ignorado,
+  // então o seek espera o status `readyToPlay`.
+  const retomadaAplicadaRef = useRef(false);
   const [resolvingUrl, setResolvingUrl] = useState(Boolean(sourceUrl));
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
-  const videoRef = useRef<ExpoVideo>(null);
   const resumePositionRef = useRef(0);
   const lastPersistedAtRef = useRef(0);
   const progressWidthRef = useRef(1);
@@ -94,7 +123,7 @@ export default function VideoPlayer({
       const restored = Math.max(0, saved?.positionMillis ?? 0);
       resumePositionRef.current = restored;
       setPositionMs(restored);
-      if (videoRef.current) void videoRef.current.setPositionAsync(restored);
+      if (player && retomadaAplicadaRef.current) player.currentTime = segundosDeMillis(restored);
     });
     return () => { active = false; };
   }, [resumeStorageKey]);
@@ -142,12 +171,11 @@ export default function VideoPlayer({
   }, [bucketHint, sourceUrl]);
 
   const seekBy = async (deltaMs: number) => {
-    if (!videoRef.current) return;
+    if (!player) return;
     try {
-      const status = await videoRef.current.getStatusAsync();
-      if (!status.isLoaded) return;
-      const next = Math.max(0, Math.min(status.durationMillis ?? 0, (status.positionMillis ?? 0) + deltaMs));
-      await videoRef.current.setPositionAsync(next);
+      // `seekBy` do `expo-video` recebe SEGUNDOS e já clampa nos limites da mídia — não há mais
+      // `getStatusAsync` para consultar antes.
+      player.seekBy(segundosDeMillis(Math.abs(deltaMs)) * Math.sign(deltaMs));
     } catch {
       // seek errors are non-fatal
     }
@@ -166,22 +194,39 @@ export default function VideoPlayer({
     hideSeekTimerRef.current = setTimeout(() => setShowSeekControls(false), 3000);
   };
 
-  const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
-    if (!status.isLoaded) return;
-    setPositionMs(status.positionMillis ?? 0);
-    setDurationMs(status.durationMillis ?? 0);
-    setIsPlaying(status.isPlaying ?? false);
-    if (status.didJustFinish) {
-      persistPosition(0);
-      return;
-    }
-    resumePositionRef.current = status.positionMillis ?? 0;
-    const now = Date.now();
-    if (!status.isPlaying || now - lastPersistedAtRef.current >= 2000) {
-      lastPersistedAtRef.current = now;
-      persistPosition(status.positionMillis ?? 0);
-    }
-  };
+  // O `onPlaybackStatusUpdate` único do `expo-av` virou quatro eventos. A telemetria de escuta
+  // (posição persistida a cada 2s e no pause) continua saindo do `timeUpdate`, que é o
+  // equivalente direto; os outros três cobrem o que o status agregado trazia junto.
+  useEffect(() => {
+    if (!player) return;
+    retomadaAplicadaRef.current = false;
+
+    const assinaturas = [
+      player.addListener("timeUpdate", ({ currentTime }) => {
+        const posicao = millisDeSegundos(currentTime);
+        setPositionMs(posicao);
+        setDurationMs(millisDeSegundos(player.duration));
+        resumePositionRef.current = posicao;
+        const now = Date.now();
+        if (!player.playing || now - lastPersistedAtRef.current >= 2000) {
+          lastPersistedAtRef.current = now;
+          persistPosition(posicao);
+        }
+      }),
+      player.addListener("playingChange", ({ isPlaying: tocando }) => setIsPlaying(tocando)),
+      player.addListener("playToEnd", () => persistPosition(0)),
+      player.addListener("statusChange", ({ status }) => {
+        if (status === "error") setFailed(true);
+        if (status !== "readyToPlay" || retomadaAplicadaRef.current) return;
+        retomadaAplicadaRef.current = true;
+        setDurationMs(millisDeSegundos(player.duration));
+        const retomar = resumePositionRef.current;
+        if (retomar > 0) player.currentTime = segundosDeMillis(retomar);
+      }),
+    ];
+
+    return () => assinaturas.forEach((assinatura) => assinatura.remove());
+  }, [persistPosition, player]);
 
   const seekToLocation = useCallback(async (locationX: number, commit = false) => {
     if (!durationMs) return;
@@ -189,8 +234,8 @@ export default function VideoPlayer({
     const next = Math.round(durationMs * ratio);
     setPositionMs(next);
     resumePositionRef.current = next;
-    if (!commit || !videoRef.current) return;
-    await videoRef.current.setPositionAsync(next);
+    if (!commit || !player) return;
+    player.currentTime = segundosDeMillis(next);
     persistPosition(next);
   }, [durationMs, persistPosition]);
 
@@ -201,11 +246,7 @@ export default function VideoPlayer({
     return `${min}:${sec.toString().padStart(2, '0')}`;
   }
 
-  const playbackUrl = resolvedUrl;
-  const isYouTube = useMemo(
-    () => Boolean(playbackUrl && /youtu\.be|youtube\.com/i.test(playbackUrl)),
-    [playbackUrl]
-  );
+
   const videoId = useMemo(
     () => (playbackUrl && isYouTube ? getYouTubeId(playbackUrl) : null),
     [isYouTube, playbackUrl]
@@ -272,19 +313,14 @@ export default function VideoPlayer({
 
     return (
       <Pressable onPress={handleVideoAreaTap} style={{ flex: 1 }}>
-        <ExpoVideo
-          ref={videoRef}
-          source={{ uri: playbackUrl }}
+        <VideoView
+          player={player}
           style={[
             fullscreen ? styles.nativeVideoFullscreen : styles.nativeVideo,
             { backgroundColor: palette.surface },
           ]}
-          resizeMode={ResizeMode.CONTAIN}
-          useNativeControls={false}
-          shouldPlay={false}
-          positionMillis={resumePositionRef.current}
-          onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-          onError={() => setFailed(true)}
+          contentFit="contain"
+          nativeControls={false}
         />
         {showSeekControls && (
           <View style={[seekStyles.overlay, { backgroundColor: 'rgba(0,0,0,0.45)' }]}>
@@ -302,9 +338,9 @@ export default function VideoPlayer({
               <Pressable
                 onPress={() => {
                   if (isPlaying) {
-                    videoRef.current?.pauseAsync();
+                    player?.pause();
                   } else {
-                    videoRef.current?.playAsync();
+                    player?.play();
                   }
                 }}
                 style={seekStyles.playBtn}
@@ -617,8 +653,8 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
+    fontFamily: FontFamily.inikaBold,
     fontSize: 13,
-    fontWeight: "700",
   },
   actions: {
     flexDirection: "row",
@@ -634,6 +670,7 @@ const styles = StyleSheet.create({
   },
   warningText: {
     color: "#ffb3b3",
+    fontFamily: FontFamily.interMedium,
     fontSize: 12,
     lineHeight: 18,
   },
@@ -665,6 +702,7 @@ const styles = StyleSheet.create({
     minHeight: 320,
   },
   feedbackText: {
+    fontFamily: FontFamily.interMedium,
     textAlign: "center",
     lineHeight: 20,
   },
@@ -675,7 +713,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   secondaryButtonText: {
-    fontWeight: "700",
+    fontFamily: FontFamily.inikaBold,
   },
   fullscreenModal: {
     flex: 1,
@@ -691,10 +729,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   fullscreenTitle: {
+    fontFamily: FontFamily.inikaBold,
     fontSize: 16,
-    fontWeight: "700",
   },
   fullscreenSubtitle: {
+    fontFamily: FontFamily.interMedium,
     fontSize: 12,
   },
   fullscreenPlayerShell: {
@@ -728,6 +767,7 @@ const seekStyles = StyleSheet.create({
   },
   seekLabel: {
     color: '#fff',
+    fontFamily: FontFamily.interMedium,
     fontSize: 11,
   },
   playBtn: {
@@ -757,6 +797,7 @@ const seekStyles = StyleSheet.create({
   },
   timeText: {
     color: '#fff',
+    fontFamily: FontFamily.interMedium,
     fontSize: 11,
     minWidth: 36,
   },

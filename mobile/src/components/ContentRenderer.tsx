@@ -11,7 +11,6 @@ import {
   isPresentationUrl,
   looksLikeMarkdown,
 } from "@/utils/contentBlocks";
-import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 import { parseImageCues } from "@/utils/audioImageCues";
 import React from "react";
@@ -24,6 +23,7 @@ import AudioPlayer from "./funcionais/AudioPlayer";
 import VideoPlayer from "./funcionais/VideoPlayer";
 import { resolveMediaText, resolveMediaTitle, resolveMediaUrl } from "@/utils/mediaPayload";
 import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 function loadWebView(): React.ComponentType<any> | null {
   if (Platform.OS === "web") return null;
@@ -204,6 +204,12 @@ function renderAudio(block: ContentBlock, topicoId?: number | null) {
   const title = payload ? readString(payload, "title", "legenda") : null;
   const fallbackText = metadata ? readString(metadata, "fallbackText") : null;
   const capaUrl = metadata ? readString(metadata, "capaUrl") : null;
+  // O metadata do bloco personalizado carrega o perfil para o qual o material foi gerado
+  // (`resolveStorageDefaults` em `personalization.ts`). É o que diz QUEM narrou o áudio. Bloco
+  // do professor não tem essa chave, e aí não há guardião a creditar.
+  const perfilDoMaterial = metadata
+    ? readString(metadata, "brainhex_profile_key", "profile_key", "perfil_dominante")
+    : null;
   const rawImageCues = metadata && Array.isArray((metadata as Record<string, unknown>).imageCues)
     ? (metadata as Record<string, unknown>).imageCues
     : null;
@@ -220,6 +226,7 @@ function renderAudio(block: ContentBlock, topicoId?: number | null) {
       fallbackText={fallbackText ?? undefined}
       capaUrl={capaUrl ?? undefined}
       imageCues={imageCues ?? undefined}
+      perfilDoMaterial={perfilDoMaterial}
       progressKey={resumeIdentity(topicoId, block)}
     />
   );
@@ -228,14 +235,10 @@ function renderAudio(block: ContentBlock, topicoId?: number | null) {
 export function ContentRenderer({ blocks, WebView, topicoId, onDeckProgressEvent }: Props) {
   const { usuario } = useUsuario();
   const palette = React.useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const resolvedWebView = WebView ?? DefaultWebView;
-  // Web em tela larga (#346, protótipo v4): o console grava o texto do professor
-  // como "texto", mas o campo é "Material (Markdown)". Quando ele parece
-  // markdown, a leitura sai formatada (títulos, listas, destaques).
-  const desktop = useDesktopWeb();
 
   if (!blocks?.length) return null;
 
@@ -243,7 +246,11 @@ export function ContentRenderer({ blocks, WebView, topicoId, onDeckProgressEvent
     <>
       {blocks.map((block) => {
         if (block.tipo === "texto") {
-          if (desktop && looksLikeMarkdown(resolveMediaText(block.payload))) {
+          // A inferencia de tipo (`inferBlockType`) ja devolve "markdown" para o material do
+          // professor que parece markdown — esta rede existe para bloco montado fora de
+          // `normalizeContentBlock`. Nao tem mais a condicao de tela larga do #497: o celular
+          // e a web estreita liam o markdown cru por causa dela (#507).
+          if (looksLikeMarkdown(resolveMediaText(block.payload))) {
             return (
               <View key={block.id}>
                 <MarkdownBlock payload={block.payload} WebView={resolvedWebView} />

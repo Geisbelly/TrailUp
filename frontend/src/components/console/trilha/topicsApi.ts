@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { prazoLocalParaBanco } from "@/lib/prazoDaAtividade";
 import { nivelParaOBanco } from "./dificuldadeDaQuestao";
 import { normalizeOptionalPositiveScore } from "@/lib/question-score";
 import { deleteContentCascade } from "./classDeletion";
@@ -189,6 +190,18 @@ export async function saveActivity(params: {
 }) {
   // Atividade sem pontuação informada não mexe na coluna (editar o título não pode zerá-la).
   const pontuacao = params.pontuacao_maxima === undefined ? {} : { pontuacao_maxima: params.pontuacao_maxima };
+
+  // PRAZO: converter aqui, e não em cada formulário (issue #177).
+  //
+  // `<input type="datetime-local">` devolve `AAAA-MM-DDTHH:MM` SEM fuso, e o Postgres lê isso
+  // como meia-noite da SESSÃO, que no Supabase é UTC. O professor em Brasília marcando
+  // `2026-09-20T00:00` ficava com um prazo que vence às 21h do dia 19 — um dia inteiro antes, e
+  // o aluno sem como entender por quê. Qualquer hora antes de 03:00 cai no dia errado.
+  //
+  // Esta é a única camada por onde os dois formulários do editor passam, então converter aqui
+  // cobre criação e edição de uma vez; `prazoLocalParaBanco` deixa passar valor que já traz
+  // fuso, para o caminho de edição não deslocar o prazo a cada salvamento.
+  const prazo = prazoLocalParaBanco(params.data_entrega);
   if (params.id) {
     const { error } = await supabase
       .from("atividades")
@@ -196,7 +209,7 @@ export async function saveActivity(params: {
         titulo: params.titulo,
         descricao: params.descricao,
         tipo: params.tipo || null,
-        data_entrega: params.data_entrega || null,
+        data_entrega: prazo,
         ...pontuacao,
       })
       .eq("id", params.id);
@@ -211,7 +224,7 @@ export async function saveActivity(params: {
       titulo: params.titulo,
       descricao: params.descricao,
       tipo: params.tipo || null,
-      data_entrega: params.data_entrega || null,
+      data_entrega: prazo,
       ...pontuacao,
     })
     .select("id")

@@ -20,6 +20,7 @@ import React from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import tinycolor from "tinycolor2";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 export default function NotificacaoDetalhe() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,10 +29,10 @@ export default function NotificacaoDetalhe() {
   const { usuario } = useUsuario();
   const { setLoading: setGlobalLoading } = useLoading();
   const palette = React.useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
-  const activeProfile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
+  const activeProfile = perfilVisualDoAluno(usuario);
   const profileEmphasis = getProfileGuideEmphasis(activeProfile, "notifications");
   const headerGuideRef = React.useRef<View | null>(null);
   const bodyGuideRef = React.useRef<View | null>(null);

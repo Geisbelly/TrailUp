@@ -32,6 +32,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Filter = "geral" | "perfil_majoritario" | "outros_perfis";
 const filters: { key: Filter; label: string }[] = [
@@ -55,7 +56,7 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
   const router = useRouter();
   const { ranking, carregando, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
-  const profile = usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome;
+  const profile = perfilVisualDoAluno(usuario);
   const palette = getProfileShellPalette(profile);
   const rank = ranking?.ranks.find((item) => item.info.rank_id === rankId);
   const [filter, setFilter] = useState<Filter>("geral");

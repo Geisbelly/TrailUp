@@ -55,8 +55,34 @@ describe("saveActivity", () => {
     expect(sb.chamadas[0]).toMatchObject({
       tabela: "atividades",
       op: "insert",
-      payload: { topico_id: 4, titulo: "Quiz", descricao: "d", tipo: "quiz", data_entrega: "2026-10-20" },
+      payload: { topico_id: 4, titulo: "Quiz", descricao: "d" as string, tipo: "quiz" },
     });
+    // O PRAZO NÃO VAI MAIS CRU — e esta expectativa mudou de propósito (issue #177).
+    //
+    // Antes o teste exigia `data_entrega: "2026-10-20"`, ou seja, codificava o defeito: o
+    // Postgres lê data sem fuso como meia-noite da sessão (UTC no Supabase), e o prazo "20/10"
+    // passava a vencer às 21h do dia 19 em Brasília. Agora `saveActivity` converte, e o que se
+    // cobra é o INSTANTE: o fim do dia 20 no fuso de quem escolheu.
+    const gravado = new Date((sb.chamadas[0].payload as { data_entrega: string }).data_entrega);
+    expect(gravado.getFullYear()).toBe(2026);
+    expect(gravado.getMonth()).toBe(9);
+    expect(gravado.getDate()).toBe(20);
+    expect(gravado.getHours()).toBe(23);
+    expect(gravado.getMinutes()).toBe(59);
+  });
+
+  it("prazo com hora escolhida é gravado no fuso de quem escolheu", async () => {
+    await saveActivity({ topico_id: 4, titulo: "Quiz", descricao: "d", data_entrega: "2026-10-20T08:30" });
+    const gravado = new Date((sb.chamadas[0].payload as { data_entrega: string }).data_entrega);
+    expect(gravado.getDate()).toBe(20);
+    expect(gravado.getHours()).toBe(8);
+    expect(gravado.getMinutes()).toBe(30);
+  });
+
+  it("prazo que já vem do banco (com fuso) não desloca ao salvar de novo", async () => {
+    // Caminho de edição: o formulário carrega o valor do banco e grava de volta.
+    await saveActivity({ id: 9, topico_id: 4, titulo: "Novo", descricao: "d", data_entrega: "2026-10-20T23:59:00.000Z" });
+    expect((sb.chamadas[0].payload as { data_entrega: string }).data_entrega).toBe("2026-10-20T23:59:00.000Z");
   });
 
   it("tipo e prazo vazios viram null, nunca string vazia", async () => {

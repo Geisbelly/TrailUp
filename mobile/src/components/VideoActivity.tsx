@@ -7,6 +7,7 @@ import { ContentRenderer } from "./ContentRenderer";
 import VideoPlayer from "./funcionais/VideoPlayer";
 import { normalizeContentBlock } from "@/utils/contentBlocks";
 import type { ContentBlock } from "@/interfaces/componentes_simples/IContentBlock";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Props = {
   atividade: any;
@@ -15,7 +16,7 @@ type Props = {
 
 export default function VideoActivity({ atividade }: Props) {
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null);
+  const palette = getProfileShellPalette(perfilVisualDoAluno(usuario));
   const url =
     atividade?.conteudos?.[0]?.conteudo ??
     atividade?.url ??

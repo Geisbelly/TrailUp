@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  ehFuncaoAusenteNoBanco,
   normalizeDesafio,
   placarDoAluno,
   proximaQuestao,
+  respostaFoiCompetitiva,
   tentativasIniciais,
   tentativasPorQuestao,
 } from "./desafioModel";
@@ -154,5 +156,30 @@ describe("arena x guilda (20261021_19)", () => {
     assert.equal(arena.competitivo, true);
     assert.equal(tentativasPorQuestao(arena), 1);
     assert.equal(tentativasIniciais(arena, 20), 1);
+  });
+});
+
+describe("um ponto de entrada para responder (20261021_27)", () => {
+  it("funcao ausente no banco e reconhecida pelo codigo e pelo texto", () => {
+    assert.equal(ehFuncaoAusenteNoBanco({ code: "PGRST202" }), true);
+    assert.equal(
+      ehFuncaoAusenteNoBanco({ message: "Could not find the function public.desafio_responder" }),
+      true,
+    );
+    // Nao confundir com erro de regra do proprio desafio: cair no par antigo ali esconderia o
+    // 22023 e o aluno responderia pelas regras erradas.
+    assert.equal(ehFuncaoAusenteNoBanco({ code: "22023", message: "guilda_desafio_e_da_arena" }), false);
+    assert.equal(ehFuncaoAusenteNoBanco({ message: "permission denied" }), false);
+    assert.equal(ehFuncaoAusenteNoBanco(null), false);
+  });
+
+  it("quem diz se a resposta foi competitiva e o retorno, nao a tela", () => {
+    // O caso que motivou a unificacao: a tela abriu o desafio sem adversario, o adversario
+    // aceitou no meio, e o banco respondeu pelas regras da arena.
+    assert.equal(respostaFoiCompetitiva({ competitivo: true, correta: true }, false), true);
+    assert.equal(respostaFoiCompetitiva({ competitivo: false, tentativas_restantes: 1 }, true), false);
+    // Par antigo (sem a 20261021_27): nao ha chave, entao vale a suposicao da tela.
+    assert.equal(respostaFoiCompetitiva({ correta: true, registrada: true }, true), true);
+    assert.equal(respostaFoiCompetitiva({ correta: false }, false), false);
   });
 });

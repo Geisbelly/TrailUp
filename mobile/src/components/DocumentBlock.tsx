@@ -43,6 +43,7 @@ import { WebContentFrame } from "./WebContentFrame";
 import { isHtmlDeckUrl } from "@/utils/htmlDeck";
 import { resolveMediaUrl } from "@/utils/mediaPayload";
 import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Props = {
   tipo: "pdf" | "documento" | "apresentacao" | "embed";
@@ -708,8 +709,8 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
   const { usuario } = useUsuario();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const palette = useMemo(
-    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
-    [usuario?.perfilAtivo, usuario?.perfis]
+    () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
+    [usuario]
   );
   const viewerTheme = useMemo<ViewerTheme>(
     () => ({
