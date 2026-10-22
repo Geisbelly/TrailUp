@@ -132,3 +132,4 @@ src/styles/botoesDaTrilha.test.ts
 src/utils/perfilVisualUnico.test.ts
 src/utils/markdownDoProfessor.test.ts
 src/app/perfilColunaGrudada.test.ts
+src/utils/envDoBuild.test.ts
