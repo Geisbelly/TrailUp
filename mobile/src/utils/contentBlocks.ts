@@ -354,11 +354,20 @@ export function inferBlockType(input: {
     });
   }
 
+  // O conteudo do tipo "texto" do console E' o campo de markdown: o rotulo e' "Material
+  // (Markdown)", o placeholder e' "# Digite seu conteudo aqui..." e tem o selo "Markdown
+  // Suportado" ao lado. Respeitar o tipo declarado as cegas fazia o aluno ler "# Titulo" e
+  // "1." crus na tela (#507) -- so a web em tela larga escapava, por uma excecao no
+  // ContentRenderer que agora nao precisa mais existir.
+  //
+  // A checagem fica ACIMA do tipo declarado de proposito. Ela e' conservadora:
+  // `looksLikeMarkdown` exige titulo, bloco de codigo, ou dois sinais diferentes -- uma lista
+  // numerada sozinha num texto corrido nao basta, entao prosa continua sendo prosa.
+  if (looksLikeMarkdown(input.text)) return "markdown";
+
   if (declared.includes("texto") || declared.includes("text/plain")) {
     return "texto";
   }
-
-  if (looksLikeMarkdown(input.text)) return "markdown";
 
   return "texto";
 }

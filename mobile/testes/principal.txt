@@ -127,3 +127,4 @@ src/utils/paletaPorPerfil.test.ts
 src/components/funcionais/mediaPlayers.paleta.test.tsx
 src/components/tipografiaDosBlocos.test.ts
 src/components/personalizacaoPorPerfil.test.ts
+src/utils/markdownDoProfessor.test.ts

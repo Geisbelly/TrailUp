@@ -11,7 +11,6 @@ import {
   isPresentationUrl,
   looksLikeMarkdown,
 } from "@/utils/contentBlocks";
-import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 import { parseImageCues } from "@/utils/audioImageCues";
 import React from "react";
@@ -239,10 +238,6 @@ export function ContentRenderer({ blocks, WebView, topicoId, onDeckProgressEvent
     [usuario?.perfilAtivo, usuario?.perfis]
   );
   const resolvedWebView = WebView ?? DefaultWebView;
-  // Web em tela larga (#346, protótipo v4): o console grava o texto do professor
-  // como "texto", mas o campo é "Material (Markdown)". Quando ele parece
-  // markdown, a leitura sai formatada (títulos, listas, destaques).
-  const desktop = useDesktopWeb();
 
   if (!blocks?.length) return null;
 
@@ -250,7 +245,11 @@ export function ContentRenderer({ blocks, WebView, topicoId, onDeckProgressEvent
     <>
       {blocks.map((block) => {
         if (block.tipo === "texto") {
-          if (desktop && looksLikeMarkdown(resolveMediaText(block.payload))) {
+          // A inferencia de tipo (`inferBlockType`) ja devolve "markdown" para o material do
+          // professor que parece markdown — esta rede existe para bloco montado fora de
+          // `normalizeContentBlock`. Nao tem mais a condicao de tela larga do #497: o celular
+          // e a web estreita liam o markdown cru por causa dela (#507).
+          if (looksLikeMarkdown(resolveMediaText(block.payload))) {
             return (
               <View key={block.id}>
                 <MarkdownBlock payload={block.payload} WebView={resolvedWebView} />
