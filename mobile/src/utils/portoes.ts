@@ -15,10 +15,26 @@
 // com a posicao real, nao zerada. Isto aqui e apresentacao; o corte em 15,
 // aquele sim, e de dados e mora na view.
 
+/**
+ * ## Quem decide agora e' o banco
+ *
+ * O `abre` de cada portao abaixo era a decisao: o cliente contava `conteudo_aluno` e
+ * `topico_aluno` em duas consultas e avaliava aqui. Isso tinha dois defeitos medidos:
+ *
+ * 1. a conta era GLOBAL — nao ha `classe_id` em nenhuma das duas tabelas —, entao concluir
+ *    em uma turma abria a aba em todas;
+ * 2. qualquer erro de rede virava zero, por decisao explicita ("erro nao pode abrir portao"),
+ *    e o aluno com o conteudo concluido via cadeado e uma instrucao falsa de como destravar.
+ *
+ * A decisao agora e' a view `vw_portoes_do_aluno`, por (aluno, turma). O que sobra aqui e' o
+ * TEXTO da cerimonia — titulo, promessa, passos — e `abre` como registro legivel da regra que a
+ * view implementa. Mudar `abre` nao muda mais nada em tela; a regra mora na migration
+ * `20261022_02`.
+ */
 export type Funcionalidade = "social" | "rank";
 
 /** Muda quando os portoes mudam: a cerimonia volta a aparecer. */
-export const PORTOES_VERSAO = 1;
+export const PORTOES_VERSAO = 2;
 
 export interface ProgressoDoAluno {
   conteudosConcluidos: number;
@@ -112,6 +128,10 @@ export function cerimoniasPendentes(
  * portões volte a mostrar a cerimônia, do mesmo jeito que o tour de primeiro
  * acesso faz.
  */
-export function chaveDaCerimonia(userId: string, funcionalidade: Funcionalidade): string {
-  return `trailup:portao:v${PORTOES_VERSAO}:${userId}:${funcionalidade}`;
+export function chaveDaCerimonia(
+  userId: string,
+  funcionalidade: Funcionalidade,
+  classeId: number,
+): string {
+  return `trailup:portao:v${PORTOES_VERSAO}:${userId}:${classeId}:${funcionalidade}`;
 }

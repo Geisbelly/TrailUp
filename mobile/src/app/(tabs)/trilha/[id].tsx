@@ -1841,7 +1841,11 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 <Pressable
                   style={[
                     styles.secondaryButton,
-                    { borderColor: profilePalette.accent, marginTop: 14 },
+                    {
+                      backgroundColor: profilePalette.surface,
+                      borderColor: profilePalette.accent,
+                      marginTop: 14,
+                    },
                     leituraLarga && [styles.botaoBagDesktop, { borderColor: profilePalette.borderStrong }],
                   ]}
                   onPress={() => {
@@ -1961,7 +1965,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                   }}
                   accessibilityRole="button"
                 >
-                  <Text style={styles.secondaryButtonText}>
+                  <Text style={[styles.secondaryButtonText, { color: profilePalette.text }]}>
                     Revisar tópico
                   </Text>
                 </Pressable>
@@ -1985,7 +1989,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 accessibilityRole="button"
                 accessibilityState={{ disabled: !canBack }}
               >
-                <Text style={styles.secondaryButtonText}>Voltar</Text>
+                <Text style={[styles.secondaryButtonText, { color: profilePalette.text }]}>Voltar</Text>
               </Pressable>
 
               <Pressable
@@ -2019,7 +2023,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 }}
                 accessibilityRole="button"
                 >
-                  <Text style={styles.buttonText}>
+                  <Text style={[styles.buttonText, { color: profilePalette.background }]}>
                   {canContinue ? "Continuar" : "Concluir módulo"}
                   </Text>
                 </Pressable>
