@@ -7,7 +7,6 @@ e que o retorno não invente chave que o caminho escolhido não produz.
 """
 
 import importlib.util
-import re
 from io import StringIO
 from pathlib import Path
 
