@@ -119,3 +119,11 @@ src/utils/realtimeDeleteObservavel.test.ts
 src/utils/eixosDoDesafio.test.ts
 src/services/eventos/eventoModel.test.ts
 src/services/missoes/missaoModel.test.ts
+src/utils/estadoDeAudio.test.ts
+src/components/funcionais/VideoPlayer.youtube.test.tsx
+src/utils/tocadorDeAudioWeb.test.ts
+src/components/funcionais/AudioPlayer.tela.test.tsx
+src/utils/paletaPorPerfil.test.ts
+src/components/funcionais/mediaPlayers.paleta.test.tsx
+src/components/tipografiaDosBlocos.test.ts
+src/components/personalizacaoPorPerfil.test.ts

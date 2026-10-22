@@ -1,4 +1,5 @@
 import { SeloDePrazo } from "@/components/SeloDePrazo";
+import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
 import { carregarInventario, usarItem, usosPermitidos } from "@/services/loja/lojaService";
 import {
@@ -10,7 +11,9 @@ import {
   type ItemUsavel,
   type PermissaoDeUso,
 } from "@/services/loja/usoItem";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { FontFamily } from "@/styles/GlobalStyle";
+import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 type Props = {
@@ -33,6 +36,11 @@ export function UsarItemNaAtividade({
   dataEntrega,
   onSegundaChance,
 }: Props) {
+  const { usuario } = useUsuario();
+  const palette = useMemo(
+    () => getProfileShellPalette(usuario?.perfilAtivo ?? usuario?.perfis?.[0]?.nome ?? null),
+    [usuario?.perfilAtivo, usuario?.perfis]
+  );
   const [itens, setItens] = useState<ItemUsavel[]>([]);
   const [permissoes, setPermissoes] = useState<Record<string, PermissaoDeUso>>({});
   const [prazoEfetivo, setPrazoEfetivo] = useState<string | null>(null);
@@ -104,7 +112,7 @@ export function UsarItemNaAtividade({
   return (
     <View style={s.caixa}>
       <SeloDePrazo dataEntrega={prazo} />
-      {tempo ? <Text style={s.tempo}>{tempo}</Text> : null}
+      {tempo ? <Text style={[s.tempo, { color: palette.textMuted }]}>{tempo}</Text> : null}
       {itens.map((item) => {
         const botao = botaoDeUso(item, permissoes[item.codigo] ?? null);
         const desligado = usando != null || !botao.habilitado;
@@ -116,20 +124,20 @@ export function UsarItemNaAtividade({
               accessibilityState={{ disabled: desligado, busy: usando === item.codigo }}
               disabled={desligado}
               onPress={() => void usar(item)}
-              style={[s.botao, !botao.habilitado && s.botaoDesligado]}
+              style={[s.botao, { backgroundColor: palette.surface, borderColor: palette.border }, !botao.habilitado && s.botaoDesligado]}
             >
               {usando === item.codigo ? (
-                <ActivityIndicator color="#e8e8e8" />
+                <ActivityIndicator color={palette.accent} />
               ) : (
-                <Text style={[s.botaoTexto, !botao.habilitado && s.textoDesligado]}>{botao.texto}</Text>
+                <Text style={[s.botaoTexto, { color: botao.habilitado ? palette.text : palette.textSubtle }]}>{botao.texto}</Text>
               )}
             </Pressable>
-            <Text style={s.detalhe}>{botao.motivo ?? botao.detalhe}</Text>
+            <Text style={[s.detalhe, { color: palette.textSubtle }]}>{botao.motivo ?? botao.detalhe}</Text>
           </View>
         );
       })}
       {aviso ? (
-        <Text accessibilityLiveRegion="polite" style={s.aviso}>
+        <Text accessibilityLiveRegion="polite" style={[s.aviso, { color: palette.textMuted }]}>
           {aviso}
         </Text>
       ) : null}
@@ -139,19 +147,17 @@ export function UsarItemNaAtividade({
 
 const s = StyleSheet.create({
   caixa: { gap: 8, marginHorizontal: 16, marginTop: 8, marginBottom: 4 },
-  tempo: { color: "#C9CED6", fontSize: 13, fontWeight: "600" },
+  tempo: { fontFamily: FontFamily.interMedium, fontSize: 13 },
   linha: { gap: 4 },
   botao: {
     alignSelf: "flex-start",
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#3A4150",
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   botaoDesligado: { opacity: 0.55 },
-  botaoTexto: { color: "#e8e8e8", fontSize: 13, fontWeight: "700" },
-  textoDesligado: { color: "#9AA1AD" },
-  detalhe: { color: "#9AA1AD", fontSize: 12 },
-  aviso: { color: "#C9CED6", fontSize: 13 },
+  botaoTexto: { fontFamily: FontFamily.inikaBold, fontSize: 13 },
+  detalhe: { fontFamily: FontFamily.interMedium, fontSize: 12 },
+  aviso: { fontFamily: FontFamily.interMedium, fontSize: 13 },
 });

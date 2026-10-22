@@ -204,6 +204,12 @@ function renderAudio(block: ContentBlock, topicoId?: number | null) {
   const title = payload ? readString(payload, "title", "legenda") : null;
   const fallbackText = metadata ? readString(metadata, "fallbackText") : null;
   const capaUrl = metadata ? readString(metadata, "capaUrl") : null;
+  // O metadata do bloco personalizado carrega o perfil para o qual o material foi gerado
+  // (`resolveStorageDefaults` em `personalization.ts`). É o que diz QUEM narrou o áudio. Bloco
+  // do professor não tem essa chave, e aí não há guardião a creditar.
+  const perfilDoMaterial = metadata
+    ? readString(metadata, "brainhex_profile_key", "profile_key", "perfil_dominante")
+    : null;
   const rawImageCues = metadata && Array.isArray((metadata as Record<string, unknown>).imageCues)
     ? (metadata as Record<string, unknown>).imageCues
     : null;
@@ -220,6 +226,7 @@ function renderAudio(block: ContentBlock, topicoId?: number | null) {
       fallbackText={fallbackText ?? undefined}
       capaUrl={capaUrl ?? undefined}
       imageCues={imageCues ?? undefined}
+      perfilDoMaterial={perfilDoMaterial}
       progressKey={resumeIdentity(topicoId, block)}
     />
   );
