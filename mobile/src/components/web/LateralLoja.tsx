@@ -5,7 +5,7 @@ import { BagModal } from "@/components/bag/BagModal";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { listBagItems } from "@/services/bag/bagService";
 import { filtrarExtrato, type FiltroDeExtrato, type LimitesTurma, type Movimento } from "@/services/loja/extratoModel";
-import { carregarExtrato, carregarLimitesTurma } from "@/services/loja/lojaService";
+import { carregarExtrato, carregarLimitesTurma, carregarPrazoUsado } from "@/services/loja/lojaService";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 
@@ -42,6 +42,7 @@ export function LateralLoja({
 }) {
   const [naBag, setNaBag] = useState<{ titulo: string; quantidade: number }[] | null>(null);
   const [limites, setLimites] = useState<LimitesTurma | null>(null);
+  const [prazoUsado, setPrazoUsado] = useState<number | null>(null);
   const [extrato, setExtrato] = useState<Movimento[] | null>(null);
   const [extratoCompleto, setExtratoCompleto] = useState(false);
   const [filtro, setFiltro] = useState<FiltroDeExtrato>("todos");
@@ -60,6 +61,9 @@ export function LateralLoja({
     void carregarLimitesTurma(classeId)
       .then((l) => ativo && setLimites(l))
       .catch(() => ativo && setLimites(null));
+    void carregarPrazoUsado(alunoId, classeId)
+      .then((d) => ativo && setPrazoUsado(d))
+      .catch(() => ativo && setPrazoUsado(null));
     void carregarExtrato(alunoId, nomesItens)
       .then((e) => ativo && setExtrato(e))
       .catch(() => ativo && setExtrato([]));
@@ -101,10 +105,39 @@ export function LateralLoja({
         {titulo(nomeTurma ? `LIMITES · ${nomeTurma.toUpperCase()}` : "LIMITES DA TURMA")}
         {limites ? (
           <>
-            <Text style={[s.texto, { color: palette.text }]}>
-              <Text style={s.negrito}>Prazo extra:</Text> até {limites.prazoDiasTotal} {limites.prazoDiasTotal === 1 ? "dia" : "dias"} no semestre
-            </Text>
+            {prazoUsado === null ? (
+              <Text style={[s.texto, { color: palette.text }]}>
+                <Text style={s.negrito}>Prazo extra:</Text> até {limites.prazoDiasTotal} {limites.prazoDiasTotal === 1 ? "dia" : "dias"} no semestre
+              </Text>
+            ) : (
+              // Protótipo v4 (12-loja): "Prazo extra · 1 de 4 dias", com a barra do que já foi usado.
+              <>
+                <View style={s.linhaLimite}>
+                  <Text style={[s.texto, s.negrito, { color: palette.text }]}>Prazo extra</Text>
+                  <Text style={[s.texto, s.negrito, { color: palette.text }]}>
+                    {Math.min(prazoUsado, limites.prazoDiasTotal)} de {limites.prazoDiasTotal} {limites.prazoDiasTotal === 1 ? "dia" : "dias"}
+                  </Text>
+                </View>
+                <View
+                  accessibilityRole="progressbar"
+                  accessibilityLabel="Dias de prazo extra usados no semestre"
+                  accessibilityValue={{ min: 0, max: limites.prazoDiasTotal, now: Math.min(prazoUsado, limites.prazoDiasTotal) }}
+                  style={[s.trilho, { backgroundColor: palette.surfaceElevated }]}
+                >
+                  <View
+                    style={[
+                      s.preenchido,
+                      {
+                        backgroundColor: palette.accent,
+                        width: `${limites.prazoDiasTotal > 0 ? Math.min(100, (prazoUsado / limites.prazoDiasTotal) * 100) : 0}%`,
+                      },
+                    ]}
+                  />
+                </View>
+              </>
+            )}
             <Text style={[s.pequeno, { color: palette.textSubtle }]}>
+              {prazoUsado === null ? "" : "usados neste semestre · "}
               Até {limites.prazoPorAtividade} {limites.prazoPorAtividade === 1 ? "dia" : "dias"} por atividade
               {" · "}cada uso entre {limites.prazoMinDias} e {limites.prazoMaxDias} {limites.prazoMaxDias === 1 ? "dia" : "dias"}
             </Text>
@@ -164,6 +197,9 @@ const s = StyleSheet.create({
   texto: { fontFamily: FontFamily.interMedium, fontSize: 13, lineHeight: 19 },
   pequeno: { fontFamily: FontFamily.interMedium, fontSize: 12 },
   negrito: { fontWeight: "700" },
+  linhaLimite: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 10 },
+  trilho: { height: 6, borderRadius: 999, overflow: "hidden" },
+  preenchido: { height: "100%", borderRadius: 999 },
   valor: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "700", minWidth: 34 },
   link: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700" },
   botao: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderRadius: 999, paddingVertical: 9 },

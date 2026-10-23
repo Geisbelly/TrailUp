@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { filtrarExtrato, formatarQuando, limitesDaTurma, montarExtrato } from "./extratoModel";
+import { diasDePrazoUsados, filtrarExtrato, formatarQuando, limitesDaTurma, montarExtrato } from "./extratoModel";
 
 const AGORA = new Date(2026, 9, 11, 20, 0);
 
@@ -69,4 +69,18 @@ test("extrato nomeia aprovação, conclusão configurada e meta", () => {
     "Conclusão da atividade",
     "Meta alcançada",
   ]);
+});
+
+test("prazo usado: soma os dias só das atividades desta turma", () => {
+  const linhas = [
+    { dias_extras: 1, atividades: { topicos: { classe_id: 65 } } },
+    { dias_extras: 2, atividades: [{ topicos: [{ classe_id: 65 }] }] },
+    { dias_extras: 3, atividades: { topicos: { classe_id: 66 } } },
+    { dias_extras: null, atividades: { topicos: { classe_id: 65 } } },
+    { dias_extras: 1, atividades: null },
+  ];
+  assert.equal(diasDePrazoUsados(linhas, 65), 3);
+  assert.equal(diasDePrazoUsados(linhas, 66), 3);
+  assert.equal(diasDePrazoUsados([], 65), 0);
+  assert.equal(diasDePrazoUsados(null, 65), 0);
 });

@@ -1,7 +1,7 @@
 import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brainHexProfiles";
 import { supabase } from "@/database/supabase";
 import { normalizeStoreItem, type StoreItem, type StoreProfileTheme, type StoreSection, type StoreSnapshot } from "@/services/loja/storeModel";
-import { limitesDaTurma, montarExtrato, type LinhaRazao } from "@/services/loja/extratoModel";
+import { diasDePrazoUsados, limitesDaTurma, montarExtrato, type LinhaRazao } from "@/services/loja/extratoModel";
 import { avisarEfeitoNaAtividade, lerInventario, lerPermissao, lerRespostaDeUso, type LinhaInventario, type PermissaoDeUso, type RespostaDeUso } from "@/services/loja/usoItem";
 import { ACOES_QUE_RENDEM, resolverGanhoMoedas } from "@/services/loja/ganhoMoedasModel";
 import { purchaseErrorMessage } from "@/services/loja/storeTheme";
@@ -153,4 +153,15 @@ export async function carregarLimitesTurma(classeId: number) {
     .maybeSingle();
   if (error) throw error;
   return limitesDaTurma(data);
+}
+
+/** Dias de prazo extra que o aluno já usou na turma, contra `prazo_max_dias_total`. */
+export async function carregarPrazoUsado(alunoId: string, classeId: number) {
+  const { data, error } = await supabase
+    .from("atividade_prazo_aluno")
+    .select("dias_extras,atividades!inner(topicos!inner(classe_id))")
+    .eq("aluno_id", alunoId)
+    .eq("atividades.topicos.classe_id", classeId);
+  if (error) throw error;
+  return diasDePrazoUsados(data, classeId);
 }
