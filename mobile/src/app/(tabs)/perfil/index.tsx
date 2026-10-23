@@ -12,6 +12,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  type ViewStyle,
 } from "react-native";
 import tinycolor from "tinycolor2";
 
@@ -781,15 +782,17 @@ const styles = StyleSheet.create({
   // `lateralBatalhaDesktop` em `trilhaTopicoStyles`. O estilo só é aplicado quando
   // `useDesktopWeb()` é verdadeiro, então o celular nunca o vê.
   colunaIdentidade: { flex: 4, minWidth: 0 },
+  // `sticky`, `100vh` e `overflowY` são só da web: o cast vai no objeto inteiro, porque
+  // `overflowY` nem existe em `ViewStyle` e o cast no valor não basta para o tsc.
   colunaIdentidadeGrudada: {
-    position: "sticky" as "absolute",
+    position: "sticky",
     // Respira abaixo da barra superior em vez de encostar nela.
     top: 16,
     // Identidade mais alta que a janela volta a rolar por dentro, senão o fim dela fica
     // inalcançável — é o modo de falha que `sticky` tem e `fixed` não resolveria.
-    maxHeight: "100vh" as unknown as number,
-    overflowY: "auto" as unknown as "scroll",
-  },
+    maxHeight: "100vh",
+    overflowY: "auto",
+  } as unknown as ViewStyle,
   // Retrato de 160 px sobre o canto do banner: 72 px dele descem abaixo da borda, como no protótipo.
   retrato: { position: "absolute", left: 64, top: 28 + 240 - 88, zIndex: 5 },
   colunaPrincipal: { flex: 8, minWidth: 0 },
