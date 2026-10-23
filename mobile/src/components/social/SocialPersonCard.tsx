@@ -20,6 +20,8 @@ type Props = {
   onSecondary?: () => void;
   onPressProfile?: () => void;
   onPressChat?: () => void;
+  /** Só na web em tela larga: "Desafiar" o amigo para um duelo 1x1 na Arena (#508). */
+  onDesafiar?: () => void;
 };
 export function SocialPersonCard({
   person,
@@ -30,6 +32,7 @@ export function SocialPersonCard({
   onSecondary,
   onPressProfile,
   onPressChat,
+  onDesafiar,
 }: Props) {
   const canChat = person.status === "friend" || person.status === "candidate";
   const profile = normalizeBrainHexProfile(person.perfilAtivo);
@@ -81,6 +84,17 @@ export function SocialPersonCard({
                 style={[s.botaoRedondo, { borderColor: palette.borderStrong }]}
               >
                 <MaterialCommunityIcons name="message-text-outline" size={16} color={palette.text} />
+              </Pressable>
+            ) : null}
+            {onDesafiar && !menuAberto ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Desafiar ${nome} para um duelo`}
+                onPress={onDesafiar}
+                style={[s.pilulaMenu, s.pilulaDesafio, { borderColor: palette.borderStrong }]}
+              >
+                <MaterialCommunityIcons name="sword-cross" size={14} color={palette.text} />
+                <Text style={[s.actionText, { color: palette.text }]}>Desafiar</Text>
               </Pressable>
             ) : null}
             <View style={s.espaco} />
@@ -286,5 +300,6 @@ const s = StyleSheet.create({
   espaco: { flex: 1 },
   botaoRedondo: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   pilulaMenu: { minHeight: 34, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, justifyContent: "center" },
+  pilulaDesafio: { flexDirection: "row", alignItems: "center", gap: 6 },
   botaoCheio: { minHeight: 36, borderRadius: 999, alignItems: "center", justifyContent: "center" },
 });
