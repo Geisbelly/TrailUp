@@ -57,11 +57,11 @@ const ABAS = [
   ['ranking', 'Ranking', '05-ranking.html', '<path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/>'],
   ['perfil', 'Perfil', '08-perfil-hub.html', '<circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0 1 16 0v1"/>'],
 ];
-function abasHTML(ativa, bloqueadas = []) {
+function abasHTML(ativa, bloqueadas = [], naoLidas = 2) {
   return `<nav class="abas" aria-label="Seções do app">${ABAS.map(([k, rot, href, path]) => {
     const trava = bloqueadas.includes(k);
     return `<a href="${href}" class="aba ${ativa === k ? 'ativa' : ''} ${trava ? 'travada' : ''}" ${ativa === k ? 'aria-current="page"' : ''} data-aba="${k}" ${trava ? `aria-label="${rot}, bloqueado"` : ''}>
-      <span class="aba-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">${path}</svg>${k === 'notificacoes' ? '<span class="aba-nb">2</span>' : ''}${trava ? `<span class="aba-trava">${ICONE.cadeado}</span>` : ''}</span>${rot}</a>`;
+      <span class="aba-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1">${path}</svg>${k === 'notificacoes' && naoLidas ? `<span class="aba-nb">${naoLidas}</span>` : ''}${trava ? `<span class="aba-trava">${ICONE.cadeado}</span>` : ''}</span>${rot}</a>`;
   }).join('')}</nav>`;
 }
 

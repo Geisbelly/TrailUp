@@ -13,7 +13,7 @@ Regras que valem em todas as partes: [00-regras-gerais.md](00-regras-gerais.md).
 | 3 | Tópico | `04-topico` | `app/(tabs)/trilha/[id].tsx` | [telas/04-topico.md](telas/04-topico.md) | aplicado (`mobile-v1/04-topico.html`) |
 | 4 | Ranking | `05-ranking` | `app/(tabs)/ranking/` | [telas/05-ranking.md](telas/05-ranking.md) | aplicado (`mobile-v1/05-ranking.html`) |
 | 5 | Social | `06-social` | `app/(tabs)/social/index.tsx` | [telas/06-social.md](telas/06-social.md) | aplicado (`mobile-v1/06-social.html` + `assets/social.js`; o Ranking abre o perfil público) |
-| 6 | Notificações | `07-notificacoes` | `app/(tabs)/notificacoes/` | — | a fazer |
+| 6 | Notificações | `07-notificacoes` | `app/(tabs)/notificacoes/` | [telas/07-notificacoes.md](telas/07-notificacoes.md) | aplicado (`mobile-v1/07-notificacoes.html`) |
 | 7 | Perfil, Biblioteca e Relatório | `08`, `09`, `10` | `app/(tabs)/perfil/` | — | a fazer |
 | 8 | Configurações | `11-configuracoes` | `app/(tabs)/perfil/settings.tsx` e subtelas | — | a fazer |
 | 9 | Loja | `12-loja` | `app/(tabs)/perfil/loja.tsx` | — | a fazer |
