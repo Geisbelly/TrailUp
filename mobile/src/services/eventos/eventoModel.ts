@@ -178,3 +178,34 @@ export function eventoEmDestaque(eventos: EventoDaTurma[], agora: Date = new Dat
     return (Date.parse(b.inicio ?? "") || 0) - (Date.parse(a.inicio ?? "") || 0);
   })[0];
 }
+
+export type GuildaNoEvento = { guildaId: string; nome: string; pontos: number; posicao: number; minha: boolean };
+
+/**
+ * Ranking das guildas de um evento encerrado (`eventos_classe_resultado_guilda`), para a
+ * coluna lateral do Social na web (#508). O nome vem das guildas que o Social já carrega;
+ * a guilda que não existe mais vira "Guilda". Mostra o pódio (três primeiras) e, se a
+ * guilda do aluno ficou fora dele, ela também.
+ */
+export function rankingDasGuildas(
+  linhas: unknown,
+  guildas: readonly { id: string; nome: string; souMembro: boolean }[],
+): GuildaNoEvento[] {
+  if (!Array.isArray(linhas)) return [];
+  const porId = new Map(guildas.map((g) => [g.id, g]));
+  const todas = linhas
+    .map((linha): GuildaNoEvento | null => {
+      if (!linha || typeof linha !== "object") return null;
+      const r = linha as Record<string, unknown>;
+      const id = String(r.guilda_id ?? "");
+      const posicao = Number(r.posicao);
+      if (!id || !Number.isFinite(posicao) || posicao < 1) return null;
+      const guilda = porId.get(id);
+      return { guildaId: id, nome: guilda?.nome ?? "Guilda", pontos: Number(r.pontos) || 0, posicao, minha: guilda?.souMembro ?? false };
+    })
+    .filter((g): g is GuildaNoEvento => g !== null)
+    .sort((a, b) => a.posicao - b.posicao);
+  const podio = todas.slice(0, 3);
+  const minha = todas.find((g) => g.minha);
+  return minha && !podio.includes(minha) ? [...podio, minha] : podio;
+}

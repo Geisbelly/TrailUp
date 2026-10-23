@@ -31,3 +31,18 @@ export async function carregarEventosDaTurma(classeId: number): Promise<EventoDa
   if (error) throw error;
   return ((data ?? []) as unknown[]).map(normalizeEvento).filter(Boolean) as EventoDaTurma[];
 }
+
+/**
+ * Ranking das guildas de um evento (`eventos_classe_resultado_guilda`). A RLS
+ * (`eventos_classe_resultado_guilda_aluno_sel`) só devolve linha de evento **encerrado**
+ * da turma do aluno, até a 10ª posição: evento aberto vem vazio por desenho.
+ */
+export async function carregarGuildasDoEvento(eventoId: string): Promise<unknown[]> {
+  const { data, error } = await supabase
+    .from("eventos_classe_resultado_guilda")
+    .select("guilda_id, pontos, membros, posicao")
+    .eq("evento_id", eventoId)
+    .order("posicao", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as unknown[];
+}
