@@ -135,3 +135,5 @@ src/styles/perfilColunaGrudada.test.ts
 src/utils/envDoBuild.test.ts
 src/utils/semTesteNoApp.test.ts
 src/utils/matematicaLegivel.test.ts
+src/hooks/useAviso.test.ts
+src/utils/semAlertDireto.test.ts
