@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TrailUp — Ranking (celular)</title>
+<link rel="stylesheet" href="assets/aparelho.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  :root{--gold:#dab43f;--minha:64px}
+  .topo{position:absolute;left:0;right:0;top:0;z-index:10;padding:calc(var(--topo) + 6px) 12px 0 18px;background:var(--bg)}
+  .topo-linha{display:flex;align-items:center;gap:10px;height:52px}
+  .topo-linha div{flex:1}
+  .topo-linha h1{font-family:Georgia,serif;font-size:22px;margin:2px 0 0}
+  .rolagem{position:absolute;left:0;right:0;top:calc(var(--topo) + 58px);bottom:calc(var(--abas) + var(--base));overflow-y:auto;scrollbar-width:none;padding-bottom:calc(var(--minha) + 20px)}
+  .rolagem::-webkit-scrollbar{display:none}
+
+  /* categorias em abas roláveis */
+  .cats{position:sticky;top:0;z-index:5;display:flex;gap:8px;justify-content:space-between;overflow-x:auto;padding:8px 18px 10px;background:var(--bg);scrollbar-width:none}
+  .cats::-webkit-scrollbar{display:none}
+  .cat{flex:1;justify-content:center;display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px 0 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:14px;font-weight:700;cursor:pointer;color:var(--text-muted)}
+  .cat img{width:26px;height:26px;object-fit:contain}
+  .cat[aria-current="true"]{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+  .desc{font-size:13px;color:var(--text-subtle);padding:0 18px 10px;margin:0}
+
+  /* pódio sobre a arena */
+  .arena{position:relative;margin:0 12px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--surface)}
+  .arena > img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
+  .arena::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,var(--bg-a55),transparent 40%,var(--bg-a85))}
+  .podio{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:center;gap:8px;padding:22px 10px 0;min-height:250px}
+  .p-item{display:flex;flex-direction:column;align-items:center;width:31%;cursor:pointer;background:none;border:0;padding:0;color:var(--text)}
+  .p-item.primeiro{width:34%}
+  .p-av{position:relative;margin-bottom:6px}
+  .p-av .rosto{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--border-strong);background:var(--elev);display:grid;place-items:center;font-weight:800}
+  .primeiro .p-av .rosto{width:72px;height:72px;border:3px solid var(--gold);box-shadow:0 0 22px rgba(218,180,63,.35)}
+  .terceiro .p-av .rosto{width:48px;height:48px}
+  .p-av .medalha{position:absolute;right:-8px;bottom:-4px;width:26px;height:26px}
+  .p-nome{font-size:12.5px;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .p-nome .voce{color:var(--accent)}
+  .p-valor{font-size:12px;color:var(--text-muted);margin:2px 0 6px;font-variant-numeric:tabular-nums}
+  .pedestal{width:100%;display:grid;place-items:center;border-radius:10px 10px 0 0;font-family:Georgia,serif;font-weight:700}
+  .primeiro .pedestal{height:64px;font-size:28px;background:linear-gradient(180deg,var(--accent-soft),var(--elev));border:1px solid var(--accent);border-bottom:0}
+  .segundo .pedestal{height:44px;font-size:22px;background:var(--elev);border:1px solid var(--border-strong);border-bottom:0;color:var(--text-muted)}
+  .terceiro .pedestal{height:32px;font-size:18px;background:var(--surface);border:1px solid var(--border);border-bottom:0;color:var(--text-muted)}
+  .pnota{font-size:12px;color:var(--text-subtle);margin:8px 18px 0;line-height:1.45}
+
+  .filtros{display:flex;gap:8px;padding:16px 18px 4px}
+  .filtro{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:none;font-size:13.5px;font-weight:600;color:var(--text-muted);cursor:pointer}
+  .filtro[aria-pressed="true"]{background:var(--accent-muted);border-color:var(--accent);color:var(--accent)}
+  .fnota{font-size:12px;color:var(--text-subtle);margin:4px 18px 10px}
+  .lista{display:flex;flex-direction:column;padding:0 12px}
+  .linha{display:flex;align-items:center;gap:12px;min-height:60px;padding:6px 8px;border-bottom:1px solid var(--line);background:none;border-left:0;border-right:0;border-top:0;text-align:left;cursor:pointer;color:var(--text)}
+  .linha .pos{width:30px;font-family:Georgia,serif;font-weight:700;font-size:16px;color:var(--text-muted)}
+  .linha .rosto{width:38px;height:38px;border-radius:50%;object-fit:cover;background:var(--elev);display:grid;place-items:center;font-size:13px;font-weight:800;flex:none}
+  .linha .quem{flex:1;min-width:0}
+  .linha .quem strong{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .linha .quem span{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text-subtle)}
+  .linha .quem i{width:8px;height:8px;border-radius:50%}
+  .linha .val{font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+  .vazia{padding:24px 18px;text-align:center;font-size:14px;color:var(--text-subtle)}
+
+  /* sua posição: barra fixa acima das abas */
+  .minha{position:absolute;left:8px;right:8px;bottom:calc(var(--abas) + var(--base) + 8px);z-index:25;height:var(--minha);display:flex;align-items:center;gap:10px;padding:0 12px 0 8px;border-radius:14px;border:1px solid var(--accent);box-shadow:0 10px 26px rgba(0,0,0,.45);cursor:pointer;text-align:left;width:calc(100% - 16px)}
+  .minha img{width:44px;height:44px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--accent)}
+  .minha .txt{flex:1;min-width:0}
+  .minha .txt b{font-size:16px}
+  .minha .txt b small{font-size:12px;color:var(--text-subtle);font-weight:500}
+  .minha .txt span{display:block;font-size:12.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .minha .val{font-weight:800;color:var(--accent);font-size:14px}
+  .folha{bottom:0;z-index:40;padding:0 18px calc(var(--base) + 18px)}
+  .veu{z-index:35}
+  .mp-princ{display:flex;align-items:center;gap:14px;margin:6px 0 14px}
+  .mp-princ img{width:56px;height:56px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--accent)}
+  .mp-pos{font-family:Georgia,serif;font-size:34px;font-weight:700}
+  .mp-de{font-size:14px;color:var(--text-subtle);margin-left:4px}
+  .mp-val{margin-left:auto;font-size:18px;font-weight:800;color:var(--accent)}
+  .mp-prox{border-radius:10px;background:var(--bg-a55);border:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:8px}
+  .mp-prox .rot{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);font-weight:700}
+  .mp-prox .quem{display:flex;align-items:center;gap:10px;font-size:14px;min-height:44px;background:none;border:0;padding:0;text-align:left;cursor:pointer}
+  .mp-prox .quem .rosto{width:36px;height:36px;border-radius:50%;object-fit:cover;background:var(--elev);display:grid;place-items:center;font-weight:800;font-size:12px}
+  .mp-prox p{margin:0;font-size:14px;color:var(--text-muted)}
+  .mp-nota{font-size:12.5px;color:var(--text-subtle);margin:12px 0 0;line-height:1.45}
+
+  .vazio{position:absolute;left:0;right:0;top:calc(var(--topo) + 58px);bottom:calc(var(--abas) + var(--base));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center}
+  .vazio img{width:64px;height:72px;object-fit:contain;opacity:.7}
+  .vazio h3{font-family:Georgia,serif;font-size:21px;margin:0}
+  .vazio p{margin:0;color:var(--text-subtle);font-size:14.5px}
+  .torrada{position:absolute;left:50%;bottom:calc(var(--abas) + var(--base) + var(--minha) + 22px);transform:translateX(-50%);z-index:70;background:var(--text);color:var(--bg);font-size:13px;font-weight:600;padding:10px 14px;border-radius:999px;white-space:nowrap}
+</style>
+</head>
+<body class="mesa">
+
+<div class="preview" id="preview"></div>
+
+<div class="aparelho">
+  <div class="tela" id="tela"></div>
+</div>
+
+<script src="assets/aparelho.js"></script>
+<script src="assets/tema.js"></script>
+<script>
+/* dados iguais ao v4 (05-ranking.html) */
+const P={k:['Kwame R.','achiever'],m:['Marina S.','seeker'],z:['Zuri & Mateo','socializer'],b:['Bianca L.','achiever'],t:['Théo M.','seeker'],d:['Diego A.','conqueror'],l:['Lara P.','mastermind'],i:['Iago F.','daredevil'],ke:['Kenji O.','survivor'],r:['Rafael N.','conqueror'],a:['Ana C.',null],me:['Amina T.','conqueror']};
+const CATS={
+  tempo:{t:'Tempo de Estudo',curto:'Tempo',d:'Quem mais dedicou tempo ativo à trilha este mês',ic:'deadline',
+    rows:[['k','9h 15min'],['m','7h 40min'],['z','6h 55min'],['b','6h 10min'],['t','5h 48min'],['d','5h 20min'],['l','4h 52min'],['i','4h 30min'],['ke','4h 30min'],['r','4h 05min'],['a','3h 41min'],['me','3h 20min']]},
+  progresso:{t:'Progresso',curto:'Progresso',d:'Percentual da trilha concluído',ic:'book',
+    rows:[['m','92%'],['k','88%'],['b','81%'],['l','74%'],['z','70%'],['t','66%'],['d','61%'],['r','58%'],['me','56%'],['ke','49%'],['i','43%'],['a','31%']]},
+  pontos:{t:'Pontos',curto:'Pontos',d:'Conquistas e acertos acumulados',ic:'medal',
+    rows:[['k','1.980'],['z','1.710'],['m','1.655'],['l','1.420'],['b','1.390'],['d','1.310'],['me','1.240'],['t','1.180'],['r','1.050'],['ke','990'],['i','870'],['a','610']]},
+};
+const ESTADOS=[['data','Com dados'],['meu','Filtro: Meu perfil'],['nores','Filtro sem resultado'],['podio','Você no pódio'],['dois','Pódio com 2 alunos'],['minha','Sua posição aberta'],['loading','Carregando'],['empty','Vazio']];
+const TOTAL=28;
+let estado, cat='tempo', filtro='geral', folha=false, torradaTxt=null;
+const $=id=>document.getElementById(id);
+
+function ranked(c){ // empatados mantêm a posição e o seguinte pula (regra do app)
+  let rows=CATS[c].rows.map(([id,v])=>({id,v}));
+  if(estado==='podio'&&c==='pontos')rows=[['k','1.980'],['z','1.710'],['me','1.690'],['m','1.655'],['l','1.420'],['b','1.390'],['d','1.310'],['t','1.180'],['r','1.050'],['ke','990'],['i','870'],['a','610']].map(([id,v])=>({id,v}));
+  if(estado==='dois')rows=rows.filter(r=>r.id==='k'||r.id==='m');
+  let pos=0;rows.forEach((r,i)=>{if(i===0||r.v!==rows[i-1].v)pos=i+1;r.pos=pos});
+  return rows;
+}
+const nome=id=>P[id][0].replace(/&/g,'&amp;');
+const rosto=(id,cls='rosto')=>P[id][1]?`<img class="${cls}" src="${ARTE}rosto-${P[id][1]}.png" alt="" />`:`<span class="${cls}">${P[id][0].split(' ').map(w=>w[0]).join('').slice(0,2)}</span>`;
+const num=(c,v)=>c==='tempo'?(()=>{const m=v.match(/(\d+)h\s*(\d+)min/);return m?+m[1]*60+ +m[2]:0})():c==='progresso'?parseFloat(v):+v.replace(/\./g,'');
+const fmt=(c,d)=>c==='tempo'?(d>=60?`${Math.floor(d/60)}h ${String(d%60).padStart(2,'0')}min`:`${d}min`):c==='progresso'?`${d} pontos percentuais`:`${d.toLocaleString('pt-BR')} pontos`;
+const arte=c=>`${ARTE}${CATS[c].ic}-${perfil}.png`;
+const toque=id=>id==='me'?'data-eu':`data-colega="${id}"`;
+
+function minhaInfo(){const R=ranked(cat),me=R.find(r=>r.id==='me');if(!me)return null;const acima=R.filter(r=>r.pos<me.pos).pop();return {me,acima}}
+function minhaBarra(){
+  const i=minhaInfo();
+  if(!i)return `<button class="minha vidro" data-minha><img src="${ARTE}rosto-${perfil}.png" alt="" /><div class="txt"><b>Sua posição</b><span>Você ainda não pontuou nesta categoria.</span></div></button>`;
+  return `<button class="minha vidro" data-minha aria-label="Sua posição: ${i.me.pos}º de ${TOTAL}"><img src="${ARTE}rosto-${perfil}.png" alt="" />
+    <div class="txt"><b>${i.me.pos}º <small>de ${TOTAL}</small></b><span>${i.acima?`Faltam ${fmt(cat,num(cat,i.acima.v)-num(cat,i.me.v))} para passar ${nome(i.acima.id)}`:'Você lidera esta categoria.'}</span></div><span class="val">${i.me.v}</span></button>`;
+}
+function minhaFolha(){
+  const i=minhaInfo(),c=CATS[cat];
+  const corpo=!i?`<p class="mp-nota" style="font-size:14.5px;color:var(--text)">Você ainda não pontuou nesta categoria.</p><p class="mp-nota">Assim que você pontuar, sua posição aparece aqui.</p>`
+    :`<div class="mp-princ"><img src="${ARTE}rosto-${perfil}.png" alt="" /><div><span class="mp-pos">${i.me.pos}º</span><span class="mp-de">de ${TOTAL}</span></div><span class="mp-val">${i.me.v}</span></div>
+      ${i.acima?`<div class="mp-prox"><span class="rot">Próximo acima</span><button class="quem" ${toque(i.acima.id)}>${rosto(i.acima.id)}<span><b>${nome(i.acima.id)}</b> · ${i.acima.pos}º</span></button><p>Faltam <b>${fmt(cat,num(cat,i.acima.v)-num(cat,i.me.v))}</b> para passar.</p></div>`:`<div class="mp-prox"><p><b>Você lidera esta categoria.</b></p></div>`}
+      <p class="mp-nota">Sua posição continua aqui mesmo quando você filtra os colegas.</p>`;
+  return `<div class="veu" data-fecha></div><section class="folha vidro" role="dialog" aria-modal="true" aria-label="Sua posição"><span class="alca" data-fecha></span><div class="eyebrow">Sua posição · ${c.t}</div>${corpo}</section>`;
+}
+function render(){
+  aplicarTema();
+  $('preview').innerHTML=previewHTML(ESTADOS,estado);
+  const topo=`<header class="topo"><div class="topo-linha"><div><div class="eyebrow">Ranking</div><h1>Sala de honra</h1></div>
+    <button class="redondo" aria-label="Abrir Bag" data-torrada="A Bag entra na parte do Perfil"><img src="${ARTE}bag-${perfil}.png" alt="" /></button></div></header>`;
+  let h=topo;
+  if(estado==='empty'){h+=`<div class="vazio"><img src="${ARTE}medal-${perfil}.png" alt="" /><h3>Nenhum ranking ainda</h3><p>Nenhum ranking disponível nesta turma.</p></div>`+abasHTML('ranking');$('tela').innerHTML=h;return}
+  if(estado==='loading'){h+=`<div class="rolagem" style="padding:8px 12px"><div style="display:flex;gap:8px;margin:0 6px 12px">${'<div class="skel" style="height:44px;width:130px;border-radius:999px"></div>'.repeat(3)}</div><div class="skel" style="height:250px;border-radius:14px"></div>${'<div class="skel" style="height:52px;margin-top:10px"></div>'.repeat(5)}</div>`+abasHTML('ranking');$('tela').innerHTML=h;return}
+  const c=CATS[cat],R=ranked(cat),top=R.slice(0,3);
+  const pod=(r,cls)=>r?`<button class="p-item ${cls}" ${toque(r.id)} aria-label="${r.pos}º lugar: ${nome(r.id)}, ${r.v}"><div class="p-av">${rosto(r.id)}<img class="medalha" src="${ARTE}rank-${r.pos}.png" alt="" /></div>
+      <div class="p-nome">${nome(r.id)}${r.id==='me'?' <span class="voce">(você)</span>':''}</div><div class="p-valor">${r.v}</div><div class="pedestal">${r.pos}º</div></button>`:'<div class="p-item"></div>';
+  const mesmo=r=>P[r.id][1]===P.me[1];
+  let lista=R.slice(3).filter(r=>r.id!=='me');
+  const fAtivo=estado==='meu'?'meu':filtro;
+  if(fAtivo==='meu')lista=lista.filter(mesmo);
+  if(fAtivo==='outros')lista=lista.filter(r=>!mesmo(r));
+  if(estado==='nores')lista=[];
+  h+=`<div class="rolagem" id="rolagem">
+    <nav class="cats" aria-label="Categorias">${Object.keys(CATS).map(k=>`<button class="cat" data-cat="${k}" ${cat===k?'aria-current="true"':''}><img src="${arte(k)}" alt="" onerror="this.src='${ARTE}medal-${perfil}.png'" />${CATS[k].curto}</button>`).join('')}</nav>
+    <p class="desc"><b style="color:var(--text)">${c.t}</b> · ${c.d}</p>
+    <section class="arena" aria-label="Pódio de ${c.t}"><img src="${ARTE}arena-conqueror.webp" alt="" /><div class="podio">${pod(top[1],'segundo')}${pod(top[0],'primeiro')}${pod(top[2],'terceiro')}</div></section>
+    <p class="pnota">Os três primeiros seguem a classificação geral. Empates mantêm a mesma posição.</p>
+    ${R.length>3?`<div class="filtros" role="group" aria-label="Filtrar a lista">${[['geral','Geral'],['meu','Meu perfil'],['outros','Outros perfis']].map(([k,l])=>`<button class="filtro" data-f="${k}" aria-pressed="${fAtivo===k}">${l}</button>`).join('')}</div>
+    <p class="fnota">As posições originais da categoria são preservadas.</p>
+    <div class="lista">${lista.length?lista.map(r=>`<button class="linha" ${toque(r.id)}><span class="pos">${r.pos}º</span>${rosto(r.id)}<span class="quem"><strong>${nome(r.id)}</strong><span>${P[r.id][1]?`<i style="background:${PERFIS[P[r.id][1]].sig}"></i>${PERFIS[P[r.id][1]].label}`:'Perfil não definido'}</span></span><span class="val">${r.v}</span></button>`).join(''):'<p class="vazia">Nenhum aluno neste recorte.</p>'}</div>`:''}
+  </div>`;
+  h+=minhaBarra()+abasHTML('ranking');
+  if(folha)h+=minhaFolha();
+  if(torradaTxt)h+=`<div class="torrada" role="status">${torradaTxt}</div>`;
+  const st=$('rolagem')?.scrollTop||0;
+  $('tela').innerHTML=h;
+  if($('rolagem'))$('rolagem').scrollTop=st;
+}
+function torrada(t){torradaTxt=t;render();setTimeout(()=>{torradaTxt=null;render()},1800)}
+function define(v){estado=v;filtro='geral';folha=v==='minha';cat=v==='podio'?'pontos':'tempo';render()}
+document.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);
+  if(q('[data-perfil]')){perfil=q('[data-perfil]').dataset.perfil;render();return}
+  if(q('[data-cat]')){cat=q('[data-cat]').dataset.cat;filtro='geral';if(estado==='meu'||estado==='nores')estado='data';render();return}
+  if(q('[data-f]')){filtro=q('[data-f]').dataset.f;if(estado==='meu'||estado==='nores')estado='data';render();return}
+  if(q('[data-minha]')){folha=true;render();return}
+  if(q('[data-fecha]')){folha=false;render();return}
+  if(q('[data-eu]')){location.href='08-perfil-hub.html';return}
+  if(q('[data-colega]')){folha=false;torrada(`Perfil de ${P[q('[data-colega]').dataset.colega][0]} (entra na parte do Social)`);return}
+  if(q('[data-torrada]')){torrada(q('[data-torrada]').dataset.torrada);return}
+});
+document.addEventListener('change',e=>{if(e.target.id!=='estado')return;history.replaceState(null,'',`${location.pathname}?estado=${e.target.value}&perfil=${perfil}`);define(e.target.value)});
+define(qs.get('estado')||'data');
+</script>
+</body>
+</html>
