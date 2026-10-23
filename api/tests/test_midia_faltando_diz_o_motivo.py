@@ -16,10 +16,15 @@ A função colapsava quatro causas diferentes no mesmo nome:
 Separá-las é o conserto. Estes testes travam cada uma.
 """
 
+import logging
+
+import pytest
+
 from app.services.personalizacao_jobs import (
     MEDIA_PIPELINE_VERSION,
     PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
+    _assert_brainhex_media_completed,
     _incomplete_brainhex_media_for_generation,
     _motivos_de_midia_incompleta,
 )
@@ -122,13 +127,6 @@ def test_a_lista_antiga_continua_funcionando() -> None:
 #
 # Os testes acima cobrem a função pura. Sem os dois abaixo, tirar o motivo DA MENSAGEM
 # passaria despercebido — e a mensagem é justamente o que faltou em #522.
-
-import logging
-
-import pytest
-
-from app.services.personalizacao_jobs import _assert_brainhex_media_completed
-
 
 def _registro_para_assert(materiais):
     return {"id": 42, "ciclo_id": "ciclo-1", "source_hash": "hash-1", "status": "pronto", "materiais": materiais}
