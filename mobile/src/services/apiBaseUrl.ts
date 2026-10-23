@@ -42,6 +42,25 @@ function emDesenvolvimento() {
 }
 
 let avisouApiAusente = false;
+const esquemasAvisados = new Set<string>();
+
+/**
+ * Avisa quando uma URL foi descartada por nao ser `https` fora de dev.
+ *
+ * Sem este aviso o efeito seria indistinguivel de "API fora do ar": a lista
+ * nasce vazia, o `fetch` nunca acontece e quem configurou o build nao tem como
+ * saber que o problema e o protocolo. Uma vez por URL.
+ */
+function avisarEsquemaRecusado(baseUrl: string) {
+  if (esquemasAvisados.has(baseUrl)) return;
+  esquemasAvisados.add(baseUrl);
+  console.warn(
+    `[apiBaseUrl] ${baseUrl} foi ignorada: fora de desenvolvimento a API tem de ` +
+      "ser https. Todo pedido leva o access_token do aluno no header e " +
+      "telemetria dele no corpo; em http para host remoto isso viaja em claro. " +
+      "Use https (ou localhost/10.0.2.2, que nao saem do aparelho)."
+  );
+}
 
 /**
  * Sem candidato num build instalado, quem chama nao tem como distinguir "a API
@@ -74,5 +93,6 @@ export function resolveApiBaseCandidates(
     metroHostUri: dev ? metroHostUri() : null,
     dev,
     aoFicarSemApi: avisarApiNaoConfigurada,
+    aoRecusarEsquema: avisarEsquemaRecusado,
   });
 }
