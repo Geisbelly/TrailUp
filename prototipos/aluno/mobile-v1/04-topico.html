@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TrailUp — Tópico (celular)</title>
+<link rel="stylesheet" href="assets/aparelho.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  :root{--cab:108px;--baixo:68px;--b-primary:#a78bfa;--b-secondary:#1e1b4b;--b-accent:#fef08a;--b-hp:#f97316;--b-shield:#60a5fa;--b-text:#f8fafc}
+
+  /* cabeçalho fixo: voltar + título + chip da batalha; partes em barra segmentada */
+  .cab{position:absolute;left:0;right:0;top:0;z-index:20;padding-top:var(--topo);background:var(--bg);border-bottom:1px solid var(--line)}
+  .cab-1{height:56px;display:flex;align-items:center;gap:6px;padding:0 10px 0 4px}
+  .voltar{width:48px;height:48px;display:grid;place-items:center;color:var(--text);flex:none}
+  .voltar svg{width:22px;height:22px}
+  .cab-tit{flex:1;min-width:0}
+  .cab-tit .eyebrow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .cab-tit h1{font-family:Georgia,serif;font-size:17px;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .partes{display:flex;align-items:center;gap:10px;padding:0 16px 0 16px;height:48px}
+  .segs{flex:1;display:flex;gap:4px;height:48px}
+  .seg{flex:1;height:48px;background:none;border:0;padding:0;cursor:pointer;display:flex;align-items:center}
+  .seg i{display:block;width:100%;height:5px;border-radius:3px;background:var(--elev)}
+  .seg.feita i{background:var(--accent)}
+  .seg.atual i{background:var(--text);box-shadow:0 0 0 2px var(--accent-soft)}
+  .partes .conta{font-size:12.5px;color:var(--text-subtle);white-space:nowrap}
+
+  /* chip da batalha (IABattleHeaderChip) */
+  .chipb{position:relative;display:flex;align-items:center;gap:7px;height:40px;padding:0 10px 0 4px;border-radius:999px;border:1px solid color-mix(in srgb,var(--b-primary) 55%,transparent);background:var(--b-secondary);color:var(--b-text);cursor:pointer;flex:none}
+  .chipb img{width:32px;height:32px;border-radius:50%;object-fit:cover;background:#0006}
+  .chipb .mini{display:flex;flex-direction:column;gap:3px;width:54px}
+  .chipb .mini i{display:block;height:5px;border-radius:3px;background:#ffffff22;overflow:hidden}
+  .chipb .mini i b{display:block;height:100%;background:var(--b-hp)}
+  .chipb .mini span{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+  .chipb.neutro{background:var(--surface);border-color:var(--line);color:var(--text-muted);padding:0 12px;font-size:12.5px;font-weight:600}
+  .chipb.neutro svg{width:15px;height:15px}
+  .chipb.neutro b{color:var(--accent)}
+  .chipb.treme{animation:treme .35s}
+  @keyframes treme{20%{transform:translateX(-3px)}40%{transform:translateX(3px)}60%{transform:translateX(-2px)}80%{transform:translateX(2px)}}
+  .dano{position:absolute;right:6px;top:-6px;font-weight:800;font-size:15px;color:var(--b-hp);text-shadow:0 1px 6px #000;pointer-events:none;animation:sobe 1s ease-out forwards}
+  @keyframes sobe{to{transform:translateY(-22px);opacity:0}}
+
+  /* conteúdo */
+  .conteudo{position:absolute;left:0;right:0;top:calc(var(--topo) + var(--cab));bottom:calc(var(--baixo) + var(--base));overflow-y:auto;padding:18px 18px 110px;scrollbar-width:none}
+  .conteudo::-webkit-scrollbar{display:none}
+  .rotulo-bloco{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:var(--accent);margin-bottom:10px}
+  .rotulo-bloco svg{width:16px;height:16px}
+  .prosa h2,.at-tit{font-family:Georgia,serif;font-size:22px;line-height:1.25;margin:0 0 10px}
+  .prosa p,.at-desc{font-size:16px;line-height:1.6;color:var(--text-muted);margin:0 0 14px}
+  .destaque{border-left:3px solid var(--accent);background:var(--accent-muted);padding:12px 14px;border-radius:0 8px 8px 0;font-size:15px;line-height:1.55;margin:0 0 16px}
+  .audio{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:var(--surface);border:1px solid var(--line);margin-bottom:12px}
+  .audio .tocar{width:48px;height:48px;border-radius:50%;border:0;background:var(--accent);color:var(--bg);display:grid;place-items:center;flex:none}
+  .audio .tocar svg{width:20px;height:20px}
+  .audio .corpo{flex:1;min-width:0}
+  .audio .tit{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .audio .trilho{height:4px;border-radius:2px;background:var(--elev);margin:8px 0 5px;overflow:hidden}
+  .audio .trilho b{display:block;width:38%;height:100%;background:var(--accent)}
+  .audio .tempo{display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-subtle)}
+  .audio .vel{font-size:12.5px;font-weight:700;color:var(--text-muted);min-width:44px;min-height:44px;display:grid;place-items:center}
+  .dupla{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px}
+  .dupla .btn{font-size:13.5px;padding:0 10px;font-weight:600}
+  .btn:disabled{opacity:.6;cursor:default}
+  .atividade{border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:16px}
+  .atividade .tag{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle)}
+  .atividade h3{font-size:17px;line-height:1.4;margin:6px 0 12px}
+  .opcao{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;border-radius:8px;border:1px solid var(--line);margin-bottom:8px;font-size:15.5px;background:var(--bg-a55)}
+  .opcao .bola{width:20px;height:20px;border-radius:50%;border:2px solid var(--border-strong);flex:none}
+  .opcao.certa{border-color:var(--success);background:var(--success-bg)}
+  .opcao.certa .bola{border-color:var(--success);background:var(--success);box-shadow:inset 0 0 0 3px var(--surface)}
+  .retorno{display:flex;gap:10px;padding:12px;border-radius:8px;background:var(--success-bg);margin:4px 0 12px}
+  .retorno svg{width:18px;height:18px;color:var(--success);flex:none;margin-top:2px}
+  .retorno strong{display:block;font-size:14.5px}
+  .retorno p{margin:2px 0 0;font-size:14px;color:var(--text-muted);line-height:1.5}
+  /* PDF e mídia */
+  .doc{border-radius:10px;border:1px solid var(--line);background:var(--surface);overflow:hidden;margin-bottom:14px}
+  .doc-barra{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px}
+  .doc-barra svg{width:16px;height:16px;color:var(--accent);flex:none}
+  .doc-barra strong{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .doc-barra select{background:var(--elev);color:var(--text);border:1px solid var(--line);border-radius:6px;height:36px;font-size:12.5px}
+  .pagina{background:#f6f1e6;color:#2a2416;margin:14px;border-radius:4px;padding:18px 18px 26px;min-height:260px;position:relative;box-shadow:0 4px 14px #0006}
+  .pagina h4{font-family:Georgia,serif;font-size:17px;margin:0 0 8px}
+  .pagina p{font-size:15px;line-height:1.6;margin:0}
+  .pagina .pn{position:absolute;right:12px;bottom:8px;font-size:11px;color:#7a7060}
+  .doc-pe{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 6px 12px;font-size:13px;color:var(--text-muted)}
+  .nav-pg{display:flex;align-items:center;gap:4px}
+  .nav-pg button{width:44px;height:44px;border:0;border-radius:8px;background:var(--elev);color:var(--text);font-size:20px}
+  .nav-pg button:disabled{opacity:.35}
+  .doc-erro{margin:14px;padding:18px;border-radius:8px;border:1px dashed var(--danger-border);background:var(--danger-bg);font-size:14px;color:#f3d9e0;line-height:1.5}
+  figure{margin:0 0 18px;border-radius:10px;border:1px solid var(--line);background:var(--surface);padding:10px}
+  figure svg{width:100%;height:auto;display:block}
+  figcaption{font-size:12.5px;color:var(--text-subtle);text-align:center;margin-top:6px}
+  .player{position:relative;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#000;margin:0 -2px 16px}
+  .player > img{width:100%;height:100%;object-fit:cover;opacity:.75}
+  .player .titv{position:absolute;left:12px;top:10px;font-size:13px;font-weight:700;text-shadow:0 1px 6px #000}
+  .player .grande{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;border:0;background:#000a;color:#fff;display:grid;place-items:center}
+  .player .grande svg{width:26px;height:26px}
+  .player.tocando .grande{display:none}
+  .player .ctrl{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:8px;padding:0 6px 4px;background:linear-gradient(transparent,#000c);font-size:12px;color:#fff;height:48px}
+  .player .ctrl button{width:40px;height:40px;border:0;background:none;color:#fff;display:grid;place-items:center}
+  .player .ctrl svg{width:18px;height:18px}
+  .player .ctrl .tr{flex:1;height:4px;border-radius:2px;background:#ffffff40;overflow:hidden}
+  .player .ctrl .tr i{display:block;height:100%;width:0;background:var(--accent)}
+  .player .feito{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;background:#000a;font-weight:700}
+  .player .feito svg{width:22px;height:22px;color:var(--success)}
+  .anexo{display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);margin-bottom:18px;font-size:13.5px}
+  .anexo svg{width:18px;height:18px;color:var(--accent)}
+  .anexo strong{flex:1}
+
+  /* barra de baixo */
+  .baixo{position:absolute;left:0;right:0;bottom:0;z-index:20;height:calc(var(--baixo) + var(--base));padding:8px 16px var(--base);background:var(--bg);border-top:1px solid var(--line)}
+  .baixo .btn{width:100%;min-height:52px}
+
+  /* guia */
+  .guia-fab{position:absolute;right:14px;bottom:calc(var(--baixo) + var(--base) + 14px);z-index:22;width:56px;height:56px;border-radius:50%;padding:0;border:2px solid var(--accent);background:var(--elev);cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.45),0 0 0 4px var(--accent-soft)}
+  .guia-fab img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+  .guia-fab .ping{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--bg)}
+  .guia-fab.mudo{filter:grayscale(1) brightness(.6);box-shadow:none}
+  .guia-fab.mudo::after{content:"";position:absolute;left:8px;right:8px;top:50%;height:3px;border-radius:2px;background:var(--text-muted);transform:rotate(-35deg)}
+  .chat{position:absolute;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;padding-top:var(--topo)}
+  .chat-topo{display:flex;align-items:center;gap:10px;padding:6px 8px 10px 16px;border-bottom:1px solid var(--line);border-top:3px solid var(--accent)}
+  .chat-topo img{width:40px;height:40px;border-radius:50%;object-fit:cover}
+  .chat-topo div{flex:1}
+  .chat-topo strong{display:block;font-size:15px}
+  .chat-topo span{font-size:12px;color:var(--text-subtle)}
+  .dicas{display:flex;gap:8px;overflow-x:auto;padding:10px 16px;scrollbar-width:none;border-bottom:1px solid var(--line)}
+  .dicas button{flex:none;min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;font-weight:600;cursor:pointer}
+  .chat-corpo{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .balao{max-width:86%;background:var(--surface);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:11px 13px;font-size:14.5px;line-height:1.5}
+  .balao.eu{align-self:flex-end;background:var(--accent);color:var(--bg);border:0;border-radius:14px 14px 4px 14px}
+  .sugs{display:flex;flex-direction:column;gap:6px;padding:0 16px 8px}
+  .sugs button{min-height:44px;text-align:left;padding:0 14px;border-radius:10px;border:1px dashed var(--border-strong);background:none;font-size:13.5px;cursor:pointer}
+  .nota{font-size:12px;color:var(--text-subtle);padding:0 16px 8px;line-height:1.45;margin:0}
+  .chat-campo{display:flex;gap:8px;padding:8px 12px calc(var(--base) + 8px);border-top:1px solid var(--line)}
+  .chat-campo input{flex:1;height:48px;border-radius:24px;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:0 16px;font-size:16px}
+  .chat-campo button{width:48px;height:48px;border-radius:50%;border:0;background:var(--accent);color:var(--bg);display:grid;place-items:center}
+  .chat-campo button svg{width:18px;height:18px}
+
+  /* folhas: batalha e editor da Bag */
+  .veu{z-index:35}
+  .folha{z-index:40;bottom:0;max-height:calc(100% - var(--topo) - 40px);overflow-y:auto;padding:0 18px calc(var(--base) + 18px)}
+  .batalha{color:var(--b-text);background:linear-gradient(180deg,color-mix(in srgb,var(--b-secondary) 92%,#000),var(--b-secondary));border-color:color-mix(in srgb,var(--b-primary) 50%,transparent)}
+  .b-topo{display:flex;align-items:center;gap:8px;margin:2px 0 10px}
+  .b-topo svg{width:18px;height:18px;color:var(--b-primary)}
+  .b-topo strong{flex:1;font-size:15px}
+  .b-ghost{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid #ffffff33;background:#ffffff10;color:var(--b-text);font-weight:600;font-size:13px}
+  .b-heroi{text-align:center}
+  .b-heroi img{width:170px;height:170px;object-fit:contain;filter:drop-shadow(0 0 18px color-mix(in srgb,var(--b-primary) 70%,transparent))}
+  .b-heroi img.morto{filter:grayscale(1) brightness(.5)}
+  .b-heroi h3{font-family:Georgia,serif;font-size:20px;margin:4px 0 8px}
+  .b-chips{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+  .b-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:#ffffff14;font-size:12px;font-weight:600}
+  .b-chip svg{width:13px;height:13px}
+  .b-barra{margin-top:14px}
+  .b-barra .h{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;font-variant-numeric:tabular-nums}
+  .b-barra .t{height:9px;border-radius:5px;background:#ffffff1c;overflow:hidden}
+  .b-barra .t i{display:block;height:100%}
+  .b-como{list-style:none;padding:0;margin:16px 0 10px;border-top:1px solid #ffffff1c}
+  .b-como li{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #ffffff1c;font-size:14px}
+  .b-como b{color:var(--b-accent)}
+  .b-ajuda{font-size:13.5px;line-height:1.5;opacity:.85;margin:0}
+  .pausa{text-align:center;padding:10px 4px 6px}
+  .pausa svg{width:40px;height:40px;color:var(--accent)}
+  .pausa h3{font-family:Georgia,serif;font-size:20px;margin:8px 0 6px}
+  .pausa p{font-size:15px;line-height:1.55;color:var(--text-muted);margin:0 0 16px}
+  .editor .k{display:block;font-size:11.5px;font-weight:700;letter-spacing:.08em;color:var(--text-subtle);margin:14px 0 6px}
+  .editor h3{font-family:Georgia,serif;font-size:21px;margin:2px 0 4px}
+  .editor .ctx{font-size:13px;color:var(--text-subtle)}
+  .editor .segm{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .editor .segm button{min-height:44px;border-radius:8px;border:1px solid var(--line);background:var(--bg-a55);font-weight:600;font-size:14px}
+  .editor .segm button[aria-pressed="true"]{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+  .editor input,.editor textarea{width:100%;border-radius:8px;border:1px solid var(--line);background:var(--bg-a55);color:var(--text);padding:12px 14px;font-size:16px;font-family:inherit}
+  .editor input{height:50px}
+  .editor textarea{min-height:130px;resize:vertical}
+  .editor .acoes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+
+  /* tela cheia: vitória e conquista */
+  .cerimonia{position:absolute;inset:0;z-index:55;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:calc(var(--topo) + 20px) 28px calc(var(--base) + 24px);background:radial-gradient(circle at 50% 36%,var(--accent-soft),transparent 62%),var(--bg)}
+  .cerimonia img{width:180px;height:180px;object-fit:contain;filter:drop-shadow(0 0 26px var(--accent))}
+  .cerimonia h2{font-family:Georgia,serif;font-size:28px;margin:0}
+  .cerimonia p{margin:0;font-size:15.5px;line-height:1.55;color:var(--text-muted)}
+  .cerimonia .btn{width:100%;margin-top:12px;min-height:52px}
+  .cerimonia .data{font-size:13px;color:var(--text-subtle)}
+  @media (prefers-reduced-motion:no-preference){.cerimonia img{animation:surge .7s cubic-bezier(.2,.7,.2,1.4) both}}
+  @keyframes surge{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+  .torrada{position:absolute;left:50%;bottom:calc(var(--baixo) + var(--base) + 16px);transform:translateX(-50%);z-index:70;background:var(--text);color:var(--bg);font-size:13px;font-weight:600;padding:10px 14px;border-radius:999px;white-space:nowrap}
+</style>
+</head>
+<body class="mesa">
+
+<div class="preview" id="preview"></div>
+
+<div class="aparelho">
+  <div class="tela" id="tela"></div>
+</div>
+
+<script src="assets/aparelho.js"></script>
+<script src="assets/tema.js"></script>
+<script>
+/* Batalha: mecânica e textos do v4 (16 por conteúdo, 24 por atividade; IABattlePanel e BossVictoryModal) */
+const BOSS={nome:'Guardião das Equações',tipo:'Boss arcano',img:'boss-12'};
+const HP_MAX=4*16+3*24, ESC_MAX=20;
+const ESTADOS=[['on','Em batalha'],['painel','Painel da batalha aberto'],['low','Boss quase derrotado'],['dead','Boss derrotado'],['off','Batalha desativada'],['none','Sem batalha (perfil sem sinal Survivor)'],['paused','Batalha suspensa (ansiedade)'],['conquista','Conquista desbloqueada'],['mentor','Guia aberto'],['mentor-mudo','Guia silenciado'],['bag-novo','Editor: novo item'],['texto','Atividade de texto'],['video','Atividade de vídeo'],['video-fim','Vídeo assistido'],['anexo-erro','Anexo com erro']];
+const PAGINAS=[
+  ['Diário do capitão','No terceiro dia de marcha, o batedor voltou com um recado: três tropas iguais e mais sete soldados avulsos somavam vinte e dois homens no acampamento inimigo.'],
+  ['Primeiro movimento','Mandei tirar os sete avulsos dos dois pratos da balança. De um lado ficaram as três tropas; do outro, quinze soldados. A balança continuou em equilíbrio.'],
+  ['Segundo movimento','Três tropas iguais pesando quinze: dividi os quinze em três grupos. Cada tropa tinha cinco soldados. 3x = 15, logo x = 5.'],
+  ['Terceiro movimento','Conferi: três tropas de cinco são quinze, mais sete, vinte e dois. O território estava tomado. Anote os três movimentos no seu diário.'],
+];
+const GUIA_ABERTURA='Estou acompanhando este módulo como uma conversa. Posso comentar a personalização, explicar os elementos da tela e sugerir estratégia de estudo sem entregar respostas das atividades.';
+const DICAS=[['Conversa','Neste módulo eu apareço como guia em formato de conversa. Você pode me responder para pedir explicações sobre a personalização, o fluxo do módulo e a melhor estratégia de estudo.'],
+  ['Progresso','A barra de partes mostra quanto do módulo já foi concluído. O contador ao lado indica em qual etapa da sequência você está.'],
+  ['Boss','O boss representa o desafio do módulo. Conforme você avança no conteúdo e acerta atividades, causa dano nele. Se o inimigo já tiver sido derrotado, o resumo do confronto continua disponível.'],
+  ['Limites','Eu posso orientar, resumir métricas e explicar a personalização, mas não entrego respostas de atividades. Quando você pedir ajuda, eu respondo dentro desses limites.']];
+const SUGESTOES=['Por que este módulo veio em desafios curtos?','Como eu derroto o boss?','Qual é a resposta da atividade?'];
+function respostaDoGuia(t){const s=t.toLowerCase();
+  if(/respost|gabarito|valor de x|resolve/.test(s))return 'Não posso entregar a resposta, mas posso te ajudar a chegar nela: isole o x passando o 7 para o outro lado. O que sobra de 3x?';
+  if(/boss|inimigo|dano|derrot/.test(s))return DICAS[2][1]+` Agora ele está com ${hp} de HP: concluir a atividade tira 24.`;
+  if(/personaliz|desafio|curto|por que|formato/.test(s))return 'Reorganizei Equações em desafios curtos antes da leitura, porque você rende mais quando começa praticando.';
+  return 'Estou aqui para conversar com você sobre personalização, métricas e estratégia de estudo, mas falhei ao responder agora.'}
+
+const ic={espada:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="M13 19l6-6M16 16l4 4M19 21l2-2"/><path d="M9.5 17.5 21 6V3h-3L6.5 14.5"/><path d="M11 19l-6-6M8 16l-4 4M5 21l-2-2"/></svg>',
+  areia:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h12M6 22h12M7 2v4l5 6-5 6v4M17 2v4l-5 6 5 6v4"/></svg>',
+  coroa:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18h18l-2-10-4 4-3-6-3 6-4-4z"/></svg>',
+  pausa:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M10 9v6M14 9v6"/></svg>',
+  livro:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5z"/></svg>',
+  pdf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>',
+  video:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="15" height="14" rx="2"/><path d="M17 10l5-3v10l-5-3z"/></svg>',
+  mais:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>',
+  tela:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>'};
+
+let estado, hp, esc, seg, feitoC, feitoA, feitoP, parte, pdfModo, pdfPg, pdfErro, plT, plTimer, relogio;
+let folha=null, chat=false, mudo=false, msgs=[], tipoBag='resumo', cerimonia=null, torradaTxt=null;
+const $=id=>document.getElementById(id);
+const fmt=x=>String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0');
+
+function define(v){
+  estado=v; clearInterval(relogio); clearInterval(plTimer); plTimer=null; plT=0;
+  hp=HP_MAX-2*16; esc=ESC_MAX; seg=12*60+40; feitoC=false; feitoA=false; feitoP={4:false,5:false}; parte=3; pdfModo='pagina'; pdfPg=1; pdfErro=false;
+  folha=null; chat=false; mudo=false; msgs=[['g',GUIA_ABERTURA]]; cerimonia=null; torradaTxt=null;
+  if(v==='low'){hp=8;esc=0}
+  if(v==='dead'){hp=0;esc=0;cerimonia='vitoria'}
+  if(v==='conquista')cerimonia='conquista';
+  if(v==='mentor')chat=true;
+  if(v==='mentor-mudo')mudo=true;
+  if(v==='bag-novo')folha='bag';
+  if(v==='painel')folha='batalha';
+  if(v==='texto'||v==='anexo-erro')parte=4;
+  if(v==='video'||v==='video-fim')parte=5;
+  if(v==='anexo-erro')pdfErro=true;
+  if(v==='video-fim')plT=192;
+  render();
+  if(v==='on'||v==='low'||v==='painel')relogio=setInterval(()=>{seg=Math.max(0,seg-1);document.querySelectorAll('[data-relogio]').forEach(e=>e.textContent=fmt(seg))},1000);
+}
+
+function chipHTML(){
+  if(estado==='none')return '';
+  if(estado==='off')return `<button class="chipb neutro" data-ligar>${ic.espada}Batalha desligada · <b>Ligar</b></button>`;
+  if(estado==='paused')return `<button class="chipb neutro" data-folha="batalha">${ic.pausa}Pausada</button>`;
+  const morto=hp<=0;
+  return `<button class="chipb" id="chipb" data-folha="batalha" aria-label="Modo batalha: ${BOSS.nome}, ${hp} de ${HP_MAX} de HP">
+    <img src="${ARTE}${BOSS.img}.png" alt="" style="${morto?'filter:grayscale(1) brightness(.5)':''}" />
+    <span class="mini"><i><b style="width:${hp/HP_MAX*100}%;${morto?'background:#34d399':''}"></b></i><span>${morto?'Derrotado':`<span data-relogio>${fmt(seg)}</span>`}</span></span></button>`;
+}
+function parteHTML(){
+  if(parte===3)return `<div class="rotulo-bloco">${ic.livro}<span>Material personalizado — perfil ${PERFIS[perfil].label}</span></div>
+    <div class="prosa"><h2>Avançando sobre o desconhecido</h2>
+      <p>Toda equação do 1º grau é um território a ser conquistado: de um lado, o que você já sabe; do outro, o "x" que ainda não foi tomado. Seu trabalho é isolar esse território — mover tudo o que não é "x" pro outro lado do sinal de igual, sempre em par (o que faz de um lado, faz do outro).</p>
+      <div class="destaque">Estratégia: pense em cada equação como uma fronteira a ser avançada passo a passo — não tente vencer tudo de uma vez.</div></div>
+    <div class="audio"><button class="tocar" aria-label="Ouvir narrado">${ic.play}</button><div class="corpo"><div class="tit">Ouvir narrado — Avançando sobre o desconhecido</div><div class="trilho"><b></b></div><div class="tempo"><span>1:42</span><span>4:30</span></div></div><span class="vel">1.0×</span></div>
+    <div class="dupla"><button class="btn btn-secundario" data-feito-c ${feitoC?'disabled':''}>${ICONE.check}${feitoC?'Concluído':'Marcar concluído'}</button>
+      <button class="btn btn-secundario" data-bag>${ic.mais}Adicionar à Bag</button></div>
+    <div class="atividade"><div class="tag">Atividade — múltipla escolha</div><h3>Na equação 3x + 7 = 22, qual é o valor de x?</h3>
+      <div class="opcao"><span class="bola"></span>x = 3</div><div class="opcao certa"><span class="bola"></span>x = 5</div><div class="opcao"><span class="bola"></span>x = 7</div><div class="opcao"><span class="bola"></span>x = 15</div>
+      <div class="retorno">${ICONE.check}<div><strong>Conquistado!</strong><p>3x = 22 − 7 → 3x = 15 → x = 5. Você isolou o "x" corretamente.</p></div></div>
+      <button class="btn btn-primario btn-bloco" data-feito-a ${feitoA?'disabled':''}>${feitoA?'Atividade concluída':'Concluir atividade'}</button></div>`;
+  if(parte===4){
+    const pag=i=>`<div class="pagina"><h4>${PAGINAS[i][0]}</h4><p>${PAGINAS[i][1]}</p><span class="pn">${i+1}</span></div>`;
+    const visao=pdfErro?'<div class="doc-erro" role="alert">Não foi possível abrir este arquivo para visualização nativa. Toque em "Abrir arquivo" para ver no aplicativo do celular.</div>':pdfModo==='pagina'?pag(pdfPg-1):PAGINAS.map((_,i)=>pag(i)).join('');
+    return `<div class="rotulo-bloco">${ic.pdf}<span>Atividade — leitura</span></div>
+    <h2 class="at-tit">Diário de campanha: a balança das equações</h2>
+    <p class="at-desc">Leia o relato do capitão e anote, no seu diário, os três movimentos que ele fez para descobrir quantos soldados havia em cada tropa.</p>
+    <div class="doc"><div class="doc-barra">${ic.pdf}<strong>Diário de campanha.pdf</strong>${pdfErro?'':`<select data-modo aria-label="Modo de leitura"><option value="pagina" ${pdfModo==='pagina'?'selected':''}>Página</option><option value="rolagem" ${pdfModo==='rolagem'?'selected':''}>Rolagem</option></select>`}</div>
+      ${visao}<div class="doc-pe">${pdfErro?'<span></span>':pdfModo==='pagina'?`<span class="nav-pg"><button data-pg="-1" ${pdfPg===1?'disabled':''} aria-label="Página anterior">‹</button>${pdfPg} de 4<button data-pg="1" ${pdfPg===4?'disabled':''} aria-label="Próxima página">›</button></span>`:'<span>4 páginas · rolagem contínua</span>'}<a class="link" href="#" data-torrada="Abre no visualizador de PDF do celular">Abrir arquivo</a></div></div>
+    <figure><svg viewBox="0 0 360 170" role="img" aria-label="Balança em equilíbrio: 3 tropas e 7 soldados de um lado, 22 soldados do outro">
+      <rect x="174" y="40" width="12" height="110" rx="4" fill="#4d6fcb"/><rect x="130" y="148" width="100" height="12" rx="6" fill="#4d6fcb"/>
+      <rect x="40" y="36" width="280" height="8" rx="4" fill="#9fb4f2"/><circle cx="180" cy="40" r="10" fill="#e8c766"/>
+      <path d="M70 44 50 96h80L110 44M290 44l-20 52h80l-20-52" fill="none" stroke="#9fb4f2" stroke-width="2"/>
+      <path d="M44 96h92a46 18 0 0 1-92 0zM264 96h92a46 18 0 0 1-92 0z" fill="#192a57" stroke="#6f90eb"/>
+      <g font-family="Georgia,serif" font-size="15" fill="#f3f4f7" text-anchor="middle"><text x="90" y="88">x x x + 7</text><text x="310" y="88">22</text><text x="180" y="20" font-size="12" fill="#e8c766">=</text></g></svg>
+      <figcaption>Balança em equilíbrio · o que sai de um prato sai do outro.</figcaption></figure>
+    <button class="btn btn-primario btn-bloco" data-feito-p="4" ${feitoP[4]?'disabled':''}>${feitoP[4]?'Atividade concluída':'Concluir atividade'}</button>`;
+  }
+  const D=192, fim=plT>=D;
+  return `<div class="player ${plTimer?'tocando':''}" id="player"><img src="${ARTE}world-${perfil}.webp" alt="" /><span class="titv">Isolando o x em 3 movimentos</span>
+      ${fim?`<div class="feito">${ICONE.check}Vídeo assistido</div>`:`<button class="grande" data-play aria-label="Reproduzir vídeo">${ic.play}</button>`}
+      <div class="ctrl"><button data-play aria-label="Reproduzir ou pausar">${ic.play}</button><span>${Math.floor(plT/60)}:${String(plT%60).padStart(2,'0')} / 3:12</span><span class="tr"><i style="width:${plT/D*100}%"></i></span><span>1.0×</span><button aria-label="Tela cheia" data-torrada="Gira para a horizontal em tela cheia">${ic.tela}</button></div></div>
+    <div class="rotulo-bloco">${ic.video}<span>Atividade — vídeo</span></div>
+    <h2 class="at-tit">Isolando o x em 3 movimentos</h2>
+    <p class="at-desc">Assista à Amina resolvendo 5x − 4 = 21 e pause em cada movimento para tentar antes dela.</p>
+    <div class="anexo">${ic.pdf}<strong>Roteiro do vídeo.docx</strong><a class="link" href="#" data-torrada="Abre no aplicativo de documentos">Abrir</a></div>
+    <button class="btn btn-primario btn-bloco" data-feito-p="5" ${feitoP[5]?'disabled':''}>${feitoP[5]?'Atividade concluída':'Concluir atividade'}</button>`;
+}
+function folhaBatalha(){
+  if(estado==='paused')return `<section class="folha vidro" role="dialog" aria-modal="true" aria-label="Modo batalha"><span class="alca" data-fecha></span>
+    <div class="pausa">${ic.pausa}<h3>Modo batalha</h3><p>A batalha foi pausada para você estudar no seu ritmo.</p><button class="btn btn-secundario btn-bloco" data-fecha>Entendi</button></div></section>`;
+  const morto=hp<=0, bar=(l,v,m,c)=>`<div class="b-barra"><div class="h"><span>${l}</span><span>${Math.round(v)} / ${m}</span></div><div class="t"><i style="width:${m?v/m*100:0}%;background:${c}"></i></div></div>`;
+  return `<section class="folha batalha" role="dialog" aria-modal="true" aria-label="Modo batalha"><span class="alca" data-fecha></span>
+    <div class="b-topo">${morto?ic.coroa:ic.espada}<strong>${morto?'Boss derrotado':'Modo batalha'}</strong><button class="b-ghost" data-desligar>Desativar</button></div>
+    <div class="b-heroi"><img class="${morto?'morto':''}" src="${ARTE}${BOSS.img}.png" alt="${BOSS.nome}" /><h3>${BOSS.nome}</h3>
+      <div class="b-chips"><span class="b-chip">${BOSS.tipo}</span>${morto?'':`<span class="b-chip">${ic.areia}Encontro termina em <span data-relogio>${fmt(seg)}</span></span>`}</div></div>
+    ${bar('Escudo',esc,ESC_MAX,'var(--b-shield)')}${bar('HP',hp,HP_MAX,morto?'#34d399':'var(--b-hp)')}
+    <ul class="b-como"><li><span>Concluir um conteúdo</span><b>−16 HP</b></li><li><span>Concluir uma atividade</span><b>−24 HP</b></li></ul>
+    <p class="b-ajuda">${morto?'Inimigo derrotado neste conteúdo.':'Avance no tópico para reduzir a vida do inimigo.'}</p></section>`;
+}
+function folhaBag(){
+  const card=tipoBag==='card';
+  return `<section class="folha vidro editor" role="dialog" aria-modal="true" aria-label="Novo item"><span class="alca" data-fecha></span>
+    <span class="eyebrow">Bag</span><h3>Novo item</h3><div class="ctx">Equações do 1º grau · Avançando sobre o desconhecido</div>
+    <span class="k">TIPO</span><div class="segm">${[['resumo','Resumo'],['anotacao','Anotação'],['card','Card']].map(([k,l])=>`<button type="button" data-tipo="${k}" aria-pressed="${tipoBag===k}">${l}</button>`).join('')}</div>
+    <label class="k" for="bagT">TÍTULO</label><input id="bagT" placeholder="Dê um nome para este item" />
+    ${card?'<label class="k" for="bagF">FRENTE</label><input id="bagF" placeholder="Pergunta ou conceito" /><label class="k" for="bagV">VERSO</label><textarea id="bagV" placeholder="Resposta ou explicação"></textarea>'
+      :`<label class="k" for="bagC">CONTEÚDO</label><textarea id="bagC" placeholder="${tipoBag==='resumo'?'Escreva o resumo':'Escreva sua anotação'}"></textarea>`}
+    <div class="acoes"><button class="btn btn-secundario" data-fecha>Cancelar</button><button class="btn btn-primario" data-salva-bag>Salvar</button></div></section>`;
+}
+function chatHTML(){
+  const P=PERFIS[perfil];
+  return `<section class="chat" aria-label="${P.guardiao} no módulo">
+    <div class="chat-topo"><img src="${ARTE}rosto-${perfil}.png" alt="" /><div><strong>${P.guardiao}</strong><span>Guia · ${P.label}</span></div><button class="redondo" data-fecha-chat aria-label="Fechar">${ICONE.x}</button></div>
+    <div class="dicas">${DICAS.map(([t],i)=>`<button data-dica="${i}">${t}</button>`).join('')}</div>
+    <div class="chat-corpo" id="chatCorpo">${msgs.map(([q,t])=>`<div class="balao ${q==='a'?'eu':''}">${t}</div>`).join('')}</div>
+    ${msgs.length<2?`<div class="sugs">${SUGESTOES.map(s=>`<button data-sug="${s}">${s}</button>`).join('')}</div>`:''}
+    <p class="nota">Eu posso orientar, resumir métricas e explicar a personalização, mas não entrego respostas de atividades.</p>
+    <form class="chat-campo" id="chatForm"><input id="chatIn" placeholder="Pergunte ao guia" aria-label="Mensagem para o guia" /><button aria-label="Enviar mensagem">${ICONE.enviar}</button></form></section>`;
+}
+function render(){
+  aplicarTema();
+  $('preview').innerHTML=previewHTML(ESTADOS,estado);
+  const segs=[1,2,3,4,5].map(n=>{const feita=n<3||(n===3&&feitoA)||(n>3&&feitoP[n]);
+    return `<button class="seg ${n===parte?'atual':feita?'feita':''}" ${n<3?'disabled':''} data-parte="${n}" aria-label="Parte ${n}${n<3?': conteúdo concluído':n===3?': Avançando sobre o desconhecido':n===4?': atividade de leitura':': atividade de vídeo'}" ${n===parte?'aria-current="step"':''}><i></i></button>`}).join('');
+  let h=`<header class="cab"><div class="cab-1"><a class="voltar" href="03-trilha.html" aria-label="Voltar para a trilha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <div class="cab-tit"><div class="eyebrow">Fronteiras do Império</div><h1>Equações do 1º grau</h1></div>${chipHTML()}</div>
+    <div class="partes"><div class="segs" role="group" aria-label="Partes do tópico">${segs}</div><span class="conta">${parte} de 5</span></div></header>
+    <main class="conteudo" id="conteudo">${parteHTML()}</main>
+    <button class="guia-fab ${mudo?'mudo':''}" data-chat aria-label="${mudo?'Guia silenciado':'Abrir o guia (1 mensagem nova)'}"><img src="${ARTE}rosto-${perfil}.png" alt="" />${mudo?'':'<span class="ping"></span>'}</button>
+    <div class="baixo"><a class="btn btn-primario" href="03-trilha.html">Continuar ${ICONE.seta}</a></div>`;
+  if(folha)h+=`<div class="veu" data-fecha></div>`+(folha==='bag'?folhaBag():folhaBatalha());
+  if(chat)h+=chatHTML();
+  if(cerimonia==='vitoria')h+=`<section class="cerimonia" role="dialog" aria-modal="true" aria-labelledby="vt"><img src="${ARTE}${BOSS.img}.png" alt="" /><h2 id="vt">Parabéns!</h2><p>Você derrotou o boss!</p><a class="btn btn-primario" href="03-trilha.html">Continuar jornada</a><button class="link" data-fecha-cer>Ficar no tópico</button></section>`;
+  if(cerimonia==='conquista')h+=`<section class="cerimonia" role="dialog" aria-modal="true" aria-labelledby="ct"><img src="${ARTE}object-trophy.png" alt="" /><span class="chip chip-accent">Desempenho</span><div class="eyebrow">Conquista desbloqueada</div><h2 id="ct">Fronteira Avançada</h2><p>Complete 2 tópicos seguidos sem errar nenhuma questão de atividade.</p><span class="data">Conquistada em hoje</span><button class="btn btn-primario" data-fecha-cer>Fechar</button></section>`;
+  if(torradaTxt)h+=`<div class="torrada" role="status">${torradaTxt}</div>`;
+  $('tela').innerHTML=h;
+  const cc=$('chatCorpo');if(cc)cc.scrollTop=cc.scrollHeight;
+}
+function golpe(d){
+  if(!['on','low','painel'].includes(estado)){render();return}
+  let r=d;const a=Math.min(esc,r);esc-=a;r-=a;hp=Math.max(0,hp-r);render();
+  const c=$('chipb');if(c){c.classList.add('treme');c.insertAdjacentHTML('beforeend',`<span class="dano">−${d}</span>`)}
+  if(hp<=0){clearInterval(relogio);setTimeout(()=>{cerimonia='vitoria';render()},800)}
+}
+function torrada(t){torradaTxt=t;render();setTimeout(()=>{torradaTxt=null;render()},1800)}
+function tocar(){
+  const D=192;if(plTimer){clearInterval(plTimer);plTimer=null;render();return}if(plT>=D)plT=0;
+  plTimer=setInterval(()=>{plT=Math.min(D,plT+8);if(plT>=D){clearInterval(plTimer);plTimer=null}render()},250);render();
+}
+document.addEventListener('click',e=>{
+  const q=x=>e.target.closest(x);
+  if(q('[data-perfil]')){perfil=q('[data-perfil]').dataset.perfil;render();return}
+  if(q('[data-feito-c]')&&!feitoC){feitoC=true;golpe(16);return}
+  if(q('[data-feito-a]')&&!feitoA){feitoA=true;golpe(24);return}
+  if(q('[data-feito-p]')){const k=q('[data-feito-p]').dataset.feitoP;if(!feitoP[k]){feitoP[k]=true;golpe(24)}return}
+  if(q('[data-parte]')){parte=+q('[data-parte]').dataset.parte;render();$('conteudo').scrollTop=0;return}
+  if(q('[data-pg]')){pdfPg=Math.min(4,Math.max(1,pdfPg+ +q('[data-pg]').dataset.pg));render();return}
+  if(q('[data-play]')){tocar();return}
+  if(q('[data-torrada]')){e.preventDefault();torrada(q('[data-torrada]').dataset.torrada);return}
+  if(q('[data-folha]')){folha='batalha';render();return}
+  if(q('[data-bag]')){folha='bag';tipoBag='resumo';render();return}
+  if(q('[data-tipo]')){tipoBag=q('[data-tipo]').dataset.tipo;render();return}
+  if(q('[data-salva-bag]')){folha=null;torrada('Guardado na sua Bag.');return}
+  if(q('[data-fecha]')){folha=null;render();return}
+  if(q('[data-desligar]')){define('off');return}
+  if(q('[data-ligar]')){define('on');return}
+  if(q('[data-chat]')){chat=true;mudo=false;render();return}
+  if(q('[data-fecha-chat]')){chat=false;render();return}
+  if(q('[data-dica]')){const d=DICAS[+q('[data-dica]').dataset.dica];msgs.push(['g',`<strong>${d[0]}</strong><br>${d[1]}`]);render();return}
+  if(q('[data-sug]')){const s=q('[data-sug]').dataset.sug;msgs.push(['a',s],['g',respostaDoGuia(s)]);render();return}
+  if(q('[data-fecha-cer]')){cerimonia=null;render();return}
+});
+document.addEventListener('submit',e=>{if(e.target.id!=='chatForm')return;e.preventDefault();const t=$('chatIn').value.trim();if(!t)return;msgs.push(['a',t],['g',respostaDoGuia(t)]);render()});
+document.addEventListener('change',e=>{
+  if(e.target.id==='estado'){history.replaceState(null,'',`${location.pathname}?estado=${e.target.value}&perfil=${perfil}`);define(e.target.value)}
+  if(e.target.matches('[data-modo]')){pdfModo=e.target.value;pdfPg=1;render()}
+});
+define(qs.get('estado')||'on');
+</script>
+</body>
+</html>

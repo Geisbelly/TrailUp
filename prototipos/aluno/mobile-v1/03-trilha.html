@@ -31,7 +31,7 @@
   .no{position:absolute;display:flex;flex-direction:column;align-items:center;background:none;border:0;padding:0;cursor:pointer;width:150px;transform:translate(-50%,calc(-1 * var(--meio)));-webkit-tap-highlight-color:transparent}
   .no.atual .hx{filter:drop-shadow(0 0 16px var(--accent-soft)) drop-shadow(0 0 26px var(--accent-soft))}
   .rotulo{margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;max-width:150px}
-  .rotulo .t{font-size:13px;font-weight:600;line-height:1.25;color:var(--text);text-shadow:0 1px 8px var(--bg),0 0 2px var(--bg);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .rotulo .t{font-size:13px;font-weight:600;line-height:1.25;color:var(--text);text-shadow:0 1px 8px var(--bg),0 0 2px var(--bg);display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .no.travado .rotulo .t{color:var(--text-muted)}
   .rotulo .chip{font-size:10.5px;padding:3px 8px;border:1px solid var(--line);background:var(--surface)}
   .rotulo .chip-accent{background:linear-gradient(var(--accent-muted),var(--accent-muted)),var(--surface)}
@@ -330,7 +330,7 @@ function seleciona(n){
   sel=n;aberta=topico(n).st==='locked';desenhaTabuleiro.rolou=true;render();const t2=$('tabuleiro');if(t2)t2.scrollTop=st;
 }
 function torrada(txt){aviso=`<div class="torrada" role="status">${txt}</div>`;render();setTimeout(()=>{aviso=null;render()},1800)}
-function abre(n){torrada(`Abre ${topico(n).t} (o Tópico é a parte 3)`)}
+function abre(n){location.href=`04-topico.html?perfil=${perfil}`}
 
 document.addEventListener('click',e=>{
   const a=e.target.closest('[data-no],[data-alterna],[data-seleciona],[data-abre],[data-chat],[data-fecha-chat],[data-estado],[data-perfil],[data-torrada],.aba.travada');
