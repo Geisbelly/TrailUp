@@ -31,6 +31,16 @@ processo que rode nosso codigo primeiro.
 `psycopg` entra so pelo checkpointer do LangGraph, e e ele que impoe o
 selector.
 
+## A politica nao basta no uvicorn novo (#520)
+
+Do uvicorn 0.36 em diante o loop sai de uma FABRICA (`Config.loop` vira
+`asyncio.run(..., loop_factory=...)`), e a fabrica `asyncio` devolve
+`ProactorEventLoop` no Windows sem consultar a politica. Com Python 3.14 e
+uvicorn 0.52 o erro da #173 voltou mesmo com a politica trocada. Por isso, no
+Windows, o launcher tambem passa `loop="asyncio:SelectorEventLoop"` quando o
+uvicorn aceita fabrica propria. A politica fica para o uvicorn antigo, que a
+respeita e nao conhece a fabrica.
+
 Uso:
 
     python run_api.py                       # 0.0.0.0:8000
@@ -69,6 +79,23 @@ def aplicar_politica_de_loop() -> str | None:
     return "WindowsSelectorEventLoopPolicy"
 
 
+FABRICA_SELECTOR = "asyncio:SelectorEventLoop"
+
+
+def loop_do_uvicorn(uvicorn_config: type) -> str | None:
+    """Valor de `loop` para o uvicorn no Windows, ou None para o padrao dele.
+
+    So o uvicorn com `Config.get_loop_factory` (0.36+) aceita "modulo:atributo"
+    como fabrica; no antigo um valor desconhecido quebraria a subida, e la a
+    politica de `aplicar_politica_de_loop` ja resolve.
+    """
+    if sys.platform != "win32":
+        return None
+    if not hasattr(uvicorn_config, "get_loop_factory"):
+        return None
+    return FABRICA_SELECTOR
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Sobe a API do TrailUp.")
     parser.add_argument("--host", default="0.0.0.0")
@@ -85,12 +112,19 @@ def main(argv: list[str] | None = None) -> int:
     # uvicorn montar qualquer coisa.
     import uvicorn
 
+    extras: dict[str, str] = {}
+    loop = loop_do_uvicorn(uvicorn.Config)
+    if loop:
+        extras["loop"] = loop
+        print(f"[run_api] Windows: fabrica de event loop -> {loop}", flush=True)
+
     uvicorn.run(
         "app.main:app",
         host=args.host,
         port=args.port,
         reload=args.reload,
         log_level=args.log_level,
+        **extras,
     )
     return 0
 
