@@ -141,6 +141,7 @@
 
 <script src="assets/aparelho.js"></script>
 <script src="assets/tema.js"></script>
+<script src="assets/bag.js"></script>
 <script>
 /* ================= dados (iguais ao v4) ================= */
 const JUSTIFICATIVA='Reorganizei Equações em desafios curtos antes da leitura, porque você rende mais quando começa praticando.';
@@ -280,7 +281,7 @@ function topoHTML(carregando){
   if(carregando)return `<div class="topo"><div class="topo-linha"><div class="skel" style="width:32px;height:32px;border-radius:50%"></div><div class="topo-titulo"><div class="skel" style="height:10px;width:110px"></div><div class="skel" style="height:18px;width:190px;margin-top:6px"></div></div></div><div class="skel" style="height:6px;margin:0 2px"></div></div>`;
   return `<div class="topo"><div class="topo-linha"><img class="emblema" src="${ARTE}emblem-${perfil}.png" alt="" />
       <div class="topo-titulo"><div class="eyebrow">${ehMapa?'Mapa da jornada':'Sua trilha'}</div><h1>${ehMapa?'Reinos de Matemática':'Matemática'}</h1></div>
-      <button class="redondo" aria-label="Abrir Bag" title="Minha Bag" data-torrada="A Bag entra na parte do Perfil"><img src="${ARTE}bag-${perfil}.png" alt="" /></button>
+      <button class="redondo" aria-label="Abrir Bag" title="Minha Bag" data-abre-bag><img src="${ARTE}bag-${perfil}.png" alt="" /></button>
       <button class="redondo" aria-label="Guia tutorial da trilha" data-torrada="O tutorial entra quando todas as abas existirem">${ICONE.ajuda}</button></div>
     <div class="progresso"><div class="barra" role="progressbar" aria-valuenow="56" aria-valuemin="0" aria-valuemax="100" aria-label="Progresso da trilha"><i style="width:56%"></i></div>
       <span><strong>56%</strong> · ${estado==='stale'?'<span class="chip chip-warning">progresso desatualizado</span>':'4 de 8 módulos'}</span></div></div>`;
@@ -316,6 +317,7 @@ function render(){
   if(aviso)h+=aviso;
   tela.innerHTML=h;
   desenhaTabuleiro();
+  Bag.redesenha();
 }
 function desenhaTabuleiro(){
   const tab=$('tabuleiro');if(!tab)return;

@@ -159,6 +159,7 @@
 
 <script src="assets/aparelho.js"></script>
 <script src="assets/tema.js"></script>
+<script src="assets/bag.js"></script>
 <script src="assets/social.js"></script>
 <script>
 /* dados do v4 (06-social.html) */
@@ -268,7 +269,7 @@ function render(){
   $('preview').innerHTML=previewHTML(ESTADOS,estado);
   const st=$('rolagem')?.scrollTop||0, foco=document.activeElement?.id==='busca';
   let h=`<header class="topo"><div class="topo-linha"><h1>Social</h1><a class="moedas" href="12-loja.html" aria-label="Loja, saldo de 38 moedas"><img src="${ARTE}coin-${perfil}.png" alt="" />38</a>
-    <button class="redondo" aria-label="Abrir Bag" data-torrada="A Bag entra na parte do Perfil"><img src="${ARTE}bag-${perfil}.png" alt="" /></button></div></header>`;
+    <button class="redondo" aria-label="Abrir Bag" data-abre-bag><img src="${ARTE}bag-${perfil}.png" alt="" /></button></div></header>`;
   if(estado==='error')h+=`<div class="rolagem"><div class="erro" role="alert">${ICONE.alerta}<p>Não foi possível carregar o Social.</p><button class="btn btn-secundario" data-estado="data">${ICONE.repetir}Tentar novamente</button></div></div>`;
   else if(estado==='loading')h+=`<div class="rolagem" style="padding:8px 14px"><div style="display:flex;gap:8px;margin-bottom:14px">${'<div class="skel" style="height:40px;width:90px;border-radius:999px"></div>'.repeat(4)}</div><div class="skel" style="height:300px;border-radius:14px"></div><div class="skel" style="height:240px;border-radius:14px;margin-top:20px"></div>${'<div class="skel" style="height:56px;margin-top:10px"></div>'.repeat(3)}</div>`;
   else{
@@ -283,6 +284,7 @@ function render(){
   if($('rolagem'))$('rolagem').scrollTop=st;
   if(foco){const b=$('busca');b.focus();b.setSelectionRange(b.value.length,b.value.length)}
   Social.redesenha();
+  Bag.redesenha();
 }
 function torrada(t){torradaTxt=t;render();setTimeout(()=>{torradaTxt=null;render()},1700)}
 function define(st){

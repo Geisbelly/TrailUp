@@ -98,6 +98,7 @@
 
 <script src="assets/aparelho.js"></script>
 <script src="assets/tema.js"></script>
+<script src="assets/bag.js"></script>
 <script src="assets/social.js"></script>
 <script>
 /* dados iguais ao v4 (05-ranking.html) */
@@ -148,7 +149,7 @@ function render(){
   aplicarTema();
   $('preview').innerHTML=previewHTML(ESTADOS,estado);
   const topo=`<header class="topo"><div class="topo-linha"><div><div class="eyebrow">Ranking</div><h1>Sala de honra</h1></div>
-    <button class="redondo" aria-label="Abrir Bag" data-torrada="A Bag entra na parte do Perfil"><img src="${ARTE}bag-${perfil}.png" alt="" /></button></div></header>`;
+    <button class="redondo" aria-label="Abrir Bag" data-abre-bag><img src="${ARTE}bag-${perfil}.png" alt="" /></button></div></header>`;
   let h=topo;
   if(estado==='empty'){h+=`<div class="vazio"><img src="${ARTE}medal-${perfil}.png" alt="" /><h3>Nenhum ranking ainda</h3><p>Nenhum ranking disponível nesta turma.</p></div>`+abasHTML('ranking');$('tela').innerHTML=h;return}
   if(estado==='loading'){h+=`<div class="rolagem" style="padding:8px 12px"><div style="display:flex;gap:8px;margin:0 6px 12px">${'<div class="skel" style="height:44px;width:130px;border-radius:999px"></div>'.repeat(3)}</div><div class="skel" style="height:250px;border-radius:14px"></div>${'<div class="skel" style="height:52px;margin-top:10px"></div>'.repeat(5)}</div>`+abasHTML('ranking');$('tela').innerHTML=h;return}
@@ -177,6 +178,7 @@ function render(){
   $('tela').innerHTML=h;
   if($('rolagem'))$('rolagem').scrollTop=st;
   Social.redesenha();
+  Bag.redesenha();
 }
 function torrada(t){torradaTxt=t;render();setTimeout(()=>{torradaTxt=null;render()},1800)}
 function define(v){estado=v;filtro='geral';folha=v==='minha';cat=v==='podio'?'pontos':'tempo';render()}
