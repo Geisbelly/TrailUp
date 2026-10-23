@@ -102,6 +102,7 @@
 
 <script src="assets/aparelho.js"></script>
 <script src="assets/tema.js"></script>
+<script src="assets/tour.js"></script>
 <script>
 /* textos do v4 (11-configuracoes.html, revisão 04 #6) */
 const I={
@@ -208,7 +209,7 @@ function render(){
   if(foco==='busca'){const b=$('busca');b.focus();b.setSelectionRange(b.value.length,b.value.length)}
 }
 function avisa(t,d,acao,ms=3000){aviso=[t,d,acao];render();clearTimeout(avisa.t);avisa.t=setTimeout(()=>{aviso=null;render()},ms)}
-const ABRIR_TOUR='<a class="btn" href="03-trilha.html">Abrir agora</a>';
+const ABRIR_TOUR='<button class="btn" data-tour-inicio>Abrir agora</button>';
 function define(v){
   estado=v;zera();folha=null;aviso=null;busca='';
   const [k,x]=v.split('-');
