@@ -156,7 +156,7 @@ function identHTML(){
       <div><dt>Guilda</dt><dd><img src="${ARTE}emblem-conqueror.png" alt="" />Legião Azul</dd></div>
       <div><dt>E-mail</dt><dd>amina.t@escola.edu.br</dd></div>
       <div><dt>Na jornada desde</dt><dd>março de 2026</dd></div></dl>
-      <a class="link" href="11-configuracoes.html#informacoes" data-torrada="Configurações é a parte 8">Editar informações</a></div></section>
+      <a class="link" href="11-configuracoes.html#informacoes">Editar informações</a></div></section>
     <section class="bloco"><div class="cartao">
       <div class="chip-perfil"><img src="${ARTE}emblem-${perfil}.png" alt="" /><div><strong>${PERFIS[perfil].label}</strong><span>Perfil ${perfil===AFF[0][0]?'dominante':'ativo'}</span></div></div>
       ${um?'':`<p class="rot">Alternar perfil ativo</p><div class="opcoes" role="group" aria-label="Alternar perfil ativo">${opcs}</div>
@@ -170,7 +170,7 @@ function atalhosHTML(){
     <a class="atalho" href="12-loja.html" data-torrada="A Loja é a parte 9"><span class="ic"><img src="${ARTE}coin-${perfil}.png" alt="" /></span><span class="t">Loja</span><small>38 moedas</small>${ICONE.chev}</a>
     <a class="atalho" href="09-biblioteca-conquistas.html"><span class="ic">${IC.medal}</span><span class="t">Biblioteca de conquistas</span><small>14</small>${ICONE.chev}</a>
     <a class="atalho" href="10-relatorio-dados.html"><span class="ic">${IC.doc}</span><span class="t">Relatório dos seus dados</span>${ICONE.chev}</a>
-    <a class="atalho" href="11-configuracoes.html" data-torrada="Configurações é a parte 8"><span class="ic">${IC.gear}</span><span class="t">Configurações</span>${ICONE.chev}</a>
+    <a class="atalho" href="11-configuracoes.html"><span class="ic">${IC.gear}</span><span class="t">Configurações</span>${ICONE.chev}</a>
     <a class="atalho sair" href="00-entrada.html"><span class="ic">${IC.sair}</span><span class="t">Sair</span></a></div></section>`;
 }
 function conquistasHTML(){
@@ -219,8 +219,8 @@ function render(){
   else{
     const banner=estado==='banner'?`${ARTE}entry-world.webp`:`${ARTE}world-${perfil}.webp`;
     h=`<div class="rolagem" id="rolagem"><div class="banner"><img src="${banner}" alt="Banner do perfil" />
-        <div class="acoes"><a class="vidro-btn" href="09-biblioteca-conquistas.html" aria-label="Biblioteca de conquistas">${IC.medal}</a><a class="vidro-btn" href="11-configuracoes.html" data-torrada="Configurações é a parte 8" aria-label="Configurações">${IC.gear}</a><button class="vidro-btn" data-abre-bag aria-label="Abrir minha Bag"><img src="${ARTE}bag-${perfil}.png" alt="" /></button></div>
-        <a class="vidro-btn camera" href="11-configuracoes.html#informacoes" data-torrada="Trocar banner fica nas Configurações (parte 8)" aria-label="Trocar banner">${IC.cam}</a></div>
+        <div class="acoes"><a class="vidro-btn" href="09-biblioteca-conquistas.html" aria-label="Biblioteca de conquistas">${IC.medal}</a><a class="vidro-btn" href="11-configuracoes.html" aria-label="Configurações">${IC.gear}</a><button class="vidro-btn" data-abre-bag aria-label="Abrir minha Bag"><img src="${ARTE}bag-${perfil}.png" alt="" /></button></div>
+        <a class="vidro-btn camera" href="11-configuracoes.html#informacoes" aria-label="Trocar banner">${IC.cam}</a></div>
       <div class="retrato"><img class="face" src="${ARTE}rosto-${perfil}.png" alt="Amina T." /></div>
       <div class="ident"><h1>Amina T.</h1><p class="handle">@AMINA</p><p class="sobre">Gosto de aprender praticando primeiro e lendo depois. Quero chegar ao 7º ano dominando equações.</p></div>
       ${identHTML()}${atalhosHTML()}${conquistasHTML()}${metricasHTML()}${leituraHTML()}
