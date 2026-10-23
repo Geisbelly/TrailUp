@@ -1,0 +1,122 @@
+/* Login e recuperar senha no celular (parte 1): o estilo imersivo do v4/01-login,
+   com a cena no topo e o painel de vidro virando uma folha que sobe de baixo. */
+:root{
+  --bg:#180f26; --panel:#20142ff2; --panel-border:#b496d678;
+  --input-bg:#170f23; --input-border:#82669f70; --placeholder:#9b87ae;
+  --text:#fbf6ff; --text-muted:#e5d4f3; --text-subtle:#b9a6cc;
+  --primary:#ab80dd; --primary-ink:#190d27; --link:#d5b3ff; --link-hover:#ffbda8;
+  --danger:#f0847c; --danger-bg:#3a1e2a; --danger-border:#8a4250; --warning:#e0b34d;
+  --cena:31%;
+}
+.tela{background:var(--bg);color:var(--text)}
+a{color:var(--link);text-decoration:none;font-weight:600}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--link);outline-offset:2px}
+
+/* ---------- cena no topo ---------- */
+.cena{position:absolute;left:0;right:0;top:0;height:calc(var(--cena) + 28px);overflow:hidden;transition:height .28s ease}
+.cena > img{width:100%;height:100%;object-fit:cover;object-position:42% center}
+.cena::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#160e2866 0%,#160e2822 40%,#160e28aa 100%)}
+.natureza{position:absolute;inset:0;z-index:1;overflow:hidden;--atlas:url("forest-life.webp")}
+.folhagem{position:absolute;width:120px;aspect-ratio:1}
+.folhagem-esq{left:-24px;bottom:18px}
+.folhagem-dir{right:-24px;top:40px;transform:scaleX(-1)}
+.ramo,.asa,.corpo,.folha{display:block;background-image:var(--atlas);background-size:200% 200%;background-repeat:no-repeat}
+.ramo{width:100%;height:100%;background-position:0 0;transform-origin:6% 94%}
+.voo-campo{position:absolute;left:22%;top:26%;width:52%;height:46%}
+.voo,.queda{position:absolute;inset:0}
+.voo{--ciclo:320ms;--tile:100% 0}
+.voo-2{--ciclo:390ms;--tile:100% 100%}
+.borboleta{display:block;position:relative;width:28px;aspect-ratio:1;filter:drop-shadow(0 0 3px #ffe576) drop-shadow(0 0 7px #ffc94c99)}
+.voo-2 .borboleta{width:22px}
+.asa,.corpo{position:absolute;inset:0;background-image:none;background-color:#fff1a6;-webkit-mask-image:var(--atlas);mask-image:var(--atlas);-webkit-mask-size:200% 200%;mask-size:200% 200%;-webkit-mask-position:var(--tile);mask-position:var(--tile);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
+.asa-esq{clip-path:inset(0 50% 0 0)}
+.asa-dir{clip-path:inset(0 0 0 50%)}
+.corpo{clip-path:inset(0 48% 0 48%)}
+.folha-campo{position:absolute;left:58%;top:8%;width:20%;height:70%}
+.folha{width:18px;aspect-ratio:1;background-position:0 100%}
+.vagalumes span{position:absolute;width:4px;height:4px;border-radius:50%;background:#ffe9a3;box-shadow:0 0 7px 3px #ffc94c88;opacity:0}
+@media (prefers-reduced-motion:no-preference){
+  .ramo{animation:balanca 7s ease-in-out infinite alternate}
+  .folhagem-dir .ramo{animation-duration:9s;animation-delay:-4s}
+  .voo{animation:voa 17s ease-in-out infinite}
+  .voo-2{animation-duration:21s;animation-delay:-9s;animation-direction:reverse}
+  .borboleta{animation:inclina 5s ease-in-out infinite alternate}
+  .asa{animation:bate var(--ciclo) ease-in-out infinite alternate}
+  .queda{animation:cai 14s linear infinite}
+  .folha{animation:gira 4s ease-in-out infinite alternate}
+  .vagalumes span{animation:pisca 3.6s ease-in-out infinite}
+  /* como no site: a natureza pausa enquanto o aluno digita */
+  .digitando .cena *{animation-play-state:paused}
+  .folha-de-baixo{animation:sobe 520ms 80ms cubic-bezier(.2,.7,.2,1) both}
+}
+@media (prefers-reduced-motion:reduce){.voo-campo,.folha-campo,.vagalumes{display:none}}
+@keyframes balanca{from{transform:rotate(-3deg)}to{transform:rotate(4deg)}}
+@keyframes voa{0%,100%{transform:translate(5%,60%)}25%{transform:translate(35%,10%)}50%{transform:translate(80%,35%)}75%{transform:translate(40%,80%)}}
+@keyframes inclina{from{transform:rotate(-28deg)}to{transform:rotate(32deg)}}
+@keyframes bate{from{transform:scaleX(.18)}to{transform:scaleX(1)}}
+@keyframes cai{0%{opacity:0;transform:translate(20%,-5%)}15%{opacity:.8}50%{transform:translate(70%,45%)}85%{opacity:.6}100%{opacity:0;transform:translate(25%,100%)}}
+@keyframes gira{from{transform:rotate(-30deg) scaleX(.5)}to{transform:rotate(65deg) scaleX(1)}}
+@keyframes pisca{0%,100%{opacity:0;transform:scale(.6)}50%{opacity:1;transform:scale(1)}}
+@keyframes sobe{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+
+/* ---------- topo: voltar + marca, e a frase sobre a cena ---------- */
+.topo{position:absolute;left:0;right:0;top:var(--topo);z-index:5;display:flex;align-items:center;gap:4px;padding:0 12px}
+.voltar{min-width:48px;height:48px;display:inline-flex;align-items:center;gap:4px;padding:0 10px 0 6px;border-radius:24px;color:#fff;font-size:15px;font-weight:600;background:#160e2855;text-shadow:0 1px 6px #201131}
+.voltar svg{width:22px;height:22px}
+.marca{margin-left:auto;margin-right:6px;display:flex;align-items:center;gap:8px;font-family:Georgia,serif;font-size:19px;font-weight:700;color:#fff4ff;text-shadow:0 2px 10px #201131}
+.marca img{width:26px;height:26px}
+.heroi{position:absolute;left:24px;right:24px;bottom:calc(100% - var(--cena) + 14px);z-index:5;transition:opacity .2s}
+.heroi .kicker{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--text-muted);margin:0 0 8px;text-shadow:0 1px 8px #201131}
+.heroi .kicker::before{content:"";width:6px;height:6px;transform:rotate(45deg);background:#7fe0d0}
+.heroi h1{font-family:Georgia,serif;font-weight:400;font-size:28px;line-height:1.15;margin:0;color:#fff;text-shadow:0 2px 16px #201131}
+
+/* ---------- folha de baixo ---------- */
+.folha-de-baixo{position:absolute;left:0;right:0;bottom:0;top:var(--cena);z-index:10;background:var(--panel);border-top:1px solid var(--panel-border);border-radius:20px 20px 0 0;box-shadow:0 -18px 60px #10091999;backdrop-filter:blur(8px);overflow-y:auto;padding:10px 22px calc(var(--base) + 18px);transition:top .28s ease,bottom .28s ease}
+.folha-de-baixo::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:#b496d655;margin:0 auto 10px}
+.estrela{display:block;width:34px;height:34px;margin:0 auto 4px;object-fit:contain}
+.folha-de-baixo h2{font-family:Georgia,serif;font-size:23px;line-height:1.3;margin:0;text-align:center;font-variant:small-caps;letter-spacing:.02em}
+.lead{text-align:center;font-size:14px;color:var(--text-subtle);margin:2px 0 14px}
+
+label.lbl{display:block;font-size:14px;font-weight:600;margin:0 0 7px}
+.campo{margin-bottom:10px}
+.entrada{position:relative}
+.entrada > svg.ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--placeholder)}
+.entrada input{width:100%;height:52px;padding:0 14px 0 44px;border-radius:6px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:16px;font-family:inherit}
+.entrada input::placeholder{color:var(--placeholder)}
+.entrada input:focus{outline:none;border-color:var(--link);box-shadow:0 0 0 3px #d5b3ff33}
+.entrada.focado input{border-color:var(--link);box-shadow:0 0 0 3px #d5b3ff33}
+.entrada input[readonly]{opacity:.7}
+.entrada.olho input{padding-right:52px}
+.entrada.invalido input{border-color:var(--danger)}
+.olho-btn{position:absolute;right:2px;top:2px;width:48px;height:48px;border:0;background:none;color:#cebadf;display:grid;place-items:center;cursor:pointer;border-radius:6px}
+.olho-btn svg{width:20px;height:20px}
+.esqueci{display:flex;justify-content:flex-end;margin:-8px 0 8px}
+.esqueci a{min-height:48px;display:inline-flex;align-items:center;font-size:14px;font-weight:500;padding:0 2px}
+
+.alerta{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:8px;margin-bottom:14px;background:var(--danger-bg);border:1px solid var(--danger-border)}
+.alerta svg{width:18px;height:18px;flex:none;color:var(--danger);margin-top:1px}
+.alerta strong{display:block;font-size:14px;margin-bottom:2px}
+.alerta span{font-size:13.5px;color:#f3d9e0;line-height:1.45}
+.alerta.aviso{background:#3a2e1a;border-color:#8a6d32}
+.alerta.aviso svg{color:var(--warning)}
+
+.btn{width:100%;min-height:52px;border-radius:6px;border:1px solid transparent;font:600 16px/1.2 inherit;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;text-decoration:none;color:inherit;font-family:inherit}
+.btn-primario{background:var(--primary);color:var(--primary-ink)}
+.btn-primario:disabled{opacity:.5;cursor:not-allowed}
+.btn-secundario{background:var(--input-bg);border-color:var(--input-border);color:var(--text)}
+.btn svg{width:20px;height:20px}
+.gira{width:18px;height:18px;border-radius:50%;border:2.5px solid #190d2744;border-top-color:#190d27;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ou{display:flex;align-items:center;gap:12px;margin:10px 0;font-size:12px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:.06em}
+.ou::before,.ou::after{content:"";flex:1;height:1px;background:#82669f55}
+.rodape{text-align:center;font-size:14px;color:var(--text-muted);margin:14px 0 0;line-height:20px}
+.rodape a{display:inline-block;padding:14px 4px;margin:-14px 0}
+.rodape small{display:block;font-size:12px;color:var(--text-subtle);margin-top:2px}
+
+/* ---------- teclado aberto: a cena vira faixa, a folha sobe ---------- */
+.digitando{--cena:calc(var(--topo) + 58px)}
+.digitando .heroi{opacity:0;pointer-events:none}
+.digitando .folha-de-baixo{bottom:290px;border-radius:16px 16px 0 0}
+.digitando .folha-de-baixo::before{display:none}
+.digitando .estrela,.digitando .lead{display:none}
+.digitando .folha-de-baixo h2{font-size:19px;margin-bottom:14px}

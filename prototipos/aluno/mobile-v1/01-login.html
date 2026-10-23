@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TrailUp — Login (celular)</title>
+<link rel="stylesheet" href="assets/aparelho.css" />
+<link rel="stylesheet" href="assets/auth.css" />
+</head>
+<body class="mesa">
+
+<div class="preview"><span>Estado:</span><select id="estado" aria-label="Estado da tela"></select></div>
+
+<div class="aparelho">
+  <div class="tela" id="tela">
+    <div class="cena" aria-hidden="true">
+      <img src="assets/journey-dawn.webp" alt="" />
+      <div class="natureza">
+        <div class="folhagem folhagem-esq"><span class="ramo"></span></div>
+        <div class="folhagem folhagem-dir"><span class="ramo"></span></div>
+        <div class="voo-campo">
+          <span class="voo"><span class="borboleta"><span class="asa asa-esq"></span><span class="asa asa-dir"></span><span class="corpo"></span></span></span>
+          <span class="voo voo-2"><span class="borboleta"><span class="asa asa-esq"></span><span class="asa asa-dir"></span><span class="corpo"></span></span></span>
+        </div>
+        <div class="folha-campo"><span class="queda"><span class="folha"></span></span></div>
+        <div class="vagalumes" id="vagalumes"></div>
+      </div>
+    </div>
+
+    <div class="topo">
+      <a class="voltar" href="00-entrada.html" aria-label="Voltar para a entrada"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></a>
+      <span class="marca"><img src="assets/trailup-star.png" alt="" />TrailUp</span>
+    </div>
+
+    <section class="heroi">
+      <p class="kicker">Conhecimento é uma aventura</p>
+      <h1>Sua próxima conquista começa aqui.</h1>
+    </section>
+
+    <main class="folha-de-baixo">
+      <form id="form" novalidate>
+        <img class="estrela" src="assets/trailup-star.png" alt="" />
+        <h2>Acesse sua conta</h2>
+        <p class="lead">Continue de onde você parou</p>
+
+        <div class="campo">
+          <label class="lbl" for="email">E-mail</label>
+          <div class="entrada" id="emailBox"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>
+            <input id="email" type="email" inputmode="email" placeholder="voce@escola.com" autocomplete="username" autocapitalize="none" /></div>
+        </div>
+        <div class="campo">
+          <label class="lbl" for="senha">Senha</label>
+          <div class="entrada olho" id="senhaBox"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+            <input id="senha" type="password" placeholder="Sua senha" autocomplete="current-password" />
+            <button type="button" class="olho-btn" id="olho" aria-label="Mostrar senha"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+        </div>
+        <div class="esqueci"><a href="02-recuperar-senha.html">Esqueci minha senha</a></div>
+
+        <div id="alerta"></div>
+        <button class="btn btn-primario" type="submit" id="entrar">Entrar</button>
+        <div id="resto">
+          <div class="ou">ou</div>
+          <a class="btn btn-secundario" id="google" href="#"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Continuar com Google</a>
+          <p class="rodape">Não tem uma conta? <a href="#" title="Abre o site do TrailUp no navegador">Cadastre-se ↗</a><small>O cadastro abre no navegador</small></p>
+        </div>
+      </form>
+    </main>
+  </div>
+</div>
+
+<script src="assets/aparelho.js"></script>
+<script>
+// vagalumes em posições fixas, sobre as áreas claras da arte
+document.getElementById('vagalumes').innerHTML=[[30,62,0],[42,48,1.1],[50,70,2.3],[58,40,.6],[66,58,1.8],[36,78,2.9],[72,46,.3],[54,82,1.5]]
+  .map(([x,y,d])=>`<span style="left:${x}%;top:${y}%;animation-delay:${d}s"></span>`).join('');
+
+const ESTADOS=[['vazio','Vazio'],['preenchido','Preenchido'],['teclado','Teclado aberto'],['entrando','Entrando...'],['credenciais','Erro de credenciais'],['invalido','Dados inválidos'],['conexao','Erro de conexão']];
+const ICONE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>';
+const $=id=>document.getElementById(id);
+let estado='vazio';
+const valido=()=>/^\S+@\S+\.\S+$/.test($('email').value.trim())&&$('senha').value.length>0; // regra dadosValidos do app
+function sincroniza(){if(estado!=='entrando')$('entrar').disabled=!valido()}
+function alerta(tipo,t,m){$('alerta').innerHTML=tipo?`<div class="alerta ${tipo==='aviso'?'aviso':''}" role="alert">${ICONE}<div><strong>${t}</strong><span>${m}</span></div></div>`:''}
+function digitando(sim){$('tela').classList.toggle('digitando',sim);window.teclado(sim);$('resto').hidden=sim}
+function aplica(st){
+  estado=st;
+  $('estado').innerHTML=ESTADOS.map(([k,l])=>`<option value="${k}" ${st===k?'selected':''}>${l}</option>`).join('');
+  const cheio=st!=='vazio';
+  $('email').value=cheio?(st==='invalido'?'aluno@escola':'aluno@escola.edu.br'):'';
+  $('senha').value=cheio&&st!=='teclado'?'senha1234':'';
+  const ocupado=st==='entrando';
+  $('email').readOnly=$('senha').readOnly=ocupado;
+  $('google').style.pointerEvents=ocupado?'none':'';$('google').style.opacity=ocupado?.5:'';
+  $('entrar').innerHTML=ocupado?'<span class="gira"></span>Entrando...':'Entrar';
+  $('senhaBox').classList.toggle('invalido',st==='credenciais');
+  $('senhaBox').classList.toggle('focado',st==='teclado');
+  digitando(st==='teclado');
+  alerta(...({credenciais:['erro','Erro no login','E-mail ou senha incorretos. Confira os dados e tente novamente.'],
+    invalido:['aviso','Dados inválidos','Preencha os dados corretamente.'],
+    conexao:['erro','Não foi possível entrar','Verifique sua conexão e tente novamente.']}[st]||[]));
+  $('entrar').disabled=ocupado||(st!=='invalido'&&!valido());
+}
+// tocar num campo abre o teclado; tocar fora (na cena) fecha
+['email','senha'].forEach(id=>$(id).addEventListener('focus',()=>{if(estado!=='entrando')digitando(true)}));
+document.querySelector('.cena').parentElement.addEventListener('pointerdown',e=>{if(!e.target.closest('.folha-de-baixo'))digitando(false)});
+$('email').addEventListener('input',()=>{if(estado==='credenciais'||estado==='invalido')alerta();sincroniza()});
+$('senha').addEventListener('input',()=>{$('senhaBox').classList.remove('invalido');if(estado==='credenciais')alerta();sincroniza()});
+$('olho').addEventListener('click',()=>{const s=$('senha'),mostra=s.type==='password';s.type=mostra?'text':'password';$('olho').setAttribute('aria-label',mostra?'Ocultar senha':'Mostrar senha')});
+$('form').addEventListener('submit',e=>{e.preventDefault();if(!valido()){aplica('invalido');return}aplica('entrando');setTimeout(()=>{location.href='00-entrada.html?estado=volta'},900)});
+// a Trilha do celular é a parte 2; até lá, entrar leva ao "Bem-vindo(a) de volta"
+$('google').addEventListener('click',e=>{e.preventDefault();location.href='00-entrada.html?estado=volta'});
+$('estado').addEventListener('change',e=>{history.replaceState(null,'',location.pathname+'?estado='+e.target.value);aplica(e.target.value)});
+aplica(new URLSearchParams(location.search).get('estado')||'vazio');
+</script>
+</body>
+</html>
