@@ -4,7 +4,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Image,
   ScrollView,
   StatusBar,
@@ -34,6 +33,7 @@ import { IdentidadePerfilDesktop } from "@/components/web/IdentidadePerfilDeskto
 import { UltimaAtividadeDesktop } from "@/components/web/UltimaAtividadeDesktop";
 import { sequenciaDeDias } from "@/utils/sequenciaDias";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
+import { useAviso } from "@/hooks/useAviso";
 import { buildProfileMetricsViewModel } from "@/components/perfil/profileMetricsViewModel";
 import {
   SectionGuideButton,
@@ -73,6 +73,7 @@ export default function PerfilHome() {
   const router = useRouter();
   // Na web em tela larga (#346): informações do aluno e conquistas em destaque.
   const desktop = useDesktopWeb();
+  const { avisar } = useAviso();
   const [bagOpen, setBagOpen] = useState(false);
 
   const [aba, setAba] = useState<"metricas" | "conquistas">("metricas");
@@ -276,15 +277,16 @@ export default function PerfilHome() {
       try {
         await selecionarPerfilAtivo(profile);
       } catch (error) {
-        Alert.alert(
+        avisar(
           "Não foi possível trocar o perfil",
           error instanceof Error ? error.message : "Tente novamente em instantes.",
+          "error",
         );
       } finally {
         setPerfilSalvando(null);
       }
     },
-    [perfil, perfilSalvando, selecionarPerfilAtivo],
+    [avisar, perfil, perfilSalvando, selecionarPerfilAtivo],
   );
 
   // Foto, nome, informações e troca de perfil. Na tela larga (#346) vão para a coluna da esquerda.

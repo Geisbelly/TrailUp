@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { createBagItem, deleteBagItem, listBagItems, updateBagItem } from "@/services/bag/bagService";
@@ -9,9 +9,9 @@ import { BagEditorModal } from "./BagEditorModal";
 import { BagItemCard } from "./BagItemCard";
 import { BagStoreItem } from "./BagStoreItem";
 import { JourneyHeading } from "@/components/JourneyHeading";
-import { useDialog } from "@/context/DialogContext";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useAviso } from "@/hooks/useAviso";
 
 type Props = {
   visible: boolean;
@@ -36,7 +36,7 @@ export function BagModal({ visible, classeId, topicId, contentId, profile, onClo
   const [editing, setEditing] = useState<BagItem | null>(null);
   // Web em tela larga (#346): janela de 960×640 no centro, itens em grade de 3 colunas.
   const desktop = useDesktopWeb();
-  const { showConfirm } = useDialog();
+  const { confirmar } = useAviso();
 
   const filter = useMemo<BagFilter>(() => ({ origin, type, classId: classeId, topicId, search }), [classeId, origin, search, topicId, type]);
   const selectOrigin = (next: BagItemOrigin | null) => { setOrigin(next); setType(null); };
@@ -65,17 +65,15 @@ export function BagModal({ visible, classeId, topicId, contentId, profile, onClo
     try { await deleteBagItem(item.sourceId); await load(true); }
     catch (err) { setError(err instanceof Error ? err.message : "Não foi possível excluir o item."); }
   };
-  // Na web o Alert do react-native não abre nada; na tela larga a confirmação é o diálogo do app.
-  const remove = (item: BagItem) => desktop
-    ? showConfirm({ title: "Excluir item", description: "Este item será removido da sua Bag.", confirmLabel: "Excluir", confirmVariant: "danger", onConfirm: () => excluir(item) })
-    : Alert.alert(
-      "Excluir item",
-      "Este item será removido da sua Bag.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { text: "Excluir", style: "destructive", onPress: () => excluir(item) },
-      ],
-    );
+  // Na web o Alert do react-native não abre nada — em QUALQUER largura. Decidir
+  // por `desktop` deixava a janela estreita sem confirmação e sem exclusão (#28).
+  const remove = (item: BagItem) => confirmar({
+    titulo: "Excluir item",
+    texto: "Este item será removido da sua Bag.",
+    rotuloConfirmar: "Excluir",
+    destrutivo: true,
+    onConfirmar: () => excluir(item),
+  });
   const celula = (key: string, elemento: React.ReactElement) => desktop ? <View key={key} style={styles.celula}>{elemento}</View> : elemento;
 
   return (

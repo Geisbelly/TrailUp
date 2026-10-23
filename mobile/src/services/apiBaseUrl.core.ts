@@ -22,6 +22,41 @@ export function normalizeBaseUrl(value: string) {
   }
 }
 
+/**
+ * Fora de dev, `http://` so passa para loopback e para o host do emulador.
+ *
+ * Tudo que o app manda para a API vai com o `access_token` do aluno no header
+ * `Authorization: Bearer` (`telemetriaApi.ts`), e o corpo e telemetria do aluno
+ * -- tempo por material, eventos de toque, e os frames da camera quando ele
+ * liga. Num host REMOTO em `http://` isso viaja em claro: quem estiver na mesma
+ * rede (o Wi-Fi da escola) le o token e se passa pelo aluno pelo tempo de vida
+ * dele.
+ *
+ * `normalizeBaseUrl` aceitava QUALQUER protocolo, e o `.env.example` traz
+ * `http://10.0.2.2:8000` como valor -- ou seja, o caminho mais curto para um
+ * build instalado era justamente o inseguro, sem nenhum aviso (#96).
+ *
+ * As excecoes nao sao conveniencia, sao a ausencia de exposicao: `localhost` e
+ * `127.0.0.1` nunca saem do aparelho, e `10.0.2.2` e o alias do host do
+ * emulador Android -- a propria maquina de quem desenvolve. Nenhum dos tres
+ * atravessa rede de terceiro, e `apiBaseUrl.core.test.ts` ja registrava que
+ * localhost vindo do env vale em build instalado, porque e intencao explicita
+ * de quem buildou. Em dev tudo passa: o backend local nao tem certificado.
+ */
+const HOSTS_SEM_REDE = new Set(["localhost", "127.0.0.1", "::1", "10.0.2.2"]);
+
+export function esquemaPermitido(baseUrl: string, dev: boolean): boolean {
+  if (dev) return true;
+  try {
+    const { protocol, hostname } = new URL(baseUrl);
+    if (protocol === "https:") return true;
+    if (protocol !== "http:") return false;
+    return HOSTS_SEM_REDE.has(hostname.replace(/^\[|\]$/g, ""));
+  } catch {
+    return false;
+  }
+}
+
 function addCandidate(target: string[], value: string | null) {
   if (!value) return;
   if (!target.includes(value)) target.push(value);
@@ -69,6 +104,8 @@ export type EntradaCandidatos = {
    * de CORS da API para essa origem.
    */
   origemWeb?: string | null;
+  /** Chamado para cada URL descartada por nao ser `https` fora de dev. */
+  aoRecusarEsquema?: (baseUrl: string) => void;
 };
 
 /** Proxy same-origin da Vercel, so para build web de producao em https. */
@@ -85,7 +122,8 @@ export function proxyMesmaOrigem(origemWeb: unknown, plataforma: PlataformaApi, 
 }
 
 export function montarCandidatos(entrada: EntradaCandidatos): string[] {
-  const { envValue, plataforma, metroHostUri, dev, aoFicarSemApi, origemWeb } = entrada;
+  const { envValue, plataforma, metroHostUri, dev, aoFicarSemApi, aoRecusarEsquema, origemWeb } =
+    entrada;
   const candidates: string[] = [];
   const normalizedEnv = normalizeBaseUrl(String(envValue ?? ""));
 
@@ -125,11 +163,19 @@ export function montarCandidatos(entrada: EntradaCandidatos): string[] {
     );
   }
 
-  if (candidates.length === 0 && !dev) {
+  // Filtra DEPOIS de montar, nao antes: assim o descarte e observavel por URL,
+  // em vez de a lista simplesmente nascer menor e ninguem saber por que.
+  const seguros = candidates.filter((url) => {
+    if (esquemaPermitido(url, dev)) return true;
+    aoRecusarEsquema?.(url);
+    return false;
+  });
+
+  if (seguros.length === 0 && !dev) {
     aoFicarSemApi?.();
   }
 
-  return candidates;
+  return seguros;
 }
 
 export function isNetworkRequestFailedError(error: unknown) {

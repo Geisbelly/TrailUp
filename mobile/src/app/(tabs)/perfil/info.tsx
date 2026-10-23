@@ -2,7 +2,6 @@ import { HallBackground } from "@/components/HallTheme";
 import { Feather } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import {
-  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -15,21 +14,20 @@ import {
 
 import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { InfoPessoaisDesktop } from "@/components/web/InfoPessoaisDesktop";
-import { useDialog } from "@/context/DialogContext";
 import { useInfoPessoais } from "@/hooks/useInfoPessoais";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
+import { useAviso } from "@/hooks/useAviso";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 export default function Infor() {
   const embutido = useEmbutidoConfiguracoes();
-  const { showDialog } = useDialog();
+  const { avisar } = useAviso();
   // A lógica mora em useInfoPessoais; na web em tela larga (#346) a mesma lógica ganha o layout do v4.
-  // Embutida no painel de lá, o recado vai pelo diálogo do app: na web o Alert não aparece.
-  const form = useInfoPessoais((titulo, texto) =>
-    embutido ? showDialog({ title: titulo, description: texto }) : Alert.alert(titulo, texto)
-  );
+  // O recado vai pelo diálogo do app em TODA a web: o `Alert` do react-native é
+  // um no-op lá, e decidir por largura deixava a janela estreita sem aviso (#28).
+  const form = useInfoPessoais((titulo, texto) => avisar(titulo, texto));
   const {
     usuario,
     editando,

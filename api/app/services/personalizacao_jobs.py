@@ -248,15 +248,86 @@ def _assert_brainhex_media_completed(
         raise RuntimeError("Resultado descartado: o ciclo da personalizacao mudou durante a geracao.")
     if record_source_hash != source_hash:
         raise RuntimeError("Resultado descartado: a fonte da personalizacao mudou durante a geracao.")
-    incomplete = _incomplete_brainhex_media_for_generation(
-        record,
-        generation_key=generation_key,
-    )
-    if str(record.get("status") or "").strip().lower() != "pronto" or incomplete:
-        missing = ", ".join(incomplete) if incomplete else "status pronto"
-        raise RuntimeError(
-            f"Microservico respondeu sem persistir todas as midias obrigatorias: {missing}."
+    motivos = _motivos_de_midia_incompleta(record, generation_key=generation_key)
+    status_do_registro = str(record.get("status") or "").strip().lower()
+    if status_do_registro != "pronto" or motivos:
+        # O motivo vai para o LOG e para a exceção. Antes só os nomes dos tipos saíam, e a
+        # investigação de #522 parou aí: `audio` e `apresentacao` faltando, sem uma linha
+        # dizendo que o status era `failed`.
+        detalhes = "; ".join(f"{tipo}: {motivo}" for tipo, motivo in motivos.items())
+        if not detalhes:
+            detalhes = f"registro com status {status_do_registro!r}, esperado 'pronto'"
+        logger.warning(
+            "Personalizacao %s (ciclo %s): midia obrigatoria faltando -> %s",
+            record.get("id"),
+            ciclo_id,
+            detalhes,
         )
+        raise RuntimeError(
+            f"Microservico respondeu sem persistir todas as midias obrigatorias: {detalhes}."
+        )
+
+
+def _motivo_da_midia_incompleta(
+    media_kind: str,
+    metadata: Any,
+    *,
+    generation_key: str,
+) -> str | None:
+    """Por que esta midia nao conta como pronta -- ou `None` se conta.
+
+    Existe porque a lista de tipos faltantes colapsava QUATRO causas diferentes no mesmo
+    nome. A mensagem dizia "audio, apresentacao" e quem investigava nao tinha como separar
+    "o TTS falhou" de "achei uma geracao velha" de "a versao do motor de deck mudou" --
+    foi exatamente o que travou a investigacao de #522, onde `status` era `failed` e nada
+    disso aparecia em log nenhum.
+    """
+    if not isinstance(metadata, dict):
+        return "sem metadata (o microservico nao persistiu este material)"
+
+    status = metadata.get("status")
+    if status != "completed":
+        erro = str(metadata.get("error") or "").strip()
+        # `media_pipeline` grava o motivo em `metadata["error"]` quando sabe qual foi.
+        detalhe = f": {erro}" if erro else " (sem motivo registrado pelo gerador)"
+        return f"status {status!r}{detalhe}"
+
+    if metadata.get("generation_key") != generation_key:
+        return (
+            f"geracao antiga: metadata aponta {metadata.get('generation_key')!r}, "
+            f"esperado {generation_key!r}"
+        )
+
+    if media_kind == "apresentacao":
+        divergentes = [
+            f"{campo}={metadata.get(campo)!r} (esperado {esperado!r})"
+            for campo, esperado in (
+                ("engine", PRESENTATION_ENGINE_VERSION),
+                ("design_system", PRESENTATION_DESIGN_VERSION),
+                ("media_pipeline_version", MEDIA_PIPELINE_VERSION),
+            )
+            if metadata.get(campo) != esperado
+        ]
+        if divergentes:
+            return "versao do deck mudou -> " + ", ".join(divergentes)
+
+    return None
+
+
+def _motivos_de_midia_incompleta(
+    record: dict[str, Any],
+    *,
+    generation_key: str,
+) -> dict[str, str]:
+    materiais = record.get("materiais") if isinstance(record.get("materiais"), dict) else {}
+    motivos: dict[str, str] = {}
+    for media_kind in _REQUIRED_BRAINHEX_MEDIA:
+        material = materiais.get(media_kind)
+        metadata = material.get("metadata") if isinstance(material, dict) else None
+        motivo = _motivo_da_midia_incompleta(media_kind, metadata, generation_key=generation_key)
+        if motivo is not None:
+            motivos[media_kind] = motivo
+    return motivos
 
 
 def _incomplete_brainhex_media_for_generation(
@@ -264,26 +335,7 @@ def _incomplete_brainhex_media_for_generation(
     *,
     generation_key: str,
 ) -> list[str]:
-    materiais = record.get("materiais") if isinstance(record.get("materiais"), dict) else {}
-    incomplete: list[str] = []
-    for media_kind in _REQUIRED_BRAINHEX_MEDIA:
-        material = materiais.get(media_kind)
-        metadata = material.get("metadata") if isinstance(material, dict) else {}
-        if (
-            not isinstance(metadata, dict)
-            or metadata.get("status") != "completed"
-            or metadata.get("generation_key") != generation_key
-            or (
-                media_kind == "apresentacao"
-                and (
-                    metadata.get("engine") != PRESENTATION_ENGINE_VERSION
-                    or metadata.get("design_system") != PRESENTATION_DESIGN_VERSION
-                    or metadata.get("media_pipeline_version") != MEDIA_PIPELINE_VERSION
-                )
-            )
-        ):
-            incomplete.append(media_kind)
-    return incomplete
+    return list(_motivos_de_midia_incompleta(record, generation_key=generation_key))
 
 
 def _has_completed_current_generation(

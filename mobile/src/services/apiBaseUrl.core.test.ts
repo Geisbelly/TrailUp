@@ -135,3 +135,64 @@ test("proxy same-origin nao entra em dev, nativo, http ou localhost", () => {
     [API],
   );
 });
+
+// --- Esquema: o token do aluno nao viaja em claro para host remoto ---------
+//
+// Todo pedido a API leva `Authorization: Bearer <access_token do aluno>` e, no
+// corpo, telemetria dele -- incluindo frames da camera quando ele liga. Em
+// `http://` para um host remoto isso e legivel por quem esta na mesma rede (o
+// Wi-Fi da escola), e o token serve para se passar pelo aluno enquanto vale.
+//
+// `normalizeBaseUrl` nao olhava o protocolo, e o `.env.example` traz
+// `http://10.0.2.2:8000`: o caminho mais curto para um build instalado era
+// justamente o inseguro, e calado (#96).
+
+test("build instalado recusa host remoto em http, e diz qual", () => {
+  const recusadas: string[] = [];
+  const lista = candidatos({
+    envValue: "http://api.trailup.exemplo",
+    aoRecusarEsquema: (url) => recusadas.push(url),
+  });
+
+  assert.deepEqual(lista, [], "http remoto nao pode entrar na lista de um build instalado");
+  assert.deepEqual(
+    recusadas,
+    ["http://api.trailup.exemplo"],
+    "descartar calado faz a falha parecer 'API fora do ar'"
+  );
+});
+
+test("build instalado sem nenhuma URL utilizavel avisa que a API nao esta configurada", () => {
+  let avisou = false;
+  candidatos({
+    envValue: "http://api.trailup.exemplo",
+    aoFicarSemApi: () => {
+      avisou = true;
+    },
+  });
+  // Recusar por esquema tem de acionar o mesmo aviso de "sem API": senao o
+  // build fica sem endereco nenhum e ninguem e notificado.
+  assert.equal(avisou, true);
+});
+
+test("https passa em build instalado", () => {
+  assert.ok(candidatos({ envValue: API }).includes(API));
+});
+
+test("loopback e host do emulador seguem valendo em http, por nao atravessarem rede", () => {
+  for (const url of ["http://localhost:8000", "http://127.0.0.1:8000", "http://10.0.2.2:8000"]) {
+    const lista = candidatos({ envValue: url });
+    assert.ok(lista.length > 0, `${url} precisa continuar valendo em build instalado`);
+  }
+});
+
+test("em dev o http continua passando: backend local nao tem certificado", () => {
+  const lista = candidatos({ dev: true, envValue: "http://192.168.0.10:8000" });
+  assert.ok(lista.includes("http://192.168.0.10:8000"));
+});
+
+test("protocolo que nao e http nem https nunca passa", () => {
+  for (const url of ["ftp://api.exemplo", "file:///etc/passwd"]) {
+    assert.deepEqual(candidatos({ envValue: url }), [], `${url} nao e API`);
+  }
+});

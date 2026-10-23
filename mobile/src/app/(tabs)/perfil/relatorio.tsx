@@ -6,8 +6,8 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Image,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -33,6 +33,8 @@ import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { RelatorioDesktop } from "@/components/web/RelatorioDesktop";
+import { imprimirHtmlNaWeb } from "@/utils/imprimirHtmlWeb";
+import { useAviso } from "@/hooks/useAviso";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 
@@ -59,6 +61,7 @@ export default function RelatorioDadosScreen() {
   const { classes } = useTrilha();
   const { eventos, conquistas, ranking, posicoesDoAluno } = useConquistaRank();
   const desktop = useDesktopWeb();
+  const { avisar } = useAviso();
   
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -417,9 +420,27 @@ export default function RelatorioDadosScreen() {
   ]);
 
   const handleDownload = async () => {
+    // Na web não existe `Print.printToFileAsync` nem `FileSystem`, e
+    // `Sharing.isAvailableAsync()` é falso: o caminho de baixo falhava calado
+    // (#28). O PDF sai pela impressão do navegador ("Salvar como PDF"), o mesmo
+    // que a tela larga já faz desde o #346.
+    if (Platform.OS === "web") {
+      try {
+        await imprimirHtmlNaWeb(htmlRelatorio, `Relatório TrailUp — ${usuario?.nome ?? "Aluno"}`);
+      } catch (err) {
+        console.warn("[Relatorio] Falha ao abrir a impressão na web:", err);
+        avisar(
+          "Não foi possível gerar o PDF",
+          "O navegador não abriu a janela de impressão. Verifique se há bloqueio de pop-up e tente de novo.",
+          "error"
+        );
+      }
+      return;
+    }
+
     try {
       // 1. Gerar o arquivo PDF temporário
-      const { uri } = await Print.printToFileAsync({ 
+      const { uri } = await Print.printToFileAsync({
           html: htmlRelatorio,
           margins: { left: 0, top: 0, right: 0, bottom: 0 } 
       });
@@ -443,7 +464,7 @@ export default function RelatorioDadosScreen() {
       });
 
     } catch (err) {
-      Alert.alert("Erro", "Não foi possível gerar o PDF.");
+      avisar("Erro", "Não foi possível gerar o PDF.", "error");
       console.error(err);
     }
   };
