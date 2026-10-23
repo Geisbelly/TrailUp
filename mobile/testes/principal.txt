@@ -131,6 +131,7 @@ src/components/DesbloqueioModal.icone.test.tsx
 src/styles/botoesDaTrilha.test.ts
 src/utils/perfilVisualUnico.test.ts
 src/utils/markdownDoProfessor.test.ts
-src/app/perfilColunaGrudada.test.ts
+src/styles/perfilColunaGrudada.test.ts
 src/utils/envDoBuild.test.ts
+src/utils/semTesteNoApp.test.ts
 src/utils/matematicaLegivel.test.ts
