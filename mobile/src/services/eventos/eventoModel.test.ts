@@ -6,6 +6,7 @@ import {
   minhaPosicao,
   normalizeEvento,
   podioDoEvento,
+  rankingDasGuildas,
   rotuloDaFase,
   type EventoDaTurma,
 } from "./eventoModel";
@@ -158,5 +159,51 @@ describe("eventoEmDestaque", () => {
       evento({ id: "novo", status: "encerrado", inicio: "2026-10-01T00:00:00Z" }),
     ];
     assert.equal(eventoEmDestaque(dois, AGORA)!.id, "novo");
+  });
+});
+
+describe("rankingDasGuildas", () => {
+  const guildas = [
+    { id: "a", nome: "Legião Azul", souMembro: true },
+    { id: "b", nome: "Exploradores do Norte", souMembro: false },
+    { id: "c", nome: "Fênix Rubra", souMembro: false },
+    { id: "d", nome: "Lobos", souMembro: false },
+  ];
+
+  it("ordena pela posição, mostra o pódio e nomeia pela guilda da turma", () => {
+    const r = rankingDasGuildas(
+      [
+        { guilda_id: "c", pontos: 10, posicao: 3 },
+        { guilda_id: "b", pontos: 30, posicao: 1 },
+        { guilda_id: "a", pontos: "20", posicao: 2 },
+        { guilda_id: "d", pontos: 5, posicao: 4 },
+      ],
+      guildas,
+    );
+    assert.deepEqual(r.map((g) => [g.posicao, g.nome, g.minha]), [
+      [1, "Exploradores do Norte", false],
+      [2, "Legião Azul", true],
+      [3, "Fênix Rubra", false],
+    ]);
+    assert.equal(r[1].pontos, 20);
+  });
+
+  it("a guilda do aluno fora do pódio aparece depois dele", () => {
+    const r = rankingDasGuildas(
+      [
+        { guilda_id: "b", posicao: 1 },
+        { guilda_id: "c", posicao: 2 },
+        { guilda_id: "d", posicao: 3 },
+        { guilda_id: "a", posicao: 5 },
+      ],
+      guildas,
+    );
+    assert.deepEqual(r.map((g) => g.guildaId), ["b", "c", "d", "a"]);
+  });
+
+  it("guilda que não existe mais vira 'Guilda'; linha inválida sai", () => {
+    const r = rankingDasGuildas([{ guilda_id: "z", posicao: 1 }, { guilda_id: "", posicao: 2 }, { guilda_id: "b", posicao: null }, null], guildas);
+    assert.deepEqual(r.map((g) => g.nome), ["Guilda"]);
+    assert.deepEqual(rankingDasGuildas(null, guildas), []);
   });
 });

@@ -221,7 +221,7 @@ export default function SocialScreen() {
             </View>
           ) : <View style={[styles.list, desktop && styles.grade]}>{people.map((person) => celula(person.relationshipId ?? person.alunoId, person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => setChatPerson(person)} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />))}</View>}
           </Envolve>
-          {desktop ? <SocialLateralDesktop social={social} guildas={guilds} palette={palette} onAbrirGuildas={() => { setSection("guilds"); setSearch(""); }} /> : null}
+          {desktop ? <SocialLateralDesktop social={social} guildas={guilds} classeId={activeClasseId} perfil={profile} shareOptions={shareOptions} palette={palette} onAbrirGuildas={() => { setSection("guilds"); setSearch(""); }} /> : null}
           </Envolve>
         </ScrollView>
       </SafeAreaView>
