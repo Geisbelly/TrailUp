@@ -1,6 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { alunoAtual } from "@/services/social/guildService";
 import { carregarEventosDaTurma } from "@/services/eventos/eventosDaTurma";
@@ -45,6 +47,7 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
+  const desktop = useDesktopWeb();
 
   const carregar = useCallback(async () => {
     if (!classeId) return;
@@ -67,8 +70,22 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
   }, [carregar]);
 
   if (carregando) return <ActivityIndicator color={accent} style={s.loader} />;
-  // Sem evento visível, o cartão não existe — ver o aviso do componente.
-  if (!evento && !erro) return null;
+  // Sem evento visível, o cartão não existe — ver o aviso do componente. Na tela larga o
+  // protótipo v4 (06-social) reserva o lugar com um aviso, que não anuncia evento nenhum.
+  if (!evento && !erro) {
+    if (!desktop) return null;
+    return (
+      <View style={[s.caixa, s.vazioLargo, { backgroundColor: surfaceColor, borderColor }]}>
+        <MaterialCommunityIcons name="trophy-outline" size={22} color={mutedColor} />
+        <View style={s.cabecalhoInfo}>
+          <Text style={[s.detalheLargo, s.negrito, { color: textColor }]}>Nenhum evento aberto agora.</Text>
+          <Text style={[s.detalheLargo, { color: mutedColor }]}>
+            Quando seu professor abrir um evento, ele aparece aqui com as missões e as recompensas.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   if (erro) {
     return (
@@ -86,6 +103,99 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
   const minha = minhaPosicao(e, meuId);
   const podio = podioDoEvento(e);
   const janela = [dataCurta(e.inicio), dataCurta(e.fim)].filter(Boolean).join(" a ");
+
+  // Web em tela larga (#508, protótipo v4 06-social): o evento aberto, sem sanfona, com a
+  // modalidade, os números em grade e o atalho para as missões na trilha.
+  if (desktop) {
+    const andamento = fase === "em_andamento";
+    const recompensas = [
+      e.medalhaParticipacao ? "Medalha de participação" : null,
+      e.medalhaDestaque ? "Destaque para o melhor resultado" : null,
+      e.moedas > 0 ? `+${e.moedas} moedas` : null,
+      e.recompensa,
+    ].filter(Boolean);
+    return (
+      <View style={[s.caixa, s.caixaLarga, { backgroundColor: surfaceColor, borderColor: andamento ? accent : borderColor }]}>
+        <View style={s.topoLargo}>
+          <View style={[s.chip, { backgroundColor: andamento ? "rgba(98,219,155,0.16)" : "rgba(144,148,157,0.16)" }]}>
+            <Text style={[s.chipTexto, { color: andamento ? "#62db9b" : mutedColor }]}>{rotuloDaFase(fase)}</Text>
+          </View>
+          {janela ? <Text style={[s.detalheLargo, { color: mutedColor }]}>{janela}</Text> : null}
+        </View>
+        <Text style={[s.tituloLargo, { color: textColor }]}>{e.titulo}</Text>
+        {e.descricao ? <Text style={[s.detalheLargo, { color: mutedColor }]}>{e.descricao}</Text> : null}
+
+        <View style={s.modoLargo}>
+          <View style={[s.chip, { backgroundColor: `${accent}22` }]}>
+            <Text style={[s.chipTexto, { color: accent }]}>{e.modalidadeGuilda ? "Em guilda" : "Individual"}</Text>
+          </View>
+          {e.modalidadeGuilda ? (
+            <Text style={[s.detalhe, { color: mutedColor, flexShrink: 1 }]}>
+              A modalidade individual sempre existe. Quem não está em guilda participa sozinho.
+            </Text>
+          ) : null}
+        </View>
+
+        <View style={s.grade}>
+          <View style={[s.celula, { borderColor }]}>
+            <Text style={[s.celulaRotulo, { color: mutedColor }]}>Missões</Text>
+            <Text style={[s.celulaValor, { color: textColor }]}>
+              {e.missoes.length === 1 ? "1 missão" : `${e.missoes.length} missões`}
+            </Text>
+            {e.missoes.slice(0, 3).map((m) => (
+              <Text key={m.atividadeId} style={[s.celulaNota, { color: mutedColor }]} numberOfLines={1}>
+                • {m.titulo}
+              </Text>
+            ))}
+          </View>
+          <View style={[s.celula, { borderColor }]}>
+            <Text style={[s.celulaRotulo, { color: mutedColor }]}>Pontos do evento</Text>
+            <Text style={[s.celulaValor, { color: textColor }]}>{e.pontos} pts</Text>
+            <Text style={[s.celulaNota, { color: mutedColor }]}>Entram no ranking da turma</Text>
+          </View>
+          <View style={[s.celula, { borderColor }]}>
+            <Text style={[s.celulaRotulo, { color: mutedColor }]}>Sua posição</Text>
+            <Text style={[s.celulaValor, { color: minha?.posicao ? accent : textColor }]}>
+              {minha ? (minha.posicao ? `${minha.posicao}º lugar` : "Não participou") : "—"}
+            </Text>
+            <Text style={[s.celulaNota, { color: mutedColor }]}>
+              {minha
+                ? `${minha.pontos} ponto${minha.pontos === 1 ? "" : "s"}${minha.destaque ? " · destaque" : ""}`
+                : fase === "encerrado"
+                ? "A classificação ainda não foi divulgada."
+                : "A classificação sai quando o professor encerrar o evento."}
+            </Text>
+          </View>
+        </View>
+
+        {podio.length ? (
+          <View style={s.podioLargo}>
+            {podio.map((p) => (
+              <Text key={p.alunoId} style={[s.detalheLargo, { color: p.alunoId === meuId ? accent : textColor }]}>
+                {p.posicao}º {p.alunoId === meuId ? "você" : "colega"} · {p.pontos} pts{p.destaque ? " · destaque" : ""}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+
+        {recompensas.length || (andamento && e.missoes.length) ? (
+          <View style={[s.pe, { borderTopColor: borderColor }]}>
+            <Text style={[s.detalheLargo, s.flex, { color: mutedColor }]}>{recompensas.join(" · ")}</Text>
+            {andamento && e.missoes.length ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.navigate("/(tabs)")}
+                style={[s.botaoLargo, { backgroundColor: accent }]}
+              >
+                <Text style={[s.botaoLargoTexto, { color: "#0b1328" }]}>Continuar missões</Text>
+                <MaterialCommunityIcons name="arrow-right" size={14} color="#0b1328" />
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <View style={[s.caixa, { backgroundColor: surfaceColor, borderColor }]}>
@@ -187,4 +297,23 @@ const s = StyleSheet.create({
   pos: { fontFamily: FontFamily.poppinsExtraBold, fontSize: 12, width: 26 },
   erro: { fontFamily: FontFamily.interMedium, fontSize: 12 },
   link: { fontFamily: FontFamily.poppinsExtraBold, fontSize: 12 },
+  caixaLarga: { paddingVertical: 22, paddingHorizontal: 24, gap: 12 },
+  vazioLargo: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 18, paddingHorizontal: 20 },
+  topoLargo: { flexDirection: "row", alignItems: "center", gap: 10 },
+  chip: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  chipTexto: { fontFamily: FontFamily.interMedium, fontSize: 12, fontWeight: "700" },
+  tituloLargo: { fontFamily: FontFamily.poppinsExtraBold, fontSize: 22 },
+  detalheLargo: { fontFamily: FontFamily.interMedium, fontSize: 13.5, lineHeight: 20 },
+  negrito: { fontWeight: "700" },
+  flex: { flex: 1, minWidth: 0 },
+  modoLargo: { flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" },
+  grade: { flexDirection: "row", gap: 12 },
+  celula: { flex: 1, minWidth: 0, borderWidth: 1, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, gap: 4 },
+  celulaRotulo: { fontFamily: FontFamily.interMedium, fontSize: 12 },
+  celulaValor: { fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: "700" },
+  celulaNota: { fontFamily: FontFamily.interMedium, fontSize: 11.5, lineHeight: 16 },
+  podioLargo: { gap: 4 },
+  pe: { flexDirection: "row", alignItems: "center", gap: 14, borderTopWidth: 1, paddingTop: 14 },
+  botaoLargo: { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 999, paddingVertical: 9, paddingHorizontal: 16 },
+  botaoLargoTexto: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700" },
 });
