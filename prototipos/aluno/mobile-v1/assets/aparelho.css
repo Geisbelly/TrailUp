@@ -1,0 +1,43 @@
+/* Moldura de aparelho dos protótipos do celular (mobile-v1, regras gerais §1).
+   No computador: a tela num quadro de 390 × 844 com barra de status e indicador de início falsos.
+   Num celular de verdade (até 500px): a tela ocupa tudo e a moldura some. */
+:root{--topo:47px;--base:34px}
+*{box-sizing:border-box}
+html,body{margin:0}
+body.mesa{min-height:100vh;background:#0d0a14;display:flex;flex-direction:column;align-items:center;gap:18px;padding:64px 16px 40px;font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+
+.aparelho{position:relative;width:390px;height:844px;flex:none;border-radius:54px;border:11px solid #08070b;box-shadow:0 0 0 2px #2b2633,0 30px 90px #000a;overflow:hidden;isolation:isolate}
+.aparelho > .tela{position:absolute;inset:0;overflow:hidden;border-radius:43px}
+
+/* barra de status falsa: hora, sinal, wi-fi e bateria, por cima de tudo */
+.status{position:absolute;top:0;left:0;right:0;height:var(--topo);z-index:60;display:flex;align-items:center;justify-content:space-between;padding:6px 30px 0 34px;color:#fff;font:600 15px/1 system-ui,-apple-system,sans-serif;pointer-events:none}
+.status .ilha{position:absolute;left:50%;top:11px;width:122px;height:34px;margin-left:-61px;border-radius:20px;background:#000}
+.status .icones{display:flex;align-items:center;gap:6px}
+.status svg{height:12px;width:auto;fill:#fff}
+.home{position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#fff;opacity:.9;z-index:60;pointer-events:none}
+
+/* seletor de estado, fora do aparelho (como no v4) */
+.preview{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:10px;padding:6px 8px 6px 14px;border-radius:100px;background:#180f26e6;border:1px solid #b496d678;font:500 12px/1.2 Inter,system-ui,sans-serif;color:#e5d4f3;white-space:nowrap}
+.preview select{background:#ab80dd;color:#190d27;border:0;border-radius:100px;padding:6px 10px;font-weight:600;font-family:inherit}
+.preview a{color:#d5b3ff}
+
+/* teclado falso (estado "Teclado aberto") */
+.teclado{position:absolute;left:0;right:0;bottom:0;height:290px;z-index:40;background:#2b2a30;padding:8px 4px calc(var(--base) + 4px);display:flex;flex-direction:column;gap:10px}
+.teclado .linha{display:flex;justify-content:center;gap:6px}
+.teclado span{flex:1 1 0;max-width:34px;height:42px;border-radius:5px;background:#6b6a70;color:#fff;display:grid;place-items:center;font:400 20px/1 system-ui,sans-serif}
+.teclado span.larga{flex:0 0 44px;max-width:none;background:#46454b;font-size:14px}
+.teclado span.espaco{flex:1 1 auto;max-width:none;font-size:14px}
+.teclado span.enviar{flex:0 0 84px;max-width:none;background:#0a84ff;font-size:15px}
+
+/* no celular de verdade: sem moldura, tela cheia, áreas seguras do sistema */
+@media (max-width:500px){
+  :root{--topo:max(env(safe-area-inset-top),12px);--base:max(env(safe-area-inset-bottom),12px)}
+  body.mesa{padding:0;gap:0;background:none}
+  .aparelho{width:100vw;height:100dvh;border:0;border-radius:0;box-shadow:none}
+  .aparelho > .tela{border-radius:0}
+  .status,.home{display:none}
+  .preview{top:auto;bottom:calc(var(--base) + 6px);transform:translateX(-50%) scale(.88);opacity:.6}
+  .preview:focus-within{opacity:1}
+}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
