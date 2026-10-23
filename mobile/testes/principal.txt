@@ -11,6 +11,7 @@ src/context/metricas/cicloSessao.test.ts
 src/hooks/trilha/sessionRegistrationPlan.test.ts
 src/hooks/trilha/persistirIntervalo.test.ts
 src/utils/vidaDoBoss.test.ts
+src/utils/batalhaRegras.test.ts
 src/hooks/trilha/topicScreenBlock.test.ts
 src/hooks/trilha/usePersonalizedFlow.test.ts
 src/models/Topico.canonicalProgress.test.ts

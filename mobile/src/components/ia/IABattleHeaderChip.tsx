@@ -3,6 +3,7 @@ import { useContentBossVisual } from '@/hooks/useContentBossVisual';
 import { useUsuario } from "@/context/SessaoContext";
 import { IAFeatureSelectorScope } from "@/interfaces/personalizacao/IAContracts";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { batalhaPausadaPeloEstado } from "@/utils/batalhaRegras";
 import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -131,6 +132,33 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
   const battleState = battleScope ? getBattleState(battleScope) : null;
   const resolvedBattle = battleScope ? resolveFeature(battleScope, "battle_mode") : null;
   const teacherBoss = useContentBossVisual(topicoId, battleScope?.scope === 'item' ? battleScope.itemKey : resolvedBattle?.battle?.sourceItemKey, resolvedBattle?.battle?.enemy.contentId);
+
+  // Coluna lateral do Tópico (web em tela larga, #508; protótipo v4, "Batalha suspensa"):
+  // se a leitura emocional desligou a batalha, o aluno vê o porquê em vez de o painel sumir.
+  if (
+    variante === "painel" &&
+    hasBattleSignal &&
+    !battleScope &&
+    batalhaPausadaPeloEstado([
+      itemScope ? resolveFeature(itemScope, "battle_mode") : null,
+      topicScope ? resolveFeature(topicScope, "battle_mode") : null,
+    ])
+  ) {
+    return (
+      <View
+        accessibilityRole="summary"
+        style={[styles.pausada, { borderColor: palette.border, backgroundColor: palette.surface }]}
+      >
+        <View style={styles.pausadaTitulo}>
+          <MaterialCommunityIcons name="pause-circle-outline" size={18} color={palette.accent} />
+          <Text style={[styles.pausadaTituloTexto, { color: palette.text }]}>Modo batalha</Text>
+        </View>
+        <Text style={[styles.pausadaTexto, { color: palette.textMuted }]}>
+          A batalha foi pausada para você estudar no seu ritmo.
+        </Text>
+      </View>
+    );
+  }
 
   if (
     !hasBattleSignal ||
@@ -387,6 +415,10 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
 }
 
 const styles = StyleSheet.create({
+  pausada: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 8 },
+  pausadaTitulo: { flexDirection: "row", alignItems: "center", gap: 8 },
+  pausadaTituloTexto: { fontFamily: FontFamily.interMedium, fontSize: 15, fontWeight: "700" },
+  pausadaTexto: { fontFamily: FontFamily.interMedium, fontSize: 13, lineHeight: 20 },
   chip: {
     flex: 1,
     minHeight: 42,
