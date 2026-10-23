@@ -89,3 +89,24 @@ export function limitesDaTurma(linha: Partial<Record<string, unknown>> | null | 
     tempoPorAtividade: n(linha?.tempo_max_por_ativ, 30),
   };
 }
+
+/**
+ * Dias de prazo extra que o aluno já somou nesta turma: o mesmo teto que
+ * `loja_usar_item` confere contra `prazo_max_dias_total` (soma de
+ * `atividade_prazo_aluno.dias_extras` nas atividades da turma).
+ */
+export function diasDePrazoUsados(
+  linhas: readonly { dias_extras?: unknown; atividades?: unknown }[] | null | undefined,
+  classeId: number,
+): number {
+  let soma = 0;
+  for (const linha of linhas ?? []) {
+    const atividade = Array.isArray(linha.atividades) ? linha.atividades[0] : linha.atividades;
+    const topico = (atividade as { topicos?: unknown } | null | undefined)?.topicos;
+    const classe = (Array.isArray(topico) ? topico[0] : topico) as { classe_id?: unknown } | null | undefined;
+    if (Number(classe?.classe_id) !== classeId) continue;
+    const dias = Number(linha.dias_extras);
+    if (Number.isFinite(dias) && dias > 0) soma += Math.floor(dias);
+  }
+  return soma;
+}
