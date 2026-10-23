@@ -899,6 +899,43 @@ def _build_student_reading_summary(context: dict[str, object]) -> dict[str, obje
     }
 
 
+def _resumir_entrada_do_chat(
+    payload: Any,
+    *,
+    aluno_id: Any,
+    personalizacao_id: Any,
+) -> dict[str, Any]:
+    """Forma da mensagem do aluno, nunca o conteudo (item 4 da #195, LGPD).
+
+    O log da aplicacao tem outra cadeia de custodia e outra retencao que o
+    banco: o que entra aqui vai para o stdout do container, para o agregador de
+    log do Dokploy e para onde mais o operador encaminhar -- nenhum desses
+    lugares foi pensado para texto livre de aluno menor de idade. A versao
+    anterior gravava `payload.mensagem` inteira em INFO.
+
+    O verbatim continua em `ia_decision_logs`, que e o lugar com prazo: o
+    `20261003_09` redige aos 90 dias e expurga aos 365. Log de aplicacao nao
+    tem como cumprir prazo nenhum, entao nao recebe o texto.
+
+    O que fica e o que servia para diagnostico de verdade: tamanho, se o
+    guardrail de "me da a resposta" casou, e quantas mensagens o historico
+    trazia. Mesmo molde de `_summarize_telemetria_payload` em `telemetria.py`,
+    que ja registra so contagens.
+    """
+    mensagem = payload.mensagem or ""
+    return {
+        "aluno_id": aluno_id,
+        "classe_id": payload.classe_id,
+        "topico_id": payload.topico_id,
+        "conteudo_id": payload.conteudo_id,
+        "escopo": payload.escopo,
+        "mensagem_chars": len(mensagem),
+        "mensagem_pede_resposta": _looks_like_answer_request(mensagem),
+        "historico_count": len(payload.historico),
+        "personalizacao_id": personalizacao_id,
+    }
+
+
 def _looks_like_answer_request(text: str) -> bool:
     normalized = text.lower()
     patterns = [
@@ -1468,16 +1505,11 @@ async def conversar_com_mentor_personalizacao(
 
     logger.info(
         "personalizacao.chat.input=%s",
-        {
-            "aluno_id": aluno_id,
-            "classe_id": payload.classe_id,
-            "topico_id": payload.topico_id,
-            "conteudo_id": payload.conteudo_id,
-            "escopo": payload.escopo,
-            "mensagem": payload.mensagem,
-            "historico_count": len(payload.historico),
-            "personalizacao_id": latest_record.get("id") if latest_record else None,
-        },
+        _resumir_entrada_do_chat(
+            payload,
+            aluno_id=aluno_id,
+            personalizacao_id=latest_record.get("id") if latest_record else None,
+        ),
     )
 
     fallback = _fallback_mentor_chat_reply(
