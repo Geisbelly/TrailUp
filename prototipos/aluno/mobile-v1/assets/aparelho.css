@@ -10,11 +10,11 @@ body.mesa{min-height:100vh;background:#0d0a14;display:flex;flex-direction:column
 .aparelho > .tela{position:absolute;inset:0;overflow:hidden;border-radius:43px}
 
 /* barra de status falsa: hora, sinal, wi-fi e bateria, por cima de tudo */
-.status{position:absolute;top:0;left:0;right:0;height:var(--topo);z-index:60;display:flex;align-items:center;justify-content:space-between;padding:6px 30px 0 34px;color:#fff;font:600 15px/1 system-ui,-apple-system,sans-serif;pointer-events:none}
+.status{position:absolute;top:0;left:0;right:0;height:var(--topo);z-index:95;display:flex;align-items:center;justify-content:space-between;padding:6px 30px 0 34px;color:#fff;font:600 15px/1 system-ui,-apple-system,sans-serif;pointer-events:none}
 .status .ilha{position:absolute;left:50%;top:11px;width:122px;height:34px;margin-left:-61px;border-radius:20px;background:#000}
 .status .icones{display:flex;align-items:center;gap:6px}
 .status svg{height:12px;width:auto;fill:#fff}
-.home{position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#fff;opacity:.9;z-index:60;pointer-events:none}
+.home{position:absolute;left:50%;bottom:8px;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#fff;opacity:.9;z-index:95;pointer-events:none}
 
 /* seletor de estado, fora do aparelho (como no v4) */
 .preview{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:10px;padding:6px 8px 6px 14px;border-radius:100px;background:#180f26e6;border:1px solid #b496d678;font:500 12px/1.2 Inter,system-ui,sans-serif;color:#e5d4f3;white-space:nowrap}

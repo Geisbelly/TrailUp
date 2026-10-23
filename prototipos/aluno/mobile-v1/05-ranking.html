@@ -98,6 +98,7 @@
 
 <script src="assets/aparelho.js"></script>
 <script src="assets/tema.js"></script>
+<script src="assets/social.js"></script>
 <script>
 /* dados iguais ao v4 (05-ranking.html) */
 const P={k:['Kwame R.','achiever'],m:['Marina S.','seeker'],z:['Zuri & Mateo','socializer'],b:['Bianca L.','achiever'],t:['Théo M.','seeker'],d:['Diego A.','conqueror'],l:['Lara P.','mastermind'],i:['Iago F.','daredevil'],ke:['Kenji O.','survivor'],r:['Rafael N.','conqueror'],a:['Ana C.',null],me:['Amina T.','conqueror']};
@@ -175,6 +176,7 @@ function render(){
   const st=$('rolagem')?.scrollTop||0;
   $('tela').innerHTML=h;
   if($('rolagem'))$('rolagem').scrollTop=st;
+  Social.redesenha();
 }
 function torrada(t){torradaTxt=t;render();setTimeout(()=>{torradaTxt=null;render()},1800)}
 function define(v){estado=v;filtro='geral';folha=v==='minha';cat=v==='podio'?'pontos':'tempo';render()}
@@ -186,7 +188,8 @@ document.addEventListener('click',e=>{
   if(q('[data-minha]')){folha=true;render();return}
   if(q('[data-fecha]')){folha=false;render();return}
   if(q('[data-eu]')){location.href='08-perfil-hub.html';return}
-  if(q('[data-colega]')){folha=false;torrada(`Perfil de ${P[q('[data-colega]').dataset.colega][0]} (entra na parte do Social)`);return}
+  if(q('#sx-raiz'))return;
+  if(q('[data-colega]')){folha=false;render();Social.perfil(P[q('[data-colega]').dataset.colega][0]);return}
   if(q('[data-torrada]')){torrada(q('[data-torrada]').dataset.torrada);return}
 });
 document.addEventListener('change',e=>{if(e.target.id!=='estado')return;history.replaceState(null,'',`${location.pathname}?estado=${e.target.value}&perfil=${perfil}`);define(e.target.value)});
