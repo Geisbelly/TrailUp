@@ -149,7 +149,9 @@ const s = StyleSheet.create({
   banner: { height: 128, borderRadius: 12, borderWidth: 1, overflow: "hidden" },
   bannerImagem: { width: "100%", height: "100%" },
   trocarBanner: { position: "absolute", right: 12, bottom: 12 },
-  fotoLinha: { flexDirection: "row", alignItems: "flex-end", gap: 12, marginTop: -42, marginLeft: 12 },
+  // Sobe 42 px por cima do banner e ocupa a largura toda: sem box-none, cobria a metade de
+  // baixo do "Trocar banner", que aparecia inteiro mas só aceitava clique na faixa de cima.
+  fotoLinha: { flexDirection: "row", alignItems: "flex-end", gap: 12, marginTop: -42, marginLeft: 12, pointerEvents: "box-none" },
   botaoVidro: { flexDirection: "row", alignItems: "center", gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1 },
   botaoVidroTexto: { fontFamily: FontFamily.interMedium, fontSize: 12.5, fontWeight: "700" },
   formulario: { gap: 16 },
