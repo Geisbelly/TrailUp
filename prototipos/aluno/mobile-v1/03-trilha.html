@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TrailUp — Trilha (celular)</title>
+<link rel="stylesheet" href="assets/aparelho.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  :root{--topo-app:92px;--recolhida:84px}
+  .cenario{position:absolute;inset:0;z-index:0}
+  .cenario img{width:100%;height:100%;object-fit:cover;display:block}
+  .cenario::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,var(--bg-a85) 0%,transparent 26%,transparent 62%,var(--bg-a70) 100%)}
+  .apagado .cenario img{filter:brightness(.45)}
+
+  /* topo: emblema + título + Bag + guia, e o progresso logo abaixo */
+  .topo{position:absolute;left:0;right:0;top:var(--topo);z-index:10;padding:4px 12px 0 14px}
+  .topo-linha{height:56px;display:flex;align-items:center;gap:10px}
+  .topo-linha .emblema{width:32px;height:32px;object-fit:contain;filter:drop-shadow(0 0 8px var(--accent-soft))}
+  .topo-titulo{flex:1;min-width:0}
+  .topo-titulo h1{font-family:Georgia,serif;font-size:18px;font-weight:700;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .progresso{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--text-subtle);padding:0 2px 8px}
+  .progresso .barra{flex:1}
+  .progresso strong{color:var(--text);font-size:14px}
+
+  /* tabuleiro */
+  .tabuleiro{position:absolute;left:0;right:0;top:calc(var(--topo) + var(--topo-app));bottom:calc(var(--abas) + var(--base));z-index:5;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:calc(var(--recolhida) + 24px);-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 14px);mask-image:linear-gradient(to bottom,transparent 0,#000 14px)}
+  .tabuleiro::-webkit-scrollbar{display:none}
+  .plano{position:relative}
+  .plano svg.linhas{position:absolute;left:0;top:0;pointer-events:none}
+  .no{position:absolute;display:flex;flex-direction:column;align-items:center;background:none;border:0;padding:0;cursor:pointer;width:150px;transform:translate(-50%,calc(-1 * var(--meio)));-webkit-tap-highlight-color:transparent}
+  .no.atual .hx{filter:drop-shadow(0 0 16px var(--accent-soft)) drop-shadow(0 0 26px var(--accent-soft))}
+  .rotulo{margin-top:8px;display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;max-width:150px}
+  .rotulo .t{font-size:13px;font-weight:600;line-height:1.25;color:var(--text);text-shadow:0 1px 8px var(--bg),0 0 2px var(--bg);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .no.travado .rotulo .t{color:var(--text-muted)}
+  .rotulo .chip{font-size:10.5px;padding:3px 8px;border:1px solid var(--line);background:var(--surface)}
+  .rotulo .chip-accent{background:linear-gradient(var(--accent-muted),var(--accent-muted)),var(--surface)}
+  .aqui{position:absolute;bottom:calc(100% - 2px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;white-space:nowrap;padding:3px 10px 3px 3px;border-radius:999px;background:var(--accent);color:var(--bg);font-size:11px;font-weight:800;box-shadow:0 6px 16px rgba(0,0,0,.4);pointer-events:none}
+  .aqui img{width:24px;height:24px;border-radius:50%;object-fit:cover;background:var(--elev);box-shadow:0 0 0 2px var(--bg)}
+  .aqui::after{content:"";position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid var(--accent)}
+  /* árvore: rótulo ao lado */
+  .no.lado{flex-direction:row;align-items:center;width:auto;gap:10px;transform:translate(calc(-1 * var(--meio)),-50%)}
+  .no.lado .rotulo{margin-top:0;align-items:flex-start;text-align:left;width:var(--lw,170px)}
+  .no.lado .aqui{left:calc(-1 * 4px);transform:translateY(-100%);bottom:auto;top:-6px}
+  .no.lado .aqui::after{left:22px;transform:none}
+  /* lista */
+  .lista{display:flex;flex-direction:column;gap:10px;padding:6px 14px 0}
+  .linha{display:flex;align-items:center;gap:12px;min-height:72px;padding:8px 12px;border-radius:8px;background:var(--surface-a88);border:1px solid var(--line);text-align:left;cursor:pointer;width:100%}
+  .linha.atual{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-soft),0 0 22px var(--accent-soft)}
+  .linha.sel{outline:2px solid var(--text);outline-offset:-2px}
+  .linha .txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+  .linha .txt strong{font-size:14.5px}
+  .linha .txt span{display:inline-flex;align-items:center;gap:5px;font-size:12.5px}
+  .linha .txt span svg{width:13px;height:13px}
+  .linha .eu{width:30px;height:30px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--accent)}
+  .linha > svg{width:18px;height:18px;color:var(--text-subtle);flex:none}
+
+  /* folha do tópico selecionado */
+  .folha{bottom:calc(var(--abas) + var(--base));height:var(--recolhida);overflow:hidden;display:flex;flex-direction:column}
+  .folha.aberta{height:calc(100% - var(--topo) - 56px - var(--abas) - var(--base))}
+  .recolhida{display:flex;align-items:center;gap:10px;padding:0 14px 0 14px;height:58px;flex:none}
+  .recolhida .nome{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;cursor:pointer;min-height:48px;display:flex;flex-direction:column;justify-content:center}
+  .recolhida .nome strong{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+  .recolhida .btn{flex:none;padding:0 14px;font-size:14px}
+  .expandida{flex:1;overflow-y:auto;padding:4px 16px 18px;display:flex;flex-direction:column;gap:16px}
+  .expandida .local{font-size:12.5px;color:var(--text-subtle);margin-top:-8px}
+  .rot-barra{display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-top:8px}
+  .comp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .comp div{background:var(--bg-a55);border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+  .comp strong{display:block;font-size:20px}
+  .comp span{font-size:12px;color:var(--text-subtle)}
+  .perso{background:var(--accent-muted);border:1px solid var(--accent-soft);border-radius:8px;padding:12px}
+  .perso p{margin:8px 0 0;font-size:13.5px;line-height:1.55;color:var(--text-muted)}
+  .selado{background:var(--bg-a55);border:1px dashed var(--border-strong);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px}
+  .selado .tit{display:flex;align-items:center;gap:8px;font-weight:700}
+  .selado .tit svg{width:18px;height:18px}
+  .selado p{margin:0;font-size:13.5px;color:var(--text-muted);line-height:1.5}
+  .todos h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:0 0 6px}
+  .todos button{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;background:none;border:0;border-top:1px solid var(--line);text-align:left;cursor:pointer;font-size:14px}
+  .todos button[aria-current="true"]{color:var(--accent);font-weight:700}
+  .todos .pct{margin-left:auto;font-size:12px;color:var(--text-subtle)}
+
+  /* guia (mentor) */
+  .guia-fab{position:absolute;right:14px;bottom:calc(var(--abas) + var(--base) + var(--recolhida) + 12px);z-index:25;width:56px;height:56px;border-radius:50%;padding:0;border:2px solid var(--accent);background:var(--elev);cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.45)}
+  .guia-fab img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+  .guia-fab .ping{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--bg)}
+  .folha.aberta ~ .guia-fab{display:none}
+  .chat{position:absolute;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;padding-top:var(--topo)}
+  .chat-topo{display:flex;align-items:center;gap:10px;padding:6px 8px 10px 16px;border-bottom:1px solid var(--line)}
+  .chat-topo img{width:40px;height:40px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--accent)}
+  .chat-topo div{flex:1}
+  .chat-topo strong{display:block;font-size:15px}
+  .chat-topo span{font-size:12px;color:var(--text-subtle)}
+  .chat-corpo{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+  .balao{max-width:86%;background:var(--surface);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:11px 13px;font-size:14px;line-height:1.5}
+  .nota{font-size:12px;color:var(--text-subtle);padding:0 16px 8px;line-height:1.45}
+  .chat-campo{display:flex;gap:8px;padding:8px 12px calc(var(--base) + 8px);border-top:1px solid var(--line)}
+  .chat-campo input{flex:1;height:48px;border-radius:24px;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:0 16px;font-size:16px}
+  .chat-campo button{width:48px;height:48px;border-radius:50%;border:0;background:var(--accent);color:var(--bg);display:grid;place-items:center}
+  .chat-campo button svg{width:18px;height:18px}
+
+  /* estados sem tabuleiro */
+  .centro{position:absolute;left:0;right:0;top:calc(var(--topo) + 24px);bottom:calc(var(--abas) + var(--base));z-index:5;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+  .cartao{width:100%;border-radius:10px;padding:26px 22px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px}
+  .cartao > svg{width:46px;height:46px;color:var(--text-subtle)}
+  .cartao h2{font-family:Georgia,serif;font-size:21px;margin:0}
+  .cartao p{margin:0;font-size:14.5px;line-height:1.55;color:var(--text-subtle)}
+  .cartao.erro{background:var(--danger-bg);border:1px solid var(--danger-border);text-align:left;align-items:flex-start}
+  .cartao.erro > svg{color:var(--danger);width:24px;height:24px}
+  .turmas{width:100%;align-self:flex-start;display:flex;flex-direction:column;gap:12px;padding-top:6px}
+  .turmas h2{font-family:Georgia,serif;font-size:24px;margin:0}
+  .turmas > p{margin:0 0 4px;color:var(--text-subtle);font-size:14.5px}
+  .turma{border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}
+  .turma h3{font-family:Georgia,serif;font-size:19px;margin:0}
+  .turma .m{font-size:13px;color:var(--text-subtle)}
+  .carregando{position:absolute;left:50%;bottom:calc(var(--abas) + var(--base) + var(--recolhida) + 16px);transform:translateX(-50%);z-index:12;display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:13px;color:var(--text-muted);padding:8px 14px;border-radius:999px}
+  .carregando svg{width:16px;height:16px;color:var(--accent)}
+
+  /* portões: explicação (aba travada) e cerimônia */
+  .cerimonia{position:absolute;inset:0;z-index:55;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:14px;padding:calc(var(--topo) + 20px) 28px calc(var(--base) + 24px);background:radial-gradient(circle at 50% 38%,var(--accent-soft),transparent 62%),var(--bg)}
+  .cerimonia img{width:120px;height:120px;object-fit:contain;filter:drop-shadow(0 0 24px var(--accent))}
+  .cerimonia h2{font-family:Georgia,serif;font-size:26px;margin:0}
+  .cerimonia p{margin:0;font-size:15px;line-height:1.55;color:var(--text-muted)}
+  .cerimonia .btn{width:100%;margin-top:10px}
+  @media (prefers-reduced-motion:no-preference){.cerimonia img{animation:surge .7s cubic-bezier(.2,.7,.2,1.4) both}}
+  @keyframes surge{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+  .aviso{position:absolute;left:14px;right:14px;bottom:calc(var(--abas) + var(--base) + 12px);z-index:70;border-radius:12px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:8px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
+  .aviso strong{display:flex;align-items:center;gap:8px;font-size:15px}
+  .aviso strong svg{width:16px;height:16px}
+  .aviso p{margin:0;font-size:13.5px;color:var(--text-muted);line-height:1.5}
+  .torrada{position:absolute;left:50%;bottom:calc(var(--abas) + var(--base) + var(--recolhida) + 14px);transform:translateX(-50%);z-index:70;background:var(--text);color:var(--bg);font-size:13px;font-weight:600;padding:10px 14px;border-radius:999px;white-space:nowrap}
+</style>
+</head>
+<body class="mesa">
+
+<div class="preview" id="preview"></div>
+
+<div class="aparelho">
+  <div class="tela" id="tela"></div>
+</div>
+
+<script src="assets/aparelho.js"></script>
+<script src="assets/tema.js"></script>
+<script>
+/* ================= dados (iguais ao v4) ================= */
+const JUSTIFICATIVA='Reorganizei Equações em desafios curtos antes da leitura, porque você rende mais quando começa praticando.';
+const TOPICOS=[
+  {n:1,t:'Números Naturais',     pais:'Reino de Números Naturais',      cap:'Torre de Números Naturais',       st:'done',   pct:100,c:3,a:2},
+  {n:2,t:'Números Inteiros',     pais:'Ducado de Números Inteiros',     cap:'Castelo de Números Inteiros',     st:'done',   pct:100,c:4,a:2},
+  {n:3,t:'Frações',              pais:'Bastião de Frações',             cap:'Observatório de Frações',         st:'done',   pct:100,c:4,a:3},
+  {n:4,t:'Expressões Algébricas',pais:'Marca de Expressões Algébricas', cap:'Torre de Expressões Algébricas',  st:'done',   pct:100,c:3,a:2},
+  {n:5,t:'Equações do 1º grau',  pais:'Reino de Equações 1º Grau',      cap:'Castelo de Equações 1º Grau',     st:'current',pct:43, c:4,a:3,perso:true},
+  {n:6,t:'Razão e Proporção',    pais:'Ducado de Razão Proporção',      cap:'Bastião de Razão Proporção',      st:'open',   pct:0,  c:3,a:2},
+  {n:7,t:'Porcentagem',          pais:'Marca de Porcentagem',           cap:'Torre de Porcentagem',            st:'locked', pct:0,  c:3,a:2,req:[6]},
+  {n:8,t:'Geometria Plana',      pais:'Bastião de Geometria Plana',     cap:'Observatório de Geometria Plana', st:'locked', pct:0,  c:5,a:3,req:[6,7]},
+];
+const NIVEIS=[[1],[2],[3,4],[5],[6],[7],[8]];
+const ARESTAS=[[1,2],[2,3],[2,4],[3,5],[4,5],[5,6],[6,7],[6,8],[7,8]];
+const ESTADOS=[['data','Com dados'],['sel-locked','Tópico bloqueado selecionado'],['sel-done','Tópico concluído selecionado'],['loading','Carregando'],['empty','Vazio'],['error','Erro'],['turmas','Escolha de turma'],['noclass','Sem turma'],['stale','Progresso desatualizado'],['gate-new','Aluno novo (Social e Ranking bloqueados)'],['gate-social','Cerimônia: Amizades liberadas']];
+const STATUS={done:'Concluído',current:'Em andamento',open:'Disponível',locked:'Bloqueado'};
+const TERR={
+  done:   {fill:'color-mix(in srgb,var(--accent-strong) 62%,var(--bg))',stroke:'var(--accent)'},
+  current:{fill:'color-mix(in srgb,var(--accent) 48%,var(--bg))',       stroke:'var(--text)'},
+  open:   {fill:'color-mix(in srgb,var(--accent) 16%,var(--surface))',  stroke:'var(--border-strong)'},
+  locked: {fill:'color-mix(in srgb,var(--surface) 92%,var(--bg))',      stroke:'var(--border)',dash:'6 6'},
+};
+
+let estado=qs.get('estado')||'data', sel=+qs.get('sel')||5, aberta=false, chatAberto=false, aviso=null;
+const topico=n=>TOPICOS.find(t=>t.n===n);
+const modo=()=>PERFIS[perfil].modo;
+const $=id=>document.getElementById(id);
+
+/* ================= mapa: 2 colunas × 4 fileiras, em serpentina, rolando na vertical ================= */
+const M_COLS=2, M_TOPO=40, M_FAIXA=196, M_LADO=.035;
+const hash=(a,b)=>{const r=Math.sin(a*12.9898+b*78.233)*43758.5453;return r-Math.floor(r)};
+function layoutMapa(W){
+  const rows=Math.ceil(TOPICOS.length/M_COLS),x0=W*M_LADO,cw=W*(1-2*M_LADO)/M_COLS,cells=[];
+  for(let r=0;r<rows;r++)for(let c=0;c<M_COLS;c++)cells.push({c,r});
+  const nos=TOPICOS.map((t,i)=>{const r=Math.floor(i/M_COLS),k=i%M_COLS,c=r%2?M_COLS-1-k:k;
+    return {n:t.n,r,c,cw,x:x0+cw*(c+.5)+Math.sin((i+1)*.82)*cw*.05,y:M_TOPO+M_FAIXA*r+M_FAIXA*.34+Math.cos((i+1)*1.3)*6}});
+  return {rows,x0,cw,cells,nos};
+}
+function celula(L,c,r){ // mesmo recorte do v4: fronteiras compartilhadas, costa arredondada
+  const {rows,x0,cw}=L,cols=M_COLS;
+  const quina=(i,j)=>{const inX=i>0&&i<cols,inY=j>0&&j<rows;
+    let x=x0+i*cw+(inX?(hash(i,j)-.5)*cw*.3:0),y=M_TOPO+j*M_FAIXA+(inY?(hash(j+7,i+3)-.5)*M_FAIXA*.2:0);
+    if(!inX&&!inY){x+=(i?-1:1)*cw*.14;y+=(j?-1:1)*M_FAIXA*.1}return [x,y]};
+  const borda=(A,B,seed,costa)=>{const dx=B[0]-A[0],dy=B[1]-A[1],len=Math.hypot(dx,dy),nx=-dy/len,ny=dx/len,out=[],k=costa?1.35:1;
+    const a=(hash(seed,1)-.5)*.22*k,b=(hash(seed,2)-.5)*.14*k,c=(hash(seed,3)-.5)*.05*k;
+    for(let n=1;n<16;n++){const t=n/16,o=len*(a*Math.sin(Math.PI*t)+b*Math.sin(2*Math.PI*t)+c*Math.sin(5*Math.PI*t));out.push([A[0]+dx*t+nx*o,A[1]+dy*t+ny*o])}return out};
+  const H=(i,j)=>borda(quina(i,j),quina(i+1,j),i*31+j*7+1,j===0||j===rows);
+  const V=(i,j)=>borda(quina(i,j),quina(i,j+1),i*17+j*43+5,i===0||i===cols);
+  const pts=[quina(c,r),...H(c,r),quina(c+1,r),...V(c+1,r),quina(c+1,r+1),...H(c,r+1).reverse(),quina(c,r+1),...V(c,r).reverse()];
+  return 'M'+pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' L')+' Z';
+}
+function noHTML(t,x,y,size,lado,lw){
+  const s=sel===t.n, cls=['no',lado?'lado':'',t.st==='current'?'atual':'',t.st==='locked'?'travado':''].join(' ');
+  const chip={done:['chip-accent',ICONE.check,'Concluído'],current:['chip-accent',ICONE.brilho,'43% · personalizado'],open:['chip-neutral',ICONE.play,'Disponível'],locked:['chip-neutral',ICONE.cadeado,'Bloqueado']}[t.st];
+  const aqui=t.st==='current'?`<span class="aqui"><img src="${ARTE}rosto-${perfil}.png" alt="" />Você parou aqui</span>`:'';
+  return `<button class="${cls}" style="left:${x}px;top:${y}px;--meio:${size/2}px;${lw?`--lw:${lw}px`:''}" data-no="${t.n}" aria-pressed="${s}" aria-label="${t.n}. ${t.t}: ${t.st==='current'?'você parou aqui, 43%':STATUS[t.st]}">
+    ${hexSVG(t,size,s)}<span class="rotulo"><span class="t">${modo()==='mapa'?t.pais:t.t}</span><span class="chip ${chip[0]}">${chip[1]}${chip[2]}</span></span>${aqui}</button>`;
+}
+function mapa(W){
+  const L=layoutMapa(W),P=L.nos,atual=TOPICOS.findIndex(t=>t.st==='current'),H=M_TOPO+L.rows*M_FAIXA+20;
+  const em=(c,r)=>{const i=P.findIndex(p=>p.c===c&&p.r===r);return i<0?null:TOPICOS[i]};
+  const trecho=(a,b)=>{if(a.r===b.r){const dx=(b.x-a.x)/2,w=(a.r%2?-1:1)*16;return `M${a.x} ${a.y} C${a.x+dx} ${a.y+w},${b.x-dx} ${b.y-w},${b.x} ${b.y}`}
+    const fora=(a.c?1:-1)*a.cw*.32;return `M${a.x} ${a.y} C${a.x+fora} ${a.y+40},${b.x+fora} ${b.y-40},${b.x} ${b.y}`};
+  let svg=`<svg class="linhas" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+  for(let i=1;i<10;i++){const y=H*i/10,w=5+i;svg+=`<path d="M0 ${y} C${W*.25} ${y+w},${W*.5} ${y-w},${W*.75} ${y+w} S${W*.95} ${y-w},${W} ${y}" fill="none" stroke="var(--border-strong)" stroke-opacity=".12"/>`}
+  const todas=L.cells.map(({c,r})=>celula(L,c,r)).join(' ');
+  svg+=`<path d="${todas}" fill="rgba(0,0,0,.4)" transform="translate(0 10)"/><path d="${todas}" fill="none" stroke="var(--border-strong)" stroke-opacity=".35" stroke-width="12" stroke-linejoin="round"/>`;
+  L.cells.forEach(({c,r})=>{const t=em(c,r),d=celula(L,c,r);svg+=`<path d="${d}" fill="${t?TERR[t.st].fill:'var(--surface)'}" stroke="var(--bg)" stroke-width="3" stroke-linejoin="round"/>`;if(t&&t.st==='locked')svg+=`<path d="${d}" fill="url(#g-locked-hatch)" opacity=".5"/>`});
+  L.cells.forEach(({c,r})=>{const t=em(c,r);if(!t)return;const S=TERR[t.st],s=sel===t.n;
+    svg+=`<path d="${celula(L,c,r)}" fill="none" stroke="${s?'var(--text)':S.stroke}" stroke-opacity="${s?1:.55}" stroke-width="${s?3:1.5}" ${S.dash&&!s?`stroke-dasharray="${S.dash}"`:''} stroke-linejoin="round" transform="translate(${(L.x0+L.cw*(c+.5))*.04} ${(M_TOPO+M_FAIXA*(r+.5))*.04}) scale(.96)"/>`});
+  let estrada='';for(let i=0;i<P.length-1;i++)estrada+=trecho(P[i],P[i+1])+' ';
+  svg+=`<path d="${estrada}" fill="none" stroke="var(--bg-a55)" stroke-width="14" stroke-linecap="round"/>`;
+  for(let i=0;i<P.length-1;i++){const d=trecho(P[i],P[i+1]);
+    if(i<atual)svg+=`<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round" style="filter:drop-shadow(0 0 6px var(--accent))"/>`;
+    else if(TOPICOS[i+1].st==='locked')svg+=`<path d="${d}" fill="none" stroke="var(--border-strong)" stroke-opacity=".7" stroke-width="3" stroke-dasharray="1 9" stroke-linecap="round"/>`;
+    else svg+=`<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="2 10" stroke-linecap="round"/>`}
+  svg+='</svg>';
+  return `<div class="plano" style="height:${H}px">${svg}${P.map((p,i)=>noHTML(TOPICOS[i],p.x,p.y,56,false)).join('')}</div>`;
+}
+function arvore(W){
+  const passo=104,topo0=44,pos={},H=topo0+NIVEIS.length*passo;
+  NIVEIS.forEach((nv,r)=>nv.forEach((n,i)=>{pos[n]={x:nv.length>1?(i?W*.56:W*.12):W*.24,y:topo0+r*passo,lw:nv.length>1?110:200}}));
+  let svg=`<svg class="linhas" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+  ARESTAS.forEach(([a,b])=>{const p=pos[a],q=pos[b],my=(p.y+q.y)/2,feito=topico(a).st==='done'&&topico(b).st!=='locked';
+    svg+=`<path d="M${p.x} ${p.y+24} C${p.x} ${my},${q.x} ${my},${q.x} ${q.y-24}" fill="none" stroke="${feito?'var(--accent)':'var(--border-strong)'}" stroke-opacity="${feito?1:.5}" stroke-width="${feito?3:2}" ${feito?'':'stroke-dasharray="2 7" stroke-linecap="round"'}/>`});
+  svg+='</svg>';
+  return `<div class="plano" style="height:${H}px">${svg}${TOPICOS.map(t=>noHTML(t,pos[t.n].x,pos[t.n].y,48,true,pos[t.n].lw)).join('')}</div>`;
+}
+function lista(){
+  const L={done:['Concluído','var(--success)',ICONE.check],current:['Você parou aqui · Continuar','var(--accent)',ICONE.relogio],open:['Disponível','var(--text-muted)',ICONE.play],locked:['Toque para saber como desbloquear','var(--text-subtle)',ICONE.cadeado]};
+  return `<div class="lista">${TOPICOS.map(t=>{const [l,c,ic]=L[t.st];
+    return `<button class="linha ${t.st==='current'?'atual':''} ${sel===t.n?'sel':''}" data-no="${t.n}" aria-pressed="${sel===t.n}">${hexSVG(t,48)}
+      <span class="txt"><strong>${t.t}</strong><span style="color:${c}">${ic}${l}</span></span>
+      ${t.st==='current'?`<img class="eu" src="${ARTE}rosto-${perfil}.png" alt="" />`:''}${ICONE.chev}</button>`}).join('')}</div>`;
+}
+
+/* ================= folha do tópico ================= */
+function folhaHTML(){
+  const t=topico(sel), guia=PERFIS[perfil].chat?PERFIS[perfil].guardiao:'o Guia';
+  const sobre={current:'Você parou aqui',done:'Concluído',open:'Próximo disponível',locked:'Conteúdo selado'}[t.st];
+  const acao=t.st==='current'?['btn-primario','Continuar']:t.st==='open'?['btn-primario','Iniciar tópico']:t.st==='done'?['btn-secundario','Revisar tópico']:null;
+  let corpo;
+  if(t.st==='locked'){
+    corpo=`<div class="selado"><div class="tit">${ICONE.cadeado}${t.t} está bloqueado</div><p>Conclua os módulos anteriores para liberar este conteúdo.</p>
+      <p>Pré-requisitos: ${t.req.map(n=>topico(n).t).join(' e ')}.</p><button class="link" data-seleciona="${t.req[0]}">Ver ${topico(t.req[0]).t} →</button></div>`;
+  }else{
+    corpo=`<div><div class="barra" role="progressbar" aria-valuenow="${t.pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Progresso do módulo"><i style="width:${t.pct}%"></i></div>
+        <div class="rot-barra"><span>${t.pct}% do módulo</span><span>${t.st==='open'?'Ainda não iniciado':t.st==='done'?'Concluído':''}</span></div></div>
+      <div class="comp"><div><strong>${t.c}</strong><span>conteúdos</span></div><div><strong>${t.a}</strong><span>atividades</span></div></div>
+      ${t.perso?`<div class="perso"><span class="chip chip-accent">${ICONE.brilho}Módulo personalizado</span><p>${JUSTIFICATIVA}</p><button class="link" data-chat>Conversar com ${guia} →</button></div>`:''}`;
+  }
+  return `<section class="folha vidro ${aberta?'aberta':''}" id="folha" aria-label="Tópico selecionado" aria-live="polite">
+    <button class="alca" data-alterna aria-label="${aberta?'Recolher':'Expandir'} o tópico selecionado" aria-expanded="${aberta}"></button>
+    <div class="recolhida">${hexSVG(t,40)}
+      <button class="nome" data-alterna><span class="eyebrow">${sobre}</span><strong>${t.t}</strong></button>
+      ${acao?`<button class="btn ${acao[0]}" data-abre="${t.n}">${acao[1]}${t.st==='done'?'':ICONE.seta}</button>`:aberta?'':`<button class="btn btn-secundario" data-alterna>Por quê?</button>`}</div>
+    ${aberta?`<div class="expandida">${modo()==='mapa'?`<div class="local">${t.pais} · Capital: ${t.cap}</div>`:''}${corpo}
+      <div class="todos"><h3>Todos os módulos (8)</h3>${TOPICOS.map(x=>`<button data-seleciona="${x.n}" aria-current="${sel===x.n}">${hexSVG(x,26)}<span>${x.t}</span><span class="pct">${x.st==='locked'?'':x.pct+'%'}</span></button>`).join('')}</div></div>`:''}
+  </section>`;
+}
+
+function chatHTML(){
+  const P=PERFIS[perfil],g=P.guardiao,fala=P.chat?g:'Guia';
+  return `<section class="chat" aria-label="${g} na trilha">
+    <div class="chat-topo"><img src="${ARTE}rosto-${perfil}.png" alt="" /><div><strong>${g} na trilha</strong><span>${fala}</span></div><button class="redondo" data-fecha-chat aria-label="Fechar">${ICONE.x}</button></div>
+    <div class="chat-corpo"><div class="balao">Estou acompanhando você. Se travar, eu apareço com uma dica.</div>
+      <div class="balao"><strong style="display:block;margin-bottom:4px">Equações do 1º grau</strong>${JUSTIFICATIVA} Se quiser, eu explico essa decisão.</div>
+      <div style="display:flex;gap:8px"><span class="chip chip-neutral">Personalização</span><span class="chip chip-neutral">Métricas</span></div></div>
+    <p class="nota">Eu posso orientar, resumir métricas e explicar a personalização, mas não entrego respostas de atividades.</p>
+    <div class="chat-campo"><input placeholder="Pergunte sobre a trilha" aria-label="Mensagem para o guia" /><button aria-label="Enviar mensagem">${ICONE.enviar}</button></div></section>`;
+}
+
+/* ================= render ================= */
+function topoHTML(carregando){
+  const ehMapa=modo()==='mapa';
+  if(carregando)return `<div class="topo"><div class="topo-linha"><div class="skel" style="width:32px;height:32px;border-radius:50%"></div><div class="topo-titulo"><div class="skel" style="height:10px;width:110px"></div><div class="skel" style="height:18px;width:190px;margin-top:6px"></div></div></div><div class="skel" style="height:6px;margin:0 2px"></div></div>`;
+  return `<div class="topo"><div class="topo-linha"><img class="emblema" src="${ARTE}emblem-${perfil}.png" alt="" />
+      <div class="topo-titulo"><div class="eyebrow">${ehMapa?'Mapa da jornada':'Sua trilha'}</div><h1>${ehMapa?'Reinos de Matemática':'Matemática'}</h1></div>
+      <button class="redondo" aria-label="Abrir Bag" title="Minha Bag" data-torrada="A Bag entra na parte do Perfil"><img src="${ARTE}bag-${perfil}.png" alt="" /></button>
+      <button class="redondo" aria-label="Guia tutorial da trilha" data-torrada="O tutorial entra quando todas as abas existirem">${ICONE.ajuda}</button></div>
+    <div class="progresso"><div class="barra" role="progressbar" aria-valuenow="56" aria-valuemin="0" aria-valuemax="100" aria-label="Progresso da trilha"><i style="width:56%"></i></div>
+      <span><strong>56%</strong> · ${estado==='stale'?'<span class="chip chip-warning">progresso desatualizado</span>':'4 de 8 módulos'}</span></div></div>`;
+}
+function render(){
+  aplicarTema();
+  $('preview').innerHTML=previewHTML(ESTADOS,estado);
+  const tela=$('tela'), cena=`<div class="cenario"><img src="${ARTE}${modo()==='mapa'?'map':'trail'}-${perfil}.webp" alt="" /></div>`;
+  const travadas=estado==='gate-new'?['social','ranking']:[];
+  tela.classList.toggle('apagado',estado==='turmas'||estado==='noclass');
+  let h=HEX_DEFS+cena;
+  if(estado==='empty')h+=`<div class="centro"><div class="cartao vidro">${ICONE.mapa}<h2>Sem trilhas</h2><p>Nenhuma trilha disponível no momento.</p><p style="font-size:13px">Quando sua professora publicar a trilha, ela aparece aqui.</p></div></div>`;
+  else if(estado==='error')h+=`<div class="centro"><div class="cartao erro" role="alert">${ICONE.alerta}<h2 style="font-family:inherit;font-size:16px">Não foi possível carregar sua trilha</h2><p style="color:#f3d9e0">Verifique sua conexão e tente novamente.</p><button class="btn btn-secundario" data-estado="data">${ICONE.repetir}Tentar novamente</button></div></div>`;
+  else if(estado==='noclass')h+=`<div class="centro"><div class="cartao vidro">${ICONE.escola}<h2>Você ainda não está em uma turma</h2><p>Peça o código de matrícula para sua professora.</p><a class="btn btn-secundario" href="00-entrada.html">Sair da conta</a></div></div>`;
+  else if(estado==='turmas')h+=`<div class="centro"><div class="turmas"><h2>Escolha sua turma</h2><p>Você está em 3 turmas. Escolha por onde continuar.</p>
+    ${[['Matemática',56],['Ciências',12],['História',0]].map(([m,p])=>`<article class="turma vidro"><span class="chip ${p?'chip-accent':'chip-neutral'}" style="align-self:flex-start;text-transform:uppercase;letter-spacing:.06em">${m}</span><h3>${m}</h3><div class="m">6º ano B · Prof. Helena Duarte</div>
+      <div class="barra"><i style="width:${p}%"></i></div><div class="m">${p?p+'% concluído':'Não iniciada'}</div><button class="btn btn-secundario btn-bloco" data-estado="data" aria-label="Entrar em ${m}, turma 6º ano B, com Prof. Helena Duarte">Entrar na turma</button></article>`).join('')}
+    <button class="link" style="align-self:center">↻ Atualizar turmas</button></div></div>`;
+  else if(estado==='loading'){
+    h+=topoHTML(true)+`<div class="tabuleiro" style="overflow:hidden">${[0,1,2,3,4].map(i=>`<div class="skel" style="position:absolute;left:${i%2?58:16}%;top:${30+i*120}px;width:64px;height:64px;clip-path:path('${hexPath(32,32,30,6)}');border-radius:0"></div>`).join('')}</div>
+      <section class="folha vidro"><span class="alca"></span><div class="recolhida"><div class="skel" style="width:40px;height:40px;border-radius:50%"></div><div style="flex:1"><div class="skel" style="height:10px;width:90px"></div><div class="skel" style="height:15px;width:150px;margin-top:6px"></div></div><div class="skel" style="width:110px;height:44px;border-radius:6px"></div></div></section>
+      <div class="carregando vidro" role="status">${ICONE.estrela}<span><strong>Carregando trilhas</strong> · Preparando sua jornada.</span></div>`;
+  }else{
+    if(estado==='sel-locked'){sel=7;aberta=true}
+    if(estado==='sel-done')sel=3;
+    h+=topoHTML(false)+`<div class="tabuleiro" id="tabuleiro"></div>`+folhaHTML()
+      +`<button class="guia-fab" data-chat aria-label="Abrir ${PERFIS[perfil].guardiao} na trilha (1 mensagem nova)"><img src="${ARTE}rosto-${perfil}.png" alt="" /><span class="ping"></span></button>`;
+  }
+  if(aberta&&!['empty','error','noclass','turmas','loading'].includes(estado))h+='';
+  h+=abasHTML('trilha',travadas);
+  if(chatAberto)h+=chatHTML();
+  if(estado==='gate-social')h+=`<section class="cerimonia" role="dialog" aria-modal="true" aria-labelledby="cer"><img src="${ARTE}emblem-${perfil}.png" alt="" /><div class="eyebrow">Nova área liberada</div><h2 id="cer">Amizades liberadas!</h2><p>Você concluiu seu primeiro conteúdo. Agora dá para encontrar colegas, formar guildas e conversar no Social.</p><a class="btn btn-primario" href="06-social.html">Ver o Social ${ICONE.seta}</a><button class="link" data-estado="data">Agora não</button></section>`;
+  if(aviso)h+=aviso;
+  tela.innerHTML=h;
+  desenhaTabuleiro();
+}
+function desenhaTabuleiro(){
+  const tab=$('tabuleiro');if(!tab)return;
+  const W=tab.clientWidth,m=modo();
+  tab.innerHTML=m==='mapa'?mapa(W):m==='arvore'?arvore(W):lista();
+  const atual=tab.querySelector('.no.atual,.linha.atual');
+  if(atual&&!desenhaTabuleiro.rolou){tab.scrollTop=Math.max(0,atual.offsetTop-(m==='lista'?tab.clientHeight/2:tab.clientHeight/2-40));}
+}
+function seleciona(n){
+  const tab=$('tabuleiro'),st=tab?tab.scrollTop:0;
+  if(sel===n&&topico(n).st!=='locked'){abre(n);return}
+  sel=n;aberta=topico(n).st==='locked';desenhaTabuleiro.rolou=true;render();const t2=$('tabuleiro');if(t2)t2.scrollTop=st;
+}
+function torrada(txt){aviso=`<div class="torrada" role="status">${txt}</div>`;render();setTimeout(()=>{aviso=null;render()},1800)}
+function abre(n){torrada(`Abre ${topico(n).t} (o Tópico é a parte 3)`)}
+
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-no],[data-alterna],[data-seleciona],[data-abre],[data-chat],[data-fecha-chat],[data-estado],[data-perfil],[data-torrada],.aba.travada');
+  if(!a)return;
+  if(a.classList.contains('travada')){e.preventDefault();const s=a.dataset.aba==='social';
+    aviso=`<div class="aviso vidro" role="dialog" aria-labelledby="av"><strong id="av">${ICONE.cadeado}${s?'Social':'Ranking'} ainda bloqueado</strong><p>${s?'Conclua seu primeiro conteúdo para liberar amizades, guildas e conversas.':'Conclua seu primeiro tópico para entrar no ranking da turma.'}</p><button class="link" data-estado="${estado}">Entendi</button></div>`;render();return}
+  if(a.dataset.no){seleciona(+a.dataset.no)}
+  else if(a.hasAttribute('data-alterna')){aberta=!aberta;desenhaTabuleiro.rolou=true;const st=$('tabuleiro')?.scrollTop;render();if($('tabuleiro'))$('tabuleiro').scrollTop=st}
+  else if(a.dataset.seleciona){sel=+a.dataset.seleciona;aberta=true;desenhaTabuleiro.rolou=false;render()}
+  else if(a.dataset.abre){abre(+a.dataset.abre)}
+  else if(a.hasAttribute('data-chat')){chatAberto=true;render()}
+  else if(a.hasAttribute('data-fecha-chat')){chatAberto=false;render()}
+  else if(a.dataset.torrada){torrada(a.dataset.torrada)}
+  else if(a.dataset.perfil){perfil=a.dataset.perfil;desenhaTabuleiro.rolou=false;render()}
+  else if(a.dataset.estado!==undefined){estado=a.dataset.estado;aviso=null;aberta=false;sel=5;desenhaTabuleiro.rolou=false;render()}
+});
+document.addEventListener('change',e=>{if(e.target.id!=='estado')return;estado=e.target.value;history.replaceState(null,'',`${location.pathname}?estado=${estado}&perfil=${perfil}`);aviso=null;chatAberto=false;aberta=false;sel=5;desenhaTabuleiro.rolou=false;render()});
+render();
+</script>
+</body>
+</html>

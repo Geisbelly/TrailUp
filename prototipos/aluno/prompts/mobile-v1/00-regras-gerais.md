@@ -32,7 +32,13 @@ O contexto do produto (perfis BrainHex, fórmula da paleta, guardiões, tipograf
 - Títulos em Georgia; corpo em `system-ui`/Inter, como no v4.
 - **Animação respeita `prefers-reduced-motion`**, como no v4.
 
-## 5. Entrega de cada parte
+## 5. Peças compartilhadas
+
+- `assets/aparelho.css` e `aparelho.js`: moldura, barra de status, indicador de início e o teclado falso (`teclado(true)`).
+- `assets/tema.js` e `app.css` (telas logadas): os 7 perfis e a fórmula da paleta do v4, a barra de abas (`abasHTML`), o hexágono dos tópicos (`hexSVG`), a folha de baixo, os chips e o seletor de perfil no `.preview` (`?perfil=` na URL).
+- **Artes:** as telas logadas usam direto as do v4 (`../v4/assets/`: emblemas, rostos, cenários de mapa e trilha, Bag, moedas), sem copiar. Copiar só o que for novo do celular.
+
+## 6. Entrega de cada parte
 
 1. Este prompt + o prompt da parte (`telas/…`).
 2. Os HTML em `prototipos/aluno/mobile-v1/`, com os mesmos nomes do v4 (`00-entrada.html`…), cada um com o seletor de estado.

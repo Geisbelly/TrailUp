@@ -9,7 +9,7 @@ Regras que valem em todas as partes: [00-regras-gerais.md](00-regras-gerais.md).
 | # | Parte | Telas do v4 de origem | No app hoje | Prompt | Estado |
 |---|---|---|---|---|---|
 | 1 | Entrada, login e recuperar senha | `00-entrada`, `01-login`, `02-recuperar-senha` | `app/(auth)/index.tsx`, `tela.tsx`, `login.tsx`, `recuperarSenha.tsx` | [telas/00-02-entrada-login.md](telas/00-02-entrada-login.md) | aplicado (`mobile-v1/00`, `01`, `02`) |
-| 2 | Trilha | `03-trilha` | `app/(tabs)/trilha/index.tsx` | — | a fazer |
+| 2 | Trilha | `03-trilha` | `app/(tabs)/trilha/index.tsx` | [telas/03-trilha.md](telas/03-trilha.md) | aplicado (`mobile-v1/03-trilha.html`) |
 | 3 | Tópico | `04-topico` | `app/(tabs)/trilha/[id].tsx` | — | a fazer |
 | 4 | Ranking | `05-ranking` | `app/(tabs)/ranking/` | — | a fazer |
 | 5 | Social | `06-social` | `app/(tabs)/social/index.tsx` | — | a fazer |
