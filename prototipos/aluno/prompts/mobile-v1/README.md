@@ -15,5 +15,5 @@ Regras que valem em todas as partes: [00-regras-gerais.md](00-regras-gerais.md).
 | 5 | Social | `06-social` | `app/(tabs)/social/index.tsx` | [telas/06-social.md](telas/06-social.md) | aplicado (`mobile-v1/06-social.html` + `assets/social.js`; o Ranking abre o perfil público) |
 | 6 | Notificações | `07-notificacoes` | `app/(tabs)/notificacoes/` | [telas/07-notificacoes.md](telas/07-notificacoes.md) | aplicado (`mobile-v1/07-notificacoes.html`) |
 | 7 | Perfil, Biblioteca, Relatório e Bag | `08`, `09`, `10`, `assets/bag.js` | `app/(tabs)/perfil/`, `components/bag/` | [telas/08-10-perfil.md](telas/08-10-perfil.md) | aplicado (`mobile-v1/08`, `09`, `10` + `assets/bag.js`, ligada em todas as telas logadas) |
-| 8 | Configurações | `11-configuracoes` | `app/(tabs)/perfil/settings.tsx` e subtelas | — | a fazer |
+| 8 | Configurações | `11-configuracoes` | `app/(tabs)/perfil/settings.tsx` e subtelas | [telas/11-configuracoes.md](telas/11-configuracoes.md) | aplicado (`mobile-v1/11-configuracoes.html`) |
 | 9 | Loja | `12-loja` | `app/(tabs)/perfil/loja.tsx` | — | a fazer |
