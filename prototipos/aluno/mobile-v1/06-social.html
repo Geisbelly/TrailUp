@@ -268,7 +268,7 @@ function render(){
   aplicarTema();
   $('preview').innerHTML=previewHTML(ESTADOS,estado);
   const st=$('rolagem')?.scrollTop||0, foco=document.activeElement?.id==='busca';
-  let h=`<header class="topo"><div class="topo-linha"><h1>Social</h1><a class="moedas" href="12-loja.html" aria-label="Loja, saldo de 38 moedas"><img src="${ARTE}coin-${perfil}.png" alt="" />38</a>
+  let h=`<header class="topo"><div class="topo-linha"><h1>Social</h1><a class="moedas" href="12-loja.html?perfil=${perfil}" aria-label="Loja, saldo de 38 moedas"><img src="${ARTE}coin-${perfil}.png" alt="" />38</a>
     <button class="redondo" aria-label="Abrir Bag" data-abre-bag><img src="${ARTE}bag-${perfil}.png" alt="" /></button></div></header>`;
   if(estado==='error')h+=`<div class="rolagem"><div class="erro" role="alert">${ICONE.alerta}<p>Não foi possível carregar o Social.</p><button class="btn btn-secundario" data-estado="data">${ICONE.repetir}Tentar novamente</button></div></div>`;
   else if(estado==='loading')h+=`<div class="rolagem" style="padding:8px 14px"><div style="display:flex;gap:8px;margin-bottom:14px">${'<div class="skel" style="height:40px;width:90px;border-radius:999px"></div>'.repeat(4)}</div><div class="skel" style="height:300px;border-radius:14px"></div><div class="skel" style="height:240px;border-radius:14px;margin-top:20px"></div>${'<div class="skel" style="height:56px;margin-top:10px"></div>'.repeat(3)}</div>`;
@@ -322,7 +322,6 @@ document.addEventListener('click',e=>{
   if(q('[data-limpa]')){busca='';render();return}
   if(q('[data-estado]')){define(q('[data-estado]').dataset.estado);return}
   if(q('[data-torrada]')){torrada(q('[data-torrada]').dataset.torrada);return}
-  if(q('a[href="12-loja.html"]')){e.preventDefault();torrada('A Loja entra na parte 9');return}
 });
 document.addEventListener('change',e=>{if(e.target.id!=='estado')return;history.replaceState(null,'',`${location.pathname}?estado=${e.target.value}&perfil=${perfil}`);define(e.target.value)});
 define(qs.get('estado')||'data');

@@ -16,4 +16,4 @@ Regras que valem em todas as partes: [00-regras-gerais.md](00-regras-gerais.md).
 | 6 | Notificações | `07-notificacoes` | `app/(tabs)/notificacoes/` | [telas/07-notificacoes.md](telas/07-notificacoes.md) | aplicado (`mobile-v1/07-notificacoes.html`) |
 | 7 | Perfil, Biblioteca, Relatório e Bag | `08`, `09`, `10`, `assets/bag.js` | `app/(tabs)/perfil/`, `components/bag/` | [telas/08-10-perfil.md](telas/08-10-perfil.md) | aplicado (`mobile-v1/08`, `09`, `10` + `assets/bag.js`, ligada em todas as telas logadas) |
 | 8 | Configurações | `11-configuracoes` | `app/(tabs)/perfil/settings.tsx` e subtelas | [telas/11-configuracoes.md](telas/11-configuracoes.md) | aplicado (`mobile-v1/11-configuracoes.html`) |
-| 9 | Loja | `12-loja` | `app/(tabs)/perfil/loja.tsx` | — | a fazer |
+| 9 | Loja | `12-loja` | `app/(tabs)/perfil/loja.tsx` | [telas/12-loja.md](telas/12-loja.md) | aplicado (`mobile-v1/12-loja.html`; o Perfil e a moeda do Social abrem a Loja) |

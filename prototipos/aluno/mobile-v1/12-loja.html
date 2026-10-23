@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TrailUp — Loja (celular)</title>
+<link rel="stylesheet" href="assets/aparelho.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .topo{position:absolute;left:0;right:0;top:0;z-index:10;padding:var(--topo) 12px 0 4px;background:var(--bg)}
+  .topo-linha{display:flex;align-items:center;gap:4px;height:56px}
+  .voltar{width:48px;height:48px;display:grid;place-items:center;color:var(--text);flex:none}
+  .voltar svg{width:22px;height:22px}
+  .topo-linha div{flex:1;min-width:0}
+  .topo-linha h1{font-family:Georgia,serif;font-size:20px;margin:2px 0 0}
+  .rolagem{position:absolute;left:0;right:0;top:calc(var(--topo) + 56px);bottom:calc(var(--abas) + var(--base));overflow-y:auto;scrollbar-width:none;padding:6px 14px 28px}
+  .rolagem::-webkit-scrollbar{display:none}
+
+  .saldo{border-radius:16px;border:1px solid var(--accent-soft);background:radial-gradient(120% 140% at 100% 0%,var(--accent-muted),transparent 60%),var(--surface);padding:16px 16px 6px}
+  .saldo .big{display:flex;align-items:center;gap:10px;margin:4px 0 6px}
+  .saldo .num{font-family:Georgia,serif;font-size:46px;font-weight:700;line-height:1}
+  .saldo .big img{width:46px;height:46px;object-fit:contain}
+  .saldo p{margin:0 0 8px;font-size:13.5px;line-height:1.5;color:var(--text-muted)}
+  .ganhar-bt{width:100%;min-height:48px;display:flex;align-items:center;justify-content:space-between;background:none;border:0;border-top:1px solid var(--line);padding:0;font-size:14px;font-weight:700;color:var(--accent);cursor:pointer}
+  .ganhar-bt svg{width:18px;height:18px;transition:transform .2s}
+  .ganhar-bt[aria-expanded="true"] svg{transform:rotate(90deg)}
+  .ganhar{padding:0 0 12px}
+  .ganhar div{display:flex;justify-content:space-between;font-size:14px;padding:7px 0;border-bottom:1px dashed var(--line)}
+  .ganhar b{color:var(--success)}
+  .ganhar small{display:block;margin-top:8px;font-size:12px;line-height:1.5;color:var(--text-subtle)}
+
+  h2.bloco{display:flex;align-items:center;gap:8px;font-family:Georgia,serif;font-size:19px;margin:22px 2px 10px}
+  .item{border-radius:14px;border:1px solid var(--line);background:var(--surface);padding:14px;margin-bottom:10px}
+  .item.apagado{opacity:.72}
+  .item-topo{display:flex;gap:12px}
+  .item-topo img{width:56px;height:56px;object-fit:contain;flex:none}
+  .item-topo h3{margin:2px 0 4px;font-size:16px}
+  .item-topo p{margin:0;font-size:13.5px;line-height:1.45;color:var(--text-muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .chip img{width:14px;height:14px;object-fit:contain}
+  .portao{display:flex;gap:8px;margin-top:10px;padding:10px;border-radius:10px;background:var(--elev);font-size:13px;line-height:1.45;color:var(--text-muted)}
+  .portao svg{width:16px;height:16px;flex:none;margin-top:2px}
+  .portao a{display:block;margin-top:4px;color:var(--accent);font-weight:700;text-decoration:none}
+  .mudo{margin:10px 0 0;font-size:13px;color:var(--text-subtle)}
+  .trilho{height:6px;border-radius:999px;background:var(--bg);border:1px solid var(--line);overflow:hidden;margin-top:12px}
+  .trilho i{display:block;height:100%;background:var(--accent)}
+  .nota{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:9px 10px;border-radius:10px;font-size:13px;font-weight:600}
+  .nota svg{width:16px;height:16px;flex:none}
+  .nota.ok{background:var(--success-bg);color:var(--success)}
+  .nota.err{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-border)}
+  .item-pe{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}
+  .preco{display:flex;flex-direction:column;min-width:0}
+  .preco span{display:flex;align-items:center;gap:5px;font-size:18px;font-weight:800}
+  .preco img{width:20px;height:20px;object-fit:contain}
+  .preco small{font-size:11.5px;color:var(--text-subtle);line-height:1.3}
+  .item-pe .btn{min-height:44px;padding:0 16px;font-size:14px;flex:none}
+  .btn[disabled]{background:var(--elev);color:var(--text-subtle);border-color:transparent;cursor:default}
+  .btn-primario[disabled].ocupado{background:var(--accent);color:var(--bg);opacity:.8}
+  .item .rodape{margin:10px 0 0;font-size:12px;color:var(--text-subtle)}
+  .gira{width:16px;height:16px;border-radius:50%;border:2px solid currentColor;border-right-color:transparent}
+  @media (prefers-reduced-motion:no-preference){.gira{animation:gira .8s linear infinite}}
+  @keyframes gira{to{transform:rotate(360deg)}}
+
+  .painel{border-radius:14px;border:1px solid var(--line);background:var(--surface);padding:4px 14px}
+  .linha-bag{display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--line);font-size:14.5px}
+  .linha-bag img{width:32px;height:32px;object-fit:contain}
+  .linha-bag span{flex:1}
+  .painel .btn{margin:12px 0}
+  .limite{padding:12px 0;border-bottom:1px solid var(--line)}
+  .limite:last-of-type{border-bottom:0}
+  .limite .r{display:flex;justify-content:space-between;font-size:14.5px}
+  .limite .trilho{margin-top:8px}
+  .limite small{display:block;margin-top:6px;font-size:12px;color:var(--text-subtle)}
+  .painel .mudo{margin:0 0 12px}
+  .ext{display:grid;grid-template-columns:44px 1fr;column-gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .ext:last-child{border-bottom:0}
+  .ext b{grid-row:span 2;font-size:15px;align-self:center}
+  .ext b.in{color:var(--success)}.ext b.out{color:var(--danger)}.ext b.zero{color:var(--text-subtle)}
+  .ext span{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ext small{font-size:12px;color:var(--text-subtle)}
+  .ver-tudo{width:100%;justify-content:center}
+
+  .erro{position:absolute;left:24px;right:24px;top:40%;transform:translateY(-50%);text-align:center;color:var(--text-muted)}
+  .erro svg{width:28px;height:28px;color:var(--danger)}
+  .veu{z-index:35}
+  .folha{z-index:40;bottom:0;padding:0 18px calc(var(--base) + 18px)}
+  .folha.conf{text-align:center}
+  .folha.conf img{width:84px;height:84px;object-fit:contain}
+  .folha h3{font-family:Georgia,serif;font-size:22px;margin:6px 0}
+  .folha p{font-size:14.5px;color:var(--text-muted);line-height:1.5;margin:0 0 12px}
+  .folha .soma{padding:12px;border-radius:12px;background:var(--elev);font-size:15px;margin-bottom:16px}
+  .folha .btn{margin-top:8px}
+  .folha.extrato{top:calc(var(--topo) + 40px);display:flex;flex-direction:column}
+  .folha.extrato h3{margin:0 0 6px;text-align:left}
+  .folha.extrato .lista{flex:1;overflow-y:auto;scrollbar-width:none}
+  .torrada{position:absolute;left:14px;right:14px;bottom:calc(var(--abas) + var(--base) + 12px);z-index:70;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--text);color:var(--bg);font-size:13.5px;font-weight:600;padding:6px 6px 6px 16px;border-radius:12px;min-height:48px}
+  .torrada button{min-height:40px;padding:0 12px;border:0;border-radius:8px;background:var(--bg);color:var(--text);font-weight:700;font-size:13px;cursor:pointer}
+</style>
+</head>
+<body class="mesa">
+
+<div class="preview" id="preview"></div>
+
+<div class="aparelho">
+  <div class="tela" id="tela"></div>
+</div>
+
+<script src="assets/aparelho.js"></script>
+<script src="assets/tema.js"></script>
+<script src="assets/bag.js"></script>
+<script>
+/* catálogo, ganhos, extrato e regras de preço: os mesmos do v4 (12-loja.html) */
+const CATALOGO=[
+  {cod:'prazo_extra',nome:'Prazo extra',desc:'Adia a entrega de uma atividade em 24 horas, sem penalidade.',arte:'deadline',preco:10,fator:2,uso:'até você usar numa atividade com prazo.'},
+  {cod:'segunda_chance',nome:'Segunda chance',desc:'Refaz a atividade valendo nota: 90% da melhor tentativa mais 10% da pior.',arte:'retry',preco:12,fator:2,uso:'até você refazer uma atividade.',nota:'Também aparece quando você revisa uma atividade.'},
+  {cod:'dica',nome:'Dica',desc:'Explica por que a alternativa errada está errada. Não entrega a resposta.',arte:'hint',preco:5,fator:1,uso:'até você usar numa questão.',fem:true},
+  {cod:'troca_formato',nome:'Trocar formato',desc:'Escolhe como receber o próximo material: áudio, texto ou slides.',arte:'book',preco:4,fator:1,uso:'até o próximo material.'},
+];
+const GANHOS=[['Concluir um conteúdo',2],['Concluir uma atividade',3],['Acertar uma atividade',1],['Revisar uma atividade',0]];
+const EXTRATO_BASE=[
+  [3,'Atividade concluída · Equações do 1º grau','Hoje, 18:40'],[1,'Acerto · Equações do 1º grau','Hoje, 18:38'],
+  [2,'Conteúdo concluído · Equações do 1º grau','Hoje, 18:10'],[-4,'Compra · Trocar formato','Ontem'],
+  [3,'Atividade concluída · Expressões algébricas','Segunda'],[-5,'Compra · Dica','Sexta passada'],
+  [2,'Conteúdo concluído · Expressões algébricas','Sexta passada'],[3,'Atividade concluída · Frações','Quinta passada'],
+  [1,'Acerto · Frações','Quinta passada'],[0,'Dotação inicial · 2 Prazos extras e 1 Segunda chance','Início da turma'],
+];
+const ESTADOS=[['data','Com dados'],['low','Saldo baixo'],['buying','Comprando'],['bought','Compra concluída'],['nofunds','Saldo insuficiente'],['off','Item desligado'],['cap','Limite de prazo atingido'],['loading','Carregando'],['error','Erro ao carregar']];
+let estado, S, ganharAberto=false, folha=null, torradaTxt=null;
+const $=id=>document.getElementById(id);
+const arte=k=>`${ARTE}${k}-${perfil}.png`;
+const moeda=(t=20)=>`<img src="${arte('coin')}" alt="" style="width:${t}px;height:${t}px;object-fit:contain" />`;
+const nItem=c=>c.fem?'guardada':'guardado';
+
+function reset(st){
+  estado=st; folha=null; torradaTxt=null; ganharAberto=false;
+  S={saldo:38,
+     itens:{prazo_extra:{grat:1,compras:0,bag:0},segunda_chance:{grat:1,compras:0,bag:0,gate:true},dica:{grat:0,compras:1,bag:0},troca_formato:{grat:0,compras:1,bag:1}},
+     prazoUsado:1, prazoTeto:4, extrato:EXTRATO_BASE.map(x=>x.slice()), aviso:{}, comprando:null, desligado:null};
+  if(st==='low')S.saldo=3;
+  if(st==='buying')S.comprando='dica';
+  if(st==='bought'){S.saldo=33;S.itens.dica.bag=1;S.itens.dica.compras=2;S.extrato.unshift([-5,'Compra · Dica','Agora']);S.aviso.dica=['ok','Dica guardada na sua Bag.'];torradaTxt='Dica guardada na sua Bag.'}
+  if(st==='nofunds'){S.saldo=3;S.aviso.dica=['err','Saldo insuficiente para este item.']}
+  if(st==='off')S.desligado='troca_formato';
+  if(st==='cap'){S.prazoUsado=4;S.itens.prazo_extra.grat=0}
+}
+const precoAtual=c=>{const x=S.itens[c.cod];return x.grat>0?0:Math.round(c.preco*Math.pow(c.fator,c.fator>1?x.compras:0))};
+
+function cartao(c){
+  const x=S.itens[c.cod], preco=precoAtual(c), gratis=preco===0;
+  let st='ok', btn;
+  if(S.desligado===c.cod)st='off';
+  else if(c.cod==='prazo_extra'&&S.prazoUsado>=S.prazoTeto)st='cap';
+  else if(x.gate)st='gate';
+  else if(!gratis&&S.saldo<preco)st='poor';
+  if(S.comprando===c.cod)btn=`<button class="btn btn-primario ocupado" disabled><span class="gira"></span>Comprando...</button>`;
+  else if(st==='off')btn=`<button class="btn" disabled>Indisponível</button>`;
+  else if(st==='cap')btn=`<button class="btn" disabled>Limite atingido</button>`;
+  else if(st==='gate')btn=`<button class="btn" disabled>${ICONE.cadeado}Bloqueado</button>`;
+  else if(st==='poor'){const f=preco-S.saldo;btn=`<button class="btn" disabled>${f===1?'Falta 1 moeda':`Faltam ${f} moedas`}</button>`}
+  else btn=`<button class="btn btn-primario" data-compra="${c.cod}" ${S.comprando?'disabled':''}>${gratis?'Pegar grátis':'Comprar'}</button>`;
+  const chips=[x.grat>0?`<span class="chip chip-accent">${x.grat} grátis restante${x.grat>1?'s':''}</span>`:'',x.bag>0?`<span class="chip chip-neutral"><img src="${arte('bag')}" alt="" />${x.bag} na sua Bag</span>`:''].join('');
+  const extra=st==='gate'?`<div class="portao">${ICONE.cadeado}<div>Libera depois que você revisar o material do tópico por pelo menos 2 minutos.<a href="03-trilha.html?perfil=${perfil}">Revisar Frações →</a></div></div>`
+    :st==='off'?`<p class="mudo">Seu professor desligou este item nesta turma.</p>`
+    :st==='cap'?`<p class="mudo">Você já usou os ${S.prazoTeto} dias de prazo extra do semestre.</p>`
+    :st==='poor'?`<div class="trilho" role="progressbar" aria-valuenow="${S.saldo}" aria-valuemin="0" aria-valuemax="${preco}" aria-label="Saldo contra o preço"><i style="width:${Math.min(100,S.saldo/preco*100)}%"></i></div>`:'';
+  const av=S.aviso[c.cod];
+  const aviso=av?`<div class="nota ${av[0]}" role="${av[0]==='err'?'alert':'status'}">${av[0]==='ok'?ICONE.check:ICONE.alerta}<span>${av[1]}</span></div>`:'';
+  const depois=gratis&&c.fator>1?`<small>Depois: ${c.preco} moedas, dobrando a cada unidade</small>`:'';
+  return `<article class="item ${st==='off'||st==='cap'||st==='gate'?'apagado':''}" aria-label="${c.nome}">
+    <div class="item-topo"><img src="${arte(c.arte)}" alt="" onerror="this.src='${ARTE}object-${c.arte}.png'" /><div><h3>${c.nome}</h3><p>${c.desc}</p></div></div>
+    ${chips?`<div class="chips">${chips}</div>`:''}${extra}${aviso}
+    <div class="item-pe"><div class="preco"><span>${gratis?'Grátis':`${moeda()}${preco}`}</span>${depois}</div>${btn}</div>
+    ${c.nota?`<p class="rodape">${c.nota}</p>`:''}</article>`;
+}
+const linhaExt=([v,d,q])=>`<div class="ext"><b class="${v>0?'in':v<0?'out':'zero'}">${v>0?'+'+v:v<0?'−'+(-v):'—'}</b><span>${d}</span><small>${q}</small></div>`;
+
+function render(){
+  aplicarTema();
+  $('preview').innerHTML=previewHTML(ESTADOS,estado);
+  let h=`<header class="topo"><div class="topo-linha"><a class="voltar" href="08-perfil-hub.html?perfil=${perfil}" aria-label="Voltar para o Perfil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></a><div><div class="eyebrow">Recursos da jornada</div><h1>Loja</h1></div>
+    <button class="redondo" data-abre-bag aria-label="Abrir minha Bag"><img src="${arte('bag')}" alt="" /></button></div></header>`;
+  if(estado==='loading')h+=`<div class="rolagem" aria-busy="true"><div class="skel" style="height:170px;border-radius:16px"></div><div class="skel" style="height:24px;width:90px;margin:22px 2px 10px"></div>${'<div class="skel" style="height:170px;border-radius:14px;margin-bottom:10px"></div>'.repeat(3)}</div>`;
+  else if(estado==='error')h+=`<div class="erro" role="alert">${ICONE.alerta}<p>Não foi possível carregar a loja.</p><button class="btn btn-secundario" data-retry>${ICONE.repetir}Tentar novamente</button></div>`;
+  else{
+    const naBag=CATALOGO.filter(c=>S.itens[c.cod].bag>0);
+    h+=`<div class="rolagem">
+      <section class="saldo" aria-label="Seu saldo"><div class="eyebrow">Seu saldo</div>
+        <div class="big"><span class="num">${S.saldo}</span>${moeda(46)}</div>
+        <p>Suas moedas vêm do estudo. Gastar nunca muda seu XP nem sua posição no ranking.</p>
+        <button class="ganhar-bt" data-ganhar aria-expanded="${ganharAberto}" aria-controls="ganhar">Como ganhar${ICONE.chev}</button>
+        ${ganharAberto?`<div class="ganhar" id="ganhar">${GANHOS.map(([l,v])=>`<div><span>${l}</span><b>+${v}</b></div>`).join('')}<small>Cada ação paga uma vez só. Revisar não paga, para refazer não virar fonte de moedas.</small></div>`:''}
+      </section>
+      <h2 class="bloco">Itens<span class="chip chip-neutral">${CATALOGO.length}</span></h2>
+      ${CATALOGO.map(cartao).join('')}
+      <h2 class="bloco">Na sua Bag</h2>
+      <div class="painel">${naBag.length?naBag.map(c=>`<div class="linha-bag"><img src="${arte(c.arte)}" alt="" /><span>${c.nome}</span><b>×${S.itens[c.cod].bag}</b></div>`).join(''):'<p class="mudo" style="margin-top:12px">Nada guardado ainda. O que você comprar fica aqui até usar.</p>'}
+        <button class="btn btn-secundario btn-bloco" data-abre-bag><img src="${arte('bag')}" alt="" style="width:22px;height:22px;object-fit:contain" />Abrir Bag</button></div>
+      <h2 class="bloco">Limites · 6º ano B</h2>
+      <div class="painel">
+        <div class="limite"><div class="r"><span>Prazo extra</span><b>${S.prazoUsado} de ${S.prazoTeto} dias</b></div>
+          <div class="trilho" role="progressbar" aria-valuenow="${S.prazoUsado}" aria-valuemin="0" aria-valuemax="${S.prazoTeto}" aria-label="Dias de prazo extra usados no semestre"><i style="width:${S.prazoUsado/S.prazoTeto*100}%"></i></div>
+          <small>usados neste semestre · até 2 dias por atividade</small></div>
+        <div class="limite"><div class="r"><span>Segunda chance</span><b>até 1 por tópico</b></div><small>24 horas entre uma tentativa e outra</small></div>
+        <p class="mudo">Quem define esses limites é seu professor.</p></div>
+      <h2 class="bloco">Extrato</h2>
+      <div class="painel">${S.extrato.slice(0,6).map(linhaExt).join('')}
+        <button class="link ver-tudo" data-extrato>Ver extrato completo</button></div>
+    </div>`;
+  }
+  h+=abasHTML('perfil');
+  if(folha&&folha.tipo==='conf'){const c=CATALOGO.find(x=>x.cod===folha.cod), preco=precoAtual(c), g=preco===0;
+    h+=`<div class="veu" data-fecha></div><section class="folha vidro conf" role="dialog" aria-modal="true" aria-labelledby="ft"><span class="alca" data-fecha></span>
+      <img src="${arte(c.arte)}" alt="" /><h3 id="ft">${g?'Pegar':'Comprar'} ${c.nome}?</h3><p>Fica ${nItem(c)} na sua Bag ${c.uso}</p>
+      <div class="soma">${g?'Não gasta moedas':`Saldo: <b>${S.saldo}</b> → <b>${S.saldo-preco}</b>`}</div>
+      <button class="btn btn-primario btn-bloco" data-confirma="${c.cod}">${g?'Pegar':'Comprar'}</button><button class="btn btn-secundario btn-bloco" data-fecha>Cancelar</button></section>`}
+  if(folha&&folha.tipo==='extrato')h+=`<div class="veu" data-fecha></div><section class="folha vidro extrato" role="dialog" aria-modal="true" aria-labelledby="ft"><span class="alca" data-fecha></span><h3 id="ft">Extrato</h3><div class="lista">${S.extrato.map(linhaExt).join('')}</div><button class="btn btn-secundario btn-bloco" data-fecha>Fechar</button></section>`;
+  if(torradaTxt)h+=`<div class="torrada" role="status"><span>${torradaTxt}</span><button data-abre-bag>Ver na Bag</button></div>`;
+  $('tela').innerHTML=h;
+  Bag.redesenha();
+}
+function torrada(t){torradaTxt=t;render();setTimeout(()=>{if(torradaTxt===t){torradaTxt=null;render()}},2600)}
+function comprar(cod){
+  const c=CATALOGO.find(x=>x.cod===cod), x=S.itens[cod], preco=precoAtual(c);
+  folha=null; S.aviso={}; S.comprando=cod; torradaTxt=null; render();
+  setTimeout(()=>{
+    S.comprando=null;
+    if(preco>S.saldo){S.aviso[cod]=['err','Saldo insuficiente para este item.'];render();return}
+    if(preco===0){x.grat--;S.extrato.unshift([0,'Dotação · '+c.nome+' (grátis)','Agora'])}
+    else{x.compras++;S.saldo-=preco;S.extrato.unshift([-preco,'Compra · '+c.nome,'Agora'])}
+    x.bag++; S.aviso[cod]=['ok',`${c.nome} ${nItem(c)} na sua Bag.`]; torrada(`${c.nome} ${nItem(c)} na sua Bag.`);
+  },800);
+}
+document.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);
+  if(q('#bag-raiz'))return;
+  if(q('[data-perfil]')){perfil=q('[data-perfil]').dataset.perfil;render();return}
+  if(q('[data-abre-bag]'))return;
+  if(q('[data-ganhar]')){ganharAberto=!ganharAberto;render();return}
+  if(q('[data-compra]')){folha={tipo:'conf',cod:q('[data-compra]').dataset.compra};render();return}
+  if(q('[data-confirma]')){comprar(q('[data-confirma]').dataset.confirma);return}
+  if(q('[data-extrato]')){folha={tipo:'extrato'};render();return}
+  if(q('[data-fecha]')){folha=null;render();return}
+  if(q('[data-retry]')){reset('data');render();return}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&folha){folha=null;render()}});
+document.addEventListener('change',e=>{if(e.target.id!=='estado')return;history.replaceState(null,'',`${location.pathname}?estado=${e.target.value}&perfil=${perfil}`);reset(e.target.value);render()});
+reset(qs.get('estado')||'data');render();
+</script>
+</body>
+</html>
