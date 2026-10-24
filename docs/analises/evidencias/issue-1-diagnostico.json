@@ -1,0 +1,123 @@
+{
+  "itens": 32,
+  "itensPorEixo": {
+    "curiosity": 4,
+    "challenge": 4,
+    "risk": 4,
+    "mastery": 4,
+    "competition": 4,
+    "social": 4,
+    "completion": 4,
+    "immersion": 4
+  },
+  "itensReversos": 8,
+  "respostasComMesmaPreferenciaEmTodosOsEixos": {
+    "respostas": "diretos=5; reversos=0",
+    "escoresDosEixos": {
+      "curiosity": 20,
+      "challenge": 20,
+      "risk": 20,
+      "mastery": 20,
+      "competition": 20,
+      "social": 20,
+      "completion": 20,
+      "immersion": 20
+    },
+    "ordem": [
+      "seeker",
+      "survivor",
+      "daredevil",
+      "mastermind",
+      "conqueror",
+      "socializer",
+      "achiever"
+    ],
+    "confianca": 1,
+    "concordancia": 1,
+    "percentual": {
+      "seeker": 36,
+      "survivor": 24,
+      "daredevil": 16,
+      "mastermind": 10,
+      "conqueror": 7,
+      "socializer": 4,
+      "achiever": 3
+    },
+    "ordemInvertida": {
+      "confianca": 0.6,
+      "concordancia": -1
+    }
+  },
+  "correlacaoDeEscalaConstante": {
+    "ordemDoCodigo": 1,
+    "ordemInvertida": -1
+  },
+  "somaVersusMedia": {
+    "respostas": {
+      "c1": 0,
+      "c2": 1,
+      "c3": 2,
+      "c4": 3,
+      "ch1": 5,
+      "ch2": 0,
+      "ch3": 1,
+      "ch4": 2,
+      "r1": 4,
+      "r2": 5,
+      "r3": 0,
+      "r4": 1,
+      "m1": 3,
+      "m2": 4,
+      "m3": 5,
+      "m4": 0,
+      "cp1": 2,
+      "cp2": 3,
+      "cp3": 4,
+      "cp4": 5,
+      "s1": 1,
+      "s2": 2,
+      "s3": 3,
+      "s4": 4,
+      "cc1": 0,
+      "cc2": 1,
+      "cc3": 2,
+      "cc4": 3,
+      "i1": 5,
+      "i2": 0,
+      "i3": 1,
+      "i4": 2
+    },
+    "escalaCentradaAtual": {
+      "seeker": -3.389648033126295,
+      "survivor": -0.18964803312629464,
+      "daredevil": 2.4770186335403714,
+      "mastermind": 5.410351966873705,
+      "conqueror": -0.18964803312629464,
+      "socializer": -1.928778467908903,
+      "achiever": -2.1896480331262937
+    },
+    "afinidadeAtual": {
+      "seeker": 5,
+      "survivor": 12,
+      "daredevil": 24,
+      "mastermind": 54,
+      "conqueror": 3,
+      "socializer": 1,
+      "achiever": 1
+    },
+    "afinidadeSeEscalaFosseMedia": {
+      "seeker": 26,
+      "survivor": 23,
+      "daredevil": 20,
+      "mastermind": 18,
+      "conqueror": 7,
+      "socializer": 4,
+      "achiever": 2
+    }
+  },
+  "validacaoDeRespostas": {
+    "todosNaN": true,
+    "todos99": true
+  },
+  "semObservacoesComConfiancaUm": 0.999
+}

@@ -15,6 +15,8 @@ e reúne a documentação que antes vivia dentro de cada repositório.
 
 Documentação que não pertence a um único serviço:
 
+- **[Análise da issue #1: cadastro e BrainHex](./analises/issue-1-cadastro-brainhex.md)** — auditoria do fluxo, revisão crítica de 12 estudos, evidências reproduzíveis e critérios propostos para conclusão (24/10/2026).
+
 - **[`tcc/`](./tcc/)** — documento do TCC (versão única).
   Material de origem do Drive (proposta, UX, TCC 1, monografia) em
   [`tcc/fontes-drive/`](./tcc/fontes-drive/).
