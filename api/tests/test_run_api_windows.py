@@ -63,6 +63,8 @@ def test_a_politica_vem_antes_do_uvicorn(monkeypatch: pytest.MonkeyPatch) -> Non
     )
 
     class UvicornFalso:
+        Config = object
+
         @staticmethod
         def run(*_args: object, **_kwargs: object) -> None:
             ordem.append("uvicorn")
@@ -78,6 +80,8 @@ def test_repassa_host_porta_e_reload(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(run_api, "aplicar_politica_de_loop", lambda: None)
 
     class UvicornFalso:
+        Config = object
+
         @staticmethod
         def run(alvo: str, **kwargs: object) -> None:
             recebido["alvo"] = alvo
@@ -99,3 +103,69 @@ def test_uvicorn_e_importado_dentro_do_main() -> None:
         "uvicorn importado no topo: a politica tem de valer antes de qualquer"
         " coisa do uvicorn ser montada"
     )
+
+
+def test_no_windows_pede_a_fabrica_de_selector_ao_uvicorn_novo(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """#520: do uvicorn 0.36 em diante o loop sai da fabrica, nao da politica."""
+
+    class ConfigComFabrica:
+        def get_loop_factory(self) -> None:  # pragma: no cover - so a presenca importa
+            return None
+
+    monkeypatch.setattr(run_api.sys, "platform", "win32")
+    assert run_api.loop_do_uvicorn(ConfigComFabrica) == "asyncio:SelectorEventLoop"
+
+
+def test_uvicorn_antigo_e_fora_do_windows_ficam_com_o_padrao(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class ConfigAntiga:
+        pass
+
+    class ConfigComFabrica:
+        def get_loop_factory(self) -> None:  # pragma: no cover
+            return None
+
+    monkeypatch.setattr(run_api.sys, "platform", "win32")
+    assert run_api.loop_do_uvicorn(ConfigAntiga) is None, (
+        "uvicorn sem fabrica propria nao conhece 'modulo:atributo' em loop"
+    )
+    monkeypatch.setattr(run_api.sys, "platform", "linux")
+    assert run_api.loop_do_uvicorn(ConfigComFabrica) is None
+
+
+def test_a_fabrica_chega_ao_uvicorn_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    recebido: dict[str, object] = {}
+
+    monkeypatch.setattr(run_api, "aplicar_politica_de_loop", lambda: None)
+    monkeypatch.setattr(run_api, "loop_do_uvicorn", lambda _c: "asyncio:SelectorEventLoop")
+
+    class UvicornFalso:
+        Config = object
+
+        @staticmethod
+        def run(_alvo: str, **kwargs: object) -> None:
+            recebido.update(kwargs)
+
+    monkeypatch.setitem(sys.modules, "uvicorn", UvicornFalso)
+    run_api.main([])
+    assert recebido["loop"] == "asyncio:SelectorEventLoop"
+
+
+def test_a_fabrica_do_uvicorn_instalado_monta_selector() -> None:
+    """Confere com o uvicorn de verdade que o valor resolve para um selector."""
+    import asyncio
+
+    import uvicorn
+
+    if not hasattr(uvicorn.Config, "get_loop_factory"):
+        pytest.skip("uvicorn sem fabrica de loop (< 0.36)")
+    fabrica = uvicorn.Config("app.main:app", loop=run_api.FABRICA_SELECTOR).get_loop_factory()
+    assert fabrica is not None
+    loop = fabrica()
+    try:
+        assert isinstance(loop, asyncio.SelectorEventLoop)
+    finally:
+        loop.close()

@@ -635,3 +635,23 @@ def test_reaponta_url_material_para_gateway_renderiza_offline(monkeypatch) -> No
     assert "ORDER BY ord" in rendered
 
     assert "UPDATE alembic_version SET version_num='20260922_06'" in rendered
+
+
+def test_openai_vector_store_registry_renders_remote_catalog_constraints() -> None:
+    output = StringIO()
+    config = _offline_alembic_config(output)
+
+    migrations.command.upgrade(config, "20261022_05:20261024_01", sql=True)
+    rendered = output.getvalue()
+
+    assert "CREATE TABLE IF NOT EXISTS rag_openai_files" in rendered
+    assert "vector_store_id            text NOT NULL" in rendered
+    assert "openai_file_id             text NOT NULL" in rendered
+    assert "UNIQUE (vector_store_id, openai_file_id)" in rendered
+    assert "CHECK (scope IN ('publico', 'turma', 'aluno'))" in rendered
+    assert "CHECK (status IN ('in_progress', 'completed', 'failed', 'cancelled'))" in rendered
+    assert "CHECK (scope <> 'turma' OR classe_id IS NOT NULL)" in rendered
+    assert "CHECK (scope <> 'aluno' OR aluno_id IS NOT NULL)" in rendered
+    assert "idx_rag_openai_files_source_hash" in rendered
+    assert "ALTER TABLE rag_openai_files ENABLE ROW LEVEL SECURITY" in rendered
+    assert "UPDATE alembic_version SET version_num='20261024_01'" in rendered

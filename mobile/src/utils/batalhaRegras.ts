@@ -75,3 +75,14 @@ export function normalizeBattleDifficulty(input: unknown): BattleDifficultyKey {
   return "medium";
 }
 
+
+/**
+ * A batalha está pausada pela leitura emocional (`disabledMentalStates` do `battle_mode`:
+ * ansiedade ou sobrecarga) em algum dos escopos do tópico. Desligada pelo aluno ou por
+ * perfil sem batalha não conta: aí não há o que avisar.
+ */
+export function batalhaPausadaPeloEstado(
+  resolucoes: readonly ({ enabled: boolean; disabledReason?: string | null } | null | undefined)[],
+): boolean {
+  return resolucoes.some((r) => r != null && !r.enabled && r.disabledReason === "mental_state");
+}

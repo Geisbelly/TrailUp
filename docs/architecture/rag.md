@@ -20,21 +20,24 @@ O que já existe na API:
 - Fontes do professor em `fontes_personalizacao`.
 - `aluno_mental_state_history`, `ai_patch`, `personalizacao_sugestao`.
 
-O que não existe:
-- Vector store, embeddings e retrieval semântico.
+O que ainda falta:
+- Expor um fluxo administrativo para cadastrar documentos públicos no Vector Store.
 - Tabela de intervenções e leitura do histórico de estado mental.
 - Modelo de comportamento do aluno e camada preditiva antes do LLM.
+
+Já existe a integração operacional do chat com retrieval via `file_search` e o
+serviço backend para indexar arquivos públicos de forma explícita.
 
 ## Fontes de conhecimento
 
 | Fonte | Origem atual | Como entra no RAG |
 |---|---|---|
-| Conteúdo do professor | `fontes_personalizacao` | Ingestão → chunking → embedding |
-| Telemetria e desempenho | `telemetria_*`, progresso | Resumo/aggregação → embedding de contexto |
-| Bases pedagógicas | Documentos carregados | Ingestão → chunking → embedding |
-| Bases psicossociais | Documentos carregados | Ingestão → chunking → embedding |
-| Evidência científica externa | Artigos, BNCC, benchmarks | Ingestão → chunking → embedding |
-| Marketing cognitivo | Documentos carregados | Ingestão → chunking → embedding |
+| Conteúdo do professor | `fontes_personalizacao` | Validação → upload → `file_search` |
+| Telemetria e desempenho | `telemetria_*`, progresso | Resumo local → contexto da sessão |
+| Bases pedagógicas | Documentos carregados | Validação → upload → `file_search` |
+| Bases psicossociais | Documentos carregados | Validação → upload → `file_search` |
+| Evidência científica externa | Artigos, BNCC, benchmarks | Validação → upload → `file_search` |
+| Marketing cognitivo | Documentos carregados | Validação → upload → `file_search` |
 
 ## Componentes
 
@@ -49,18 +52,18 @@ O que não existe:
 ┌─────────────────────────────────────────────────────────────────────┐
 │              CAMADA DE INDEXAÇÃO E ENRIQUECIMENTO                    │
 │  • Extração de texto (PDF/DOCX/PPTX/MD/TXT)                         │
-│  • Semantic chunking                                                │
+│  • Validação e metadados                                            │
 │  • Enriquecimento curricular                                        │
-│  • Metadados + embeddings + relações                                │
+│  • Validação + metadados + registro de IDs remotos                  │
 └─────────────────────────────────────────────────────────────────────┘
                               │
           ┌───────────────────┼───────────────────┐
           ▼                   ▼                   ▼
     ┌─────────┐        ┌─────────┐        ┌─────────────┐
-    │ Vector  │        │ Graph   │        │ Document    │
-    │ DB      │        │ DB      │        │ Store       │
-    │(Postgres│        │(Postgres│        │(R2 /        │
-    │pgvector)│        │ tabelas)│        │ Supabase)   │
+    │ OpenAI  │        │ Postgres│        │ Document    │
+    │ Vector  │        │ catálogo│        │ Store       │
+    │ Store   │        │/relações│        │ (R2 /       │
+    │file_search│      │         │        │ Supabase)   │
     └────┬────┘        └────┬────┘        └──────┬──────┘
          │                  │                    │
          └──────────────────┼────────────────────┘
@@ -73,38 +76,42 @@ O que não existe:
 
 ## Decisões arquiteturais
 
-- **Vector store:** Postgres com extensão `pgvector`. Ver [ADR-0001: Vector store do RAG](../adr/0001-rag-vector-store.md).
-- **Fronteira da API:** a API continua sendo apenas IA. Indexação, filas, notificações, progresso bruto e entrega ficam no banco ou em outros serviços.
-- **Document store:** materiais brutos permanecem no R2/Supabase Storage; apenas chunks e embeddings ficam no Postgres.
+- **Vector store:** OpenAI Vector Store com `file_search`. Ver [ADR-0002: OpenAI Vector Store para o RAG](../adr/0002-rag-openai-vector-store.md).
+- **Catálogo local:** `rag_openai_files` guarda IDs, hashes, status, escopo e atributos; não guarda embeddings.
+- **Fronteira da API:** a API continua sendo apenas IA e a única camada autorizada a chamar a OpenAI.
+- **Document store:** o arquivo pode permanecer no R2/Supabase para o domínio, enquanto uma cópia indexável é enviada à OpenAI.
 - **Relações:** pré-requisitos e dependências entre conteúdos são modelados em tabelas Postgres (`rag_relacoes`), não em um graph DB separado.
 
 ## Modelo de dados
 
-### `rag_chunks`
+### `rag_openai_files`
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
-| `id` | uuid | PK |
+| `id` | uuid | PK local |
 | `fonte_id` | bigint | Referência à fonte original |
-| `classe_id` | bigint | Escopo da turma (nullable) |
-| `topico_id` | bigint | Escopo do tópico (nullable) |
-| `conteudo_id` | bigint | Escopo do conteúdo (nullable) |
-| `aluno_id` | uuid | Escopo privado do aluno (nullable) |
+| `vector_store_id` | text | ID do Vector Store remoto |
+| `openai_file_id` | text | ID do arquivo na OpenAI |
+| `openai_vector_store_file_id` | text | ID do vínculo/indexação remoto |
 | `scope` | text | `publico`, `turma`, `aluno` |
-| `texto` | text | Texto do chunk |
-| `embedding` | vector(1536) | Vetor de embedding |
-| `metadata` | jsonb | Metadados pedagógicos/psicológicos |
-| `source_hash` | text | Hash para invalidação |
+| `classe_id` / `aluno_id` | bigint/uuid | Escopo local autorizado |
+| `source_hash` | text | Hash para deduplicação |
+| `attributes` | jsonb | Atributos enviados para filtros |
+| `status` | text | Estado da indexação remota |
 | `created_at` | timestamptz | Criação |
 | `updated_at` | timestamptz | Última atualização |
 
-### `rag_relacoes`
+### `rag_relacoes` (legado durante a migração)
 
 | Coluna | Tipo | Descrição |
 |---|---|---|
 | `origem_id` | uuid | Chunk de origem |
 | `destino_id` | uuid | Chunk de destino |
 | `tipo` | text | `prereq`, `sucessor`, `similar` |
+
+`rag_chunks` e `rag_relacoes` permanecem somente para compatibilidade com a
+migração anterior. O caminho novo não grava chunks locais; relações que ainda
+dependam de `rag_chunks` devem ser migradas antes da remoção desse schema.
 
 ### `intervencoes`
 
@@ -125,20 +132,19 @@ O que não existe:
 ### Ingestão de uma nova fonte
 
 1. Professor ou sistema carrega documento.
-2. `app/ingestion/pipeline.py` extrai texto.
-3. `semantic_chunker.py` divide em chunks.
-4. `content_enrichment.py` enriquece com metadados.
-5. Gera embedding para cada chunk.
-6. Insere em `rag_chunks` com `source_hash`.
-7. Atualiza `rag_relacoes` quando houver pré-requisitos identificados.
+2. `app/ingestion/pipeline.py` valida e, quando necessário, extrai metadados/texto.
+3. `content_enrichment.py` enriquece metadados sem produzir embeddings locais.
+4. Envia o arquivo à OpenAI Files e ao Vector Store autorizado; o serviço faz chunking e embeddings.
+5. Aguarda a indexação e registra `openai_file_id`, vínculo remoto e status em `rag_openai_files`.
+6. Atualiza relações locais quando houver pré-requisitos identificados.
 
 ### Retrieval no chat do mentor
 
 1. App envia pergunta do aluno.
-2. API embeda a pergunta.
-3. Busca os `top_k` chunks mais similares filtrados por `classe_id`/`topico_id` e `scope`.
-4. Inclui chunks + perfil do aluno + histórico em `rag_context`.
-5. LangGraph gera resposta com grounding no corpus.
+2. API verifica a sessão e deriva o corpus permitido.
+3. LangGraph chama a Responses API com `file_search` e filtros remotos aplicáveis.
+4. Inclui os resultados citados + perfil do aluno + histórico em `rag_context`.
+5. O modelo gera resposta com grounding no corpus.
 
 ### Intervenção psicopedagógica
 
@@ -165,9 +171,9 @@ O que não existe:
 
 | Risco | Mitigação |
 |---|---|
-| Custo de embeddings | Deduplicação por `source_hash`; reindexar apenas o que mudou. |
-| Latência do retrieval | `top_k` enxuto (5-10); índice HNSW; cache de queries frequentes. |
-| Privacidade | RLS por `aluno_id`/`classe_id`; anonimizar dados psicossociais. |
+| Custo de indexação | Deduplicação por `source_hash`; reindexar apenas o que mudou. |
+| Latência do retrieval | Limitar resultados e usar o store correto; observar chamadas da Responses API. |
+| Privacidade | Autorização local antes da chamada; stores separados para fronteiras privadas. |
 | Qualidade do corpus | Manter enriquecimento curricular antes de indexar; revisar fontes externas. |
 
 ## Referências

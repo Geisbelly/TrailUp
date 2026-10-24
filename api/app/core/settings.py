@@ -70,6 +70,19 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"  # "openai" | "gemini"
 
     openai_api_key: str | None = None
+    # Vector Store gerenciado pela OpenAI para o corpus público do RAG. A
+    # aplicação usa o ID apenas no backend; nunca o expõe ao cliente.
+    openai_rag_vector_store_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "openai_rag_vector_store_id",
+            "OPENAI_RAG_VECTOR_STORE_ID",
+        ),
+    )
+    openai_rag_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("openai_rag_enabled", "OPENAI_RAG_ENABLED"),
+    )
     openai_model_supervisor: str = "gpt-4o-mini"
     openai_model_default: str = "gpt-4o-mini"
     # gpt-5.4-mini tem limite de tier de 10 RPM / 50 RPD — inviavel como

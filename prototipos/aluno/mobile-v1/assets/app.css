@@ -1,0 +1,64 @@
+/* Telas logadas do celular (mobile-v1): tokens do perfil (tema.js), barra de abas, folha de baixo. */
+:root{--success:#62db9b;--success-bg:rgba(98,219,155,.14);--warning:#e0b34d;--warning-bg:rgba(224,179,77,.16);--danger:#f0847c;--danger-bg:#3a1e2a;--danger-border:#8a4250;--abas:64px}
+.tela{background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.titulo-font{font-family:Georgia,"Times New Roman",serif}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+button{font-family:inherit;color:inherit}
+.vidro{background:var(--surface-a88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line)}
+
+/* seletor de perfil dentro do .preview (fora do aparelho) */
+.preview .perfis{display:flex;gap:4px;padding-left:4px;border-left:1px solid #b496d655}
+.preview .bolinha{width:18px;height:18px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+.preview .bolinha[aria-pressed="true"]{border-color:#fff}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.chip svg{width:12px;height:12px}
+.chip-accent{background:var(--accent-muted);color:var(--accent);border:1px solid var(--accent-soft)}
+.chip-neutral{background:var(--elev);color:var(--text-muted)}
+.chip-warning{background:var(--warning-bg);color:var(--warning)}
+
+/* botões */
+.btn{min-height:48px;border-radius:6px;border:1px solid transparent;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 18px;font-size:15px;font-weight:700;cursor:pointer;text-decoration:none}
+.btn svg{width:18px;height:18px}
+.btn-primario{background:var(--accent);color:var(--bg)}
+.btn-secundario{background:var(--surface);border-color:var(--border-strong);color:var(--text)}
+.btn-bloco{width:100%}
+.redondo{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);color:var(--accent);cursor:pointer;padding:0;flex:none}
+.redondo svg{width:20px;height:20px}
+.redondo img{width:30px;height:30px;object-fit:contain}
+.link{background:none;border:0;color:var(--accent);font-weight:700;font-size:14px;cursor:pointer;min-height:44px;padding:0;text-decoration:none;display:inline-flex;align-items:center}
+
+/* hexágono */
+.hx{position:relative;width:var(--size);height:var(--size);flex:none;display:block}
+.hx svg{width:100%;height:100%;display:block;overflow:visible}
+.hx .glifo{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.hx .glifo .n{font-family:Georgia,serif;font-weight:700;line-height:1;transform:translateY(1px)}
+.hx .glifo svg{width:34%;height:34%}
+
+/* barra de abas inferior */
+.abas{position:absolute;left:0;right:0;bottom:0;z-index:30;height:calc(var(--abas) + var(--base));padding-bottom:var(--base);display:flex;background:var(--surface-a94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--line)}
+.aba{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;color:var(--inactive);text-decoration:none;min-width:0}
+.aba-ic{position:relative;width:26px;height:26px;display:grid;place-items:center}
+.aba-ic svg{width:23px;height:23px}
+.aba.ativa{color:var(--accent)}
+.aba.ativa .aba-ic::before{content:"";position:absolute;inset:-4px -12px;border-radius:999px;background:var(--accent-muted);z-index:-1}
+.aba-nb{position:absolute;top:-4px;right:-9px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:var(--accent);color:var(--bg);font-size:10px;font-weight:800;display:grid;place-items:center;box-shadow:0 0 0 2px var(--surface)}
+.aba.travada{opacity:.6}
+.aba-trava{position:absolute;right:-7px;bottom:-3px;width:15px;height:15px;border-radius:50%;background:var(--elev);display:grid;place-items:center;color:var(--text)}
+.aba-trava svg{width:10px;height:10px}
+
+/* folha de baixo */
+.folha{position:absolute;left:0;right:0;z-index:20;background:var(--surface-a94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0;box-shadow:0 -14px 40px rgba(0,0,0,.45);transition:top .26s ease,height .26s ease}
+.alca{display:block;width:100%;height:22px;background:none;border:0;cursor:pointer;padding:0;position:relative}
+.alca::before{content:"";position:absolute;left:50%;top:8px;width:36px;height:4px;margin-left:-18px;border-radius:2px;background:var(--border-strong);opacity:.7}
+.veu{position:absolute;inset:0;z-index:15;background:rgba(0,0,0,.45)}
+
+/* barra de progresso */
+.barra{height:6px;border-radius:999px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.barra i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--accent-strong),var(--accent));box-shadow:0 0 10px var(--accent-soft)}
+
+/* esqueleto */
+.skel{background:linear-gradient(90deg,var(--surface) 0%,var(--elev) 50%,var(--surface) 100%);background-size:200% 100%;border-radius:6px}
+@media (prefers-reduced-motion:no-preference){.skel{animation:skel 1.4s ease-in-out infinite}}
+@keyframes skel{from{background-position:200% 0}to{background-position:-200% 0}}
