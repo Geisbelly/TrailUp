@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import base64
+import logging
 from io import BytesIO
+from typing import Any
 
 import httpx
 
 from app.core.settings import Settings
 from app.services.gemini_http import gemini_generate_url, gemini_headers
+from app.services.roteamento_ia import rota_de_menor_ativa
+
+logger = logging.getLogger(__name__)
+
+OPENAI_TTS_MODEL = "gpt-4o-mini-tts"
+OPENAI_TTS_VOICE = "coral"
 
 
 def gerar_mp3_gtts(*, texto: str, lang: str = "pt-br", slow: bool = False) -> bytes:
@@ -32,8 +40,47 @@ def gerar_mp3_gtts(*, texto: str, lang: str = "pt-br", slow: bool = False) -> by
     return data
 
 
+async def gerar_mp3_openai_tts(
+    *,
+    settings: Settings,
+    texto: str,
+    instrucoes: str = "",
+    client: Any | None = None,
+) -> bytes | None:
+    """TTS da rota de menor (#195): so OpenAI. Falhou -> None (sem audio); nao
+    cai no Gemini nem no gTTS."""
+    cleaned = str(texto or "").strip()
+    api_key = str(getattr(settings, "openai_api_key", "") or "").strip()
+    if not cleaned or (client is None and not api_key):
+        return None
+    try:
+        if client is None:
+            from openai import AsyncOpenAI
+
+            client = AsyncOpenAI(api_key=api_key)
+        kwargs: dict[str, Any] = {
+            "model": OPENAI_TTS_MODEL,
+            "voice": OPENAI_TTS_VOICE,
+            "input": cleaned[:4096],
+            "response_format": "mp3",
+        }
+        if instrucoes.strip():
+            kwargs["instructions"] = instrucoes.strip()[:1000]
+        response = await client.audio.speech.create(**kwargs)
+        data = getattr(response, "content", None)
+        if data is None and hasattr(response, "read"):
+            data = response.read()
+        return bytes(data) if data else None
+    except Exception as exc:
+        logger.warning("tts_openai_rota_menor_falhou: %s", type(exc).__name__)
+        return None
+
+
 async def gerar_mp3_gemini_tts(*, settings: Settings, texto: str) -> bytes | None:
     cleaned = str(texto or "").strip()
+    if rota_de_menor_ativa():
+        # #195: menor -> TTS so pela OpenAI.
+        return await gerar_mp3_openai_tts(settings=settings, texto=cleaned)
     if not cleaned or not settings.gemini_api_key:
         return None
 

@@ -10,6 +10,7 @@ from openai import AsyncOpenAI
 
 from app.core.settings import Settings
 from app.services.media_contract import CONTENT_ENRICHMENT_PROVIDER
+from app.services.roteamento_ia import rota_de_menor_ativa
 
 try:
     from langchain_core.messages import HumanMessage, SystemMessage
@@ -1297,7 +1298,14 @@ async def enrich_base_blocks(
     blocks: list[dict[str, Any]] | None = None
     provider_metadata: dict[str, Any] = {}
 
-    if gemini_key:
+    if gemini_key and rota_de_menor_ativa():
+        # #195: dentro de um fluxo de menor, nada vai ao Gemini; so OpenAI.
+        if not openai_key:
+            raise ContentEnrichmentError(
+                "OPENAI_API_KEY ausente: conteúdo de aluno menor só pode ser gerado pela OpenAI."
+            )
+        gemini_error = ContentEnrichmentError("rota de menor: Gemini não é usado")
+    elif gemini_key:
         try:
             blocks, provider_metadata = await _enrich_base_blocks_with_gemini(
                 base_blocks=base_blocks,

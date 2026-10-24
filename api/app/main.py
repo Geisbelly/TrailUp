@@ -1,8 +1,9 @@
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.agent.graph.builder import build_graph
 from app.agent.graph.checkpointer import (
@@ -18,6 +19,7 @@ from app.db.session import build_session_factory, execute_with_database_retry
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
 from app.services.personalizacao_jobs import personalizacao_jobs_loop
 from app.services.retencao_externa import retencao_externa_loop
+from app.services.roteamento_ia import MENSAGEM_IA_INDISPONIVEL, IAIndisponivelParaMenor
 
 
 def _configure_windows_event_loop_policy() -> None:
@@ -126,6 +128,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=app_settings.cors_allow_headers,
     )
     app.include_router(api_router)
+
+    @app.exception_handler(IAIndisponivelParaMenor)
+    async def _ia_indisponivel_para_menor(_request: Request, exc: IAIndisponivelParaMenor) -> JSONResponse:
+        # #195: rota de menor so usa OpenAI; se ela falhar, erro amigavel (nunca Gemini).
+        return JSONResponse(
+            status_code=503,
+            content={"detail": {"codigo": "ia_indisponivel", "mensagem": MENSAGEM_IA_INDISPONIVEL}},
+        )
+
     return app
 
 

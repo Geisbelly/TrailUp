@@ -52,6 +52,7 @@ from app.services.personalizacao import (
     fetch_personalizacao_context,
     gerar_cards_direto,
 )
+from app.services.roteamento_ia import rota_ia_se_tiver_aluno
 from app.services.storage import BUCKET, SupabaseStorage
 
 logger = logging.getLogger(__name__)
@@ -1214,6 +1215,20 @@ async def _cleanup_target(
 
 
 
+async def _process_media_render_target_na_rota_de_ia(
+    *,
+    app: FastAPI,
+    session: AsyncSession,
+    job: dict[str, Any],
+    target: dict[str, Any],
+) -> dict[str, Any]:
+    """#195: target de aluno segue a rota pela idade dele (menor/desconhecido ->
+    so OpenAI; nada ao Gemini nem ao microservice). Target base (sem dono, so
+    perfil BrainHex) nao tem dado de aluno e segue o provedor atual."""
+    async with rota_ia_se_tiver_aluno(session, target.get("aluno_id")):
+        return await _process_media_render_target(app=app, session=session, job=job, target=target)
+
+
 async def _process_media_render_target(
     *,
     app: FastAPI,
@@ -2352,7 +2367,7 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 return 1
 
             try:
-                outcome = await _process_media_render_target(
+                outcome = await _process_media_render_target_na_rota_de_ia(
                     app=app,
                     session=target_session,
                     job=job,

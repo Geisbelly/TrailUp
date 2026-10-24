@@ -141,7 +141,9 @@ async def test_gerar_sem_modelo_nao_inventa_insight(monkeypatch) -> None:
     monkeypatch.setattr(service, "coletar_contexto", AsyncMock(return_value=({}, {"A1": "u-a"}, {"A1": "Ana"})))
 
     assert await service.gerar(7) == ("falhou", 0)
-    assert session.executed == []
+    # A unica leitura permitida e a checagem de idade da rota de IA (#195); nada e gravado.
+    assert [stmt for stmt, _ in session.executed if "aluno_eh_menor" not in str(stmt)] == []
+    assert session.commits == 0
 
 
 @pytest.mark.asyncio

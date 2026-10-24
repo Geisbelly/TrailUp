@@ -10,6 +10,7 @@ from app.schemas.api import AnalisarPayload, AnalisarResponse
 from app.services import modo_restrito
 from app.services.analysis_runner import build_analysis_graph_config, run_analysis
 from app.services.auth import UserContext
+from app.services.roteamento_ia import decidir_rota, usar_rota
 from app.services.state_builder import build_initial_state
 
 
@@ -81,9 +82,13 @@ async def analisar_stream(
         classe_id=payload.classe_id,
     )
 
+    # #195: rota de IA pela idade do aluno (menor/desconhecido -> so OpenAI).
+    rota = await decidir_rota(session, [user.aluno_id or user.user_id])
+
     async def event_stream():
-        async for event in request.app.state.graph_ephemeral.astream(state, config, stream_mode="updates"):
-            yield f"data: {json.dumps({'node': list(event.keys())[0], 'cycle_id': state['ciclo_id'], 'data': event}, default=str)}\n\n"
+        with usar_rota(rota):
+            async for event in request.app.state.graph_ephemeral.astream(state, config, stream_mode="updates"):
+                yield f"data: {json.dumps({'node': list(event.keys())[0], 'cycle_id': state['ciclo_id'], 'data': event}, default=str)}\n\n"
         yield f"data: {json.dumps({'node': 'DONE', 'cycle_id': state['ciclo_id']})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

@@ -17,13 +17,13 @@ import json, runpy, sys, types
 statements = []
 sys.modules['alembic'] = types.SimpleNamespace(op=types.SimpleNamespace(execute=statements.append))
 legacy = runpy.run_path('api/alembic/versions/20261003_02_medida_do_perfil_brainhex.py')
-current = runpy.run_path('api/alembic/versions/20261024_03_perfil_exploratorio_sem_confianca.py')
+current = runpy.run_path('api/alembic/versions/20261024_04_perfil_exploratorio_sem_confianca.py')
 result = {}
 for name, fn in [('legacy', legacy['upgrade']), ('upgrade', current['upgrade']), ('downgrade', current['downgrade'])]:
     statements.clear()
     fn()
     result[name] = list(statements)
-assert current['down_revision'] == '20261024_02'
+assert current['down_revision'] == '20261024_03'
 print(json.dumps(result))
 `], { cwd: repo, encoding: "utf8" }));
 const db = await PGlite.create();

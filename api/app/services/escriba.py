@@ -23,6 +23,7 @@ from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba
 from app.services.insights_turma import InsightsTurmaService
 from app.services.llm import JsonLLMService, StructuredOutputError
 from app.services.pseudonimizacao import pseudonimizar_texto, restaurar_refs
+from app.services.roteamento_ia import rota_ia_para_turma
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +131,7 @@ class EscribaService:
             "WHERE classe_id = :classe_id ORDER BY metrica, faixa",
             classe_id,
         )
-        retrato, _, nomes_por_ref = await InsightsTurmaService(self.session, self.llm).coletar_contexto(
+        retrato, refs_turma, nomes_por_ref = await InsightsTurmaService(self.session, self.llm).coletar_contexto(
             classe_id, agora, incluir_descartados=False
         )
         return {
@@ -143,6 +144,8 @@ class EscribaService:
             "alunos": retrato.get("alunos", []),
             "topicos": retrato.get("topicos", []),
             "_nomes_por_ref": nomes_por_ref,
+            # Privado: so para a rota de IA por idade (#195); sai antes do payload.
+            "_aluno_ids": list(refs_turma.values()) if isinstance(refs_turma, dict) else [],
         }
 
     async def perguntar(self, professor_id: str, pedido: PerguntaEscriba, agora: datetime | None = None) -> RespostaEscriba:
@@ -163,6 +166,8 @@ class EscribaService:
             )
 
         contextos = [await self.contexto_da_turma(t, agora) for t in escopo]
+        # #195: ids so para a rota de IA por idade; nunca vao ao modelo.
+        aluno_ids = [i for c in contextos for i in (c.get("_aluno_ids") or [])]
         turmas_payload, nomes_por_ref = _renumerar_refs(contextos)
         # Pergunta e histórico do professor citam alunos pelo nome (e o histórico
         # volta com os nomes que restauramos): vão ao modelo como refs.
@@ -174,8 +179,12 @@ class EscribaService:
             ],
             "turmas": turmas_payload,
         }
+        for turma_payload in payload["turmas"]:
+            turma_payload.pop("_aluno_ids", None)
         try:
-            saida = await self.llm.ainvoke_structured(prompt_name="escriba.txt", payload=payload, schema=EscribaSaida)
+            # #195: basta um aluno menor (ou sem data) nas turmas -> so OpenAI.
+            async with rota_ia_para_turma(self.session, aluno_ids):
+                saida = await self.llm.ainvoke_structured(prompt_name="escriba.txt", payload=payload, schema=EscribaSaida)
         except StructuredOutputError as exc:
             logger.warning("Escriba: modelo falhou: %s", exc)
             raise EscribaIndisponivel(str(exc)) from exc
