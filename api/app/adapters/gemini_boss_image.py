@@ -7,6 +7,7 @@ import httpx
 from app.adapters.base_boss_image import BossImageAdapter
 from app.core.settings import Settings
 from app.schemas.ia_patch import IAEnemySpec
+from app.services.gemini_http import gemini_generate_url, gemini_headers
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ class GeminiBossImageAdapter(BossImageAdapter):
         if not self._api_key:
             return None
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self._model}:generateContent?key={self._api_key}"
+        url = gemini_generate_url(self._model)
         body = {
             "contents": [
                 {
@@ -62,7 +63,7 @@ class GeminiBossImageAdapter(BossImageAdapter):
 
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(url, json=body)
+                response = await client.post(url, json=body, headers=gemini_headers(self._api_key))
                 response.raise_for_status()
             return self._extract_png(response.json())
         except Exception as exc:  # pragma: no cover

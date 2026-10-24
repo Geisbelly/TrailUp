@@ -3,6 +3,7 @@ from typing import Any
 from app.core.settings import Settings
 from app.schemas.texto_gerado import TextoGerado
 from app.services.llm import JsonLLMService, StructuredOutputError
+from app.services.pseudonimizacao import PLACEHOLDER_NOME, restaurar_nome
 
 
 def _fallback_texto(state: dict[str, Any]) -> dict[str, Any]:
@@ -32,13 +33,19 @@ async def agente_texto(state: dict[str, Any], settings: Settings) -> dict[str, A
                 "ui_config": state.get("ui_config"),
                 "perfil_brainhex": state.get("perfil_brainhex", []),
                 "emocao_atual": state.get("emocao_atual"),
-                "nome_aluno": state.get("nome_aluno"),
+                # Nome nao sai do servidor (#195): o modelo escreve o
+                # placeholder e a API poe o nome de volta logo abaixo.
+                "nome_aluno": PLACEHOLDER_NOME,
                 "notificacao_payload": state.get("notificacao_payload"),
             },
             schema=TextoGerado,
         )
     except StructuredOutputError:
         texto = TextoGerado.model_validate(_fallback_texto(state))
+    nome = state.get("nome_aluno")
+    texto = texto.model_copy(
+        update={"titulo": restaurar_nome(texto.titulo, nome), "corpo": restaurar_nome(texto.corpo, nome)}
+    )
     return {
         "textos_gerados": [texto.model_dump(mode="json")],
         "completed_nodes": ["agente_texto"],

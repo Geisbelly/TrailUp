@@ -40,7 +40,7 @@ def test_payload_troca_uuid_por_ref_e_mantem_ausencia_como_none() -> None:
         {"aluno_id": "u-b", "perfil": "seeker", "percentual_concluido": 40},
         {"aluno_id": "u-a", "perfil": "seeker", "percentual_concluido": None},
     ]
-    payload, refs = montar_payload(
+    payload, refs, nomes_por_ref = montar_payload(
         alunos,
         nomes={"u-a": "Ana Clara Souza", "u-b": None},
         abandono={"u-a": 12.5},
@@ -52,10 +52,11 @@ def test_payload_troca_uuid_por_ref_e_mantem_ausencia_como_none() -> None:
     )
 
     assert refs == {"A1": "u-a", "A2": "u-b"}
+    # Nome fica no servidor (#195): so a ref vai ao modelo.
+    assert nomes_por_ref == {"A1": "Ana Clara Souza", "A2": None}
     a1, a2 = payload["alunos"]
     assert a1 == {
         "ref": "A1",
-        "nome": "Ana",
         "perfil": "seeker",
         "conclusao_pct": None,
         "respostas_30d": 8,
@@ -116,7 +117,7 @@ async def test_gerar_grava_lote_com_mesmo_geracao_id(monkeypatch) -> None:
     monkeypatch.setattr(
         service,
         "coletar_contexto",
-        AsyncMock(return_value=({"alunos": [{"ref": "A1"}]}, {"A1": "u-a"})),
+        AsyncMock(return_value=({"alunos": [{"ref": "A1"}]}, {"A1": "u-a"}, {"A1": "Ana Souza"})),
     )
 
     resultado = await service.gerar(7)
@@ -137,7 +138,7 @@ async def test_gerar_sem_modelo_nao_inventa_insight(monkeypatch) -> None:
     llm = AsyncMock()
     llm.ainvoke_structured.side_effect = StructuredOutputError("sem provedor")
     service = InsightsTurmaService(session, llm)
-    monkeypatch.setattr(service, "coletar_contexto", AsyncMock(return_value=({}, {"A1": "u-a"})))
+    monkeypatch.setattr(service, "coletar_contexto", AsyncMock(return_value=({}, {"A1": "u-a"}, {"A1": "Ana"})))
 
     assert await service.gerar(7) == ("falhou", 0)
     assert session.executed == []
@@ -147,7 +148,7 @@ async def test_gerar_sem_modelo_nao_inventa_insight(monkeypatch) -> None:
 async def test_gerar_turma_sem_alunos_nem_chama_o_modelo(monkeypatch) -> None:
     llm = AsyncMock()
     service = InsightsTurmaService(FakeSession(), llm)
-    monkeypatch.setattr(service, "coletar_contexto", AsyncMock(return_value=({}, {})))
+    monkeypatch.setattr(service, "coletar_contexto", AsyncMock(return_value=({}, {}, {})))
 
     assert await service.gerar(7) == ("sem_dados", 0)
     llm.ainvoke_structured.assert_not_awaited()
