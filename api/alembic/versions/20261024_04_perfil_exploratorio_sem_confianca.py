@@ -7,8 +7,9 @@ Aplicar antes do frontend v3. Não executada automaticamente por este PR.
 
 from alembic import op
 
-revision = "20261024_03"
-down_revision = "20261024_02"
+revision = "20261024_04"
+# Renumerada (era 20261024_03, colidia com retencao_e_expurgo); encadeada depois dela.
+down_revision = "20261024_03"
 branch_labels = None
 depends_on = None
 
