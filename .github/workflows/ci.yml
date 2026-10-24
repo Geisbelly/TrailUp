@@ -201,6 +201,12 @@ jobs:
         run: npm run typecheck
       - name: Testes (vitest)
         run: npm test
+      - name: Transação de cadastro em PostgreSQL isolado
+        run: npm run test:cadastro-banco
+      - name: Chromium para os testes do cadastro
+        run: npx playwright install --with-deps chromium
+      - name: Jornada de cadastro (serviços simulados, sem produção)
+        run: npm run test:cadastro
       - name: Build
         run: npm run build
 

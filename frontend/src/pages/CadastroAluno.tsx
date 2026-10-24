@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Hexagon, Eye, EyeOff, Mail, ArrowRight, Info, CheckCircle2, Download, Smartphone, LogIn, User, Lock } from "lucide-react";
+import { Hexagon, Eye, EyeOff, Mail, ArrowRight, Info, LogIn, User, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,16 +19,16 @@ import {
 } from "@/lib/cadastroEmUmaEtapa";
 import { ehMenorDeIdade, hojeEmBrasilia, validarDataNascimento } from "@/lib/dataNascimento";
 
+import { AREA_ALUNO, alunoTemCadastro } from "@/features/signup/cadastroAluno";
+
 const STORAGE_PREFIX = "pending-signup:";
-const PLAY_STORE_LINK = import.meta.env.VITE_PLAY_STORE_LINK || "";
-const APK_LINK = import.meta.env.VITE_APK_URL || "";
 
 /**
  * Uma etapa só para e-mail+senha (#329). Os estágios "email" / "existing" / "new" existiam
  * porque `fn_auth_email_exists` dizia, ANTES do login, se o e-mail tinha conta — e dizia para
  * qualquer pessoa na internet, sem limite. Agora quem decide é `signIn`/`signUp`.
  */
-type Stage = "acesso" | "confirm-sent" | "await-confirm" | "already";
+type Stage = "acesso" | "confirm-sent" | "await-confirm";
 
 const CadastroAluno = () => {
   const navigate = useNavigate();
@@ -59,7 +59,7 @@ const CadastroAluno = () => {
     return true;
   };
 
-  /** O que fazer quando o login deu certo: é o caminho de conta existente, intocado. */
+  /** Só consultar o cadastro depois de autenticar o titular. */
   const seguirComoContaExistente = async (signedUser: unknown) => {
     const user = (signedUser as { id?: string } | null) ?? (await supabase.auth.getUser()).data.user;
     if (!user) {
@@ -67,25 +67,12 @@ const CadastroAluno = () => {
       return;
     }
 
-    const { data: alunoRow } = await supabase.from("alunos").select("id").eq("id", user.id).maybeSingle();
-    const u = user as { email_confirmed_at?: string | null; confirmed_at?: string | null };
-    const emailConfirmed = Boolean(u?.email_confirmed_at ?? u?.confirmed_at);
-
-    if (alunoRow?.id) {
-      if (emailConfirmed) {
-        setStage("already");
-        setInfoMessage("Você já possui cadastro de aluno.");
-        return;
-      }
-      setStage("await-confirm");
-      setInfoMessage("Conta de aluno encontrada. Confirme seu email para continuar.");
+    if (!user.id) throw new Error("Sessão não encontrada.");
+    if (await alunoTemCadastro(user.id)) {
+      navigate(AREA_ALUNO);
       return;
     }
-
-    localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`, JSON.stringify({ tipo: "aluno", email: emailLower }));
     navigate("/auth/confirmacao");
-    setStage("confirm-sent");
-    setInfoMessage("Conta sem perfil. Finalize seu cadastro de aluno.");
   };
 
   /**
@@ -139,10 +126,10 @@ const CadastroAluno = () => {
         return;
       }
 
-      localStorage.setItem(
-        `${STORAGE_PREFIX}${emailLower}`,
-        JSON.stringify({ tipo: "aluno", email: emailLower, data_nascimento: dataNascimento })
-      );
+      try {
+        localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`,
+          JSON.stringify({ tipo: "aluno", email: emailLower, data_nascimento: dataNascimento }));
+      } catch { /* A confirmação recupera o tipo pela conta e solicita a data novamente. */ }
       setStage("confirm-sent");
       setInfoMessage("Enviamos um link de confirmação. Após confirmar, conclua seu cadastro.");
     } catch (err) {
@@ -279,28 +266,6 @@ const CadastroAluno = () => {
     </div>
   );
 
-  const renderAlready = () => (
-    <div className="space-y-4 text-center">
-      <CheckCircle2 className="w-10 h-10 text-primary mx-auto" />
-      <p className="text-muted-foreground">{infoMessage || "Conta de aluno ativa."}</p>
-      <div className="grid sm:grid-cols-2 gap-3">
-        <Button className="w-full" onClick={() => APK_LINK && window.open(APK_LINK, "_blank")}>
-          <Download className="w-4 h-4 mr-2" /> Baixar APK
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => PLAY_STORE_LINK && window.open(PLAY_STORE_LINK, "_blank")}
-        >
-          <Smartphone className="w-4 h-4 mr-2" /> Play Store
-        </Button>
-      </div>
-      <div className="flex gap-3 justify-center">
-        <Button variant="outline" onClick={() => navigate("/")}>Início</Button>
-      </div>
-    </div>
-  );
-
   const renderConfirmSent = () => (
     <div className="space-y-4 text-center">
       <Hexagon className="w-10 h-10 text-primary fill-primary/20 mx-auto" />
@@ -317,7 +282,6 @@ const CadastroAluno = () => {
     if (stage === "acesso") return renderAcessoStep();
     if (stage === "confirm-sent") return renderConfirmSent();
     if (stage === "await-confirm") return renderAwaitConfirm();
-    if (stage === "already") return renderAlready();
     return null;
   };
 

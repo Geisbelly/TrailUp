@@ -86,3 +86,7 @@ mobile/android/
 **/*/graphify-out/
 .mcp-tracker.local.json
 .codex
+
+# Artefatos dos testes de navegador
+frontend/test-results/
+frontend/playwright-report/

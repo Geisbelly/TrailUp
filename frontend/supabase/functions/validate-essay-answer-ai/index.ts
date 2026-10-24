@@ -63,8 +63,7 @@ function jsonResponse(payload: unknown, status = 200): Response {
 // verify_jwt do Supabase só recusa token ausente/invalido — a anon key publica
 // (embutida no bundle do front) tambem passa nessa checagem. Exigimos aqui que
 // o token pertença a um usuario de fato logado, nao so a chave publica anon.
-// deno-lint-ignore no-explicit-any
-type AuthClient = any;
+type AuthClient = ReturnType<typeof createClient>;
 
 async function requireAuthenticatedUser(req: Request): Promise<AuthClient | null> {
   const authHeader = req.headers.get("Authorization") ?? "";

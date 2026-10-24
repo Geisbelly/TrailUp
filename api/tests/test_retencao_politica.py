@@ -77,6 +77,32 @@ def _migracoes() -> list[Path]:
     return sorted(VERSOES.glob("2*.py"))
 
 
+
+def _tabelas_registradas_por_insert(sql: str) -> set[str]:
+    """Lê os VALUES explícitos das migrações posteriores, sem contar simples menções.
+
+    O inventário original considerava só POLITICAS da migração 03: rejeitava
+    tabelas novas mesmo quando a própria migração registrava sua política.
+    """
+    tabelas = set()
+    for bloco in re.findall(
+        r"INSERT\s+INTO\s+public\.retencao_politica\s*\(\s*tabela\s*,(?:'(?:''|[^'])*'|[^;'])*;",
+        sql, re.IGNORECASE | re.DOTALL,
+    ):
+        valores = re.split(r"\bVALUES\b", bloco, maxsplit=1, flags=re.IGNORECASE)
+        if len(valores) == 2:
+            tabelas.update(re.findall(r"\(\s*'([A-Za-z_][A-Za-z0-9_]*)'\s*,", valores[1]))
+    return tabelas
+
+
+def test_inventario_inclui_politica_adicionada_por_migracao_posterior() -> None:
+    sql = """INSERT INTO public.retencao_politica (tabela, acao, categoria, motivo) VALUES
+      ('diario', 'vida_da_conta', 'vida_da_conta', 'uso; sai com a conta'),
+      ('introducao', 'vida_da_conta', 'vida_da_conta', 'uso')
+    ON CONFLICT (tabela, acao) DO NOTHING;"""
+    assert _tabelas_registradas_por_insert(sql) == {"diario", "introducao"}
+    assert not _tabelas_registradas_por_insert("SELECT 'diario' FROM public.retencao_politica;")
+
 def test_esqueleto_existe_e_tem_as_tabelas() -> None:
     sql = ESQUELETO.read_text(encoding="utf-8")
     assert 'CREATE TABLE public."alunos"' in sql
@@ -94,6 +120,9 @@ def test_isentas_tem_motivo_e_so_diminui() -> None:
 
 def test_toda_tabela_com_pessoa_tem_politica_ou_e_isenta() -> None:
     registradas = {p[0] for p in _modulo().POLITICAS}
+    for arquivo in _migracoes():
+        if arquivo.name > MIGRACAO:
+            registradas |= _tabelas_registradas_por_insert(arquivo.read_text(encoding="utf-8"))
     isentas = _isentas()
     tabelas = _tabelas_com_pessoa(ESQUELETO.read_text(encoding="utf-8"))
     for arquivo in _migracoes():

@@ -317,7 +317,7 @@ export const PROFILES = {
     textColor: "text-[#ec3c04]",
     bgColor: "bg-[#ec3c04]",
     cardStyle: "bg-[#ec3c04]/10 border-[#ec3c04]/20",
-    text: "Gosta de ação e risco. Prefere aprender por tentativa e erro, com exploração rápida e sem medo de falhar.",
+    text: "Gosta de ação, desafios e de experimentar possibilidades. Essa preferência não determina a melhor forma de aprender.",
   },
   mastermind: {
     key: "mastermind",

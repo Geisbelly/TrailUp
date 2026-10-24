@@ -96,3 +96,10 @@ O próximo estudo precisa de protocolo prévio, público-alvo definido e revisã
 Comparar a recomendação com escolha direta e alternativas de pontuação em dados separados por aluno/tempo, sem usar os mesmos dados para escolher pesos e declarar sucesso. Antes da coleta, definir desfechos e análise de utilidade educacional, incluindo perdas, incerteza e possíveis efeitos por turma. O vetor do questionário não deve ser tomado como gabarito do comportamento, nem engajamento confundido com aprendizagem.
 
 **Condição para novas alegações:** evidências próprias adequadas ao uso, com versão, método, resultados e limitações publicados. Até lá, a v3 é uma adaptação de produto com interpretação restrita e testes de consistência; não uma classificação científica dos alunos.
+
+## Continuação da jornada após o PR #617
+
+As correções de persistência, retomada e introdução sem turma estão descritas em
+[Issue #1 — correções da jornada](issue-1-correcoes-jornada.md). As pendências
+funcionais registradas acima descrevem o estado anterior a essa continuação;
+os limites científicos permanecem.
