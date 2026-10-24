@@ -14,6 +14,8 @@ import {
   type AlunoCandidato,
   type PerfilDoAluno,
 } from "./matriculas";
+import { FormTermoPapel } from "./FormTermoPapel";
+import { listarTermosDaTurma, rotuloDaSituacao, type TermoDoAluno } from "./termosResponsavel";
 
 type Matriculado = { id: string; nome: string; email: string | null; desde: string | null };
 
@@ -75,6 +77,27 @@ function useDetalhes(turmaId: number | null, matriculadosIds: string[], candidat
   return { matriculados, perfis, carregando, erro };
 }
 
+/** Situação do termo do responsável por aluno (#195). Nunca traz a data de nascimento. */
+function useTermos(turmaId: number | null, chave: string) {
+  const [termos, setTermos] = useState<Map<string, TermoDoAluno>>(new Map());
+  const [erro, setErro] = useState<string | null>(null);
+  const [versao, setVersao] = useState(0);
+
+  useEffect(() => {
+    if (turmaId === null) return;
+    let vivo = true;
+    setErro(null);
+    listarTermosDaTurma(turmaId)
+      .then((lista) => vivo && setTermos(new Map(lista.map((t) => [t.aluno_id, t]))))
+      .catch((e: unknown) => vivo && setErro(e instanceof Error ? e.message : "Não foi possível carregar os termos."));
+    return () => {
+      vivo = false;
+    };
+  }, [turmaId, chave, versao]);
+
+  return { termos, erro, recarregar: () => setVersao((v) => v + 1) };
+}
+
 export function ModalMatriculas({
   turma,
   candidatos,
@@ -93,14 +116,17 @@ export function ModalMatriculas({
   const [termo, setTermo] = useState("");
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<string | null>(null);
+  const [registrandoTermo, setRegistrandoTermo] = useState<string | null>(null);
   const id = useId();
   const { matriculados, perfis, carregando, erro } = useDetalhes(turma?.id ?? null, matriculadosIds, candidatos);
+  const termosDaTurma = useTermos(turma?.id ?? null, [...matriculadosIds].sort().join(","));
   const nome = turma?.descricao?.trim() || (turma ? `Turma ${turma.id}` : "");
   const resultados = useMemo(() => buscarAlunos(candidatos, termo, new Set(matriculadosIds)), [candidatos, termo, matriculadosIds]);
 
   useEffect(() => {
     setTermo("");
     setConfirmando(null);
+    setRegistrandoTermo(null);
   }, [turma?.id]);
 
   const perfilDe = (alunoId: string) => perfis.get(alunoId) ?? null;
@@ -207,6 +233,11 @@ export function ModalMatriculas({
             <span className="rounded-full bg-muted px-2.5 py-[3px] text-[11.5px] font-bold text-foreground">{matriculadosIds.length}</span>
           </div>
           <div className="px-[26px] pb-5">
+            {termosDaTurma.erro && (
+              <p role="status" className="mb-2 text-[12px] text-muted-foreground">
+                Situação do termo do responsável indisponível: {termosDaTurma.erro}
+              </p>
+            )}
             {erro ? (
               <p role="alert" className="text-[13px] text-foreground">
                 Não foi possível carregar os detalhes dos alunos. Detalhe: {erro}
@@ -221,7 +252,18 @@ export function ModalMatriculas({
                   const desde = formatarDesde(a.desde);
                   return (
                     <li key={a.id}>
-                      {confirmando === a.id ? (
+                      {registrandoTermo === a.id ? (
+                        <FormTermoPapel
+                          alunoId={a.id}
+                          nomeDoAluno={a.nome}
+                          semDataNascimento={termosDaTurma.termos.get(a.id)?.situacao === "sem_data_nascimento"}
+                          onSalvo={() => {
+                            setRegistrandoTermo(null);
+                            termosDaTurma.recarregar();
+                          }}
+                          onCancelar={() => setRegistrandoTermo(null)}
+                        />
+                      ) : confirmando === a.id ? (
                         <div role="group" aria-labelledby={`${id}-confirma-${a.id}`} className="rounded-[14px] border border-destructive/50 bg-destructive/10 px-[15px] py-[13px]">
                           <div className="flex items-center gap-3">
                             <PerfilAvatar nome={a.nome} perfil={perfilDe(a.id) ?? ""} tamanho={28} />
@@ -263,7 +305,33 @@ export function ModalMatriculas({
                             <div className="truncate text-[11.5px] text-muted-foreground">
                               {[a.email, [rotuloDoPerfil(a.id), desde && `desde ${desde}`].filter(Boolean).join(" · ")].filter(Boolean).join(" — ")}
                             </div>
+                            {!termosDaTurma.erro && (() => {
+                              const situacao = rotuloDaSituacao(termosDaTurma.termos.get(a.id));
+                              return (
+                                <div
+                                  className={cn(
+                                    "truncate text-[11.5px]",
+                                    situacao.tom === "ok" && "text-[hsl(var(--console-violet-text))]",
+                                    situacao.tom === "pendente" && "font-semibold text-foreground",
+                                    situacao.tom === "neutro" && "text-muted-foreground",
+                                  )}
+                                >
+                                  {situacao.texto}
+                                </div>
+                              );
+                            })()}
                           </div>
+                          {termosDaTurma.termos.get(a.id)?.situacao !== "maior" && (
+                            <button
+                              type="button"
+                              disabled={ocupado !== null}
+                              onClick={() => setRegistrandoTermo(a.id)}
+                              aria-label={`Registrar termo do responsável de ${a.nome}`}
+                              className={cn(BOTAO, "text-muted-foreground hover:bg-card hover:text-foreground")}
+                            >
+                              Termo recebido
+                            </button>
+                          )}
                           <button
                             id={`${id}-remover-${a.id}`}
                             type="button"

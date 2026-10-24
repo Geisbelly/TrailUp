@@ -7,9 +7,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_session, require_aluno
 from app.repositories.evento import EventoRepository
 from app.schemas.api import AnalisarPayload, AnalisarResponse
+from app.services import modo_restrito
 from app.services.analysis_runner import build_analysis_graph_config, run_analysis
 from app.services.auth import UserContext
 from app.services.state_builder import build_initial_state
+
+
+async def _exigir_inferencia_permitida(session: AsyncSession, aluno_id) -> dict[str, bool]:
+    # Modo restrito (#195): sem `emocional`, nada de inferencia; frame so com `camera`.
+    permitidas = await modo_restrito.finalidades_permitidas(session, aluno_id)
+    if not permitidas["emocional"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=modo_restrito.detalhe(modo_restrito.MENSAGEM_EMOCOES),
+        )
+    return permitidas
 
 router = APIRouter(prefix="/emocoes", tags=["emocoes"])
 
@@ -21,6 +33,7 @@ async def analisar(
     user: UserContext = Depends(require_aluno),
     session: AsyncSession = Depends(get_session),
 ) -> AnalisarResponse:
+    permitidas = await _exigir_inferencia_permitida(session, user.aluno_id or user.user_id)
     try:
         return await run_analysis(
             request=request,
@@ -29,7 +42,7 @@ async def analisar(
             classe_id=payload.classe_id,
             topico_id=payload.topico_id,
             atividade_id=payload.atividade_id,
-            frame_b64=payload.frame_b64,
+            frame_b64=payload.frame_b64 if permitidas["camera"] else None,
             eventos_novos=payload.eventos_novos,
             modo=payload.modo,
         )
@@ -44,6 +57,9 @@ async def analisar_stream(
     user: UserContext = Depends(require_aluno),
     session: AsyncSession = Depends(get_session),
 ):
+    permitidas = await _exigir_inferencia_permitida(session, user.aluno_id or user.user_id)
+    if not permitidas["camera"]:
+        payload = payload.model_copy(update={"frame_b64": None})
     try:
         state = await build_initial_state(session, user.aluno_id or user.user_id, payload)
     except ValueError as exc:

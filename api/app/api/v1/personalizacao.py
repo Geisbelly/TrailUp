@@ -63,6 +63,7 @@ from app.schemas.personalizacao import (
     SugestaoMaterialItem,
     SugestaoMaterialResponse,
 )
+from app.services import modo_restrito
 from app.services.auth import UserContext
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
 from app.services.group_analysis import GroupAnalysisService
@@ -1463,6 +1464,14 @@ async def conversar_com_mentor_personalizacao(
         )
 
     aluno_id = user.aluno_id or user.user_id
+    # Modo restrito (#195): o mentor de IA fica desligado. 403 com codigo e
+    # mensagem para o app mostrar, nunca 500, e antes de ler qualquer contexto.
+    permitidas = await modo_restrito.finalidades_permitidas(session, aluno_id)
+    if not permitidas["mentor"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=modo_restrito.detalhe(modo_restrito.MENSAGEM_MENTOR),
+        )
     access_repo = AccessRepository(session)
     if not await access_repo.aluno_belongs_to_classe(aluno_id=str(aluno_id), classe_id=int(payload.classe_id)):
         raise HTTPException(

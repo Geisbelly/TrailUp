@@ -5,6 +5,7 @@ import type {
 } from "@supabase/supabase-js";
 
 import { supabase } from "@/database/supabase";
+import { erroDeModoRestrito } from "@/utils/consentimentoResponsavel";
 import {
   isNetworkRequestFailedError,
   resolveApiBaseCandidates,
@@ -170,6 +171,12 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     }
 
     if (!response.ok) {
+      // Modo restrito (#195): o servidor responde 403 com
+      // { codigo: "modo_restrito", mensagem }. Vira um erro proprio, com a
+      // mensagem pronta para o aluno, em vez de "[object Object]".
+      const restrito = response.status === 403 ? erroDeModoRestrito(payload?.detail) : null;
+      if (restrito) throw restrito;
+
       const detail =
         payload?.detail ||
         payload?.message ||

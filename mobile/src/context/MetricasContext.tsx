@@ -46,6 +46,12 @@ import {
   type TelemetryConsentStatus,
   consentimentoEstaVigente,
 } from "@/utils/telemetryConsent";
+import { preferenciasEfetivas } from "@/utils/consentimentoResponsavel";
+import {
+  assinarEstadoConsentimento,
+  obterEstadoConsentimento,
+} from "@/services/consentimentoResponsavelApi";
+import { registrarConsentimentoTelemetriaNoServidor } from "@/services/consentimentoTelemetriaSupabase";
 import React, {
   createContext,
   useCallback,
@@ -484,9 +490,19 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     // a v3 (que dizia que a imagem nao era analisada) nao e aceitar a v4. Sem
     // isto, o registro velho seguia valendo enquanto o termo novo estava na
     // tela esperando resposta.
-    const status =
+    const statusDoTermo =
       record == null || consentimentoEstaVigente(record) ? record?.status ?? null : null;
-    const preferences = record?.preferences ?? DEFAULT_TELEMETRY_PREFERENCES;
+    // Modo restrito (#195): o servidor diz o que esta liberado (data de
+    // nascimento e, se menor, o aceite do responsavel). Sem `telemetria`, a
+    // coleta se comporta como recusada; a preferencia so liga o que o
+    // servidor tambem libera. O registro local do aluno nao e alterado.
+    const estado = obterEstadoConsentimento();
+    const status =
+      statusDoTermo === "accepted" && !estado.finalidades.telemetria ? "rejected" : statusDoTermo;
+    const preferences = preferenciasEfetivas(
+      record?.preferences ?? DEFAULT_TELEMETRY_PREFERENCES,
+      estado
+    );
     const granted = record?.cameraPermissionGranted === true;
     const nextCameraOptIn = status === "accepted" && granted && preferences.cameraEnabled;
 
@@ -1166,14 +1182,17 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     if (!enabled) {
       setCameraOptInState(false);
       setTelemetryPreferencesState((prev) => ({ ...prev, cameraEnabled: false }));
-      await setTelemetryConsentPreferences({
-        cameraEnabled: false,
-      });
+      void registrarConsentimentoTelemetriaNoServidor(
+        await setTelemetryConsentPreferences({
+          cameraEnabled: false,
+        })
+      );
       stopFrameCaptureTimer();
       return false;
     }
 
-    if (telemetryConsentStatus !== "accepted") {
+    const finalidades = obterEstadoConsentimento().finalidades;
+    if (telemetryConsentStatus !== "accepted" || !finalidades.camera || !finalidades.emocional) {
       setCameraOptInState(false);
       return false;
     }
@@ -1193,14 +1212,16 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       setCameraPermission(granted ? "granted" : "denied");
       setCameraOptInState(granted);
       setTelemetryPreferencesState((prev) => ({ ...prev, cameraEnabled: granted }));
-      await setTelemetryConsentAccepted({
-        cameraPermissionRequested: true,
-        cameraPermissionGranted: granted,
-        preferences: {
-          ...telemetryPreferences,
-          cameraEnabled: granted,
-        },
-      });
+      void registrarConsentimentoTelemetriaNoServidor(
+        await setTelemetryConsentAccepted({
+          cameraPermissionRequested: true,
+          cameraPermissionGranted: granted,
+          preferences: {
+            ...telemetryPreferences,
+            cameraEnabled: granted,
+          },
+        })
+      );
       if (!granted) {
         stopFrameCaptureTimer();
       }
@@ -1209,14 +1230,16 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       setCameraPermission("denied");
       setCameraOptInState(false);
       setTelemetryPreferencesState((prev) => ({ ...prev, cameraEnabled: false }));
-      await setTelemetryConsentAccepted({
-        cameraPermissionRequested: true,
-        cameraPermissionGranted: false,
-        preferences: {
-          ...telemetryPreferences,
-          cameraEnabled: false,
-        },
-      });
+      void registrarConsentimentoTelemetriaNoServidor(
+        await setTelemetryConsentAccepted({
+          cameraPermissionRequested: true,
+          cameraPermissionGranted: false,
+          preferences: {
+            ...telemetryPreferences,
+            cameraEnabled: false,
+          },
+        })
+      );
       stopFrameCaptureTimer();
       return false;
     }
@@ -1235,12 +1258,15 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       };
       setTelemetryPreferencesState(nextPrefs);
 
-      await setTelemetryConsentPreferences({
+      // Vai para o servidor NA HORA (#195): antes so o Gate registrava, e a
+      // mudanca feita aqui ficava so no aparelho.
+      const record = await setTelemetryConsentPreferences({
         usageEnabled: nextPrefs.usageEnabled,
         performanceEnabled: nextPrefs.performanceEnabled,
         chatEnabled: nextPrefs.chatEnabled,
         cameraEnabled: nextPrefs.cameraEnabled,
       });
+      void registrarConsentimentoTelemetriaNoServidor(record);
     },
     [setCameraOptIn, telemetryPreferences]
   );
@@ -1248,6 +1274,21 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void loadConsentState();
   }, [loadConsentState]);
+
+  // Estado do servidor mudou (data informada, responsavel aceitou ou revogou):
+  // reaplica o registro local por cima dele. Revogacao para a coleta na hora.
+  useEffect(() => {
+    return assinarEstadoConsentimento(() => {
+      void loadConsentState().then((applied) => {
+        if (applied.status !== "accepted" && sessionRef.current) {
+          void endStudySession("session_end");
+        }
+        if (!applied.preferences.cameraEnabled) {
+          stopFrameCaptureTimer();
+        }
+      });
+    });
+  }, [endStudySession, loadConsentState, stopFrameCaptureTimer]);
 
   useEffect(() => {
     return subscribeTelemetryConsentChanges((record) => {

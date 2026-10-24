@@ -20,6 +20,8 @@ import {
   useWindowDimensions,
 } from "react-native";
 import tinycolor from "tinycolor2";
+import { useEstadoConsentimento } from "@/hooks/useEstadoConsentimento";
+import { ModoRestritoError } from "@/utils/consentimentoResponsavel";
 
 type Props = {
   topicoId?: number | null;
@@ -161,6 +163,11 @@ function buildTutorialTips(
   return tips;
 }
 
+const MENSAGEM_MENTOR_BLOQUEADO =
+  "O mentor de IA está desligado no modo restrito. Trilhas, questões e progresso continuam funcionando. " +
+  "Para liberar, informe sua data de nascimento em Perfil › Coleta e acessos e, se você tiver menos de 18 anos, " +
+  "peça ao seu responsável para autorizar o mentor.";
+
 export function IAMentorPanel({
   topicoId,
   classeId,
@@ -194,6 +201,7 @@ export function IAMentorPanel({
   const scopeHistoryRef = useRef<Record<string, ChatMessage[]>>({});
 
   const [draft, setDraft] = useState("");
+  const estadoConsentimento = useEstadoConsentimento();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sending, setSending] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -426,6 +434,8 @@ export function IAMentorPanel({
     });
   };
 
+  const mentorLiberado = estadoConsentimento.finalidades.mentor;
+
   const handleTutorialAction = (tip: TutorialTip) => {
     if (scope === "trilha_home") {
       hasManualHomeOpenRef.current = true;
@@ -437,6 +447,14 @@ export function IAMentorPanel({
   const handleSend = async () => {
     const text = draft.trim();
     if (!text || sending || !canChat || classeId == null) return;
+
+    // Modo restrito (#195): sem a finalidade `mentor`, nada sai do aparelho.
+    // O servidor tambem recusa (403 modo_restrito); isto so evita a viagem.
+    if (!mentorLiberado) {
+      setDraft("");
+      appendAssistantMessage(MENSAGEM_MENTOR_BLOQUEADO);
+      return;
+    }
 
     const nextUserMessage: ChatMessage = {
       id: `${Date.now()}:user`,
@@ -496,6 +514,10 @@ export function IAMentorPanel({
         setIsOpen(false);
       }
     } catch (error) {
+      if (error instanceof ModoRestritoError) {
+        appendAssistantMessage(error.message || MENSAGEM_MENTOR_BLOQUEADO);
+        return;
+      }
       appendAssistantMessage(
         "Estou aqui para conversar com você sobre personalização, métricas e estratégia de estudo, mas falhei ao responder agora."
       );
@@ -770,13 +792,15 @@ export function IAMentorPanel({
               value={draft}
               onChangeText={setDraft}
               placeholder={
-                scope === "trilha_home"
+                !mentorLiberado
+                  ? "Mentor de IA desligado no modo restrito"
+                  : scope === "trilha_home"
                   ? "Pergunte sobre a trilha, métricas ou personalização"
                   : "Responda ao guia ou pergunte sobre este módulo"
               }
               placeholderTextColor={palette.textSubtle}
               style={[styles.chatInput, { color: palette.text }]}
-              editable={!sending && canChat}
+              editable={!sending && canChat && mentorLiberado}
               multiline
               textAlignVertical="top"
             />

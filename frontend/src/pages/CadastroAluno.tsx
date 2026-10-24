@@ -17,6 +17,7 @@ import {
   normalizarEmail,
   validarAcesso,
 } from "@/lib/cadastroEmUmaEtapa";
+import { ehMenorDeIdade, hojeEmBrasilia, validarDataNascimento } from "@/lib/dataNascimento";
 
 const STORAGE_PREFIX = "pending-signup:";
 const PLAY_STORE_LINK = import.meta.env.VITE_PLAY_STORE_LINK || "";
@@ -39,6 +40,9 @@ const CadastroAluno = () => {
   const [showSenha, setShowSenha] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [termos, setTermos] = useState(false);
+  // #195: pedida na criação da conta (como a confirmação de senha). Vai para
+  // `aluno_nascimento` quando o cadastro do aluno for concluído, após confirmar o e-mail.
+  const [dataNascimento, setDataNascimento] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [stage, setStage] = useState<Stage>("acesso");
   const [infoMessage, setInfoMessage] = useState("");
@@ -122,7 +126,7 @@ const CadastroAluno = () => {
 
       // Daqui para baixo é CRIAÇÃO. Exigir confirmação de senha e termos só agora não revela
       // nada: a mesma exigência aparece para quem errou a senha de uma conta existente.
-      const erroCriacao = validarAcesso(dados, true);
+      const erroCriacao = validarAcesso(dados, true) ?? validarDataNascimento(dataNascimento);
       if (erroCriacao) {
         toast.error(erroCriacao);
         return;
@@ -135,7 +139,10 @@ const CadastroAluno = () => {
         return;
       }
 
-      localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`, JSON.stringify({ tipo: "aluno", email: emailLower }));
+      localStorage.setItem(
+        `${STORAGE_PREFIX}${emailLower}`,
+        JSON.stringify({ tipo: "aluno", email: emailLower, data_nascimento: dataNascimento })
+      );
       setStage("confirm-sent");
       setInfoMessage("Enviamos um link de confirmação. Após confirmar, conclua seu cadastro.");
     } catch (err) {
@@ -212,6 +219,24 @@ const CadastroAluno = () => {
         </div>
       </div>
 
+      <div className="space-y-2">
+        <Label htmlFor="data-nascimento">Data de nascimento</Label>
+        <Input
+          id="data-nascimento"
+          type="date"
+          value={dataNascimento}
+          max={hojeEmBrasilia()}
+          onChange={(e) => setDataNascimento(e.target.value)}
+          className="bg-card/50 border-border text-foreground focus:ring-primary/20 focus:border-primary/50"
+        />
+        <p className="text-xs text-muted-foreground">
+          Só para criar conta. Fica visível apenas para você.
+          {dataNascimento && !validarDataNascimento(dataNascimento) && ehMenorDeIdade(dataNascimento)
+            ? " Como você tem menos de 18 anos, câmera, análise de emoções, telemetria, mentor de IA e pesquisa só ligam depois que seu responsável autorizar, no app ou pelo termo em papel entregue ao professor. Trilhas, questões e progresso funcionam desde já."
+            : ""}
+        </p>
+      </div>
+
       <div className="flex items-start space-x-2">
         <Checkbox id="termos" checked={termos} onCheckedChange={(v) => setTermos(Boolean(v))} />
         <Label htmlFor="termos" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
@@ -238,7 +263,7 @@ const CadastroAluno = () => {
         <ArrowRight className="w-4 h-4 ml-2" />
       </Button>
       <p className="text-xs text-muted-foreground text-center">
-        Confirmar a senha e aceitar os termos é necessário apenas quando a conta é nova.
+        Confirmar a senha, informar a data de nascimento e aceitar os termos é necessário apenas quando a conta é nova.
       </p>
     </form>
   );

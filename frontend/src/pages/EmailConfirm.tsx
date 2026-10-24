@@ -11,6 +11,7 @@ import { AuthBrand, AuthScenery } from "@/components/auth/AuthScenery";
 import { AlunoSignupWizard } from "@/components/auth/AlunoSignupWizard";
 import { montarMedidaDoPerfil } from "@/features/signup/medidaDoPerfil";
 import { ProfessorSignupForm } from "@/components/auth/ProfessorSignupForm";
+import { dataDoPendente } from "@/lib/dataNascimento";
 
 type Status = "loading" | "ready" | "error";
 type PendingType = "aluno" | "professor" | null;
@@ -187,6 +188,20 @@ export default function EmailConfirm() {
         if (medidaError) throw medidaError;
       } catch (erro) {
         console.warn("[cadastro] medida do perfil nao foi gravada:", erro);
+      }
+
+      // #195: a data de nascimento informada no cadastro. Falhar aqui nao
+      // derruba o cadastro: sem a data o aluno fica no modo restrito e o app
+      // pede de novo no primeiro acesso.
+      const dataNascimento = dataDoPendente(
+        localStorage.getItem(`${STORAGE_PREFIX}${sessionEmail.toLowerCase()}`)
+      );
+      if (dataNascimento) {
+        const { error: dataError } = await supabase.rpc(
+          "aluno_registrar_data_nascimento" as never,
+          { p_data: dataNascimento } as never
+        );
+        if (dataError) console.warn("[cadastro] data de nascimento nao foi gravada:", dataError.message);
       }
 
       localStorage.removeItem(`${STORAGE_PREFIX}${sessionEmail.toLowerCase()}`);

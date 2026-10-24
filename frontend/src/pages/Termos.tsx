@@ -34,7 +34,14 @@ const Termos = () => {
               <div className="space-y-3 text-muted-foreground">
                 <p className="font-semibold">3.1. Requisitos:</p>
                 <ul className="list-disc ml-6 space-y-1">
-                  <li>Você deve ter pelo menos 18 anos ou consentimento parental</li>
+                  <li>
+                    Informar sua data de nascimento. Se você tiver menos de 18 anos, câmera,
+                    análise de emoções, telemetria de uso, mentor de IA e pesquisa só são ligados
+                    depois que um dos pais ou o responsável legal autorizar, item por item, numa
+                    tela própria do aplicativo ou pelo termo em papel entregue ao professor
+                    (LGPD, art. 14). Até lá, trilhas, questões e progresso funcionam normalmente,
+                    e a autorização pode ser revogada a qualquer momento em Perfil › Coleta e acessos.
+                  </li>
                   <li>Fornecer informações precisas e atualizadas</li>
                   <li>Manter a segurança de sua senha</li>
                   <li>Notificar-nos sobre uso não autorizado de sua conta</li>
