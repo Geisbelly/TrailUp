@@ -213,6 +213,12 @@ class Settings(BaseSettings):
     checkpoint_retention_days: int = 3
     checkpoint_retention_enabled: bool = True
     checkpoint_retention_interval_hours: int = 24
+    # Fila externa da retencao (#195, 20261024_03): R2, Storage, OpenAI e
+    # usuario do Auth. Desligada ate a decisao de ligar o expurgo.
+    retencao_externa_enabled: bool = False
+    retencao_externa_interval_seconds: int = 300
+    retencao_externa_lote: int = 50
+    retencao_externa_idade_minima_segundos: int = 600
     personalizacao_job_concurrency: int = 2
     personalizacao_job_poll_sec: int = 5
     personalizacao_job_max_retries: int = 3

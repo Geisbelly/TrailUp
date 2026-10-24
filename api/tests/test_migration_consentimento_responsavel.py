@@ -59,7 +59,10 @@ def test_encadeada_na_head_anterior_e_e_a_unica_head() -> None:
     assert M.revision == "20261024_02"
     assert M.down_revision == "20261024_01"
     script = ScriptDirectory.from_config(_config())
-    assert script.get_heads() == ["20261024_02"]
+    heads = script.get_heads()
+    assert len(heads) == 1
+    # migrations posteriores (ex.: 20261024_03, retencao #195) podem vir depois; 02 tem de estar na cadeia
+    assert "20261024_02" in {rev.revision for rev in script.walk_revisions("base", heads[0])}
 
 
 def test_data_de_nascimento_fora_de_alunos() -> None:

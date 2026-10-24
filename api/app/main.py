@@ -16,6 +16,7 @@ from app.db.migrations import upgrade_database_to_head
 from app.db.session import build_session_factory, execute_with_database_retry
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
 from app.services.personalizacao_jobs import personalizacao_jobs_loop
+from app.services.retencao_externa import retencao_externa_loop
 
 
 def _configure_windows_event_loop_policy() -> None:
@@ -80,10 +81,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if database_url.startswith("postgres"):
             personalizacao_jobs_task = asyncio.create_task(personalizacao_jobs_loop(app))
         app.state.personalizacao_jobs_task = personalizacao_jobs_task
+        retencao_task = None
+        if app_settings.retencao_externa_enabled and database_url.startswith("postgres"):
+            retencao_task = asyncio.create_task(retencao_externa_loop(app))
+        app.state.retencao_externa_task = retencao_task
 
         try:
             yield
         finally:
+            if retencao_task is not None:
+                retencao_task.cancel()
+                try:
+                    await retencao_task
+                except asyncio.CancelledError:
+                    pass
             if personalizacao_jobs_task is not None:
                 personalizacao_jobs_task.cancel()
                 try:
