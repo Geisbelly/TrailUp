@@ -62,7 +62,7 @@ O dominante aqui é o que o produto resolve dos **inteiros persistidos**, inclui
 
 ## 4. Dados, migration e implantação
 
-A migration [`20261024_03`](../../api/alembic/versions/20261024_03_perfil_exploratorio_sem_confianca.py) permite confiança ausente e exige `NULL` para a versão v3. Números antigos permanecem identificados como índices heurísticos v2; não são apagados ou recalculados. Não há tabela nova nem ampliação de permissões. A medida inclui `qualidade.interpretacao = exploratoria_nao_probabilistica` e `ordenacao_confirmada = true`.
+A migration [`20261024_04`](../../api/alembic/versions/20261024_04_perfil_exploratorio_sem_confianca.py) permite confiança ausente e exige `NULL` para a versão v3. Números antigos permanecem identificados como índices heurísticos v2; não são apagados ou recalculados. Não há tabela nova nem ampliação de permissões. A medida inclui `qualidade.interpretacao = exploratoria_nao_probabilistica` e `ordenacao_confirmada = true`.
 
 **Ordem de implantação:** aplicar a migration pelo fluxo normal do projeto antes do frontend v3. O cliente v2 continua compatível com a tabela migrada. Não foi aplicada migration em produção nesta sessão. Rollback com medidas v3 presentes falha de forma transacional: não fabricamos confiança zero nem excluímos resultados para forçar `NOT NULL`.
 
