@@ -23,9 +23,8 @@ describe("pontuarItem", () => {
   it("resposta ausente ou invalida nao quebra nem vira NaN", () => {
     expect(pontuarItem(undefined, false, MAX)).toBe(0);
     expect(pontuarItem(Number.NaN, false, MAX)).toBe(0);
-    // ausente num item reverso vale o maximo: nao concordar com o reverso E
-    // evidencia a favor do eixo. Explicito para ninguem "consertar" sem ver.
-    expect(pontuarItem(undefined, true, MAX)).toBe(5);
+    // Ausência não é evidência de preferência, mesmo no item reverso.
+    expect(pontuarItem(undefined, true, MAX)).toBe(0);
   });
 
   it("resposta fora da escala e limitada", () => {
@@ -78,64 +77,33 @@ describe("centrarPorRespondente", () => {
   });
 });
 
-describe("qualidadeDaResposta", () => {
-  it("resposta variada e coerente tem confianca alta", () => {
-    const q = qualidadeDaResposta({
-      respostasBrutas: [5, 1, 4, 2, 3, 0],
-      paresReversos: [{ direto: 5, reverso: 0 }, { direto: 1, reverso: 4 }],
-      escalaMax: MAX,
-    });
-    expect(q.indice).toBeGreaterThan(0.9);
-    expect(q.motivos).toEqual([]);
+describe("qualidadeDaResposta — descritores sem diagnóstico", () => {
+  const base = { respostasBrutas: [5, 1, 4, 2, 3, 0],
+    paresReversos: [{ direto: 5, reverso: 0 }], escalaMax: MAX };
+
+  it("não transforma coerência, uniformidade ou divergência em certeza", () => {
+    for (const respostas of [[5, 1, 4, 2], [5, 5, 5, 5], [0, 0, 0, 0]]) {
+      const q = qualidadeDaResposta({ ...base, respostasBrutas: respostas });
+      expect(q.indice).toBeNull();
+      expect(q.motivos).toEqual(["instrumento exploratorio; confianca nao estimada"]);
+    }
   });
 
-  it("marcou tudo igual: confianca cai e o motivo fica escrito", () => {
-    const q = qualidadeDaResposta({
-      respostasBrutas: [5, 5, 5, 5, 5, 5],
-      paresReversos: [{ direto: 5, reverso: 5 }],
-      escalaMax: MAX,
-    });
-    expect(q.indice).toBeLessThan(0.5);
-    expect(q.motivos).toContain("respostas quase todas iguais");
-    expect(q.motivos).toContain("concordou com afirmacoes opostas");
+  it("descreve divergência nos pares sem concluir que houve aquiescência", () => {
+    const q = qualidadeDaResposta({ ...base, paresReversos: [{ direto: 5, reverso: 5 }] });
+    expect(q.aquiescencia).toBe(1); // nome legado; sem diagnóstico causal
+    expect(q.indice).toBeNull();
   });
 
-  it("aquiescencia: concordar com o item e com o reverso derruba a confianca", () => {
-    const q = qualidadeDaResposta({
-      respostasBrutas: [5, 5, 1, 0, 4, 2],
-      paresReversos: [{ direto: 5, reverso: 5 }, { direto: 4, reverso: 5 }],
-      escalaMax: MAX,
-    });
-    expect(q.aquiescencia).toBeGreaterThan(0.4);
-    expect(q.motivos).toContain("concordou com afirmacoes opostas");
+  it("não penaliza tempo sem limiar validado", () => {
+    expect(qualidadeDaResposta({ ...base, segundosPorItem: 0.1 }))
+      .toEqual(qualidadeDaResposta({ ...base, segundosPorItem: 10 }));
   });
 
-  it("tempo implausivel por item conta contra", () => {
-    const base = { respostasBrutas: [5, 1, 4, 2], paresReversos: [], escalaMax: MAX };
-    const normal = qualidadeDaResposta({ ...base, segundosPorItem: 6 });
-    const correndo = qualidadeDaResposta({ ...base, segundosPorItem: 0.4 });
-    expect(correndo.indice).toBeLessThan(normal.indice);
-    expect(correndo.motivos).toContain("tempo de resposta implausivel");
-  });
-
-  it("nunca zera: resposta ruim reduz confianca, nao apaga o perfil", () => {
-    // O cadastro precisa entregar um perfil; o que muda e quanto confiar nele.
-    const q = qualidadeDaResposta({
-      respostasBrutas: [5, 5, 5, 5],
-      paresReversos: [{ direto: 5, reverso: 5 }],
-      escalaMax: MAX,
-      segundosPorItem: 0.2,
-    });
-    expect(q.indice).toBeGreaterThanOrEqual(0.15);
-    expect(q.indice).toBeLessThan(0.3);
-  });
-
-  it("sem pares reversos a aquiescencia nao e inventada", () => {
-    const q = qualidadeDaResposta({
-      respostasBrutas: [5, 1, 3],
-      paresReversos: [],
-      escalaMax: MAX,
-    });
+  it("descreve variância e ausência de pares sem fabricar confiança", () => {
+    const q = qualidadeDaResposta({ ...base, respostasBrutas: [0, 5], paresReversos: [] });
+    expect(q.desvio).toBe(2.5);
     expect(q.aquiescencia).toBe(0);
+    expect(q.indice).toBeNull();
   });
 });

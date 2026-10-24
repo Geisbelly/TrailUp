@@ -1,26 +1,8 @@
 /**
- * Escore do quiz BrainHex com estilo de resposta controlado e confianca
- * declarada. Ver docs/superpowers/specs/2026-10-02-perfil-brainhex-probabilistico-design.md
- *
- * O escore antigo somava itens positivos por eixo e normalizava para
- * percentual. Isso mede duas coisas misturadas: a preferencia da pessoa e o
- * quanto ela concorda com afirmacoes em geral. Quem marca 5 em tudo recebia um
- * perfil decidido pelos PESOS do mapeamento, nao pela propria preferencia.
- *
- * Aqui sao tres contas separadas:
- *
- * 1. `pontuarItensReversos` — item reverso vale `SCALE_MAX - resposta`. Quem
- *    concorda com o item E com o reverso esta aquiescendo, nao preferindo.
- * 2. `centrarPorRespondente` — subtrai a media do PROPRIO respondente de cada
- *    eixo (ipsatizacao). Depois disso o escore responde "o que esta pessoa
- *    prefere MAIS", nao "o quanto ela concorda".
- * 3. `qualidadeDaResposta` — variancia, concordancia com reversos e tempo por
- *    item viram um indice 0..1 que se torna a CONFIANCA inicial do perfil.
- *
- * A confianca existe porque o perfil alimenta cor, voz, tom editorial e midia
- * gerada. Entregar rotulo sem incerteza faz o sistema tratar palpite como fato.
+ * Operações descritivas da adaptação TrailUp, sem estimativa de confiança.
+ * Reversos não demonstram aquiescência individual: van Sonderen et al. (2013).
+ * Ver docs/analises/issue-1-adaptacao-evidencias.md.
  */
-
 export type RespostaBruta = Record<string, number>;
 
 export type ItemPontuado = {
@@ -32,11 +14,11 @@ export type ItemPontuado = {
 };
 
 export type QualidadeDaResposta = {
-  /** 0..1. Entra como confianca inicial do perfil. */
-  indice: number;
+  /** Não calibrado. null é ausência de estimativa, não confiança zero. */
+  indice: null;
   /** Desvio-padrao das respostas. ~0 = marcou tudo igual. */
   desvio: number;
-  /** 0..1 — quanto a pessoa concordou com o item E com o reverso dele. */
+  /** Nome legado: divergência média entre pares, não diagnóstico de aquiescência. */
   aquiescencia: number;
   motivos: string[];
 };
@@ -47,7 +29,9 @@ export function pontuarItem(
   reverso: boolean,
   escalaMax: number,
 ): number {
-  const bruto = Number.isFinite(resposta) ? Math.min(Math.max(Number(resposta), 0), escalaMax) : 0;
+  // Ausência não é discordância: o cálculo parcial serve somente à prévia.
+  if (!Number.isFinite(resposta)) return 0;
+  const bruto = Math.min(Math.max(Number(resposta), 0), escalaMax);
   return reverso ? escalaMax - bruto : bruto;
 }
 
@@ -95,15 +79,9 @@ export function centrarPorRespondente(
 }
 
 /**
- * Indice de qualidade da resposta -> confianca inicial.
- *
- * Tres sinais, cada um com motivo escrito para a decisao ser auditavel:
- * - variancia proxima de zero (marcou tudo igual);
- * - aquiescencia alta (concordou com o item e com o reverso);
- * - tempo por item implausivel, quando medido.
- *
- * Nunca devolve 0: resposta ruim reduz a confianca, nao apaga o perfil — o
- * cadastro precisa entregar alguma coisa.
+ * Descritores para auditoria, sem penalidades por rapidez, uniformidade ou
+ * divergência de itens. Não há limiares validados no público-alvo. A função
+ * mantém o nome/campos históricos; seus números não classificam a pessoa.
  */
 export function qualidadeDaResposta(params: {
   respostasBrutas: readonly number[];
@@ -111,43 +89,13 @@ export function qualidadeDaResposta(params: {
   escalaMax: number;
   segundosPorItem?: number | null;
 }): QualidadeDaResposta {
-  const { respostasBrutas, paresReversos, escalaMax, segundosPorItem } = params;
-  const motivos: string[] = [];
-  let indice = 1;
-
-  const desvio = desvioPadrao(respostasBrutas);
-  // Abaixo de 0.5 numa escala 0..5 a pessoa praticamente nao diferenciou.
-  if (desvio < 0.5) {
-    indice -= 0.4;
-    motivos.push("respostas quase todas iguais");
-  } else if (desvio < 1) {
-    indice -= 0.15;
-    motivos.push("pouca variacao entre respostas");
-  }
-
-  // Par coerente: direto alto + reverso baixo (ou o contrario). Incoerente:
-  // os dois altos. A soma de um par coerente fica perto de `escalaMax`.
-  const incoerencias = paresReversos.map(({ direto, reverso }) =>
-    Math.abs(direto + reverso - escalaMax) / escalaMax,
-  );
-  const aquiescencia = paresReversos.length > 0 ? media(incoerencias) : 0;
-  if (aquiescencia > 0.4) {
-    indice -= 0.35;
-    motivos.push("concordou com afirmacoes opostas");
-  } else if (aquiescencia > 0.25) {
-    indice -= 0.15;
-    motivos.push("alguma inconsistencia entre item e reverso");
-  }
-
-  if (typeof segundosPorItem === "number" && segundosPorItem > 0 && segundosPorItem < 1.5) {
-    indice -= 0.25;
-    motivos.push("tempo de resposta implausivel");
-  }
-
+  const respostas = params.respostasBrutas.filter(Number.isFinite);
+  const pares = params.paresReversos.filter(p => Number.isFinite(p.direto) && Number.isFinite(p.reverso));
   return {
-    indice: Math.min(1, Math.max(0.15, indice)),
-    desvio,
-    aquiescencia,
-    motivos,
+    indice: null,
+    desvio: desvioPadrao(respostas),
+    aquiescencia: params.escalaMax > 0 ? media(pares.map(p =>
+      Math.abs(p.direto + p.reverso - params.escalaMax) / params.escalaMax)) : 0,
+    motivos: ["instrumento exploratorio; confianca nao estimada"],
   };
 }

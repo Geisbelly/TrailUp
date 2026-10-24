@@ -5,6 +5,24 @@ import {
   resolveActiveBrainHexProfile,
   resolveRepresentativeBrainHexProfiles,
 } from "./brainHex";
+import { perfilDaMissao } from "../services/missoes/missaoModel";
+
+test("empate no secundário mantém a escolha em perfil visual e missões, independente da consulta", () => {
+  const linhas = [
+    { nome: "seeker", afinidade: 94 },
+    { nome: "mastermind", afinidade: 1 },
+    { nome: "survivor", afinidade: 1 },
+    { nome: "achiever", afinidade: 1 },
+    { nome: "conqueror", afinidade: 1 },
+    { nome: "daredevil", afinidade: 1 },
+    { nome: "socializer", afinidade: 1 },
+  ];
+  for (const rows of [linhas, [...linhas].reverse(), [...linhas.slice(3), ...linhas.slice(0, 3)]]) {
+    assert.deepEqual(resolveRepresentativeBrainHexProfiles(rows), ["seeker", "achiever"]);
+    assert.equal(resolveActiveBrainHexProfile(rows, "achiever"), "achiever");
+    assert.equal(perfilDaMissao(rows, "achiever"), "achiever");
+  }
+});
 
 test("inclui os dois perfis mais fortes com afinidade positiva", () => {
   assert.deepEqual(

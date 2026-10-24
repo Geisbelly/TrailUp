@@ -17,6 +17,7 @@ Documentação que não pertence a um único serviço:
 
 - **[Análise da issue #1: cadastro e BrainHex](./analises/issue-1-cadastro-brainhex.md)** — auditoria do fluxo, revisão crítica de 12 estudos, evidências reproduzíveis e critérios propostos para conclusão (24/10/2026).
 - **[Reverificação dos perfis da issue #1](./analises/issue-1-reverificacao-perfis.md)** — testes dos sete perfis, empates, validação e consumo nas missões; contraexemplos que ainda impedem o fechamento (24/10/2026).
+- **[Adaptação exploratória v3 baseada nas evidências](./analises/issue-1-adaptacao-evidencias.md)** — decisões implementadas, fontes primárias, parâmetros ainda sem calibração, testes e requisitos de implantação.
 
 - **[`tcc/`](./tcc/)** — documento do TCC (versão única).
   Material de origem do Drive (proposta, UX, TCC 1, monografia) em

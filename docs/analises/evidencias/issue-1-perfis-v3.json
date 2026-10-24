@@ -1,0 +1,249 @@
+{
+  "revisao": "8a9b66224aeabd1a729a01263222e387220f2aa5",
+  "instrumento": "2026-10-24-v3-exploratorio",
+  "semente": 20261024,
+  "ordens": 5040,
+  "casosAleatorios": 5000,
+  "resumo": {
+    "criterios": 21,
+    "criteriosAprovados": 21,
+    "criteriosComFalhas": 0,
+    "verificacoes": 86467,
+    "falhas": 0
+  },
+  "matriz": [
+    {
+      "esperado": "seeker",
+      "dominante": "seeker",
+      "percentual": {
+        "achiever": 1,
+        "conqueror": 1,
+        "daredevil": 1,
+        "mastermind": 1,
+        "seeker": 94,
+        "socializer": 1,
+        "survivor": 1
+      },
+      "confianca": null
+    },
+    {
+      "esperado": "survivor",
+      "dominante": "survivor",
+      "percentual": {
+        "achiever": 1,
+        "conqueror": 1,
+        "daredevil": 1,
+        "mastermind": 1,
+        "seeker": 1,
+        "socializer": 1,
+        "survivor": 94
+      },
+      "confianca": null
+    },
+    {
+      "esperado": "daredevil",
+      "dominante": "daredevil",
+      "percentual": {
+        "achiever": 1,
+        "conqueror": 1,
+        "daredevil": 94,
+        "mastermind": 1,
+        "seeker": 1,
+        "socializer": 1,
+        "survivor": 1
+      },
+      "confianca": null
+    },
+    {
+      "esperado": "mastermind",
+      "dominante": "mastermind",
+      "percentual": {
+        "achiever": 1,
+        "conqueror": 1,
+        "daredevil": 1,
+        "mastermind": 94,
+        "seeker": 1,
+        "socializer": 1,
+        "survivor": 1
+      },
+      "confianca": null
+    },
+    {
+      "esperado": "conqueror",
+      "dominante": "conqueror",
+      "percentual": {
+        "achiever": 1,
+        "conqueror": 94,
+        "daredevil": 1,
+        "mastermind": 1,
+        "seeker": 1,
+        "socializer": 1,
+        "survivor": 1
+      },
+      "confianca": null
+    },
+    {
+      "esperado": "socializer",
+      "dominante": "socializer",
+      "percentual": {
+        "achiever": 1,
+        "conqueror": 1,
+        "daredevil": 1,
+        "mastermind": 1,
+        "seeker": 1,
+        "socializer": 94,
+        "survivor": 1
+      },
+      "confianca": null
+    },
+    {
+      "esperado": "achiever",
+      "dominante": "achiever",
+      "percentual": {
+        "achiever": 94,
+        "conqueror": 1,
+        "daredevil": 1,
+        "mastermind": 1,
+        "seeker": 1,
+        "socializer": 1,
+        "survivor": 1
+      },
+      "confianca": null
+    }
+  ],
+  "sensibilidade": {
+    "media_por_eixo": {
+      "comparacoes": 5000,
+      "dominanteDiferente": 2289
+    },
+    "so_escala": {
+      "comparacoes": 5000,
+      "dominanteDiferente": 2410
+    },
+    "so_ordenacao": {
+      "comparacoes": 5000,
+      "dominanteDiferente": 2960
+    },
+    "temperatura_0_6": {
+      "comparacoes": 5000,
+      "dominanteDiferente": 15
+    },
+    "temperatura_2_4": {
+      "comparacoes": 5000,
+      "dominanteDiferente": 56
+    }
+  },
+  "confiancaComEscalaConstante": {
+    "valores": [
+      null
+    ],
+    "interpretacao": "nao estimada"
+  },
+  "criterios": {
+    "instrumento_preserva_ids_e_perfis": {
+      "aprovados": 1,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "polaridade_direta_e_reversa": {
+      "aprovados": 6,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "sete_perfis_com_preferencia_explicita": {
+      "aprovados": 7,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "perfil_oferecido_no_cadastro_preservado_nas_missoes": {
+      "aprovados": 10515,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "perfil_oferecido_preservado_na_aparencia": {
+      "aprovados": 10515,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "preferencia_maxima_isolada_resiste_a_ordenacao": {
+      "aprovados": 35280,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "aumentar_preferencia_aumenta_afinidade_bruta": {
+      "aprovados": 42,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "escala_constante_respeita_preferencia_declarada": {
+      "aprovados": 5040,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "escala_constante_nao_inventa_diferencas_de_confianca": {
+      "aprovados": 5040,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "spearman_constante_nao_estimavel": {
+      "aprovados": 1,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "spearman_empates_usa_postos_medios": {
+      "aprovados": 1,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "spearman_sem_empates": {
+      "aprovados": 2,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "rejeita_resposta_fora_da_escala_discreta": {
+      "aprovados": 7,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "rejeita_questionario_incompleto": {
+      "aprovados": 1,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "aceita_questionario_completo_valido": {
+      "aprovados": 1,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "rejeita_ordenacao_invalida": {
+      "aprovados": 3,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "vetor_valido_finito_soma_100": {
+      "aprovados": 5000,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "dominante_exibido_tem_percentual_maximo": {
+      "aprovados": 5000,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "percentual_nao_inverte_ordem_bruta": {
+      "aprovados": 5000,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "serializacao_preserva_vetor_e_ordem": {
+      "aprovados": 5000,
+      "falhas": 0,
+      "exemplos": []
+    },
+    "sem_observacoes_preserva_prior": {
+      "aprovados": 5,
+      "falhas": 0,
+      "exemplos": []
+    }
+  }
+}

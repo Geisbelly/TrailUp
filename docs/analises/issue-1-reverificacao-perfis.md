@@ -6,6 +6,8 @@
 
 Esta verificação complementa o [parecer e a pesquisa bibliográfica](./issue-1-cadastro-brainhex.md). O PR #614 incorporou a pesquisa; não corrigiu o algoritmo. A mudança de consentimento/data de nascimento, #613, também presente nesta base, acrescentou etapas ao cadastro sem alterar o cálculo auditado. A issue permanece aberta com seus três critérios originais.
 
+**Atualização:** a [adaptação v3](./issue-1-adaptacao-evidencias.md) corrige os contraexemplos abaixo e muda o contrato de confiança. Este relatório e seu JSON preservam a verificação anterior; executar o script na v3 produz resultados novos.
+
 ## Execução e alcance
 
 - **131 testes existentes aprovados**, em 12 arquivos de cadastro, BrainHex, senha e nascimento.

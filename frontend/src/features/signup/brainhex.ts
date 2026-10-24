@@ -50,11 +50,8 @@ export interface BrainHexQuestion {
    * Item reverso: concordar com ele e evidencia CONTRA o eixo. Pontuado como
    * `SCALE_MAX - resposta` (ver brainhexScoring.ts).
    *
-   * Existe um por eixo, de proposito. Sem reverso nao da' para separar
-   * preferencia de aquiescencia: quem marca 5 em tudo recebia um perfil
-   * decidido pelos pesos do mapeamento, nao pela propria preferencia.
-   * `reversoDe` aponta o item direto que forma o par, usado pelo indice de
-   * qualidade da resposta.
+   * Um por eixo na adaptação legada. `reversoDe` identifica um par para
+   * descrever divergências, sem diagnosticar aquiescência ou eliminar viés.
    */
   reverse?: boolean;
   reversoDe?: string;
@@ -62,8 +59,8 @@ export interface BrainHexQuestion {
 
 /**
  * Escala: 0..5 (0 = nada verdadeiro, 5 = extremamente verdadeiro)
- * Você pediu "diminuir a escala" mas "mais questões".
- * Aqui tem mais itens e escala menor.
+ * Formato da adaptação autoral do TrailUp, sem equivalência demonstrada
+ * com a escala do instrumento original.
  */
 export const SCALE_MAX = 5;
 
@@ -73,12 +70,9 @@ export type ProfileRawScores = Record<BrainHexProfileKey, number>;
 export type ProfilePercentages = Record<BrainHexProfileKey, number>;
 
 /**
- * IMPORTANTE:
- * BrainHex "oficial" tem nuances e subcomponentes (e não é só 7 eixos).
- * Aqui o resultado fica "real" no sentido de:
- * - eixos separados e coerentes
- * - Daredevil não vira "survivor 0.7"
- * - perfis combinam eixos de forma lógica
+ * Itens autorais da adaptação TrailUp; não reproduzem o questionário original.
+ * Conteúdo e mapeamento ainda exigem entrevistas cognitivas e validação local.
+ * Não interpretar os eixos como estilos de aprendizagem ou capacidades.
  */
 export const BRAINHEX_QUESTIONS: BrainHexQuestion[] = [
   // curiosity (Seeker)
@@ -160,7 +154,7 @@ export function calculateAxisScores(answers: BrainHexAnswers): AxisScores {
 }
 
 /**
- * Mapeamento por eixos (coerente):
+ * Mapeamento por eixos (legado, sem calibração):
  * - Seeker: Curiosity + um pouco de Immersion (descoberta narrativa)
  * - Survivor: Challenge (persistência sob pressão)
  * - Daredevil: Risk + um pouco de Challenge (ação + insistência)
@@ -169,7 +163,8 @@ export function calculateAxisScores(answers: BrainHexAnswers): AxisScores {
  * - Socializer: Social (+ pitada de Immersion, pela conexão)
  * - Achiever: Completion + um pouco de Mastery (organização/controle)
  *
- * Os pesos aqui são a "parte realista": não deixa perfis colarem demais.
+ * Coeficientes legados sem calibração empírica; não demonstram separação dos
+ * construtos. Ver docs/analises/issue-1-adaptacao-evidencias.md.
  */
 export function mapAxisToProfiles(axis: AxisScores): ProfileRawScores {
   const seeker = axis.curiosity * 1.0 + axis.immersion * 0.25;
@@ -232,7 +227,9 @@ export function resolveRepresentativeBrainHexResults<
 }
 
 export function isAllAnswered(answers: BrainHexAnswers) {
-  return BRAINHEX_QUESTIONS.every((q) => typeof answers[q.id] === "number");
+  return BRAINHEX_QUESTIONS.every((q) =>
+    Number.isInteger(answers[q.id]) && answers[q.id] >= 0 && answers[q.id] <= SCALE_MAX,
+  );
 }
 
 
@@ -330,7 +327,7 @@ export const PROFILES = {
     textColor: "text-[#827b9d]",
     bgColor: "bg-[#827b9d]",
     cardStyle: "bg-[#827b9d]/10 border-[#827b9d]/20",
-    text: "Curte planejar e entender o porquê. Aprende melhor com estrutura, lógica e visão geral do sistema.",
+    text: "Gosta de planejar, investigar a lógica e organizar estratégias para resolver problemas.",
   },
   conqueror: {
     key: "conqueror",
@@ -350,7 +347,7 @@ export const PROFILES = {
     textColor: "text-[#e75e32]",
     bgColor: "bg-[#e75e32]",
     cardStyle: "bg-[#e75e32]/10 border-[#e75e32]/20",
-    text: "Valoriza interação. Aprende melhor em grupo, com troca de ideias e atividades cooperativas.",
+    text: "Valoriza interação, troca de ideias e atividades cooperativas.",
   },
   achiever: {
     key: "achiever",

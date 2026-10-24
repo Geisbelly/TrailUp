@@ -2,7 +2,7 @@
  * Aceitação local do cálculo de perfis; não acessa Supabase nem cria alunos.
  * Na raiz: node scripts/testar-perfis-issue-1.mjs
  * stdout: JSON reproduzível; exit 1: pelo menos um critério não foi atendido.
- * Separado do Vitest porque audita também defeitos conhecidos ainda abertos.
+ * Execução explícita dos cenários combinatórios e da integração frontend/mobile.
  * Não usa testes invertidos (.fails) e não declara defeitos como aprovações.
  */
 import { execFileSync } from "node:child_process";
@@ -13,6 +13,7 @@ const repo = fileURLToPath(new URL("../", import.meta.url));
 const server = await createServer({
   root: fileURLToPath(new URL("../frontend/", import.meta.url)),
   configFile: false,
+  resolve: { alias: { "@/constants/brainHexProfiles": fileURLToPath(new URL("../mobile/src/constants/brainHexProfiles.ts", import.meta.url)) } },
   logLevel: "silent",
   appType: "custom",
   optimizeDeps: { noDiscovery: true, include: [] },
@@ -44,6 +45,7 @@ try {
   const measure = await server.ssrLoadModule("/src/features/signup/medidaDoPerfil.ts");
   const update = await server.ssrLoadModule("/src/features/signup/atualizacaoDoPerfil.ts");
   const missions = await server.ssrLoadModule(`/@fs${fileURLToPath(new URL("../mobile/src/services/missoes/missaoModel.ts", import.meta.url))}`);
+  const visual = await server.ssrLoadModule(`/@fs${fileURLToPath(new URL("../mobile/src/utils/brainHex.ts", import.meta.url))}`);
   // Oráculos explícitos: expectativas não são geradas a partir do mapeamento testado.
   const perfis = ["seeker", "survivor", "daredevil", "mastermind", "conqueror", "socializer", "achiever"];
   const eixos = {
@@ -62,6 +64,8 @@ try {
       const aceito = missions.perfilDaMissao(linhas, escolhido);
       check("perfil_oferecido_no_cadastro_preservado_nas_missoes", aceito === escolhido,
         { ...contexto, oferecidos, escolhido, aceito, percentual: r.percentual });
+      check("perfil_oferecido_preservado_na_aparencia", visual.resolveActiveBrainHexProfile([...linhas].reverse(), escolhido) === escolhido,
+        { ...contexto, escolhido, percentual: r.percentual });
     }
   }
   function respostas(niveis = {}, padrao = 0) {
@@ -104,12 +108,12 @@ try {
 
   const constantes = respostas({}, 5);
   const referencia = prior.computarPerfil({ answers: constantes, ordenacao: perfis });
-  let minima = Infinity, maxima = -Infinity;
+  const confiancas = new Set();
   for (const ordem of ordens) {
     const r = prior.computarPerfil({ answers: constantes, ordenacao: ordem });
-    minima = Math.min(minima, r.confianca); maxima = Math.max(maxima, r.confianca);
+    confiancas.add(r.confianca);
     check("escala_constante_respeita_preferencia_declarada", r.dominante === ordem[0], { ordem, dominante: r.dominante });
-    check("escala_constante_nao_inventa_diferencas_de_confianca", perto(r.confianca, referencia.confianca),
+    check("escala_constante_nao_inventa_diferencas_de_confianca", r.confianca === null && referencia.confianca === null,
       { ordem, confianca: r.confianca, referencia: referencia.confianca, concordancia: r.concordancia });
   }
   const pontuacao = ranking.pontuarOrdenacao(perfis);
@@ -143,25 +147,40 @@ try {
   // PRNG inteiro com semente fixa, independente do embaralhamento do produto.
   let seed = 20261024;
   const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
+  // Contrafactuais, não testes de acerto nem propostas calibradas. Quantificam
+  // dependência de decisões legadas nos MESMOS 5.000 dados sintéticos.
+  const sensibilidade = Object.fromEntries(["media_por_eixo", "so_escala", "so_ordenacao", "temperatura_0_6", "temperatura_2_4"]
+    .map(nome => [nome, { comparacoes: 0, dominanteDiferente: 0 }]));
   for (let caso = 0; caso < 5000; caso++) {
     const answers = Object.fromEntries(ids.map(id => [id, Math.floor(random() * 6)]));
     const ordenacao = ordens[Math.floor(random() * ordens.length)];
     const r = prior.computarPerfil({ answers, ordenacao });
+    const rank = ranking.pontuarOrdenacao(ordenacao);
+    // Recupera a parcela da escala da mistura legada 0.5/0.5, sem remapear itens.
+    const escala = Object.fromEntries(perfis.map(p => [p, 2 * r.afinidade[p] - rank[p]]));
+    const media = ranking.combinarPrior({ escalaCentrada: Object.fromEntries(perfis.map(p => [p, escala[p] / 4])), ordenacao: rank }).afinidade;
+    const alternativas = { media_por_eixo: prior.afinidadeEmPercentual(media),
+      so_escala: prior.afinidadeEmPercentual(escala), so_ordenacao: prior.afinidadeEmPercentual(rank),
+      temperatura_0_6: prior.afinidadeEmPercentual(r.afinidade, 0.6), temperatura_2_4: prior.afinidadeEmPercentual(r.afinidade, 2.4) };
+    for (const [nome, vetor] of Object.entries(alternativas)) {
+      sensibilidade[nome].comparacoes++;
+      if (prior.perfilDominante(vetor) !== r.dominante) sensibilidade[nome].dominanteDiferente++;
+    }
     const valores = Object.values(r.percentual);
     const evidencia = { caso, answers, ordenacao, dominante: r.dominante, afinidade: r.afinidade, percentual: r.percentual };
     check("vetor_valido_finito_soma_100", valores.length === 7 && valores.every(v => Number.isInteger(v) && v >= 1 && v <= 100) &&
       valores.reduce((s, v) => s + v, 0) === 100 && Object.values(r.afinidade).every(Number.isFinite) &&
-      Number.isFinite(r.confianca) && r.confianca >= 0 && r.confianca <= 1, evidencia);
+      r.confianca === null && r.qualidade.indice === null, evidencia);
     check("dominante_exibido_tem_percentual_maximo", r.percentual[r.dominante] === Math.max(...valores), evidencia);
     check("percentual_nao_inverte_ordem_bruta", perfis.every(a => perfis.every(b =>
       r.afinidade[a] <= r.afinidade[b] + 1e-10 || r.percentual[a] >= r.percentual[b])), evidencia);
     verificarEscolhasNasMissoes(r, { caso, answers, ordenacao });
-    const linha = measure.montarMedidaDoPerfil({ alunoId: "aluno-sintetico-auditoria", ordenacao,
+    const linha = measure.montarMedidaDoPerfil({ alunoId: "aluno-sintetico-auditoria", ordenacaoConfirmada: true, ordenacao,
       afinidade: r.percentual, confianca: r.confianca, concordancia: r.concordancia, qualidade: r.qualidade });
     const roundTrip = JSON.parse(JSON.stringify(linha));
     check("serializacao_preserva_vetor_e_ordem", JSON.stringify(roundTrip.afinidade) === JSON.stringify(r.percentual) &&
       JSON.stringify(roundTrip.ordenacao) === JSON.stringify(ordenacao) &&
-      Math.abs(roundTrip.confianca - r.confianca) <= 0.000500001, evidencia);
+      roundTrip.confianca === null && roundTrip.qualidade.indice === null && roundTrip.qualidade.ordenacao_confirmada === true, evidencia);
   }
   for (const confianca of [0, 0.15, 0.5, 0.999, 1]) {
     const original = { afinidade: referencia.afinidade, confianca };
@@ -178,7 +197,8 @@ try {
     falhas: grupos.reduce((s, g) => s + g.falhas, 0) };
   console.log(JSON.stringify({ revisao: execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim(),
     instrumento: measure.VERSAO_DO_INSTRUMENTO, semente: 20261024, ordens: ordens.length,
-    casosAleatorios: 5000, resumo, matriz, confiancaComEscalaConstante: { minima, maxima }, criterios }, null, 2));
+    casosAleatorios: 5000, resumo, matriz, sensibilidade,
+    confiancaComEscalaConstante: { valores: [...confiancas], interpretacao: "nao estimada" }, criterios }, null, 2));
   process.exitCode = resumo.criteriosComFalhas ? 1 : 0;
 } finally {
   await server.close();

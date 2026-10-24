@@ -8,11 +8,11 @@ export default function BrainHexIntroStep() {
       {/* Header Section */}
       <div className="space-y-2 text-center md:text-left">
         <h2 className="text-2xl font-bold tracking-tight text-foreground">
-          Descubra seu Perfil BrainHex
+          Explore suas preferências
         </h2>
         <p className="text-muted-foreground max-w-2xl">
-          Abaixo estão os perfis que compõem sua identidade de aprendizado.
-          No próximo passo, você avaliará de <b>0 a 10</b> o quanto se identifica com cada um.
+          Usamos nomes inspirados no BrainHex para sugerir experiências de estudo.
+          No próximo passo, avalie de <b>0 a 5</b> o quanto cada afirmação combina com você hoje.
         </p>
       </div>
 
@@ -34,8 +34,9 @@ export default function BrainHexIntroStep() {
       <div className="rounded-lg border border-primary/10 bg-primary/5 p-4 flex gap-3 items-start text-sm text-muted-foreground">
         <Info className="h-5 w-5 text-primary/60 shrink-0 mt-0.5" />
         <p>
-          Não existe perfil certo ou errado. O resultado servirá apenas para personalizar sua 
-          jornada no <span className="font-semibold text-primary">TrailUp</span>.
+          Este questionário é uma adaptação exploratória do TrailUp, ainda sem validação
+          com seu público. Ele não mede capacidade nem determina como você aprende melhor.
+          Você escolherá por qual das sugestões deseja começar.
         </p>
       </div>
     </div>

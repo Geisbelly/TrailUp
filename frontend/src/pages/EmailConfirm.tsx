@@ -142,6 +142,17 @@ export default function EmailConfirm() {
       const session = data.session;
       if (!session?.user?.id) throw new Error("Sessão inválida. Faça login novamente.");
 
+      // Validar a medida antes de qualquer escrita do cadastro.
+      const medida = montarMedidaDoPerfil({
+        alunoId: session.user.id,
+        ordenacaoConfirmada: payload.ordenacaoConfirmada,
+        ordenacao: payload.ordenacao,
+        afinidade: payload.brainhexPercent,
+        confianca: payload.confiancaDoPerfil,
+        concordancia: payload.concordanciaDoPerfil,
+        qualidade: payload.qualidadeDaResposta,
+      });
+
       // chama sua RPC igual antes
       const perfisArray = Object.entries(payload.brainhexPercent).map(([nome, afinidade]) => ({
         nome: nome.toLowerCase(),
@@ -174,14 +185,6 @@ export default function EmailConfirm() {
       // existe. Mas tambem nao some em silencio — some em silencio foi
       // exatamente o problema que o #295 corrigiu no mobile.
       try {
-        const medida = montarMedidaDoPerfil({
-          alunoId: session.user.id,
-          ordenacao: payload.ordenacao,
-          afinidade: payload.brainhexPercent,
-          confianca: payload.confiancaDoPerfil,
-          concordancia: payload.concordanciaDoPerfil,
-          qualidade: payload.qualidadeDaResposta,
-        });
         const { error: medidaError } = await supabase
           .from("aluno_perfil_medida" as never)
           .insert(medida as never);

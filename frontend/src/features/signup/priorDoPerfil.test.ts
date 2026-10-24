@@ -14,11 +14,11 @@ const responder = (valor: (q: (typeof BRAINHEX_QUESTIONS)[number]) => number) =>
   Object.fromEntries(BRAINHEX_QUESTIONS.map((q) => [q.id, valor(q)]));
 
 describe("calcularPrior", () => {
-  it("quem marca tudo no maximo tem confianca baixa e motivos escritos", () => {
+  it("resposta uniforme não recebe uma confiança inventada", () => {
     // Antes, esta pessoa recebia um perfil decidido pelos pesos do mapeamento,
     // com confianca implicita de 100%.
     const prior = calcularPrior({ answers: responder(() => SCALE_MAX), ordenacao: ORDEM });
-    expect(prior.confianca).toBeLessThan(0.5);
+    expect(prior.confianca).toBeNull();
     expect(prior.qualidade.motivos.length).toBeGreaterThan(0);
   });
 
@@ -27,19 +27,18 @@ describe("calcularPrior", () => {
     expect(perfilDominante(prior.afinidade)).toBe(ORDEM[0]);
   });
 
-  it("resposta coerente tem confianca alta", () => {
+  it("coerência aparente não é calibração de confiança", () => {
     // Concorda com o direto, discorda do reverso: padrao coerente.
     const prior = calcularPrior({
       answers: responder((q) => (q.reverse ? 1 : 4)),
       ordenacao: ORDEM,
     });
-    expect(prior.confianca).toBeGreaterThan(0.6);
+    expect(prior.confianca).toBeNull();
   });
 
   it("a concordancia entre metodos sai no resultado", () => {
     const prior = calcularPrior({ answers: responder((q) => (q.reverse ? 1 : 4)), ordenacao: ORDEM });
-    expect(prior.concordancia).toBeGreaterThanOrEqual(-1);
-    expect(prior.concordancia).toBeLessThanOrEqual(1);
+    expect(prior.concordancia).toBeNull(); // todos os eixos corrigidos são constantes
   });
 
   it("devolve os sete perfis, sempre", () => {
@@ -49,8 +48,7 @@ describe("calcularPrior", () => {
 
   it("questionario em branco nao quebra e nao finge confianca", () => {
     const prior = calcularPrior({ answers: {}, ordenacao: ORDEM });
-    expect(Number.isFinite(prior.confianca)).toBe(true);
-    expect(prior.confianca).toBeLessThanOrEqual(1);
+    expect(prior.confianca).toBeNull();
     expect(perfilDominante(prior.afinidade)).toBe(ORDEM[0]);
   });
 
@@ -58,11 +56,11 @@ describe("calcularPrior", () => {
     expect(() => calcularPrior({ answers: responder(() => 3), ordenacao: ["seeker"] })).toThrow();
   });
 
-  it("tempo por item implausivel derruba a confianca", () => {
+  it("tempo não impõe penalidade sem evidência no público-alvo", () => {
     const base = { answers: responder((q) => (q.reverse ? 1 : 4)), ordenacao: ORDEM };
     const calmo = calcularPrior({ ...base, segundosPorItem: 5 });
     const correndo = calcularPrior({ ...base, segundosPorItem: 0.3 });
-    expect(correndo.confianca).toBeLessThan(calmo.confianca);
+    expect(correndo).toEqual(calmo);
   });
 });
 
@@ -149,10 +147,9 @@ describe("computarPerfil — a conta que a tela e o banco compartilham", () => {
     expect(a.dominante).not.toBe(b.dominante);
   });
 
-  it("leva confianca junto, nao so o percentual", () => {
+  it("explicita ausência de confiança e mantém descritores", () => {
     const r = computarPerfil({ answers: responder(() => SCALE_MAX), ordenacao: ORDEM });
-    expect(r.confianca).toBeGreaterThan(0);
-    expect(r.confianca).toBeLessThan(0.5);
+    expect(r.confianca).toBeNull();
     expect(r.qualidade.motivos.length).toBeGreaterThan(0);
   });
 });

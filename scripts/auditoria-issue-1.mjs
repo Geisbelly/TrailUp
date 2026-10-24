@@ -40,7 +40,6 @@ try {
   const combine = scale => ranking.combinarPrior({
     escalaCentrada: scale,
     ordenacao: ranking.pontuarOrdenacao(order),
-    confiancaDaEscala: 1,
   });
 
   console.log(JSON.stringify({
