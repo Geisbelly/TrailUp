@@ -22,6 +22,7 @@ import FitImage from "react-native-fit-image";
 import { SvgXml } from "react-native-svg";
 import { decodeInlineSvgDataUri } from "@/utils/inlineSvgDataUri";
 import { conteudoDeBloco, liberarImagensEmbutidas } from "@/utils/markdownDataUri";
+import { matematicaLegivel } from "@/utils/matematicaLegivel";
 import tinycolor from "tinycolor2";
 import { resolveMediaUrl } from "@/utils/mediaPayload";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
@@ -225,8 +226,12 @@ export function MarkdownBlock({ payload }: Props) {
 
   const pages = useMemo(() => {
     if (!markdown) return [];
-    const parts = splitByH2(markdown);
-    return parts.length > 1 ? parts : [markdown];
+    // O gerador entrega fórmula em LaTeX e este renderizador não faz matemática: sem isto o
+    // aluno lê `$x$` e `$$ax + b = 0$$` literalmente (#522). A conversão é na LEITURA porque
+    // também conserta o material JÁ gravado, que um ajuste de prompt não alcançaria.
+    const legivel = matematicaLegivel(markdown);
+    const parts = splitByH2(legivel);
+    return parts.length > 1 ? parts : [legivel];
   }, [markdown]);
 
   const currentPage = pages[pageIndex] ?? "";

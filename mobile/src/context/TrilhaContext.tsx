@@ -8,7 +8,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useWindowDimensions } from 'react-native';
+import { Platform, useWindowDimensions } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { BrainHexProfile } from '@/constants/profileImages';
@@ -288,6 +288,13 @@ function collectPrefetchEntries(payload: PersonalizedTopicPayload | null): Prefe
 }
 
 async function prefetchPersonalizedPayload(payload: PersonalizedTopicPayload | null) {
+  // Na web nao existe cache de arquivo: `expo-file-system/legacy` resolve para
+  // um shim com `documentDirectory = null` e NENHUM metodo, entao cada chamada
+  // estoura. Sem esta saida eram ate 12 tentativas por topico, todas falhando e
+  // virando `console.warn` - trabalho jogado fora e ruido que esconde erro de
+  // verdade (#28). O material continua carregando pela rede na hora de exibir.
+  if (Platform.OS === "web") return;
+
   const entries = collectPrefetchEntries(payload);
   if (!entries.length) return;
 
