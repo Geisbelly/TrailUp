@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.insights import InsightGerado, InsightsTurmaSaida
 from app.services.group_analysis import GroupAnalysisService
 from app.services.llm import JsonLLMService, StructuredOutputError
+from app.services.pseudonimizacao import restaurar_refs
 from app.services.roteamento_ia import rota_ia_para_turma
 
 logger = logging.getLogger(__name__)
@@ -49,11 +50,6 @@ def _num(value: Any) -> float | None:
         return None
 
 
-def _primeiro_nome(nome: Any) -> str | None:
-    partes = str(nome or "").split()
-    return partes[0] if partes else None
-
-
 def montar_payload(
     alunos: list[dict[str, Any]],
     nomes: dict[str, str | None],
@@ -63,15 +59,20 @@ def montar_payload(
     topicos: list[dict[str, Any]],
     descartados: list[dict[str, Any]],
     hoje: date,
-) -> tuple[dict[str, Any], dict[str, str]]:
-    """Payload do modelo e o mapa ref -> aluno_id para traduzir a resposta."""
+) -> tuple[dict[str, Any], dict[str, str], dict[str, str | None]]:
+    """Payload do modelo, o mapa ref -> aluno_id e o mapa ref -> nome.
+
+    O nome NAO entra no payload (#195): o modelo so ve "A1"... e a API troca a
+    ref pelo nome na volta (``validar_insights``)."""
     refs: dict[str, str] = {}
+    nomes_por_ref: dict[str, str | None] = {}
     linhas: list[dict[str, Any]] = []
     perfis: dict[str, int] = {}
     for i, aluno in enumerate(sorted(alunos, key=lambda a: str(a.get("aluno_id"))), start=1):
         aluno_id = str(aluno["aluno_id"])
         ref = f"A{i}"
         refs[ref] = aluno_id
+        nomes_por_ref[ref] = nomes.get(aluno_id)
         perfil = aluno.get("perfil")
         if perfil:
             perfis[str(perfil)] = perfis.get(str(perfil), 0) + 1
@@ -80,7 +81,6 @@ def montar_payload(
         linhas.append(
             {
                 "ref": ref,
-                "nome": _primeiro_nome(nomes.get(aluno_id)),
                 "perfil": perfil,
                 "conclusao_pct": _num(aluno.get("percentual_concluido")),
                 "respostas_30d": int(resp.get("respostas") or 0),
@@ -95,17 +95,23 @@ def montar_payload(
         "topicos": topicos,
         "descartados_recentes": descartados,
     }
-    return payload, refs
+    return payload, refs, nomes_por_ref
 
 
-def validar_insights(saida: InsightsTurmaSaida, refs: dict[str, str]) -> list[dict[str, Any]]:
+def validar_insights(
+    saida: InsightsTurmaSaida,
+    refs: dict[str, str],
+    nomes_por_ref: dict[str, str | None] | None = None,
+) -> list[dict[str, Any]]:
     """Descarta o que nao da para mostrar com seguranca: aluno fora da turma,
-    texto vazio, repetido. Corta excesso em vez de rejeitar o lote inteiro."""
+    texto vazio, repetido. Corta excesso em vez de rejeitar o lote inteiro.
+    Refs citadas no texto/base viram o nome do aluno (o professor ve nomes)."""
+    nomes_por_ref = nomes_por_ref or {}
     validos: list[dict[str, Any]] = []
     vistos: set[str] = set()
     for item in saida.insights:
-        texto_limpo = " ".join(item.texto.split())[:MAX_TEXTO]
-        base = " ".join(item.base.split())[:MAX_BASE]
+        texto_limpo = " ".join((restaurar_refs(item.texto, nomes_por_ref) or "").split())[:MAX_TEXTO]
+        base = " ".join((restaurar_refs(item.base, nomes_por_ref) or "").split())[:MAX_BASE]
         if not texto_limpo or texto_limpo.lower() in vistos:
             continue
         aluno_id: str | None = None
@@ -164,7 +170,7 @@ class InsightsTurmaService:
 
     async def coletar_contexto(
         self, classe_id: int, agora: datetime, *, incluir_descartados: bool = True
-    ) -> tuple[dict[str, Any], dict[str, str]]:
+    ) -> tuple[dict[str, Any], dict[str, str], dict[str, str | None]]:
         try:
             alunos = await GroupAnalysisService(self.session).fetch_alunos(classe_id)
         except Exception as exc:
@@ -304,7 +310,7 @@ class InsightsTurmaService:
         escrito, porque texto sem dado por tras seria inventado.
         """
         agora = agora or datetime.now(UTC)
-        payload, refs = await self.coletar_contexto(classe_id, agora)
+        payload, refs, nomes_por_ref = await self.coletar_contexto(classe_id, agora)
         if not refs:
             logger.info("Insights: classe %s sem alunos, nada a gerar", classe_id)
             return "sem_dados", 0
@@ -319,7 +325,7 @@ class InsightsTurmaService:
         except StructuredOutputError as exc:
             logger.warning("Insights: modelo falhou para a classe %s: %s", classe_id, exc)
             return "falhou", 0
-        itens = validar_insights(saida, refs)
+        itens = validar_insights(saida, refs, nomes_por_ref)
         if not itens:
             return "sem_dados", 0
         await self.gravar(classe_id, itens)

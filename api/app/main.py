@@ -13,6 +13,7 @@ from app.agent.graph.checkpointer import (
 )
 from app.api.router import api_router
 from app.core.settings import Settings, get_settings
+from app.core.tracing import aplicar_politica_de_tracing
 from app.db.migrations import upgrade_database_to_head
 from app.db.session import build_session_factory, execute_with_database_retry
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
@@ -28,6 +29,8 @@ def _configure_windows_event_loop_policy() -> None:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     app_settings = settings or get_settings()
+    # Antes de qualquer cliente LangChain existir (#195).
+    aplicar_politica_de_tracing(app_settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):

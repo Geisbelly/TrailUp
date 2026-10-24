@@ -349,9 +349,9 @@ async def test_insights_turma_com_menor_vai_para_openai(monkeypatch) -> None:
     llm.ainvoke_structured.side_effect = _llm
     session = _IdadeSession(menores={MENOR})
     service = InsightsTurmaService(session, llm)
-    monkeypatch.setattr(service, "coletar_contexto", AsyncMock(return_value=({}, {"A1": ADULTO, "A2": MENOR})))
+    monkeypatch.setattr(service, "coletar_contexto", AsyncMock(return_value=({}, {"A1": ADULTO, "A2": MENOR}, {"A1": None, "A2": None})))
     assert await service.gerar(7) == ("falhou", 0)
-    monkeypatch.setattr(service, "coletar_contexto", AsyncMock(return_value=({}, {"A1": ADULTO})))
+    monkeypatch.setattr(service, "coletar_contexto", AsyncMock(return_value=({}, {"A1": ADULTO}, {"A1": None})))
     assert await service.gerar(7) == ("falhou", 0)
     assert vistas == [True, False]
 
@@ -512,3 +512,42 @@ def test_fluxos_de_aluno_abrem_a_rota() -> None:
         personalizacao_jobs._process_media_render_target_na_rota_de_ia
     )
     assert "rota_ia_para_alunos(" in inspect.getsource(media_generation_jobs)
+
+
+@pytest.mark.asyncio
+async def test_escriba_combina_nome_fora_do_prompt_e_rota_de_menor(monkeypatch) -> None:
+    """#618 + #619 juntos: o nome nao vai ao modelo e a turma com menor vai a OpenAI."""
+    import json
+
+    from app.schemas.escriba import PerguntaEscriba
+    from app.services.escriba import EscribaService
+
+    capturado: dict[str, Any] = {}
+    llm = AsyncMock()
+
+    async def _llm(**kwargs):
+        capturado["menor"] = rota_de_menor_ativa()
+        capturado["payload"] = json.dumps(kwargs["payload"], ensure_ascii=False)
+        return SimpleNamespace(resposta="A1 precisa de apoio")
+
+    llm.ainvoke_structured.side_effect = _llm
+    service = EscribaService(_IdadeSession(menores={MENOR}), llm)
+    monkeypatch.setattr(service, "turmas_do_professor", AsyncMock(return_value=[{"id": 7, "descricao": "T"}]))
+    monkeypatch.setattr(
+        service,
+        "contexto_da_turma",
+        AsyncMock(
+            return_value={
+                "turma": "T",
+                "alunos": [{"ref": "A1", "nome": "Ana Souza", "email": "ana@x.invalid"}],
+                "_nomes_por_ref": {"A1": "Ana Souza"},
+                "_aluno_ids": [MENOR],
+            }
+        ),
+    )
+    resposta = await service.perguntar("prof", PerguntaEscriba(pergunta="Como está a Ana Souza?"))
+    assert capturado["menor"] is True
+    for proibido in ("Ana", "Souza", "ana@x.invalid", MENOR, "_aluno_ids", "_nomes_por_ref"):
+        assert proibido not in capturado["payload"]
+    # A ref volta como nome (primeiro nome, regra do #618) so na resposta ao professor.
+    assert resposta.resposta.startswith("Ana") and "A1" not in resposta.resposta

@@ -207,6 +207,9 @@ class Settings(BaseSettings):
 
     langchain_tracing_v2: bool = False
     langchain_project: str = "trailup-local"
+    # Fora de dev/teste o tracing LangSmith e forcado desligado (#195,
+    # app/core/tracing.py). So isto, explicito, libera em producao.
+    langsmith_tracing_autorizado_em_producao: bool = False
 
     default_checkpoint_ns: str = "default"
     personalizacao_checkpoint_ns: str = "personalizacao"

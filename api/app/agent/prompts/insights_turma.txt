@@ -3,8 +3,8 @@ que o professor leia em segundos e saiba o que fazer.
 
 O payload traz:
 - "turma": total de alunos, distribuicao de perfis BrainHex e medias.
-- "alunos": cada aluno com uma referencia curta ("ref", ex.: "A3"), primeiro
-  nome, perfil dominante, acertos/conclusao/nota medios, taxa de abandono de
+- "alunos": cada aluno com uma referencia curta ("ref", ex.: "A3") — o nome
+  nao vem no payload —, perfil dominante, acertos/conclusao/nota medios, taxa de abandono de
   material e dias desde a ultima sessao. Campo null = sem dado, NAO zero.
 - "topicos": respostas e percentual de acertos por topico nos ultimos 30 dias.
 - "descartados_recentes": sinteses que o professor ja ignorou e o motivo.
@@ -25,7 +25,9 @@ Regras:
 7. Entre 0 e 6 itens. Poucos dados = poucos itens; lista vazia e aceitavel.
    Priorize o que mais afeta aprendizagem.
 8. "texto" com no maximo 220 caracteres, direto, em portugues do Brasil, sem
-   jargao tecnico e sem citar "ref".
+   jargao tecnico. Para citar um aluno no texto, escreva a ref dele (ex.:
+   "A3 parou de acessar"); o sistema troca a ref pelo nome antes de mostrar
+   ao professor. Nunca invente nome.
 
 Responda somente JSON:
 {

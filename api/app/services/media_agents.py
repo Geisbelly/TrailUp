@@ -10,6 +10,7 @@ import httpx
 
 from app.core.settings import Settings
 from app.services.audio import gerar_mp3_gtts, gerar_mp3_openai_tts
+from app.services.gemini_http import gemini_generate_url, gemini_headers
 from app.services.llm import JsonLLMService
 from app.services.media_contract import (
     CONTENT_ENRICHMENT_PROVIDER,
@@ -168,10 +169,7 @@ async def gerar_audio_gemini_tts(
 
     if settings.gemini_api_key:
         model_name = str(getattr(settings, "gemini_model_tts", "") or "").strip() or "gemini-2.5-flash-preview-tts"
-        url = (
-            "https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{model_name}:generateContent?key={settings.gemini_api_key}"
-        )
+        url = gemini_generate_url(model_name)
         if speaker_secundario and nome_speaker_principal:
             nome_secundario, voz_secundaria = speaker_secundario
             speech_config = {
@@ -200,7 +198,7 @@ async def gerar_audio_gemini_tts(
 
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(url, json=body)
+                response = await client.post(url, json=body, headers=gemini_headers(settings.gemini_api_key))
                 response.raise_for_status()
                 payload = response.json()
             for mime, audio_bytes in _extract_inline_audio_parts(payload):
@@ -880,10 +878,7 @@ async def gerar_imagem_slide(
         return None
 
     model_name = str(getattr(settings, "gemini_model_image", "") or "").strip() or "gemini-2.0-flash-preview-image-generation"
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model_name}:generateContent?key={settings.gemini_api_key}"
-    )
+    url = gemini_generate_url(model_name)
     body = {
         "contents": [
             {
@@ -906,7 +901,7 @@ async def gerar_imagem_slide(
         for attempt in range(retries):
             try:
                 async with httpx.AsyncClient(timeout=60.0) as client:
-                    response = await client.post(url, json=body)
+                    response = await client.post(url, json=body, headers=gemini_headers(settings.gemini_api_key))
 
                 if response.status_code == 429:
                     delay = delays[attempt] if attempt < len(delays) else delays[-1]

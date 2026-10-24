@@ -8,6 +8,7 @@ from typing import Any
 import httpx
 
 from app.core.settings import Settings
+from app.services.gemini_http import gemini_generate_url, gemini_headers
 from app.services.roteamento_ia import rota_de_menor_ativa
 
 logger = logging.getLogger(__name__)
@@ -87,10 +88,7 @@ async def gerar_mp3_gemini_tts(*, settings: Settings, texto: str) -> bytes | Non
         str(getattr(settings, "gemini_model_tts", "") or "").strip()
         or "gemini-2.5-flash-preview-tts"
     )
-    url = (
-        f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{model_name}:generateContent?key={settings.gemini_api_key}"
-    )
+    url = gemini_generate_url(model_name)
     body = {
         "contents": [
             {
@@ -113,7 +111,7 @@ async def gerar_mp3_gemini_tts(*, settings: Settings, texto: str) -> bytes | Non
 
     try:
         async with httpx.AsyncClient(timeout=45.0) as client:
-            response = await client.post(url, json=body)
+            response = await client.post(url, json=body, headers=gemini_headers(settings.gemini_api_key))
             response.raise_for_status()
             payload = response.json()
     except Exception:
