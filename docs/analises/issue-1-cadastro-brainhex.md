@@ -8,6 +8,8 @@
 
 **Conclusão:** a implementação está parcialmente entregue; **não há evidência suficiente para encerrar a issue como concluída**.
 
+**Verificação posterior na main:** [testes dos sete perfis e novos contraexemplos](./issue-1-reverificacao-perfis.md), após a incorporação deste parecer no PR #614.
+
 ## 1. Decisão recomendada
 
 Manter os sete perfis como linguagem de personalização do produto é uma decisão viável. A justificativa científica adequada é tratá-los como **preferências exploratórias e revisáveis**, preservando a escolha do estudante. O questionário atual é uma **adaptação própria do TrailUp inspirada no BrainHex**, cuja validade ainda precisa ser investigada. Não é uma reprodução do instrumento original nem uma medida comprovada de como uma pessoa aprende melhor.
