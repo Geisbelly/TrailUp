@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TrailUp — Biblioteca de conquistas (celular)</title>
+<link rel="stylesheet" href="assets/aparelho.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .topo{position:absolute;left:0;right:0;top:0;z-index:10;padding:var(--topo) 12px 0 4px;background:var(--bg)}
+  .topo-linha{display:flex;align-items:center;gap:4px;height:56px}
+  .voltar{width:48px;height:48px;display:grid;place-items:center;color:var(--text)}
+  .voltar svg{width:22px;height:22px}
+  .topo-linha div{flex:1;min-width:0}
+  .topo-linha h1{font-family:Georgia,serif;font-size:20px;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rolagem{position:absolute;left:0;right:0;top:calc(var(--topo) + 56px);bottom:calc(var(--abas) + var(--base));overflow-y:auto;scrollbar-width:none;padding:6px 14px 28px}
+  .rolagem::-webkit-scrollbar{display:none}
+  .numeros{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .numeros div{border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:12px 8px;text-align:center}
+  .numeros b{display:block;font-family:Georgia,serif;font-size:24px}
+  .numeros span{font-size:12px;color:var(--text-subtle)}
+  .segm{display:flex;gap:3px;padding:3px;margin:14px 0 12px;border-radius:12px;background:var(--surface);border:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+  .segm button{flex:1 0 auto;min-height:40px;padding:0 8px;border:0;border-radius:9px;background:none;font-size:12.5px;font-weight:700;color:var(--text-muted);white-space:nowrap}
+  .segm button[aria-pressed="true"]{background:var(--accent);color:var(--bg)}
+  .grade{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .cq{position:relative;min-height:128px;border-radius:12px;border:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:6px;padding:12px 6px 10px;text-align:center;cursor:pointer}
+  .cq img{width:52px;height:52px;object-fit:contain}
+  .cq strong{font-size:12.5px;line-height:1.25}
+  .cq .prog{width:100%;padding:0 4px}
+  .cq .prog i{display:block;height:4px;border-radius:2px;background:var(--elev);overflow:hidden}
+  .cq .prog i b{display:block;height:100%;background:var(--accent)}
+  .cq .prog span{font-size:11px;color:var(--text-subtle)}
+  .cq.feita{border-color:var(--accent-soft)}
+  .cq.bloq img{filter:grayscale(1) brightness(.45)}
+  .cq.bloq strong{color:var(--text-subtle)}
+  .cq .cad{position:absolute;top:8px;right:8px;width:16px;height:16px;color:var(--text-subtle)}
+  .cq .ok{position:absolute;top:8px;right:8px;width:16px;height:16px;color:var(--success)}
+  .vazio{text-align:center;padding:40px 10px;color:var(--text-subtle)}
+  .veu{z-index:35}
+  .folha{z-index:40;bottom:0;padding:0 18px calc(var(--base) + 18px);text-align:center}
+  .folha img.arte{width:128px;height:128px;object-fit:contain;filter:drop-shadow(0 0 18px var(--accent-soft))}
+  .folha.bloq img.arte{filter:grayscale(1) brightness(.5)}
+  .folha h3{font-family:Georgia,serif;font-size:22px;margin:6px 0}
+  .folha p{font-size:14.5px;color:var(--text-muted);line-height:1.55;margin:0 0 8px}
+  .folha .data{font-size:13px;color:var(--text-subtle);margin-bottom:16px}
+  .folha .barra{margin:8px 0 6px}
+</style>
+</head>
+<body class="mesa">
+
+<div class="preview" id="preview"></div>
+
+<div class="aparelho">
+  <div class="tela" id="tela"></div>
+</div>
+
+<script src="assets/aparelho.js"></script>
+<script src="assets/tema.js"></script>
+<script src="assets/tour.js"></script>
+<script>
+/* as 12 conquistas do v4 (09-biblioteca-conquistas.html) */
+const CQ=[
+  ['trophy','Fronteira Avançada','feita','Desempenho','Complete 2 tópicos seguidos sem errar nenhuma questão de atividade.','14 de setembro'],
+  ['completion','Primeiro Tópico','feita','Jornada','Conclua seu primeiro tópico da trilha.','2 de setembro'],
+  ['book','Leitor Dedicado','feita','Leitura','Leia todos os conteúdos de um tópico.','8 de setembro'],
+  ['coin','Coletor de Moedas','feita','Economia','Junte suas primeiras moedas estudando.','20 de setembro'],
+  ['deadline','Pontual','feita','Constância','Entregue 3 atividades antes do prazo.','22 de setembro'],
+  ['hint','Primeira Dica','feita','Exploração','Use sua primeira dica numa questão.','25 de setembro'],
+  ['bolt','Sequência de 7 dias','prog','Constância','Estude 7 dias seguidos.',[5,7,'dias']],
+  ['compass','Explorador de Perfis','prog','Exploração','Experimente a trilha em 5 turmas diferentes.',[2,5,'turmas']],
+  ['calendar','Um Mês de Estudo','prog','Constância','Estude em 30 dias diferentes.',[17,30,'dias']],
+  ['community','Mentor da Turma','bloq','Social','Ajude 5 colegas no chat da guilda.','Libera quando você entrar numa guilda.'],
+  ['chest','Baú Lendário','bloq','Economia','Abra o baú do fim do semestre.','Libera no fim do semestre.'],
+  ['steps','Maratonista','bloq','Jornada','Conclua uma trilha inteira.','Libera ao concluir todos os tópicos.'],
+];
+const ESTADOS=[['data','Todas'],['feitas','Filtro: Concluídas'],['prog','Filtro: Em progresso'],['bloq','Filtro: Bloqueadas'],['detalhe','Detalhe aberto'],['loading','Carregando']];
+const F=[['todas','Todas'],['feita','Concluídas'],['prog','Em progresso'],['bloq','Bloqueadas']];
+let estado, filtro='todas', aberta=null;
+const $=id=>document.getElementById(id);
+const arte=o=>`${ARTE}object-${o}.png`;
+
+function render(){
+  aplicarTema();
+  $('preview').innerHTML=previewHTML(ESTADOS,estado);
+  let h=`<header class="topo"><div class="topo-linha"><a class="voltar" href="08-perfil-hub.html" aria-label="Voltar para o Perfil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></a><div><div class="eyebrow">Perfil</div><h1>Biblioteca de conquistas</h1></div></div></header>`;
+  if(estado==='loading')h+=`<div class="rolagem"><div class="numeros">${'<div class="skel" style="height:64px"></div>'.repeat(3)}</div><div class="skel" style="height:46px;margin:14px 0"></div><div class="grade">${'<div class="skel" style="height:128px"></div>'.repeat(9)}</div></div>`;
+  else{
+    const L=CQ.map((c,i)=>[c,i]).filter(([c])=>filtro==='todas'||c[2]===filtro);
+    h+=`<div class="rolagem"><div class="numeros"><div><b>14</b><span>Conquistadas</span></div><div><b>3</b><span>Em progresso</span></div><div><b>42%</b><span>Completo</span></div></div>
+      <div class="segm" role="group" aria-label="Filtrar">${F.map(([k,l])=>`<button aria-pressed="${filtro===k}" data-f="${k}">${l}</button>`).join('')}</div>
+      <div class="grade">${L.map(([[o,n,st,,,x],i])=>`<button class="cq ${st}" data-cq="${i}" aria-label="${n}, ${st==='feita'?'concluída':st==='prog'?`${x[0]} de ${x[1]} ${x[2]}`:'bloqueada'}">
+        ${st==='bloq'?`<span class="cad">${ICONE.cadeado}</span>`:st==='feita'?`<span class="ok">${ICONE.check}</span>`:''}
+        <img src="${arte(o)}" alt="" onerror="this.src='${ARTE}object-compass.png'" /><strong>${n}</strong>
+        ${st==='prog'?`<span class="prog"><i><b style="width:${x[0]/x[1]*100}%"></b></i><span>${x[0]}/${x[1]} ${x[2]}</span></span>`:''}</button>`).join('')}</div></div>`;
+  }
+  h+=abasHTML('perfil');
+  if(aberta!=null){const [o,n,st,c,d,x]=CQ[aberta];
+    h+=`<div class="veu" data-fecha></div><section class="folha vidro ${st}" role="dialog" aria-modal="true" aria-labelledby="ct"><span class="alca" data-fecha></span><img class="arte" src="${arte(o)}" onerror="this.src='${ARTE}object-compass.png'" alt="" /><div><span class="chip ${st==='bloq'?'chip-neutral':'chip-accent'}">${c}</span></div><h3 id="ct">${n}</h3><p>${d}</p>
+      ${st==='feita'?`<p class="data">Concluída em ${x}</p>`:st==='prog'?`<div class="barra"><i style="width:${x[0]/x[1]*100}%"></i></div><p class="data">${x[0]} de ${x[1]} ${x[2]}</p>`:`<p class="data">${ICONE.cadeado.replace('<svg','<svg width="13" height="13"')} Como desbloquear: ${x}</p>`}
+      <button class="btn btn-secundario btn-bloco" data-fecha>Fechar</button></section>`}
+  $('tela').innerHTML=h;
+}
+function define(v){estado=v;aberta=v==='detalhe'?0:null;filtro={feitas:'feita',prog:'prog',bloq:'bloq'}[v]||'todas';render()}
+document.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);
+  if(q('[data-perfil]')){perfil=q('[data-perfil]').dataset.perfil;render();return}
+  if(q('[data-f]')){filtro=q('[data-f]').dataset.f;render();return}
+  if(q('[data-cq]')){aberta=+q('[data-cq]').dataset.cq;render();return}
+  if(q('[data-fecha]')){aberta=null;render();return}
+});
+document.addEventListener('change',e=>{if(e.target.id!=='estado')return;history.replaceState(null,'',`${location.pathname}?estado=${e.target.value}&perfil=${perfil}`);define(e.target.value)});
+define(qs.get('estado')||'data');
+</script>
+</body>
+</html>

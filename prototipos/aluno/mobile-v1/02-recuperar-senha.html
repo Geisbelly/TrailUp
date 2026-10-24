@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TrailUp — Recuperar senha (celular)</title>
+<link rel="stylesheet" href="assets/aparelho.css" />
+<link rel="stylesheet" href="assets/auth.css" />
+<style>
+  .feito{text-align:center;padding:6px 0 4px}
+  .feito .ok{width:56px;height:56px;color:#7fe0d0;margin:4px auto 10px;display:block}
+  .feito h2{margin-bottom:8px}
+  .feito p{font-size:14.5px;line-height:1.55;color:var(--text-muted);margin:0 0 22px}
+  .feito strong{color:var(--text);overflow-wrap:anywhere}
+</style>
+</head>
+<body class="mesa">
+
+<div class="preview"><span>Estado:</span><select id="estado" aria-label="Estado da tela"></select></div>
+
+<div class="aparelho">
+  <div class="tela" id="tela">
+    <div class="cena" aria-hidden="true">
+      <img src="assets/journey-dawn.webp" alt="" />
+      <div class="natureza">
+        <div class="folhagem folhagem-esq"><span class="ramo"></span></div>
+        <div class="folhagem folhagem-dir"><span class="ramo"></span></div>
+        <div class="voo-campo">
+          <span class="voo"><span class="borboleta"><span class="asa asa-esq"></span><span class="asa asa-dir"></span><span class="corpo"></span></span></span>
+          <span class="voo voo-2"><span class="borboleta"><span class="asa asa-esq"></span><span class="asa asa-dir"></span><span class="corpo"></span></span></span>
+        </div>
+        <div class="folha-campo"><span class="queda"><span class="folha"></span></span></div>
+        <div class="vagalumes" id="vagalumes"></div>
+      </div>
+    </div>
+
+    <div class="topo">
+      <!-- o "Voltar para o login" do v4 vira o voltar do canto, com rótulo curto -->
+      <a class="voltar" href="01-login.html" aria-label="Voltar para o login"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>Login</a>
+      <span class="marca"><img src="assets/trailup-star.png" alt="" />TrailUp</span>
+    </div>
+
+    <section class="heroi">
+      <p class="kicker">Conhecimento é uma aventura</p>
+      <h1>Todo caminho tem volta.</h1>
+    </section>
+
+    <main class="folha-de-baixo" id="conteudo"></main>
+  </div>
+</div>
+
+<script src="assets/aparelho.js"></script>
+<script>
+document.getElementById('vagalumes').innerHTML=[[30,62,0],[42,48,1.1],[50,70,2.3],[58,40,.6],[66,58,1.8],[36,78,2.9],[72,46,.3],[54,82,1.5]]
+  .map(([x,y,d])=>`<span style="left:${x}%;top:${y}%;animation-delay:${d}s"></span>`).join('');
+
+const ESTADOS=[['form','Formulário'],['teclado','Teclado aberto'],['enviando','Enviando...'],['invalido','E-mail inválido'],['enviado','Link enviado']];
+const ICONE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>';
+const CARTA='<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/></svg>';
+const $=id=>document.getElementById(id);
+let estado='form', email='aluno@escola.edu.br';
+function digitando(sim){$('tela').classList.toggle('digitando',sim);window.teclado(sim)}
+function render(){
+  $('estado').innerHTML=ESTADOS.map(([k,l])=>`<option value="${k}" ${estado===k?'selected':''}>${l}</option>`).join('');
+  digitando(estado==='teclado');
+  if(estado==='enviado'){
+    // o sucesso substitui o formulário, como no v4
+    $('conteudo').innerHTML=`<div class="feito" role="status">
+      <svg class="ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-6"/></svg>
+      <h2>Link enviado</h2>
+      <p>Um link de recuperação foi enviado para <strong>${email}</strong>. Confira também a caixa de spam.</p>
+      <a class="btn btn-secundario" href="01-login.html">Voltar para o login</a></div>`;
+    return;
+  }
+  const ocupado=estado==='enviando';
+  $('conteudo').innerHTML=`<form id="form" novalidate>
+      <img class="estrela" src="assets/trailup-star.png" alt="" />
+      <h2>Recuperar senha</h2>
+      <p class="lead">Informe seu e-mail para receber o link de redefinição.</p>
+      <div class="campo"><label class="lbl" for="email">E-mail</label>
+        <div class="entrada ${estado==='invalido'?'invalido':''} ${estado==='teclado'?'focado':''}">${CARTA}<input id="email" type="email" inputmode="email" autocapitalize="none" placeholder="voce@escola.com" autocomplete="username" value="${estado==='invalido'?'aluno@escola':estado==='teclado'?'aluno@esc':email}" ${ocupado?'readonly':''} /></div></div>
+      ${estado==='invalido'?`<div class="alerta aviso" role="alert">${ICONE}<div><strong>E-mail inválido</strong><span>Confira o endereço e tente novamente.</span></div></div>`:''}
+      <button class="btn btn-primario" type="submit" ${ocupado?'disabled':''}>${ocupado?'<span class="gira"></span>Enviando...':'Enviar link'}</button>
+      ${estado==='teclado'?'':'<p class="rodape">Lembrou da senha? <a href="01-login.html">Fazer login</a></p>'}</form>`;
+  $('email').addEventListener('focus',()=>{if(!ocupado)digitando(true)});
+  $('form').addEventListener('submit',e=>{e.preventDefault();const v=$('email').value.trim();if(!/^\S+@\S+\.\S+$/.test(v)){estado='invalido';render();return}email=v;estado='enviando';render();setTimeout(()=>{estado='enviado';render()},900)});
+}
+document.getElementById('tela').addEventListener('pointerdown',e=>{if(!e.target.closest('.folha-de-baixo'))digitando(false)});
+$('estado').addEventListener('change',e=>{history.replaceState(null,'',location.pathname+'?estado='+e.target.value);estado=e.target.value;render()});
+estado=new URLSearchParams(location.search).get('estado')||'form';
+render();
+</script>
+</body>
+</html>

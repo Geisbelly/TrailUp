@@ -1,6 +1,6 @@
 # 0001: Vector store do RAG no Postgres com pgvector
 
-- Status: Accepted
+- Status: Superseded by [ADR-0002: OpenAI Vector Store para o RAG](0002-rag-openai-vector-store.md)
 - Date: 2026-08-29
 
 ## Context
@@ -13,7 +13,7 @@ Restrições do projeto:
 - A ingestão e chunking de documentos já existem na API (`app/ingestion/`).
 - O ecossistema já usa Supabase (Postgres + Storage + Auth) como plataforma principal.
 
-## Decision
+## Previous Decision
 
 Usar o Postgres do Supabase com a extensão `pgvector` como vector store do RAG.
 
@@ -60,3 +60,8 @@ Modelo de embedding: `text-embedding-3-small` (1536 dimensões) da OpenAI, com f
 - Arquitetura: [docs/architecture/rag.md](../architecture/rag.md)
 - Requisito alinhado: base de evidências para RAG no TrailUp.
 - Issues de implementação: a serem criadas no tracker.
+
+Esta decisão foi mantida no histórico porque a migração `20260829_03` já criou o
+schema local. Novas fontes devem seguir o ADR-0002; o schema `rag_chunks` pode
+ser removido em uma migração posterior depois que não houver consumidores do
+retrieval local.

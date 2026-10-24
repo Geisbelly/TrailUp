@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TrailUp — Perfil (celular)</title>
+<link rel="stylesheet" href="assets/aparelho.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .rolagem{position:absolute;left:0;right:0;top:0;bottom:calc(var(--abas) + var(--base));overflow-y:auto;scrollbar-width:none;padding-bottom:28px}
+  .rolagem::-webkit-scrollbar{display:none}
+  .banner{position:relative;height:calc(var(--topo) + 150px)}
+  .banner > img{width:100%;height:100%;object-fit:cover;display:block}
+  .banner::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,var(--bg-a55),transparent 45%,var(--bg))}
+  .banner .acoes{position:absolute;top:calc(var(--topo) + 4px);right:10px;z-index:2;display:flex;gap:8px}
+  .banner .camera{position:absolute;left:12px;bottom:14px;z-index:2}
+  .vidro-btn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.42);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(8px);color:#fff;cursor:pointer;padding:0;text-decoration:none}
+  .vidro-btn svg{width:19px;height:19px}.vidro-btn img{width:28px;height:28px;object-fit:contain}
+  .retrato{position:relative;width:104px;height:104px;margin:-60px auto 0;z-index:3}
+  .retrato .face{width:100%;height:100%;border-radius:50%;object-fit:cover;background:var(--elev);box-shadow:0 0 0 3px var(--bg),0 0 0 5px var(--accent)}
+  .ident{text-align:center;padding:10px 22px 0}
+  .ident h1{font-family:Georgia,serif;font-size:24px;margin:0}
+  .ident .handle{font-size:12.5px;letter-spacing:.12em;color:var(--text-subtle);margin:2px 0 8px}
+  .ident .sobre{font-size:14.5px;line-height:1.55;color:var(--text-muted);margin:0}
+  section.bloco{margin:20px 14px 0}
+  .titulo{font-family:Georgia,serif;font-size:19px;margin:0 4px 10px;display:flex;align-items:baseline;gap:8px}
+  .titulo small{font-family:Inter,system-ui,sans-serif;font-size:13px;color:var(--text-subtle);font-weight:500}
+  .cartao{border-radius:14px;border:1px solid var(--line);background:var(--surface);padding:14px 16px}
+  .info{margin:0}
+  .info div{display:flex;justify-content:space-between;gap:12px;min-height:44px;align-items:center;border-bottom:1px solid var(--line);font-size:14px}
+  .info div:last-child{border-bottom:0}
+  .info dt{color:var(--text-subtle)}
+  .info dd{margin:0;text-align:right;display:flex;align-items:center;gap:6px}
+  .info dd img{width:20px;height:20px;object-fit:contain}
+  .chip-perfil{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .chip-perfil img{width:44px;height:44px;object-fit:contain}
+  .chip-perfil strong{display:block;font-size:16px}
+  .chip-perfil span{font-size:12.5px;color:var(--accent);font-weight:700}
+  .rot{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-subtle);margin:0 0 8px}
+  .opcoes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .opc{min-height:72px;border-radius:12px;border:1px solid var(--line);background:var(--bg-a55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;position:relative;padding:6px 4px}
+  .opc img{width:28px;height:28px;object-fit:contain}
+  .opc .nm{font-size:12.5px;font-weight:700}
+  .opc .af{font-size:11.5px;color:var(--text-subtle)}
+  .opc.apagada{opacity:.45}
+  .opc .ok{position:absolute;top:6px;right:6px;width:16px;height:16px;color:var(--accent)}
+  .afin{display:flex;height:10px;border-radius:999px;overflow:hidden;margin:14px 0 6px;background:var(--elev)}
+  .afin i{display:block;height:100%}
+  .afin-leg{font-size:12.5px;color:var(--text-subtle);line-height:1.5}
+  .erro-troca{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--danger-bg);border:1px solid var(--danger-border);font-size:13px;color:#f3d9e0}
+  .erro-troca strong{display:block;color:var(--text)}
+  .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+  .mini div{background:var(--bg-a55);border-radius:10px;padding:10px;text-align:center;font-size:12px;color:var(--text-subtle)}
+  .mini b{display:block;font-size:16px;color:var(--text);margin-top:2px}
+  .atalhos{display:flex;flex-direction:column;padding:4px 0}
+  .atalho{display:flex;align-items:center;gap:12px;min-height:56px;padding:0 14px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;font-size:15px;font-weight:600;text-decoration:none;color:var(--text);cursor:pointer}
+  .atalho:last-child{border-bottom:0}
+  .atalho .ic{width:36px;height:36px;border-radius:10px;background:var(--accent-muted);color:var(--accent);display:grid;place-items:center;flex:none}
+  .atalho .ic svg{width:18px;height:18px}.atalho .ic img{width:26px;height:26px;object-fit:contain}
+  .atalho span.t{flex:1}
+  .atalho small{font-size:13px;color:var(--text-subtle);font-weight:600}
+  .atalho > svg{width:16px;height:16px;color:var(--text-subtle)}
+  .atalho.sair{color:var(--danger)}.atalho.sair .ic{background:var(--danger-bg);color:var(--danger)}
+  .barra-cq{height:8px;border-radius:999px;background:var(--elev);overflow:hidden;margin:4px 0 12px}
+  .barra-cq i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-strong),var(--accent))}
+  .cq-grade{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .cq{display:flex;align-items:center;gap:10px;min-height:64px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg-a55);cursor:pointer;text-align:left}
+  .cq img{width:40px;height:40px;object-fit:contain}
+  .cq strong{display:block;font-size:13px;line-height:1.25}
+  .cq span{font-size:11.5px;color:var(--text-subtle)}
+  .quase{display:flex;align-items:center;gap:10px;min-height:52px;border-bottom:1px solid var(--line)}
+  .quase:last-child{border-bottom:0}
+  .quase img{width:34px;height:34px;object-fit:contain}
+  .quase div{flex:1}.quase strong{font-size:14px}
+  .quase .barra-cq{margin:5px 0 0;height:5px}
+  .quase .n{font-size:12.5px;color:var(--text-subtle);white-space:nowrap}
+  .ver{display:flex;justify-content:flex-end}
+  .selo{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--accent);background:var(--accent-muted);padding:4px 10px;border-radius:999px}
+  .selo svg{width:13px;height:13px}
+  .heroi h2{font-family:Georgia,serif;font-size:20px;margin:8px 0 4px}
+  .heroi p{font-size:14px;color:var(--text-muted);margin:0 0 12px;line-height:1.5}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .kpi{display:flex;gap:8px;align-items:center;padding:10px;border-radius:10px;background:var(--bg-a55)}
+  .kpi svg{width:20px;height:20px;color:var(--accent);flex:none}
+  .kpi span{font-size:11.5px;color:var(--text-subtle)}.kpi strong{display:block;font-size:16px}
+  .linha-b{margin-bottom:10px}
+  .linha-b .l{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:5px}
+  .radar{display:block;margin:0 auto}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  .leit .chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 6px}
+  .leit .chips .chip svg{width:13px;height:13px}
+  .leit .ciclo{font-size:12px;color:var(--text-subtle);margin:0}
+  .leit .resumo{font-size:14px;color:var(--text-muted);margin:6px 0 10px;line-height:1.5}
+  .caixa{border-radius:10px;background:var(--bg-a55);padding:10px 12px;margin-top:8px}
+  .caixa h4{margin:0 0 4px;font-size:13px}
+  .caixa ul{margin:0;padding-left:18px;font-size:13.5px;color:var(--text-muted);line-height:1.5}
+  .caixa.aviso{border-left:3px solid var(--warning)}
+  .ativ{display:flex;gap:10px;align-items:center;min-height:56px;border-bottom:1px solid var(--line);font-size:14px}
+  .ativ:last-child{border-bottom:0}
+  .ativ .i{width:34px;height:34px;border-radius:10px;background:var(--accent-muted);color:var(--accent);display:grid;place-items:center;flex:none}
+  .ativ .i svg{width:16px;height:16px}
+  .ativ div{flex:1}.ativ small{font-size:12px;color:var(--text-subtle);white-space:nowrap}
+  .vazio-m{text-align:center;padding:10px 4px}
+  .vazio-m p{font-size:14px;color:var(--text-subtle);margin:0}
+  .veu{z-index:35}
+  .folha{z-index:40;bottom:0;padding:0 18px calc(var(--base) + 18px);text-align:center}
+  .folha img.arte{width:120px;height:120px;object-fit:contain;filter:drop-shadow(0 0 18px var(--accent-soft))}
+  .folha h3{font-family:Georgia,serif;font-size:22px;margin:6px 0}
+  .folha p{font-size:14.5px;color:var(--text-muted);line-height:1.55;margin:0 0 6px}
+  .folha .data{font-size:13px;color:var(--text-subtle);margin-bottom:16px}
+  .torrada{position:absolute;left:50%;bottom:calc(var(--abas) + var(--base) + 14px);transform:translateX(-50%);z-index:70;background:var(--text);color:var(--bg);font-size:13px;font-weight:600;padding:10px 14px;border-radius:999px;white-space:nowrap}
+</style>
+</head>
+<body class="mesa">
+
+<div class="preview" id="preview"></div>
+
+<div class="aparelho">
+  <div class="tela" id="tela"></div>
+</div>
+
+<script src="assets/aparelho.js"></script>
+<script src="assets/tema.js"></script>
+<script src="assets/tour.js"></script>
+<script src="assets/bag.js"></script>
+<script>
+/* dados do v4 (08-perfil-hub.html) */
+const ESTILOS={arena:['Arena Tática','HUD competitivo com operação, ritmo, rank e status de missão.'],metas:['Metas','Painel focado em marcos, checklist, progresso e próximos objetivos.'],misterio:['Mistério','Transforma progresso em mapa, pistas, descobertas e exploração.'],analitico:['Painel Analítico','Leitura clara e direta do desempenho, atenção e evolução do aluno.'],squad:['Squad','Destaque para presença, ranking, conquistas e energia de grupo.']};
+const ESTILO_DO={seeker:'misterio',survivor:'arena',daredevil:'arena',mastermind:'analitico',conqueror:'arena',socializer:'squad',achiever:'metas'};
+const AFF=[['conqueror',58],['mastermind',24],['achiever',12]];
+const CQ_FEITAS=[['trophy','Fronteira Avançada','14 set','Desempenho','Complete 2 tópicos seguidos sem errar nenhuma questão de atividade.','14 de setembro'],['completion','Primeiro Tópico','02 set','Jornada','Conclua seu primeiro tópico da trilha.','2 de setembro'],['book','Leitor Dedicado','08 set','Leitura','Leia todos os conteúdos de um tópico.','8 de setembro'],['coin','Coletor de Moedas','20 set','Economia','Junte suas primeiras moedas estudando.','20 de setembro']];
+const CQ_QUASE=[['calendar','Sequência de 7 dias',5,7,'dias'],['compass','Explorador de Perfis',2,5,'turmas'],['deadline','Um Mês de Estudo',17,30,'dias']];
+const ESTADOS=[['data','Com dados'],['banner','Banner próprio'],['one','Um só perfil'],['switching','Trocando perfil'],['switcherr','Erro ao trocar perfil'],['nometrics','Sem métricas'],['noread','Sem leitura recente'],['loading','Carregando'],['bag','Bag aberta'],['bag-vazia','Bag vazia'],['bag-erro','Bag com erro']];
+const IC={
+  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  medal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M8.5 15.5 5 22l7-3 7 3-3.5-6.5"/></svg>',
+  doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>',
+  sair:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+  rank:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21h16M6 21V10M12 21V3M18 21v-7"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  flag:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22V4h12l-2 4 2 4H4"/></svg>',
+  radar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12l6-6"/></svg>',
+  face:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01M15 9h.01"/></svg>',
+};
+let estado, salvando=null, cqAberta=null, torradaTxt=null;
+const $=id=>document.getElementById(id);
+
+function identHTML(){
+  const um=estado==='one';
+  const opcs=AFF.map(([k,a])=>{const on=k===perfil,ocupado=salvando===k;
+    return `<button class="opc ${salvando&&!ocupado?'apagada':''}" data-troca="${k}" aria-pressed="${on}" style="${on?`border-color:${PERFIS[k].sig};background:${rgba(PERFIS[k].sig,.2)}`:''}"><img src="${ARTE}emblem-${k}.png" alt="" /><span class="nm">${PERFIS[k].label}</span><span class="af">${ocupado?'Salvando...':a+'%'}</span>${on?`<span class="ok">${ICONE.check}</span>`:''}</button>`}).join('');
+  const segs=um?`<i style="flex:1;background:${PERFIS[perfil].sig}"></i>`:AFF.map(([k,a])=>`<i style="flex:${a};background:${k===perfil?'var(--accent)':rgba(PERFIS[k].sig,.85)}"></i>`).join('')+'<i style="flex:6"></i>';
+  return `<section class="bloco"><div class="cartao"><dl class="info">
+      <div><dt>Turma</dt><dd>6º ano B · Prof. Helena Duarte</dd></div>
+      <div><dt>Guilda</dt><dd><img src="${ARTE}emblem-conqueror.png" alt="" />Legião Azul</dd></div>
+      <div><dt>E-mail</dt><dd>amina.t@escola.edu.br</dd></div>
+      <div><dt>Na jornada desde</dt><dd>março de 2026</dd></div></dl>
+      <a class="link" href="11-configuracoes.html#informacoes">Editar informações</a></div></section>
+    <section class="bloco"><div class="cartao">
+      <div class="chip-perfil"><img src="${ARTE}emblem-${perfil}.png" alt="" /><div><strong>${PERFIS[perfil].label}</strong><span>Perfil ${perfil===AFF[0][0]?'dominante':'ativo'}</span></div></div>
+      ${um?'':`<p class="rot">Alternar perfil ativo</p><div class="opcoes" role="group" aria-label="Alternar perfil ativo">${opcs}</div>
+        ${estado==='switcherr'?'<div class="erro-troca" role="alert"><strong>Não foi possível trocar o perfil</strong>Tente novamente em instantes.</div>':''}`}
+      <div class="afin" aria-hidden="true">${segs}</div>
+      <div class="afin-leg">${um?`${PERFIS[perfil].label} 100%`:'Conqueror 58% · Mastermind 24% · Achiever 12% · outros 6%'}</div>
+      <div class="mini"><div>Turma<b>6º ano B</b></div><div>Sequência<b>5 dias</b></div><div>No rank<b>12º</b></div></div></div></section>`;
+}
+function atalhosHTML(){
+  return `<section class="bloco"><div class="cartao atalhos" style="padding:0">
+    <a class="atalho" href="12-loja.html?perfil=${perfil}"><span class="ic"><img src="${ARTE}coin-${perfil}.png" alt="" /></span><span class="t">Loja</span><small>38 moedas</small>${ICONE.chev}</a>
+    <a class="atalho" href="09-biblioteca-conquistas.html"><span class="ic">${IC.medal}</span><span class="t">Biblioteca de conquistas</span><small>14</small>${ICONE.chev}</a>
+    <a class="atalho" href="10-relatorio-dados.html"><span class="ic">${IC.doc}</span><span class="t">Relatório dos seus dados</span>${ICONE.chev}</a>
+    <a class="atalho" href="11-configuracoes.html"><span class="ic">${IC.gear}</span><span class="t">Configurações</span>${ICONE.chev}</a>
+    <a class="atalho sair" href="00-entrada.html"><span class="ic">${IC.sair}</span><span class="t">Sair</span></a></div></section>`;
+}
+function conquistasHTML(){
+  return `<section class="bloco" aria-label="Conquistas"><h2 class="titulo">14 conquistadas <small>· 42% da biblioteca</small></h2><div class="cartao">
+    <div class="barra-cq"><i style="width:42%"></i></div>
+    <div class="cq-grade">${CQ_FEITAS.map(([o,n,d],i)=>`<button class="cq" data-cq="${i}"><img src="${ARTE}object-${o}.png" alt="" /><span><strong>${n}</strong><span>${d}</span></span></button>`).join('')}</div>
+    <p class="rot" style="margin-top:14px">Quase lá</p>
+    ${CQ_QUASE.map(([o,n,v,t,u])=>`<div class="quase"><img src="${ARTE}object-${o}.png" alt="" /><div><strong>${n}</strong><div class="barra-cq"><i style="width:${v/t*100}%"></i></div></div><span class="n">${v}/${t} ${u}</span></div>`).join('')}
+    <div class="ver"><a class="link" href="09-biblioteca-conquistas.html">Ver biblioteca completa →</a></div></div></section>`;
+}
+function radarSVG(){
+  const ax=[['Precisão',81],['Progresso',56],['Exploração',54],['Atividades',60],['Presença',71]],c=120,R=70;
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/5;return [c+Math.cos(a)*r,c+Math.sin(a)*r]};
+  let s=`<svg class="radar" width="240" height="240" viewBox="0 0 240 240" aria-hidden="true">`;
+  for(let k=1;k<=4;k++)s+=`<polygon points="${ax.map((_,i)=>pt(i,R*k/4).join(',')).join(' ')}" fill="none" stroke="var(--border)"/>`;
+  ax.forEach((_,i)=>{const [x,y]=pt(i,R);s+=`<line x1="${c}" y1="${c}" x2="${x}" y2="${y}" stroke="var(--border)"/>`});
+  s+=`<polygon points="${ax.map(([,v],i)=>pt(i,R*v/100).join(',')).join(' ')}" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>`;
+  ax.forEach(([l,v],i)=>{const [x,y]=pt(i,R+22);s+=`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="middle" fill="var(--text-muted)" font-size="10.5">${l} ${v}</text>`});
+  return s+`</svg><table class="sr"><caption>Desempenho nos 5 eixos</caption>${ax.map(([l,v])=>`<tr><th>${l}</th><td>${v}</td></tr>`).join('')}</table>`;
+}
+function metricasHTML(){
+  const [nome,desc]=ESTILOS[ESTILO_DO[perfil]], selo=`<span class="selo">${IC.target}${nome}</span>`;
+  if(estado==='nometrics')return `<section class="bloco"><div class="cartao heroi">${selo}<div class="eyebrow" style="margin-top:10px">Métricas do perfil</div><h2>Nenhuma missão em campo</h2><p>As métricas aparecerão aqui conforme você avançar nos conteúdos, atividades e leituras adaptativas.</p></div></section>`;
+  if(ESTILO_DO[perfil]!=='arena')return `<section class="bloco"><div class="cartao heroi">${selo}<div class="eyebrow" style="margin-top:10px">Métricas do perfil</div><h2>${nome}</h2><p>${desc}</p><p style="font-size:12.5px;color:var(--text-subtle)">Estrutura completa deste estilo em revisão futura. O estilo Arena Tática (Conqueror, Daredevil, Survivor) já está desenhado.</p></div></section>`;
+  return `<section class="bloco"><div class="cartao heroi">${selo}<div class="eyebrow" style="margin-top:10px">Central de domínio</div><h2>Sua campanha está sob controle</h2><p>Rank, precisão e avanço da classe aparecem como uma operação em andamento.</p>
+      <div class="kpis"><div class="kpi">${IC.target}<div><span>Precisão</span><strong>81%</strong></div></div><div class="kpi">${IC.rank}<div><span>Posição</span><strong>12º</strong></div></div><div class="kpi">${IC.clock}<div><span>Tempo ativo</span><strong>11h 20min</strong></div></div><div class="kpi">${IC.flag}<div><span>Campanha</span><strong>56%</strong></div></div></div></div></section>
+    <section class="bloco"><div class="cartao"><h3 style="margin:0 0 2px;font-size:16px">Status da operação</h3><p style="font-size:12.5px;color:var(--text-subtle);margin:0 0 12px">Visão rápida da campanha atual.</p>
+      ${[['Tópicos dominados',4,8],['Conteúdos explorados',14,26],['Atividades concluídas',9,15]].map(([l,a,b])=>`<div class="linha-b"><div class="l"><span>${l}</span><b>${a}/${b}</b></div><div class="barra"><i style="width:${a/b*100}%"></i></div></div>`).join('')}</div></section>
+    <section class="bloco"><div class="cartao"><h3 style="margin:0 0 2px;font-size:16px">Inteligência de combate</h3><p style="font-size:12.5px;color:var(--text-subtle);margin:0">Visão tática do desempenho nos 5 eixos.</p>${radarSVG()}</div></section>`;
+}
+function leituraHTML(){
+  const cab=`<div style="display:flex;align-items:center;gap:8px"><span style="width:20px;color:var(--accent)">${IC.radar}</span><h3 style="margin:0;font-size:16px">Leitura adaptativa</h3></div><p style="font-size:12.5px;color:var(--text-subtle);margin:4px 0 0">Última interpretação da IA durante sua sessão de estudo.</p>`;
+  if(estado==='noread'||estado==='nometrics')return `<section class="bloco"><div class="cartao leit">${cab}<p class="resumo">Ainda não há leitura recente. Estude um tópico para gerar análise adaptativa.</p></div></section>`;
+  return `<section class="bloco"><div class="cartao leit">${cab}
+    <div class="chips"><span class="chip chip-accent">${IC.face}Concentrada</span><span class="chip chip-neutral">${IC.cam}Coleta visual desligada</span></div>
+    <p class="ciclo">Ciclo atual: 14</p><p class="resumo">A IA percebeu concentração e respondeu com desafios curtos antes da leitura.</p>
+    <div class="caixa"><h4>Leituras da IA</h4><ul><li>Você rende mais quando começa praticando.</li><li>Seu ritmo de leitura caiu no fim da sessão.</li></ul></div>
+    <div class="caixa"><h4>Ajustes aplicados</h4><ul><li>Equações do 1º grau começa por desafios curtos.</li><li>Textos divididos em blocos menores.</li></ul></div>
+    <div class="caixa aviso"><h4>Pontos de atenção</h4><ul><li>Frações levou o dobro do tempo médio.</li></ul></div></div></section>`;
+}
+function render(){
+  aplicarTema();
+  $('preview').innerHTML=previewHTML(ESTADOS,estado);
+  let h;
+  if(estado==='loading')h=`<div class="rolagem"><div class="skel" style="height:calc(var(--topo) + 150px);border-radius:0"></div><div class="skel" style="width:104px;height:104px;border-radius:50%;margin:-60px auto 0"></div><div class="skel" style="height:22px;width:160px;margin:14px auto 0"></div>${'<div class="skel" style="height:130px;margin:20px 14px 0;border-radius:14px"></div>'.repeat(3)}</div>`;
+  else{
+    const banner=estado==='banner'?`${ARTE}entry-world.webp`:`${ARTE}world-${perfil}.webp`;
+    h=`<div class="rolagem" id="rolagem"><div class="banner"><img src="${banner}" alt="Banner do perfil" />
+        <div class="acoes"><a class="vidro-btn" href="09-biblioteca-conquistas.html" aria-label="Biblioteca de conquistas">${IC.medal}</a><a class="vidro-btn" href="11-configuracoes.html" aria-label="Configurações">${IC.gear}</a><button class="vidro-btn" data-abre-bag aria-label="Abrir minha Bag"><img src="${ARTE}bag-${perfil}.png" alt="" /></button></div>
+        <a class="vidro-btn camera" href="11-configuracoes.html#informacoes" aria-label="Trocar banner">${IC.cam}</a></div>
+      <div class="retrato"><img class="face" src="${ARTE}rosto-${perfil}.png" alt="Amina T." /></div>
+      <div class="ident"><h1>Amina T.</h1><p class="handle">@AMINA</p><p class="sobre">Gosto de aprender praticando primeiro e lendo depois. Quero chegar ao 7º ano dominando equações.</p></div>
+      ${identHTML()}${atalhosHTML()}${conquistasHTML()}${metricasHTML()}${leituraHTML()}
+      <section class="bloco"><h2 class="titulo">Última atividade</h2><div class="cartao" style="padding:4px 14px">
+        <div class="ativ"><span class="i">${ICONE.check}</span><div><strong>Equações do 1º grau</strong> — acertou 4 de 5 na atividade</div><small>Hoje, 18:40</small></div>
+        <div class="ativ"><span class="i">${IC.rank}</span><div>Subiu para a <strong>12ª posição</strong> no ranking de Tempo de Estudo</div><small>Ontem</small></div></div></section></div>`;
+  }
+  h+=abasHTML('perfil');
+  if(cqAberta!=null){const [o,n,,c,d,dt]=CQ_FEITAS[cqAberta];h+=`<div class="veu" data-fecha></div><section class="folha vidro" role="dialog" aria-modal="true" aria-labelledby="cqt"><span class="alca" data-fecha></span><img class="arte" src="${ARTE}object-${o}.png" alt="" /><div><span class="chip chip-accent">${c}</span></div><h3 id="cqt">${n}</h3><p>${d}</p><p class="data">Concluída em ${dt}</p><button class="btn btn-secundario btn-bloco" data-fecha>Fechar</button></section>`}
+  if(torradaTxt)h+=`<div class="torrada" role="status">${torradaTxt}</div>`;
+  const st=$('rolagem')?.scrollTop||0;
+  $('tela').innerHTML=h;
+  if($('rolagem'))$('rolagem').scrollTop=st;
+  Bag.redesenha();
+}
+function torrada(t){torradaTxt=t;render();setTimeout(()=>{torradaTxt=null;render()},1700)}
+function define(v){
+  estado=v;salvando=v==='switching'?'mastermind':null;cqAberta=null;Bag.fechar();render();
+  if(v==='bag')Bag.abrir();if(v==='bag-vazia')Bag.abrir({estado:'vazia'});if(v==='bag-erro')Bag.abrir({estado:'erro'});
+}
+document.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);
+  if(q('#bag-raiz'))return;
+  if(q('[data-perfil]')){perfil=q('[data-perfil]').dataset.perfil;render();return}
+  if(q('[data-torrada]')){e.preventDefault();torrada(q('[data-torrada]').dataset.torrada);return}
+  if(q('[data-cq]')){cqAberta=+q('[data-cq]').dataset.cq;render();return}
+  if(q('[data-fecha]')){cqAberta=null;render();return}
+  const sw=q('[data-troca]');
+  if(sw&&!salvando){const k=sw.dataset.troca;if(k===perfil)return;salvando=k;render();setTimeout(()=>{if(estado==='switcherr'){salvando=null;render();return}perfil=k;salvando=null;render()},800)}
+});
+document.addEventListener('change',e=>{if(e.target.id!=='estado')return;history.replaceState(null,'',`${location.pathname}?estado=${e.target.value}&perfil=${perfil}`);define(e.target.value)});
+define(qs.get('estado')||'data');
+</script>
+</body>
+</html>

@@ -28,6 +28,11 @@ type Props = {
   guilds: Guild[];
   accent: string;
   profile?: string | null;
+  /**
+   * "Desafiar" no cartão do amigo (web em tela larga, #508): já abre o duelo 1x1 com ele
+   * escolhido. `chave` muda a cada clique, para repetir o mesmo amigo.
+   */
+  dueloCom?: { alunoId: string; chave: number } | null;
 };
 
 const FORMATOS: { key: FormatoDaArena; label: string }[] = [
@@ -54,7 +59,7 @@ const RESULTADO: Record<string, string> = {
  * convite e abre a partida no `DesafioModal`, que responde por `arena_responder` quando o
  * desafio tem equipe 2.
  */
-export function ArenaSection({ classeId, meuId, people, guilds, accent, profile }: Props) {
+export function ArenaSection({ classeId, meuId, people, guilds, accent, profile, dueloCom }: Props) {
   const palette = getProfileShellPalette(profile);
   const [lista, setLista] = useState<DesafioDaArena[]>([]);
   const [carregando, setCarregando] = useState(true);
@@ -89,6 +94,15 @@ export function ArenaSection({ classeId, meuId, people, guilds, accent, profile 
   useEffect(() => {
     void recarregar();
   }, [recarregar]);
+
+  useEffect(() => {
+    if (!dueloCom) return;
+    setFormato("solo");
+    setAliado(null);
+    setRival(null);
+    setAdversarios([dueloCom.alunoId]);
+    setAviso(null);
+  }, [dueloCom]);
 
   function trocarFormato(f: FormatoDaArena) {
     setFormato(f);

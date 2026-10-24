@@ -1593,6 +1593,7 @@ async def conversar_com_mentor_personalizacao(
         },
         on_violation=_auditar_chat,
         provider="openai",
+        use_rag=bool(request.app.state.settings.openai_rag_enabled),
     )
 
     result = mentor_result.model_dump(mode="json")

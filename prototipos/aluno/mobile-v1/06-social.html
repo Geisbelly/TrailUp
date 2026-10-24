@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TrailUp — Social (celular)</title>
+<link rel="stylesheet" href="assets/aparelho.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  .topo{position:absolute;left:0;right:0;top:0;z-index:10;padding:calc(var(--topo) + 6px) 12px 0 18px;background:var(--bg)}
+  .topo-linha{display:flex;align-items:center;gap:8px;height:52px}
+  .topo-linha h1{flex:1;font-family:Georgia,serif;font-size:24px;margin:0}
+  .moedas{display:flex;align-items:center;gap:6px;height:44px;padding:0 12px 0 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:800;font-size:14px;text-decoration:none;color:var(--text)}
+  .moedas img{width:24px;height:24px;object-fit:contain}
+  .rolagem{position:absolute;left:0;right:0;top:calc(var(--topo) + 58px);bottom:calc(var(--abas) + var(--base));overflow-y:auto;scrollbar-width:none;padding-bottom:32px;scroll-padding-top:60px}
+  .rolagem::-webkit-scrollbar{display:none}
+  .atalhos{position:sticky;top:0;z-index:6;display:flex;gap:8px;overflow-x:auto;padding:6px 18px 10px;background:var(--bg);scrollbar-width:none}
+  .atalhos::-webkit-scrollbar{display:none}
+  .atalhos a{flex:none;display:flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13.5px;font-weight:600;color:var(--text-muted);text-decoration:none}
+  .atalhos .n{min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--accent);color:var(--bg);font-size:11px;font-weight:800;display:grid;place-items:center}
+  .aviso-desafio{position:sticky;top:56px;z-index:5;margin:0 12px 10px;display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-radius:12px;border:1px solid var(--accent);font-size:14px}
+  .aviso-desafio svg{width:18px;height:18px;color:var(--accent);flex:none}
+  .aviso-desafio span{flex:1}
+  section.bloco{padding:0 14px;margin-top:22px}
+  .titulo{display:flex;align-items:center;gap:8px;font-family:Georgia,serif;font-size:19px;margin:0 4px 10px}
+  .titulo .chip{font-family:Inter,system-ui,sans-serif}
+  .cartao{border-radius:14px;border:1px solid var(--line);background:var(--surface);padding:16px}
+  .evento{border-color:var(--accent);background:linear-gradient(160deg,var(--elev),var(--surface))}
+  .ev-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-subtle)}
+  .chip-ok{background:var(--success-bg);color:var(--success)}
+  .evento h2{font-family:Georgia,serif;font-size:21px;margin:10px 0 4px}
+  .evento .desc{font-size:14px;line-height:1.5;color:var(--text-muted);margin:0 0 10px}
+  .modo{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+  .modo .chip{align-self:flex-start}
+  .modo .chip img{width:16px;height:16px;object-fit:contain}
+  .modo small{font-size:12px;color:var(--text-subtle);line-height:1.45}
+  .metricas{display:flex;flex-direction:column;gap:10px}
+  .metrica{background:var(--bg-a55);border-radius:10px;padding:10px 12px}
+  .metrica .l{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;color:var(--text-subtle);margin-bottom:6px}
+  .metrica .l b{color:var(--text);font-size:15px}
+  .metrica small{display:block;font-size:11.5px;color:var(--text-subtle);margin-top:5px}
+  .ev-pe{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+  .ev-pe p{margin:0;font-size:13px;color:var(--text-muted);line-height:1.45}
+  .arena{position:relative;overflow:hidden}
+  .arena > img.fundo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.25}
+  .arena > *{position:relative}
+  .ar-cab{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px}
+  .ar-cab h2{font-family:Georgia,serif;font-size:20px;margin:4px 0 0}
+  .ar-chips{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+  .rot{font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-subtle)}
+  .vs{display:flex;align-items:center;justify-content:space-between;margin:10px 0 6px}
+  .vs div{display:flex;flex-direction:column;align-items:center;gap:4px;width:30%;font-size:13px;font-weight:700;text-align:center}
+  .vs img{width:52px;height:52px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--accent)}
+  .vs .placar{font-family:Georgia,serif;font-size:30px;font-weight:700}
+  .vs .placar em{font-style:normal;color:var(--text-subtle);font-size:18px;margin:0 4px}
+  .ganhando{color:var(--success)}
+  .ar-sub{display:block;text-align:center;font-size:12px;color:var(--text-subtle);margin-bottom:10px}
+  .ar-tab{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column}
+  .ar-tab li{display:flex;align-items:center;gap:10px;min-height:44px;border-bottom:1px solid var(--line);font-size:14px}
+  .ar-tab li b{width:26px;color:var(--text-subtle)}
+  .ar-tab li img{width:30px;height:30px;border-radius:50%;object-fit:cover}
+  .ar-tab li span{flex:1}
+  .ar-tab li em{font-style:normal;font-weight:700;font-variant-numeric:tabular-nums}
+  .ar-tab li.eu{color:var(--accent);font-weight:700}
+  details.regras{margin-top:10px;font-size:13px;color:var(--text-muted);line-height:1.5}
+  details.regras summary{min-height:44px;display:flex;align-items:center;font-weight:700;color:var(--accent);cursor:pointer}
+  .ar-fora p{font-size:14px;color:var(--text-muted);line-height:1.5;margin:6px 0 12px}
+  .modos{display:flex;gap:10px;overflow-x:auto;padding:0 4px 4px;scrollbar-width:none}
+  .modos::-webkit-scrollbar{display:none}
+  .modo-c{flex:none;width:140px;min-height:120px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:12px;display:flex;flex-direction:column;gap:6px;text-align:left;cursor:pointer}
+  .modo-c .ic{width:36px;height:36px;border-radius:10px;background:var(--accent-muted);color:var(--accent);display:grid;place-items:center}
+  .modo-c .ic svg{width:18px;height:18px}
+  .modo-c strong{font-size:15px}
+  .modo-c small{font-size:12px;color:var(--text-subtle);line-height:1.4}
+  .sub{font-size:14px;font-weight:700;margin:16px 4px 8px}
+  .desafio{display:flex;align-items:center;gap:10px;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--surface);margin-bottom:8px;font-size:13.5px;line-height:1.4}
+  .desafio .ic{width:34px;height:34px;border-radius:10px;background:var(--accent-muted);color:var(--accent);display:grid;place-items:center;flex:none}
+  .desafio .ic svg{width:16px;height:16px}
+  .desafio p{flex:1;margin:0}
+  .desafio .acoes{display:flex;flex-direction:column;gap:6px}
+  .desafio.encerrado{opacity:.7}
+  .btn-p{min-height:40px;padding:0 12px;font-size:13px}
+  .ajuda{font-size:12.5px;color:var(--text-subtle);margin:6px 4px 0;line-height:1.45}
+  .busca{display:flex;align-items:center;gap:8px;height:48px;padding:0 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);margin:24px 14px 0}
+  .busca svg{width:18px;height:18px;color:var(--text-subtle)}
+  .busca input{flex:1;background:none;border:0;color:var(--text);font-size:16px;outline:none;min-width:0}
+  .pessoa{display:flex;align-items:center;gap:10px;min-height:64px;padding:8px 6px;border-bottom:1px solid var(--line)}
+  .pessoa .av{position:relative;flex:none;background:none;border:0;padding:0;cursor:pointer}
+  .pessoa .av img{width:44px;height:44px;border-radius:50%;object-fit:cover;background:var(--elev)}
+  .pessoa .av i{position:absolute;right:0;bottom:0;width:12px;height:12px;border-radius:50%;background:var(--success);box-shadow:0 0 0 2px var(--bg)}
+  .pessoa .info{flex:1;min-width:0;background:none;border:0;padding:0;text-align:left;cursor:pointer}
+  .pessoa .info strong{display:block;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pessoa .info span{display:block;font-size:12.5px;color:var(--text-subtle);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pessoa .acoes{gap:4px}
+  .pessoa .desafiar{min-height:40px;padding:0 10px;font-size:12.5px;gap:5px}
+  .pessoa .desafiar svg{width:15px;height:15px}
+  .pessoa .acoes{display:flex;gap:6px;align-items:center}
+  .icb{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;cursor:pointer;color:var(--text)}
+  .icb svg{width:17px;height:17px}
+  .enviado{font-size:12.5px;font-weight:700;color:var(--text-subtle);padding:0 8px}
+  .vazio{text-align:center;padding:22px 16px;display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--text-subtle);font-size:14px}
+  .vazio svg{width:34px;height:34px}
+  .rede{display:flex;flex-direction:column}
+  .rede button{display:flex;justify-content:space-between;align-items:center;min-height:48px;background:none;border:0;border-bottom:1px solid var(--line);padding:0 4px;font-size:14.5px;cursor:pointer}
+  .rede b{color:var(--accent)}
+  .online{display:flex;align-items:center;gap:10px}
+  .online .ros{display:flex}
+  .online .ros img{width:34px;height:34px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--success);margin-left:-8px;background:var(--elev)}
+  .online .ros img:first-child{margin-left:0}
+  .online span{font-size:14px}
+  .g-dest{text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .g-dest img.em{width:56px;height:56px;object-fit:contain}
+  .g-dest h4{font-family:Georgia,serif;font-size:18px;margin:0}
+  .g-dest p{margin:0;font-size:13px;color:var(--text-subtle)}
+  .g-dest .ros{display:flex;margin:4px 0 8px}
+  .g-dest .ros img{width:30px;height:30px;border-radius:50%;object-fit:cover;margin-left:-6px;box-shadow:0 0 0 2px var(--surface)}
+  .g-rank{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 10px;border-radius:10px;border:1px solid var(--line);margin-bottom:6px;font-size:14px}
+  .g-rank.eu{border-color:var(--accent);background:var(--accent-muted)}
+  .g-rank b{width:26px;color:var(--accent)}
+  .g-rank img{width:28px;height:28px;object-fit:contain}
+  .g-rank strong{flex:1}
+  .g-linha{display:flex;align-items:center;gap:10px;min-height:56px;border-bottom:1px solid var(--line)}
+  .g-linha img{width:34px;height:34px;object-fit:contain}
+  .g-linha div{flex:1}
+  .g-linha strong{display:block;font-size:14.5px}
+  .g-linha span{font-size:12.5px;color:var(--text-subtle)}
+  .erro{margin:40px 18px;padding:18px;border-radius:12px;background:var(--danger-bg);border:1px solid var(--danger-border);display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+  .erro svg{width:22px;height:22px;color:var(--danger)}
+  .erro p{margin:0;color:#f3d9e0}
+  /* folhas */
+  .veu{z-index:35}
+  .folha{z-index:40;bottom:calc(var(--abas) + var(--base) * 0);bottom:0;padding:0 18px calc(var(--base) + 18px);max-height:86%;overflow-y:auto}
+  .folha h3{font-family:Georgia,serif;font-size:20px;margin:2px 0 4px}
+  .folha p{font-size:14.5px;line-height:1.55;color:var(--text-muted);margin:0 0 12px}
+  .folha .cab{display:flex;gap:12px;align-items:center;margin-bottom:10px}
+  .folha .cab .ic{width:44px;height:44px;border-radius:12px;background:var(--accent-muted);color:var(--accent);display:grid;place-items:center;flex:none}
+  .folha .cab .ic svg{width:20px;height:20px}
+  .folha .cab p{margin:0;font-size:13.5px}
+  .picks{display:flex;flex-direction:column;gap:6px;margin:6px 0 12px}
+  .pick{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg-a55);font-size:14.5px;cursor:pointer}
+  .pick img{width:32px;height:32px;border-radius:50%;object-fit:cover}
+  .pick em{margin-left:auto;font-style:normal;font-size:12px;color:var(--success)}
+  .pick input{accent-color:var(--accent);width:18px;height:18px}
+  .sel{width:100%;height:50px;border-radius:10px;border:1px solid var(--line);background:var(--bg-a55);color:var(--text);padding:0 12px;font-size:16px;margin:6px 0 8px}
+  .acoes2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+  .btn-perigo{background:var(--danger);color:#2a0d10}
+  .op{display:flex;align-items:center;gap:10px;min-height:52px;width:100%;border:0;border-bottom:1px solid var(--line);background:none;font-size:15px;font-weight:600;text-align:left;cursor:pointer}
+  .op.perigo{color:var(--danger)}
+  .torrada{position:absolute;left:50%;bottom:calc(var(--abas) + var(--base) + 14px);transform:translateX(-50%);z-index:70;background:var(--text);color:var(--bg);font-size:13px;font-weight:600;padding:10px 14px;border-radius:999px;white-space:nowrap}
+</style>
+</head>
+<body class="mesa">
+
+<div class="preview" id="preview"></div>
+
+<div class="aparelho">
+  <div class="tela" id="tela"></div>
+</div>
+
+<script src="assets/aparelho.js"></script>
+<script src="assets/tema.js"></script>
+<script src="assets/tour.js"></script>
+<script src="assets/bag.js"></script>
+<script src="assets/social.js"></script>
+<script>
+/* dados do v4 (06-social.html) */
+const MODOS=[['duelo','Duelo','Você contra um colega, mesmas questões.'],['duplo','Duplo','Você e um colega contra outra dupla.'],['velocidade','Velocidade','Quem acerta mais rápido.'],['precisao','Precisão','Quem erra menos.'],['todos','Todos','A guilda inteira responde junto.']];
+const AMIGOS=[{n:'Marina S.',p:'seeker',s:'Exploradores do Norte',on:true},{n:'Zuri & Mateo',p:'socializer',s:'offline há 2h',on:false},{n:'Diego A.',p:'conqueror',s:'Legião Azul',on:true},{n:'Bianca L.',p:'achiever',s:'Exploradores do Norte',on:true},{n:'Théo M.',p:'seeker',s:'offline há 1 dia',on:false},{n:'Rafael N.',p:'conqueror',s:'Legião Azul',on:true}];
+const COLEGAS=[{n:'Kenji O.',p:'survivor',s:'Survivor · 6º ano B'},{n:'Lara P.',p:'mastermind',s:'Mastermind · 6º ano B',env:true},{n:'Iago F.',p:'daredevil',s:'Daredevil · 6º ano B'},{n:'Sofia R.',p:'achiever',s:'Achiever · 6º ano B'},{n:'Nina C.',p:'seeker',s:'Seeker · 6º ano B'},{n:'Caio B.',p:'conqueror',s:'Conqueror · 6º ano B'},{n:'Luísa M.',p:'socializer',s:'Socializer · 6º ano B'},{n:'Pedro H.',p:'survivor',s:'Survivor · 6º ano B'},{n:'Ana J.',p:'mastermind',s:'Mastermind · 6º ano B'}];
+const ARENA=[['Kwame R.','achiever',92],['Marina S.','seeker',88],['Diego A.','conqueror',81],['Amina T.','conqueror',64,true],['Bianca L.','achiever',61]];
+const ABERTOS_BASE=[{id:1,modo:'duelo',txt:'<strong>Diego A.</strong> te desafiou · Duelo · 3 questões de Equações',st:'recebido'},{id:2,modo:'precisao',txt:'<strong>Legião Azul</strong> · Precisão · você respondeu 2 de 3',st:'andamento'},{id:3,modo:'velocidade',txt:'Você venceu <strong>Zuri &amp; Mateo</strong> · Velocidade · 3 × 2',st:'encerrado'}];
+const ESTADOS=[['data','Com dados'],['noevent','Sem evento aberto'],['outarena','Fora da arena'],['challenged','Desafio recebido'],['noinv','Sem convites'],['nofriends','Sem amigos'],['loading','Carregando'],['error','Erro'],['chat-guilda','Chat da guilda'],['chat-guilda-vazio','Chat da guilda vazio'],['chat-privado','Chat privado'],['perfil','Perfil público'],['perfil-sem','Perfil sem conquistas'],['perfil-erro','Perfil com erro']];
+const I={duelo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/><path d="M9.5 17.5L21 6V3h-3L6.5 14.5M11 19l-6-6M8 16l-4 4M5 21l-2-2"/></svg>',
+  duplo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="4"/><path d="M17 11a3 3 0 1 0 0-6M1 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2M23 21v-2a4 4 0 0 0-3-3.9"/></svg>',
+  velocidade:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></svg>',
+  precisao:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+  todos:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/></svg>',
+  chat:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  pontos:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  busca:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  gente:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="7" r="4"/><path d="M1 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"/></svg>',
+  trofeu:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3a3 3 0 0 1-3 4M7 5H4a3 3 0 0 0 3 4"/></svg>'};
+const esc=s=>s.replace(/&/g,'&amp;');
+const barra=(v,m)=>`<div class="barra"><i style="width:${Math.min(100,v/m*100)}%"></i></div>`;
+let estado, busca='', verTodos=false, convite, amigos, colegas, evento, naArena, abertos, aviso, folha=null, torradaTxt=null;
+const $=id=>document.getElementById(id);
+
+function eventoHTML(){
+  if(!evento)return `<section class="bloco" id="evento"><div class="cartao" style="display:flex;gap:12px;align-items:center"><span style="color:var(--text-subtle);width:34px;flex:none">${I.trofeu}</span><div><strong style="display:block;margin-bottom:4px">Nenhum evento aberto agora.</strong><span style="font-size:13.5px;color:var(--text-subtle);line-height:1.45">Quando seu professor abrir um evento, ele aparece aqui com as missões, a meta da turma e a arena.</span></div></div></section>`;
+  return `<section class="bloco" id="evento" aria-label="Evento em andamento"><div class="cartao evento">
+    <div class="ev-topo"><span class="chip chip-ok">Aberto</span><span>6º ano B · Equações do 1º grau · 06/10–12/10</span></div>
+    <h2>Semana das Equações</h2><p class="desc">Resolva missões e desafios de Equações do 1º grau. A turma tem uma meta coletiva e a arena está aberta.</p>
+    <div class="modo"><span class="chip chip-accent"><img src="${ARTE}emblem-conqueror.png" alt="" />Em guilda · Legião Azul</span><small>A modalidade individual sempre existe. Quem não está em guilda participa sozinho, sem perder pontos.</small></div>
+    <div class="metricas"><div class="metrica"><div class="l"><span>Missões</span><b>2 de 3</b></div>${barra(2,3)}</div>
+      <div class="metrica"><div class="l"><span>Meta da turma</span><b>1.120 de 1.500 pts</b></div>${barra(1120,1500)}<small>Objetivo coletivo, separado da sua pontuação</small></div>
+      <div class="metrica"><div class="l"><span>Seus pontos no evento</span><b>38 de 60</b></div>${barra(38,60)}<small>Entram no ranking da turma</small></div></div>
+    <div class="ev-pe"><p>Medalha de participação garantida · Destaque para o melhor resultado · +40 moedas</p><a class="btn btn-primario btn-bloco" href="03-trilha.html">Continuar missões ${ICONE.seta}</a></div></div></section>`;
+}
+function arenaHTML(){
+  if(!evento)return '';
+  const conf=naArena?`<span class="rot">Seu confronto desta rodada · <b class="ganhando">você está vencendo</b></span>
+      <div class="vs"><div><img src="${ARTE}rosto-conqueror.png" alt="" />Amina T.</div><b class="placar">64<em>×</em>61</b><div><img src="${ARTE}rosto-achiever.png" alt="" />Bianca L.</div></div>
+      <span class="ar-sub">Vitória por acerto. Tempo só desempata.</span><button class="btn btn-primario btn-bloco" data-rodada>Responder rodada · 3 questões</button>`
+    :`<div class="ar-fora"><span class="rot">Você está fora da arena</span><p>Entrar na arena é opcional. Você enfrenta colegas com desempenho parecido, rodada a rodada.</p><button class="btn btn-primario btn-bloco" data-entrar>Entrar na arena</button></div>`;
+  const tab=ARENA.filter(a=>naArena||!a[3]).map(([n,p,v,me],i)=>`<li class="${me?'eu':''}"><b>${i+1}º</b><img src="${ARTE}rosto-${p}.png" alt="" /><span ${me?'':`data-perfil-pub="${n}"`}>${n}${me?' (você)':''}</span><em>${v} pts</em></li>`).join('');
+  return `<section class="bloco" id="arena" aria-label="Arena de batalhas"><div class="cartao arena"><img class="fundo" src="${ARTE}arena-conqueror.webp" alt="" />
+    <div class="ar-cab"><div><div class="eyebrow">Arena · Semana das Equações</div><h2>Arena de batalhas</h2></div><div class="ar-chips"><span class="chip chip-neutral">Critério: Pontuação</span><span class="chip chip-neutral">${naArena?12:11} inscritos</span></div></div>
+    ${conf}<span class="rot" style="display:block;margin-top:16px">Classificação da arena</span><ol class="ar-tab">${tab}</ol>
+    <details class="regras"><summary>Como funciona</summary>Pareamento por proximidade de desempenho, nunca aleatório. Quem perde não perde pontos, só ganha menos. O ranking da arena não muda sua posição no ranking da turma.</details></div></section>`;
+}
+function batalhasHTML(){
+  const lista=abertos.map(a=>`<div class="desafio ${a.st}"><span class="ic">${I[a.modo]}</span><p>${a.txt}</p>
+    ${a.st==='recebido'?`<div class="acoes"><button class="btn btn-primario btn-p" data-aceita="${a.id}">Aceitar</button><button class="btn btn-secundario btn-p" data-recusa="${a.id}">Recusar</button></div>`:a.st==='andamento'?`<button class="btn btn-secundario btn-p" data-rodada>Continuar</button>`:'<span class="chip chip-neutral">Encerrado</span>'}</div>`).join('');
+  return `<section class="bloco" id="batalhas"><h2 class="titulo">Batalhas</h2>
+    <div class="modos">${MODOS.map(([k,l,d])=>`<button class="modo-c" data-modo="${k}"><span class="ic">${I[k]}</span><strong>${l}</strong><small>${d}</small></button>`).join('')}</div>
+    <h3 class="sub">Desafios abertos</h3>${lista||'<p class="ajuda">Nenhum desafio aberto. Lance uma batalha acima.</p>'}
+    <p class="ajuda">Questões bloqueadas para você não aparecem: só entra o que você já liberou na trilha.</p></section>`;
+}
+const pessoaHTML=(x,acoes)=>`<div class="pessoa"><button class="av" data-perfil-pub="${esc(x.n)}" aria-label="Ver perfil de ${esc(x.n)}"><img src="${ARTE}rosto-${x.p}.png" alt="" />${x.on?'<i></i>':''}</button>
+  <button class="info" data-perfil-pub="${esc(x.n)}"><strong>${esc(x.n)}</strong><span>${x.s}</span></button><div class="acoes">${acoes}</div></div>`;
+function pessoasHTML(){
+  const q=busca.trim().toLowerCase(),F=amigos.filter(a=>!q||a.n.toLowerCase().includes(q)||a.s.toLowerCase().includes(q));
+  let h=`<label class="busca">${I.busca}<input id="busca" placeholder="Buscar por nome ou guilda" value="${esc(busca)}" aria-label="Buscar por nome ou guilda" /></label>`;
+  if(convite)h+=`<section class="bloco" id="convites"><h2 class="titulo">Convites <span class="chip chip-accent">1</span></h2><div class="cartao" style="padding:6px 10px">${pessoaHTML({n:'Kwame R.',p:'achiever',s:'quer se conectar com você'},'<button class="btn btn-primario btn-p" data-convite="ok">Aceitar</button><button class="btn btn-secundario btn-p" data-convite="no">Recusar</button>')}</div></section>`;
+  h+=`<section class="bloco" id="amigos"><h2 class="titulo">Amigos <span class="chip chip-neutral">${amigos.length}</span></h2>`;
+  if(!amigos.length)h+=`<div class="vazio">${I.gente}<p>Você ainda não tem amigos na jornada.</p><a class="btn btn-primario" href="#encontrar">Encontrar colegas</a></div>`;
+  else if(!F.length)h+=`<div class="vazio">${I.busca}<p><strong style="color:var(--text)">Nenhuma pessoa encontrada</strong><br>Tente outro nome ou limpe a busca.</p><button class="btn btn-secundario" data-limpa>Limpar busca</button></div>`;
+  else h+=F.map(a=>pessoaHTML(a,`<button class="icb" data-privado="${esc(a.n)}" aria-label="Conversar com ${esc(a.n)}">${I.chat}</button><button class="btn btn-secundario desafiar" data-desafiar="${esc(a.n)}">${I.duelo}Desafiar</button><button class="icb" data-mais="${esc(a.n)}" aria-label="Mais ações para ${esc(a.n)}">${I.pontos}</button>`)).join('');
+  h+='</section>';
+  const C=verTodos?colegas:colegas.slice(0,3);
+  h+=`<section class="bloco" id="encontrar"><h2 class="titulo">Encontrar colegas <span class="chip chip-neutral">${colegas.length}</span></h2>${C.map((c,i)=>pessoaHTML(c,c.env?'<span class="enviado">Enviado</span>':`<button class="btn btn-primario btn-p" data-convidar="${i}">Convidar</button>`)).join('')}
+    ${verTodos?'':`<button class="link" data-todos style="margin:4px">Ver todos os ${colegas.length} colegas →</button>`}</section>`;
+  return h;
+}
+function lateralHTML(){
+  const on=amigos.filter(a=>a.on).concat([{n:'Kwame R.',p:'achiever'}]);
+  return `<section class="bloco"><h2 class="titulo">Online agora</h2><div class="cartao online"><span class="ros">${on.map(a=>`<img src="${ARTE}rosto-${a.p}.png" alt="${esc(a.n)}" />`).join('')}</span><span>${on.length} colegas online</span></div></section>
+    <section class="bloco"><h2 class="titulo">Guilda em destaque</h2><div class="cartao g-dest"><img class="em" src="${ARTE}emblem-conqueror.png" alt="" /><h4>Legião Azul</h4><p>8 membros · Desafio de Precisão em andamento</p>
+      <span class="ros">${['conqueror','seeker','achiever','socializer'].map(p=>`<img src="${ARTE}rosto-${p}.png" alt="" />`).join('')}</span><button class="btn btn-secundario btn-bloco" data-chat-guilda>Abrir chat da guilda</button></div></section>
+    ${evento?`<section class="bloco"><h2 class="titulo">Guildas no evento</h2>
+      <div class="g-rank"><b>1º</b><img src="${ARTE}emblem-seeker.png" alt="" /><strong>Exploradores do Norte</strong></div>
+      <div class="g-rank eu"><b>2º</b><img src="${ARTE}emblem-conqueror.png" alt="" /><strong>Legião Azul</strong><span class="chip chip-accent">sua</span></div>
+      <div class="g-rank"><b>3º</b><img src="${ARTE}emblem-daredevil.png" alt="" /><strong>Fênix Rubra</strong></div>
+      <p class="ajuda">O resultado da guilda existe só dentro do evento e não entra no ranking da turma.</p></section>`:''}
+    <section class="bloco"><h2 class="titulo">Sua rede</h2><div class="rede"><button data-ir="amigos"><span>Amigos</span><b>${amigos.length} ›</b></button><button data-ir="guildas"><span>Guildas</span><b>2 ›</b></button>${convite?'<button data-ir="convites"><span>Convites pendentes</span><b>1 ›</b></button>':''}<button data-bloqueados><span>Bloqueados</span><b>0 ›</b></button></div></section>
+    <section class="bloco" id="guildas"><h2 class="titulo">Guildas da turma</h2>
+      <div class="g-linha"><img src="${ARTE}emblem-conqueror.png" alt="" /><div><strong>Legião Azul</strong><span>8/10 membros</span></div><span class="chip chip-accent">Sua guilda</span></div>
+      <div class="g-linha"><img src="${ARTE}emblem-seeker.png" alt="" /><div><strong>Exploradores do Norte</strong><span>7/10 membros</span></div><button class="btn btn-secundario btn-p" data-torrada="Pedido enviado à guilda">Pedir para entrar</button></div>
+      <button class="btn btn-secundario btn-bloco" disabled style="margin-top:12px">+ Criar guilda</button><p class="ajuda">Você já participa de uma guilda nesta turma.</p></section>`;
+}
+function folhaHTML(){
+  if(!folha)return '';
+  let c='';
+  if(folha.tipo==='lancar'){const M=MODOS.find(m=>m[0]===folha.modo),on=amigos.filter(a=>a.on);
+    const alvo=folha.modo==='todos'?`<div class="pick"><img src="${ARTE}emblem-conqueror.png" alt="" style="border-radius:0;object-fit:contain" />Legião Azul (guilda inteira)</div>`
+      :on.map((a,i)=>`<label class="pick"><input type="radio" name="alvo" ${folha.quem?(a.n===folha.quem?'checked':''):(i===0?'checked':'')} /><img src="${ARTE}rosto-${a.p}.png" alt="" />${esc(a.n)}<em>online</em></label>`).join('');
+    c=`<div class="cab"><span class="ic">${I[folha.modo]}</span><div><h3>${M[1]}</h3><p>${M[2]}</p></div></div>
+      <span class="rot">${folha.modo==='todos'?'Quem participa':folha.modo==='duplo'?'Sua dupla':'Com quem'}</span><div class="picks">${alvo}</div>
+      <span class="rot">Tópico</span><select class="sel" aria-label="Tópico do desafio"><option>Equações do 1º grau</option><option>Expressões algébricas</option><option>Frações</option></select>
+      <p style="font-size:13px">3 questões. Só aparecem tópicos que vocês dois já liberaram na trilha.</p>
+      <div class="acoes2"><button class="btn btn-secundario" data-fecha>Cancelar</button><button class="btn btn-primario" data-lanca="${folha.modo}">Lançar desafio</button></div>`}
+  if(folha.tipo==='rodada')c=`<h3>Rodada de questões</h3><p>Aqui abre a rodada: 3 questões de Equações do 1º grau, as mesmas para os dois lados. Vence quem acertar mais; o tempo só desempata.</p><button class="btn btn-secundario btn-bloco" data-fecha>Fechar</button>`;
+  if(folha.tipo==='bloqueados')c=`<h3>Pessoas bloqueadas</h3><p>Você não bloqueou ninguém.</p><button class="btn btn-secundario btn-bloco" data-fecha>Fechar</button>`;
+  if(folha.tipo==='mais')c=`<h3>${esc(folha.quem)}</h3><button class="op" data-perfil-pub="${esc(folha.quem)}">Ver perfil</button><button class="op" data-privado="${esc(folha.quem)}">Conversar em privado</button><button class="op perigo" data-desfazer="${esc(folha.quem)}">Desfazer amizade</button>`;
+  if(folha.tipo==='desfazer')c=`<h3>Desfazer amizade com ${esc(folha.quem)}?</h3><p>Desfazer a amizade faz vocês deixarem de acompanhar o avanço um do outro. Dá para convidar de novo depois.</p><div class="acoes2"><button class="btn btn-secundario" data-fecha>Manter amizade</button><button class="btn btn-perigo" data-confirma-desfazer="${esc(folha.quem)}">Desfazer amizade</button></div>`;
+  return `<div class="veu" data-fecha></div><section class="folha vidro" role="dialog" aria-modal="true"><span class="alca" data-fecha></span>${c}</section>`;
+}
+function render(){
+  aplicarTema();
+  $('preview').innerHTML=previewHTML(ESTADOS,estado);
+  const st=$('rolagem')?.scrollTop||0, foco=document.activeElement?.id==='busca';
+  let h=`<header class="topo"><div class="topo-linha"><h1>Social</h1><a class="moedas" href="12-loja.html?perfil=${perfil}" aria-label="Loja, saldo de 38 moedas"><img src="${ARTE}coin-${perfil}.png" alt="" />38</a>
+    <button class="redondo" aria-label="Abrir Bag" data-abre-bag><img src="${ARTE}bag-${perfil}.png" alt="" /></button></div></header>`;
+  if(estado==='error')h+=`<div class="rolagem"><div class="erro" role="alert">${ICONE.alerta}<p>Não foi possível carregar o Social.</p><button class="btn btn-secundario" data-estado="data">${ICONE.repetir}Tentar novamente</button></div></div>`;
+  else if(estado==='loading')h+=`<div class="rolagem" style="padding:8px 14px"><div style="display:flex;gap:8px;margin-bottom:14px">${'<div class="skel" style="height:40px;width:90px;border-radius:999px"></div>'.repeat(4)}</div><div class="skel" style="height:300px;border-radius:14px"></div><div class="skel" style="height:240px;border-radius:14px;margin-top:20px"></div>${'<div class="skel" style="height:56px;margin-top:10px"></div>'.repeat(3)}</div>`;
+  else{
+    const J=[['evento','Evento',null,evento],['arena','Arena',null,evento],['batalhas','Batalhas',abertos.filter(a=>a.st!=='encerrado').length,true],['convites','Convites',1,convite],['amigos','Amigos',amigos.length,true],['encontrar','Encontrar',colegas.length,true],['guildas','Guildas',2,true]].filter(j=>j[3]);
+    h+=`<div class="rolagem" id="rolagem"><nav class="atalhos" aria-label="Ir para">${J.map(([id,l,n])=>`<a href="#${id}" data-pula="${id}">${l}${n!=null?`<span class="n">${n}</span>`:''}</a>`).join('')}</nav>
+      ${aviso?`<div class="aviso-desafio vidro" role="status">${I.duelo}<span>${aviso}</span><button class="btn btn-primario btn-p" data-aceita="1">Aceitar</button></div>`:''}
+      ${eventoHTML()}${arenaHTML()}${batalhasHTML()}${pessoasHTML()}${lateralHTML()}</div>`;
+  }
+  h+=abasHTML('social')+folhaHTML();
+  if(torradaTxt)h+=`<div class="torrada" role="status">${torradaTxt}</div>`;
+  $('tela').innerHTML=h;
+  if($('rolagem'))$('rolagem').scrollTop=st;
+  if(foco){const b=$('busca');b.focus();b.setSelectionRange(b.value.length,b.value.length)}
+  Social.redesenha();
+  Bag.redesenha();
+}
+function torrada(t){torradaTxt=t;render();setTimeout(()=>{torradaTxt=null;render()},1700)}
+function define(st){
+  Social.fechar();folha=null;
+  const SX={'chat-guilda':()=>Social.guilda(),'chat-guilda-vazio':()=>Social.guilda({vazio:true}),'chat-privado':()=>Social.privado('Marina S.'),'perfil':()=>Social.perfil('Marina S.'),'perfil-sem':()=>Social.perfil('Marina S.',{estado:'sem-conquistas'}),'perfil-erro':()=>Social.perfil('Marina S.',{estado:'erro'})};
+  estado=st;busca='';verTodos=false;convite=st!=='noinv';amigos=st==='nofriends'?[]:AMIGOS.slice();colegas=COLEGAS.map(c=>({...c}));
+  evento=st!=='noevent';naArena=st!=='outarena';abertos=ABERTOS_BASE.map(a=>({...a}));aviso=st==='challenged'?'<strong>Diego A.</strong> te desafiou para um Duelo':null;
+  render();if(SX[st])SX[st]();
+}
+document.addEventListener('input',e=>{if(e.target.id==='busca'){busca=e.target.value;render()}});
+document.addEventListener('click',e=>{
+  const q=s=>e.target.closest(s);
+  if(q('#sx-raiz'))return;
+  if(q('[data-perfil]')){perfil=q('[data-perfil]').dataset.perfil;render();return}
+  if(q('[data-pula]')){e.preventDefault();const alvo=$(q('[data-pula]').dataset.pula),r=$('rolagem');if(alvo&&r)r.scrollTo({top:alvo.offsetTop-60,behavior:'smooth'});return}
+  if(q('[data-ir]')){const alvo=$(q('[data-ir]').dataset.ir),r=$('rolagem');if(alvo&&r)r.scrollTo({top:alvo.offsetTop-60,behavior:'smooth'});return}
+  if(q('[data-perfil-pub]')){folha=null;render();Social.perfil(q('[data-perfil-pub]').dataset.perfilPub);return}
+  if(q('[data-privado]')){folha=null;render();Social.privado(q('[data-privado]').dataset.privado);return}
+  if(q('[data-chat-guilda]')){Social.guilda();return}
+  if(q('[data-modo]')){folha={tipo:'lancar',modo:q('[data-modo]').dataset.modo};render();return}
+  if(q('[data-desafiar]')){folha={tipo:'lancar',modo:'duelo',quem:q('[data-desafiar]').dataset.desafiar};render();return}
+  if(q('[data-lanca]')){const m=q('[data-lanca]').dataset.lanca,M=MODOS.find(x=>x[0]===m);abertos.unshift({id:Date.now(),modo:m,txt:`Você lançou um desafio · ${M[1]} · aguardando resposta`,st:'andamento'});folha=null;render();$('rolagem').scrollTo({top:$('batalhas').offsetTop-60,behavior:'smooth'});return}
+  if(q('[data-rodada]')){folha={tipo:'rodada'};render();return}
+  if(q('[data-bloqueados]')){folha={tipo:'bloqueados'};render();return}
+  if(q('[data-mais]')){folha={tipo:'mais',quem:q('[data-mais]').dataset.mais};render();return}
+  if(q('[data-desfazer]')){folha={tipo:'desfazer',quem:q('[data-desfazer]').dataset.desfazer};render();return}
+  if(q('[data-confirma-desfazer]')){const n=q('[data-confirma-desfazer]').dataset.confirmaDesfazer;amigos=amigos.filter(a=>a.n!==n);folha=null;render();return}
+  if(q('[data-fecha]')){folha=null;render();return}
+  if(q('[data-aceita]')){const a=abertos.find(x=>x.id===1);if(a){a.st='andamento';a.txt='Duelo com <strong>Diego A.</strong> · 3 questões de Equações · sua vez'}aviso=null;render();return}
+  if(q('[data-recusa]')){abertos=abertos.filter(x=>x.id!==+q('[data-recusa]').dataset.recusa);aviso=null;render();return}
+  if(q('[data-entrar]')){naArena=true;render();return}
+  if(q('[data-convite]')){if(q('[data-convite]').dataset.convite==='ok')amigos.unshift({n:'Kwame R.',p:'achiever',s:'online agora',on:true});convite=false;render();return}
+  if(q('[data-convidar]')){colegas[+q('[data-convidar]').dataset.convidar].env=true;render();return}
+  if(q('[data-todos]')){verTodos=true;render();return}
+  if(q('[data-limpa]')){busca='';render();return}
+  if(q('[data-estado]')){define(q('[data-estado]').dataset.estado);return}
+  if(q('[data-torrada]')){torrada(q('[data-torrada]').dataset.torrada);return}
+});
+document.addEventListener('change',e=>{if(e.target.id!=='estado')return;history.replaceState(null,'',`${location.pathname}?estado=${e.target.value}&perfil=${perfil}`);define(e.target.value)});
+define(qs.get('estado')||'data');
+// ?ir=arena (ou batalhas, amigos, guildas…): abre já rolado até a seção
+if(qs.get('ir')&&$(qs.get('ir')))$('rolagem').scrollTop=$(qs.get('ir')).offsetTop-60;
+</script>
+</body>
+</html>
