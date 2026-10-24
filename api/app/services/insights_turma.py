@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.insights import InsightGerado, InsightsTurmaSaida
 from app.services.group_analysis import GroupAnalysisService
 from app.services.llm import JsonLLMService, StructuredOutputError
+from app.services.roteamento_ia import rota_ia_para_turma
 
 logger = logging.getLogger(__name__)
 
@@ -308,11 +309,13 @@ class InsightsTurmaService:
             logger.info("Insights: classe %s sem alunos, nada a gerar", classe_id)
             return "sem_dados", 0
         try:
-            saida = await self.llm.ainvoke_structured(
-                prompt_name="insights_turma.txt",
-                payload=payload,
-                schema=InsightsTurmaSaida,
-            )
+            # #195: basta um aluno menor (ou sem data) na turma -> so OpenAI.
+            async with rota_ia_para_turma(self.session, refs.values()):
+                saida = await self.llm.ainvoke_structured(
+                    prompt_name="insights_turma.txt",
+                    payload=payload,
+                    schema=InsightsTurmaSaida,
+                )
         except StructuredOutputError as exc:
             logger.warning("Insights: modelo falhou para a classe %s: %s", classe_id, exc)
             return "falhou", 0

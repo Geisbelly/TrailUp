@@ -9,7 +9,7 @@ from typing import Any
 import httpx
 
 from app.core.settings import Settings
-from app.services.audio import gerar_mp3_gtts
+from app.services.audio import gerar_mp3_gtts, gerar_mp3_openai_tts
 from app.services.llm import JsonLLMService
 from app.services.media_contract import (
     CONTENT_ENRICHMENT_PROVIDER,
@@ -17,6 +17,7 @@ from app.services.media_contract import (
     PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
+from app.services.roteamento_ia import rota_de_menor_ativa
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +154,9 @@ async def gerar_audio_gemini_tts(
     cleaned = str(texto or "").strip()
     if not cleaned:
         return None
+    if rota_de_menor_ativa():
+        # #195: menor -> so OpenAI (sem Gemini e sem gTTS). Dialogo vira uma voz.
+        return await gerar_mp3_openai_tts(settings=settings, texto=cleaned, instrucoes=direcao_voz)
 
     tts_prompt = _build_guardian_tts_prompt(
         texto=cleaned,
@@ -388,6 +392,12 @@ def _brainhex_contract_matches(payload: Any) -> bool:
     )
 
 
+MENSAGEM_MICROSERVICE_MENOR = (
+    "geracao de midia personalizada pelo microservice indisponivel para aluno menor ou "
+    "sem data de nascimento: o microservice ainda usa o Gemini (#195)"
+)
+
+
 async def brainhex_contract_ready(*, settings: Settings) -> bool:
     """Confirma o contrato do gerador antes de iniciar qualquer trabalho caro."""
     brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
@@ -517,6 +527,11 @@ async def disparar_brainhex_async(
     brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
     if not brainhex_url:
         return False
+    if rota_de_menor_ativa():
+        logger.info("disparar_brainhex_async: bloqueado na rota de menor (personalizacao_id=%s)", personalizacao_id)
+        if error_sink is not None:
+            error_sink.append(MENSAGEM_MICROSERVICE_MENOR)
+        return False
     brainhex_secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
     headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
     try:
@@ -632,6 +647,10 @@ async def _regenerar_via_brainhex(
     """
     brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
     if not brainhex_url:
+        return None
+    if rota_de_menor_ativa():
+        if error_sink is not None:
+            error_sink.append(MENSAGEM_MICROSERVICE_MENOR)
         return None
     brainhex_secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
     headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
@@ -830,6 +849,8 @@ async def gerar_conteudo_brainhex(
     brainhex_url = str(getattr(settings, "brainhex_api_url", "") or "").strip()
     if not brainhex_url:
         return None
+    if rota_de_menor_ativa():
+        return None
     brainhex_secret = str(getattr(settings, "brainhex_api_secret", "") or "").strip()
     headers = {"x-api-secret": brainhex_secret} if brainhex_secret else None
     try:
@@ -853,6 +874,9 @@ async def gerar_imagem_slide(
 ) -> str | None:
     """Port Python do generateSlideImage da ApiBrainHex."""
     if not getattr(settings, "gemini_api_key", None) or not str(prompt or "").strip():
+        return None
+    if rota_de_menor_ativa():
+        # #195: menor -> sem imagem do Gemini (o slide segue sem ilustracao).
         return None
 
     model_name = str(getattr(settings, "gemini_model_image", "") or "").strip() or "gemini-2.0-flash-preview-image-generation"

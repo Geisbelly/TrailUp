@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba
 from app.services.insights_turma import InsightsTurmaService
 from app.services.llm import JsonLLMService, StructuredOutputError
+from app.services.roteamento_ia import rota_ia_para_turma
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +109,7 @@ class EscribaService:
             "WHERE classe_id = :classe_id ORDER BY metrica, faixa",
             classe_id,
         )
-        retrato, _ = await InsightsTurmaService(self.session, self.llm).coletar_contexto(
+        retrato, refs_turma = await InsightsTurmaService(self.session, self.llm).coletar_contexto(
             classe_id, agora, incluir_descartados=False
         )
         return {
@@ -119,6 +120,8 @@ class EscribaService:
             # A referência curta (A1...) é dos Insights; aqui o professor quer nomes.
             "alunos": [{k: v for k, v in a.items() if k != "ref"} for a in retrato.get("alunos", [])],
             "topicos": retrato.get("topicos", []),
+            # Privado: so para a rota de IA por idade (#195); sai antes do payload.
+            "_aluno_ids": list(refs_turma.values()) if isinstance(refs_turma, dict) else [],
         }
 
     async def perguntar(self, professor_id: str, pedido: PerguntaEscriba, agora: datetime | None = None) -> RespostaEscriba:
@@ -143,8 +146,11 @@ class EscribaService:
             "historico": [m.model_dump() for m in pedido.historico[-MAX_HISTORICO:]],
             "turmas": [await self.contexto_da_turma(t, agora) for t in escopo],
         }
+        aluno_ids = [i for t in payload["turmas"] for i in (t.pop("_aluno_ids", None) or [])]
         try:
-            saida = await self.llm.ainvoke_structured(prompt_name="escriba.txt", payload=payload, schema=EscribaSaida)
+            # #195: basta um aluno menor (ou sem data) nas turmas -> so OpenAI.
+            async with rota_ia_para_turma(self.session, aluno_ids):
+                saida = await self.llm.ainvoke_structured(prompt_name="escriba.txt", payload=payload, schema=EscribaSaida)
         except StructuredOutputError as exc:
             logger.warning("Escriba: modelo falhou: %s", exc)
             raise EscribaIndisponivel(str(exc)) from exc

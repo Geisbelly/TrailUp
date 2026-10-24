@@ -92,6 +92,7 @@ from app.services.personalizacao_jobs import (
     enqueue_personalizacao_job,
     get_job_detail,
 )
+from app.services.roteamento_ia import rota_ia_para_alunos, rota_ia_se_tiver_aluno
 from app.services.storage import BUCKET, SupabaseStorage, build_material_url
 from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
 from app.services.sugestao_metrica import montar_registros_do_log, resumo_efetividade
@@ -1535,75 +1536,78 @@ async def conversar_com_mentor_personalizacao(
             {"regra": violacao.regra, "mensagem": violacao.mensagem, "fase": fase},
         )
 
-    mentor_result = await gerar_validado(
-        llm,
-        prompt_name="mentor_personalizacao_chat.txt",
-        payload={
-            "escopo": payload.escopo,
-            "mensagem": payload.mensagem,
-            "historico": [item.model_dump(mode="json") for item in payload.historico[-6:]],
-            "aluno": {
-                "id": aluno_id,
-                "modo_operacao": (context.get("aluno") or {}).get("modo_operacao") if isinstance(context.get("aluno"), dict) else None,
-                "modo_resposta": (context.get("aluno") or {}).get("modo_resposta") if isinstance(context.get("aluno"), dict) else None,
+    # #195: menor (ou sem data de nascimento) -> so OpenAI, inclusive o juiz de
+    # grounding; sem Gemini. OpenAI fora -> fallback local do guia.
+    async with rota_ia_para_alunos(session, [aluno_id]):
+        mentor_result = await gerar_validado(
+            llm,
+            prompt_name="mentor_personalizacao_chat.txt",
+            payload={
+                "escopo": payload.escopo,
+                "mensagem": payload.mensagem,
+                "historico": [item.model_dump(mode="json") for item in payload.historico[-6:]],
+                "aluno": {
+                    "id": aluno_id,
+                    "modo_operacao": (context.get("aluno") or {}).get("modo_operacao") if isinstance(context.get("aluno"), dict) else None,
+                    "modo_resposta": (context.get("aluno") or {}).get("modo_resposta") if isinstance(context.get("aluno"), dict) else None,
+                },
+                "perfil_brainhex": context.get("perfil_brainhex", [])[:4],
+                "metricas_aluno": _build_student_metrics_summary(context),
+                "leituras_adaptativas": _build_student_reading_summary(context),
+                "topico": {
+                    "id": payload.topico_id,
+                    "nome": (topico or {}).get("nome") if isinstance(topico, dict) else None,
+                    "descricao": (topico or {}).get("descricao") if isinstance(topico, dict) else None,
+                },
+                "decisao_personalizacao": (
+                    ((latest_record or {}).get("plano") or {}).get("justificativa")
+                    if latest_record
+                    else None
+                ),
+                # Conteudo completo do topico (da turma) para o guia se especializar
+                # na materia e direcionar o estudo. Sem respostas de questoes.
+                "conteudo_materia": {
+                    "conteudos": [
+                        {
+                            "titulo": c.get("titulo"),
+                            "tipo": c.get("tipo"),
+                            "resumo": str(c.get("conteudo") or "")[:600],
+                            "ordem": c.get("ordem"),
+                        }
+                        for c in (conteudos_topico or [])[:12]
+                        if isinstance(c, dict)
+                    ],
+                    "atividades": [
+                        {
+                            "titulo": a.get("titulo"),
+                            "descricao": a.get("descricao"),
+                            "tipo": a.get("tipo"),
+                        }
+                        for a in (atividades_topico or [])[:12]
+                        if isinstance(a, dict)
+                    ],
+                    "questoes_temas": [
+                        {"enunciado": q.get("enunciado"), "tipo": q.get("tipo")}
+                        for q in (questoes_topico or [])[:20]
+                        if isinstance(q, dict)
+                    ],
+                },
+                "guardrails": {
+                    "sem_gabarito": True,
+                    "sem_resposta_direta_atividade": True,
+                },
             },
-            "perfil_brainhex": context.get("perfil_brainhex", [])[:4],
-            "metricas_aluno": _build_student_metrics_summary(context),
-            "leituras_adaptativas": _build_student_reading_summary(context),
-            "topico": {
-                "id": payload.topico_id,
-                "nome": (topico or {}).get("nome") if isinstance(topico, dict) else None,
-                "descricao": (topico or {}).get("descricao") if isinstance(topico, dict) else None,
+            schema=MentorChatLLMResult,
+            guardrails=[checar_grounding_chat],
+            fallback_factory=lambda: dict(fallback),
+            contexto={
+                "llm": llm,
+                "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
             },
-            "decisao_personalizacao": (
-                ((latest_record or {}).get("plano") or {}).get("justificativa")
-                if latest_record
-                else None
-            ),
-            # Conteudo completo do topico (da turma) para o guia se especializar
-            # na materia e direcionar o estudo. Sem respostas de questoes.
-            "conteudo_materia": {
-                "conteudos": [
-                    {
-                        "titulo": c.get("titulo"),
-                        "tipo": c.get("tipo"),
-                        "resumo": str(c.get("conteudo") or "")[:600],
-                        "ordem": c.get("ordem"),
-                    }
-                    for c in (conteudos_topico or [])[:12]
-                    if isinstance(c, dict)
-                ],
-                "atividades": [
-                    {
-                        "titulo": a.get("titulo"),
-                        "descricao": a.get("descricao"),
-                        "tipo": a.get("tipo"),
-                    }
-                    for a in (atividades_topico or [])[:12]
-                    if isinstance(a, dict)
-                ],
-                "questoes_temas": [
-                    {"enunciado": q.get("enunciado"), "tipo": q.get("tipo")}
-                    for q in (questoes_topico or [])[:20]
-                    if isinstance(q, dict)
-                ],
-            },
-            "guardrails": {
-                "sem_gabarito": True,
-                "sem_resposta_direta_atividade": True,
-            },
-        },
-        schema=MentorChatLLMResult,
-        guardrails=[checar_grounding_chat],
-        fallback_factory=lambda: dict(fallback),
-        contexto={
-            "llm": llm,
-            "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
-        },
-        on_violation=_auditar_chat,
-        provider="openai",
-        use_rag=bool(request.app.state.settings.openai_rag_enabled),
-    )
+            on_violation=_auditar_chat,
+            provider="openai",
+            use_rag=bool(request.app.state.settings.openai_rag_enabled),
+        )
 
     result = mentor_result.model_dump(mode="json")
     response = MentorChatResponse(
@@ -2168,14 +2172,16 @@ async def regenerar_documento_personalizacao(
 
     settings = get_settings()
     error_sink: list[str] = []
-    resultado = await regenerar_documento_brainhex(
-        settings=settings,
-        markdown=markdown_atual,
-        improvement_prompt=payload.improvement_prompt,
-        profile=payload.brainhex_profile_key,
-        expansion_prompt=payload.expansion_prompt,
-        error_sink=error_sink,
-    )
+    # #195: material com dono menor (ou sem data) nao vai ao microservice (Gemini).
+    async with rota_ia_se_tiver_aluno(session, record.get("aluno_id")):
+        resultado = await regenerar_documento_brainhex(
+            settings=settings,
+            markdown=markdown_atual,
+            improvement_prompt=payload.improvement_prompt,
+            profile=payload.brainhex_profile_key,
+            expansion_prompt=payload.expansion_prompt,
+            error_sink=error_sink,
+        )
     if resultado is None:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -2269,14 +2275,16 @@ async def regenerar_slide_personalizacao(
 
     settings = get_settings()
     error_sink: list[str] = []
-    resultado = await regenerar_slide_brainhex(
-        settings=settings,
-        slide=slide_atual,
-        improvement_prompt=payload.improvement_prompt,
-        profile=payload.brainhex_profile_key,
-        expansion_prompt=payload.expansion_prompt,
-        error_sink=error_sink,
-    )
+    # #195: material com dono menor (ou sem data) nao vai ao microservice (Gemini).
+    async with rota_ia_se_tiver_aluno(session, record.get("aluno_id")):
+        resultado = await regenerar_slide_brainhex(
+            settings=settings,
+            slide=slide_atual,
+            improvement_prompt=payload.improvement_prompt,
+            profile=payload.brainhex_profile_key,
+            expansion_prompt=payload.expansion_prompt,
+            error_sink=error_sink,
+        )
     if resultado is None:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

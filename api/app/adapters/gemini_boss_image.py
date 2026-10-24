@@ -7,6 +7,7 @@ import httpx
 from app.adapters.base_boss_image import BossImageAdapter
 from app.core.settings import Settings
 from app.schemas.ia_patch import IAEnemySpec
+from app.services.roteamento_ia import rota_de_menor_ativa
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,8 @@ class GeminiBossImageAdapter(BossImageAdapter):
         return None
 
     async def generate_png(self, enemy: IAEnemySpec) -> bytes | None:
-        if not self._api_key:
+        if not self._api_key or rota_de_menor_ativa():
+            # #195: rota de menor nunca chama o Gemini (cai no placeholder).
             return None
 
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self._model}:generateContent?key={self._api_key}"

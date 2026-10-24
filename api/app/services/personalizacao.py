@@ -32,6 +32,7 @@ from app.services.media_contract import (
     PRESENTATION_ENGINE_VERSION,
 )
 from app.services.media_pipeline import MultiOutputPipeline
+from app.services.roteamento_ia import rota_de_menor_ativa
 from app.services.storage import SupabaseStorage, build_public_storage_url
 from app.services.text_cleanup import (
     clean_extracted_text,
@@ -2615,7 +2616,8 @@ async def _summarize_multimodal_source_with_gemini(
     mime_type: str,
     source_title: str,
 ) -> str | None:
-    if not settings.gemini_api_key or not raw_bytes:
+    if not settings.gemini_api_key or not raw_bytes or rota_de_menor_ativa():
+        # #195: rota de menor nunca chama o Gemini direto.
         return None
 
     encoded = base64.b64encode(raw_bytes).decode("ascii")
@@ -4577,7 +4579,8 @@ async def _generate_personalized_image_png(
     settings: Settings,
     image_prompt: str,
 ) -> bytes | None:
-    if not settings.gemini_api_key or not image_prompt.strip():
+    if not settings.gemini_api_key or not image_prompt.strip() or rota_de_menor_ativa():
+        # #195: rota de menor sem imagem gerada pelo Gemini.
         return None
 
     url = (
@@ -5231,6 +5234,9 @@ async def _invoke_multimodal_materiais(
 ) -> tuple[dict[str, Any] | None, dict[str, Any]]:
     if not settings.gemini_api_key:
         return None, {"reason": "missing_gemini_api_key"}
+    if rota_de_menor_ativa():
+        # #195: menor -> nada ao Gemini; o chamador segue pelo JsonLLMService (OpenAI).
+        return None, {"reason": "rota_de_menor_somente_openai"}
 
     materiais_origem = state.get("materiais_origem", []) or []
     topico_context = state.get("topico_contexto") if isinstance(state.get("topico_contexto"), dict) else {}
