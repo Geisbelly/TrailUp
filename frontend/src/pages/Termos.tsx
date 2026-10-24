@@ -114,8 +114,11 @@ const Termos = () => {
                 <Link to="/privacidade" className="text-primary hover:underline">
                   Política de Privacidade
                 </Link>
-                . Ao usar a plataforma, você concorda com a coleta e uso de dados conforme descrito 
-                naquela política.
+                . Câmera, personalização emocional, pesquisa e notificações são opcionais e dependem
+                de consentimento próprio (para menores de 18 anos, do responsável legal), que pode ser
+                revogado a qualquer momento. Parte dos dados é processada por fornecedores de tecnologia
+                e de inteligência artificial, em sua maioria nos Estados Unidos, conforme listado na
+                política.
               </p>
             </section>
 
@@ -200,7 +203,7 @@ const Termos = () => {
 
             <div className="pt-6 border-t border-border mt-8">
               <p className="text-sm text-muted-foreground">
-                Última atualização: 15 de janeiro de 2025
+                Última atualização: 24/10/2026
               </p>
             </div>
           </article>
