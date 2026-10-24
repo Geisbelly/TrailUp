@@ -220,10 +220,11 @@ async function callGemini(params: {
   temperature: number;
   responseSchema?: Record<string, unknown>;
 }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${params.key}`;
+  // Chave no header, nao na URL (#195): URL vai parar em log.
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": params.key },
     body: JSON.stringify({
       contents: [{ parts: [{ text: params.prompt }] }],
       generationConfig: {
