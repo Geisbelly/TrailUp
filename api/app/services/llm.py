@@ -281,7 +281,19 @@ class JsonLLMService:
         schema: type[T],
         model: str | None = None,
         provider: str | None = None,
+        use_rag: bool = False,
     ) -> T:
+        if use_rag:
+            from app.services.openai_rag import OpenAIRagService
+
+            response = await OpenAIRagService(self.settings).invoke_structured(
+                prompt_name=prompt_name,
+                payload=payload,
+                schema=schema,
+                model=model,
+            )
+            return response  # type: ignore[return-value]
+
         normalized_payload = dict(payload)
         normalized_payload.setdefault("idioma", "português brasileiro")
         normalized_payload.setdefault("locale", "pt-BR")
