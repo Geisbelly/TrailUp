@@ -97,6 +97,7 @@ from app.services.pseudonimizacao import (
     pseudonimizar_nome_proprio,
     restaurar_nome,
 )
+from app.services.rag_observabilidade import gravar_buscas_rag, iniciar_coleta_rag
 from app.services.roteamento_ia import rota_ia_para_alunos, rota_ia_se_tiver_aluno
 from app.services.storage import BUCKET, SupabaseStorage, build_material_url
 from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
@@ -1537,7 +1538,10 @@ async def conversar_com_mentor_personalizacao(
 
     llm = JsonLLMService(request.app.state.settings)
 
+    intervencoes_chat: list[str] = []
+
     async def _auditar_chat(violacao, fase) -> None:
+        intervencoes_chat.append(fase)
         logger.info(
             "personalizacao.chat.guardrail=%s",
             {"regra": violacao.regra, "mensagem": violacao.mensagem, "fase": fase},
@@ -1551,6 +1555,8 @@ async def conversar_com_mentor_personalizacao(
 
     # #195: menor (ou sem data de nascimento) -> so OpenAI, inclusive o juiz de
     # grounding; sem Gemini. OpenAI fora -> fallback local do guia.
+    # #67: as buscas do RAG desta requisição vão para `ia_decision_logs`, sem texto.
+    buscas_rag = iniciar_coleta_rag()
     async with rota_ia_para_alunos(session, [aluno_id]):
         mentor_result = await gerar_validado(
             llm,
@@ -1662,6 +1668,16 @@ async def conversar_com_mentor_personalizacao(
             parsed_response=result,
             decision_summary=response.reply[:500],
             actions=response.hinted_actions,
+        )
+        await gravar_buscas_rag(
+            IADecisionLogRepository(session),
+            buscas_rag,
+            aluno_id=aluno_id,
+            classe_id=payload.classe_id,
+            topico_id=payload.topico_id,
+            conteudo_id=payload.conteudo_id,
+            trigger_event=payload.escopo,
+            intervencao=bool(intervencoes_chat),
         )
         await session.commit()
     except Exception as exc:  # pragma: no cover

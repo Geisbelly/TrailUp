@@ -83,6 +83,13 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("openai_rag_enabled", "OPENAI_RAG_ENABLED"),
     )
+    # `max_num_results` do file_search (#67). Vazio: vale o padrão da OpenAI.
+    openai_rag_top_k: int | None = Field(
+        default=None,
+        ge=1,
+        le=50,
+        validation_alias=AliasChoices("openai_rag_top_k", "OPENAI_RAG_TOP_K"),
+    )
     openai_model_supervisor: str = "gpt-4o-mini"
     openai_model_default: str = "gpt-4o-mini"
     # gpt-5.4-mini tem limite de tier de 10 RPM / 50 RPD — inviavel como
