@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:cadastro": "playwright test",
-    "test:cadastro-banco": "node ../scripts/testar-cadastro-atomico.mjs ./node_modules/@electric-sql/pglite/dist/index.js"
+    "test:cadastro-banco": "node ../scripts/testar-cadastro-atomico.mjs ./node_modules/@electric-sql/pglite/dist/index.js",
+    "test:cadastro-integrado": "node ../scripts/e2e_cadastro/run.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

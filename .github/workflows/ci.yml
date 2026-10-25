@@ -78,6 +78,7 @@ jobs:
               # A jornada local cruza o cadastro web, SQL e o consumidor mobile.
               - 'scripts/testar-cadastro-atomico.mjs'
               - 'scripts/validar-cadastro-ate-material.mjs'
+              - 'scripts/e2e_cadastro/**'
               - 'api/alembic/versions/**'
               - 'mobile/src/services/personalizacao/**'
               - 'mobile/src/utils/brainHex.ts'
@@ -215,6 +216,9 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Jornada de cadastro (serviços simulados, sem produção)
         run: npm run test:cadastro
+      - name: Jornada integrada (Auth, SMTP, PostgREST e PostgreSQL locais)
+        timeout-minutes: 10
+        run: npm run test:cadastro-integrado
       - name: Build
         run: npm run build
 
