@@ -16,7 +16,12 @@ import {
   Text,
   useWindowDimensions,
   View,
+  Platform,
 } from "react-native";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
+const SOMBRA_SPOTLIGHT = { opacity: 0.8, radius: 12 };
 
 // Margem entre o recorte e o balão, e folga mínima da borda da tela.
 const FOLGA = 14;
@@ -347,7 +352,7 @@ function SpotlightMask({
       <View style={[styles.scrim, { top, left: 0, width: left, height, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top, left: left + width, right: 0, height, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top: top + height, left: 0, right: 0, bottom: 0, backgroundColor: scrim }]} />
-      <View style={[styles.spotlight, { top, left, width, height, borderColor: accent, shadowColor: accent }]} />
+      <View style={[styles.spotlight, { top, left, width, height, borderColor: accent, ...shadowStyle({ ...SOMBRA_SPOTLIGHT, color: accent }, IS_WEB) }]} />
     </View>
   );
 }
@@ -369,8 +374,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     borderWidth: 2,
     borderRadius: 18,
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
+    ...shadowStyle(SOMBRA_SPOTLIGHT, IS_WEB),
     elevation: 12,
   },
   card: {

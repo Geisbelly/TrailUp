@@ -27,6 +27,9 @@ import Svg, {
   RadialGradient,
   Stop,
 } from "react-native-svg";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 type MapNode = {
   id: string;
@@ -669,10 +672,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
     justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 4 }, opacity: 0.2, radius: 10 }, IS_WEB),
     elevation: 4,
   },
   nodeHeader: {

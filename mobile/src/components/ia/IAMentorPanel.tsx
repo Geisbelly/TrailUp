@@ -18,10 +18,16 @@ import {
   TextInput,
   View,
   useWindowDimensions,
+  Platform,
 } from "react-native";
 import tinycolor from "tinycolor2";
 import { useEstadoConsentimento } from "@/hooks/useEstadoConsentimento";
 import { ModoRestritoError } from "@/utils/consentimentoResponsavel";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
+const SOMBRA_CARD = { offset: { width: 0, height: 10 }, opacity: 0.28, radius: 20 };
+const SOMBRA_BOTAO = { offset: { width: 0, height: 10 }, opacity: 0.28, radius: 18 };
 
 type Props = {
   topicoId?: number | null;
@@ -328,7 +334,7 @@ export function IAMentorPanel({
               {
                 backgroundColor: palette.surfaceElevated,
                 borderColor: palette.borderStrong,
-                shadowColor: palette.background,
+                ...shadowStyle({ ...SOMBRA_BOTAO, color: palette.background }, IS_WEB),
               },
             ]}
           >
@@ -604,7 +610,7 @@ export function IAMentorPanel({
               {
                 backgroundColor: palette.surfaceElevated,
                 borderColor: goldDim,
-                shadowColor: palette.accent,
+                ...shadowStyle({ ...SOMBRA_BOTAO, color: palette.accent }, IS_WEB),
               },
             ]}
           >
@@ -647,7 +653,7 @@ export function IAMentorPanel({
               maxHeight: panelMaxHeight,
               backgroundColor: palette.surface,
               borderColor: goldDim,
-              shadowColor: palette.accent,
+              ...shadowStyle({ ...SOMBRA_CARD, color: palette.accent }, IS_WEB),
             },
           ]}
         >
@@ -861,9 +867,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
+    ...shadowStyle(SOMBRA_BOTAO, IS_WEB),
   },
   homeLauncherButton: {
     width: 58,
@@ -880,9 +884,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     paddingHorizontal: 16,
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
+    ...shadowStyle(SOMBRA_BOTAO, IS_WEB),
   },
   reactivateButtonHome: {
     minWidth: 58,
@@ -916,9 +918,7 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 14,
     gap: 10,
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 10 },
+    ...shadowStyle(SOMBRA_CARD, IS_WEB),
   },
   cardFloating: {
     alignSelf: "center",

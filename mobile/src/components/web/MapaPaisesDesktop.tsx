@@ -11,6 +11,10 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import { caminhoCelula, layoutMapa, MAPA_TOPO, ondaMar, trechoEstrada } from "@/utils/mapaPaises";
 import type { EstadoTopico } from "@/utils/painelTopicoTrilha";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
+import { textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
+const SOMBRA_NOME = { offset: { width: 0, height: 1 }, radius: 10 };
 
 export type TopicoMapa = {
   id: string;
@@ -300,7 +304,7 @@ function NoPais({
       <View style={s.rotulo}>
         <Text
           numberOfLines={2}
-          style={[s.nome, { color: e === "locked" ? palette.textMuted : palette.text, textShadowColor: cores.bg }]}
+          style={[s.nome, { color: e === "locked" ? palette.textMuted : palette.text, ...textShadowStyle({ ...SOMBRA_NOME, color: cores.bg }, IS_WEB) }]}
         >
           {topico.nome}
         </Text>
@@ -322,7 +326,7 @@ function NoPais({
       </View>
 
       {e === "current" ? (
-        <View style={[s.aqui, { backgroundColor: palette.accent }]} pointerEvents="none">
+        <View style={[s.aqui, { backgroundColor: palette.accent }, { pointerEvents: "none" }]}>
           <Image source={rosto as never} style={[s.aquiRosto, { borderColor: cores.bg }]} />
           <Text style={[s.aquiTexto, { color: cores.bg }]}>Você parou aqui</Text>
           <View style={[s.aquiSeta, { borderTopColor: palette.accent }]} />
@@ -347,8 +351,7 @@ const s = StyleSheet.create({
     fontWeight: "600",
     lineHeight: 17.5,
     textAlign: "center",
-    textShadowRadius: 10,
-    textShadowOffset: { width: 0, height: 1 },
+    ...textShadowStyle(SOMBRA_NOME, IS_WEB),
   },
   chip: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 999, borderWidth: 1, paddingHorizontal: 9, paddingVertical: 3 },
   chipTexto: { fontFamily: FontFamily.interMedium, fontSize: 10.5, fontWeight: "600" },

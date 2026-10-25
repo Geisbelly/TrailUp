@@ -7,8 +7,11 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView, StyleSheet, Text, View, Platform } from "react-native";
 import tinycolor from "tinycolor2";
+import { textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 // Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
 const AUTH_PALETTE = buildProfileShellPaletteFromAccent(Design.primary, "magica");
@@ -85,9 +88,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     letterSpacing: 0,
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+    ...textShadowStyle({ color: "rgba(0,0,0,0.8)", offset: { width: 0, height: 2 }, radius: 8 }, IS_WEB),
   },
   subtitle: {
     marginTop: 5,

@@ -31,9 +31,15 @@ import {
   StyleSheet,
   View,
   useWindowDimensions,
+  Platform,
 } from "react-native";
 import tinycolor from "tinycolor2";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { shadowStyle, textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
+const SOMBRA_GLOW_EXTERNO = { offset: { width: 0, height: 0 }, opacity: 0.55, radius: 50 };
+const SOMBRA_GLOW_MEIO = { offset: { width: 0, height: 0 }, opacity: 0.35, radius: 30 };
 
 interface LoadingScreenProps {
   forceShow?: boolean;
@@ -238,8 +244,8 @@ const LoadingScreen = ({ forceShow = false }: LoadingScreenProps) => {
         />
 
         {/* Glow — views estáticas, sem props animadas */}
-        <View style={[styles.glowOuter, { shadowColor: targetPalette.accent }]}>
-          <View style={[styles.glowMiddle, { shadowColor: targetPalette.accent }]}>
+        <View style={[styles.glowOuter, shadowStyle({ ...SOMBRA_GLOW_EXTERNO, color: targetPalette.accent }, IS_WEB)]}>
+          <View style={[styles.glowMiddle, shadowStyle({ ...SOMBRA_GLOW_MEIO, color: targetPalette.accent }, IS_WEB)]}>
 
             {/* Círculo do ícone — JS driver (backgroundColor + borderColor) */}
             <Animated.View
@@ -339,10 +345,7 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: defaultPalette.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 50,
+    ...shadowStyle({ ...SOMBRA_GLOW_EXTERNO, color: defaultPalette.accent }, IS_WEB),
     elevation: 24,
   },
   glowMiddle: {
@@ -351,10 +354,7 @@ const styles = StyleSheet.create({
     borderRadius: 87,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: defaultPalette.accent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 30,
+    ...shadowStyle({ ...SOMBRA_GLOW_MEIO, color: defaultPalette.accent }, IS_WEB),
   },
   iconCircle: {
     width: 148,
@@ -376,9 +376,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     letterSpacing: 2.5,
     textTransform: "uppercase",
-    textShadowColor: "rgba(0,0,0,0.7)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
+    ...textShadowStyle({ color: "rgba(0,0,0,0.7)", offset: { width: 0, height: 1 }, radius: 6 }, IS_WEB),
   },
   ornamentWrap: {
     width: "68%",

@@ -25,7 +25,7 @@ export function FramedProfileImage({ profile, source: sourceBruta, size = 112, f
   const palette = getProfileShellPalette(key);
   const { opening, photoSize: innerSize, photoLeft, photoTop } = getProfileFrameLayout(key, size);
   return (
-    <View pointerEvents="none" accessible={Boolean(label)} accessibilityLabel={label} style={[styles.root, { width: size, height: size }]}>
+    <View accessible={Boolean(label)} accessibilityLabel={label} style={[styles.root, { width: size, height: size }, { pointerEvents: "none" }]}>
       <View style={{ position: 'absolute', left: photoLeft, top: photoTop, width: innerSize, height: innerSize, borderRadius: innerSize / 2, overflow: 'hidden', backgroundColor: palette.surface }}>
         {artworkTone && source ? <ProfileArtwork source={source} profile={profile} width={innerSize} /> : <Image source={source ?? getGuardianFaceImage(key)} resizeMode={fit} style={{ width: innerSize, height: innerSize }} accessible={false} />}
       </View>

@@ -74,7 +74,7 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
       <View style={s.corpo}>
         <DesktopSidebar {...SEM_ABAS} insets={insets} palette={palette} aberturas={aberturas} onBloqueado={() => undefined} />
         <View style={s.area}>
-          <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
+          <View accessible={false} style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
             <Image source={getProfileArtwork(perfil, "trail")} resizeMode="cover" style={s.cenario} />
             <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.background, opacity: 0.55 }]} />
           </View>

@@ -5,9 +5,12 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View, Platform } from "react-native";
 import tinycolor from "tinycolor2";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { shadowStyle, textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 export type DialogTone = "info" | "success" | "warning" | "error";
 export type DialogActionVariant = "primary" | "secondary" | "danger";
@@ -230,9 +233,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                 styles.title,
                 {
                   color: toneColor,
-                  textShadowColor: "rgba(0,0,0,0.7)",
-                  textShadowOffset: { width: 0, height: 1 },
-                  textShadowRadius: 5,
+                  ...textShadowStyle({ color: "rgba(0,0,0,0.7)", offset: { width: 0, height: 1 }, radius: 5 }, IS_WEB),
                 },
               ]}
             >
@@ -324,10 +325,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 10 }, opacity: 0.5, radius: 20 }, IS_WEB),
     elevation: 20,
   },
   innerBorder: {

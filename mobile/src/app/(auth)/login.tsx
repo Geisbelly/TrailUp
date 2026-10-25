@@ -25,6 +25,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import tinycolor from "tinycolor2";
+import { textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 const AUTH_PALETTE = buildProfileShellPaletteFromAccent(Design.primary, "magica");
 
@@ -304,9 +307,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontFamily: FontFamily.inknutAntiquaMedium,
     fontWeight: "700",
-    textShadowColor: "rgba(0,0,0,0.9)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 10,
+    ...textShadowStyle({ color: "rgba(0,0,0,0.9)", offset: { width: 0, height: 2 }, radius: 10 }, IS_WEB),
   },
   title: {
     fontSize: 18,

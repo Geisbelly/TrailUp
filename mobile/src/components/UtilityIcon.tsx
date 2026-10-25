@@ -20,7 +20,7 @@ export function UtilityIcon({ kind, size = 34, height = size, profile: profileOv
   const profile = normalizeBrainHexProfile(profileOverride) ??
     resolveActiveBrainHexProfile(usuario?.perfis, usuario?.perfilAtivo);
   return (
-    <View pointerEvents="none" style={[{ width: size, height, flexShrink: 0 }, style]}>
+    <View style={[{ width: size, height, flexShrink: 0 }, style, { pointerEvents: "none" }]}>
       <Image source={profileUtilityIcons[kind][profile]} resizeMode="contain" accessible={false} style={{ width: "100%", height: "100%" }} />
     </View>
   );
