@@ -29,6 +29,8 @@ const FRASES: [RegExp, string, LinhaAtividade["icone"]][] = [
   [/atividade.*conclu/, "Concluiu uma atividade", "check"],
   [/conteudo.*conclu/, "Concluiu um conteúdo", "book-open-variant"],
   [/conquista/, "Desbloqueou uma conquista", "trophy-outline"],
+  // Crédito de "Pontos do evento" ao encerrar um evento da turma (#141).
+  [/^evento_classe/, "Pontos de um evento da turma", "trophy-outline"],
 ];
 
 const dois = (n: number) => String(n).padStart(2, "0");

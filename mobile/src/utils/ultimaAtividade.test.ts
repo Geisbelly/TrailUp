@@ -33,6 +33,7 @@ test("tipos que o app grava ganham frase própria", () => {
   assert.equal(frase("topico_atividade_acertada"), "Acertou uma atividade");
   assert.equal(frase("topico_iniciado"), "Começou um tópico");
   assert.equal(frase("presenca_aula"), "Presença registrada em aula");
+  assert.equal(frase("evento_classe_pontos"), "Pontos de um evento da turma");
 });
 
 test("tipo sem frase aparece legível; sem data fica de fora", () => {

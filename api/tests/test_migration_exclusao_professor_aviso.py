@@ -30,7 +30,8 @@ def test_cadeia_do_dia_sem_id_duplicado() -> None:
     assert pares["20261024_09"] == "20261024_08"
     assert pares["20261024_10"] == "20261024_09"
     assert pares["20261024_11"] == "20261024_10"
-    assert set(pares) - set(pares.values()) == {"20261024_11"}
+    # Cabeca unica, sem fixar qual: migration nova do dia seguinte nao precisa mexer aqui.
+    assert len(set(pares) - set(pares.values())) == 1
 
 
 # Sem FK (ficariam orfas), FK SET NULL (ficariam soltas) e FK NO ACTION/RESTRICT
