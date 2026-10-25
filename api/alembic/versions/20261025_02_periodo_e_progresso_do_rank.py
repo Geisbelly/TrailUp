@@ -46,7 +46,7 @@ Volta a view da `20261021_18`, derruba o gatilho e a função e tira o comentár
 rótulos já normalizados ficam como estão.
 
 Revision ID: 20261025_02
-Revises: 20261024_11
+Revises: 20261025_01
 Create Date: 2026-10-25
 """
 
@@ -58,7 +58,7 @@ from pathlib import Path
 from alembic import op
 
 revision = "20261025_02"
-down_revision = "20261024_11"
+down_revision = "20261025_01"
 branch_labels = None
 depends_on = None
 
