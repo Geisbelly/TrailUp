@@ -3,6 +3,7 @@
  * Uso: node scripts/testar-cadastro-atomico.mjs /caminho/pglite/dist/index.js
  */
 import assert from 'node:assert/strict';
+import { validarCadastroAteMaterial } from './validar-cadastro-ate-material.mjs';
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
@@ -215,5 +216,6 @@ try {
       assert.equal(r.rows[0].n,0);
     }
   });
+  await validarCadastroAteMaterial(db, test);
   console.log(JSON.stringify({aprovados:passed, limite:'Schema base mínimo e helper de resumo de consentimento simulado; RPCs reais de cadastro/nascimento; não é Auth/Supabase E2E.'},null,2));
 } finally { await db.close(); }

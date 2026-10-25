@@ -4,8 +4,8 @@ const user = { id: uid, email: 'aluno@example.test', email_confirmed_at: '2026-1
   role: 'authenticated', aud: 'authenticated', created_at:'2026-10-24T00:00:00Z',
   app_metadata: { provider:'email', providers:['email'] }, user_metadata: { role:'aluno' } };
 
-async function ambiente(page: Page, opts: { marker?: boolean; complete?: boolean; session?: boolean; failSave?: boolean; failProgress?: boolean } = {}) {
-  const state = { complete: opts.complete ?? false, saveCalls: [] as Record<string, unknown>[],
+async function ambiente(page: Page, opts: { turmas?: number[]; marker?: boolean; complete?: boolean; session?: boolean; failSave?: boolean; failProgress?: boolean } = {}) {
+  const state = { turmas: opts.turmas ?? [], complete: opts.complete ?? false, saveCalls: [] as Record<string, unknown>[],
     progress: [] as string[], signups: 0, confirmations: 0, failProgress: opts.failProgress ?? false, unexpected: [] as string[] };
   const session = { access_token: `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({ sub:uid, exp:Math.floor(Date.now()/1000)+3600, role:'authenticated' })).toString('base64url')}.test`,
     token_type:'bearer', expires_in:3600, expires_at:Math.floor(Date.now()/1000)+3600, refresh_token:'test-only', user };
@@ -27,7 +27,7 @@ async function ambiente(page: Page, opts: { marker?: boolean; complete?: boolean
     if (path === '/rest/v1/aluno_perfil') return reply([]);
     if (path === '/rest/v1/rpc/meu_cadastro_concluido') return reply(state.complete);
     if (path === '/rest/v1/aluno_cadastro_concluido') return reply((opts.marker ?? state.complete) ? { aluno_id:uid } : null);
-    if (path === '/rest/v1/classe_aluno') return reply([]);
+    if (path === '/rest/v1/classe_aluno') return reply(state.turmas.map(classe_id=>({classe_id})));
     if (path === '/rest/v1/rpc/concluir_cadastro_aluno') {
       state.saveCalls.push(route.request().postDataJSON());
       if (opts.failSave && state.saveCalls.length === 1) return reply({message:'falha simulada', code:'XX000'},500);
@@ -141,22 +141,52 @@ test('legado sem marcador nem medida segue para a trilha sem novo quiz', async (
   await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow','0');
 });
 
-test('e-mail duplicado com senha errada mantém resposta genérica e não finaliza cadastro', async ({page}) => {
+for (const tipo of ['aluno', 'professor']) {
+  for (const resposta of ['novo', 'ofuscado', 'duplicado']) {
+    test(`cadastro ${tipo}: ${resposta} mantém orientação uniforme sem anunciar conta ou envio`, async ({page}) => {
+      const state = await ambiente(page,{session:false});
+      await page.route('**/auth/v1/token*', route=>route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:'Invalid login credentials',error_code:'invalid_credentials'})}));
+      let signupCalls = 0;
+      await page.route('**/auth/v1/signup*', route => {
+        signupCalls++;
+        expect(route.request().postDataJSON().email).toBe(user.email);
+        return route.fulfill({ status: resposta === 'duplicado' ? 422 : 200, contentType:'application/json',
+          body: JSON.stringify(resposta === 'duplicado'
+            ? {message:'User already registered',error_code:'user_already_exists'}
+            : {...user, identities: resposta === 'ofuscado' ? [] : [{id:'identity-test'}]}) });
+      });
+      await page.goto(`/cadastro-${tipo}`);
+      await page.getByLabel('Email',{exact:true}).fill('ALUNO@example.test');
+      await page.getByLabel('Senha',{exact:true}).fill('SenhaTeste123!');
+      await page.getByLabel('Confirmar senha',{exact:true}).fill('SenhaTeste123!');
+      if (tipo === 'aluno') await page.getByLabel('Data de nascimento').fill('2000-01-01');
+      await page.getByRole('checkbox').check();
+      await page.getByRole('button',{name:/Entrar ou criar/}).click();
+      await expect(page.getByText('Se o cadastro puder prosseguir, você receberá um link de confirmação. Se já tem conta, entre com sua senha ou recupere o acesso.', {exact:true})).toBeVisible();
+      await expect(page.getByRole('link',{name:'Recuperar acesso'})).toHaveAttribute('href','/esqueci-senha');
+      await expect(page.getByRole('link',{name:'Entrar na minha conta'})).toHaveAttribute('href','/login');
+      await expect(page).toHaveURL(new RegExp(`cadastro-${tipo}$`));
+      expect(signupCalls).toBe(1);
+      expect(state.saveCalls).toEqual([]);
+      expect(state.unexpected).toEqual([]);
+      // Nenhum resultado de signup sem sessão é prova para liberar a área do aluno.
+      await page.getByRole('button',{name:'Ir para confirmação'}).click();
+      await expect(page.getByRole('heading',{name:'Finalize seu cadastro de aluno'})).not.toBeVisible();
+    });
+  }
+}
+
+test('falha de rede no login não dispara criação de conta', async ({page}) => {
   const state = await ambiente(page,{session:false});
-  await page.route('**/auth/v1/token*', route=>route.fulfill({status:400,contentType:'application/json',body:JSON.stringify({message:'Invalid login credentials',error_code:'invalid_credentials'})}));
-  await page.route('**/auth/v1/signup*', route=>route.fulfill({status:422,contentType:'application/json',body:JSON.stringify({message:'User already registered',error_code:'user_already_exists'})}));
+  await page.route('**/auth/v1/token*', route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Serviço indisponível'})}));
   await page.goto('/cadastro-aluno');
   await page.getByLabel('Email',{exact:true}).fill(user.email);
-  await page.getByLabel('Senha',{exact:true}).fill('SenhaErrada123!');
-  await page.getByLabel('Confirmar senha',{exact:true}).fill('SenhaErrada123!');
-  await page.getByLabel('Data de nascimento').fill('2000-01-01');
-  await page.getByRole('checkbox').check();
+  await page.getByLabel('Senha',{exact:true}).fill('SenhaTeste123!');
   await page.getByRole('button',{name:/Entrar ou criar/}).click();
-  await expect(page.getByText("E-mail ou senha incorretos.", {exact:true})).toBeVisible();
-  await expect(page).toHaveURL(/cadastro-aluno/);
+  await expect(page.getByRole('button',{name:/Entrar ou criar/})).toBeEnabled();
+  expect(state.signups).toBe(0);
   expect(state.saveCalls).toEqual([]);
 });
-
 
 test('link OTP é consumido uma vez e recarregar retoma o formulário sem cache', async ({page}) => {
   const state = await ambiente(page,{session:false});
@@ -166,5 +196,18 @@ test('link OTP é consumido uma vez e recarregar retoma o formulário sem cache'
   await page.reload();
   await expect(page.getByRole('heading',{name:'Finalize seu cadastro de aluno'})).toBeVisible();
   expect(state.confirmations).toBe(1);
+  expect(state.unexpected).toEqual([]);
+});
+
+
+test('matrícula posterior aparece ao atualizar e aponta para o aplicativo sem transportar sessão', async ({page}) => {
+  const state = await ambiente(page,{complete:true});
+  await page.goto('/aluno');
+  await expect(page.getByText(/Você ainda não está em uma turma/)).toBeVisible();
+  state.turmas.push(10);
+  await page.getByRole('button',{name:'Atualizar turmas e progresso'}).click();
+  await expect(page.getByText(/Você tem 1 turma disponível/)).toBeVisible();
+  await expect(page.getByRole('link',{name:'Abrir aplicativo do aluno'})).toHaveAttribute('href','https://app.example.test/');
+  await expect(page.getByText(/No aplicativo, entre com o mesmo e-mail/)).toBeVisible();
   expect(state.unexpected).toEqual([]);
 });

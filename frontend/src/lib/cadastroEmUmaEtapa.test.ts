@@ -11,8 +11,8 @@ import {
 
 describe("cadastro em uma etapa (#329)", () => {
   it("senha errada e conta existente dão a MESMA mensagem", () => {
-    // É este teste que fecha a enumeração. Se alguém especializar uma das duas para ajudar o
-    // usuário, o oráculo volta pela tela de cadastro, e aqui é onde isso é pego.
+    // Esta função não deve revelar existência. O fluxo de signup também precisa
+    // uniformizar sucesso novo, sucesso ofuscado e duplicidade (teste de navegador).
     const senhaErrada = { message: "Invalid login credentials" };
     const jaExiste = { message: "User already registered" };
     expect(mensagemDeAcesso(senhaErrada)).toBe(MENSAGEM_CREDENCIAL);
@@ -25,6 +25,7 @@ describe("cadastro em uma etapa (#329)", () => {
     expect(ehCredencialInvalida({ message: "Invalid login credentials" })).toBe(true);
     expect(ehContaJaExistente({ message: "User already exists" })).toBe(true);
     expect(ehContaJaExistente({ code: "user_already_exists" })).toBe(true);
+    expect(ehContaJaExistente({ code: "email_exists" })).toBe(true);
     expect(ehContaJaExistente({ message: "Email address already been registered" })).toBe(true);
     // E não confunde com outra coisa
     expect(ehCredencialInvalida({ message: "Email not confirmed" })).toBe(false);

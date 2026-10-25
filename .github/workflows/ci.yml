@@ -75,6 +75,14 @@ jobs:
             frontend:
               - *ci
               - 'frontend/**'
+              # A jornada local cruza o cadastro web, SQL e o consumidor mobile.
+              - 'scripts/testar-cadastro-atomico.mjs'
+              - 'scripts/validar-cadastro-ate-material.mjs'
+              - 'api/alembic/versions/**'
+              - 'mobile/src/services/personalizacao/**'
+              - 'mobile/src/utils/brainHex.ts'
+              - 'mobile/src/models/Aluno.ts'
+              - 'mobile/src/constants/brainHexProfiles.ts'
             mobile:
               - *ci
               - 'mobile/**'
