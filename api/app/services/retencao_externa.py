@@ -12,7 +12,10 @@ Desligado por padrao (`RETENCAO_EXTERNA_ENABLED=false`). Cuidados:
 - confere que NADA no banco ainda aponta para o objeto antes de apagar
   (o mesmo `storage_path` pode estar em outra linha);
 - `404` conta como apagado; erro volta para a fila com espera exponencial;
-- conta do Auth so e apagada se o aluno continua sem entrar desde o aviso.
+- conta do Auth so e apagada se o aluno continua sem entrar desde o aviso,
+  ou se o proprio professor pediu a exclusao (`exclusao_conta_professor`);
+- a cada volta, tambem confere/envia os e-mails de aviso de conta inativa
+  (`retencao_avisos_email()`, que respeita o modo `simular`).
 """
 
 from __future__ import annotations
@@ -142,6 +145,13 @@ AINDA_USADO_SQL = {
         "SELECT EXISTS (SELECT 1 FROM public.vw_material_storage_paths WHERE storage_path = :caminho)"
         " OR EXISTS (SELECT 1 FROM public.materiais_gerados WHERE storage_path = :caminho)"
         " OR EXISTS (SELECT 1 FROM public.fontes_personalizacao WHERE storage_path = :caminho)"
+        # Arquivo do professor (bucket conteudos, 20261024_07): uma turma
+        # duplicada aponta para o mesmo arquivo da original.
+        " OR EXISTS (SELECT 1 FROM public.conteudos WHERE conteudo = :caminho"
+        " OR metadata @> jsonb_build_object('files', jsonb_build_array(jsonb_build_object('path', CAST(:caminho AS text)))))"
+        " OR EXISTS (SELECT 1 FROM public.midias WHERE public.trailup_caminho_arquivo(url) = :caminho)"
+        " OR EXISTS (SELECT 1 FROM public.questoes WHERE public.trailup_caminho_arquivo(midia_url) = :caminho)"
+        " OR EXISTS (SELECT 1 FROM public.cards WHERE public.trailup_caminho_arquivo(imagem_url) = :caminho)"
     ),
     "openai": text("SELECT EXISTS (SELECT 1 FROM public.rag_openai_files WHERE openai_file_id = :caminho)"),
     "auth_user": text(
@@ -154,7 +164,19 @@ AINDA_USADO_SQL = {
              AND coalesce(u.last_sign_in_at, u.created_at) <= v.avisado_em)
         """
     ),
+    # Pedido do proprio professor (20261024_07): vale enquanto o pedido existe.
+    "auth_user_professor": text(
+        """
+        SELECT NOT EXISTS (
+          SELECT 1 FROM public.exclusao_conta_professor e
+           WHERE e.professor_id = CAST(:caminho AS uuid))
+        """
+    ),
 }
+
+# Aviso de conta inativa por e-mail (20261024_07). A funcao le o modo
+# (`app_config.retencao_modo`): em `simular` so conta, nao envia.
+AVISOS_EMAIL_SQL = text("SELECT public.retencao_avisos_email()")
 
 CONCLUI_SQL = text(
     "UPDATE public.retencao_fila_externa SET processado_em = now(), resultado = :resultado,"
@@ -179,6 +201,8 @@ def _chave_de_uso(item: dict[str, Any]) -> str | None:
         return "r2_telemetria"
     if destino in ("r2", "storage"):
         return "material"
+    if destino == "auth_user" and ref.get("motivo") == "exclusao_professor":
+        return "auth_user_professor"
     if destino in ("openai", "auth_user"):
         return destino
     return None
@@ -258,6 +282,20 @@ async def processar_fila_uma_vez(session_factory: Any, apagador: Apagador, setti
     return contagem
 
 
+async def enviar_avisos_inatividade(session_factory: Any) -> dict[str, Any]:
+    """Confere e envia os e-mails de aviso de conta inativa (pg_net + Brevo, no banco).
+
+    O cron `trailup_retencao_avisos` faz o mesmo a cada 30 min; chamar daqui
+    tambem e seguro (a funcao tem trava e `FOR UPDATE SKIP LOCKED`).
+    """
+    async with session_factory() as session:
+        async with session.begin():
+            resultado = (await session.execute(AVISOS_EMAIL_SQL)).scalar()
+    if isinstance(resultado, str):
+        resultado = json.loads(resultado)
+    return dict(resultado or {})
+
+
 async def retencao_externa_loop(app: Any, apagador: Apagador | None = None) -> None:
     settings = app.state.settings
     apagador = apagador or ApagadorHttp(settings)
@@ -271,4 +309,12 @@ async def retencao_externa_loop(app: Any, apagador: Apagador | None = None) -> N
             raise
         except Exception as exc:  # noqa: BLE001 - o loop nao pode morrer
             logger.warning("[retencao] fila externa falhou: %s", type(exc).__name__)
+        try:
+            avisos = await enviar_avisos_inatividade(app.state.session_factory)
+            if any(avisos.get(k) for k in ("confirmados", "enviados", "falhas", "sem_email")):
+                logger.info("[retencao] avisos de inatividade: %s", avisos)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - o loop nao pode morrer
+            logger.warning("[retencao] avisos de inatividade falharam: %s", type(exc).__name__)
         await asyncio.sleep(intervalo)

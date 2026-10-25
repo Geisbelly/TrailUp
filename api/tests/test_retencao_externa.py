@@ -174,3 +174,35 @@ async def test_worker_contra_postgres_local() -> None:
         ).fetchone()
         assert erro[1] is None and erro[2] == 1
         assert "segredo" not in erro[0]
+
+
+def test_exclusao_de_professor_usa_o_pedido_como_licenca() -> None:
+    # 20261024_07: o usuario do Auth de professor sai pelo pedido dele, nao pelo aviso de inatividade.
+    assert rx._chave_de_uso({"destino": "auth_user", "ref": {"motivo": "exclusao_professor"}}) == "auth_user_professor"
+    assert rx._chave_de_uso({"destino": "auth_user", "ref": '{"motivo": "conta_inativa"}'}) == "auth_user"
+    assert "exclusao_conta_professor" in str(rx.AINDA_USADO_SQL["auth_user_professor"])
+
+
+async def test_worker_chama_o_envio_de_avisos() -> None:
+    chamadas: list[str] = []
+
+    class _Resultado:
+        def scalar(self):
+            return '{"modo": "aplicar", "enviados": 2}'
+
+    class _Sessao:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        def begin(self):
+            return self
+
+        async def execute(self, sql, *args):
+            chamadas.append(str(sql))
+            return _Resultado()
+
+    assert await rx.enviar_avisos_inatividade(lambda: _Sessao()) == {"modo": "aplicar", "enviados": 2}
+    assert chamadas == ["SELECT public.retencao_avisos_email()"]

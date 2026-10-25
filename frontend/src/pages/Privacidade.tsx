@@ -138,7 +138,7 @@ const Privacidade = () => {
                 <li>OpenAI (inteligência artificial; única opção para menores): Estados Unidos</li>
                 <li>Cloudflare R2 (armazenamento de arquivos): local em confirmação</li>
                 <li>Expo, Google (FCM) e Apple (APNs) (notificações): Estados Unidos</li>
-                <li>Brevo (e-mails de contato do app): União Europeia</li>
+                <li>Brevo (entrega das mensagens de contato do app e do site): União Europeia</li>
                 <li>Google (login com Google, vídeos do YouTube e fontes) e Microsoft (visualização de documentos)</li>
               </Lista>
               <p>
@@ -154,7 +154,8 @@ const Privacidade = () => {
                 <li>Indicadores derivados da telemetria: 13 meses (24 meses para pesquisa)</li>
                 <li>Estado emocional estimado: 30 dias</li>
                 <li>Imagens da câmera: não são guardadas</li>
-                <li>Conta inativa: apagada após 24 meses, com aviso e mais 30 dias de prazo</li>
+                <li>Conta de aluno inativa: apagada após 24 meses sem acesso, só depois de um aviso por e-mail e mais 30 dias de prazo (entrar de novo cancela)</li>
+                <li>Conta de professor excluída: os dados pessoais saem na hora, e as turmas dele também, com trilhas, matrículas, notas e o material das turmas; a conta de cada aluno continua</li>
                 <li>
                   Ao sair de uma turma: o conteúdo gerado para você é apagado em 90 dias; notas, moedas e
                   ranking, em 365 dias

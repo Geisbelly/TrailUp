@@ -161,3 +161,30 @@ def test_cobertura_com_curinga(host, esperado):
 def test_detecta_dominio_de_provedor_sem_esquema():
     achados = {m.group(1) for m in PROVEDORES.finditer('f"{conta}.r2.cloudflarestorage.com"')}
     assert achados == {"r2.cloudflarestorage.com"}
+
+
+# Hosts que saíram do registro e não podem voltar sem passar por ele de novo.
+HOSTS_REMOVIDOS = ("formsubmit.co",)
+
+
+def test_hosts_removidos_nao_voltam_ao_cliente():
+    achados = []
+    for pasta in (REPO / "frontend" / "src", REPO / "mobile" / "src"):
+        if not pasta.exists():
+            continue
+        for arq in pasta.rglob("*"):
+            if arq.suffix not in (".ts", ".tsx", ".js", ".jsx") or "node_modules" in arq.parts:
+                continue
+            texto = arq.read_text(encoding="utf-8", errors="ignore")
+            achados += [f"{arq.relative_to(REPO)}: {h}" for h in HOSTS_REMOVIDOS if h in texto]
+    assert not achados, f"Host removido do registro voltou ao código: {achados}"
+
+
+def test_contato_do_site_nao_tem_email_de_destino_no_frontend():
+    email = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}")
+    for rel in (
+        "frontend/src/pages/Contato.tsx",
+        "frontend/src/pages/Console.tsx",
+        "frontend/src/lib/contatoPublico.ts",
+    ):
+        assert not email.search((REPO / rel).read_text(encoding="utf-8")), rel
