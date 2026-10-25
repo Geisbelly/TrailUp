@@ -1,3 +1,4 @@
+import { AtualizacaoObrigatoriaGate } from "@/components/AtualizacaoObrigatoriaGate";
 import { LoadingState } from "@/components/LoadingState";
 import { TelemetryConsentGate } from "@/components/TelemetryConsentGate";
 import LoadingScreen from "@/components/funcionais/Loading";
@@ -140,6 +141,8 @@ export default function RootLayout() {
                 <Stack.Screen name="(auth)" />
               </Stack>
               <TelemetryConsentGate />
+              {/* Por ultimo: a versao minima (#195) fica por cima de tudo, ate do consentimento. */}
+              <AtualizacaoObrigatoriaGate />
             </DialogProvider>
             </PortoesProvider>
             </PersonalizacaoProviderProvider>

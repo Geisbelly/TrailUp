@@ -10,6 +10,7 @@ Documentos e decisões de proteção de dados do projeto. A issue de acompanhame
 | Decisão sobre inferência emocional (finalidade, revisão, o professor vê só a faixa) | [Comentário na #195](https://github.com/BitStudioLabs/trail-up/issues/195#issuecomment-6379616985) |
 | Consentimento por finalidade, responsável legal e modo restrito (#613) | [PR/issue #613](https://github.com/BitStudioLabs/trail-up/issues/613) · migration `api/alembic/versions/20261024_02_consentimento_do_responsavel.py` |
 | Situação geral da #195 | [Comentário de status](https://github.com/BitStudioLabs/trail-up/issues/195#issuecomment-6384811191) |
+| Buckets privados do aluno (`conteudo_aluno`, `perfil_fotos`, `banners_fotos`) e ciclo de vida do R2 | [`storage-buckets-e-r2.md`](./storage-buckets-e-r2.md) · migration `api/alembic/versions/20261024_09_buckets_privados.py` · `infra/r2/` |
 | Texto público | Site: `frontend/src/pages/Privacidade.tsx` e `Termos.tsx` |
 
 ## Regra de processo (resumo)
@@ -47,3 +48,10 @@ Documentos e decisões de proteção de dados do projeto. A issue de acompanhame
 - **Menor de idade:** o esquema não guarda e-mail do responsável (só nome e relação em `consentimento_responsavel`). O aviso vai para o e-mail da conta, com uma linha pedindo que o aluno mostre a mensagem ao responsável.
 - **Cancelamento:** entrar de novo apaga o aviso e zera o prazo.
 - **Modo `simular`:** só relata (`avisaria`, `removeria`, contagens); não envia nem apaga.
+
+## Arquivos do aluno no Storage e no R2 (migration `20261024_09`)
+
+- `conteudo_aluno`, `perfil_fotos` e `banners_fotos` passam a ser privados. A leitura é por URL assinada curta ou pelo gateway `storage-redirect`. O RLS em `storage.objects` limita quem lê ao aluno, aos colegas e professores da turma e ao dono. O banner fecha também, porque é dado pessoal do aluno.
+- O fechamento é manual e vem **depois** do deploy de todo o código novo: `select public.trailup_fechar_buckets_privados();`.
+- No R2, só a telemetria bruta (`telemetria/lotes/`, `telemetria/eventos/`) expira sozinha, em 200 dias. Aplicar só com `retencao_modo = 'aplicar'`.
+- Detalhes, ordem de deploy e como aplicar: [`storage-buckets-e-r2.md`](./storage-buckets-e-r2.md).

@@ -7,6 +7,7 @@ import {
   fetchPersonalizacaoMateriais,
   setSupabaseClientForTesting,
   uploadBuffer,
+  urlDeLeituraDoStorage,
   type GenerationFence,
   type PersistedMaterialsMerge,
 } from "./supabaseService";
@@ -75,6 +76,48 @@ test("uploadBuffer usa o client injetado via setSupabaseClientForTesting, sem to
     assert.equal(calls[0].upsert, true);
   } finally {
     setSupabaseClientForTesting(null);
+  }
+});
+
+test("uploadBuffer sem R2 no bucket conteudo_aluno (privado, #195) devolve a URL do gateway", async () => {
+  const { client, calls } = createFakeSupabaseClient();
+  setSupabaseClientForTesting(client);
+  const antes = process.env.SUPABASE_URL;
+  process.env.SUPABASE_URL = "https://proj.supabase.co";
+  try {
+    const url = await uploadBuffer(
+      "conteudo_aluno",
+      "brainhex/seeker/classe-1/markdown/material-1.md",
+      Buffer.from("# a"),
+      "text/markdown",
+    );
+    assert.equal(
+      url,
+      "https://proj.supabase.co/functions/v1/storage-redirect?path=brainhex/seeker/classe-1/markdown/material-1.md",
+    );
+    assert.equal(calls.length, 1);
+  } finally {
+    process.env.SUPABASE_URL = antes ?? "";
+    setSupabaseClientForTesting(null);
+  }
+});
+
+test("urlDeLeituraDoStorage nunca devolve a URL publica dos buckets privados", () => {
+  const antes = process.env.SUPABASE_URL;
+  process.env.SUPABASE_URL = "";
+  try {
+    assert.equal(
+      urlDeLeituraDoStorage("conteudo_aluno", "brainhex/a.md", () => "https://publica/a.md"),
+      null,
+    );
+    // `conteudos` (material do professor) tambem e' privado (20261024_10)
+    assert.equal(
+      urlDeLeituraDoStorage("conteudos", "u/1/a.pdf", () => "https://publica/a.pdf"),
+      null,
+    );
+    assert.equal(urlDeLeituraDoStorage("outro", "a.md", () => "https://publica/a.md"), "https://publica/a.md");
+  } finally {
+    process.env.SUPABASE_URL = antes ?? "";
   }
 });
 

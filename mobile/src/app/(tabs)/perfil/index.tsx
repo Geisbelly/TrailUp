@@ -59,6 +59,7 @@ import { registrarAlvoTour } from "@/utils/tourTargets";
 import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
 import { buildProfileGuideSteps } from "@/utils/profileSectionGuide";
 import { selectClassBattles } from '@/utils/battleRuntime';
+import { ImagemDoStorage } from "@/components/ImagemDoStorage";
 
 export default function PerfilHome() {
   const insets = useSafeAreaInsets();
@@ -659,8 +660,9 @@ export default function PerfilHome() {
             />
             <View style={[styles.bannerWrapper, desktop && styles.bannerLargo]}>
               {usuario?.banner_url ? (
-                <Image
+                <ImagemDoStorage
                   source={{ uri: usuario.banner_url }}
+                  fallback={banner}
                   style={styles.banner}
                   resizeMode="cover"
                 />

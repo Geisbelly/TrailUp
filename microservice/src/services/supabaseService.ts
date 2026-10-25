@@ -80,7 +80,8 @@ export async function downloadStorageText(
  * armazenamento sem resolver nada: quem protege a leitura do material antigo e'
  * o fallback do gateway, nao uma segunda copia.
  *
- * Sem R2 configurado, mantem o comportamento antigo (Supabase Storage). E' o
+ * Sem R2 configurado, sobe no Supabase Storage e devolve a URL do gateway
+ * (bucket privado, ver `urlDeLeituraDoStorage`). E' o
  * que permite subir este codigo antes de os segredos existirem, e o que faz
  * ambiente de desenvolvimento continuar funcionando sem conta na Cloudflare.
  *
@@ -113,11 +114,33 @@ export async function uploadBuffer(
     throw new Error(`[supabase] upload falhou (${storagePath}): ${error.message}`);
   }
 
-  const { data: urlData } = client.storage
-    .from(bucket)
-    .getPublicUrl(storagePath);
+  return urlDeLeituraDoStorage(bucket, storagePath, (b, p) => {
+    const { data: urlData } = client.storage.from(b).getPublicUrl(p);
+    return urlData?.publicUrl ?? null;
+  });
+}
 
-  return urlData?.publicUrl ?? null;
+/**
+ * URL para `arquivo_url` de um objeto do Supabase Storage. `conteudo_aluno`
+ * (alembic 20261024_09) e `conteudos` (20261024_10, material do professor) sao
+ * PRIVADOS: a URL publica da' 400, entao o material vai pela URL do gateway,
+ * que assina na hora (R2 ou Storage; caminho `<uuid>/...` cai no bucket
+ * `conteudos`). Os outros buckets seguem com a publica.
+ */
+const BUCKETS_DO_GATEWAY = new Set(["conteudo_aluno", "conteudos"]);
+
+export function urlDeLeituraDoStorage(
+  bucket: string,
+  storagePath: string,
+  urlPublica: (bucket: string, storagePath: string) => string | null,
+): string | null {
+  if (BUCKETS_DO_GATEWAY.has(bucket)) {
+    const gateway = urlDoGateway(storagePath);
+    if (gateway) return gateway;
+    console.warn(`[supabase] SUPABASE_URL ausente; sem URL de leitura para ${storagePath}`);
+    return null;
+  }
+  return urlPublica(bucket, storagePath);
 }
 
 // Uma parte entregavel de uma midia (ver splitProcessedContentIntoParts) -

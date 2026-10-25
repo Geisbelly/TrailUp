@@ -146,12 +146,19 @@ AINDA_USADO_SQL = {
         " OR EXISTS (SELECT 1 FROM public.materiais_gerados WHERE storage_path = :caminho)"
         " OR EXISTS (SELECT 1 FROM public.fontes_personalizacao WHERE storage_path = :caminho)"
         # Arquivo do professor (bucket conteudos, 20261024_07): uma turma
-        # duplicada aponta para o mesmo arquivo da original.
-        " OR EXISTS (SELECT 1 FROM public.conteudos WHERE conteudo = :caminho"
-        " OR metadata @> jsonb_build_object('files', jsonb_build_array(jsonb_build_object('path', CAST(:caminho AS text)))))"
+        # duplicada aponta para o mesmo arquivo da original. O campo pode ter o
+        # caminho puro ou a URL antiga do Storage/gateway (20261024_10 indexa
+        # `trailup_caminho_arquivo(...)` e o GIN de `metadata`).
+        " OR EXISTS (SELECT 1 FROM public.conteudos WHERE public.trailup_caminho_arquivo(conteudo) = :caminho)"
+        " OR EXISTS (SELECT 1 FROM public.conteudos"
+        " WHERE metadata @> jsonb_build_object('files', jsonb_build_array(jsonb_build_object('path', CAST(:caminho AS text))))"
+        " OR metadata @> jsonb_build_object('media_storage_path', CAST(:caminho AS text)))"
         " OR EXISTS (SELECT 1 FROM public.midias WHERE public.trailup_caminho_arquivo(url) = :caminho)"
         " OR EXISTS (SELECT 1 FROM public.questoes WHERE public.trailup_caminho_arquivo(midia_url) = :caminho)"
         " OR EXISTS (SELECT 1 FROM public.cards WHERE public.trailup_caminho_arquivo(imagem_url) = :caminho)"
+        # Citado DENTRO de um texto (markdown com a imagem do professor, 20261024_11):
+        # a turma duplicada copia o texto e continua citando o arquivo da original.
+        " OR EXISTS (SELECT 1 FROM public.trailup_turmas_que_usam_conteudo(CAST(:caminho AS text)))"
     ),
     "openai": text("SELECT EXISTS (SELECT 1 FROM public.rag_openai_files WHERE openai_file_id = :caminho)"),
     "auth_user": text(

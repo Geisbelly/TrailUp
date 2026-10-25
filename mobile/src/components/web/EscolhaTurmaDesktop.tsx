@@ -15,6 +15,7 @@ import { supabase } from "@/database/supabase";
 import type { Classe } from "@/models/Classe";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { useUrlDeImagem } from "@/hooks/useFonteDeImagem";
 
 type Props = {
   classes: Classe[];
@@ -51,7 +52,8 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
   const { aberturas } = usePortoes();
   const palette = getProfileShellPalette(perfil);
   const [saindo, setSaindo] = useState(false);
-  const foto = usuario?.foto_url ? { uri: usuario.foto_url } : getGuardianFaceImage(perfil);
+  const fotoAssinada = useUrlDeImagem(usuario?.foto_url);
+  const foto = fotoAssinada ? { uri: fotoAssinada } : getGuardianFaceImage(perfil);
 
   const sair = async () => {
     setSaindo(true);

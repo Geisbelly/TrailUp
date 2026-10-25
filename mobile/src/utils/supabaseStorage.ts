@@ -4,6 +4,7 @@ import {
   buildSupabasePublicStorageUrl,
   buildPersonalizedMaterialGatewayUrl,
   deckComoUrlPublicaDeStorage,
+  exigeAssinatura,
   getSupabaseOrigin,
   joinUrl,
   looksLikeStorageObjectPath,
@@ -64,7 +65,7 @@ export async function resolveSupabaseStorageUrl(
       search: parsed.search,
     });
     if (reancorada) {
-      if (parsed.mode === "public") return reancorada;
+      if (parsed.mode === "public" && !exigeAssinatura(parsed)) return reancorada;
       // Bucket privado: assina no cliente, que fala com a origem certa.
       const { data, error } = await supabase
         .storage
@@ -77,7 +78,19 @@ export async function resolveSupabaseStorageUrl(
     }
   }
 
-  if (parsed.mode === "public" || parsed.mode === "sign") {
+  if (parsed.mode === "sign") {
+    return rawUrl;
+  }
+  if (parsed.mode === "public") {
+    if (!exigeAssinatura(parsed)) return rawUrl;
+    // URL publica antiga de bucket privado (#195) da' 400: assina o mesmo
+    // objeto sob o RLS; se o Storage recusar, devolve a original (o bucket
+    // pode ainda nao ter sido fechado).
+    const { data, error } = await supabase
+      .storage
+      .from(parsed.bucket)
+      .createSignedUrl(parsed.objectPath, expiresIn);
+    if (!error && data?.signedUrl) return joinUrl(parsed.origin, data.signedUrl);
     return rawUrl;
   }
 

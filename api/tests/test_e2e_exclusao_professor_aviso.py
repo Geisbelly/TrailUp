@@ -435,6 +435,12 @@ def test_arquivos_da_turma_vao_para_a_fila_do_worker() -> None:
         # O worker confere antes de apagar: o arquivo ainda usado pela copia fica.
         # (O esqueleto so tem tabelas: a view do gateway entra vazia.)
         c.execute("CREATE VIEW public.vw_material_storage_paths AS SELECT NULL::text AS storage_path WHERE false")
+        # Este banco para na 07; a funcao das turmas que usam o arquivo e' da 10/11
+        # (coberta em test_e2e_bucket_conteudos_privado / test_e2e_urls_em_textos).
+        c.execute(
+            "CREATE FUNCTION public.trailup_turmas_que_usam_conteudo(p_nome text)"
+            " RETURNS TABLE (classe_id bigint, aluno_le boolean) LANGUAGE sql AS $$ SELECT NULL::bigint, NULL::boolean WHERE false $$"
+        )
         material = str(rx.AINDA_USADO_SQL["material"]).replace(":caminho", "%(caminho)s")
         assert _um_p(c, material, {"caminho": f"{PROF}/{t1}/extra.pptx"}) is True
         assert _um_p(c, material, {"caminho": f"{PROF}/{t1}/aula.pdf"}) is False

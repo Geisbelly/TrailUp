@@ -1305,7 +1305,7 @@ async def _process_media_render_target(
             repo_cp = ConteudoPersonalizadoRepository(session)
             record = await repo_cp.buscar_por_id(int(personalizacao_id))
             if record:
-                from app.services.storage import build_public_storage_url
+                from app.services.storage import build_material_url, material_url_de_leitura
                 fontes_repo = FontesPersonalizacaoRepository(session)
                 fontes_raw = await fontes_repo.listar_para_contexto(
                     classe_id=classe_id,
@@ -1332,12 +1332,14 @@ async def _process_media_render_target(
                 supabase_base = str(getattr(app.state.settings, "supabase_url", "") or "").strip()
                 fontes = []
                 for f in fontes_raw:
-                    public_url = str(f.get("arquivo_url") or f.get("url") or "").strip()
+                    public_url = str(
+                        material_url_de_leitura(supabase_base, f.get("arquivo_url") or f.get("url")) or ""
+                    ).strip()
                     if not public_url:
                         storage_path = str(f.get("storage_path") or "").strip()
                         bucket = str(f.get("bucket") or BUCKET).strip()
                         if storage_path and supabase_base:
-                            public_url = build_public_storage_url(supabase_base, bucket, storage_path) or ""
+                            public_url = build_material_url(supabase_base, bucket, storage_path) or ""
                     if public_url:
                         fontes.append({"url": public_url, "mime_type": str(f.get("mime_type") or ""), "tipo": str(f.get("tipo") or "documento")})
                 perfil = target_profile_key

@@ -34,7 +34,7 @@ from app.services.media_contract import (
 )
 from app.services.media_pipeline import MultiOutputPipeline
 from app.services.roteamento_ia import rota_de_menor_ativa
-from app.services.storage import SupabaseStorage, build_public_storage_url
+from app.services.storage import SupabaseStorage, build_material_url, material_url_de_leitura
 from app.services.text_cleanup import (
     clean_extracted_text,
     expand_sections,
@@ -2016,7 +2016,7 @@ def _collect_relevant_media_for_source(
     if source_url:
         candidates.append((source_url, storage_path, source_mime))
     elif storage_path:
-        public_url = build_public_storage_url(settings.supabase_url, bucket, storage_path)
+        public_url = build_material_url(settings.supabase_url, bucket, storage_path)
         candidates.append((public_url, storage_path, source_mime))
 
     for extracted_url in _extract_urls(source):
@@ -2046,7 +2046,7 @@ def _collect_relevant_media_for_source(
         normalized_url = _pick_string(candidate_url)
         normalized_path = _pick_string(candidate_path, storage_path)
         if not normalized_url and normalized_path:
-            normalized_url = build_public_storage_url(settings.supabase_url, bucket, normalized_path)
+            normalized_url = build_material_url(settings.supabase_url, bucket, normalized_path)
         key = f"{kind}|{normalized_url or ''}|{normalized_path or ''}"
         if key in seen:
             continue
@@ -2942,9 +2942,9 @@ def _build_fonte_enrichment_payload(
     storage_path = _pick_string(source.get("storage_path"))
     source_url = _pick_string(source.get("arquivo_url"), source.get("url"))
     bucket = _resolve_source_bucket(source) or _pick_string(source.get("bucket"))
-    arquivo_url = source_url
+    arquivo_url = material_url_de_leitura(settings.supabase_url, source_url)
     if not arquivo_url and bucket and storage_path:
-        arquivo_url = build_public_storage_url(settings.supabase_url, bucket, storage_path)
+        arquivo_url = build_material_url(settings.supabase_url, bucket, storage_path)
 
     nome_arquivo = _infer_file_name(
         storage_path=storage_path,
@@ -4695,13 +4695,14 @@ async def fetch_personalizacao_context(
     supabase_base = str(getattr(settings, "supabase_url", "") or "").strip()
     fontes = []
     for f in fontes_raw:
-        public_url = str(f.get("arquivo_url") or f.get("url") or "").strip()
+        public_url = str(material_url_de_leitura(supabase_base, f.get("arquivo_url") or f.get("url")) or "").strip()
         if not public_url:
-            # Tenta gerar URL pública a partir de storage_path + bucket
+            # Monta a URL de leitura a partir de storage_path + bucket (gateway
+            # para conteudo_aluno, que e' privado desde a #195).
             storage_path = str(f.get("storage_path") or "").strip()
             bucket = str(f.get("bucket") or _CONTEUDO_ALUNO_BUCKET).strip()
             if storage_path and supabase_base:
-                public_url = build_public_storage_url(supabase_base, bucket, storage_path) or ""
+                public_url = build_material_url(supabase_base, bucket, storage_path) or ""
         if not public_url:
             continue
         # Fontes sincronizadas do conteudo (origem=sync_conteudo) costumam nao

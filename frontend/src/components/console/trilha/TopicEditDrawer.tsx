@@ -38,6 +38,7 @@ import { formatoDaQuestao } from "./formatoDaQuestao";
 import { prazoDaAtividade, rotuloDoTipoDeAtividade } from "./atividades";
 import { prazoBancoParaLocal } from "@/lib/prazoDaAtividade";
 import { duplicateActivity, duplicateCard } from "./topicsApi";
+import { useUrlDoConteudo } from "./useUrlDoConteudo";
 import {
   Plus,
   Pencil,
@@ -75,6 +76,13 @@ import {
   isProfessorUploadFileAllowed,
   isQuestionMediaFileAllowed,
 } from "@/lib/upload-file-policy";
+
+function MidiaDaQuestaoPreview({ valor }: { valor: string }) {
+  const url = useUrlDoConteudo(valor);
+  if (!url) return null;
+  return <img src={url} alt="preview" className="mt-2 max-h-28 rounded border border-border object-contain" />;
+}
+
 
 type TopicEditDrawerProps = {
   open: boolean;
@@ -394,7 +402,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     if (error) {
       const raw = error.message ? String(error.message) : String(error);
       const friendly = (raw.includes("security policy") || raw.includes("violates") || raw.includes("403"))
-        ? 'Permissão negada. Adicione uma política INSERT no bucket "conteudos" no painel Supabase → Storage → Policies.'
+        ? "Permissão negada: o envio só é permitido na pasta do próprio professor."
         : raw;
       toast.error(friendly, { duration: 8000 });
       return null;
@@ -464,9 +472,8 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     try {
       const uploadedPath = await uploadFile(file, editingTopic.id, user.id);
       if (!uploadedPath) return;
-      const { data } = supabase.storage.from("conteudos").getPublicUrl(uploadedPath);
-      const resolvedUrl = data?.publicUrl || uploadedPath;
-      setQuestionForm((prev) => ({ ...prev, midia_url: resolvedUrl }));
+      // Bucket `conteudos` e' privado: grava o CAMINHO; a exibicao assina.
+      setQuestionForm((prev) => ({ ...prev, midia_url: uploadedPath }));
       toast.success("Mídia da questão enviada com sucesso.");
     } catch (error) {
       console.error("[TopicEditDrawer] Erro ao enviar mídia da questão:", error);
@@ -1407,7 +1414,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                     </Button>
                                   </div>
                                   {questionForm.midia_url && /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(questionForm.midia_url) && (
-                                    <img src={questionForm.midia_url} alt="preview" className="mt-2 max-h-28 rounded border border-border object-contain" />
+                                    <MidiaDaQuestaoPreview valor={questionForm.midia_url} />
                                   )}
                                 </div>
 

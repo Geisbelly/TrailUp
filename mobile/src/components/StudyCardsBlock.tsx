@@ -18,6 +18,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
 
 type StudyCard = {
   id?: string | number;
@@ -86,6 +87,30 @@ function buildCardMediaBlock(card: StudyCard) {
   if (card.apresentacaoUrl) return { kind: "apresentacao" as const, url: card.apresentacaoUrl };
   if (card.embedHtml) return { kind: "embed" as const, html: card.embedHtml };
   return null;
+}
+
+/**
+ * Imagem do card: o bucket `conteudos` e' privado (20261024_10), entao a URL
+ * publica antiga ou o caminho gravado passam pelo assinador antes do <Image>.
+ */
+function ImagemDoCard({ valor }: { valor: string }) {
+  const [uri, setUri] = useState<string | null>(null);
+  useEffect(() => {
+    let ativo = true;
+    setUri(null);
+    resolveSupabaseStorageUrl(valor)
+      .then((resolvida) => {
+        if (ativo) setUri(resolvida || null);
+      })
+      .catch(() => {
+        if (ativo) setUri(null);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [valor]);
+  if (!uri) return null;
+  return <Image source={{ uri }} style={styles.image} resizeMode="cover" />;
 }
 
 export default function StudyCardsBlock({ payload, WebView, progressKey }: Props) {
@@ -172,13 +197,7 @@ export default function StudyCardsBlock({ payload, WebView, progressKey }: Props
           {showBack ? "Verso" : "Frente"}
         </Text>
 
-        {card.imagemUrl ? (
-          <Image
-            source={{ uri: card.imagemUrl }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-        ) : null}
+        {card.imagemUrl ? <ImagemDoCard valor={card.imagemUrl} /> : null}
 
         {card.titulo ? <Text style={[styles.title, { color: palette.text }]}>{card.titulo}</Text> : null}
 

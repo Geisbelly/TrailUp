@@ -1,0 +1,24 @@
+{
+  "rules": [
+    {
+      "id": "telemetria-lotes-expira-200d",
+      "enabled": true,
+      "conditions": { "prefix": "telemetria/lotes/" },
+      "deleteObjectsTransition": { "condition": { "type": "Age", "maxAge": 17280000 } },
+      "abortMultipartUploadsTransition": { "condition": { "type": "Age", "maxAge": 172800 } }
+    },
+    {
+      "id": "telemetria-eventos-expira-200d",
+      "enabled": true,
+      "conditions": { "prefix": "telemetria/eventos/" },
+      "deleteObjectsTransition": { "condition": { "type": "Age", "maxAge": 17280000 } },
+      "abortMultipartUploadsTransition": { "condition": { "type": "Age", "maxAge": 172800 } }
+    },
+    {
+      "id": "abortar-uploads-incompletos-7d",
+      "enabled": true,
+      "conditions": { "prefix": "" },
+      "abortMultipartUploadsTransition": { "condition": { "type": "Age", "maxAge": 604800 } }
+    }
+  ]
+}

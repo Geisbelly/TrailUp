@@ -3,7 +3,7 @@ import io
 import logging
 import mimetypes
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import httpx
 
@@ -12,6 +12,9 @@ from app.core.settings import Settings
 logger = logging.getLogger(__name__)
 
 BUCKET = "conteudo_aluno"
+CONTEUDOS_BUCKET = "conteudos"
+# Buckets privados cujo `arquivo_url` gravado/devolvido e' a URL do gateway.
+BUCKETS_DO_GATEWAY = frozenset({BUCKET, CONTEUDOS_BUCKET})
 
 _CONTENT_TYPES: dict[str, str] = {
     "pdf": "application/pdf",
@@ -61,8 +64,11 @@ def build_material_url(base_url: str | None, bucket: str | None, path: str | Non
     URL publica do Storage da' 404. O gateway serve do R2 e cai no Supabase se o
     objeto ainda nao foi copiado, entao vale para material antigo e novo.
 
-    Outros buckets (fonte do professor) ficam com a URL publica direta: o
-    gateway so' conhece caminhos de `vw_material_storage_paths`.
+    A fonte do professor (bucket `conteudos`) tambem vai pelo gateway desde a
+    20261024_10 (bucket privado): o caminho dela esta' em
+    `fontes_personalizacao`, que a `vw_material_storage_paths` cobre, e o
+    gateway assina no bucket certo (`bucketDoCaminho`: `<uuid>/...` ->
+    `conteudos`). Outros buckets ficam com a URL publica direta.
     """
     base = str(base_url or "").strip().rstrip("/")
     bucket_name, raw_path = _normalize_bucket_and_path(bucket, path)
@@ -70,11 +76,45 @@ def build_material_url(base_url: str | None, bucket: str | None, path: str | Non
         return None
     if raw_path.startswith("http://") or raw_path.startswith("https://"):
         return raw_path
-    if bucket_name != BUCKET:
+    if bucket_name not in BUCKETS_DO_GATEWAY:
         return build_public_storage_url(base, bucket_name, raw_path)
     # Os caminhos gerados usam so' [A-Za-z0-9/_.-], que `quote` preserva; a URL
     # sai identica a do microservice e da migracao 20260829_02.
     return f"{base}/functions/v1/storage-redirect?path={quote(raw_path, safe='/')}"
+
+
+def material_url_de_leitura(base_url: str | None, url: str | None) -> str | None:
+    """Converte, NA LEITURA, a URL publica antiga de um bucket privado na do gateway.
+
+    `conteudo_aluno` (20261024_09) e `conteudos` (20261024_10) sao privados:
+    URL publica gravada antes disso (fonte do aluno ou do professor em
+    `fontes_personalizacao.arquivo_url`, material antigo) da' 400. O caminho
+    dentro do bucket continua valido, entao vira `storage-redirect?path=...`
+    na base do app. Qualquer outra URL passa como veio.
+    """
+    texto = str(url or "").strip()
+    for bucket in sorted(BUCKETS_DO_GATEWAY):
+        marca = f"/storage/v1/object/public/{bucket}/"
+        if not texto or marca not in texto:
+            continue
+        caminho = texto.split(marca, 1)[1].split("?", 1)[0].split("#", 1)[0]
+        caminho = unquote(caminho)
+        base = str(base_url or "").strip().rstrip("/") or texto.split("/storage/v1/", 1)[0]
+        return build_material_url(base, bucket, caminho) or url
+    return url
+
+
+def objeto_do_storage(url: str | None) -> tuple[str, str] | None:
+    """(bucket, caminho) de uma URL publica/assinada/autenticada do Storage."""
+    texto = str(url or "").strip()
+    marca = "/storage/v1/object/"
+    if marca not in texto:
+        return None
+    resto = texto.split(marca, 1)[1].split("?", 1)[0].split("#", 1)[0]
+    partes = resto.split("/", 2)
+    if len(partes) < 3 or partes[0] not in {"public", "sign", "authenticated"} or not partes[1] or not partes[2]:
+        return None
+    return partes[1], unquote(partes[2])
 
 
 def _truncate_extracted(text: str | None, limit: int = 4000) -> str | None:
@@ -163,10 +203,47 @@ class SupabaseStorage:
         }
 
     def public_url(self, path: str) -> str:
-        return build_public_storage_url(self._base_url, BUCKET, path) or f"{self._base_url}/storage/v1/object/public/{BUCKET}/{path}"
+        return self.public_url_for_bucket(BUCKET, path)
 
     def public_url_for_bucket(self, bucket: str, path: str) -> str:
-        return build_public_storage_url(self._base_url, bucket, path) or f"{self._base_url}/storage/v1/object/public/{bucket}/{path}"
+        """URL para gravar/devolver depois de um upload.
+
+        `conteudo_aluno` (20261024_09) e `conteudos` (20261024_10) sao
+        privados: a URL publica da' 400. Para eles sai a URL do gateway
+        `storage-redirect` (`build_material_url`), que assina na hora. Os
+        outros buckets seguem com a publica.
+        """
+        return (
+            build_material_url(self._base_url, bucket, path)
+            or build_public_storage_url(self._base_url, bucket, path)
+            or f"{self._base_url}/storage/v1/object/public/{bucket}/{path}"
+        )
+
+    async def signed_url(self, *, bucket: str, path: str, expires_in: int = 3600) -> str | None:
+        """URL assinada (service role) de curta duracao para um objeto.
+
+        Para o que o gateway nao serve (caminho fora de
+        `vw_material_storage_paths`, como o avatar do chefe). None se o
+        Storage nao assinar.
+        """
+        bucket_name, normalized_path = _normalize_bucket_and_path(bucket, path)
+        if not self._enabled or not bucket_name or not normalized_path:
+            return None
+        url = f"{self._base_url}/storage/v1/object/sign/{bucket_name}/{normalized_path}"
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(url, json={"expiresIn": int(expires_in)}, headers=self._headers())
+                resp.raise_for_status()
+                assinada = str((resp.json() or {}).get("signedURL") or "")
+        except Exception as exc:
+            logger.warning("Supabase sign falhou (%s/%s): %s", bucket_name, normalized_path, exc)
+            return None
+        if not assinada:
+            return None
+        if assinada.startswith(("http://", "https://")):
+            return assinada
+        rel = assinada if assinada.startswith("/") else f"/{assinada}"
+        return f"{self._base_url}{rel}" if rel.startswith("/storage/v1/") else f"{self._base_url}/storage/v1{rel}"
 
     async def upload_bytes(
         self,
@@ -178,8 +255,8 @@ class SupabaseStorage:
     ) -> str | None:
         """Sobe um arquivo no Supabase Storage via PUT autenticado
         (service role) com x-upsert (idempotente — sobrescreve se o mesmo
-        path ja existir, sem precisar checar antes). Retorna a URL publica,
-        ou None se SUPABASE_SERVICE_KEY nao estiver configurada ou o upload
+        path ja existir, sem precisar checar antes). Retorna a URL de leitura
+        (`public_url_for_bucket`: gateway para `conteudo_aluno`), ou None se SUPABASE_SERVICE_KEY nao estiver configurada ou o upload
         falhar."""
         bucket_name, normalized_path = _normalize_bucket_and_path(bucket, path)
         if not self._base_url or not bucket_name or not normalized_path or not self._enabled:
@@ -274,6 +351,18 @@ class SupabaseStorage:
             return None
         if not (url.startswith("http://") or url.startswith("https://")):
             return None
+        # URL publica antiga de bucket privado (#195) da' 400: baixa o mesmo
+        # objeto pela chave de servico, se a URL e' deste projeto.
+        objeto = objeto_do_storage(url)
+        if (
+            objeto
+            and objeto[0] in BUCKETS_DO_GATEWAY
+            and self._base_url
+            and url.startswith(f"{self._base_url}/storage/v1/object/public/")
+        ):
+            baixado = await self.download_bytes(bucket=objeto[0], path=objeto[1])
+            if baixado is not None:
+                return baixado
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.get(url)

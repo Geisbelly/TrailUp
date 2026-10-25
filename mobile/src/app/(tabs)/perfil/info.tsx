@@ -2,7 +2,6 @@ import { HallBackground } from "@/components/HallTheme";
 import { Feather } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,6 +19,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 import { useAviso } from "@/hooks/useAviso";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { ImagemDoStorage } from "@/components/ImagemDoStorage";
 
 export default function Infor() {
   const embutido = useEmbutidoConfiguracoes();
@@ -113,7 +113,7 @@ export default function Infor() {
 
         <View style={styles.bannerContainer}>
           {bannerUri ? (
-            <Image source={{ uri: bannerUri }} style={styles.banner} />
+            <ImagemDoStorage source={{ uri: bannerUri }} style={styles.banner} />
           ) : (
             <View
               style={[

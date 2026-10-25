@@ -28,6 +28,7 @@
  */
 
 import { presignR2GetUrl } from "../frontend/supabase/functions/storage-redirect/r2Presign";
+import { bucketDoCaminho } from "../frontend/supabase/functions/storage-redirect/destino";
 
 /**
  * `ausente` e distinto de `falha` de proposito. Ha caminhos referenciados no
@@ -153,11 +154,24 @@ async function listarCaminhosVivos(cfg: Config): Promise<string[]> {
   return [...new Set(caminhos)].sort();
 }
 
-function urlPublicaDoSupabase(cfg: Config, caminho: string): string {
+/**
+ * Origem da copia: rota AUTENTICADA do Storage, com a chave de servico.
+ *
+ * `conteudo_aluno` (alembic 20261024_09) e `conteudos` (20261024_10) sao
+ * privados depois de `trailup_fechar_buckets_privados()`: a URL publica da'
+ * 400, que o passo 1 classificaria como "ausente" - a copia "terminaria" sem
+ * copiar nada. O bucket sai do caminho, como no gateway: `<uuid>/...` e' fonte
+ * do professor (`conteudos`); o resto, o bucket configurado.
+ */
+function urlDaOrigemNoSupabase(cfg: Config, caminho: string): string {
   return (
-    `${cfg.supabaseUrl}/storage/v1/object/public/` +
-    `${cfg.supabaseBucket}/${codificarCaminho(caminho)}`
+    `${cfg.supabaseUrl}/storage/v1/object/authenticated/` +
+    `${bucketDoCaminho(caminho, cfg.supabaseBucket)}/${codificarCaminho(caminho)}`
   );
+}
+
+function cabecalhosDaOrigem(cfg: Config, extra: Record<string, string> = {}): Record<string, string> {
+  return { ...extra, apikey: cfg.serviceKey, Authorization: `Bearer ${cfg.serviceKey}` };
 }
 
 async function assinarR2(
@@ -201,7 +215,10 @@ async function copiarUm(
   caminho: string,
 ): Promise<{ estado: Resultado; bytes: number; nota?: string }> {
   // 1. Tamanho na origem. HEAD traz so' cabecalho, entao o egress e' irrelevante.
-  const origemHead = await fetch(urlPublicaDoSupabase(cfg, caminho), { method: "HEAD", headers: SEM_COMPRESSAO });
+  const origemHead = await fetch(urlDaOrigemNoSupabase(cfg, caminho), {
+    method: "HEAD",
+    headers: cabecalhosDaOrigem(cfg, SEM_COMPRESSAO),
+  });
   if (origemHead.status === 404 || origemHead.status === 400) {
     // Referencia morta no banco, nao falha da copia. Ver o tipo Resultado.
     return { estado: "ausente", bytes: 0, nota: `origem ${origemHead.status}` };
@@ -231,7 +248,7 @@ async function copiarUm(
   if (cfg.dryRun) return { estado: "copiado", bytes: tamanhoOrigem ?? 0, nota: "dry-run" };
 
   // 3. Baixa e sobe.
-  const origem = await fetch(urlPublicaDoSupabase(cfg, caminho));
+  const origem = await fetch(urlDaOrigemNoSupabase(cfg, caminho), { headers: cabecalhosDaOrigem(cfg) });
   if (!origem.ok) return { estado: "falha", bytes: 0, nota: `download ${origem.status}` };
   const corpo = new Uint8Array(await origem.arrayBuffer());
 
