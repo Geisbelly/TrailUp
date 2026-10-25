@@ -78,6 +78,7 @@ src/utils/progressoPersonalizado.test.ts
 src/utils/questionRetryPolicy.test.ts
 src/utils/rankCorte.test.ts
 src/utils/rankEventClasse.test.ts
+src/utils/rankProgresso.test.ts
 src/utils/rankingPodium.test.ts
 src/utils/rankingProfiles.test.ts
 src/utils/realtimeTabelasAssinadas.test.ts
