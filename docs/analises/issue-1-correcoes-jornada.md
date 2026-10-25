@@ -3,6 +3,11 @@
 Data: 24/10/2026. Continuação do PR #617, já integrado. Base desta continuação:
 `1eed6013` (inclui a renumeração da migração BrainHex para `20261024_04`).
 
+Atualização após a integração do PR #623: a seção final descreve a correção
+`20261024_06`, baseada na main `70586889`. Ela substitui a antiga confiança no
+marcador e a exigência de medida para reconhecer contas legadas. Os resultados
+da implementação inicial abaixo são históricos, não validação da implantação.
+
 ## Comportamento entregue
 
 A confirmação deixa de depender de `pending-signup` no navegador de origem.
@@ -121,3 +126,67 @@ literalmente à redação antiga.
 O fechamento ainda depende de integração/implantação e confirmação em ambiente
 integrado de teste. Os resultados locais não substituem essa validação nem a
 aprovação do CI remoto.
+
+## Integridade da conclusão e preservação do legado — migração 06
+
+A revalidação identificou dois problemas na 05: o próprio aluno podia inserir
+um marcador de conclusão sem perfis, e uma conta legada sem marcador voltava ao
+quiz quando sua medida era expurgada. A 06 corrige ambos sem alterar pontuação,
+afinidades, preferências ou a política de retenção.
+
+`meu_cadastro_concluido()` deriva a identidade da sessão e consulta o estado
+persistido: aluno existente, exatamente os sete nomes canônicos, afinidades
+não nulas entre 0 e 100 e pelo menos uma positiva. O marcador deixa de ser prova
+de conclusão. Falha da consulta não é tratada como cadastro ausente ou sucesso.
+A RPC de gravação usa o mesmo predicado antes de decidir se pode retornar sem
+reescrever o perfil; um marcador antigo inconsistente não impede a reparação.
+
+Os valores persistidos legados podem ser decimais e não precisam somar 100:
+esse é o contrato já usado por `PerfilScore` em `api/app/schemas/perfil.py`
+e por `PerfilRepository.atualizar_afinidades` em `api/app/repositories/perfil.py`.
+Não se aplica retroativamente a regra de normalização do quiz a um vetor já
+adaptado. A entrada de uma medida nova v3 continua exigindo sete percentuais
+inteiros positivos somando 100. São regras de compatibilidade e integridade,
+não evidência adicional de validade psicométrica.
+
+A escrita direta em `aluno_cadastro_concluido` é revogada para os papéis de
+cliente. O helper `registrar_conclusao_cadastro()` usa `SECURITY DEFINER` apenas
+para inserir esse marcador: não recebe ID, limita-se ao `auth.uid()`, confere
+novamente o vetor e tem `search_path` fixo. Anônimos não podem executá-lo.
+A RPC principal continua `SECURITY INVOKER`, sujeita à RLS. O marcador não
+certifica a proveniência do questionário nem concede acesso a uma turma.
+
+O backfill remove marcadores inconsistentes e cria os ausentes para vetores
+íntegros. Não normaliza afinidades nem recria medidas antigas. Uma conta íntegra
+continua concluída mesmo sem medida e sem marcador; um retry preserva todas as
+suas afinidades e preferências. O teste de expurgo executa a função real de
+retenção antes de conferir essa propriedade.
+
+Validação local da correção:
+
+| Verificação | Resultado |
+| --- | --- |
+| Frontend completo, Vitest | 1.182 testes aprovados, 119 arquivos |
+| Chromium/Playwright | 7 jornadas aprovadas, incluindo marcador falso e legado sem medida/marcador |
+| PostgreSQL/WASM PGlite | 16 cenários aprovados |
+| Python, migrações, retenção e ACL | 54 testes aprovados |
+| Lint, typecheck e build do frontend; Ruff da migração | Aprovados, com avisos preexistentes |
+
+O banco testa INSERT/UPDATE/DELETE proibidos no marcador, helper sem vetor,
+reparo de cadastro parcial, valores nulos/negativos/acima de 100/NaN/infinito,
+vetor todo zero, preservação de decimais legados, expurgo, isolamento por aluno,
+atomicidade e retries. O cenário de reimplantação desfaz/reaplica a **05** e
+reaplica a **06**; não executa downgrade da 06. Os limites de PGlite e dos mocks
+de Auth/PostgREST descritos acima continuam válidos. Não houve teste de
+concorrência em conexões PostgreSQL independentes nem implantação em produção.
+
+Aplicar até `20261024_06` antes deste frontend. O downgrade da 06 é recusado
+explicitamente, pois restauraria a falsa conclusão; para recuar, manter a
+migração e reverter a aplicação ou elaborar outra migração corretiva. Reverter
+o frontend pode restaurar a antiga leitura do marcador, mas não a permissão
+de forjá-lo. A migração não cria tabelas nem novos destinos de dados pessoais.
+
+Continuam pendentes: reconciliar o aceite de e-mail duplicado, comprovar o
+caminho do perfil salvo ao material da turma, validar Auth/e-mail e concorrência
+em ambiente integrado, obter CI remoto aprovado e registrar a versão implantada.
+A introdução comum sem turma não comprova alinhamento curricular ao perfil.

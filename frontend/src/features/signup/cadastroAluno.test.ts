@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-const db = vi.hoisted(()=>({from:vi.fn(), rpc:vi.fn()}));
+const db = vi.hoisted(()=>({from:vi.fn(), rpc:vi.fn(), auth:{getUser:vi.fn()}}));
 vi.mock('@/integrations/supabase/client',()=>({supabase:db}));
 import { alunoTemCadastro, lerPendente, tipoDoCadastro, salvarCadastroAluno, type CadastroAlunoPayload } from './cadastroAluno';
 import { PERFIS_EM_ORDEM } from './brainhexOrdenacao';
@@ -11,35 +11,37 @@ const payload: CadastroAlunoPayload = {
   ordenacao:[...PERFIS_EM_ORDEM],ordenacaoConfirmada:true,confiancaDoPerfil:null,concordanciaDoPerfil:null,
   qualidadeDaResposta:{indice:null,desvio:1,aquiescencia:0,motivos:[]},
 };
-const query=(data:unknown,error:unknown=null)=>{
-  const q={select:vi.fn(),eq:vi.fn(),maybeSingle:vi.fn(),limit:vi.fn(),then:undefined};
-  q.select.mockReturnValue(q);q.eq.mockReturnValue({...q,then:(resolve:(v:unknown)=>unknown)=>Promise.resolve(resolve({data,error}))});
-  q.maybeSingle.mockResolvedValue({data,error});q.limit.mockResolvedValue({data,error});
-  return q;
-};
-beforeEach(()=>vi.clearAllMocks());
+beforeEach(()=>{
+  vi.resetAllMocks();
+  db.auth.getUser.mockResolvedValue({data:{user:{id:uid}},error:null});
+});
 describe('retomada e persistência do cadastro',()=>{
   it('storage ausente, corrompido, bloqueado ou de outro email não impede retomada',()=>{
     for(const raw of [null,'{','{"email":"outro@example.test","tipo":"aluno"}']) expect(lerPendente('aluno@example.test',{getItem:()=>raw})).toBeNull();
     expect(lerPendente('aluno@example.test',{getItem:()=>{throw Error('bloqueado');}})).toBeNull();
     expect(tipoDoCadastro({email:'aluno@example.test',user_metadata:{role:'aluno'}})).toBe('aluno');
   });
-  it('marcador confirmado dispensa reconstruir o perfil depois de adaptado',async()=>{
-    db.from.mockReturnValueOnce(query({aluno_id:uid}));
+  it('aceita o legado íntegro sem consultar marcador ou medida temporária',async()=>{
+    db.rpc.mockResolvedValueOnce({data:true,error:null});
     expect(await alunoTemCadastro(uid)).toBe(true);
-    expect(db.from).toHaveBeenCalledTimes(1);
+    expect(db.rpc).toHaveBeenCalledWith('meu_cadastro_concluido');
+    expect(db.from).not.toHaveBeenCalled();
   });
-  it('sete perfis sem medida ainda são um cadastro parcial',async()=>{
-    db.from.mockReturnValueOnce(query(null)).mockReturnValueOnce(query(PERFIS_EM_ORDEM.map((_,i)=>({perfil_id:i,afinidade:i?14:16})))).mockReturnValueOnce(query([]));
+  it('respeita cadastro incompleto mesmo que o cliente tenha um marcador antigo',async()=>{
+    db.rpc.mockResolvedValueOnce({data:false,error:null});
     expect(await alunoTemCadastro(uid)).toBe(false);
+    expect(db.from).not.toHaveBeenCalled();
   });
-  it('legado com vetor e medida continua disponível',async()=>{
-    db.from.mockReturnValueOnce(query(null)).mockReturnValueOnce(query(PERFIS_EM_ORDEM.map((_,i)=>({perfil_id:i,afinidade:i?14:16})))).mockReturnValueOnce(query([{id:1}]));
-    expect(await alunoTemCadastro(uid)).toBe(true);
-  });
-  it('erro de consulta não é confundido com ausência de cadastro',async()=>{
-    db.from.mockReturnValueOnce(query(null,new Error('rede')));
+  it('erro ou resposta ausente não viram sucesso nem redirecionamento ao quiz',async()=>{
+    db.rpc.mockResolvedValueOnce({data:null,error:new Error('rede')});
     await expect(alunoTemCadastro(uid)).rejects.toThrow('rede');
+    db.rpc.mockResolvedValueOnce({data:null,error:null});
+    await expect(alunoTemCadastro(uid)).rejects.toThrow('verificar');
+  });
+  it('troca de conta não consulta a conclusão do usuário anterior',async()=>{
+    db.auth.getUser.mockResolvedValueOnce({data:{user:{id:'outro'}},error:null});
+    await expect(alunoTemCadastro(uid)).rejects.toThrow('sessão mudou');
+    expect(db.rpc).not.toHaveBeenCalled();
   });
   it('usa uma única RPC e envia o modo de feedback antes ignorado',async()=>{
     db.rpc.mockResolvedValueOnce({data:uid,error:null});

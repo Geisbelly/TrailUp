@@ -33,23 +33,15 @@ export function removerPendente(email: string) {
 }
 
 export async function alunoTemCadastro(userId: string): Promise<boolean> {
-  const { data, error } = await supabase.from('aluno_cadastro_concluido')
-    .select('aluno_id').eq('aluno_id', userId).maybeSingle();
+  // A identidade é derivada da sessão no servidor; não consultar o status de
+  // outra conta quando a sessão mudou durante a navegação.
+  const { data: auth, error: authError } = await supabase.auth.getUser();
+  if (authError) throw authError;
+  if (auth.user?.id !== userId) throw new Error('A sessão mudou. Entre novamente.');
+  const { data, error } = await supabase.rpc('meu_cadastro_concluido');
   if (error) throw error;
-  if (data) return true;
-  // Cadastros legados completos continuam funcionando. Só possuir `alunos`
-  // não basta: era precisamente o estado parcial que a RPC antiga não reparava.
-  const { data: perfis, error: perfisError } = await supabase.from('aluno_perfil')
-    .select('perfil_id, afinidade').eq('aluno_id', userId);
-  if (perfisError) throw perfisError;
-  const vetorCompleto = perfis?.length === 7 && new Set(perfis.map(p => p.perfil_id)).size === 7 &&
-    perfis.every(p => p.afinidade !== null && Number.isFinite(p.afinidade) && p.afinidade >= 0) &&
-    Math.abs(perfis.reduce((sum, p) => sum + (p.afinidade ?? 0), 0) - 100) < 0.001;
-  if (!vetorCompleto) return false;
-  const { data: medidas, error: medidaError } = await supabase.from('aluno_perfil_medida')
-    .select('id').eq('aluno_id', userId).limit(1);
-  if (medidaError) throw medidaError;
-  return Boolean(medidas?.length);
+  if (typeof data !== 'boolean') throw new Error('Não foi possível verificar o cadastro.');
+  return data;
 }
 
 export async function salvarCadastroAluno(userId: string, payload: CadastroAlunoPayload, dataNascimento: string | null) {

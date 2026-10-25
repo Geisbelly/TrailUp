@@ -4,7 +4,7 @@ const user = { id: uid, email: 'aluno@example.test', email_confirmed_at: '2026-1
   role: 'authenticated', aud: 'authenticated', created_at:'2026-10-24T00:00:00Z',
   app_metadata: { provider:'email', providers:['email'] }, user_metadata: { role:'aluno' } };
 
-async function ambiente(page: Page, opts: { complete?: boolean; session?: boolean; failSave?: boolean; failProgress?: boolean } = {}) {
+async function ambiente(page: Page, opts: { marker?: boolean; complete?: boolean; session?: boolean; failSave?: boolean; failProgress?: boolean } = {}) {
   const state = { complete: opts.complete ?? false, saveCalls: [] as Record<string, unknown>[],
     progress: [] as string[], signups: 0, confirmations: 0, failProgress: opts.failProgress ?? false, unexpected: [] as string[] };
   const session = { access_token: `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({ sub:uid, exp:Math.floor(Date.now()/1000)+3600, role:'authenticated' })).toString('base64url')}.test`,
@@ -25,7 +25,8 @@ async function ambiente(page: Page, opts: { complete?: boolean; session?: boolea
     if (path === '/rest/v1/professor') return reply(null);
     if (path === '/rest/v1/alunos') return reply(state.complete ? {id:uid} : null);
     if (path === '/rest/v1/aluno_perfil') return reply([]);
-    if (path === '/rest/v1/aluno_cadastro_concluido') return reply(state.complete ? { aluno_id:uid } : null);
+    if (path === '/rest/v1/rpc/meu_cadastro_concluido') return reply(state.complete);
+    if (path === '/rest/v1/aluno_cadastro_concluido') return reply((opts.marker ?? state.complete) ? { aluno_id:uid } : null);
     if (path === '/rest/v1/classe_aluno') return reply([]);
     if (path === '/rest/v1/rpc/concluir_cadastro_aluno') {
       state.saveCalls.push(route.request().postDataJSON());
@@ -121,15 +122,15 @@ test('login de aluno leva à área de estudos sem novo signup', async ({page}) =
   expect(state.unexpected).toEqual([]);
 });
 
-test('acesso direto com cadastro parcial retoma o quiz', async ({page}) => {
-  await ambiente(page);
+test('marcador antigo sem perfis não libera a área e retoma o quiz', async ({page}) => {
+  await ambiente(page,{marker:true});
   await page.goto('/aluno');
   await expect(page).toHaveURL(/auth\/confirmacao/);
   await expect(page.getByRole('heading',{name:'Finalize seu cadastro de aluno'})).toBeVisible();
 });
 
-test('conta existente no formulário de cadastro segue para a trilha sem criar outra conta', async ({page}) => {
-  const state = await ambiente(page,{complete:true,session:false});
+test('legado sem marcador nem medida segue para a trilha sem novo quiz', async ({page}) => {
+  const state = await ambiente(page,{complete:true,marker:false,session:false});
   await page.goto('/cadastro-aluno');
   await page.getByLabel('Email',{exact:true}).fill(user.email);
   await page.getByLabel('Senha',{exact:true}).fill('SenhaTeste123!');

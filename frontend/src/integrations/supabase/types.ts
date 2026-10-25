@@ -8497,6 +8497,8 @@ export type Database = {
       }
     }
     Functions: {
+      meu_cadastro_concluido: { Args: never; Returns: boolean }
+
       concluir_cadastro_aluno: {
         Args: {
           p_nome: string; p_apelido: string; p_modo_operacao: string;

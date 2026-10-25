@@ -22,10 +22,13 @@ migration = runpy.run_path('api/alembic/versions/20261024_05_cadastro_aluno_atom
 upgrade = list(statements)
 statements.clear()
 migration['downgrade']()
-print(json.dumps({'upgrade':upgrade,'downgrade':statements,'cadastro':migration['SQL']}))
+print(json.dumps({'upgrade':upgrade,'downgrade':statements,'cadastro':migration['SQL'], 'integridade':runpy.run_path('api/alembic/versions/20261024_06_integridade_cadastro_legado.py')['SQL']}))
 `], { cwd: root, encoding: 'utf8' }));
 const db = await PGlite.create();
 const uid = '11111111-1111-4111-8111-111111111111';
+const legacy = '33333333-3333-4333-8333-333333333333';
+const poisoned = '44444444-4444-4444-8444-444444444444';
+const noMeasure = '55555555-5555-4555-8555-555555555555';
 const other = '22222222-2222-4222-8222-222222222222';
 const profiles = ['achiever','conqueror','daredevil','mastermind','seeker','socializer','survivor'];
 const measure = id => ({ aluno_id: id, versao_instrumento:'2026-10-24-v3-exploratorio',
@@ -64,6 +67,72 @@ try {
     CREATE POLICY self ON "${table}" TO authenticated USING(aluno_id=auth.uid()) WITH CHECK(aluno_id=auth.uid());`);
   for (const [i,p] of profiles.entries()) await db.query('INSERT INTO perfil VALUES($1,$2)',[i+1,p]);
   for (const sql of statements.upgrade) await db.exec(sql);
+  // Estado realista anterior à correção: marcadores forjados e legado sem medida.
+  for (const id of [legacy,poisoned,noMeasure]) {
+    await db.query("INSERT INTO alunos(id,nome,email,perfil_ativo) VALUES($1,'Legado','legado@example.test','socializer')",[id]);
+  }
+  for (const id of [legacy,noMeasure]) {
+    for (let i=0;i<7;i++) await db.query('INSERT INTO aluno_perfil VALUES($1,$2,$3)',[id,i+1,80.5-i*5]);
+  }
+  await db.query('INSERT INTO aluno_cadastro_concluido(aluno_id) VALUES($1)',[poisoned]);
+  await db.query(`INSERT INTO aluno_perfil_medida(aluno_id,versao_instrumento,ordenacao,afinidade,confianca)
+    VALUES($1,'v2',$2,$3,0.7)`,[legacy,profiles,measure(legacy).afinidade]);
+  const snapshot = async id => ({aluno:(await db.query('SELECT * FROM alunos WHERE id=$1',[id])).rows,
+    perfis:(await db.query('SELECT * FROM aluno_perfil WHERE aluno_id=$1 ORDER BY perfil_id',[id])).rows});
+  const beforeLegacy = await snapshot(legacy), beforeNoMeasure = await snapshot(noMeasure);
+  await db.exec(statements.integridade);
+  await test('migração limpa marcador falso e reconhece legados sem alterar afinidades',async()=>{
+    assert.equal((await db.query('SELECT count(*)::int n FROM aluno_cadastro_concluido WHERE aluno_id=$1',[poisoned])).rows[0].n,0);
+    assert.equal((await db.query('SELECT count(*)::int n FROM aluno_cadastro_concluido WHERE aluno_id IN ($1,$2)',[legacy,noMeasure])).rows[0].n,2);
+    assert.deepEqual(await snapshot(legacy),beforeLegacy);
+    assert.deepEqual(await snapshot(noMeasure),beforeNoMeasure);
+  });
+  await login(poisoned);
+  await test('escrita direta e helper não concluem conta sem perfil; RPC repara',async()=>{
+    await assert.rejects(()=>db.query('INSERT INTO aluno_cadastro_concluido(aluno_id) VALUES($1)',[poisoned]),e=>e.code==='42501');
+    await assert.rejects(()=>db.query('SELECT registrar_conclusao_cadastro()'),e=>e.code==='23514');
+    assert.equal((await db.query('SELECT meu_cadastro_concluido() AS ok')).rows[0].ok,false);
+    await call(measure(poisoned));
+    assert.equal(await scalar('SELECT count(*)::int n FROM aluno_perfil'),7);
+    assert.equal(await scalar('SELECT count(*)::int n FROM aluno_perfil_medida'),1);
+    assert.equal((await db.query('SELECT meu_cadastro_concluido() AS ok')).rows[0].ok,true);
+  });
+  await login(noMeasure);
+  await test('legado sem medida conserva preferências e não ganha medida inventada',async()=>{
+    assert.equal((await db.query('SELECT meu_cadastro_concluido() AS ok')).rows[0].ok,true);
+    await call(measure(noMeasure));
+    assert.deepEqual(await snapshot(noMeasure),beforeNoMeasure);
+    assert.equal(await scalar('SELECT count(*)::int n FROM aluno_perfil_medida'),0);
+  });
+  await db.exec('RESET ROLE;');
+  await db.query("UPDATE aluno_perfil_medida SET expira_em=now()-interval '1 day' WHERE aluno_id=$1",[legacy]);
+  await db.query('SELECT trailup_expurgar_medidas_de_perfil()');
+  await db.query('DELETE FROM aluno_cadastro_concluido WHERE aluno_id=$1',[legacy]);
+  await login(legacy);
+  await test('expurgo e ausência do marcador não refazem o quiz nem sobrescrevem adaptação',async()=>{
+    assert.equal((await db.query('SELECT meu_cadastro_concluido() AS ok')).rows[0].ok,true);
+    await call(measure(legacy));
+    assert.deepEqual(await snapshot(legacy),beforeLegacy);
+    assert.equal(await scalar('SELECT count(*)::int n FROM aluno_perfil_medida'),0);
+    assert.equal(await scalar('SELECT count(*)::int n FROM aluno_cadastro_concluido'),1);
+    await assert.rejects(()=>db.query('UPDATE aluno_cadastro_concluido SET concluido_em=now()'),e=>e.code==='42501');
+    await assert.rejects(()=>db.query('DELETE FROM aluno_cadastro_concluido'),e=>e.code==='42501');
+  });
+  await login(poisoned);
+  await test('marcador existente não encobre vetor inválido; nova conclusão repara',async()=>{
+    for (const invalid of [null,-1,101,'NaN','Infinity']) {
+      await db.query('UPDATE aluno_perfil SET afinidade=$1 WHERE perfil_id=1',[invalid]);
+      assert.equal((await db.query('SELECT meu_cadastro_concluido() AS ok')).rows[0].ok,false);
+      await assert.rejects(()=>db.query('SELECT registrar_conclusao_cadastro()'),e=>e.code==='23514');
+    }
+    await db.query('UPDATE aluno_perfil SET afinidade=0');
+    assert.equal((await db.query('SELECT meu_cadastro_concluido() AS ok')).rows[0].ok,false);
+    await call(measure(poisoned));
+    assert.equal((await db.query('SELECT meu_cadastro_concluido() AS ok')).rows[0].ok,true);
+    assert.equal(await scalar('SELECT sum(afinidade)::int n FROM aluno_perfil'),100);
+    assert.equal(await scalar('SELECT count(*)::int n FROM aluno_cadastro_concluido'),1);
+    assert.equal(await scalar('SELECT count(*)::int n FROM aluno_perfil_medida'),2);
+  });
   await login(uid);
   await test('rejeita aluno alheio sem criar conta', async()=>{
     await assert.rejects(()=>call(measure(other)));
@@ -107,6 +176,7 @@ try {
   });
   await login(other);
   await test('outra conta não lê conclusão, introdução nem medida alheias',async()=>{
+    assert.equal((await db.query('SELECT cadastro_perfis_integros($1) AS ok',[legacy])).rows[0].ok,false);
     for (const table of ['aluno_perfil_medida','aluno_cadastro_concluido','aluno_introducao'])
       assert.equal(await scalar(`SELECT count(*)::int n FROM ${table}`),0);
   });
@@ -121,12 +191,15 @@ try {
   await db.exec('RESET ROLE; SET ROLE anon;');
   await test('anônimo não pode concluir cadastro ou registrar introdução',async()=>{
     await assert.rejects(()=>call());
+    await assert.rejects(()=>db.query('SELECT meu_cadastro_concluido()'));
+    await assert.rejects(()=>db.query('SELECT registrar_conclusao_cadastro()'));
     await assert.rejects(()=>db.query("INSERT INTO aluno_introducao(aluno_id,etapa) VALUES($1,'perfil')",[uid]));
   });
   await db.exec('RESET ROLE;');
-  await test('rollback e reimplantação preservam conclusões, medidas e progresso',async()=>{
+  await test('reaplicar a 05 após seu downgrade e reaplicar a 06 preserva conclusões, medidas e progresso',async()=>{
     for (const sql of statements.downgrade) await db.exec(sql);
     await db.exec(statements.cadastro);
+    await db.exec(statements.integridade);
     await login(uid);
     await call();
     assert.equal(await scalar('SELECT count(*)::int n FROM aluno_perfil_medida'),1);
