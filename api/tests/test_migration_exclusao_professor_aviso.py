@@ -26,7 +26,8 @@ def test_cadeia_do_dia_sem_id_duplicado() -> None:
     assert pares["20261024_06"] == "20261024_05"
     assert pares["20261024_07"] == "20261024_06"
     # Uma cabeca so (o `alembic heads` diz o mesmo).
-    assert set(pares) - set(pares.values()) == {"20261024_07"}
+    assert pares["20261024_08"] == "20261024_07"
+    assert set(pares) - set(pares.values()) == {"20261024_08"}
 
 
 # Sem FK (ficariam orfas), FK SET NULL (ficariam soltas) e FK NO ACTION/RESTRICT

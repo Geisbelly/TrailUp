@@ -4,7 +4,8 @@ Data: 24/10/2026. Continuação do PR #617, já integrado. Base desta continuaç
 `1eed6013` (inclui a renumeração da migração BrainHex para `20261024_04`).
 
 Atualização após a integração do PR #623: a seção final descreve a correção
-`20261024_06`, baseada na main `70586889`. Ela substitui a antiga confiança no
+`20261024_08` (criada como `20261024_06`; renumerada porque o id colidia com a
+migration do contato, ver `20261024_08_integridade_cadastro_legado.py`), baseada na main `70586889`. Ela substitui a antiga confiança no
 marcador e a exigência de medida para reconhecer contas legadas. Os resultados
 da implementação inicial abaixo são históricos, não validação da implantação.
 
@@ -180,7 +181,7 @@ reaplica a **06**; não executa downgrade da 06. Os limites de PGlite e dos mock
 de Auth/PostgREST descritos acima continuam válidos. Não houve teste de
 concorrência em conexões PostgreSQL independentes nem implantação em produção.
 
-Aplicar até `20261024_06` antes deste frontend. O downgrade da 06 é recusado
+Aplicar até `20261024_08` antes deste frontend. O downgrade da 08 é recusado
 explicitamente, pois restauraria a falsa conclusão; para recuar, manter a
 migração e reverter a aplicação ou elaborar outra migração corretiva. Reverter
 o frontend pode restaurar a antiga leitura do marcador, mas não a permissão

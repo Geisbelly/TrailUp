@@ -22,7 +22,7 @@ migration = runpy.run_path('api/alembic/versions/20261024_05_cadastro_aluno_atom
 upgrade = list(statements)
 statements.clear()
 migration['downgrade']()
-print(json.dumps({'upgrade':upgrade,'downgrade':statements,'cadastro':migration['SQL'], 'integridade':runpy.run_path('api/alembic/versions/20261024_06_integridade_cadastro_legado.py')['SQL']}))
+print(json.dumps({'upgrade':upgrade,'downgrade':statements,'cadastro':migration['SQL'], 'integridade':runpy.run_path('api/alembic/versions/20261024_08_integridade_cadastro_legado.py')['SQL']}))
 `], { cwd: root, encoding: 'utf8' }));
 const db = await PGlite.create();
 const uid = '11111111-1111-4111-8111-111111111111';

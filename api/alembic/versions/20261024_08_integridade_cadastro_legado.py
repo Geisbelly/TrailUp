@@ -8,8 +8,13 @@ SECURITY INVOKER. Não recria medidas expurgadas nem lhes inventa proveniência.
 """
 from alembic import op
 
-revision = "20261024_06"
-down_revision = "20261024_05"
+# Era `20261024_06` com down `20261024_05`: o mesmo id da migration do contato
+# (20261024_06_contato_publico_brevo), entao o alembic via duas cabecas e o
+# `upgrade head` falhava. Nao ha' dependencia com 06/07 (so' redefine as
+# funcoes de cadastro da 05), e producao ainda nao tinha aplicado nenhuma das
+# duas, entao a migration passa para o fim da cadeia.
+revision = "20261024_08"
+down_revision = "20261024_07"
 branch_labels = None
 depends_on = None
 
