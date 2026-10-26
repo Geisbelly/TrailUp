@@ -15,7 +15,10 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, AppState, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, AppState, Pressable, StyleSheet, Text, View, Platform } from "react-native";
+import { shadowStyle, textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 type Props = {
   featureKey: Extract<IAFeatureKey, "activity_timer" | "reading_timer">;
@@ -225,10 +228,7 @@ const styles = StyleSheet.create({
   },
   cardOverlay: {
     marginTop: 0,
-    shadowColor: GOLD,
-    shadowOpacity: 0.28,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 4 },
+    ...shadowStyle({ color: GOLD, offset: { width: 0, height: 4 }, opacity: 0.28, radius: 22 }, IS_WEB),
     elevation: 12,
   },
   headerRow: {
@@ -259,9 +259,7 @@ const styles = StyleSheet.create({
     fontSize: 34,
     letterSpacing: 2,
     textAlign: "center",
-    textShadowColor: GOLD,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 14,
+    ...textShadowStyle({ color: GOLD, offset: { width: 0, height: 0 }, radius: 14 }, IS_WEB),
   },
   helper: {
     fontFamily: FontFamily.interMedium,

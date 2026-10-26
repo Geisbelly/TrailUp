@@ -38,10 +38,9 @@ export function ProfileArtwork({
   const values = useMemo(() => buildArtworkToneMatrix(accent), [accent]);
   return (
     <View
-      pointerEvents="none"
       accessible={Boolean(label)}
       accessibilityLabel={label}
-      style={[style, { width, height }]}
+      style={[style, { width, height }, { pointerEvents: "none" }]}
     >
       {/* Native SVG filters cache the rendered image; rebuild it when the profile tone changes. */}
       <Svg key={accent} width={width} height={height}>

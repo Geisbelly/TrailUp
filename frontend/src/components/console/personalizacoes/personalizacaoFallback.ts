@@ -238,6 +238,26 @@ export function resolveMaterialUrl(
   return `${base}/functions/v1/storage-redirect?path=${encoded}`;
 }
 
+/**
+ * Caminho dentro de `conteudo_aluno` de uma URL PUBLICA antiga do Storage, ou
+ * null. Desde a #195 o bucket e' privado e essa URL da' 400: a leitura troca
+ * pelo gateway `storage-redirect` (mesma conversao de `material_url_de_leitura`
+ * na API). Query string e fragmento sao descartados.
+ */
+export function materialPathDaUrlPublica(url: unknown): string | null {
+  if (typeof url !== "string") return null;
+  const marcador = `/storage/v1/object/public/${FALLBACK_BUCKET}/`;
+  const i = url.indexOf(marcador);
+  if (i < 0 || !/^https?:\/\//.test(url)) return null;
+  const resto = url.slice(i + marcador.length).split(/[?#]/)[0];
+  try {
+    const caminho = decodeURIComponent(resto).replace(/^\/+/, "");
+    return caminho || null;
+  } catch {
+    return null;
+  }
+}
+
 function resolvePublicAssetFields(
   supabaseUrl: string,
   arquivoUrl: unknown,
@@ -248,7 +268,7 @@ function resolvePublicAssetFields(
   const rawUrl = pickString(arquivoUrl);
   const rawStoragePath = pickString(storagePath);
   const isHttpUrl = !!rawUrl && (rawUrl.startsWith("http://") || rawUrl.startsWith("https://"));
-  const pathCandidate = rawStoragePath ?? (isHttpUrl ? null : rawUrl);
+  const pathCandidate = rawStoragePath ?? (isHttpUrl ? materialPathDaUrlPublica(rawUrl) : rawUrl);
   const bucket = pickString(
     metadata.bucket,
     metadata.bucketName,

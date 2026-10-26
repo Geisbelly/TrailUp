@@ -91,11 +91,38 @@ export function looksLikeStorageObjectPath(rawValue: string) {
   return false;
 }
 
+/**
+ * Buckets PRIVADOS (#195): `conteudo_aluno`, `perfil_fotos` e `banners_fotos`
+ * desde a alembic 20261024_09, e `conteudos` (material do professor) desde a
+ * 20261024_10. A URL publica deles da' 400; o app assina sob o RLS.
+ */
+export const BUCKETS_PRIVADOS: ReadonlySet<string> = new Set([
+  "conteudo_aluno",
+  "conteudos",
+  "perfil_fotos",
+  "banners_fotos",
+]);
+
+/** Pasta do professor no bucket `conteudos`: `<uuid>/...`. */
+const PREFIXO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\//i;
+
+/**
+ * A URL do Storage precisa ser assinada no app antes de usar? Sim quando o
+ * bucket e' privado e a URL nao e' ja' uma assinada (`sign`): a `public`
+ * gravada antes do fechamento da' 400 e a `authenticated` exige o token.
+ */
+export function exigeAssinatura(parsed: Pick<ParsedStorageUrl, "mode" | "bucket">): boolean {
+  return parsed.mode !== "sign" && BUCKETS_PRIVADOS.has(parsed.bucket);
+}
+
 export function normalizeObjectPath(rawPath: string, bucketHint?: string | null) {
   if (!looksLikeStorageObjectPath(rawPath)) return null;
 
   const trimmed = rawPath.trim().replace(/^\/+/, "");
-  const hintedBucket = (bucketHint ?? "conteudo_aluno").trim();
+  // Sem dica: caminho `<uuid do professor>/...` e' do bucket `conteudos`
+  // (mesma regra do `bucketDoCaminho` do gateway); o resto, `conteudo_aluno`.
+  const bucketPadrao = PREFIXO_UUID.test(trimmed) ? "conteudos" : "conteudo_aluno";
+  const hintedBucket = (bucketHint || bucketPadrao).trim();
   const [firstSegment, ...restSegments] = trimmed.split("/");
   const explicitBucket =
     firstSegment && restSegments.length > 0 && ["conteudo_aluno", "conteudos"].includes(firstSegment)

@@ -16,6 +16,7 @@ from app.schemas.telemetria import (
     TelemetriaLoteResponse,
     TelemetriaSignalPayload,
 )
+from app.services import modo_restrito
 from app.services.analysis_runner import run_analysis
 from app.services.auth import UserContext
 
@@ -230,6 +231,22 @@ async def registrar_lote_telemetria(
         "telemetria.input=%s",
         _summarize_telemetria_payload(payload, normalized_events),
     )
+    # Modo restrito (#195): sem data de nascimento, ou menor sem o aceite do
+    # responsavel, nada de telemetria de comportamento, frame ou inferencia.
+    # Responde 200 e `persisted=False` de proposito: um 4xx faria o mobile cair
+    # no `persistTelemetryBatchDirect` (as policies restritivas da 20261024_02
+    # barram tambem esse caminho, mas nao ha por que provoca-lo).
+    permitidas = await modo_restrito.finalidades_permitidas(session, aluno_id)
+    if not permitidas["telemetria"]:
+        logger.info("telemetria.modo_restrito: aluno_id=%s lote descartado", aluno_id)
+        return TelemetriaLoteResponse(
+            batch_id="",
+            sessao_id=payload.sessao_id,
+            persisted=False,
+            normalized_events=[],
+            analysis=TelemetriaAnalysisResponse(erros=[modo_restrito.CODIGO]),
+        )
+
     persisted_payload = _sanitize_lote_payload(payload)
     frames_b64 = [
         frame.frame_b64
@@ -238,6 +255,10 @@ async def registrar_lote_telemetria(
     ]
     if not frames_b64 and payload.camera.frame_b64:
         frames_b64 = [payload.camera.frame_b64]
+    # Telemetria liberada nao libera camera: o responsavel marca uma a uma.
+    camera_permitida = permitidas["camera"] and permitidas["emocional"]
+    if not camera_permitida:
+        frames_b64 = []
 
     try:
         await repo.upsert_sessao(
@@ -245,7 +266,7 @@ async def registrar_lote_telemetria(
             aluno_id=aluno_id,
             classe_id=payload.classe_id,
             topico_inicial_id=payload.topico_id,
-            camera_opt_in=bool(payload.camera.enabled),
+            camera_opt_in=bool(payload.camera.enabled) and camera_permitida,
             started_at=payload.session_started_at,
             ended_at=payload.captured_at if payload.flush_reason in TERMINAL_FLUSH_REASONS else None,
         )
@@ -277,7 +298,7 @@ async def registrar_lote_telemetria(
         touch_count=payload.touch_count,
         scroll_distance_px=payload.scroll_distance_px,
         max_depth_px=payload.max_depth_px,
-        frame_sent=bool(payload.camera.enabled and frames_b64),
+        frame_sent=bool(payload.camera.enabled and camera_permitida and frames_b64),
         payload=persisted_payload,
     )
 
@@ -333,6 +354,23 @@ async def registrar_lote_telemetria(
             )
 
     analysis = TelemetriaAnalysisResponse()
+    if not permitidas["emocional"]:
+        # Sem a finalidade `emocional`, o lote fica guardado mas o pipeline de
+        # inferencia (emocao + personalizacao adaptativa) nao roda.
+        analysis = TelemetriaAnalysisResponse(erros=[modo_restrito.CODIGO])
+        await repo.update_lote_analysis(
+            batch_id=lote["id"],
+            analysis_ciclo_id=None,
+            analysis_error=modo_restrito.CODIGO,
+        )
+        await session.commit()
+        return TelemetriaLoteResponse(
+            batch_id=str(lote["id"]),
+            sessao_id=payload.sessao_id,
+            persisted=True,
+            normalized_events=[evento.tipo for evento in normalized_events],
+            analysis=analysis,
+        )
     try:
         analysis_result = await run_analysis(
             request=request,

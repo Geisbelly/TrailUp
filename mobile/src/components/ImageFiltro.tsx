@@ -2,8 +2,13 @@ import React from "react";
 import {
     Image,
     StyleSheet,
-    View
+    View,
+    Platform,
 } from "react-native";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
+const SOMBRA_OVERLAY = { offset: { width: 0, height: 0 }, opacity: 0.5, radius: 20 };
 
 type Props = {
   /** Cor de destaque do perfil BrainHex ativo (ex.: profilePalette.accent). */
@@ -25,7 +30,7 @@ export const ImagemFilter = ({ tintColor = "#4a4dff" }: Props) => {
         <View
           style={[
             styles.emptyImageOverlay,
-            { backgroundColor: `${tintColor}4f`, shadowColor: tintColor },
+            { backgroundColor: `${tintColor}4f`, ...shadowStyle({ ...SOMBRA_OVERLAY, color: tintColor }, IS_WEB) },
           ]}
         />
     </View>
@@ -56,9 +61,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: 999,
     // "glow" suave:
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
+    ...shadowStyle(SOMBRA_OVERLAY, IS_WEB),
     // Android:
     elevation: 6,
   },

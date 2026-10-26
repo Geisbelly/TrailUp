@@ -11,6 +11,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import tinycolor from "tinycolor2";
@@ -32,6 +33,12 @@ import {
   buildFirstAccessTourStorageKey,
   ouvirPedidoDeTutorial,
 } from "@/utils/firstAccessTour";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
+const SOMBRA_SETA = { opacity: 0.9, radius: 8 };
+const SOMBRA_SPOTLIGHT = { opacity: 0.9, radius: 16 };
+const SOMBRA_APRESENTACAO = { opacity: 0.8, radius: 22 };
 
 type StoredTourState = {
   completed?: boolean;
@@ -364,7 +371,7 @@ export function FirstAccessTour({
               introductionRect,
               {
                 backgroundColor: tinycolor(accent).setAlpha(0.12).toRgbString(),
-                shadowColor: accent,
+                ...shadowStyle({ ...SOMBRA_APRESENTACAO, color: accent }, IS_WEB),
                 pointerEvents: "none",
               },
             ]}
@@ -531,7 +538,7 @@ function TourSpotlight({
       <View style={[styles.scrim, { top, left: 0, width: left, height, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top, left: left + width, right: 0, height, backgroundColor: scrim }]} />
       <View style={[styles.scrim, { top: top + height, left: 0, right: 0, bottom: 0, backgroundColor: scrim }]} />
-      <View style={[styles.spotlight, { top, left, width, height, borderColor: accent, shadowColor: accent }]} />
+      <View style={[styles.spotlight, { top, left, width, height, borderColor: accent, ...shadowStyle({ ...SOMBRA_SPOTLIGHT, color: accent }, IS_WEB) }]} />
     </View>
   );
 }
@@ -570,7 +577,7 @@ function TourArrow({
         },
       ]}
     >
-      <View style={[styles.arrowShaft, { backgroundColor: accent, shadowColor: accent }]} />
+      <View style={[styles.arrowShaft, { backgroundColor: accent, ...shadowStyle({ ...SOMBRA_SETA, color: accent }, IS_WEB) }]} />
       <MaterialCommunityIcons
         name="arrow-right-bold"
         size={38}
@@ -620,10 +627,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 13,
     overflow: "visible",
-    shadowColor: "#000",
-    shadowOpacity: 0.42,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 10 }, opacity: 0.42, radius: 18 }, IS_WEB),
     elevation: 20,
   },
   guideHeader: {
@@ -644,8 +648,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "flex-end",
     overflow: "hidden",
-    shadowOpacity: 0.8,
-    shadowRadius: 22,
+    ...shadowStyle(SOMBRA_APRESENTACAO, IS_WEB),
     elevation: 12,
   },
   introductionAura: {
@@ -693,8 +696,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     borderWidth: 2,
     borderRadius: 18,
-    shadowOpacity: 0.9,
-    shadowRadius: 16,
+    ...shadowStyle(SOMBRA_SPOTLIGHT, IS_WEB),
     elevation: 3,
   },
   arrow: {
@@ -707,8 +709,7 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 999,
     marginRight: 20,
-    shadowOpacity: 0.9,
-    shadowRadius: 8,
+    ...shadowStyle(SOMBRA_SETA, IS_WEB),
     elevation: 8,
   },
   arrowHead: {

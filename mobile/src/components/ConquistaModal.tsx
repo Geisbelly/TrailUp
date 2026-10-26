@@ -15,8 +15,14 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
+  Platform,
 } from "react-native";
 import tinycolor from "tinycolor2";
+import { shadowStyle, textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
+const SOMBRA_BRILHO_LARGO = { offset: { width: 0, height: 0 }, opacity: 0.6, radius: 40 };
+const SOMBRA_CARD_LARGO = { offset: { width: 0, height: 0 }, opacity: 0.35, radius: 28 };
 
 /** "perfil_brainhex" -> "Perfil BrainHex": a categoria vem do banco em snake_case. */
 function rotuloCategoria(categoria: string) {
@@ -71,11 +77,11 @@ export default function ConquistaModal({
                 accessibilityViewIsModal
                 style={[
                   s.cardLargo,
-                  { backgroundColor: palette.surfaceElevated, borderColor: palette.accent, shadowColor: palette.accent },
+                  { backgroundColor: palette.surfaceElevated, borderColor: palette.accent, ...shadowStyle({ ...SOMBRA_CARD_LARGO, color: palette.accent }, IS_WEB) },
                 ]}
               >
                 <View style={s.arteLarga}>
-                  <View style={[s.brilhoLargo, { backgroundColor: goldFaint, shadowColor: palette.accent }]} />
+                  <View style={[s.brilhoLargo, { backgroundColor: goldFaint, ...shadowStyle({ ...SOMBRA_BRILHO_LARGO, color: palette.accent }, IS_WEB) }]} />
                   <Image source={imageSource} resizeMode="contain" style={s.imagemLarga} accessibilityLabel={title} />
                 </View>
                 {category ? (
@@ -176,9 +182,7 @@ export default function ConquistaModal({
                   s.modalTitle,
                   {
                     color: gold,
-                    textShadowColor: "rgba(0,0,0,0.8)",
-                    textShadowOffset: { width: 0, height: 1 },
-                    textShadowRadius: 6,
+                    ...textShadowStyle({ color: "rgba(0,0,0,0.8)", offset: { width: 0, height: 1 }, radius: 6 }, IS_WEB),
                   },
                 ]}
               >
@@ -247,9 +251,7 @@ const s = StyleSheet.create({
     paddingBottom: 26,
     alignItems: "center",
     gap: 10,
-    shadowOpacity: 0.35,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 0 },
+    ...shadowStyle(SOMBRA_CARD_LARGO, IS_WEB),
   },
   arteLarga: { width: 170, height: 150, alignItems: "center", justifyContent: "center" },
   brilhoLargo: {
@@ -257,9 +259,7 @@ const s = StyleSheet.create({
     width: 150,
     height: 150,
     borderRadius: 75,
-    shadowOpacity: 0.6,
-    shadowRadius: 40,
-    shadowOffset: { width: 0, height: 0 },
+    ...shadowStyle(SOMBRA_BRILHO_LARGO, IS_WEB),
   },
   imagemLarga: { width: 120, height: 120 },
   categoriaLarga: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
@@ -285,10 +285,7 @@ const s = StyleSheet.create({
     maxHeight: "90%",
     borderRadius: 6,
     borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.55,
-    shadowRadius: 24,
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 10 }, opacity: 0.55, radius: 24 }, IS_WEB),
     elevation: 20,
     overflow: "hidden",
   },

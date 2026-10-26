@@ -15,8 +15,12 @@ import {
   Text,
   useWindowDimensions,
   View,
+  Platform,
 } from "react-native";
 import Svg, { Polygon } from "react-native-svg";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 type Row = {
   id: string;
@@ -331,10 +335,7 @@ const s = StyleSheet.create({
     marginVertical: 6,
     borderWidth: 1,
     borderLeftWidth: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 3 }, opacity: 0.18, radius: 6 }, IS_WEB),
     elevation: 3,
   },
   hexWrap: {

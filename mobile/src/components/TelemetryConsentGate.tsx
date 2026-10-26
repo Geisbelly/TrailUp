@@ -1,21 +1,25 @@
 import {
+  definirAlunoDoConsentimento,
   getTelemetryConsentRecord,
   setTelemetryConsentAccepted,
   setTelemetryConsentRejected,
   TELEMETRY_CONSENT_VERSION,
 } from "@/utils/telemetryConsent";
 import { useUsuario } from "@/context/SessaoContext";
-import { supabase } from "@/database/supabase";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { registrarConsentimentoTelemetriaNoServidor } from "@/services/consentimentoTelemetriaSupabase";
 import {
-  registrarConsentimento,
-  TABELA_DE_CONSENTIMENTO,
-} from "@/services/consentimentoRemoto";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+  carregarEstadoConsentimento,
+  limparEstadoConsentimento,
+} from "@/services/consentimentoResponsavelApi";
+import { useEstadoConsentimento } from "@/hooks/useEstadoConsentimento";
+import { proximoPasso } from "@/utils/consentimentoResponsavel";
+import { DataNascimentoForm } from "@/components/consentimento/DataNascimentoForm";
+import { ResponsavelConsentForm } from "@/components/consentimento/ResponsavelConsentForm";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -38,60 +42,68 @@ export function TelemetryConsentGate() {
     () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
     [usuario]
   );
-  const [visible, setVisible] = useState(false);
+  const alunoId = usuario?.id ?? null;
+  const estado = useEstadoConsentimento();
+  const [termoPendente, setTermoPendente] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // "Agora nao" vale para esta abertura do app: o aluno segue no modo
+  // restrito e o pedido volta na proxima vez (ou em Perfil > Coleta e acessos).
+  const [adiouNascimento, setAdiouNascimento] = useState(false);
+  const [adiouResponsavel, setAdiouResponsavel] = useState(false);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setAdiouNascimento(false);
+    setAdiouResponsavel(false);
 
-    getTelemetryConsentRecord()
-      .then((record) => {
-        if (!active) return;
-        const shouldShow =
-          !record || record.version !== TELEMETRY_CONSENT_VERSION;
-        setVisible(shouldShow);
-        // Retentativa: o aceite pode ter sido gravado localmente sem a rede
-        // responder. Repetir e inofensivo -- a tabela tem UNIQUE por
-        // (aluno, versao, decisao) e o 23505 volta como sucesso.
-        if (record) void registrarNoServidor(record);
-      })
+    if (!alunoId) {
+      // Sem aluno logado nao ha consentimento de ninguem.
+      void definirAlunoDoConsentimento(null);
+      limparEstadoConsentimento();
+      setTermoPendente(false);
+      setLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    (async () => {
+      // O aceite local e POR ALUNO (#195): troca a chave antes de ler.
+      await definirAlunoDoConsentimento(alunoId);
+      const [record] = await Promise.all([
+        getTelemetryConsentRecord(),
+        carregarEstadoConsentimento(),
+      ]);
+      if (!active) return;
+      setTermoPendente(!record || record.version !== TELEMETRY_CONSENT_VERSION);
+      // Retentativa: o aceite pode ter sido gravado localmente sem a rede
+      // responder. Repetir e inofensivo -- a tabela tem UNIQUE por
+      // (aluno, versao, decisao) e o 23505 volta como sucesso.
+      if (record) void registrarConsentimentoTelemetriaNoServidor(record);
+    })()
+      .catch((erro) => console.warn("[Consentimento] falha ao carregar:", erro))
       .finally(() => {
-        if (!active) return;
-        setLoading(false);
+        if (active) setLoading(false);
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [alunoId]);
 
-  /**
-   * Manda a decisao para `consentimento_telemetria`.
-   *
-   * Nao bloqueia nem desfaz nada da UI: o aceite local e o que governa a
-   * coleta, e esta linha e a PROVA (item 1 da #195). Falha aqui vira aviso, e
-   * a proxima montagem do Gate tenta de novo.
-   */
-  const registrarNoServidor = useCallback(
-    async (record: Awaited<ReturnType<typeof getTelemetryConsentRecord>>) => {
-      try {
-        const { data } = await supabase.auth.getUser();
-        const resultado = await registrarConsentimento({
-          inserir: (linha) => supabase.from(TABELA_DE_CONSENTIMENTO).insert(linha),
-          record,
-          alunoId: data.user?.id ?? null,
-          origem: { plataforma: Platform.OS },
-        });
-        if (!resultado.ok) {
-          console.warn("[Consentimento] nao registrado no servidor:", resultado.detalhe);
-        }
-      } catch (erro) {
-        console.warn("[Consentimento] falha ao registrar no servidor:", erro);
-      }
-    },
-    []
-  );
+  const passo = proximoPasso(estado);
+  const etapa: "data_nascimento" | "responsavel" | "termo" | null = !alunoId
+    ? null
+    : passo === "data_nascimento" && !adiouNascimento
+    ? "data_nascimento"
+    : passo === "responsavel" && !adiouResponsavel
+    ? "responsavel"
+    : termoPendente
+    ? "termo"
+    : null;
+  const visible = etapa !== null;
 
   const handleAccept = async () => {
     setSaving(true);
@@ -115,8 +127,8 @@ export function TelemetryConsentGate() {
         chatEnabled: true,
       },
     });
-    void registrarNoServidor(await getTelemetryConsentRecord());
-    setVisible(false);
+    void registrarConsentimentoTelemetriaNoServidor(await getTelemetryConsentRecord());
+    setTermoPendente(false);
     setSaving(false);
   };
 
@@ -125,12 +137,39 @@ export function TelemetryConsentGate() {
     await setTelemetryConsentRejected();
     // Recusa tambem e registrada: revogar nao e apagar, e o historico
     // append-only e o que permite responder "o que estava aceito no dia X".
-    void registrarNoServidor(await getTelemetryConsentRecord());
-    setVisible(false);
+    void registrarConsentimentoTelemetriaNoServidor(await getTelemetryConsentRecord());
+    setTermoPendente(false);
     setSaving(false);
   };
 
   if (loading) return null;
+
+  if (etapa === "data_nascimento" || etapa === "responsavel") {
+    return (
+      <Modal visible transparent animationType="fade">
+        <View style={styles.backdrop}>
+          <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+              {etapa === "data_nascimento" ? (
+                <DataNascimentoForm
+                  palette={palette}
+                  onConcluido={() => undefined}
+                  onAdiar={() => setAdiouNascimento(true)}
+                />
+              ) : (
+                <ResponsavelConsentForm
+                  palette={palette}
+                  estado={estado}
+                  onConcluido={() => undefined}
+                  onAdiar={() => setAdiouResponsavel(true)}
+                />
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   return (
     <Modal visible={visible} transparent animationType="fade">
@@ -186,6 +225,14 @@ export function TelemetryConsentGate() {
             <Text style={[styles.body, { color: palette.textMuted }]}>
               A expressão estimada é um palpite, não um diagnóstico. Ela não vira
               nota, não é mostrada para o professor como avaliação sua, e pode errar.
+            </Text>
+            <Text style={[styles.sectionTitle, { color: palette.accent }]}>Menores de 18 anos</Text>
+            <Text style={[styles.body, { color: palette.textMuted }]}>
+              Se você tem menos de 18 anos, câmera, análise de emoções, telemetria,
+              mentor de IA e pesquisa só ligam depois que seu responsável autorizar,
+              numa tela separada no app ou pelo termo em papel entregue ao
+              professor. Até lá o app fica no modo restrito: trilhas, questões e
+              progresso funcionam normalmente.
             </Text>
             <Text style={[styles.sectionTitle, { color: palette.accent }]}>Sua escolha</Text>
             <Text style={[styles.body, { color: palette.textMuted }]}>

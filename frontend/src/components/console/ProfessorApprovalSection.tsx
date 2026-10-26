@@ -230,6 +230,7 @@ export function ProfessorApprovalSection() {
           </ul>
         </>
       )}
+
     </div>
   );
 }

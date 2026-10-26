@@ -1,5 +1,8 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform } from "react-native";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 export const styles = StyleSheet.create({
   screen: {
@@ -30,7 +33,7 @@ export const styles = StyleSheet.create({
   cardLeituraDesktop: {
     backgroundColor: "transparent",
     borderWidth: 0,
-    shadowOpacity: 0,
+    ...shadowStyle({ opacity: 0 }, IS_WEB),
     elevation: 0,
     paddingHorizontal: 0,
     paddingTop: 0,
@@ -40,7 +43,7 @@ export const styles = StyleSheet.create({
     marginTop: 24,
     padding: 22,
     borderRadius: 14,
-    shadowOpacity: 0,
+    ...shadowStyle({ opacity: 0 }, IS_WEB),
     elevation: 0,
   },
   rotuloAtividadeDesktop: {
@@ -241,10 +244,7 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Color.colorDarkslategray100,
     backgroundColor: "#161f3d",
-    shadowColor: "#000",
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 4 }, opacity: 0.18, radius: 8 }, IS_WEB),
     elevation: 3,
     gap: 6,
   },

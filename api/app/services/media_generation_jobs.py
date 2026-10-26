@@ -4,6 +4,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
+from app.services.roteamento_ia import rota_ia_para_alunos
+
 logger = logging.getLogger(__name__)
 
 JOB_KIND_MEDIA_GENERATION = "media_generation"
@@ -309,62 +311,64 @@ async def processar_job_media_generation_once(
     pendentes = [t for t in targets if t.get("status") not in ("completed", "skipped", "failed")]
     for target in pendentes:
         attempts = int(target.get("attempts") or 0) + 1
-        try:
-            if target["media_kind"] == "enriquecimento":
-                await processar_target_enriquecimento(
-                    blocos_repo=blocos_repo,
-                    job_id=job_id,
-                    target=target,
-                    base_blocks_by_id=base_blocks_by_id,
-                    topic=topic,
-                    source_hash=source_hash,
-                    settings=settings,
-                    enrich_base_blocks_fn=enrich_base_blocks_fn,
-                )
-            elif target["media_kind"] == "capitulo":
-                await processar_target_capitulo(
-                    blocos_repo=blocos_repo,
-                    job_id=job_id,
-                    target=target,
-                    profile=profile,
-                    settings=settings,
-                    gerar_capitulo_fn=gerar_capitulo_fn,
-                )
-            elif target["media_kind"] == "audio":
-                # audio_script_by_ordem/markdown_by_ordem/titulo_by_ordem sao
-                # resolvidos pelo chamador (personalizacao_jobs.py) antes de
-                # invocar este orquestrador, a partir do markdown consolidado
-                # da Fase A - ver wiring em process_personalizacao_job_once.
-                await processar_target_audio(
-                    target=target,
-                    audio_script_by_ordem=audio_script_by_ordem or {},
-                    profile=profile,
-                    bucket=bucket,
-                    storage_path_prefix=storage_path_prefix,
-                    ref_id=job_id,
-                    settings=settings,
-                    gerar_audio_fn=gerar_audio_fn,
-                    persistir_parte_fn=persistir_parte_fn,
-                )
-            elif target["media_kind"] == "apresentacao":
-                await processar_target_apresentacao(
-                    target=target,
-                    markdown_by_ordem=markdown_by_ordem or {},
-                    titulo_by_ordem=titulo_by_ordem or {},
-                    profile=profile,
-                    bucket=bucket,
-                    storage_path_prefix=storage_path_prefix,
-                    ref_id=job_id,
-                    settings=settings,
-                    gerar_apresentacao_fn=gerar_apresentacao_fn,
-                    persistir_parte_fn=persistir_parte_fn,
-                )
-            await jobs_repo.update_target_status(target_id=int(target["id"]), status="completed", attempts=attempts)
-        except MediaGenerationTargetError as exc:
-            status = "pending" if attempts < max_retries else "failed"
-            await jobs_repo.update_target_status(target_id=int(target["id"]), status=status, attempts=attempts, last_error=str(exc))
-            if status == "failed":
-                errors += 1
+        # #195: rota de IA pela idade do dono do target (menor/desconhecido -> so OpenAI).
+        async with rota_ia_para_alunos(getattr(jobs_repo, "session", None), [target.get("aluno_id")]):
+            try:
+                if target["media_kind"] == "enriquecimento":
+                    await processar_target_enriquecimento(
+                        blocos_repo=blocos_repo,
+                        job_id=job_id,
+                        target=target,
+                        base_blocks_by_id=base_blocks_by_id,
+                        topic=topic,
+                        source_hash=source_hash,
+                        settings=settings,
+                        enrich_base_blocks_fn=enrich_base_blocks_fn,
+                    )
+                elif target["media_kind"] == "capitulo":
+                    await processar_target_capitulo(
+                        blocos_repo=blocos_repo,
+                        job_id=job_id,
+                        target=target,
+                        profile=profile,
+                        settings=settings,
+                        gerar_capitulo_fn=gerar_capitulo_fn,
+                    )
+                elif target["media_kind"] == "audio":
+                    # audio_script_by_ordem/markdown_by_ordem/titulo_by_ordem sao
+                    # resolvidos pelo chamador (personalizacao_jobs.py) antes de
+                    # invocar este orquestrador, a partir do markdown consolidado
+                    # da Fase A - ver wiring em process_personalizacao_job_once.
+                    await processar_target_audio(
+                        target=target,
+                        audio_script_by_ordem=audio_script_by_ordem or {},
+                        profile=profile,
+                        bucket=bucket,
+                        storage_path_prefix=storage_path_prefix,
+                        ref_id=job_id,
+                        settings=settings,
+                        gerar_audio_fn=gerar_audio_fn,
+                        persistir_parte_fn=persistir_parte_fn,
+                    )
+                elif target["media_kind"] == "apresentacao":
+                    await processar_target_apresentacao(
+                        target=target,
+                        markdown_by_ordem=markdown_by_ordem or {},
+                        titulo_by_ordem=titulo_by_ordem or {},
+                        profile=profile,
+                        bucket=bucket,
+                        storage_path_prefix=storage_path_prefix,
+                        ref_id=job_id,
+                        settings=settings,
+                        gerar_apresentacao_fn=gerar_apresentacao_fn,
+                        persistir_parte_fn=persistir_parte_fn,
+                    )
+                await jobs_repo.update_target_status(target_id=int(target["id"]), status="completed", attempts=attempts)
+            except MediaGenerationTargetError as exc:
+                status = "pending" if attempts < max_retries else "failed"
+                await jobs_repo.update_target_status(target_id=int(target["id"]), status=status, attempts=attempts, last_error=str(exc))
+                if status == "failed":
+                    errors += 1
 
     refreshed_targets = await jobs_repo.get_targets(job_id)
     ja_tem_fase_b = any(t.get("media_kind") in _PART_MEDIA_KINDS for t in refreshed_targets)

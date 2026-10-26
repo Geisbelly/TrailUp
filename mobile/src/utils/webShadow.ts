@@ -55,13 +55,17 @@ export function shadowStyle(shadow: RNBoxShadow = {}, isWeb: boolean): ViewStyle
     return { boxShadow: boxShadowFromRN(shadow) } as ViewStyle;
   }
 
-  const { color = "#000", offset = { width: 0, height: 0 }, opacity = 1, radius = 0 } = shadow;
-  return {
-    shadowColor: color,
-    shadowOffset: offset,
-    shadowOpacity: opacity,
-    shadowRadius: radius,
-  };
+  // No nativo so sai o que foi passado. Preencher default aqui mudaria o
+  // visual: shadowOpacity ausente vale 0 no RN (sombra invisivel) e
+  // shadowOffset ausente vale {0,-3} no iOS. Um estilo que so tinha
+  // shadowOpacity/shadowRadius (cor inline, por exemplo) tem que continuar
+  // exatamente assim.
+  const nativo: ViewStyle = {};
+  if (shadow.color !== undefined) nativo.shadowColor = shadow.color;
+  if (shadow.offset !== undefined) nativo.shadowOffset = shadow.offset;
+  if (shadow.opacity !== undefined) nativo.shadowOpacity = shadow.opacity;
+  if (shadow.radius !== undefined) nativo.shadowRadius = shadow.radius;
+  return nativo;
 }
 
 export type RNTextShadow = {
@@ -94,10 +98,10 @@ export function textShadowStyle(shadow: RNTextShadow = {}, isWeb: boolean): Text
     return { textShadow: textShadowFromRN(shadow) } as TextStyle;
   }
 
-  const { color = "#000", offset = { width: 0, height: 0 }, radius = 0 } = shadow;
-  return {
-    textShadowColor: color,
-    textShadowOffset: offset,
-    textShadowRadius: radius,
-  };
+  // Mesmo cuidado do shadowStyle: no nativo so sai o que foi passado.
+  const nativo: TextStyle = {};
+  if (shadow.color !== undefined) nativo.textShadowColor = shadow.color;
+  if (shadow.offset !== undefined) nativo.textShadowOffset = shadow.offset;
+  if (shadow.radius !== undefined) nativo.textShadowRadius = shadow.radius;
+  return nativo;
 }

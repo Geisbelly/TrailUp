@@ -12,9 +12,9 @@
  *
  * ## A parte que realmente fecha o buraco
  *
- * Não é juntar os campos — é `mensagemDeAcesso`. Se "senha errada" e "este e-mail já tem conta"
- * produzirem mensagens diferentes, o oráculo volta, só mais devagar. As duas devolvem a MESMA
- * string, e há teste cobrando isso.
+ * Não basta juntar os campos ou padronizar erros: signup novo, ofuscado e duplicado
+ * devem levar à mesma orientação. A UI não comprova ausência de enumeração no HTTP:
+ * respostas e tempos do serviço Auth dependem da configuração e de validação integrada.
  *
  * ## O que continua distinguível, e por quê
  *
@@ -33,6 +33,10 @@ export type DadosDoAcesso = {
 
 /** A mesma frase para senha errada e para conta já existente. Não especialize. */
 export const MENSAGEM_CREDENCIAL = "E-mail ou senha incorretos.";
+
+/** Sucesso de signup pode ser ofuscado. Não confirma existência nem envio de e-mail. */
+export const MENSAGEM_SOLICITACAO_CADASTRO =
+  "Se o cadastro puder prosseguir, você receberá um link de confirmação. Se já tem conta, entre com sua senha ou recupere o acesso.";
 
 /** Mínimo que o Supabase aceita; repetido aqui para o erro sair antes da ida ao servidor. */
 export const SENHA_MINIMA = 6;
@@ -56,8 +60,8 @@ export function ehCredencialInvalida(erro: unknown): boolean {
  * `signUp` recusando porque a conta existe.
  *
  * Depende da configuração do projeto: com confirmação de e-mail ligada o Supabase às vezes
- * devolve sucesso ofuscado em vez de erro. Os dois casos estão tratados — este reconhecedor para
- * o erro, e `mensagemDeAcesso` para dar a ele a mesma resposta de senha errada.
+ * devolve sucesso ofuscado em vez de erro. Os formulários usam este reconhecedor
+ * para encaminhar a duplicidade à mesma orientação de um signup sem erro.
  */
 export function ehContaJaExistente(erro: unknown): boolean {
   const t = texto(erro);
@@ -65,7 +69,8 @@ export function ehContaJaExistente(erro: unknown): boolean {
     t.includes("already registered") ||
     t.includes("already been registered") ||
     t.includes("user already exists") ||
-    t.includes("user_already_exists")
+    t.includes("user_already_exists") ||
+    t.includes("email_exists")
   );
 }
 

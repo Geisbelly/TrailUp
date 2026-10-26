@@ -11,6 +11,8 @@ import AlterarSenhaCard from "./AlterarSenhaCard";
 import { DESCRICAO_MAX, desdeQuando, iniciais, plural } from "./meusdados/conta";
 import { ExcluirContaDialog } from "./meusdados/ExcluirContaDialog";
 import { useContaEmNumeros } from "./meusdados/useContaEmNumeros";
+import { excluirMinhaContaProfessor } from "./meusdados/exclusaoConta";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ProfileSectionProps {
   professorData: {
@@ -44,6 +46,8 @@ export default function ProfileSection({ professorData, onUpdate, isLoading }: P
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
+  const [apagando, setApagando] = useState(false);
+  const { signOut } = useAuth();
   const numeros = useContaEmNumeros(professorData?.id);
 
   useEffect(() => {
@@ -201,11 +205,12 @@ export default function ProfileSection({ professorData, onUpdate, isLoading }: P
               Zona de perigo
             </h3>
             <p className="mt-2 max-w-[600px] text-[13px] leading-relaxed text-muted-foreground">
-              Excluir a conta é permanente.{" "}
+              Excluir a conta é permanente: seus dados pessoais e o seu acesso são apagados.{" "}
               {numeros
-                ? `Suas ${plural(numeros.turmas, "turma", "turmas")}, ${plural(numeros.topicos, "tópico", "tópicos")}, todo o material gerado pela IA e o histórico de ${plural(numeros.alunos, "aluno", "alunos")} são removidos`
-                : "Suas turmas, tópicos, todo o material gerado pela IA e o histórico dos alunos são removidos"}{" "}
-              e não podem ser recuperados. Se quiser apenas pausar o uso, basta não acessar — nada é apagado por inatividade.
+                ? `Suas ${plural(numeros.turmas, "turma", "turmas")} também são apagadas para sempre, com ${plural(numeros.topicos, "tópico", "tópicos")}, trilhas, matrículas e notas de ${plural(numeros.alunos, "aluno", "alunos")}`
+                : "Suas turmas também são apagadas para sempre, com tópicos, trilhas, matrículas e notas dos alunos"}
+              . Se quiser apenas pausar o uso, basta não acessar: conta de
+              professor não é apagada por inatividade.
             </p>
           </div>
           <Button variant="outline" disabled={desabilitado} onClick={() => setExcluindo(true)} className="rounded-full border-destructive/50 font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive">
@@ -218,9 +223,19 @@ export default function ProfileSection({ professorData, onUpdate, isLoading }: P
         aberto={excluindo}
         numeros={numeros}
         onFechar={() => setExcluindo(false)}
-        onConfirmar={() => {
-          toast.info("A exclusão de conta ainda não está disponível. Fale com o suporte.");
+        ocupado={apagando}
+        onConfirmar={async () => {
+          setApagando(true);
+          const r = await excluirMinhaContaProfessor();
+          setApagando(false);
+          if (!r.ok) {
+            toast.error(r.mensagem);
+            return;
+          }
           setExcluindo(false);
+          toast.success("Conta excluída, com as suas turmas.");
+          await signOut();
+          window.location.assign("/");
         }}
       />
     </div>

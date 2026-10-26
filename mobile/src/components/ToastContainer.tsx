@@ -13,10 +13,14 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
+    Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 const { width } = Dimensions.get('window');
 
@@ -292,10 +296,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4.65,
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 4 }, opacity: 0.3, radius: 4.65 }, IS_WEB),
     elevation: 8,
   },
   bannerIconContainer: {
@@ -335,10 +336,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)', // Borda sutil
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.6,
-    shadowRadius: 15,
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 10 }, opacity: 0.6, radius: 15 }, IS_WEB),
     elevation: 25,
     position: 'relative',
     // overflow: 'hidden', // Removido para o badge poder sair um pouco se precisar

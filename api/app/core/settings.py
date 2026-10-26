@@ -83,6 +83,13 @@ class Settings(BaseSettings):
         default=False,
         validation_alias=AliasChoices("openai_rag_enabled", "OPENAI_RAG_ENABLED"),
     )
+    # `max_num_results` do file_search (#67). Vazio: vale o padrão da OpenAI.
+    openai_rag_top_k: int | None = Field(
+        default=None,
+        ge=1,
+        le=50,
+        validation_alias=AliasChoices("openai_rag_top_k", "OPENAI_RAG_TOP_K"),
+    )
     openai_model_supervisor: str = "gpt-4o-mini"
     openai_model_default: str = "gpt-4o-mini"
     # gpt-5.4-mini tem limite de tier de 10 RPM / 50 RPD — inviavel como
@@ -207,12 +214,21 @@ class Settings(BaseSettings):
 
     langchain_tracing_v2: bool = False
     langchain_project: str = "trailup-local"
+    # Fora de dev/teste o tracing LangSmith e forcado desligado (#195,
+    # app/core/tracing.py). So isto, explicito, libera em producao.
+    langsmith_tracing_autorizado_em_producao: bool = False
 
     default_checkpoint_ns: str = "default"
     personalizacao_checkpoint_ns: str = "personalizacao"
     checkpoint_retention_days: int = 3
     checkpoint_retention_enabled: bool = True
     checkpoint_retention_interval_hours: int = 24
+    # Fila externa da retencao (#195, 20261024_03): R2, Storage, OpenAI e
+    # usuario do Auth. Desligada ate a decisao de ligar o expurgo.
+    retencao_externa_enabled: bool = False
+    retencao_externa_interval_seconds: int = 300
+    retencao_externa_lote: int = 50
+    retencao_externa_idade_minima_segundos: int = 600
     personalizacao_job_concurrency: int = 2
     personalizacao_job_poll_sec: int = 5
     personalizacao_job_max_retries: int = 3

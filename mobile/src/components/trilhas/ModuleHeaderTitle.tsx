@@ -24,7 +24,12 @@ import {
   Text,
   useWindowDimensions,
   View,
+  Platform,
 } from "react-native";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
+const SOMBRA_SPOTLIGHT = { offset: { width: 0, height: 0 }, opacity: 0.44, radius: 28 };
 
 type GuideVisibleElements = {
   visualMode?: "mapa" | "arvore" | "lista" | null;
@@ -157,7 +162,7 @@ function TourSpotlightMask({
       <View
         style={[
           styles.spotlight,
-          { top, left, width, height, borderColor, shadowColor: borderColor },
+          { top, left, width, height, borderColor, ...shadowStyle({ ...SOMBRA_SPOTLIGHT, color: borderColor }, IS_WEB) },
         ]}
       />
     </View>
@@ -961,10 +966,7 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     paddingBottom: 16,
     gap: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.32,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 8 },
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 8 }, opacity: 0.32, radius: 22 }, IS_WEB),
     elevation: 20,
   },
   cardScroll: {
@@ -1152,9 +1154,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     borderWidth: 2,
     backgroundColor: "transparent",
-    shadowOpacity: 0.44,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 0 },
+    ...shadowStyle(SOMBRA_SPOTLIGHT, IS_WEB),
   },
   tourCard: {
     position: "absolute",
@@ -1164,10 +1164,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 16,
     gap: 14,
-    shadowColor: "#000",
-    shadowOpacity: 0.34,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 8 }, opacity: 0.34, radius: 20 }, IS_WEB),
     elevation: 18,
   },
   tourHeader: {

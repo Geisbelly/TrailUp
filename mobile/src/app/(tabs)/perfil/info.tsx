@@ -2,13 +2,13 @@ import { HallBackground } from "@/components/HallTheme";
 import { Feather } from "@expo/vector-icons";
 import React, { useMemo } from "react";
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
 } from "react-native";
 
 
@@ -20,6 +20,10 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 import { useAviso } from "@/hooks/useAviso";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { ImagemDoStorage } from "@/components/ImagemDoStorage";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 export default function Infor() {
   const embutido = useEmbutidoConfiguracoes();
@@ -113,7 +117,7 @@ export default function Infor() {
 
         <View style={styles.bannerContainer}>
           {bannerUri ? (
-            <Image source={{ uri: bannerUri }} style={styles.banner} />
+            <ImagemDoStorage source={{ uri: bannerUri }} style={styles.banner} />
           ) : (
             <View
               style={[
@@ -438,10 +442,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     padding: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 3 }, opacity: 0.2, radius: 6 }, IS_WEB),
   },
   infoCard: {
     backgroundColor: Color.colorDarkslategray200,
@@ -449,10 +450,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 16,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 3 }, opacity: 0.2, radius: 6 }, IS_WEB),
   },
   headerRow: {
     flexDirection: "row",

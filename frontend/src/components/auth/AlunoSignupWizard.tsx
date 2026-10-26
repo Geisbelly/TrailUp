@@ -44,8 +44,9 @@ export function AlunoSignupWizard({
     /** Ordem declarada no bloco ipsativo — o prior que a fase 3 vai comparar
      *  com o comportamento. Sem guardar, nao ha' com o que comparar. */
     ordenacao: BrainHexProfileKey[];
-    confiancaDoPerfil: number;
-    concordanciaDoPerfil: number;
+    ordenacaoConfirmada: boolean;
+    confiancaDoPerfil: null;
+    concordanciaDoPerfil: number | null;
     qualidadeDaResposta: QualidadeDaResposta;
   }) => Promise<void> | void;
   isSaving?: boolean;
@@ -70,12 +71,11 @@ export function AlunoSignupWizard({
   const [modoApresentacao, setModoApresentacao] = useState("");
   const [brainhexAnswers, setBrainhexAnswers] = useState<BrainHexAnswers>({});
   const [perfilInicial, setPerfilInicial] = useState<BrainHexProfileKey | null>(null);
+  const [ordenacaoConfirmada, setOrdenacaoConfirmada] = useState(false);
   const [quizPage, setQuizPage] = useState(0);
 
-  // Ordem embaralhada uma vez por sessao de cadastro. Comecar sempre na mesma
-  // ordem criaria ancoragem: quem nao mexe entregaria a ordem do sistema, nao a
-  // dele. A semente fica no estado inicial para a ordem nao mudar a cada
-  // re-render.
+  // Apresentação embaralhada uma vez por sessão. Só vira preferência
+  // declarada após confirmação explícita; não alegamos eliminar viés com isso.
   const [ordenacao, setOrdenacao] = useState<BrainHexProfileKey[]>(() =>
     ordemInicial(Date.now()),
   );
@@ -95,6 +95,7 @@ export function AlunoSignupWizard({
     if (step === "modo_operacao") return Boolean(modoOperacao);
     if (step === "modo_apresentacao") return Boolean(modoApresentacao);
     if (step === "brainhex_quiz") return isAllAnswered(brainhexAnswers);
+    if (step === "brainhex_ordenacao") return ordenacaoConfirmada;
     return true;
   };
 
@@ -111,8 +112,8 @@ export function AlunoSignupWizard({
   };
 
   const confirm = async () => {
-    if (!isAllAnswered(brainhexAnswers)) {
-      toast.error("Conclua o questionário BrainHex antes de confirmar.");
+    if (!ordenacaoConfirmada || !isAllAnswered(brainhexAnswers)) {
+      toast.error("Conclua o questionário e confirme a ordem das preferências.");
       return;
     }
     // UMA conta so': o que a tela mostra e o que o banco guarda saem daqui.
@@ -137,6 +138,7 @@ export function AlunoSignupWizard({
       modoApresentacao,
       brainhexPercent: prior.percentual,
       ordenacao,
+      ordenacaoConfirmada,
       confiancaDoPerfil: prior.confianca,
       concordanciaDoPerfil: prior.concordancia,
       qualidadeDaResposta: prior.qualidade,
@@ -168,7 +170,7 @@ export function AlunoSignupWizard({
       {step === "brainhex_quiz" && (
         <BrainHexQuizStep
           answers={brainhexAnswers}
-          onChange={setBrainhexAnswers}
+          onChange={(answers) => { setBrainhexAnswers(answers); setOrdenacaoConfirmada(false); }}
           page={quizPage}
           setPage={setQuizPage}
           perPage={5}
@@ -180,7 +182,9 @@ export function AlunoSignupWizard({
       {step === "brainhex_ordenacao" && (
         <BrainHexOrdenacaoStep
           ordem={ordenacao}
-          onChange={setOrdenacao}
+          onChange={(ordem) => { setOrdenacao(ordem); setOrdenacaoConfirmada(false); }}
+          confirmada={ordenacaoConfirmada}
+          onConfirmacao={setOrdenacaoConfirmada}
           onBack={back}
           onFinish={next}
         />

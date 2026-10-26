@@ -65,6 +65,9 @@ test("archiveToSupabase monta os 3 paths (audio/markdown/apresentacao) sem sufix
   const originalFetch = globalThis.fetch;
   const originalBrainHexPdfUrl = process.env.BRAINHEXPDF_API_URL;
   process.env.BRAINHEXPDF_API_URL = "http://fake-brainhexpdf.test";
+  // conteudo_aluno e' privado (#195): sem R2, a URL devolvida e' a do gateway.
+  const originalSupabaseUrl = process.env.SUPABASE_URL;
+  process.env.SUPABASE_URL = "https://fake.supabase";
   globalThis.fetch = (async () => ({
     ok: true,
     status: 200,
@@ -92,11 +95,11 @@ test("archiveToSupabase monta os 3 paths (audio/markdown/apresentacao) sem sufix
 
     assert.equal(
       result.audioMp3Url,
-      "https://fake.supabase/conteudo_aluno/brainhex/socializer/classe-1/topico-2/audio/material-ref-abc.mp3",
+      "https://fake.supabase/functions/v1/storage-redirect?path=brainhex/socializer/classe-1/topico-2/audio/material-ref-abc.mp3",
     );
     assert.equal(
       result.markdownUrl,
-      "https://fake.supabase/conteudo_aluno/brainhex/socializer/classe-1/topico-2/markdown/material-ref-abc.md",
+      "https://fake.supabase/functions/v1/storage-redirect?path=brainhex/socializer/classe-1/topico-2/markdown/material-ref-abc.md",
     );
     assert.ok(result.presentationUrl?.endsWith("/apresentacao/material-ref-abc.html"));
 
@@ -110,6 +113,7 @@ test("archiveToSupabase monta os 3 paths (audio/markdown/apresentacao) sem sufix
     globalThis.fetch = originalFetch;
     if (originalBrainHexPdfUrl === undefined) delete process.env.BRAINHEXPDF_API_URL;
     else process.env.BRAINHEXPDF_API_URL = originalBrainHexPdfUrl;
+    process.env.SUPABASE_URL = originalSupabaseUrl ?? "";
   }
 });
 

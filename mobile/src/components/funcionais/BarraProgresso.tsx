@@ -1,7 +1,10 @@
 import { Color } from "@/styles/GlobalStyle";
 import * as React from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet, View, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 type Props = {
   progresso: number; // valor entre 0 e 1
@@ -33,10 +36,7 @@ const styles = StyleSheet.create({
     borderColor: Color.colorSlategray,
     backgroundColor: Color.colorGray,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 2 }, opacity: 0.25, radius: 3.84 }, IS_WEB),
     elevation: 5,
   },
   fundo: {

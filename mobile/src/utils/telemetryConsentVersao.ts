@@ -9,7 +9,20 @@ import type { TelemetryConsentRecord } from "./telemetryConsent";
 // letras, que "as imagens da camera nao sao analisadas" e prometia pedir
 // consentimento de novo antes de isso mudar. Esta versao e o cumprimento dessa
 // promessa — trocar a string forca o termo a reaparecer para todo mundo.
-export const TELEMETRY_CONSENT_VERSION = "2026-10-02-v4";
+//
+// v5 (#195): o termo passou a explicar o modo restrito e o termo separado do
+// responsavel para menores de 18. E a chave local passou a ser por aluno, entao
+// o aceite antigo (por aparelho) nao vale mais de qualquer jeito.
+export const TELEMETRY_CONSENT_VERSION = "2026-10-24-v5";
+
+// Chave antiga, por APARELHO: num celular compartilhado (comum na escola), o
+// aceite de um aluno valia para o proximo que entrasse. Agora e por aluno.
+export const CHAVE_LEGADA_DO_CONSENTIMENTO = "trailup:telemetry-consent";
+
+export function chaveDoConsentimento(alunoId: string | null | undefined): string | null {
+  const id = typeof alunoId === "string" ? alunoId.trim() : "";
+  return id ? `${CHAVE_LEGADA_DO_CONSENTIMENTO}:${id}` : null;
+}
 
 /**
  * O consentimento guardado vale para a versao ATUAL do termo?

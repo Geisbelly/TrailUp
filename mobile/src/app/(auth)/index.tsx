@@ -10,6 +10,9 @@ import { Image, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacit
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useDesktopWeb } from '@/hooks/useDesktopWeb';
+import { textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 export default function Entrada() {
   const router = useRouter();
@@ -19,7 +22,7 @@ export default function Entrada() {
     <View style={styles.screen}>
       {/* Na web a imagem com só absoluteFill não estica: cobria metade da tela. */}
       <Image source={publicScenery} style={[StyleSheet.absoluteFill, Platform.OS === 'web' && styles.cenaWeb]} resizeMode="cover" accessible={false} />
-      <LinearGradient colors={['rgba(23,14,43,0.08)', 'rgba(23,14,43,0.3)', Design.ink]} locations={[0, 0.45, 0.82]} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      <LinearGradient colors={['rgba(23,14,43,0.08)', 'rgba(23,14,43,0.3)', Design.ink]} locations={[0, 0.45, 0.82]} style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]} />
       <SafeAreaView style={styles.safe}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.brand}>
@@ -69,7 +72,7 @@ const styles = StyleSheet.create({
   scene: { flex: 1, minHeight: 260 },
   cenaWeb: { width: '100%', height: '100%' },
   sceneLarga: { justifyContent: 'center', alignItems: 'center' },
-  titleLargo: { fontSize: 30, lineHeight: 38, fontWeight: '700', maxWidth: 420, marginBottom: 0, textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 12 },
+  titleLargo: { fontSize: 30, lineHeight: 38, fontWeight: '700', maxWidth: 420, marginBottom: 0, ...textShadowStyle({ color: 'rgba(0,0,0,0.6)', offset: { width: 0, height: 2 }, radius: 12 }, IS_WEB) },
   dica: { fontSize: 11, fontWeight: '500', opacity: 0.65 },
   actions: { width: '100%', gap: 12 },
   title: { fontFamily: FontFamily.inikaBold, color: Design.text, fontSize: 25, lineHeight: 33, textAlign: 'center', marginBottom: 12 },

@@ -1,0 +1,14 @@
+{
+  "motor": "PostgreSQL/WASM PGlite 0.5.11",
+  "aprovados": [
+    "v3 grava ausência de confiança como NULL sob RLS",
+    "v3 recusa número mesmo dentro de 0..1",
+    "cliente legado v2 continua gravando",
+    "restrição numérica legada continua ativa",
+    "aluno não grava medida de outro aluno",
+    "migração preserva a medida v2 histórica",
+    "rollback com medidas v3 falha sem fabricar confiança nem perder dados",
+    "rollback sem medidas v3 restaura NOT NULL"
+  ],
+  "limite": "Tabela real da migration e helpers mínimos; não é a cadeia completa nem produção."
+}

@@ -20,12 +20,16 @@
 //
 //   - o app baixa midia com `FileSystem.downloadAsync(url, localUri)`, sem
 //     headers; exigir JWT daria 401 em toda midia;
-//   - nao ha protecao a preservar: os quatro buckets de hoje sao `public: true`.
-//     O material ja e' legivel por quem tiver o link. A RLS protege a LISTAGEM
-//     (quais materiais existem para aquele aluno), nunca o objeto.
+//   - a protecao e' o caminho dificil de adivinhar + a assinatura curta. Desde
+//     a #195 (20261024_09) `conteudo_aluno` e' PRIVADO: a URL publica do
+//     Storage deixa de funcionar e o unico jeito de baixar sem sessao e' por
+//     aqui, com URL assinada que expira no fim da janela (<= 1 h). Quem tem
+//     sessao baixa pela API do Storage, sob a RLS de
+//     `trailup_pode_ler_arquivo` (aluno da turma, professor da turma, dono).
 //
-// O resultado e' mais restrito que hoje, nao menos: a URL de hoje e' publica e
-// permanente; a que sai daqui expira no fim da janela de assinatura.
+// Risco residual aceito: quem tem um link do gateway (vazado por print/log)
+// consegue uma URL nova enquanto o material existir. Fechar isso e' a Opcao B
+// abaixo.
 //
 // O que a consulta ainda garante: so' assina caminho que EXISTE e esta' vivo.
 // Sem ela a funcao assinaria qualquer chave que pedissem, virando um oraculo de
@@ -41,7 +45,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 
 import { normalizarStoragePath } from "./caminho.ts";
 import { inicioDaJanela, presignR2GetUrl } from "./r2Presign.ts";
-import { urlPublicaDoSupabase } from "./destino.ts";
+import { bucketDoCaminho, urlAssinadaDoSupabase, validadeDaAssinatura } from "./destino.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -122,22 +126,37 @@ serve(async (req: Request) => {
   // E' esse fallback que desacopla a troca das URLs da copia: o gateway responde
   // certo para arquivo copiado e para arquivo ainda nao copiado, entao nenhum
   // dos dois passos precisa esperar o outro.
-  let url: string;
-  try {
-    const noR2 = await fetch(await assinar("HEAD"), { method: "HEAD" });
-    url = noR2.ok
-      ? await assinar("GET")
-      : urlPublicaDoSupabase(Deno.env.get("SUPABASE_URL") ?? "", bucketSupabase, caminho);
-  } catch (e) {
-    // R2 inacessivel nao pode derrubar material que o Supabase ainda serve.
-    console.error("[storage-redirect] R2 indisponivel, caindo no Supabase", (e as Error).message);
-    url = urlPublicaDoSupabase(Deno.env.get("SUPABASE_URL") ?? "", bucketSupabase, caminho);
-  }
-
   // O 302 pode ser cacheado ate' o fim da janela: dentro dela a assinatura e' a
   // mesma para todo mundo, entao `public` vale e poupa invocacao.
   const fimDaJanela = (inicioDaJanela(agoraMs, JANELA_SEGUNDOS) + JANELA_SEGUNDOS) * 1000;
   const segundosRestantes = Math.max(1, Math.floor((fimDaJanela - agoraMs) / 1000));
+
+  // Fallback: URL ASSINADA do Storage (o bucket e' privado desde a #195), com
+  // validade que cobre o cache do 302. Nunca a URL publica.
+  const urlDoSupabase = () =>
+    urlAssinadaDoSupabase(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      async (bucket, chave, segundos) => {
+        const { data, error: erroAssinatura } = await supabase.storage
+          .from(bucket)
+          .createSignedUrl(chave, segundos);
+        return { signedUrl: data?.signedUrl ?? null, erro: erroAssinatura?.message ?? null };
+      },
+      bucketDoCaminho(caminho, bucketSupabase),
+      caminho,
+      validadeDaAssinatura(segundosRestantes, JANELA_SEGUNDOS),
+    );
+
+  let url: string | null;
+  try {
+    const noR2 = await fetch(await assinar("HEAD"), { method: "HEAD" });
+    url = noR2.ok ? await assinar("GET") : await urlDoSupabase();
+  } catch (e) {
+    // R2 inacessivel nao pode derrubar material que o Supabase ainda serve.
+    console.error("[storage-redirect] R2 indisponivel, caindo no Supabase", (e as Error).message);
+    url = await urlDoSupabase().catch(() => null);
+  }
+  if (!url) return erro(404, "Arquivo indisponivel.");
 
   // EXCECAO opt-in a regra "nunca devolve o arquivo" (ver topo). O 302 resolve
   // quem NAVEGA ate a URL ou baixa sem fetch — o mobile, com

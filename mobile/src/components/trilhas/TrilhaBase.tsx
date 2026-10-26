@@ -83,7 +83,7 @@ export const TrilhaBase: React.FC<{
 
   return (
     <View style={[st.page, { backgroundColor: palette.background }]}>
-      <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
+      <View accessible={false} style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
         <Image
           key={perfil}
           source={getProfileArtwork(perfil, 'trail')}

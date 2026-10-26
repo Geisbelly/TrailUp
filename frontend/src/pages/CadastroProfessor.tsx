@@ -12,11 +12,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ehCredencialInvalida,
+  ehContaJaExistente,
+  MENSAGEM_SOLICITACAO_CADASTRO,
   ehEmailNaoConfirmado,
   mensagemDeAcesso,
   normalizarEmail,
   validarAcesso,
 } from "@/lib/cadastroEmUmaEtapa";
+
+import { FORGOT_PASSWORD_PATH } from "@/features/auth/resetPasswordRoute";
 
 const STORAGE_PREFIX = "pending-signup:";
 
@@ -118,14 +122,16 @@ const CadastroProfessor = () => {
       }
 
       const { error: signUpError } = await signUp(emailLower, senha, "professor");
-      if (signUpError) {
+      if (signUpError && !ehContaJaExistente(signUpError)) {
         toast.error(mensagemDeAcesso(signUpError));
         return;
       }
 
-      localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`, JSON.stringify({ tipo: "professor", email: emailLower }));
+      try {
+        localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`, JSON.stringify({ tipo: "professor", email: emailLower }));
+      } catch { /* O callback recupera o tipo pela conta confirmada. */ }
       setStage("confirm-sent");
-      setInfoMessage("Enviamos um link de confirmação. Após confirmar, conclua seu cadastro.");
+      setInfoMessage(MENSAGEM_SOLICITACAO_CADASTRO);
     } catch (err) {
       toast.error(mensagemDeAcesso(err));
     } finally {
@@ -249,11 +255,13 @@ const CadastroProfessor = () => {
     <div className="space-y-4 text-center">
       <Hexagon className="w-10 h-10 text-primary fill-primary/20 mx-auto" />
       <p className="text-muted-foreground">
-        {infoMessage || `Enviamos um link de confirmação para ${email}. Após confirmar, conclua seu cadastro.`}
+        {infoMessage || MENSAGEM_SOLICITACAO_CADASTRO}
       </p>
       <Button onClick={() => navigate("/auth/confirmacao")} className="w-full">
         Ir para confirmação
       </Button>
+      <Button asChild variant="outline" className="w-full"><Link to="/login">Entrar na minha conta</Link></Button>
+      <Link to={FORGOT_PASSWORD_PATH} className="block text-sm underline">Recuperar acesso</Link>
     </div>
   );
 

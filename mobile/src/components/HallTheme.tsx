@@ -13,7 +13,7 @@ export type HallPalette = ReturnType<typeof getProfileShellPalette>;
 /** Public scenery is separate from the quiet, profile-colored reading surfaces. */
 export function HallBackground({ palette, height }: { palette: HallPalette; height?: number }) {
   return (
-    <View pointerEvents="none" accessible={false} style={[StyleSheet.absoluteFill, height ? { height } : null]}>
+    <View accessible={false} style={[StyleSheet.absoluteFill, height ? { height } : null, { pointerEvents: "none" }]}>
       <View style={styles.scenery}>
         {!palette.profile && <Image source={publicScenery} resizeMode="cover" style={styles.image} />}
         <LinearGradient
@@ -33,7 +33,7 @@ export function HallBackground({ palette, height }: { palette: HallPalette; heig
 export function OrnamentDivider({ color, opacidade }: { color: string; opacidade?: number }) {
   const { dim, bright } = coresDoDivisor(color, opacidade);
   return (
-    <View pointerEvents="none" accessible={false} style={styles.divider}>
+    <View accessible={false} style={[styles.divider, { pointerEvents: "none" }]}>
       <View style={[styles.line, { backgroundColor: dim }]} />
       <Svg width={52} height={22} viewBox="0 0 52 22">
         <Path d="M26 1 L31 11 L26 21 L21 11 Z" fill={bright} />
@@ -51,7 +51,7 @@ export function Corner({ pos, color = Design.gold }: { pos: 'TL' | 'TR' | 'BL' |
   else { corner.bottom = 5; corner.borderBottomWidth = 1; }
   if (pos.endsWith('L')) { corner.left = 5; corner.borderLeftWidth = 1; }
   else { corner.right = 5; corner.borderRightWidth = 1; }
-  return <View pointerEvents="none" style={corner} />;
+  return <View style={[corner, { pointerEvents: "none" }]} />;
 }
 
 const styles = StyleSheet.create({

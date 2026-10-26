@@ -152,14 +152,12 @@ export default function DesbloqueioModal({ funcionalidade, color, onClose, bloqu
         >
           <LinearGradient
             colors={[halo, "transparent"]}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
           />
 
           <View style={s.palco}>
             <Animated.View
-              pointerEvents="none"
-              style={[s.anel, anel, { borderColor: destaque }]}
+              style={[s.anel, anel, { borderColor: destaque }, { pointerEvents: "none" }]}
             />
             <Animated.View style={[s.icone, bloqueado ? undefined : cadeado]}>
               <MaterialCommunityIcons name={bloqueado ? "lock" : "lock-open-variant"} size={54} color={destaque} />

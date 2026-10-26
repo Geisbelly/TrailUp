@@ -22,7 +22,11 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, AppState, StyleSheet, Text, View } from "react-native";
+import { Animated, AppState, StyleSheet, Text, View, Platform } from "react-native";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
+const SOMBRA_CHIP = { offset: { width: 0, height: 2 }, opacity: 0.5, radius: 18 };
 
 type BattleScope = Extract<IAFeatureSelectorScope, { scope: "topic" | "item" }>;
 type TimerFeature = Extract<IAFeatureKey, "activity_timer" | "reading_timer">;
@@ -307,7 +311,7 @@ export function IAHeaderTimer({
         {
           borderColor: chipBorderColor,
           backgroundColor: chipBg,
-          shadowColor: chipShadow,
+          ...shadowStyle({ ...SOMBRA_CHIP, color: chipShadow }, IS_WEB),
           transform: [{ scale: pulseAnim }],
         },
       ]}
@@ -352,9 +356,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1.5,
     // cores dinâmicas aplicadas inline
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 2 },
+    ...shadowStyle(SOMBRA_CHIP, IS_WEB),
     elevation: 12,
   },
   chipCompact: {

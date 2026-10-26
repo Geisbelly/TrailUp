@@ -1,14 +1,8 @@
 /**
- * O pipeline inteiro do prior, numa funcao pura: respostas + ordem declarada
- * viram afinidade por perfil, confianca e concordancia.
- *
- * Mora aqui, e nao no componente, por dois motivos: da' para testar sem React,
- * e a conta e' a mesma que a fase 4 vai precisar reusar quando o comportamento
- * entrar como evidencia.
- *
- * Ordem das etapas (cada uma com seu porque em brainhexScoring.ts):
- *   itens -> reverso corrigido -> media por eixo -> perfis -> centragem
- *   intrapessoal -> combinacao com a ordenacao -> confianca
+ * Recomendação exploratória do TrailUp: regra legada, não teste validado.
+ * Soma por eixo -> mapeamento ponderado -> centragem -> mistura com ranking.
+ * Mantemos pesos/temperatura históricos sem lhes atribuir apoio empírico.
+ * Ver docs/analises/issue-1-adaptacao-evidencias.md antes de mudar a fórmula.
  */
 
 import {
@@ -30,8 +24,8 @@ import {
 
 export type PriorDoPerfil = {
   afinidade: Record<BrainHexProfileKey, number>;
-  confianca: number;
-  concordancia: number;
+  confianca: null;
+  concordancia: number | null;
   qualidade: QualidadeDaResposta;
 };
 
@@ -48,25 +42,7 @@ function paresReversos(answers: BrainHexAnswers) {
   return pares;
 }
 
-/**
- * Soma dos pesos de cada perfil em `mapAxisToProfiles`.
- *
- * ISTO CORRIGE UM VIES ESTRUTURAL, nao e' cosmetica. O mapeamento e' uma soma
- * PONDERADA com pesos desiguais: `seeker` recebe `curiosity*1.0 +
- * immersion*0.25` (soma 1.25) e `survivor` recebe `challenge*1.0` (soma 1.0).
- * Resultado: um respondente que marca exatamente o MESMO valor em todos os
- * itens sai com `seeker` acima de `survivor` — a preferencia vem dos pesos que
- * alguem escolheu a mao, nao da pessoa.
- *
- * A centragem intrapessoal nao resolve isso: ela remove o estilo do
- * respondente, nao o desequilibrio do mapeamento. Dividir pela soma dos pesos
- * transforma a soma ponderada em MEDIA ponderada, e ai' respondente plano sai
- * plano. A ordem entre perfis de quem de fato diferencia nao muda.
- *
- * Descoberto por um teste ("com a escala sem informacao, o dominante vem da
- * ordem declarada"), que falhou apontando `daredevil` — o perfil de maior soma
- * de pesos (1.5).
- */
+/** Divisor da soma ponderada legada. Os coeficientes não foram calibrados. */
 const SOMA_DOS_PESOS: Record<BrainHexProfileKey, number> = {
   seeker: 1.25,      // curiosity 1.0 + immersion 0.25
   survivor: 1.0,     // challenge 1.0
@@ -96,16 +72,14 @@ export function calcularPrior(params: {
   const { answers } = params;
   const ordenacao = validarOrdenacao(params.ordenacao);
 
-  // Perfis a partir dos eixos, como o sistema ja' fazia — o mapeamento nao
-  // muda. O que muda e' que o resultado passa a ser CENTRADO antes de competir
-  // com a ordenacao, para os dois ficarem na mesma unidade.
+  // A soma por eixo e a ordenação têm amplitudes diferentes. Centragem não
+  // corrige isso; conservar a regra não equivale a validar essa combinação.
   const porPerfil = mapAxisToProfiles(calculateAxisScores(answers)) as Record<string, number>;
   // Media ponderada, nao soma ponderada: sem isto, quem marca tudo igual sai
   // com o perfil de maior soma de pesos. Ver SOMA_DOS_PESOS.
   const escalaCentrada = centrarPorRespondente(normalizarPorPesoDoMapeamento(porPerfil));
 
-  // A qualidade olha a resposta BRUTA: inverter os reversos antes esconderia
-  // exatamente a aquiescencia que se quer medir.
+  // Descritores brutos; divergência entre pares não identifica sua causa.
   const brutas = BRAINHEX_QUESTIONS.map((q) => answers[q.id]).filter(
     (v): v is number => typeof v === "number",
   );
@@ -119,7 +93,6 @@ export function calcularPrior(params: {
   const combinado = combinarPrior({
     escalaCentrada,
     ordenacao: pontuarOrdenacao(ordenacao),
-    confiancaDaEscala: qualidade.indice,
   });
 
   return {
@@ -141,74 +114,34 @@ export function perfilDominante(afinidade: Record<string, number>): BrainHexProf
 /** Reexportado para quem so' precisa pontuar um item avulso. */
 export { pontuarItem };
 
-/**
- * Afinidade centrada -> percentual 0..100 somando 100, que e' o contrato de
- * `aluno_perfil.afinidade` (e do `fn_cadastrar_aluno_com_perfis`).
- *
- * Softmax, e nao "desloca e normaliza". Tres razoes:
- *
- * 1. O escore centrado tem valores negativos; dividir pela soma (o que
- *    `normalizeToPercent` fazia) com negativos produz percentual negativo ou
- *    explode quando a soma passa perto de zero — e a soma de um vetor centrado
- *    passa perto de zero POR CONSTRUCAO.
- * 2. "Desloca pelo minimo" zeraria sempre o ultimo colocado, afirmando
- *    afinidade nula com um perfil que a pessoa so' colocou em setimo.
- * 3. Afinidade como DISTRIBUICAO e' o que o perfil probabilistico quer dizer:
- *    "o quanto cada perfil explica esta pessoa", somando 1.
- *
- * `TEMPERATURA` controla o quao concentrado fica. Alta demais achata tudo em
- * ~14% e o dominante perde sentido; baixa demais manda quase 100% para o
- * primeiro e descarta o vetor, que o CLAUDE.md diz ser usado inteiro. 1.2 e'
- * um ponto de partida declarado, nao calibrado — nao ha' dado proprio ainda.
- */
+/** Parâmetro legado de exibição, sem calibração como probabilidade. */
 export const TEMPERATURA_DA_AFINIDADE = 1.2;
 
+/**
+ * Composição relativa para o contrato de sete inteiros somando 100.
+ * Reserva o piso ANTES de repartir o restante por maior resto. Retirar depois
+ * do líder podia inverter perfis próximos (#1, caso 843). Isso é apuração
+ * numérica, não evidência de sete classes exclusivas ou chance de acerto.
+ */
 export function afinidadeEmPercentual(
   centrado: Record<string, number>,
   temperatura: number = TEMPERATURA_DA_AFINIDADE,
 ): Record<BrainHexProfileKey, number> {
-  const chaves = Object.keys(centrado);
-  const t = temperatura > 0 ? temperatura : 1;
-  const valores = chaves.map((k) => Number(centrado[k]) || 0);
-  const maximo = Math.max(...valores);
-  const exps = valores.map((v) => Math.exp((v - maximo) / t));
-  const soma = exps.reduce((a, b) => a + b, 0) || 1;
-
-  // Maior resto: distribui a sobra do arredondamento para quem mais perdeu, em
-  // vez de empurrar tudo para o primeiro. Sem isso a soma pode nao dar 100, e
-  // o banco guarda sete inteiros que precisam fechar.
-  const exatos = exps.map((e) => (e / soma) * 100);
-  const base = exatos.map(Math.floor);
-  let sobra = 100 - base.reduce((a, b) => a + b, 0);
-  const ordemDoResto = exatos
-    .map((v, i) => ({ i, resto: v - Math.floor(v) }))
-    .sort((a, b) => b.resto - a.resto || a.i - b.i);
-  for (const { i } of ordemDoResto) {
-    if (sobra <= 0) break;
-    base[i] += 1;
-    sobra -= 1;
+  const chaves = Object.keys(centrado).sort();
+  if (chaves.length !== 7 || chaves.some(k => !Number.isFinite(centrado[k]))) {
+    throw new Error("Afinidade requer sete escores finitos");
   }
-
-  // Piso de 1: zero afirmaria afinidade NULA com um perfil, e o CLAUDE.md diz
-  // que o vetor inteiro e' usado, nao so' o dominante. Com dispersao ampla o
-  // softmax manda o ultimo para <0.5% e o arredondamento zerava. Tira do maior,
-  // que e' quem menos sente, e a soma segue 100.
-  const PISO = 1;
-  for (let i = 0; i < base.length; i += 1) {
-    if (base[i] >= PISO) continue;
-    const falta = PISO - base[i];
-    let maior = 0;
-    for (let j = 1; j < base.length; j += 1) if (base[j] > base[maior]) maior = j;
-    if (base[maior] - falta < PISO) break; // nao ha' de onde tirar
-    base[maior] -= falta;
-    base[i] = PISO;
-  }
-
-  const saida = {} as Record<BrainHexProfileKey, number>;
-  chaves.forEach((k, i) => {
-    saida[k as BrainHexProfileKey] = base[i];
-  });
-  return saida;
+  if (!Number.isFinite(temperatura) || temperatura <= 0) throw new Error("Temperatura inválida");
+  const maximo = Math.max(...chaves.map(k => centrado[k]));
+  const exps = chaves.map(k => Math.exp((centrado[k] - maximo) / temperatura));
+  const soma = exps.reduce((a, b) => a + b, 0);
+  const exatos = exps.map(e => (e / soma) * (100 - chaves.length));
+  const base = exatos.map(v => 1 + Math.floor(v));
+  const sobra = 100 - base.reduce((a, b) => a + b, 0);
+  const restos = chaves.map((key, i) => ({ key, i, resto: exatos[i] - Math.floor(exatos[i]) }))
+    .sort((a, b) => b.resto - a.resto || a.key.localeCompare(b.key));
+  for (const { i } of restos.slice(0, sobra)) base[i]++;
+  return Object.fromEntries(chaves.map((k, i) => [k, base[i]])) as Record<BrainHexProfileKey, number>;
 }
 
 export type PerfilComputado = PriorDoPerfil & {
@@ -233,7 +166,8 @@ export function computarPerfil(params: {
 }): PerfilComputado {
   const prior = calcularPrior(params);
   const percentual = afinidadeEmPercentual(prior.afinidade);
-  const dominante = perfilDominante(prior.afinidade);
+  // Mesmo contrato consumido por missões/SQL: percentual DESC, nome ASC.
+  const dominante = perfilDominante(percentual);
   const ordenado = (Object.keys(percentual) as BrainHexProfileKey[])
     .map((key) => ({
       key,
@@ -241,7 +175,7 @@ export function computarPerfil(params: {
       percent: percentual[key],
       afinidade: prior.afinidade[key],
     }))
-    .sort((a, b) => b.afinidade - a.afinidade || a.key.localeCompare(b.key));
+    .sort((a, b) => b.percent - a.percent || a.key.localeCompare(b.key));
 
   return { ...prior, percentual, dominante, ordenado };
 }

@@ -1,6 +1,7 @@
 import { supabase } from "@/database/supabase";
 import { loadRankMetadata } from "@/services/rankMetadata";
 import { resolveRankEventClasseId } from "@/utils/rankEventClasse";
+import { progressoDaLinha, progressoDoLider } from "@/utils/rankProgresso";
 import { PosicaoDoAluno } from "./RankAlunoPosicao";
 import { RankInfo } from "./RankInfo";
 import { RankPosicao } from "./RankPosicao";
@@ -26,10 +27,6 @@ function normalizeReferenciaId(value: unknown): number | null {
   }
 
   return null;
-}
-
-function roundProgress(value: number) {
-  return Math.round(value * 100) / 100;
 }
 
 type FallbackRankRow = {
@@ -61,7 +58,8 @@ function buildRankPosicao(row: any) {
     String(row.id_aluno),
     String(row.nome_aluno ?? "Aluno"),
     row.pontuacao != null ? Number(row.pontuacao) : null,
-    row.progresso != null ? Number(row.progresso) : null,
+    // A view entrega `percentual_do_lider` (#155); `progresso` vem do fallback abaixo.
+    progressoDaLinha(row),
     row.medalha != null ? String(row.medalha) : null
   );
 }
@@ -155,7 +153,7 @@ function buildFallbackRankRows(
       allRows.push({
         ...row,
         posicao: currentRank,
-        progresso: maxPontuacao > 0 ? roundProgress((row.pontuacao / maxPontuacao) * 100) : null,
+        progresso: progressoDoLider(row.pontuacao, maxPontuacao, sortedRows.length, criterio),
         medalha:
           currentRank === 1
             ? "ouro"

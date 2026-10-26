@@ -22,6 +22,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba
 from app.services.insights_turma import InsightsTurmaService
 from app.services.llm import JsonLLMService, StructuredOutputError
+from app.services.pseudonimizacao import pseudonimizar_texto, restaurar_refs
+from app.services.roteamento_ia import rota_ia_para_turma
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +70,27 @@ def _linha(row: dict[str, Any]) -> dict[str, Any]:
     return linha
 
 
+def _renumerar_refs(contextos: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Cada retrato numera A1... da própria turma; com várias turmas no mesmo
+    payload, a ref precisa ser única. Devolve os contextos sem o mapa de nomes
+    (que não vai ao modelo) e o mapa ref global -> nome."""
+    nomes_por_ref: dict[str, Any] = {}
+    saida: list[dict[str, Any]] = []
+    n = 0
+    for contexto in contextos:
+        contexto = dict(contexto)
+        locais = contexto.pop("_nomes_por_ref", None) or {}
+        alunos = []
+        for aluno in contexto.get("alunos") or []:
+            n += 1
+            nova = f"A{n}"
+            nomes_por_ref[nova] = locais.get(aluno.get("ref"))
+            alunos.append({**{k: v for k, v in aluno.items() if k not in ("nome", "email")}, "ref": nova})
+        contexto["alunos"] = alunos
+        saida.append(contexto)
+    return saida, nomes_por_ref
+
+
 class EscribaService:
     def __init__(self, session: AsyncSession, llm: JsonLLMService) -> None:
         self.session = session
@@ -108,7 +131,7 @@ class EscribaService:
             "WHERE classe_id = :classe_id ORDER BY metrica, faixa",
             classe_id,
         )
-        retrato, _ = await InsightsTurmaService(self.session, self.llm).coletar_contexto(
+        retrato, refs_turma, nomes_por_ref = await InsightsTurmaService(self.session, self.llm).coletar_contexto(
             classe_id, agora, incluir_descartados=False
         )
         return {
@@ -116,9 +139,13 @@ class EscribaService:
             "geral": geral[0] if geral else None,
             "por_perfil": por_perfil,
             "distribuicao": distribuicao,
-            # A referência curta (A1...) é dos Insights; aqui o professor quer nomes.
-            "alunos": [{k: v for k, v in a.items() if k != "ref"} for a in retrato.get("alunos", [])],
+            # Só a ref (A1...) vai ao modelo (#195); `perguntar` renumera entre
+            # turmas e troca as refs da resposta pelos nomes.
+            "alunos": retrato.get("alunos", []),
             "topicos": retrato.get("topicos", []),
+            "_nomes_por_ref": nomes_por_ref,
+            # Privado: so para a rota de IA por idade (#195); sai antes do payload.
+            "_aluno_ids": list(refs_turma.values()) if isinstance(refs_turma, dict) else [],
         }
 
     async def perguntar(self, professor_id: str, pedido: PerguntaEscriba, agora: datetime | None = None) -> RespostaEscriba:
@@ -138,18 +165,31 @@ class EscribaService:
                 gerado_em=agora,
             )
 
+        contextos = [await self.contexto_da_turma(t, agora) for t in escopo]
+        # #195: ids so para a rota de IA por idade; nunca vao ao modelo.
+        aluno_ids = [i for c in contextos for i in (c.get("_aluno_ids") or [])]
+        turmas_payload, nomes_por_ref = _renumerar_refs(contextos)
+        # Pergunta e histórico do professor citam alunos pelo nome (e o histórico
+        # volta com os nomes que restauramos): vão ao modelo como refs.
         payload = {
-            "pergunta": pedido.pergunta.strip(),
-            "historico": [m.model_dump() for m in pedido.historico[-MAX_HISTORICO:]],
-            "turmas": [await self.contexto_da_turma(t, agora) for t in escopo],
+            "pergunta": pseudonimizar_texto(pedido.pergunta.strip(), nomes_por_ref),
+            "historico": [
+                {**m.model_dump(), "texto": pseudonimizar_texto(m.texto, nomes_por_ref)}
+                for m in pedido.historico[-MAX_HISTORICO:]
+            ],
+            "turmas": turmas_payload,
         }
+        for turma_payload in payload["turmas"]:
+            turma_payload.pop("_aluno_ids", None)
         try:
-            saida = await self.llm.ainvoke_structured(prompt_name="escriba.txt", payload=payload, schema=EscribaSaida)
+            # #195: basta um aluno menor (ou sem data) nas turmas -> so OpenAI.
+            async with rota_ia_para_turma(self.session, aluno_ids):
+                saida = await self.llm.ainvoke_structured(prompt_name="escriba.txt", payload=payload, schema=EscribaSaida)
         except StructuredOutputError as exc:
             logger.warning("Escriba: modelo falhou: %s", exc)
             raise EscribaIndisponivel(str(exc)) from exc
 
-        resposta = saida.resposta.strip()[:MAX_RESPOSTA]
+        resposta = (restaurar_refs(saida.resposta, nomes_por_ref) or "").strip()[:MAX_RESPOSTA]
         if not resposta:
             raise EscribaIndisponivel("resposta vazia")
         return RespostaEscriba(resposta=resposta, turmas=[int(t["id"]) for t in escopo], gerado_em=agora)

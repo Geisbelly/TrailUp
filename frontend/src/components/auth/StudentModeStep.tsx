@@ -42,9 +42,9 @@ export default function StudentModeStep({
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-2">
           <Settings2 className="w-6 h-6 text-primary" />
         </div>
-        <h3 className="text-lg font-medium text-white">Como você prefere aprender?</h3>
+        <h3 className="text-lg font-medium text-white">Como prefere organizar sua sessão?</h3>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
-          O TrailUp adapta a ordem dos materiais para combinar com seu estilo cognitivo.
+          Escolha a ordem em que deseja ver os materiais e as perguntas. Você pode ajustar essa preferência depois.
         </p>
       </div>
 

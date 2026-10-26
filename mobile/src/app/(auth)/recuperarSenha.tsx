@@ -24,6 +24,9 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import tinycolor from "tinycolor2";
+import { textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 // Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
 const AUTH_PALETTE = buildProfileShellPaletteFromAccent(Design.primary, "magica");
@@ -278,9 +281,7 @@ const styles = StyleSheet.create({
     fontSize: 34,
     fontFamily: FontFamily.inknutAntiquaMedium,
     letterSpacing: 0,
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+    ...textShadowStyle({ color: "rgba(0,0,0,0.8)", offset: { width: 0, height: 2 }, radius: 8 }, IS_WEB),
     marginBottom: 8,
   },
   ornamentRow: {
