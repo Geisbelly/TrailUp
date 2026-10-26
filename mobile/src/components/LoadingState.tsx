@@ -5,8 +5,11 @@ import {
   ProfileShellPalette,
 } from "@/utils/profileShellTheme";
 import React from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View, Platform } from "react-native";
 import tinycolor from "tinycolor2";
+import { textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 type Props = {
   title?: string;
@@ -39,7 +42,7 @@ export function LoadingState({
       >
         <ActivityIndicator size="large" color={indicatorColor} />
       </View>
-      <Text style={[styles.title, { color: gold, textShadowColor: "rgba(0,0,0,0.7)", textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 }]}>{title}</Text>
+      <Text style={[styles.title, { color: gold, ...textShadowStyle({ color: "rgba(0,0,0,0.7)", offset: { width: 0, height: 1 }, radius: 4 }, IS_WEB) }]}>{title}</Text>
       <Text style={[styles.message, { color: effectivePalette.textMuted }]}>
         {message}
       </Text>

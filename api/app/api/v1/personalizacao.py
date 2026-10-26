@@ -63,6 +63,7 @@ from app.schemas.personalizacao import (
     SugestaoMaterialItem,
     SugestaoMaterialResponse,
 )
+from app.services import modo_restrito
 from app.services.auth import UserContext
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
 from app.services.group_analysis import GroupAnalysisService
@@ -91,6 +92,13 @@ from app.services.personalizacao_jobs import (
     enqueue_personalizacao_job,
     get_job_detail,
 )
+from app.services.pseudonimizacao import (
+    PLACEHOLDER_NOME,
+    pseudonimizar_nome_proprio,
+    restaurar_nome,
+)
+from app.services.rag_observabilidade import gravar_buscas_rag, iniciar_coleta_rag
+from app.services.roteamento_ia import rota_ia_para_alunos, rota_ia_se_tiver_aluno
 from app.services.storage import BUCKET, SupabaseStorage, build_material_url
 from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
 from app.services.sugestao_metrica import montar_registros_do_log, resumo_efetividade
@@ -862,14 +870,16 @@ def _format_minutes(value: object) -> str:
     return f"{horas}h {minutos}min"
 
 
-def _build_student_metrics_summary(context: dict[str, object]) -> dict[str, object]:
+def _build_student_metrics_summary(context: dict[str, object], *, para_llm: bool = False) -> dict[str, object]:
+    """``para_llm=True`` troca o apelido/nome pelo placeholder (#195): o nome
+    nao vai ao provedor e volta na resposta via ``restaurar_nome``."""
     desempenho = context.get("desempenho_recente") if isinstance(context.get("desempenho_recente"), dict) else {}
     progresso = context.get("progresso_trilha") if isinstance(context.get("progresso_trilha"), dict) else {}
     historico_eventos = context.get("historico_eventos") if isinstance(context.get("historico_eventos"), list) else []
     aluno = context.get("aluno") if isinstance(context.get("aluno"), dict) else {}
 
     return {
-        "apelido": aluno.get("apelido") or aluno.get("nome"),
+        "apelido": PLACEHOLDER_NOME if para_llm else (aluno.get("apelido") or aluno.get("nome")),
         "modo_operacao": aluno.get("modo_operacao"),
         "modo_resposta": aluno.get("modo_resposta"),
         "progresso_topicos_count": len(progresso),
@@ -1463,6 +1473,14 @@ async def conversar_com_mentor_personalizacao(
         )
 
     aluno_id = user.aluno_id or user.user_id
+    # Modo restrito (#195): o mentor de IA fica desligado. 403 com codigo e
+    # mensagem para o app mostrar, nunca 500, e antes de ler qualquer contexto.
+    permitidas = await modo_restrito.finalidades_permitidas(session, aluno_id)
+    if not permitidas["mentor"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=modo_restrito.detalhe(modo_restrito.MENSAGEM_MENTOR),
+        )
     access_repo = AccessRepository(session)
     if not await access_repo.aluno_belongs_to_classe(aluno_id=str(aluno_id), classe_id=int(payload.classe_id)):
         raise HTTPException(
@@ -1520,82 +1538,107 @@ async def conversar_com_mentor_personalizacao(
 
     llm = JsonLLMService(request.app.state.settings)
 
+    intervencoes_chat: list[str] = []
+
     async def _auditar_chat(violacao, fase) -> None:
+        intervencoes_chat.append(fase)
         logger.info(
             "personalizacao.chat.guardrail=%s",
             {"regra": violacao.regra, "mensagem": violacao.mensagem, "fase": fase},
         )
 
-    mentor_result = await gerar_validado(
-        llm,
-        prompt_name="mentor_personalizacao_chat.txt",
-        payload={
-            "escopo": payload.escopo,
-            "mensagem": payload.mensagem,
-            "historico": [item.model_dump(mode="json") for item in payload.historico[-6:]],
-            "aluno": {
-                "id": aluno_id,
-                "modo_operacao": (context.get("aluno") or {}).get("modo_operacao") if isinstance(context.get("aluno"), dict) else None,
-                "modo_resposta": (context.get("aluno") or {}).get("modo_resposta") if isinstance(context.get("aluno"), dict) else None,
-            },
-            "perfil_brainhex": context.get("perfil_brainhex", [])[:4],
-            "metricas_aluno": _build_student_metrics_summary(context),
-            "leituras_adaptativas": _build_student_reading_summary(context),
-            "topico": {
-                "id": payload.topico_id,
-                "nome": (topico or {}).get("nome") if isinstance(topico, dict) else None,
-                "descricao": (topico or {}).get("descricao") if isinstance(topico, dict) else None,
-            },
-            "decisao_personalizacao": (
-                ((latest_record or {}).get("plano") or {}).get("justificativa")
-                if latest_record
-                else None
-            ),
-            # Conteudo completo do topico (da turma) para o guia se especializar
-            # na materia e direcionar o estudo. Sem respostas de questoes.
-            "conteudo_materia": {
-                "conteudos": [
-                    {
-                        "titulo": c.get("titulo"),
-                        "tipo": c.get("tipo"),
-                        "resumo": str(c.get("conteudo") or "")[:600],
-                        "ordem": c.get("ordem"),
-                    }
-                    for c in (conteudos_topico or [])[:12]
-                    if isinstance(c, dict)
-                ],
-                "atividades": [
-                    {
-                        "titulo": a.get("titulo"),
-                        "descricao": a.get("descricao"),
-                        "tipo": a.get("tipo"),
-                    }
-                    for a in (atividades_topico or [])[:12]
-                    if isinstance(a, dict)
-                ],
-                "questoes_temas": [
-                    {"enunciado": q.get("enunciado"), "tipo": q.get("tipo")}
-                    for q in (questoes_topico or [])[:20]
-                    if isinstance(q, dict)
-                ],
-            },
-            "guardrails": {
-                "sem_gabarito": True,
-                "sem_resposta_direta_atividade": True,
-            },
-        },
-        schema=MentorChatLLMResult,
-        guardrails=[checar_grounding_chat],
-        fallback_factory=lambda: dict(fallback),
-        contexto={
-            "llm": llm,
-            "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
-        },
-        on_violation=_auditar_chat,
-        provider="openai",
-        use_rag=bool(request.app.state.settings.openai_rag_enabled),
-    )
+    aluno_ctx = context.get("aluno") if isinstance(context.get("aluno"), dict) else {}
+    nomes_do_aluno = (aluno_ctx.get("nome"), aluno_ctx.get("apelido"))
 
+    def _sem_nome(texto: object) -> object:
+        return pseudonimizar_nome_proprio(texto, *nomes_do_aluno) if isinstance(texto, str) else texto
+
+    # #195: menor (ou sem data de nascimento) -> so OpenAI, inclusive o juiz de
+    # grounding; sem Gemini. OpenAI fora -> fallback local do guia.
+    # #67: as buscas do RAG desta requisição vão para `ia_decision_logs`, sem texto.
+    buscas_rag = iniciar_coleta_rag()
+    async with rota_ia_para_alunos(session, [aluno_id]):
+        mentor_result = await gerar_validado(
+            llm,
+            prompt_name="mentor_personalizacao_chat.txt",
+            payload={
+                "escopo": payload.escopo,
+                "mensagem": _sem_nome(payload.mensagem),
+                "historico": [
+                    {k: _sem_nome(v) for k, v in item.model_dump(mode="json").items()}
+                    for item in payload.historico[-6:]
+                ],
+                "aluno": {
+                    "id": aluno_id,
+                    "modo_operacao": (context.get("aluno") or {}).get("modo_operacao") if isinstance(context.get("aluno"), dict) else None,
+                    "modo_resposta": (context.get("aluno") or {}).get("modo_resposta") if isinstance(context.get("aluno"), dict) else None,
+                },
+                "perfil_brainhex": context.get("perfil_brainhex", [])[:4],
+                "metricas_aluno": _build_student_metrics_summary(context, para_llm=True),
+                "leituras_adaptativas": _build_student_reading_summary(context),
+                "topico": {
+                    "id": payload.topico_id,
+                    "nome": (topico or {}).get("nome") if isinstance(topico, dict) else None,
+                    "descricao": (topico or {}).get("descricao") if isinstance(topico, dict) else None,
+                },
+                "decisao_personalizacao": (
+                    ((latest_record or {}).get("plano") or {}).get("justificativa")
+                    if latest_record
+                    else None
+                ),
+                # Conteudo completo do topico (da turma) para o guia se especializar
+                # na materia e direcionar o estudo. Sem respostas de questoes.
+                "conteudo_materia": {
+                    "conteudos": [
+                        {
+                            "titulo": c.get("titulo"),
+                            "tipo": c.get("tipo"),
+                            "resumo": str(c.get("conteudo") or "")[:600],
+                            "ordem": c.get("ordem"),
+                        }
+                        for c in (conteudos_topico or [])[:12]
+                        if isinstance(c, dict)
+                    ],
+                    "atividades": [
+                        {
+                            "titulo": a.get("titulo"),
+                            "descricao": a.get("descricao"),
+                            "tipo": a.get("tipo"),
+                        }
+                        for a in (atividades_topico or [])[:12]
+                        if isinstance(a, dict)
+                    ],
+                    "questoes_temas": [
+                        {"enunciado": q.get("enunciado"), "tipo": q.get("tipo")}
+                        for q in (questoes_topico or [])[:20]
+                        if isinstance(q, dict)
+                    ],
+                },
+                "guardrails": {
+                    "sem_gabarito": True,
+                    "sem_resposta_direta_atividade": True,
+                },
+            },
+            schema=MentorChatLLMResult,
+            guardrails=[checar_grounding_chat],
+            fallback_factory=lambda: dict(fallback),
+            contexto={
+                "llm": llm,
+                "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
+            },
+            on_violation=_auditar_chat,
+            provider="openai",
+            use_rag=bool(request.app.state.settings.openai_rag_enabled),
+        )
+
+    mentor_result = mentor_result.model_copy(
+        update={
+            "reply": restaurar_nome(
+                mentor_result.reply, aluno_ctx.get("apelido") or aluno_ctx.get("nome")
+            )
+            or ""
+        }
+    )
     result = mentor_result.model_dump(mode="json")
     response = MentorChatResponse(
         reply=mentor_result.reply.strip(),
@@ -1625,6 +1668,16 @@ async def conversar_com_mentor_personalizacao(
             parsed_response=result,
             decision_summary=response.reply[:500],
             actions=response.hinted_actions,
+        )
+        await gravar_buscas_rag(
+            IADecisionLogRepository(session),
+            buscas_rag,
+            aluno_id=aluno_id,
+            classe_id=payload.classe_id,
+            topico_id=payload.topico_id,
+            conteudo_id=payload.conteudo_id,
+            trigger_event=payload.escopo,
+            intervencao=bool(intervencoes_chat),
         )
         await session.commit()
     except Exception as exc:  # pragma: no cover
@@ -2159,14 +2212,16 @@ async def regenerar_documento_personalizacao(
 
     settings = get_settings()
     error_sink: list[str] = []
-    resultado = await regenerar_documento_brainhex(
-        settings=settings,
-        markdown=markdown_atual,
-        improvement_prompt=payload.improvement_prompt,
-        profile=payload.brainhex_profile_key,
-        expansion_prompt=payload.expansion_prompt,
-        error_sink=error_sink,
-    )
+    # #195: material com dono menor (ou sem data) nao vai ao microservice (Gemini).
+    async with rota_ia_se_tiver_aluno(session, record.get("aluno_id")):
+        resultado = await regenerar_documento_brainhex(
+            settings=settings,
+            markdown=markdown_atual,
+            improvement_prompt=payload.improvement_prompt,
+            profile=payload.brainhex_profile_key,
+            expansion_prompt=payload.expansion_prompt,
+            error_sink=error_sink,
+        )
     if resultado is None:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -2260,14 +2315,16 @@ async def regenerar_slide_personalizacao(
 
     settings = get_settings()
     error_sink: list[str] = []
-    resultado = await regenerar_slide_brainhex(
-        settings=settings,
-        slide=slide_atual,
-        improvement_prompt=payload.improvement_prompt,
-        profile=payload.brainhex_profile_key,
-        expansion_prompt=payload.expansion_prompt,
-        error_sink=error_sink,
-    )
+    # #195: material com dono menor (ou sem data) nao vai ao microservice (Gemini).
+    async with rota_ia_se_tiver_aluno(session, record.get("aluno_id")):
+        resultado = await regenerar_slide_brainhex(
+            settings=settings,
+            slide=slide_atual,
+            improvement_prompt=payload.improvement_prompt,
+            profile=payload.brainhex_profile_key,
+            expansion_prompt=payload.expansion_prompt,
+            error_sink=error_sink,
+        )
     if resultado is None:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

@@ -34,7 +34,14 @@ const Termos = () => {
               <div className="space-y-3 text-muted-foreground">
                 <p className="font-semibold">3.1. Requisitos:</p>
                 <ul className="list-disc ml-6 space-y-1">
-                  <li>Você deve ter pelo menos 18 anos ou consentimento parental</li>
+                  <li>
+                    Informar sua data de nascimento. Se você tiver menos de 18 anos, câmera,
+                    análise de emoções, telemetria de uso, mentor de IA e pesquisa só são ligados
+                    depois que um dos pais ou o responsável legal autorizar, item por item, numa
+                    tela própria do aplicativo ou pelo termo em papel entregue ao professor
+                    (LGPD, art. 14). Até lá, trilhas, questões e progresso funcionam normalmente,
+                    e a autorização pode ser revogada a qualquer momento em Perfil › Coleta e acessos.
+                  </li>
                   <li>Fornecer informações precisas e atualizadas</li>
                   <li>Manter a segurança de sua senha</li>
                   <li>Notificar-nos sobre uso não autorizado de sua conta</li>
@@ -107,8 +114,11 @@ const Termos = () => {
                 <Link to="/privacidade" className="text-primary hover:underline">
                   Política de Privacidade
                 </Link>
-                . Ao usar a plataforma, você concorda com a coleta e uso de dados conforme descrito 
-                naquela política.
+                . Câmera, personalização emocional, pesquisa e notificações são opcionais e dependem
+                de consentimento próprio (para menores de 18 anos, do responsável legal), que pode ser
+                revogado a qualquer momento. Parte dos dados é processada por fornecedores de tecnologia
+                e de inteligência artificial, em sua maioria nos Estados Unidos, conforme listado na
+                política.
               </p>
             </section>
 
@@ -193,7 +203,7 @@ const Termos = () => {
 
             <div className="pt-6 border-t border-border mt-8">
               <p className="text-sm text-muted-foreground">
-                Última atualização: 15 de janeiro de 2025
+                Última atualização: 24/10/2026
               </p>
             </div>
           </article>

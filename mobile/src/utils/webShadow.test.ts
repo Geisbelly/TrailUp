@@ -86,3 +86,25 @@ test("textShadowStyle devolve textShadow na web e as props separadas no nativo",
     textShadowRadius: 8,
   });
 });
+
+test("shadowStyle no nativo so devolve o que foi passado", () => {
+  // Estilo que so tinha opacity/radius (a cor vem inline): o nativo nao pode
+  // ganhar shadowOffset {0,0} (no iOS o default e {0,-3}) nem cor preta.
+  assert.deepEqual(shadowStyle({ opacity: 0.8, radius: 12 }, false), {
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+  });
+  assert.deepEqual(shadowStyle({ opacity: 0 }, false), { shadowOpacity: 0 });
+
+  // Na web os defaults sao os do react-native-web: offset 0, raio 0, cor preta.
+  assert.deepEqual(shadowStyle({ opacity: 0.8, radius: 12 }, true), {
+    boxShadow: "0px 0px 12px rgba(0, 0, 0, 0.8)",
+  });
+});
+
+test("textShadowStyle no nativo so devolve o que foi passado", () => {
+  assert.deepEqual(textShadowStyle({ offset: { width: 0, height: 1 }, radius: 10 }, false), {
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 10,
+  });
+});

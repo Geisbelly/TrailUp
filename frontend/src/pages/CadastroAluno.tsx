@@ -6,28 +6,33 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Hexagon, Eye, EyeOff, Mail, ArrowRight, Info, CheckCircle2, Download, Smartphone, LogIn, User, Lock } from "lucide-react";
+import { Hexagon, Eye, EyeOff, Mail, ArrowRight, Info, LogIn, User, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ehCredencialInvalida,
+  ehContaJaExistente,
+  MENSAGEM_SOLICITACAO_CADASTRO,
   ehEmailNaoConfirmado,
   mensagemDeAcesso,
   normalizarEmail,
   validarAcesso,
 } from "@/lib/cadastroEmUmaEtapa";
+import { ehMenorDeIdade, hojeEmBrasilia, validarDataNascimento } from "@/lib/dataNascimento";
+
+import { AREA_ALUNO, alunoTemCadastro } from "@/features/signup/cadastroAluno";
+
+import { FORGOT_PASSWORD_PATH } from "@/features/auth/resetPasswordRoute";
 
 const STORAGE_PREFIX = "pending-signup:";
-const PLAY_STORE_LINK = import.meta.env.VITE_PLAY_STORE_LINK || "";
-const APK_LINK = import.meta.env.VITE_APK_URL || "";
 
 /**
  * Uma etapa só para e-mail+senha (#329). Os estágios "email" / "existing" / "new" existiam
  * porque `fn_auth_email_exists` dizia, ANTES do login, se o e-mail tinha conta — e dizia para
  * qualquer pessoa na internet, sem limite. Agora quem decide é `signIn`/`signUp`.
  */
-type Stage = "acesso" | "confirm-sent" | "await-confirm" | "already";
+type Stage = "acesso" | "confirm-sent" | "await-confirm";
 
 const CadastroAluno = () => {
   const navigate = useNavigate();
@@ -39,6 +44,9 @@ const CadastroAluno = () => {
   const [showSenha, setShowSenha] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [termos, setTermos] = useState(false);
+  // #195: pedida na criação da conta (como a confirmação de senha). Vai para
+  // `aluno_nascimento` quando o cadastro do aluno for concluído, após confirmar o e-mail.
+  const [dataNascimento, setDataNascimento] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [stage, setStage] = useState<Stage>("acesso");
   const [infoMessage, setInfoMessage] = useState("");
@@ -55,7 +63,7 @@ const CadastroAluno = () => {
     return true;
   };
 
-  /** O que fazer quando o login deu certo: é o caminho de conta existente, intocado. */
+  /** Só consultar o cadastro depois de autenticar o titular. */
   const seguirComoContaExistente = async (signedUser: unknown) => {
     const user = (signedUser as { id?: string } | null) ?? (await supabase.auth.getUser()).data.user;
     if (!user) {
@@ -63,25 +71,12 @@ const CadastroAluno = () => {
       return;
     }
 
-    const { data: alunoRow } = await supabase.from("alunos").select("id").eq("id", user.id).maybeSingle();
-    const u = user as { email_confirmed_at?: string | null; confirmed_at?: string | null };
-    const emailConfirmed = Boolean(u?.email_confirmed_at ?? u?.confirmed_at);
-
-    if (alunoRow?.id) {
-      if (emailConfirmed) {
-        setStage("already");
-        setInfoMessage("Você já possui cadastro de aluno.");
-        return;
-      }
-      setStage("await-confirm");
-      setInfoMessage("Conta de aluno encontrada. Confirme seu email para continuar.");
+    if (!user.id) throw new Error("Sessão não encontrada.");
+    if (await alunoTemCadastro(user.id)) {
+      navigate(AREA_ALUNO);
       return;
     }
-
-    localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`, JSON.stringify({ tipo: "aluno", email: emailLower }));
     navigate("/auth/confirmacao");
-    setStage("confirm-sent");
-    setInfoMessage("Conta sem perfil. Finalize seu cadastro de aluno.");
   };
 
   /**
@@ -122,22 +117,24 @@ const CadastroAluno = () => {
 
       // Daqui para baixo é CRIAÇÃO. Exigir confirmação de senha e termos só agora não revela
       // nada: a mesma exigência aparece para quem errou a senha de uma conta existente.
-      const erroCriacao = validarAcesso(dados, true);
+      const erroCriacao = validarAcesso(dados, true) ?? validarDataNascimento(dataNascimento);
       if (erroCriacao) {
         toast.error(erroCriacao);
         return;
       }
 
       const { error: signUpError } = await signUp(emailLower, senha, "aluno");
-      if (signUpError) {
-        // `mensagemDeAcesso` devolve a MESMA frase de senha errada quando a conta já existe.
+      if (signUpError && !ehContaJaExistente(signUpError)) {
         toast.error(mensagemDeAcesso(signUpError));
         return;
       }
 
-      localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`, JSON.stringify({ tipo: "aluno", email: emailLower }));
+      try {
+        localStorage.setItem(`${STORAGE_PREFIX}${emailLower}`,
+          JSON.stringify({ tipo: "aluno", email: emailLower, data_nascimento: dataNascimento }));
+      } catch { /* A confirmação recupera o tipo pela conta e solicita a data novamente. */ }
       setStage("confirm-sent");
-      setInfoMessage("Enviamos um link de confirmação. Após confirmar, conclua seu cadastro.");
+      setInfoMessage(MENSAGEM_SOLICITACAO_CADASTRO);
     } catch (err) {
       toast.error(mensagemDeAcesso(err));
     } finally {
@@ -212,6 +209,24 @@ const CadastroAluno = () => {
         </div>
       </div>
 
+      <div className="space-y-2">
+        <Label htmlFor="data-nascimento">Data de nascimento</Label>
+        <Input
+          id="data-nascimento"
+          type="date"
+          value={dataNascimento}
+          max={hojeEmBrasilia()}
+          onChange={(e) => setDataNascimento(e.target.value)}
+          className="bg-card/50 border-border text-foreground focus:ring-primary/20 focus:border-primary/50"
+        />
+        <p className="text-xs text-muted-foreground">
+          Só para criar conta. Fica visível apenas para você.
+          {dataNascimento && !validarDataNascimento(dataNascimento) && ehMenorDeIdade(dataNascimento)
+            ? " Como você tem menos de 18 anos, câmera, análise de emoções, telemetria, mentor de IA e pesquisa só ligam depois que seu responsável autorizar, no app ou pelo termo em papel entregue ao professor. Trilhas, questões e progresso funcionam desde já."
+            : ""}
+        </p>
+      </div>
+
       <div className="flex items-start space-x-2">
         <Checkbox id="termos" checked={termos} onCheckedChange={(v) => setTermos(Boolean(v))} />
         <Label htmlFor="termos" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
@@ -238,7 +253,7 @@ const CadastroAluno = () => {
         <ArrowRight className="w-4 h-4 ml-2" />
       </Button>
       <p className="text-xs text-muted-foreground text-center">
-        Confirmar a senha e aceitar os termos é necessário apenas quando a conta é nova.
+        Confirmar a senha, informar a data de nascimento e aceitar os termos é necessário apenas quando a conta é nova.
       </p>
     </form>
   );
@@ -254,37 +269,17 @@ const CadastroAluno = () => {
     </div>
   );
 
-  const renderAlready = () => (
-    <div className="space-y-4 text-center">
-      <CheckCircle2 className="w-10 h-10 text-primary mx-auto" />
-      <p className="text-muted-foreground">{infoMessage || "Conta de aluno ativa."}</p>
-      <div className="grid sm:grid-cols-2 gap-3">
-        <Button className="w-full" onClick={() => APK_LINK && window.open(APK_LINK, "_blank")}>
-          <Download className="w-4 h-4 mr-2" /> Baixar APK
-        </Button>
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => PLAY_STORE_LINK && window.open(PLAY_STORE_LINK, "_blank")}
-        >
-          <Smartphone className="w-4 h-4 mr-2" /> Play Store
-        </Button>
-      </div>
-      <div className="flex gap-3 justify-center">
-        <Button variant="outline" onClick={() => navigate("/")}>Início</Button>
-      </div>
-    </div>
-  );
-
   const renderConfirmSent = () => (
     <div className="space-y-4 text-center">
       <Hexagon className="w-10 h-10 text-primary fill-primary/20 mx-auto" />
       <p className="text-muted-foreground">
-        {infoMessage || `Enviamos um link de confirmação para ${email}. Após confirmar, conclua seu cadastro.`}
+        {infoMessage || MENSAGEM_SOLICITACAO_CADASTRO}
       </p>
       <Button onClick={() => navigate("/auth/confirmacao")} className="w-full">
         Ir para confirmação
       </Button>
+      <Button asChild variant="outline" className="w-full"><Link to="/login">Entrar na minha conta</Link></Button>
+      <Link to={FORGOT_PASSWORD_PATH} className="block text-sm underline">Recuperar acesso</Link>
     </div>
   );
 
@@ -292,7 +287,6 @@ const CadastroAluno = () => {
     if (stage === "acesso") return renderAcessoStep();
     if (stage === "confirm-sent") return renderConfirmSent();
     if (stage === "await-confirm") return renderAwaitConfirm();
-    if (stage === "already") return renderAlready();
     return null;
   };
 

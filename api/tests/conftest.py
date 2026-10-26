@@ -103,3 +103,27 @@ def professor_user() -> UserContext:
 
 async def override_session(fake_session: FakeSession) -> AsyncIterator[FakeSession]:
     yield fake_session
+
+
+def pytest_configure(config) -> None:
+    config.addinivalue_line(
+        "markers",
+        "modo_restrito_real: nao libera o modo restrito (#195); o teste decide o que o banco responde",
+    )
+
+
+@pytest.fixture(autouse=True)
+def _modo_restrito_liberado(request, monkeypatch):
+    """Os testes antigos falam com um `FakeSession` que nao responde nada, e o
+    modo restrito e fail-closed: sem esta troca, todo aluno de teste ficaria
+    restrito. Quem testa o modo restrito marca `@pytest.mark.modo_restrito_real`."""
+    if request.node.get_closest_marker("modo_restrito_real"):
+        yield
+        return
+    from app.services import modo_restrito
+
+    async def _tudo_permitido(session, aluno_id):
+        return {f: True for f in modo_restrito.FINALIDADES}
+
+    monkeypatch.setattr(modo_restrito, "finalidades_permitidas", _tudo_permitido)
+    yield

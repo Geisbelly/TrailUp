@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { markdownUrlTransform } from "./markdownUrlTransform";
+import { supabase } from "@/integrations/supabase/client";
+import { assinarUrlsDoStorageNoTexto, objetosPrivadosNoTexto } from "@/lib/urlsDoStorageNoTexto";
 import { buildProfileImageFrame } from "@/lib/profileImageFrame";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -51,8 +53,39 @@ function materialUrl(material: Record<string, unknown> | null): string | null {
 // anterior ja dava aos subtopicos. A variante `prose-trailup`
 // (tailwind.config.ts) amarra as cores aos tokens do tema - o `prose` puro
 // assume tema claro e o app e escuro por padrao, sem a classe "dark".
-function MarkdownView({ text, corDoPerfil }: { text: string; corDoPerfil?: string }) {
+// Imagem/link de bucket privado DENTRO do markdown (#195): com os buckets
+// fechados a URL publica da' 400 e a `authenticated` pede token; assina por 1h
+// sob o RLS antes de renderizar. Sem URL privada, o texto passa como veio.
+function useTextoComUrlsAssinadas(text: string): string | null {
+  const precisa = useMemo(() => objetosPrivadosNoTexto(text).length > 0, [text]);
+  const [assinado, setAssinado] = useState<{ de: string; texto: string } | null>(null);
+  useEffect(() => {
+    if (!precisa) return;
+    let ativo = true;
+    void assinarUrlsDoStorageNoTexto(text, async ({ bucket, caminho }) => {
+      const { data } = await supabase.storage.from(bucket).createSignedUrl(caminho, 3600);
+      return data?.signedUrl ?? null;
+    }).then((texto) => {
+      if (ativo) setAssinado({ de: text, texto });
+    });
+    return () => {
+      ativo = false;
+    };
+  }, [text, precisa]);
+  if (!precisa) return text;
+  return assinado?.de === text ? assinado.texto : null;
+}
+
+function MarkdownView({ text: textoBruto, corDoPerfil }: { text: string; corDoPerfil?: string }) {
   const moldura = buildProfileImageFrame(corDoPerfil);
+  const text = useTextoComUrlsAssinadas(textoBruto);
+  if (text === null) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
+        <Loader2 className="h-4 w-4 animate-spin" /> Carregando texto...
+      </div>
+    );
+  }
   return (
     <div className="prose prose-sm prose-trailup max-w-none">
       <ReactMarkdown

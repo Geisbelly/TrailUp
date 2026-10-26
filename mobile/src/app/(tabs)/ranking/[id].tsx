@@ -227,7 +227,7 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
               ListHeaderComponent={
                 <>
                   <View ref={headerRef} collapsable={false} style={s.hero}>
-                    <View style={s.scenery} pointerEvents="none">
+                    <View style={[s.scenery, { pointerEvents: "none" }]}>
                       <Image
                         source={getProfileArtwork(profile, "rank")}
                         style={s.sceneryImage}

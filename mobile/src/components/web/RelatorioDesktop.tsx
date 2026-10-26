@@ -1,10 +1,13 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, Platform } from "react-native";
 
 import { FontFamily } from "@/styles/GlobalStyle";
 import { imprimirHtmlNaWeb } from "@/utils/imprimirHtmlWeb";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 const ENTRA = [
   "Eventos de estudo e pontuação registrados durante suas sessões",
@@ -149,7 +152,7 @@ const s = StyleSheet.create({
   erroCorpo: { fontFamily: FontFamily.interMedium, fontSize: 12.5, lineHeight: 18 },
   tentar: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
   tentarTexto: { fontFamily: FontFamily.interMedium, fontSize: 12.5, fontWeight: "700" },
-  folha: { backgroundColor: "#f6f6f2", borderRadius: 8, padding: 18, gap: 7, transform: [{ rotate: "2deg" }], shadowColor: "#000", shadowOpacity: 0.4, shadowRadius: 18, shadowOffset: { width: 0, height: 10 } },
+  folha: { backgroundColor: "#f6f6f2", borderRadius: 8, padding: 18, gap: 7, transform: [{ rotate: "2deg" }], ...shadowStyle({ color: "#000", offset: { width: 0, height: 10 }, opacity: 0.4, radius: 18 }, IS_WEB) },
   folhaTitulo: { fontFamily: FontFamily.inikaBold, fontSize: 13, color: "#1c2238" },
   folhaRegua: { height: 2, backgroundColor: "#1c2238", marginBottom: 4 },
   folhaLinha: { height: 5, borderRadius: 3, backgroundColor: "#dcdde3" },

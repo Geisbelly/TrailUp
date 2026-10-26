@@ -1,6 +1,9 @@
 import { IButton } from "@/interfaces/componentes_simples/IButton";
 import { Border, Color, FontFamily, FontSize } from "@/styles/GlobalStyle";
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, Platform } from "react-native";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 const ButtonG = ({ text, variant = "primary" }: IButton) => {
   const backgroundColor =
@@ -23,10 +26,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 5, // Android
-    shadowColor: "#000", // iOS
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 2 }, opacity: 0.2, radius: 3 }, IS_WEB),
   },
   text: {
     fontSize: FontSize.fs_18,

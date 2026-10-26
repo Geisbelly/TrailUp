@@ -46,6 +46,7 @@ import {
   sanitizeSlideTextBudget,
 } from './src/utils/slideTextBudget';
 import { persistApresentacaoResult, type SupabaseClientLike } from './src/services/materialsPersistence';
+import { urlDeLeituraDoStorage } from './src/services/storageReadUrl';
 
 
 dotenv.config();
@@ -2365,8 +2366,7 @@ app.post('/api/v1/supabase/sync', async (req: Request, res: Response) => {
         upsert: true,
       });
       if (!error) {
-        const { data: pub } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-        uploaded['deckJson'] = pub?.publicUrl || filePath;
+        uploaded['deckJson'] = await urlDeLeituraDoStorage(supabase, bucketName, filePath);
       }
     }
 
@@ -2377,8 +2377,7 @@ app.post('/api/v1/supabase/sync', async (req: Request, res: Response) => {
         upsert: true,
       });
       if (!error) {
-        const { data: pub } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-        uploaded['markdown'] = pub?.publicUrl || filePath;
+        uploaded['markdown'] = await urlDeLeituraDoStorage(supabase, bucketName, filePath);
       }
     }
 
@@ -2389,8 +2388,7 @@ app.post('/api/v1/supabase/sync', async (req: Request, res: Response) => {
         upsert: true,
       });
       if (!error) {
-        const { data: pub } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-        uploaded['audioScript'] = pub?.publicUrl || filePath;
+        uploaded['audioScript'] = await urlDeLeituraDoStorage(supabase, bucketName, filePath);
       }
     }
 
@@ -2992,8 +2990,7 @@ app.post('/api/supabase/save-conteudo-aluno', async (req: Request, res: Response
         upsert: true,
       });
       if (!error) {
-        const { data: pubUrl } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-        uploadedFiles.push({ name: 'deck.json', path: filePath, publicUrl: pubUrl?.publicUrl });
+        uploadedFiles.push({ name: 'deck.json', path: filePath, publicUrl: await urlDeLeituraDoStorage(supabase, bucketName, filePath) });
       }
     }
 
@@ -3005,8 +3002,7 @@ app.post('/api/supabase/save-conteudo-aluno', async (req: Request, res: Response
         upsert: true,
       });
       if (!error) {
-        const { data: pubUrl } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-        uploadedFiles.push({ name: 'aula.md', path: filePath, publicUrl: pubUrl?.publicUrl });
+        uploadedFiles.push({ name: 'aula.md', path: filePath, publicUrl: await urlDeLeituraDoStorage(supabase, bucketName, filePath) });
       }
     }
 
@@ -3018,8 +3014,7 @@ app.post('/api/supabase/save-conteudo-aluno', async (req: Request, res: Response
         upsert: true,
       });
       if (!error) {
-        const { data: pubUrl } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-        uploadedFiles.push({ name: 'audio_narracao.txt', path: filePath, publicUrl: pubUrl?.publicUrl });
+        uploadedFiles.push({ name: 'audio_narracao.txt', path: filePath, publicUrl: await urlDeLeituraDoStorage(supabase, bucketName, filePath) });
       }
     }
 
@@ -3032,8 +3027,7 @@ app.post('/api/supabase/save-conteudo-aluno', async (req: Request, res: Response
         upsert: true,
       });
       if (!error) {
-        const { data: pubUrl } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-        uploadedFiles.push({ name: 'apresentacao.pdf', path: filePath, publicUrl: pubUrl?.publicUrl });
+        uploadedFiles.push({ name: 'apresentacao.pdf', path: filePath, publicUrl: await urlDeLeituraDoStorage(supabase, bucketName, filePath) });
       }
     }
 
@@ -3154,14 +3148,10 @@ app.post('/api/supabase/upload', async (req: Request, res: Response) => {
       });
     }
 
-    const { data: publicUrlData } = supabase.storage
-      .from(finalBucket)
-      .getPublicUrl(cleanPath);
-
     return res.json({
       success: true,
       path: cleanPath,
-      publicUrl: publicUrlData.publicUrl,
+      publicUrl: await urlDeLeituraDoStorage(supabase, finalBucket, cleanPath),
       message: 'Arquivo salvo com sucesso no bucket do Supabase!',
     });
   } catch (error: any) {
@@ -3198,15 +3188,12 @@ app.post('/api/supabase/list', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: error.message });
     }
 
-    const filesWithUrls = (data || []).map((file) => {
-      const { data: publicUrlData } = supabase.storage
-        .from(finalBucket)
-        .getPublicUrl(file.name);
-      return {
+    const filesWithUrls = await Promise.all(
+      (data || []).map(async (file) => ({
         ...file,
-        publicUrl: publicUrlData.publicUrl,
-      };
-    });
+        publicUrl: await urlDeLeituraDoStorage(supabase, finalBucket, file.name),
+      })),
+    );
 
     return res.json({ success: true, files: filesWithUrls });
   } catch (error: any) {

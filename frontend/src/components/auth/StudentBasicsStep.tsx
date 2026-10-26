@@ -29,10 +29,11 @@ export default function StudentBasicsStep({
       <div className="space-y-4">
         {/* Campo Nome */}
         <div className="space-y-2">
-          <Label className="text-foreground ml-1">Nome completo</Label>
+          <Label htmlFor="aluno-nome" className="text-foreground ml-1">Nome completo</Label>
           <div className="relative group">
             <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors duration-300" />
             <Input
+              id="aluno-nome"
               value={value.nome}
               onChange={(e) => onChange({ ...value, nome: e.target.value })}
               className="pl-10 h-11 bg-card/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-primary/20 focus:border-primary/50 transition-all duration-300"
@@ -43,10 +44,11 @@ export default function StudentBasicsStep({
 
         {/* Campo Apelido */}
         <div className="space-y-2">
-          <Label className="text-foreground ml-1">Apelido (Nick)</Label>
+          <Label htmlFor="aluno-apelido" className="text-foreground ml-1">Apelido (Nick)</Label>
           <div className="relative group">
             <AtSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors duration-300" />
             <Input
+              id="aluno-apelido"
               value={value.apelido}
               onChange={(e) => onChange({ ...value, apelido: e.target.value })}
               className="pl-10 h-11 bg-card/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-primary/20 focus:border-primary/50 transition-all duration-300"

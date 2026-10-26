@@ -70,6 +70,7 @@ import {
   PRESENTATION_SCHEMA_VERSION,
   buildPresentationVersionMetadata,
   getRenderGitCommit,
+  getBuildCommit,
 } from "./src/constants/pipelineVersions";
 import { versionStoragePath } from "./src/constants/generationStorage";
 
@@ -1420,6 +1421,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       presentation_design_version: PRESENTATION_DESIGN_VERSION,
       content_enrichment_provider: CONTENT_ENRICHMENT_PROVIDER,
       render_git_commit: renderGitCommit,
+      build_commit: getBuildCommit(),
     });
   });
 

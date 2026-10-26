@@ -19,11 +19,15 @@ import { cn } from "@/lib/utils";
 export default function BrainHexOrdenacaoStep({
   ordem,
   onChange,
+  confirmada,
+  onConfirmacao,
   onBack,
   onFinish,
 }: {
   ordem: BrainHexProfileKey[];
   onChange: (proxima: BrainHexProfileKey[]) => void;
+  confirmada: boolean;
+  onConfirmacao: (confirmada: boolean) => void;
   onBack?: () => void;
   onFinish: () => void;
 }) {
@@ -90,6 +94,17 @@ export default function BrainHexOrdenacaoStep({
         ))}
       </ol>
 
+      <label className="flex items-start gap-3 text-sm">
+        <input
+          type="checkbox"
+          checked={confirmada}
+          onChange={(event) => onConfirmacao(event.target.checked)}
+          className="mt-1"
+        />
+        Li as afirmações e confirmo que esta ordem representa minhas preferências atuais.
+        Posso confirmar sem mover os itens.
+      </label>
+
       <div className="flex items-center justify-between gap-3">
         {onBack ? (
           <Button type="button" variant="ghost" onClick={onBack}>
@@ -99,9 +114,7 @@ export default function BrainHexOrdenacaoStep({
         ) : (
           <span />
         )}
-        {/* Sempre habilitado: a lista já nasce completa e qualquer ordem é
-            válida. Exigir "mexer" puniria quem concorda com a ordem sorteada. */}
-        <Button type="button" onClick={onFinish}>
+        <Button type="button" disabled={!confirmada} onClick={() => { if (confirmada) onFinish(); }}>
           Concluir
           <Check className="ml-2 h-4 w-4" aria-hidden="true" />
         </Button>

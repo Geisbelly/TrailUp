@@ -5,6 +5,7 @@ import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
 import { Aluno } from "@/models/Aluno";
+import { nomeDoArquivoDeFoto, textoDaRef } from "@/utils/fotoPerfil";
 
 export type AvisoInfo = (titulo: string, descricao: string) => void;
 
@@ -38,15 +39,24 @@ export function useInfoPessoais(avisar: AvisoInfo) {
   const [bannerUri, setBannerUri] = useState<string | null>(
     (usuario as any)?.banner_url ?? null
   );
+  // O que vai para o banco: a ref no Storage. `fotoUri`/`bannerUri` sao o que
+  // a tela mostra (o arquivo local logo depois de escolher).
+  const [fotoRef, setFotoRef] = useState<string | null>(
+    (usuario as any)?.foto_url ?? null
+  );
+  const [bannerRef, setBannerRef] = useState<string | null>(
+    (usuario as any)?.banner_url ?? null
+  );
 
   const uploadToStorage = async (uri: string, type: "foto" | "banner") => {
     try {
+      if (!usuario?.id) throw new Error("sessão sem aluno");
       const response = await fetch(uri);
-      const ext = uri.split(".").pop() || "jpg";
-      const mime = response.headers.get("content-type") || `image/${ext}`;
+      const mime = response.headers.get("content-type") || `image/${uri.split(".").pop() || "jpeg"}`;
       const arrayBuffer = await response.arrayBuffer();
       const file = new Uint8Array(arrayBuffer);
-      const fileName = `${usuario?.id ?? "user"}-${Date.now()}.${ext}`;
+      // Pasta com o uid: e' o que as politicas de `storage.objects` checam (#195).
+      const fileName = nomeDoArquivoDeFoto(usuario.id, mime, Date.now());
       const bucket = type === "foto" ? "perfil_fotos" : "banners_fotos";
 
       const { data, error } = await supabase.storage
@@ -54,19 +64,24 @@ export function useInfoPessoais(avisar: AvisoInfo) {
         .upload(fileName, file, { contentType: mime, upsert: false });
       if (error) throw error;
 
-      const { data: publicUrl } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(data.path);
-
+      // Bucket privado (#195): grava a REFERENCIA `<bucket>/<caminho>`, nao a
+      // URL publica (que da' 400). Quem mostra a imagem assina na hora; o
+      // preview continua com o arquivo local que o aluno escolheu.
+      const ref = textoDaRef({ bucket, caminho: data.path });
       if (type === "foto") {
-        setFotoUri(publicUrl.publicUrl);
+        setFotoRef(ref);
       } else {
-        setBannerUri(publicUrl.publicUrl);
+        setBannerRef(ref);
       }
 
       avisar("Upload concluído", "Imagem atualizada com sucesso.");
     } catch (err) {
       console.warn("Erro ao subir imagem:", err);
+      if (type === "foto") {
+        setFotoUri(fotoRef);
+      } else {
+        setBannerUri(bannerRef);
+      }
       avisar("Erro", "Não foi possível enviar a imagem agora.");
     }
   };
@@ -122,8 +137,8 @@ export function useInfoPessoais(avisar: AvisoInfo) {
         apelido,
         modoResposta,
         descricao,
-        foto_url: fotoUri,
-        banner_url: bannerUri,
+        foto_url: fotoRef,
+        banner_url: bannerRef,
       });
       await atualizarUsuario();
       setEditando(false);

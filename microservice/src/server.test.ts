@@ -104,6 +104,22 @@ describe("GET /api/health", () => {
       await c();
     }
   });
+
+  it("expõe o SHA explícito do deploy e rejeita revisão ausente ou inválida", async () => {
+    const previous = process.env.TRAILUP_BUILD_COMMIT;
+    try {
+      for (const value of [undefined, "", "main", "private-value", "abcdef1", "A".repeat(40)]) {
+        if (value === undefined) delete process.env.TRAILUP_BUILD_COMMIT;
+        else process.env.TRAILUP_BUILD_COMMIT = value;
+        const response = await fetch(`${base}/api/health`);
+        const body = await response.json() as { build_commit: string | null };
+        assert.equal(body.build_commit, value === "A".repeat(40) ? "a".repeat(40) : null);
+      }
+    } finally {
+      if (previous === undefined) delete process.env.TRAILUP_BUILD_COMMIT;
+      else process.env.TRAILUP_BUILD_COMMIT = previous;
+    }
+  });
 });
 
 // ─── POST /api/v1/generate/block ───────────────────────────────────────────

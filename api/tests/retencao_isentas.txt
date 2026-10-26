@@ -1,0 +1,7 @@
+# Tabelas com coluna de pessoa que NAO tem linha em public.retencao_politica (#195).
+# Formato: tabela | motivo. Esta lista SO DIMINUI: test_retencao_politica.py
+# reprova se ela crescer. Tabela nova com dado de pessoa entra em
+# retencao_politica na propria migracao, nunca aqui.
+conquistas | criado_por e o professor; catalogo da turma, nao dado de aluno
+eventos_classe | criado_por e o professor; catalogo da turma, nao dado de aluno
+missoes | criado_por e o professor; catalogo da turma, nao dado de aluno

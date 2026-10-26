@@ -41,12 +41,14 @@ const linha = (extra: Record<string, unknown> = {}) => ({
   medalha_participacao: true,
   medalha_destaque: false,
   recompensa: null,
+  abrir_no_inicio: false,
   ...extra,
 });
 
 const payload = {
   topico_id: null, titulo: "S", descricao: "", inicio: "a", fim: "b", pecas: ["arena" as const], modalidade_guilda: false,
   guilda_tamanho_max: null, pontos: 0, moedas: 0, medalha_participacao: true, medalha_destaque: false, recompensa: null,
+  abrir_no_inicio: true,
 };
 
 beforeEach(() => {
@@ -60,6 +62,8 @@ describe("mapearEvento", () => {
   it("normaliza nulos, descarta peça que não é texto e cai em rascunho com status desconhecido", () => {
     expect(mapearEvento(linha())).toMatchObject({ descricao: "", pecas: ["arena", "missoes"], moedas: 0, recompensa: "", status: "aberto" });
     expect(mapearEvento(linha({ status: "xyz", pecas: null })).status).toBe("rascunho");
+    expect(mapearEvento(linha()).abrirNoInicio).toBe(false);
+    expect(mapearEvento(linha({ abrir_no_inicio: true })).abrirNoInicio).toBe(true);
     expect(mapearEvento(linha({ pecas: null })).pecas).toEqual([]);
   });
 });

@@ -3,6 +3,7 @@ import { ProfileArtwork } from '@/components/ProfileArtwork';
 import { getGuardianFaceImage, normalizeBrainHexProfile } from '@/constants/profileImages';
 import { getProfileShellPalette } from '@/utils/profileShellTheme';
 import { FRAME_CANVAS_SIZE, getProfileFrameLayout } from '@/utils/profileFrameLayout';
+import { useFonteDeImagem } from '@/hooks/useFonteDeImagem';
 import React, { useId } from 'react';
 import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
@@ -16,13 +17,15 @@ type Props = {
   artworkTone?: boolean;
 };
 
-export function FramedProfileImage({ profile, source, size = 112, fit = 'cover', label, artworkTone = false }: Props) {
+export function FramedProfileImage({ profile, source: sourceBruta, size = 112, fit = 'cover', label, artworkTone = false }: Props) {
+  // Foto privada do Storage (#195) vira URL assinada; enquanto isso, o rosto padrao.
+  const source = useFonteDeImagem(sourceBruta);
   const rimId = `profile-rim-${useId().replace(/:/g, '')}`;
   const key = normalizeBrainHexProfile(profile) ?? 'mastermind';
   const palette = getProfileShellPalette(key);
   const { opening, photoSize: innerSize, photoLeft, photoTop } = getProfileFrameLayout(key, size);
   return (
-    <View pointerEvents="none" accessible={Boolean(label)} accessibilityLabel={label} style={[styles.root, { width: size, height: size }]}>
+    <View accessible={Boolean(label)} accessibilityLabel={label} style={[styles.root, { width: size, height: size }, { pointerEvents: "none" }]}>
       <View style={{ position: 'absolute', left: photoLeft, top: photoTop, width: innerSize, height: innerSize, borderRadius: innerSize / 2, overflow: 'hidden', backgroundColor: palette.surface }}>
         {artworkTone && source ? <ProfileArtwork source={source} profile={profile} width={innerSize} /> : <Image source={source ?? getGuardianFaceImage(key)} resizeMode={fit} style={{ width: innerSize, height: innerSize }} accessible={false} />}
       </View>

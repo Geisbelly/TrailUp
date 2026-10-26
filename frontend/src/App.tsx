@@ -19,6 +19,7 @@ import { MATERIAL_ROUTE_PATH } from "./components/console/personalizacoes/materi
 const Index = lazyWithReload(() => import("./pages/Index"));
 const CadastroAluno = lazyWithReload(() => import("./pages/CadastroAluno"));
 const CadastroProfessor = lazyWithReload(() => import("./pages/CadastroProfessor"));
+const Aluno = lazyWithReload(() => import("./pages/Aluno"));
 const Login = lazyWithReload(() => import("./pages/Login"));
 const EsqueciSenha = lazyWithReload(() => import("./pages/EsqueciSenha"));
 const RedefinirSenha = lazyWithReload(() => import("./pages/RedefinirSenha"));
@@ -56,6 +57,7 @@ const App = () => (
               <Route path="/cadastro-aluno" element={<CadastroAluno />} />
               <Route path="/cadastro-professor" element={<CadastroProfessor />} />
               <Route path="/auth/confirmacao" element={<AuthConfirm />} />
+              <Route path="/aluno" element={<ProtectedRoute><Aluno /></ProtectedRoute>} />
               <Route path="/login" element={<Login />} />
               <Route path={FORGOT_PASSWORD_PATH} element={<EsqueciSenha />} />
               <Route path={RESET_PASSWORD_PATH} element={<RedefinirSenha />} />

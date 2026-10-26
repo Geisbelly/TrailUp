@@ -70,6 +70,14 @@ SESSAO = ("auth.uid()", "auth.jwt()")
 # Linha nova aqui e decisao de produto, nao conveniencia: diga o que protege o
 # dado, ou revogue o EXECUTE.
 SEM_SESSAO_POR_DECISAO: dict[str, str] = {
+    "fn_enviar_contato_publico": (
+        "Contato do site publico (20261024_06, #195): quem usa nao tem conta, entao nao ha sessao "
+        "para conferir. Nao le nem devolve dado de ninguem: so dispara um e-mail para o destino "
+        "fixo da configuracao (`app_config`), nunca para um endereco vindo do parametro, o que "
+        "impede o uso como relay. Contra abuso: armadilha (honeypot), limites de tamanho, teto "
+        "por origem e teto global por hora, com advisory lock. O contador guarda so o hash da "
+        "origem, com RLS e sem GRANT."
+    ),
     "desafio_responder": (
         "Despachante da 20261021_27: NAO confere sessao de proposito. Ele so olha se existe "
         "`desafio_participantes.equipe = 2` e delega a `arena_responder` ou a "

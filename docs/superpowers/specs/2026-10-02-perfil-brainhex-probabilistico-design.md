@@ -1,5 +1,12 @@
 # Perfil BrainHex probabilístico: quiz como prior, métricas do aluno como evidência
 
+## Nota de revisão — 24/10/2026
+
+As alegações de validade e de confiança probabilística deste desenho histórico
+foram revistas. Para o comportamento v3 e seus limites, consultar
+[Adaptação BrainHex baseada nas evidências](../../analises/issue-1-adaptacao-evidencias.md).
+Os pesos deste protótipo não foram calibrados; a v3 não estima confiança.
+
 > Issue #1. Substitui a classificação determinística por um perfil com
 > **incerteza declarada**, que nasce do questionário e é corrigido pelo que o
 > aluno de fato faz no app.

@@ -111,7 +111,7 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
 
   const ehMapa = visual === "mapa";
   const cenario = (
-    <View pointerEvents="none" accessible={false} style={StyleSheet.absoluteFill}>
+    <View accessible={false} style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
       <Image key={perfil} source={getProfileArtwork(perfil, ehMapa ? "map" : "trail")} resizeMode="cover" style={s.cenario} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.background, opacity: 0.35 }]} />
     </View>

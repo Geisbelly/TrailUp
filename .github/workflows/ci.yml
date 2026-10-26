@@ -65,6 +65,7 @@ jobs:
             api:
               - *ci
               - 'api/**'
+              - 'scripts/verificar_implantacao.py'
               # test_env_example_sem_segredo_real.py varre os .env.example de
               # TODOS os servicos, mas mora em api/tests — sem esta linha, uma
               # chave colada em mobile/.env.example nao acionaria o guard.
@@ -75,6 +76,15 @@ jobs:
             frontend:
               - *ci
               - 'frontend/**'
+              # A jornada local cruza o cadastro web, SQL e o consumidor mobile.
+              - 'scripts/testar-cadastro-atomico.mjs'
+              - 'scripts/validar-cadastro-ate-material.mjs'
+              - 'scripts/e2e_cadastro/**'
+              - 'api/alembic/versions/**'
+              - 'mobile/src/services/personalizacao/**'
+              - 'mobile/src/utils/brainHex.ts'
+              - 'mobile/src/models/Aluno.ts'
+              - 'mobile/src/constants/brainHexProfiles.ts'
             mobile:
               - *ci
               - 'mobile/**'
@@ -120,6 +130,8 @@ jobs:
         run: ruff check .
       - name: Testes (pytest)
         run: pytest
+      - name: Executor Alembic em PostgreSQL descartável
+        run: TRAILUP_TEST_DOCKER=1 pytest tests/test_migrations_postgres.py
 
   microservice:
     needs: changes
@@ -201,6 +213,15 @@ jobs:
         run: npm run typecheck
       - name: Testes (vitest)
         run: npm test
+      - name: Transação de cadastro em PostgreSQL isolado
+        run: npm run test:cadastro-banco
+      - name: Chromium para os testes do cadastro
+        run: npx playwright install --with-deps chromium
+      - name: Jornada de cadastro (serviços simulados, sem produção)
+        run: npm run test:cadastro
+      - name: Jornada integrada (Auth, SMTP, PostgREST e PostgreSQL locais)
+        timeout-minutes: 10
+        run: npm run test:cadastro-integrado
       - name: Build
         run: npm run build
 

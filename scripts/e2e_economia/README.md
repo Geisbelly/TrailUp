@@ -43,27 +43,36 @@ migrar por cima dele.
    psql ... -c "INSERT INTO alembic_version VALUES ('20261017_10')"
    ```
 
-4. Migre com `alembic_local.py` (ver abaixo) e rode o teste:
+4. Migre com o executor oficial e rode o teste:
 
    ```sh
    cd api
    export ALEMBIC_DATABASE_URL=postgresql://postgres:e2elocal@localhost:55432/postgres
    export DATABASE_URL=postgresql+asyncpg://postgres:e2elocal@localhost:55432/postgres
    export SUPABASE_JWT_SECRET=local ADMIN_PANEL_PASSWORD=local
-   PYTHONPATH=. python ../scripts/e2e_economia/alembic_local.py upgrade head
+   python -m alembic upgrade head
    TRAILUP_E2E_DATABASE_URL=$ALEMBIC_DATABASE_URL python -m pytest tests/test_e2e_economia_banco.py
    ```
 
 5. `docker rm -f trailup-e2e-db` no fim.
 
-## `alembic_local.py` e o rollback silencioso
+## Histórico do rollback silencioso — corrigido no #545
 
-`trava_de_migracao` (env.py) executa `pg_advisory_lock` na conexão antes de
+`trava_de_migracao` (env.py) executava `pg_advisory_lock` na conexão antes de
 `context.begin_transaction()`. No SQLAlchemy 2 esse `execute` abre a transação
 da conexão (autobegin); o Alembic então não abre a dele, ninguém dá COMMIT, e
 o fechamento da conexão desfaz tudo. O log diz "Running upgrade ..." e o
 `alembic_version` não muda — tanto no `alembic upgrade` manual quanto na
 subida da API com `DATABASE_MIGRATIONS_ON_STARTUP=true` (medido localmente).
-`alembic_local.py` só faz COMMIT logo depois do lock (o lock é de sessão, então
-segue valendo). A correção de verdade fica para um PR próprio, porque ligar a
-migração na subida muda o deploy de produção.
+O PR #545 corrigiu o executor oficial: encerra a transação do SELECT antes de
+entregar a conexão ao Alembic; o lock de sessão sobrevive ao COMMIT. Esta
+documentação ficou desatualizada depois da correção. `alembic_local.py` agora é
+apenas um alias legado, sem monkeypatch ou COMMIT adicional.
+
+O teste `api/tests/test_migrations_postgres.py` usa o `env.py` real em PostgreSQL
+Docker descartável. Confere persistência após reconexão, rollback de DDL/dados e
+revisão em falha, e dois processos concorrentes bloqueados na mesma trava.
+Execute com `TRAILUP_TEST_DOCKER=1 python -m pytest tests/test_migrations_postgres.py`
+dentro de `api/`. Ele cria seu próprio banco local; não aceita DSN externo. Usa
+revisões sintéticas para isolar o executor, sem alegar validação de toda a cadeia
+ou do schema de produção.

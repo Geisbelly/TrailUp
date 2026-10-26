@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from app.services.media_contract import (
@@ -6,6 +7,19 @@ from app.services.media_contract import (
     PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
+
+
+@pytest.mark.parametrize("value, expected", [
+    (None, None), ("", None), ("main", None), ("abcdef1", None),
+    ("private-value", None), ("A" * 40 + "a", None), (" A" + "a" * 39 + " ", "a" * 40),
+])
+def test_health_reports_only_explicit_full_build_commit(app, monkeypatch, value, expected):
+    if value is None:
+        monkeypatch.delenv("TRAILUP_BUILD_COMMIT", raising=False)
+    else:
+        monkeypatch.setenv("TRAILUP_BUILD_COMMIT", value)
+    with TestClient(app) as client:
+        assert client.get("/health").json()["details"]["build_commit"] == expected
 
 
 def test_app_startup_compiles_default_graph(app) -> None:

@@ -379,9 +379,10 @@ async function callGeminiJson(options: GeminiCallOptions): Promise<{ parsed: unk
   for (const attempt of attemptConfigs) {
     let res: Response;
     try {
-      res = await fetch(`${GEMINI_URL}?key=${options.key}`, {
+      // Chave no header, nao na URL (#195): URL vai parar em log.
+      res = await fetch(GEMINI_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-goog-api-key": options.key },
         body: JSON.stringify({
           contents: [{ parts: [{ text: options.prompt }] }],
           generationConfig: {
@@ -1200,12 +1201,12 @@ async function callGemini(params: {
   maxOutputTokens: number;
   responseSchema?: Record<string, unknown>;
 }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${params.key}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
   let response: Response;
   try {
     response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-goog-api-key": params.key },
       body: JSON.stringify({
         contents: [{ parts: [{ text: params.prompt }] }],
         generationConfig: {

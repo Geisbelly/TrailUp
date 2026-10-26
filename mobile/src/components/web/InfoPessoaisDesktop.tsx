@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React from "react";
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import tinycolor from "tinycolor2";
 
 import { FramedProfileImage } from "@/components/FramedProfileImage";
@@ -8,6 +8,7 @@ import { getProfileArtwork } from "@/constants/designAssets";
 import type { useInfoPessoais } from "@/hooks/useInfoPessoais";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
+import { ImagemDoStorage } from "@/components/ImagemDoStorage";
 
 type Form = ReturnType<typeof useInfoPessoais>;
 
@@ -35,7 +36,7 @@ export function InfoPessoaisDesktop({ form, palette }: { form: Form; palette: Pr
           <Text style={[s.rotuloCartao, { color: palette.textMuted }]}>SEU PERFIL</Text>
           <View style={s.bannerArea}>
             <View style={[s.banner, { borderColor: palette.border }]}>
-              <Image source={bannerUri ? { uri: bannerUri } : getProfileArtwork(palette.profile, "banner")} resizeMode="cover" style={s.bannerImagem} />
+              <ImagemDoStorage source={bannerUri ? { uri: bannerUri } : getProfileArtwork(palette.profile, "banner")} fallback={getProfileArtwork(palette.profile, "banner")} resizeMode="cover" style={s.bannerImagem} />
               <Pressable accessibilityRole="button" onPress={() => void handlePickImage("banner")} style={[s.botaoVidro, s.trocarBanner, vidro]}>
                 <MaterialCommunityIcons name="camera-outline" size={16} color={palette.text} />
                 <Text style={[s.botaoVidroTexto, { color: palette.text }]}>Trocar banner</Text>

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_session, get_settings
+from app.core.build_info import get_build_commit
 from app.core.settings import Settings
 from app.db.session import ping_database
 from app.schemas.api import HealthResponse
@@ -43,6 +44,7 @@ async def healthcheck(
             "presentation_design_version": PRESENTATION_DESIGN_VERSION,
             "content_enrichment_provider": CONTENT_ENRICHMENT_PROVIDER,
             "render_git_commit": os.getenv("RENDER_GIT_COMMIT") or None,
+            "build_commit": get_build_commit(),
         },
         checked_at=datetime.now(UTC),
     )

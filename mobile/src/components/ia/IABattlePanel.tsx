@@ -8,7 +8,10 @@ import {
 import { FontFamily } from "@/styles/GlobalStyle";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View, Platform } from "react-native";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 type BattlePanelScope = Extract<IAFeatureSelectorScope, { scope: "topic" | "item" }>;
 
@@ -460,10 +463,7 @@ const styles = StyleSheet.create({
   },
   cardOverlay: {
     marginTop: 0,
-    shadowColor: "#02040a",
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 12 },
+    ...shadowStyle({ color: "#02040a", offset: { width: 0, height: 12 }, opacity: 0.22, radius: 18 }, IS_WEB),
     elevation: 8,
   },
   cardLateral: {

@@ -59,7 +59,7 @@ test("o aceite nao pede a permissao da camera", () => {
 });
 
 test("o aceite grava a camera desligada", () => {
-  const aceite = /const handleAccept[\s\S]*?setVisible\(false\)/.exec(gate)?.[0] ?? "";
+  const aceite = /const handleAccept[\s\S]*?setTermoPendente\(false\)/.exec(gate)?.[0] ?? "";
   assert.ok(aceite, "handleAccept não encontrado");
   assert.match(aceite, /cameraEnabled:\s*false/);
   assert.match(aceite, /cameraPermissionGranted:\s*false/);

@@ -895,8 +895,9 @@ async def test_hydrate_source_materials_does_not_use_url_as_fallback_text(monkey
     monkeypatch.setattr("app.services.personalizacao._ingest_source", _fail_ingest)
 
     source_url = (
-        "https://xrebtkmdewolzmpsdwgh.supabase.co/storage/v1/object/public/"
-        "conteudos/b49f2e21-a6f9-4c8d-9533-5a32bb219754/114/1776024640723_SPD-Aula-01-introducao.pptx"
+        # bucket `conteudos` e' privado (20261024_10): sai a URL do gateway
+        "https://xrebtkmdewolzmpsdwgh.supabase.co/functions/v1/storage-redirect?path="
+        "b49f2e21-a6f9-4c8d-9533-5a32bb219754/114/1776024640723_SPD-Aula-01-introducao.pptx"
     )
     hydrated = await _hydrate_source_materials_content(
         materiais_origem=[
@@ -1115,8 +1116,9 @@ async def test_persist_hydrated_sources_updates_fontes_with_extracted_text_and_f
     assert call["descricao"] == extracted_text
     assert call["storage_path"] == "b49f2e21-a6f9-4c8d-9533-5a32bb219754/114/1776024640723_SPD-Aula-01-introducao.pptx"
     assert call["arquivo_url"] == (
-        "https://xrebtkmdewolzmpsdwgh.supabase.co/storage/v1/object/public/"
-        "conteudos/b49f2e21-a6f9-4c8d-9533-5a32bb219754/114/1776024640723_SPD-Aula-01-introducao.pptx"
+        # bucket `conteudos` e' privado (20261024_10): sai a URL do gateway
+        "https://xrebtkmdewolzmpsdwgh.supabase.co/functions/v1/storage-redirect?path="
+        "b49f2e21-a6f9-4c8d-9533-5a32bb219754/114/1776024640723_SPD-Aula-01-introducao.pptx"
     )
     assert call["mime_type"] == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
     assert call["nome_arquivo"] == "1776024640723_SPD-Aula-01-introducao.pptx"

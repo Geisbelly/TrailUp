@@ -1,8 +1,9 @@
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.agent.graph.builder import build_graph
 from app.agent.graph.checkpointer import (
@@ -12,10 +13,13 @@ from app.agent.graph.checkpointer import (
 )
 from app.api.router import api_router
 from app.core.settings import Settings, get_settings
+from app.core.tracing import aplicar_politica_de_tracing
 from app.db.migrations import upgrade_database_to_head
 from app.db.session import build_session_factory, execute_with_database_retry
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
 from app.services.personalizacao_jobs import personalizacao_jobs_loop
+from app.services.retencao_externa import retencao_externa_loop
+from app.services.roteamento_ia import MENSAGEM_IA_INDISPONIVEL, IAIndisponivelParaMenor
 
 
 def _configure_windows_event_loop_policy() -> None:
@@ -25,6 +29,8 @@ def _configure_windows_event_loop_policy() -> None:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     app_settings = settings or get_settings()
+    # Antes de qualquer cliente LangChain existir (#195).
+    aplicar_politica_de_tracing(app_settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -80,10 +86,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if database_url.startswith("postgres"):
             personalizacao_jobs_task = asyncio.create_task(personalizacao_jobs_loop(app))
         app.state.personalizacao_jobs_task = personalizacao_jobs_task
+        retencao_task = None
+        if app_settings.retencao_externa_enabled and database_url.startswith("postgres"):
+            retencao_task = asyncio.create_task(retencao_externa_loop(app))
+        app.state.retencao_externa_task = retencao_task
 
         try:
             yield
         finally:
+            if retencao_task is not None:
+                retencao_task.cancel()
+                try:
+                    await retencao_task
+                except asyncio.CancelledError:
+                    pass
             if personalizacao_jobs_task is not None:
                 personalizacao_jobs_task.cancel()
                 try:
@@ -112,6 +128,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=app_settings.cors_allow_headers,
     )
     app.include_router(api_router)
+
+    @app.exception_handler(IAIndisponivelParaMenor)
+    async def _ia_indisponivel_para_menor(_request: Request, exc: IAIndisponivelParaMenor) -> JSONResponse:
+        # #195: rota de menor so usa OpenAI; se ela falhar, erro amigavel (nunca Gemini).
+        return JSONResponse(
+            status_code=503,
+            content={"detail": {"codigo": "ia_indisponivel", "mensagem": MENSAGEM_IA_INDISPONIVEL}},
+        )
+
     return app
 
 

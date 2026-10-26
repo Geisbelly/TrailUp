@@ -45,6 +45,11 @@ RUN mkdir -p /opt/models \
 # código (em dev é sobreposto pelo volume do compose)
 COPY . .
 
+# Preencher com o SHA completo do checkout no build do deploy.
+# Depois das dependências, para não invalidar esse cache a cada revisão.
+ARG TRAILUP_BUILD_COMMIT
+ENV TRAILUP_BUILD_COMMIT=$TRAILUP_BUILD_COMMIT
+
 EXPOSE 8000
 
 # --reload para hot-reload em desenvolvimento

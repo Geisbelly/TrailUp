@@ -1,0 +1,25 @@
+{
+  "checked_at": "2026-10-26T03:08:20.097931+00:00",
+  "scope": "declared_build_revisions_only",
+  "checks": [
+    {
+      "service": "frontend",
+      "url": "https://trailup.vercel.app/version.json",
+      "expected_commit": "019d02c0f0e4e6b3eeae19e0a8faabd97af213ca",
+      "reported_commit": null,
+      "matches": false,
+      "http_status": 200,
+      "reason": "not_json"
+    },
+    {
+      "service": "api",
+      "url": "https://trailup.vercel.app/trailup-api/health",
+      "expected_commit": "019d02c0f0e4e6b3eeae19e0a8faabd97af213ca",
+      "reported_commit": null,
+      "matches": false,
+      "http_status": 200,
+      "reason": "revision_unknown"
+    }
+  ],
+  "all_requested_revisions_match": false
+}

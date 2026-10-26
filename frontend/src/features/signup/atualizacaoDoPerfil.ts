@@ -1,29 +1,10 @@
 /**
- * Atualizacao do perfil por evidencia comportamental.
- *
- * CORRECAO DE DESENHO. A primeira versao do spec tinha "piso de evidencia"
- * (abaixo de N sessoes o posterior nao se move) e "teto de deslocamento"
- * (a afinidade muda no maximo X por ciclo). Os dois eram muletas:
- *
- * - o piso existia porque a atualizacao nao estava formulada direito. Numa
- *   combinacao ponderada por PRECISAO, "pouco dado quase nao move o posterior"
- *   nao e' regra que se escreve: com zero observacao o posterior e' EXATAMENTE
- *   o prior, por construcao. O piso so' escondia a formulacao errada;
- * - o teto misturava custo com inferencia. "Regerar midia e' caro" e' verdade,
- *   mas o lugar de tratar isso e' em QUEM CONSOME o perfil (so' regera quando o
- *   dominante muda E a confianca e' alta), nao distorcendo a estimativa.
- *
- * Consequencia pratica: isto NAO depende de volume de telemetria para existir.
- * Funciona com zero observacoes (devolve o prior intacto), com tres (mal se
- * move) e com trezentas (domina o prior). O que depende de dado e' VALIDAR se
- * os indicadores preveem bem — e isso e' calibrar peso, nao poder implementar.
- *
- * MATEMATICA. Confianca e precisao sao a mesma coisa em unidades diferentes:
- *
- *     tau = c / (1 - c)        c = tau / (1 + tau)
- *
- * Com isso, combinar evidencias e' somar precisoes, e a confianca posterior sai
- * da mesma conta — nao e' um numero inventado ao lado da estimativa.
+ * Modelo experimental legado de combinação por precisão; não integrado ao
+ * ciclo operacional identificado na auditoria #1. A transformação c/(1-c)
+ * é uma convenção do protótipo, não prova de precisão estatística medida.
+ * Sua aplicação exige calibração e hipóteses sobre dependência/variância.
+ * Perfis exploratórios v3 têm confiança ausente: não entram nesse atualizador.
+ * Ver docs/analises/issue-1-adaptacao-evidencias.md.
  */
 
 import type { BrainHexProfileKey } from "./brainhex";
@@ -49,7 +30,7 @@ export type Observacao = {
 export type EstadoDoPerfil = {
   afinidade: Record<BrainHexProfileKey, number>;
   /** 0..1 */
-  confianca: number;
+  confianca: number | null;
 };
 
 export type Atualizacao = EstadoDoPerfil & {
@@ -65,7 +46,7 @@ export function precisaoDe(confianca: number): number {
   return c / (1 - c);
 }
 
-/** Precisao -> confianca. Inversa exata de `precisaoDe`. */
+/** Precisão -> índice legado. A inversão perde exatidão quando `precisaoDe` limita c. */
 export function confiancaDe(precisao: number): number {
   const tau = Math.max(0, Number(precisao) || 0);
   return tau / (1 + tau);
@@ -83,6 +64,12 @@ export function atualizarPerfil(params: {
   observacoes: readonly Observacao[];
 }): Atualizacao {
   const { prior } = params;
+  if (params.observacoes.length === 0) {
+    return { afinidade: { ...prior.afinidade }, confianca: prior.confianca, movimento: {} };
+  }
+  if (prior.confianca === null) {
+    throw new Error("Não há precisão calibrada para atualizar o perfil exploratório");
+  }
   const tauPrior = precisaoDe(prior.confianca);
 
   const porPerfil = new Map<string, Observacao[]>();

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 import json
+import time
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -16,6 +17,7 @@ from pydantic import BaseModel
 
 from app.core.settings import Settings
 from app.services.llm import StructuredOutputError, extract_json, load_prompt
+from app.services.rag_observabilidade import registrar_busca, resumo_da_busca
 
 
 class OpenAIRagService:
@@ -64,33 +66,65 @@ class OpenAIRagService:
             f"{json.dumps(normalized_payload, ensure_ascii=False, default=str)}"
         )
 
+        tool: dict[str, Any] = {
+            "type": "file_search",
+            "vector_store_ids": [self.vector_store_id],
+        }
+        if self.top_k is not None:
+            tool["max_num_results"] = self.top_k
+        modelo = model or self.settings.openai_model_default
+
+        response = None
+        inicio = time.perf_counter()
         try:
-            response = await self._get_client().responses.create(
-                model=model or self.settings.openai_model_default,
-                input=input_text,
-                tools=[
-                    {
-                        "type": "file_search",
-                        "vector_store_ids": [self.vector_store_id],
-                    }
-                ],
-                include=["file_search_call.results"],
-                store=False,
-                text={
-                    "format": {
-                        "type": "json_schema",
-                        "name": schema.__name__,
-                        "strict": True,
-                        "schema": _strict_json_schema(schema.model_json_schema()),
-                    }
-                },
-            )
+            try:
+                response = await self._get_client().responses.create(
+                    model=modelo,
+                    input=input_text,
+                    tools=[tool],
+                    include=["file_search_call.results"],
+                    store=False,
+                    text={
+                        "format": {
+                            "type": "json_schema",
+                            "name": schema.__name__,
+                            "strict": True,
+                            "schema": _strict_json_schema(schema.model_json_schema()),
+                        }
+                    },
+                )
+            except Exception as exc:
+                self._registrar(None, inicio, prompt_name, modelo, exc)
+                raise
+            self._registrar(response, inicio, prompt_name, modelo, None)
             raw = extract_json(response.output_text)
             return schema.model_validate(raw)
         except Exception as exc:
             raise StructuredOutputError(
                 f"Falha no OpenAI RAG para {prompt_name}: {type(exc).__name__}"
             ) from exc
+
+    @property
+    def top_k(self) -> int | None:
+        return self.settings.openai_rag_top_k
+
+    def _registrar(
+        self, response: Any, inicio: float, prompt_name: str, modelo: str, erro: BaseException | None
+    ) -> None:
+        # Observabilidade nunca derruba a resposta (#67).
+        try:
+            registrar_busca(
+                resumo_da_busca(
+                    response,
+                    latencia_ms=(time.perf_counter() - inicio) * 1000,
+                    prompt_name=prompt_name,
+                    model=modelo,
+                    top_k=self.top_k,
+                    erro=erro,
+                )
+            )
+        except Exception:  # pragma: no cover
+            pass
 
     async def upload_public_file(
         self,
