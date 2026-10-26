@@ -144,3 +144,4 @@ src/utils/matematicaLegivel.test.ts
 src/hooks/useAviso.test.ts
 src/utils/semAlertDireto.test.ts
 src/utils/fotoPerfil.test.ts
+src/utils/authValidacao.test.ts

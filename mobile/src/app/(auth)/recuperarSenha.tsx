@@ -1,62 +1,42 @@
-import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
+import {
+  AlertaAuthCelular,
+  BotaoAuthCelular,
+  CabecaFolhaAuth,
+  CampoAuthCelular,
+  MolduraAuthCelular,
+  useDigitando,
+} from "@/components/auth/AuthCelular";
 import { BotaoAuth, CabecaPainelAuth, CampoAuth, COR_AUTH, MolduraAuthDesktop } from "@/components/web/AuthDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { Feather } from "@expo/vector-icons";
-import { app } from "@/constants/definicoes";
 import { useDialog } from "@/context/DialogContext";
 import { resetPassword } from "@/services/auth";
-import { FontFamily } from "@/styles/GlobalStyle";
-import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
-import { LinearGradient } from "expo-linear-gradient";
-import { Design } from "@/styles/design";
+import { emailDeRecuperacaoValido } from "@/utils/authValidacao";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Linking,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import tinycolor from "tinycolor2";
-import { textShadowStyle } from "@/utils/webShadow";
-
-const IS_WEB = Platform.OS === "web";
-
-// Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
-const AUTH_PALETTE = buildProfileShellPaletteFromAccent(Design.primary, "magica");
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 export default function RecuperarSenhaScreen() {
   const [email, setEmail] = useState("");
   const [enviando, setEnviando] = useState(false);
   const router = useRouter();
   const { showDialog } = useDialog();
-  const insets = useSafeAreaInsets();
   const desktop = useDesktopWeb();
-  // Tela larga (#346, protótipo v4): e-mail inválido avisa no cartão e o envio troca o formulário pela confirmação.
-  const [estadoLargo, setEstadoLargo] = useState<"form" | "invalido" | "enviado">("form");
+  const { digitando, aoFocar, aoDesfocar } = useDigitando();
+  // Protótipo v4 e mobile-v1: e-mail inválido avisa na tela e o envio troca o formulário pela confirmação.
+  const [estado, setEstado] = useState<"form" | "invalido" | "enviado">("form");
 
-  const gold = tinycolor(AUTH_PALETTE.accent).lighten(12).toHexString();
-  const goldDim = tinycolor(AUTH_PALETTE.accent).setAlpha(0.55).toRgbString();
-  const goldFaint = tinycolor(AUTH_PALETTE.accent).setAlpha(0.1).toRgbString();
+  const emailValido = emailDeRecuperacaoValido(email);
 
-  const validarEmail = (valor: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor);
-  const emailValido = validarEmail(email);
-
-  const enviarLargo = async () => {
+  const enviar = async () => {
     if (!emailValido) {
-      setEstadoLargo("invalido");
+      setEstado("invalido");
       return;
     }
     setEnviando(true);
     try {
       await resetPassword(email);
-      setEstadoLargo("enviado");
+      setEstado("enviado");
     } catch (error) {
       showDialog({ title: "Erro ao enviar", description: "Não foi possível enviar o e-mail.", tone: "error" });
       console.error(error);
@@ -65,27 +45,12 @@ export default function RecuperarSenhaScreen() {
     }
   };
 
-  const handleReset = async () => {
-    if (!emailValido) {
-      showDialog({ title: "E-mail inválido", description: "Digite um e-mail válido.", tone: "warning" });
-      return;
-    }
-    setEnviando(true);
-    try {
-      await resetPassword(email);
-      showDialog({
-        title: "Link enviado",
-        description: "Um link de recuperação foi enviado para seu e-mail.",
-        tone: "success",
-      });
-      router.back();
-    } catch (error) {
-      showDialog({ title: "Erro ao enviar", description: "Não foi possível enviar o e-mail.", tone: "error" });
-      console.error(error);
-    } finally {
-      setEnviando(false);
-    }
+  const aoDigitar = (v: string) => {
+    setEmail(v);
+    if (estado === "invalido") setEstado("form");
   };
+
+  const irParaLogin = () => router.replace("/(auth)/login");
 
   if (desktop) {
     return (
@@ -93,7 +58,7 @@ export default function RecuperarSenhaScreen() {
         titulo="Todo caminho tem volta."
         texto="Enviamos um link para você criar uma nova senha e seguir a trilha de onde parou."
       >
-        {estadoLargo === "enviado" ? (
+        {estado === "enviado" ? (
           <View accessibilityRole="alert" style={styles.feito}>
             <View style={styles.feitoIcone}>
               <Feather name="mail" size={24} color={COR_AUTH.link} />
@@ -103,12 +68,12 @@ export default function RecuperarSenhaScreen() {
               Um link de recuperação foi enviado para <Text style={styles.forte}>{email}</Text>. Confira também a caixa de spam.
             </Text>
             <View style={styles.feitoBotao}>
-              <BotaoAuth secundario rotulo="Voltar para o login" onPress={() => router.replace("/(auth)/login")} />
+              <BotaoAuth secundario rotulo="Voltar para o login" onPress={irParaLogin} />
             </View>
           </View>
         ) : (
           <>
-            <Pressable accessibilityRole="link" onPress={() => router.replace("/(auth)/login")} style={styles.voltar}>
+            <Pressable accessibilityRole="link" onPress={irParaLogin} style={styles.voltar}>
               <Feather name="arrow-left" size={14} color={COR_AUTH.link} />
               <Text style={styles.voltarTexto}>Voltar para o login</Text>
             </Pressable>
@@ -118,17 +83,14 @@ export default function RecuperarSenhaScreen() {
               icone="mail"
               placeholder="voce@escola.com"
               value={email}
-              onChangeText={(v) => {
-                setEmail(v);
-                if (estadoLargo === "invalido") setEstadoLargo("form");
-              }}
+              onChangeText={aoDigitar}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
               editable={!enviando}
-              onSubmitEditing={() => void enviarLargo()}
+              onSubmitEditing={() => void enviar()}
             />
-            {estadoLargo === "invalido" ? (
+            {estado === "invalido" ? (
               <View accessibilityRole="alert" style={styles.alerta}>
                 <Feather name="alert-triangle" size={16} color="#e0b34d" />
                 <View style={styles.alertaTextos}>
@@ -137,10 +99,10 @@ export default function RecuperarSenhaScreen() {
                 </View>
               </View>
             ) : null}
-            <BotaoAuth rotulo={enviando ? "Enviando..." : "Enviar link"} carregando={enviando} onPress={() => void enviarLargo()} />
+            <BotaoAuth rotulo={enviando ? "Enviando..." : "Enviar link"} carregando={enviando} onPress={() => void enviar()} />
             <Text style={styles.rodapeLargo}>
               Lembrou da senha?{" "}
-              <Text style={styles.rodapeLink} accessibilityRole="link" onPress={() => router.replace("/(auth)/login")}>
+              <Text style={styles.rodapeLink} accessibilityRole="link" onPress={irParaLogin}>
                 Fazer login
               </Text>
             </Text>
@@ -150,108 +112,59 @@ export default function RecuperarSenhaScreen() {
     );
   }
 
+  // Celular (protótipo mobile-v1, 02-recuperar-senha.html): o "voltar" vira o botão do canto, rotulado "Login".
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <View style={[styles.outer, { backgroundColor: AUTH_PALETTE.background }]}>
-        {/* Fundo do salão */}
-        <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
-          <HallBackground palette={AUTH_PALETTE} />
+    <MolduraAuthCelular
+      frase="Todo caminho tem volta."
+      voltar={{ rotulo: "Login", acessibilidade: "Voltar para o login", onPress: irParaLogin }}
+      compacta={digitando && estado !== "enviado"}
+    >
+      {estado === "enviado" ? (
+        <View accessibilityRole="alert" style={styles.feito}>
+          <View style={styles.feitoIcone}>
+            <Feather name="mail" size={24} color={COR_AUTH.link} />
+          </View>
+          <Text style={styles.feitoTitulo}>Link enviado</Text>
+          <Text style={styles.feitoTexto}>
+            Um link de recuperação foi enviado para <Text style={styles.forte}>{email}</Text>. Confira também a caixa de spam.
+          </Text>
+          <View style={styles.feitoBotao}>
+            <BotaoAuthCelular secundario rotulo="Voltar para o login" onPress={irParaLogin} />
+          </View>
         </View>
-
-        {/* Gradiente candelabro */}
-        <LinearGradient
-          colors={[
-            tinycolor(AUTH_PALETTE.accent).setAlpha(0.22).toRgbString(),
-            "transparent",
-          ]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={[StyleSheet.absoluteFill, { height: "45%", pointerEvents: "none" }]}
-        />
-
-        <SafeAreaView style={styles.safe} edges={["top", "bottom", "left", "right"]}>
-          {/* Título */}
-          <Text style={[styles.appTitle, { color: "#fff" }]}>
-            — {app.name.toUpperCase()} —
-          </Text>
-
-          <View style={styles.ornamentRow}>
-            <OrnamentDivider color={gold} />
-          </View>
-
-          <Text style={[styles.title, { color: AUTH_PALETTE.text }]}>Recuperar Senha</Text>
-          <Text style={[styles.subtitle, { color: AUTH_PALETTE.textMuted }]}>
-            Informe seu e-mail para receber o link de redefinição.
-          </Text>
-
-          {/* Input */}
-          <View
-            style={[
-              styles.inputWrap,
-              {
-                backgroundColor: AUTH_PALETTE.surfaceElevated,
-                borderColor: goldDim,
-              },
-            ]}
-          >
-            <TextInput
-              style={[styles.input, { color: AUTH_PALETTE.text }]}
-              placeholder="Digite seu e-mail"
-              placeholderTextColor={AUTH_PALETTE.textSubtle}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-            />
-          </View>
-
-          {/* Botão */}
-          <TouchableOpacity
-            style={[
-              styles.button,
-              emailValido
-                ? { backgroundColor: Design.primary, borderColor: gold }
-                : { backgroundColor: goldFaint, borderColor: goldDim },
-            ]}
-            disabled={!emailValido || enviando}
-            onPress={handleReset}
-            accessibilityRole="button"
-            accessibilityLabel="Enviar link"
-          >
-            <Text style={[styles.buttonText, { color: emailValido ? Design.ink : AUTH_PALETTE.textMuted }]}>
-              {enviando ? "Enviando..." : "Enviar Link"}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Link de login */}
-          <View style={styles.linkRow}>
-            <Text style={[styles.linkText, { color: AUTH_PALETTE.textMuted }]}>Lembrou da senha? </Text>
-            <TouchableOpacity
-              onPress={() => router.push("/(auth)/login")}
-              accessibilityRole="link"
-              accessibilityLabel="Fazer login"
-            >
-              <Text style={[styles.linkAction, { color: gold }]}>Fazer login</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Rodapé */}
-          <View style={[styles.footer, { bottom: 16 + insets.bottom }]}>
-            <Text style={[styles.footerText, { color: AUTH_PALETTE.textSubtle }]}>
-              Não tem uma conta?{" "}
-              <Text
-                style={{ color: gold, textDecorationLine: "underline" }}
-                onPress={() => Linking.openURL(app.siteCadastro)}
-                accessibilityRole="link"
-                accessibilityLabel="Cadastre-se"
-              >
-                Cadastre-se.
-              </Text>
-            </Text>
-          </View>
-        </SafeAreaView>
-      </View>
-    </KeyboardAvoidingView>
+      ) : (
+        <>
+          <CabecaFolhaAuth titulo="Recuperar senha" apoio="Informe seu e-mail para receber o link de redefinição." />
+          <CampoAuthCelular
+            rotulo="E-mail"
+            icone="mail"
+            placeholder="voce@escola.com"
+            value={email}
+            onChangeText={aoDigitar}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="email"
+            keyboardType="email-address"
+            invalido={estado === "invalido"}
+            editable={!enviando}
+            onFocus={aoFocar}
+            onBlur={aoDesfocar}
+            onSubmitEditing={() => void enviar()}
+          />
+          {estado === "invalido" ? <AlertaAuthCelular tom="aviso" titulo="E-mail inválido" texto="Confira o endereço e tente novamente." /> : null}
+          <BotaoAuthCelular rotulo={enviando ? "Enviando..." : "Enviar link"} carregando={enviando} onPress={() => void enviar()} />
+          {digitando ? null : (
+            <View style={styles.rodapeCelular}>
+              <Pressable accessibilityRole="link" onPress={irParaLogin} style={styles.rodapeToque}>
+                <Text style={styles.rodapeTextoCelular}>
+                  Lembrou da senha? <Text style={styles.rodapeLink}>Fazer login</Text>
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </>
+      )}
+    </MolduraAuthCelular>
   );
 }
 
@@ -264,89 +177,13 @@ const styles = StyleSheet.create({
   alertaTexto: { fontSize: 13, color: "#f3d9e0" },
   rodapeLargo: { textAlign: "center", fontSize: 14, color: COR_AUTH.textoMuted, marginTop: 20 },
   rodapeLink: { color: COR_AUTH.link, fontWeight: "600" },
+  rodapeCelular: { alignItems: "center", marginTop: 6 },
+  rodapeToque: { minHeight: 48, justifyContent: "center" },
+  rodapeTextoCelular: { fontSize: 14, color: COR_AUTH.textoMuted, textAlign: "center" },
   feito: { alignItems: "center", gap: 10, paddingVertical: 8 },
   feitoIcone: { width: 56, height: 56, borderRadius: 28, borderWidth: 1, borderColor: COR_AUTH.bordaPainel, alignItems: "center", justifyContent: "center" },
   feitoTitulo: { fontFamily: "Georgia, serif", fontSize: 26, color: COR_AUTH.texto, fontVariant: ["small-caps"] },
   feitoTexto: { fontSize: 14, lineHeight: 21, color: COR_AUTH.textoMuted, textAlign: "center" },
   forte: { fontWeight: "700", color: COR_AUTH.texto },
   feitoBotao: { alignSelf: "stretch", marginTop: 10 },
-  outer: { flex: 1 },
-  safe: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 28,
-  },
-  appTitle: {
-    fontSize: 34,
-    fontFamily: FontFamily.inknutAntiquaMedium,
-    letterSpacing: 0,
-    ...textShadowStyle({ color: "rgba(0,0,0,0.8)", offset: { width: 0, height: 2 }, radius: 8 }, IS_WEB),
-    marginBottom: 8,
-  },
-  ornamentRow: {
-    opacity: 0.7,
-    marginVertical: 10,
-    alignSelf: "stretch",
-  },
-  title: {
-    fontSize: 22,
-    fontFamily: FontFamily.inknutAntiquaMedium,
-    marginBottom: 6,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 13,
-    fontFamily: FontFamily.interMedium,
-    textAlign: "center",
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  inputWrap: {
-    width: "100%",
-    borderRadius: Design.radius,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    marginBottom: 14,
-  },
-  input: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 15,
-    paddingVertical: 13,
-  },
-  button: {
-    width: "100%",
-    paddingVertical: 14,
-    borderRadius: Design.radius,
-    borderWidth: 1,
-    alignItems: "center",
-    marginBottom: 18,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontFamily: FontFamily.inikaBold,
-  },
-  linkRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-  },
-  linkText: {
-    fontSize: 13,
-    fontFamily: FontFamily.interMedium,
-  },
-  linkAction: {
-    fontSize: 13,
-    fontFamily: FontFamily.inikaBold,
-    textDecorationLine: "underline",
-  },
-  footer: {
-    position: "absolute",
-    bottom: 24,
-  },
-  footerText: {
-    fontSize: 12,
-    fontFamily: FontFamily.interMedium,
-    textAlign: "center",
-  },
 });

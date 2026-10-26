@@ -18,7 +18,7 @@ import { extname, join, relative } from "node:path";
  * - telas ANTES do login: não há perfil ainda;
  * - preto e branco puros: sombra e véu não são identidade visual.
  */
-const ANTES_DO_LOGIN = ["(auth)", "tela_de_entrada", "AuthDesktop", "signup"];
+const ANTES_DO_LOGIN = ["(auth)", "tela_de_entrada", "AuthDesktop", "AuthCelular", "signup"];
 
 /**
  * Exceções medidas, não supostas — cada uma foi conferida no código em 22/10/2026.
