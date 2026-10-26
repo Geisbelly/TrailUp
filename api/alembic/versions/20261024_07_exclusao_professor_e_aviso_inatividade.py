@@ -108,6 +108,7 @@ BEGIN
 END $fk$;
 """
 
+# `op.execute(str)` passa por sqlalchemy.text(): `:nome` vira bind param. O `\:` abaixo sai como `:` no SQL.
 PROFESSOR_SQL = r"""-- Pedido de exclusao feito pelo proprio professor. So o id (pseudonimo),
 -- datas e contagens: e a prova de que o pedido existiu e o que libera o worker
 -- a apagar o usuario do Auth.
@@ -139,7 +140,7 @@ AS $function$
   SELECT CASE
     WHEN p IS NULL OR btrim(p) = '' THEN NULL
     WHEN p ~* '^https?://' THEN coalesce(
-      substring(p from '/storage/v1/object/(?:public|sign|authenticated)/conteudos/([^?#]+)'),
+      substring(p from '/storage/v1/object/(?\:public|sign|authenticated)/conteudos/([^?#]+)'),
       substring(p from 'storage-redirect[?](?:[^#]*&)?path=([^&#]+)'))
     WHEN p ~ '\s' OR length(p) > 1024 OR strpos(p, '/') = 0 THEN NULL
     ELSE btrim(p)
