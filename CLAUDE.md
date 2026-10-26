@@ -288,6 +288,14 @@ Cada perfil carrega:
   `pg_net` → Expo, e `pg_cron` varre a cada 5min. A **rotina diária é
   notificação local** agendada no aparelho: dispara com o app fechado sem
   servidor. Ver `docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md`.
+- **Eventos de turma abrem e encerram no horário pelo banco (#141).**
+  `pg_cron` roda `fn_eventos_classe_varrer()` a cada minuto (job
+  `trailup_eventos_classe_varredura`, migração `20261025_04`): encerra e apura
+  todo evento `aberto` com `fim` vencido e abre o `rascunho` marcado com
+  `abrir_no_inicio` quando o `inicio` chega. Os miolos sem sessão
+  (`fn_evento_classe_abrir_agora` / `_encerrar_agora`) travam a linha e decidem
+  pelo estado — clique e cron ao mesmo tempo não creditam duas vezes; as RPCs
+  do console só conferem a posse e delegam. Nada com relógio na API.
 - `notificacoes_config` (parâmetros do motor, uma linha por chave),
   `expo_tokens` (push token por aparelho — tabela que **já existia**; a
   `notificacoes_dispositivos` que eu havia criado foi descartada em
