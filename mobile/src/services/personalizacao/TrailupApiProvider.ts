@@ -5,6 +5,8 @@ import type {
 } from "@supabase/supabase-js";
 
 import { supabase } from "@/database/supabase";
+import { normalizeBrainHexProfile } from "@/constants/brainHexProfiles";
+import { erroDeModoRestrito } from "@/utils/consentimentoResponsavel";
 import {
   isNetworkRequestFailedError,
   resolveApiBaseCandidates,
@@ -170,6 +172,12 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     }
 
     if (!response.ok) {
+      // Modo restrito (#195): o servidor responde 403 com
+      // { codigo: "modo_restrito", mensagem }. Vira um erro proprio, com a
+      // mensagem pronta para o aluno, em vez de "[object Object]".
+      const restrito = response.status === 403 ? erroDeModoRestrito(payload?.detail) : null;
+      if (restrito) throw restrito;
+
       const detail =
         payload?.detail ||
         payload?.message ||
@@ -284,36 +292,8 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
   // ─── BrainHex profile helpers ─────────────────────────────────────────────────
 
   private normalizeBrainhexProfileKey(value: string | null | undefined) {
-    const normalized = String(value ?? "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/\p{Diacritic}/gu, "")
-      .replace(/\s+/g, "_");
-    if (!normalized) return "mastermind";
-
-    const aliases: Record<string, string> = {
-      seeker: "seeker",
-      explorador: "seeker",
-      buscador: "seeker",
-      survivor: "survivor",
-      sobrevivente: "survivor",
-      daredevil: "daredevil",
-      aventureiro: "daredevil",
-      ousado: "daredevil",
-      mastermind: "mastermind",
-      estrategista: "mastermind",
-      mestre: "mastermind",
-      conqueror: "conqueror",
-      conquistador: "conqueror",
-      socializer: "socializer",
-      socialiser: "socializer",
-      socializador: "socializer",
-      achiever: "achiever",
-      realizador: "achiever",
-    };
-
-    return aliases[normalized] ?? normalized;
+    // Ausência de identificação não demonstra que o material seja Mastermind.
+    return normalizeBrainHexProfile(value);
   }
 
   private extractProfileFromStoragePath(value: unknown) {
@@ -387,7 +367,7 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
           perfilEditorial?.perfil_dominante ??
           personalizacaoBrainhex?.perfil_dominante ??
           this.findProfileInNestedValue(record?.materiais) ??
-          "mastermind"
+          ""
       )
     );
   }
@@ -401,7 +381,7 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
           metadata?.perfil_dominante ??
           metadata?.profile_key ??
           this.findProfileInNestedValue(metadata) ??
-          "mastermind"
+          ""
       )
     );
   }
@@ -544,39 +524,41 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
   async listarPersonalizacoesPersistidasPerfil(
     params: ListarPersonalizacoesPerfilParams
   ): Promise<PersonalizacaoListResponse> {
-    const normalizedProfile = this.normalizeBrainhexProfileKey(params.brainhexProfileKey);
-    const requestedLimit = Math.max(1, Number(params.limit ?? 60));
-    // O perfil ainda e validado no cliente para manter compatibilidade com
-    // registros legados. Buscamos a janela dos sete perfis antes de aplicar o limite.
-    const fetchLimit = Math.min(1000, requestedLimit * 7);
+    const normalizedProfile = normalizeBrainHexProfile(params.brainhexProfileKey);
+    if (!normalizedProfile) throw new Error("Perfil BrainHex inválido.");
+    const rawLimit = Number(params.limit ?? 60);
+    const requestedLimit = Number.isFinite(rawLimit)
+      ? Math.max(1, Math.min(1000, Math.floor(rawLimit))) : 60;
+    const pageSize = Math.min(1000, Math.max(100, requestedLimit * 7));
+    const profileRecords: PersonalizacaoRecord[] = [];
 
-    let query = this.deps.supabase
-      .from("conteudo_personalizado")
-      .select(
-        "id, aluno_id, classe_id, conteudo_id, topico_id, ciclo_id, status, source_hash, formato_prioritario, formatos_gerados, plano, materiais, ai_patch, brainhex_profile_key, gerado_em, updated_at"
-      )
-      .eq("classe_id", params.classeId)
-      .order("updated_at", { ascending: false })
-      .order("gerado_em", { ascending: false })
-      .limit(fetchLimit);
-
-    if (params.topicoId != null) {
-      query = query.eq("topico_id", params.topicoId);
+    // O perfil de registros legados pode estar no plano ou no caminho da mídia.
+    // Uma janela fixa de 7×limit não basta: várias versões/alunos podem ocupar
+    // toda a primeira página. Percorrer até achar o limite do perfil ou esgotar.
+    for (let offset = 0; profileRecords.length < requestedLimit; offset += pageSize) {
+      let query = this.deps.supabase
+        .from("conteudo_personalizado")
+        .select(
+          "id, aluno_id, classe_id, conteudo_id, topico_id, ciclo_id, status, source_hash, formato_prioritario, formatos_gerados, plano, materiais, ai_patch, brainhex_profile_key, gerado_em, updated_at"
+        )
+        .eq("classe_id", params.classeId)
+        .order("updated_at", { ascending: false })
+        .order("gerado_em", { ascending: false })
+        .order("id", { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (params.topicoId != null) query = query.eq("topico_id", params.topicoId);
+      if (params.conteudoId != null) query = query.eq("conteudo_id", params.conteudoId);
+      const { data, error } = await query;
+      if (error) throw error;
+      const page = (data ?? []) as PersonalizacaoRecord[];
+      for (const record of page) {
+        if (this.extractProfileKeyFromPersonalizacaoRecord(record) === normalizedProfile) {
+          profileRecords.push(record);
+          if (profileRecords.length === requestedLimit) break;
+        }
+      }
+      if (page.length < pageSize) break;
     }
-    if (params.conteudoId != null) {
-      query = query.eq("conteudo_id", params.conteudoId);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-
-    const allRecords = (data ?? []) as PersonalizacaoRecord[];
-    const profileRecords = allRecords
-      .filter(
-        (record) =>
-          this.extractProfileKeyFromPersonalizacaoRecord(record) === normalizedProfile
-      )
-      .slice(0, requestedLimit);
     // Cards are supplemental. Their failure must not hide available texts,
     // audio, presentations and questions from conteudo_personalizado.
     const cards = await this.listarCardsPersonalizadosPersistidosPerfil({

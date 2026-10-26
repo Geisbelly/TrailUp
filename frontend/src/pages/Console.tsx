@@ -34,8 +34,9 @@ const ProfessorApprovalSection = lazyWithReload(() =>
 );
 
 // Aba de aprovação de professores só é visível para a dona do projeto (TCC);
-// os demais professores nunca veem nem conseguem acessar essa view.
-const OWNER_EMAIL = "geisbelly19@gmail.com";
+// os demais professores nunca veem nem conseguem acessar essa view. Quem é o
+// dono vem do banco (`app_e_dono()`, contra `app_config.dono_email`): o e-mail
+// não fica no bundle (#195), e a conferência de verdade já era feita lá.
 
 export interface ProfessorUpdateData {
   nome: string;
@@ -65,7 +66,26 @@ export default function Console() {
   // console, e o link e compartilhavel. Antes so /console/trilha tinha rota -
   // todas as outras abas viviam em estado local em /console e se perdiam.
   const view: ConsoleView = consoleViewFromPathname(location.pathname) ?? DEFAULT_CONSOLE_VIEW;
-  const isOwner = professorData?.email?.toLowerCase() === OWNER_EMAIL;
+  // null = ainda conferindo; não decide o redirecionamento antes da resposta.
+  const [ownerStatus, setOwnerStatus] = useState<boolean | null>(null);
+  const isOwner = ownerStatus === true;
+  const professorId = professorData?.id;
+
+  useEffect(() => {
+    if (!professorId) return;
+    let ativo = true;
+    setOwnerStatus(null);
+    supabase
+      .rpc("app_e_dono" as never)
+      .then(({ data, error }) => {
+        if (ativo) setOwnerStatus(!error && data === true);
+      }, () => {
+        if (ativo) setOwnerStatus(false);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [professorId]);
 
   useEffect(() => {
     const fetchProfessor = async () => {
@@ -217,7 +237,7 @@ export default function Console() {
                 // dashboard em vez de renderizar uma pagina em branco - e espera
                 // professorData carregar antes de decidir, senao o proprio dono
                 // seria expulso no primeiro render.
-                isOwner ? <ProfessorApprovalSection /> : professorData ? <Navigate to={consolePathForView("dashboard")} replace /> : null
+                isOwner ? <ProfessorApprovalSection /> : professorData && ownerStatus === false ? <Navigate to={consolePathForView("dashboard")} replace /> : null
               ) : (
                 <ClassManagementSection professorId={professorData?.id} />
               )}

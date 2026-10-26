@@ -7,12 +7,13 @@ import {
   montarMedidaDoPerfil,
 } from "./medidaDoPerfil";
 
-const qualidade = { indice: 0.8123, desvio: 1.4567, aquiescencia: 0.1234, motivos: ["x"] };
+const qualidade = { indice: null, desvio: 1.4567, aquiescencia: 0.1234, motivos: ["x"] };
 const base = {
   alunoId: "11111111-2222-3333-4444-555555555555",
   ordenacao: [...PERFIS_EM_ORDEM],
-  afinidade: Object.fromEntries(PERFIS_EM_ORDEM.map((p, i) => [p, i])),
-  confianca: 0.87654,
+  afinidade: Object.fromEntries(PERFIS_EM_ORDEM.map((p, i) => [p, i === 0 ? 16 : 14])),
+  ordenacaoConfirmada: true,
+  confianca: null,
   concordancia: 0.5,
   qualidade,
 };
@@ -28,8 +29,8 @@ describe("montarMedidaDoPerfil", () => {
   it("arredonda para o que o banco guarda (numeric 4,3)", () => {
     // Sem isto, o valor gravado difere do que o cliente achou que gravou.
     const m = montarMedidaDoPerfil(base);
-    expect(m.confianca).toBe(0.877);
-    expect(m.qualidade.indice).toBe(0.812);
+    expect(m.confianca).toBeNull();
+    expect(m.qualidade.indice).toBeNull();
     expect(m.qualidade.desvio).toBe(1.457);
   });
 
@@ -41,8 +42,8 @@ describe("montarMedidaDoPerfil", () => {
     expect(() => montarMedidaDoPerfil({ ...base, alunoId: "  " })).toThrow(MedidaInvalida);
   });
 
-  it("recusa confianca fora de 0..1 (o banco tem CHECK; falhar aqui e mais barato)", () => {
-    expect(() => montarMedidaDoPerfil({ ...base, confianca: 1.5 })).toThrow(/0\.\.1/);
+  it("recusa qualquer confiança numérica na versão exploratória", () => {
+    expect(() => montarMedidaDoPerfil({ ...base, confianca: 1.5 })).toThrow(/não estima confiança/);
     expect(() => montarMedidaDoPerfil({ ...base, confianca: Number.NaN })).toThrow(MedidaInvalida);
   });
 
@@ -54,9 +55,16 @@ describe("montarMedidaDoPerfil", () => {
     expect(n.concordancia).toBe(0);
   });
 
-  it("concordancia fora da faixa e limitada, nao rejeitada", () => {
-    expect(montarMedidaDoPerfil({ ...base, concordancia: 9 }).concordancia).toBe(1);
-    expect(montarMedidaDoPerfil({ ...base, concordancia: -9 }).concordancia).toBe(-1);
+  it("não transforma erro numérico em correlação perfeita", () => {
+    for (const concordancia of [9, -9, NaN, Infinity]) {
+      expect(() => montarMedidaDoPerfil({ ...base, concordancia })).toThrow(/concordância/);
+    }
+  });
+
+  it("não persiste vetor inválido com versão científica aparente", () => {
+    for (const afinidade of [{}, { ...base.afinidade, seeker: NaN }, { ...base.afinidade, seeker: 99 }]) {
+      expect(() => montarMedidaDoPerfil({ ...base, afinidade })).toThrow(/sete perfis/);
+    }
   });
 
   it("copia os motivos: mutar a entrada depois nao altera a medida", () => {

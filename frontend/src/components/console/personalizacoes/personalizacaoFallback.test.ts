@@ -3,6 +3,7 @@ import { buildDesignTokensForProfile, hydrateMateriaisPublicUrls, resolvePublicS
   contarAlunosPorPerfilDominante,
   normalizarChaveDePerfil,
   resolveMaterialUrl,
+  materialPathDaUrlPublica,
 } from "./personalizacaoFallback";
 
 // Valores conferidos rodando `_build_design_tokens` (api/app/api/v1/personalizacao.py)
@@ -190,6 +191,40 @@ describe("resolveMaterialUrl (porte de build_material_url)", () => {
   it("sem bucket ou path retorna null", () => {
     expect(resolveMaterialUrl("https://xyz.supabase.co", null, "a.mp3")).toBeNull();
     expect(resolveMaterialUrl("https://xyz.supabase.co", "conteudo_aluno", null)).toBeNull();
+  });
+});
+
+describe("URL publica antiga de conteudo_aluno (bucket privado, #195)", () => {
+  it("extrai o caminho e descarta query/fragmento", () => {
+    expect(
+      materialPathDaUrlPublica(
+        "https://xyz.supabase.co/storage/v1/object/public/conteudo_aluno/brainhex/m/classe-1/a%20b.md?t=1#x"
+      )
+    ).toBe("brainhex/m/classe-1/a b.md");
+    expect(materialPathDaUrlPublica("https://xyz.supabase.co/storage/v1/object/public/conteudos/a.md")).toBeNull();
+    expect(materialPathDaUrlPublica("brainhex/a.md")).toBeNull();
+    expect(materialPathDaUrlPublica(null)).toBeNull();
+  });
+
+  it("sem storage_path, a URL publica salva vira URL do gateway na leitura", () => {
+    const result = hydrateMateriaisPublicUrls("https://xyz.supabase.co", {
+      markdown: {
+        arquivo_url: "https://xyz.supabase.co/storage/v1/object/public/conteudo_aluno/brainhex/m/classe-1/aula.md",
+        metadata: {},
+      },
+    });
+    const md = result?.markdown as { arquivo_url?: string; storage_path?: string };
+    expect(md.arquivo_url).toBe(
+      "https://xyz.supabase.co/functions/v1/storage-redirect?path=brainhex/m/classe-1/aula.md"
+    );
+    expect(md.storage_path).toBe("brainhex/m/classe-1/aula.md");
+  });
+
+  it("URL externa (nao Storage) fica como veio", () => {
+    const result = hydrateMateriaisPublicUrls("https://xyz.supabase.co", {
+      video: { arquivo_url: "https://youtube.com/watch?v=1", metadata: {} },
+    });
+    expect((result?.video as { arquivo_url?: string }).arquivo_url).toBe("https://youtube.com/watch?v=1");
   });
 });
 

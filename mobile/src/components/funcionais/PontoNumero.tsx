@@ -1,6 +1,9 @@
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, Platform } from "react-native";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 type Props = {
   numero: number;
@@ -45,10 +48,7 @@ const styles = StyleSheet.create({
     backgroundColor: Color.colorAliceblue,
     transform: [{ rotate: "45deg" }],
     borderRadius: 3,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 2 }, opacity: 0.25, radius: 3.84 }, IS_WEB),
     elevation: 4,
   },
 

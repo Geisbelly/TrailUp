@@ -1,5 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import {
+  CHAVE_LEGADA_DO_CONSENTIMENTO,
+  TELEMETRY_CONSENT_VERSION,
+  chaveDoConsentimento,
+} from "./telemetryConsentVersao";
+
 // Reexportado para nao quebrar quem ja importava daqui. A definicao mora em
 // `telemetryConsentVersao.ts`, que nao puxa AsyncStorage e por isso carrega
 // em Node — mesmo motivo que separou `telemetriaPayload.ts` do cliente
@@ -8,9 +14,38 @@ export {
   TELEMETRY_CONSENT_VERSION,
   consentimentoEstaVigente,
 } from "./telemetryConsentVersao";
-import { TELEMETRY_CONSENT_VERSION } from "./telemetryConsentVersao";
 
-const TELEMETRY_CONSENT_STORAGE_KEY = "trailup:telemetry-consent";
+// O aceite e POR ALUNO (#195). Sem aluno definido nao ha consentimento: quem
+// le recebe `null` e a coleta nao roda.
+let alunoDoConsentimento: string | null = null;
+
+export function obterAlunoDoConsentimento(): string | null {
+  return alunoDoConsentimento;
+}
+
+/**
+ * Troca o dono do consentimento local (login, troca de conta, logout) e avisa
+ * os assinantes com o registro DESTE aluno. A chave antiga, por aparelho, e
+ * apagada sem ser herdada: nao da para saber de qual aluno ela era.
+ */
+export async function definirAlunoDoConsentimento(alunoId: string | null) {
+  const proximo = alunoId && alunoId.trim() ? alunoId.trim() : null;
+  if (proximo === alunoDoConsentimento) return;
+  alunoDoConsentimento = proximo;
+  try {
+    await AsyncStorage.removeItem(CHAVE_LEGADA_DO_CONSENTIMENTO);
+  } catch {
+    // limpar a chave antiga e higiene; falhar aqui nao muda nada
+  }
+  const record = await getTelemetryConsentRecord();
+  telemetryConsentListeners.forEach((listener) => {
+    try {
+      listener(record);
+    } catch {
+      // ignora listener quebrado
+    }
+  });
+}
 
 type TelemetryConsentListener = (record: TelemetryConsentRecord | null) => void;
 const telemetryConsentListeners = new Set<TelemetryConsentListener>();
@@ -69,8 +104,10 @@ function sanitizePreferences(
 }
 
 export async function getTelemetryConsentRecord(): Promise<TelemetryConsentRecord | null> {
+  const chave = chaveDoConsentimento(alunoDoConsentimento);
+  if (!chave) return null;
   try {
-    const raw = await AsyncStorage.getItem(TELEMETRY_CONSENT_STORAGE_KEY);
+    const raw = await AsyncStorage.getItem(chave);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<TelemetryConsentRecord> | null;
     if (!parsed?.version || !parsed?.status) return null;
@@ -110,10 +147,13 @@ export async function getTelemetryConsentRecord(): Promise<TelemetryConsentRecor
 }
 
 async function saveTelemetryConsentRecord(record: TelemetryConsentRecord) {
-  await AsyncStorage.setItem(
-    TELEMETRY_CONSENT_STORAGE_KEY,
-    JSON.stringify(record)
-  );
+  const chave = chaveDoConsentimento(alunoDoConsentimento);
+  if (!chave) {
+    // Sem aluno nao se grava consentimento: ficaria sem dono.
+    console.warn("[Consentimento] sem aluno definido; decisao nao gravada localmente");
+    return;
+  }
+  await AsyncStorage.setItem(chave, JSON.stringify(record));
   telemetryConsentListeners.forEach((listener) => {
     try {
       listener(record);

@@ -14,6 +14,31 @@ export type Database = {
   }
   public: {
     Tables: {
+      aluno_perfil_medida: {
+        Row: { id: number; aluno_id: string; versao_instrumento: string; respondido_em: string;
+          ordenacao: string[]; afinidade: Json; confianca: number | null; concordancia: number | null;
+          qualidade: Json; expira_em: string }
+        Insert: { id?: number; aluno_id: string; versao_instrumento: string; respondido_em?: string;
+          ordenacao: string[]; afinidade: Json; confianca: number | null; concordancia?: number | null;
+          qualidade?: Json; expira_em?: string }
+        Update: { id?: number; aluno_id?: string }
+        Relationships: []
+      }
+
+      aluno_introducao: {
+        Row: { aluno_id: string; etapa: string; concluido_em: string }
+        Insert: { aluno_id: string; etapa: string; concluido_em?: string }
+        Update: { aluno_id?: string; etapa?: string; concluido_em?: string }
+        Relationships: []
+      }
+
+      aluno_cadastro_concluido: {
+        Row: { aluno_id: string; concluido_em: string }
+        Insert: { aluno_id: string; concluido_em?: string }
+        Update: { aluno_id?: string; concluido_em?: string }
+        Relationships: []
+      }
+
       alembic_version: {
         Row: {
           version_num: string
@@ -8472,6 +8497,17 @@ export type Database = {
       }
     }
     Functions: {
+      meu_cadastro_concluido: { Args: never; Returns: boolean }
+
+      concluir_cadastro_aluno: {
+        Args: {
+          p_nome: string; p_apelido: string; p_modo_operacao: string;
+          p_modo_resposta: string; p_perfil_ativo: string; p_medida: Json;
+          p_data_nascimento?: string | null;
+        }
+        Returns: string
+      }
+
       app_alunos_do_professor: { Args: never; Returns: string[] }
       app_classe_da_atividade: {
         Args: { p_atividade: number }

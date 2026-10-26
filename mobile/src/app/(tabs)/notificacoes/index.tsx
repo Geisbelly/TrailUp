@@ -24,6 +24,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Platform,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import {
@@ -34,6 +35,9 @@ import { JourneyHeading } from '@/components/JourneyHeading';
 import { NotificacoesDesktop } from "@/components/web/NotificacoesDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 type FilterTab = "todas" | "nao_lidas" | "lidas";
 
@@ -405,9 +409,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontFamily: FontFamily.inikaBold,
     letterSpacing: 0,
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 6,
+    ...textShadowStyle({ color: "rgba(0,0,0,0.8)", offset: { width: 0, height: 1 }, radius: 6 }, IS_WEB),
   },
   guideButton: {
     position: "absolute",

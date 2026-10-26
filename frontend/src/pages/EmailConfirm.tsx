@@ -1,205 +1,98 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import type { EmailOtpType } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { X, Loader2, Home, LogIn } from "lucide-react";
 import { AuthBrand, AuthScenery } from "@/components/auth/AuthScenery";
-
 import { AlunoSignupWizard } from "@/components/auth/AlunoSignupWizard";
-import { montarMedidaDoPerfil } from "@/features/signup/medidaDoPerfil";
 import { ProfessorSignupForm } from "@/components/auth/ProfessorSignupForm";
+import { validarDataNascimento } from "@/lib/dataNascimento";
+import { confirmarSessao } from "@/features/signup/confirmarSessao";
+import { AREA_ALUNO, alunoTemCadastro, lerPendente, removerPendente, salvarCadastroAluno,
+  tipoDoCadastro, type TipoCadastro } from "@/features/signup/cadastroAluno";
 
 type Status = "loading" | "ready" | "error";
-type PendingType = "aluno" | "professor" | null;
-
-const STORAGE_PREFIX = "pending-signup:";
 
 export default function EmailConfirm() {
   const navigate = useNavigate();
   const location = useLocation();
-
   const [status, setStatus] = useState<Status>("loading");
-  const [detail, setDetail] = useState<string>("Confirmando seu email...");
-  const [pendingTipo, setPendingTipo] = useState<PendingType>(null);
+  const [detail, setDetail] = useState("Confirmando seu e-mail...");
+  const [pendingTipo, setPendingTipo] = useState<TipoCadastro>(null);
   const [sessionEmail, setSessionEmail] = useState<string | null>(null);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [dataNascimento, setDataNascimento] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-
-  const url = useMemo(
-    () => new URL(window.location.origin + location.pathname + location.search),
-    [location.pathname, location.search]
-  );
-
-  // 1) Aceita 2 cenários:
-  // - usuário já está com sessão e email confirmado => libera
-  // - usuário não tem sessão confirmada, mas tem parâmetros do link => troca/valida e libera
-  const getConfirmedSession = useCallback(async (): Promise<{ email: string; userId: string }> => {
-    // tenta sessão existente
-    const { data: sessData } = await supabase.auth.getSession();
-    const existing = sessData.session;
-
-    if (existing?.user) {
-      const { data: userData, error } = await supabase.auth.getUser();
-      if (error) throw error;
-
-      const u = userData.user;
-      const confirmedAt = u?.email_confirmed_at ?? u?.confirmed_at;
-
-      if (confirmedAt && u?.email) {
-        return { email: u.email.toLowerCase(), userId: u.id };
-      }
-      // se tem sessão mas não confirmou, tenta via link se tiver
-    }
-
-    // tenta callback via URL (PKCE code ou OTP token_hash)
-    const code = url.searchParams.get("code");
-    const token_hash = url.searchParams.get("token_hash");
-    const type = url.searchParams.get("type"); // signup, recovery, magiclink...
-
-    if (code) {
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
-      if (error) throw error;
-    } else if (token_hash && type) {
-      const EMAIL_OTP_TYPES: EmailOtpType[] = ['signup', 'invite', 'magiclink', 'email', 'recovery', 'email_change'];
-      const otpType = EMAIL_OTP_TYPES.includes(type as EmailOtpType) ? (type as EmailOtpType) : null;
-      if (!otpType) throw new Error("Tipo de confirmação inválido.");
-      const { error } = await supabase.auth.verifyOtp({ token_hash, type: otpType });
-      if (error) throw error;
-    } else {
-      throw new Error("Você precisa confirmar o email (ou fazer login com uma conta já confirmada).");
-    }
-
-    // valida confirmação REAL no user
-    const { data: userData2, error: userErr2 } = await supabase.auth.getUser();
-    if (userErr2) throw userErr2;
-
-    const u2 = userData2.user;
-    const confirmedAt2 = u2?.email_confirmed_at ?? u2?.confirmed_at;
-
-    if (!confirmedAt2 || !u2?.email) {
-      throw new Error("Email ainda não confirmado. Abra o link do email novamente.");
-    }
-
-    const { data: sessData2 } = await supabase.auth.getSession();
-    if (!sessData2.session) {
-      throw new Error("Sessão não encontrada após confirmação. Abra o link do email novamente.");
-    }
-
-    return { email: u2.email.toLowerCase(), userId: u2.id };
-  }, [url]);
-
-  const loadPending = (email: string): { tipo: PendingType; email?: string } => {
-    const raw = localStorage.getItem(`${STORAGE_PREFIX}${email}`);
-    const pending = raw ? (JSON.parse(raw) as { tipo?: PendingType; email?: string }) : null;
-
-    if (!pending?.tipo) {
-      throw new Error("Nenhum cadastro pendente para este email. Inicie um novo cadastro.");
-    }
-
-    if (pending.email && pending.email.toLowerCase() !== email) {
-      throw new Error("O email da sessão não corresponde ao cadastro pendente.");
-    }
-
-    return { tipo: pending.tipo ?? null, email: pending.email };
-  };
+  const saving = useRef(false);
+  const confirmation = useRef<{ url: string; promise: Promise<User> } | null>(null);
+  const url = useMemo(() => new URL(window.location.origin + location.pathname + location.search),
+    [location.pathname, location.search]);
 
   useEffect(() => {
+    let cancelled = false;
+    // StrictMode pode montar o efeito duas vezes; um OTP só pode ser consumido uma vez.
+    if (confirmation.current?.url !== url.href) {
+      confirmation.current = { url: url.href, promise: confirmarSessao(supabase.auth, url) };
+    }
     const run = async () => {
       try {
-        setStatus("loading");
-        setDetail("Validando sessão...");
-
-        const { email } = await getConfirmedSession();
+        const user = await confirmation.current!.promise;
+        if (cancelled) return;
+        // O token é de uso único. Retire-o da URL antes de abrir o formulário,
+        // para que recarregar a página retome a sessão em vez de consumir o link de novo.
+        if (url.searchParams.has('code') || url.searchParams.has('token_hash')) {
+          navigate('/auth/confirmacao', { replace: true });
+          return;
+        }
+        const email = user.email!.toLowerCase();
+        const tipo = tipoDoCadastro(user);
+        if (tipo === 'aluno' && await alunoTemCadastro(user.id)) {
+          if (!cancelled) navigate(AREA_ALUNO, { replace: true });
+          return;
+        }
+        if (cancelled) return;
         setSessionEmail(email);
-
-        setDetail("Carregando cadastro pendente...");
-        const pending = loadPending(email);
-        setPendingTipo(pending.tipo);
-
-        setStatus("ready");
-        setDetail("");
+        setSessionUserId(user.id);
+        setPendingTipo(tipo);
+        setDataNascimento(lerPendente(email)?.dataNascimento ?? '');
+        setStatus('ready');
+        setDetail('');
       } catch (err) {
-        setPendingTipo(null);
-        setSessionEmail(null);
-        setDetail((err as Error)?.message || "Não foi possível confirmar o email.");
-        setStatus("error");
+        if (cancelled) return;
+        setDetail(err instanceof Error ? err.message : 'Não foi possível confirmar o e-mail. Tente entrar novamente.');
+        setStatus('error');
       }
     };
-
     void run();
-  }, [url, getConfirmedSession]);
+    return () => { cancelled = true; };
+  }, [url, navigate]);
 
-  // ======= handlers de confirmação (cadastro final) =======
-  const handleAlunoConfirm: Parameters<typeof AlunoSignupWizard>[0]["onConfirm"] = async (payload) => {
-    if (!sessionEmail) return;
-
+  const handleAlunoConfirm: Parameters<typeof AlunoSignupWizard>[0]['onConfirm'] = async payload => {
+    if (saving.current || !sessionEmail || !sessionUserId) return;
+    const erroData = validarDataNascimento(dataNascimento);
+    if (erroData) { toast.error(erroData); return; }
+    saving.current = true;
     setIsSaving(true);
     try {
-      const { data } = await supabase.auth.getSession();
-      const session = data.session;
-      if (!session?.user?.id) throw new Error("Sessão inválida. Faça login novamente.");
-
-      // chama sua RPC igual antes
-      const perfisArray = Object.entries(payload.brainhexPercent).map(([nome, afinidade]) => ({
-        nome: nome.toLowerCase(),
-        afinidade,
-      }));
-
-      const { error: rpcError } = await supabase.rpc("fn_cadastrar_aluno_com_perfis", {
-        p_auth_user_id: session.user.id,
-        p_nome_completo: payload.nome,
-        p_email: sessionEmail,
-        p_apelido: payload.apelido,
-        p_modooperacao_nome: payload.modoOperacao,
-        p_perfis: perfisArray,
-      });
-
-      if (rpcError) throw rpcError;
-
-      const { error: perfilAtivoError } = await supabase
-        .from("alunos")
-        .update({ perfil_ativo: payload.perfilInicial } as never)
-        .eq("id", session.user.id);
-
-      if (perfilAtivoError) throw perfilAtivoError;
-
-      // A MEDIDA do perfil, nao so' o resultado: ordem declarada, confianca e
-      // os motivos por tras dela. E' o prior que a fase 3 da issue #1 vai
-      // comparar com o comportamento do aluno no app.
-      //
-      // Falhar aqui NAO derruba o cadastro: o perfil ja' foi salvo e a conta
-      // existe. Mas tambem nao some em silencio — some em silencio foi
-      // exatamente o problema que o #295 corrigiu no mobile.
-      try {
-        const medida = montarMedidaDoPerfil({
-          alunoId: session.user.id,
-          ordenacao: payload.ordenacao,
-          afinidade: payload.brainhexPercent,
-          confianca: payload.confiancaDoPerfil,
-          concordancia: payload.concordanciaDoPerfil,
-          qualidade: payload.qualidadeDaResposta,
-        });
-        const { error: medidaError } = await supabase
-          .from("aluno_perfil_medida" as never)
-          .insert(medida as never);
-        if (medidaError) throw medidaError;
-      } catch (erro) {
-        console.warn("[cadastro] medida do perfil nao foi gravada:", erro);
-      }
-
-      localStorage.removeItem(`${STORAGE_PREFIX}${sessionEmail.toLowerCase()}`);
-      toast.success("Cadastro de aluno concluído!");
-      navigate("/login");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Erro ao concluir cadastro do aluno.";
-      toast.error(msg);
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      if (data.user?.id !== sessionUserId) throw new Error('A sessão mudou. Entre novamente para continuar.');
+      await salvarCadastroAluno(sessionUserId, payload, dataNascimento);
+      removerPendente(sessionEmail);
+      toast.success('Cadastro concluído! Sua trilha introdutória está disponível.');
+      navigate(AREA_ALUNO, { replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível salvar o cadastro. Suas respostas continuam nesta tela; tente novamente.');
     } finally {
+      saving.current = false;
       setIsSaving(false);
     }
   };
-
 
   // ======= UI =======
   if (status === "loading") {
@@ -256,10 +149,15 @@ export default function EmailConfirm() {
           </div>
 
           {showStudent && (
-            <AlunoSignupWizard
-              onConfirm={handleAlunoConfirm}
-              isSaving={isSaving}
-            />
+            <div className="space-y-5">
+              <div className="space-y-2">
+                <Label htmlFor="nascimento-confirmacao">Data de nascimento</Label>
+                <Input id="nascimento-confirmacao" type="date" value={dataNascimento}
+                  onChange={event => setDataNascimento(event.target.value)} disabled={isSaving} required />
+                <p className="text-sm text-muted-foreground">Confirme sua data para concluir o cadastro. Ela não é exibida aos colegas.</p>
+              </div>
+              <AlunoSignupWizard onConfirm={handleAlunoConfirm} isSaving={isSaving} />
+            </div>
           )}
 
           {showProfessor && (
@@ -267,9 +165,11 @@ export default function EmailConfirm() {
           )}
 
           {!showStudent && !showProfessor && (
-            <p className="text-sm text-muted-foreground">
-              Nenhum cadastro pendente foi encontrado para este email. Inicie um novo cadastro.
-            </p>
+            <div className="space-y-4">
+              <p>Seu e-mail está confirmado. Escolha o cadastro que deseja concluir.</p>
+              <Button onClick={() => setPendingTipo('aluno')}>Sou aluno</Button>{' '}
+              <Button variant="outline" onClick={() => setPendingTipo('professor')}>Sou professor</Button>
+            </div>
           )}
         </Card>
       </div>

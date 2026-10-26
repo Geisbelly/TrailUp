@@ -17,8 +17,11 @@ import { mensagemDeUso, podeResponderComCompra } from '@/services/loja/usoItem';
 import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayValidation';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 type Props = {
   atividade: any;
@@ -1007,10 +1010,7 @@ export default function QuestionActivity({
               borderRadius: 10,
               borderWidth: isSelected ? 2 : 1,
               borderColor: isSelected ? selectedBorder : profilePalette.border,
-              shadowColor: '#000',
-              shadowOpacity: 0.08,
-              shadowRadius: 4,
-              shadowOffset: { width: 0, height: 2 },
+              ...shadowStyle({ color: '#000', offset: { width: 0, height: 2 }, opacity: 0.08, radius: 4 }, IS_WEB),
               flexDirection: isTrueFalseActivity ? 'row' : 'column',
               alignItems: isTrueFalseActivity ? 'center' : undefined,
               gap: isTrueFalseActivity ? 12 : undefined,

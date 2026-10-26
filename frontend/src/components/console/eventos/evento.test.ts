@@ -33,7 +33,13 @@ describe("validarEvento", () => {
       pontos: 50,
       moedas: 0,
       recompensa: null,
+      abrir_no_inicio: true,
     });
+  });
+
+  it("evento novo sai agendado para abrir sozinho; desmarcar vai no payload (#141)", () => {
+    expect(FORMULARIO_DE_EVENTO_VAZIO.abrirNoInicio).toBe(true);
+    expect(validarEvento({ ...valido, abrirNoInicio: false }).payload.abrir_no_inicio).toBe(false);
   });
 
   it("devolve todos os erros de uma vez", () => {
@@ -92,7 +98,17 @@ describe("rótulos", () => {
     expect(situacaoDoEvento({ ...e, status: "rascunho" }, dia("2026-11-10T00:00:00Z"))).toMatch(/Janela já passou/);
     expect(situacaoDoEvento({ ...e, status: "aberto" }, dia("2026-10-10T00:00:00Z"))).toMatch(/começa em breve/);
     expect(situacaoDoEvento({ ...e, status: "aberto" }, dia("2026-10-22T00:00:00Z"))).toBe("Em andamento");
-    expect(situacaoDoEvento({ ...e, status: "aberto" }, dia("2026-11-10T00:00:00Z"))).toMatch(/encerre/);
+    // #141: depois do fim a varredura encerra e apura sozinha.
+    expect(situacaoDoEvento({ ...e, status: "aberto" }, dia("2026-11-10T00:00:00Z"))).toMatch(/encerra sozinho/);
+  });
+
+  it("rascunho agendado diz quando abre sozinho (#141)", () => {
+    const e = { inicio: "2026-10-20T12:00:00Z", fim: "2026-10-27T00:00:00Z", status: "rascunho" as const, abrirNoInicio: true };
+    const dia = (s: string) => new Date(s);
+    expect(situacaoDoEvento(e, dia("2026-10-10T00:00:00Z"))).toMatch(/^Abre sozinho em \d{2}\/\d{2} \d{2}:\d{2}$/);
+    expect(situacaoDoEvento(e, dia("2026-10-21T00:00:00Z"))).toMatch(/Abrindo sozinho em instantes/);
+    expect(situacaoDoEvento(e, dia("2026-11-10T00:00:00Z"))).toMatch(/Janela já passou/);
+    expect(situacaoDoEvento({ ...e, abrirNoInicio: false }, dia("2026-10-10T00:00:00Z"))).toMatch(/Ainda não aberto/);
   });
 
   it("resumo de abertura avisa do congelamento só com guilda", () => {

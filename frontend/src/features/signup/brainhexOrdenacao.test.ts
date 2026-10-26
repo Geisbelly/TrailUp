@@ -56,7 +56,7 @@ describe("pontuarOrdenacao", () => {
     expect(p.survivor).toBe(0);
   });
 
-  it("a media e zero: fica na mesma unidade do escore centrado da escala", () => {
+  it("a média é zero, sem afirmar equivalência de unidades", () => {
     const p = pontuarOrdenacao([...ORDEM_EXEMPLO]);
     const soma = Object.values(p).reduce((s, v) => s + v, 0);
     expect(soma).toBeCloseTo(0);
@@ -83,7 +83,7 @@ describe("concordanciaEntreMetodos", () => {
   });
 
   it("dados insuficientes nao viram concordancia inventada", () => {
-    expect(concordanciaEntreMetodos({ seeker: 1 }, { seeker: 1 })).toBe(0);
+    expect(concordanciaEntreMetodos({ seeker: 1 }, { seeker: 1 })).toBeNull();
   });
 });
 
@@ -93,29 +93,27 @@ describe("combinarPrior", () => {
     socializer: 2.5, daredevil: 2.0, conqueror: 1.5,
   });
 
-  it("concordancia alta sobe a confianca; divergencia baixa", () => {
+  it("concordância é descritiva e não se transforma em confiança", () => {
     const concordando = combinarPrior({
       escalaCentrada,
       ordenacao: pontuarOrdenacao([...ORDEM_EXEMPLO]),
-      confiancaDaEscala: 0.9,
     });
     const divergindo = combinarPrior({
       escalaCentrada,
       ordenacao: pontuarOrdenacao([...ORDEM_EXEMPLO].reverse()),
-      confiancaDaEscala: 0.9,
     });
     expect(concordando.concordancia).toBeGreaterThan(0.9);
     expect(divergindo.concordancia).toBeLessThan(-0.9);
-    expect(concordando.confianca).toBeGreaterThan(divergindo.confianca);
+    expect(concordando.confianca).toBeNull();
+    expect(divergindo.confianca).toBeNull();
   });
 
-  it("divergencia nao zera a confianca: o cadastro precisa entregar um perfil", () => {
+  it("ausência de calibração permanece null, nunca confiança zero", () => {
     const d = combinarPrior({
       escalaCentrada,
       ordenacao: pontuarOrdenacao([...ORDEM_EXEMPLO].reverse()),
-      confiancaDaEscala: 0.9,
     });
-    expect(d.confianca).toBeGreaterThanOrEqual(0.15);
+    expect(d.confianca).toBeNull();
   });
 
   it("a ordenacao salva quem marcou tudo igual na escala", () => {
@@ -128,7 +126,6 @@ describe("combinarPrior", () => {
     const { afinidade } = combinarPrior({
       escalaCentrada: escalaSemInformacao,
       ordenacao: pontuarOrdenacao([...ORDEM_EXEMPLO]),
-      confiancaDaEscala: 0.3,
     });
     const vencedor = PERFIS_EM_ORDEM.reduce((a, b) => (afinidade[a] >= afinidade[b] ? a : b));
     expect(vencedor).toBe("seeker");
@@ -137,8 +134,8 @@ describe("combinarPrior", () => {
 
   it("peso 0 ignora a ordenacao; peso 1 ignora a escala", () => {
     const ordenacao = pontuarOrdenacao([...ORDEM_EXEMPLO]);
-    const soEscala = combinarPrior({ escalaCentrada, ordenacao, confiancaDaEscala: 0.9, pesoOrdenacao: 0 });
-    const soOrdem = combinarPrior({ escalaCentrada, ordenacao, confiancaDaEscala: 0.9, pesoOrdenacao: 1 });
+    const soEscala = combinarPrior({ escalaCentrada, ordenacao, pesoOrdenacao: 0 });
+    const soOrdem = combinarPrior({ escalaCentrada, ordenacao, pesoOrdenacao: 1 });
     expect(soEscala.afinidade.seeker).toBeCloseTo(escalaCentrada.seeker);
     expect(soOrdem.afinidade.seeker).toBeCloseTo(ordenacao.seeker);
   });

@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { RankDetalhe } from "@/app/(tabs)/ranking/[id]";
 import { HallBackground } from "@/components/HallTheme";
@@ -13,6 +13,7 @@ import { formatRankScore } from "@/utils/rankingPodium";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { ImagemDoStorage } from "@/components/ImagemDoStorage";
 
 // Mesma escolha de arte da lista de categorias do app (ranking/index.tsx).
 const arteDoCriterio = (criterio?: string | null) =>
@@ -96,7 +97,7 @@ export function RankingDesktop() {
               SUA POSIÇÃO · {rankAberto.info.nome_rank.toUpperCase()}
             </Text>
             <View style={s.posLinha}>
-              {usuario?.foto_url ? <Image source={{ uri: usuario.foto_url }} style={[s.posFoto, { borderColor: palette.accent }]} /> : null}
+              {usuario?.foto_url ? <ImagemDoStorage source={{ uri: usuario.foto_url }} style={[s.posFoto, { borderColor: palette.accent }]} /> : null}
               <Text style={[s.posNumero, { color: palette.accent }]}>{resumo.minha.posicao ? `${resumo.minha.posicao}º` : "--"}</Text>
               <Text style={[s.posValor, { color: palette.text }]}>{formatRankScore(resumo.minha.pontuacao, criterio)}</Text>
             </View>

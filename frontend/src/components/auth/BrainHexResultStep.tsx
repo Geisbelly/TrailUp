@@ -52,11 +52,15 @@ export default function BrainHexResultStep({
         <div className="mb-2 inline-flex items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/10 p-2 text-emerald-500">
           <Sparkles className="h-5 w-5" />
         </div>
-        <h2 className="text-2xl font-bold tracking-tight text-white">Análise completa!</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-white">Suas preferências iniciais</h2>
         <p className="text-sm text-muted-foreground">
           {representativeProfiles.length > 1
-            ? "Escolha por qual dos seus perfis representativos deseja começar."
-            : "Este é o perfil que mais representa você."}
+            ? "Escolha uma das sugestões para começar."
+            : "Esta é uma sugestão para começar."}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Os percentuais são relativos às suas respostas neste questionário exploratório.
+          Não indicam certeza, capacidade ou um modo comprovado de aprender melhor.
         </p>
       </div>
 
@@ -137,7 +141,7 @@ export default function BrainHexResultStep({
               />
             </div>
             <span className="font-mono text-xs text-muted-foreground">
-              {activeProfile.percent}% de compatibilidade
+              {activeProfile.percent}% de afinidade relativa
             </span>
           </div>
         </Card>

@@ -8,6 +8,7 @@ import {
 } from "@/utils/contentBlocks";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { resolveSupabaseStorageUrl } from "@/utils/supabaseStorage";
+import { assinarUrlsDoStorageNoTexto, urlsDoStorageQueExigemAssinatura } from "@/utils/urlsDoStorageNoTexto";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -224,15 +225,31 @@ export function MarkdownBlock({ payload }: Props) {
     return () => { ativo = false; };
   }, [inlineMarkdown, sourceUrl, bucketHint]);
 
+  // Imagem/link de bucket privado DENTRO do markdown (#195): com os buckets
+  // fechados a URL publica da' 400 e a `authenticated` pede token, entao o
+  // texto e' assinado antes de renderizar. Sem URL privada, nada muda.
+  const [assinado, setAssinado] = useState<{ de: string; texto: string } | null>(null);
+  const precisaAssinar = useMemo(() => urlsDoStorageQueExigemAssinatura(markdown).length > 0, [markdown]);
+  useEffect(() => {
+    if (!precisaAssinar) return;
+    let ativo = true;
+    void assinarUrlsDoStorageNoTexto(markdown, (url) => resolveSupabaseStorageUrl(url)).then((texto) => {
+      if (ativo) setAssinado({ de: markdown, texto });
+    });
+    return () => { ativo = false; };
+  }, [markdown, precisaAssinar]);
+  const assinando = precisaAssinar && assinado?.de !== markdown;
+  const markdownPronto = precisaAssinar ? (assinado?.de === markdown ? assinado.texto : "") : markdown;
+
   const pages = useMemo(() => {
-    if (!markdown) return [];
+    if (!markdownPronto) return [];
     // O gerador entrega fórmula em LaTeX e este renderizador não faz matemática: sem isto o
     // aluno lê `$x$` e `$$ax + b = 0$$` literalmente (#522). A conversão é na LEITURA porque
     // também conserta o material JÁ gravado, que um ajuste de prompt não alcançaria.
-    const legivel = matematicaLegivel(markdown);
+    const legivel = matematicaLegivel(markdownPronto);
     const parts = splitByH2(legivel);
     return parts.length > 1 ? parts : [legivel];
-  }, [markdown]);
+  }, [markdownPronto]);
 
   const currentPage = pages[pageIndex] ?? "";
   const totalPages = pages.length;
@@ -334,7 +351,7 @@ export function MarkdownBlock({ payload }: Props) {
     };
   }, [palette, desktop]);
 
-  if (carregando) {
+  if (carregando || assinando) {
     return (
       <View style={styles.statusBox}>
         <ActivityIndicator size="small" color={palette.accent} />

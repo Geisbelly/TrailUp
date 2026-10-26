@@ -72,7 +72,7 @@ export function FormularioDoEvento({
           <DialogDescription>
             {somenteTexto
               ? "Depois de aberto, o evento só aceita mudar título e descrição."
-              : "O evento nasce como rascunho. Os alunos só o veem depois que você abrir."}
+              : "O evento nasce como rascunho. Agendado, abre sozinho no começo; senão, os alunos só o veem depois que você abrir. Aberto, encerra e apura sozinho no fim."}
           </DialogDescription>
         </DialogHeader>
 
@@ -99,6 +99,18 @@ export function FormularioDoEvento({
               <Label htmlFor="ev-fim" className={rotulo}>Termina *</Label>
               <Input id="ev-fim" type="datetime-local" className={campo} value={form.fim} disabled={travado} onChange={(e) => alterar({ fim: e.target.value })} aria-invalid={!!erros.fim} />
               {erros.fim && <p className="mt-1 text-xs text-destructive">{erros.fim}</p>}
+            </div>
+          </div>
+
+          <div className="rounded-[14px] border bg-background p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold">Abrir sozinho no começo</p>
+                <p className="text-[11.5px] text-muted-foreground">
+                  O evento vai ao ar no horário de início, sem precisar clicar em Abrir. O fim vale sempre: no horário de término ele encerra e apura sozinho.
+                </p>
+              </div>
+              <Switch checked={form.abrirNoInicio} onCheckedChange={(v) => alterar({ abrirNoInicio: v })} disabled={travado} aria-label="Abrir sozinho no começo" />
             </div>
           </div>
 

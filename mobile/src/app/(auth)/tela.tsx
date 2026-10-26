@@ -1,22 +1,20 @@
-import { HallBackground } from "@/components/HallTheme";
-import { designStar } from "@/constants/designAssets";
+import { designStar, publicScenery } from "@/constants/designAssets";
 import { Design } from "@/styles/design";
-import { FontFamily } from "@/styles/GlobalStyle";
-import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { SafeAreaView, StyleSheet, Text, View } from "react-native";
-import tinycolor from "tinycolor2";
+import { Image as CenaImagem, Platform, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { textShadowStyle } from "@/utils/webShadow";
 
-// Paleta estática para telas de autenticação — violeta oficial do logo TrailUp
-const AUTH_PALETTE = buildProfileShellPaletteFromAccent(Design.primary, "magica");
+const IS_WEB = Platform.OS === "web";
+const SERIF = Platform.select({ ios: "Georgia", android: "serif", default: "Georgia, serif" });
 
+// "Bem-vindo(a) de volta" (protótipo mobile-v1, 00-entrada, estado "volta"): a mesma cena da entrada,
+// a frase e o anel com a estrela no centro. Dura ~2s e segue para o login; sem botões.
 const Tela_De_Rosto = () => {
   const navigation = useRouter();
-
-  const goldDim = tinycolor(AUTH_PALETTE.accent).setAlpha(0.45).toRgbString();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -26,38 +24,19 @@ const Tela_De_Rosto = () => {
   }, [navigation]);
 
   return (
-    <View style={[styles.outer, { backgroundColor: AUTH_PALETTE.background }]}>
-      {/* Fundo do salão */}
-      <View style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
-        <HallBackground palette={AUTH_PALETTE} />
-      </View>
-
-      {/* Gradiente candelabro */}
+    <View style={styles.outer}>
+      <CenaImagem source={publicScenery} style={[StyleSheet.absoluteFill, IS_WEB && styles.cenaWeb]} resizeMode="cover" accessible={false} />
       <LinearGradient
-        colors={[
-          tinycolor(AUTH_PALETTE.accent).setAlpha(0.22).toRgbString(),
-          "transparent",
-        ]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: "40%", pointerEvents: "none" }]}
+        colors={["rgba(23,14,43,0.08)", "rgba(23,14,43,0.3)", Design.ink]}
+        locations={[0, 0.45, 0.82]}
+        style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
       />
-
       <SafeAreaView style={styles.container}>
-        <View style={styles.textContainer}>
-          <Text style={[styles.title, { color: "#fff" }]}>
-            BEM VINDO(A) DE VOLTA!
-          </Text>
-          <Text style={[styles.subtitle, { color: "rgba(255,255,255,0.72)" }]}>
-            Sentimos sua falta, ficamos felizes{"\n"}que tenha voltado.
-          </Text>
-
-          <View style={[styles.imageRing, { borderColor: goldDim }]}>
-            <Image
-              source={designStar}
-              style={styles.image}
-              contentFit="contain"
-            />
+        <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.textContainer}>
+          <Text style={styles.title}>BEM VINDO(A) DE VOLTA!</Text>
+          <Text style={styles.subtitle}>Sentimos sua falta, ficamos felizes{"\n"}que tenha voltado.</Text>
+          <View style={styles.imageRing}>
+            <Image source={designStar} style={styles.image} contentFit="contain" accessibilityLabel="" />
           </View>
         </View>
       </SafeAreaView>
@@ -66,46 +45,31 @@ const Tela_De_Rosto = () => {
 };
 
 const styles = StyleSheet.create({
-  outer: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  textContainer: {
-    alignItems: "center",
-    gap: 10,
-  },
+  outer: { flex: 1, backgroundColor: Design.ink },
+  cenaWeb: { width: "100%", height: "100%" },
+  container: { flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 32 },
+  textContainer: { alignItems: "center", gap: 14 },
   title: {
-    fontSize: 22,
-    fontFamily: FontFamily.inknutAntiquaMedium,
+    fontFamily: SERIF,
+    fontSize: 24,
     fontWeight: "700",
     textAlign: "center",
-    letterSpacing: 0,
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+    letterSpacing: 0.5,
+    color: Design.text,
+    ...textShadowStyle({ color: "rgba(0,0,0,0.8)", offset: { width: 0, height: 2 }, radius: 8 }, IS_WEB),
   },
-  subtitle: {
-    marginTop: 5,
-    marginBottom: 25,
-    fontSize: 17,
-    fontFamily: FontFamily.inknutAntiquaMedium,
-    fontWeight: "500",
-    textAlign: "center",
-    lineHeight: 24,
-  },
+  subtitle: { fontSize: 15, lineHeight: 22, textAlign: "center", color: "rgba(244,243,247,0.82)" },
   imageRing: {
-    borderRadius: Design.radius,
-    padding: 4,
+    width: 168,
+    height: 168,
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(149,131,230,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  image: {
-    width: 180,
-    height: 180,
-  },
+  image: { width: 112, height: 112 },
 });
 
 export default Tela_De_Rosto;

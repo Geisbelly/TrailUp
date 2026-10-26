@@ -17,10 +17,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import tinycolor from "tinycolor2";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { textShadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 export default function NotificacaoDetalhe() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -382,9 +385,7 @@ const s = StyleSheet.create({
     fontSize: 20,
     lineHeight: 26,
     letterSpacing: 0,
-    textShadowColor: "rgba(0,0,0,0.7)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    ...textShadowStyle({ color: "rgba(0,0,0,0.7)", offset: { width: 0, height: 1 }, radius: 4 }, IS_WEB),
   },
   timeWrap: { marginTop: 8, gap: 2 },
   timeRow: { flexDirection: "row", alignItems: "center", gap: 6 },

@@ -1,7 +1,11 @@
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View, Platform } from "react-native";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
+const SOMBRA_CONTAINER = { offset: { width: 0, height: 4 }, opacity: 0.2, radius: 12 };
 
 type Props = {
   topico: any;
@@ -123,7 +127,7 @@ export function TopicoIntroSummary({ topico, totalBlocos, modo, theme }: Props) 
         {
           backgroundColor: surfaceColor,
           borderColor,
-          shadowColor: accentColor,
+          ...shadowStyle({ ...SOMBRA_CONTAINER, color: accentColor }, IS_WEB),
         },
       ]}
     >
@@ -168,10 +172,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#1a2540",
     borderWidth: 1,
     borderColor: `${Color.colorBlueviolet100}33`,
-    shadowColor: Color.colorBlueviolet100,
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    ...shadowStyle({ ...SOMBRA_CONTAINER, color: Color.colorBlueviolet100 }, IS_WEB),
     elevation: 6,
   },
   loadingBox: {

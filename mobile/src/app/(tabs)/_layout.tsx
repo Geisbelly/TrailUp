@@ -33,6 +33,7 @@ import { estaNaTrilhaDeEstudo } from "@/utils/presencaDeEstudo";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import type { Funcionalidade } from "@/utils/portoes";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { useUrlDeImagem } from "@/hooks/useFonteDeImagem";
 
 function TourAwareTabBar(props: BottomTabBarProps) {
   const targetRef = useRef<View | null>(null);
@@ -78,10 +79,9 @@ export default function TabLayout() {
   const { aberturas, cerimoniaAtual, concluirCerimonia } = usePortoes();
   const [portaoBloqueado, setPortaoBloqueado] = useState<Funcionalidade | null>(null);
 
-  const perfilFoto =
-    usuario?.foto_url
-      ? { uri: usuario.foto_url }
-      : perfilImage;
+  // Foto privada do Storage (#195): URL assinada curta; enquanto isso, o padrao.
+  const fotoAssinada = useUrlDeImagem(usuario?.foto_url);
+  const perfilFoto = fotoAssinada ? { uri: fotoAssinada } : perfilImage;
   // Mesma leitura de rota que o vigia de presença usa para saber se o aluno
   // está estudando: esconder a barra e "não perguntar agora" respondem à mesma
   // pergunta, e duas cópias divergiriam.

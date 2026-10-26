@@ -37,7 +37,9 @@ export function rankBrainHexProfiles(
       if (right.afinidade !== left.afinidade) {
         return right.afinidade - left.afinidade;
       }
-      return left.index - right.index;
+      // Mesmo desempate do cadastro, das missões e do SQL, independente
+      // da ordem em que as linhas chegaram do banco.
+      return left.profile.localeCompare(right.profile);
     });
 }
 

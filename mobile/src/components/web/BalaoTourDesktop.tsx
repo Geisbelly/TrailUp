@@ -1,10 +1,13 @@
 import React, { useState } from "react";
-import { Image, type ImageSourcePropType, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, type ImageSourcePropType, Pressable, StyleSheet, Text, View, Platform } from "react-native";
 import tinycolor from "tinycolor2";
 
 import { FontFamily } from "@/styles/GlobalStyle";
 import { posicaoBalaoTour, type Retangulo } from "@/utils/posicaoBalaoTour";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
+import { shadowStyle } from "@/utils/webShadow";
+
+const IS_WEB = Platform.OS === "web";
 
 const LARGURA = 380;
 const LARGURA_APRESENTACAO = 760;
@@ -84,7 +87,7 @@ export function BalaoTourDesktop({
 
   if (apresentacao) {
     return (
-      <View style={s.centro} pointerEvents="box-none">
+      <View style={[s.centro, { pointerEvents: "box-none" }]}>
         <View
           accessibilityRole="none"
           accessibilityLabel="Tutorial inicial"
@@ -148,10 +151,7 @@ const s = StyleSheet.create({
     paddingTop: 18,
     paddingHorizontal: 18,
     paddingBottom: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.5,
-    shadowRadius: 25,
-    shadowOffset: { width: 0, height: 18 },
+    ...shadowStyle({ color: "#000", offset: { width: 0, height: 18 }, opacity: 0.5, radius: 25 }, IS_WEB),
   },
   cartaoApresentacao: {
     position: "relative",

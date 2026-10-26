@@ -25,12 +25,20 @@ def test_prefixo_do_bucket_no_caminho_e_removido() -> None:
     assert build_material_url(BASE, "conteudo_aluno", f"conteudo_aluno/{CAMINHO}") == GATEWAY
 
 
-def test_outro_bucket_continua_com_url_publica_direta() -> None:
-    # O gateway so' conhece caminhos de material (vw_material_storage_paths) e
-    # so' cai no bucket conteudo_aluno; fonte do professor nao passa por ele.
+def test_fonte_do_professor_tambem_usa_o_gateway() -> None:
+    # `conteudos` e' privado desde a 20261024_10. O caminho da fonte do
+    # professor esta' em `fontes_personalizacao` (a view do gateway cobre) e o
+    # gateway assina no bucket `conteudos` quando o caminho comeca com o uuid.
     assert (
         build_material_url(BASE, "conteudos", "aluno 1/aula.pptx")
-        == f"{BASE}/storage/v1/object/public/conteudos/aluno%201/aula.pptx"
+        == f"{BASE}/functions/v1/storage-redirect?path=aluno%201/aula.pptx"
+    )
+
+
+def test_outro_bucket_continua_com_url_publica_direta() -> None:
+    assert (
+        build_material_url(BASE, "outro_bucket", "aluno 1/aula.pptx")
+        == f"{BASE}/storage/v1/object/public/outro_bucket/aluno%201/aula.pptx"
     )
 
 

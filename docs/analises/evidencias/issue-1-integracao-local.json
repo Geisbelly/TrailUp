@@ -1,0 +1,40 @@
+{
+  "timestamp": "2026-10-25T21:15:53.765Z",
+  "baseCommit": "017e909266cf672d89fe1266b52bbaafaefc74ad",
+  "worktreeDirty": false,
+  "images": [
+    {
+      "image": "postgres:17.6-alpine",
+      "digest": "postgres@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94"
+    },
+    {
+      "image": "supabase/gotrue:v2.197.0",
+      "digest": "supabase/gotrue@sha256:1736a63078f5922b198c4cbe50f80ab9a2d3b54fe8b7b6cfb2e9dc5dbbc12c6b"
+    },
+    {
+      "image": "postgrest/postgrest:v14.18",
+      "digest": "postgrest/postgrest@sha256:c7cd7e265a85b05248abf53f4473fcec7e327c282d0bd0cf60f1551996d09fcf"
+    },
+    {
+      "image": "axllent/mailpit:v1.27",
+      "digest": "axllent/mailpit@sha256:e22dce5b36f93c77082e204a3942fb6b283b7896e057458400a4c88344c3df68"
+    }
+  ],
+  "testedMigrations": [
+    "20261003_02",
+    "20261024_04",
+    "20261024_05",
+    "20261024_08"
+  ],
+  "limits": [
+    "Schema base mínimo e helper de consentimento explícitos",
+    "Material sintético, sem geração LLM/Storage real",
+    "Não é implantação nem schema completo de produção"
+  ],
+  "result": {
+    "scenarios": 3,
+    "passed": 3,
+    "failed": 0,
+    "durationSeconds": 23.4
+  }
+}

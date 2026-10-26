@@ -42,6 +42,8 @@ export type FormularioDeEvento = {
   medalhaParticipacao: boolean;
   medalhaDestaque: boolean;
   recompensa: string;
+  /** Agendado: o rascunho abre sozinho no início da janela (#141). O fim vale para todo evento aberto. */
+  abrirNoInicio: boolean;
 };
 
 export const FORMULARIO_DE_EVENTO_VAZIO: FormularioDeEvento = {
@@ -59,6 +61,8 @@ export const FORMULARIO_DE_EVENTO_VAZIO: FormularioDeEvento = {
   medalhaParticipacao: true,
   medalhaDestaque: false,
   recompensa: "",
+  // Evento novo já sai agendado; o banco mantém `false` para os rascunhos antigos (opt-in).
+  abrirNoInicio: true,
 };
 
 export type PayloadDoEvento = {
@@ -75,6 +79,7 @@ export type PayloadDoEvento = {
   medalha_participacao: boolean;
   medalha_destaque: boolean;
   recompensa: string | null;
+  abrir_no_inicio: boolean;
 };
 
 export type ErrosDoEvento = Partial<
@@ -150,6 +155,7 @@ export function validarEvento(form: FormularioDeEvento): ResultadoDoEvento {
       medalha_participacao: form.medalhaParticipacao || form.medalhaDestaque,
       medalha_destaque: form.medalhaDestaque,
       recompensa: recompensa || null,
+      abrir_no_inicio: form.abrirNoInicio,
     },
   };
 }
@@ -163,6 +169,11 @@ export function dataParaCampo(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return "";
   return `${d.getFullYear()}-${dois(d.getMonth() + 1)}-${dois(d.getDate())}T${dois(d.getHours())}:${dois(d.getMinutes())}`;
 }
+
+const dataEHora = (iso: string) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : `${dois(d.getDate())}/${dois(d.getMonth() + 1)} ${dois(d.getHours())}:${dois(d.getMinutes())}`;
+};
 
 const dataCurta = (iso: string) => {
   const d = new Date(iso);
@@ -178,13 +189,21 @@ export function rotuloDoStatus(status: StatusDoEvento): string {
 }
 
 /** Texto de apoio do cartão: o que acontece com o evento agora. */
-export function situacaoDoEvento(e: { status: StatusDoEvento; inicio: string; fim: string }, agora: Date = new Date()): string {
+export function situacaoDoEvento(
+  e: { status: StatusDoEvento; inicio: string; fim: string; abrirNoInicio?: boolean },
+  agora: Date = new Date(),
+): string {
   if (e.status === "encerrado") return "Encerrado";
   const inicio = new Date(e.inicio).getTime();
   const fim = new Date(e.fim).getTime();
-  if (e.status === "rascunho") return fim <= agora.getTime() ? "Janela já passou — ajuste as datas para abrir" : "Ainda não aberto aos alunos";
+  if (e.status === "rascunho") {
+    if (fim <= agora.getTime()) return "Janela já passou — ajuste as datas para abrir";
+    if (e.abrirNoInicio) return agora.getTime() < inicio ? `Abre sozinho em ${dataEHora(e.inicio)}` : "Abrindo sozinho em instantes";
+    return "Ainda não aberto aos alunos";
+  }
   if (agora.getTime() < inicio) return "Aberto, começa em breve";
-  if (agora.getTime() > fim) return "Janela terminou — encerre para fechar o evento";
+  // A varredura (pg_cron, a cada minuto) encerra e apura; o botão segue valendo para quem não quer esperar.
+  if (agora.getTime() > fim) return "Janela terminou — encerra sozinho em instantes";
   return "Em andamento";
 }
 

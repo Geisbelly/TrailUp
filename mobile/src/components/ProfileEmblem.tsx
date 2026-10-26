@@ -8,7 +8,7 @@ import { normalizeBrainHexProfile } from "@/constants/brainHexProfiles";
 export function ProfileEmblem({ profile, toneProfile = profile, size = 52 }: { profile?: string | null; toneProfile?: string | null; size?: number }) {
   const key = normalizeBrainHexProfile(profile);
   return (
-    <View style={[styles.root, { width: size, height: size }]} pointerEvents="none" accessible={false}>
+    <View style={[styles.root, { width: size, height: size }, { pointerEvents: "none" }]} accessible={false}>
       {key ? <ProfileArtwork source={profileEmblems[key]} profile={toneProfile} width={size - 6} />
         : <MaterialCommunityIcons name="account-outline" size={size * 0.55} color="#ffffff" />}
     </View>

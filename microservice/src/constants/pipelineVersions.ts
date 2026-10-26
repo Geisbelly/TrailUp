@@ -18,6 +18,14 @@ export const PRESENTATION_SCHEMA_VERSION = "presentation-material-v3" as const;
 export const PRESENTATION_DESIGN_VERSION = "slidesgo-editorial-v3" as const;
 export const CONTENT_ENRICHMENT_PROVIDER = "openai" as const;
 
+/** Revisão declarada pelo deploy; não confundir com versão do contrato de mídia. */
+export function getBuildCommit(
+  environment: NodeJS.ProcessEnv = process.env,
+): string | null {
+  const value = environment.TRAILUP_BUILD_COMMIT?.trim() ?? "";
+  return /^[0-9a-fA-F]{40}$/.test(value) ? value.toLowerCase() : null;
+}
+
 export function getRenderGitCommit(
   environment: NodeJS.ProcessEnv = process.env,
 ): string | null {

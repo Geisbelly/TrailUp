@@ -8,6 +8,11 @@ from typing import Any, Callable, TypeVar
 from pydantic import BaseModel
 
 from app.core.settings import Settings
+from app.services.roteamento_ia import (
+    MENSAGEM_IA_INDISPONIVEL,
+    IAIndisponivelParaMenor,
+    rota_de_menor_ativa,
+)
 
 try:
     from langchain_core.messages import HumanMessage, SystemMessage
@@ -144,6 +149,17 @@ class StructuredOutputError(Exception):
 T = TypeVar("T", bound=BaseModel)
 
 
+class MenorSemOpenAIError(StructuredOutputError, IAIndisponivelParaMenor):
+    """Rota de menor (#195): a OpenAI falhou ou nao esta configurada. Nao ha
+    fallback para o Gemini; quem trata StructuredOutputError cai no fallback
+    local (sem IA), quem nao trata vira 503 amigavel (handler no main)."""
+
+    def __init__(self, motivo: str) -> None:
+        StructuredOutputError.__init__(self, motivo)
+        self.motivo = motivo
+        self.mensagem = MENSAGEM_IA_INDISPONIVEL
+
+
 class JsonLLMService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -152,6 +168,26 @@ class JsonLLMService:
     def _active_default(self, provider: str | None = None) -> str:
         p = provider or self.settings.llm_provider
         return self.settings.gemini_model_default if p == "gemini" else self.settings.openai_model_default
+
+    def _modelo_openai_para_menor(self, model: str | None) -> str:
+        """Modelo pedido pelo chamador, se for da OpenAI; modelo Gemini (ou nada)
+        vira o default da OpenAI."""
+        pedido = str(model or "").strip()
+        if pedido and not pedido.lower().startswith(("gemini", "models/gemini", "imagen")):
+            return pedido
+        return self.settings.openai_model_default
+
+    def _get_openai_client_para_menor(self, model: str) -> Any:
+        """Cliente OpenAI da rota de menor: `store=False` (a OpenAI nao guarda
+        a conversa para distill/evals/logs da conta). Sem chave -> None."""
+        cache_key = f"openai-menor:{model}"
+        if cache_key in self._clients:
+            return self._clients[cache_key]
+        if not self.settings.openai_api_key or ChatOpenAI is None:
+            return None
+        client = ChatOpenAI(model=model, temperature=0, api_key=self.settings.openai_api_key, store=False)
+        self._clients[cache_key] = client
+        return client
 
     def _gemini_fallback_models(self) -> list[str]:
         return _parse_gemini_keys(str(getattr(self.settings, "gemini_text_fallback_models", "") or ""))
@@ -254,6 +290,19 @@ class JsonLLMService:
             ),
         ]
 
+        if rota_de_menor_ativa():
+            # #195: menor -> so OpenAI, sem Gemini. Falhou -> fallback local.
+            try:
+                client = self._get_openai_client_para_menor(self._modelo_openai_para_menor(model))
+                response = await client.ainvoke(messages) if client is not None else None
+                if response is None:
+                    logger.warning("LLM rota de menor sem OpenAI para %s; fallback local", prompt_name)
+                    return fallback_factory()
+                return extract_json(response.content)
+            except Exception as exc:
+                logger.warning("LLM rota de menor: OpenAI falhou para %s (%s); fallback local", prompt_name, type(exc).__name__)
+                return fallback_factory()
+
         effective_provider = provider or self.settings.llm_provider
         effective_model = model or self._active_default(provider)
 
@@ -305,9 +354,14 @@ class JsonLLMService:
             ),
         ]
 
+        json_schema = schema.model_json_schema()
+        if rota_de_menor_ativa():
+            return await self._ainvoke_structured_menor(
+                prompt_name=prompt_name, messages=messages, schema=schema, json_schema=json_schema, model=model
+            )
+
         effective_provider = provider or self.settings.llm_provider
         effective_model = model or self._active_default(provider)
-        json_schema = schema.model_json_schema()
 
         try:
             if effective_provider == "gemini":
@@ -341,4 +395,34 @@ class JsonLLMService:
         except Exception as exc:
             raise StructuredOutputError(
                 f"Saida de {prompt_name} nao bateu com o schema {schema.__name__}: {exc}"
+            ) from exc
+
+    async def _ainvoke_structured_menor(
+        self,
+        *,
+        prompt_name: str,
+        messages: list[Any],
+        schema: type[T],
+        json_schema: dict[str, Any],
+        model: str | None,
+    ) -> T:
+        """#195: rota de menor. So OpenAI (store=False); nenhum caminho cai no
+        Gemini. Qualquer falha -> MenorSemOpenAIError."""
+        client = self._get_openai_client_para_menor(self._modelo_openai_para_menor(model))
+        if client is None:
+            raise MenorSemOpenAIError(f"OpenAI nao configurada para {prompt_name} (rota de menor)")
+        try:
+            response = await client.with_structured_output(json_schema).ainvoke(messages)
+        except Exception as exc:
+            raise MenorSemOpenAIError(
+                f"OpenAI falhou para {prompt_name} (rota de menor): {type(exc).__name__}"
+            ) from exc
+        if response is None:
+            raise MenorSemOpenAIError(f"OpenAI sem resposta para {prompt_name} (rota de menor)")
+        raw = response if isinstance(response, dict) else extract_json(getattr(response, "content", response))
+        try:
+            return schema.model_validate(raw)
+        except Exception as exc:
+            raise MenorSemOpenAIError(
+                f"Saida de {prompt_name} nao bateu com o schema {schema.__name__} (rota de menor): {exc}"
             ) from exc

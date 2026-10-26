@@ -1027,7 +1027,7 @@ async def test_materiais_repository_builds_public_url_from_storage_path() -> Non
     assert cached is not None
     assert (
         cached["pdf"]["arquivo_url"]
-        == "https://xrebtkmdewolzmpsdwgh.supabase.co/storage/v1/object/public/conteudos/aluno-1/10/resumo-final.pdf"
+        == "https://xrebtkmdewolzmpsdwgh.supabase.co/functions/v1/storage-redirect?path=aluno-1/10/resumo-final.pdf"  # bucket conteudos e' privado (20261024_10)
     )
     assert cached["pdf"]["storage_path"] == "aluno-1/10/resumo-final.pdf"
 
@@ -1054,7 +1054,7 @@ def test_conteudo_personalizado_repository_hydrates_materials_public_urls() -> N
 
     assert (
         record["materiais"]["apresentacao"]["arquivo_url"]
-        == "https://xrebtkmdewolzmpsdwgh.supabase.co/storage/v1/object/public/conteudos/aluno-1/114/aula-01.pptx"
+        == "https://xrebtkmdewolzmpsdwgh.supabase.co/functions/v1/storage-redirect?path=aluno-1/114/aula-01.pptx"  # bucket conteudos e' privado (20261024_10)
     )
     assert record["materiais"]["apresentacao"]["storage_path"] == "aluno-1/114/aula-01.pptx"
 

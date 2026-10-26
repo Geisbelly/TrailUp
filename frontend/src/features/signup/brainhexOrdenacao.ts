@@ -1,22 +1,8 @@
 /**
- * Bloco de ordenacao forcada — a parte ipsativa do BrainHex original.
- *
- * O instrumento validado (Nacke, Bateman & Mandryk, 2014) tem DUAS partes: a
- * escala de afinidade e a ordenacao de sete afirmacoes de preferencia forte,
- * que e' o que define classe primaria e subclasse. O TrailUp implementou so' a
- * primeira. Esta e' a segunda.
- *
- * POR QUE ELA IMPORTA. A escala Likert mede preferencia E estilo de resposta
- * misturados; a ordenacao e' imune ao estilo por construcao — concordar com
- * tudo nao ajuda quando e' preciso dizer o que vem primeiro. Em compensacao
- * ela e' grosseira: uma observacao ordinal por perfil, sem intensidade.
- *
- * As duas se corrigem. E a CONCORDANCIA entre elas e' informacao por si: quando
- * o que a pessoa diz preferir (ordenacao) bate com o que ela marcou na escala,
- * ha' convergencia entre dois metodos e a confianca sobe; quando diverge, o
- * prior e' fraco e isso tem de aparecer em vez de sumir numa media.
+ * Ordenação de preferências da adaptação exploratória TrailUp.
+ * Não reproduz nem herda validade do instrumento BrainHex original.
+ * Fundamentação e limites: docs/analises/issue-1-adaptacao-evidencias.md.
  */
-
 import type { BrainHexProfileKey } from "./brainhex";
 
 export const PERFIS_EM_ORDEM: BrainHexProfileKey[] = [
@@ -29,12 +15,7 @@ export const PERFIS_EM_ORDEM: BrainHexProfileKey[] = [
   "achiever",
 ];
 
-/**
- * Uma afirmacao de preferencia forte por perfil, no espirito das do
- * instrumento original: descrevem o MOMENTO que a pessoa busca, nao uma virtude
- * que ela deveria ter. Isso reduz desejabilidade social — nenhuma das sete e'
- * "a resposta certa" numa escola.
- */
+/** Afirmações autorais: compreensão e desejabilidade social não foram avaliadas localmente. */
 export const AFIRMACOES_DE_ORDENACAO: Record<BrainHexProfileKey, string> = {
   seeker: "Descobrir algo que não estava no caminho principal.",
   survivor: "Encarar algo que parecia difícil demais e continuar até vencer.",
@@ -72,13 +53,7 @@ export function validarOrdenacao(ordem: readonly string[]): OrdenacaoRespondida 
   return ordem as OrdenacaoRespondida;
 }
 
-/**
- * Posicao -> escore ja' centrado em zero.
- *
- * Com 7 perfis: 1o lugar = +3 … 4o = 0 … 7o = -3. A media e' zero por
- * construcao, igual ao escore centrado da escala — os dois ficam na mesma
- * unidade e podem ser combinados sem reescalar.
- */
+/** Posição -> escore -3..3. Centragem não torna escalas comensuráveis. */
 export function pontuarOrdenacao(
   ordem: OrdenacaoRespondida,
 ): Record<BrainHexProfileKey, number> {
@@ -91,72 +66,65 @@ export function pontuarOrdenacao(
 }
 
 /**
- * Concordancia entre os dois metodos: correlacao de postos (Spearman) entre a
- * ordem que a escala sugere e a ordem que a pessoa declarou.
- *
- * +1 = os dois dizem a mesma coisa; 0 = nao se falam; -1 = opostos. Alimenta a
- * confianca do prior, nao o escore: metodos que divergem nao se anulam, eles
- * avisam que ha' menos certeza.
+ * Spearman = Pearson dos postos médios; empates não recebem ordens artificiais.
+ * Sem variância, incompleto ou não finito: null (não estimável), nunca zero.
+ * Referências: scipy.stats.spearmanr / rankdata; ver o parecer de adaptação.
+ * É descrição de associação entre sete escores, não confiança psicométrica.
  */
 export function concordanciaEntreMetodos(
   escala: Record<string, number>,
   ordenacao: Record<string, number>,
-): number {
-  const perfis = PERFIS_EM_ORDEM.filter((p) => p in escala && p in ordenacao);
-  if (perfis.length < 3) return 0;
-
+): number | null {
+  const perfis = PERFIS_EM_ORDEM;
+  if (perfis.some(p => !Number.isFinite(escala[p]) || !Number.isFinite(ordenacao[p]))) return null;
   const postos = (valores: Record<string, number>) => {
     const ordenado = [...perfis].sort((a, b) => valores[b] - valores[a]);
     const mapa = new Map<string, number>();
-    ordenado.forEach((p, i) => mapa.set(p, i + 1));
-    return mapa;
+    for (let inicio = 0; inicio < ordenado.length;) {
+      let fim = inicio + 1;
+      // As médias ponderadas podem diferir só por erro de ponto flutuante.
+      // Esta tolerância cobre arredondamento numérico, não empates substantivos.
+      const primeiro = valores[ordenado[inicio]];
+      while (fim < ordenado.length && Math.abs(valores[ordenado[fim]] - primeiro) <=
+        16 * Number.EPSILON * Math.max(1, Math.abs(primeiro), Math.abs(valores[ordenado[fim]]))) fim++;
+      const postoMedio = (inicio + 1 + fim) / 2;
+      for (let i = inicio; i < fim; i++) mapa.set(ordenado[i], postoMedio);
+      inicio = fim;
+    }
+    return perfis.map(p => mapa.get(p)!);
   };
-
-  const pa = postos(escala);
-  const pb = postos(ordenacao);
-  const n = perfis.length;
-  // Spearman por diferenca de postos. Sem empates (a ordenacao e' forcada e a
-  // escala e' desempatada pela ordem de `sort`), entao a forma simples vale.
-  const somaD2 = perfis.reduce((soma, p) => soma + (pa.get(p)! - pb.get(p)!) ** 2, 0);
-  const rho = 1 - (6 * somaD2) / (n * (n * n - 1));
-  return Math.max(-1, Math.min(1, rho));
+  const a = postos(escala), b = postos(ordenacao);
+  const centro = (perfis.length + 1) / 2;
+  let produto = 0, variacaoA = 0, variacaoB = 0;
+  for (let i = 0; i < perfis.length; i++) {
+    const da = a[i] - centro, db = b[i] - centro;
+    produto += da * db;
+    variacaoA += da * da;
+    variacaoB += db * db;
+  }
+  if (variacaoA === 0 || variacaoB === 0) return null;
+  return Math.max(-1, Math.min(1, produto / Math.sqrt(variacaoA * variacaoB)));
 }
 
 /**
- * Prior final: escala centrada + ordenacao, com a concordancia virando ajuste
- * de confianca.
- *
- * `pesoOrdenacao` controla quanto a parte ipsativa pesa. O default 0.5 trata as
- * duas como igualmente informativas — a escala tem mais resolucao, a ordenacao
- * tem menos vies. Nao ha' dado proprio para calibrar isso ainda; quando a fase
- * 3 trouxer comportamento, ele vira parametro ajustavel contra evidencia, nao
- * contra gosto.
+ * Regra de recomendação LEGADA: não é estimador probabilístico validado.
+ * Conservamos a mistura numérica para não inventar pesos substitutos sem dados.
+ * 0.5 não significa fontes igualmente informativas; ver análise de sensibilidade
+ * e limites em docs/analises/issue-1-adaptacao-evidencias.md.
+ * Concordância não é convertida em confiança: não existe calibração própria.
  */
 export function combinarPrior(params: {
   escalaCentrada: Record<string, number>;
   ordenacao: Record<BrainHexProfileKey, number>;
-  confiancaDaEscala: number;
   pesoOrdenacao?: number;
-}): { afinidade: Record<BrainHexProfileKey, number>; confianca: number; concordancia: number } {
-  const { escalaCentrada, ordenacao, confiancaDaEscala } = params;
+}): { afinidade: Record<BrainHexProfileKey, number>; confianca: null; concordancia: number | null } {
+  const { escalaCentrada, ordenacao } = params;
   const peso = Math.min(1, Math.max(0, params.pesoOrdenacao ?? 0.5));
-
   const afinidade = {} as Record<BrainHexProfileKey, number>;
   for (const perfil of PERFIS_EM_ORDEM) {
-    const daEscala = Number(escalaCentrada[perfil] ?? 0);
-    const daOrdem = Number(ordenacao[perfil] ?? 0);
-    afinidade[perfil] = (1 - peso) * daEscala + peso * daOrdem;
+    afinidade[perfil] = (1 - peso) * Number(escalaCentrada[perfil] ?? 0) + peso * ordenacao[perfil];
   }
-
-  const concordancia = concordanciaEntreMetodos(escalaCentrada, ordenacao);
-  // Concordancia negativa nao derruba a confianca a zero: ela e' um sinal entre
-  // outros, e o cadastro precisa entregar um perfil de qualquer jeito.
-  const ajuste = 0.6 + 0.4 * ((concordancia + 1) / 2);
-  return {
-    afinidade,
-    confianca: Math.min(1, Math.max(0.15, confiancaDaEscala * ajuste)),
-    concordancia,
-  };
+  return { afinidade, confianca: null, concordancia: concordanciaEntreMetodos(escalaCentrada, ordenacao) };
 }
 
 /**
@@ -185,11 +153,8 @@ export function moverNaOrdenacao(
 }
 
 /**
- * Ordem inicial embaralhada de forma DETERMINISTICA por semente.
- *
- * Embaralhar importa: comecar sempre na mesma ordem cria vies de ancoragem --
- * quem nao mexe entrega a ordem que o sistema sugeriu, nao a sua. Deterministico
- * importa para o teste, e para a ordem nao mudar se o componente re-renderizar.
+ * Apresentação inicial determinística por semente, não preferência inferida.
+ * O wizard exige confirmação explícita; embaralhar não comprova ausência de viés.
  */
 export function ordemInicial(semente: number): BrainHexProfileKey[] {
   const copia = [...PERFIS_EM_ORDEM];

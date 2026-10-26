@@ -1,0 +1,63 @@
+# Apenas teste local descartável. Não lê .env do projeto nem usa banco hospedado.
+services:
+  db:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD:?}
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  mail:
+    image: axllent/mailpit:v1.27
+    ports:
+      - '127.0.0.1:58039:8025'
+  auth:
+    image: supabase/gotrue:v2.197.0
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:57439:9999'
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://127.0.0.1:57441
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:${TEST_DB_PASSWORD}@db:5432/postgres?search_path=auth
+      DB_NAMESPACE: auth
+      GOTRUE_SITE_URL: http://127.0.0.1:4188/auth/confirmacao
+      GOTRUE_URI_ALLOW_LIST: http://127.0.0.1:4188/**
+      GOTRUE_JWT_SECRET: ${TEST_JWT_SECRET:?}
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+      GOTRUE_EXTERNAL_PHONE_ENABLED: 'false'
+      GOTRUE_MAILER_AUTOCONFIRM: 'false'
+      GOTRUE_SMS_AUTOCONFIRM: 'false'
+      GOTRUE_SMTP_HOST: mail
+      GOTRUE_SMTP_PORT: 1025
+      GOTRUE_SMTP_ADMIN_EMAIL: noreply@trailup.example.test
+      GOTRUE_SMTP_SENDER_NAME: TrailUp teste local
+      GOTRUE_SMTP_MAX_FREQUENCY: 1s
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: 100
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+  rest:
+    image: postgrest/postgrest:v14.18
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:57440:3000'
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${TEST_DB_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${TEST_JWT_SECRET:?}
+      PGRST_DB_POOL: 10
+      PGRST_DB_MAX_ROWS: 1000

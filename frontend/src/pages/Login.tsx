@@ -19,6 +19,8 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { FORGOT_PASSWORD_PATH } from "@/features/auth/resetPasswordRoute";
 
+import { AREA_ALUNO } from "@/features/signup/cadastroAluno";
+
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
@@ -57,6 +59,8 @@ export default function Login() {
     if (user && !authLoading) {
       if (userRole === "professor" && isProfessorLiberado) {
         navigate("/console");
+      } else if (userRole === "aluno") {
+        navigate(AREA_ALUNO, { replace: true });
       }
     }
   }, [user, userRole, isProfessorLiberado, authLoading, navigate]);
@@ -154,6 +158,7 @@ export default function Login() {
     }
 
     toast.success("Login realizado com sucesso!");
+    navigate(AREA_ALUNO, { replace: true });
     setIsLoading(false);
   };
 

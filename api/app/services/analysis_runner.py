@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Any
 
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from app.schemas.api import AnalisarPayload, AnalisarResponse
 from app.schemas.common import Evento
 from app.services import memoria_aluno
 from app.services.linear_analysis_pipeline import build_linear_analysis_orchestrator
+from app.services.roteamento_ia import rota_ia_para_alunos
 from app.services.state_builder import build_initial_state
 from app.services.sugestao_ciclo import revisar_sugestoes_do_ciclo
 
@@ -71,7 +73,14 @@ def build_analysis_response(result: dict) -> AnalisarResponse:
     )
 
 
-async def run_analysis(
+async def run_analysis(*, request: Request, session: AsyncSession, aluno_id: str, **kwargs: Any) -> AnalisarResponse:
+    """Analise de um aluno: toda IA chamada daqui (grafo: supervisor, texto,
+    UI, perfil, notificacao...) segue a rota pela idade dele (#195)."""
+    async with rota_ia_para_alunos(session, [aluno_id]):
+        return await _run_analysis_na_rota(request=request, session=session, aluno_id=aluno_id, **kwargs)
+
+
+async def _run_analysis_na_rota(
     *,
     request: Request,
     session: AsyncSession,

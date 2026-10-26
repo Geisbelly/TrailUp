@@ -63,7 +63,7 @@ export function HexagonoTopico({
         <Path d={HEX_DENTRO} fill="none" stroke={hex.dentro} strokeWidth={1.5} />
         {hex.brilho ? <Path d={HEX_DENTRO} fill={`url(#${idBase}-brilho)`} opacity={0.55} /> : null}
       </Svg>
-      <View style={s.glifo} pointerEvents="none">
+      <View style={[s.glifo, { pointerEvents: "none" }]}>
         {estado === "done" ? (
           <MaterialCommunityIcons name="check-bold" size={glifo} color={hex.glifo} />
         ) : estado === "locked" ? (
