@@ -41,6 +41,7 @@ const formularioDe = (e: Evento): FormularioDeEvento => ({
   medalhaParticipacao: e.medalhaParticipacao,
   medalhaDestaque: e.medalhaDestaque,
   recompensa: e.recompensa,
+  abrirNoInicio: e.abrirNoInicio,
 });
 
 const TEXTOS = {
@@ -99,7 +100,13 @@ export default function EventosSection({ professorId }: { professorId?: string }
         await definirMissoes(id, missoes);
       }
       setForm(null);
-      toast.success(editando ? "Evento atualizado." : "Rascunho criado. Abra o evento quando estiver pronto.");
+      toast.success(
+        editando
+          ? "Evento atualizado."
+          : payload.abrir_no_inicio
+            ? "Evento agendado. Ele abre sozinho no horário de início."
+            : "Rascunho criado. Abra o evento quando estiver pronto.",
+      );
       await carregar(turmaId);
     } catch (e) {
       setErroDoServidor(traduzirErroDeEvento(e, "Não foi possível salvar o evento."));

@@ -25,6 +25,8 @@ export type Evento = {
   medalhaParticipacao: boolean;
   medalhaDestaque: boolean;
   recompensa: string;
+  /** Rascunho agendado: abre sozinho no início (#141). */
+  abrirNoInicio: boolean;
 };
 
 type LinhaDeEvento = {
@@ -44,10 +46,11 @@ type LinhaDeEvento = {
   medalha_participacao: boolean;
   medalha_destaque: boolean;
   recompensa: string | null;
+  abrir_no_inicio: boolean | null;
 };
 
 const COLUNAS =
-  "id, classe_id, topico_id, titulo, descricao, status, inicio, fim, modalidade_guilda, guilda_tamanho_max, pecas, pontos, moedas, medalha_participacao, medalha_destaque, recompensa";
+  "id, classe_id, topico_id, titulo, descricao, status, inicio, fim, modalidade_guilda, guilda_tamanho_max, pecas, pontos, moedas, medalha_participacao, medalha_destaque, recompensa, abrir_no_inicio";
 
 const STATUS: StatusDoEvento[] = ["rascunho", "aberto", "encerrado"];
 
@@ -71,6 +74,7 @@ export function mapearEvento(l: LinhaDeEvento, missoes: number[] = []): Evento {
     medalhaParticipacao: !!l.medalha_participacao,
     medalhaDestaque: !!l.medalha_destaque,
     recompensa: l.recompensa ?? "",
+    abrirNoInicio: !!l.abrir_no_inicio,
   };
 }
 

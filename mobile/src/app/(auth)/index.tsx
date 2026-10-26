@@ -50,10 +50,17 @@ export default function Entrada() {
               accessibilityLabel="Criar conta"
             >
               <MaterialCommunityIcons name="account-plus-outline" size={20} color={Design.primary} />
-              <Text style={styles.secondaryText}>
-                Criar conta
-                {desktop ? <Text style={styles.dica}> (abre o site do TrailUp)</Text> : null}
-              </Text>
+              {desktop ? (
+                <Text style={styles.secondaryText}>
+                  Criar conta
+                  <Text style={styles.dica}> (abre o site do TrailUp)</Text>
+                </Text>
+              ) : (
+                <View style={styles.secondaryColuna}>
+                  <Text style={styles.secondaryText}>Criar conta ↗</Text>
+                  <Text style={styles.dicaCelular}>abre no navegador</Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -74,10 +81,12 @@ const styles = StyleSheet.create({
   sceneLarga: { justifyContent: 'center', alignItems: 'center' },
   titleLargo: { fontSize: 30, lineHeight: 38, fontWeight: '700', maxWidth: 420, marginBottom: 0, ...textShadowStyle({ color: 'rgba(0,0,0,0.6)', offset: { width: 0, height: 2 }, radius: 12 }, IS_WEB) },
   dica: { fontSize: 11, fontWeight: '500', opacity: 0.65 },
+  secondaryColuna: { alignItems: 'center', gap: 2 },
+  dicaCelular: { fontFamily: FontFamily.interMedium, fontSize: 12, fontWeight: '500', color: Design.muted },
   actions: { width: '100%', gap: 12 },
   title: { fontFamily: FontFamily.inikaBold, color: Design.text, fontSize: 25, lineHeight: 33, textAlign: 'center', marginBottom: 12 },
   primary: { minHeight: 56, padding: 16, borderRadius: Design.radius, backgroundColor: Design.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
-  secondary: { minHeight: 54, padding: 16, borderRadius: Design.radius, borderWidth: 1, borderColor: Design.borderStrong, backgroundColor: Design.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
+  secondary: { minHeight: 56, paddingVertical: 8, paddingHorizontal: 16, borderRadius: Design.radius, borderWidth: 1, borderColor: Design.borderStrong, backgroundColor: Design.surface, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   primaryText: { fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: '700', color: Design.ink },
   secondaryText: { fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: '600', color: Design.primary },
 });
