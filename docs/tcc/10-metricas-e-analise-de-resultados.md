@@ -17,6 +17,23 @@ Definir o quadro de metricas para monitorar efetividade pedagogica, estabilidade
 - sessoes por aluno;
 - abandono por etapa do fluxo.
 
+### 3.1 Contrato operacional implementado
+
+`metricas_engajamento_turma` separa conceitos que a lista acima deixava
+ambíguos:
+
+- **WAU/usuários ativos na semana é contagem**, não taxa de retorno;
+- **retorno semanal** é a proporção dos alunos ativos numa semana completa
+  que também ficaram ativos na semana completa consecutiva;
+- `active_sec`, `dwell_sec` e `idle_sec` são apresentados separadamente;
+- sessão encerrada sem conclusão não se mistura com sessão ainda aberta;
+- semana parcial aparece na série, mas não entra no denominador do retorno;
+- sem denominador observável, a taxa é `null`, nunca zero.
+
+Conclusão e cobertura de materiais continuam relevantes, mas são **estado
+atual**. Sem snapshots históricos, não podem ser atribuídas ao período pedido
+pela consulta.
+
 ## 4. Metricas de aprendizagem
 - percentual de conclusao por topico e classe;
 - taxa de atividades concluidas;
