@@ -15,6 +15,8 @@ export async function materialDoAluno(client, uid) {
   }}],
   resolve:{alias:[{find:/^@\/(?!database\/supabase$|services\/apiBaseUrl$)(.*)$/,replacement:`${root}mobile/src/$1`}]},
   optimizeDeps:{noDiscovery:true,include:[]},server:{middlewareMode:true},
+  // tsconfigRaw em string: não resolve o `extends: expo/tsconfig.base` do mobile (expo fora do job).
+  esbuild:{tsconfigRaw:'{"compilerOptions":{"target":"ESNext","useDefineForClassFields":true}}'},
  });
  try{
   (await server.ssrLoadModule('virtual:client')).setClient(client);

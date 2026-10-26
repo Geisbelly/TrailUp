@@ -23,6 +23,9 @@ export async function validarCadastroAteMaterial(db, test) {
     }],
     resolve: { alias: [{ find: "@/lib/dataNascimento", replacement: `${repo}frontend/src/lib/dataNascimento.ts` }, { find: /^@\/(?!integrations\/supabase\/client$|database\/supabase$|services\/apiBaseUrl$)(.*)$/, replacement: `${repo}mobile/src/$1` }] },
     optimizeDeps: { noDiscovery: true, include: [] }, server: { middlewareMode: true },
+    // tsconfigRaw em string: o Vite não tenta resolver o `extends: expo/tsconfig.base`
+    // do mobile/tsconfig.json (expo não está instalado no job do frontend).
+    esbuild: { tsconfigRaw: '{"compilerOptions":{"target":"ESNext","useDefineForClassFields":true}}' },
   });
   try {
     const { supabase } = await server.ssrLoadModule(clientId);
