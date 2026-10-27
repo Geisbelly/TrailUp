@@ -64,6 +64,24 @@ flowchart TD
 - analise segmentada por perfil BrainHex;
 - triangulacao quantitativa + qualitativa.
 
+### 9.1 Coortes descritivas implementadas
+
+`metricas_engajamento_coortes_turma` oferece duas leituras, sempre separadas:
+
+- **perfil dominante:** sete coortes disjuntas, uma por aluno;
+- **perfil secundário elegível:** segmentos sobrepostos, apenas quando a
+  segunda maior afinidade é maior que 20.
+
+As duas leituras são descritivas. O perfil usado é o estado atual aplicado à
+janela consultada; como não há snapshot histórico do perfil, a resposta marca
+`historico_perfil_disponivel = false`. Também marca
+`comparacao_causal = false` e `amostra_pequena` para grupos com menos de cinco
+alunos.
+
+Portanto, diferenças entre perfis **não** demonstram que o BrainHex causou o
+resultado. Uma intervenção controlada ainda precisa registrar atribuição,
+exposição real e baseline antes de comparar impacto.
+
 ## 10. Criterios de aceitacao de impacto
 - melhoria estatisticamente e pedagogicamente relevante;
 - manutencao do ganho por mais de um ciclo;

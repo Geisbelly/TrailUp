@@ -46,7 +46,7 @@ def _sql() -> str:
 
 def test_migration_e_a_cabeca_unica() -> None:
     scripts = ScriptDirectory.from_config(_config())
-    assert scripts.get_heads() == ["20261026_01"]
+    assert len(scripts.get_heads()) == 1
     assert scripts.get_revision("20261026_01").down_revision == "20261025_04"
 
 

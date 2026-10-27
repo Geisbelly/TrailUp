@@ -52,6 +52,13 @@ def _rpc(c, classe: int, inicio: str, fim: str):
     ).fetchone()["r"]
 
 
+def _rpc_coortes(c, classe: int, inicio: str, fim: str):
+    return c.execute(
+        "SELECT public.metricas_engajamento_coortes_turma(%s, %s, %s, 'UTC') AS r",
+        (classe, inicio, fim),
+    ).fetchone()["r"]
+
+
 @pytest.fixture(scope="module")
 def mundo():
     ids = {
@@ -329,3 +336,59 @@ def test_periodo_invalido_e_recusado(mundo, inicio, fim):
     with _como(mundo["professor"]) as p:
         with pytest.raises(errors.InvalidParameterValue):
             _rpc(p, mundo["classe"], inicio, fim)
+
+
+def test_coortes_dominantes_sao_sete_e_disjuntas(mundo):
+    with _como(mundo["professor"]) as p:
+        r = _rpc_coortes(p, mundo["classe"], "2026-10-05", "2026-10-18")
+    coortes = {item["perfil"]: item for item in r["coortes_dominantes"]}
+    assert len(coortes) == 7
+    assert sum(item["alunos"] for item in coortes.values()) == 3
+    assert coortes["seeker"]["alunos"] == 1
+    assert coortes["survivor"]["alunos"] == 1
+    assert coortes["mastermind"]["alunos"] == 1
+
+
+def test_secundario_exclui_afinidade_igual_a_vinte(mundo):
+    with _como(mundo["professor"]) as p:
+        r = _rpc_coortes(p, mundo["classe"], "2026-10-05", "2026-10-18")
+    segmentos = {item["perfil"]: item for item in r["segmentos_secundarios"]}
+    assert len(segmentos) == 7
+    assert segmentos["achiever"]["alunos"] == 1
+    assert sum(item["alunos"] for item in segmentos.values()) == 1
+    assert segmentos["achiever"]["sobreposta"] is True
+
+
+def test_metricas_da_coorte_usam_so_os_membros(mundo):
+    with _como(mundo["professor"]) as p:
+        r = _rpc_coortes(p, mundo["classe"], "2026-10-05", "2026-10-18")
+    coortes = {item["perfil"]: item for item in r["coortes_dominantes"]}
+    assert coortes["seeker"]["engajamento"]["tempo_ativo_seg"] == 180
+    assert coortes["survivor"]["engajamento"]["tempo_ativo_seg"] == 30
+    assert coortes["mastermind"]["engajamento"]["tempo_ativo_seg"] == 0
+    assert coortes["seeker"]["retorno_semanal"]["taxa_pct"] == 100
+    assert coortes["survivor"]["retorno_semanal"]["taxa_pct"] == 0
+
+
+def test_coorte_vazia_preserva_nulos_e_sinal_de_amostra(mundo):
+    with _como(mundo["professor"]) as p:
+        r = _rpc_coortes(p, mundo["classe"], "2026-10-05", "2026-10-18")
+    coortes = {item["perfil"]: item for item in r["coortes_dominantes"]}
+    assert coortes["daredevil"]["alunos"] == 0
+    assert coortes["daredevil"]["amostra_pequena"] is False
+    assert coortes["daredevil"]["engajamento"]["taxa_atividade_pct"] is None
+    assert coortes["seeker"]["amostra_pequena"] is True
+
+
+def test_segmentacao_declara_limites_metodologicos(mundo):
+    with _como(mundo["professor"]) as p:
+        r = _rpc_coortes(p, mundo["classe"], "2026-10-05", "2026-10-18")
+    assert r["segmentacao"]["comparacao_causal"] is False
+    assert r["segmentacao"]["historico_perfil_disponivel"] is False
+    assert r["geral"]["versao"] == 1
+
+
+def test_coortes_rejeitam_professor_de_outra_turma(mundo):
+    with _como(mundo["outro_professor"]) as outro:
+        with pytest.raises(errors.InsufficientPrivilege):
+            _rpc_coortes(outro, mundo["classe"], "2026-10-05", "2026-10-18")

@@ -128,6 +128,28 @@ O cliente tipado está em
 `frontend/src/components/console/dashboard/kpisEngajamentoApi.ts`. A conexão
 desse contrato ao painel visual pertence à issue #15.
 
+### Coortes descritivas da issue #13
+
+`metricas_engajamento_coortes_turma` reutiliza período, posse e agregado geral
+da RPC da #12 e devolve os mesmos conceitos por perfil.
+
+- `coortes_dominantes` é partição disjunta: cada aluno aparece uma vez; aluno
+  sem vetor BrainHex entra em `mastermind`, como no progresso e no fallback do
+  console.
+- `segmentos_secundarios` é sobreposto: inclui somente o segundo perfil com
+  afinidade maior que 20. Não somar os tamanhos desses segmentos como se
+  fossem população.
+- As duas listas sempre têm os sete perfis. Grupo vazio preserva taxas como
+  `null`.
+- Cada linha traz tamanho, sinal de amostra menor que cinco, tempo, sessões,
+  retorno e conclusão atual.
+- A segmentação declara `historico_perfil_disponivel = false` e
+  `comparacao_causal = false`: perfil atual aplicado a telemetria passada é
+  corte observacional, não experimento.
+
+O contrato prepara comparação e o painel, mas não substitui a infraestrutura
+futura de atribuição/exposição de uma intervenção.
+
 ## 5. API, análise e persistência
 
 ### Ingestão
