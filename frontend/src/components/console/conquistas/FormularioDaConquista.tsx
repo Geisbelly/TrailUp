@@ -11,6 +11,7 @@ import { COR_DO_PERFIL, NOME_DO_PERFIL, PERFIS_EM_ORDEM } from "../dashboard/per
 import { ICONES_DA_CONQUISTA, PALETA_DE_CORES } from "./aparencia";
 import { IconeDaConquista } from "./CartaoDaConquista";
 import { METRICAS, metricaPorChave } from "./criterio";
+import { criterioMudou, textoDeMudancaDeCriterio } from "./textos";
 import { DESCRICAO_MAX, expandirEmLinhas, NOME_MAX, type ErrosDoFormulario, type FormularioDeConquista, type LinhaDeConquista } from "./formulario";
 
 const rotulo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
@@ -44,7 +45,12 @@ export function FormularioDaConquista({
 }) {
   const [form, setForm] = useState(inicial);
   const [erros, setErros] = useState<ErrosDoFormulario>({});
-  const alterar = (parcial: Partial<FormularioDeConquista>) => setForm((f) => ({ ...f, ...parcial }));
+  /** Linhas prontas esperando o professor confirmar a troca de critério. */
+  const [pendente, setPendente] = useState<LinhaDeConquista[] | null>(null);
+  const alterar = (parcial: Partial<FormularioDeConquista>) => {
+    setPendente(null);
+    setForm((f) => ({ ...f, ...parcial }));
+  };
   const metrica = metricaPorChave(form.metrica);
   const porPerfil = form.escopo === "perfil";
   const alternarPerfil = (p: BrainHexProfileKey) =>
@@ -53,8 +59,12 @@ export function FormularioDaConquista({
   const salvar = () => {
     const r = expandirEmLinhas(form, { pontosMax });
     setErros(r.ok ? {} : r.erros!);
-    if (r.ok) onSalvar(r.linhas!);
+    if (!r.ok) return;
+    // Editar o critério pede confirmação: não revoga quem já ganhou e fica no histórico.
+    if (editando && criterioMudou(inicial, form)) setPendente(r.linhas!);
+    else onSalvar(r.linhas!);
   };
+  const aviso = pendente ? textoDeMudancaDeCriterio(form.nome, concedidas) : null;
 
   const pill = (ativo: boolean) =>
     `rounded-full border px-4 py-1.5 text-[12.5px] font-semibold ${ativo ? "border-primary bg-primary/20" : "border-border text-muted-foreground hover:text-foreground"}`;
@@ -183,10 +193,24 @@ export function FormularioDaConquista({
 
         {erroDoServidor && <p role="alert" className="text-sm text-destructive">{erroDoServidor}</p>}
 
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" className="rounded-full" onClick={onCancelar} disabled={salvando}>Cancelar</Button>
-          <Button className="rounded-full font-bold" onClick={salvar} disabled={salvando}>{salvando ? "Salvando…" : "Salvar conquista"}</Button>
-        </div>
+        {aviso ? (
+          <div role="alertdialog" aria-labelledby="conq-criterio-titulo" aria-describedby="conq-criterio-corpo" className="space-y-3 rounded-[14px] border border-warning/40 bg-warning/10 p-4">
+            <p id="conq-criterio-titulo" className="flex items-center gap-2 text-[13px] font-semibold">
+              <AlertTriangle className="h-4 w-4 flex-none text-warning" aria-hidden="true" />
+              {aviso.pergunta}
+            </p>
+            <p id="conq-criterio-corpo" className="text-[12.5px]">{aviso.corpo}</p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" className="rounded-full" onClick={() => setPendente(null)} disabled={salvando}>Voltar</Button>
+              <Button className="rounded-full font-bold" onClick={() => onSalvar(pendente!)} disabled={salvando}>{salvando ? "Salvando…" : aviso.confirmar}</Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" className="rounded-full" onClick={onCancelar} disabled={salvando}>Cancelar</Button>
+            <Button className="rounded-full font-bold" onClick={salvar} disabled={salvando}>{salvando ? "Salvando…" : "Salvar conquista"}</Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

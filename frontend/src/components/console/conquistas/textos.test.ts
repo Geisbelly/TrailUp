@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { noTeto, rotuloDoTeto, textoDeAlternar } from "./textos";
+import { criterioMudou, noTeto, rotuloDoTeto, textoDeAlternar, textoDeMudancaDeCriterio } from "./textos";
 
 describe("teto", () => {
   it("rótulo e limite", () => {
@@ -43,5 +43,33 @@ describe("textoDeAlternar", () => {
     const t = textoDeAlternar({ ...c, ativa: false });
     expect(t.titulo).toBe("Reativar conquista");
     expect(t.confirmar).toBe("Reativar");
+  });
+});
+
+describe("troca de critério", () => {
+  const inicial = { metrica: "atividades_concluidas" as const, limiar: "5" };
+
+  it("só métrica ou limiar contam como troca", () => {
+    expect(criterioMudou(inicial, { ...inicial })).toBe(false);
+    expect(criterioMudou(inicial, { ...inicial, limiar: " 5 " })).toBe(false);
+    expect(criterioMudou(inicial, { ...inicial, limiar: "6" })).toBe(true);
+    expect(criterioMudou(inicial, { metrica: "minutos_totais", limiar: "5" })).toBe(true);
+    expect(criterioMudou({ metrica: "topicos_visitados", limiar: "Todos" }, { metrica: "topicos_visitados", limiar: "todos" })).toBe(false);
+  });
+
+  it("avisa que não revoga e que fica no histórico", () => {
+    const t = textoDeMudancaDeCriterio(" Maratonista ", 3);
+    expect(t.pergunta).toBe("Salvar o critério novo de “Maratonista”?");
+    expect(t.corpo).toContain("Quem já ganhou (3) continua com ela");
+    expect(t.corpo).toContain("nunca é revogada");
+    expect(t.corpo).toContain("registrada no histórico");
+    expect(t.confirmar).toBe("Salvar critério novo");
+  });
+
+  it("sem ninguém premiado, não fala em revogar", () => {
+    const t = textoDeMudancaDeCriterio("Maratonista", 0);
+    expect(t.corpo).toContain("Ninguém ganhou esta conquista ainda");
+    expect(t.corpo).not.toContain("revogada");
+    expect(t.corpo).toContain("registrada no histórico");
   });
 });
