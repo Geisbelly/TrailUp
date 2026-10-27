@@ -11,6 +11,12 @@
 - A **API** aceita lotes de telemetria e orquestra análise de IA/personalização. Persiste ciclo, estado mental, domínio estimado, sugestões/logs e estado de erro. Dados analíticos básicos e derivados também são calculados no banco por triggers, funções e views.
 - O **microservice** gera mídia base por perfil e delega apresentação ao BrainHexPDF. Jobs, targets, status, erros e tempos são sinais operacionais da geração; não são, por si, evidência de aprendizagem.
 - Há KPIs reais no console, mas suas fórmulas não são todas auditáveis pelo repositório: as definições SQL de algumas `vw_metricas_*` não foram localizadas. Uma especificação de métricas em `docs/tcc/10-metricas-e-analise-de-resultados.md` é proposta conceitual, não prova de implementação.
+- A migration `20261026_01` acrescenta a primeira consulta versionada por
+  período, `metricas_engajamento_turma`: tempo ativo em um único escopo,
+  sessões, usuários ativos por semana e retorno entre semanas completas.
+  Conclusão e cobertura de personalização são devolvidas num bloco
+  `estado_atual`, porque o banco não guarda snapshots históricos seguros para
+  reconstruí-las no período solicitado.
 - “Dado coletado” não equivale a “medida válida”: sem versão de definição, janela explícita, denominador, tratamento de nulos, cobertura e qualidade, alguns números não são comparáveis ou não suportam causalidade.
 
 ## 2. Mapa de sistemas e fluxo
@@ -95,6 +101,33 @@ As mensagens trocadas com o Escriba não aparecem como eventos de telemetria no 
 
 **Segurança:** views de métricas devem usar `security_invoker = on`, acesso restrito e RLS; políticas de professor dependem de classes/alunos sob sua posse. Isso é parte do contrato de integridade dos indicadores, não apenas configuração técnica. Fontes: `api/alembic/versions/20260826_09_rls_posse_por_tabela.py`, `20260826_10_rls_views.py`, `20260831_01_telemetria_rls_no_alembic_e_cascade.py`.
 
+### Contrato versionado da issue #12
+
+`metricas_engajamento_turma(classe, início, fim, timezone)` é
+`SECURITY DEFINER`, mas confere `auth.uid()` e
+`app_classes_do_professor()` antes de ler. O período usa dias locais e fim
+exclusivo convertido pelo timezone informado.
+
+- **Tempo ativo:** soma `active_sec` somente em `scope = 'topic'`; dwell e
+  idle saem separados.
+- **Usuários ativos semanais:** contagem por semana calendário, inclusive nas
+  pontas parciais.
+- **Retorno semanal:** aluno ativo em duas semanas calendário completas e
+  consecutivas. Sem par comparável, a taxa é `null`, não zero.
+- **Jornada:** sessão com `topic_complete`, sessão encerrada sem conclusão e
+  sessão ainda aberta são três estados diferentes.
+- **Estado atual:** conclusão e cobertura de personalização vêm identificadas
+  como não históricas.
+- **Cobertura por perfil:** sempre devolve os sete perfis; inclui o dominante,
+  o segundo perfil apenas com afinidade maior que 20 e o fallback
+  `mastermind` para aluno sem vetor. Material base por perfil e material
+  individual são aceitos; payload `failed`, `failed_quality`, pendente ou em
+  processamento não conta.
+
+O cliente tipado está em
+`frontend/src/components/console/dashboard/kpisEngajamentoApi.ts`. A conexão
+desse contrato ao painel visual pertence à issue #15.
+
 ## 5. API, análise e persistência
 
 ### Ingestão
@@ -139,7 +172,7 @@ A camada de material base é compartilhável por turma×tópico×perfil; adequa�
 
 ## 8. Lacunas encontradas e próximos itens de investigação
 
-1. **DDL das views de KPIs:** localizar fonte real de `vw_metricas_turma_geral_classe`, `vw_metricas_turma_perfil_classe`, `vw_metricas_distribuicao_turma_classe`, `vw_metricas_engajamento_aluno_classe`, `vw_metricas_sessoes_aluno_dia`, `vw_metricas_evolucao_desempenho_aluno_dia` e equivalentes; confirmar expressões, janelas, denominadores e política de nulos. A ausência em migrations não prova que view inexista em produção.
+1. **DDL das views legadas de KPIs:** localizar fonte real de `vw_metricas_turma_geral_classe`, `vw_metricas_turma_perfil_classe`, `vw_metricas_distribuicao_turma_classe`, `vw_metricas_engajamento_aluno_classe`, `vw_metricas_sessoes_aluno_dia`, `vw_metricas_evolucao_desempenho_aluno_dia` e equivalentes; confirmar expressões, janelas, denominadores e política de nulos. A RPC da issue #12 não torna essas views auditáveis nem muda o painel legado da issue #15.
 2. **Inventário total do schema:** reconciliar tabelas/views/RPCs que armazenam dado de aluno/professor com consumidores do frontend/mobile e funções SQL. Esta análise cobre caminhos conhecidos e é uma linha de base; não garante enumeração integral de todo objeto do banco.
 3. **Estado vivo/qualidade:** medir cobertura por turma/período, lotes com análise, falhas, outbox, duplicatas, atraso de ingestão, valores nulos e consistência entre `eventos_aluno`, progresso e telemetria. Nenhuma consulta de produção foi executada para esta versão.
 4. **Operação e geração:** estabelecer latência de API/job/target, taxa de falha/retry, material válido por formato e custo por geração; localizar dashboards/alertas realmente ativos. Não inventar SLO ou metas.

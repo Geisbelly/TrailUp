@@ -50,10 +50,10 @@ export type TurmaKpis = {
   isLoading: boolean;
 };
 
-// Fonte de dado isolada e stub-marcada (#56): hoje le direto das views
-// agregadas do Supabase. Quando o endpoint de KPIs de engajamento e
-// aprendizagem da turma existir (#12), troca so o corpo do fetch aqui —
-// DashboardSection consome o retorno do hook e nao precisa mudar.
+// Fonte de dado isolada e stub-marcada (#56): hoje lê direto das views
+// agregadas legadas. A RPC versionada da #12 vive em
+// dashboard/kpisEngajamentoApi.ts, mas a troca do painel e dos seus estados
+// pertence à #15; não misture os dois contratos silenciosamente.
 export function useTurmaKpis(classIds: number[]): TurmaKpis {
   const [turmaMetricas, setTurmaMetricas] = useState<TurmaGeralMetricas[]>([]);
   const [perfilMetricas, setPerfilMetricas] = useState<TurmaPerfilMetricas[]>([]);
