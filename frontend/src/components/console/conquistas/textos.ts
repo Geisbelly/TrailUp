@@ -1,4 +1,5 @@
 import type { ConquistaDaTurma } from "./conquistasApi";
+import type { FormularioDeConquista } from "./formulario";
 
 /**
  * O gatilho que concede conquistas passou a ler `conquistas.ativa` (migration 20261017_06). Se a migration
@@ -37,5 +38,28 @@ export function textoDeAlternar(c: Pick<ConquistaDaTurma, "nome" | "ativa" | "co
     pergunta: `Desativar “${c.nome}”?`,
     corpo: `${guarda} ${efeito} Não dá para excluir uma conquista: a posse dos alunos é preservada.`,
     confirmar: "Desativar",
+  };
+}
+
+type CriterioDoFormulario = Pick<FormularioDeConquista, "metrica" | "limiar">;
+
+const normalizarLimiar = (texto: string) => texto.trim().toLowerCase().replace(",", ".");
+
+/** Métrica ou limiar diferente do que veio do banco. Ícone, cor, nome e pontos não são critério. */
+export function criterioMudou(inicial: CriterioDoFormulario, atual: CriterioDoFormulario): boolean {
+  return inicial.metrica !== atual.metrica || normalizarLimiar(inicial.limiar) !== normalizarLimiar(atual.limiar);
+}
+
+/** Confirmação antes de salvar um critério novo numa conquista que já existe (#158). */
+export function textoDeMudancaDeCriterio(nome: string, concedidas: number): TextoDoDialogo {
+  const guarda =
+    concedidas > 0
+      ? `Quem já ganhou (${concedidas}) continua com ela: a concessão nunca é revogada. O critério novo vale só para quem ainda não ganhou.`
+      : "Ninguém ganhou esta conquista ainda. O critério novo passa a valer na próxima avaliação.";
+  return {
+    titulo: "Alterar o critério",
+    pergunta: `Salvar o critério novo de “${nome.trim()}”?`,
+    corpo: `${guarda} A troca fica registrada no histórico da conquista, com a data e quem alterou.`,
+    confirmar: "Salvar critério novo",
   };
 }
