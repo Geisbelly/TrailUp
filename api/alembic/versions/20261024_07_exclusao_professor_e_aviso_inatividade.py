@@ -139,7 +139,7 @@ AS $function$
   SELECT CASE
     WHEN p IS NULL OR btrim(p) = '' THEN NULL
     WHEN p ~* '^https?://' THEN coalesce(
-      substring(p from '/storage/v1/object/(?:public|sign|authenticated)/conteudos/([^?#]+)'),
+      substring(p from '/storage/v1/object/(?\:public|sign|authenticated)/conteudos/([^?#]+)'),
       substring(p from 'storage-redirect[?](?:[^#]*&)?path=([^&#]+)'))
     WHEN p ~ '\s' OR length(p) > 1024 OR strpos(p, '/') = 0 THEN NULL
     ELSE btrim(p)
