@@ -1,4 +1,4 @@
-"""`20261026_01`: conquista da turma sobrevive à turma, e a troca de critério fica registrada (#158).
+"""`20261026_02`: conquista da turma sobrevive à turma, e a troca de critério fica registrada (#158).
 
 Duas camadas:
 
@@ -30,7 +30,7 @@ from tests.test_migrations import _offline_alembic_config
 AQUI = Path(__file__).resolve().parent
 VERSOES = AQUI.parent / "alembic" / "versions"
 ESQUELETO = AQUI / "fixtures" / "schema_prod_esqueleto_20261024.sql"
-ARQUIVO = "20261026_01_conquistas_sem_cascade_e_historico_de_criterio.py"
+ARQUIVO = "20261026_02_conquistas_sem_cascade_e_historico_de_criterio.py"
 
 DSN = os.environ.get("TRAILUP_E2E_RETENCAO_DATABASE_URL", "")
 e2e = pytest.mark.skipif(not DSN, reason="TRAILUP_E2E_RETENCAO_DATABASE_URL nao definido (e2e so em banco local)")
@@ -53,7 +53,7 @@ def _sql(origem: str, destino: str, *, down: bool = False) -> str:
 
 
 def test_fk_da_turma_vira_set_null_procurando_o_nome_no_catalogo() -> None:
-    sql = _sql("20261025_04", "20261026_01")
+    sql = _sql("20261026_01", "20261026_02")
 
     assert "c.confrelid = 'public.classe'::regclass" in sql
     assert "a.attname = 'classe_id'" in sql
@@ -62,7 +62,7 @@ def test_fk_da_turma_vira_set_null_procurando_o_nome_no_catalogo() -> None:
 
 
 def test_turma_apagada_desativa_e_nao_deixa_reativar() -> None:
-    sql = _sql("20261025_04", "20261026_01")
+    sql = _sql("20261026_01", "20261026_02")
 
     assert "IF OLD.classe_id IS NOT NULL AND NEW.classe_id IS NULL THEN" in sql
     assert "NEW.ativa := false;" in sql
@@ -71,7 +71,7 @@ def test_turma_apagada_desativa_e_nao_deixa_reativar() -> None:
 
 
 def test_historico_tem_rls_de_leitura_e_ninguem_escreve_direto() -> None:
-    sql = _sql("20261025_04", "20261026_01")
+    sql = _sql("20261026_01", "20261026_02")
 
     assert "CREATE TABLE IF NOT EXISTS public.conquistas_criterio_log" in sql
     assert "ALTER TABLE public.conquistas_criterio_log ENABLE ROW LEVEL SECURITY" in sql
@@ -87,7 +87,7 @@ def test_historico_tem_rls_de_leitura_e_ninguem_escreve_direto() -> None:
 
 
 def test_downgrade_volta_a_cascade_e_remove_o_historico() -> None:
-    sql = _sql("20261026_01", "20261025_04", down=True)
+    sql = _sql("20261026_02", "20261026_01", down=True)
 
     assert "DROP TABLE IF EXISTS public.conquistas_criterio_log" in sql
     assert "FOREIGN KEY (classe_id) REFERENCES public.classe(id) ON DELETE CASCADE" in sql
@@ -308,7 +308,7 @@ def test_apagar_a_turma_deixa_a_conquista_orfa_e_o_aluno_com_ela():
             "SELECT ativa, classe_id, classe_removida_em IS NOT NULL FROM public.conquistas WHERE id = 101"
         ).fetchone()
         assert (ativa, classe, removida) == (False, None, True)
-        # Antes da 20261026_01 a cascata levava a conquista e a posse de A.
+        # Antes da 20261026_02 a cascata levava a conquista e a posse de A.
         assert _ganhou(c, A) == {101}
 
         # Órfã não vira global: D (sem turma) cumpre o critério e não ganha.
