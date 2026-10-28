@@ -1,4 +1,5 @@
 import { HallBackground } from "@/components/HallTheme";
+import { Interruptor } from "@/components/perfil/Interruptor";
 import { useDialog } from "@/context/DialogContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -169,24 +170,7 @@ export default function LembreteDiarioScreen() {
                   </Text>
                 </View>
               </View>
-              <View
-                style={[
-                  styles.stateChip,
-                  {
-                    backgroundColor: ativado ? palette.accent : palette.surface,
-                    borderColor: palette.borderStrong,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.stateChipText,
-                    { color: ativado ? "#fff" : palette.textMuted },
-                  ]}
-                >
-                  {salvando ? "..." : ativado ? "Ativo" : "Desativado"}
-                </Text>
-              </View>
+              <Interruptor ligado={ativado} salvando={salvando} palette={palette} />
             </TouchableOpacity>
 
             {ativado ? (
@@ -341,18 +325,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     fontFamily: FontFamily.interMedium,
-  },
-  stateChip: {
-    minWidth: 88,
-    borderRadius: 999,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  stateChipText: {
-    fontSize: 12,
-    fontFamily: FontFamily.inikaBold,
   },
   horariosWrap: {
     gap: 10,

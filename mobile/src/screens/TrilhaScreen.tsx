@@ -1,6 +1,6 @@
 import CardSemDados from "@/components/CardSemDados";
 import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
-import { LoadingState } from "@/components/LoadingState";
+import { EsqueletoTrilha } from "@/components/trilhas/EsqueletoTrilha";
 import { BagModal } from "@/components/bag/BagModal";
 import { TrilhaBase } from "@/components/trilhas/TrilhaBase";
 import { TrilhaDesktop } from "@/components/web/TrilhaDesktop";
@@ -10,6 +10,7 @@ import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { Color } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -73,11 +74,7 @@ export default function TrilhasIndex() {
         edges={["top", "left", "right"]}
         style={[styles.root, { backgroundColor: palette.background }]}
       >
-        <LoadingState
-          title="Carregando trilhas"
-          message="Preparando sua jornada."
-          palette={palette}
-        />
+        <EsqueletoTrilha palette={palette} />
       </SafeAreaView>
     );
   }
@@ -88,8 +85,13 @@ export default function TrilhasIndex() {
         edges={["top", "left", "right"]}
         style={[styles.root, { backgroundColor: palette.background }]}
       >
-        <Text style={{ color: "salmon" }}>Erro</Text>
-        <Text style={{ color: "#ccc" }}>{erro.message}</Text>
+        <View style={styles.erro} accessibilityRole="alert">
+          <MaterialCommunityIcons name="alert-circle-outline" size={44} color={palette.textSubtle} />
+          <Text style={[styles.erroTitulo, { color: palette.text }]}>Não foi possível carregar a trilha</Text>
+          <Text style={[styles.erroTexto, { color: palette.textSubtle }]}>
+            Confira sua conexão e volte para esta aba em instantes. {erro.message}
+          </Text>
+        </View>
       </SafeAreaView>
     );
   }
@@ -127,7 +129,7 @@ export default function TrilhasIndex() {
         classeId={classeAtual?.classe_id ?? null}
         topicoId={trailMentorCue?.topicoId ?? null}
         scope="trilha_home"
-        bottomOffset={10}
+        bottomOffset={desktop ? 10 : 112}
         guideTargetRef={chatGuideTargetRef}
         // Na tela larga o guia fica no canto do mapa, à esquerda do painel do tópico, como no protótipo v4.
         ancora={desktop ? { direita: 380, base: 44, largura: 380 } : undefined}
@@ -144,4 +146,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  erro: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 12 },
+  erroTitulo: { fontFamily: "Georgia, serif", fontSize: 20, textAlign: "center" },
+  erroTexto: { fontSize: 14, lineHeight: 21, textAlign: "center" },
 });

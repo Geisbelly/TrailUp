@@ -52,6 +52,8 @@ export function StoreModal({
   const [buying, setBuying] = useState<string | null>(null);
   const [movimentos, setMovimentos] = useState<Movimento[] | null>(null);
   const [filtro, setFiltro] = useState<FiltroDeExtrato>("todos");
+  // Compra à espera de confirmação (mobile-v1, 12-loja.html: folha "Comprar X?").
+  const [pedido, setPedido] = useState<{ item: StoreItem; quantidade: number } | null>(null);
   const purchaseLock = useRef(false);
   const request = useRef(0);
   const palette = getProfileShellPalette(profileName);
@@ -213,7 +215,7 @@ export function StoreModal({
                   palette={palette}
                   buying={buying === item.id}
                   busy={!!buying || loading}
-                  onBuy={(quantidade) => void buy(item, quantidade)}
+                  onBuy={(quantidade) => setPedido({ item, quantidade })}
                 />
               ))
             ) : !error ? (
@@ -245,9 +247,94 @@ export function StoreModal({
               <Text style={[s.empty, { color: palette.textMuted }]}>Nenhuma movimentação neste filtro.</Text>
             )}
           </ScrollView>
+          {pedido ? (
+            <ConfirmarCompra
+              item={pedido.item}
+              quantidade={pedido.quantidade}
+              saldo={snapshot?.balance ?? null}
+              palette={palette}
+              onCancelar={() => setPedido(null)}
+              onConfirmar={() => {
+                const atual = pedido;
+                setPedido(null);
+                void buy(atual.item, atual.quantidade);
+              }}
+            />
+          ) : null}
         </SafeAreaView>
       </SafeAreaProvider>
     </Modal>
+  );
+}
+
+/**
+ * Folha de confirmação da compra (mobile-v1, `12-loja.html`): o item, quanto o
+ * saldo fica depois, e Comprar/Cancelar. Sem ela, um toque gastava moedas.
+ */
+function ConfirmarCompra({
+  item,
+  quantidade,
+  saldo,
+  palette,
+  onCancelar,
+  onConfirmar,
+}: {
+  item: StoreItem;
+  quantidade: number;
+  saldo: number | null;
+  palette: ReturnType<typeof getProfileShellPalette>;
+  onCancelar: () => void;
+  onConfirmar: () => void;
+}) {
+  const total = precosDoPedido(item, quantidade).reduce((a, b) => a + b, 0);
+  const gratis = total === 0;
+  const verbo = gratis ? "Pegar" : "Comprar";
+  const nome = quantidade > 1 ? `${quantidade}× ${item.name}` : item.name;
+  // O cartão deixa "Comprar" ativo mesmo sem saldo (quem recusa é o servidor); aqui não
+  // dá para mostrar "0 → -20" nem deixar o aluno confirmar uma compra que vai falhar.
+  const semSaldo = !gratis && saldo !== null && saldo < total;
+  return (
+    <View style={[StyleSheet.absoluteFill, s.veu, { backgroundColor: `${palette.background}cc` }]}>
+      <Pressable style={StyleSheet.absoluteFill} onPress={onCancelar} accessibilityRole="button" accessibilityLabel="Cancelar compra" />
+      <View
+        accessibilityViewIsModal
+        style={[s.folha, { backgroundColor: palette.surfaceElevated, borderColor: palette.borderStrong }]}
+      >
+        <View style={[s.alca, { backgroundColor: palette.borderStrong }]} />
+        <StoreItemIcon effect={item.assetKey} color={palette.accent} size={84} />
+        <Text accessibilityRole="header" style={[s.folhaTitulo, { color: palette.text }]}>
+          {verbo} {nome}?
+        </Text>
+        <Text style={[s.folhaTexto, { color: palette.textMuted }]}>{item.description}</Text>
+        <View style={[s.soma, { backgroundColor: palette.surface }]}>
+          <Text style={[s.somaTexto, { color: palette.text }]}>
+            {gratis
+              ? "Não gasta moedas"
+              : saldo === null
+                ? `Custa ${total} moedas`
+                : semSaldo
+                  ? `Saldo insuficiente: faltam ${total - saldo} moedas`
+                  : `Saldo: ${saldo} → ${saldo - total}`}
+          </Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: semSaldo }}
+          disabled={semSaldo}
+          onPress={onConfirmar}
+          style={[s.folhaBotao, { backgroundColor: semSaldo ? palette.surface : palette.accent }]}
+        >
+          <Text style={[s.folhaBotaoTexto, { color: semSaldo ? palette.textMuted : palette.background }]}>{verbo}</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onCancelar}
+          style={[s.folhaBotao, { borderWidth: 1, borderColor: palette.borderStrong }]}
+        >
+          <Text style={[s.folhaBotaoTexto, { color: palette.text }]}>Cancelar</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
@@ -387,6 +474,25 @@ export function StoreCard({
 
 const s = StyleSheet.create({
   screen: { flex: 1 },
+  veu: { justifyContent: "flex-end" },
+  folha: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 18,
+    alignItems: "center",
+    gap: 8,
+  },
+  alca: { width: 36, height: 4, borderRadius: 2, marginBottom: 6 },
+  folhaTitulo: { fontFamily: FontFamily.inikaBold, fontSize: 22, textAlign: "center" },
+  folhaTexto: { fontSize: 14.5, lineHeight: 21, textAlign: "center" },
+  soma: { alignSelf: "stretch", borderRadius: 12, padding: 12, marginVertical: 6 },
+  somaTexto: { fontSize: 15, fontWeight: "700", textAlign: "center" },
+  folhaBotao: { alignSelf: "stretch", minHeight: 48, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  folhaBotaoTexto: { fontSize: 15, fontWeight: "700" },
   flex: { flex: 1, minWidth: 0 },
   close: {
     width: 44,

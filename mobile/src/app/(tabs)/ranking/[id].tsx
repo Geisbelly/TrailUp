@@ -1,3 +1,4 @@
+import { FolhaMinhaPosicao } from "@/components/ranking/FolhaMinhaPosicao";
 import { RankingPodium } from "@/components/ranking/RankingPodium";
 import { ProfileEmblem } from "@/components/ProfileEmblem";
 import { SocialProfileModal } from "@/components/social/SocialProfileModal";
@@ -16,6 +17,7 @@ import type { RankPosicao } from "@/models/RankPosicao";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { aplicarCorteDoRank, descreverCorte } from "@/utils/rankCorte";
+import { resumirMinhaPosicao } from "@/utils/minhaPosicaoRank";
 import { formatRankScore, rotuloDoCriterio } from "@/utils/rankingPodium";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -25,6 +27,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -33,6 +36,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { shadowStyle } from "@/utils/webShadow";
 
 type Filter = "geral" | "perfil_majoritario" | "outros_perfis";
 const filters: { key: Filter; label: string }[] = [
@@ -52,7 +56,16 @@ export default function RankDetalheScreen() {
  * categorias continuam visíveis na coluna da esquerda. Embutido, o aluno
  * clicado (pódio ou lista) abre o perfil público; a própria linha leva ao Perfil.
  */
-export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embutido?: boolean }) {
+export function RankDetalhe({
+  rankId,
+  embutido = false,
+  semBarraDeVolta = false,
+}: {
+  rankId: number;
+  embutido?: boolean;
+  /** Celular (mobile-v1): a categoria aberta dentro das abas do Ranking, sem a barra "Rankings". */
+  semBarraDeVolta?: boolean;
+}) {
   const router = useRouter();
   const { ranking, carregando, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
@@ -62,6 +75,7 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
   const [filter, setFilter] = useState<Filter>("geral");
   const [total, setTotal] = useState<number | null>(null);
   const [perfilAberto, setPerfilAberto] = useState<string | null>(null);
+  const [folhaPosicao, setFolhaPosicao] = useState(false);
   const abrirAluno = (idAluno: string) =>
     idAluno === usuario?.id ? router.push("/perfil") : setPerfilAberto(idAluno);
   const ids = useMemo(
@@ -166,11 +180,18 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
   }, [classeId]);
 
   const scoreLabel = rotuloDoCriterio(rank?.info.criterio);
+  // Barra "Sua posição": quanto falta para passar o colega logo acima (ou que você lidera).
+  const resumoPosicao = resumirMinhaPosicao(rank?.posicoes ?? [], usuario?.id, rank?.info.criterio ?? null);
+  const textoFalta = resumoPosicao.acima
+    ? `Faltam ${resumoPosicao.falta} para passar ${resumoPosicao.acima.nome_aluno}`
+    : resumoPosicao.minha?.posicao === 1
+      ? "Você lidera esta categoria."
+      : "Classificação geral";
   return (
     <View style={[s.screen, { backgroundColor: palette.background }]}>
-      {!embutido ? <Stack.Screen options={{ headerShown: false }} /> : null}
-      <SafeAreaView style={s.screen} edges={["top", "left", "right"]}>
-        {!embutido ? (
+      {!embutido && !semBarraDeVolta ? <Stack.Screen options={{ headerShown: false }} /> : null}
+      <SafeAreaView style={s.screen} edges={semBarraDeVolta ? ["left", "right"] : ["top", "left", "right"]}>
+        {!embutido && !semBarraDeVolta ? (
         <View style={[s.topbar, { borderBottomColor: palette.border }]}>
           <Pressable
             onPress={() => router.back()}
@@ -226,25 +247,32 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
               }
               ListHeaderComponent={
                 <>
-                  <View ref={headerRef} collapsable={false} style={s.hero}>
+                  {/* Celular (mobile-v1, 05-ranking.html, .arena): o pódio num cartão com o cenário do perfil. */}
+                  <View
+                    ref={headerRef}
+                    collapsable={false}
+                    style={embutido ? s.hero : [s.arena, { borderColor: palette.border, backgroundColor: palette.surface }]}
+                  >
                     <View style={[s.scenery, { pointerEvents: "none" }]}>
                       <Image
                         source={getProfileArtwork(profile, "rank")}
-                        style={s.sceneryImage}
+                        style={[s.sceneryImage, !embutido && s.sceneryCelular]}
                         resizeMode="cover"
                         accessible={false}
                       />
                       <LinearGradient
-                        colors={[
-                          `${palette.background}60`,
-                          `${palette.background}b0`,
-                          palette.background,
-                        ]}
-                        locations={[0, 0.5, 1]}
+                        colors={
+                          embutido
+                            ? [`${palette.background}60`, `${palette.background}b0`, palette.background]
+                            : [`${palette.background}8c`, `${palette.background}00`, `${palette.background}d9`]
+                        }
+                        locations={embutido ? [0, 0.5, 1] : [0, 0.4, 1]}
                         style={StyleSheet.absoluteFill}
                       />
                     </View>
                     {/* Embutido na tela larga (#346, protótipo v4): "CATEGORIA" e os filtros como pílulas ao lado do título. */}
+                    {/* Sob as abas do celular o nome e a descrição já aparecem em cima: não repete. */}
+                    {semBarraDeVolta ? null : (
                     <View style={[s.heading, embutido && s.headingLargo]}>
                     <View style={embutido ? s.headingTextos : null}>
                       <Text style={[s.eyebrow, { color: palette.accent }]}>
@@ -286,6 +314,7 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                       </View>
                     ) : null}
                     </View>
+                    )}
                     <RankingPodium
                       rows={rank.posicoes}
                       criterion={rank.info.criterio}
@@ -301,52 +330,51 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                       </Text>
                     ) : null}
                   </View>
+                  {embutido ? null : (
+                    <Text style={[s.notaCelular, { color: palette.textSubtle }]}>
+                      Os três primeiros seguem a classificação geral. Empates mantêm a mesma posição.
+                    </Text>
+                  )}
                   <View
                     ref={filtersRef}
                     collapsable={false}
-                    style={s.filtersSection}
+                    style={embutido ? s.filtersSection : s.filtrosCelularWrap}
                   >
-                    <Text style={[s.sectionTitle, embutido && s.sectionTitleLargo, { color: embutido ? palette.accent : palette.text }]}>
-                      {embutido ? "CLASSIFICAÇÃO" : "Classificação"}
-                    </Text>
-                    {embutido ? null : (
-                    <View
-                      style={[s.filters, { borderBottomColor: palette.border }]}
-                    >
-                      {filters.map((item) => (
-                        <Pressable
-                          key={item.key}
-                          accessibilityRole="tab"
-                          accessibilityState={{ selected: filter === item.key }}
-                          onPress={() => setFilter(item.key)}
-                          style={[
-                            s.filter,
-                            {
-                              borderBottomColor:
-                                filter === item.key
-                                  ? palette.accent
-                                  : "transparent",
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              s.filterText,
-                              {
-                                color:
-                                  filter === item.key
-                                    ? palette.accent
-                                    : palette.textMuted,
-                              },
-                            ]}
-                          >
-                            {item.label}
-                          </Text>
-                        </Pressable>
-                      ))}
-                    </View>
+                    {embutido ? (
+                      <Text style={[s.sectionTitle, s.sectionTitleLargo, { color: palette.accent }]}>CLASSIFICAÇÃO</Text>
+                    ) : (
+                      <>
+                        {/* Celular (05-ranking.html, .filtros/.filtro): pílulas; a ativa em accent-muted. */}
+                        <View style={s.filtrosCelular}>
+                          {filters.map((item) => {
+                            const ativo = filter === item.key;
+                            return (
+                              <Pressable
+                                key={item.key}
+                                accessibilityRole="tab"
+                                accessibilityState={{ selected: ativo }}
+                                onPress={() => setFilter(item.key)}
+                                style={[
+                                  s.filtroCelular,
+                                  ativo
+                                    ? { backgroundColor: palette.accentMuted, borderColor: palette.accent }
+                                    : { borderColor: palette.border },
+                                ]}
+                              >
+                                <Text style={[s.filtroCelularTexto, { color: ativo ? palette.accent : palette.textMuted }]}>
+                                  {item.label}
+                                </Text>
+                              </Pressable>
+                            );
+                          })}
+                        </View>
+                        <Text style={[s.notaCelular, s.notaFiltro, { color: palette.textSubtle }]}>
+                          As posições originais da categoria são preservadas.
+                        </Text>
+                      </>
                     )}
-                    <View style={[s.listHeading, embutido && s.listHeadingLargo]}>
+                    {embutido ? (
+                    <View style={[s.listHeading, s.listHeadingLargo]}>
                       {embutido ? <Text style={[s.columnLabel, s.colunaPosicao, { color: palette.textSubtle }]}>#</Text> : null}
                       <Text
                         style={[s.columnLabel, embutido && s.colunaAluno, { color: palette.textSubtle }]}
@@ -360,6 +388,7 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                         {scoreLabel.toUpperCase()}
                       </Text>
                     </View>
+                    ) : null}
                   </View>
                 </>
               }
@@ -378,7 +407,7 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                       : null)}
                     style={[
                       s.row,
-                      embutido && s.rowLarga,
+                      embutido ? s.rowLarga : s.rowCelular,
                       {
                         borderBottomColor: palette.border,
                         backgroundColor: me ? palette.surfaceElevated : embutido ? "transparent" : palette.surface,
@@ -394,16 +423,22 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
                     >
                       {item.posicao ? `${item.posicao}º` : "--"}
                     </Text>
-                    <ProfileEmblem profile={personProfile?.key} toneProfile={profile} size={embutido ? 32 : 52} />
+                    <ProfileEmblem profile={personProfile?.key} toneProfile={profile} size={embutido ? 32 : 38} />
                     <View style={s.student}>
                       <Text style={[s.studentName, { color: palette.text }]}>
                         {item.nome_aluno}
                         {me ? " (Você)" : ""}
                       </Text>
                       {embutido ? null : (
-                        <Text style={[s.profile, { color: palette.textMuted }]}>
-                          {personProfile?.label ?? "Perfil não definido"}
-                        </Text>
+                        // Celular (05-ranking.html, .quem span): ponto na cor do perfil e o nome.
+                        <View style={s.perfilCelular}>
+                          {personProfile?.key ? (
+                            <View style={[s.pontoPerfil, { backgroundColor: getProfileShellPalette(personProfile.key).accent }]} />
+                          ) : null}
+                          <Text numberOfLines={1} style={[s.profile, s.perfilLargo, { color: palette.textSubtle }]}>
+                            {personProfile?.label ?? "Perfil não definido"}
+                          </Text>
+                        </View>
                       )}
                     </View>
                     {embutido ? (
@@ -451,37 +486,56 @@ export function RankDetalhe({ rankId, embutido = false }: { rankId: number; embu
             />
             {/* Embutido no Ranking de tela larga, a posição fica no card da coluna da esquerda. */}
             {cutoff.minhaLinha && !embutido ? (
-              <View
+              <Pressable
                 ref={myRef}
                 collapsable={false}
+                accessibilityRole="button"
+                accessibilityLabel={`Sua posição: ${cutoff.minhaLinha.posicao ?? "--"}º. ${textoFalta}`}
+                accessibilityHint="Abre os detalhes da sua posição"
+                onPress={() => setFolhaPosicao(true)}
+                // Celular (mobile-v1, 05-ranking.html, .minha): cartão flutuante com a foto, "Nº de N" e o valor.
                 style={[
                   s.myPosition,
                   {
-                    backgroundColor: palette.surfaceElevated,
-                    borderTopColor: palette.borderStrong,
+                    backgroundColor: palette.surface,
+                    borderColor: palette.accent,
                   },
+                  shadowStyle({ color: "#000", offset: { width: 0, height: 10 }, opacity: 0.45, radius: 13 }, Platform.OS === "web"),
                 ]}
               >
-                <Text style={[s.myPlace, { color: palette.accent }]}>
-                  {cutoff.minhaLinha.posicao
-                    ? `${cutoff.minhaLinha.posicao}º`
-                    : "--"}
-                </Text>
+                <View style={[s.minhaFoto, { borderColor: palette.accent }]}>
+                  {usuario?.id && photos[usuario.id] ? (
+                    <Image source={{ uri: photos[usuario.id] }} style={s.minhaFotoImagem} />
+                  ) : (
+                    <ProfileEmblem profile={profiles[usuario?.id ?? ""]?.key} toneProfile={profile} size={36} />
+                  )}
+                </View>
                 <View style={s.student}>
-                  <Text style={[s.myLabel, { color: palette.text }]}>
-                    Sua posição
+                  <Text style={[s.myPlace, { color: palette.text }]}>
+                    {cutoff.minhaLinha.posicao ? `${cutoff.minhaLinha.posicao}º` : "--"}
+                    {total ? <Text style={[s.myTotal, { color: palette.textSubtle }]}>{` de ${total}`}</Text> : null}
                   </Text>
-                  <Text style={[s.profile, { color: palette.textMuted }]}>
-                    Classificação geral
+                  <Text numberOfLines={1} style={[s.myLabel, { color: palette.textMuted }]}>
+                    {textoFalta}
                   </Text>
                 </View>
-                <Text style={[s.myScore, { color: palette.text }]}>
-                  {formatRankScore(
-                    cutoff.minhaLinha.pontuacao,
-                    rank.info.criterio,
-                  )}
+                <Text style={[s.myScore, { color: palette.accent }]}>
+                  {formatRankScore(cutoff.minhaLinha.pontuacao, rank.info.criterio)}
                 </Text>
-              </View>
+              </Pressable>
+            ) : null}
+            {cutoff.minhaLinha && !embutido ? (
+              <FolhaMinhaPosicao
+                visivel={folhaPosicao}
+                categoria={scoreLabel}
+                posicao={cutoff.minhaLinha.posicao ?? null}
+                total={total}
+                valor={formatRankScore(cutoff.minhaLinha.pontuacao, rank.info.criterio)}
+                acima={resumoPosicao.acima ? { nome: resumoPosicao.acima.nome_aluno, posicao: resumoPosicao.acima.posicao ?? null } : null}
+                falta={resumoPosicao.falta}
+                palette={palette}
+                onFechar={() => setFolhaPosicao(false)}
+              />
             ) : null}
           </>
         )}
@@ -516,6 +570,17 @@ const s = StyleSheet.create({
   hero: { paddingHorizontal: 20, overflow: "hidden" },
   scenery: { ...StyleSheet.absoluteFillObject },
   sceneryImage: { width: "100%", height: "100%", opacity: 0.4 },
+  // Celular (mobile-v1, 05-ranking.html).
+  arena: { marginHorizontal: 12, borderRadius: 14, borderWidth: 1, overflow: "hidden", paddingHorizontal: 10 },
+  sceneryCelular: { opacity: 0.55 },
+  notaCelular: { fontFamily: FontFamily.interMedium, fontSize: 12, lineHeight: 17, marginTop: 8, marginHorizontal: 18 },
+  notaFiltro: { marginTop: 4, marginBottom: 10 },
+  filtrosCelularWrap: { paddingTop: 16 },
+  filtrosCelular: { flexDirection: "row", gap: 8, paddingHorizontal: 18, paddingBottom: 4 },
+  filtroCelular: { minHeight: 40, borderRadius: 999, borderWidth: 1, paddingHorizontal: 14, justifyContent: "center" },
+  filtroCelularTexto: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "600" },
+  rowCelular: { minHeight: 60, paddingVertical: 6, paddingHorizontal: 8, marginHorizontal: 12, gap: 12 },
+  perfilCelular: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 },
   heading: { paddingTop: 24, gap: 7 },
   headingLargo: { flexDirection: "row", alignItems: "flex-start", gap: 16 },
   headingTextos: { flex: 1, minWidth: 0, gap: 7 },
@@ -578,14 +643,22 @@ const s = StyleSheet.create({
   myPosition: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderTopWidth: 1,
+    gap: 10,
+    minHeight: 64,
+    marginHorizontal: 8,
+    marginBottom: 8,
+    paddingLeft: 8,
+    paddingRight: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    elevation: 8,
   },
-  myPlace: { fontFamily: FontFamily.inikaBold, fontSize: 26 },
-  myLabel: { fontSize: 13, fontWeight: "700" },
-  myScore: { fontSize: 18, fontWeight: "700" },
+  minhaFoto: { width: 44, height: 44, borderRadius: 22, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+  minhaFotoImagem: { width: 40, height: 40, borderRadius: 20 },
+  myPlace: { fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: "700" },
+  myTotal: { fontSize: 12, fontWeight: "500" },
+  myLabel: { fontFamily: FontFamily.interMedium, fontSize: 12.5 },
+  myScore: { fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "800" },
   empty: { margin: 36, textAlign: "center" },
   notice: { padding: 20, fontSize: 12, lineHeight: 18, textAlign: "center" },
 });

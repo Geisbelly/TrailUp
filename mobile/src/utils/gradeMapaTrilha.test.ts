@@ -21,3 +21,9 @@ test("fora do quadro, as colunas vêm da largura (como antes)", () => {
   assert.equal(colunasDoMapa(10, 390, 800, false), 2);
   assert.equal(colunasDoMapa(10, 1200, 800, false), 4);
 });
+
+test("abaixo de 600px de largura a Trilha usa o mosaico do celular", async () => {
+  const { mapaDoCelular } = await import("./gradeMapaTrilha");
+  assert.equal(mapaDoCelular(390), true);
+  assert.equal(mapaDoCelular(1024), false);
+});
