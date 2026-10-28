@@ -11,6 +11,8 @@ import { MissoesDoDia } from "@/components/missoes/MissoesDoDia";
 import { EventoDaTurma } from "@/components/eventos/EventoDaTurma";
 import { perfilDaMissao } from "@/services/missoes/missaoModel";
 import type { GuildShareOption } from "@/components/social/GuildChatModal";
+import { BagModal } from "@/components/bag/BagModal";
+import { UtilityIcon } from "@/components/UtilityIcon";
 import { StoreLauncher } from "@/components/loja/StoreLauncher";
 import { SocialLateralDesktop } from "@/components/web/SocialLateralDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
@@ -58,6 +60,7 @@ export default function SocialScreen() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [storeVisible, setStoreVisible] = useState(false);
+  const [bagVisible, setBagVisible] = useState(false);
   const [guilds, setGuilds] = useState<Awaited<ReturnType<typeof carregarGuildas>>>([]);
   const [janela, setJanela] = useState<Awaited<ReturnType<typeof carregarJanelaDaFormacao>>>(null);
   const [selectedPerson, setSelectedPerson] = useState<SocialPerson | null>(null);
@@ -150,7 +153,7 @@ export default function SocialScreen() {
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
       <HallBackground palette={palette} />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => void load()} tintColor={palette.accent} />}>
+        <ScrollView stickyHeaderIndices={desktop ? undefined : [1]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => void load()} tintColor={palette.accent} />}>
           <View style={styles.header}>
             {desktop ? (
               <View style={styles.cabecalhoLargo}>
@@ -159,22 +162,37 @@ export default function SocialScreen() {
               </View>
             ) : (
               <View style={{ marginHorizontal: -20 }}>
-                <JourneyHeading title="Social" eyebrow="CONEXÕES DA JORNADA" section="social" palette={palette} right={<StoreLauncher color={Color.colorWhite} onPress={() => setStoreVisible(true)} />} />
+                <JourneyHeading title="Social" eyebrow="CONEXÕES DA JORNADA" section="social" palette={palette} right={
+                  <View style={styles.acoesTopo}>
+                    <Pressable onPress={() => setBagVisible(true)} accessibilityRole="button" accessibilityLabel="Abrir Bag" style={styles.botaoTopo}>
+                      <UtilityIcon kind="bag" size={30} />
+                    </Pressable>
+                    <StoreLauncher color={Color.colorWhite} onPress={() => setStoreVisible(true)} />
+                  </View>
+                } />
               </View>
             )}
-            <Text style={[styles.subtitle, { color: palette.textMuted }]}>Encontre sua turma e avance em companhia.</Text>
-            <View style={styles.tabs}>
+            {desktop ? <Text style={[styles.subtitle, { color: palette.textMuted }]}>Encontre sua turma e avance em companhia.</Text> : null}
+          </View>
+          <View style={[styles.tabsSticky, { backgroundColor: palette.background }]}>
+            <ScrollView horizontal={!desktop} showsHorizontalScrollIndicator={false} style={desktop ? undefined : styles.tabsFaixa} contentContainerStyle={[styles.tabs, desktop && styles.tabsLargo]}>
               {sections.map(({ key, label, count }) => {
                 const active = section === key;
                 return (
                   <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => { setSection(key); setSearch(""); }}
-                    style={[styles.tab, desktop && styles.pilula, { borderColor: active ? palette.accent : palette.border, backgroundColor: desktop ? (active ? palette.accent : palette.accentMuted) : active ? palette.surfaceElevated : palette.surface }]}>
-                    <Text style={[styles.tabText, { color: desktop && active ? palette.background : active ? palette.text : palette.textMuted }]}>{label}</Text>
-                    {count !== undefined ? <Text style={[styles.count, { color: palette.text }]}>{count}</Text> : null}
+                    style={[styles.tab, desktop ? styles.pilula : styles.pilulaCelular, { borderColor: active ? palette.accent : palette.border, backgroundColor: desktop ? (active ? palette.accent : palette.accentMuted) : active ? palette.accentMuted : palette.surface }]}>
+                    <Text style={[styles.tabText, !desktop && styles.tabTextCelular, { color: desktop && active ? palette.background : active ? (desktop ? palette.text : palette.accent) : palette.textMuted }]}>{label}</Text>
+                    {desktop ? (
+                      count !== undefined ? <Text style={[styles.count, { color: palette.text }]}>{count}</Text> : null
+                    ) : count ? (
+                      <Text style={[styles.contaCelular, { backgroundColor: palette.accent, color: palette.background }]}>{count}</Text>
+                    ) : null}
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
+          </View>
+          <View style={styles.header}>
             {section !== "guilds" && section !== "arena" ? <View style={[styles.search, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <MaterialCommunityIcons name="magnify" size={22} color={Color.colorWhite} />
               <TextInput value={search} onChangeText={setSearch} accessibilityLabel="Buscar pessoas" placeholder="Buscar por nome ou guilda" placeholderTextColor={palette.textMuted} style={[styles.searchInput, { color: palette.text }]} />
@@ -227,6 +245,7 @@ export default function SocialScreen() {
           </Envolve>
         </ScrollView>
       </SafeAreaView>
+      <BagModal visible={bagVisible} classeId={activeClasseId > 0 ? activeClasseId : null} profile={profile} onClose={() => setBagVisible(false)} />
       {usuario?.id && activeClasseId > 0 ? <StoreModal visible={storeVisible} alunoId={usuario.id} classeId={activeClasseId} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}
       <SocialProfileModal visible={selectedPerson !== null} alunoId={selectedPerson?.alunoId ?? null} classeId={activeClasseId} accent={palette.accent} online={selectedPerson?.online} onPressChat={() => { if (selectedPerson) setChatPerson(selectedPerson); setSelectedPerson(null); }} onClose={() => setSelectedPerson(null)} />
       {chatPerson ? <PrivateChatModal visible={chatPerson !== null} person={chatPerson} accent={palette.accent} profile={profile} onClose={() => setChatPerson(null)} /> : null}
@@ -248,10 +267,30 @@ const styles = StyleSheet.create({
   celula: { width: "32%", minWidth: 240 },
   header: { marginBottom: 16 },
   subtitle: { fontFamily: FontFamily.interMedium, fontSize: 14, lineHeight: 21, marginTop: 12 },
-  tabs: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 16 },
-  tab: { flexDirection: "row", gap: 8, minHeight: 44, paddingHorizontal: 12, alignItems: "center", borderRadius: 10, borderWidth: 1 },
+  // Celular (mobile-v1): atalhos como pílulas roláveis, grudadas no topo ao rolar.
+  tabsSticky: { marginHorizontal: -20, paddingHorizontal: 20, paddingVertical: 8, zIndex: 2 },
+  acoesTopo: { flexDirection: "row", alignItems: "center", gap: 4 },
+  botaoTopo: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  tabsFaixa: { flexGrow: 0 },
+  tabsLargo: { flexWrap: "wrap", marginTop: 8 },
+  tabs: { flexDirection: "row", gap: 8, flexWrap: "nowrap" },
+  tab: { flexDirection: "row", gap: 8, minHeight: 48, paddingHorizontal: 12, alignItems: "center", borderRadius: 10, borderWidth: 1 },
   tabText: { fontSize: 14, fontWeight: "600" },
   count: { fontSize: 12, fontWeight: "700", backgroundColor: "#ffffff18", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  pilulaCelular: { minHeight: 40, gap: 6, paddingHorizontal: 14, borderRadius: 999 },
+  tabTextCelular: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "600" },
+  contaCelular: {
+    minWidth: 20,
+    height: 20,
+    lineHeight: 20,
+    paddingHorizontal: 6,
+    borderRadius: 999,
+    overflow: "hidden",
+    textAlign: "center",
+    fontFamily: FontFamily.interMedium,
+    fontSize: 11,
+    fontWeight: "800",
+  },
   search: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 14, paddingLeft: 12, paddingRight: 4, borderWidth: 1, borderRadius: 10, minHeight: 48 },
   searchInput: { flex: 1, minWidth: 0, fontSize: 14, paddingVertical: 12 },
   clearSearch: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },

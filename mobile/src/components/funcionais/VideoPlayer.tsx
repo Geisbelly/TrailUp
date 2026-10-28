@@ -102,6 +102,8 @@ export default function VideoPlayer({
   const [positionMs, setPositionMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  // Selo "Vídeo assistido" (mobile-v1, 04-topico.html): aparece no fim e some ao tocar de novo.
+  const [assistido, setAssistido] = useState(false);
   const [showSeekControls, setShowSeekControls] = useState(true);
   const hideSeekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resumeStorageKey = useMemo(
@@ -213,8 +215,14 @@ export default function VideoPlayer({
           persistPosition(posicao);
         }
       }),
-      player.addListener("playingChange", ({ isPlaying: tocando }) => setIsPlaying(tocando)),
-      player.addListener("playToEnd", () => persistPosition(0)),
+      player.addListener("playingChange", ({ isPlaying: tocando }) => {
+        setIsPlaying(tocando);
+        if (tocando) setAssistido(false);
+      }),
+      player.addListener("playToEnd", () => {
+        persistPosition(0);
+        setAssistido(true);
+      }),
       player.addListener("statusChange", ({ status }) => {
         if (status === "error") setFailed(true);
         if (status !== "readyToPlay" || retomadaAplicadaRef.current) return;
@@ -322,6 +330,16 @@ export default function VideoPlayer({
           contentFit="contain"
           nativeControls={false}
         />
+        {assistido && !isPlaying ? (
+          <View
+            accessibilityRole="text"
+            accessibilityLabel="Vídeo assistido"
+            style={[seekStyles.assistido, { backgroundColor: palette.accent, pointerEvents: "none" }]}
+          >
+            <Ionicons name="checkmark" size={14} color={palette.background} />
+            <Text style={[seekStyles.assistidoTexto, { color: palette.background }]}>Vídeo assistido</Text>
+          </View>
+        ) : null}
         {showSeekControls && (
           <View style={[seekStyles.overlay, { backgroundColor: 'rgba(0,0,0,0.45)' }]}>
             <View style={seekStyles.controls}>
@@ -745,6 +763,19 @@ const styles = StyleSheet.create({
 });
 
 const seekStyles = StyleSheet.create({
+  assistido: {
+    position: "absolute",
+    top: 10,
+    left: 10,
+    zIndex: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  assistidoTexto: { fontSize: 12, fontWeight: "700" },
   overlay: {
     position: 'absolute',
     bottom: 0,

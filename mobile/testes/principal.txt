@@ -93,6 +93,7 @@ src/utils/storageOrigin.test.ts
 src/utils/storageUrlShape.gateway.test.ts
 src/utils/storageUrlShape.privados.test.ts
 src/utils/supabaseStorage.deck.test.ts
+src/database/supabase.sessaoNaUrl.test.ts
 src/utils/testesRegistrados.test.ts
 src/utils/topicoGraph.test.ts
 src/utils/trilhaCheckpointResume.test.ts
@@ -113,6 +114,9 @@ src/components/web/TrilhaDesktop.navegacao.test.tsx
 src/components/web/MapaPaisesDesktop.clique.test.tsx
 src/utils/gradeMapaTrilha.test.ts
 src/utils/mapaPaises.test.ts
+src/utils/arvoreCelular.test.ts
+src/utils/velocidadeAudio.test.ts
+src/utils/grupoNotificacao.test.ts
 src/services/loja/ganhoMoedasModel.test.ts
 src/utils/compraLoja.test.ts
 src/services/loja/extratoModel.test.ts
@@ -146,3 +150,4 @@ src/hooks/useAviso.test.ts
 src/utils/semAlertDireto.test.ts
 src/utils/fotoPerfil.test.ts
 src/utils/authValidacao.test.ts
+src/utils/painelTopicoTrilha.celular.test.ts

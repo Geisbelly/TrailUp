@@ -30,6 +30,8 @@ export type TocadorDeAudioMinimo = {
   play: () => void;
   pause: () => void;
   seekTo: (segundos: number) => Promise<void> | void;
+  /** 1 = normal. No `expo-audio` é `setPlaybackRate`; na web, o `playbackRate` do elemento. */
+  setPlaybackRate: (velocidade: number) => void;
   remove: () => void;
   addListener: (
     evento: "playbackStatusUpdate",
@@ -53,6 +55,7 @@ export type ElementoDeAudio = {
   duration: number;
   paused: boolean;
   readyState: number;
+  playbackRate: number;
   play: () => Promise<void> | void;
   pause: () => void;
   addEventListener: (evento: string, ouvinte: () => void) => void;
@@ -112,6 +115,9 @@ export function criarTocadorDeAudioWeb(
       void Promise.resolve(elemento.play()).catch(() => undefined);
     },
     pause: () => elemento.pause(),
+    setPlaybackRate: (velocidade: number) => {
+      elemento.playbackRate = velocidade;
+    },
     seekTo: (segundos: number) => {
       elemento.currentTime = Math.max(0, Number(segundos) || 0);
       emitir();

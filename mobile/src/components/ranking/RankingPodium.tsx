@@ -8,7 +8,6 @@ import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import type { RankingProfileMeta } from "@/utils/rankingProfiles";
 import { formatRankScore, selectPodium } from "@/utils/rankingPodium";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import Svg, { Polygon } from "react-native-svg";
 
 type Row = {
   id_aluno: string;
@@ -58,7 +57,8 @@ export function RankingPodium({
           const position = row.posicao!;
           const winner = position === 1;
           const color = palette.text;
-          const size = winner ? 88 : 66;
+          // Celular (mobile-v1, 05-ranking.html, .p-av .rosto): 72 / 56 / 48; tela larga mantém 88 / 66.
+          const size = desktop ? (winner ? 88 : 66) : TAMANHO_CELULAR[position] ?? TAMANHO_CELULAR[3];
           const profile = profiles[row.id_aluno]?.key;
           const photo = photos[row.id_aluno];
           return (
@@ -70,13 +70,13 @@ export function RankingPodium({
               style={[
                 s.column,
                 {
-                  paddingBottom: desktop ? 0 : position === 1 ? 30 : position === 2 ? 12 : 0,
+                  paddingBottom: 0,
                 },
               ]}
               accessible
               accessibilityLabel={`${position}º lugar, ${row.nome_aluno}, ${formatRankScore(row.pontuacao, criterion)}${row.id_aluno === userId ? ", você" : ""}`}
             >
-              <View style={[s.portrait, { width: size, height: size }]}>
+              <View style={[s.portrait, !desktop && s.portraitCelular, { width: size, height: size }]}>
                 {profile || photo ? (
                   <FramedProfileImage
                     profile={profile}
@@ -108,66 +108,44 @@ export function RankingPodium({
                 <UtilityIcon
                   kind="medal"
                   profile={palette.profile}
-                  size={44}
-                  style={s.medal}
+                  size={desktop ? 44 : 26}
+                  style={desktop ? s.medal : s.medalCelular}
                 />
               </View>
-              <Text style={[s.name, { color: palette.text }]}>
+              <Text
+                numberOfLines={desktop ? undefined : 1}
+                style={[s.name, !desktop && s.nameCelular, { color: row.id_aluno === userId ? palette.accent : palette.text }]}
+              >
                 {row.nome_aluno}
               </Text>
-              <Text style={[s.score, desktop && s.scoreLargo, { color: desktop ? palette.textMuted : color }]}>
+              <Text style={[s.score, s.scoreLargo, !desktop && s.scoreCelular, { color: palette.textMuted }]}>
                 {formatRankScore(row.pontuacao, criterion)}
               </Text>
-              <ProfileEmblem profile={profile} toneProfile={palette.profile} size={desktop ? 28 : 44} />
-              {desktop ? (
-                <View
+              {desktop ? <ProfileEmblem profile={profile} toneProfile={palette.profile} size={28} /> : null}
+              {/* Pilares retos. Celular (05-ranking.html, .pedestal): 64 / 44 / 32, o 1º com borda no accent. */}
+              <View
+                style={[
+                  s.pilar,
+                  !desktop && s.pilarCelular,
+                  {
+                    height: (desktop ? ALTURA_PILAR : ALTURA_PILAR_CELULAR)[position] ?? (desktop ? ALTURA_PILAR : ALTURA_PILAR_CELULAR)[3],
+                    backgroundColor: winner || (!desktop && position === 2) ? palette.surfaceElevated : palette.surface,
+                    borderColor: desktop ? palette.borderStrong : winner ? palette.accent : position === 3 ? palette.border : palette.borderStrong,
+                  },
+                ]}
+              >
+                <Text
                   style={[
-                    s.pilar,
-                    {
-                      height: ALTURA_PILAR[position] ?? ALTURA_PILAR[3],
-                      backgroundColor: winner ? palette.surfaceElevated : palette.surface,
-                      borderColor: palette.borderStrong,
-                    },
+                    s.place,
+                    s.placeLargo,
+                    !desktop && { marginTop: 0, fontSize: FONTE_LUGAR_CELULAR[position] ?? 18 },
+                    { color: desktop || winner ? color : palette.textMuted },
                   ]}
                 >
-                  <Text style={[s.place, s.placeLargo, { color }]}>
-                    {position}
-                    <Text style={s.ordinal}>º</Text>
-                  </Text>
-                </View>
-              ) : (
-              <View style={s.pedestal}>
-                <Svg
-                  width="100%"
-                  height="100%"
-                  viewBox="0 0 120 64"
-                  preserveAspectRatio="none"
-                >
-                  <Polygon
-                    points="0,12 60,0 120,12 108,52 60,64 12,52"
-                    fill={palette.surface}
-                  />
-                  <Polygon
-                    points="0,12 60,0 120,12 60,26"
-                    fill={palette.surfaceElevated}
-                    stroke={palette.borderStrong}
-                    strokeWidth="1"
-                  />
-                  <Polygon
-                    points="0,12 60,26 60,64 12,52"
-                    fill={palette.surfaceElevated}
-                  />
-                  <Polygon
-                    points="60,26 120,12 108,52 60,64"
-                    fill={palette.surface}
-                  />
-                </Svg>
-                <Text style={[s.place, { color }]}>
                   {position}
                   <Text style={s.ordinal}>º</Text>
                 </Text>
               </View>
-              )}
             </Coluna>
           );
         })}
@@ -195,6 +173,10 @@ export function RankingPodium({
 
 // Altura de cada pilar na tela larga (1º mais alto), como no protótipo.
 const ALTURA_PILAR: Record<number, number> = { 1: 120, 2: 90, 3: 70 };
+// Celular (mobile-v1, 05-ranking.html): pedestais, retratos e números menores.
+const ALTURA_PILAR_CELULAR: Record<number, number> = { 1: 64, 2: 44, 3: 32 };
+const TAMANHO_CELULAR: Record<number, number> = { 1: 72, 2: 56, 3: 48 };
+const FONTE_LUGAR_CELULAR: Record<number, number> = { 1: 28, 2: 22, 3: 18 };
 
 const s = StyleSheet.create({
   root: { paddingTop: 28, paddingBottom: 12 },
@@ -217,6 +199,11 @@ const s = StyleSheet.create({
   },
   initials: { fontFamily: FontFamily.inikaBold, fontSize: 22 },
   medal: { width: 44, height: 44, position: "absolute", bottom: -22 },
+  portraitCelular: { marginBottom: 6 },
+  medalCelular: { width: 26, height: 26, position: "absolute", right: -8, bottom: -4 },
+  nameCelular: { minHeight: 0, fontSize: 12.5, fontWeight: "700", lineHeight: 16 },
+  scoreCelular: { fontSize: 12, marginTop: 2, marginBottom: 6 },
+  pilarCelular: { marginTop: 0, justifyContent: "center" },
   name: {
     paddingHorizontal: 4,
     minHeight: 40,
@@ -232,16 +219,7 @@ const s = StyleSheet.create({
     marginBottom: 10,
     textAlign: "center",
   },
-  pedestal: {
-    marginTop: 8,
-    width: "100%",
-    height: 64,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   place: {
-    position: "absolute",
-    top: 17,
     fontFamily: FontFamily.inikaBold,
     fontSize: 27,
   },

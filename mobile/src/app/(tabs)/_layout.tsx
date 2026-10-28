@@ -8,14 +8,14 @@ import { ClassSelectionGate } from "@/components/ClassSelectionGate";
 import { bannerImages, brainHexConfig, brainHexImageMap, getProfileImageByString, normalizeBrainHexProfile } from "@/constants/profileImages";
 import { ConquistaRankProvider } from "@/context/ConquistaRankContext";
 import { IAProvider } from "@/context/IAContext";
-import { NotificationsProvider } from "@/context/NotificacaoContext";
+import { NotificationsProvider, useNotifications } from "@/context/NotificacaoContext";
 import { TrilhaProvider } from "@/context/TrilhaContext";
 // 1. Importando MaterialCommunityIcons (mais criativo/detalhado)
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { BottomTabBar, BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Tabs, useSegments } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
-import { Image, View } from "react-native";
+import { Image, Text, View } from "react-native";
 
 import { ToastContainer } from "@/components/ToastContainer";
 import { VigiaDePresenca } from "@/components/VigiaDePresenca";
@@ -25,7 +25,7 @@ import { FirstAccessTour } from "@/components/FirstAccessTour";
 import { useUsuario } from "@/context/SessaoContext";
 import { MetricasProvider } from "@/context/MetricasContext";
 import { user } from "@/database/mockUser";
-import { Color, FontFamily } from "@/styles/GlobalStyle";
+import { FontFamily } from "@/styles/GlobalStyle";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMonitorDeSessao } from "@/hooks/useMonitorDeSessao";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -34,6 +34,23 @@ import { registrarAlvoTour } from "@/utils/tourTargets";
 import type { Funcionalidade } from "@/utils/portoes";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { useUrlDeImagem } from "@/hooks/useFonteDeImagem";
+
+// Contador de não lidas no ícone da aba (mobile-v1). Lê o contexto, então só pode
+// ser montado dentro do NotificationsProvider — por isso é tabBarIcon e não prop.
+function IconeNotificacoes({ focused, color, fundo }: { focused: boolean; color: string; fundo: string }) {
+  const { itens } = useNotifications();
+  const naoLidas = itens.filter((n) => !n.read).length;
+  return (
+    <View accessibilityLabel={naoLidas > 0 ? `Notificações, ${naoLidas} não lidas` : "Notificações"}>
+      <MaterialCommunityIcons size={focused ? 28 : 26} name={focused ? "bell" : "bell-outline"} color={color} />
+      {naoLidas > 0 ? (
+        <View style={{ position: "absolute", top: -4, right: -9, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", backgroundColor: color, borderWidth: 1.5, borderColor: fundo }}>
+          <Text style={{ fontSize: 10, lineHeight: 12, fontWeight: "700", color: fundo }}>{naoLidas > 9 ? "9+" : naoLidas}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 function TourAwareTabBar(props: BottomTabBarProps) {
   const targetRef = useRef<View | null>(null);
@@ -128,7 +145,7 @@ export default function TabLayout() {
                 backgroundColor: palette.surface,
                 borderTopColor: palette.borderStrong,
                 borderTopWidth: hideTabBarOnModule ? 0 : 1,
-                height: hideTabBarOnModule ? 0 : 66 + insets.bottom,
+                height: hideTabBarOnModule ? 0 : 64 + insets.bottom,
                 paddingBottom: hideTabBarOnModule ? 0 : Math.max(insets.bottom, 8),
                 paddingTop: hideTabBarOnModule ? 0 : 8,
                 display: hideTabBarOnModule ? "none" : "flex",
@@ -139,7 +156,7 @@ export default function TabLayout() {
               },
               tabBarLabelStyle: {
                 fontFamily: FontFamily.interMedium,
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: "600",
                 letterSpacing: 0,
               },
@@ -170,11 +187,7 @@ export default function TabLayout() {
               name="notificacoes"
               options={{
                 title: 'Notificações',
-                tabBarIcon: ({ focused }) => <MaterialCommunityIcons
-                    size={focused ? 28 : 26}
-                    name={focused ? "bell" : "bell-outline"}
-                    color={Color.colorWhite}
-                  />,
+                tabBarIcon: ({ focused, color }) => <IconeNotificacoes focused={focused} color={color} fundo={palette.surface} />,
               }}
             />
 
@@ -191,14 +204,14 @@ export default function TabLayout() {
               options={{
                 title: "Social",
                 href: undefined,
-                tabBarIcon: ({ focused }) => (
+                tabBarIcon: ({ focused, color }) => (
                   <View style={{ opacity: aberturas.social ? 1 : 0.5 }}>
                     <MaterialCommunityIcons
                       size={focused ? 28 : 26}
                       name={focused ? "account-group" : "account-group-outline"}
-                      color={Color.colorWhite}
+                      color={color}
                     />
-                    {!aberturas.social ? <MaterialCommunityIcons name="lock" size={12} color={Color.colorWhite} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
+                    {!aberturas.social ? <MaterialCommunityIcons name="lock" size={12} color={color} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
                   </View>
                 ),
               }}
@@ -219,14 +232,14 @@ export default function TabLayout() {
                 href: undefined,
                 // Ícone de Pódio (fiel à referência do ranking/liderança)
                 // Outra opção boa seria "trophy-variant" se preferir o troféu detalhado
-                tabBarIcon: ({ focused }) => (
+                tabBarIcon: ({ focused, color }) => (
                   <View style={{ opacity: aberturas.rank ? 1 : 0.5 }}>
                     <MaterialCommunityIcons
                       size={focused ? 28 : 26}
                       name={focused ? "podium" : "podium-bronze"}
-                      color={Color.colorWhite}
+                      color={color}
                     />
-                    {!aberturas.rank ? <MaterialCommunityIcons name="lock" size={12} color={Color.colorWhite} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
+                    {!aberturas.rank ? <MaterialCommunityIcons name="lock" size={12} color={color} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
                   </View>
                 ),
               }}

@@ -65,7 +65,7 @@ const PROFILE_COPY: Record<
     welcome: "Vou mostrar onde encontrar cada pista e como descobrir novos caminhos.",
     strategy: "Seu painel prioriza descoberta, tópicos visitados e próximos caminhos.",
     voice: {
-      navigation: "Antes de partirmos, olhe para a base da tela: são quatro portas, e eu conheço todas.",
+      navigation: "Antes de partirmos, olhe para a base da tela: são cinco portas, e eu conheço todas.",
       guides: "Se uma pista te escapar, é só me chamar: eu apareço em qualquer página.",
       trail: "Aqui está o território que vamos explorar juntos.",
       study: "Cada tópico que você abre revela um pedaço novo do mapa.",
@@ -86,7 +86,7 @@ const PROFILE_COPY: Record<
     welcome: "Vou mostrar como retomar com segurança e acompanhar cada avanço.",
     strategy: "Seu painel prioriza constância, retomada, tempo e progresso seguro.",
     voice: {
-      navigation: "Firme comigo: estas quatro portas são suas rotas seguras.",
+      navigation: "Firme comigo: estas cinco portas são suas rotas seguras.",
       guides: "Se perder o rumo, me chame: eu recomponho o caminho sem você sair daqui.",
       trail: "Veja a trilha: cada checkpoint que você cravar fica protegido.",
       study: "Entre sem pressa. Se precisar sair, eu guardo exatamente onde você parou.",
@@ -107,7 +107,7 @@ const PROFILE_COPY: Record<
     welcome: "Vou mostrar os atalhos, desafios e indicadores de ritmo da jornada.",
     strategy: "Seu painel prioriza velocidade, precisão e resultados da sessão.",
     voice: {
-      navigation: "Rápido, olhe embaixo: quatro portas, e todas levam à ação.",
+      navigation: "Rápido, olhe embaixo: cinco portas, e todas levam à ação.",
       guides: "Travou? Me chama que eu te tiro do lugar em dois segundos.",
       trail: "É aqui que a sequência de desafios começa. Sinta o ritmo.",
       study: "Entre, tente, erre, volte. Eu guardo seu ponto para a próxima rodada.",
@@ -128,7 +128,7 @@ const PROFILE_COPY: Record<
     welcome: "Vou explicar a lógica do sistema, a origem dos dados e como comparar resultados.",
     strategy: "Seu painel prioriza comparação, critérios e leitura analítica das métricas.",
     voice: {
-      navigation: "Observe a base da tela: quatro áreas, cada uma guardando um tipo de dado.",
+      navigation: "Observe a base da tela: as áreas, cada uma guardando um tipo de dado.",
       guides: "Quando quiser saber de onde vem um número, me consulte na própria página.",
       trail: "Repare na estrutura: cada nó depende do anterior. Nada aqui é aleatório.",
       study: "Entre num tópico e note: estado, posição e conclusão ficam registrados.",
@@ -149,7 +149,7 @@ const PROFILE_COPY: Record<
     welcome: "Vou mostrar como avançar, medir domínio e acompanhar sua posição.",
     strategy: "Seu painel prioriza campanha, posição, precisão e domínio da trilha.",
     voice: {
-      navigation: "Antes da campanha, reconheça o terreno: quatro setores de comando.",
+      navigation: "Antes da campanha, reconheça o terreno: cinco setores de comando.",
       guides: "Precisou de inteligência tática? Me acione sem sair do setor.",
       trail: "Este é o mapa da campanha. Cada território aqui pode ser seu.",
       study: "Avance sobre um tópico. Sua posição fica salva entre as investidas.",
@@ -170,7 +170,7 @@ const PROFILE_COPY: Record<
     welcome: "Vamos conhecer juntos os espaços de comunicação, presença e progresso coletivo.",
     strategy: "Seu painel prioriza presença, participação, ranking e energia do grupo.",
     voice: {
-      navigation: "Venha com a gente: são quatro espaços, e nenhum se percorre sozinho.",
+      navigation: "Venha com a gente: são cinco espaços, e nenhum se percorre sozinho.",
       guides: "Se ficar em dúvida, é só chamar a gente: conversamos ali mesmo.",
       trail: "Esta é a sua trilha — e ela caminha junto com a da turma.",
       study: "Entre num tópico e fique à vontade. Seu lugar fica guardado.",
@@ -191,7 +191,7 @@ const PROFILE_COPY: Record<
     welcome: "Vou organizar o sistema em metas claras, marcos e próximos objetivos.",
     strategy: "Seu painel prioriza metas, checklists, conquistas e o que falta concluir.",
     voice: {
-      navigation: "Primeira meta: reconhecer as quatro áreas. Olhe a base da tela.",
+      navigation: "Primeira meta: reconhecer as áreas. Olhe a base da tela.",
       guides: "Dúvida vira próximo passo: me chame e eu transformo em tarefa.",
       trail: "Veja a trilha — o objetivo grande dividido em etapas alcançáveis.",
       study: "Dentro do tópico, cada tarefa concluída fica marcada, uma a uma.",
@@ -253,8 +253,8 @@ export function buildFirstAccessTourSteps(
       id: "navigation",
       route: "/(tabs)",
       page: "Navegação principal",
-      title: "Suas quatro áreas",
-      description: `${copy.voice.navigation} Trilha, Notificações, Ranking e Perfil — trocar de área não perde seu progresso.`,
+      title: "Suas áreas",
+      description: `${copy.voice.navigation} Trilha, Notificações, Social, Ranking e Perfil. A Loja fica dentro do Perfil — trocar de área não perde seu progresso.`,
       target: "abas_principais",
       highlight: "navigation",
     },

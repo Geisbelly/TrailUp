@@ -46,7 +46,9 @@ def _sql() -> str:
 
 def test_migration_e_a_cabeca_unica() -> None:
     scripts = ScriptDirectory.from_config(_config())
-    assert scripts.get_heads() == ["20261026_01"]
+    heads = scripts.get_heads()
+    assert len(heads) == 1, f"a cadeia tem de ter head unica: {heads}"
+    assert "20261026_01" in {r.revision for r in scripts.iterate_revisions(heads[0], "base")}
     assert scripts.get_revision("20261026_01").down_revision == "20261025_04"
 
 

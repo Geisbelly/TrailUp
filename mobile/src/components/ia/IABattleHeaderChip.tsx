@@ -18,6 +18,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IABattlePanel } from "./IABattlePanel";
 
 type BattleScope = Extract<IAFeatureSelectorScope, { scope: "topic" | "item" }>;
@@ -98,6 +99,7 @@ function BattleMetaStat({
 
 export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante = "chip" }: Props) {
   const [open, setOpen] = useState(false);
+  const insets = useSafeAreaInsets();
   const { getBattleState, resolveFeature } = useIA();
   const { usuario } = useUsuario();
   const profileName = resolveActiveBrainHexProfile(
@@ -266,22 +268,32 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
         </View>
       </Pressable>
 
+      {/* Folha de baixo (mobile-v1, 04-topico.html, `folhaBatalha`): sobe do rodapé,
+          com alça; tocar no véu fecha. */}
       <Modal
         visible={open}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setOpen(false)}
       >
         <View style={[styles.backdrop, { backgroundColor: `${palette.background}cc` }]}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setOpen(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Fechar a batalha"
+          />
           <View
             style={[
               styles.modalCard,
               {
                 backgroundColor: palette.surfaceElevated,
                 borderColor: palette.borderStrong,
+                paddingBottom: 16 + insets.bottom,
               },
             ]}
           >
+            <View style={[styles.alca, { backgroundColor: palette.borderStrong }]} />
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: palette.text }]}>Batalha do módulo</Text>
               <Pressable
@@ -472,16 +484,18 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     flex: 1,
-    justifyContent: "center",
-    padding: 20,
+    justifyContent: "flex-end",
   },
   modalCard: {
-    borderRadius: 18,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     padding: 16,
     borderWidth: 1,
+    borderBottomWidth: 0,
     gap: 12,
     maxHeight: "86%",
   },
+  alca: { alignSelf: "center", width: 36, height: 4, borderRadius: 2, marginTop: -4 },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

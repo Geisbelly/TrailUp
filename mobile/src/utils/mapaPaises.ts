@@ -1,6 +1,7 @@
 // Geometria do mapa de países da Trilha na web em tela larga (#346, protótipo
-// v4, `03-trilha.html`: mapLayout, mapCellPath, hexPath e a estrada). Puro:
-// só números e strings de path SVG, para o componente desenhar.
+// v4, `03-trilha.html`: mapLayout, mapCellPath, hexPath e a estrada) e no
+// celular (mobile-v1, `layoutMapaCelular`). Puro: só números e strings de path
+// SVG, para o componente desenhar.
 //
 // O continente é uma grade (4 colunas × N fileiras) recortada em países que
 // DIVIDEM fronteira: cada borda é gerada uma vez, sempre na mesma direção, e
@@ -44,9 +45,44 @@ export function layoutMapa(total: number, largura: number, altura: number): Layo
   const W = Math.max(largura, Math.ceil((cols * MAPA_COL_MIN) / (1 - 2 * MAPA_LADO)));
   const x0 = W * MAPA_LADO;
   const cw = (W * (1 - 2 * MAPA_LADO)) / cols;
+  const H = Math.max(altura, MAPA_TOPO + rows * faixa + MAPA_BASE);
+  return { largura: W, altura: H, faixa, cols, rows, x0, cw, ...grade(total, cols, rows, x0, cw, faixa, { capital: 0.36, desvioX: 0.04, desvioY: 8 }) };
+}
+
+/** Celular (mobile-v1, `03-trilha.html`: M_COLS 2, M_FAIXA 196). */
+export const MAPA_FAIXA_CELULAR = 196;
+// O protótipo usa .035, mas a costa ondula para fora até ~15% da borda (≈30px numa
+// fileira de 196) e, no aparelho, a costa da direita saía cortada da tela.
+const MAPA_LADO_CELULAR = 0.06;
+const MAPA_BASE_CELULAR = 20;
+
+/**
+ * O mesmo continente no celular: 2 colunas na largura da tela, fileiras de altura
+ * fixa, e o mapa cresce para baixo (rola só na vertical). Usa o mesmo
+ * `caminhoCelula`, então os países continuam dividindo fronteira.
+ */
+export function layoutMapaCelular(total: number, largura: number): LayoutMapa {
+  const cols = Math.min(2, Math.max(1, total));
+  const rows = Math.max(1, Math.ceil(total / cols));
+  const faixa = MAPA_FAIXA_CELULAR;
+  const x0 = largura * MAPA_LADO_CELULAR;
+  const cw = (largura * (1 - 2 * MAPA_LADO_CELULAR)) / cols;
+  const altura = MAPA_TOPO + rows * faixa + MAPA_BASE_CELULAR;
+  return { largura, altura, faixa, cols, rows, x0, cw, ...grade(total, cols, rows, x0, cw, faixa, { capital: 0.34, desvioX: 0.05, desvioY: 6 }) };
+}
+
+/** Células da grade e a capital de cada tópico, em serpentina: fileira par vai da esquerda para a direita, ímpar volta. */
+function grade(
+  total: number,
+  cols: number,
+  rows: number,
+  x0: number,
+  cw: number,
+  faixa: number,
+  { capital, desvioX, desvioY }: { capital: number; desvioX: number; desvioY: number },
+): Pick<LayoutMapa, "celulas" | "nos"> {
   const celulas: { c: number; r: number }[] = [];
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) celulas.push({ c, r });
-  // Serpentina: fileira par vai da esquerda para a direita, ímpar volta.
   const nos = Array.from({ length: total }, (_, i) => {
     const r = Math.floor(i / cols);
     const k = i % cols;
@@ -55,12 +91,11 @@ export function layoutMapa(total: number, largura: number, altura: number): Layo
       r,
       c,
       colW: cw,
-      x: x0 + cw * (c + 0.5) + Math.sin((i + 1) * 0.82) * cw * 0.04,
-      y: MAPA_TOPO + faixa * r + faixa * 0.36 + Math.cos((i + 1) * 1.3) * 8,
+      x: x0 + cw * (c + 0.5) + Math.sin((i + 1) * 0.82) * cw * desvioX,
+      y: MAPA_TOPO + faixa * r + faixa * capital + Math.cos((i + 1) * 1.3) * desvioY,
     };
   });
-  const H = Math.max(altura, MAPA_TOPO + rows * faixa + MAPA_BASE);
-  return { largura: W, altura: H, faixa, cols, rows, x0, cw, celulas, nos };
+  return { celulas, nos };
 }
 
 const f = (n: number) => n.toFixed(1);

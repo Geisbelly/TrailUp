@@ -3,6 +3,7 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import { formatSmartTime, type TimeInput } from "@/utils/Formatacoes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -41,67 +42,51 @@ const NotificationItem = memo(function NotificationItem({
     const target = href ?? (id ? `/notificacoes/${id}` : undefined);
     if (target) router.push(target as never);
   };
+  // Visual do protótipo (mobile-v1, 07-notificacoes.html: .item/.cab/.ic/.linha1/.nova/.desc).
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${read ? "Lida" : "Não lida"}: ${title}`}
       onPress={open}
       testID={testID}
-      style={({ pressed }) => [
-        s.row,
-        {
-          backgroundColor: read ? palette.background : palette.surface,
-          borderLeftColor: read ? "transparent" : palette.accent,
-          opacity: pressed ? 0.7 : 1,
-        },
-      ]}
+      style={({ pressed }) => [s.row, { backgroundColor: palette.background, opacity: pressed ? 0.7 : 1 }]}
     >
-      <View
-        style={[
-          s.icon,
-          {
-            borderColor: palette.border,
-            backgroundColor: palette.surfaceElevated,
-          },
-        ]}
-      >
-        <MaterialCommunityIcons
-          name={read ? "email-open-outline" : "email-outline"}
-          size={21}
-          color="#ffffff"
-        />
+      {read ? null : (
+        <>
+          <LinearGradient
+            colors={[palette.accentMuted, palette.background]}
+            locations={[0, 0.7]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
+          />
+          <View style={[s.barra, { backgroundColor: palette.accent }]} />
+        </>
+      )}
+      <View style={[s.icon, { backgroundColor: palette.surfaceElevated }]}>
+        <MaterialCommunityIcons name={read ? "email-open-outline" : "email-outline"} size={19} color={palette.accent} />
       </View>
       <View style={s.content}>
-        <View style={s.meta}>
+        <View style={s.linha1}>
           <Text
-            style={[
-              s.state,
-              { color: read ? palette.textSubtle : palette.accent },
-            ]}
+            numberOfLines={2}
+            style={[s.title, read ? { fontWeight: "600", color: palette.textMuted } : { color: palette.text }]}
           >
-            {read ? "LIDA" : "NOVA"}
+            {title}
           </Text>
-          <Text style={[s.time, { color: palette.textMuted }]}>
+          <Text style={[s.time, { color: palette.textSubtle }]}>
             {formatSmartTime(time, { thresholdHours: relativeThresholdHours })}
           </Text>
         </View>
-        <Text numberOfLines={2} style={[s.title, { color: palette.text }]}>
-          {title}
-        </Text>
+        {read ? null : (
+          <Text style={[s.nova, { backgroundColor: palette.accent, color: palette.background }]}>NOVA</Text>
+        )}
         {description ? (
-          <Text
-            numberOfLines={2}
-            style={[s.description, { color: palette.textMuted }]}
-          >
+          <Text numberOfLines={2} style={[s.description, { color: palette.textSubtle }]}>
             {description}
           </Text>
         ) : null}
       </View>
-      <MaterialCommunityIcons
-        name="chevron-right"
-        size={18}
-        color={palette.textSubtle}
-      />
     </Pressable>
   );
 });
@@ -109,32 +94,32 @@ const NotificationItem = memo(function NotificationItem({
 const s = StyleSheet.create({
   row: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 18,
+    alignItems: "flex-start",
+    minHeight: 72,
+    paddingTop: 12,
+    paddingBottom: 12,
+    paddingLeft: 16,
+    paddingRight: 14,
     gap: 12,
-    borderLeftWidth: 3,
+    overflow: "hidden",
   },
-  icon: {
-    width: 40,
-    height: 44,
-    borderRadius: 6,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  barra: { position: "absolute", left: 0, top: 0, bottom: 0, width: 3 },
+  icon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   content: { flex: 1, minWidth: 0 },
-  meta: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    flexWrap: "wrap",
-    gap: 4,
-    marginBottom: 5,
+  linha1: { flexDirection: "row", alignItems: "baseline", gap: 6 },
+  title: { flex: 1, fontFamily: FontFamily.interMedium, fontSize: 14.5, fontWeight: "700", lineHeight: 19 },
+  time: { fontFamily: FontFamily.interMedium, fontSize: 11.5 },
+  nova: {
+    alignSelf: "flex-start",
+    marginTop: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    overflow: "hidden",
+    fontFamily: FontFamily.interMedium,
+    fontSize: 10,
+    fontWeight: "800",
   },
-  state: { fontSize: 9, fontWeight: "700" },
-  time: { fontSize: 11 },
-  title: { fontFamily: FontFamily.inikaBold, fontSize: 17, lineHeight: 23 },
-  description: { fontSize: 13, lineHeight: 19, marginTop: 5 },
+  description: { fontFamily: FontFamily.interMedium, fontSize: 13, lineHeight: 18, marginTop: 3 },
 });
 export default NotificationItem;
