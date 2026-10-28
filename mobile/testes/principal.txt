@@ -93,6 +93,7 @@ src/utils/storageOrigin.test.ts
 src/utils/storageUrlShape.gateway.test.ts
 src/utils/storageUrlShape.privados.test.ts
 src/utils/supabaseStorage.deck.test.ts
+src/database/supabase.sessaoNaUrl.test.ts
 src/utils/testesRegistrados.test.ts
 src/utils/topicoGraph.test.ts
 src/utils/trilhaCheckpointResume.test.ts
