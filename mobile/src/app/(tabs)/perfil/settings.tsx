@@ -1,4 +1,3 @@
-import { OrnamentDivider } from "@/components/HallTheme";
 import {
   SectionGuideButton,
   SectionGuideStep,
@@ -34,6 +33,26 @@ const pkg = require("../../../../package.json");
 
 type MenuItem = { label: string; render: React.ReactNode };
 type MenuAction = { label: string; onPress: () => void };
+
+/** Um grupo da lista: título em maiúsculas e as linhas num cartão só, separadas por filete. Some se não sobrar linha. */
+function GrupoConfig({ titulo, itens, palette }: { titulo: string; itens: React.ReactNode[]; palette: ReturnType<typeof getProfileShellPalette> }) {
+  const linhas = itens.filter(Boolean);
+  if (linhas.length === 0) return null;
+  return (
+    <View>
+      <Text accessibilityRole="header" style={[styles.grupoTitulo, { color: palette.textSubtle }]}>
+        {titulo.toUpperCase()}
+      </Text>
+      <View style={[styles.grupoCartao, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        {linhas.map((linha, i) => (
+          <View key={i} style={i > 0 ? { borderTopWidth: 1, borderTopColor: palette.border } : null}>
+            {linha}
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function Settings() {
   const desktop = useDesktopWeb();
@@ -220,6 +239,9 @@ function SettingsLista() {
       ].filter((item) => textoMatches(item.label)),
     [palette, textoMatches],
   );
+  const ligacao = (rotulo: string): React.ReactNode =>
+    [...contaLinks, ...sobreLinks, ...segurancaLinks].find((item) => item.label === rotulo)?.render ?? null;
+
   const settingsGuideSteps = useMemo<SectionGuideStep[]>(
     () => [
       {
@@ -291,78 +313,48 @@ function SettingsLista() {
       >
         <View ref={settingsListGuideRef} collapsable={false}>
           <View
-          style={[
-            styles.searchContainer,
-            {
-              backgroundColor: palette.surfaceElevated,
-              borderColor: "#ffffff25",
-            },
-          ]}
+            style={[
+              styles.searchContainer,
+              { backgroundColor: palette.surface, borderColor: palette.border },
+            ]}
           >
-          <Feather
-            name="search"
-            size={20}
-            color={palette.textMuted}
-            style={styles.searchIcon}
-          />
-          <TextInput
-            placeholder="Pesquisar"
-            placeholderTextColor={palette.textSubtle}
-            style={[styles.searchInput, { color: palette.text }]}
-            value={busca}
-            onChangeText={setBusca}
-          />
-          </View>
-
-          <View style={styles.sectionContainer}>
-            <Text style={[styles.sectionTitle, { color: palette.textMuted }]}>
-              Sua conta
-            </Text>
-            {contaLinks.map((item, idx) => (
-              <View key={idx}>{item.render}</View>
-            ))}
+            <Feather name="search" size={17} color={palette.textSubtle} style={styles.searchIcon} />
+            <TextInput
+              placeholder="Pesquisar"
+              placeholderTextColor={palette.textSubtle}
+              style={[styles.searchInput, { color: palette.text }]}
+              value={busca}
+              onChangeText={setBusca}
+              accessibilityLabel="Pesquisar nas configurações"
+            />
           </View>
         </View>
 
-        <View style={styles.ornamentRow}>
-          <OrnamentDivider color={"#fff"} />
+        {/* Quatro grupos, um cartão cada (mobile-v1, 11-configuracoes.html, GRUPOS). */}
+        <GrupoConfig titulo="Conta" palette={palette} itens={[ligacao("Informações"), <View key="senha" ref={securityGuideRef} collapsable={false}>{ligacao("Resetar senha")}</View>]} />
+        <View ref={legalGuideRef} collapsable={false}>
+          <GrupoConfig
+            titulo="Privacidade e termos"
+            palette={palette}
+            itens={[
+              ligacao("Coleta e acessos"),
+              ligacao("Gerar relatório dos dados"),
+              ...legalLinks.map((item) => (
+                <LinhaConfig key={item.label} icone="shield" externo onPress={item.onPress} palette={palette}>
+                  {item.label}
+                </LinhaConfig>
+              )),
+              ligacao("Solicitar exclusão da conta"),
+            ]}
+          />
         </View>
-
-        <View ref={legalGuideRef} collapsable={false} style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: palette.textMuted }]}>
-            Legal
-          </Text>
-          {legalLinks.map((item, idx) => (
-            <LinhaConfig key={idx} icone="shield" externo onPress={item.onPress} palette={palette}>
-              {item.label}
-            </LinhaConfig>
-          ))}
-        </View>
-
-        <View style={styles.ornamentRow}>
-          <OrnamentDivider color={"#fff"} />
-        </View>
-
-        <View ref={aboutGuideRef} collapsable={false} style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: palette.textMuted }]}>
-            Sobre
-          </Text>
-          {sobreLinks.map((item, idx) => (
-            <View key={idx}>{item.render}</View>
-          ))}
-        </View>
-
-        <View style={styles.ornamentRow}>
-          <OrnamentDivider color={"#fff"} />
-        </View>
-
-        <View ref={securityGuideRef} collapsable={false} style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: palette.textMuted }]}>
-            Segurança
-          </Text>
-          {segurancaLinks.map((item, idx) => (
-            <View key={idx}>{item.render}</View>
-          ))}
+        <GrupoConfig titulo="Preferências" palette={palette} itens={[ligacao("Lembrete diário"), ligacao("Estilo das métricas")]} />
+        <View ref={aboutGuideRef} collapsable={false}>
+          <GrupoConfig
+            titulo="Tutorial e informações do app"
+            palette={palette}
+            itens={[ligacao("Rever tutorial inicial"), ligacao("Informações do app"), ligacao("Versão")]}
+          />
         </View>
 
         <View style={styles.footer}>
@@ -392,6 +384,8 @@ function SettingsLista() {
 }
 
 const styles = StyleSheet.create({
+  grupoTitulo: { fontFamily: FontFamily.interMedium, fontSize: 11.5, fontWeight: "800", letterSpacing: 1.2, marginTop: 18, marginBottom: 6, marginHorizontal: 6 },
+  grupoCartao: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
   outerWrapper: {
     flex: 1,
   },
@@ -404,26 +398,21 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
-  ornamentRow: {
-    opacity: 0.65,
-    marginVertical: 4,
-  },
   content: {
     // O botão de ajuda é absoluto (top 14 + 44 de altura); sem este respiro ele cobre a ponta do campo de busca.
     paddingTop: 44,
     paddingBottom: 32,
     gap: 16,
   },
-  sectionContainer: {
-    marginTop: 10,
-  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 14,
+    height: 46,
+    paddingHorizontal: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 15,
-    marginTop: 20,
+    marginTop: 4,
+    marginBottom: 6,
   },
   searchIcon: {
     marginRight: 10,
@@ -433,12 +422,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingVertical: 12,
     fontFamily: FontFamily.interMedium,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontFamily: FontFamily.inikaBold,
-    textTransform: "uppercase",
-    marginBottom: 15,
   },
   menuItem: {
     minHeight: 56,
