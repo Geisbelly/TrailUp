@@ -32,6 +32,7 @@ import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { BarraPartesTopico } from "@/components/trilhas/BarraPartesTopico";
 import { CabecalhoTopicoDesktop, type EstadoBlocoTopico } from "@/components/web/CabecalhoTopicoDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
+import { getBrainHexConfig } from "@/constants/profileImages";
 import { LoadingState } from "@/components/LoadingState";
 import { TopicoIntroSummary } from "@/components/TopicoIntroSummary";
 import {
@@ -959,6 +960,9 @@ export default function TrilhaConteudoScreen() {
   // Conteúdo na tela larga (protótipo v4): texto direto sobre o fundo, sem o card.
   // Atividades seguem em card.
   const leituraLarga = desktop && atualBlock?.kind === "conteudo";
+  // Celular (mobile-v1, 04-topico.html): o conteúdo também lê sem cartão, com o rótulo
+  // "Material personalizado — perfil X" e o título em serifa. Arquivo em foco (PDF etc.) segue compacto.
+  const leituraCelular = !desktop && atualBlock?.kind === "conteudo" && !conteudoComFocoEmArquivo;
   // Atividade na tela larga: card próprio com o rótulo em linha ("ATIVIDADE — MÚLTIPLA ESCOLHA").
   const atividadeLarga = desktop && atualBlock?.kind === "atividade";
   const rotuloAtividade =
@@ -1771,6 +1775,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 borderColor: profilePalette.border,
               },
               leituraLarga && styles.cardLeituraDesktop,
+              leituraCelular && styles.cardLeituraCelular,
               atividadeLarga && [styles.cardAtividadeDesktop, { backgroundColor: profilePalette.surface }],
             ]}
           >
@@ -1778,6 +1783,15 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
               <Text style={[styles.rotuloAtividadeDesktop, { color: profilePalette.accent }]}>
                 {["Atividade", rotuloAtividade].filter(Boolean).join(" — ").toUpperCase()}
               </Text>
+            ) : leituraCelular ? (
+              <View style={styles.rotuloLeituraDesktop}>
+                <MaterialCommunityIcons name="book-open-page-variant-outline" size={15} color={profilePalette.accent} />
+                <Text style={[styles.rotuloLeituraCelularTexto, { color: profilePalette.accent }]}>
+                  {personalizedTopic
+                    ? `Material personalizado — perfil ${getBrainHexConfig(perfil).label}`
+                    : [blocoLabel, formatConteudoTipo(atualBlock.conteudo.tipo)].filter(Boolean).join(" — ")}
+                </Text>
+              </View>
             ) : leituraLarga ? (
               <View style={styles.rotuloLeituraDesktop}>
                 <MaterialCommunityIcons name="book-open-page-variant-outline" size={15} color={profilePalette.accent} />
@@ -1822,6 +1836,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 styles.cardTitle,
                 conteudoComFocoEmArquivo && styles.cardTitleFileFocus,
                 leituraLarga && styles.cardTitleLeituraDesktop,
+                leituraCelular && styles.cardTitleLeituraCelular,
                 { color: profilePalette.text },
               ]}
             >
@@ -1832,7 +1847,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 : atualBlock.atividade.titulo ?? "Atividade"}
             </Text>
 
-            {atualBlock.kind === "conteudo" && !leituraLarga && formatConteudoTipo(atualBlock.conteudo.tipo) ? (
+            {atualBlock.kind === "conteudo" && !leituraLarga && !leituraCelular && formatConteudoTipo(atualBlock.conteudo.tipo) ? (
               <Text
                 style={[
                   styles.cardType,
@@ -1876,7 +1891,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                       leituraLarga && [styles.botaoBagDesktopTexto, { color: profilePalette.text }],
                     ]}
                   >
-                    ＋ Guardar na Bag
+                    {leituraCelular ? "＋ Adicionar à Bag" : "＋ Guardar na Bag"}
                   </Text>
                 </Pressable>
               </>
