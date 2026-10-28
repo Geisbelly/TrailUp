@@ -973,6 +973,7 @@ class PersonalizacaoJobsRepository:
         *,
         stale_processing_min: int = 15,
         partial_retry_delay_sec: int = 15,
+        stale_missao_diaria_min: int | None = None,
     ) -> dict[str, Any] | None:
         if not await self._jobs_exists():
             return None
@@ -1013,6 +1014,11 @@ class PersonalizacaoJobsRepository:
                          )
                          OR candidate.updated_at
                            < NOW() - make_interval(mins => :stale_processing_min)
+                         OR (
+                           candidate.kind = 'missao_diaria'
+                           AND candidate.updated_at
+                             < NOW() - make_interval(mins => :stale_missao_diaria_min)
+                         )
                        )
                      )
                   ORDER BY candidate.created_at ASC, candidate.id ASC
@@ -1050,6 +1056,9 @@ class PersonalizacaoJobsRepository:
             {
                 "stale_processing_min": stale_processing_min,
                 "partial_retry_delay_sec": max(1, int(partial_retry_delay_sec)),
+                "stale_missao_diaria_min": (
+                    stale_processing_min if stale_missao_diaria_min is None else stale_missao_diaria_min
+                ),
             },
         )
         row = result.mappings().first()
