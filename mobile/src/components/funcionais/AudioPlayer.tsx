@@ -30,6 +30,7 @@ import {
   View,
 } from "react-native";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { proximaVelocidade, rotuloVelocidade } from "@/utils/velocidadeAudio";
 
 type Props = {
   url: string;
@@ -113,6 +114,10 @@ export default function AudioPlayer({
   const [resolvedCueUrls, setResolvedCueUrls] = useState<ImageCue[]>([]);
   const [loadingAudio, setLoadingAudio] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [velocidade, setVelocidade] = useState(1);
+  // O tocador é criado num callback; a ref deixa ele nascer na velocidade escolhida.
+  const velocidadeRef = useRef(1);
+  velocidadeRef.current = velocidade;
   const [playback, setPlayback] = useState<PlaybackState>(AUDIO_PARADO);
   const resumeStorageKey = useMemo(
     () => buildContentResumeKey(usuario?.id, "audio", progressKey ?? sourceUrl),
@@ -296,6 +301,8 @@ export default function AudioPlayer({
             ? criarTocadorDeAudioWeb(playbackUrl)
             : createAudioPlayer({ uri: playbackUrl }, { updateInterval: 350 });
         soundRef.current = sound;
+        // O tocador nasce em 1×: reaplica a velocidade que o aluno já escolheu.
+        if (velocidadeRef.current !== 1) sound.setPlaybackRate(velocidadeRef.current);
 
         if (restoredPosition > 0) {
           try {
@@ -347,6 +354,12 @@ export default function AudioPlayer({
 
     soundRef.current.play();
   }, [ensureSound, playback.isPlaying, playbackUrl]);
+
+  const trocarVelocidade = useCallback(() => {
+    const proxima = proximaVelocidade(velocidade);
+    setVelocidade(proxima);
+    soundRef.current?.setPlaybackRate(proxima);
+  }, [velocidade]);
 
   const handleRestart = useCallback(async () => {
     const sound = await ensureSound(false);
@@ -490,6 +503,15 @@ export default function AudioPlayer({
               </Text>
             </View>
           </View>
+
+          <Pressable
+            onPress={trocarVelocidade}
+            style={styles.speedControl}
+            accessibilityRole="button"
+            accessibilityLabel={`Velocidade ${rotuloVelocidade(velocidade)}. Toque para mudar`}
+          >
+            <Text style={[styles.speedText, { color: palette.textMuted }]}>{rotuloVelocidade(velocidade)}</Text>
+          </Pressable>
 
           <Pressable
             onPress={() => void handleRestart()}
@@ -662,6 +684,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  speedControl: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  speedText: { fontFamily: FontFamily.interMedium, fontSize: 12.5, fontWeight: "700" },
   secondaryControl: {
     width: 38,
     height: 38,

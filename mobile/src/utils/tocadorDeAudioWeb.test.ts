@@ -13,6 +13,7 @@ function elementoFalso(inicial: Partial<ElementoDeAudio> = {}) {
     duration: Number.NaN,
     paused: true,
     readyState: 0,
+    playbackRate: 1,
     tocou: 0,
     pausou: 0,
     play() { elemento.tocou += 1; elemento.paused = false; return Promise.resolve(); },
@@ -126,4 +127,12 @@ test("remover a assinatura para de entregar, sem derrubar o tocador", () => {
 
   assert.equal(recebidos.at(-1)!.currentTime, 0);
   assert.ok(outros.length > 0, "a outra assinatura tinha de continuar recebendo");
+});
+
+test("a velocidade escolhida chega ao <audio> da web", async () => {
+  const { criarTocadorDeAudioWeb } = await import("./tocadorDeAudioWeb");
+  const elemento = elementoFalso();
+  const tocador = criarTocadorDeAudioWeb("https://exemplo.test/a.mp3", () => elemento);
+  tocador.setPlaybackRate(1.5);
+  assert.equal(elemento.playbackRate, 1.5);
 });
