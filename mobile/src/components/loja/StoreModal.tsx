@@ -10,6 +10,7 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import { avisoCompraFeita, limitarQuantidade, precosDoPedido, textoNaBag } from "@/utils/compraLoja";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -149,22 +150,21 @@ export function StoreModal({
               />
             }
           >
-            <View style={[s.balance, { borderBottomColor: palette.border }]}>
-              <View style={s.flex}>
-                <Text style={[s.label, { color: palette.textMuted }]}>
-                  SEU SALDO
-                </Text>
-                <Text style={[s.balanceNumber, { color: palette.text }]}>
-                  {snapshot?.balance ?? "--"}
-                </Text>
-              </View>
-              <UtilityIcon
-                kind="coin"
-                profile={profileName}
-                size={70}
-                height={76}
-                style={s.coin}
+            <View style={[s.saldo, { borderColor: palette.accentSoft, backgroundColor: palette.surface }]}>
+              <LinearGradient
+                colors={[palette.accentMuted, "transparent"]}
+                start={{ x: 1, y: 0 }}
+                end={{ x: 0.3, y: 0.7 }}
+                style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
               />
+              <Text style={[s.saldoRotulo, { color: palette.accent }]}>SEU SALDO</Text>
+              <View style={s.saldoLinha}>
+                <Text style={[s.saldoNumero, { color: palette.text }]}>{snapshot?.balance ?? "--"}</Text>
+                <UtilityIcon kind="coin" profile={profileName} size={46} height={50} style={s.saldoMoeda} />
+              </View>
+              <Text style={[s.saldoTexto, { color: palette.textMuted }]}>
+                Suas moedas vêm do estudo. Gastar nunca muda seu XP nem sua posição no ranking.
+              </Text>
             </View>
             {notice ? (
               <View style={[s.feedback, { borderColor: palette.accent }]}>
@@ -202,9 +202,14 @@ export function StoreModal({
                 </Pressable>
               </View>
             ) : null}
-            <Text style={[s.sectionTitle, { color: palette.text }]}>
-              Itens da loja
-            </Text>
+            <View style={s.itensTitulo}>
+              <Text style={[s.sectionTitle, { color: palette.text }]}>Itens</Text>
+              {snapshot?.items.length ? (
+                <Text style={[s.itensContador, { color: palette.textSubtle, backgroundColor: palette.surfaceElevated }]}>
+                  {snapshot.items.length}
+                </Text>
+              ) : null}
+            </View>
             {loading && !snapshot ? (
               <ActivityIndicator color={palette.accent} style={s.empty} />
             ) : snapshot?.items.length ? (
@@ -215,6 +220,7 @@ export function StoreModal({
                   palette={palette}
                   buying={buying === item.id}
                   busy={!!buying || loading}
+                  celular
                   onBuy={(quantidade) => setPedido({ item, quantidade })}
                 />
               ))
@@ -345,12 +351,15 @@ export function StoreCard({
   buying,
   busy,
   onBuy,
+  celular = false,
 }: {
   item: StoreItem;
   palette: ReturnType<typeof getProfileShellPalette>;
   buying: boolean;
   busy: boolean;
   onBuy: (quantidade: number) => void;
+  /** Visual do celular (mobile-v1, 12-loja.html); a Loja da web larga não passa. */
+  celular?: boolean;
 }) {
   const [quantidade, setQuantidade] = useState(1);
   const maximo = Math.max(1, maxQuantidade(item));
@@ -370,23 +379,25 @@ export function StoreCard({
     <View
       style={[
         s.item,
+        celular && s.itemCelular,
         { borderColor: palette.border, backgroundColor: palette.surface },
+        celular && disabled && item.state !== "available" ? { opacity: 0.72 } : null,
       ]}
     >
       <View style={s.itemHeading}>
         <StoreItemIcon
           effect={item.assetKey}
           color={palette.accent}
-          size={64}
+          size={celular ? 56 : 64}
         />
         <View style={s.flex}>
-          <Text style={[s.itemName, { color: palette.text }]}>{item.name}</Text>
+          <Text style={[s.itemName, celular && s.itemNameCelular, { color: palette.text }]}>{item.name}</Text>
           {status ? (
             <Text style={[s.status, { color: palette.textMuted }]}>
               {status}
             </Text>
           ) : null}
-          <Text style={[s.description, { color: palette.textMuted }]}>
+          <Text style={[s.description, celular && s.descriptionCelular, { color: palette.textMuted }]}>
             {item.description}
           </Text>
         </View>
@@ -395,9 +406,20 @@ export function StoreCard({
         <Text style={[s.free, { color: palette.textMuted }]}>{naBag}</Text>
       ) : null}
       {item.metadata.gratisRestantes ? (
-        <Text style={[s.free, { color: palette.accent }]}>
-          Disponíveis gratuitamente: {String(item.metadata.gratisRestantes)}
-        </Text>
+        celular ? (
+          // Selo de gratuidade (.chip no protótipo).
+          <View style={[s.seloGratis, { backgroundColor: palette.accentMuted, borderColor: palette.accentSoft }]}>
+            <Text style={[s.seloGratisTexto, { color: palette.accent }]}>
+              {Number(item.metadata.gratisRestantes) === 1
+                ? "1 grátis restante"
+                : `${String(item.metadata.gratisRestantes)} grátis restantes`}
+            </Text>
+          </View>
+        ) : (
+          <Text style={[s.free, { color: palette.accent }]}>
+            Disponíveis gratuitamente: {String(item.metadata.gratisRestantes)}
+          </Text>
+        )
       ) : null}
       <View style={[s.actionRow, { borderTopColor: palette.border }]}>
         <View style={s.priceRow}>
@@ -433,6 +455,7 @@ export function StoreCard({
           onPress={() => onBuy(qtd)}
           style={[
             s.buy,
+            celular && s.buyCelular,
             {
               backgroundColor: disabled
                 ? palette.surfaceElevated
@@ -474,6 +497,21 @@ export function StoreCard({
 
 const s = StyleSheet.create({
   screen: { flex: 1 },
+  // Celular (mobile-v1, 12-loja.html).
+  saldo: { borderRadius: 16, borderWidth: 1, paddingTop: 16, paddingHorizontal: 16, paddingBottom: 14, overflow: "hidden" },
+  saldoRotulo: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1 },
+  saldoLinha: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4, marginBottom: 6 },
+  saldoNumero: { fontFamily: FontFamily.inikaBold, fontSize: 46, lineHeight: 52 },
+  saldoMoeda: { width: 46, height: 50 },
+  saldoTexto: { fontFamily: FontFamily.interMedium, fontSize: 13.5, lineHeight: 20 },
+  itensTitulo: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },
+  itensContador: { fontSize: 12, fontWeight: "700", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: "hidden" },
+  itemCelular: { borderRadius: 14, padding: 14 },
+  itemNameCelular: { fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: "700" },
+  descriptionCelular: { fontSize: 13.5, lineHeight: 20, marginTop: 4 },
+  seloGratis: { alignSelf: "flex-start", marginTop: 10, borderRadius: 999, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 3 },
+  seloGratisTexto: { fontFamily: FontFamily.interMedium, fontSize: 11.5, fontWeight: "700" },
+  buyCelular: { borderRadius: 999, minHeight: 44, paddingHorizontal: 16 },
   veu: { justifyContent: "flex-end" },
   folha: {
     borderTopLeftRadius: 20,
