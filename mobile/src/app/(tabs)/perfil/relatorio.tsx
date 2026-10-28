@@ -1,4 +1,4 @@
-import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
+import { HallBackground } from "@/components/HallTheme";
 import {
   SectionGuideButton,
   SectionGuideStep,
@@ -6,7 +6,6 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -14,7 +13,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tinycolor from "tinycolor2";
 
 // --- IMPORTS DO EXPO ---
 import { Asset } from 'expo-asset';
@@ -73,7 +71,6 @@ export default function RelatorioDadosScreen() {
   const perfilPrincipal = perfilVisualDoAluno(usuario);
   const perfilConfig = getBrainHexConfig(perfilPrincipal);
   const palette = useMemo(() => getProfileShellPalette(perfilPrincipal), [perfilPrincipal]);
-  const gold = useMemo(() => tinycolor(palette.accent).lighten(10).toHexString(), [palette.accent]);
   const guideSteps = useMemo<SectionGuideStep[]>(
     () => [
       {
@@ -485,11 +482,15 @@ export default function RelatorioDadosScreen() {
     );
   }
 
-  const ProgressBar = ({ progress }: { progress: number }) => (
-    <View style={[styles.progressTrack, { backgroundColor: palette.progressTrack }]}>
-      <View style={[styles.progressBar, { width: `${progress}%`, backgroundColor: palette.accent }]} />
-    </View>
-  );
+  // Celular (mobile-v1, 10-relatorio-dados.html): o que entra, o botão e a prévia.
+  const posicoesValidas = (posicoesDoAluno ?? []).map((p) => Number(p.posicao)).filter((n) => Number.isFinite(n) && n > 0);
+  const melhorPosicao = posicoesValidas.length ? Math.min(...posicoesValidas) : null;
+  const totalEventos = resumoEventos.length >= 1000 ? "+1000" : String(resumoEventos.length);
+  const ITENS_RELATORIO = [
+    "Eventos de estudo e pontuação registrados durante suas sessões",
+    "Suas posições em rankings da turma",
+    "Progresso nas trilhas e conquistas desbloqueadas",
+  ];
 
   return (
     <View style={[styles.outer, { backgroundColor: palette.background }]}>
@@ -505,124 +506,88 @@ export default function RelatorioDadosScreen() {
         scrollOffsetRef={scrollOffsetRef}
         style={styles.guideButton}
       />
-    <ScrollView
-      ref={scrollRef}
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      onScroll={(event) => {
-        scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
-      }}
-      scrollEventThrottle={16}
-    >
-
-      <View ref={reportHeaderGuideRef} collapsable={false} style={styles.headerContainer}>
-        <View
-          style={[
-            styles.profileImageContainer,
-            {
-              backgroundColor: palette.surfaceElevated,
-              borderColor: gold,
-            },
-          ]}
-        >
-            <Image source={perfilConfig.image} style={styles.profileImage} resizeMode="contain" />
-        </View>
-        <Text style={[styles.title, { color: gold }]}>Relatório Completo</Text>
-        <Text style={[styles.subtitle, { color: palette.textMuted }]}>Visão geral da sua jornada</Text>
-        <View style={{ opacity: 0.6, marginTop: 8 }}>
-          <OrnamentDivider color={gold} />
-        </View>
-      </View>
-
-      <View
-        ref={reportSummaryGuideRef}
-        collapsable={false}
-        style={[styles.card, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.container}
+        contentContainerStyle={styles.conteudoCelular}
+        onScroll={(event) => {
+          scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
       >
-        <View style={[styles.cardHeader, { borderBottomColor: palette.border }]}>
-          <MaterialCommunityIcons name="account-details" size={20} color={palette.accent} />
-          <Text style={[styles.cardTitle, { color: palette.text }]}>Identificação</Text>
-        </View>
-        <Text style={[styles.label, { color: palette.textMuted }]}>NOME</Text>
-        <Text style={[styles.value, { color: palette.text }]}>{usuario?.nome}</Text>
-        <View style={{height: 10}}/>
-        <Text style={[styles.label, { color: palette.textMuted }]}>E-MAIL</Text>
-        <Text style={[styles.value, { color: palette.text }]}>{usuario?.email}</Text>
-        <View style={{height: 10}}/>
-        <Text style={[styles.label, { color: palette.textMuted }]}>TOTAL DE EVENTOS REGISTRADOS</Text>
-        <Text style={[styles.value, { color: palette.text }]}>
-          {resumoEventos.length >= 1000 ? "+1000" : resumoEventos.length}
-        </Text>
-      </View>
-
-      <View style={[styles.card, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
-        <View style={[styles.cardHeader, { borderBottomColor: palette.border }]}>
-          <MaterialCommunityIcons name="trophy-outline" size={20} color={palette.accent} />
-          <Text style={[styles.cardTitle, { color: palette.text }]}>Ranks Atuais</Text>
-        </View>
-        {resumoRanks.length > 0 ? resumoRanks.map((r, i) => (
-          <View key={i} style={[styles.rankItem, { borderBottomColor: palette.border }]}>
-             <Text style={[styles.itemTitle, { color: palette.text }]}>{r.nome}</Text>
-             <View style={styles.rowBetween}>
-                <Text style={[styles.detailText, { color: palette.textMuted }]}>Posição: <Text style={{color: palette.text}}>#{r.posicao}</Text></Text>
-                <Text style={[styles.detailText, { color: palette.textMuted }]}>{r.pontos}</Text>
-             </View>
+        <View
+          ref={reportSummaryGuideRef}
+          collapsable={false}
+          style={[styles.cartaoCelular, { backgroundColor: palette.surface, borderColor: palette.border }]}
+        >
+          <View ref={reportHeaderGuideRef} collapsable={false}>
+            <Text style={[styles.cartaoTitulo, { color: palette.text }]}>O que entra no relatório</Text>
           </View>
-        )) : <Text style={[styles.emptyText, { color: palette.textMuted }]}>Sem participação em ranks.</Text>}
-      </View>
-
-      <View style={[styles.card, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
-        <View style={[styles.cardHeader, { borderBottomColor: palette.border }]}>
-          <MaterialCommunityIcons name="map-marker-path" size={20} color={palette.accent} />
-          <Text style={[styles.cardTitle, { color: palette.text }]}>Progresso em Trilhas</Text>
-        </View>
-        {resumoClasses.map((c, idx) => (
-            <View key={idx} style={styles.trilhaItem}>
-              <View style={styles.rowBetween}>
-                <Text style={[styles.itemTitle, { color: palette.text }]}>{c.nome}</Text>
-                <Text style={[styles.percentText, { color: palette.accent }]}>{c.progresso}%</Text>
-              </View>
-              <ProgressBar progress={c.progresso} />
+          {ITENS_RELATORIO.map((texto, i) => (
+            <View key={texto} style={[styles.itemRelatorio, i > 0 && { borderTopWidth: 1, borderTopColor: palette.border }]}>
+              <MaterialCommunityIcons name="check" size={18} color={palette.accent} style={styles.itemIcone} />
+              <Text style={[styles.itemTexto, { color: palette.textMuted }]}>{texto}</Text>
             </View>
           ))}
-      </View>
-
-      <View style={[styles.card, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
-        <View style={[styles.cardHeader, { borderBottomColor: palette.border }]}>
-          <MaterialCommunityIcons name="medal-outline" size={20} color={palette.accent} />
-          <Text style={[styles.cardTitle, { color: palette.text }]}>Conquistas ({resumoConquistas.length})</Text>
         </View>
-        <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 8}}>
-            {resumoConquistas.slice(0, 6).map((c, i) => (
-                <View key={i} style={[styles.tag, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-                    <Text style={[styles.tagText, { color: palette.text }]}>{c.titulo}</Text>
-                </View>
-            ))}
-            {resumoConquistas.length > 6 && (
-                <Text style={[styles.detailText, { color: palette.textMuted }]}>+ {resumoConquistas.length - 6} outras...</Text>
-            )}
+
+        <View style={[styles.cartaoCelular, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <Text style={[styles.acaoTexto, { color: palette.textMuted }]}>
+            Gere um PDF com tudo isso pra guardar ou compartilhar quando quiser.
+          </Text>
+          <View ref={reportButtonGuideRef} collapsable={false}>
+            <TouchableOpacity
+              style={[styles.botaoGerar, { backgroundColor: palette.accent }]}
+              onPress={handleDownload}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="file-document-outline" size={18} color={palette.background} />
+              <Text style={[styles.botaoGerarTexto, { color: palette.background }]}>Gerar e compartilhar o PDF</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      <View ref={reportButtonGuideRef} collapsable={false}>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: palette.accent, borderColor: palette.borderStrong }]}
-          onPress={handleDownload}
-          activeOpacity={0.8}
-          accessibilityRole="button"
-        >
-          <MaterialCommunityIcons name="file-pdf-box" size={24} color={palette.background} style={{marginRight: 8}}/>
-          <Text style={[styles.buttonText, { color: palette.background }]}>GERAR PDF COMPLETO</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={{height: 40}} />
-    </ScrollView>
+        <View style={[styles.cartaoCelular, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <Text style={[styles.previaTitulo, { color: palette.text }]}>Prévia do PDF</Text>
+          {/* A folha é de papel (bege) nos dois temas, como no protótipo. */}
+          <View style={styles.folha}>
+            <Text style={styles.folhaCab}>Relatório TrailUp — {usuario?.nome ?? "Aluno"}</Text>
+            <View style={styles.linhaPapel} />
+            <View style={styles.linhaPapel} />
+            <View style={[styles.linhaPapel, { width: "60%" }]} />
+            <View style={styles.folhaEspaco} />
+            <View style={styles.linhaPapel} />
+            <View style={styles.linhaPapel} />
+            <View style={[styles.linhaPapel, { width: "60%" }]} />
+            <View style={styles.folhaSelos}>
+              <Text style={styles.folhaSelo}>{totalEventos} eventos</Text>
+              {melhorPosicao ? <Text style={styles.folhaSelo}>{melhorPosicao}º no rank</Text> : null}
+            </View>
+          </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  conteudoCelular: { paddingHorizontal: 14, paddingTop: 56, paddingBottom: 28, gap: 14 },
+  cartaoCelular: { borderRadius: 14, borderWidth: 1, padding: 16 },
+  cartaoTitulo: { fontFamily: FontFamily.inikaBold, fontSize: 18, marginBottom: 10 },
+  itemRelatorio: { flexDirection: "row", gap: 10, alignItems: "flex-start", paddingVertical: 8 },
+  itemIcone: { marginTop: 1 },
+  itemTexto: { flex: 1, fontFamily: FontFamily.interMedium, fontSize: 14.5, lineHeight: 21 },
+  acaoTexto: { fontFamily: FontFamily.interMedium, fontSize: 14.5, lineHeight: 22, marginBottom: 12 },
+  botaoGerar: { minHeight: 48, borderRadius: 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  botaoGerarTexto: { fontFamily: FontFamily.interMedium, fontSize: 15, fontWeight: "700" },
+  previaTitulo: { fontFamily: FontFamily.interMedium, fontSize: 15, fontWeight: "700", marginBottom: 10 },
+  folha: { backgroundColor: "#f6f1e6", borderRadius: 6, padding: 16, elevation: 4 },
+  folhaCab: { fontFamily: FontFamily.inikaBold, fontSize: 15, color: "#2a2416", marginBottom: 10 },
+  linhaPapel: { height: 7, borderRadius: 4, backgroundColor: "#d9cfb9", marginVertical: 7 },
+  folhaEspaco: { height: 10 },
+  folhaSelos: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
+  folhaSelo: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", color: "#2a2416", backgroundColor: "#e8dfca", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, overflow: "hidden" },
   outer: {
     flex: 1,
   },
