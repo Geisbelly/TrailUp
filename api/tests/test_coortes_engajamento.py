@@ -40,14 +40,14 @@ def _config(output: StringIO | None = None) -> Config:
 
 def _sql() -> str:
     output = StringIO()
-    migrations.command.upgrade(_config(output), "20261026_01:20261027_01", sql=True)
+    migrations.command.upgrade(_config(output), "20261026_02:20261027_01", sql=True)
     return output.getvalue()
 
 
 def test_migration_e_a_cabeca_unica() -> None:
     scripts = ScriptDirectory.from_config(_config())
     assert scripts.get_heads() == ["20261027_01"]
-    assert scripts.get_revision("20261027_01").down_revision == "20261026_01"
+    assert scripts.get_revision("20261027_01").down_revision == "20261026_02"
 
 
 def test_rpc_repete_a_barreira_de_sessao_e_posse() -> None:
