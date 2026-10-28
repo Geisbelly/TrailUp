@@ -1,12 +1,13 @@
 import NotificationItem from "@/components/CardNotificacao";
+import { abreGrupo } from "@/utils/grupoNotificacao";
 import CardSemDados from "@/components/CardSemDados";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
-import { Design } from "@/styles/design";
 import {
   SectionGuideButton,
   SectionGuideScrollable,
   SectionGuideStep,
 } from "@/components/SectionGuideButton";
+import { useDialog } from "@/context/DialogContext";
 import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
@@ -49,7 +50,11 @@ export default function Notificacoes() {
 }
 
 function NotificacoesLista() {
-  const { itens, marcarLida, deletar, reload, carregando } = useNotifications();
+  const { itens, marcarLida, deletar, reload, carregando, marcarTodasLidas, addToast } = useNotifications();
+  const { showConfirm } = useDialog();
+  const ehLida = (n: any) => Boolean(n.read ?? n.status === "lida");
+  const totalNaoLidas = itens.filter((n: any) => !ehLida(n)).length;
+  const contadores = { todas: itens.length, nao_lidas: totalNaoLidas, lidas: itens.length - totalNaoLidas };
 
   // Entregue ao guia: sem isso ele descreve itens que ficaram fora da tela.
   const listaRef = useRef<FlatList>(null);
@@ -178,13 +183,22 @@ function NotificacoesLista() {
   const RightActions = React.useCallback(
     ({ item }: { item: any }) => (
       <Pressable
-        onPress={async () => {
-          try {
-            await deletar(Number(item.id));
-          } catch (e) {
-            console.warn("Falha ao excluir:", e);
-          }
-        }}
+        onPress={() =>
+          showConfirm({
+            title: "Excluir notificação?",
+            description: "Ela some da sua caixa de entrada.",
+            confirmLabel: "Excluir",
+            confirmVariant: "danger",
+            onConfirm: async () => {
+              try {
+                await deletar(Number(item.id));
+                addToast({ type: "info", title: "Notificação excluída.", duration: 2000 });
+              } catch (e) {
+                console.warn("Falha ao excluir:", e);
+              }
+            },
+          })
+        }
         style={[
           styles.swipeAction,
           {
@@ -200,14 +214,22 @@ function NotificacoesLista() {
         <Text style={styles.swipeText}>Excluir</Text>
       </Pressable>
     ),
-    [deletar],
+    [deletar, showConfirm, addToast],
   );
 
-  const renderRow = ({ item, index }: { item: any; index: number }) => (
+  const renderRow = ({ item, index }: { item: any; index: number }) => {
+    // Cabeçalho "Hoje / Esta semana / Anteriores" na primeira linha de cada grupo (07-notificacoes.html, .grupo).
+    const grupo = abreGrupo(data, index, (n: any) => n.horario_envio);
+    return (
     <View
       ref={index === 0 ? firstNotificationTourRef : undefined}
       collapsable={false}
     >
+      {grupo ? (
+        <Text accessibilityRole="header" style={[styles.grupo, { color: palette.textSubtle }]}>
+          {grupo.toUpperCase()}
+        </Text>
+      ) : null}
       <Swipeable
         renderLeftActions={() => <LeftActions item={item} />}
         renderRightActions={() => <RightActions item={item} />}
@@ -227,7 +249,8 @@ function NotificacoesLista() {
         />
       </Swipeable>
     </View>
-  );
+    );
+  };
 
 
   // Alvos do tutorial inicial: as refs ja existiam para o guia de pagina.
@@ -251,35 +274,47 @@ function NotificacoesLista() {
           ref={notificationsHeaderGuideRef}
           collapsable={false}
         >
-          <JourneyHeading title="Notificações" eyebrow="CAIXA DE ENTRADA" section="notifications" palette={palette} right={<SectionGuideButton
+          <JourneyHeading title="Notificações" eyebrow="CAIXA DE ENTRADA" section="notifications" palette={palette} right={<View style={styles.acoesTopo}><Pressable
+            onPress={() => void marcarTodasLidas()}
+            disabled={totalNaoLidas === 0}
+            accessibilityRole="button"
+            accessibilityLabel="Marcar todas como lidas"
+            accessibilityState={{ disabled: totalNaoLidas === 0 }}
+            style={[styles.botaoIcone, { opacity: totalNaoLidas === 0 ? 0.4 : 1 }]}
+          >
+            <Ionicons name="checkmark-done" size={24} color={palette.accent} />
+          </Pressable><SectionGuideButton
             profile={perfilVisualDoAluno(usuario)}
             sectionTitle="Notificações"
             steps={notificationsGuideSteps}
             targetRefs={notificationsGuideTargets}
             scrollRef={listaRef as unknown as React.RefObject<SectionGuideScrollable | null>}
           scrollOffsetRef={scrollOffsetRef}
-          />} />
+          /></View>} />
         </View>
 
         <View
           ref={notificationsFiltersGuideRef}
           collapsable={false}
-          style={[styles.filters, { borderBottomColor: palette.border }]}
+          style={[styles.filters, { backgroundColor: palette.surface, borderColor: palette.border }]}
         >
           <FilterPill
             label="Todas"
+            count={contadores.todas}
             active={tab === "todas"}
             palette={palette}
             onPress={() => setTab("todas")}
           />
           <FilterPill
             label="Não lidas"
+            count={contadores.nao_lidas}
             active={tab === "nao_lidas"}
             palette={palette}
             onPress={() => setTab("nao_lidas")}
           />
           <FilterPill
             label="Lidas"
+            count={contadores.lidas}
             active={tab === "lidas"}
             palette={palette}
             onPress={() => setTab("lidas")}
@@ -348,11 +383,13 @@ function NotificacoesLista() {
 
 function FilterPill({
   label,
+  count,
   active,
   palette,
   onPress,
 }: {
   label: string;
+  count?: number;
   active?: boolean;
   palette: ReturnType<typeof getProfileShellPalette>;
   onPress: () => void;
@@ -362,28 +399,12 @@ function FilterPill({
       onPress={onPress}
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
-      accessibilityLabel={label}
-      style={[
-        styles.pill,
-        active
-          ? {
-              backgroundColor: palette.accent,
-              borderColor: palette.accent,
-            }
-          : {
-              backgroundColor: palette.accentMuted,
-              borderColor: palette.border,
-            },
-      ]}
+      accessibilityLabel={count !== undefined ? `${label}, ${count}` : label}
+      style={[styles.pill, active ? { backgroundColor: palette.accent } : null]}
     >
-      <Text
-        style={[
-          active
-            ? [styles.pillTextActive, { color: palette.background }]
-            : [styles.pillTextInactive, { color: palette.textMuted }],
-        ]}
-      >
+      <Text style={[styles.pillText, { color: active ? palette.background : palette.textMuted }]}>
         {label}
+        {count !== undefined ? <Text style={styles.pillCount}>{`  ${count}`}</Text> : null}
       </Text>
     </Pressable>
   );
@@ -423,27 +444,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     opacity: 0.7,
   },
+  // Seletor segmentado (07-notificacoes.html, .segm): uma caixa, três opções.
   filters: {
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-  },
-  pill: {
-    flex: 1,
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: Design.radius,
+    gap: 4,
+    padding: 4,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    borderRadius: 12,
     borderWidth: 1,
   },
-  pillTextActive: {
-    fontWeight: "700",
+  grupo: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1,
+    marginTop: 14,
+    marginBottom: 6,
+    marginHorizontal: 18,
   },
-  pillTextInactive: {
-    fontWeight: "600",
+  acoesTopo: { flexDirection: "row", alignItems: "center" },
+  botaoIcone: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  pill: {
+    flex: 1,
+    minHeight: 40,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    borderRadius: 9,
   },
+  pillText: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "700" },
+  pillCount: { fontSize: 11.5, opacity: 0.8 },
   separator: {
     height: 1,
   },

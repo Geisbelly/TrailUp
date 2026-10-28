@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { caminhoCelula, caminhoHexagono, layoutMapa, MAPA_BASE, MAPA_TOPO, ondaMar, trechoEstrada } from "./mapaPaises";
+import {
+  caminhoCelula,
+  caminhoHexagono,
+  layoutMapa,
+  layoutMapaCelular,
+  MAPA_BASE,
+  MAPA_FAIXA_CELULAR,
+  MAPA_TOPO,
+  ondaMar,
+  trechoEstrada,
+} from "./mapaPaises";
 
 test("8 tópicos viram 4 colunas × 2 fileiras, em serpentina", () => {
   const L = layoutMapa(8, 1000, 600);
@@ -65,6 +75,29 @@ test("turma com menos de 4 tópicos: uma coluna por tópico, sem terra vazia", (
 test("numa fileira só o país cresce até 320 px para ocupar o quadro", () => {
   assert.equal(layoutMapa(1, 900, 2000).faixa, 320);
   assert.equal(layoutMapa(2, 900, 400).faixa, 400 - MAPA_TOPO - MAPA_BASE);
+});
+
+test("celular: 2 colunas na largura da tela, em serpentina, crescendo para baixo", () => {
+  const L = layoutMapaCelular(5, 390);
+  assert.equal(L.cols, 2);
+  assert.equal(L.rows, 3);
+  assert.equal(L.largura, 390, "não rola de lado");
+  assert.equal(L.faixa, MAPA_FAIXA_CELULAR);
+  assert.equal(L.altura, MAPA_TOPO + 3 * MAPA_FAIXA_CELULAR + 20);
+  assert.deepEqual(L.nos.map((n) => [n.r, n.c]), [[0, 0], [0, 1], [1, 1], [1, 0], [2, 0]]);
+  for (const n of L.nos) assert.ok(n.x > 0 && n.x < L.largura && n.y > 0 && n.y < L.altura);
+  assert.equal(layoutMapaCelular(1, 390).cols, 1, "um tópico vira uma ilha, sem terra vazia ao lado");
+});
+
+test("celular: os países se encaixam como mosaico (fronteira lateral e de baixo compartilhadas)", () => {
+  const L = layoutMapaCelular(4, 360);
+  const pontos = (d: string) => d.slice(1, -2).split(" L").map((p) => p.trim());
+  const a = pontos(caminhoCelula(L, 0, 0));
+  const direita = pontos(caminhoCelula(L, 1, 0));
+  const baixo = pontos(caminhoCelula(L, 0, 1));
+  assert.deepEqual(a.slice(16, 33), [...direita.slice(48), direita[0]].reverse());
+  // A borda de baixo do (0,0) (índices 32..48) é a borda de cima do (0,1) (0..16), ao contrário.
+  assert.deepEqual(a.slice(32, 49), baixo.slice(0, 17).reverse());
 });
 
 test("onda do mar é um path SVG válido (S com quatro números)", () => {

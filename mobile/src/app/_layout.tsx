@@ -15,7 +15,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native
 import { Redirect, Stack, usePathname, useSegments, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
-import { Platform, View } from "react-native";
+import { LogBox, Platform, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 
@@ -31,6 +31,18 @@ export const unstable_settings = Platform.OS === "web" ? {} : {
 };
 
 preloadIconFontsWithSwap();
+
+// Aviso de DESENVOLVIMENTO vindo da biblioteca, não do app: no Fabric, o
+// `onHeaderHeightChange` do NativeStackView (@react-navigation/native-stack 7.3)
+// chega do nativo antes de a tela montar, e o `setHeaderHeight` dele dispara
+// "Can't perform a React state update on a component that hasn't mounted yet".
+// A própria biblioteca documenta o bug do Fabric nesse trecho; a altura é
+// recalculada quando a tela monta. O aviso vermelho cobria a barra de abas a cada
+// tela empilhada (Tópico, Notificações, Perfil). As versões vêm travadas pelo
+// Expo SDK 54, então a saída é silenciar SÓ esta mensagem até a atualização do SDK.
+// Cuidado: o LogBox filtra pelo texto, então um bug nosso com o mesmo texto
+// também some daqui — ele continua no terminal do Metro.
+LogBox.ignoreLogs(["Can't perform a React state update on a component that hasn't mounted yet"]);
 
 function LoadingOverlay() {
   const { loading } = useLoading();

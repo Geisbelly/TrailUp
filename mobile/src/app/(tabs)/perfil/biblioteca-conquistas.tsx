@@ -374,95 +374,58 @@ export default function BibliotecaConquistasScreen() {
                     {group.label} ({group.items.length})
                   </Text>
 
-                  {group.items.map((item) => {
-                const percent = clamp(item.progressoPercentual, 0, 100);
-                const id = item.conquista.conquista_id;
-                const itemProfile = normalizeBrainHexProfile(
-                  item.conquista.perfil_alvo,
-                );
-                const itemProfileConfig = getBrainHexConfig(itemProfile ?? perfil);
-                const itemProfileAccent = tinycolor(itemProfileConfig.color)
-                  .lighten(4)
-                  .toHexString();
-                const itemColor =
-                  item.status === "concluida"
-                    ? gold
-                    : itemProfileAccent;
-
-                return (
-                  <TouchableOpacity
-                    key={`${group.key}:${id}`}
-                    style={[
-                      styles.item,
-                      {
-                        borderBottomColor: shellPalette.border,
-                      },
-                    ]}
-                    activeOpacity={0.75}
-                    onPress={() => setSelected(item.conquista)}
-                    accessibilityRole="button"
-                    accessibilityLabel={item.conquista.nome ?? "Conquista"}
-                  >
-                    <View
-                      style={[
-                        styles.itemIconWrap,
-                        { borderColor: shellPalette.borderStrong },
-                      ]}
-                    >
-                      <Image
-                        source={getAchievementArtwork(item.conquista)}
-                        resizeMode="contain"
-                        style={{ width: 48, height: 52 }}
-                        accessible={false}
-                      />
-                    </View>
-
-                    <View style={styles.itemBody}>
-                      <View style={styles.itemHeader}>
-                        <Text
-                          style={[styles.itemTitle, { color: shellPalette.text }]}
-                          numberOfLines={1}
-                        >
-                          {item.conquista.nome ?? "Conquista"}
-                        </Text>
-                        <Text
+                  {/* Celular (mobile-v1, 09-biblioteca-conquistas.html): grade de 3 colunas. */}
+                  <View style={styles.grade}>
+                    {group.items.map((item) => {
+                      const percent = clamp(item.progressoPercentual, 0, 100);
+                      const id = item.conquista.conquista_id;
+                      const feita = item.status === "concluida";
+                      const bloqueada = item.status === "bloqueada";
+                      return (
+                        <TouchableOpacity
+                          key={`${group.key}:${id}`}
                           style={[
-                            styles.itemPercent,
+                            styles.celula,
                             {
-                              color: itemColor,
+                              backgroundColor: shellPalette.surface,
+                              borderColor: feita ? shellPalette.accentSoft : shellPalette.border,
                             },
                           ]}
+                          activeOpacity={0.75}
+                          onPress={() => setSelected(item.conquista)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${item.conquista.nome ?? "Conquista"}: ${feita ? "conquistada" : bloqueada ? "bloqueada" : `${Math.round(percent)}%`}`}
                         >
-                          {Math.round(percent)}%
-                        </Text>
-                      </View>
-
-                      <Text
-                        style={[styles.itemDesc, { color: shellPalette.textMuted }]}
-                        numberOfLines={2}
-                      >
-                        {item.status === "bloqueada"
-                          ? item.criterioResumo ?? "Cumprir critérios para desbloquear."
-                          : item.conquista.descricao ?? "Toque para ver detalhes."}
-                      </Text>
-
-                      <View
-                        style={[
-                          styles.track,
-                          { backgroundColor: shellPalette.border },
-                        ]}
-                      >
-                        <View
-                          style={[
-                            styles.fill,
-                            { width: `${Math.max(4, percent)}%`, backgroundColor: itemColor },
-                          ]}
-                        />
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-                  })}
+                          <MaterialCommunityIcons
+                            name={feita ? "check-circle" : bloqueada ? "lock-outline" : "progress-clock"}
+                            size={16}
+                            color={feita ? gold : shellPalette.textSubtle}
+                            style={styles.celulaSelo}
+                          />
+                          <Image
+                            source={getAchievementArtwork(item.conquista)}
+                            resizeMode="contain"
+                            style={[styles.celulaArte, bloqueada ? { opacity: 0.35 } : null]}
+                            accessible={false}
+                          />
+                          <Text
+                            numberOfLines={2}
+                            style={[styles.celulaNome, { color: bloqueada ? shellPalette.textSubtle : shellPalette.text }]}
+                          >
+                            {item.conquista.nome ?? "Conquista"}
+                          </Text>
+                          {feita ? null : (
+                            <View style={styles.celulaProg}>
+                              <View style={[styles.track, styles.celulaTrilho, { backgroundColor: shellPalette.surfaceElevated }]}>
+                                <View style={[styles.fill, { width: `${Math.max(4, percent)}%`, backgroundColor: shellPalette.accent }]} />
+                              </View>
+                              <Text style={[styles.celulaPct, { color: shellPalette.textSubtle }]}>{Math.round(percent)}%</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
               ))}
             </View>
@@ -477,6 +440,26 @@ export default function BibliotecaConquistasScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  grade: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  celula: {
+    // 3 por linha: (100% - 2 espaços de 8px) / 3.
+    width: "31.6%",
+    minHeight: 128,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    gap: 6,
+    paddingTop: 12,
+    paddingBottom: 10,
+    paddingHorizontal: 6,
+  },
+  celulaSelo: { position: "absolute", top: 8, right: 8 },
+  celulaArte: { width: 52, height: 52 },
+  celulaNome: { fontFamily: FontFamily.interMedium, fontSize: 12.5, fontWeight: "700", lineHeight: 16, textAlign: "center" },
+  celulaProg: { width: "100%", paddingHorizontal: 4, gap: 3, alignItems: "center" },
+  // O trilho fica dentro de alignItems: center e, sem largura, encolhia a zero.
+  celulaTrilho: { alignSelf: "stretch", marginTop: 0, height: 4 },
+  celulaPct: { fontFamily: FontFamily.interMedium, fontSize: 11 },
   guideButton: {
     marginRight: 12,
   },

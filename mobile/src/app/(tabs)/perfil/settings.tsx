@@ -16,6 +16,7 @@ import {
   View,
 } from "react-native";
 
+import { LinhaConfig } from "@/components/perfil/LinhaConfig";
 import { ConfiguracoesDesktop } from "@/components/web/ConfiguracoesDesktop";
 import { useUsuario } from "@/context/SessaoContext";
 import { useAcoesConta } from "@/hooks/useAcoesConta";
@@ -93,128 +94,55 @@ function SettingsLista() {
         {
           label: "Informações",
           render: (
-            <TouchableOpacity
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: "#ffffff20",
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/info")}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.menuItemText, { color: palette.text }]}>
-                Informações
-              </Text>
-            </TouchableOpacity>
+            <LinhaConfig icone="user" onPress={() => router.push("/(tabs)/perfil/info")} palette={palette}>
+              Informações
+            </LinhaConfig>
           ),
         },
         {
           label: "Estilo das métricas",
           render: (
-            <TouchableOpacity
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: "#ffffff20",
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/metricas-estilo")}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.menuItemText, { color: palette.text }]}>
-                Estilo das métricas: {metricsThemeLabel}
-              </Text>
-            </TouchableOpacity>
+            <LinhaConfig icone="bar-chart-2" onPress={() => router.push("/(tabs)/perfil/metricas-estilo")} palette={palette}>
+              Estilo das métricas: {metricsThemeLabel}
+            </LinhaConfig>
           ),
         },
         {
           label: "Lembrete diário",
           render: (
-            <TouchableOpacity
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: "#ffffff20",
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/lembrete-diario")}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.menuItemText, { color: palette.text }]}>
-                Lembrete diário
-              </Text>
-            </TouchableOpacity>
+            <LinhaConfig icone="bell" onPress={() => router.push("/(tabs)/perfil/lembrete-diario")} palette={palette}>
+              Lembrete diário
+            </LinhaConfig>
           ),
         },
         {
           label: "Coleta e acessos",
           render: (
-            <TouchableOpacity
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: "#ffffff20",
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/coleta-dados")}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.menuItemText, { color: palette.text }]}>
-                Coleta e acessos
-              </Text>
-            </TouchableOpacity>
+            <LinhaConfig icone="camera" onPress={() => router.push("/(tabs)/perfil/coleta-dados")} palette={palette}>
+              Coleta e acessos
+            </LinhaConfig>
           ),
         },
         {
           label: "Solicitar exclusão da conta",
           render: (
-            <TouchableOpacity
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: "#ffffff20",
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/excluir")}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.menuItemText, { color: palette.text }]}>
-                Solicitar exclusão da conta
-              </Text>
-            </TouchableOpacity>
+            <LinhaConfig icone="trash-2" perigo onPress={() => router.push("/(tabs)/perfil/excluir")} palette={palette}>
+              Solicitar exclusão da conta
+            </LinhaConfig>
           ),
         },
         {
           label: "Gerar relatório dos dados",
           render: (
-            <TouchableOpacity
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: "#ffffff20",
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/relatorio")}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.menuItemText, { color: palette.text }]}>
-                Gerar relatório dos dados
-              </Text>
-            </TouchableOpacity>
+            <LinhaConfig icone="file-text" onPress={() => router.push("/(tabs)/perfil/relatorio")} palette={palette}>
+              Gerar relatório dos dados
+            </LinhaConfig>
           ),
         },
       ].filter((item) => textoMatches(item.label)),
     [
       metricsThemeLabel,
-      palette.surfaceElevated,
-      palette.text,
+      palette,
       textoMatches,
     ],
   );
@@ -248,68 +176,31 @@ function SettingsLista() {
         {
           label: "Rever tutorial inicial",
           render: (
-            <TouchableOpacity
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: "#ffffff20",
-                },
-              ]}
-              onPress={reverTutorial}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.menuItemText, { color: palette.text }]}>
-                Rever tutorial inicial
-              </Text>
-            </TouchableOpacity>
+            <LinhaConfig icone="compass" onPress={reverTutorial} palette={palette}>
+              Rever tutorial inicial
+            </LinhaConfig>
           ),
         },
         {
           label: "Informações do app",
           render: (
-            <TouchableOpacity
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: "#ffffff20",
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/info-app")}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.menuItemText, { color: palette.text }]}>
-                Informações do app
-              </Text>
-            </TouchableOpacity>
+            <LinhaConfig icone="info" onPress={() => router.push("/(tabs)/perfil/info-app")} palette={palette}>
+              Informações do app
+            </LinhaConfig>
           ),
         },
         {
           label: "Versão",
           render: (
-            <TouchableOpacity
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: "#ffffff20",
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/info-versao")}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.menuItemText, { color: palette.text }]}>
-                Versão: {appVersion}
-              </Text>
-            </TouchableOpacity>
+            <LinhaConfig icone="tag" onPress={() => router.push("/(tabs)/perfil/info-versao")} palette={palette}>
+              Versão: {appVersion}
+            </LinhaConfig>
           ),
         },
       ].filter((item) => textoMatches(item.label)),
     [
       appVersion,
-      palette.surfaceElevated,
-      palette.text,
+      palette,
       reverTutorial,
       textoMatches,
     ],
@@ -321,25 +212,13 @@ function SettingsLista() {
         {
           label: "Resetar senha",
           render: (
-            <TouchableOpacity
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: "#ffffff20",
-                },
-              ]}
-              onPress={() => router.push("/(tabs)/perfil/resetar-senha")}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.menuItemText, { color: palette.text }]}>
-                Resetar senha
-              </Text>
-            </TouchableOpacity>
+            <LinhaConfig icone="lock" onPress={() => router.push("/(tabs)/perfil/resetar-senha")} palette={palette}>
+              Resetar senha
+            </LinhaConfig>
           ),
         },
       ].filter((item) => textoMatches(item.label)),
-    [palette.surfaceElevated, palette.text, textoMatches],
+    [palette, textoMatches],
   );
   const settingsGuideSteps = useMemo<SectionGuideStep[]>(
     () => [
@@ -454,22 +333,9 @@ function SettingsLista() {
             Legal
           </Text>
           {legalLinks.map((item, idx) => (
-            <TouchableOpacity
-              key={idx}
-              style={[
-                styles.menuItem,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: "#ffffff20",
-                },
-              ]}
-              onPress={item.onPress}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.menuItemText, { color: palette.text }]}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
+            <LinhaConfig key={idx} icone="shield" externo onPress={item.onPress} palette={palette}>
+              {item.label}
+            </LinhaConfig>
           ))}
         </View>
 
@@ -543,6 +409,8 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   content: {
+    // O botão de ajuda é absoluto (top 14 + 44 de altura); sem este respiro ele cobre a ponta do campo de busca.
+    paddingTop: 44,
     paddingBottom: 32,
     gap: 16,
   },
@@ -573,6 +441,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   menuItem: {
+    minHeight: 56,
+    justifyContent: "center",
     marginBottom: 10,
     borderRadius: 14,
     borderWidth: 1,
@@ -592,6 +462,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   button: {
+    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 14,

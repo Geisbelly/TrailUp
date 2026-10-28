@@ -1,4 +1,5 @@
 import { HallBackground } from "@/components/HallTheme";
+import { Interruptor } from "@/components/perfil/Interruptor";
 import {
   SectionGuideButton,
   SectionGuideStep,
@@ -303,19 +304,7 @@ export default function ColetaDadosScreen() {
                   </Text>
                 </View>
               </View>
-              <View
-                style={[
-                  styles.stateChip,
-                  {
-                    backgroundColor: enabled ? palette.accent : palette.surface,
-                    borderColor: palette.borderStrong,
-                  },
-                ]}
-              >
-                <Text style={[styles.stateChipText, { color: enabled ? "#fff" : palette.textMuted }]}>
-                  {isSaving ? "..." : !liberado ? "Bloqueado" : enabled ? "Ativo" : "Desativado"}
-                </Text>
-              </View>
+              <Interruptor ligado={enabled} salvando={isSaving} bloqueado={!liberado} palette={palette} />
               </TouchableOpacity>
             </View>
           );
@@ -344,11 +333,7 @@ export default function ColetaDadosScreen() {
               {erroPesquisa ? <Text style={[styles.itemDescription, { color: "#e5484d" }]}>{erroPesquisa}</Text> : null}
             </View>
           </View>
-          <View style={[styles.stateChip, { backgroundColor: estado.pesquisaAceita ? palette.accent : palette.surface, borderColor: palette.borderStrong }]}>
-            <Text style={[styles.stateChipText, { color: estado.pesquisaAceita ? "#fff" : palette.textMuted }]}>
-              {salvandoPesquisa ? "..." : estado.pesquisaAceita ? "Ativo" : "Desativado"}
-            </Text>
-          </View>
+          <Interruptor ligado={estado.pesquisaAceita} salvando={salvandoPesquisa} palette={palette} />
         </TouchableOpacity>
       </View>
 

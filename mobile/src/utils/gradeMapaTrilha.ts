@@ -14,3 +14,10 @@ export function colunasDoMapa(total: number, largura: number, altura: number, qu
   const util = Math.max(largura, 360) - MAPA.paddingX * 2;
   return Math.max(2, Math.floor(util / 270));
 }
+
+/** Abaixo desta largura o mapa vira o mosaico do celular (mobile-v1, `MapaMosaicoCelular`). */
+export const LARGURA_MAXIMA_CELULAR = 600;
+
+export function mapaDoCelular(largura: number): boolean {
+  return largura < LARGURA_MAXIMA_CELULAR;
+}

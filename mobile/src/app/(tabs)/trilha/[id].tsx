@@ -29,6 +29,7 @@ import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import { IABattleHeaderChip } from "@/components/ia/IABattleHeaderChip";
 import { IAHeaderTimer } from "@/components/ia/IAHeaderTimer";
 import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
+import { BarraPartesTopico } from "@/components/trilhas/BarraPartesTopico";
 import { CabecalhoTopicoDesktop, type EstadoBlocoTopico } from "@/components/web/CabecalhoTopicoDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { LoadingState } from "@/components/LoadingState";
@@ -1647,7 +1648,20 @@ export default function TrilhaConteudoScreen() {
           acoes={renderAcoesCabecalho()}
           onVoltar={() => router.push("/(tabs)")}
         />
-      ) : null}
+      ) : (
+        <BarraPartesTopico
+          palette={profilePalette}
+          blocos={estadosBlocos}
+          atual={!mostrarResumo && atualBlock ? index + 1 : 0}
+          alvoRef={progressGuideTargetRef}
+          reservaDireita={!mostrarResumo && isCurrentStudyBlockTrackable && topicoId ? 96 : 0}
+          aviso={personalizacaoCarregando ? "Atualizando conteúdo..." : null}
+          onIr={(i) => {
+            setMostrarResumo(false);
+            setIndex(i);
+          }}
+        />
+      )}
 
       <ScrollView
         style={styles.scrollView}
@@ -1667,7 +1681,7 @@ export default function TrilhaConteudoScreen() {
         ]}
       >
         {/* Na tela larga o progresso fica nos pontos do cabeçalho. */}
-        <View style={[styles.header, desktop && { display: "none" }]}>
+        <View style={[styles.header, { display: "none" }]}>
           <View ref={progressGuideTargetRef} collapsable={false} style={styles.headerTopMeta}>
             {progressoPercurso.total > 0 ? (
               <>

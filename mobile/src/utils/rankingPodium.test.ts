@@ -78,7 +78,7 @@ test("criterion label covers every criterion the view computes", () => {
   assert.equal(rotuloDoCriterio("elo"), "Elo");
 });
 
-test("podium belongs to rank detail, while the entry remains category navigation", () => {
+test("podium belongs to rank detail, which the entry embeds under the category tabs", () => {
   const home = readFileSync(
     join(process.cwd(), "src/app/(tabs)/ranking/index.tsx"),
     "utf8",
@@ -88,7 +88,8 @@ test("podium belongs to rank detail, while the entry remains category navigation
     "utf8",
   );
   assert.equal(home.includes("<RankingPodium"), false);
-  assert.match(home, /pathname:\s*["']\/\(tabs\)\/ranking\/\[id\]["']/);
+  // Celular (mobile-v1): as categorias são abas e a categoria aberta é o próprio RankDetalhe.
+  assert.ok(home.includes("<RankDetalhe"));
   assert.ok(detail.includes("<RankingPodium"));
   assert.match(detail, /getProfileArtwork\(profile,\s*["']rank["']\)/);
   assert.ok(detail.includes("getProfileShellPalette(profile)"));

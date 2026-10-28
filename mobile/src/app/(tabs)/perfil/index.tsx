@@ -16,6 +16,9 @@ import tinycolor from "tinycolor2";
 
 import CardSemDados from "@/components/CardSemDados";
 import { BagModal } from "@/components/bag/BagModal";
+import { StoreModal } from "@/components/loja/StoreModal";
+import { AtalhosPerfil } from "@/components/perfil/AtalhosPerfil";
+import { useAcoesConta } from "@/hooks/useAcoesConta";
 import ConquistaModal from "@/components/ConquistaModal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getProfileArtwork, profileEmblems } from "@/constants/designAssets";
@@ -23,7 +26,6 @@ import { getAchievementArtwork } from "@/constants/achievementImages";
 import { ProfileArtwork } from "@/components/ProfileArtwork";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { FramedProfileImage } from "@/components/FramedProfileImage";
-import { Design } from "@/styles/design";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
 import { AcoesBannerPerfil } from "@/components/web/AcoesBannerPerfil";
 import { ConquistasDestaque } from "@/components/web/ConquistasDestaque";
@@ -75,6 +77,8 @@ export default function PerfilHome() {
   const desktop = useDesktopWeb();
   const { avisar } = useAviso();
   const [bagOpen, setBagOpen] = useState(false);
+  const [lojaAberta, setLojaAberta] = useState(false);
+  const { sairDoAparelho } = useAcoesConta();
 
   const [aba, setAba] = useState<"metricas" | "conquistas">("metricas");
   const [conquistaSelecionada, setConquistaSelecionada] =
@@ -135,11 +139,6 @@ export default function PerfilHome() {
   );
   const hexConfig = getBrainHexConfig(perfil);
   const shellPalette = useMemo(() => getProfileShellPalette(perfil), [perfil]);
-  const accent = shellPalette.accent;
-  const accentSoft = tinycolor(hexConfig.color)
-    .lighten(18)
-    .setAlpha(0.18)
-    .toRgbString();
   const resolvedTheme = resolveMetricsTheme(perfil, themeOverride);
 
   const metricsViewModel = useMemo(
@@ -289,6 +288,9 @@ export default function PerfilHome() {
     [avisar, perfil, perfilSalvando, selecionarPerfilAtivo],
   );
 
+  const afinidadeDe = (profileKey: string) =>
+    Number(usuario?.perfis.find((item) => normalizeBrainHexProfile(item.nome) === profileKey)?.afinidade ?? 0);
+
   // Foto, nome, informações e troca de perfil. Na tela larga (#346) vão para a coluna da esquerda.
   const dominante = perfisRepresentativos[0] ?? perfil;
   const identidade = (
@@ -316,13 +318,8 @@ export default function PerfilHome() {
         <View
           ref={profileSummaryGuideRef}
           collapsable={false}
-          style={[
-            styles.profileCard,
-            {
-              backgroundColor: shellPalette.background,
-              borderColor: shellPalette.border,
-            },
-          ]}
+          // Sem fundo: o retrato sobe sobre o banner e não pode cobrir a câmera nem o degradê.
+          style={[styles.profileCard, { pointerEvents: "box-none" }]}
         >
           <View style={styles.avatarContainer}>
             <FramedProfileImage profile={perfil} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={104} label={`Foto de ${usuario?.nome ?? 'Aluno'}`} />
@@ -332,27 +329,12 @@ export default function PerfilHome() {
           </View>
 
           <View style={styles.infoContainer}>
-            <Text style={[styles.username, { color: accent }]}>
-              {username}
-            </Text>
             <Text style={[styles.name, { color: shellPalette.text }]}>
               {usuario?.nome ?? "Aluno"}
             </Text>
-            <View
-              style={[
-                styles.tagProfile,
-                {
-                  borderColor: hexConfig.color,
-                  backgroundColor: accentSoft,
-                },
-              ]}
-            >
-              <Text
-                style={[styles.tagProfileText, { color: shellPalette.accent }]}
-              >
-                {hexConfig.label.toUpperCase()}
-              </Text>
-            </View>
+            <Text style={[styles.username, { color: shellPalette.textSubtle }]}>
+              {username}
+            </Text>
             {usuario?.descricao ? (
               <Text
                 style={[styles.desc, { color: shellPalette.textMuted }]}
@@ -381,15 +363,26 @@ export default function PerfilHome() {
             palette={shellPalette}
           />
         ) : perfisRepresentativos.length > 1 ? (
-          <View ref={profileSwitcherGuideRef} collapsable={false} style={styles.profileSwitcherWrap}>
-            <Text style={[styles.profileSwitcherTitle, { color: shellPalette.textMuted }]}>
-              Alternar perfil ativo
+          // Cartão do perfil (08-perfil-hub.html, .cartao/.chip-perfil/.rot): o ativo no topo, depois a troca.
+          <View
+            ref={profileSwitcherGuideRef}
+            collapsable={false}
+            style={[styles.profileSwitcherWrap, { backgroundColor: shellPalette.surface, borderColor: shellPalette.border }]}
+          >
+            <View style={styles.chipPerfil}>
+              <ProfileArtwork source={profileEmblems[perfil]} profile={perfil} width={44} height={44} />
+              <View>
+                <Text style={[styles.chipPerfilNome, { color: shellPalette.text }]}>{hexConfig.label}</Text>
+                <Text style={[styles.chipPerfilTipo, { color: shellPalette.accent }]}>
+                  {perfil === perfisRepresentativos[0] ? "Perfil dominante" : "Perfil ativo"}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.profileSwitcherTitle, { color: shellPalette.textSubtle }]}>
+              ALTERNAR PERFIL ATIVO
             </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.profileSwitcherContent}
-            >
+            {/* Celular (mobile-v1, 08-perfil-hub.html, `.opcoes`): grade de 3 colunas, não linha rolável. */}
+            <View style={styles.profileSwitcherContent}>
               {perfisRepresentativos.map((profileKey) => {
                 const config = getBrainHexConfig(profileKey);
                 const afinidade = usuario?.perfis.find(
@@ -411,41 +404,58 @@ export default function PerfilHome() {
                         borderColor: selected ? config.color : shellPalette.border,
                         backgroundColor: selected
                           ? tinycolor(config.color).setAlpha(0.2).toRgbString()
-                          : shellPalette.surface,
+                          : tinycolor(shellPalette.background).setAlpha(0.55).toRgbString(),
                         opacity: perfilSalvando && !saving ? 0.55 : 1,
                       },
                     ]}
                   >
-                    <ProfileArtwork source={profileEmblems[profileKey]} profile={perfil} width={32} height={36} />
-                    <View>
-                      <Text
-                        style={[
-                          styles.profileOptionLabel,
-                          { color: selected ? getProfileShellPalette(profileKey).accent : shellPalette.text },
-                        ]}
-                      >
-                        {config.label}
-                      </Text>
-                      <Text
-                        style={[
-                          styles.profileOptionAffinity,
-                          { color: shellPalette.textSubtle },
-                        ]}
-                      >
-                        {saving ? "Salvando..." : `${Math.round(afinidade ?? 0)}% de afinidade`}
-                      </Text>
-                    </View>
                     {selected ? (
                       <MaterialCommunityIcons
                         name="check-circle"
                         size={16}
                         color={getProfileShellPalette(profileKey).accent}
+                        style={styles.profileOptionCheck}
                       />
                     ) : null}
+                    <ProfileArtwork source={profileEmblems[profileKey]} profile={perfil} width={28} height={30} />
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        styles.profileOptionLabel,
+                        { color: selected ? getProfileShellPalette(profileKey).accent : shellPalette.text },
+                      ]}
+                    >
+                      {config.label}
+                    </Text>
+                    <Text style={[styles.profileOptionAffinity, { color: shellPalette.textSubtle }]}>
+                      {saving ? "Salvando..." : `${Math.round(afinidade ?? 0)}%`}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+            </View>
+            {/* Barra de afinidades (08-perfil-hub.html, `.afin`): a proporção entre os perfis. As
+                afinidades do app são independentes (0–100 cada, não somam 100), então a barra
+                compara entre elas e a legenda mostra o valor real de cada uma. */}
+            <View style={[styles.afinidades, { backgroundColor: shellPalette.surfaceElevated }]} accessible={false}>
+              {perfisRepresentativos.map((profileKey) => (
+                <View
+                  key={profileKey}
+                  style={{
+                    flex: Math.max(1, afinidadeDe(profileKey)),
+                    backgroundColor:
+                      profileKey === perfil
+                        ? shellPalette.accent
+                        : tinycolor(getBrainHexConfig(profileKey).color).setAlpha(0.85).toRgbString(),
+                  }}
+                />
+              ))}
+            </View>
+            <Text style={[styles.afinidadesLegenda, { color: shellPalette.textSubtle }]}>
+              {perfisRepresentativos
+                .map((profileKey) => `${getBrainHexConfig(profileKey).label} ${Math.round(afinidadeDe(profileKey))}%`)
+                .join(" · ")}
+            </Text>
           </View>
         ) : null}
     </>
@@ -674,9 +684,25 @@ export default function PerfilHome() {
                 />
               )}
               <LinearGradient
-                colors={["rgba(0,0,0,0.34)", "transparent"]}
+                // No celular (mobile-v1, 08-perfil-hub.html) o banner some no fundo da tela embaixo.
+                colors={
+                  desktop
+                    ? ["rgba(0,0,0,0.34)", "transparent"]
+                    : [tinycolor(shellPalette.background).setAlpha(0.55).toRgbString(), "transparent", shellPalette.background]
+                }
+                locations={desktop ? undefined : [0, 0.45, 1]}
                 style={StyleSheet.absoluteFill}
               />
+              {desktop ? null : (
+                <TouchableOpacity
+                  style={[styles.bannerCamera, { backgroundColor: tinycolor(shellPalette.surface).setAlpha(0.8).toRgbString(), borderColor: shellPalette.border }]}
+                  onPress={() => router.push("/(tabs)/perfil/info")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Trocar banner"
+                >
+                  <MaterialCommunityIcons name="camera-outline" size={20} color={shellPalette.text} />
+                </TouchableOpacity>
+              )}
               {desktop ? (
                 <AcoesBannerPerfil
                   palette={shellPalette}
@@ -739,9 +765,32 @@ export default function PerfilHome() {
               <View style={styles.colunaPrincipal}>{principal}</View>
             </View>
           ) : (
-            principal
+            <>
+              <AtalhosPerfil
+                palette={shellPalette}
+                atalhos={[
+                  ...(usuario?.id && (classeAtual?.classe_id ?? 0) > 0
+                    ? [{ chave: "loja", rotulo: "Loja", icone: "storefront-outline" as const, onPress: () => setLojaAberta(true) }]
+                    : []),
+                  { chave: "biblioteca", rotulo: "Biblioteca de conquistas", icone: "trophy-outline", detalhe: conquistas.length ? String(conquistas.length) : null, onPress: () => router.push("/(tabs)/perfil/biblioteca-conquistas") },
+                  { chave: "relatorio", rotulo: "Relatório dos seus dados", icone: "file-chart-outline", onPress: () => router.push("/(tabs)/perfil/relatorio") },
+                  { chave: "config", rotulo: "Configurações", icone: "cog-outline", onPress: () => router.push("/(tabs)/perfil/settings") },
+                  { chave: "sair", rotulo: "Sair", icone: "logout", destrutivo: true, onPress: () => void sairDoAparelho() },
+                ]}
+              />
+              {principal}
+            </>
           )}
         </ScrollView>
+        {usuario?.id && (classeAtual?.classe_id ?? 0) > 0 ? (
+          <StoreModal
+            visible={lojaAberta}
+            alunoId={usuario.id}
+            classeId={classeAtual!.classe_id}
+            profileName={perfil}
+            onClose={() => setLojaAberta(false)}
+          />
+        ) : null}
 
         <BagModal
           visible={bagOpen}
@@ -797,7 +846,19 @@ const styles = StyleSheet.create({
   // Retrato de 160 px sobre o canto do banner: 72 px dele descem abaixo da borda, como no protótipo.
   retrato: { position: "absolute", left: 64, top: 28 + 240 - 88, zIndex: 5 },
   colunaPrincipal: { flex: 8, minWidth: 0 },
-  bannerWrapper: { width: "100%", height: 64, position: "relative" },
+  // Celular (mobile-v1, 08-perfil-hub.html): 150 px de cenário, não a faixa de 64 de antes.
+  bannerWrapper: { width: "100%", height: 150, position: "relative" },
+  bannerCamera: {
+    position: "absolute",
+    left: 12,
+    bottom: 14,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   banner: { width: "100%", height: "100%" },
   btnSettings: {
     width: 44,
@@ -835,15 +896,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 10,
   },
+  // Celular (mobile-v1, 08-perfil-hub.html, .retrato/.ident): retrato de 104 subindo 60 sobre o
+  // banner, e nome, @ e bio centrados embaixo.
   profileCard: {
     width: "100%",
-    flexDirection: "row",
     alignItems: "center",
-    gap: 14,
-    paddingTop: 14,
-    paddingBottom: 14,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
+    marginTop: -60,
+    paddingBottom: 4,
+    paddingHorizontal: 22,
   },
   avatarContainer: {
     width: 104,
@@ -863,34 +923,51 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 3,
   },
-  infoContainer: { flex: 1, minWidth: 0, alignItems: "flex-start", gap: 3 },
+  infoContainer: { alignItems: "center", gap: 2, paddingTop: 10 },
   profileSwitcherWrap: {
-    width: "100%",
-    marginTop: 10,
+    // O cabeçalho centraliza os filhos: sem isto o cartão encolhia e cortava os nomes.
+    alignSelf: "stretch",
+    marginTop: 20,
+    marginHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
   },
+  chipPerfil: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 12, paddingHorizontal: 16 },
+  chipPerfilNome: { fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: "700" },
+  chipPerfilTipo: { fontFamily: FontFamily.interMedium, fontSize: 12.5, fontWeight: "700" },
   profileSwitcherTitle: {
     fontFamily: FontFamily.interMedium,
-    fontSize: 12,
-    marginBottom: 6,
-    marginLeft: 20,
+    fontSize: 11.5,
+    fontWeight: "700",
+    letterSpacing: 1,
+    marginBottom: 8,
+    marginLeft: 16,
   },
   profileSwitcherContent: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   profileOption: {
-    minWidth: 144,
-    flexDirection: "row",
+    // 3 por linha: (100% - 2 espaços de 8px) / 3.
+    width: "31.6%",
+    minHeight: 72,
     alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
+    gap: 3,
     borderWidth: 1,
-    borderRadius: Design.radius,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    borderRadius: 12,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
   },
+  afinidades: { flexDirection: "row", height: 10, borderRadius: 999, overflow: "hidden", marginTop: 14, marginBottom: 6, marginHorizontal: 16 },
+  afinidadesLegenda: { fontFamily: FontFamily.interMedium, fontSize: 12.5, lineHeight: 19, marginHorizontal: 16 },
+  profileOptionCheck: { position: "absolute", top: 6, right: 6 },
   profileOptionLabel: {
     fontFamily: FontFamily.inikaBold,
-    fontSize: 14,
+    fontSize: 12.5,
   },
   profileOptionAffinity: {
     fontFamily: FontFamily.interMedium,
@@ -898,29 +975,17 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   username: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 13,
-    letterSpacing: 0,
-    fontWeight: "700",
+    fontFamily: FontFamily.interMedium,
+    fontSize: 12.5,
+    letterSpacing: 1.5,
+    marginBottom: 6,
   },
-  name: { fontFamily: FontFamily.inikaBold, fontSize: 22, lineHeight: 28 },
-  tagProfile: {
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginVertical: 4,
-  },
-  tagProfileText: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 12,
-    letterSpacing: 0,
-  },
+  name: { fontFamily: FontFamily.inikaBold, fontSize: 24, lineHeight: 30, textAlign: "center" },
   desc: {
     fontFamily: FontFamily.interMedium,
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 4,
+    fontSize: 14.5,
+    lineHeight: 22,
+    textAlign: "center",
   },
   tabsContainer: {
     flexDirection: "row",

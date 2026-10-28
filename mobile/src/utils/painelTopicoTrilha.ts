@@ -101,3 +101,17 @@ export function rotaDoTopico(id: string): Href {
 export function aoClicarNo(no: Pick<No, "locked"> | undefined): "abrir" | "selecionar" {
   return no && !no.locked ? "abrir" : "selecionar";
 }
+
+/**
+ * Toque num nó no celular (mobile-v1): o primeiro toque seleciona e mostra o botão
+ * principal na folha de baixo; tocar no nó já selecionado abre o tópico (lição do
+ * #549). Nó bloqueado nunca abre: seleciona e expande a folha com os pré-requisitos.
+ */
+export function aoTocarNoCelular(
+  no: Pick<No, "id" | "locked"> | undefined,
+  selecionadoId: string | null,
+): "selecionar" | "abrir" | "explicar-bloqueio" {
+  if (no?.locked) return "explicar-bloqueio";
+  if (no && selecionadoId !== null && String(no.id) === String(selecionadoId)) return "abrir";
+  return "selecionar";
+}

@@ -1,14 +1,6 @@
-import {
-  Corner,
-  HallBackground,
-  OrnamentDivider,
-} from "@/components/HallTheme";
-import {
-  SectionGuideButton,
-  type SectionGuideStep,
-} from "@/components/SectionGuideButton";
-import { JourneySymbol } from "@/components/JourneySymbol";
+import { HallBackground } from "@/components/HallTheme";
 import { UtilityIcon } from "@/components/UtilityIcon";
+import { RankDetalhe } from "@/app/(tabs)/ranking/[id]";
 import { RankingDesktop } from "@/components/web/RankingDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
@@ -16,14 +8,10 @@ import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -35,170 +23,76 @@ import { perfilVisualDoAluno } from "@/utils/brainHex";
 // à direita. Nos demais casos (iOS/Android e web estreita) a tela é a de antes.
 export default function Ranking() {
   const desktop = useDesktopWeb();
-  return desktop ? <RankingDesktop /> : <RankingHome />;
+  return desktop ? <RankingDesktop /> : <RankingCelular />;
 }
 
-function RankingHome() {
-  const { ranking, carregando, reloadRanking } = useConquistaRank();
+const NOME_CURTO: Record<string, string> = { tempo: "Tempo", percentual: "Progresso" };
+
+/** Celular (mobile-v1): uma tela só, com as categorias como abas e a categoria aberta embaixo. */
+function RankingCelular() {
+  const { ranking, carregando } = useConquistaRank();
   const { usuario } = useUsuario();
-  const router = useRouter();
-  const profile = perfilVisualDoAluno(usuario);
-  const palette = getProfileShellPalette(profile);
+  const palette = getProfileShellPalette(perfilVisualDoAluno(usuario));
   const ranks = ranking?.ranks ?? [];
-  const headerRef = useRef<View | null>(null);
-  const categoriesRef = useRef<View | null>(null);
-  const sampleRef = useRef<View | null>(null);
-  const scrollRef = useRef<ScrollView | null>(null);
-  const targets = useMemo(
-    () => ({ ranking_header: headerRef, ranking_categories: categoriesRef }),
-    [],
-  );
-  const steps = useMemo<SectionGuideStep[]>(
-    () => [
-      {
-        id: "ranking-header",
-        target: "ranking_header",
-        title: "Sala de honra",
-        description:
-          "Cada categoria reconhece um resultado diferente da sua jornada.",
-        icon: "podium",
-      },
-      {
-        id: "ranking-categories",
-        target: "ranking_categories",
-        title: "Classificações",
-        description:
-          "Abra uma categoria para ver o pódio, sua posição e os resultados da turma.",
-        icon: "trophy-outline",
-      },
-    ],
-    [],
-  );
-  useEffect(
-    () =>
-      registrarAlvoTour("ranking_categorias", sampleRef, () =>
-        scrollRef.current?.scrollTo({ y: 180, animated: false }),
-      ),
-    [],
-  );
+  const [aberto, setAberto] = useState<number | null>(null);
+  const idAberto = aberto !== null && ranks.some((r) => r.info.rank_id === aberto) ? aberto : (ranks[0]?.info.rank_id ?? null);
+  const rankAberto = ranks.find((r) => r.info.rank_id === idAberto);
+  const alvoTour = useRef<View | null>(null);
+  useEffect(() => registrarAlvoTour("ranking_categorias", alvoTour), []);
 
   return (
     <View style={[s.screen, { backgroundColor: palette.background }]}>
       <HallBackground palette={palette} />
       <SafeAreaView style={s.screen} edges={["top", "left", "right"]}>
-        <ScrollView
-          ref={scrollRef}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={s.scroll}
-          refreshControl={
-            <RefreshControl
-              refreshing={carregando}
-              onRefresh={() => void reloadRanking()}
-              tintColor={palette.accent}
-            />
-          }
-        >
-          <View ref={headerRef} collapsable={false} style={s.header}>
-            <View style={s.topLine}>
-              <Text style={[s.eyebrow, { color: palette.accent }]}>
-                RANKING
-              </Text>
-              <SectionGuideButton
-                profile={profile}
-                sectionTitle="Ranking"
-                steps={steps}
-                targetRefs={targets}
-              />
-            </View>
-            <View style={s.trophy}><JourneySymbol section="ranking" size={80} /></View>
-            <Text style={[s.title, { color: palette.text }]}>
-              Sala de honra
-            </Text>
-            <Text style={[s.subtitle, { color: palette.textMuted }]}>
-              Classificações da turma
-            </Text>
-            <OrnamentDivider color={palette.borderStrong} />
-          </View>
-          <View ref={categoriesRef} collapsable={false} style={s.categories}>
-            {ranks.map((rank, index) => {
-              const artwork =
-                rank.info.criterio === "tempo"
-                  ? "deadline"
-                  : rank.info.criterio === "percentual"
-                    ? "book"
-                    : "medal";
-              return (
-                <View
-                  ref={index === 0 ? sampleRef : undefined}
-                  collapsable={false}
-                  key={rank.info.rank_id}
-                  style={s.full}
-                >
+        <View style={s.topoCelular}>
+          <Text style={[s.eyebrow, { color: palette.accent }]}>RANKING</Text>
+          <Text accessibilityRole="header" style={[s.tituloCelular, { color: palette.text }]}>Sala de honra</Text>
+        </View>
+        {ranks.length ? (
+          <>
+            <View ref={alvoTour} collapsable={false} accessibilityRole="tablist" style={s.abas}>
+              {ranks.map((rank) => {
+                const ativa = rank.info.rank_id === idAberto;
+                const criterio = rank.info.criterio;
+                return (
                   <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Abrir ranking de ${rank.info.nome_rank}`}
-                    onPress={() =>
-                      router.push({
-                        pathname: "/(tabs)/ranking/[id]",
-                        params: { id: rank.info.rank_id },
-                      })
-                    }
-                    style={({ pressed }) => [
-                      s.category,
-                      {
-                        borderColor: palette.borderStrong,
-                        backgroundColor: pressed
-                          ? palette.surfaceElevated
-                          : palette.surface,
-                      },
+                    key={rank.info.rank_id}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: ativa }}
+                    onPress={() => setAberto(rank.info.rank_id)}
+                    style={[
+                      s.aba,
+                      { borderColor: palette.borderStrong, backgroundColor: ativa ? palette.accent : palette.surface },
                     ]}
                   >
-                    <Corner pos="TL" color={palette.accent} />
-                    <Corner pos="BR" color={palette.accent} />
-                    <UtilityIcon
-                      kind={artwork}
-                      size={60}
-                      height={68}
-                    />
-                    <View style={s.copy}>
-                      <Text
-                        style={[
-                          s.categoryTitle,
-                          { color: palette.text },
-                        ]}
-                      >
-                        {rank.info.nome_rank}
-                      </Text>
-                      {rank.info.descricao ? (
-                        <Text
-                          style={[s.description, { color: palette.textMuted }]}
-                        >
-                          {rank.info.descricao}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <MaterialCommunityIcons
-                      name="arrow-right"
-                      size={20}
-                      color={palette.accent}
-                    />
+                    <UtilityIcon kind={arteDoCriterio(criterio)} size={26} height={26} />
+                    <Text numberOfLines={1} style={[s.abaTexto, { color: ativa ? palette.background : palette.text }]}>
+                      {(criterio && NOME_CURTO[criterio]) || "Pontos"}
+                    </Text>
                   </Pressable>
-                </View>
-              );
-            })}
-          </View>
-          {carregando && !ranks.length ? (
-            <ActivityIndicator style={s.empty} color={palette.accent} />
-          ) : !ranks.length ? (
-            <Text style={[s.empty, { color: palette.textMuted }]}>
-              Nenhum ranking disponível nesta turma.
-            </Text>
-          ) : null}
-        </ScrollView>
+                );
+              })}
+            </View>
+            {rankAberto ? (
+              <Text style={[s.descricaoCelular, { color: palette.textMuted }]}>
+                <Text style={{ color: palette.text, fontWeight: "700" }}>{rankAberto.info.nome_rank}</Text>
+                {rankAberto.info.descricao ? ` · ${rankAberto.info.descricao}` : ""}
+              </Text>
+            ) : null}
+            {idAberto !== null ? <RankDetalhe rankId={idAberto} semBarraDeVolta /> : null}
+          </>
+        ) : carregando ? (
+          <ActivityIndicator style={s.empty} color={palette.accent} />
+        ) : (
+          <Text style={[s.empty, { color: palette.textMuted }]}>Nenhum ranking disponível nesta turma.</Text>
+        )}
       </SafeAreaView>
     </View>
   );
 }
+
+const arteDoCriterio = (criterio?: string | null) =>
+  criterio === "tempo" ? "deadline" : criterio === "percentual" ? "book" : "medal";
 
 const s = StyleSheet.create({
   screen: { flex: 1 },
@@ -241,4 +135,10 @@ const s = StyleSheet.create({
   },
   description: { fontSize: 14, lineHeight: 20, marginTop: 6 },
   empty: { marginTop: 40, textAlign: "center" },
+  topoCelular: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 8 },
+  tituloCelular: { fontFamily: "Georgia, serif", fontSize: 22 },
+  abas: { flexDirection: "row", gap: 8, paddingHorizontal: 18 },
+  aba: { flex: 1, minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderRadius: 8, paddingHorizontal: 6 },
+  abaTexto: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700" },
+  descricaoCelular: { fontSize: 13, lineHeight: 19, paddingHorizontal: 18, paddingVertical: 10 },
 });
