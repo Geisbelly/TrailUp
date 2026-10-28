@@ -26,8 +26,8 @@ import { peopleForSocialSection, type SocialPeopleSection, type SocialPerson } f
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 
@@ -64,6 +64,20 @@ export default function SocialScreen() {
   const [guilds, setGuilds] = useState<Awaited<ReturnType<typeof carregarGuildas>>>([]);
   const [janela, setJanela] = useState<Awaited<ReturnType<typeof carregarJanelaDaFormacao>>>(null);
   const [selectedPerson, setSelectedPerson] = useState<SocialPerson | null>(null);
+  // Celular (mobile-v1, 06-social.html): uma coluna só; os atalhos rolam até a seção (âncoras).
+  const rolagemRef = useRef<ScrollView>(null);
+  const posicoes = useRef<Record<string, number>>({});
+  const [ancoraAtiva, setAncoraAtiva] = useState("evento");
+  const ancora = (chave: string) => ({ onLayout: (e: LayoutChangeEvent) => { posicoes.current[chave] = e.nativeEvent.layout.y; } });
+  const irPara = (chave: string) => {
+    setAncoraAtiva(chave);
+    rolagemRef.current?.scrollTo({ y: Math.max(0, (posicoes.current[chave] ?? 0) - 56), animated: true });
+  };
+  const aoRolar = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const y = e.nativeEvent.contentOffset.y + 80;
+    const atual = Object.entries(posicoes.current).filter(([, pos]) => pos <= y).sort((a, b) => b[1] - a[1])[0]?.[0];
+    if (atual) setAncoraAtiva((anterior) => (anterior === atual ? anterior : atual));
+  };
   const [chatPerson, setChatPerson] = useState<SocialPerson | null>(null);
   const shareOptions = useMemo<GuildShareOption[]>(() => {
     const topics = (classeAtual as any)?.topicos ?? [];
@@ -113,6 +127,14 @@ export default function SocialScreen() {
     );
   }, [section, social, search]);
 
+  const pessoasDe = (secao: SocialPeopleSection) => {
+    if (!social) return [];
+    const query = search.trim().toLocaleLowerCase("pt-BR");
+    return peopleForSocialSection(social, secao).filter((person) =>
+      !query || `${person.nome} ${person.apelido ?? ""} ${person.guildaNome ?? ""}`.toLocaleLowerCase("pt-BR").includes(query),
+    );
+  };
+
   const sections: { key: Section; label: string; count?: number }[] = [
     { key: "friends", label: "Amigos", count: social?.friends.length },
     { key: "invites", label: "Convites", count: social ? social.incoming.length + social.outgoing.length : undefined },
@@ -147,13 +169,58 @@ export default function SocialScreen() {
     return { label: "Bloquear", fn: () => act(person.alunoId, () => bloquear(person.alunoId)) };
   }
 
+  const cartaoDe = (person: SocialPerson) =>
+    person.status === "incoming" ? (
+      <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} />
+    ) : (
+      <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => setChatPerson(person)} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />
+    );
+
+  const vazioDe: Record<string, string> = {
+    friends: "Você ainda não tem amigos na jornada.",
+    invites: "Nenhum convite por enquanto.",
+    discover: "Nenhum colega disponível para convidar.",
+    blocked: "Você não bloqueou ninguém.",
+  };
+
+  /** Título de bloco (06-social.html, h2.titulo): serifa de 19 e, se houver, o contador. */
+  const tituloBloco = (titulo: string, contagem?: number) => (
+    <View style={styles.tituloBloco}>
+      <Text accessibilityRole="header" style={[styles.tituloBlocoTexto, { color: palette.text }]}>{titulo}</Text>
+      {contagem ? <Text style={[styles.tituloBlocoContagem, { color: palette.textSubtle, backgroundColor: palette.surfaceElevated }]}>{contagem}</Text> : null}
+    </View>
+  );
+
+  const blocoPessoas = (secao: SocialPeopleSection, chave: string, titulo: string) => {
+    const lista = pessoasDe(secao);
+    return (
+      <View key={chave} {...ancora(chave)} style={styles.blocoCelular}>
+        {tituloBloco(titulo, lista.length)}
+        {lista.length === 0 ? (
+          <Text style={[styles.message, { color: palette.textSubtle }]}>{search.trim() ? "Nenhuma pessoa encontrada." : vazioDe[secao]}</Text>
+        ) : (
+          <View style={styles.list}>{lista.map(cartaoDe)}</View>
+        )}
+      </View>
+    );
+  };
+
+  const atalhosCelular: { chave: string; rotulo: string; contagem?: number }[] = [
+    ...(activeClasseId > 0 ? [{ chave: "evento", rotulo: "Evento" }, { chave: "arena", rotulo: "Arena" }] : []),
+    { chave: "convites", rotulo: "Convites", contagem: social ? social.incoming.length + social.outgoing.length : undefined },
+    { chave: "amigos", rotulo: "Amigos", contagem: social?.friends.length },
+    { chave: "encontrar", rotulo: "Encontrar", contagem: social?.candidates.length },
+    { chave: "guildas", rotulo: "Guildas", contagem: social ? guilds.length : undefined },
+    ...(social && pessoasDe("blocked").length ? [{ chave: "bloqueados", rotulo: "Bloqueados", contagem: pessoasDe("blocked").length }] : []),
+  ];
+
   const emptyMessage = section === "friends" ? "Você ainda não tem amigos na jornada." : section === "invites" ? "Nenhum convite por enquanto." : section === "discover" ? "Nenhum colega disponível para convidar." : "Você não bloqueou ninguém.";
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
       <HallBackground palette={palette} />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <ScrollView stickyHeaderIndices={desktop ? undefined : [1]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => void load()} tintColor={palette.accent} />}>
+        <ScrollView ref={rolagemRef} onScroll={desktop ? undefined : aoRolar} scrollEventThrottle={100} stickyHeaderIndices={desktop ? undefined : [1]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => void load()} tintColor={palette.accent} />}>
           <View style={styles.header}>
             {desktop ? (
               <View style={styles.cabecalhoLargo}>
@@ -175,32 +242,80 @@ export default function SocialScreen() {
             {desktop ? <Text style={[styles.subtitle, { color: palette.textMuted }]}>Encontre sua turma e avance em companhia.</Text> : null}
           </View>
           <View style={[styles.tabsSticky, { backgroundColor: palette.background }]}>
-            <ScrollView horizontal={!desktop} showsHorizontalScrollIndicator={false} style={desktop ? undefined : styles.tabsFaixa} contentContainerStyle={[styles.tabs, desktop && styles.tabsLargo]}>
-              {sections.map(({ key, label, count }) => {
-                const active = section === key;
-                return (
-                  <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => { setSection(key); setSearch(""); }}
-                    style={[styles.tab, desktop ? styles.pilula : styles.pilulaCelular, { borderColor: active ? palette.accent : palette.border, backgroundColor: desktop ? (active ? palette.accent : palette.accentMuted) : active ? palette.accentMuted : palette.surface }]}>
-                    <Text style={[styles.tabText, !desktop && styles.tabTextCelular, { color: desktop && active ? palette.background : active ? (desktop ? palette.text : palette.accent) : palette.textMuted }]}>{label}</Text>
-                    {desktop ? (
-                      count !== undefined ? <Text style={[styles.count, { color: palette.text }]}>{count}</Text> : null
-                    ) : count ? (
-                      <Text style={[styles.contaCelular, { backgroundColor: palette.accent, color: palette.background }]}>{count}</Text>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            {desktop ? (
+              <ScrollView horizontal={!desktop} showsHorizontalScrollIndicator={false} style={desktop ? undefined : styles.tabsFaixa} contentContainerStyle={[styles.tabs, desktop && styles.tabsLargo]}>
+                {sections.map(({ key, label, count }) => {
+                  const active = section === key;
+                  return (
+                    <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: active }} onPress={() => { setSection(key); setSearch(""); }}
+                      style={[styles.tab, desktop ? styles.pilula : styles.pilulaCelular, { borderColor: active ? palette.accent : palette.border, backgroundColor: desktop ? (active ? palette.accent : palette.accentMuted) : active ? palette.accentMuted : palette.surface }]}>
+                      <Text style={[styles.tabText, !desktop && styles.tabTextCelular, { color: desktop && active ? palette.background : active ? (desktop ? palette.text : palette.accent) : palette.textMuted }]}>{label}</Text>
+                      {desktop ? (
+                        count !== undefined ? <Text style={[styles.count, { color: palette.text }]}>{count}</Text> : null
+                      ) : count ? (
+                        <Text style={[styles.contaCelular, { backgroundColor: palette.accent, color: palette.background }]}>{count}</Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            ) : (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsFaixa} contentContainerStyle={styles.tabs}>
+                {atalhosCelular.map(({ chave, rotulo, contagem }) => {
+                  const ativo = ancoraAtiva === chave;
+                  return (
+                    <Pressable key={chave} accessibilityRole="button" accessibilityState={{ selected: ativo }} onPress={() => irPara(chave)}
+                      style={[styles.tab, styles.pilulaCelular, { borderColor: ativo ? palette.accent : palette.border, backgroundColor: ativo ? palette.accentMuted : palette.surface }]}>
+                      <Text style={[styles.tabText, styles.tabTextCelular, { color: ativo ? palette.accent : palette.textMuted }]}>{rotulo}</Text>
+                      {contagem ? <Text style={[styles.contaCelular, { backgroundColor: palette.accent, color: palette.background }]}>{contagem}</Text> : null}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
           </View>
           <View style={styles.header}>
-            {section !== "guilds" && section !== "arena" ? <View style={[styles.search, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            {desktop && (section === "guilds" || section === "arena") ? null : <View style={[styles.search, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <MaterialCommunityIcons name="magnify" size={22} color={Color.colorWhite} />
               <TextInput value={search} onChangeText={setSearch} accessibilityLabel="Buscar pessoas" placeholder="Buscar por nome ou guilda" placeholderTextColor={palette.textMuted} style={[styles.searchInput, { color: palette.text }]} />
               {search ? <Pressable onPress={() => setSearch("")} accessibilityRole="button" accessibilityLabel="Limpar busca" style={styles.clearSearch}><MaterialCommunityIcons name="close" size={20} color={Color.colorWhite} /></Pressable> : null}
-            </View> : null}
+            </View>}
           </View>
           <Envolve {...(desktop ? { style: styles.colunas } : {})}>
           <Envolve {...(desktop ? { style: styles.principal } : {})}>
+          {!desktop ? (
+            <>
+              {activeClasseId > 0 ? (
+                <View {...ancora("evento")}>
+                  <EventoDaTurma classeId={activeClasseId} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
+                  <MissoesDoDia classeId={activeClasseId} perfil={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
+                </View>
+              ) : null}
+              {loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? (
+                <View style={styles.empty}>
+                  <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
+                  <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>
+                  <Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={[styles.retryText, { color: palette.background }]}>Tentar novamente</Text></Pressable>
+                </View>
+              ) : (
+                <>
+                  <View {...ancora("arena")} style={styles.blocoCelular}>
+                    {tituloBloco("Arena")}
+                    <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} dueloCom={dueloCom} />
+                  </View>
+                  {blocoPessoas("invites", "convites", "Convites")}
+                  {blocoPessoas("friends", "amigos", "Amigos")}
+                  {blocoPessoas("discover", "encontrar", "Encontrar colegas")}
+                  <View {...ancora("guildas")} style={styles.blocoCelular}>
+                    {tituloBloco("Guildas da turma")}
+                    <GuildSection guilds={guilds} janela={janela} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} />
+                  </View>
+                  {pessoasDe("blocked").length ? blocoPessoas("blocked", "bloqueados", "Bloqueados") : null}
+                </>
+              )}
+            </>
+          ) : (
+          <>
           {activeClasseId > 0 ? (
             <EventoDaTurma
               classeId={activeClasseId}
@@ -240,6 +355,8 @@ export default function SocialScreen() {
               {section === "friends" && !search.trim() ? <Pressable onPress={() => setSection("discover")} style={[styles.retry, { backgroundColor: palette.surfaceElevated, borderColor: palette.borderStrong, borderWidth: 1 }]}><Text style={styles.retryText}>Encontrar colegas</Text></Pressable> : null}
             </View>
           ) : <View style={[styles.list, desktop && styles.grade]}>{people.map((person) => celula(person.relationshipId ?? person.alunoId, person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => setChatPerson(person)} onDesafiar={desktop && person.status === "friend" && activeClasseId > 0 ? () => { setDueloCom({ alunoId: person.alunoId, chave: Date.now() }); setSection("arena"); setSearch(""); } : undefined} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />))}</View>}
+          </>
+          )}
           </Envolve>
           {desktop ? <SocialLateralDesktop social={social} guildas={guilds} classeId={activeClasseId} perfil={profile} shareOptions={shareOptions} palette={palette} onAbrirGuildas={() => { setSection("guilds"); setSearch(""); }} /> : null}
           </Envolve>
@@ -266,6 +383,10 @@ const styles = StyleSheet.create({
   // Três colunas, como no protótipo v4 (cartão compacto do SocialPersonCard).
   celula: { width: "32%", minWidth: 240 },
   header: { marginBottom: 16 },
+  blocoCelular: { marginTop: 22 },
+  tituloBloco: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 4, marginBottom: 10 },
+  tituloBlocoTexto: { fontFamily: FontFamily.inikaBold, fontSize: 19 },
+  tituloBlocoContagem: { fontFamily: FontFamily.interMedium, fontSize: 12, fontWeight: "700", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: "hidden" },
   subtitle: { fontFamily: FontFamily.interMedium, fontSize: 14, lineHeight: 21, marginTop: 12 },
   // Celular (mobile-v1): atalhos como pílulas roláveis, grudadas no topo ao rolar.
   tabsSticky: { marginHorizontal: -20, paddingHorizontal: 20, paddingVertical: 8, zIndex: 2 },
