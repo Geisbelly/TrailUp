@@ -3,10 +3,14 @@
  *
  * ## Por que isto existe
  *
- * As `EXPO_PUBLIC_*` são inlined no bundle em tempo de BUILD. Medido no repositório: `eas.json`
- * não declara `env` em profile nenhum, não existe `.easignore`, e o `.gitignore` tem `.env` —
- * então o EAS não envia o arquivo e as variáveis só podem vir das EAS Environment Variables do
- * projeto. Nada no repositório diz quais são, e quem clonar não tem como saber (#97).
+ * As `EXPO_PUBLIC_*` são inlined no bundle em tempo de BUILD. Não existe `.easignore`, e o
+ * `.gitignore` tem `.env` — então o EAS não envia o arquivo. As chaves do Supabase vêm das EAS
+ * Environment Variables do projeto; a URL da API, que não é segredo, está declarada no `env` dos
+ * profiles `preview`, `production` e `productionAAB` do `eas.json` (#97).
+ *
+ * Ela precisa ser HTTPS com certificado válido: os domínios `*.traefik.me` servem o certificado
+ * autoassinado do Traefik, o `fetch` do aparelho falha como erro de rede e o resultado é o mesmo
+ * de faltar a variável (150 lotes sem análise em out/2026).
  *
  * O efeito de faltar não é erro: `EXPO_PUBLIC_APITRAIUP_URL` ausente faz `montarCandidatos`
  * cair nos palpites locais, que num aparelho real não resolvem. O `fetch` falha, o app vai
