@@ -24,8 +24,8 @@ const buttons: { label: string; onPress: () => void }[] = [];
 
 function Host({ children }: { children?: React.ReactNode }) { return <div>{children}</div>; }
 mockModule("react-native", {
-  View: Host, Text: Host, ScrollView: Host,
-  StyleSheet: { create: (value: unknown) => value },
+  View: Host, Text: Host, ScrollView: Host, Image: () => null,
+  StyleSheet: { create: (value: unknown) => value, absoluteFill: {} },
   ActivityIndicator: () => <span>loading</span>,
   Pressable: ({ children, accessibilityLabel, onPress }: { children: React.ReactNode; accessibilityLabel?: string; onPress: () => void }) => {
     buttons.push({ label: accessibilityLabel ?? "", onPress });
@@ -36,6 +36,9 @@ mockModule("react-native-safe-area-context", { SafeAreaView: Host });
 mockModule("@expo/vector-icons", { MaterialCommunityIcons: () => null });
 mockModule("@/styles/GlobalStyle", { FontFamily: {} });
 mockModule("@/utils/profileShellTheme", { getProfileShellPalette: () => ({}) });
+// SelecionarTurmaScreen puxa o cenário do perfil; o módulo real faz require() de PNG/WebP
+// no topo, e o tsx tenta executar o arquivo como JS.
+mockModule("@/constants/designAssets", { getProfileArtwork: () => null });
 // A versão de tela larga (#346) fica fora deste teste: o portão aqui é o do celular.
 mockModule("@/hooks/useDesktopWeb", { useDesktopWeb: () => false });
 mockModule("@/components/web/EscolhaTurmaDesktop", { EscolhaTurmaDesktop: () => null });
