@@ -1,7 +1,6 @@
 import { supabase } from "@/database/supabase";
 import { loadRankMetadata } from "@/services/rankMetadata";
-import { resolveRankEventClasseId } from "@/utils/rankEventClasse";
-import { progressoDaLinha, progressoDoLider } from "@/utils/rankProgresso";
+import { progressoDaLinha } from "@/utils/rankProgresso";
 import { PosicaoDoAluno } from "./RankAlunoPosicao";
 import { RankInfo } from "./RankInfo";
 import { RankPosicao } from "./RankPosicao";
@@ -11,44 +10,16 @@ function normalizeClasseId(value: unknown): number | null {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
-function normalizeReferenciaId(value: unknown): number | null {
-  if (value == null) return null;
-
-  const normalized = String(value).trim();
-  if (!normalized) return null;
-
-  if (/^\d+$/.test(normalized)) {
-    return Number(normalized);
-  }
-
-  const suffixMatch = normalized.match(/(\d+)$/);
-  if (suffixMatch?.[1]) {
-    return Number(suffixMatch[1]);
-  }
-
-  return null;
-}
-
-type FallbackRankRow = {
+type RankRow = {
   rank_id: number;
   classe_id: number;
   posicao: number;
   id_aluno: string;
   nome_aluno: string;
   pontuacao: number;
-  progresso: number | null;
+  percentual_do_lider: number | null;
   medalha: string | null;
 };
-
-type ClasseAlunoMetricRow = {
-  aluno_id: string;
-  porcentagemConcluida?: number | null;
-  tempoGastoMin?: number | null;
-};
-
-function isTipoLike(tipo: unknown, prefixo: "topico" | "conteudo" | "atividade") {
-  return String(tipo ?? "").trim().toLowerCase().startsWith(prefixo);
-}
 
 function buildRankPosicao(row: any) {
   return new RankPosicao(
@@ -58,7 +29,7 @@ function buildRankPosicao(row: any) {
     String(row.id_aluno),
     String(row.nome_aluno ?? "Aluno"),
     row.pontuacao != null ? Number(row.pontuacao) : null,
-    // A view entrega `percentual_do_lider` (#155); `progresso` vem do fallback abaixo.
+    // A view entrega `percentual_do_lider` (#155).
     progressoDaLinha(row),
     row.medalha != null ? String(row.medalha) : null
   );
@@ -99,250 +70,8 @@ async function loadFallbackRankInfosByClasse(classeId: number): Promise<RankInfo
   return rows.map(buildRankInfoFromRow);
 }
 
-function buildFallbackRankRows(
-  classeId: number,
-  infos: RankInfo[],
-  metricsRows: ClasseAlunoMetricRow[],
-  studentNames: Map<string, string>,
-  scoreByAluno: Map<string, number>
-): FallbackRankRow[] {
-  const allRows: FallbackRankRow[] = [];
-
-  infos.forEach((info) => {
-    const criterio = String(info.criterio ?? "").toLowerCase();
-    const baseRows = metricsRows.map((row) => {
-      const alunoId = String(row.aluno_id);
-      const pontuacao =
-        criterio === "percentual"
-          ? Number(row.porcentagemConcluida ?? 0)
-          : criterio === "pontuacao"
-          ? Number(scoreByAluno.get(alunoId) ?? 0)
-          : criterio === "tempo"
-          ? Number(row.tempoGastoMin ?? 0)
-          : 0;
-
-      return {
-        rank_id: info.rank_id,
-        classe_id: classeId,
-        id_aluno: alunoId,
-        nome_aluno: studentNames.get(alunoId) ?? "Aluno",
-        pontuacao: Number.isFinite(pontuacao) ? pontuacao : 0,
-      };
-    });
-
-    const sortedRows = [...baseRows].sort((a, b) => {
-      if (b.pontuacao !== a.pontuacao) {
-        return b.pontuacao - a.pontuacao;
-      }
-      return a.id_aluno.localeCompare(b.id_aluno);
-    });
-
-    const maxPontuacao = sortedRows.length
-      ? Math.max(...sortedRows.map((row) => row.pontuacao))
-      : 0;
-
-    let lastPontuacao: number | null = null;
-    let currentRank = 0;
-
-    sortedRows.forEach((row, index) => {
-      if (lastPontuacao == null || row.pontuacao !== lastPontuacao) {
-        currentRank = index + 1;
-        lastPontuacao = row.pontuacao;
-      }
-
-      allRows.push({
-        ...row,
-        posicao: currentRank,
-        progresso: progressoDoLider(row.pontuacao, maxPontuacao, sortedRows.length, criterio),
-        medalha:
-          currentRank === 1
-            ? "ouro"
-            : currentRank === 2
-            ? "prata"
-            : currentRank === 3
-            ? "bronze"
-            : null,
-      });
-    });
-  });
-
-  return allRows;
-}
-
-async function loadFallbackRankRowsByClasse(
-  classeId: number,
-  infos: RankInfo[]
-): Promise<FallbackRankRow[]> {
-  if (!infos.length) return [];
-
-  const { data: metricsRows, error: metricsError } = await supabase
-    .from("classe_aluno")
-    .select("aluno_id, porcentagemConcluida, tempoGastoMin")
-    .eq("classe_id", classeId);
-  if (metricsError) throw metricsError;
-
-  const metrics = (metricsRows ?? []) as ClasseAlunoMetricRow[];
-  const alunoIds = metrics.map((row) => String(row.aluno_id)).filter(Boolean);
-  if (!alunoIds.length) return [];
-
-  const { data: alunosRows, error: alunosError } = await supabase
-    .from("alunos")
-    .select("id, nome")
-    .in("id", alunoIds);
-  if (alunosError) throw alunosError;
-
-  const studentNames = new Map<string, string>(
-    (alunosRows ?? []).map((row: any) => [String(row.id), String(row.nome ?? "Aluno")] as const)
-  );
-
-  const { data: eventosRows, error: eventosError } = await supabase
-    .from("eventos_aluno")
-    .select("aluno_id, tipo, referencia, valor, classe_id")
-    .in("aluno_id", alunoIds);
-  if (eventosError) throw eventosError;
-
-  const eventRefs = (eventosRows ?? []).map((row: any) => ({
-    aluno_id: String(row.aluno_id),
-    tipo: String(row.tipo ?? ""),
-    referencia: row.referencia,
-    referenciaId: normalizeReferenciaId(row.referencia),
-    valor: Number(row.valor ?? 0),
-    classeId: row.classe_id,
-  }));
-
-  const topicIds = [
-    ...new Set(
-      eventRefs
-        .filter((row) => isTipoLike(row.tipo, "topico") && row.referenciaId != null)
-        .map((row) => Number(row.referenciaId))
-    ),
-  ];
-  const contentIds = [
-    ...new Set(
-      eventRefs
-        .filter((row) => isTipoLike(row.tipo, "conteudo") && row.referenciaId != null)
-        .map((row) => Number(row.referenciaId))
-    ),
-  ];
-  const activityIds = [
-    ...new Set(
-      eventRefs
-        .filter((row) => isTipoLike(row.tipo, "atividade") && row.referenciaId != null)
-        .map((row) => Number(row.referenciaId))
-    ),
-  ];
-
-  const topicClassById = new Map<number, number>();
-  if (topicIds.length) {
-    const { data, error } = await supabase
-      .from("topicos")
-      .select("id, classe_id")
-      .in("id", topicIds);
-    if (error) throw error;
-    (data ?? []).forEach((row: any) => {
-      topicClassById.set(Number(row.id), Number(row.classe_id));
-    });
-  }
-
-  const contentClassById = new Map<number, number>();
-  if (contentIds.length) {
-    const { data, error } = await supabase
-      .from("conteudos")
-      .select("id, topico_id")
-      .in("id", contentIds);
-    if (error) throw error;
-
-    const missingTopicIds = [
-      ...new Set(
-        (data ?? [])
-          .map((row: any) => Number(row.topico_id))
-          .filter((id) => !topicClassById.has(id))
-      ),
-    ];
-
-    if (missingTopicIds.length) {
-      const { data: extraTopics, error: extraTopicsError } = await supabase
-        .from("topicos")
-        .select("id, classe_id")
-        .in("id", missingTopicIds);
-      if (extraTopicsError) throw extraTopicsError;
-      (extraTopics ?? []).forEach((row: any) => {
-        topicClassById.set(Number(row.id), Number(row.classe_id));
-      });
-    }
-
-    (data ?? []).forEach((row: any) => {
-      const topicoId = Number(row.topico_id);
-      const classe = topicClassById.get(topicoId);
-      if (classe != null) {
-        contentClassById.set(Number(row.id), classe);
-      }
-    });
-  }
-
-  const activityClassById = new Map<number, number>();
-  if (activityIds.length) {
-    const { data, error } = await supabase
-      .from("atividades")
-      .select("id, topico_id")
-      .in("id", activityIds);
-    if (error) throw error;
-
-    const missingTopicIds = [
-      ...new Set(
-        (data ?? [])
-          .map((row: any) => Number(row.topico_id))
-          .filter((id) => !topicClassById.has(id))
-      ),
-    ];
-
-    if (missingTopicIds.length) {
-      const { data: extraTopics, error: extraTopicsError } = await supabase
-        .from("topicos")
-        .select("id, classe_id")
-        .in("id", missingTopicIds);
-      if (extraTopicsError) throw extraTopicsError;
-      (extraTopics ?? []).forEach((row: any) => {
-        topicClassById.set(Number(row.id), Number(row.classe_id));
-      });
-    }
-
-    (data ?? []).forEach((row: any) => {
-      const topicoId = Number(row.topico_id);
-      const classe = topicClassById.get(topicoId);
-      if (classe != null) {
-        activityClassById.set(Number(row.id), classe);
-      }
-    });
-  }
-
-  const scoreByAluno = new Map<string, number>();
-  eventRefs.forEach((row) => {
-    if (row.referenciaId == null) return;
-
-    let eventClasseId = resolveRankEventClasseId({
-      tipo: row.tipo,
-      referencia: row.referencia,
-      classe_id: row.classeId,
-    });
-    if (eventClasseId == null && isTipoLike(row.tipo, "topico")) {
-      eventClasseId = topicClassById.get(row.referenciaId) ?? null;
-    } else if (eventClasseId == null && isTipoLike(row.tipo, "conteudo")) {
-      eventClasseId = contentClassById.get(row.referenciaId) ?? null;
-    } else if (eventClasseId == null && isTipoLike(row.tipo, "atividade")) {
-      eventClasseId = activityClassById.get(row.referenciaId) ?? null;
-    }
-
-    if (eventClasseId !== classeId) return;
-
-    scoreByAluno.set(row.aluno_id, (scoreByAluno.get(row.aluno_id) ?? 0) + row.valor);
-  });
-
-  return buildFallbackRankRows(classeId, infos, metrics, studentNames, scoreByAluno);
-}
-
 async function loadRankRowsByClasse(classeId: number, infos: RankInfo[]) {
-  if (!infos.length) return [] as FallbackRankRow[];
+  if (!infos.length) return [] as RankRow[];
 
   const { data, error } = await supabase
     .from("vw_rank_posicoes_por_classe")
@@ -351,16 +80,11 @@ async function loadRankRowsByClasse(classeId: number, infos: RankInfo[]) {
     .order("rank_id", { ascending: true })
     .order("posicao", { ascending: true });
 
-  if (error) {
-    console.warn("[Rank] Falha ao consultar vw_rank_posicoes_por_classe, usando fallback:", error);
-    return loadFallbackRankRowsByClasse(classeId, infos);
-  }
+  // Erro propaga: nao ha ranking de reserva. Recalcular aqui lendo `eventos_aluno` dos
+  // colegas expunha a turma inteira; view vazia e' ranking vazio, e erro e' erro.
+  if (error) throw error;
 
-  if (!data?.length && infos.length) {
-    return loadFallbackRankRowsByClasse(classeId, infos);
-  }
-
-  return (data ?? []) as FallbackRankRow[];
+  return (data ?? []) as RankRow[];
 }
 
 export class RankDaClasse {
@@ -403,19 +127,19 @@ export class RankDaClasse {
     }
 
     const rows = await loadRankRowsByClasse(this.info.classe_id, [this.info]);
-    const fallback = rows.find(
+    const daView = rows.find(
       (row) => Number(row.rank_id) === Number(this.info.rank_id) && row.id_aluno === aluno_id
     );
-    if (!fallback) return null;
+    if (!daView) return null;
 
     return new PosicaoDoAluno(
-      fallback.rank_id,
-      fallback.classe_id,
+      daView.rank_id,
+      daView.classe_id,
       aluno_id,
-      fallback.posicao ?? null,
-      fallback.pontuacao ?? null,
-      fallback.progresso ?? null,
-      fallback.medalha ?? null
+      daView.posicao ?? null,
+      daView.pontuacao ?? null,
+      progressoDaLinha(daView),
+      daView.medalha ?? null
     );
   }
 

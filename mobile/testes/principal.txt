@@ -15,6 +15,7 @@ src/utils/batalhaRegras.test.ts
 src/hooks/trilha/topicScreenBlock.test.ts
 src/hooks/trilha/usePersonalizedFlow.test.ts
 src/hooks/trilha/studyIntervalPersistence.test.ts
+src/models/Rank.semFallback.test.ts
 src/models/Topico.canonicalProgress.test.ts
 src/services/apiBaseUrl.core.test.ts
 src/services/authErrorMessage.test.ts
@@ -79,7 +80,6 @@ src/utils/profileShellPalette.test.ts
 src/utils/progressoPersonalizado.test.ts
 src/utils/questionRetryPolicy.test.ts
 src/utils/rankCorte.test.ts
-src/utils/rankEventClasse.test.ts
 src/utils/rankProgresso.test.ts
 src/utils/rankingPodium.test.ts
 src/utils/rankingProfiles.test.ts
