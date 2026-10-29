@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useSearchParams } from "react-router-dom";
-import { BookOpen, Send, X } from "lucide-react";
+import { Send, Sparkles, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/apiTraiupClient";
@@ -28,7 +28,7 @@ const FOCAVEIS = 'button:not([disabled]), textarea:not([disabled]), input:not([d
 type Resposta = { resposta: string; turmas: number[] };
 
 /**
- * Escriba: botão flutuante bronze + painel de conversa, em todas as telas do
+ * Lumi (antes Escriba): botão flutuante bronze + painel de conversa, em todas as telas do
  * console menos Aprovações (quem decide é o ConsoleShell). A conversa vive só
  * aqui; a API não grava nada. Com a API fora do ar o resto do console segue
  * normal — o erro fica dentro do painel.
@@ -159,18 +159,18 @@ export default function Escriba() {
           {/* Bronze claro com texto escuro: o branco sobre o degradê do protótipo fica em ~2,6:1. */}
           <div className="flex items-center gap-3 bg-[hsl(var(--console-bronze-light))] px-[18px] py-4 text-[hsl(var(--background))]">
             <span aria-hidden="true" className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-black/15">
-              <BookOpen size={17} strokeWidth={1.8} />
+              <Sparkles size={17} strokeWidth={1.8} />
             </span>
             <div className="min-w-0 flex-1">
               <h2 id={idTitulo} className="font-['Cinzel',serif] text-sm font-bold leading-tight">
-                Escriba <span className="font-sans text-[11px] font-semibold">· O guia do professor</span>
+                Lumi <span className="font-sans text-[11px] font-semibold">· A guia do professor</span>
               </h2>
               <p className="text-[11px] font-medium">Lê os dados das suas turmas</p>
             </div>
             <button
               type="button"
               onClick={fechar}
-              aria-label="Fechar o Escriba"
+              aria-label="Fechar a Lumi"
               className="flex h-8 w-8 flex-none items-center justify-center rounded-full hover:bg-black/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--background))]"
             >
               <X size={16} />
@@ -203,7 +203,7 @@ export default function Escriba() {
             </select>
           </div>
 
-          <div role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversa com o Escriba" className="flex min-h-[140px] flex-1 flex-col gap-3 overflow-y-auto px-[18px] py-4">
+          <div role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversa com a Lumi" className="flex min-h-[140px] flex-1 flex-col gap-3 overflow-y-auto px-[18px] py-4">
             {mensagens.map((m) => (
               <p
                 key={m.id}
@@ -216,7 +216,7 @@ export default function Escriba() {
                       : "text-foreground",
                 )}
               >
-                <span className="sr-only">{m.papel === "professor" ? "Você: " : "Escriba: "}</span>
+                <span className="sr-only">{m.papel === "professor" ? "Você: " : "Lumi: "}</span>
                 {m.texto}
               </p>
             ))}
@@ -266,7 +266,7 @@ export default function Escriba() {
             }}
           >
             <label htmlFor={`${idPainel}-pergunta`} className="sr-only">
-              Pergunte ao Escriba
+              Pergunte à Lumi
             </label>
             <textarea
               ref={campo}
@@ -282,7 +282,7 @@ export default function Escriba() {
                   void enviar(pergunta);
                 }
               }}
-              placeholder="Pergunte ao Escriba…"
+              placeholder="Pergunte à Lumi…"
               className="max-h-28 min-w-0 flex-1 resize-none rounded-[18px] border border-input bg-background px-3.5 py-[9px] text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <button
@@ -303,11 +303,11 @@ export default function Escriba() {
         onClick={() => (aberto ? fechar() : setAberto(true))}
         aria-expanded={aberto}
         aria-controls={aberto ? idPainel : undefined}
-        aria-label={aberto ? "Fechar o Escriba" : "Pergunte ao Escriba, o guia do professor"}
-        title="Pergunte ao Escriba"
+        aria-label={aberto ? "Fechar a Lumi" : "Pergunte à Lumi, a guia do professor"}
+        title="Pergunte à Lumi"
         className="flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,hsl(var(--console-bronze-light)),hsl(var(--console-bronze)))] text-[hsl(var(--background))] shadow-[0_12px_30px_rgba(0,0,0,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        {aberto ? <X size={22} /> : <BookOpen size={24} strokeWidth={1.7} />}
+        {aberto ? <X size={22} /> : <Sparkles size={24} strokeWidth={1.7} />}
       </button>
     </div>
   );

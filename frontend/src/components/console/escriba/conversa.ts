@@ -1,4 +1,4 @@
-// Escriba — o guia do professor (docs/frontend/redesign-fase-2/01-analise-dashboard.md, 4.10).
+// Lumi (antes Escriba) — a guia do professor (docs/frontend/redesign-fase-2/01-analise-dashboard.md, 4.10).
 // Lógica pura do painel: o que mandar para a API e como traduzir as falhas.
 
 export type Papel = "professor" | "escriba";
@@ -45,7 +45,7 @@ export function mensagemDeErro(erro: unknown): string {
   if (/escriba_indisponivel|não conseguiu responder|nao conseguiu responder/i.test(texto))
     return "Não consegui formular uma resposta agora. Tente de novo em instantes.";
   if (/abort|timeout|tempo|conectar|network|fetch|failed|502|503|504/i.test(texto))
-    return "O Escriba está acordando — o servidor da IA dorme quando fica parado. Tente de novo em alguns segundos; o resto do console continua funcionando.";
-  if (/VITE_APITRAIUP_URL/.test(texto)) return "O Escriba não está configurado neste ambiente.";
-  return "Algo deu errado ao falar com o Escriba. Tente de novo em instantes.";
+    return "A Lumi está acordando — o servidor da IA dorme quando fica parado. Tente de novo em alguns segundos; o resto do console continua funcionando.";
+  if (/VITE_APITRAIUP_URL/.test(texto)) return "A Lumi não está configurada neste ambiente.";
+  return "Algo deu errado ao falar com a Lumi. Tente de novo em instantes.";
 }

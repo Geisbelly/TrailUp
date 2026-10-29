@@ -3,6 +3,11 @@ import {
   isNetworkRequestFailedError,
   resolveApiBaseCandidates,
 } from "@/services/apiBaseUrl";
+import {
+  classificarFallback,
+  type FallbackMotivo,
+  TelemetriaHttpError,
+} from "@/services/telemetriaFallback";
 import { sanitizarCameraParaBanco } from "@/services/telemetriaPayload";
 import {
   normalizeNonNegativeNumber,
@@ -118,7 +123,7 @@ async function parseResponse<T>(response: Response): Promise<T> {
       payload?.message ||
       text ||
       `Erro ${response.status} ao enviar telemetria.`;
-    throw new Error(String(detail));
+    throw new TelemetriaHttpError(response.status, String(detail));
   }
 
   if (!payload && text) {
@@ -301,7 +306,16 @@ function buildAllMetricRows(
   ];
 }
 
-async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
+/** PostgREST `PGRST204` (coluna fora do cache de schema) ou Postgres `42703` (undefined_column). */
+function colunaInexistente(error: unknown): boolean {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === "PGRST204" || code === "42703";
+}
+
+async function persistTelemetryBatchDirect(
+  payload: TelemetryBatchPayload,
+  motivo: FallbackMotivo
+) {
   const safePayload = sanitizeTelemetryPayload(payload);
   const session = await getSessionSafe();
   const alunoId = session?.user?.id ?? null;
@@ -335,7 +349,7 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
     Array.isArray(safePayload.camera.frames) &&
     safePayload.camera.frames.length > 0;
 
-  const { data: persistedBatch, error: batchError } = await supabase.from("telemetria_lotes").upsert({
+  const linhaDoLote = {
     id: batchId,
     sessao_id: safePayload.sessao_id,
     aluno_id: alunoId,
@@ -355,10 +369,26 @@ async function persistTelemetryBatchDirect(payload: TelemetryBatchPayload) {
     scroll_distance_px: safePayload.scroll_distance_px,
     max_depth_px: safePayload.max_depth_px,
     frame_sent: frameSent,
+    // `via` NAO e enviado: o gatilho do banco o preenche (a via direta e a
+    // unica que escreve como `authenticated`). O motivo, so o cliente sabe.
+    fallback_motivo: motivo,
     analysis_ciclo_id: null,
     payload: sanitizarCameraParaBanco(safePayload),
     created_at: nowIso,
-  }, { onConflict: 'sessao_id,captured_at,flush_reason', ignoreDuplicates: true }).select('id').maybeSingle();
+  };
+  const gravarLote = (linha: Record<string, unknown>) =>
+    supabase.from("telemetria_lotes").upsert(linha, {
+      onConflict: "sessao_id,captured_at,flush_reason",
+      ignoreDuplicates: true,
+    }).select("id").maybeSingle();
+  let { data: persistedBatch, error: batchError } = await gravarLote(linhaDoLote);
+  if (batchError && colunaInexistente(batchError)) {
+    // Build novo contra banco que ainda nao tem a 20261029_01 (sem `fallback_motivo`):
+    // regrava uma vez sem a coluna. Telemetria de estudo nao pode se perder por
+    // diferenca de versao entre app e banco.
+    const { fallback_motivo: _semMotivo, ...linhaSemMotivo } = linhaDoLote;
+    ({ data: persistedBatch, error: batchError } = await gravarLote(linhaSemMotivo));
+  }
   if (batchError) throw batchError;
   if (persistedBatch) {
     batchId = String(persistedBatch.id);
@@ -474,7 +504,7 @@ export async function enviarLoteTelemetria(payload: TelemetryBatchPayload) {
   const safePayload = sanitizeTelemetryPayload(payload);
   const urls = buildUrls("/api/v1/telemetria/lotes");
   if (!urls.length) {
-    return persistTelemetryBatchDirect(safePayload);
+    return persistTelemetryBatchDirect(safePayload, "sem_url");
   }
 
   const corpo = JSON.stringify(safePayload);
@@ -506,7 +536,10 @@ export async function enviarLoteTelemetria(payload: TelemetryBatchPayload) {
       // morto: o erro que de fato propagava era sempre o da propria
       // persistTelemetryBatchDirect, nao o erro original mais informativo.
       try {
-        return await persistTelemetryBatchDirect(safePayload);
+        return await persistTelemetryBatchDirect(
+          safePayload,
+          classificarFallback(error)
+        );
       } catch {
         throw error;
       }
@@ -514,7 +547,8 @@ export async function enviarLoteTelemetria(payload: TelemetryBatchPayload) {
   }
 
   try {
-    return await persistTelemetryBatchDirect(safePayload);
+    // Chegou aqui porque toda URL candidata falhou por rede.
+    return await persistTelemetryBatchDirect(safePayload, "rede");
   } catch (persistError) {
     if (!lastNetworkError) {
       throw persistError;

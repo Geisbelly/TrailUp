@@ -322,6 +322,14 @@ mobile dispara novo ciclo quando uma ação casa com `refresh_policy.trigger_act
 > `screen_blur` saiu com o id de OUTRA sessão (23/09). Pedidos `interval` ainda
 > não iniciados são fundidos — dois fariam o trabalho de um.
 
+> **`telemetria_lotes.via` diz por onde o lote chegou** (`api` ou `direta`, `20261029_01`):
+> o gatilho `trg_telemetria_lote_via` a preenche pelo papel de quem escreve (claims
+> `authenticated` = mobile direto no Supabase; sem claims = API). `fallback_motivo`
+> (`sem_url`, `rede`, `timeout`, `http_4xx`, `http_5xx`, `sem_sessao`, `desconhecido`)
+> é o app quem manda e **nunca é obrigatória**: build antigo grava direto sem ela,
+> e recusar o lote perderia telemetria — a falta só aparece na invariante I18.
+> Linhas anteriores à migration ficam com as duas colunas nulas, de propósito.
+
 Fase 4 (`23b38ef`): endpoint `GET /personalizar/grupo/{classe_id}`
 (`app/services/group_analysis.py`) computa e persiste a distribuição de perfis
 BrainHex + desempenho médio da turma em `classe_perfil_summary`, consumido pelo

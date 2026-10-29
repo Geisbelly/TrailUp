@@ -78,7 +78,7 @@ export function InfoAlunoCelular({
 }
 
 const s = StyleSheet.create({
-  cartao: { marginTop: 20, marginHorizontal: 14, borderRadius: 14, borderWidth: 1, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 4 },
+  cartao: { alignSelf: "stretch", marginTop: 20, marginHorizontal: 14, borderRadius: 14, borderWidth: 1, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 4 },
   linha: { minHeight: 44, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
   rotulo: { fontFamily: FontFamily.interMedium, fontSize: 14 },
   valor: { flex: 1, textAlign: "right", fontFamily: FontFamily.interMedium, fontSize: 14 },
