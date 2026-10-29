@@ -33,6 +33,7 @@ src/services/social/publicProfileModel.test.ts
 src/services/social/socialModel.test.ts
 src/services/studySessions.test.ts
 src/services/telemetriaApi.persistence.test.ts
+src/services/telemetriaFallback.test.ts
 src/services/telemetriaOutbox.concurrent.test.ts
 src/services/telemetriaOutbox.test.ts
 src/services/telemetriaPayload.test.ts

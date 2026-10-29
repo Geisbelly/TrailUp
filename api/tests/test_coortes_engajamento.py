@@ -45,8 +45,10 @@ def _sql() -> str:
 
 
 def test_migration_e_a_cabeca_unica() -> None:
+    # Uma cabeça só é o que importa; a coortes deixa de ser a cabeça assim que
+    # outra migration entra depois dela.
     scripts = ScriptDirectory.from_config(_config())
-    assert scripts.get_heads() == ["20261027_01"]
+    assert len(scripts.get_heads()) == 1
     assert scripts.get_revision("20261027_01").down_revision == "20261026_02"
 
 
