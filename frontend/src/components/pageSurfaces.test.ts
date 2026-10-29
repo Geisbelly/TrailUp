@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-// O ConsoleShell monta o Escriba, que fala com o Supabase; aqui só importa o HTML.
+// O ConsoleShell monta a Lumi, que fala com o Supabase; aqui só importa o HTML.
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null }) }));
 import { PublicLayout, PublicPageTitle } from "./PublicLayout";
@@ -57,8 +57,8 @@ describe("shared page surfaces", () => {
     expect(markup).not.toContain('href="/console/aprovacoes"');
   });
 
-  it("shows the Escriba on the working sections but not on Aprovações", () => {
-    const escriba = /aria-label="Pergunte ao Escriba, o guia do professor"/g;
+  it("shows the Lumi on the working sections but not on Aprovações", () => {
+    const escriba = /aria-label="Pergunte à Lumi, a guia do professor"/g;
     for (const view of ["dashboard", "trilha", "classes", "personalizacoes", "ranks", "profile"] as const) {
       const markup = render(createElement(ConsoleShell, { view, name: "Professor", isOwner: true, onSignOut: () => {} }));
       expect(markup.match(escriba), view).toHaveLength(1);

@@ -67,7 +67,7 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         })}
       </nav>
       <main className="console-main" aria-label={navigation[view].label}>{children}</main>
-      {/* O Escriba acompanha as 6 telas de trabalho; Aprovações é administração, não turma. */}
+      {/* A Lumi acompanha as 6 telas de trabalho; Aprovações é administração, não turma. */}
       {view !== "aprovacoes" && <Escriba />}
     </div>
   );

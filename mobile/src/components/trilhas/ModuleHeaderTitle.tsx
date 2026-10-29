@@ -181,6 +181,9 @@ export function ModuleHeaderTitle({
   perfis,
 }: Props) {
   const [open, setOpen] = useState(false);
+  // Seta à esquerda (~56) + cronômetro e guia à direita (~150): o título lê só no que sobra.
+  const { width: larguraTela } = useWindowDimensions();
+  const larguraMaxima = Math.min(276, Math.max(120, larguraTela - 260));
   const normalizedProfile = useMemo(
     () => normalizeBrainHexProfile(profile) ?? "mastermind",
     [profile],
@@ -216,7 +219,7 @@ export function ModuleHeaderTitle({
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[styles.container, { maxWidth: larguraMaxima }]}>
         <View style={styles.copy}>
           <Text
             style={[styles.title, { color: palette.text }]}

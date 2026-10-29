@@ -68,14 +68,25 @@ export default function SocialScreen() {
   const rolagemRef = useRef<ScrollView>(null);
   const posicoes = useRef<Record<string, number>>({});
   const [ancoraAtiva, setAncoraAtiva] = useState("evento");
+  // A faixa de pílulas rola sozinha até a ativa, senão as últimas (Guildas) ficam fora da tela.
+  const faixaRef = useRef<ScrollView>(null);
+  const posicoesPilulas = useRef<Record<string, { x: number; largura: number }>>({});
+  useEffect(() => {
+    const pilula = posicoesPilulas.current[ancoraAtiva];
+    if (pilula) faixaRef.current?.scrollTo({ x: Math.max(0, pilula.x - 48), animated: true });
+  }, [ancoraAtiva]);
   const ancora = (chave: string) => ({ onLayout: (e: LayoutChangeEvent) => { posicoes.current[chave] = e.nativeEvent.layout.y; } });
   const irPara = (chave: string) => {
     setAncoraAtiva(chave);
     rolagemRef.current?.scrollTo({ y: Math.max(0, (posicoes.current[chave] ?? 0) - 56), animated: true });
   };
   const aoRolar = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = e.nativeEvent.contentOffset.y + 80;
-    const atual = Object.entries(posicoes.current).filter(([, pos]) => pos <= y).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const y = contentOffset.y + 80;
+    const noFim = contentOffset.y + layoutMeasurement.height >= contentSize.height - 24;
+    const ordenadas = Object.entries(posicoes.current).sort((a, b) => b[1] - a[1]);
+    // No fim da rolagem as últimas seções nunca chegam ao topo: a última vira a ativa.
+    const atual = noFim ? ordenadas[0]?.[0] : ordenadas.find(([, pos]) => pos <= y)?.[0];
     if (atual) setAncoraAtiva((anterior) => (anterior === atual ? anterior : atual));
   };
   const [chatPerson, setChatPerson] = useState<SocialPerson | null>(null);
@@ -260,11 +271,11 @@ export default function SocialScreen() {
                 })}
               </ScrollView>
             ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsFaixa} contentContainerStyle={styles.tabs}>
+              <ScrollView ref={faixaRef} horizontal showsHorizontalScrollIndicator={false} style={styles.tabsFaixa} contentContainerStyle={styles.tabs}>
                 {atalhosCelular.map(({ chave, rotulo, contagem }) => {
                   const ativo = ancoraAtiva === chave;
                   return (
-                    <Pressable key={chave} accessibilityRole="button" accessibilityState={{ selected: ativo }} onPress={() => irPara(chave)}
+                    <Pressable key={chave} onLayout={(e) => { posicoesPilulas.current[chave] = { x: e.nativeEvent.layout.x, largura: e.nativeEvent.layout.width }; }} accessibilityRole="button" accessibilityState={{ selected: ativo }} onPress={() => irPara(chave)}
                       style={[styles.tab, styles.pilulaCelular, { borderColor: ativo ? palette.accent : palette.border, backgroundColor: ativo ? palette.accentMuted : palette.surface }]}>
                       <Text style={[styles.tabText, styles.tabTextCelular, { color: ativo ? palette.accent : palette.textMuted }]}>{rotulo}</Text>
                       {contagem ? <Text style={[styles.contaCelular, { backgroundColor: palette.accent, color: palette.background }]}>{contagem}</Text> : null}

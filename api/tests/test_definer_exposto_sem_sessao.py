@@ -115,6 +115,18 @@ SEM_SESSAO_POR_DECISAO: dict[str, str] = {
         "Mesma delegacao de `aprovacoes_pendentes`: `app_e_dono()` antes de "
         "qualquer leitura, e so o dono do sistema passa."
     ),
+    "app_elo_inicial": (
+        "Wrapper de UMA chave (20261029_04): devolve o rating inicial do Elo (`elo_inicial`, padrao "
+        "1000), um numero que o proprio ranking ja mostra pelo resultado. Nao recebe parametro, "
+        "entao nao ha id para trocar, e nao le nem devolve dado de aluno. Existe para a view do "
+        "ranking nao depender de `fn_app_config_int`, que continua fechada para o cliente porque "
+        "le qualquer chave, inclusive os tetos anti-abuso. Sem `anon`."
+    ),
+    "app_rank_progresso_min_participantes": (
+        "Wrapper de UMA chave (20261029_04): devolve o minimo de participantes para o ranking "
+        "mostrar o percentual do lider (`rank_progresso_min_participantes`, padrao 8). Sem "
+        "parametro e sem dado de aluno; mesma razao de `app_elo_inicial`. Sem `anon`."
+    ),
     "guilda_configurar_turma": (
         "Delega: a primeira instrucao do corpo e "
         "`IF p_classe_id NOT IN (SELECT public.app_classes_do_professor()) ... "
