@@ -40,8 +40,12 @@ def _funcao(sql: str, nome: str) -> str:
 
 
 def test_uma_cabeca_so_e_ela_vem_depois_da_trava_de_eventos() -> None:
+    """Uma head só, com a `_07` no caminho até ela (não `get_heads() == ["20261029_07"]`: a primeira
+    migration seguinte quebraria o teste sem nada estar errado, como já aconteceu com a `20261021_20`)."""
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
-    assert scripts.get_heads() == ["20261029_07"]
+    heads = scripts.get_heads()
+    assert len(heads) == 1, f"a árvore bifurcou: {sorted(heads)}"
+    assert "20261029_07" in {r.revision for r in scripts.walk_revisions("base", heads[0])}
     assert scripts.get_revision("20261029_07").down_revision == "20261029_06"
 
 

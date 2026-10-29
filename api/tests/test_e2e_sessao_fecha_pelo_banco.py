@@ -321,6 +321,10 @@ def test_lote_com_sessao_de_outro_aluno_nao_fecha():
     grava como B, e a FK para `telemetria_sessoes` é conferida pelo dono, não pela RLS. Então o lote
     entra (`RETURNING` devolve linha) e quem impede o fechamento é o `AND aluno_id = NEW.aluno_id` do
     gatilho, que é `SECURITY DEFINER` e por isso não tem a RLS de `telemetria_sessoes` para segurá-lo.
+
+    Isto mede a `20261029_07` sozinha. A `20261029_08` passa a recusar o próprio lote de B
+    (`test_e2e_telemetria_so_na_propria_sessao.py`); o filtro do gatilho continua valendo para quem
+    grava sem RLS.
     """
     with _banco() as c:
         s = uuid.uuid4()
