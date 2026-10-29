@@ -34,14 +34,14 @@ describe("historicoParaEnvio", () => {
 });
 
 describe("mensagemDeErro", () => {
-  it("API fria vira aviso de que o Escriba está acordando", () => {
+  it("API fria vira aviso de que a Lumi está acordando", () => {
     expect(mensagemDeErro(new Error("Nao foi possivel conectar na API de personalizacao"))).toMatch(/acordando/);
     expect(mensagemDeErro(new DOMException("The operation was aborted.", "AbortError"))).toMatch(/acordando/);
   });
 
   it("turma alheia, modelo fora e erro genérico", () => {
-    expect(mensagemDeErro(new Error("O Escriba só lê as turmas do professor autenticado."))).toMatch(/suas turmas/);
-    expect(mensagemDeErro(new Error("O Escriba não conseguiu responder agora."))).toMatch(/Não consegui/);
+    expect(mensagemDeErro(new Error("A Lumi só lê as turmas do professor autenticado."))).toMatch(/suas turmas/);
+    expect(mensagemDeErro(new Error("A Lumi não conseguiu responder agora."))).toMatch(/Não consegui/);
     expect(mensagemDeErro(new Error("algo estranho"))).toMatch(/Algo deu errado/);
   });
 });

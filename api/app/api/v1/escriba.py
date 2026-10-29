@@ -33,10 +33,10 @@ async def perguntar_ao_escriba(
     except TurmaNaoPermitida as exc:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="O Escriba só lê as turmas do professor autenticado.",
+            detail="A Lumi só lê as turmas do professor autenticado.",
         ) from exc
     except EscribaIndisponivel as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"code": "escriba_indisponivel", "message": "O Escriba não conseguiu responder agora. Tente de novo em instantes."},
+            detail={"code": "escriba_indisponivel", "message": "A Lumi não conseguiu responder agora. Tente de novo em instantes."},
         ) from exc

@@ -101,3 +101,53 @@
   0% { background-position: -600px 0; }
   100% { background-position: 600px 0; }
 }
+
+/* Barras de rolagem do console: finas, trilho transparente e a alça na cor da
+   borda de campo (--input, 3:1 contra o fundo), como as do app do aluno
+   (mobile/src/utils/rolagemTematica.ts, #376). Sem elas o navegador desenha a
+   barra clara padrão, com setas, sobre o fundo escuro. `:root[data-console-theme]`
+   cobre a rolagem da página e as de Dialog, Select e Popover em portal. Firefox
+   usa `scrollbar-*`; Chrome, Edge e Safari, os pseudo-elementos. */
+/* Só o Firefox usa as propriedades padrão: no Chrome 121+ elas desligam os
+   pseudo-elementos abaixo e a barra volta com as setas. */
+@supports not selector(::-webkit-scrollbar) {
+  .console-shell,
+  :root[data-console-theme],
+  :root[data-console-theme] * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--input)) transparent;
+  }
+}
+.console-shell ::-webkit-scrollbar,
+:root[data-console-theme]::-webkit-scrollbar,
+:root[data-console-theme] ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.console-shell ::-webkit-scrollbar-track,
+:root[data-console-theme]::-webkit-scrollbar-track,
+:root[data-console-theme] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+.console-shell ::-webkit-scrollbar-thumb,
+:root[data-console-theme]::-webkit-scrollbar-thumb,
+:root[data-console-theme] ::-webkit-scrollbar-thumb {
+  background: hsl(var(--input));
+  border-radius: 8px;
+}
+.console-shell ::-webkit-scrollbar-thumb:hover,
+:root[data-console-theme]::-webkit-scrollbar-thumb:hover,
+:root[data-console-theme] ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+/* As setas das pontas somem; é a parte que mais destoa do tema. */
+.console-shell ::-webkit-scrollbar-button,
+:root[data-console-theme]::-webkit-scrollbar-button,
+:root[data-console-theme] ::-webkit-scrollbar-button {
+  display: none;
+}
+.console-shell ::-webkit-scrollbar-corner,
+:root[data-console-theme]::-webkit-scrollbar-corner,
+:root[data-console-theme] ::-webkit-scrollbar-corner {
+  background: transparent;
+}
