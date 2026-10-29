@@ -241,6 +241,9 @@ class Settings(BaseSettings):
     # jobs sem targets pendentes obvios (orfaos de verdade, sem sinal claro de
     # trabalho restante).
     personalizacao_job_stale_processing_min: int = 40
+    # A missao diaria e' uma chamada de LLM com timeout de 90 s, nao geracao de midia: travada,
+    # nao precisa esperar a janela acima (que o worker eleva a ~53 min) para ser retomada.
+    personalizacao_job_stale_missao_diaria_min: int = 5
     # Tentativas de redisparo por geracao (mesmo ciclo_id/source_hash) antes de
     # parar de reclamar/regerar automaticamente. Sem isso, uma geracao que
     # falha sempre do mesmo jeito (ex.: contrato de conteudo incompativel com

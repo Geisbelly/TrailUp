@@ -10,7 +10,8 @@ const PERIGO = "#f87171";
 
 /**
  * Linha das Configurações no celular (mobile-v1, `11-configuracoes.html`, `.linha`):
- * 56px, ícone numa pílula no accent, título e seta. `perigo` pinta de vermelho
+ * 56px, ícone numa pílula no accent, título e seta. Sem cartão próprio: o grupo
+ * (`GrupoConfig`, em settings.tsx) desenha o cartão e os filetes. `perigo` pinta de vermelho
  * (exclusão da conta); `externo` troca a seta pelo ícone de link de fora do app.
  */
 export function LinhaConfig({
@@ -33,10 +34,7 @@ export function LinhaConfig({
     <Pressable
       onPress={onPress}
       accessibilityRole={externo ? "link" : "button"}
-      style={({ pressed }) => [
-        s.linha,
-        { backgroundColor: palette.surfaceElevated, borderColor: palette.border, opacity: pressed ? 0.75 : 1 },
-      ]}
+      style={({ pressed }) => [s.linha, { opacity: pressed ? 0.75 : 1 }]}
     >
       <View style={[s.icone, { backgroundColor: perigo ? "rgba(248,113,113,0.14)" : palette.accentMuted }]}>
         <Feather name={icone} size={17} color={cor} />
@@ -53,9 +51,6 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    marginBottom: 10,
-    borderRadius: 14,
-    borderWidth: 1,
     paddingHorizontal: 14,
   },
   icone: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },

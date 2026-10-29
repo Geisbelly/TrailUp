@@ -63,6 +63,25 @@ export const styles = StyleSheet.create({
     fontSize: 12.5,
     letterSpacing: 0.8,
   },
+  // Celular (mobile-v1, 04-topico.html): leitura sem cartão, com o título em serifa de 24.
+  cardLeituraCelular: {
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    ...shadowStyle({ opacity: 0 }, IS_WEB),
+    elevation: 0,
+    paddingHorizontal: 4,
+    paddingTop: 0,
+  },
+  rotuloLeituraCelularTexto: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  cardTitleLeituraCelular: {
+    fontSize: 24,
+    lineHeight: 30,
+    marginBottom: 10,
+  },
   cardTitleLeituraDesktop: {
     fontSize: 22,
     marginBottom: 12,
