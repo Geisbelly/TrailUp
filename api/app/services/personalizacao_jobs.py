@@ -2097,11 +2097,17 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
             or 15
         ),
     )
+    stale_missao_diaria_min = max(
+        1,
+        int(getattr(app.state.settings, "personalizacao_job_stale_missao_diaria_min", 5) or 5),
+    )
     async with session_factory() as session:
         repo = PersonalizacaoJobsRepository(session)
         job = await repo.claim_next_job(
             stale_processing_min=stale_min,
             partial_retry_delay_sec=partial_retry_delay_sec,
+            stale_missao_diaria_min=stale_missao_diaria_min,
+            classe_ids=list(getattr(app.state.settings, "personalizacao_jobs_classe_ids", None) or []) or None,
         )
     if not job:
         return False
@@ -2156,11 +2162,15 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                     extra={"job_id": str(job.get("id")), "classe_id": job.get("classe_id")},
                 )
                 await session.rollback()
-                await repo.finalize_job(
-                    job_id=str(job["id"]),
-                    status="failed",
-                    last_error=f"texto do molde mantido: {_compact_exception_text(exc)}",
-                )
+                # Finaliza em sessao nova: a do job pode ser a causa. Em 28/10 a conexao veio
+                # somente leitura, o finalize nela falhou de novo e o job ficou em `processing`
+                # ate a janela de stale -- duas vezes seguidas.
+                async with session_factory() as finalize_session:
+                    await PersonalizacaoJobsRepository(finalize_session).finalize_job(
+                        job_id=str(job["id"]),
+                        status="failed",
+                        last_error=f"texto do molde mantido: {_compact_exception_text(exc)}",
+                    )
         return True
 
     if job["kind"] == JOB_KIND_MEDIA_GENERATION:
@@ -2604,7 +2614,9 @@ async def personalizacao_jobs_loop(app: FastAPI) -> None:
 
             app.state.personalizacao_jobs_db_unavailable = False
             app.state.personalizacao_jobs_last_db_error = None
-            logger.exception("Loop de personalizacao_jobs falhou durante execucao")
+            # `exc_info` explicito: a excecao voltou como valor de `_run_once`, entao aqui nao ha
+            # excecao ativa e `logger.exception` gravava "NoneType: None" no lugar do traceback.
+            logger.error("Loop de personalizacao_jobs falhou durante execucao", exc_info=loop_error)
             await asyncio.sleep(poll_sec)
             continue
 

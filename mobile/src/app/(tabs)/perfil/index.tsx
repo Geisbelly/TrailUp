@@ -18,6 +18,7 @@ import tinycolor from "tinycolor2";
 import CardSemDados from "@/components/CardSemDados";
 import { BagModal } from "@/components/bag/BagModal";
 import { StoreModal } from "@/components/loja/StoreModal";
+import { InfoAlunoCelular } from "@/components/perfil/InfoAlunoCelular";
 import { AtalhosPerfil } from "@/components/perfil/AtalhosPerfil";
 import { useAcoesConta } from "@/hooks/useAcoesConta";
 import ConquistaModal from "@/components/ConquistaModal";
@@ -363,7 +364,19 @@ export default function PerfilHome() {
             posicao={metricsViewModel.melhorPosicao?.posicao ?? null}
             palette={shellPalette}
           />
-        ) : perfisRepresentativos.length > 1 ? (
+        ) : null}
+
+        {desktop ? null : (
+          <InfoAlunoCelular
+            turma={classeAtual?.resumo?.materia_nome}
+            professor={classeAtual?.resumo?.professor_nome}
+            email={usuario?.email}
+            classeId={classeAtual?.classe_id}
+            palette={shellPalette}
+          />
+        )}
+
+        {desktop ? null : perfisRepresentativos.length > 1 ? (
           // Cartão do perfil (08-perfil-hub.html, .cartao/.chip-perfil/.rot): o ativo no topo, depois a troca.
           <View
             ref={profileSwitcherGuideRef}
@@ -457,6 +470,19 @@ export default function PerfilHome() {
                 .map((profileKey) => `${getBrainHexConfig(profileKey).label} ${Math.round(afinidadeDe(profileKey))}%`)
                 .join(" · ")}
             </Text>
+            {/* Três números da jornada (08-perfil-hub.html, .mini). */}
+            <View style={styles.mini}>
+              {[
+                ["Turma", classeAtual?.resumo?.materia_nome ?? "—"],
+                ["Sequência", `${sequenciaDeDias(metricsViewModel.semanaDiaria)} ${sequenciaDeDias(metricsViewModel.semanaDiaria) === 1 ? "dia" : "dias"}`],
+                ["No rank", metricsViewModel.melhorPosicao?.posicao ? `${metricsViewModel.melhorPosicao.posicao}º` : "—"],
+              ].map(([rotulo, valor]) => (
+                <View key={rotulo} style={[styles.miniCaixa, { backgroundColor: tinycolor(shellPalette.background).setAlpha(0.55).toRgbString() }]}>
+                  <Text style={[styles.miniRotulo, { color: shellPalette.textSubtle }]}>{rotulo}</Text>
+                  <Text numberOfLines={1} style={[styles.miniValor, { color: shellPalette.text }]}>{valor}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         ) : null}
     </>
@@ -966,6 +992,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   afinidades: { flexDirection: "row", height: 10, borderRadius: 999, overflow: "hidden", marginTop: 14, marginBottom: 6, marginHorizontal: 16 },
+  mini: { flexDirection: "row", gap: 8, marginTop: 12, paddingHorizontal: 16 },
+  miniCaixa: { flex: 1, borderRadius: 10, padding: 10, alignItems: "center" },
+  miniRotulo: { fontFamily: FontFamily.interMedium, fontSize: 12 },
+  miniValor: { fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: "700", marginTop: 2 },
   afinidadesLegenda: { fontFamily: FontFamily.interMedium, fontSize: 12.5, lineHeight: 19, marginHorizontal: 16 },
   profileOptionCheck: { position: "absolute", top: 6, right: 6 },
   profileOptionLabel: {

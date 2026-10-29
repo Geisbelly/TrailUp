@@ -10,27 +10,24 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import tinycolor from "tinycolor2";
 
 import CardSemDados from "@/components/CardSemDados";
 import ConquistaModal from "@/components/ConquistaModal";
 import { BibliotecaDesktop } from "@/components/web/BibliotecaDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { getAchievementArtwork } from "@/constants/achievementImages";
-import { JourneySymbol } from "@/components/JourneySymbol";
-import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
+import { HallBackground } from "@/components/HallTheme";
 import {
   SectionGuideButton,
   SectionGuideStep,
 } from "@/components/SectionGuideButton";
 import {
   BrainHexProfile,
-  getBrainHexConfig,
   normalizeBrainHexProfile,
 } from "@/constants/profileImages";
 import { useUsuario } from "@/context/SessaoContext";
 import { Conquista, ConquistaBibliotecaItem } from "@/models/Conquista";
-import { Color, FontFamily } from "@/styles/GlobalStyle";
+import { FontFamily } from "@/styles/GlobalStyle";
 import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -39,6 +36,16 @@ import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
+
+type FiltroBiblioteca = "todas" | "concluida" | "em_progresso" | "bloqueada";
+const FILTROS_BIBLIOTECA: { chave: FiltroBiblioteca; rotulo: string }[] = [
+  { chave: "todas", rotulo: "Todas" },
+  { chave: "concluida", rotulo: "Concluídas" },
+  { chave: "em_progresso", rotulo: "Em progresso" },
+  { chave: "bloqueada", rotulo: "Bloqueadas" },
+];
+/** Verde de "concluída" fixo, não derivado do accent (decisão de contraste do CLAUDE.md). */
+const SUCESSO = "#62db9b";
 
 export default function BibliotecaConquistasScreen() {
   const { usuario } = useUsuario();
@@ -55,10 +62,7 @@ export default function BibliotecaConquistasScreen() {
     const resolved = resolveRepresentativeBrainHexProfiles(usuario?.perfis);
     return resolved.length > 0 ? resolved : [perfil];
   }, [perfil, usuario?.perfis]);
-  const hexConfig = getBrainHexConfig(perfil);
   const shellPalette = useMemo(() => getProfileShellPalette(perfil), [perfil]);
-  const accent = tinycolor(hexConfig.color).lighten(4).toHexString();
-  const gold = tinycolor(shellPalette.accent).lighten(10).toHexString();
 
   const loadBiblioteca = useCallback(async () => {
     if (!usuario?.id) {
@@ -94,55 +98,21 @@ export default function BibliotecaConquistasScreen() {
     () => itens.filter((item) => item.status === "concluida"),
     [itens],
   );
-  const conquistasPerfil = useMemo(
-    () => itens.filter((item) => item.conquista.escopo === "perfil"),
-    [itens],
-  );
-  const conquistasComuns = useMemo(
-    () => itens.filter((item) => item.conquista.escopo === "comum"),
-    [itens],
-  );
 
   const percentualConclusao = useMemo(() => {
     if (!itens.length) return 0;
     return Math.round((concluidas.length / itens.length) * 100);
   }, [concluidas.length, itens.length]);
 
-  const secoes = useMemo(() => {
-    const buildGroups = (scopeKey: string, scopeItems: ConquistaBibliotecaItem[]) =>
-      [
-        { key: "concluidas", label: "Concluídas", status: "concluida" },
-        { key: "em-progresso", label: "Em progresso", status: "em_progresso" },
-        { key: "bloqueadas", label: "Bloqueadas", status: "bloqueada" },
-      ]
-        .map((group) => ({
-          ...group,
-          key: `${scopeKey}:${group.key}`,
-          items: scopeItems.filter((item) => item.status === group.status),
-        }))
-        .filter((group) => group.items.length > 0);
-
-    return [
-      ...perfisRepresentativos.map((profileKey) => {
-        const profileConfig = getBrainHexConfig(profileKey);
-        const profileItems = conquistasPerfil.filter(
-          (item) => item.conquista.perfil_alvo === profileKey,
-        );
-        return {
-          key: `perfil:${profileKey}`,
-          title: `Conquistas de ${profileConfig.label}`,
-          subtitle: "Metas ligadas a um dos seus perfis BrainHex representativos.",
-          groups: buildGroups(`perfil:${profileKey}`, profileItems),
-        };
-      }),
-      {
-        key: "comuns",
-        title: "Conquistas da plataforma",
-        subtitle: "Marcos comuns de estudo e uso do TrailUp.",
-        groups: buildGroups("comuns", conquistasComuns),
-      },
-    ].filter((section) => section.groups.length > 0);
-  }, [conquistasComuns, conquistasPerfil, perfisRepresentativos]);
+  // Celular (mobile-v1, 09-biblioteca-conquistas.html): uma grade só, com o filtro segmentado.
+  const [filtro, setFiltro] = useState<FiltroBiblioteca>("todas");
+  const emProgresso = useMemo(() => itens.filter((item) => item.status === "em_progresso"), [itens]);
+  const visiveis = useMemo(() => {
+    const ordem = { concluida: 0, em_progresso: 1, bloqueada: 2 } as Record<string, number>;
+    return [...itens]
+      .filter((item) => filtro === "todas" || item.status === filtro)
+      .sort((a, b) => (ordem[a.status] ?? 3) - (ordem[b.status] ?? 3));
+  }, [filtro, itens]);
 
   const profileEmphasis = getProfileGuideEmphasis(perfil, "achievements");
   const guideSteps = useMemo<SectionGuideStep[]>(
@@ -270,83 +240,42 @@ export default function BibliotecaConquistasScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View
-          ref={summaryGuideRef}
-          collapsable={false}
-          style={[
-            styles.summaryCard,
-            {
-              backgroundColor: shellPalette.surfaceElevated,
-              borderColor: shellPalette.border,
-            },
-          ]}
+        {/* Os três números (09-biblioteca-conquistas.html, .numeros). */}
+        <View ref={summaryGuideRef} collapsable={false} style={styles.numeros}>
+          {[
+            [String(concluidas.length), "Conquistadas"],
+            [String(emProgresso.length), "Em progresso"],
+            [`${percentualConclusao}%`, "Completo"],
+          ].map(([valor, rotulo]) => (
+            <View key={rotulo} style={[styles.numero, { backgroundColor: shellPalette.surface, borderColor: shellPalette.border }]}>
+              <Text style={[styles.numeroValor, { color: shellPalette.text }]}>{valor}</Text>
+              <Text style={[styles.numeroRotulo, { color: shellPalette.textSubtle }]}>{rotulo}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Seletor segmentado (.segm): rola de lado se não couber. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={[styles.segm, { backgroundColor: shellPalette.surface, borderColor: shellPalette.border }]}
+          contentContainerStyle={styles.segmConteudo}
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-            <JourneySymbol section="achievements" size={48} />
-            <Text style={[styles.summaryTitle, { color: shellPalette.text, flex: 1 }]}>Biblioteca de Conquistas</Text>
-          </View>
-          <Text style={[styles.summarySubtitle, { color: shellPalette.textMuted }]}>
-            Acompanhe desbloqueios, progresso e metas pendentes.
-          </Text>
-
-          <View style={styles.scopeSummaryRow}>
-            <View style={[styles.scopeChip, { borderColor: shellPalette.borderStrong }]}>
-              <View style={styles.representativeIcons}>
-                {perfisRepresentativos.map((profileKey) => {
-                  const profileConfig = getBrainHexConfig(profileKey);
-                  return (
-                    <MaterialCommunityIcons
-                      key={profileKey}
-                      name={profileConfig.icon}
-                      size={13}
-                      color={shellPalette.accent}
-                    />
-                  );
-                })}
-              </View>
-              <Text style={[styles.scopeChipText, { color: shellPalette.textMuted }]}>
-                {conquistasPerfil.length} dos perfis
-              </Text>
-            </View>
-            <View style={[styles.scopeChip, { borderColor: shellPalette.borderStrong }]}>
-              <MaterialCommunityIcons name="earth" size={13} color={gold} />
-              <Text style={[styles.scopeChipText, { color: shellPalette.textMuted }]}>
-                {conquistasComuns.length} comuns
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryMetric}>
-              <Text style={[styles.summaryValue, { color: accent }]}>
-                {itens.length}
-              </Text>
-              <Text style={[styles.summaryLabel, { color: shellPalette.textSubtle }]}>
-                Total
-              </Text>
-            </View>
-            <View style={styles.summaryMetric}>
-              <Text style={[styles.summaryValue, { color: gold }]}>
-                {concluidas.length}
-              </Text>
-              <Text style={[styles.summaryLabel, { color: shellPalette.textSubtle }]}>
-                Concluídas
-              </Text>
-            </View>
-            <View style={styles.summaryMetric}>
-              <Text style={[styles.summaryValue, { color: shellPalette.accent }]}>
-                {percentualConclusao}%
-              </Text>
-              <Text style={[styles.summaryLabel, { color: shellPalette.textSubtle }]}>
-                Progresso
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.ornamentWrap}>
-          <OrnamentDivider color={Color.colorWhite} />
-        </View>
+          {FILTROS_BIBLIOTECA.map(({ chave, rotulo }) => {
+            const ativo = filtro === chave;
+            return (
+              <TouchableOpacity
+                key={chave}
+                accessibilityRole="button"
+                accessibilityState={{ selected: ativo }}
+                onPress={() => setFiltro(chave)}
+                style={[styles.segmOpcao, ativo ? { backgroundColor: shellPalette.accent } : null]}
+              >
+                <Text style={[styles.segmTexto, { color: ativo ? shellPalette.background : shellPalette.textMuted }]}>{rotulo}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {loading ? (
           <Text style={[styles.helperText, { color: shellPalette.textMuted }]}>
@@ -358,78 +287,60 @@ export default function BibliotecaConquistasScreen() {
             description="Conclua atividades e tópicos para liberar sua biblioteca."
             accentColor={shellPalette.accent}
           />
+        ) : visiveis.length === 0 ? (
+          <Text style={[styles.helperText, { color: shellPalette.textSubtle }]}>Nenhuma conquista neste filtro.</Text>
         ) : (
-          secoes.map((section) => (
-            <View key={section.key} style={styles.scopeSection}>
-              <Text style={[styles.scopeTitle, { color: shellPalette.text }]}>
-                {section.title}
-              </Text>
-              <Text style={[styles.scopeSubtitle, { color: shellPalette.textMuted }]}>
-                {section.subtitle}
-              </Text>
-
-              {section.groups.map((group) => (
-                <View key={group.key} style={styles.group}>
-                  <Text style={[styles.groupTitle, { color: shellPalette.textSubtle }]}>
-                    {group.label} ({group.items.length})
+          <View style={styles.grade}>
+            {visiveis.map((item) => {
+              const percent = clamp(item.progressoPercentual, 0, 100);
+              const id = item.conquista.conquista_id;
+              const feita = item.status === "concluida";
+              const bloqueada = item.status === "bloqueada";
+              return (
+                <TouchableOpacity
+                  key={id}
+                  style={[
+                    styles.celula,
+                    {
+                      backgroundColor: shellPalette.surface,
+                      borderColor: feita ? shellPalette.accentSoft : shellPalette.border,
+                    },
+                  ]}
+                  activeOpacity={0.75}
+                  onPress={() => setSelected(item.conquista)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.conquista.nome ?? "Conquista"}: ${feita ? "conquistada" : bloqueada ? "bloqueada" : `${Math.round(percent)}%`}`}
+                >
+                  <MaterialCommunityIcons
+                    name={feita ? "check" : bloqueada ? "lock-outline" : "progress-clock"}
+                    size={16}
+                    color={feita ? SUCESSO : shellPalette.textSubtle}
+                    style={styles.celulaSelo}
+                  />
+                  <Image
+                    source={getAchievementArtwork(item.conquista)}
+                    resizeMode="contain"
+                    style={[styles.celulaArte, bloqueada ? { opacity: 0.35 } : null]}
+                    accessible={false}
+                  />
+                  <Text
+                    numberOfLines={2}
+                    style={[styles.celulaNome, { color: bloqueada ? shellPalette.textSubtle : shellPalette.text }]}
+                  >
+                    {item.conquista.nome ?? "Conquista"}
                   </Text>
-
-                  {/* Celular (mobile-v1, 09-biblioteca-conquistas.html): grade de 3 colunas. */}
-                  <View style={styles.grade}>
-                    {group.items.map((item) => {
-                      const percent = clamp(item.progressoPercentual, 0, 100);
-                      const id = item.conquista.conquista_id;
-                      const feita = item.status === "concluida";
-                      const bloqueada = item.status === "bloqueada";
-                      return (
-                        <TouchableOpacity
-                          key={`${group.key}:${id}`}
-                          style={[
-                            styles.celula,
-                            {
-                              backgroundColor: shellPalette.surface,
-                              borderColor: feita ? shellPalette.accentSoft : shellPalette.border,
-                            },
-                          ]}
-                          activeOpacity={0.75}
-                          onPress={() => setSelected(item.conquista)}
-                          accessibilityRole="button"
-                          accessibilityLabel={`${item.conquista.nome ?? "Conquista"}: ${feita ? "conquistada" : bloqueada ? "bloqueada" : `${Math.round(percent)}%`}`}
-                        >
-                          <MaterialCommunityIcons
-                            name={feita ? "check-circle" : bloqueada ? "lock-outline" : "progress-clock"}
-                            size={16}
-                            color={feita ? gold : shellPalette.textSubtle}
-                            style={styles.celulaSelo}
-                          />
-                          <Image
-                            source={getAchievementArtwork(item.conquista)}
-                            resizeMode="contain"
-                            style={[styles.celulaArte, bloqueada ? { opacity: 0.35 } : null]}
-                            accessible={false}
-                          />
-                          <Text
-                            numberOfLines={2}
-                            style={[styles.celulaNome, { color: bloqueada ? shellPalette.textSubtle : shellPalette.text }]}
-                          >
-                            {item.conquista.nome ?? "Conquista"}
-                          </Text>
-                          {feita ? null : (
-                            <View style={styles.celulaProg}>
-                              <View style={[styles.track, styles.celulaTrilho, { backgroundColor: shellPalette.surfaceElevated }]}>
-                                <View style={[styles.fill, { width: `${Math.max(4, percent)}%`, backgroundColor: shellPalette.accent }]} />
-                              </View>
-                              <Text style={[styles.celulaPct, { color: shellPalette.textSubtle }]}>{Math.round(percent)}%</Text>
-                            </View>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-              ))}
-            </View>
-          ))
+                  {feita || bloqueada ? null : (
+                    <View style={styles.celulaProg}>
+                      <View style={[styles.track, styles.celulaTrilho, { backgroundColor: shellPalette.surfaceElevated }]}>
+                        <View style={[styles.fill, { width: `${Math.max(4, percent)}%`, backgroundColor: shellPalette.accent }]} />
+                      </View>
+                      <Text style={[styles.celulaPct, { color: shellPalette.textSubtle }]}>{Math.round(percent)}%</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         )}
       </ScrollView>
 
@@ -441,6 +352,14 @@ export default function BibliotecaConquistasScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   grade: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  numeros: { flexDirection: "row", gap: 8 },
+  numero: { flex: 1, borderRadius: 12, borderWidth: 1, paddingVertical: 12, paddingHorizontal: 8, alignItems: "center" },
+  numeroValor: { fontFamily: FontFamily.inikaBold, fontSize: 24 },
+  numeroRotulo: { fontFamily: FontFamily.interMedium, fontSize: 12 },
+  segm: { flexGrow: 0, marginTop: 14, marginBottom: 12, borderRadius: 12, borderWidth: 1 },
+  segmConteudo: { gap: 3, padding: 3 },
+  segmOpcao: { minHeight: 40, paddingHorizontal: 10, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  segmTexto: { fontFamily: FontFamily.interMedium, fontSize: 12.5, fontWeight: "700" },
   celula: {
     // 3 por linha: (100% - 2 espaços de 8px) / 3.
     width: "31.6%",
@@ -468,95 +387,10 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 38,
   },
-  summaryCard: {
-    borderWidth: 1,
-    borderRadius: 18,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    marginBottom: 10,
-  },
-  summaryTitle: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 17,
-    marginBottom: 2,
-  },
-  summarySubtitle: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  scopeSummaryRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 12,
-  },
-  scopeChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-  },
-  scopeChipText: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 10,
-  },
-  representativeIcons: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-  },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  summaryMetric: {
-    flex: 1,
-    alignItems: "center",
-  },
-  summaryValue: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 20,
-  },
-  summaryLabel: {
-    marginTop: 2,
-    fontFamily: FontFamily.interMedium,
-    fontSize: 11,
-  },
-  ornamentWrap: {
-    marginBottom: 12,
-    opacity: 0.75,
-  },
   helperText: {
     textAlign: "center",
     marginTop: 26,
     fontFamily: FontFamily.interMedium,
-  },
-  group: {
-    marginBottom: 14,
-  },
-  scopeSection: {
-    marginBottom: 18,
-  },
-  scopeTitle: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 17,
-  },
-  scopeSubtitle: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 12,
-    marginTop: 2,
-    marginBottom: 12,
-  },
-  groupTitle: {
-    fontFamily: FontFamily.inikaBold,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    fontSize: 12,
-    marginBottom: 8,
   },
   item: {
     flexDirection: "row",

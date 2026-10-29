@@ -2371,6 +2371,7 @@ async def test_job_processes_targets_with_bounded_concurrency_and_distinct_sessi
         *,
         stale_processing_min,
         partial_retry_delay_sec,
+        **_kwargs,
     ):
         nonlocal claimed
         assert stale_processing_min >= 53
@@ -2489,7 +2490,7 @@ async def test_job_processes_one_profile_per_tick_by_default(monkeypatch) -> Non
     claimed = False
     processed_ids: list[int] = []
 
-    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec, **_kwargs):
         nonlocal claimed
         if claimed:
             return None
@@ -2583,7 +2584,7 @@ async def test_job_does_not_mark_target_completed_when_record_is_not_pronto(monk
     by_id = {target["id"]: dict(target)}
     claimed = False
 
-    async def _claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+    async def _claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec, **_kwargs):
         nonlocal claimed
         if claimed:
             return None
@@ -2672,6 +2673,7 @@ async def test_job_keeps_deferred_target_pending_without_consuming_retry(
         *,
         stale_processing_min,
         partial_retry_delay_sec,
+        **_kwargs,
     ):
         assert stale_processing_min >= 53
         assert partial_retry_delay_sec == 15
@@ -2784,7 +2786,7 @@ async def test_job_media_generation_wiring_calls_orchestrator_and_finalizes_comp
 
     claimed = False
 
-    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec, **_kwargs):
         nonlocal claimed
         if claimed:
             return None
@@ -2890,7 +2892,7 @@ async def _run_media_generation_wiring(monkeypatch, *, targets, refresh_counters
     finalized: list[tuple[str, str | None]] = []
     claimed = False
 
-    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec, **_kwargs):
         nonlocal claimed
         if claimed:
             return None
@@ -3052,7 +3054,7 @@ async def test_job_fails_target_stuck_too_long_on_microservice_contract_gate(
     status_history: list[tuple[str, int, str | None]] = []
     finalized: list[str] = []
 
-    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec, **_kwargs):
         return job
 
     async def get_targets(_self, _job_id):
@@ -3167,7 +3169,7 @@ async def test_job_keeps_recent_microservice_contract_gate_target_pending(
     status_history: list[tuple[str, int, str | None]] = []
     finalized: list[str] = []
 
-    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec):
+    async def claim_next_job(_self, *, stale_processing_min, partial_retry_delay_sec, **_kwargs):
         return job
 
     async def get_targets(_self, _job_id):
@@ -3309,3 +3311,35 @@ def test_target_base_nao_vira_string_none() -> None:
     fonte = inspect.getsource(personalizacao_jobs._process_media_render_target)
     assert 'aluno_id = str(target["aluno_id"])\n' not in fonte
     assert 'if target.get("aluno_id") is not None else None' in fonte
+
+
+@pytest.mark.asyncio
+async def test_loop_registra_o_traceback_da_excecao_real(monkeypatch, caplog) -> None:
+    # A excecao volta como VALOR de `_run_once`, entao `logger.exception` chamado fora do
+    # `except` gravava "NoneType: None" no lugar do traceback. Em producao o loop falhou
+    # 2.305 vezes seguidas sem dizer por que (28/10).
+    chamadas = 0
+
+    async def process_once(_app):
+        nonlocal chamadas
+        chamadas += 1
+        if chamadas == 1:
+            raise ValueError("erro real do worker")
+        raise asyncio.CancelledError
+
+    monkeypatch.setattr(jobs_module, "process_personalizacao_job_once", process_once)
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            settings=SimpleNamespace(personalizacao_job_concurrency=1, personalizacao_job_poll_sec=1)
+        )
+    )
+
+    with caplog.at_level("ERROR", logger=jobs_module.logger.name):
+        with pytest.raises(asyncio.CancelledError):
+            await jobs_module.personalizacao_jobs_loop(app)
+
+    falhas = [r for r in caplog.records if "Loop de personalizacao_jobs falhou" in r.getMessage()]
+    assert len(falhas) == 1
+    assert falhas[0].exc_info is not None
+    assert isinstance(falhas[0].exc_info[1], ValueError)
+    assert "erro real do worker" in caplog.text

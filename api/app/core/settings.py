@@ -230,6 +230,10 @@ class Settings(BaseSettings):
     retencao_externa_lote: int = 50
     retencao_externa_idade_minima_segundos: int = 600
     personalizacao_job_concurrency: int = 2
+    # Restringe o worker local a estas turmas (ex.: PERSONALIZACAO_JOBS_CLASSE_IDS=[66]).
+    # Vazio = todas, que e o que a producao usa. Sem isso, uma API subida na maquina de
+    # alguem para depurar processa a fila compartilhada inteira do Supabase (#652).
+    personalizacao_jobs_classe_ids: list[int] = []
     personalizacao_job_poll_sec: int = 5
     personalizacao_job_max_retries: int = 3
     personalizacao_job_partial_retry_delay_sec: int = 15
@@ -241,6 +245,9 @@ class Settings(BaseSettings):
     # jobs sem targets pendentes obvios (orfaos de verdade, sem sinal claro de
     # trabalho restante).
     personalizacao_job_stale_processing_min: int = 40
+    # A missao diaria e' uma chamada de LLM com timeout de 90 s, nao geracao de midia: travada,
+    # nao precisa esperar a janela acima (que o worker eleva a ~53 min) para ser retomada.
+    personalizacao_job_stale_missao_diaria_min: int = 5
     # Tentativas de redisparo por geracao (mesmo ciclo_id/source_hash) antes de
     # parar de reclamar/regerar automaticamente. Sem isso, uma geracao que
     # falha sempre do mesmo jeito (ex.: contrato de conteudo incompativel com

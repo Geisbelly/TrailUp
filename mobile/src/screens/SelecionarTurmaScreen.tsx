@@ -1,8 +1,8 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "@/database/supabase";
+import { getProfileArtwork } from "@/constants/designAssets";
 import type { Classe } from "@/models/Classe";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -16,6 +16,19 @@ type Props = {
   onRetry: () => Promise<void>;
 };
 
+/** % de tópicos concluídos da turma. É só o que cabe aqui: o cálculo completo da Trilha usa o progresso personalizado, que esta tela não tem. */
+function percentualDaTurma(classe: Classe): number {
+  const topicos = classe.topicos ?? [];
+  if (!topicos.length) return 0;
+  const concluidos = topicos.filter((t) => String(t.status ?? "").toLowerCase().includes("concl") || Number(t.percentual_concluido ?? 0) >= 100).length;
+  return Math.round((concluidos / topicos.length) * 100);
+}
+
+/**
+ * Escolha de turma (mobile-v1, `03-trilha.html`, estado "Escolha de turma"): o cenário
+ * do perfil ao fundo, o título à esquerda e, em cada turma, a matéria numa pílula, o
+ * professor, o progresso e o botão "Entrar na turma".
+ */
 export default function SelecionarTurmaScreen({ classes, carregando, erro, perfil, onSelect, onRetry }: Props) {
   const palette = getProfileShellPalette(perfil);
   const [saindo, setSaindo] = useState(false);
@@ -37,12 +50,17 @@ export default function SelecionarTurmaScreen({ classes, carregando, erro, perfi
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: palette.background }]}>
+      <View accessible={false} style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
+        <Image source={getProfileArtwork(perfil, "trail")} resizeMode="cover" style={styles.cenario} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: palette.background, opacity: 0.3 }]} />
+      </View>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.heading}>
-          <MaterialCommunityIcons name="school-outline" size={44} color={palette.accent} accessible={false} />
           <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>Escolha sua turma</Text>
           <Text style={[styles.description, { color: palette.textMuted }]}>
-            Em qual turma você quer estudar agora? Toque em uma turma para entrar na sua trilha.
+            {classes.length > 0
+              ? `Você está em ${classes.length} ${classes.length === 1 ? "turma" : "turmas"}. Escolha por onde continuar.`
+              : "Em qual turma você quer estudar agora?"}
           </Text>
         </View>
 
@@ -68,26 +86,34 @@ export default function SelecionarTurmaScreen({ classes, carregando, erro, perfi
             {classes.map((classe) => {
               const materia = classe.resumo?.materia_nome || "Turma";
               const professor = classe.resumo?.professor_nome;
+              const progresso = percentualDaTurma(classe);
               return (
                 <Pressable
                   key={classe.classe_id}
                   accessibilityRole="button"
-                  accessibilityLabel={`Entrar em ${materia}, turma ${classe.classe_id}${professor ? `, professor ${professor}` : ""}`}
+                  accessibilityLabel={`Entrar em ${materia}, turma ${classe.classe_id}${professor ? `, professor ${professor}` : ""}, ${progresso}% concluído`}
                   disabled={saindo}
                   onPress={() => onSelect(classe.classe_id)}
-                  style={({ pressed }) => [styles.card, styles.classCard, {
+                  style={({ pressed }) => [styles.card, {
                     backgroundColor: pressed ? palette.surfaceElevated : palette.surface,
                     borderColor: pressed ? palette.accent : palette.border,
                     opacity: saindo ? 0.5 : 1,
                   }]}
                 >
-                  <View style={styles.classInfo}>
-                    <Text style={[styles.caption, { color: palette.accent }]}>TURMA {classe.classe_id}</Text>
-                    <Text style={[styles.cardTitle, { color: palette.text }]}>{materia}</Text>
-                    {professor ? <Text style={[styles.professor, { color: palette.textMuted }]}>Professor(a): {professor}</Text> : null}
-                    <Text style={[styles.enterLabel, { color: palette.accent }]}>Entrar na turma</Text>
+                  <View style={[styles.materia, { backgroundColor: palette.accentMuted, borderColor: palette.accentSoft }]}>
+                    <Text style={[styles.materiaTexto, { color: palette.accent }]}>{materia.toUpperCase()}</Text>
                   </View>
-                  <MaterialCommunityIcons name="chevron-right" size={28} color={palette.accent} accessible={false} />
+                  <Text style={[styles.cardTitle, { color: palette.text }]}>{materia}</Text>
+                  <Text style={[styles.professor, { color: palette.textMuted }]}>
+                    {professor ? `Prof. ${professor} · ` : ""}Turma {classe.classe_id}
+                  </Text>
+                  <View style={[styles.trilho, { backgroundColor: palette.background, borderColor: palette.border }]}>
+                    <View style={[styles.preenchido, { width: `${progresso}%`, backgroundColor: palette.accent }]} />
+                  </View>
+                  <Text style={[styles.progresso, { color: palette.textMuted }]}>{progresso}% concluído</Text>
+                  <View style={[styles.entrar, { borderColor: palette.accent }]}>
+                    <Text style={[styles.entrarTexto, { color: palette.text }]}>Entrar na turma</Text>
+                  </View>
                 </Pressable>
               );
             })}
@@ -115,19 +141,23 @@ export default function SelecionarTurmaScreen({ classes, carregando, erro, perfi
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { flexGrow: 1, width: "100%", maxWidth: 600, alignSelf: "center", padding: 24, paddingBottom: 32, gap: 16 },
-  heading: { alignItems: "center", gap: 12, paddingTop: 20, paddingBottom: 12 },
-  title: { fontFamily: FontFamily.poppinsExtraBold, fontSize: 26, textAlign: "center" },
-  description: { fontFamily: FontFamily.interMedium, fontSize: 14, lineHeight: 22, textAlign: "center" },
+  cenario: { width: "100%", height: "100%" },
+  content: { flexGrow: 1, width: "100%", maxWidth: 600, alignSelf: "center", paddingHorizontal: 20, paddingTop: 32, paddingBottom: 32, gap: 14 },
+  heading: { gap: 6, paddingBottom: 4 },
+  title: { fontFamily: FontFamily.inikaBold, fontSize: 26 },
+  description: { fontFamily: FontFamily.interMedium, fontSize: 14, lineHeight: 21 },
   feedback: { alignItems: "center", gap: 16, paddingVertical: 28 },
   list: { gap: 12 },
-  card: { borderWidth: 1, borderRadius: 16, padding: 20 },
-  classCard: { flexDirection: "row", alignItems: "center", gap: 16, minHeight: 120 },
-  classInfo: { flex: 1, gap: 6 },
-  caption: { fontFamily: FontFamily.interMedium, fontSize: 11, letterSpacing: 1.2 },
-  cardTitle: { fontFamily: FontFamily.poppinsExtraBold, fontSize: 18 },
-  professor: { fontFamily: FontFamily.interMedium, fontSize: 13, lineHeight: 20 },
-  enterLabel: { fontFamily: FontFamily.interMedium, fontSize: 14, marginTop: 8 },
+  card: { borderWidth: 1, borderRadius: 14, padding: 16, gap: 8 },
+  materia: { alignSelf: "flex-start", borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
+  materiaTexto: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
+  cardTitle: { fontFamily: FontFamily.inikaBold, fontSize: 20 },
+  professor: { fontFamily: FontFamily.interMedium, fontSize: 13, lineHeight: 19 },
+  trilho: { height: 6, borderRadius: 999, borderWidth: 1, overflow: "hidden", marginTop: 4 },
+  preenchido: { height: "100%" },
+  progresso: { fontFamily: FontFamily.interMedium, fontSize: 13 },
+  entrar: { minHeight: 48, borderWidth: 1, borderRadius: 8, alignItems: "center", justifyContent: "center", marginTop: 6 },
+  entrarTexto: { fontFamily: FontFamily.interMedium, fontSize: 14.5, fontWeight: "700" },
   action: { minHeight: 48, borderWidth: 1, borderColor: "transparent", borderRadius: 12, padding: 12, alignItems: "center", justifyContent: "center" },
   actionText: { fontFamily: FontFamily.interMedium, fontSize: 14 },
 });

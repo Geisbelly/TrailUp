@@ -1825,3 +1825,25 @@ async def test_update_lote_analysis_erro_em_branco_vira_null() -> None:
 
     _sql, params = session.calls[-1]
     assert params["analysis_error"] is None
+
+
+@pytest.mark.asyncio
+async def test_claim_missao_diaria_travada_tem_janela_propria() -> None:
+    # A janela geral (~53 min) e' dimensionada para geracao de midia. A missao diaria e' uma
+    # chamada de LLM com timeout de 90 s; travada, ficava quase uma hora sem nova tentativa.
+    session = RecordingSession(
+        [
+            ScalarResult(True),
+            MappingResult([_job_row()]),
+        ]
+    )
+    repo = PersonalizacaoJobsRepository(session)
+
+    await repo.claim_next_job(stale_processing_min=53, stale_missao_diaria_min=5)
+
+    claim_sql, params = next((sql, p) for sql, p in session.calls if "WITH next_job AS" in sql)
+    processing_clause = claim_sql.split("candidate.status = 'processing'", 1)[1]
+    assert "candidate.kind = 'missao_diaria'" in processing_clause
+    assert "make_interval(mins => :stale_missao_diaria_min)" in processing_clause
+    assert params["stale_missao_diaria_min"] == 5
+    assert params["stale_processing_min"] == 53

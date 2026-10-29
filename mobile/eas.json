@@ -9,10 +9,16 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_APITRAIUP_URL": "https://api.trailup.promora.dev.br"
+      }
     },
     "production": {
       "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_APITRAIUP_URL": "https://api.trailup.promora.dev.br"
+      },
       "android": {
         "buildType": "apk"    
       },
@@ -22,6 +28,9 @@
     },
     "productionAAB": {
       "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_APITRAIUP_URL": "https://api.trailup.promora.dev.br"
+      },
       "android": {
         "buildType": "app-bundle"
       },

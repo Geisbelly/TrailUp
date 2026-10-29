@@ -3,7 +3,7 @@
 import asyncio
 from datetime import date
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -318,3 +318,74 @@ async def test_worker_excecao_vira_failed_com_molde_mantido(monkeypatch) -> None
     assert await jobs_module.process_personalizacao_job_once(app) is True
     assert finalizados[0][0] == "failed"
     assert "texto do molde mantido" in finalizados[0][1]
+
+
+@pytest.mark.asyncio
+async def test_worker_finaliza_em_sessao_nova_quando_a_do_job_nao_aceita_escrita(monkeypatch) -> None:
+    # Em 28/10 a reescrita caiu numa conexao somente leitura; o finalize_job na MESMA sessao
+    # falhou de novo e o job ficou em `processing` ate a janela de stale -- duas vezes.
+    from app.services import personalizacao_jobs as jobs_module
+
+    job = {"id": "job-md", "classe_id": 65, "kind": "missao_diaria", "payload": {"dia": "2026-10-28"}}
+    sessoes: list[_Sessao] = []
+    finalizados: list[tuple[int, str]] = []
+
+    class _Fabrica:
+        async def __aenter__(self):
+            sessao = _Sessao()
+            sessoes.append(sessao)
+            return sessao
+
+        async def __aexit__(self, *_args):
+            return False
+
+    async def claim_next_job(_self, **_kwargs):
+        return job
+
+    async def finalize_job(_self, *, job_id, status, last_error):
+        indice = sessoes.index(_self.session)
+        if indice == 1:  # a sessao em que o job rodou
+            raise RuntimeError("cannot execute UPDATE in a read-only transaction")
+        finalizados.append((indice, status))
+
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.claim_next_job", claim_next_job
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.finalize_job", finalize_job
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "processar_job_missao_diaria",
+        AsyncMock(side_effect=RuntimeError("cannot execute UPDATE in a read-only transaction")),
+    )
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=_Fabrica,
+            settings=SimpleNamespace(personalizacao_job_stale_processing_min=40),
+        )
+    )
+
+    assert await jobs_module.process_personalizacao_job_once(app) is True
+    assert finalizados == [(2, "failed")]
+
+
+@pytest.mark.asyncio
+async def test_worker_pede_a_janela_curta_da_missao_diaria_no_claim() -> None:
+    from app.services import personalizacao_jobs as jobs_module
+
+    claim = AsyncMock(return_value=None)
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=_SessionCtx,
+            settings=SimpleNamespace(personalizacao_job_stale_processing_min=40),
+        )
+    )
+
+    with patch("app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.claim_next_job", claim):
+        assert await jobs_module.process_personalizacao_job_once(app) is False
+
+    kwargs = claim.await_args.kwargs
+    assert kwargs["stale_missao_diaria_min"] == 5
+    assert kwargs["stale_processing_min"] >= 53

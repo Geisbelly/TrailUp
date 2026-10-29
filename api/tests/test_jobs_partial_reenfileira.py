@@ -50,7 +50,7 @@ def test_partial_nao_conta_como_job_aberto() -> None:
 def test_worker_so_reivindica_pending() -> None:
     """Prova a premissa do teste acima, em vez de assumi-la."""
     fonte = _fonte(CONSULTAS)
-    assert "WHERE candidate.status = 'pending'" in fonte
+    assert "candidate.status = 'pending'" in fonte
 
 
 def test_partial_recebe_finished_at() -> None:
