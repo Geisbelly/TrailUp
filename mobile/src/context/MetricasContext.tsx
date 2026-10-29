@@ -14,6 +14,7 @@ import {
   type CurrentStudyContext,
 } from "@/context/metricas/acumuladorLote";
 import { criarCicloSessao, type CicloSessao } from "@/context/metricas/cicloSessao";
+import { decidirTransicaoAppState, eventoDeFim, podeCapturarQuadro } from "@/context/metricas/fimDeSessao";
 import { IATriggerSignal } from "@/interfaces/personalizacao/IAContracts";
 import {
   BeginStudySessionParams,
@@ -584,6 +585,12 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       return null;
     }
 
+    // `inactive` não encerra mais a sessão, então o timer segue ticando; ele
+    // só pula o quadro enquanto o app não está em primeiro plano.
+    if (!podeCapturarQuadro(appStateRef.current)) {
+      return null;
+    }
+
     const batch = batchRef.current;
     if (!batch || batch.cameraFrames.length >= MAX_CAMERA_FRAMES_PER_BATCH) {
       return null;
@@ -960,7 +967,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     (reason: TelemetryFlushReason) => {
       recordAppEvent({
         eventGroup: "session",
-        eventName: reason === "session_end" ? "session_end" : "session_interrupt",
+        eventName: eventoDeFim(reason),
         topicoId: currentContextRef.current.topicoId,
         conteudoId: currentContextRef.current.conteudoId,
         atividadeId: currentContextRef.current.atividadeId,
@@ -1439,15 +1446,21 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
   }, [subscribeToSignals, telemetryPreferences.performanceEnabled, telemetryPreferences.usageEnabled, trackInteraction, updateStudyContext]);
 
   useEffect(() => {
+    // Só `background` encerra a sessão. No iOS o `inactive` (central de controle,
+    // cortina de notificações, seletor de apps) é passagem: em produção, 27 de 71
+    // sessões fechadas por `app_background` reabriram em menos de 3 s. O tempo em
+    // `inactive` não é contado (`syncBatchTimeline` ignora o que não é `active`).
+    // Entrar em `inactive` salva o lote sem encerrar: deslizar o app para fora no
+    // seletor de apps mata o processo ainda `inactive`, sem evento `background`, e
+    // o que estava só na memória (até 60 s) se perderia.
     const subscription = AppState.addEventListener("change", (nextState) => {
       const previousState = appStateRef.current;
       if (previousState === 'active') syncBatchTimeline(Date.now());
       appStateRef.current = nextState;
 
-      if (
-        previousState === "active" &&
-        (nextState === "background" || nextState === "inactive")
-      ) {
+      const transicao = decidirTransicaoAppState(previousState, nextState);
+
+      if (transicao === 'encerrar') {
         const resumeContext = { ...currentContextRef.current };
         void endStudySession("app_background").then(async () => {
           // The foreground event can arrive before the network flush finishes.
@@ -1459,9 +1472,13 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      if (transicao === 'salvar') {
+        if (sessionRef.current) void flushStudyBatch('interval').catch(() => undefined);
+        return;
+      }
+
       if (
-        previousState !== "active" &&
-        nextState === "active" &&
+        transicao === 'retomar' &&
         !sessionRef.current &&
         resumeDescriptorRef.current
       ) {
@@ -1471,7 +1488,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => subscription.remove();
-  }, [beginStudySession, endStudySession, syncBatchTimeline, updateStudyContext]);
+  }, [beginStudySession, endStudySession, flushStudyBatch, syncBatchTimeline, updateStudyContext]);
 
   useEffect(() => {
     return () => {
