@@ -974,7 +974,9 @@ class PersonalizacaoJobsRepository:
         stale_processing_min: int = 15,
         partial_retry_delay_sec: int = 15,
         stale_missao_diaria_min: int | None = None,
+        classe_ids: list[int] | None = None,
     ) -> dict[str, Any] | None:
+        """``classe_ids`` restringe o worker a essas turmas (vazio/None = todas)."""
         if not await self._jobs_exists():
             return None
         media_snapshot_select = self._media_snapshot_select_expr(
@@ -987,7 +989,12 @@ class PersonalizacaoJobsRepository:
                 WITH next_job AS (
                   SELECT candidate.id
                   FROM personalizacao_jobs candidate
-                  WHERE candidate.status = 'pending'
+                  WHERE (
+                    CAST(:classe_ids AS bigint[]) IS NULL
+                    OR candidate.classe_id = ANY(CAST(:classe_ids AS bigint[]))
+                  )
+                  AND (
+                    candidate.status = 'pending'
                       OR (
                         candidate.status = 'partial'
                         AND candidate.updated_at
@@ -1021,6 +1028,7 @@ class PersonalizacaoJobsRepository:
                          )
                        )
                      )
+                  )
                   ORDER BY candidate.created_at ASC, candidate.id ASC
                   FOR UPDATE SKIP LOCKED
                   LIMIT 1
@@ -1059,6 +1067,7 @@ class PersonalizacaoJobsRepository:
                 "stale_missao_diaria_min": (
                     stale_processing_min if stale_missao_diaria_min is None else stale_missao_diaria_min
                 ),
+                "classe_ids": [int(c) for c in classe_ids] if classe_ids else None,
             },
         )
         row = result.mappings().first()

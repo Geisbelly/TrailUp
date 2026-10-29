@@ -2107,6 +2107,7 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
             stale_processing_min=stale_min,
             partial_retry_delay_sec=partial_retry_delay_sec,
             stale_missao_diaria_min=stale_missao_diaria_min,
+            classe_ids=list(getattr(app.state.settings, "personalizacao_jobs_classe_ids", None) or []) or None,
         )
     if not job:
         return False

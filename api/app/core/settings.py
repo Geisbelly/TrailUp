@@ -230,6 +230,10 @@ class Settings(BaseSettings):
     retencao_externa_lote: int = 50
     retencao_externa_idade_minima_segundos: int = 600
     personalizacao_job_concurrency: int = 2
+    # Restringe o worker local a estas turmas (ex.: PERSONALIZACAO_JOBS_CLASSE_IDS=[66]).
+    # Vazio = todas, que e o que a producao usa. Sem isso, uma API subida na maquina de
+    # alguem para depurar processa a fila compartilhada inteira do Supabase (#652).
+    personalizacao_jobs_classe_ids: list[int] = []
     personalizacao_job_poll_sec: int = 5
     personalizacao_job_max_retries: int = 3
     personalizacao_job_partial_retry_delay_sec: int = 15
