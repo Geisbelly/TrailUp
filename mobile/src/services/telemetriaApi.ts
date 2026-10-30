@@ -14,6 +14,7 @@ import {
   normalizePositiveInteger,
 } from "@/utils/dataValidation";
 import {
+  TERMINAL_FLUSH_REASONS,
   TelemetryBatchPayload,
   TelemetryBatchResponse,
   TelemetryTimeMetricEntry,
@@ -324,9 +325,9 @@ async function persistTelemetryBatchDirect(
   }
 
   const nowIso = new Date().toISOString();
-  const shouldCloseSession =
-    safePayload.flush_reason === "session_end" || safePayload.flush_reason === "app_background";
-  const endedAt = shouldCloseSession ? safePayload.captured_at : null;
+  // Só lote terminal leva `ended_at`. Fora disso a chave nem vai: `ended_at: null` num upsert
+  // sobrescreve a sessão já fechada e a reabre.
+  const shouldCloseSession = TERMINAL_FLUSH_REASONS.has(safePayload.flush_reason);
 
   const { error: sessionError } = await supabase.from("telemetria_sessoes").upsert(
     {
@@ -336,7 +337,7 @@ async function persistTelemetryBatchDirect(
       topico_inicial_id: safePayload.topico_id ?? null,
       camera_opt_in: safePayload.camera.enabled === true,
       started_at: safePayload.session_started_at,
-      ended_at: endedAt,
+      ...(shouldCloseSession ? { ended_at: safePayload.captured_at } : {}),
       updated_at: nowIso,
     },
     { onConflict: "id" }

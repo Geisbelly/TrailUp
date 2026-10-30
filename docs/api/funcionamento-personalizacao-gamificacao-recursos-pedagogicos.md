@@ -61,7 +61,7 @@ Explicar o fluxo funcional e pedagogico coordenado pela API TrailUp, incluindo m
 - disponibilidade tecnica no cliente
 
 ### Motivos
-- atender estilos de aprendizagem diferentes
+- dar acesso e escolha de formato a todos (UDL), sem casar formato com perfil como se fosse estilo de aprendizagem
 - combinar memoria verbal, visual e aplicada
 - reduzir dependencia de um unico formato
 

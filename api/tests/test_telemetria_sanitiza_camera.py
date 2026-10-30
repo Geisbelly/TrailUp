@@ -16,6 +16,11 @@ from app.api.v1 import telemetria as rota
 from app.schemas.telemetria import TelemetriaLotePayload
 
 
+def _requisicao() -> SimpleNamespace:
+    settings = SimpleNamespace(telemetria_analise_fila_trava_seconds=600)
+    return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(settings=settings)))
+
+
 async def test_reenvio_repara_itens_antes_de_confirmar_sem_repetir_analise(monkeypatch):
     payload = _payload_com_frames(0)
     repo = SimpleNamespace(
@@ -29,7 +34,7 @@ async def test_reenvio_repara_itens_antes_de_confirmar_sem_repetir_analise(monke
     monkeypatch.setattr(rota, 'run_analysis', analysis)
     session = SimpleNamespace(commit=AsyncMock(), rollback=AsyncMock())
     user = SimpleNamespace(aluno_id='33333333-3333-4333-8333-333333333333')
-    response = await rota.registrar_lote_telemetria(payload, object(), user, session)
+    response = await rota.registrar_lote_telemetria(payload, _requisicao(), user, session)
     assert response.persisted is True
     repo.insert_time_metric_entries.assert_awaited_once()
     repo.insert_eventos_app.assert_awaited_once()
@@ -161,7 +166,7 @@ async def test_endpoint_manda_o_payload_sanitizado_para_a_analise(monkeypatch):
 
     await rota.registrar_lote_telemetria(
         payload=payload,
-        request=object(),  # nao usado: run_analysis esta dublado
+        request=_requisicao(),  # o pedido so le `app.state.settings` (a trava da fila)
         user=FakeUser(),
         session=FakeSession(),
     )
@@ -232,7 +237,7 @@ async def test_os_frames_continuam_chegando_ao_pipeline(monkeypatch):
 
     await rota.registrar_lote_telemetria(
         payload=payload,
-        request=object(),
+        request=_requisicao(),
         user=FakeUser(),
         session=FakeSession(),
     )

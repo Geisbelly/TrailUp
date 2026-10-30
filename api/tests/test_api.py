@@ -2,8 +2,9 @@ import json
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
+import asyncpg
 from fastapi.testclient import TestClient
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DBAPIError, OperationalError
 
 from app.api.deps import get_current_user, get_session, require_aluno
 from app.api.v1 import admin as admin_module
@@ -24,6 +25,7 @@ from app.schemas.telemetria import TelemetriaLotePayload
 from app.services.auth import UserContext
 from app.services.llm import JsonLLMService
 from app.services.storage import SupabaseStorage
+from app.services.telemetria_eventos_legados import normalizar_eventos_legados
 from tests.conftest import FakeGraph, FakeSession
 
 
@@ -1512,7 +1514,7 @@ def test_telemetria_route_accepts_null_signal_meta(app, aluno_user, monkeypatch)
 def test_normalize_eventos_legados_prefixes_entity_references() -> None:
     payload = TelemetriaLotePayload(**_telemetria_payload())
 
-    eventos = telemetria_module._normalize_eventos_legados(payload)
+    eventos = normalizar_eventos_legados(payload)
 
     refs_by_tipo = {evento.tipo: evento.referencia for evento in eventos}
     assert refs_by_tipo["topico_aberto"] == "topico:10"
@@ -1663,6 +1665,159 @@ def test_telemetria_route_returns_partial_success_when_analysis_fails(app, aluno
     assert body["persisted"] is True
     assert body["analysis"]["ciclo_id"] is None
     assert "falha-analise" in body["analysis"]["erros"][0]
+
+
+def _erro_do_banco(tipo_asyncpg, mensagem: str) -> DBAPIError:
+    """Como o SQLAlchemy embrulha um erro do asyncpg: o adaptador copia o `sqlstate` para `orig`."""
+    from sqlalchemy.dialects.postgresql.asyncpg import AsyncAdapt_asyncpg_dbapi
+
+    original = tipo_asyncpg(mensagem)
+    adaptado = AsyncAdapt_asyncpg_dbapi.ProgrammingError(f"{type(original)}: {original}", original)
+    return DBAPIError.instance("SELECT public.fn_telemetria_analise_falhou(...)", {}, adaptado, Exception)
+
+
+def _rota_de_telemetria_com_analise(app, aluno_user, monkeypatch, *, run_analysis, falha=None):
+    """Monta a rota até a análise e devolve os dois gravadores do desfecho: o do lote e o da fila."""
+    fake_session = FakeSession()
+    app.dependency_overrides[require_aluno] = lambda: aluno_user
+
+    async def override_session():
+        yield fake_session
+
+    app.dependency_overrides[get_session] = override_session
+    monkeypatch.setattr(TelemetriaRepository, "upsert_sessao", AsyncMock(return_value={"id": "s"}))
+    monkeypatch.setattr(
+        TelemetriaRepository,
+        "insert_or_get_lote",
+        AsyncMock(return_value=({"id": "batch-r2", "sessao_id": "s", "analysis_ciclo_id": None}, True)),
+    )
+    monkeypatch.setattr(TelemetriaRepository, "insert_eventos_app", AsyncMock(return_value=None))
+    monkeypatch.setattr(TelemetriaRepository, "insert_time_metric_entries", AsyncMock(return_value=None))
+    monkeypatch.setattr(EventoRepository, "log", AsyncMock(return_value=None))
+    monkeypatch.setattr(telemetria_module, "run_analysis", run_analysis)
+    gravar = AsyncMock(return_value=None)
+    deixar_na_fila = AsyncMock(return_value=None, side_effect=falha)
+    monkeypatch.setattr(TelemetriaRepository, "update_lote_analysis", gravar)
+    monkeypatch.setattr(TelemetriaRepository, "registrar_falha_analise", deixar_na_fila)
+    with TestClient(app) as client:
+        response = client.post("/api/v1/telemetria/lotes", json=_telemetria_payload())
+    assert response.status_code == 200
+    return response.json(), gravar, deixar_na_fila
+
+
+def test_telemetria_analise_que_explode_deixa_o_erro_para_a_fila(app, aluno_user, monkeypatch) -> None:
+    """Erro transitório não vira `analysis_error`: a fila guarda em `ultimo_erro` e tenta de novo."""
+    body, gravar, deixar_na_fila = _rota_de_telemetria_com_analise(
+        app, aluno_user, monkeypatch, run_analysis=AsyncMock(side_effect=RuntimeError("falha-analise"))
+    )
+    assert body["persisted"] is True
+    assert body["analysis"]["ciclo_id"] is None
+    assert body["analysis"]["erros"] == ["falha-analise"]
+    assert gravar.await_count == 0
+    # o pedido respeita a trava viva do worker (20261029_09): não apaga a análise que ele está fazendo
+    assert deixar_na_fila.await_args.kwargs == {
+        "batch_id": "batch-r2",
+        "erro": "RuntimeError: falha-analise",
+        "respeitar_trava": True,
+        "trava_seg": 600,
+    }
+
+
+def test_telemetria_analise_sem_ciclo_com_erro_deixa_para_a_fila(app, aluno_user, monkeypatch) -> None:
+    body, gravar, deixar_na_fila = _rota_de_telemetria_com_analise(
+        app,
+        aluno_user,
+        monkeypatch,
+        run_analysis=AsyncMock(return_value=AnalisarResponse(ciclo_id="", erros=["grafo indisponivel", "outro"])),
+    )
+    assert body["analysis"]["erros"] == ["grafo indisponivel", "outro"]
+    assert gravar.await_count == 0
+    assert deixar_na_fila.await_args.kwargs == {
+        "batch_id": "batch-r2",
+        "erro": "grafo indisponivel",
+        "respeitar_trava": True,
+        "trava_seg": 600,
+    }
+
+
+def test_telemetria_analise_com_ciclo_grava_ciclo_e_primeiro_erro(app, aluno_user, monkeypatch) -> None:
+    body, gravar, deixar_na_fila = _rota_de_telemetria_com_analise(
+        app,
+        aluno_user,
+        monkeypatch,
+        run_analysis=AsyncMock(return_value=AnalisarResponse(ciclo_id="c-9", erros=["aviso"])),
+    )
+    assert body["analysis"]["ciclo_id"] == "c-9"
+    assert gravar.await_args.kwargs == {"batch_id": "batch-r2", "analysis_ciclo_id": "c-9", "analysis_error": "aviso"}
+    assert deixar_na_fila.await_count == 0
+
+
+def test_telemetria_sem_emocional_grava_modo_restrito_direto(app, aluno_user, monkeypatch) -> None:
+    """O modo restrito é definitivo: vai para `analysis_error`, não para a fila."""
+    from app.services import modo_restrito
+
+    async def sem_emocional(session, aluno_id, **_kwargs):
+        return {f: f != "emocional" for f in modo_restrito.FINALIDADES}
+
+    monkeypatch.setattr(modo_restrito, "finalidades_permitidas", sem_emocional)
+    nao_roda = AsyncMock(side_effect=AssertionError("pipeline nao roda no modo restrito"))
+    body, gravar, deixar_na_fila = _rota_de_telemetria_com_analise(app, aluno_user, monkeypatch, run_analysis=nao_roda)
+    assert body["analysis"]["erros"] == [modo_restrito.CODIGO]
+    assert gravar.await_args.kwargs == {
+        "batch_id": "batch-r2",
+        "analysis_ciclo_id": None,
+        "analysis_error": modo_restrito.CODIGO,
+    }
+    assert deixar_na_fila.await_count == 0
+    assert nao_roda.await_count == 0
+
+
+def test_telemetria_sem_a_fila_no_banco_grava_o_erro_como_antes(app, aluno_user, monkeypatch) -> None:
+    """Banco sem a 20261029_09 (a função da fila não existe): o pedido não quebra e o erro fica no lote."""
+    body, gravar, deixar_na_fila = _rota_de_telemetria_com_analise(
+        app,
+        aluno_user,
+        monkeypatch,
+        run_analysis=AsyncMock(side_effect=RuntimeError("falha-analise")),
+        falha=_erro_do_banco(asyncpg.exceptions.UndefinedFunctionError, "function public.fn_telemetria_analise_falhou does not exist"),
+    )
+    assert body["persisted"] is True
+    assert deixar_na_fila.await_count == 1
+    assert gravar.await_args.kwargs == {
+        "batch_id": "batch-r2",
+        "analysis_ciclo_id": None,
+        "analysis_error": "falha-analise",
+    }
+
+
+def test_telemetria_outro_erro_da_fila_deixa_o_lote_pendente(app, aluno_user, monkeypatch) -> None:
+    """Qualquer outro erro do banco (conexão, timeout) não é "fila ausente": não grava `analysis_error`,
+    que tiraria o lote da fila. O item continua lá (a folga de 5 min da P2) e o worker o pega."""
+    for falha in (
+        _erro_do_banco(asyncpg.exceptions.QueryCanceledError, "canceling statement due to statement timeout"),
+        _erro_do_banco(asyncpg.exceptions.ConnectionDoesNotExistError, "connection was closed"),
+        RuntimeError("qualquer outra coisa"),
+    ):
+        body, gravar, deixar_na_fila = _rota_de_telemetria_com_analise(
+            app,
+            aluno_user,
+            monkeypatch,
+            run_analysis=AsyncMock(side_effect=RuntimeError("falha-analise")),
+            falha=falha,
+        )
+        assert body["persisted"] is True, falha
+        assert deixar_na_fila.await_count == 1, falha
+        assert gravar.await_count == 0, falha
+
+
+def test_erro_do_banco_de_teste_tem_o_formato_do_asyncpg() -> None:
+    """O dublê é o que o SQLAlchemy entrega: `DBAPIError` com `orig.sqlstate` (e `pgcode`)."""
+    exc = _erro_do_banco(asyncpg.exceptions.UndefinedFunctionError, "x")
+    assert isinstance(exc, DBAPIError)
+    assert exc.orig.sqlstate == exc.orig.pgcode == "42883"
+    assert telemetria_module._fila_ausente(exc) is True
+    assert telemetria_module._fila_ausente(_erro_do_banco(asyncpg.exceptions.QueryCanceledError, "x")) is False
+    assert telemetria_module._fila_ausente(RuntimeError("42883")) is False
 
 
 def test_telemetria_route_ignores_legacy_event_log_failures(app, aluno_user, monkeypatch) -> None:

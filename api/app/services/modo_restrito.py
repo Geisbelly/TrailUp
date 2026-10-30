@@ -45,8 +45,14 @@ _SQL = text(
 NADA_PERMITIDO: dict[str, bool] = {f: False for f in FINALIDADES}
 
 
-async def finalidades_permitidas(session: AsyncSession, aluno_id: Any) -> dict[str, bool]:
-    """Uma ida ao banco, as cinco respostas. Qualquer falha -> tudo False."""
+async def finalidades_permitidas(
+    session: AsyncSession, aluno_id: Any, *, levantar: bool = False
+) -> dict[str, bool]:
+    """Uma ida ao banco, as cinco respostas. Qualquer falha -> tudo False.
+
+    `levantar=True` (o worker da fila de análise) propaga a falha em vez de responder "nada permitido":
+    sem isso, um banco fora do ar por um instante virava `modo_restrito` definitivo no lote.
+    """
     if not aluno_id:
         return dict(NADA_PERMITIDO)
     try:
@@ -58,6 +64,8 @@ async def finalidades_permitidas(session: AsyncSession, aluno_id: Any) -> dict[s
         except Exception:  # pragma: no cover - rollback de sessao ja quebrada
             pass
         logger.warning("modo_restrito.consulta_falhou: aluno_id=%s erro=%s", aluno_id, type(exc).__name__)
+        if levantar:
+            raise
         return dict(NADA_PERMITIDO)
     if not row:
         return dict(NADA_PERMITIDO)

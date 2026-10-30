@@ -122,7 +122,7 @@ def _modo_restrito_liberado(request, monkeypatch):
         return
     from app.services import modo_restrito
 
-    async def _tudo_permitido(session, aluno_id):
+    async def _tudo_permitido(session, aluno_id, **_kwargs):
         return {f: True for f in modo_restrito.FINALIDADES}
 
     monkeypatch.setattr(modo_restrito, "finalidades_permitidas", _tudo_permitido)
