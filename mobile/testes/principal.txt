@@ -8,6 +8,7 @@ src/context/TrilhaContext.canonicalProgress.test.ts
 src/context/metricas/acumuladorLote.test.ts
 src/context/metricas/batchRotation.test.ts
 src/context/metricas/cicloSessao.test.ts
+src/context/metricas/fimDeSessao.test.ts
 src/hooks/trilha/sessionRegistrationPlan.test.ts
 src/hooks/trilha/persistirIntervalo.test.ts
 src/utils/vidaDoBoss.test.ts
