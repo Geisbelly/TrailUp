@@ -229,6 +229,19 @@ class Settings(BaseSettings):
     retencao_externa_interval_seconds: int = 300
     retencao_externa_lote: int = 50
     retencao_externa_idade_minima_segundos: int = 600
+    # Fila de analise de lote de telemetria (F3, 20261029_09): o banco enfileira todo
+    # lote novo e este laco da API roda a analise dos que o pedido nao analisou (o
+    # caminho direto do app, hoje todos). Cada analise tem no maximo metade da trava.
+    telemetria_analise_fila_enabled: bool = True
+    telemetria_analise_fila_interval_seconds: int = 30
+    telemetria_analise_fila_lote: int = 5
+    telemetria_analise_fila_trava_seconds: int = 600
+    # Consumidores simultaneos (cada um reivindica 1 item por vez; SKIP LOCKED os separa).
+    # Capacidade ~ concorrencia * 60 / A lotes/min, A = segundos por analise.
+    telemetria_analise_fila_concorrencia: int = 2
+    # Restringe o worker a estas turmas, como PERSONALIZACAO_JOBS_CLASSE_IDS (#652).
+    # Vazia = usa PERSONALIZACAO_JOBS_CLASSE_IDS; as duas vazias = todas (producao).
+    telemetria_analise_fila_classe_ids: list[int] = []
     personalizacao_job_concurrency: int = 2
     # Restringe o worker local a estas turmas (ex.: PERSONALIZACAO_JOBS_CLASSE_IDS=[66]).
     # Vazio = todas, que e o que a producao usa. Sem isso, uma API subida na maquina de
