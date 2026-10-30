@@ -7,6 +7,10 @@ indexação.
 
 **Atualizado em:** 2026-09-18
 
+A literatura da Evidence Base (os artigos da planilha de leituras do TCC) é
+avaliada à parte, em [avaliação dos documentos](./avaliacao-documentos.md).
+Esta página trata de conjuntos de dados.
+
 ## Regra de uso
 
 Uma fonte só pode avançar para a triagem do corpus (#71) depois que tiver

@@ -32,6 +32,8 @@
 | `Facial_data` | `descartado` | Biométrico: maior risco, menor retorno; decisão explícita na #74 antes de qualquer uso. |
 | `dataverse_files`, demais CSV/XLSX/SAV/DOCX | a classificar | Classificar item a item quando o diretório original estiver disponível. |
 
+Os artigos da Evidence Base passam pelo mesmo critério em [avaliação dos documentos](./avaliacao-documentos.md) (#218): nenhum foi para `corpus` até agora, e doze viram texto derivado.
+
 ## Onde fica cada coisa
 
 - **`corpus`** (quando licenciado e extraído): Vector Store / índice configurado por `OPENAI_RAG_VECTOR_STORE_ID` (caminho canônico, ADR 0001). Ingestão só de texto limpo com seção + documento de origem (#72), com metadados pedagógicos (#73).
