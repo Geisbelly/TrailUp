@@ -59,7 +59,9 @@ def _funcao(sql: str, nome: str) -> str:
 def test_uma_cabeca_so_e_ela_vem_depois_da_f3() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
     heads = scripts.get_heads()
-    assert heads == ["20261030_01"], f"a árvore bifurcou ou a cabeça é outra: {sorted(heads)}"
+    assert len(heads) == 1, f"a árvore bifurcou: {sorted(heads)}"
+    # A cabeça avança com as migrações seguintes; o que importa é a F4a continuar na linha da F3.
+    assert "20261030_01" in {r.revision for r in scripts.walk_revisions("base", heads[0])}
     assert scripts.get_revision("20261030_01").down_revision == "20261029_09"
 
 
