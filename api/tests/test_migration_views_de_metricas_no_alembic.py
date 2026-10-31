@@ -25,7 +25,7 @@ MD5_PRODUCAO = {
 
 
 def test_encadeia_na_cabeca_da_main() -> None:
-    assert (M.revision, M.down_revision) == ("20261031_03", "20261031_01")
+    assert (M.revision, M.down_revision) == ("20261031_03", "20261031_02")
 
 
 def test_as_dez_sao_o_texto_de_producao_byte_a_byte() -> None:
