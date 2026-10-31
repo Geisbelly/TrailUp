@@ -6,6 +6,8 @@ export type PersonalizacaoJobPayload = {
   aluno_id?: string;
   topico_ids?: number[];
   conteudo_ids?: number[];
+  /** Só `manual-retry`: perfis a reprocessar. Omitido = os 7. */
+  brainhex_profile_keys?: string[];
   reason?: string;
   trigger_source?: string;
 };

@@ -1092,6 +1092,64 @@ async def test_enqueue_job_does_not_reuse_open_job_from_different_topico(
 
 
 @pytest.mark.asyncio
+async def test_enqueue_manual_retry_so_dos_perfis_pedidos_e_nao_reusa_job_de_outro_escopo(
+    monkeypatch,
+) -> None:
+    """#652: 'Reprocessar falhas' reprocessava os 7 perfis. Agora o pedido leva
+    so os que falharam; chave desconhecida some e um job aberto dos 7 perfis
+    nao engole o pedido de 1."""
+    target = {
+        "aluno_id": None,
+        "topico_id": 170,
+        "conteudo_id": None,
+        "brainhex_profile_key": "seeker",
+        "is_profile_template": True,
+    }
+    build_targets_mock = AsyncMock(return_value=([target], [170], {}))
+    create_mock = AsyncMock(return_value={"id": "job-retry"})
+    monkeypatch.setattr(jobs_module, "_build_targets", build_targets_mock)
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        AsyncMock(
+            return_value=[
+                {
+                    "id": "job-todos-os-perfis",
+                    "kind": "manual_retry",
+                    "status": "processing",
+                    "payload": {"topico_ids": [170], "conteudo_ids": [], "brainhex_profile_keys": []},
+                }
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_resumable_jobs_by_payload",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
+        create_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "get_job_detail",
+        AsyncMock(return_value={"job": {"id": "job-retry"}, "targets": [target]}),
+    )
+
+    result = await jobs_module.enqueue_personalizacao_job(
+        session=object(),
+        kind="manual_retry",
+        classe_id=66,
+        trigger_source="web_console",
+        topico_ids=[170],
+        brainhex_profile_keys=["Seeker", "inexistente"],
+    )
+
+    assert result["job"]["id"] == "job-retry"
+    assert build_targets_mock.await_args.kwargs["brainhex_profile_keys"] == ["seeker"]
+    assert create_mock.await_args.kwargs["payload"]["brainhex_profile_keys"] == ["seeker"]
+
+
+@pytest.mark.asyncio
 async def test_enqueue_class_delta_no_op_quando_professor_em_modo_manual(monkeypatch) -> None:
     """Professor com geracao_automatica=False: class_delta_sync (disparo por
     edicao de topico/conteudo) nao deve criar job nenhum."""
