@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dataHoraBrasilia, estadoDaJanela, formacaoAberta, mensagemDeErroDaGuilda, normalizeJanela, resumoDaJanela } from "./guildWindowModel";
+import { avisoDoAceite, dataHoraBrasilia, estadoDaJanela, formacaoAberta, mensagemDeErroDaGuilda, normalizeJanela, resumoDaJanela } from "./guildWindowModel";
 
 const base = { classe_id: 65, configurada: true, tamanho_maximo: 4, agora: "2026-10-20T15:00:00Z" };
 
@@ -63,4 +63,10 @@ test("guilda_evento_aberto explica que a composição está congelada, mesmo com
   // A janela de formação aberta não muda a frase: o portão aqui é o evento, não a janela.
   const j = normalizeJanela({ ...base, janela_aberta: true })!;
   assert.equal(mensagemDeErroDaGuilda(erro, j), esperado);
+});
+
+test("aceite cancelado por bloqueio avisa sem dizer quem bloqueou", () => {
+  assert.equal(avisoDoAceite({ status: "cancelled", guilda_id: "g" }), "Este convite não está mais disponível.");
+  assert.equal(avisoDoAceite({ status: "accepted" }), null);
+  assert.equal(avisoDoAceite(null), null);
 });

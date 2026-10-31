@@ -88,6 +88,16 @@ export function resumoDaJanela(j: JanelaDaFormacao): ResumoDaJanela {
 /** Pode criar, entrar, convidar e aceitar convite? Sair e dissolver não dependem da janela. */
 export const formacaoAberta = (j: JanelaDaFormacao | null) => j === null || j.aberta;
 
+/**
+ * `guilda_aceitar_convite` devolve `{status: "cancelled"}` quando há bloqueio entre quem convidou e
+ * quem foi convidado, feito depois do convite (migration 20261031_09). O texto não diz quem bloqueou
+ * quem: só que o convite deixou de valer.
+ */
+export function avisoDoAceite(resultado: unknown): string | null {
+  const status = (resultado as { status?: unknown } | null)?.status;
+  return status === "cancelled" ? "Este convite não está mais disponível." : null;
+}
+
 /** O texto amigável para os erros das RPCs de guilda (o código vem no texto da exceção). */
 export function mensagemDeErroDaGuilda(error: unknown, janela: JanelaDaFormacao | null = null): string {
   const value = String((error as { message?: unknown })?.message ?? error ?? "").toLowerCase();
