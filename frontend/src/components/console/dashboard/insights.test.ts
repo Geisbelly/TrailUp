@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  alertasPorAluno,
   eMigracaoPendente,
   filtrarPorEscopo,
   formatarGeradoHa,
@@ -106,5 +107,28 @@ describe("eMigracaoPendente", () => {
     expect(eMigracaoPendente({ message: "Os insights ainda nao estao disponiveis neste banco (migracao pendente)." })).toBe(true);
     expect(eMigracaoPendente({ code: "42501", message: "permission denied" })).toBe(false);
     expect(eMigracaoPendente(null)).toBe(false);
+  });
+});
+
+describe("alertasPorAluno", () => {
+  const aluno = "a1";
+  it("só pendentes de escopo aluno sem lote, mais novo primeiro", () => {
+    const antigo = insight({ escopo: "aluno", aluno_id: aluno, geracao_id: null, created_at: "2026-09-27T10:00:00Z" });
+    const novo = insight({ escopo: "aluno", aluno_id: aluno, geracao_id: null, created_at: "2026-09-29T10:00:00Z" });
+    const linhas = [
+      antigo,
+      novo,
+      insight({ escopo: "aluno", aluno_id: aluno, geracao_id: "g1" }), // veio de um lote: a lista do lote mostra
+      insight({ escopo: "turma", geracao_id: null }),
+      insight({ escopo: "aluno", aluno_id: aluno, geracao_id: null, status: "dismissed", resolved_at: "2026-09-29T11:00:00Z" }),
+      insight({ escopo: "aluno", aluno_id: aluno, geracao_id: null, texto: "  " }),
+    ];
+    expect(alertasPorAluno(linhas).map((l) => l.id)).toEqual([novo.id, antigo.id]);
+  });
+
+  it("o lote continua ignorando o que não tem geracao_id", () => {
+    const alerta = insight({ escopo: "aluno", aluno_id: aluno, geracao_id: null });
+    expect(loteMaisRecentePorTurma([alerta])).toEqual([]);
+    expect(alertasPorAluno([alerta])).toEqual([alerta]);
   });
 });
