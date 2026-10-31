@@ -98,6 +98,10 @@ export function mensagemDeErroDaGuilda(error: unknown, janela: JanelaDaFormacao 
     }
     return "A formação de guildas está fechada nesta turma. Fale com o professor.";
   }
+  // `20261031_02`: com evento de guilda aberto, a composição fica como estava na abertura.
+  if (value.includes("evento_aberto")) {
+    return "Há um evento em guilda acontecendo nesta turma. As guildas ficam como estão até ele encerrar.";
+  }
   if (value.includes("cheia")) return "Esta guilda já está completa.";
   if (value.includes("tamanho_abaixo_dos_membros")) return "O tamanho pedido é menor que o número de membros da guilda.";
   if (value.includes("perfil_incompativel")) return "Esse colega não pertence ao perfil escolhido para esta guilda.";

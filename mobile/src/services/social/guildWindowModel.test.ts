@@ -55,3 +55,12 @@ test("outros erros de guilda", () => {
   assert.equal(mensagemDeErroDaGuilda({ message: "guilda_membro_existente" }), "Você já participa de uma guilda nesta turma.");
   assert.equal(mensagemDeErroDaGuilda(new Error("x")), "Não foi possível concluir a ação.");
 });
+
+test("guilda_evento_aberto explica que a composição está congelada, mesmo com a janela aberta", () => {
+  const erro = { message: 'guilda_evento_aberto' };
+  const esperado = "Há um evento em guilda acontecendo nesta turma. As guildas ficam como estão até ele encerrar.";
+  assert.equal(mensagemDeErroDaGuilda(erro), esperado);
+  // A janela de formação aberta não muda a frase: o portão aqui é o evento, não a janela.
+  const j = normalizeJanela({ ...base, janela_aberta: true })!;
+  assert.equal(mensagemDeErroDaGuilda(erro, j), esperado);
+});
