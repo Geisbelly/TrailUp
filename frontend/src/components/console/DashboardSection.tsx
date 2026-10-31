@@ -19,6 +19,8 @@ import { AlunoNaoEncontrado, DashboardCarregando, DashboardErro, DashboardVazio 
 import { alunosDaTurma as filtrarAlunosDaTurma, TODAS_AS_TURMAS } from "./dashboard/filtros";
 import InatividadePorPerfil from "./dashboard/InatividadePorPerfil";
 import AbandonoPorEtapa from "./dashboard/AbandonoPorEtapa";
+import GargalosDePersonalizacao from "./dashboard/GargalosDePersonalizacao";
+import { useGargalosDePersonalizacao } from "./dashboard/useGargalosDePersonalizacao";
 import { useKpisPorTopico } from "./dashboard/useKpisPorTopico";
 import { useDisponibilidade } from "./dashboard/useDisponibilidade";
 import DistribuicaoNotas from "./dashboard/DistribuicaoNotas";
@@ -485,6 +487,7 @@ export default function DashboardSection() {
   const disponibilidade = useDisponibilidade(ultimaCarga);
   const turmaUnica = selectedClassFilter === TODAS_AS_TURMAS ? null : Number(selectedClassFilter);
   const kpisPorTopico = useKpisPorTopico(Number.isFinite(turmaUnica) ? turmaUnica : null, janelaTemporal);
+  const gargalos = useGargalosDePersonalizacao(classScopeIds);
   const rotuloVoltar = `${selectedAluno?.classe_nome ?? "Turma"} · todos os alunos`;
 
   let visaoDoAluno = null;
@@ -566,6 +569,8 @@ export default function DashboardSection() {
               </div>
 
               <AbandonoPorEtapa turmaUnica={turmaUnica} kpis={kpisPorTopico} disponibilidade={disponibilidade} />
+
+              <GargalosDePersonalizacao estado={gargalos} />
 
               <TabelaAlunos
                 alunos={alunosDaTurma}
