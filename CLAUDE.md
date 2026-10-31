@@ -361,8 +361,19 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > escopos diferentes multiplica o tempo — filtre por `scope` sempre.
 >
 > Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
-> `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
-> cliente escreve essa coluna.
+> `atividade_aluno` é **tempo ativo** (`trailup_tempo_telemetria_min`, soma de
+> `active_sec` / 60 por escopo). A **conta** é uma só, mas três lugares a
+> gravam, todos na `20261030_01`: o gatilho da telemetria
+> (`trailup_sync_tempo_da_telemetria`, `trg_tme_sync_tempo_*`), que depois
+> recalcula a matrícula onde o tempo do tópico mudou, e as duas RPCs do
+> cronômetro (`trailup_registrar_sessao_estudo` e
+> `trailup_registrar_intervalo_estudo`), quando criam ou tocam a linha. Mudar a
+> conta é mudar os três. Nenhum cliente escreve essa coluna. `estudo_sessoes` (e `estudo_intervalos`) é presença e sessões, não
+> tempo de estudo; `tempo_direto_min` é livro-caixa e não entra na conta. A
+> `20260921_01` tinha decidido o contrário (tempo = sessões do cronômetro); a
+> D-1 da spec de métricas reverteu. Medido no aluno de QA: tempo ativo 7,68 min,
+> material aberto (`dwell_sec`) 35,63, sessões do cronômetro 68,40, e o que a
+> coluna mostrava, 45,04 (17,90 de `tempo_direto_min`).
 
 > O histórico em `aluno_mental_state_history` **é lido de volta** (isto já foi
 > descrito aqui como lacuna aberta; não é mais). `memoria_aluno.ler_memoria`
