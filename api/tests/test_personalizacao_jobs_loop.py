@@ -2230,6 +2230,75 @@ async def test_process_media_render_target_retries_when_existing_record_is_stuck
 
 
 @pytest.mark.asyncio
+async def test_retry_de_alvo_com_personalizacao_id_redispara_o_microservice(monkeypatch) -> None:
+    """#652: alvo que ja ganhou `personalizacao_id` numa tentativa anterior, em
+    job sem snapshot (o repositorio devolve `{}`), tem de voltar ao microservice.
+    Antes caia no caminho legado: o status era recalculado dos materiais velhos,
+    `failed` de novo, e o microservice so via o /api/health."""
+    existing = _existing_record(status="failed")
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=existing),
+    )
+    claim_mock = AsyncMock(return_value=existing)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.claim_retry_incomplete_generation",
+        claim_mock,
+    )
+    completed = _completed_record(existing)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_id",
+        AsyncMock(return_value=completed),
+    )
+    legado_mock = AsyncMock()
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.atualizar_materiais_e_status",
+        legado_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "fetch_personalizacao_context",
+        AsyncMock(return_value={"source_hash": "hash-249", "fontes": []}),
+    )
+    dispatch_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
+    monkeypatch.setattr(
+        jobs_module,
+        "enrich_content_blocks",
+        AsyncMock(return_value={"blocos": [{"id": "bloco-01"}]}),
+    )
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(settings=SimpleNamespace(personalizacao_job_stale_processing_min=15))
+    )
+    job = {
+        "id": "job-retry",
+        "classe_id": 32,
+        "kind": "manual_retry",
+        "payload": {},
+        "media_snapshot": {},
+    }
+    target = {
+        "id": 590,
+        "aluno_id": None,
+        "topico_id": 117,
+        "conteudo_id": None,
+        "brainhex_profile_key": "seeker",
+        "personalizacao_id": existing["id"],
+    }
+
+    result = await _process_media_render_target(
+        app=app, session=_FakeSession(is_stuck=False), job=job, target=target
+    )
+
+    legado_mock.assert_not_awaited()
+    assert dispatch_mock.await_count == 1
+    assert dispatch_mock.await_args.kwargs["personalizacao_id"] == existing["id"]
+    assert result["retried_failed"] is True
+    assert result["record"] == completed
+
+
+@pytest.mark.asyncio
 async def test_process_media_render_target_replaces_legacy_presentation_metadata(
     monkeypatch,
 ) -> None:

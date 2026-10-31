@@ -1427,8 +1427,17 @@ async def _process_media_render_target(
         return {"skipped": True}
 
     # Legacy path: jobs with media_snapshot + personalizacao_id → direct media materialization
+    #
+    # O snapshot tem de estar PREENCHIDO. O repositorio devolve `{}` para todo
+    # job sem snapshot, e o alvo ganha `personalizacao_id` assim que uma
+    # tentativa devolve registro (adiamento, geracao incompleta). Com o teste
+    # antigo (`is not None`, sempre verdadeiro) a 2a tentativa de qualquer alvo
+    # caia aqui: recalculava o status com os materiais velhos e nunca chamava o
+    # microservice - que so recebia o /api/health de cima. Foi o "Reprocessar
+    # falhas" da turma 66 em 16/10: 7 alvos, 3 tentativas, todos
+    # "geracao nao concluida (status=failed)" (#652).
     media_snapshot = job.get("media_snapshot") if isinstance(job.get("media_snapshot"), dict) else {}
-    if target.get("personalizacao_id") is not None and media_snapshot is not None:
+    if target.get("personalizacao_id") is not None and media_snapshot:
         personalizacao_id = int(target["personalizacao_id"])
         repo_cp = ConteudoPersonalizadoRepository(session)
         record = await repo_cp.buscar_por_id(personalizacao_id)
