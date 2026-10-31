@@ -1,62 +1,70 @@
-import { META_ABANDONO_PCT } from "./metas";
+// Sinais de risco do aluno, só para o professor (spec de métricas, §6.2 e §7).
+//
+// Até a F5 o risco somava uma "taxa de abandono" (tópicos não concluídos ÷ tópicos com linha) que
+// marcava "crítico" o aluno no meio da trilha, e dois sinais quaisquer viravam "crítico". Agora são
+// os três construtos da spec, cada um com fato e data, calculados no banco
+// (vw_metricas_engajamento_aluno_classe, migration 20261031_05):
+//   - inatividade: 7 dias ou mais sem estudar;
+//   - evasão: 30 dias ou mais sem estudar (o mais grave; não repete a inatividade);
+//   - estagnação: 14 dias sem avançar num tópico, abaixo da mediana da turma nele.
+// "Sem dado" (recusou telemetria, modo restrito, nunca estudou) NÃO é sinal. A nota baixa continua
+// como sinal à parte: acerto e nota ficam como estão até a F4b. Nenhum sinal soma com outro para
+// virar "crítico": há um nível só, "atenção", até um modelo ser validado (F6).
 
-// Critérios do protótipo V9 (docs/frontend/redesign-fase-2/01-analise-dashboard.md,
-// seção 4.5). "Progresso 20 pontos abaixo do previsto" fica desligado: não há
-// fonte de progresso previsto (seção 9, decisão 1).
-export const LIMITE_ABANDONO_CRITICO_PCT = 30;
 export const NOTA_MINIMA = 5;
-export const DIAS_SEM_ATIVIDADE = 7;
-/** Janela lida de vw_metricas_sessoes_aluno_dia para achar a última sessão. */
-export const JANELA_SESSOES_DIAS = 60;
+export const DIAS_INATIVO = 7;
+export const DIAS_ESTAGNADO = 14;
+export const DIAS_EVADIDO = 30;
 
-export type NivelDeRisco = "critico" | "atencao";
-export type Criterio = "abandono" | "nota" | "inatividade";
+export type NivelDeRisco = "atencao";
+export type Criterio = "inatividade" | "evasao" | "estagnacao" | "nota";
 export type Fator = { criterio: Criterio; motivo: string; comparacao: string | null };
 export type Risco = { nivel: NivelDeRisco; fatores: Fator[] };
 
-export type Inatividade = { dias: number; peloMenos: boolean };
+/** O que o banco diz do aluno na turma (datas ISO); null = a view não trouxe linha. */
+export type SinaisDoBanco = {
+  semDado: boolean;
+  ultimaAtividadeEm: string | null;
+  inativoDesde: string | null;
+  evadidoDesde: string | null;
+  estagnadoDesde: string | null;
+  estagnadoTopico: string | null;
+};
 
 const DIA_MS = 86_400_000;
 const inicioDoDia = (d: Date) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-const diasEntre = (de: string, ate: Date) => Math.max(0, Math.floor((inicioDoDia(ate) - inicioDoDia(new Date(de))) / DIA_MS));
+export const diasDesde = (iso: string, hoje: Date) =>
+  Math.max(0, Math.floor((inicioDoDia(hoje) - inicioDoDia(new Date(iso))) / DIA_MS));
+const dataCurta = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
 
-/**
- * Dias desde a última sessão de estudo na turma. Sem sessão na janela, conta da
- * matrícula; se a matrícula for mais antiga que a janela, o número é "pelo menos
- * a janela" (pode ter havido sessão antes dela).
- */
-export function inatividade(ultimaSessao: string | null, naTurmaDesde: string | null, hoje: Date): Inatividade | null {
-  if (ultimaSessao) return { dias: diasEntre(ultimaSessao, hoje), peloMenos: false };
-  if (!naTurmaDesde) return null;
-  const desdeMatricula = diasEntre(naTurmaDesde, hoje);
-  return desdeMatricula > JANELA_SESSOES_DIAS
-    ? { dias: JANELA_SESSOES_DIAS, peloMenos: true }
-    : { dias: desdeMatricula, peloMenos: false };
-}
+export type EntradaDeRisco = { sinais: SinaisDoBanco | null; nota: number | null };
+export type ReferenciaDaTurma = { notaMedia: number | null };
 
-const pct = (v: number) => `${Math.round(v * 10) / 10}%`;
-
-export type EntradaDeRisco = {
-  abandonoPct: number | null;
-  nota: number | null;
-  inatividade: Inatividade | null;
-};
-
-export type ReferenciaDaTurma = { abandonoMedioPct: number | null; notaMedia: number | null };
-
-/**
- * Crítico: abandono acima de 30% ou dois sinais ao mesmo tempo. Atenção: um
- * sinal só (nota abaixo de 5,0 ou 7 dias sem atividade). Mesma leitura dos
- * exemplos do protótipo.
- */
-export function avaliarRisco(e: EntradaDeRisco, turma: ReferenciaDaTurma): Risco | null {
+export function avaliarRisco(e: EntradaDeRisco, turma: ReferenciaDaTurma, hoje: Date): Risco | null {
   const fatores: Fator[] = [];
-  if (e.abandonoPct !== null && e.abandonoPct > LIMITE_ABANDONO_CRITICO_PCT) {
-    fatores.push({
-      criterio: "abandono",
-      motivo: `Abandono em ${pct(e.abandonoPct)}`,
-      comparacao: turma.abandonoMedioPct === null ? null : `turma: ${pct(turma.abandonoMedioPct)}`,
-    });
+  const s = e.sinais;
+  if (s && !s.semDado) {
+    if (s.evadidoDesde) {
+      fatores.push({
+        criterio: "evasao",
+        motivo: `Sem estudar há ${diasDesde(s.evadidoDesde, hoje)} dias`,
+        comparacao: `última atividade em ${dataCurta(s.evadidoDesde)}`,
+      });
+    } else if (s.inativoDesde) {
+      fatores.push({
+        criterio: "inatividade",
+        motivo: `${diasDesde(s.inativoDesde, hoje)} dias sem estudar`,
+        comparacao: `última atividade em ${dataCurta(s.inativoDesde)}`,
+      });
+    }
+    if (s.estagnadoDesde) {
+      const onde = s.estagnadoTopico ? `em ${s.estagnadoTopico}` : "num tópico";
+      fatores.push({
+        criterio: "estagnacao",
+        motivo: `Parado ${onde} há ${diasDesde(s.estagnadoDesde, hoje)} dias`,
+        comparacao: "abaixo da mediana da turma nesse tópico",
+      });
+    }
   }
   if (e.nota !== null && e.nota < NOTA_MINIMA) {
     fatores.push({
@@ -65,54 +73,15 @@ export function avaliarRisco(e: EntradaDeRisco, turma: ReferenciaDaTurma): Risco
       comparacao: turma.notaMedia === null ? null : `turma: ${turma.notaMedia.toFixed(1)}`,
     });
   }
-  if (e.inatividade && e.inatividade.dias >= DIAS_SEM_ATIVIDADE) {
-    fatores.push({
-      criterio: "inatividade",
-      motivo: `${e.inatividade.peloMenos ? "Mais de " : ""}${e.inatividade.dias} dias sem atividade na turma`,
-      comparacao: null,
-    });
-  }
-  if (fatores.length === 0) return null;
-  const critico = fatores.some((f) => f.criterio === "abandono") || fatores.length >= 2;
-  return { nivel: critico ? "critico" : "atencao", fatores };
+  return fatores.length === 0 ? null : { nivel: "atencao", fatores };
 }
 
-/** Texto do critério só com o que está ligado (o que tem fonte de dado). */
-export function descricaoDosCriterios(ligados: Criterio[]): string {
-  const partes: Record<Criterio, string> = {
-    abandono: `abandono acima de ${LIMITE_ABANDONO_CRITICO_PCT}%`,
-    nota: `nota abaixo de ${NOTA_MINIMA.toFixed(1)}`,
-    inatividade: `${DIAS_SEM_ATIVIDADE} dias sem atividade na turma`,
-  };
-  const lista = ligados.map((c) => partes[c]);
-  if (lista.length <= 1) return `Critério: ${lista[0] ?? "nenhum"}`;
-  return `Critério: ${lista.slice(0, -1).join(", ")} ou ${lista[lista.length - 1]}`;
-}
-
-export type FaixaDeAbandono = "saudavel" | "atencao" | "critico";
-
-export function faixaDoAbandono(pctAbandono: number): FaixaDeAbandono {
-  if (pctAbandono > LIMITE_ABANDONO_CRITICO_PCT) return "critico";
-  if (pctAbandono > META_ABANDONO_PCT) return "atencao";
-  return "saudavel";
-}
-
-/**
- * Frase da rosca. O protótipo diz "N alunos na faixa baixa concentram X% do
- * abandono", mas a view não diz onde começa a faixa "baixa" e somar taxas de
- * alunos diferentes não dá "X% do abandono". Usa o limite do critério de nota
- * e compara médias, que é o que o dado sustenta.
- */
-export function observacaoNotaEAbandono(
-  alunos: { nota: number | null; abandonoPct: number | null }[],
-  abandonoMedioDaTurmaPct: number | null,
-): string | null {
-  const comAbandono = alunos.filter((a) => a.abandonoPct !== null);
-  const abaixo = comAbandono.filter((a) => a.nota !== null && a.nota < NOTA_MINIMA);
-  if (abaixo.length === 0 || abandonoMedioDaTurmaPct === null) return null;
-  const media = abaixo.reduce((s, a) => s + (a.abandonoPct ?? 0), 0) / abaixo.length;
-  const quem = abaixo.length === 1 ? "1 aluno com nota abaixo de 5.0 tem" : `${abaixo.length} alunos com nota abaixo de 5.0 têm`;
-  return `${quem} abandono médio de ${pct(media)} (turma: ${pct(abandonoMedioDaTurmaPct)}).`;
+/** Texto do critério da lista "Precisam de atenção". */
+export function descricaoDosCriterios(): string {
+  return (
+    `Critério: ${DIAS_INATIVO} dias sem estudar, ${DIAS_ESTAGNADO} dias parado num tópico abaixo da mediana ` +
+    `ou nota abaixo de ${NOTA_MINIMA.toFixed(1)}. Sem dado não conta.`
+  );
 }
 
 /** Nota que conta para o risco: null quando o aluno ainda não tem nota de verdade. */

@@ -32,14 +32,17 @@ MAX_TURMAS = 5
 MAX_RESPOSTA = 1500
 MAX_HISTORICO = 8
 
+# F5 (`20261031_05`): a taxa de abandono e o retorno por intervalo de dias sairam das views. No
+# lugar, o retorno semanal e as contagens dos tres sinais (inatividade, estagnacao e evasao).
 _GERAL = (
     "total_alunos, taxa_media_conclusao_pct, media_nota_turma, taxa_media_acertos_pct, "
-    "taxa_media_acertos_sem_erro_pct, taxa_media_abandono_pct, taxa_media_retorno_pct, "
-    "sessoes_medias_por_aluno, tempo_medio_uso_seg, media_tentativas_por_questao, taxa_media_uso_chat_pct"
+    "taxa_media_acertos_sem_erro_pct, retorno_semanal_pct, alunos_inativos, alunos_estagnados, "
+    "alunos_evadidos, alunos_sem_dado, sessoes_medias_por_aluno, tempo_ativo_medio_seg, "
+    "media_tentativas_por_questao, taxa_media_uso_chat_pct"
 )
 _POR_PERFIL = (
     "perfil_nome, total_alunos_segmento, taxa_conclusao_topicos_pct, media_nota, taxa_acertos_pct, "
-    "taxa_abandono_pct, taxa_retorno_pct"
+    "alunos_inativos, alunos_estagnados"
 )
 
 

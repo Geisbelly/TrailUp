@@ -1,6 +1,6 @@
 import { nomeExibidoDoPerfil } from "./perfilCores";
 import { PerfilAvatar } from "./PerfilVisual";
-import { descricaoDosCriterios, type Criterio, type Risco } from "./risco";
+import { descricaoDosCriterios, type Risco } from "./risco";
 
 export type AlunoEmRisco = {
   id: string;
@@ -11,8 +11,10 @@ export type AlunoEmRisco = {
   risco: Risco;
 };
 
+// Um nível só desde a F5: nenhum sinal soma com outro para virar "crítico" (spec §6.2) até um
+// modelo de risco ser validado (F6). O parâmetro fica para quando houver mais de um nível.
 export function ChipDeRisco({ nivel }: { nivel: Risco["nivel"] }) {
-  const cor = nivel === "critico" ? "var(--destructive)" : "var(--warning)";
+  const cor = "var(--warning)";
   // Texto na cor de primeiro plano: a cor de alerta sobre o próprio tom fica
   // abaixo de 7:1; o tom fica no fundo e na bolinha.
   return (
@@ -21,7 +23,7 @@ export function ChipDeRisco({ nivel }: { nivel: Risco["nivel"] }) {
       style={{ background: `hsl(${cor} / .16)` }}
     >
       <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: `hsl(${cor})` }} />
-      {nivel === "critico" ? "Crítico" : "Atenção"}
+      {nivel === "atencao" && "Atenção"}
     </span>
   );
 }
@@ -29,20 +31,17 @@ export function ChipDeRisco({ nivel }: { nivel: Risco["nivel"] }) {
 export default function PrecisamDeAtencao<T extends AlunoEmRisco>({
   alunos,
   totalDaTurma,
-  criterios,
   mostrarTurma,
   onAbrir,
 }: {
   alunos: T[];
   totalDaTurma: number;
-  criterios: Criterio[];
   mostrarTurma: boolean;
   onAbrir: (aluno: T) => void;
 }) {
   if (alunos.length === 0) return null;
   const ordenados = [...alunos].sort(
     (a, b) =>
-      Number(b.risco.nivel === "critico") - Number(a.risco.nivel === "critico") ||
       b.risco.fatores.length - a.risco.fatores.length ||
       a.nome.localeCompare(b.nome, "pt-BR"),
   );
@@ -60,11 +59,11 @@ export default function PrecisamDeAtencao<T extends AlunoEmRisco>({
         <div className="min-w-0">
           <h3 id="precisam-de-atencao" className="text-[19px] text-foreground">Precisam de atenção</h3>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
-            {alunos.length} de {totalDaTurma} {totalDaTurma === 1 ? "aluno" : "alunos"} fora da curva da turma. A média esconde estes casos.
+            {alunos.length} de {totalDaTurma} {totalDaTurma === 1 ? "aluno" : "alunos"} com um sinal, cada um com o fato e a data. A média esconde estes casos.
           </p>
         </div>
         <p className="max-w-[360px] rounded-full border border-border bg-muted px-3.5 py-2 text-xs text-muted-foreground sm:ml-auto">
-          {descricaoDosCriterios(criterios)}
+          {descricaoDosCriterios()}
         </p>
       </div>
 

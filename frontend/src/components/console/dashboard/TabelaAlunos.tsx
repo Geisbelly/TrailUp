@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { filtrarPorBusca } from "./filtros";
 import { nomeExibidoDoPerfil } from "./perfilCores";
 import { PerfilAvatar, PerfilChip } from "./PerfilVisual";
-import { faixaDoAbandono, type FaixaDeAbandono } from "./risco";
+import { rotuloDaUltimaAtividade } from "./ultimaAtividade";
 import { filtrarPorPerfil, paginar, perfisPresentes, TODOS_OS_PERFIS } from "./tabela";
 
 export type AlunoDaTabela = {
@@ -19,27 +19,20 @@ export type AlunoDaTabela = {
   notaMedia: number;
   porcentagemConcluida: number;
   acertosPercentual: number;
-  abandonoPct?: number | null;
+  /** Último estudo com tempo ativo; null = sem dado (não é "inativo"). */
+  ultimaAtividadeEm?: string | null;
   temNota?: boolean;
   temAcertos?: boolean;
 };
 
-const ROTULO_DA_FAIXA: Record<FaixaDeAbandono, { texto: string; cor: string }> = {
-  saudavel: { texto: "saudável", cor: "hsl(var(--success))" },
-  atencao: { texto: "atenção", cor: "hsl(var(--warning))" },
-  critico: { texto: "crítico", cor: "hsl(var(--destructive))" },
-};
 
 export default function TabelaAlunos<T extends AlunoDaTabela>({
   alunos,
   mostrarClasse,
-  mostrarAbandono,
   onAbrir,
 }: {
   alunos: T[];
   mostrarClasse: boolean;
-  /** Só quando a view de engajamento trouxe abandono por aluno. */
-  mostrarAbandono: boolean;
   onAbrir: (aluno: T) => void;
 }) {
   const [busca, setBusca] = useState("");
@@ -56,7 +49,8 @@ export default function TabelaAlunos<T extends AlunoDaTabela>({
   }, [perfil, perfis]);
 
   // Pesos do protótipo; a última coluna (botão de abrir) tem largura fixa.
-  const pesos = [2.3, ...(mostrarClasse ? [1.2] : []), 1.5, 0.7, 1.5, 0.8, ...(mostrarAbandono ? [0.9] : [])];
+  const pesos = [2.3, ...(mostrarClasse ? [1.2] : []), 1.5, 0.7, 1.5, 0.8, 0.9];
+  const hoje = new Date();
   const somaDosPesos = pesos.reduce((a, b) => a + b, 0);
   const larguras = pesos.map((p) => `${((p / somaDosPesos) * 100).toFixed(2)}%`);
   const th = "console-label-sm !text-[11px] px-[7px] py-3 first:pl-[26px] last:pr-[26px]";
@@ -97,7 +91,7 @@ export default function TabelaAlunos<T extends AlunoDaTabela>({
       </div>
 
       <div className="overflow-x-auto">
-        <table className={`w-full ${mostrarAbandono ? "min-w-[900px]" : "min-w-[820px]"} table-fixed border-collapse text-left`}>
+        <table className="w-full min-w-[900px] table-fixed border-collapse text-left">
           <colgroup>
             {larguras.map((largura, i) => (
               <col key={i} style={{ width: largura }} />
@@ -112,7 +106,7 @@ export default function TabelaAlunos<T extends AlunoDaTabela>({
               <th scope="col" className={th}>Nota</th>
               <th scope="col" className={th}>Progresso na trilha</th>
               <th scope="col" className={th}>Acertos</th>
-              {mostrarAbandono && <th scope="col" className={th}>Abandono</th>}
+              <th scope="col" className={th}>Última atividade</th>
               <th scope="col" className={th}><span className="sr-only">Abrir</span></th>
             </tr>
           </thead>
@@ -149,20 +143,9 @@ export default function TabelaAlunos<T extends AlunoDaTabela>({
                   </div>
                 </td>
                 <td className={`${td} text-[13.5px] text-foreground`}>{aluno.temAcertos === false ? "—" : `${aluno.acertosPercentual.toFixed(0)}%`}</td>
-                {mostrarAbandono && (
-                  <td className={td}>
-                    {aluno.abandonoPct == null ? (
-                      <span className="text-[13.5px] text-muted-foreground">—</span>
-                    ) : (
-                      <>
-                        <div className="text-[13.5px] font-semibold text-foreground">{Math.round(aluno.abandonoPct)}%</div>
-                        <div className="mt-0.5 text-[10.5px] font-semibold" style={{ color: ROTULO_DA_FAIXA[faixaDoAbandono(aluno.abandonoPct)].cor }}>
-                          {ROTULO_DA_FAIXA[faixaDoAbandono(aluno.abandonoPct)].texto}
-                        </div>
-                      </>
-                    )}
-                  </td>
-                )}
+                <td className={`${td} text-[13.5px] ${aluno.ultimaAtividadeEm ? "text-foreground" : "text-muted-foreground"}`}>
+                  {rotuloDaUltimaAtividade(aluno.ultimaAtividadeEm, hoje)}
+                </td>
                 <td className={td}>
                   {/* Linha inteira clicável para o mouse; o botão é o caminho do
                       teclado e do leitor de tela, sem quebrar a semântica de tabela. */}

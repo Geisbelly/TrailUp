@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { TurmaDistribuicao, TurmaPerfilMetricas } from "../useTurmaKpis";
-import { abandonoPorPerfil, distribuicaoDeNotas, tomDaFaixa } from "./graficos";
+import { distribuicaoDeNotas, inatividadePorPerfil, tomDaFaixa } from "./graficos";
 
 const linhaPerfil = (p: Partial<TurmaPerfilMetricas>): TurmaPerfilMetricas => ({
   classe_id: 1,
   segmento: "majoritario",
   perfil_nome: "Seeker",
   total_alunos_segmento: 10,
-  taxa_abandono_pct: 0,
+  alunos_inativos: 0,
+  alunos_estagnados: 0,
+  tempo_ativo_medio_seg: null,
   media_nota: 0,
   taxa_acertos_pct: 0,
   taxa_uso_chat_pct: 0,
@@ -15,36 +17,33 @@ const linhaPerfil = (p: Partial<TurmaPerfilMetricas>): TurmaPerfilMetricas => ({
   ...p,
 });
 
-describe("abandonoPorPerfil", () => {
+describe("inatividadePorPerfil", () => {
   it("devolve sempre os 7 perfis na ordem fixa, com null onde não há dado", () => {
-    const r = abandonoPorPerfil([linhaPerfil({ perfil_nome: "Achiever", taxa_abandono_pct: 18 })], "majoritario");
+    const r = inatividadePorPerfil([linhaPerfil({ perfil_nome: "Achiever", alunos_inativos: 2 })], "majoritario");
     expect(r.map((x) => x.perfil)).toEqual(["seeker", "survivor", "daredevil", "mastermind", "conqueror", "socializer", "achiever"]);
-    expect(r[6].valor).toBe(18);
+    expect(r[6].valor).toBe(20);
     expect(r[0].valor).toBeNull();
   });
 
   it("filtra pelo segmento escolhido", () => {
     const linhas = [
-      linhaPerfil({ segmento: "majoritario", taxa_abandono_pct: 10 }),
-      linhaPerfil({ segmento: "segundo", taxa_abandono_pct: 40 }),
+      linhaPerfil({ segmento: "majoritario", alunos_inativos: 1 }),
+      linhaPerfil({ segmento: "segundo", alunos_inativos: 4 }),
     ];
-    expect(abandonoPorPerfil(linhas, "segundo")[0].valor).toBe(40);
+    expect(inatividadePorPerfil(linhas, "segundo")[0].valor).toBe(40);
   });
 
-  it("junta turmas do mesmo perfil ponderando pelos alunos do segmento", () => {
+  it("junta turmas do mesmo perfil somando inativos e alunos (ponderado pelos alunos)", () => {
     const linhas = [
-      linhaPerfil({ classe_id: 1, total_alunos_segmento: 30, taxa_abandono_pct: 10 }),
-      linhaPerfil({ classe_id: 2, total_alunos_segmento: 10, taxa_abandono_pct: 50 }),
+      linhaPerfil({ classe_id: 1, total_alunos_segmento: 30, alunos_inativos: 3 }),
+      linhaPerfil({ classe_id: 2, total_alunos_segmento: 10, alunos_inativos: 5 }),
     ];
-    expect(abandonoPorPerfil(linhas, "majoritario")[0].valor).toBe(20);
+    expect(inatividadePorPerfil(linhas, "majoritario")[0].valor).toBe(20);
   });
 
-  it("sem alunos para ponderar, cai na média simples", () => {
-    const linhas = [
-      linhaPerfil({ classe_id: 1, total_alunos_segmento: 0, taxa_abandono_pct: 10 }),
-      linhaPerfil({ classe_id: 2, total_alunos_segmento: 0, taxa_abandono_pct: 30 }),
-    ];
-    expect(abandonoPorPerfil(linhas, "majoritario")[0].valor).toBe(20);
+  it("segmento com menos de 5 alunos fica oculto (n mínimo)", () => {
+    const r = inatividadePorPerfil([linhaPerfil({ total_alunos_segmento: 4, alunos_inativos: 4 })], "majoritario");
+    expect(r[0]).toMatchObject({ valor: null, alunos: 4 });
   });
 });
 

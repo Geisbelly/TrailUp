@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Bar, BarChart, Cell, LabelList, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import type { TurmaPerfilMetricas } from "../useTurmaKpis";
-import { abandonoPorPerfil, type SegmentoPerfil } from "./graficos";
+import { inatividadePorPerfil, N_MINIMO_SEGMENTO, type SegmentoPerfil } from "./graficos";
 import { COR_DO_PERFIL } from "./perfilCores";
 import SegmentedPills from "./SegmentedPills";
 
@@ -28,7 +28,7 @@ function RotuloDoPerfil({ x, y, payload, pontos }: { x?: number; y?: number; pay
   );
 }
 
-export default function AbandonoPorPerfil({
+export default function InatividadePorPerfil({
   linhas,
   segmento,
   onSegmentoChange,
@@ -40,7 +40,7 @@ export default function AbandonoPorPerfil({
   media: number | null;
 }) {
   const pontos: Ponto[] = useMemo(
-    () => abandonoPorPerfil(linhas, segmento).map((p) => ({ ...p, altura: p.valor ?? 0 })),
+    () => inatividadePorPerfil(linhas, segmento).map((p) => ({ ...p, altura: p.valor ?? 0 })),
     [linhas, segmento],
   );
   const temDados = pontos.some((p) => p.valor !== null);
@@ -51,8 +51,10 @@ export default function AbandonoPorPerfil({
     <div className="min-w-0 rounded-[20px] border border-border bg-card px-[26px] pb-5 pt-6">
       <div className="flex flex-wrap items-start gap-4">
         <div className="min-w-0">
-          <h3 className="text-lg text-foreground">Abandono por perfil</h3>
-          <p className="mt-1 text-[12.5px] text-muted-foreground">Percentual de atividades abandonadas, por perfil BrainHex</p>
+          <h3 className="text-lg text-foreground">Inatividade por perfil</h3>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
+            Alunos há 7 dias ou mais sem estudar, por perfil BrainHex. Perfil com menos de {N_MINIMO_SEGMENTO} alunos fica oculto.
+          </p>
           {media !== null && temDados && (
             <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
               <span aria-hidden="true" className="w-4 border-t border-dashed border-current" />
@@ -70,7 +72,7 @@ export default function AbandonoPorPerfil({
       </div>
 
       {temDados ? (
-        <div className="mt-5 overflow-x-auto text-muted-foreground" role="img" aria-label={`Abandono por perfil: ${resumo}`}>
+        <div className="mt-5 overflow-x-auto text-muted-foreground" role="img" aria-label={`Inatividade por perfil: ${resumo}`}>
           <div className="h-[240px] min-w-[520px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={pontos} margin={{ top: 24, right: 8, bottom: 0, left: 8 }}>

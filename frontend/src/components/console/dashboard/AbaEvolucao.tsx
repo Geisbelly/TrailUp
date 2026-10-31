@@ -42,12 +42,13 @@ export default function AbaEvolucao({
   classIds,
   matriculas,
   conclusaoAtualPct,
-  abandonoAtualPct,
+  retornoSemanalPct,
 }: {
   classIds: number[];
   matriculas: Matricula[];
   conclusaoAtualPct: number | null;
-  abandonoAtualPct: number | null;
+  /** Retorno semanal das últimas 8 semanas completas (F5); substitui o "Abandono". */
+  retornoSemanalPct: number | null;
 }) {
   const semanas = useMemo(() => semanasAte(new Date()), []);
   const alunoIds = useMemo(() => [...new Set(matriculas.map((m) => m.aluno_id))], [matriculas]);
@@ -107,10 +108,10 @@ export default function AbaEvolucao({
           nota={SEM_HISTORICO}
         />
         <KpiDeEvolucao
-          rotulo="Abandono"
-          valor={abandonoAtualPct === null ? "—" : `${Math.round(abandonoAtualPct * 10) / 10}%`}
+          rotulo="Retorno semanal"
+          valor={retornoSemanalPct === null ? "—" : `${Math.round(retornoSemanalPct)}%`}
           delta={null}
-          nota={SEM_HISTORICO}
+          nota="últimas 8 semanas completas"
         />
       </div>
 

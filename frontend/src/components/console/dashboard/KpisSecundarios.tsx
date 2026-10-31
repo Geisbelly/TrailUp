@@ -1,7 +1,8 @@
 import type { LucideIcon } from "lucide-react";
-import { AlertCircle, Check, Clock, MessageSquare } from "lucide-react";
+import { Check, Clock, MessageSquare, Repeat } from "lucide-react";
 import type { TurmaResumo } from "@/lib/turmaResumo";
-import { fraseDoTom, META_ABANDONO_PCT, META_ACERTOS_PCT, tomDaMetrica, type TomMetrica } from "./metas";
+import { CHAVE, estadoDoCard, TEXTO_DO_ESTADO, type ChaveDoCatalogo, type Disponibilidade, type EstadoDoCard } from "./disponibilidade";
+import { fraseDoTom, META_ACERTOS_PCT, tomDaMetrica, type TomMetrica } from "./metas";
 
 const COR_DO_TOM: Record<TomMetrica, string> = {
   bom: "hsl(var(--success))",
@@ -19,6 +20,7 @@ type KpiSecundario = {
   tom: TomMetrica;
   nota?: string;
   barra: boolean;
+  estado: EstadoDoCard;
 };
 
 function KpiSecundarioCard({ kpi }: { kpi: KpiSecundario }) {
@@ -28,10 +30,12 @@ function KpiSecundarioCard({ kpi }: { kpi: KpiSecundario }) {
     <div className="rounded-2xl border border-border bg-card px-5 py-[18px]">
       <div className="flex items-center justify-between gap-3">
         <div className="console-label-sm">{kpi.label}</div>
-        <Icon className="h-[15px] w-[15px] shrink-0" style={{ color: kpi.valor === null ? undefined : cor }} strokeWidth={2} aria-hidden="true" />
+        <Icon className="h-[15px] w-[15px] shrink-0" style={{ color: kpi.estado === "valor" ? cor : undefined }} strokeWidth={2} aria-hidden="true" />
       </div>
-      {kpi.valor === null ? (
-        <p className="mt-3 text-sm text-muted-foreground">Sem dados ainda</p>
+      {kpi.estado !== "valor" || kpi.valor === null ? (
+        <p className="mt-3 text-sm text-muted-foreground" role={kpi.estado === "erro" ? "alert" : undefined}>
+          {TEXTO_DO_ESTADO[kpi.estado === "valor" ? "sem_dado" : kpi.estado]}
+        </p>
       ) : (
         <>
           <div className="mt-2 text-[26px] font-bold text-foreground">
@@ -58,14 +62,27 @@ export default function KpisSecundarios({
   mediaAcertos,
   turmaResumo,
   temDadosTurma,
+  erroTurma,
+  disponibilidade,
 }: {
   mediaAcertos: number | null;
   turmaResumo: TurmaResumo;
   temDadosTurma: boolean;
+  /** A leitura das views da turma falhou: os cards que dependem dela mostram erro, não vazio. */
+  erroTurma: string | null;
+  disponibilidade: Map<string, Disponibilidade>;
 }) {
   const tomAcertos = tomDaMetrica(mediaAcertos ?? 0, META_ACERTOS_PCT, "maior_melhor");
-  const abandono = turmaResumo.taxa_media_abandono_pct;
-  const tomAbandono = tomDaMetrica(abandono, META_ABANDONO_PCT, "menor_melhor");
+  const daTurma = (valor: number | null, chave?: ChaveDoCatalogo) => {
+    const v = temDadosTurma ? valor : null;
+    return { valor: v, estado: estadoDoCard({ valor: v, erro: erroTurma, chave, disponibilidade }) };
+  };
+  const retorno = daTurma(turmaResumo.retorno_semanal_pct, CHAVE.retornoSemanal);
+  const tempoAtivo = daTurma(
+    turmaResumo.tempo_ativo_medio_seg === null ? null : turmaResumo.tempo_ativo_medio_seg / 60,
+    CHAVE.tempoAtivo,
+  );
+  const chat = daTurma(turmaResumo.uso_chat_apos_erro_pct);
 
   const kpis: KpiSecundario[] = [
     {
@@ -77,35 +94,42 @@ export default function KpisSecundarios({
       tom: tomAcertos,
       nota: fraseDoTom(tomAcertos, META_ACERTOS_PCT, "maior_melhor"),
       barra: true,
+      estado: mediaAcertos === null ? "sem_dado" : "valor",
     },
     {
-      label: "Abandono médio",
-      icon: AlertCircle,
-      valor: temDadosTurma ? abandono : null,
-      casas: 1,
+      // Substitui o "Abandono médio" (F5): a taxa antiga media "ainda não terminou".
+      label: "Retorno semanal",
+      icon: Repeat,
+      valor: retorno.valor,
+      casas: 0,
       unidade: "%",
-      tom: tomAbandono,
-      nota: fraseDoTom(tomAbandono, META_ABANDONO_PCT, "menor_melhor"),
+      tom: "informativo",
+      nota: "dos que estudaram numa semana voltaram na seguinte (últimas 8 semanas)",
       barra: true,
+      estado: retorno.estado,
     },
     {
       label: "Chat após erro",
       icon: MessageSquare,
-      valor: temDadosTurma ? turmaResumo.uso_chat_apos_erro_pct : null,
+      valor: chat.valor,
       casas: 1,
       unidade: "%",
       tom: "informativo",
       nota: "Informativo · uso do chat logo depois de um erro",
       barra: true,
+      estado: chat.estado,
     },
     {
-      label: "Tempo médio de uso",
+      // Era "Tempo médio de uso" (app aberto, inflado por fan-out). D-1: tempo de estudo é tempo ativo.
+      label: "Tempo ativo médio",
       icon: Clock,
-      valor: temDadosTurma ? turmaResumo.tempo_medio_uso_seg / 60 : null,
+      valor: tempoAtivo.valor,
       casas: 1,
       unidade: "min",
       tom: "neutro",
+      nota: "por aluno, só o tempo interagindo com o material",
       barra: false,
+      estado: tempoAtivo.estado,
     },
   ];
 

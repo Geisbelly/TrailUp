@@ -1,22 +1,31 @@
-export type SinaisDoAluno = { abandonoPct: number | null; ultimaSessao: string | null };
+import type { SinaisDoBanco } from "./risco";
 
-export type LinhaEngajamento = { aluno_id: string; classe_id: number; taxa_abandono_pct: number | null };
-export type LinhaSessao = { aluno_id: string; classe_id: number; dia: string };
+/** Uma linha de vw_metricas_engajamento_aluno_classe com as colunas dos sinais (F5, 20261031_05). */
+export type LinhaEngajamento = {
+  aluno_id: string;
+  classe_id: number;
+  sem_dado: boolean | null;
+  ultima_atividade_em: string | null;
+  inativo_desde: string | null;
+  evadido_desde: string | null;
+  estagnado_desde: string | null;
+  estagnado_topico_id: number | null;
+};
 
 export const chaveAlunoTurma = (alunoId: string, classeId: number) => `${alunoId}:${classeId}`;
 
-export function juntarSinais(engajamento: LinhaEngajamento[], sessoes: LinhaSessao[]): Map<string, SinaisDoAluno> {
-  const sinais = new Map<string, SinaisDoAluno>();
-  const pegar = (chave: string) => sinais.get(chave) ?? { abandonoPct: null, ultimaSessao: null };
-  for (const linha of engajamento) {
-    const chave = chaveAlunoTurma(linha.aluno_id, Number(linha.classe_id));
-    sinais.set(chave, { ...pegar(chave), abandonoPct: linha.taxa_abandono_pct === null ? null : Number(linha.taxa_abandono_pct) });
-  }
-  for (const linha of sessoes) {
-    const chave = chaveAlunoTurma(linha.aluno_id, Number(linha.classe_id));
-    const atual = pegar(chave);
-    const dia = linha.dia.slice(0, 10);
-    if (!atual.ultimaSessao || dia > atual.ultimaSessao) sinais.set(chave, { ...atual, ultimaSessao: dia });
+export function juntarSinais(engajamento: LinhaEngajamento[], nomesDosTopicos: Map<number, string>): Map<string, SinaisDoBanco> {
+  const sinais = new Map<string, SinaisDoBanco>();
+  for (const l of engajamento) {
+    sinais.set(chaveAlunoTurma(l.aluno_id, Number(l.classe_id)), {
+      // Sem a coluna (build antigo do banco), trata como sem dado: nada vira sinal por engano.
+      semDado: l.sem_dado !== false,
+      ultimaAtividadeEm: l.ultima_atividade_em,
+      inativoDesde: l.inativo_desde,
+      evadidoDesde: l.evadido_desde,
+      estagnadoDesde: l.estagnado_desde,
+      estagnadoTopico: l.estagnado_topico_id === null ? null : nomesDosTopicos.get(Number(l.estagnado_topico_id)) ?? null,
+    });
   }
   return sinais;
 }
