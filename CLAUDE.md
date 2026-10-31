@@ -329,6 +329,13 @@ mobile dispara novo ciclo quando uma ação casa com `refresh_policy.trigger_act
 > é o app quem manda e **nunca é obrigatória**: build antigo grava direto sem ela,
 > e recusar o lote perderia telemetria — a falta só aparece na invariante I18.
 > Linhas anteriores à migration ficam com as duas colunas nulas, de propósito.
+>
+> `via` diz por onde o lote chegou, **não quem o mandou**: qualquer API ligada ao
+> banco de produção grava `api`, inclusive uma subida na máquina de alguém. Quem
+> mandou está em `payload->'cliente'` (`app_version`, `build_profile` do
+> `eas.json`, `ambiente`, `dev`, `plataforma`, `api_host`), carimbado no envio
+> pelos dois caminhos (`mobile/src/services/telemetriaCliente.core.ts`). Lote de
+> build anterior vem sem ele, e `cliente` inválido vira ausente: nunca custa o lote.
 
 Fase 4 (`23b38ef`): endpoint `GET /personalizar/grupo/{classe_id}`
 (`app/services/group_analysis.py`) computa e persiste a distribuição de perfis
