@@ -10,6 +10,8 @@ const linha = (over: Partial<LinhaEngajamento>): LinhaEngajamento => ({
   evadido_desde: null,
   estagnado_desde: null,
   estagnado_topico_id: null,
+  risco_abandono_faixa: "normal",
+  risco_abandono_origem: "modelo",
   ...over,
 });
 
@@ -32,6 +34,21 @@ describe("juntarSinais", () => {
   it("sem a coluna sem_dado, o aluno conta como sem dado (nada vira sinal por engano)", () => {
     const sinais = juntarSinais([linha({ sem_dado: null })], new Map());
     expect(sinais.get(chaveAlunoTurma("a", 1))?.semDado).toBe(true);
+  });
+
+  it("a faixa do modelo chega como está; 'sem dados' vira null", () => {
+    const sinais = juntarSinais([linha({ risco_abandono_faixa: "alto" }), linha({ aluno_id: "b", risco_abandono_faixa: "sem dados" })], new Map());
+    expect(sinais.get(chaveAlunoTurma("a", 1))?.riscoFaixa).toBe("alto");
+    expect(sinais.get(chaveAlunoTurma("b", 1))?.riscoFaixa).toBeNull();
+  });
+
+  it("a origem da faixa chega como está; valor desconhecido vira null", () => {
+    const sinais = juntarSinais(
+      [linha({ risco_abandono_origem: "inatividade" }), linha({ aluno_id: "b", risco_abandono_origem: "outra" })],
+      new Map(),
+    );
+    expect(sinais.get(chaveAlunoTurma("a", 1))?.riscoOrigem).toBe("inatividade");
+    expect(sinais.get(chaveAlunoTurma("b", 1))?.riscoOrigem).toBeNull();
   });
 
   it("tópico parado sem nome conhecido fica null, não um id cru", () => {

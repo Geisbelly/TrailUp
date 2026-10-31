@@ -1,8 +1,8 @@
 import type { LucideIcon } from "lucide-react";
-import { Check, Clock, MessageSquare, Repeat } from "lucide-react";
+import { AlertCircle, Check, Clock, MessageSquare, Repeat, Timer } from "lucide-react";
 import type { TurmaResumo } from "@/lib/turmaResumo";
 import { CHAVE, estadoDoCard, TEXTO_DO_ESTADO, type ChaveDoCatalogo, type Disponibilidade, type EstadoDoCard } from "./disponibilidade";
-import { fraseDoTom, META_ACERTOS_PCT, tomDaMetrica, type TomMetrica } from "./metas";
+import { fraseDoTom, META_ABANDONO_PCT, META_ACERTOS_PCT, tomDaMetrica, type TomMetrica } from "./metas";
 
 const COR_DO_TOM: Record<TomMetrica, string> = {
   bom: "hsl(var(--success))",
@@ -83,6 +83,9 @@ export default function KpisSecundarios({
     CHAVE.tempoAtivo,
   );
   const chat = daTurma(turmaResumo.uso_chat_apos_erro_pct);
+  const abandono = daTurma(turmaResumo.taxa_risco_abandono_pct, CHAVE.riscoAbandono);
+  const tomAbandono = tomDaMetrica(abandono.valor ?? 0, META_ABANDONO_PCT, "menor_melhor");
+  const tempoUso = daTurma(turmaResumo.tempo_medio_uso_seg === null ? null : turmaResumo.tempo_medio_uso_seg / 60);
 
   const kpis: KpiSecundario[] = [
     {
@@ -97,7 +100,18 @@ export default function KpisSecundarios({
       estado: mediaAcertos === null ? "sem_dado" : "valor",
     },
     {
-      // Substitui o "Abandono médio" (F5): a taxa antiga media "ainda não terminou".
+      // Taxa de abandono pelo modelo de evasão do core (F5): % dos alunos com dado em risco alto.
+      label: "Abandono médio",
+      icon: AlertCircle,
+      valor: abandono.valor,
+      casas: 1,
+      unidade: "%",
+      tom: tomAbandono,
+      nota: fraseDoTom(tomAbandono, META_ABANDONO_PCT, "menor_melhor"),
+      barra: true,
+      estado: abandono.estado,
+    },
+    {
       label: "Retorno semanal",
       icon: Repeat,
       valor: retorno.valor,
@@ -120,7 +134,18 @@ export default function KpisSecundarios({
       estado: chat.estado,
     },
     {
-      // Era "Tempo médio de uso" (app aberto, inflado por fan-out). D-1: tempo de estudo é tempo ativo.
+      // App aberto, por aluno. Sem o fan-out da view antiga (F5, I16).
+      label: "Tempo médio de uso",
+      icon: Timer,
+      valor: tempoUso.valor,
+      casas: 1,
+      unidade: "min",
+      tom: "neutro",
+      barra: false,
+      estado: tempoUso.estado,
+    },
+    {
+      // D-1: tempo de estudo é tempo ativo, ao lado do tempo de uso.
       label: "Tempo ativo médio",
       icon: Clock,
       valor: tempoAtivo.valor,
@@ -134,7 +159,7 @@ export default function KpisSecundarios({
   ];
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {kpis.map((kpi) => (
         <KpiSecundarioCard key={kpi.label} kpi={kpi} />
       ))}

@@ -17,6 +17,7 @@ import KpisPrincipais from "./dashboard/KpisPrincipais";
 import KpisSecundarios from "./dashboard/KpisSecundarios";
 import { AlunoNaoEncontrado, DashboardCarregando, DashboardErro, DashboardVazio } from "./dashboard/DashboardEstados";
 import { alunosDaTurma as filtrarAlunosDaTurma, TODAS_AS_TURMAS } from "./dashboard/filtros";
+import AbandonoPorPerfil from "./dashboard/AbandonoPorPerfil";
 import InatividadePorPerfil from "./dashboard/InatividadePorPerfil";
 import AbandonoPorEtapa from "./dashboard/AbandonoPorEtapa";
 import GargalosDePersonalizacao from "./dashboard/GargalosDePersonalizacao";
@@ -29,7 +30,7 @@ import type { SegmentoPerfil } from "./dashboard/graficos";
 import DetalheAluno from "./dashboard/aluno/DetalheAluno";
 import type { Aluno, AlunoAnalisado, AlunoPerfil, EvolucaoAluno, PersonalizacaoDocenteResponse } from "./dashboard/aluno/tipos";
 import PrecisamDeAtencao, { type AlunoEmRisco } from "./dashboard/PrecisamDeAtencao";
-import { avaliarRisco, notaParaRisco } from "./dashboard/risco";
+import { avaliarRisco, notaParaRisco, observacaoNotaEAbandono } from "./dashboard/risco";
 import { chaveAlunoTurma } from "./dashboard/sinais";
 import { mediaDosPreenchidos } from "./dashboard/medias";
 import { useSinaisDosAlunos } from "./dashboard/useSinaisDosAlunos";
@@ -86,6 +87,16 @@ export default function DashboardSection() {
   const kpiClassIds = useMemo(() => classes.map((c) => c.id), [classes]);
   const { turmaMetricas, perfilMetricas, distribuicaoMetricas, erro: erroTurma } = useTurmaKpis(kpiClassIds);
   const { sinais } = useSinaisDosAlunos(kpiClassIds);
+  const taxaAbandonoPorTurma = useMemo(
+    () =>
+      new Map(
+        turmaMetricas.map((linha) => [
+          Number(linha.classe_id),
+          linha.taxa_risco_abandono_pct === null ? null : Number(linha.taxa_risco_abandono_pct),
+        ])
+      ),
+    [turmaMetricas]
+  );
 
   const mapStatus = (status?: string | null): "concluido" | "disponivel" | "bloqueado" => {
     if (!status) return "disponivel";
@@ -357,12 +368,18 @@ export default function DashboardSection() {
       const sinal = sinais.get(chaveAlunoTurma(a.id, a.classe_id)) ?? null;
       const risco = avaliarRisco(
         { sinais: sinal, nota: a.temNota ? notaParaRisco(a.notaMedia, a.porcentagemConcluida) : null },
-        { notaMedia: mediaDaTurma(a.classe_id) },
+        { notaMedia: mediaDaTurma(a.classe_id), taxaAbandonoPct: taxaAbandonoPorTurma.get(a.classe_id) ?? null },
         hoje
       );
-      return { ...a, ultimaAtividadeEm: sinal?.ultimaAtividadeEm ?? null, risco };
+      return {
+        ...a,
+        ultimaAtividadeEm: sinal?.ultimaAtividadeEm ?? null,
+        riscoFaixa: sinal && !sinal.semDado ? sinal.riscoFaixa : null,
+        risco,
+      };
     });
-  }, [alunos, sinais]);
+  }, [alunos, sinais, taxaAbandonoPorTurma]);
+  const temAbandono = useMemo(() => alunosAnalisados.some((a) => a.riscoFaixa !== null), [alunosAnalisados]);
 
   const selectedAluno = useMemo(() => {
     if (!alunoNaUrl) return null;
@@ -482,6 +499,15 @@ export default function DashboardSection() {
   // mesmo problema do hasAlunoKpis, mas pra fonte de dado separada (view de
   // metricas de turma).
   const hasTurmaKpis = turmaMetricasEscopo.length > 0;
+  const observacaoDaRosca = temAbandono
+    ? observacaoNotaEAbandono(
+        alunosDaTurma.map((a) => ({
+          nota: a.temNota ? notaParaRisco(a.notaMedia, a.porcentagemConcluida) : null,
+          riscoFaixa: a.riscoFaixa,
+        })),
+        hasTurmaKpis ? turmaResumo.taxa_risco_abandono_pct : null
+      )
+    : null;
   const inatividadeDaTurmaPct =
     hasTurmaKpis && turmaResumo.total_alunos > 0 ? (100 * turmaResumo.alunos_inativos) / turmaResumo.total_alunos : null;
   const disponibilidade = useDisponibilidade(ultimaCarga);
@@ -501,6 +527,7 @@ export default function DashboardSection() {
     ) : (
       <DetalheAluno
         aluno={selectedAluno}
+        taxaAbandonoDaTurmaPct={taxaAbandonoPorTurma.get(selectedAluno.classe_id) ?? null}
         rotuloVoltar={rotuloVoltar}
         onVoltar={voltarParaTurma}
         evolucaoAluno={alunoEvolucao}
@@ -559,13 +586,19 @@ export default function DashboardSection() {
               />
 
               <div className="grid items-start gap-5 lg:grid-cols-2">
+                <AbandonoPorPerfil
+                  linhas={perfilMetricasEscopo}
+                  segmento={perfilSegmentFilter}
+                  onSegmentoChange={setPerfilSegmentFilter}
+                  media={hasTurmaKpis ? turmaResumo.taxa_risco_abandono_pct : null}
+                />
+                <DistribuicaoNotas linhas={distribuicaoEscopo} mediaNotas={mediaNotas} observacao={observacaoDaRosca} />
                 <InatividadePorPerfil
                   linhas={perfilMetricasEscopo}
                   segmento={perfilSegmentFilter}
                   onSegmentoChange={setPerfilSegmentFilter}
                   media={inatividadeDaTurmaPct}
                 />
-                <DistribuicaoNotas linhas={distribuicaoEscopo} mediaNotas={mediaNotas} />
               </div>
 
               <AbandonoPorEtapa turmaUnica={turmaUnica} kpis={kpisPorTopico} disponibilidade={disponibilidade} />
@@ -575,6 +608,7 @@ export default function DashboardSection() {
               <TabelaAlunos
                 alunos={alunosDaTurma}
                 mostrarClasse={selectedClassFilter === TODAS_AS_TURMAS}
+                mostrarAbandono={temAbandono}
                 onAbrir={abrirAluno}
               />
             </div>
@@ -584,6 +618,7 @@ export default function DashboardSection() {
                 classIds={classScopeIds}
                 matriculas={matriculasDaTurma}
                 conclusaoAtualPct={hasAlunoKpis ? mediaConclusao : null}
+                abandonoAtualPct={hasTurmaKpis ? turmaResumo.taxa_risco_abandono_pct : null}
                 retornoSemanalPct={hasTurmaKpis ? turmaResumo.retorno_semanal_pct : null}
               />
             )}

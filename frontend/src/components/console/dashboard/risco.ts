@@ -1,23 +1,32 @@
-// Sinais de risco do aluno, só para o professor (spec de métricas, §6.2 e §7).
+// Sinais de risco do aluno, só para o professor.
 //
-// Até a F5 o risco somava uma "taxa de abandono" (tópicos não concluídos ÷ tópicos com linha) que
-// marcava "crítico" o aluno no meio da trilha, e dois sinais quaisquer viravam "crítico". Agora são
-// os três construtos da spec, cada um com fato e data, calculados no banco
-// (vw_metricas_engajamento_aluno_classe, migration 20261031_05):
+// CRÍTICO = faixa "alto" do modelo de evasão do core-trailup (trailup_risco_evasao, migration
+// 20261031_08): risco de abandonar nas próximas 4 semanas entre os 10% mais altos. A faixa
+// "atencao" do modelo é Atenção. O modelo só roda em semana com evento (o domínio em que foi
+// medido); sem evento, o banco decide a faixa pela inatividade (30 dias = alto, 7 = atenção). A taxa antiga (tópicos não concluídos ÷ tópicos com linha) marcava
+// "crítico" o aluno no meio da trilha e saiu da conta; o rótulo continua.
+//
+// Ao lado do modelo, como Atenção, os fatos com data (vw_metricas_engajamento_aluno_classe, 20261031_05):
 //   - inatividade: 7 dias ou mais sem estudar;
-//   - evasão: 30 dias ou mais sem estudar (o mais grave; não repete a inatividade);
-//   - estagnação: 14 dias sem avançar num tópico, abaixo da mediana da turma nele.
-// "Sem dado" (recusou telemetria, modo restrito, nunca estudou) NÃO é sinal. A nota baixa continua
-// como sinal à parte: acerto e nota ficam como estão até a F4b. Nenhum sinal soma com outro para
-// virar "crítico": há um nível só, "atenção", até um modelo ser validado (F6).
+//   - evasão: 30 dias ou mais sem estudar (não repete a inatividade);
+//   - estagnação: 14 dias sem avançar num tópico, abaixo da mediana da turma nele;
+//   - nota abaixo de 5,0.
+// "Sem dado" (recusou telemetria, modo restrito, nunca estudou) NÃO é sinal. Nenhum fato soma com
+// outro para virar crítico: só o modelo marca crítico.
 
 export const NOTA_MINIMA = 5;
 export const DIAS_INATIVO = 7;
 export const DIAS_ESTAGNADO = 14;
 export const DIAS_EVADIDO = 30;
 
-export type NivelDeRisco = "atencao";
-export type Criterio = "inatividade" | "evasao" | "estagnacao" | "nota";
+export type NivelDeRisco = "critico" | "atencao";
+export type Criterio = "abandono" | "inatividade" | "evasao" | "estagnacao" | "nota";
+export type FaixaDoRisco = "alto" | "atencao" | "normal";
+
+/** A faixa que o banco devolve; "sem dados", vazio ou desconhecido = null (sem dado, não "normal"). */
+export function faixaDoRisco(valor: string | null | undefined): FaixaDoRisco | null {
+  return valor === "alto" || valor === "atencao" || valor === "normal" ? valor : null;
+}
 export type Fator = { criterio: Criterio; motivo: string; comparacao: string | null };
 export type Risco = { nivel: NivelDeRisco; fatores: Fator[] };
 
@@ -29,6 +38,13 @@ export type SinaisDoBanco = {
   evadidoDesde: string | null;
   estagnadoDesde: string | null;
   estagnadoTopico: string | null;
+  /** Faixa do modelo de evasão do core; null = sem dado. */
+  riscoFaixa: FaixaDoRisco | null;
+  /**
+   * Quem decidiu a faixa: o modelo (semana com evento, o domínio em que ele foi medido) ou a regra
+   * de inatividade (semana sem evento; 30 dias = alto, 7 = atenção). null = sem dado.
+   */
+  riscoOrigem: "modelo" | "inatividade" | null;
 };
 
 const DIA_MS = 86_400_000;
@@ -38,12 +54,24 @@ export const diasDesde = (iso: string, hoje: Date) =>
 const dataCurta = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
 
 export type EntradaDeRisco = { sinais: SinaisDoBanco | null; nota: number | null };
-export type ReferenciaDaTurma = { notaMedia: number | null };
+export type ReferenciaDaTurma = { notaMedia: number | null; taxaAbandonoPct?: number | null };
 
 export function avaliarRisco(e: EntradaDeRisco, turma: ReferenciaDaTurma, hoje: Date): Risco | null {
   const fatores: Fator[] = [];
   const s = e.sinais;
   if (s && !s.semDado) {
+    // Faixa vinda da inatividade já aparece como o fato "sem estudar há N dias" abaixo: não repete.
+    if ((s.riscoFaixa === "alto" || s.riscoFaixa === "atencao") && s.riscoOrigem !== "inatividade") {
+      const turmaTxt =
+        turma.taxaAbandonoPct === null || turma.taxaAbandonoPct === undefined
+          ? null
+          : `turma: ${Math.round(turma.taxaAbandonoPct * 10) / 10}% em risco alto`;
+      fatores.push({
+        criterio: "abandono",
+        motivo: s.riscoFaixa === "alto" ? "Risco alto de abandono" : "Risco de abandono em atenção",
+        comparacao: turmaTxt,
+      });
+    }
     if (s.evadidoDesde) {
       fatores.push({
         criterio: "evasao",
@@ -73,15 +101,33 @@ export function avaliarRisco(e: EntradaDeRisco, turma: ReferenciaDaTurma, hoje: 
       comparacao: turma.notaMedia === null ? null : `turma: ${turma.notaMedia.toFixed(1)}`,
     });
   }
-  return fatores.length === 0 ? null : { nivel: "atencao", fatores };
+  if (fatores.length === 0) return null;
+  return { nivel: s?.riscoFaixa === "alto" && !s.semDado ? "critico" : "atencao", fatores };
 }
 
 /** Texto do critério da lista "Precisam de atenção". */
 export function descricaoDosCriterios(): string {
   return (
-    `Critério: ${DIAS_INATIVO} dias sem estudar, ${DIAS_ESTAGNADO} dias parado num tópico abaixo da mediana ` +
-    `ou nota abaixo de ${NOTA_MINIMA.toFixed(1)}. Sem dado não conta.`
+    `Crítico: risco alto de abandono no modelo do core. Atenção: risco em atenção, ${DIAS_INATIVO} dias sem ` +
+    `estudar, ${DIAS_ESTAGNADO} dias parado num tópico abaixo da mediana ou nota abaixo de ${NOTA_MINIMA.toFixed(1)}. ` +
+    "Sem dado não conta."
   );
+}
+
+/**
+ * Frase da rosca de notas (voltou na F5 com a conta nova): entre os alunos com nota abaixo de 5,0,
+ * quantos estão em risco alto de abandono, comparado com a turma.
+ */
+export function observacaoNotaEAbandono(
+  alunos: { nota: number | null; riscoFaixa: FaixaDoRisco | null }[],
+  taxaAbandonoDaTurmaPct: number | null,
+): string | null {
+  const abaixo = alunos.filter((a) => a.nota !== null && a.nota < NOTA_MINIMA && a.riscoFaixa !== null);
+  if (abaixo.length === 0 || taxaAbandonoDaTurmaPct === null) return null;
+  const emRisco = abaixo.filter((a) => a.riscoFaixa === "alto").length;
+  const pct = Math.round((1000 * emRisco) / abaixo.length) / 10;
+  const quem = abaixo.length === 1 ? "1 aluno com nota abaixo de 5.0" : `${abaixo.length} alunos com nota abaixo de 5.0`;
+  return `${quem}: ${pct}% em risco alto de abandono (turma: ${Math.round(taxaAbandonoDaTurmaPct * 10) / 10}%).`;
 }
 
 /** Nota que conta para o risco: null quando o aluno ainda não tem nota de verdade. */

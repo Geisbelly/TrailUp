@@ -50,6 +50,8 @@ def test_payload_troca_uuid_por_ref_e_mantem_ausencia_como_none() -> None:
                 "evadido": False,
                 "estagnado_topico": "Frações",
                 "estagnado_desde": date(2026, 9, 10),
+                "risco_abandono": "alto",
+                "risco_abandono_origem": "modelo",
             }
         },
         respostas={"u-a": {"respostas": 8, "acertos_pct": 62.5}},
@@ -72,12 +74,15 @@ def test_payload_troca_uuid_por_ref_e_mantem_ausencia_como_none() -> None:
         "sinal": "inatividade",
         "parado_em_topico": "Frações",
         "dias_parado_no_topico": 19,
+        "risco_abandono": "alto",
+        "risco_abandono_origem": "modelo",
     }
     # Sem dado continua sem dado: nada vira zero no caminho ate o modelo.
     assert a2["acertos_30d_pct"] is None
     assert a2["dias_sem_atividade"] is None
     assert a2["sinal"] is None
     assert a2["parado_em_topico"] is None
+    assert a2["risco_abandono"] is None
     assert payload["turma"] == {"total_alunos": 2, "perfis": {"seeker": 2}}
     assert "u-a" not in str(payload)
 

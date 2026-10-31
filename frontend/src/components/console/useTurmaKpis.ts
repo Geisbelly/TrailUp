@@ -17,6 +17,11 @@ export type TurmaGeralMetricas = {
   alunos_evadidos: number;
   alunos_sem_dado: number;
   taxa_media_conclusao_pct: number | null;
+  /** Taxa de abandono: % dos alunos com dado na faixa alta do modelo de evasão do core (20261031_08). */
+  taxa_risco_abandono_pct: number | null;
+  alunos_risco_alto: number;
+  alunos_risco_atencao: number;
+  alunos_risco_com_dado: number;
   media_nota_turma: number;
   taxa_media_acertos_pct: number;
   taxa_media_acertos_sem_erro_pct: number;
@@ -38,6 +43,9 @@ export type TurmaPerfilMetricas = {
   alunos_inativos: number;
   alunos_estagnados: number;
   tempo_ativo_medio_seg: number | null;
+  taxa_risco_abandono_pct: number | null;
+  alunos_risco_alto: number;
+  alunos_risco_com_dado: number;
   media_nota: number;
   taxa_acertos_pct: number;
   taxa_uso_chat_pct: number;

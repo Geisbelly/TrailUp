@@ -6,7 +6,7 @@ import type { SinaisDoBanco } from "./risco";
 import { juntarSinais, type LinhaEngajamento } from "./sinais";
 
 /**
- * Os três sinais de cada aluno (inatividade, evasão e estagnação) já calculados no banco, em
+ * A faixa de risco de abandono (modelo de evasão do core-trailup) e os três sinais de cada aluno (inatividade, evasão e estagnação) já calculados no banco, em
  * vw_metricas_engajamento_aluno_classe (F5, 20261031_05), e o nome dos tópicos para dizer onde o
  * aluno parou. Leitura direta do Supabase — sem modelo de linguagem, não passa pela API (regra de
  * fronteira do CLAUDE.md).
@@ -26,7 +26,7 @@ export function useSinaisDosAlunos(classIds: number[]) {
     void Promise.all([
       selectView(
         "vw_metricas_engajamento_aluno_classe",
-        "aluno_id, classe_id, sem_dado, ultima_atividade_em, inativo_desde, evadido_desde, estagnado_desde, estagnado_topico_id",
+        "aluno_id, classe_id, sem_dado, ultima_atividade_em, inativo_desde, evadido_desde, estagnado_desde, estagnado_topico_id, risco_abandono_faixa, risco_abandono_origem",
       ).in("classe_id", classIds),
       supabase.from("topicos").select("id, nome").in("classe_id", classIds),
     ]).then(([engajamento, topicos]) => {

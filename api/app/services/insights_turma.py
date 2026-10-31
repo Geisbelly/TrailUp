@@ -110,6 +110,10 @@ def montar_payload(
                 "sinal": "evasao" if sinal.get("evadido") else ("inatividade" if sinal.get("inativo") else None),
                 "parado_em_topico": sinal.get("estagnado_topico"),
                 "dias_parado_no_topico": (hoje - parado_desde).days if parado_desde else None,
+                # Faixa do modelo de evasao do core-trailup (20261031_08): "alto" e o critico do console.
+                "risco_abandono": sinal.get("risco_abandono"),
+                # "modelo" (semana com evento) ou "inatividade" (semana sem evento: regra de dias).
+                "risco_abandono_origem": sinal.get("risco_abandono_origem"),
             }
         )
     payload = {
@@ -219,7 +223,8 @@ class InsightsTurmaService:
             "sinais",
             """
             SELECT e.aluno_id, e.ultima_atividade_em, e.inativo_desde, e.evadido_desde,
-                   e.estagnado_desde, t.nome AS estagnado_topico
+                   e.estagnado_desde, t.nome AS estagnado_topico, e.risco_abandono_faixa,
+                   e.risco_abandono_origem
               FROM vw_metricas_engajamento_aluno_classe e
               LEFT JOIN topicos t ON t.id = e.estagnado_topico_id
              WHERE e.classe_id = :classe_id
@@ -232,6 +237,12 @@ class InsightsTurmaService:
                 "evadido": r["evadido_desde"] is not None,
                 "estagnado_topico": r["estagnado_topico"],
                 "estagnado_desde": _data(r["estagnado_desde"]),
+                "risco_abandono": r["risco_abandono_faixa"]
+                if r["risco_abandono_faixa"] in ("alto", "atencao", "normal")
+                else None,
+                "risco_abandono_origem": r["risco_abandono_origem"]
+                if r["risco_abandono_origem"] in ("modelo", "inatividade")
+                else None,
             }
         # Respostas vem de eventos_aluno ("atividade:<id>"), que guarda a data
         # de cada uma; so contam atividades desta turma.

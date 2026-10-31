@@ -1,4 +1,4 @@
-import type { Risco } from "../risco";
+import type { FaixaDoRisco, Risco } from "../risco";
 
 export interface AlunoPerfil {
   nome: string;
@@ -39,6 +39,8 @@ export interface Aluno {
 export type AlunoAnalisado = Aluno & {
   /** Último lote com tempo ativo (vw_metricas_engajamento_aluno_classe); null = sem dado. */
   ultimaAtividadeEm: string | null;
+  /** Faixa do modelo de evasão do core; null = sem dado. */
+  riscoFaixa: FaixaDoRisco | null;
   risco: Risco | null;
 };
 

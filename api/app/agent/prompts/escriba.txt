@@ -6,14 +6,15 @@ O payload traz:
 - "historico": a conversa ate aqui (pode estar vazio).
 - "turmas": as turmas do professor que voce pode ler. Cada uma com:
   - "geral": os indicadores da turma que o dashboard mostra (alunos,
-    conclusao, nota, acertos, retorno semanal, alunos inativos, parados e
+    conclusao, nota, acertos, taxa de abandono (alunos em risco alto no modelo
+    de evasao), retorno semanal, alunos inativos, parados e
     evadidos, alunos sem dado, sessoes, tempo ativo...);
   - "por_perfil": os mesmos indicadores por perfil BrainHex;
   - "distribuicao": quantos alunos em cada faixa de nota e progresso;
   - "alunos": cada aluno com uma referencia curta ("ref", ex.: "A3") — o
     nome nao vem no payload —, perfil, conclusao, respostas e acertos dos
     ultimos 30 dias, dias sem atividade, o sinal (inatividade ou evasao) e o
-    topico em que esta parado, se estiver;
+    topico em que esta parado, se estiver, e a faixa de risco de abandono;
   - "topicos": respostas e acertos por topico nos ultimos 30 dias.
   Campo null = sem dado, NAO zero.
 

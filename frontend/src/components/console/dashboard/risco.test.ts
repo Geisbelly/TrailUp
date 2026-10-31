@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { avaliarRisco, descricaoDosCriterios, diasDesde, notaParaRisco, type SinaisDoBanco } from "./risco";
+import {
+  avaliarRisco,
+  descricaoDosCriterios,
+  diasDesde,
+  faixaDoRisco,
+  notaParaRisco,
+  observacaoNotaEAbandono,
+  type SinaisDoBanco,
+} from "./risco";
 
 const hoje = new Date("2026-10-31T15:00:00Z");
 const turma = { notaMedia: 7.4 };
@@ -10,6 +18,8 @@ const nada: SinaisDoBanco = {
   evadidoDesde: null,
   estagnadoDesde: null,
   estagnadoTopico: null,
+  riscoFaixa: "normal",
+  riscoOrigem: "modelo",
 };
 
 describe("avaliarRisco", () => {
@@ -51,7 +61,31 @@ describe("avaliarRisco", () => {
     expect(avaliarRisco({ sinais: null, nota: null }, turma, hoje)).toBeNull();
   });
 
-  it("dois sinais continuam 'atenção': nada vira crítico por soma", () => {
+  it("faixa alta do modelo do core é crítico, com a taxa da turma", () => {
+    const r = avaliarRisco({ sinais: { ...nada, riscoFaixa: "alto" }, nota: null }, { notaMedia: 7.4, taxaAbandonoPct: 12.5 }, hoje);
+    expect(r).toEqual({
+      nivel: "critico",
+      fatores: [{ criterio: "abandono", motivo: "Risco alto de abandono", comparacao: "turma: 12.5% em risco alto" }],
+    });
+  });
+
+  it("faixa vinda da inatividade é crítico sem repetir o fato como 'risco de abandono'", () => {
+    const desde = "2026-09-30T12:00:00Z";
+    const r = avaliarRisco(
+      { sinais: { ...nada, riscoFaixa: "alto", riscoOrigem: "inatividade", inativoDesde: desde, evadidoDesde: desde }, nota: null },
+      turma,
+      hoje,
+    );
+    expect(r?.nivel).toBe("critico");
+    expect(r?.fatores.map((f) => f.criterio)).toEqual(["evasao"]);
+  });
+
+  it("faixa atenção do modelo é atenção; normal não é sinal", () => {
+    expect(avaliarRisco({ sinais: { ...nada, riscoFaixa: "atencao" }, nota: null }, turma, hoje)?.nivel).toBe("atencao");
+    expect(avaliarRisco({ sinais: { ...nada, riscoFaixa: "normal" }, nota: null }, turma, hoje)).toBeNull();
+  });
+
+  it("crítico vem só do modelo: fatos juntos continuam atenção", () => {
     const r = avaliarRisco({ sinais: { ...nada, inativoDesde: "2026-10-22T12:00:00Z" }, nota: 4 }, turma, hoje);
     expect(r?.nivel).toBe("atencao");
     expect(r?.fatores.map((f) => f.criterio)).toEqual(["inatividade", "nota"]);
@@ -81,5 +115,28 @@ describe("notaParaRisco", () => {
     expect(notaParaRisco(0, 20)).toBe(0);
     expect(notaParaRisco(null, 50)).toBeNull();
     expect(notaParaRisco(4.2, 0)).toBe(4.2);
+  });
+});
+
+describe("faixaDoRisco e observacaoNotaEAbandono", () => {
+  it("'sem dados' e valor desconhecido viram null, não 'normal'", () => {
+    expect(faixaDoRisco("alto")).toBe("alto");
+    expect(faixaDoRisco("sem dados")).toBeNull();
+    expect(faixaDoRisco(undefined)).toBeNull();
+  });
+
+  it("compara quem está abaixo de 5.0 com a taxa da turma", () => {
+    const alunos = [
+      { nota: 4, riscoFaixa: "alto" as const },
+      { nota: 4.8, riscoFaixa: "normal" as const },
+      { nota: 8, riscoFaixa: "alto" as const },
+      { nota: 3, riscoFaixa: null },
+    ];
+    expect(observacaoNotaEAbandono(alunos, 18.5)).toBe("2 alunos com nota abaixo de 5.0: 50% em risco alto de abandono (turma: 18.5%).");
+  });
+
+  it("sem ninguém abaixo com dado, ou sem taxa da turma, não há frase", () => {
+    expect(observacaoNotaEAbandono([{ nota: 8, riscoFaixa: "alto" }], 18.5)).toBeNull();
+    expect(observacaoNotaEAbandono([{ nota: 4, riscoFaixa: "alto" }], null)).toBeNull();
   });
 });

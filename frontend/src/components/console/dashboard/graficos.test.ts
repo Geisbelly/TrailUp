@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TurmaDistribuicao, TurmaPerfilMetricas } from "../useTurmaKpis";
-import { distribuicaoDeNotas, inatividadePorPerfil, tomDaFaixa } from "./graficos";
+import { abandonoPorPerfil, distribuicaoDeNotas, inatividadePorPerfil, tomDaFaixa } from "./graficos";
 
 const linhaPerfil = (p: Partial<TurmaPerfilMetricas>): TurmaPerfilMetricas => ({
   classe_id: 1,
@@ -10,11 +10,35 @@ const linhaPerfil = (p: Partial<TurmaPerfilMetricas>): TurmaPerfilMetricas => ({
   alunos_inativos: 0,
   alunos_estagnados: 0,
   tempo_ativo_medio_seg: null,
+  taxa_risco_abandono_pct: null,
+  alunos_risco_alto: 0,
+  alunos_risco_com_dado: 0,
   media_nota: 0,
   taxa_acertos_pct: 0,
   taxa_uso_chat_pct: 0,
   uso_chat_apos_erro_pct: 0,
   ...p,
+});
+
+describe("abandonoPorPerfil", () => {
+  it("devolve sempre os 7 perfis na ordem fixa, com null onde não há dado", () => {
+    const r = abandonoPorPerfil([linhaPerfil({ perfil_nome: "Achiever", alunos_risco_alto: 1, alunos_risco_com_dado: 4 })], "majoritario");
+    expect(r.map((x) => x.perfil)).toEqual(["seeker", "survivor", "daredevil", "mastermind", "conqueror", "socializer", "achiever"]);
+    expect(r[6].valor).toBe(25);
+    expect(r[0].valor).toBeNull();
+  });
+
+  it("junta turmas do mesmo perfil ponderando pelos alunos com dado", () => {
+    const linhas = [
+      linhaPerfil({ classe_id: 1, alunos_risco_alto: 1, alunos_risco_com_dado: 30 }),
+      linhaPerfil({ classe_id: 2, alunos_risco_alto: 5, alunos_risco_com_dado: 10 }),
+    ];
+    expect(abandonoPorPerfil(linhas, "majoritario")[0].valor).toBe(15);
+  });
+
+  it("perfil sem aluno com dado fica sem dado, não 0%", () => {
+    expect(abandonoPorPerfil([linhaPerfil({ alunos_risco_com_dado: 0 })], "majoritario")[0].valor).toBeNull();
+  });
 });
 
 describe("inatividadePorPerfil", () => {

@@ -4,6 +4,30 @@ import { chaveDoPerfil, NOME_DO_PERFIL, PERFIS_EM_ORDEM } from "./perfilCores";
 
 export type SegmentoPerfil = "majoritario" | "segundo" | "afinidade_20_plus";
 
+export type AbandonoDoPerfil = { perfil: BrainHexProfileKey; nome: string; valor: number | null };
+
+// Taxa de abandono por perfil: % dos alunos com dado na faixa alta do modelo de evasão do core
+// (coluna taxa_risco_abandono_pct, migration 20261031_08). A view traz uma linha por (turma, perfil);
+// com várias turmas no escopo, junta ponderando pelos alunos com dado do segmento — média simples
+// entre turmas distorce quando os tamanhos diferem (mesmo motivo de lib/turmaResumo.ts).
+export function abandonoPorPerfil(linhas: TurmaPerfilMetricas[], segmento: SegmentoPerfil): AbandonoDoPerfil[] {
+  const acumulado = new Map<BrainHexProfileKey, { alto: number; comDado: number }>();
+  for (const linha of linhas) {
+    if (linha.segmento !== segmento) continue;
+    const perfil = chaveDoPerfil(linha.perfil_nome);
+    if (!perfil) continue;
+    const atual = acumulado.get(perfil) ?? { alto: 0, comDado: 0 };
+    atual.alto += Number(linha.alunos_risco_alto ?? 0);
+    atual.comDado += Number(linha.alunos_risco_com_dado ?? 0);
+    acumulado.set(perfil, atual);
+  }
+  return PERFIS_EM_ORDEM.map((perfil) => {
+    const a = acumulado.get(perfil);
+    const valor = !a || a.comDado === 0 ? null : (100 * a.alto) / a.comDado;
+    return { perfil, nome: NOME_DO_PERFIL[perfil], valor };
+  });
+}
+
 export type InatividadeDoPerfil = { perfil: BrainHexProfileKey; nome: string; valor: number | null; alunos: number };
 
 /** Segmento com menos alunos que isto fica oculto (spec de métricas §4.2: `n_minimo`, padrão 5). */

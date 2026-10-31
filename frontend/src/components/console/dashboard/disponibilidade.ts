@@ -9,6 +9,7 @@ export type Disponibilidade = { disponivel: boolean; motivo: string | null };
 /** Chaves de `metricas_catalogo` que o console exibe (F5, migration 20261031_07). */
 export const CHAVE = {
   tempoAtivo: "prof.tempo_ativo",
+  riscoAbandono: "prof.risco_abandono",
   retornoSemanal: "prof.retorno_semanal",
   abandonoPorEtapa: "prof.abandono_por_etapa",
   inatividade: "prof.inatividade",

@@ -11,10 +11,8 @@ export type AlunoEmRisco = {
   risco: Risco;
 };
 
-// Um nível só desde a F5: nenhum sinal soma com outro para virar "crítico" (spec §6.2) até um
-// modelo de risco ser validado (F6). O parâmetro fica para quando houver mais de um nível.
 export function ChipDeRisco({ nivel }: { nivel: Risco["nivel"] }) {
-  const cor = "var(--warning)";
+  const cor = nivel === "critico" ? "var(--destructive)" : "var(--warning)";
   // Texto na cor de primeiro plano: a cor de alerta sobre o próprio tom fica
   // abaixo de 7:1; o tom fica no fundo e na bolinha.
   return (
@@ -23,7 +21,7 @@ export function ChipDeRisco({ nivel }: { nivel: Risco["nivel"] }) {
       style={{ background: `hsl(${cor} / .16)` }}
     >
       <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full" style={{ background: `hsl(${cor})` }} />
-      {nivel === "atencao" && "Atenção"}
+      {nivel === "critico" ? "Crítico" : "Atenção"}
     </span>
   );
 }
@@ -42,6 +40,7 @@ export default function PrecisamDeAtencao<T extends AlunoEmRisco>({
   if (alunos.length === 0) return null;
   const ordenados = [...alunos].sort(
     (a, b) =>
+      Number(b.risco.nivel === "critico") - Number(a.risco.nivel === "critico") ||
       b.risco.fatores.length - a.risco.fatores.length ||
       a.nome.localeCompare(b.nome, "pt-BR"),
   );

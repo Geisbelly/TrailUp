@@ -1,4 +1,4 @@
-import type { SinaisDoBanco } from "./risco";
+import { faixaDoRisco, type SinaisDoBanco } from "./risco";
 
 /** Uma linha de vw_metricas_engajamento_aluno_classe com as colunas dos sinais (F5, 20261031_05). */
 export type LinhaEngajamento = {
@@ -10,6 +10,9 @@ export type LinhaEngajamento = {
   evadido_desde: string | null;
   estagnado_desde: string | null;
   estagnado_topico_id: number | null;
+  /** Faixa do modelo de evasão do core (20261031_08): alto, atencao, normal ou "sem dados". */
+  risco_abandono_faixa?: string | null;
+  risco_abandono_origem?: string | null;
 };
 
 export const chaveAlunoTurma = (alunoId: string, classeId: number) => `${alunoId}:${classeId}`;
@@ -25,6 +28,9 @@ export function juntarSinais(engajamento: LinhaEngajamento[], nomesDosTopicos: M
       evadidoDesde: l.evadido_desde,
       estagnadoDesde: l.estagnado_desde,
       estagnadoTopico: l.estagnado_topico_id === null ? null : nomesDosTopicos.get(Number(l.estagnado_topico_id)) ?? null,
+      riscoFaixa: faixaDoRisco(l.risco_abandono_faixa),
+      riscoOrigem:
+        l.risco_abandono_origem === "modelo" || l.risco_abandono_origem === "inatividade" ? l.risco_abandono_origem : null,
     });
   }
   return sinais;

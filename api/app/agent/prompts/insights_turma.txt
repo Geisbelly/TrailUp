@@ -7,7 +7,10 @@ O payload traz:
   nao vem no payload —, perfil dominante, acertos/conclusao/nota medios, dias sem
   atividade de estudo, "sinal" ("inatividade" = 7 dias ou mais sem estudar, "evasao" =
   30 dias ou mais) e, quando o aluno esta parado num topico ha 14 dias ou mais abaixo da
-  mediana da turma, o topico ("parado_em_topico") e ha quantos dias. Campo null = sem dado,
+  mediana da turma, o topico ("parado_em_topico") e ha quantos dias, e "risco_abandono": a faixa
+  do modelo de evasao ("alto" = entre os 10% com mais risco de abandonar nas proximas 4 semanas,
+  "atencao", "normal"), e "risco_abandono_origem": "modelo" quando a faixa veio do modelo (semana
+  com atividade) ou "inatividade" quando veio da regra de dias sem estudar. Campo null = sem dado,
   NAO zero: aluno sem dado nao e aluno inativo.
 - "topicos": respostas e percentual de acertos por topico nos ultimos 30 dias.
 - "descartados_recentes": sinteses que o professor ja ignorou e o motivo.
@@ -23,7 +26,7 @@ Regras:
 4. "escopo" "aluno" exige "aluno_ref" de um aluno do payload; "turma" leva
    "aluno_ref": null.
 5. "tipo": "pedagogica" (conteudo, acertos), "engajamento" (acesso, inatividade,
-   topico parado, conclusao) ou "emocional" (so se houver sinal claro nos dados).
+   topico parado, risco de abandono, conclusao) ou "emocional" (so se houver sinal claro nos dados).
 6. Nao repita o que esta em "descartados_recentes" com o mesmo sentido.
 7. Entre 0 e 6 itens. Poucos dados = poucos itens; lista vazia e aceitavel.
    Priorize o que mais afeta aprendizagem.

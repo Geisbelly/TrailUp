@@ -3,6 +3,8 @@ import { PerfilAvatar, PerfilChip } from "../PerfilVisual";
 import { rotuloDaUltimaAtividade } from "../ultimaAtividade";
 import type { AlunoAnalisado } from "./tipos";
 
+const ROTULO_DO_RISCO = { alto: "crítico", atencao: "atenção", normal: "saudável" } as const;
+
 const dataCurta = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
 
 function formatarTempo(minutos: number): string {
@@ -14,10 +16,12 @@ function formatarTempo(minutos: number): string {
 
 export default function CabecalhoAluno({
   aluno,
+  taxaAbandonoDaTurmaPct,
   rotuloVoltar,
   onVoltar,
 }: {
   aluno: AlunoAnalisado;
+  taxaAbandonoDaTurmaPct: number | null;
   rotuloVoltar: string;
   onVoltar: () => void;
 }) {
@@ -25,7 +29,19 @@ export default function CabecalhoAluno({
     { rotulo: "Nota média", valor: aluno.temNota ? aluno.notaMedia.toFixed(1) : "—" },
     { rotulo: "Trilha concluída", valor: `${aluno.porcentagemConcluida.toFixed(0)}%` },
     { rotulo: "Acertos", valor: aluno.temAcertos ? `${aluno.acertosPercentual.toFixed(0)}%` : "—" },
-    // Era "Abandono" (taxa de tópicos não concluídos), que media "ainda não terminou" (F5).
+    ...(aluno.riscoFaixa === null
+      ? []
+      : [
+          {
+            // Faixa do modelo de evasão do core (F5); a taxa antiga media "ainda não terminou".
+            rotulo: "Abandono",
+            valor: ROTULO_DO_RISCO[aluno.riscoFaixa],
+            nota:
+              taxaAbandonoDaTurmaPct === null
+                ? undefined
+                : `turma: ${Math.round(taxaAbandonoDaTurmaPct * 10) / 10}% em risco alto`,
+          },
+        ]),
     { rotulo: "Último estudo", valor: rotuloDaUltimaAtividade(aluno.ultimaAtividadeEm, new Date()) },
     // "Tempo total" era o rotulo de um numero que conta so' o tempo ATIVO:
     // material aberto e parado ficava de fora, e num topico medido em producao

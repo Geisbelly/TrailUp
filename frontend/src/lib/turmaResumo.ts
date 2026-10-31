@@ -1,6 +1,6 @@
 // Resumo das métricas de turma no escopo selecionado (uma ou várias classes).
 //
-// - Contagens (alunos inativos, parados, evadidos, sem dado) somam.
+// - Contagens (alunos inativos, parados, evadidos, sem dado, em risco alto) somam.
 // - Médias e taxas ponderam pelo denominador de cada linha: alunos para conclusão, nota, acertos e
 //   tempo; semanas elegíveis para o retorno semanal. Uma média simples entre classes distorce quando
 //   os tamanhos diferem (uma classe de 50 alunos com 10% e outra de 5 com 90% dariam 50%, quando o
@@ -10,6 +10,10 @@
 
 export type TurmaResumoRow = {
   total_alunos: number;
+  taxa_risco_abandono_pct: number | null;
+  alunos_risco_alto: number;
+  alunos_risco_com_dado: number;
+  tempo_medio_uso_seg: number | null;
   taxa_media_conclusao_pct: number | null;
   media_nota_turma: number | null;
   taxa_media_acertos_pct: number | null;
@@ -28,12 +32,21 @@ const MEDIAS_POR_ALUNO = [
   "media_nota_turma",
   "taxa_media_acertos_pct",
   "tempo_ativo_medio_seg",
+  "tempo_medio_uso_seg",
   "uso_chat_apos_erro_pct",
 ] as const satisfies readonly (keyof TurmaResumoRow)[];
 
-const CONTAGENS = ["total_alunos", "alunos_inativos", "alunos_estagnados", "alunos_evadidos", "alunos_sem_dado"] as const;
+const CONTAGENS = [
+  "total_alunos",
+  "alunos_inativos",
+  "alunos_estagnados",
+  "alunos_evadidos",
+  "alunos_sem_dado",
+  "alunos_risco_alto",
+  "alunos_risco_com_dado",
+] as const;
 
-export type TurmaResumo = Record<(typeof MEDIAS_POR_ALUNO)[number] | "retorno_semanal_pct", number | null> &
+export type TurmaResumo = Record<(typeof MEDIAS_POR_ALUNO)[number] | "retorno_semanal_pct" | "taxa_risco_abandono_pct", number | null> &
   Record<(typeof CONTAGENS)[number] | "retorno_semanal_elegiveis", number>;
 
 const numero = (v: unknown): number | null => (v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v));
@@ -63,6 +76,12 @@ export function computeTurmaResumo(rows: TurmaResumoRow[]): TurmaResumo {
   for (const chave of MEDIAS_POR_ALUNO) {
     resumo[chave] = mediaPonderada(rows, (r) => numero(r[chave]), (r) => numero(r.total_alunos) ?? 0);
   }
+  // Taxa de abandono: pondera pelos alunos com dado (o denominador da taxa), não pelo total.
+  resumo.taxa_risco_abandono_pct = mediaPonderada(
+    rows,
+    (r) => numero(r.taxa_risco_abandono_pct),
+    (r) => numero(r.alunos_risco_com_dado) ?? 0,
+  );
   resumo.retorno_semanal_pct = mediaPonderada(
     rows,
     (r) => numero(r.retorno_semanal_pct),

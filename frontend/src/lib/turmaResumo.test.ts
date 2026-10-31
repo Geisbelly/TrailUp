@@ -4,6 +4,10 @@ import { computeTurmaResumo, type TurmaResumoRow } from "./turmaResumo";
 function row(overrides: Partial<TurmaResumoRow>): TurmaResumoRow {
   return {
     total_alunos: 1,
+    taxa_risco_abandono_pct: null,
+    alunos_risco_alto: 0,
+    alunos_risco_com_dado: 0,
+    tempo_medio_uso_seg: 0,
     taxa_media_conclusao_pct: 0,
     media_nota_turma: 0,
     taxa_media_acertos_pct: 0,
@@ -35,6 +39,15 @@ describe("computeTurmaResumo", () => {
     ]);
     expect(resumo.retorno_semanal_pct).toBeCloseTo(90, 5);
     expect(resumo.retorno_semanal_elegiveis).toBe(10);
+  });
+
+  it("taxa de abandono pondera pelos alunos com dado, não pelo total da turma", () => {
+    const resumo = computeTurmaResumo([
+      row({ total_alunos: 50, taxa_risco_abandono_pct: 10, alunos_risco_com_dado: 10, alunos_risco_alto: 1 }),
+      row({ total_alunos: 5, taxa_risco_abandono_pct: 40, alunos_risco_com_dado: 5, alunos_risco_alto: 2 }),
+    ]);
+    expect(resumo.taxa_risco_abandono_pct).toBeCloseTo(20, 5);
+    expect(resumo.alunos_risco_alto).toBe(3);
   });
 
   it("contagens somam", () => {
