@@ -1,13 +1,16 @@
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.repositories.evento import EventoRepository
 from app.repositories.ia_descricao import IADescricaoRepository
+from app.repositories.intervencao import IntervencaoRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.notificacao import NotificacaoRepository
 from app.repositories.perfil import PerfilRepository
 from app.repositories.trilha import TrilhaRepository
+from app.schemas.intervencao import IntervencaoPayload
 from app.schemas.notificacao import NotificacaoPayload
 from app.schemas.perfil import PerfilUpdate
 from app.schemas.texto_gerado import TextoGerado
@@ -32,6 +35,7 @@ async def executor(
         ia_repo = IADescricaoRepository(session)
         materiais_repo = MateriaisRepository(session)
         evento_repo = EventoRepository(session)
+        intervencao_repo = IntervencaoRepository(session)
         acoes: list[str] = []
 
         try:
@@ -55,6 +59,38 @@ async def executor(
                     texto = TextoGerado.model_validate(state["textos_gerados"][0])
                 await notificacao_repo.enfileirar(state["aluno_id"], notificacao, texto)
                 acoes.append("notificacao_enfileirada")
+
+            if state.get("intervencao_payload") and state.get("classe_id"):
+                intervencao = IntervencaoPayload.model_validate(state["intervencao_payload"])
+                intervencao_id = await intervencao_repo.registrar_do_aluno(
+                    aluno_id=state["aluno_id"],
+                    classe_id=int(state["classe_id"]),
+                    intervencao=intervencao,
+                    ciclo_id=state.get("ciclo_id"),
+                )
+                if intervencao_id is None:
+                    acoes.append("intervencao_ja_pendente")
+                else:
+                    acoes.append("intervencao_registrada")
+                    # Uma notificacao por ciclo: se o agente_notificacao ja mandou a
+                    # dele (valencia negativa agora), a intervencao nao manda outra.
+                    if intervencao.acao == "notificacao" and not state.get("notificacao_payload"):
+                        await notificacao_repo.enfileirar(
+                            state["aluno_id"],
+                            NotificacaoPayload(
+                                tipo="suporte",
+                                titulo=intervencao.notificacao_titulo or "",
+                                corpo=intervencao.notificacao_corpo or "",
+                                horario=datetime.now(UTC) + timedelta(minutes=5),
+                                prioridade=2,
+                                contexto={
+                                    "motivo": "intervencao",
+                                    "intervencao_id": intervencao_id,
+                                    "kind": intervencao.kind,
+                                },
+                            ),
+                        )
+                        acoes.append("intervencao_notificada")
 
             if state.get("materiais_gerados"):
                 if state.get("materiais_cache_hit"):

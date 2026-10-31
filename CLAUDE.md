@@ -270,7 +270,8 @@ Cada perfil carrega:
   `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
 - `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
   sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
-  ou por aluno. **Só a geração passa pela API**
+  ou por aluno (estes vêm do `agente_intervencao`, quando um estado negativo
+  se repete; uma pendente por aluno × estado a cada 7 dias). **Só a geração passa pela API**
   (`POST /api/v1/insights/turma/{classe_id}/gerar`, em segundo plano, com
   intervalo mínimo de 5 min); listar, aceitar e ignorar é Supabase direto. O
   aluno não lê; o professor só atualiza `status`/`motivo_descarte`/`resolved_at`
@@ -386,7 +387,12 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > descrito aqui como lacuna aberta; não é mais). `memoria_aluno.ler_memoria`
 > chama `MentalStateHistoryRepository.listar_por_aluno` e
 > `state_builder.build_initial_state` põe o resultado no estado inicial do
-> grafo. Três detalhes que não são óbvios:
+> grafo. **Só chega aos nós porque `memoria_aluno` está declarada em
+> `TrailUpState`**: chave fora do schema é descartada em silêncio na entrada
+> do LangGraph, e até a #64 foi o que aconteceu — todo nó lia `None`. Quem usa:
+> `agente_ui` (tema de suporte) e `agente_intervencao` (grava em `intervencoes`
+> com escopo aluno e, se for o caso, sugere notificação em `notificacoes_ia`).
+> Três detalhes que não são óbvios:
 >
 > - **A leitura é uma janela, não o histórico.** `listar_por_aluno` vem com
 >   `limit=_JANELA_RECORRENCIA` (5). Recorrência é 3 dos **últimos 5** registros

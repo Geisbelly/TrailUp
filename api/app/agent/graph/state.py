@@ -59,6 +59,11 @@ class TrailUpState(TypedDict, total=False):
     attention_snapshot: dict[str, Any] | None
     decision_snapshot: dict[str, Any] | None
     m2_overrides: dict[str, float] | None
+    # Montada por `state_builder.build_initial_state` (`ler_memoria`). Sem estar
+    # declarada aqui, o LangGraph descarta a chave na entrada do grafo e todo no
+    # le `None` - a recorrencia do agente_ui nunca disparava (#64).
+    memoria_aluno: dict[str, Any] | None
+    intervencao_payload: dict[str, Any] | None
 
     next: list[str]
     ciclo_id: str
