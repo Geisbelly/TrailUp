@@ -55,6 +55,7 @@ falham** (§5) e por uma regra de exibição: número sabidamente errado não ap
 | D-4 | **Texto do aluno pode ir a LLM externo**, com pseudonimização, `store=False`, base legal e aceite do responsável (`20261024_02`) | O juiz LLM roda em sombra; nota automática nunca vale para menor antes da promoção (§7). Câmera/emoção ficam fora até o termo biométrico. |
 | D-5 | **Uma fonte por fato** | Respostas: `questao_aluno`. Gamificação: `eventos_aluno`. Tempo: `active_sec`. As outras fontes deixam de alimentar KPI. |
 | D-6 | **Catálogo e status no banco**, não em arquivo | Funciona com a API fora do ar; respeita a fronteira (CLAUDE.md): nada disto passa pela API, que só lê features e grava decisões. |
+| D-7 | **KPIs da turma calculados na hora, sem cache nem tabela persistida** (tarefa 4 da #12, decidido em 31/10) | `metricas_engajamento_turma` é `STABLE` e lê as views `security_invoker`; o console chama a RPC a cada troca de turma ou janela (`useTurmaKpis`, `useKpisPorTopico`), sem cache no cliente. Não segue o `classe_perfil_summary` do `/grupo`: aquele existe porque a conta era feita em Python, na API, e precisava sobreviver à API fora do ar. Aqui a conta já é do banco. Um agregado persistido teria de ser invalidado a cada lote de telemetria e a cada entrega, e a janela e o fuso são parâmetros da chamada, então cada combinação seria uma linha diferente. Revisitar junto da #331 quando houver volume: o primeiro passo é medir a RPC com `EXPLAIN ANALYZE` numa turma real, não criar a tabela. |
 
 ## 4. Arquitetura
 
