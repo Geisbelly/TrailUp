@@ -67,7 +67,7 @@ import { ImagemDoStorage } from "@/components/ImagemDoStorage";
 export default function PerfilHome() {
   const insets = useSafeAreaInsets();
   const { usuario, selecionarPerfilAtivo } = useUsuario();
-  const { classeAtual, perfil, progressoPersonalizado, reload: reloadTrilha } = useTrilha();
+  const { classeAtual, classes, trocarTurma, perfil, progressoPersonalizado, reload: reloadTrilha } = useTrilha();
   const { conquistas, carregando, eventos, posicoesDoAluno, presenca, reloadAll } =
     useConquistaRank();
   const { lastAnalysis, cameraOptIn, cameraPermission } = useMetricas();
@@ -371,6 +371,7 @@ export default function PerfilHome() {
             professor={classeAtual?.resumo?.professor_nome}
             email={usuario?.email}
             classeId={classeAtual?.classe_id}
+            onTrocarTurma={classes.length > 1 ? trocarTurma : undefined}
             palette={shellPalette}
           />
         )}
