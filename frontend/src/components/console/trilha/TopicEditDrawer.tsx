@@ -35,7 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatFileSize } from "@/lib/utils";
 import { fonteDoTopico } from "./fonteDoTopico";
 import { formatoDaQuestao } from "./formatoDaQuestao";
-import { prazoDaAtividade, rotuloDoTipoDeAtividade } from "./atividades";
+import { prazoDaAtividade, rotuloDasTentativas, rotuloDoTipoDeAtividade, tentativasParaFormulario, TENTATIVAS_MAXIMAS } from "./atividades";
 import { prazoBancoParaLocal } from "@/lib/prazoDaAtividade";
 import { duplicateActivity, duplicateCard } from "./topicsApi";
 import { useUrlDoConteudo } from "./useUrlDoConteudo";
@@ -114,8 +114,8 @@ type TopicEditDrawerProps = {
   
   // Atividades
   activities: Atividade[];
-  activityForm: { id: number; titulo: string; descricao: string; tipo: string; data_entrega: string };
-  setActivityForm: Dispatch<SetStateAction<{ id: number; titulo: string; descricao: string; tipo: string; data_entrega: string }>>;
+  activityForm: { id: number; titulo: string; descricao: string; tipo: string; data_entrega: string; tentativas_max: string };
+  setActivityForm: Dispatch<SetStateAction<{ id: number; titulo: string; descricao: string; tipo: string; data_entrega: string; tentativas_max: string }>>;
   handleSaveActivity: () => Promise<void>;
   selectedActivityId: string;
   setSelectedActivityId: Dispatch<SetStateAction<string>>;
@@ -124,8 +124,8 @@ type TopicEditDrawerProps = {
   activityLinkCount: (atividadeId: number) => number;
   
   // Criação Rápida
-  newActivityForm: { titulo: string; descricao: string; tipo: string; data_entrega: string; questionEnunciado: string; questionTipo: string; questionResposta: string; questionNota: string; questionOptions: string[]; };
-  setNewActivityForm: Dispatch<SetStateAction<{ titulo: string; descricao: string; tipo: string; data_entrega: string; questionEnunciado: string; questionTipo: string; questionResposta: string; questionNota: string; questionOptions: string[]; }>>;
+  newActivityForm: { titulo: string; descricao: string; tipo: string; data_entrega: string; tentativas_max: string; questionEnunciado: string; questionTipo: string; questionResposta: string; questionNota: string; questionOptions: string[]; };
+  setNewActivityForm: Dispatch<SetStateAction<{ titulo: string; descricao: string; tipo: string; data_entrega: string; tentativas_max: string; questionEnunciado: string; questionTipo: string; questionResposta: string; questionNota: string; questionOptions: string[]; }>>;
   handleCreateActivityWithQuestion: () => void;
   
   // Questões
@@ -1162,10 +1162,11 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                   <p className="mt-0.5 flex flex-wrap items-center gap-2 text-[11.5px] text-muted-foreground">
                                     <span className="rounded-full bg-muted px-2 py-0.5 font-semibold">{rotuloDoTipoDeAtividade(a.tipo)}</span>
                                     {prazo && <span>{prazo}</span>}
+                                    <span>{rotuloDasTentativas(a.tentativas_max)}</span>
                                   </p>
                                 </div>
                                 <div className="flex gap-1">
-                                  <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => { setActivityForm({ ...a, id: a.id, descricao: a.descricao || "", tipo: a.tipo || "quiz", /* `datetime-local` não aceita ISO com fuso: sem esta conversão o campo abre vazio (#177). */ data_entrega: prazoBancoParaLocal(a.data_entrega) }); setSelectedActivityId(a.id.toString()); props.loadQuestions(a.id); }}><Pencil size={13} className="mr-1.5" />Editar</Button>
+                                  <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" onClick={() => { setActivityForm({ ...a, id: a.id, descricao: a.descricao || "", tipo: a.tipo || "quiz", /* `datetime-local` não aceita ISO com fuso: sem esta conversão o campo abre vazio (#177). */ data_entrega: prazoBancoParaLocal(a.data_entrega), tentativas_max: tentativasParaFormulario(a.tentativas_max) }); setSelectedActivityId(a.id.toString()); props.loadQuestions(a.id); }}><Pencil size={13} className="mr-1.5" />Editar</Button>
                                   <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground hover:text-foreground" disabled={duplicandoAtividade === aid} onClick={async () => {
                                     setDuplicandoAtividade(aid);
                                     try {
@@ -1226,6 +1227,21 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 />
                                 <Input type="datetime-local" className={darkInputClass} value={newActivityForm.data_entrega || ""} onChange={(e) => setNewActivityForm({...newActivityForm, data_entrega: e.target.value})} />
                             </div>
+                            <div className="flex items-center gap-2">
+                                <Label htmlFor="nova-atividade-tentativas" className={darkLabelClass}>Tentativas por aluno</Label>
+                                <Input
+                                  id="nova-atividade-tentativas"
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={1}
+                                  max={TENTATIVAS_MAXIMAS}
+                                  step={1}
+                                  className={`${darkInputClass} w-32`}
+                                  value={newActivityForm.tentativas_max ?? ""}
+                                  onChange={(e) => setNewActivityForm({ ...newActivityForm, tentativas_max: e.target.value })}
+                                  placeholder="Ilimitadas"
+                                />
+                            </div>
                             <Button onClick={handleCreateActivityWithQuestionWithSync} className="bg-white text-primary-foreground hover:bg-secondary w-full mt-2"><Plus size={16} className="mr-2"/> Criar</Button>
                           </div>
                         </div>
@@ -1268,6 +1284,24 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 />
                                 <p className="text-[11px] text-muted-foreground">
                                   Vale no seu fuso. Deixe vazio para a atividade ficar sem prazo — atraso é aviso, não bloqueio.
+                                </p>
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="editar-atividade-tentativas" className={darkLabelClass}>Tentativas por aluno</Label>
+                                <Input
+                                  id="editar-atividade-tentativas"
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={1}
+                                  max={TENTATIVAS_MAXIMAS}
+                                  step={1}
+                                  className={darkInputClass}
+                                  value={activityForm.tentativas_max ?? ""}
+                                  onChange={(e) => setActivityForm({ ...activityForm, tentativas_max: e.target.value })}
+                                  placeholder="Ilimitadas"
+                                />
+                                <p className="text-[11px] text-muted-foreground">
+                                  Deixe vazio para ilimitadas. A nota é a da última tentativa; mudar o limite não regera a personalização.
                                 </p>
                               </div>
                             </div>

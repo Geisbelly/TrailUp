@@ -132,3 +132,61 @@ def test_guarda_de_horario(proposto, esperado_brasilia) -> None:
 
 def test_horario_sem_fuso_vira_daqui_a_5_minutos() -> None:
     assert modulo.ajustar_horario(None, AGORA) == AGORA + timedelta(minutes=5)
+
+
+# --- tópico no texto (#66, frente 2) ------------------------------------------
+
+FOCO = {"topico_id": 11, "topico": "Frações", "percentual_concluido": 40, "proximo_conteudo": "Soma de frações"}
+
+
+@pytest.mark.asyncio
+async def test_modelo_recebe_o_topico_e_o_proximo_conteudo(monkeypatch) -> None:
+    _rag(monkeypatch, False)
+    chamada = AsyncMock(return_value=_gerada(evidencia=None))
+    monkeypatch.setattr(modulo.JsonLLMService, "ainvoke_structured", chamada)
+
+    r = await modulo.agente_notificacao({**ESTADO, "foco_estudo": FOCO}, Settings(openai_api_key=None), agora=AGORA)
+
+    foco = chamada.await_args.kwargs["payload"]["foco"]
+    assert foco == {"topico": "Frações", "percentual_concluido": 40, "proximo_conteudo": "Soma de frações"}
+    assert r["notificacao_payload"]["contexto"]["topico"] == "Frações"
+
+
+@pytest.mark.asyncio
+async def test_sem_foco_o_modelo_recebe_foco_vazio(monkeypatch) -> None:
+    _rag(monkeypatch, False)
+    chamada = AsyncMock(return_value=_gerada(evidencia=None))
+    monkeypatch.setattr(modulo.JsonLLMService, "ainvoke_structured", chamada)
+
+    r = await modulo.agente_notificacao(ESTADO, Settings(openai_api_key=None), agora=AGORA)
+
+    assert chamada.await_args.kwargs["payload"]["foco"] == {}
+    assert "topico" not in r["notificacao_payload"]["contexto"]
+
+
+@pytest.mark.asyncio
+async def test_regra_cita_o_topico_quando_ha(monkeypatch) -> None:
+    _rag(monkeypatch, False)
+    monkeypatch.setattr(modulo.JsonLLMService, "ainvoke_structured", AsyncMock(side_effect=StructuredOutputError("x")))
+
+    r = await modulo.agente_notificacao({**ESTADO, "foco_estudo": FOCO}, Settings(openai_api_key=None), agora=AGORA)
+
+    n = r["notificacao_payload"]
+    assert n["contexto"]["origem"] == "regra"
+    assert "Frações" in n["corpo"]
+    assert n["titulo"] == modulo._TEXTOS_DA_REGRA["Survivor"]["suporte"][0]
+
+
+def test_texto_com_topico_cabe_com_o_maior_nome_possivel() -> None:
+    assert set(modulo._TEXTOS_COM_TOPICO) == set(modulo._TEXTOS_DA_REGRA)
+    longo = "x" * 200
+    for perfil in modulo._TEXTOS_COM_TOPICO:
+        for motivo in ("emocao_negativa", "inatividade"):
+            n = modulo.notificacao_da_regra(perfil, motivo, AGORA, modulo._foco({"foco_estudo": {"topico": longo}}))
+            assert len(n.corpo) <= 200, (perfil, motivo)
+            assert "x" * 60 in n.corpo and "x" * 61 not in n.corpo
+
+
+def test_perfil_fora_da_lista_cai_no_mastermind_tambem_com_topico() -> None:
+    n = modulo.notificacao_da_regra("Socialiser", "inatividade", AGORA, {"topico": "Frações"})
+    assert n.corpo == modulo._TEXTOS_COM_TOPICO["Mastermind"]["lembrete"].format(topico="Frações")

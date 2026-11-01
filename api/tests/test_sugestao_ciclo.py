@@ -78,6 +78,26 @@ class RepoFake:
         self.linhas[chave] = linha
         return {"id": linha["id"], "versao": linha["versao"]}
 
+    async def criar(
+        self, *, aluno_id, topico_id, conteudo_id, classe_id, formato_inicial, ordem, evidencia=None
+    ):
+        """``INSERT ... ON CONFLICT DO NOTHING``: quem chega depois fica sem linha."""
+        if not self.disponivel:
+            return None
+        if self._chave(aluno_id, topico_id, conteudo_id) in self.linhas:
+            return None
+        return await self.salvar(
+            aluno_id=aluno_id,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            classe_id=classe_id,
+            formato_inicial=formato_inicial,
+            ordem=ordem,
+            origem="inicial",
+            evidencia=evidencia,
+            versao=1,
+        )
+
     async def registrar_log(self, **kwargs):
         if not self.disponivel:
             return None
@@ -431,3 +451,107 @@ def test_rota_de_historico_vem_antes_da_rota_por_topico():
     assert caminhos.index("/personalizar/sugestao/{aluno_id}/historico") < caminhos.index(
         "/personalizar/sugestao/{aluno_id}/{topico_id}"
     )
+
+
+# --- #66: corrida na criação, catálogo no log, dificuldade no tópico --------
+
+
+@pytest.mark.asyncio
+async def test_criacao_concorrente_loga_criada_uma_vez_so():
+    # Medido em produção (2026-11-01): dois GET simultâneos deixaram a sugestão
+    # em versao=2 com origem=inicial e DOIS "criada" no log. A segunda chamada
+    # perde a corrida no INSERT e devolve a linha da primeira, sem logar.
+    import asyncio
+
+    repo = RepoFake()
+    buscar_original = repo.buscar
+    entraram = 0
+    liberar = asyncio.Event()
+
+    async def buscar_em_paralelo(**kwargs):
+        # As duas chamadas leem "não existe" antes de qualquer uma inserir.
+        nonlocal entraram
+        resultado = await buscar_original(**kwargs)
+        if resultado is None and entraram < 2:
+            entraram += 1
+            if entraram == 2:
+                liberar.set()
+            await liberar.wait()
+        return resultado
+
+    repo.buscar = buscar_em_paralelo
+    comum = dict(
+        aluno_id="a1", topico_id=10, perfis=_perfil("socializer"), formatos_disponiveis=TODOS
+    )
+
+    primeira, segunda = await asyncio.gather(
+        garantir_sugestao(repo, **comum), garantir_sugestao(repo, **comum)
+    )
+
+    assert [r["acao"] for r in repo.log] == ["criada"]
+    assert repo.linhas[("a1", 10, -1)]["versao"] == 1
+    assert primeira["ordem"] == segunda["ordem"]
+
+
+@pytest.mark.asyncio
+async def test_log_de_criacao_grava_a_versao_do_catalogo():
+    from app.services.evidencias_pedagogicas import CATALOGO_VERSAO
+
+    repo = RepoFake()
+    await garantir_sugestao(
+        repo, aluno_id="a1", topico_id=10, perfis=_perfil("mastermind"), formatos_disponiveis=TODOS
+    )
+
+    assert repo.log[0]["evidencia"]["catalogo_versao"] == CATALOGO_VERSAO
+    assert repo.linhas[("a1", 10, -1)]["evidencia"]["catalogo_versao"] == CATALOGO_VERSAO
+
+
+@pytest.mark.asyncio
+async def test_dificuldade_no_topico_sobe_os_cards_e_loga_a_regra():
+    repo = RepoFake()
+    await garantir_sugestao(
+        repo,
+        aluno_id="a1",
+        topico_id=10,
+        perfis=_perfil("mastermind"),
+        formatos_disponiveis=["markdown", "audio", "cards"],
+    )
+
+    decisao = await revisar_sugestao(
+        repo,
+        aluno_id="a1",
+        topico_id=10,
+        sinais_por_formato={},
+        desempenho_topico={"media_acertos": 40.0, "itens": 3},
+    )
+
+    assert decisao["acao"] == "revisada"
+    assert decisao["ordem"][0]["formato"] == "cards"
+    assert repo.log[-1]["evidencia"]["desempenho_topico"] == {"media_acertos": 40.0, "itens": 3}
+    regras = [ev["regra"] for ev in decisao["ordem"][0]["evidencias"]]
+    assert "reexposicao_quiz" in regras
+
+
+def test_resposta_leva_evidencias_e_descarta_as_malformadas():
+    from app.api.v1.personalizacao import _itens_da_sugestao
+
+    itens = _itens_da_sugestao(
+        [
+            {
+                "formato": "cards",
+                "posicao": 1,
+                "score": 1.2,
+                "motivos": ["x"],
+                "evidencias": [
+                    {"regra": "reexposicao_quiz", "fontes": ["DAT-21"], "confianca": "forte"},
+                    {"regra": "quebrada", "fontes": "nao-e-lista"},
+                    {"sem": "regra"},
+                ],
+            },
+            # Sugestão gravada antes da #66: sem a chave.
+            {"formato": "markdown", "posicao": 2, "score": 1.0},
+        ]
+    )
+
+    assert [e.regra for e in itens[0].evidencias] == ["reexposicao_quiz"]
+    assert itens[1].evidencias == []

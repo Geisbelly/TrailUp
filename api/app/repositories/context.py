@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.tentativas import TentativasRepository
 from app.schemas.common import DesempenhoSummary, Evento
 from app.schemas.perfil import PerfilScore
 
@@ -35,6 +36,7 @@ class ContextRepository:
         desempenho = await self._fetch_desempenho(aluno_id, classe_id)
         trilha = await self._fetch_trilha(aluno_id, classe_id)
         ia_descricao = await self._fetch_ia_descricao(aluno_id)
+        desempenho.tentativas = await TentativasRepository(self.session).resumo_do_aluno(aluno_id, classe_id)
 
         return {
             "aluno": aluno,
@@ -201,6 +203,62 @@ class ContextRepository:
         )
         self._classe_aluno_uses_camel_case = bool(result.scalar())
         return self._classe_aluno_uses_camel_case
+    async def fetch_foco_de_estudo(
+        self, *, aluno_id: str, classe_id: int, topico_id: int | None
+    ) -> dict[str, Any] | None:
+        """Tópico em andamento e o próximo conteúdo não concluído, para o texto da notificação.
+
+        Prefere o tópico do ciclo (``topico_id``); sem ele, o tópico em andamento
+        mais recente da turma. Só nome e percentual: nada aqui identifica o aluno.
+        """
+        # Savepoint: falha aqui (quem chama segue sem foco) não pode abortar a
+        # transação do ciclo inteiro.
+        async with self.session.begin_nested():
+            topico = (
+                await self.session.execute(
+                    text(
+                        """
+                        SELECT t.id, t.nome, COALESCE(ta.percentual_concluido, 0) AS percentual
+                        FROM topicos t
+                        LEFT JOIN topico_aluno ta ON ta.topico_id = t.id AND ta.aluno_id = :aluno_id
+                        WHERE t.classe_id = :classe_id
+                          AND (
+                            t.id = CAST(:topico_id AS BIGINT)
+                            OR (CAST(:topico_id AS BIGINT) IS NULL AND ta.status::text = 'em andamento')
+                          )
+                        ORDER BY ta.updated_at DESC NULLS LAST, t.id
+                        LIMIT 1
+                        """
+                    ),
+                    {"aluno_id": aluno_id, "classe_id": classe_id, "topico_id": topico_id},
+                )
+            ).mappings().first()
+            if topico is None or not str(topico["nome"] or "").strip():
+                return None
+
+            proximo = (
+                await self.session.execute(
+                    text(
+                        """
+                        SELECT c.titulo
+                        FROM conteudos c
+                        LEFT JOIN conteudo_aluno ca ON ca.conteudo_id = c.id AND ca.aluno_id = :aluno_id
+                        WHERE c.topico_id = :topico_id
+                          AND COALESCE(ca.status::text, '') <> 'concluido'
+                        ORDER BY c.ordem NULLS LAST, c.id
+                        LIMIT 1
+                        """
+                    ),
+                    {"aluno_id": aluno_id, "topico_id": topico["id"]},
+                )
+            ).scalar()
+        return {
+            "topico_id": int(topico["id"]),
+            "topico": str(topico["nome"]).strip(),
+            "percentual_concluido": round(float(topico["percentual"] or 0)),
+            "proximo_conteudo": str(proximo).strip() if proximo else None,
+        }
+
     async def _fetch_progresso(self, aluno_id: str, classe_id: int) -> dict[str, Any]:
         result = await self.session.execute(
             text(

@@ -12,6 +12,14 @@ O payload traz:
   "atencao", "normal"), e "risco_abandono_origem": "modelo" quando a faixa veio do modelo (semana
   com atividade) ou "inatividade" quando veio da regra de dias sem estudar. Campo null = sem dado,
   NAO zero: aluno sem dado nao e aluno inativo.
+  "tentativas_30d" resume as tentativas de atividade entregues nos ultimos 30 dias (null = nenhuma):
+  quantas, quantas por atividade em media, atividades em que o aluno usou todas as tentativas
+  permitidas ("atividades_esgotadas"), quantas foram cronometradas e quantas % sairam no tempo, e o
+  acerto medio da 1a tentativa e da ultima. A nota que vale e a da ultima; a diferenca entre as
+  duas mostra quanto o aluno melhorou refazendo (ou depois de ver a correcao). O tempo NAO muda a
+  nota, so rende XP: "fora do tempo" nao e nota baixa.
+- "turma.tentativas_30d": os mesmos numeros somados na turma, e quantos alunos esgotaram as
+  tentativas de alguma atividade.
 - "topicos": respostas e percentual de acertos por topico nos ultimos 30 dias.
 - "descartados_recentes": sinteses que o professor ja ignorou e o motivo.
 

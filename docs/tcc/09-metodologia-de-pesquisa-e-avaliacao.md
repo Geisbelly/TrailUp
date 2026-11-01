@@ -46,6 +46,44 @@ flowchart TD
   E --> F[Analisar resultados]
 ```
 
+### 6.1 Protocolo de coleta no sistema (#13)
+
+O desenho e as decisões estão em
+[`2026-11-01-cohort-e-baseline-design.md`](../superpowers/specs/2026-11-01-cohort-e-baseline-design.md).
+O protocolo segue os passos do fluxo acima:
+
+1. **Definir a cohort e o período.** A cohort é a turma, com uma data de corte. O professor dono
+   registra cada turma com `estudo_coorte_registrar`, informando o rótulo do estudo, o braço
+   (`intervencao` ou `comparacao`), `baseline_inicio`, `corte` e `fim`. O registro precisa
+   acontecer **antes** de o baseline começar: o sistema recusa baseline no passado e trava o
+   corte quando a data dele chega. A turma de comparação também recebe um corte, que vale como
+   data de referência.
+2. **Coletar o baseline.** A janela é `[baseline_inicio, corte)` e dura pelo menos 7 dias. A
+   personalização tem de ficar retida durante essa janela, mas a trava ainda **não existe** e é
+   pré-requisito para iniciar o estudo. Enquanto ela faltar, o relatório marca
+   `baseline_contaminado`.
+3. **Aplicar a intervenção.** A partir do corte, a turma de intervenção recebe a personalização.
+   Cada aluno tem duas datas de entrada, a atribuída e a observada, que aparecem em
+   `vw_estudo_participantes`.
+4. **Coletar as métricas operacionais.** A coleta já é automática:
+   - o tempo ativo vem da telemetria;
+   - a conclusão de tópico fica registrada com data em `topico_aluno_conclusao`;
+   - as entregas vêm de `atividade_tentativas`;
+   - o acerto vem de `questao_aluno`.
+
+   Toda mudança de produto feita no meio da coleta precisa entrar em `marco_produto`. As
+   migrations e as mudanças de protocolo entram sozinhas. O resto é registrado com
+   `marco_produto_registrar`: deploy de API, build novo do app, mudança de prompt e aula fora do
+   planejado.
+5. **Analisar.** `metricas_estudo_coortes` traz PR1 e PR2 por turma, antes e depois do corte, e
+   também:
+   - a série semanal relativa ao corte;
+   - os marcos que caíram dentro de cada janela;
+   - a diferença-em-diferenças entre os braços.
+
+   O resultado é só agregado: uma célula com menos de 5 alunos volta nula. A lista `limitacoes`
+   da resposta acompanha qualquer resultado reportado (§10).
+
 ## 7. Controle de vieses
 - padronizar janelas temporais;
 - registrar alteracoes de produto durante coleta;

@@ -181,7 +181,11 @@ Cada perfil carrega:
   `microservice/src/constants/guardianVoices.ts` (Gemini TTS ativo). Além do
   preset, cada Guardião possui direção de idade, sexo, origem cultural e
   interpretação; o fallback Python espelha esses campos em
-  `_BRAINHEX_GUIDE_PERSONAS`.
+  `_BRAINHEX_GUIDE_PERSONAS`. Quando o Gemini TTS recusa (402 de crédito, 429
+  de cota, resposta sem áudio), a voz sai pela OpenAI
+  (`microservice/src/services/ttsRecovery.ts`, #652): o texto já tinha
+  contingência e o áudio não, e foi assim que a turma 68 ficou com texto e sem
+  nenhum áudio. 402 não é repetido — esperar não devolve crédito.
 
 > Backend (`_build_design_tokens` em `api/app/api/v1/personalizacao.py`) e
 > frontend (`frontend/src/lib/personalizacao-theme-guide.ts`,
@@ -268,6 +272,24 @@ Cada perfil carrega:
   opera se **as duas** tabelas existirem (sem log, a métrica de efetividade
   ficaria furada justamente onde vai olhar). Ver
   `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
+  Cada item da ordem leva `evidencias` (regra do catálogo
+  `evidencias_pedagogicas.py`, fontes `DAT-xx`, confiança e os números do
+  aluno); o peso por perfil é **hipótese sem evidência** e a emoção não
+  reordena. Mudou regra, suba `CATALOGO_VERSAO`: o log grava a versão (#66).
+- **Estudo de efetividade (#13):** `estudo_coorte`, `marco_produto` e
+  `topico_aluno_conclusao` (`20261102_02`), e a RPC `metricas_estudo_coortes` (`_03`).
+  - **Cohort = turma com data de corte.** O baseline é `[baseline_inicio, corte)` e a
+    turma de comparação também tem corte.
+  - **O registro é prospectivo**: a RPC recusa baseline no passado, e um gatilho trava o
+    corte quando a data dele chega. Não "conserte" isso dando `UPDATE` como dono: escolher
+    a janela depois de ver o dado é o viés que a trava impede.
+  - **Cada migration aplicada vira marco** (gatilho em `alembic_version`, que nunca derruba
+    a migration).
+  - **Célula com menos de `n_minimo` alunos volta nula.** As contagens cruas
+    (`estudo_indicadores_*`) não têm EXECUTE para cliente nenhum.
+  - **Ainda não existe trava que segure a personalização** no baseline nem na turma de
+    comparação. A RPC acusa `baseline_contaminado` em vez de supor um baseline limpo. Ver
+    `docs/superpowers/specs/2026-11-01-cohort-e-baseline-design.md`.
 - `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_11`):
   entrada, derrota, provocação de dano, marcos de metade/um quarto da vida, alerta de tempo,
   contra-ataque e a mensagem de vitória. **Gerar é IA, então é API**: o worker da fila faz uma
@@ -306,6 +328,39 @@ Cada perfil carrega:
   **nunca** mexe em `atividade_aluno.status`: o progresso continua concluído. O
   aviso sai por `notificacoes_ia`. `alteracao_professor` guarda o gabarito antes
   e depois e o aluno não a lê; ele lê só `alteracao_aluno`.
+- **A nota média da matrícula é do banco** (`classe_aluno."notaMedia"`, `20261101_10`).
+  Antes ninguém a gravava, e console, CSV de notas e modelo de evasão liam uma
+  coluna vazia. A conta é `trailup_recalcular_nota_classe_aluno`:
+  10 × pontos obtidos ÷ pontos possíveis. Prazo vencido sem entrega conta 0 até o
+  professor dar nota, e **sem nada avaliado o resultado é NULL, não 0**. Quem
+  dispara a conta:
+  - o gancho em `trailup_recalcular_classe_aluno`;
+  - `trailup_recalcular_notas_com_prazo`, de hora em hora pelo `pg_cron`
+    (`trailup_notas_com_prazo`), para o prazo que vence sem ninguém gravar nada.
+
+  O cliente não grava a nota. Quando `anon` ou `authenticated` escreve
+  `"notaMedia"` sem a marca `trailup.nota_pelo_banco`, o gatilho
+  `trg_classe_aluno_nota_pelo_banco` **ignora** o valor em silêncio: o UPDATE
+  mantém o antigo e o INSERT grava NULL. Não há erro. NULL é "sem nota" em
+  toda parte (faixa `sem_dado` nas views, fora da média da turma). Não volte a
+  tratar "0 sem progresso" como sem nota.
+- **Tentativas de atividade pelo relógio do banco** (#136, `20261101_13`):
+  - `atividade_iniciar_tentativa` abre a tentativa e devolve a que já está aberta, então reabrir o app não zera o relógio;
+  - `atividade_responder_tentativa` fecha a tentativa. Ela recusa prazo vencido e tentativas esgotadas (`atividades.tentativas_max`, NULL = ilimitado), decide `no_tempo` e grava `atividade_aluno`;
+  - vale a **última** tentativa;
+  - o cronômetro é ligado pelo perfil (`fn_cronometro_ligado`, mesma lista de `TIMER_PROFILES` do mobile), e o aluno ou a IA podem desligá-lo (`aluno_cronometro.origem`, RPC `aluno_definir_cronometro`);
+  - **o tempo não mexe na nota, só no XP**: os eventos `atividade_no_tempo_70/80/90` pagam 10 pontos cada, são cumulativos, saem uma vez por atividade e só a RPC os grava (`trg_eventos_aluno_bonus_tempo`);
+  - duração e tolerância ficam em `app_config` (`cronometro_atividade_padrao_seg`, `cronometro_tolerancia_seg`).
+
+  **Limite conhecido:** a pontuação ainda é a que o app calcula, porque o gabarito
+  continua no aparelho. A RPC só limita os valores. Fechar a escrita direta do app
+  em `atividade_aluno` é a fase 5 da #136.
+- **E-mail sai do banco por um Google Apps Script** (`20261101_14`, no lugar da
+  Brevo). Isso vale para o contato do app, o contato do site e o aviso de conta
+  inativa:
+  - todos passam por `fn_email_apps_script`, que lê URL e segredo do Vault e faz o `net.http_post`;
+  - o código do script fica em `scripts/apps-script-email/`;
+  - **um 2xx não prova envio.** O pg_net segue o 302 do Apps Script, e tanto o sucesso quanto o erro do script chegam como 200. Quem decide é `fn_email_apps_script_aceito`, que exige `"ok": true` no corpo. Uma regra que confie só no código HTTP começaria a contar o prazo de exclusão de quem nunca foi avisado.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
@@ -318,6 +373,13 @@ Cada perfil carrega:
   `pg_net` → Expo, e `pg_cron` varre a cada 5min. A **rotina diária é
   notificação local** agendada no aparelho: dispara com o app fechado sem
   servidor. Ver `docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md`.
+  **Horário e texto da revisão diária são do banco** (`20261102_01`): o job
+  `notificacoes_recalcular_rotinas` (pg_cron, diário) põe a rotina 30 min antes
+  do horário habitual (`notificacoes_horario_preferido`, dias distintos em
+  `aluno_sessoes_app`) e troca o texto pelo modelo do perfil com o tópico em
+  andamento. `hora_origem = 'aluno'` nunca é sobrescrita. A sugestão da IA
+  traz `horario_sugerido`, e o gatilho de promoção decide o horário, sempre
+  fora do silêncio no fuso do aluno.
 - **Eventos de turma abrem e encerram no horário pelo banco (#141).**
   `pg_cron` roda `fn_eventos_classe_varrer()` a cada minuto (job
   `trailup_eventos_classe_varredura`, migração `20261025_04`): encerra e apura
@@ -419,8 +481,12 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > grafo. **Só chega aos nós porque `memoria_aluno` está declarada em
 > `TrailUpState`**: chave fora do schema é descartada em silêncio na entrada
 > do LangGraph, e até a #64 foi o que aconteceu — todo nó lia `None`. Quem usa:
-> `agente_ui` (tema de suporte) e `agente_intervencao` (grava em `intervencoes`
-> com escopo aluno e, se for o caso, sugere notificação em `notificacoes_ia`).
+> `agente_ui` (tema de suporte), `agente_intervencao` (grava em `intervencoes`
+> com escopo aluno e, se for o caso, sugere notificação em `notificacoes_ia`) e
+> `agente_cronometro` (#136: desliga o cronômetro das atividades por ansiedade ou
+> sobrecarga recorrente, ou por 3 das últimas 5 tentativas cronometradas fora do
+> tempo, lidas em `desempenho_recente.tentativas`; só desliga, e a escolha do
+> aluno vence — o UPSERT confere `origem <> 'aluno'` na própria escrita).
 > Três detalhes que não são óbvios:
 >
 > - **A leitura é uma janela, não o histórico.** `listar_por_aluno` vem com
@@ -452,16 +518,18 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 - **RLS é a autorização, não defesa extra.** `anon` e `authenticated` têm GRANT
   de SELECT/INSERT/UPDATE/DELETE nas 84 tabelas — RLS é a única barreira. A
   posse está implementada (`20260826_08` a `20260826_10`):
-  - **anônimo lê exatamente três linhas, e nada mais.** Este texto já disse
+  - **anônimo lê exatamente cinco linhas, e nada mais.** Este texto já disse
     "anônimo não lê nada — nem tabela nem view", e é o mesmo erro que o
     parágrafo das views descreve: afirmação categórica errada faz alguém tratar
     a exceção como defeito e "consertá-la".
 
     A exceção é `app_config`, pela policy `app_config_sel`
     (`USING (publico)`, só `SELECT`, para `anon` e `authenticated`). Hoje são
-    três chaves públicas, todas parâmetro de UI que o cliente precisa antes do
-    login: `prazo_atraso_fator`, `presenca_aula_pontos` e
-    `rank_limite_visivel`.
+    cinco chaves públicas, todas parâmetro de UI: `prazo_atraso_fator`,
+    `presenca_aula_pontos` e `rank_limite_visivel`, que o cliente precisa antes
+    do login, e `cronometro_atividade_padrao_seg` e `cronometro_tolerancia_seg`,
+    que o console mostra ao professor (`20261101_15`, #136). O app já mostra a
+    duração na tela, e quem decide se a tentativa saiu no tempo é a RPC.
 
     **O que está `publico = false` é que importa:** `contato_envios_por_hora`,
     `credito_extra_maximo` e `conquista_recompensa_maxima` são tetos
@@ -472,7 +540,7 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
     Varredura que sustenta isso, de 2026-10-08 (dá para repetir): para cada um
     dos **121** objetos de `public` (tabela, view e matview), contar as linhas
     como `postgres` e como `anon`, dentro de `BEGIN/ROLLBACK`. Dos 49 com dado,
-    o único em que `anon` vê linha é `app_config` (3 de 6); 38 devolvem zero
+    o único em que `anon` vê linha é `app_config` (3 de 6, antes das duas chaves do cronômetro); 38 devolvem zero
     por RLS e 38 nem chegam lá (`42501`, sem GRANT). Os 72 vazios não provam
     nada — a varredura só conclui onde existe dado, e a base de personalização
     está vazia hoje.
@@ -636,9 +704,23 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
   Migration de PR do Lab costuma ser aplicada em produção antes de chegar ao
   espelho. Enquanto o espelho estiver atrás, o banco está à frente do código no ar;
   quanto mais tempo o sync demora, maior essa janela.
-- **Deploys:** web em `https://trailup.vercel.app`, publicada do **espelho** (acima)
-  — não usar como alvo de regressão do console; API em Dokploy (VPS); local via
-  `npm run docker:up` (`:8080` / `:8000` / `:3000`).
+
+  **E essa janela derruba a API.** A API roda `alembic upgrade head` ao subir
+  (`database_migrations_on_startup`, ligado por padrão; `lifespan` de
+  `app/main.py`). Se o código publicado não conhece a revisão gravada no banco
+  (`Can't locate revision`), ou se a `main` tem duas cabeças (`Multiple head
+  revisions`), o `lifespan` aborta e o Traefik devolve 502. Foi assim em 28/10
+  (duas cabeças) e em 01/11 (`_10` e depois `_13` aplicadas com o espelho atrás).
+  Ver `docs/segundo-cerebro/10-Incidentes/api-fora-por-migration-2026-11-01.md`.
+  Então:
+  - ao aplicar uma migration em produção, avisar que a API só pode ser reiniciada
+    depois que o código dela estiver no espelho, e abrir o sync na mesma hora;
+  - depois de todo merge com migration, conferir `alembic heads` na `main`. Duas
+    PRs abertas ao mesmo tempo costumam pegar o mesmo número de revisão.
+- **Deploys:**
+  - **web:** `https://trailup.vercel.app`, publicada do **espelho** (acima). Não usar como alvo de regressão do console.
+  - **API:** Dokploy (VPS), em `https://api.trailup.promora.dev.br` (Let's Encrypt, #689). A evidência de 01/11 é que ela também publica do espelho. O `*.traefik.me` tem certificado autoassinado: o fetch do aparelho falha como erro de rede.
+  - **local:** `npm run docker:up` (`:8080` / `:8000` / `:3000`).
 - **Mais docs do repo:** [`docs/README.md`](docs/README.md) (índice),
   [`docs/MANUAL.md`](docs/MANUAL.md),
   [coleta de métricas](docs/architecture/coleta-de-metricas.md),

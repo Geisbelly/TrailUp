@@ -2,17 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import SegmentedPills from "../SegmentedPills";
 import AbaPerfil from "./AbaPerfil";
 import AbaPersonalizacao from "./AbaPersonalizacao";
+import AbaTentativas from "./AbaTentativas";
 import AbaTrilha from "./AbaTrilha";
 import AbaVisaoGeral from "./AbaVisaoGeral";
 import CabecalhoAluno from "./CabecalhoAluno";
 import type { AlunoAnalisado, EvolucaoAluno, Personalizacao, ProgressoItem } from "./tipos";
 
-type Aba = "visao" | "perfil" | "trilha" | "personalizacao";
+type Aba = "visao" | "perfil" | "trilha" | "tentativas" | "personalizacao";
 
 const ABAS: { value: Aba; label: string }[] = [
   { value: "visao", label: "Visão geral" },
   { value: "perfil", label: "Perfil BrainHex" },
   { value: "trilha", label: "Trilha visual" },
+  { value: "tentativas", label: "Tentativas" },
   { value: "personalizacao", label: "Personalização" },
 ];
 
@@ -49,6 +51,7 @@ export default function DetalheAluno({
       {aba === "visao" && <AbaVisaoGeral aluno={aluno} evolucaoAluno={evolucaoAluno} evolucaoTurma={evolucaoTurma} onVerTrilha={() => setAba("trilha")} />}
       {aba === "perfil" && <AbaPerfil aluno={aluno} />}
       {aba === "trilha" && <AbaTrilha aluno={aluno} />}
+      {aba === "tentativas" && <AbaTentativas aluno={aluno} />}
       {aba === "personalizacao" && (
         <AbaPersonalizacao
           aluno={aluno}

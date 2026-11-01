@@ -158,6 +158,93 @@ class SugestaoMaterialRepository:
         row = result.mappings().first()
         return dict(row) if row else None
 
+    async def criar(
+        self,
+        *,
+        aluno_id: str,
+        topico_id: int,
+        conteudo_id: int | None,
+        classe_id: int | None,
+        formato_inicial: str | None,
+        ordem: list[dict[str, Any]],
+        evidencia: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        """Cria a sugestão inicial, só se ainda não existir. ``None`` se outra chegou antes.
+
+        Não é ``salvar``: o upsert de ``salvar`` transforma a segunda criação
+        concorrente numa "revisão" (``versao`` 2, ``origem`` ainda ``inicial``) e as
+        duas chamadas gravam ``criada`` no log. Foi o que a medição de produção
+        achou (2026-11-01): dois GET simultâneos, uma sugestão, dois ``criada``.
+        Com ``DO NOTHING`` quem perde a corrida fica sem linha e não loga nada.
+        """
+        if not await self._disponivel():
+            return None
+
+        result = await self.session.execute(
+            text(
+                f"""
+                INSERT INTO {_TABELA_SUGESTAO} (
+                  aluno_id, classe_id, topico_id, conteudo_id,
+                  formato_inicial, ordem, versao, origem, evidencia
+                ) VALUES (
+                  :aluno_id, :classe_id, :topico_id, :conteudo_id,
+                  :formato_inicial, CAST(:ordem AS jsonb), 1, 'inicial',
+                  CAST(:evidencia AS jsonb)
+                )
+                ON CONFLICT (aluno_id, topico_id, COALESCE(conteudo_id, -1)) DO NOTHING
+                RETURNING id, versao
+                """
+            ),
+            {
+                "aluno_id": aluno_id,
+                "classe_id": classe_id,
+                "topico_id": topico_id,
+                "conteudo_id": conteudo_id,
+                "formato_inicial": formato_inicial,
+                "ordem": _json(ordem),
+                "evidencia": _json(evidencia or {}),
+            },
+        )
+        row = result.mappings().first()
+        return dict(row) if row else None
+
+    async def desempenho_no_topico(
+        self, *, aluno_id: str, topico_id: int
+    ) -> dict[str, Any] | None:
+        """Acerto médio do aluno nas atividades CONCLUÍDAS do tópico.
+
+        É o sinal de dificuldade da regra de reexposição (DAT-21). Só atividade
+        concluída entra: ``acertos_percentual`` nasce 0 por default, e atividade
+        não feita contaria como erro. Nunca levanta — falha de leitura vira
+        "sem sinal", que é o que o motor já sabe tratar.
+        """
+        try:
+            async with self.session.begin_nested():
+                result = await self.session.execute(
+                    text(
+                        """
+                        SELECT AVG(aa.acertos_percentual)::float AS media_acertos,
+                               COUNT(*)::int AS itens
+                        FROM atividade_aluno aa
+                        JOIN atividades a ON a.id = aa.atividade_id
+                        WHERE aa.aluno_id = CAST(:aluno_id AS uuid)
+                          AND a.topico_id = :topico_id
+                          AND aa.status::text = 'concluido'
+                          AND aa.acertos_percentual IS NOT NULL
+                        """
+                    ),
+                    {"aluno_id": aluno_id, "topico_id": topico_id},
+                )
+                row = result.mappings().first()
+        except Exception:  # noqa: BLE001 - sinal opcional, não pode derrubar o ciclo
+            return None
+        if not row or not row["itens"]:
+            return None
+        return {
+            "media_acertos": round(float(row["media_acertos"]), 2),
+            "itens": int(row["itens"]),
+        }
+
     async def registrar_log(
         self,
         *,

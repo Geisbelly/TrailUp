@@ -1,3 +1,5 @@
+import logging
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -5,6 +7,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.context import ContextRepository
 from app.schemas.api import AnalisarPayload
 from app.services.memoria_aluno import ler_memoria
+
+logger = logging.getLogger(__name__)
+
+
+async def _foco_de_estudo(context_repo: Any, **kwargs: Any) -> dict[str, Any] | None:
+    """Tópico e próximo conteúdo para o texto da notificação. Nunca derruba o ciclo.
+
+    É só texto: sem ele a notificação sai sem o nome do tópico, como antes.
+    """
+    buscar = getattr(context_repo, "fetch_foco_de_estudo", None)
+    if buscar is None:
+        return None
+    try:
+        return await buscar(**kwargs)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Falha ao ler o foco de estudo do aluno: %s", exc)
+        return None
 
 
 async def build_initial_state(
@@ -22,6 +41,12 @@ async def build_initial_state(
         topico_id=payload.topico_id,
         atividade_id=payload.atividade_id,
         fallback_topico_id=desempenho.get("topico_recente_id"),
+    )
+    foco_estudo = await _foco_de_estudo(
+        context_repo,
+        aluno_id=aluno_id,
+        classe_id=payload.classe_id,
+        topico_id=payload.topico_id or desempenho.get("topico_recente_id"),
     )
     gerar_materiais = bool(
         payload.modo == "prova"
@@ -43,6 +68,7 @@ async def build_initial_state(
         "trilha_atual": context["trilha_atual"],
         "ia_descricao_atual": context["ia_descricao_atual"],
         "memoria_aluno": memoria.model_dump(mode="json"),
+        "foco_estudo": foco_estudo,
         "emocao_atual": None,
         "emocao_historico": [],
         "frame_b64": payload.frame_b64,

@@ -1,5 +1,6 @@
 import type {
   SugestaoEfetividade,
+  SugestaoEvidencia,
   SugestaoHistoricoItem,
 } from "./personalizacoesApi";
 
@@ -138,4 +139,92 @@ export function historicoMaisRecentePrimeiro(
     if (porTopico !== 0) return porTopico;
     return Number(direita.versao ?? 0) - Number(esquerda.versao ?? 0);
   });
+}
+
+// ── Por que (#66) ─────────────────────────────────────────────────────────────
+
+const ROTULO_CONFIANCA: Record<string, string> = {
+  forte: "evidência forte",
+  moderada: "evidência moderada",
+  hipotese: "hipótese sem evidência",
+  dado_do_aluno: "resultado do aluno",
+};
+
+/**
+ * Rotulo da confianca de uma regra. `hipotese` diz "sem evidencia" por extenso:
+ * o peso por perfil e o ponto de partida do motor, e sem o aviso o professor o
+ * leria como recomendacao pedagogica comprovada.
+ */
+export function rotuloDaConfianca(confianca: string | null | undefined): string {
+  const chave = String(confianca ?? "").trim().toLowerCase();
+  return ROTULO_CONFIANCA[chave] ?? (chave || "—");
+}
+
+const ROTULO_PERFIL: Record<string, string> = {
+  achiever: "Realizador",
+  conqueror: "Conquistador",
+  socializer: "Socializador",
+  daredevil: "Aventureiro",
+  mastermind: "Estrategista",
+  seeker: "Explorador",
+  survivor: "Sobrevivente",
+};
+
+function numero(valor: unknown): number | null {
+  if (valor == null || valor === "") return null;
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}
+
+function segundos(valor: number): string {
+  return valor >= 60 ? `${Math.round(valor / 60)} min` : `${Math.round(valor)} s`;
+}
+
+/**
+ * Os numeros que a decisao viu, em frases curtas. So o que a evidencia trouxe:
+ * campo ausente nao vira "0", que seria afirmar algo que nao foi medido.
+ */
+export function dadosDaEvidencia(evidencia: SugestaoEvidencia): string[] {
+  const dados = evidencia.dados ?? {};
+  const linhas: string[] = [];
+
+  const afinidades = dados.afinidades;
+  if (afinidades && typeof afinidades === "object") {
+    const partes = Object.entries(afinidades as Record<string, unknown>)
+      .map(([perfil, valor]) => {
+        const n = numero(valor);
+        return n == null ? null : `${ROTULO_PERFIL[perfil] ?? perfil} ${Math.round(n)}%`;
+      })
+      .filter((parte): parte is string => parte != null);
+    if (partes.length) linhas.push(`afinidade ${partes.join(", ")}`);
+  }
+  if (typeof dados.modo === "string" && dados.modo) linhas.push(`modo ${dados.modo}`);
+  if (dados.skimming === true) linhas.push("só passou os olhos");
+  if (dados.leitura_lenta === true) linhas.push("leitura lenta");
+
+  const ativo = numero(dados.active_sec);
+  const medio = numero(dados.active_sec_medio);
+  if (ativo != null) {
+    linhas.push(
+      medio != null && medio > 0
+        ? `tempo ativo ${segundos(ativo)} (média ${segundos(medio)})`
+        : `tempo ativo ${segundos(ativo)}`
+    );
+  }
+  const percentual = numero(dados.percentual);
+  if (percentual != null) linhas.push(`${Math.round(percentual)}% concluído`);
+  const tempo = numero(dados.tempo_min);
+  if (tempo != null) linhas.push(`${Math.round(tempo)} min com o material aberto`);
+  const acertos = numero(dados.acertos);
+  if (acertos != null) linhas.push(`acertos ${Math.round(acertos)}%`);
+  const media = numero(dados.media_acertos);
+  const itens = numero(dados.itens);
+  if (media != null) {
+    linhas.push(
+      itens != null
+        ? `acerto médio ${Math.round(media)}% em ${itens} atividade(s) do tópico`
+        : `acerto médio ${Math.round(media)}% no tópico`
+    );
+  }
+  return linhas;
 }

@@ -46,7 +46,7 @@ export async function fetchContents(topicId: number) {
 export async function fetchActivities(topicId: number) {
   const { data, error } = await supabase
     .from("atividades")
-    .select("id, topico_id, titulo, descricao, tipo, data_entrega")
+    .select("id, topico_id, titulo, descricao, tipo, data_entrega, tentativas_max")
     .eq("topico_id", topicId)
     .order("created_at", { ascending: true });
   if (error) throw error;
@@ -187,9 +187,12 @@ export async function saveActivity(params: {
   data_entrega?: string | null;
   /** Só é gravada quando informada: `undefined` NÃO apaga a pontuação que a atividade já tem. */
   pontuacao_maxima?: number | null;
+  /** Tentativas por aluno (#136). `null` = ilimitadas; `undefined` não mexe na coluna, como a pontuação. */
+  tentativas_max?: number | null;
 }) {
   // Atividade sem pontuação informada não mexe na coluna (editar o título não pode zerá-la).
   const pontuacao = params.pontuacao_maxima === undefined ? {} : { pontuacao_maxima: params.pontuacao_maxima };
+  const tentativas = params.tentativas_max === undefined ? {} : { tentativas_max: params.tentativas_max };
 
   // PRAZO: converter aqui, e não em cada formulário (issue #177).
   //
@@ -211,6 +214,7 @@ export async function saveActivity(params: {
         tipo: params.tipo || null,
         data_entrega: prazo,
         ...pontuacao,
+        ...tentativas,
       })
       .eq("id", params.id);
     if (error) throw error;
@@ -226,6 +230,7 @@ export async function saveActivity(params: {
       tipo: params.tipo || null,
       data_entrega: prazo,
       ...pontuacao,
+      ...tentativas,
     })
     .select("id")
     .single();

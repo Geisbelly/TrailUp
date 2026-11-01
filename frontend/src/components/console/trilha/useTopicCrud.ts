@@ -13,8 +13,11 @@ import {
   createClassWithMateria,
 } from "./topicsApi";
 import { parseOptionalPositiveScore } from "@/lib/question-score";
+import { tentativasDoFormulario, TENTATIVAS_MAXIMAS } from "./atividades";
 import { deleteTopicCascade } from "./classDeletion";
 import type { Atividade, CardItem, Conteudo, Questao, Topico } from "./types";
+
+const ERRO_TENTATIVAS = `Tentativas por aluno: um número inteiro de 1 a ${TENTATIVAS_MAXIMAS}, ou vazio para ilimitadas.`;
 
 type CrudDeps = {
   editingTopic: { id: number } | null;
@@ -223,11 +226,17 @@ export function useTopicCrud({
     descricao: string;
     tipo: string;
     data_entrega: string;
+    tentativas_max: string;
   }, topicoId?: number, selectedContentId?: number | null, activityLinks?: Record<number, number[]>) => {
     const topicId = topicoId ?? editingTopic?.id;
     if (!topicId) return;
     if (!activityForm.titulo) {
       toast.error("Informe o título da atividade");
+      return;
+    }
+    const tentativas = tentativasDoFormulario(activityForm.tentativas_max);
+    if (!tentativas.valido) {
+      toast.error(ERRO_TENTATIVAS);
       return;
     }
     try {
@@ -238,6 +247,7 @@ export function useTopicCrud({
         descricao: activityForm.descricao,
         tipo: activityForm.tipo || null,
         data_entrega: activityForm.data_entrega || null,
+        tentativas_max: tentativas.valor,
       });
 
       if (selectedContentId && activityLinks) {
@@ -375,6 +385,7 @@ export function useTopicCrud({
       descricao: string;
       tipo: string;
       data_entrega: string;
+      tentativas_max: string;
       questionEnunciado: string;
       questionTipo: string;
       questionResposta: string;
@@ -393,6 +404,11 @@ export function useTopicCrud({
       toast.error("Informe título da atividade.");
       return;
     }
+    const tentativas = tentativasDoFormulario(params.newActivityForm.tentativas_max);
+    if (!tentativas.valido) {
+      toast.error(ERRO_TENTATIVAS);
+      return;
+    }
     try {
       const atividadeId = await saveActivity({
         topico_id: topicId,
@@ -400,6 +416,7 @@ export function useTopicCrud({
         descricao: params.newActivityForm.descricao,
         tipo: params.newActivityForm.tipo || null,
         data_entrega: params.newActivityForm.data_entrega || null,
+        tentativas_max: tentativas.valor,
       });
 
       if (params.conteudoId) {

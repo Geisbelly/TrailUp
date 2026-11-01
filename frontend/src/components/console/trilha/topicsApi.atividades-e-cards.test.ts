@@ -116,6 +116,17 @@ describe("saveActivity", () => {
     expect(sb.chamadas[0].payload).toMatchObject({ pontuacao_maxima: null });
   });
 
+  it("tentativas_max segue a regra da pontuação: undefined não mexe, null é ilimitado (#136)", async () => {
+    await saveActivity({ id: 9, topico_id: 4, titulo: "x", descricao: "" });
+    await saveActivity({ id: 9, topico_id: 4, titulo: "x", descricao: "", tentativas_max: 3 });
+    await saveActivity({ id: 9, topico_id: 4, titulo: "x", descricao: "", tentativas_max: null });
+    await saveActivity({ topico_id: 4, titulo: "x", descricao: "", tentativas_max: 2 });
+    expect(sb.chamadas[0].payload).not.toHaveProperty("tentativas_max");
+    expect(sb.chamadas[1].payload).toMatchObject({ tentativas_max: 3 });
+    expect(sb.chamadas[2].payload).toMatchObject({ tentativas_max: null });
+    expect(sb.chamadas[3]).toMatchObject({ op: "insert", payload: { tentativas_max: 2 } });
+  });
+
   it("propaga o erro do banco", async () => {
     sb.erro = new Error("rls");
     await expect(saveActivity({ topico_id: 4, titulo: "x", descricao: "" })).rejects.toThrow("rls");

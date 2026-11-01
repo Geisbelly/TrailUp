@@ -9,12 +9,29 @@ from app.repositories.intervencao import IntervencaoRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.notificacao import NotificacaoRepository
 from app.repositories.perfil import PerfilRepository
+from app.repositories.tentativas import TentativasRepository
 from app.repositories.trilha import TrilhaRepository
 from app.schemas.intervencao import IntervencaoPayload
 from app.schemas.notificacao import NotificacaoPayload
 from app.schemas.perfil import PerfilUpdate
 from app.schemas.texto_gerado import TextoGerado
 from app.schemas.trilha_config import TrilhaConfig
+from app.services.tentativas_atividade import CronometroDecisao, texto_para_o_professor
+
+
+def _aviso_do_cronometro(decisao: CronometroDecisao) -> IntervencaoPayload:
+    """O professor fica sabendo por `intervencoes`, como na recorrencia de estado mental (#64).
+    `kind` proprio: a deduplicacao de 7 dias e por kind, e nao pode engolir o aviso de frustracao."""
+    return IntervencaoPayload(
+        tipo="emocional" if decisao.criterio == "estado_mental" else "engajamento",
+        kind="cronometro_desligado",
+        ocorrencias=decisao.ocorrencias,
+        janela=decisao.janela,
+        texto=texto_para_o_professor(decisao),
+        base=f"Cronômetro desligado pela IA: {decisao.motivo}.",
+        acao="acompanhar",
+        origem="regra",
+    )
 
 
 async def executor(
@@ -91,6 +108,21 @@ async def executor(
                             ),
                         )
                         acoes.append("intervencao_notificada")
+
+            if state.get("cronometro_payload") and state.get("classe_id"):
+                decisao = CronometroDecisao.model_validate(state["cronometro_payload"])
+                # O UPSERT confere de novo: se o aluno mexeu no interruptor desde a leitura do
+                # contexto, a escolha dele vence e nada e gravado nem avisado.
+                if await TentativasRepository(session).desligar_cronometro_pela_ia(state["aluno_id"], decisao.motivo):
+                    acoes.append("cronometro_desligado")
+                    await intervencao_repo.registrar_do_aluno(
+                        aluno_id=state["aluno_id"],
+                        classe_id=int(state["classe_id"]),
+                        intervencao=_aviso_do_cronometro(decisao),
+                        ciclo_id=state.get("ciclo_id"),
+                    )
+                else:
+                    acoes.append("cronometro_mantido")
 
             if state.get("materiais_gerados"):
                 if state.get("materiais_cache_hit"):

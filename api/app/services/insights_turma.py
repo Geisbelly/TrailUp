@@ -24,11 +24,13 @@ from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.tentativas import TentativasRepository
 from app.schemas.insights import InsightGerado, InsightsTurmaSaida
 from app.services.group_analysis import GroupAnalysisService
 from app.services.llm import JsonLLMService, StructuredOutputError
 from app.services.pseudonimizacao import restaurar_refs
 from app.services.roteamento_ia import rota_ia_para_turma
+from app.services.tentativas_atividade import resumir_tentativas_da_turma
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +67,26 @@ def _data(value: Any) -> date | None:
     return None
 
 
+def _tentativas_do_aluno(resumo: dict[str, Any] | None) -> dict[str, Any] | None:
+    """O que o modelo precisa do resumo (#136). Sem tentativa na janela = sem dado (None)."""
+    if not resumo or not resumo.get("respondidas"):
+        return None
+    return {
+        "respondidas": resumo["respondidas"],
+        "media_por_atividade": resumo.get("media_por_atividade"),
+        "atividades_esgotadas": resumo.get("atividades_esgotadas"),
+        "cronometradas": resumo.get("cronometradas"),
+        "no_tempo_pct": resumo.get("no_tempo_pct"),
+        "acertos_primeira_pct": resumo.get("media_acertos_primeira"),
+        "acertos_ultima_pct": resumo.get("media_acertos_ultima"),
+    }
+
+
+def _tentativas_da_turma(por_aluno: dict[str, dict[str, Any]]) -> dict[str, Any] | None:
+    agregado = resumir_tentativas_da_turma(por_aluno)
+    return agregado if agregado["alunos_com_tentativa"] else None
+
+
 def montar_payload(
     alunos: list[dict[str, Any]],
     nomes: dict[str, str | None],
@@ -73,6 +95,7 @@ def montar_payload(
     topicos: list[dict[str, Any]],
     descartados: list[dict[str, Any]],
     hoje: date,
+    tentativas: dict[str, dict[str, Any]] | None = None,
 ) -> tuple[dict[str, Any], dict[str, str], dict[str, str | None]]:
     """Payload do modelo, o mapa ref -> aluno_id e o mapa ref -> nome.
 
@@ -81,7 +104,11 @@ def montar_payload(
 
     ``sinais`` vem de ``vw_metricas_engajamento_aluno_classe`` (F5, ``20261031_05``): por aluno,
     ``ultima_atividade`` (date), ``evadido``/``inativo`` (bool) e ``estagnado_topico`` (nome) com
-    ``estagnado_desde`` (date). Aluno sem linha = sem dado: os campos vao null, nunca zero."""
+    ``estagnado_desde`` (date). Aluno sem linha = sem dado: os campos vao null, nunca zero.
+
+    ``tentativas`` (#136): por aluno, ``tentativas_atividade.resumir_tentativas`` das tentativas
+    entregues na janela."""
+    tentativas = tentativas or {}
     refs: dict[str, str] = {}
     nomes_por_ref: dict[str, str | None] = {}
     linhas: list[dict[str, Any]] = []
@@ -114,10 +141,15 @@ def montar_payload(
                 "risco_abandono": sinal.get("risco_abandono"),
                 # "modelo" (semana com evento) ou "inatividade" (semana sem evento: regra de dias).
                 "risco_abandono_origem": sinal.get("risco_abandono_origem"),
+                "tentativas_30d": _tentativas_do_aluno(tentativas.get(aluno_id)),
             }
         )
     payload = {
-        "turma": {"total_alunos": len(linhas), "perfis": perfis},
+        "turma": {
+            "total_alunos": len(linhas),
+            "perfis": perfis,
+            "tentativas_30d": _tentativas_da_turma({a: tentativas[a] for a in refs.values() if a in tentativas}),
+        },
         "alunos": linhas,
         "topicos": topicos,
         "descartados_recentes": descartados,
@@ -291,6 +323,14 @@ class InsightsTurmaService:
                 {**params, "desde": desde},
             )
         ]
+        try:
+            tentativas = await TentativasRepository(self.session).resumos_da_turma(
+                classe_id, agora - timedelta(days=JANELA_RESPOSTAS_DIAS)
+            )
+        except Exception as exc:
+            logger.warning("Insights: sem tentativas da classe %s (%s)", classe_id, exc)
+            await self.session.rollback()
+            tentativas = {}
         # O Escriba reaproveita este retrato e não precisa do que foi descartado.
         descartados = [] if not incluir_descartados else [
             {"texto": r["texto"], "motivo": r["motivo_descarte"]}
@@ -305,7 +345,7 @@ class InsightsTurmaService:
                 {"classe_id": classe_id, "desde": agora - timedelta(days=JANELA_RESPOSTAS_DIAS)},
             )
         ]
-        return montar_payload(alunos, nomes, sinais, respostas, topicos, descartados, agora.date())
+        return montar_payload(alunos, nomes, sinais, respostas, topicos, descartados, agora.date(), tentativas)
 
     async def gravar(self, classe_id: int, itens: list[dict[str, Any]]) -> uuid.UUID:
         geracao_id = uuid.uuid4()
