@@ -132,11 +132,10 @@ export function observacaoNotaEAbandono(
   return `${quem}: ${pct}% em risco alto de abandono (turma: ${Math.round(taxaAbandonoDaTurmaPct * 10) / 10}%).`;
 }
 
-/** Nota que conta para o risco: null quando o aluno ainda não tem nota de verdade. */
-export function notaParaRisco(nota: number | null, progressoPct: number): number | null {
-  if (nota === null) return null;
-  // classe_aluno grava 0 antes de qualquer atividade corrigida; sem progresso
-  // nenhum, 0 é "sem nota", não reprovação.
-  if (nota === 0 && progressoPct === 0) return null;
+/**
+ * Nota que conta para o risco: null quando o aluno ainda não tem nota. A nota é calculada pelo banco
+ * (20261101_10): NULL é sem nota e 0 é zero de verdade (prazo vencido sem entrega, por exemplo).
+ */
+export function notaParaRisco(nota: number | null): number | null {
   return nota;
 }

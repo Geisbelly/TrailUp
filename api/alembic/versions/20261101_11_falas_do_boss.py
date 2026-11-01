@@ -27,15 +27,18 @@ desnormalizado na linha para a policy não precisar de join.
 Sem coluna de pessoa: não entra em `retencao_politica`. Sai pela FK com o
 conteúdo, o tópico ou a turma.
 
-Revision ID: 20261101_09
-Revises: 20261101_08
+Nasceu como `20261101_09` (#755), o mesmo número da migration do risco (#752), que já
+estava em produção: duas cabeças no Alembic. Renumerada para `_11`, depois da `_10` (#754).
+
+Revision ID: 20261101_11
+Revises: 20261101_10
 Create Date: 2026-11-01
 """
 
 from alembic import op
 
-revision = "20261101_09"
-down_revision = "20261101_08"
+revision = "20261101_11"
+down_revision = "20261101_10"
 branch_labels = None
 depends_on = None
 

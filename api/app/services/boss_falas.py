@@ -3,7 +3,7 @@
 Cada conteúdo do tópico ganha um boss com **nome** e **falas** para os momentos da batalha
 do app (`mobile/src/context/IAContext.tsx`): entrada, derrota, provocação a cada dano, os
 marcos de metade e de um quarto da vida, alerta de tempo, contra-ataque e a mensagem de
-vitória do aluno. O resultado vai para `boss_falas` (migração `20261101_09`), que o mobile lê
+vitória do aluno. O resultado vai para `boss_falas` (migração `20261101_11`), que o mobile lê
 direto do Supabase — a batalha fala com a API fora do ar, e sem linha valem as falas fixas.
 
 É base por perfil: nada do aluno entra no prompt nem na linha (sem nome, sem desempenho), e a

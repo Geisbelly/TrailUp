@@ -1,4 +1,4 @@
-"""Falas do boss geradas em lote (`app/services/boss_falas.py`, migração `20261101_09`).
+"""Falas do boss geradas em lote (`app/services/boss_falas.py`, migração `20261101_11`).
 
 O que estes testes protegem:
 
@@ -352,9 +352,9 @@ def _sql(alvo: str) -> str:
     config.set_main_option("script_location", str(API_ROOT / "alembic"))
     config.attributes["database_url_override"] = "postgresql://user:password@localhost:5432/trailup"
     if alvo == "upgrade":
-        migrations.command.upgrade(config, "20261101_08:20261101_09", sql=True)
+        migrations.command.upgrade(config, "20261101_10:20261101_11", sql=True)
     else:
-        migrations.command.downgrade(config, "20261101_09:20261101_08", sql=True)
+        migrations.command.downgrade(config, "20261101_11:20261101_10", sql=True)
     return output.getvalue().lower()
 
 
