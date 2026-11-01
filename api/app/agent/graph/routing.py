@@ -9,6 +9,7 @@ ANALYZE_SPECIALIST_NODES = {
     "agente_conteudo",
     "agente_geracao_midia",
     "agente_notificacao",
+    "agente_intervencao",
     "agente_ui",
     "agente_texto",
 }
@@ -69,6 +70,17 @@ def _needs_notification(state: dict[str, Any], completed: set[str]) -> bool:
     return float(emocao.get("valencia", 0)) <= -0.4 or "inatividade" in tipos
 
 
+def _needs_intervencao(state: dict[str, Any], completed: set[str]) -> bool:
+    """Padrao de risco = recorrencia de estado negativo em `memoria_aluno` (#64).
+    Sem turma nao ha onde gravar: a RLS do professor em `intervencoes` e por turma."""
+    if "agente_intervencao" in completed or state.get("intervencao_payload"):
+        return False
+    if not state.get("classe_id"):
+        return False
+    memoria = state.get("memoria_aluno") or {}
+    return bool((memoria.get("mental_state_recorrente") or {}).get("recorrente"))
+
+
 def _needs_texto(state: dict[str, Any], completed: set[str]) -> bool:
     if "agente_texto" in completed or state.get("textos_gerados"):
         return False
@@ -105,6 +117,8 @@ def compute_supervisor_next(state: dict[str, Any]) -> list[str]:
         next_nodes.append("agente_trilha")
     if _needs_notification(state, completed):
         next_nodes.append("agente_notificacao")
+    if _needs_intervencao(state, completed):
+        next_nodes.append("agente_intervencao")
     if _needs_texto(state, completed):
         next_nodes.append("agente_texto")
 
@@ -119,6 +133,7 @@ def compute_supervisor_next(state: dict[str, Any]) -> list[str]:
             "conteudo_adaptado",
             "materiais_gerados",
             "notificacao_payload",
+            "intervencao_payload",
             "ui_config",
             "textos_gerados",
         ]

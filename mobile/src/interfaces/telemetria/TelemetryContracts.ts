@@ -144,6 +144,25 @@ export type TelemetryBatchPayload = {
   eventos_app: TelemetryAppEventPayload[];
   touch_samples: TelemetryTouchSample[];
   camera: TelemetryCameraPayload;
+  /**
+   * Quem mandou o lote (build, ambiente, host da API). Carimbado no envio por
+   * `enviarLoteTelemetria`, nos dois caminhos; ver `telemetriaCliente.core.ts`.
+   */
+  cliente?: TelemetriaClienteDoLote;
+};
+
+export type TelemetriaClienteDoLote = {
+  /** `expo.version` do `app.json` embutido no bundle. */
+  app_version: string | null;
+  /** Profile do `eas.json` (`EXPO_PUBLIC_BUILD_PROFILE`); nulo fora de build EAS. */
+  build_profile: string | null;
+  /** `Constants.executionEnvironment`: `standalone`, `storeClient` (Expo Go) ou `bare`. */
+  ambiente: string | null;
+  /** Bundle de desenvolvimento (servido pelo Metro), nao o embutido no build. */
+  dev: boolean;
+  plataforma: string | null;
+  /** Host (e porta) da primeira URL de API que o app tenta; nulo sem API configurada. */
+  api_host: string | null;
 };
 
 export type TelemetryAnalysisResponse = {

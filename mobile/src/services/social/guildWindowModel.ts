@@ -88,6 +88,16 @@ export function resumoDaJanela(j: JanelaDaFormacao): ResumoDaJanela {
 /** Pode criar, entrar, convidar e aceitar convite? Sair e dissolver não dependem da janela. */
 export const formacaoAberta = (j: JanelaDaFormacao | null) => j === null || j.aberta;
 
+/**
+ * `guilda_aceitar_convite` devolve `{status: "cancelled"}` quando há bloqueio entre quem convidou e
+ * quem foi convidado, feito depois do convite (migration 20261031_09). O texto não diz quem bloqueou
+ * quem: só que o convite deixou de valer.
+ */
+export function avisoDoAceite(resultado: unknown): string | null {
+  const status = (resultado as { status?: unknown } | null)?.status;
+  return status === "cancelled" ? "Este convite não está mais disponível." : null;
+}
+
 /** O texto amigável para os erros das RPCs de guilda (o código vem no texto da exceção). */
 export function mensagemDeErroDaGuilda(error: unknown, janela: JanelaDaFormacao | null = null): string {
   const value = String((error as { message?: unknown })?.message ?? error ?? "").toLowerCase();
@@ -97,6 +107,10 @@ export function mensagemDeErroDaGuilda(error: unknown, janela: JanelaDaFormacao 
       if (r.estado === "agendada" || r.estado === "encerrada") return `${r.titulo}. ${r.detalhe}`;
     }
     return "A formação de guildas está fechada nesta turma. Fale com o professor.";
+  }
+  // `20261031_02`: com evento de guilda aberto, a composição fica como estava na abertura.
+  if (value.includes("evento_aberto")) {
+    return "Há um evento em guilda acontecendo nesta turma. As guildas ficam como estão até ele encerrar.";
   }
   if (value.includes("cheia")) return "Esta guilda já está completa.";
   if (value.includes("tamanho_abaixo_dos_membros")) return "O tamanho pedido é menor que o número de membros da guilda.";

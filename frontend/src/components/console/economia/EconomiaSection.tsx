@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CabecalhoDePagina, ErroDaPagina, EstadoVazioDaPagina } from "../comum/PaginaDoConsole";
+import AbaFundo from "./AbaFundo";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
 import {
   arquivarMeta,
@@ -46,12 +47,13 @@ import {
   type LimitesDeUso,
 } from "./economiaRegras";
 
-type Aba = "valores" | "prazos" | "loja" | "metas" | "historico";
+type Aba = "valores" | "prazos" | "loja" | "fundo" | "metas" | "historico";
 
 const ABAS: { id: Aba; rotulo: string }[] = [
   { id: "valores", rotulo: "Valores" },
   { id: "prazos", rotulo: "Prazos e tempo" },
   { id: "loja", rotulo: "Loja" },
+  { id: "fundo", rotulo: "Fundo da turma" },
   { id: "metas", rotulo: "Metas" },
   { id: "historico", rotulo: "Histórico" },
 ];
@@ -113,6 +115,7 @@ export default function EconomiaSection({ professorId }: { professorId?: string 
           {aba === "valores" && <AbaValores classeId={turmaId} />}
           {aba === "prazos" && <AbaPrazos classeId={turmaId} />}
           {aba === "loja" && <AbaLoja classeId={turmaId} />}
+          {aba === "fundo" && <AbaFundo classeId={turmaId} />}
           {aba === "metas" && <AbaMetas classeId={turmaId} />}
           {aba === "historico" && <AbaHistorico classeId={turmaId} />}
         </div>

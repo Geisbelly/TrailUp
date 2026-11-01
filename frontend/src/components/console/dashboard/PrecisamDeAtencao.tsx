@@ -1,6 +1,6 @@
 import { nomeExibidoDoPerfil } from "./perfilCores";
 import { PerfilAvatar } from "./PerfilVisual";
-import { descricaoDosCriterios, type Criterio, type Risco } from "./risco";
+import { descricaoDosCriterios, type Risco } from "./risco";
 
 export type AlunoEmRisco = {
   id: string;
@@ -29,13 +29,11 @@ export function ChipDeRisco({ nivel }: { nivel: Risco["nivel"] }) {
 export default function PrecisamDeAtencao<T extends AlunoEmRisco>({
   alunos,
   totalDaTurma,
-  criterios,
   mostrarTurma,
   onAbrir,
 }: {
   alunos: T[];
   totalDaTurma: number;
-  criterios: Criterio[];
   mostrarTurma: boolean;
   onAbrir: (aluno: T) => void;
 }) {
@@ -60,11 +58,11 @@ export default function PrecisamDeAtencao<T extends AlunoEmRisco>({
         <div className="min-w-0">
           <h3 id="precisam-de-atencao" className="text-[19px] text-foreground">Precisam de atenção</h3>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
-            {alunos.length} de {totalDaTurma} {totalDaTurma === 1 ? "aluno" : "alunos"} fora da curva da turma. A média esconde estes casos.
+            {alunos.length} de {totalDaTurma} {totalDaTurma === 1 ? "aluno" : "alunos"} com um sinal, cada um com o fato e a data. A média esconde estes casos.
           </p>
         </div>
         <p className="max-w-[360px] rounded-full border border-border bg-muted px-3.5 py-2 text-xs text-muted-foreground sm:ml-auto">
-          {descricaoDosCriterios(criterios)}
+          {descricaoDosCriterios()}
         </p>
       </div>
 

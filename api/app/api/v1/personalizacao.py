@@ -2548,6 +2548,7 @@ async def criar_job_manual_retry(
         trigger_source=payload.trigger_source,
         topico_ids=payload.topico_ids,
         conteudo_ids=payload.conteudo_ids,
+        brainhex_profile_keys=payload.brainhex_profile_keys,
         reason=payload.reason,
     )
     return PersonalizacaoJobDetailResponse(

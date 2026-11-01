@@ -52,7 +52,9 @@ export default function AbandonoPorPerfil({
       <div className="flex flex-wrap items-start gap-4">
         <div className="min-w-0">
           <h3 className="text-lg text-foreground">Abandono por perfil</h3>
-          <p className="mt-1 text-[12.5px] text-muted-foreground">Percentual de atividades abandonadas, por perfil BrainHex</p>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">
+            Alunos em risco alto de abandonar nas próximas 4 semanas (modelo de evasão do core), por perfil BrainHex
+          </p>
           {media !== null && temDados && (
             <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
               <span aria-hidden="true" className="w-4 border-t border-dashed border-current" />

@@ -35,6 +35,10 @@ def build_graph(
     graph.add_node("agente_conteudo", partial(nodes.agente_conteudo, settings=settings))
     graph.add_node("agente_geracao_midia", partial(nodes.agente_geracao_midia, settings=settings, session_factory=session_factory))
     graph.add_node("agente_notificacao", partial(nodes.agente_notificacao, settings=settings))
+    graph.add_node(
+        "agente_intervencao",
+        partial(nodes.agente_intervencao, settings=settings, session_factory=session_factory),
+    )
     graph.add_node("agente_ui", partial(nodes.agente_ui, settings=settings))
     graph.add_node("agente_texto", partial(nodes.agente_texto, settings=settings))
     graph.add_node("persist_personalizacao", partial(nodes.persist_personalizacao, session_factory=session_factory, settings=settings))
@@ -55,6 +59,7 @@ def build_graph(
             "agente_boss_visual": "agente_boss_visual",
             "agente_midias_personalizadas": "agente_midias_personalizadas",
             "agente_notificacao": "agente_notificacao",
+            "agente_intervencao": "agente_intervencao",
             "agente_ui": "agente_ui",
             "agente_texto": "agente_texto",
             "persist_personalizacao": "persist_personalizacao",

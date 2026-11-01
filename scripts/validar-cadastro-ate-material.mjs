@@ -23,9 +23,11 @@ export async function validarCadastroAteMaterial(db, test) {
     }],
     resolve: { alias: [{ find: "@/lib/dataNascimento", replacement: `${repo}frontend/src/lib/dataNascimento.ts` }, { find: /^@\/(?!integrations\/supabase\/client$|database\/supabase$|services\/apiBaseUrl$)(.*)$/, replacement: `${repo}mobile/src/$1` }] },
     optimizeDeps: { noDiscovery: true, include: [] }, server: { middlewareMode: true },
-    // tsconfigRaw em string: o Vite não tenta resolver o `extends: expo/tsconfig.base`
-    // do mobile/tsconfig.json (expo não está instalado no job do frontend).
-    esbuild: { tsconfigRaw: '{"compilerOptions":{"target":"ESNext","useDefineForClassFields":true}}' },
+    // Sem isto o Vite lê o tsconfig mais próximo de cada arquivo; o de `mobile/` estende
+    // `expo/tsconfig.base`, que o job de frontend da CI não instala, e o teste nem compila.
+    // String = o Vite não procura tsconfig. A única opção que muda o .ts transpilado aqui é a
+    // mesma nos dois tsconfigs (medido com `tsc --showConfig` em 01/11).
+    esbuild: { tsconfigRaw: JSON.stringify({ compilerOptions: { useDefineForClassFields: true } }) },
   });
   try {
     const { supabase } = await server.ssrLoadModule(clientId);

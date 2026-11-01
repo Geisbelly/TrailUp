@@ -616,6 +616,7 @@ type TrilhaContextValue = {
   classes: Classe[]
   classeAtual: Classe | null
   selecionarClasse: (classeId: number) => void
+  trocarTurma: () => void
   perfil: BrainHexProfile
   visual: Visual
   grafo: GraphLayout
@@ -961,6 +962,13 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     [classes, usuario?.id]
   )
+
+  // Esquece a turma escolhida: o `ClassSelectionGate` volta a mostrar a escolha, como no
+  // login. Sem isto a única saída da tela de tópicos era encerrar a sessão.
+  const trocarTurma = useCallback(() => {
+    classeAtualRef.current = null
+    setClasseAtual(null)
+  }, [])
 
   const buildPayloadForTopico = useCallback(
     (
@@ -2298,6 +2306,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       classes,
       classeAtual,
       selecionarClasse,
+      trocarTurma,
       perfil,
       visual,
       grafo,
@@ -2330,6 +2339,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       classes,
       classeAtual,
       selecionarClasse,
+      trocarTurma,
       perfil,
       visual,
       grafo,

@@ -18,6 +18,7 @@ import logging
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
@@ -50,11 +51,24 @@ def _num(value: Any) -> float | None:
         return None
 
 
+_BRASILIA = ZoneInfo("America/Sao_Paulo")
+
+
+def _data(value: Any) -> date | None:
+    """Instante do banco -> dia de Brasilia (o mesmo corte das views da F5)."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return (value if value.tzinfo else value.replace(tzinfo=UTC)).astimezone(_BRASILIA).date()
+    if isinstance(value, date):
+        return value
+    return None
+
+
 def montar_payload(
     alunos: list[dict[str, Any]],
     nomes: dict[str, str | None],
-    abandono: dict[str, float | None],
-    ultima_sessao: dict[str, date],
+    sinais: dict[str, dict[str, Any]],
     respostas: dict[str, dict[str, Any]],
     topicos: list[dict[str, Any]],
     descartados: list[dict[str, Any]],
@@ -63,7 +77,11 @@ def montar_payload(
     """Payload do modelo, o mapa ref -> aluno_id e o mapa ref -> nome.
 
     O nome NAO entra no payload (#195): o modelo so ve "A1"... e a API troca a
-    ref pelo nome na volta (``validar_insights``)."""
+    ref pelo nome na volta (``validar_insights``).
+
+    ``sinais`` vem de ``vw_metricas_engajamento_aluno_classe`` (F5, ``20261031_05``): por aluno,
+    ``ultima_atividade`` (date), ``evadido``/``inativo`` (bool) e ``estagnado_topico`` (nome) com
+    ``estagnado_desde`` (date). Aluno sem linha = sem dado: os campos vao null, nunca zero."""
     refs: dict[str, str] = {}
     nomes_por_ref: dict[str, str | None] = {}
     linhas: list[dict[str, Any]] = []
@@ -77,7 +95,9 @@ def montar_payload(
         if perfil:
             perfis[str(perfil)] = perfis.get(str(perfil), 0) + 1
         resp = respostas.get(aluno_id) or {}
-        sessao = ultima_sessao.get(aluno_id)
+        sinal = sinais.get(aluno_id) or {}
+        ultima = sinal.get("ultima_atividade")
+        parado_desde = sinal.get("estagnado_desde")
         linhas.append(
             {
                 "ref": ref,
@@ -85,8 +105,15 @@ def montar_payload(
                 "conclusao_pct": _num(aluno.get("percentual_concluido")),
                 "respostas_30d": int(resp.get("respostas") or 0),
                 "acertos_30d_pct": _num(resp.get("acertos_pct")),
-                "abandono_material_pct": abandono.get(aluno_id),
-                "dias_sem_sessao": (hoje - sessao).days if sessao else None,
+                "dias_sem_atividade": (hoje - ultima).days if ultima else None,
+                # So o mais grave: evasao (30 dias) ja e inatividade (7).
+                "sinal": "evasao" if sinal.get("evadido") else ("inatividade" if sinal.get("inativo") else None),
+                "parado_em_topico": sinal.get("estagnado_topico"),
+                "dias_parado_no_topico": (hoje - parado_desde).days if parado_desde else None,
+                # Faixa do modelo de evasao do core-trailup (20261031_08): "alto" e o critico do console.
+                "risco_abandono": sinal.get("risco_abandono"),
+                # "modelo" (semana com evento) ou "inatividade" (semana sem evento: regra de dias).
+                "risco_abandono_origem": sinal.get("risco_abandono_origem"),
             }
         )
     payload = {
@@ -179,7 +206,7 @@ class InsightsTurmaService:
             alunos = []
         ids = [str(a["aluno_id"]) for a in alunos]
         if not ids:
-            return montar_payload([], {}, {}, {}, {}, [], [], agora.date())
+            return montar_payload([], {}, {}, {}, [], [], agora.date())
 
         params = {"classe_id": classe_id, "ids": ids}
         desde = (agora - timedelta(days=JANELA_RESPOSTAS_DIAS)).replace(tzinfo=None)
@@ -190,30 +217,33 @@ class InsightsTurmaService:
                 "nomes", "SELECT id, nome FROM alunos WHERE CAST(id AS text) = ANY(:ids)", params
             )
         }
-        abandono = {
-            str(r["aluno_id"]): _num(r["taxa_abandono_pct"])
-            for r in await self._ler(
-                "abandono",
-                """
-                SELECT aluno_id, taxa_abandono_pct FROM vw_metricas_engajamento_aluno_classe
-                 WHERE classe_id = :classe_id
-                """,
-                {"classe_id": classe_id},
-            )
-        }
-        ultima_sessao = {
-            str(r["aluno_id"]): r["ultimo_dia"]
-            for r in await self._ler(
-                "sessoes",
-                """
-                SELECT aluno_id, MAX(dia) AS ultimo_dia FROM vw_metricas_sessoes_aluno_dia
-                 WHERE classe_id = :classe_id
-                 GROUP BY aluno_id
-                """,
-                {"classe_id": classe_id},
-            )
-            if r["ultimo_dia"] is not None
-        }
+        # F5 (`20261031_05`): os tres sinais, com data, em vez da taxa de abandono.
+        sinais: dict[str, dict[str, Any]] = {}
+        for r in await self._ler(
+            "sinais",
+            """
+            SELECT e.aluno_id, e.ultima_atividade_em, e.inativo_desde, e.evadido_desde,
+                   e.estagnado_desde, t.nome AS estagnado_topico, e.risco_abandono_faixa,
+                   e.risco_abandono_origem
+              FROM vw_metricas_engajamento_aluno_classe e
+              LEFT JOIN topicos t ON t.id = e.estagnado_topico_id
+             WHERE e.classe_id = :classe_id
+            """,
+            {"classe_id": classe_id},
+        ):
+            sinais[str(r["aluno_id"])] = {
+                "ultima_atividade": _data(r["ultima_atividade_em"]),
+                "inativo": r["inativo_desde"] is not None,
+                "evadido": r["evadido_desde"] is not None,
+                "estagnado_topico": r["estagnado_topico"],
+                "estagnado_desde": _data(r["estagnado_desde"]),
+                "risco_abandono": r["risco_abandono_faixa"]
+                if r["risco_abandono_faixa"] in ("alto", "atencao", "normal")
+                else None,
+                "risco_abandono_origem": r["risco_abandono_origem"]
+                if r["risco_abandono_origem"] in ("modelo", "inatividade")
+                else None,
+            }
         # Respostas vem de eventos_aluno ("atividade:<id>"), que guarda a data
         # de cada uma; so contam atividades desta turma.
         respostas_sql = """
@@ -275,7 +305,7 @@ class InsightsTurmaService:
                 {"classe_id": classe_id, "desde": agora - timedelta(days=JANELA_RESPOSTAS_DIAS)},
             )
         ]
-        return montar_payload(alunos, nomes, abandono, ultima_sessao, respostas, topicos, descartados, agora.date())
+        return montar_payload(alunos, nomes, sinais, respostas, topicos, descartados, agora.date())
 
     async def gravar(self, classe_id: int, itens: list[dict[str, Any]]) -> uuid.UUID:
         geracao_id = uuid.uuid4()

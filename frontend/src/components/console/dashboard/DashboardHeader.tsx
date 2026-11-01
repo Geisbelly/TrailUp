@@ -76,9 +76,9 @@ export default function DashboardHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        {/* So a UI por enquanto — nao filtra nada ainda. Os KPIs agregados (turma,
-            perfil, distribuicao) vem de views que nao tem coluna de data por
-            evento, entao janela temporal real depende do endpoint de KPIs da #12. */}
+        {/* A janela filtra o painel "Abandono por etapa" (RPC metricas_engajamento_turma, F5).
+            Os cards agregados vem de views de estado atual (sinais) ou das ultimas 8 semanas
+            completas (retorno semanal), e dizem isso no proprio texto. */}
         <SegmentedPills ariaLabel="Janela temporal" opcoes={JANELAS} valor={janela} onChange={onJanelaChange} />
         {ultimaCarga && <span className="text-xs text-muted-foreground">{formatarAtualizadoHa(ultimaCarga, agora)}</span>}
       </div>

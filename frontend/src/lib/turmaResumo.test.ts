@@ -4,62 +4,75 @@ import { computeTurmaResumo, type TurmaResumoRow } from "./turmaResumo";
 function row(overrides: Partial<TurmaResumoRow>): TurmaResumoRow {
   return {
     total_alunos: 1,
-    taxa_media_abandono_pct: 0,
+    taxa_risco_abandono_pct: null,
+    alunos_risco_alto: 0,
+    alunos_risco_com_dado: 0,
+    tempo_medio_uso_seg: 0,
     taxa_media_conclusao_pct: 0,
     media_nota_turma: 0,
     taxa_media_acertos_pct: 0,
-    tempo_medio_uso_seg: 0,
+    tempo_ativo_medio_seg: 0,
     uso_chat_apos_erro_pct: 0,
+    retorno_semanal_pct: null,
+    retorno_semanal_elegiveis: 0,
+    alunos_inativos: 0,
+    alunos_estagnados: 0,
+    alunos_evadidos: 0,
+    alunos_sem_dado: 0,
     ...overrides,
   };
 }
 
 describe("computeTurmaResumo", () => {
   it("pondera pelo numero de alunos, não faz média simples por classe", () => {
-    const rows = [
-      row({ total_alunos: 50, taxa_media_abandono_pct: 10 }),
-      row({ total_alunos: 5, taxa_media_abandono_pct: 90 }),
-    ];
-
-    const resumo = computeTurmaResumo(rows);
-
-    // Ponderado: (50*10 + 5*90) / 55 = (500 + 450) / 55 ≈ 17.27
-    expect(resumo.taxa_media_abandono_pct).toBeCloseTo(17.27, 1);
-    // Média simples (o bug antigo) daria 50 — bem diferente do ponderado.
-    expect(resumo.taxa_media_abandono_pct).not.toBeCloseTo(50, 0);
+    const resumo = computeTurmaResumo([
+      row({ total_alunos: 50, taxa_media_conclusao_pct: 10 }),
+      row({ total_alunos: 5, taxa_media_conclusao_pct: 90 }),
+    ]);
+    expect(resumo.taxa_media_conclusao_pct).toBeCloseTo(17.27, 1);
   });
 
-  it("pondera todas as métricas pelo mesmo peso (total_alunos)", () => {
-    const rows = [
-      row({ total_alunos: 3, taxa_media_conclusao_pct: 60, media_nota_turma: 6 }),
-      row({ total_alunos: 1, taxa_media_conclusao_pct: 20, media_nota_turma: 2 }),
-    ];
-
-    const resumo = computeTurmaResumo(rows);
-
-    expect(resumo.taxa_media_conclusao_pct).toBeCloseTo((3 * 60 + 1 * 20) / 4, 5);
-    expect(resumo.media_nota_turma).toBeCloseTo((3 * 6 + 1 * 2) / 4, 5);
+  it("retorno semanal pondera pelas semanas elegíveis, não pelos alunos", () => {
+    const resumo = computeTurmaResumo([
+      row({ total_alunos: 50, retorno_semanal_pct: 50, retorno_semanal_elegiveis: 2 }),
+      row({ total_alunos: 5, retorno_semanal_pct: 100, retorno_semanal_elegiveis: 8 }),
+    ]);
+    expect(resumo.retorno_semanal_pct).toBeCloseTo(90, 5);
+    expect(resumo.retorno_semanal_elegiveis).toBe(10);
   });
 
-  it("cai para média simples quando total_alunos soma zero (evita divisão por zero)", () => {
-    const rows = [
-      row({ total_alunos: 0, taxa_media_abandono_pct: 40 }),
-      row({ total_alunos: 0, taxa_media_abandono_pct: 60 }),
-    ];
-
-    const resumo = computeTurmaResumo(rows);
-
-    expect(resumo.taxa_media_abandono_pct).toBeCloseTo(50, 5);
+  it("taxa de abandono pondera pelos alunos com dado, não pelo total da turma", () => {
+    const resumo = computeTurmaResumo([
+      row({ total_alunos: 50, taxa_risco_abandono_pct: 10, alunos_risco_com_dado: 10, alunos_risco_alto: 1 }),
+      row({ total_alunos: 5, taxa_risco_abandono_pct: 40, alunos_risco_com_dado: 5, alunos_risco_alto: 2 }),
+    ]);
+    expect(resumo.taxa_risco_abandono_pct).toBeCloseTo(20, 5);
+    expect(resumo.alunos_risco_alto).toBe(3);
   });
 
-  it("retorna zeros quando não há turmas no escopo", () => {
-    const resumo = computeTurmaResumo([]);
+  it("contagens somam", () => {
+    const resumo = computeTurmaResumo([
+      row({ total_alunos: 10, alunos_inativos: 2, alunos_estagnados: 1, alunos_evadidos: 1, alunos_sem_dado: 3 }),
+      row({ total_alunos: 5, alunos_inativos: 1 }),
+    ]);
+    expect(resumo).toMatchObject({ total_alunos: 15, alunos_inativos: 3, alunos_estagnados: 1, alunos_evadidos: 1, alunos_sem_dado: 3 });
+  });
 
-    expect(resumo.taxa_media_abandono_pct).toBe(0);
-    expect(resumo.taxa_media_conclusao_pct).toBe(0);
-    expect(resumo.media_nota_turma).toBe(0);
-    expect(resumo.taxa_media_acertos_pct).toBe(0);
-    expect(resumo.tempo_medio_uso_seg).toBe(0);
-    expect(resumo.uso_chat_apos_erro_pct).toBe(0);
+  it("sem dado continua sem dado: linha null não entra, e nenhuma linha com dado dá null", () => {
+    const resumo = computeTurmaResumo([
+      row({ total_alunos: 10, tempo_ativo_medio_seg: null }),
+      row({ total_alunos: 5, tempo_ativo_medio_seg: 600 }),
+    ]);
+    expect(resumo.tempo_ativo_medio_seg).toBe(600);
+    expect(computeTurmaResumo([row({ tempo_ativo_medio_seg: null })]).tempo_ativo_medio_seg).toBeNull();
+    expect(computeTurmaResumo([]).retorno_semanal_pct).toBeNull();
+  });
+
+  it("sem alunos para ponderar, cai para média simples", () => {
+    const resumo = computeTurmaResumo([
+      row({ total_alunos: 0, taxa_media_conclusao_pct: 40 }),
+      row({ total_alunos: 0, taxa_media_conclusao_pct: 60 }),
+    ]);
+    expect(resumo.taxa_media_conclusao_pct).toBeCloseTo(50, 5);
   });
 });

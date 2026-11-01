@@ -26,6 +26,12 @@ Regras globais obrigatórias:
    substituto dele. Todo termo técnico, definição, passo, fórmula ou exemplo real precisa
    aparecer explícito e correto (com o nome técnico, não só a metáfora) antes ou junto da
    moldura narrativa. Em caso de dúvida, priorize a substância pedagógica sobre o floreio.
+10. Fórmulas e matemática em texto corrido, em todos os formatos: NUNCA use LaTeX
+    nem cifrões para matemática — nada de `$x$`, `$$...$$`, `\frac{a}{b}`, `\sqrt{2}`,
+    `\neq` ou `x^{2}`. Escreva a fórmula como ela se lê numa linha de texto, com símbolos
+    comuns: `x² + 3x = 0`, `a ≠ 0`, `a/b`, `√2`, `3 × 4`, `±`. No roteiro de áudio, escreva
+    por extenso o que o narrador fala ("x ao quadrado mais três x igual a zero"). O cifrão
+    só aparece em valor em reais (R$ 1.200).
 
 Contrato de saída (sempre objeto JSON):
 {

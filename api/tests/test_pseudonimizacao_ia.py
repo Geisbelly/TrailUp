@@ -120,7 +120,7 @@ def _alunos() -> list[dict[str, Any]]:
 
 def test_payload_dos_insights_nao_tem_nome() -> None:
     payload, refs, nomes_por_ref = montar_payload(
-        _alunos(), NOMES, {}, {}, {}, [], [], date(2026, 10, 24)
+        _alunos(), NOMES, {}, {}, [], [], date(2026, 10, 24)
     )
     _sem_identificador(payload)
     assert {refs[r]: n for r, n in nomes_por_ref.items()} == NOMES

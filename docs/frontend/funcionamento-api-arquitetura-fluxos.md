@@ -394,7 +394,27 @@ stateDiagram-v2
 | `class_delta_sync` | mudanca de conteúdo/tópico/atividade | recalcula afetados na classe |
 | `full_class_sync` | reconciliacao ampla | recalcula todos aluno x tópico |
 | `student_cleanup` | remocao de aluno / limpeza | remove personalização, progresso, fontes e artefatos |
-| `manual_retry` | recuperacao operacional | reprocessa itens com falha |
+| `manual_retry` | botão "Reprocessar falhas" do console | regenera só os perfis pedidos (o console manda os que falharam); ver 6.6 |
+
+## 6.6 Escopo do "Reprocessar falhas" (`manual_retry`)
+
+Decidido na #652 e implementado na #718: **reprocessa só os perfis que
+falharam, não os 7.** Regerar os 7 jogava fora o que já estava pronto e gastava
+geração à toa (a turma de teste 66 mostrou `processed_targets 7, error_count 7`).
+
+| Dimensão | Escopo |
+|---|---|
+| Perfis | `brainhex_profile_keys` do pedido. O console manda os perfis com status `falhou` (`statusGeracaoDoPerfil`), e o botão só aparece quando há pelo menos um. Lista vazia ou omitida = os 7, para chamadas antigas da API. Chave desconhecida é descartada. |
+| Tópico e conteúdo | Os selecionados na aba Personalizações (`topico_ids`, `conteudo_ids`). |
+| Alunos | Nenhum: o alvo é a base por perfil (`classe × tópico × conteúdo × perfil`), sem aluno dono. A adequação por aluno vem depois, por cima da base. |
+| Disjuntor de falhas | Furado: pedido manual zera o `_geracao_falhas.streak` da mesma `generation_key`, que o disparo automático respeita (`personalizacao_falha_streak_max`, padrão 3). |
+| Pedido repetido | Um job aberto com o mesmo escopo (tópicos, conteúdos e perfis) é devolvido em vez de criar outro. O escopo de perfis conta: um job aberto dos 7 não engole o pedido de um. |
+| Job anterior `partial`/`failed` | É reaberto, se tiver o mesmo escopo: alvos `completed`/`skipped` ficam intocados e só os `failed`/`pending` voltam para a fila. |
+
+Código: `criar_job_manual_retry` em `api/app/api/v1/personalizacao.py`,
+`enqueue_personalizacao_job` e `_build_targets` em
+`api/app/services/personalizacao_jobs.py`, `handleReprocessarFalhas` em
+`frontend/src/components/console/personalizacoes/PersonalizacoesSection.tsx`.
 
 ## 7. Tipos de personalização e como são gerados
 

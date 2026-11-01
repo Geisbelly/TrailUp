@@ -36,6 +36,7 @@ src/services/social/publicProfileModel.test.ts
 src/services/social/socialModel.test.ts
 src/services/studySessions.test.ts
 src/services/telemetriaApi.persistence.test.ts
+src/services/telemetriaCliente.core.test.ts
 src/services/telemetriaFallback.test.ts
 src/services/telemetriaOutbox.concurrent.test.ts
 src/services/telemetriaOutbox.test.ts
@@ -121,6 +122,7 @@ src/utils/velocidadeAudio.test.ts
 src/utils/grupoNotificacao.test.ts
 src/services/loja/ganhoMoedasModel.test.ts
 src/utils/compraLoja.test.ts
+src/services/loja/fundoTurmaModel.test.ts
 src/services/loja/extratoModel.test.ts
 src/services/loja/usoItem.test.ts
 src/utils/tourTelaLarga.test.ts
@@ -153,3 +155,4 @@ src/utils/semAlertDireto.test.ts
 src/utils/fotoPerfil.test.ts
 src/utils/authValidacao.test.ts
 src/utils/painelTopicoTrilha.celular.test.ts
+src/database/supabase.sessaoNaUrl.test.ts

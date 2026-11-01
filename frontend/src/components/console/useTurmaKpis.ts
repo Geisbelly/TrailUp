@@ -2,14 +2,26 @@ import { useEffect, useRef, useState } from "react";
 import { selectView } from "@/lib/supabaseViews";
 import { createRequestGuard } from "@/lib/requestGuard";
 
+// Colunas da F5 (migration 20261031_05): a taxa de abandono e o retorno por intervalo de dias
+// saíram; null = sem dado (nunca 0 fabricado).
 export type TurmaGeralMetricas = {
   classe_id: number;
   total_alunos: number;
-  tempo_medio_uso_seg: number;
-  sessoes_medias_por_aluno: number;
-  taxa_media_retorno_pct: number;
-  taxa_media_abandono_pct: number;
-  taxa_media_conclusao_pct: number;
+  tempo_medio_uso_seg: number | null;
+  tempo_ativo_medio_seg: number | null;
+  sessoes_medias_por_aluno: number | null;
+  retorno_semanal_pct: number | null;
+  retorno_semanal_elegiveis: number;
+  alunos_inativos: number;
+  alunos_estagnados: number;
+  alunos_evadidos: number;
+  alunos_sem_dado: number;
+  taxa_media_conclusao_pct: number | null;
+  /** Taxa de abandono: % dos alunos com dado na faixa alta do modelo de evasão do core (20261031_08). */
+  taxa_risco_abandono_pct: number | null;
+  alunos_risco_alto: number;
+  alunos_risco_atencao: number;
+  alunos_risco_com_dado: number;
   media_nota_turma: number;
   taxa_media_acertos_pct: number;
   taxa_media_acertos_sem_erro_pct: number;
@@ -28,7 +40,12 @@ export type TurmaPerfilMetricas = {
   segmento: string;
   perfil_nome: string;
   total_alunos_segmento: number;
-  taxa_abandono_pct: number;
+  alunos_inativos: number;
+  alunos_estagnados: number;
+  tempo_ativo_medio_seg: number | null;
+  taxa_risco_abandono_pct: number | null;
+  alunos_risco_alto: number;
+  alunos_risco_com_dado: number;
   media_nota: number;
   taxa_acertos_pct: number;
   taxa_uso_chat_pct: number;
@@ -48,17 +65,19 @@ export type TurmaKpis = {
   perfilMetricas: TurmaPerfilMetricas[];
   distribuicaoMetricas: TurmaDistribuicao[];
   isLoading: boolean;
+  /** Leitura falhou (RLS, rede): o card mostra erro, não vazio nem zero. */
+  erro: string | null;
 };
 
-// Fonte de dado isolada e stub-marcada (#56): hoje lê direto das views
-// agregadas legadas. A RPC versionada da #12 vive em
-// dashboard/kpisEngajamentoApi.ts, mas a troca do painel e dos seus estados
-// pertence à #15; não misture os dois contratos silenciosamente.
+// Le direto das views agregadas do Supabase (versionadas na F5). Os numeros por
+// topico e com janela vem da RPC metricas_engajamento_turma (useKpisPorTopico,
+// em dashboard/kpisEngajamentoApi.ts); nao misture os dois contratos.
 export function useTurmaKpis(classIds: number[]): TurmaKpis {
   const [turmaMetricas, setTurmaMetricas] = useState<TurmaGeralMetricas[]>([]);
   const [perfilMetricas, setPerfilMetricas] = useState<TurmaPerfilMetricas[]>([]);
   const [distribuicaoMetricas, setDistribuicaoMetricas] = useState<TurmaDistribuicao[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
   const requestGuard = useRef(createRequestGuard());
 
   useEffect(() => {
@@ -68,6 +87,7 @@ export function useTurmaKpis(classIds: number[]): TurmaKpis {
       setTurmaMetricas([]);
       setPerfilMetricas([]);
       setDistribuicaoMetricas([]);
+      setErro(null);
       return;
     }
 
@@ -77,8 +97,12 @@ export function useTurmaKpis(classIds: number[]): TurmaKpis {
       selectView("vw_metricas_turma_perfil_classe").in("classe_id", classIds),
       selectView("vw_metricas_distribuicao_turma_classe").in("classe_id", classIds),
     ])
-      .then(([{ data: turmaData }, { data: perfilData }, { data: distribuicaoData }]) => {
+      .then(([turma, perfil, distribuicao]) => {
         if (!request.isCurrent()) return;
+        const { data: turmaData } = turma;
+        const { data: perfilData } = perfil;
+        const { data: distribuicaoData } = distribuicao;
+        setErro(turma.error?.message ?? perfil.error?.message ?? distribuicao.error?.message ?? null);
         setTurmaMetricas((turmaData ?? []) as TurmaGeralMetricas[]);
         setPerfilMetricas((perfilData ?? []) as TurmaPerfilMetricas[]);
         setDistribuicaoMetricas((distribuicaoData ?? []) as TurmaDistribuicao[]);
@@ -88,5 +112,5 @@ export function useTurmaKpis(classIds: number[]): TurmaKpis {
       });
   }, [classIds]);
 
-  return { turmaMetricas, perfilMetricas, distribuicaoMetricas, isLoading };
+  return { turmaMetricas, perfilMetricas, distribuicaoMetricas, isLoading, erro };
 }

@@ -604,10 +604,16 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     if (!token || !classeId || reprocessando) return;
     setReprocessando(true);
     try {
+      // Só os perfis que falharam: sem isso a API regenerava os 7 e jogava fora
+      // o que já estava pronto (#652).
+      const perfisComFalha = (porPerfil?.perfis ?? [])
+        .filter((p) => statusGeracaoDoPerfil(p) === "falhou")
+        .map((p) => p.perfil);
       await enqueueManualRetryJob(token, {
         classe_id: Number(classeId),
         topico_ids: topicoId ? [Number(topicoId)] : undefined,
         conteudo_ids: conteudoId ? [Number(conteudoId)] : undefined,
+        brainhex_profile_keys: perfisComFalha.length > 0 ? perfisComFalha : undefined,
         reason: "retry_manual_console",
       });
       toast.success("Nova tentativa enfileirada para os perfis com falha.");
@@ -617,7 +623,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     } finally {
       setReprocessando(false);
     }
-  }, [session, resolveToken, classeId, topicoId, conteudoId, reprocessando, loadPorPerfil]);
+  }, [session, resolveToken, classeId, topicoId, conteudoId, reprocessando, loadPorPerfil, porPerfil]);
 
   const alunoSelecionado = useMemo(() => alunos.find((a) => a.id === alunoId) ?? null, [alunos, alunoId]);
   const conteudoSelecionado = useMemo(

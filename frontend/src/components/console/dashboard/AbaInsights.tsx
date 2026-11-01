@@ -182,7 +182,7 @@ export default function AbaInsights({
   nomeDaTurma: (id: number) => string;
   onAbrirAluno: (aluno: Aluno) => void;
 }) {
-  const { lote, recentes, estado, gerando, aviso, gerar, decidir } = useInsightsDaTurma(classIds);
+  const { lote, recentes, alertas, estado, gerando, aviso, gerar, decidir } = useInsightsDaTurma(classIds);
   const [filtro, setFiltro] = useState<EscopoDoFiltro>("tudo");
   const agora = new Date();
 
@@ -258,6 +258,32 @@ export default function AbaInsights({
       )}
 
       <SegmentedPills ariaLabel="Filtrar sínteses" opcoes={FILTROS} valor={filtro} onChange={(f) => setFiltro(f)} className="w-fit" />
+
+      {filtro !== "turma" && alertas.length > 0 && (
+        <section aria-labelledby="alertas-por-aluno" className="flex flex-col gap-3">
+          <div>
+            <h3 id="alertas-por-aluno" className="text-base font-bold text-foreground">
+              Alertas por aluno ({alertas.length})
+            </h3>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">
+              Quando um aluno registra o mesmo estado difícil em vários ciclos de estudo seguidos. Surgem durante o
+              estudo, não pelo botão "Atualizar agora".
+            </p>
+          </div>
+          <ul className="flex flex-col gap-3">
+            {alertas.map((i) => (
+              <CartaoDeInsight
+                key={i.id}
+                insight={i}
+                alvo={alvoDe(i)}
+                aluno={alunoDe(i)}
+                onAbrirAluno={onAbrirAluno}
+                onDecidir={(status, motivo) => decidir(i.id, status, motivo)}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
 
       {lote.length === 0 && gerando ? (
         <div role="status" aria-live="polite" className="flex flex-col items-center gap-3.5 rounded-[20px] border border-border bg-card px-[30px] py-11 text-center">

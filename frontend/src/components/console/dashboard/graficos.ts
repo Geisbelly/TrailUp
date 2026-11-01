@@ -6,29 +6,53 @@ export type SegmentoPerfil = "majoritario" | "segundo" | "afinidade_20_plus";
 
 export type AbandonoDoPerfil = { perfil: BrainHexProfileKey; nome: string; valor: number | null };
 
-// A view traz uma linha por (turma, perfil); com várias turmas no escopo o
-// mesmo perfil aparece várias vezes. Junta ponderando pelos alunos do
-// segmento — média simples entre turmas distorce quando os tamanhos diferem
-// (mesmo motivo de lib/turmaResumo.ts).
+// Taxa de abandono por perfil: % dos alunos com dado na faixa alta do modelo de evasão do core
+// (coluna taxa_risco_abandono_pct, migration 20261031_08). A view traz uma linha por (turma, perfil);
+// com várias turmas no escopo, junta ponderando pelos alunos com dado do segmento — média simples
+// entre turmas distorce quando os tamanhos diferem (mesmo motivo de lib/turmaResumo.ts).
 export function abandonoPorPerfil(linhas: TurmaPerfilMetricas[], segmento: SegmentoPerfil): AbandonoDoPerfil[] {
-  const acumulado = new Map<BrainHexProfileKey, { soma: number; peso: number; linhas: number; somaSimples: number }>();
+  const acumulado = new Map<BrainHexProfileKey, { alto: number; comDado: number }>();
   for (const linha of linhas) {
     if (linha.segmento !== segmento) continue;
     const perfil = chaveDoPerfil(linha.perfil_nome);
     if (!perfil) continue;
-    const valor = Number(linha.taxa_abandono_pct ?? 0);
-    const peso = Number(linha.total_alunos_segmento ?? 0);
-    const atual = acumulado.get(perfil) ?? { soma: 0, peso: 0, linhas: 0, somaSimples: 0 };
-    atual.soma += valor * peso;
-    atual.peso += peso;
-    atual.linhas += 1;
-    atual.somaSimples += valor;
+    const atual = acumulado.get(perfil) ?? { alto: 0, comDado: 0 };
+    atual.alto += Number(linha.alunos_risco_alto ?? 0);
+    atual.comDado += Number(linha.alunos_risco_com_dado ?? 0);
     acumulado.set(perfil, atual);
   }
   return PERFIS_EM_ORDEM.map((perfil) => {
     const a = acumulado.get(perfil);
-    const valor = !a ? null : a.peso > 0 ? a.soma / a.peso : a.somaSimples / a.linhas;
+    const valor = !a || a.comDado === 0 ? null : (100 * a.alto) / a.comDado;
     return { perfil, nome: NOME_DO_PERFIL[perfil], valor };
+  });
+}
+
+export type InatividadeDoPerfil = { perfil: BrainHexProfileKey; nome: string; valor: number | null; alunos: number };
+
+/** Segmento com menos alunos que isto fica oculto (spec de métricas §4.2: `n_minimo`, padrão 5). */
+export const N_MINIMO_SEGMENTO = 5;
+
+// Percentual de alunos INATIVOS (7 dias ou mais sem estudar) por perfil — substitui a "taxa de
+// abandono" por perfil, que media "ainda não terminou" (F5). A view traz uma linha por (turma,
+// perfil); com várias turmas no escopo, soma inativos e alunos de cada perfil antes de dividir,
+// que é a média ponderada pelos alunos do segmento.
+export function inatividadePorPerfil(linhas: TurmaPerfilMetricas[], segmento: SegmentoPerfil): InatividadeDoPerfil[] {
+  const acumulado = new Map<BrainHexProfileKey, { inativos: number; alunos: number }>();
+  for (const linha of linhas) {
+    if (linha.segmento !== segmento) continue;
+    const perfil = chaveDoPerfil(linha.perfil_nome);
+    if (!perfil) continue;
+    const atual = acumulado.get(perfil) ?? { inativos: 0, alunos: 0 };
+    atual.inativos += Number(linha.alunos_inativos ?? 0);
+    atual.alunos += Number(linha.total_alunos_segmento ?? 0);
+    acumulado.set(perfil, atual);
+  }
+  return PERFIS_EM_ORDEM.map((perfil) => {
+    const a = acumulado.get(perfil);
+    const alunos = a?.alunos ?? 0;
+    const valor = !a || alunos < N_MINIMO_SEGMENTO ? null : (100 * a.inativos) / alunos;
+    return { perfil, nome: NOME_DO_PERFIL[perfil], valor, alunos };
   });
 }
 

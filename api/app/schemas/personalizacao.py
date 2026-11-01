@@ -372,6 +372,8 @@ class PersonalizacaoJobPayload(BaseModel):
     aluno_id: str | None = None
     topico_ids: list[int] = Field(default_factory=list)
     conteudo_ids: list[int] = Field(default_factory=list)
+    # So `manual-retry` usa: perfis a reprocessar. Vazio = todos os 7.
+    brainhex_profile_keys: list[str] = Field(default_factory=list)
     reason: str | None = None
     trigger_source: str = "api"
 

@@ -33,6 +33,22 @@ import {
   SourceRef
 } from "../types";
 
+/**
+ * Fórmula em texto corrido, nunca LaTeX (#652). O mobile converte LaTeX na
+ * leitura (#588), mas o roteiro vai para o TTS e o slide para o BrainHexPDF, que
+ * não passam por aquele conversor. É a mesma regra dos prompts do fallback
+ * Python (`gerador_conteudo.txt`, `pipeline_midia_etapas.txt`).
+ */
+export const FORMULA_AS_PLAIN_TEXT_RULE = `
+    FÓRMULAS E MATEMÁTICA EM TEXTO CORRIDO (markdown, slides e áudio):
+    NUNCA use LaTeX nem cifrões para matemática — nada de \`$x$\`, \`$$...$$\`,
+    \`\\frac{a}{b}\`, \`\\sqrt{2}\`, \`\\neq\` ou \`x^{2}\`. Escreva a fórmula como ela
+    se lê numa linha de texto, com símbolos comuns: \`x² + 3x = 0\`, \`a ≠ 0\`,
+    \`a/b\`, \`√2\`, \`3 × 4\`, \`±\`. No audioScript, escreva por extenso o que o
+    narrador fala ("x ao quadrado mais três x igual a zero"). O cifrão só aparece
+    em valor em reais (R$ 1.200).
+`;
+
 // Suporta multiplas chaves Gemini na mesma GEMINI_API_KEY (separadas por
 // virgula/ponto-e-virgula). Cada chave tem sua propria cota diaria gratuita —
 // alternar entre elas multiplica o limite efetivo (ex.: 3 chaves x 20 req/dia
@@ -1586,6 +1602,8 @@ export async function processMediaWithGemini(
        - Inclua marcações de [Tom: ...] para guiar a entonação mística.
        `}
 
+    ${FORMULA_AS_PLAIN_TEXT_RULE}
+
     ${contentBlocks.length > 0 ? `
     LOTE DE BLOCOS PEDAGÓGICOS:
     - Este lote contém ${contentBlocks.length > 1 ? "vários blocos distintos" : "um bloco"}
@@ -2229,6 +2247,7 @@ export async function regenerateChapterContent(
     melhoria do professor. O prompt orienta COMO apresentar/aprofundar o
     conteúdo - ele nunca autoriza omitir conceitos técnicos que já estavam
     corretos no capítulo atual (Fidelidade Absoluta continua valendo).
+    ${FORMULA_AS_PLAIN_TEXT_RULE}
     ${options.expansionPrompt ? `DIRETRIZ DE EXPANSÃO GERAL (aplique também): "${options.expansionPrompt}"` : ""}
   `;
   const contentsParts = [{
@@ -2279,6 +2298,7 @@ export async function regenerateSlideContent(
     Sua missão é APRIMORAR E REGERAR UM SLIDE ESPECÍFICO conforme o prompt de
     melhoria do professor. Mantenha a riqueza conceitual e o tom do guia;
     preserve os sourceIds originais do slide.
+    ${FORMULA_AS_PLAIN_TEXT_RULE}
     ${options.expansionPrompt ? `DIRETRIZ DE EXPANSÃO GERAL (aplique também): "${options.expansionPrompt}"` : ""}
   `;
   const contentsParts = [{
@@ -2354,6 +2374,7 @@ export async function regenerateDocumentMarkdown(
     Reescreva e aprimore o documento de estudo completo abaixo de acordo com o
     prompt de melhoria do professor, preservando a Fidelidade Absoluta ao
     conteúdo técnico original.
+    ${FORMULA_AS_PLAIN_TEXT_RULE}
     ${options.expansionPrompt ? `DIRETRIZ DE EXPANSÃO GERAL (aplique também): "${options.expansionPrompt}"` : ""}
   `;
   const contentsParts = [{

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { concedido, descreverPadrao, faixaValida, filtrarExtrato, limiteDoTexto, mensagemDeErro, numeroOuNulo, precoDaUnidade, textoDoLimite } from "./economiaRegras";
+import { concedido, descreverPadrao, faixaValida, filtrarExtrato, limiteDoTexto, mensagemDeErro, numeroOuNulo, precoDaUnidade, textoDoLimite, progressoDoFundo, ROTULO_DO_FUNDO } from "./economiaRegras";
 
 describe("faixa de prazo e tempo", () => {
   it("aceita mínimo dentro do máximo e máximo dentro do teto", () => {
@@ -79,5 +79,17 @@ describe("várias unidades e limite de uso", () => {
     expect(mensagemDeErro("limite_por_questao")).toMatch(/questão/);
     expect(mensagemDeErro("limite_por_dia")).toMatch(/hoje/);
     expect(mensagemDeErro("sem_unidade")).toMatch(/mochila/);
+  });
+});
+
+describe("fundo da turma", () => {
+  it("progresso nunca passa de 100%", () => {
+    expect(progressoDoFundo(30, 50)).toBe("30 de 50 moedas (60%)");
+    expect(progressoDoFundo(50, 50)).toBe("50 de 50 moedas (100%)");
+    expect(progressoDoFundo(0, 0)).toBe("0 de 0 moedas (0%)");
+  });
+
+  it("todo status tem rótulo em texto", () => {
+    expect(Object.keys(ROTULO_DO_FUNDO).sort()).toEqual(["aberto", "atingido", "cancelado", "entregue"]);
   });
 });

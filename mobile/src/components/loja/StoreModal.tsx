@@ -6,6 +6,7 @@ import { filtrarExtrato, type FiltroDeExtrato, type Movimento } from "@/services
 import type { StoreItem, StoreSnapshot } from "@/services/loja/lojaService";
 import { comprarItem, carregarExtrato, carregarLoja } from "@/services/loja/lojaService";
 import { emPosse, maxQuantidade } from "@/services/loja/storeModel";
+import { FundoDaTurmaCard } from "@/components/loja/FundoDaTurmaCard";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { avisoCompraFeita, limitarQuantidade, precosDoPedido, textoNaBag } from "@/utils/compraLoja";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -166,6 +167,13 @@ export function StoreModal({
                 Suas moedas vêm do estudo. Gastar nunca muda seu XP nem sua posição no ranking.
               </Text>
             </View>
+            <FundoDaTurmaCard
+              alunoId={alunoId}
+              classeId={classeId}
+              saldo={snapshot?.balance ?? null}
+              palette={palette}
+              onDoou={() => void load()}
+            />
             {notice ? (
               <View style={[s.feedback, { borderColor: palette.accent }]}>
                 <MaterialCommunityIcons

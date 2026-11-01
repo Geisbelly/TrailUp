@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { apiRequest } from "@/lib/apiTraiupClient";
 import { createRequestGuard } from "@/lib/requestGuard";
 import {
+  alertasPorAluno,
   eMigracaoPendente,
   geradoEm,
   JANELA_DE_ACEITACAO_DIAS,
@@ -49,6 +50,7 @@ const tabela = () => supabase.from("intervencoes");
 export function useInsightsDaTurma(classIds: number[]) {
   const [lote, setLote] = useState<Insight[]>([]);
   const [recentes, setRecentes] = useState<Insight[]>([]);
+  const [alertas, setAlertas] = useState<Insight[]>([]);
   const [estado, setEstado] = useState<EstadoDosInsights>({ tipo: "carregando" });
   const [gerando, setGerando] = useState(false);
   const [aviso, setAviso] = useState<AvisoDaGeracao>(null);
@@ -61,18 +63,21 @@ export function useInsightsDaTurma(classIds: number[]) {
     if (classIds.length === 0) {
       setLote([]);
       setRecentes([]);
+      setAlertas([]);
       setEstado({ tipo: "pronto" });
       return null;
     }
     const desde = new Date(Date.now() - JANELA_DE_ACEITACAO_DIAS * 86_400_000).toISOString();
     // Últimas linhas geradas (o lote mais novo de cada turma sai daqui) e as
     // decididas na janela da taxa de aceitação, que podem ser de lotes antigos.
-    const [ultimas, decididas] = await Promise.all([
+    // Os alertas por aluno não têm lote e vêm numa terceira leitura.
+    const [ultimas, decididas, pendentesSemLote] = await Promise.all([
       tabela().select(COLUNAS).in("classe_id", classIds).not("geracao_id", "is", null).order("created_at", { ascending: false }).limit(60 * classIds.length),
       tabela().select(COLUNAS).in("classe_id", classIds).eq("natureza", "sugestao").gte("resolved_at", desde),
+      tabela().select(COLUNAS).in("classe_id", classIds).eq("escopo", "aluno").is("geracao_id", null).eq("status", "pending").order("created_at", { ascending: false }).limit(100),
     ]);
     if (!request.isCurrent()) return null;
-    const erro = ultimas.error ?? decididas.error;
+    const erro = ultimas.error ?? decididas.error ?? pendentesSemLote.error;
     if (erro) {
       setEstado(eMigracaoPendente(erro) ? { tipo: "indisponivel" } : { tipo: "erro", detalhe: erro.message });
       return null;
@@ -80,6 +85,7 @@ export function useInsightsDaTurma(classIds: number[]) {
     const novoLote = loteMaisRecentePorTurma((ultimas.data ?? []) as unknown as Insight[]);
     setLote(novoLote);
     setRecentes((decididas.data ?? []) as unknown as Insight[]);
+    setAlertas(alertasPorAluno((pendentesSemLote.data ?? []) as unknown as Insight[]));
     setEstado({ tipo: "pronto" });
     return novoLote;
   }, [classIds]);
@@ -167,23 +173,26 @@ export function useInsightsDaTurma(classIds: number[]) {
 
   const decidir = useCallback(
     async (id: string, status: "applied" | "dismissed", motivo: MotivoDescarte | null) => {
-      const anterior = lote.find((l) => l.id === id);
+      const anterior = lote.find((l) => l.id === id) ?? alertas.find((l) => l.id === id);
       if (!anterior) return;
       const mudanca = { status, motivo_descarte: status === "dismissed" ? motivo : null, resolved_at: new Date().toISOString() };
       const aplicar = (l: Insight) => (l.id === id ? { ...l, ...mudanca } : l);
       setLote((atual) => atual.map(aplicar));
+      // O alerta decidido continua na tela com a decisão até a próxima leitura, como o cartão do lote.
+      setAlertas((atual) => atual.map(aplicar));
       setRecentes((atual) => [...atual.filter((l) => l.id !== id), aplicar(anterior)]);
 
       const { data, error } = await tabela().update(mudanca).eq("id", id).select("id");
       // Sem erro e sem linha = a policy barrou em silêncio.
       if (error || !data || (data as unknown[]).length === 0) {
         setLote((atual) => atual.map((l) => (l.id === id ? anterior : l)));
+        setAlertas((atual) => atual.map((l) => (l.id === id ? anterior : l)));
         setRecentes((atual) => atual.filter((l) => l.id !== id).concat(anterior.status === "pending" ? [] : [anterior]));
         throw new Error(error?.message ?? "Sem permissão para alterar esta síntese.");
       }
     },
-    [lote],
+    [lote, alertas],
   );
 
-  return { lote, recentes, estado, gerando, aviso, gerar, decidir };
+  return { lote, recentes, alertas, estado, gerando, aviso, gerar, decidir };
 }
