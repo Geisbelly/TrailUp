@@ -21,6 +21,8 @@ import AbandonoPorPerfil from "./dashboard/AbandonoPorPerfil";
 import InatividadePorPerfil from "./dashboard/InatividadePorPerfil";
 import AbandonoPorEtapa from "./dashboard/AbandonoPorEtapa";
 import GargalosDePersonalizacao from "./dashboard/GargalosDePersonalizacao";
+import RiscoDeReprovacao from "./dashboard/RiscoDeReprovacao";
+import { useRiscoDeReprovacao } from "./dashboard/useRiscoDeReprovacao";
 import { useGargalosDePersonalizacao } from "./dashboard/useGargalosDePersonalizacao";
 import { useKpisPorTopico } from "./dashboard/useKpisPorTopico";
 import { useDisponibilidade } from "./dashboard/useDisponibilidade";
@@ -513,6 +515,7 @@ export default function DashboardSection() {
   const disponibilidade = useDisponibilidade(ultimaCarga);
   const turmaUnica = selectedClassFilter === TODAS_AS_TURMAS ? null : Number(selectedClassFilter);
   const kpisPorTopico = useKpisPorTopico(Number.isFinite(turmaUnica) ? turmaUnica : null, janelaTemporal);
+  const riscoDeReprovacao = useRiscoDeReprovacao(Number.isFinite(turmaUnica) ? turmaUnica : null);
   const gargalos = useGargalosDePersonalizacao(classScopeIds);
   const rotuloVoltar = `${selectedAluno?.classe_nome ?? "Turma"} · todos os alunos`;
 
@@ -602,6 +605,8 @@ export default function DashboardSection() {
               </div>
 
               <AbandonoPorEtapa turmaUnica={turmaUnica} kpis={kpisPorTopico} disponibilidade={disponibilidade} />
+
+              <RiscoDeReprovacao turmaUnica={turmaUnica} estado={riscoDeReprovacao} alunos={alunosDaTurma} onAbrir={abrirAluno} />
 
               <GargalosDePersonalizacao estado={gargalos} />
 
