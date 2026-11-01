@@ -1,5 +1,5 @@
-import { OrnamentDivider } from "@/components/HallTheme";
 import { LoadingState } from "@/components/LoadingState";
+import { NotificacaoDetalheView, NotificacaoNaoEncontrada } from "@/components/NotificacaoDetalhe";
 import {
   SectionGuideButton,
   SectionGuideStep,
@@ -9,21 +9,14 @@ import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { useLoading } from "@/context/LoadingContext";
 import { Notificacao } from "@/models/Notificacoes";
-import { FontFamily } from "@/styles/GlobalStyle";
 import { formatAbsoluteFrom, formatSmartTime } from "@/utils/Formatacoes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import React from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View, Platform } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import tinycolor from "tinycolor2";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
-import { textShadowStyle } from "@/utils/webShadow";
-
-const IS_WEB = Platform.OS === "web";
 
 export default function NotificacaoDetalhe() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,10 +33,6 @@ export default function NotificacaoDetalhe() {
   const headerGuideRef = React.useRef<View | null>(null);
   const bodyGuideRef = React.useRef<View | null>(null);
   const actionsGuideRef = React.useRef<View | null>(null);
-
-  const gold = tinycolor(palette.accent).lighten(10).toHexString();
-  const goldDim = tinycolor(palette.accent).setAlpha(0.5).toRgbString();
-  const goldFaint = tinycolor(palette.accent).setAlpha(0.1).toRgbString();
 
   const fromCtx = itens.find((n) => n.id === Number(id)) || null;
   const [item, setItem] = React.useState<Notificacao | null>(fromCtx);
@@ -91,7 +80,7 @@ export default function NotificacaoDetalhe() {
         id: "notification-detail-title",
         target: "notification_detail_header",
         title: "Título e estado",
-        description: `O título identifica o assunto. Esta notificação está ${isRead ? "lida" : "não lida"}; a cor do cabeçalho acompanha esse estado. ${profileEmphasis}`,
+        description: `O título identifica o assunto. Esta notificação está ${isRead ? "lida" : "não lida"}; o selo ao lado do ícone (Nova ou Lida) e a cor do título acompanham esse estado. ${profileEmphasis}`,
         icon: isRead ? "email-open-outline" : "email-alert-outline",
       },
       ...(when
@@ -184,13 +173,7 @@ export default function NotificacaoDetalhe() {
     return (
       <View style={[s.outer, { backgroundColor: palette.background }]}>
         <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          <View style={s.notFound}>
-            <Ionicons name="mail-unread-outline" size={48} color={palette.textMuted} />
-            <Text style={[s.notFoundTitle, { color: palette.text }]}>Nada por aqui</Text>
-            <Text style={[s.notFoundSub, { color: palette.textMuted }]}>
-              Esta notificação não foi encontrada.
-            </Text>
-          </View>
+          <NotificacaoNaoEncontrada perfil={activeProfile} />
         </SafeAreaView>
       </View>
     );
@@ -198,17 +181,6 @@ export default function NotificacaoDetalhe() {
 
   return (
     <View style={[s.outer, { backgroundColor: palette.background }]}>
-      {/* Gradiente candelabro */}
-      <LinearGradient
-        colors={[
-          tinycolor(palette.accent).setAlpha(0.2).toRgbString(),
-          "transparent",
-        ]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={[StyleSheet.absoluteFill, { height: "40%", pointerEvents: "none" }]}
-      />
-
       <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
         {/* Guia no cabecalho da tela: mesmo lugar em toda pagina com header,
             sem flutuar sobre o conteudo nem depender de offset por pagina. */}
@@ -225,110 +197,24 @@ export default function NotificacaoDetalhe() {
             ),
           }}
         />
-        {/* Card de cabeçalho */}
-        <View
-          ref={headerGuideRef}
-          collapsable={false}
-          style={[
-            s.headerCard,
-            {
-              backgroundColor: tinycolor(palette.surfaceElevated).setAlpha(0.92).toRgbString(),
-              borderColor: goldDim,
-            },
-          ]}
-        >
-          {/* Cantos ornamentais */}
-          <View style={[s.corner, s.cornerTL, { borderColor: gold }]} />
-          <View style={[s.corner, s.cornerTR, { borderColor: gold }]} />
-          <View style={[s.corner, s.cornerBL, { borderColor: gold }]} />
-          <View style={[s.corner, s.cornerBR, { borderColor: gold }]} />
-
-          <Text style={[s.title, { color: isRead ? palette.textMuted : gold }]}>
-            {item.titulo}
-          </Text>
-
-          {!!when && (
-            <View style={s.timeWrap}>
-              <View style={s.timeRow}>
-                <Ionicons name="time-outline" size={14} color={goldDim} />
-                <Text style={[s.timePrimary, { color: palette.text }]}>{timePrimary}</Text>
-              </View>
-              <Text style={[s.timeFull, { color: palette.textSubtle }]}>{timeFull}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Ornamento divisor */}
-        <View style={s.ornamentRow}>
-          <OrnamentDivider color={gold} />
-        </View>
-
-        <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
-          <View
-            ref={bodyGuideRef}
-            collapsable={false}
-            style={[
-              s.bodyCard,
-              {
-                backgroundColor: tinycolor(palette.surface).setAlpha(0.88).toRgbString(),
-                borderColor: tinycolor(palette.border).setAlpha(0.4).toRgbString(),
-              },
-            ]}
-          >
-            <Text style={[s.body, { color: palette.text }]}>{item.corpo}</Text>
-          </View>
-        </ScrollView>
-
-        {/* Footer de ações */}
-        <View
-          ref={actionsGuideRef}
-          collapsable={false}
-          style={[
-            s.footerBar,
-            {
-              backgroundColor: tinycolor(palette.background).setAlpha(0.95).toRgbString(),
-              borderTopColor: goldDim,
-            },
-          ]}
-        >
-          {isRead ? (
-            <Pressable
-              style={[
-                s.footerBtn,
-                {
-                  backgroundColor: goldFaint,
-                  borderColor: goldDim,
-                },
-              ]}
-              onPress={onMarkUnread}
-              accessibilityRole="button"
-            >
-              <Ionicons name="mail-unread-outline" size={18} color={gold} />
-              <Text style={[s.btnText, { color: gold }]}>Marcar como não lida</Text>
-            </Pressable>
-          ) : null}
-          <Pressable
-            style={[
-              s.footerBtn,
-              {
-                backgroundColor: "rgba(127, 29, 29, 0.9)",
-                borderColor: "rgba(248, 113, 113, 0.35)",
-              },
-            ]}
-            onPress={onDelete}
-            accessibilityRole="button"
-          >
-            <Ionicons name="trash" size={18} color="#fff" />
-            <Text style={[s.btnText, { color: "#fff" }]}>Excluir</Text>
-          </Pressable>
-        </View>
+        <NotificacaoDetalheView
+          perfil={activeProfile}
+          titulo={item.titulo}
+          corpo={item.corpo}
+          tipo={item.tipo}
+          lida={isRead}
+          quando={timePrimary}
+          quandoCompleto={timeFull}
+          onMarcarNaoLida={onMarkUnread}
+          onExcluir={onDelete}
+          cabecalhoRef={headerGuideRef}
+          corpoRef={bodyGuideRef}
+          acoesRef={actionsGuideRef}
+        />
       </SafeAreaView>
     </View>
   );
 }
-
-const CORNER_SIZE = 14;
-const CORNER_OFFSET = 8;
 
 const s = StyleSheet.create({
   outer: {
@@ -336,127 +222,5 @@ const s = StyleSheet.create({
   },
   guideButton: {
     marginRight: 12,
-  },
-  headerCard: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    padding: 16,
-    paddingRight: 54,
-    borderBottomWidth: 1,
-    overflow: "hidden",
-  },
-  // Cantos ornamentais
-  corner: {
-    position: "absolute",
-    width: CORNER_SIZE,
-    height: CORNER_SIZE,
-  },
-  cornerTL: {
-    top: CORNER_OFFSET,
-    left: CORNER_OFFSET,
-    borderTopWidth: 1.5,
-    borderLeftWidth: 1.5,
-    opacity: 0.7,
-  },
-  cornerTR: {
-    top: CORNER_OFFSET,
-    right: CORNER_OFFSET,
-    borderTopWidth: 1.5,
-    borderRightWidth: 1.5,
-    opacity: 0.7,
-  },
-  cornerBL: {
-    bottom: CORNER_OFFSET,
-    left: CORNER_OFFSET,
-    borderBottomWidth: 1.5,
-    borderLeftWidth: 1.5,
-    opacity: 0.7,
-  },
-  cornerBR: {
-    bottom: CORNER_OFFSET,
-    right: CORNER_OFFSET,
-    borderBottomWidth: 1.5,
-    borderRightWidth: 1.5,
-    opacity: 0.7,
-  },
-  title: {
-    fontFamily: FontFamily.inikaBold,
-    fontWeight: "700",
-    fontSize: 20,
-    lineHeight: 26,
-    letterSpacing: 0,
-    ...textShadowStyle({ color: "rgba(0,0,0,0.7)", offset: { width: 0, height: 1 }, radius: 4 }, IS_WEB),
-  },
-  timeWrap: { marginTop: 8, gap: 2 },
-  timeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  timePrimary: {
-    fontFamily: FontFamily.inikaBold,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  timeFull: { fontSize: 12, fontFamily: FontFamily.interMedium },
-  ornamentRow: {
-    paddingHorizontal: 16,
-    marginTop: 4,
-    opacity: 0.7,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 110,
-  },
-  bodyCard: {
-    paddingVertical: 20,
-    paddingHorizontal: 4,
-  },
-  body: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 16,
-    lineHeight: 26,
-    letterSpacing: 0,
-  },
-  footerBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 24,
-    borderTopWidth: 1,
-    flexDirection: "row",
-    gap: 10,
-  },
-  footerBtn: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 13,
-    borderRadius: 6,
-    borderWidth: 1,
-  },
-  btnText: {
-    flexShrink: 1,
-    textAlign: "center",
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 13,
-  },
-  notFound: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 16,
-    gap: 10,
-  },
-  notFoundTitle: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 20,
-  },
-  notFoundSub: {
-    textAlign: "center",
-    fontFamily: FontFamily.interMedium,
-    fontSize: 14,
   },
 });
