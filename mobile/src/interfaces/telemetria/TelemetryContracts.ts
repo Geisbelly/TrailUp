@@ -8,6 +8,17 @@ export type TelemetryFlushReason =
   | "topic_complete"
   | "session_end";
 
+/**
+ * Motivos de lote que encerram a sessão. Tem de ser a mesma lista de
+ * `TERMINAL_FLUSH_REASONS` em `api/app/api/v1/telemetria.py` e da função
+ * do banco (20261029_07); um teste compara com a da API.
+ */
+export const TERMINAL_FLUSH_REASONS: ReadonlySet<TelemetryFlushReason> = new Set<TelemetryFlushReason>([
+  "screen_blur",
+  "app_background",
+  "session_end",
+]);
+
 export type TelemetryTouchTarget = "content" | "activity" | "modal" | "screen";
 export type TelemetryStudyState = "active" | "idle";
 export type TelemetryAppEventGroup =

@@ -60,7 +60,7 @@ Descrever com granularidade como o app aplica personalização e gamificação n
 - manter fallback por formato
 
 ### 4.3 Motivos
-- contemplar estilos de aprendizagem diversos
+- oferecer acesso e escolha de formato a todos (UDL), sem tratar o perfil BrainHex como estilo de aprendizagem
 - reforçar memória de curto e médio prazo
 
 ### 4.4 Objetivos

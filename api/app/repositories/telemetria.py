@@ -383,6 +383,36 @@ class TelemetriaRepository:
             },
         )
 
+    async def registrar_falha_analise(
+        self,
+        *,
+        batch_id: str,
+        erro: str | None,
+        respeitar_trava: bool = False,
+        trava_seg: int = 600,
+    ) -> None:
+        """Falha transitória de uma análise: a fila (`20261029_09`) guarda o erro em `ultimo_erro` e tenta
+        de novo, com espera de `2^tentativas` min; na quinta, ela mesma grava `analysis_error = 'fila: ...'`.
+
+        Não grava nada no lote antes disso: `analysis_error` tira o item da fila (gatilho de saída), e um
+        erro de rede de um pedido viraria lote sem análise para sempre. Lote fora da fila: não faz nada.
+
+        `respeitar_trava=True` (o pedido): se um worker reivindicou o lote há menos de `trava_seg` e ainda
+        o analisa, não faz nada, para não soltar a trava dele. O worker chama com `False`.
+        """
+        await self.session.execute(
+            text(
+                "SELECT public.fn_telemetria_analise_falhou(CAST(:lote AS uuid), CAST(:erro AS text), "
+                "CAST(:respeitar AS boolean), CAST(:trava AS integer))"
+            ),
+            {
+                "lote": str(batch_id),
+                "erro": self._truncar_erro(erro),
+                "respeitar": bool(respeitar_trava),
+                "trava": int(trava_seg),
+            },
+        )
+
     async def _payloads_de_eventos_para_gravar(
         self, eventos: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:

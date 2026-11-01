@@ -14,25 +14,14 @@ from app.schemas.telemetria import (
     TelemetriaAnalysisResponse,
     TelemetriaLotePayload,
     TelemetriaLoteResponse,
-    TelemetriaSignalPayload,
 )
 from app.services import modo_restrito
 from app.services.analysis_runner import run_analysis
 from app.services.auth import UserContext
+from app.services.telemetria_eventos_legados import normalizar_eventos_legados
 
 router = APIRouter(prefix="/telemetria", tags=["telemetria"])
 logger = logging.getLogger(__name__)
-
-SIGNAL_TO_LEGACY_EVENT = {
-    "topic_open": "topico_aberto",
-    "content_open": "conteudo_aberto",
-    "content_complete": "conteudo_concluido",
-    "activity_start": "atividade_iniciada",
-    "activity_correct": "atividade_acertada",
-    "activity_wrong": "atividade_errada",
-    "wrong_streak": "erro_recorrente",
-    "activity_complete": "atividade_concluida",
-}
 
 TERMINAL_FLUSH_REASONS = {"screen_blur", "app_background", "session_end"}
 
@@ -60,102 +49,6 @@ def _sanitize_lote_payload(payload: TelemetriaLotePayload) -> dict[str, Any]:
     camera["frames_count"] = len(frames)
     sanitized["camera"] = camera
     return sanitized
-
-
-def _sanitize_reference(reference: str | None) -> str | None:
-    if reference is None:
-        return None
-    normalized = reference.strip()
-    if not normalized:
-        return None
-
-    numeric_match = normalized.rsplit(":", 1)
-    if len(numeric_match) == 2 and numeric_match[1].isdigit():
-        return numeric_match[1]
-    if normalized.isdigit():
-        return normalized
-    return None
-
-
-def _prefixed_reference(prefix: str, value: str | int | None) -> str | None:
-    normalized = _sanitize_reference(str(value) if value is not None else None)
-    if not normalized:
-        return None
-    return f"{prefix}:{normalized}"
-
-
-def _reference_from_signal(signal: TelemetriaSignalPayload) -> str | None:
-    if signal.atividade_id is not None:
-        return _prefixed_reference("atividade", signal.atividade_id)
-    if signal.conteudo_id is not None:
-        return _prefixed_reference("conteudo", signal.conteudo_id)
-    if signal.topico_id is not None:
-        return _prefixed_reference("topico", signal.topico_id)
-    if signal.item_key:
-        normalized = signal.item_key.strip()
-        if ":" in normalized:
-            return normalized
-        return _sanitize_reference(normalized)
-    return None
-
-
-def _is_activity_signal(signal: TelemetriaSignalPayload) -> bool:
-    return bool(signal.item_key and signal.item_key.startswith("activity:")) or signal.atividade_id is not None
-
-
-def _normalize_eventos_legados(payload: TelemetriaLotePayload) -> list[Evento]:
-    eventos: list[Evento] = []
-    ordered_signals = sorted(payload.signals, key=lambda signal: signal.timestamp)
-
-    for signal in ordered_signals:
-        mapped = SIGNAL_TO_LEGACY_EVENT.get(signal.type)
-        if mapped is None:
-            continue
-        eventos.append(
-            Evento(
-                tipo=mapped,
-                referencia=_reference_from_signal(signal),
-            )
-        )
-
-    if any(signal.type == "idle_detected" for signal in ordered_signals) or payload.idle_sec >= 60:
-        eventos.append(
-            Evento(
-                tipo="inatividade",
-                referencia=(
-                    str(payload.topico_id)
-                    if payload.topico_id is not None
-                    else _sanitize_reference(payload.item_key)
-                ),
-                valor=float(payload.idle_sec),
-            )
-        )
-
-    for index, signal in enumerate(ordered_signals):
-        if signal.type != "timer_timeout" or not _is_activity_signal(signal):
-            continue
-        completed_after_timeout = any(
-            candidate.type == "activity_complete"
-            and (
-                (candidate.item_key and signal.item_key and candidate.item_key == signal.item_key)
-                or (
-                    candidate.atividade_id is not None
-                    and signal.atividade_id is not None
-                    and candidate.atividade_id == signal.atividade_id
-                )
-            )
-            for candidate in ordered_signals[index + 1 :]
-        )
-        if not completed_after_timeout:
-            eventos.append(
-                Evento(
-                    tipo="abandono_atividade",
-                    referencia=_reference_from_signal(signal),
-                )
-            )
-            break
-
-    return eventos
 
 
 def _analysis_from_result(result: Any) -> TelemetriaAnalysisResponse:
@@ -197,6 +90,51 @@ def _analysis_from_result(result: Any) -> TelemetriaAnalysisResponse:
     )
 
 
+FUNCAO_INEXISTENTE = "42883"  # undefined_function
+
+
+def _fila_ausente(exc: BaseException) -> bool:
+    """Só o banco sem a 20261029_09: `fn_telemetria_analise_falhou` não existe (SQLSTATE 42883). O
+    adaptador asyncpg do SQLAlchemy copia o `sqlstate` do erro original para `orig.sqlstate`/`pgcode`."""
+    if not isinstance(exc, DBAPIError):
+        return False
+    orig = getattr(exc, "orig", None)
+    codigo = getattr(orig, "sqlstate", None) or getattr(orig, "pgcode", None)
+    return codigo == FUNCAO_INEXISTENTE
+
+
+async def _deixa_para_a_fila(
+    repo: TelemetriaRepository,
+    session: AsyncSession,
+    batch_id: str,
+    erro: str,
+    analysis: TelemetriaAnalysisResponse,
+    trava_seg: int,
+) -> None:
+    try:
+        # respeitar_trava: se um worker ja reivindicou o lote e o analisa, a falha
+        # do pedido nao solta a trava dele.
+        await repo.registrar_falha_analise(batch_id=batch_id, erro=erro, respeitar_trava=True, trava_seg=trava_seg)
+        await session.commit()
+    except Exception as exc:
+        await session.rollback()
+        if not _fila_ausente(exc):
+            # Conexao, timeout, qualquer outra coisa: o lote fica pendente, sem
+            # `analysis_error` (que o tiraria da fila). O item continua la, com a
+            # folga da P2, e o worker o pega.
+            logger.warning("telemetria.falha_nao_registrada: batch_id=%s erro=%s", batch_id, type(exc).__name__)
+            return
+        # Banco sem a fila (migration ainda nao aplicada): grava o erro no lote,
+        # como antes dela, em vez de derrubar um pedido cujo lote ja esta salvo.
+        logger.warning("telemetria.fila_ausente: batch_id=%s", batch_id)
+        await repo.update_lote_analysis(
+            batch_id=batch_id,
+            analysis_ciclo_id=None,
+            analysis_error=analysis.erros[0] if analysis.erros else None,
+        )
+        await session.commit()
+
+
 def _summarize_telemetria_payload(payload: TelemetriaLotePayload, normalized_events: list[Evento]) -> dict[str, Any]:
     return {
         "sessao_id": payload.sessao_id,
@@ -226,7 +164,7 @@ async def registrar_lote_telemetria(
 ) -> TelemetriaLoteResponse:
     aluno_id = user.aluno_id or user.user_id
     repo = TelemetriaRepository(session)
-    normalized_events = _normalize_eventos_legados(payload)
+    normalized_events = normalizar_eventos_legados(payload)
     logger.info(
         "telemetria.input=%s",
         _summarize_telemetria_payload(payload, normalized_events),
@@ -397,9 +335,11 @@ async def registrar_lote_telemetria(
             sessao_id=payload.sessao_id,
         )
         analysis = _analysis_from_result(analysis_result)
-    except Exception as exc:  # pragma: no cover
+        erro_para_a_fila = analysis.erros[0] if analysis.erros else "analise sem ciclo"
+    except Exception as exc:
         await session.rollback()
         analysis = TelemetriaAnalysisResponse(erros=[str(exc)])
+        erro_para_a_fila = f"{type(exc).__name__}: {exc}"
         logger.warning(
             "telemetria.analise_falhou: batch_id=%s aluno_id=%s erro=%s",
             lote["id"],
@@ -407,16 +347,22 @@ async def registrar_lote_telemetria(
             exc,
         )
 
-    # Guardar o erro junto do lote e o que torna a falha investigavel depois do
-    # fato. Ate aqui ele so voltava na resposta HTTP, que ninguem guarda: o
-    # lote ficava com ciclo nulo e o banco nao distinguia "nao produziu ciclo"
-    # de "explodiu". Os 290 lotes de 20-27/09 estao todos nesse limbo.
-    await repo.update_lote_analysis(
-        batch_id=lote["id"],
-        analysis_ciclo_id=analysis.ciclo_id,
-        analysis_error=analysis.erros[0] if analysis.erros else None,
-    )
-    await session.commit()
+    if analysis.ciclo_id:
+        # Guardar o erro junto do lote e o que torna a falha investigavel depois
+        # do fato (os 290 lotes de 20-27/09 ficaram sem ciclo e sem erro).
+        await repo.update_lote_analysis(
+            batch_id=lote["id"],
+            analysis_ciclo_id=analysis.ciclo_id,
+            analysis_error=analysis.erros[0] if analysis.erros else None,
+        )
+        await session.commit()
+    else:
+        # Sem ciclo, a falha e transitoria (LLM, rede, grafo): `analysis_error`
+        # aqui tiraria o lote da fila (20261029_09) e ele nunca mais seria
+        # analisado. A fila guarda o erro em `ultimo_erro` e o worker tenta de
+        # novo; na quinta falha ela mesma grava `analysis_error = 'fila: ...'`.
+        trava_seg = int(request.app.state.settings.telemetria_analise_fila_trava_seconds)
+        await _deixa_para_a_fila(repo, session, lote["id"], erro_para_a_fila, analysis, trava_seg)
 
     logger.info(
         "telemetria.output=%s",

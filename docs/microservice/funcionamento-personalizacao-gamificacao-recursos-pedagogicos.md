@@ -37,7 +37,7 @@ ApiBrainHex nao calcula ranking ou conquistas, mas apoia gamificacao ao:
 - apresentacao visual por perfil
 
 ### Motivos
-- abordagem multimodal para diferentes estilos de aprendizagem
+- oferecer o mesmo conteudo em varios formatos a todos (acesso e escolha, no sentido do UDL), sem supor que um perfil aprende melhor por um formato
 - reforco de conceito por repeticao em canais distintos
 
 ### Objetivos

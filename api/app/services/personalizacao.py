@@ -3061,7 +3061,10 @@ def _coerce_dict_list(value: Any) -> list[dict[str, Any]]:
     return [item for item in value if isinstance(item, dict)]
 
 
-# Ordem de preferencia de formato por perfil BrainHex (afinidade cognitiva).
+# Ordem inicial de formato por perfil BrainHex. E hipotese de preferencia/engajamento,
+# nao "estilo de aprendizagem": nao ha evidencia de que um perfil aprenda melhor por
+# um formato, e todos os formatos continuam disponiveis a todos. Nao coincide com
+# _PESOS_POR_PERFIL em sugestao_material.py; nenhuma das duas e calibrada ainda.
 # Reutilizado para recomendar formatos e para reordenar o plano gerado pelo LLM,
 # de modo que o material mais interessante para o perfil apareca primeiro.
 _PROFILE_FORMAT_PREFERENCES: dict[str, list[str]] = {

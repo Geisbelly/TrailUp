@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 /* eslint-disable @typescript-eslint/no-require-imports */
 let batch: any = null;
 const metrics = new Map<string, any>();
@@ -7,6 +9,8 @@ let failMetrics = false;
 // Erros que o upsert de `telemetria_lotes` devolve, um por chamada (fila); e as linhas que ele recebeu.
 let loteErros: any[] = [];
 let loteTentativas: any[] = [];
+// Linhas que o upsert de `telemetria_sessoes` recebeu.
+let sessaoLinhas: any[] = [];
 const client = { from(table: string) {
   const query = {
     select() { return this; }, eq() { return this; },
@@ -21,6 +25,7 @@ const client = { from(table: string) {
         batch ??= row;
         return { select() { return { async maybeSingle() { return { data: inserted, error: null }; } }; } };
       }
+      if (table === 'telemetria_sessoes') sessaoLinhas.push(row);
       if (table === 'telemetria_time_metric_entries') {
         assert.equal(options.ignoreDuplicates, true);
         for (const value of row) metrics.set(`${value.lote_id}:${value.scope}:${value.entry_key}`, value);
@@ -132,4 +137,72 @@ test('se a segunda tentativa sem fallback_motivo também falhar, o erro sobe', a
   loteErros = [{ code: 'PGRST204' }, { code: '42501', message: 'permission denied' }];
   await assert.rejects(enviarLoteTelemetria(payloadDeLote('66666666-6666-4666-8666-666666666666')));
   assert.equal(loteTentativas.length, 2);
+});
+
+function payloadComMotivo(sessao: string, motivo: string) {
+  return { ...payloadDeLote(sessao), flush_reason: motivo, captured_at: '2026-09-20T21:05:00Z' };
+}
+
+test('screen_blur pelo caminho direto fecha a sessão', async () => {
+  batch = null;
+  metrics.clear();
+  sessaoLinhas = [];
+  loteErros = [];
+  const payload = payloadComMotivo('77777777-7777-4777-8777-777777777777', 'screen_blur');
+  await enviarLoteTelemetria(payload);
+  assert.equal(sessaoLinhas.length, 1);
+  assert.equal(sessaoLinhas[0].ended_at, payload.captured_at);
+});
+
+test('lote interval pelo caminho direto não manda ended_at', async () => {
+  batch = null;
+  metrics.clear();
+  sessaoLinhas = [];
+  loteErros = [];
+  await enviarLoteTelemetria(payloadDeLote('88888888-8888-4888-8888-888888888888'));
+  assert.equal(sessaoLinhas.length, 1);
+  assert.equal('ended_at' in sessaoLinhas[0], false);
+});
+
+test('caminho direto fecha nos três motivos terminais e em nenhum outro', async () => {
+  const { TERMINAL_FLUSH_REASONS } =
+    require('@/interfaces/telemetria/TelemetryContracts') as typeof import('@/interfaces/telemetria/TelemetryContracts');
+  const sessoes = [
+    ['screen_blur', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1'],
+    ['app_background', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2'],
+    ['session_end', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3'],
+    ['interval', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4'],
+    ['activity_complete', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5'],
+    ['topic_complete', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa6'],
+  ] as const;
+  for (const [motivo, sessao] of sessoes) {
+    batch = null;
+    metrics.clear();
+    sessaoLinhas = [];
+    loteErros = [];
+    const payload = payloadComMotivo(sessao, motivo);
+    await enviarLoteTelemetria(payload);
+    assert.equal(sessaoLinhas.length, 1, motivo);
+    if (TERMINAL_FLUSH_REASONS.has(motivo)) {
+      assert.equal(sessaoLinhas[0].ended_at, payload.captured_at, motivo);
+    } else {
+      assert.equal('ended_at' in sessaoLinhas[0], false, motivo);
+    }
+  }
+  // a lista do teste cobre exatamente os terminais do aparelho
+  assert.deepEqual(
+    sessoes.filter(([m]) => TERMINAL_FLUSH_REASONS.has(m)).map(([m]) => m).sort(),
+    [...TERMINAL_FLUSH_REASONS].sort(),
+  );
+});
+
+test('a lista terminal do aparelho é a mesma da API', () => {
+  const { TERMINAL_FLUSH_REASONS } =
+    require('@/interfaces/telemetria/TelemetryContracts') as typeof import('@/interfaces/telemetria/TelemetryContracts');
+  const fonte = readFileSync(path.resolve(__dirname, '../../../api/app/api/v1/telemetria.py'), 'utf8');
+  const achado = /^TERMINAL_FLUSH_REASONS\s*=\s*\{([^}]*)\}/m.exec(fonte);
+  assert.ok(achado, 'TERMINAL_FLUSH_REASONS não encontrado em telemetria.py');
+  const daApi = [...achado[1].matchAll(/["']([a-z_]+)["']/g)].map((m) => m[1]).sort();
+  assert.ok(daApi.length > 0);
+  assert.deepEqual([...TERMINAL_FLUSH_REASONS].sort(), daApi);
 });

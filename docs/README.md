@@ -46,6 +46,7 @@ Documentação que não pertence a um único serviço:
 - **[Inventário de fontes do RAG](./rag/inventario-fontes.md)** — proveniência,
   licença e elegibilidade das fontes candidatas à indexação.
 - **[Triagem corpus × pesquisa](./rag/triagem-corpus.md)** — o que vai ao índice, o que fica fora e a reconciliação #63 × #165.
+- **[Avaliação dos documentos da Evidence Base](./rag/avaliacao-documentos.md)** — os 47 artigos da planilha de leituras, um a um: decisão, destino (corpus, texto derivado, citação) e licença (#218).
 
 
 ## Índice por projeto
