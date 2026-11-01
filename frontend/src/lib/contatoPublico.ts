@@ -1,4 +1,4 @@
-// Contato do site público (#195). O envio vai pela mesma Brevo do app, numa
+// Contato do site público (#195). O envio vai pelo mesmo Apps Script do app, numa
 // função do banco (`fn_enviar_contato_publico`) que lê o destino da
 // configuração do servidor. Nenhum e-mail de destino mora no frontend.
 

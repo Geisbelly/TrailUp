@@ -138,7 +138,7 @@ const Privacidade = () => {
                 <li>OpenAI (inteligência artificial; única opção para menores): Estados Unidos</li>
                 <li>Cloudflare R2 (armazenamento de arquivos): local em confirmação</li>
                 <li>Expo, Google (FCM) e Apple (APNs) (notificações): Estados Unidos</li>
-                <li>Brevo (entrega das mensagens de contato do app e do site): União Europeia</li>
+                <li>Google (envio dos e-mails de contato e de aviso de conta inativa, pelo Gmail): Estados Unidos e outros países</li>
                 <li>Google (login com Google, vídeos do YouTube e fontes) e Microsoft (visualização de documentos)</li>
               </Lista>
               <p>
