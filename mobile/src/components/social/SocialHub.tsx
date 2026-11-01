@@ -5,7 +5,7 @@ import { journeyObjects, profileBanners, rankingArenas } from "@/constants/desig
 import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brainHexProfiles";
 import { brainHexGuideNames, getBrainHexConfig, guardianFullImages } from "@/constants/profileImages";
 import type { Guild } from "@/services/social/guildModel";
-import type { AncoraDoSocial, AreaDoSocial } from "@/services/social/socialDestaque";
+import type { AbaDoSocial, AncoraDoSocial, AreaDoSocial } from "@/services/social/socialDestaque";
 import type { SocialPerson } from "@/services/social/socialModel";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { bossDoPerfil } from "@/utils/contentBossVisual";
@@ -13,11 +13,11 @@ import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import { Image, ImageBackground, type ImageSourcePropType, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, ImageBackground, type ImageSourcePropType, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 type Icone = keyof typeof MaterialCommunityIcons.glyphMap;
 
-/** Ícone de cada bloco: o mesmo na faixa de atalhos, no título do bloco e no cartão de atalho. */
+/** Ícone de cada bloco, no título dele. */
 export const ICONE_DA_ANCORA: Record<AncoraDoSocial, Icone> = {
   evento: "calendar-star",
   arena: "sword-cross",
@@ -52,7 +52,7 @@ function plural(n: number, um: string, varios: string) {
  * no cenário da arena do perfil. São peças que o app já tem (guardiões, catálogo de bosses e
  * os cenários do ranking), compostas aqui: nenhuma imagem nova no pacote.
  */
-export function ArenaBatalhaArte({ profile, palette, altura = 200 }: { profile: BrainHexProfile; palette: ProfileShellPalette; altura?: number }) {
+export function ArenaBatalhaArte({ profile, palette, altura = 168 }: { profile: BrainHexProfile; palette: ProfileShellPalette; altura?: number }) {
   const boss = bossVisuals[bossDoPerfil(profile, "social-arena")];
   const guardiao = guardianFullImages[profile];
   const alturaGuardiao = altura * 0.9;
@@ -72,7 +72,7 @@ export function ArenaBatalhaArte({ profile, palette, altura = 200 }: { profile: 
 }
 
 /** Cenário dos destaques sem batalha: o mundo do perfil com um objeto da jornada em primeiro plano. */
-function CenaDoPerfil({ profile, palette, objeto, altura = 150, children }: { profile: BrainHexProfile; palette: ProfileShellPalette; objeto: ImageSourcePropType; altura?: number; children?: React.ReactNode }) {
+function CenaDoPerfil({ profile, palette, objeto, altura = 124, children }: { profile: BrainHexProfile; palette: ProfileShellPalette; objeto: ImageSourcePropType; altura?: number; children?: React.ReactNode }) {
   return (
     <ImageBackground source={profileBanners[profile]} resizeMode="cover" style={[s.arte, { height: altura }]} imageStyle={s.arteImagem} accessibilityIgnoresInvertColors>
       <LinearGradient colors={["rgba(0,0,0,0.1)", palette.background]} locations={[0.2, 1]} style={StyleSheet.absoluteFill} />
@@ -135,6 +135,8 @@ type DestaqueProps = {
   onIr: (ancora: AncoraDoSocial) => void;
   onConversar: (pessoa: SocialPerson) => void;
   onAbrirGuilda: (guilda: Guild) => void;
+  /** Rostos dos amigos no cartão da Conversa. No celular eles já estão nos stories logo acima. */
+  mostrarRostos?: boolean;
 };
 
 /**
@@ -142,7 +144,7 @@ type DestaqueProps = {
  * (`AREA_EM_DESTAQUE`). Só leva aonde a aba já leva: rola até o bloco, abre a conversa do amigo
  * ou a da guilda. Nenhum dado novo: os números saem do que a aba já carregou.
  */
-export function SocialHubDestaque({ area, profile, palette, resumo, onIr, onConversar, onAbrirGuilda }: DestaqueProps) {
+export function SocialHubDestaque({ area, profile, palette, resumo, onIr, onConversar, onAbrirGuilda, mostrarRostos = true }: DestaqueProps) {
   const perfil = normalizeBrainHexProfile(profile) ?? "mastermind";
   const rotuloPerfil = getBrainHexConfig(perfil).label;
   const online = resumo.amigos.filter((p) => p.online);
@@ -169,9 +171,11 @@ export function SocialHubDestaque({ area, profile, palette, resumo, onIr, onConv
   } else if (area === "conversa") {
     arte = (
       <CenaDoPerfil profile={perfil} palette={palette} objeto={journeyObjects.community}>
-        <View style={s.rostosNaCena}>
-          <Rostos pessoas={resumo.amigos} palette={palette} onPress={onConversar} />
-        </View>
+        {mostrarRostos ? (
+          <View style={s.rostosNaCena}>
+            <Rostos pessoas={resumo.amigos} palette={palette} onPress={onConversar} />
+          </View>
+        ) : null}
       </CenaDoPerfil>
     );
     titulo = "Conversa";
@@ -255,46 +259,81 @@ export function SocialHubDestaque({ area, profile, palette, resumo, onIr, onConv
   );
 }
 
-type Atalho = { ancora: AncoraDoSocial; rotulo: string; detalhe: string; alerta?: boolean };
+/** Ícone e nome de cada aba de página do celular. O evento é bloco da Arena, não aba. */
+export const ABA_DA_AREA: Record<AbaDoSocial, { icone: Icone; rotulo: string }> = {
+  arena: { icone: "sword-cross", rotulo: "Arena" },
+  conversa: { icone: "forum-outline", rotulo: "Conversa" },
+  descobrir: { icone: "compass-outline", rotulo: "Descobrir" },
+};
 
 /**
- * Os outros blocos da aba em cartões de atalho (grade de duas colunas). Mostram o número que
- * importa de cada um e rolam até ele, como a faixa de pílulas.
+ * Abas de página, como as do perfil do Instagram: ícone e nome em partes iguais, a ativa na cor
+ * do perfil com o traço embaixo. Trocam a página inteira em vez de rolar até uma âncora.
  */
-export function SocialHubAtalhos({ ancoras, palette, resumo, onIr }: { ancoras: AncoraDoSocial[]; palette: ProfileShellPalette; resumo: ResumoDoSocial; onIr: (ancora: AncoraDoSocial) => void }) {
-  const online = resumo.amigos.filter((p) => p.online).length;
-  const convites = resumo.convitesRecebidos + resumo.convitesEnviados;
-  const descricao: Record<AncoraDoSocial, Atalho> = {
-    evento: { ancora: "evento", rotulo: "Evento", detalhe: "Missões do dia" },
-    arena: { ancora: "arena", rotulo: "Arena", detalhe: "Vale Elo" },
-    amigos: { ancora: "amigos", rotulo: "Amigos", detalhe: online ? `${online} online` : plural(resumo.amigos.length, "amigo", "amigos") },
-    guildas: { ancora: "guildas", rotulo: "Guildas", detalhe: plural(resumo.guildas.length, "na turma", "na turma") },
-    convites: { ancora: "convites", rotulo: "Convites", detalhe: resumo.convitesRecebidos ? plural(resumo.convitesRecebidos, "novo", "novos") : plural(convites, "pendente", "pendentes"), alerta: resumo.convitesRecebidos > 0 },
-    encontrar: { ancora: "encontrar", rotulo: "Encontrar", detalhe: plural(resumo.candidatos.length, "colega", "colegas") },
-    bloqueados: { ancora: "bloqueados", rotulo: "Bloqueados", detalhe: "" },
-  };
-  const itens = ancoras.filter((a) => a !== "bloqueados").map((a) => descricao[a]);
-  if (!itens.length) return null;
+export function AbasDoSocial({ abas, ativa, palette, contagem, onTrocar }: { abas: AbaDoSocial[]; ativa: AbaDoSocial; palette: ProfileShellPalette; contagem: Partial<Record<AbaDoSocial, number>>; onTrocar: (aba: AbaDoSocial) => void }) {
   return (
-    <View style={s.grade}>
-      {itens.map((item) => (
-        <Pressable key={item.ancora} onPress={() => onIr(item.ancora)} accessibilityRole="button" accessibilityLabel={`${item.rotulo}, ${item.detalhe}`} style={({ pressed }) => [s.atalho, { backgroundColor: palette.surface, borderColor: item.alerta ? palette.accent : palette.border }, pressed && { backgroundColor: palette.surfaceElevated }]}>
-          <View style={s.atalhoTopo}>
-            <View style={[s.atalhoIcone, { backgroundColor: palette.accentSoft }]}>
-              <MaterialCommunityIcons name={ICONE_DA_ANCORA[item.ancora]} size={20} color={palette.accent} />
+    <View accessibilityRole="tablist" style={[s.abas, { borderBottomColor: palette.border, backgroundColor: palette.background }]}>
+      {abas.map((area) => {
+        const ativo = area === ativa;
+        const { icone, rotulo } = ABA_DA_AREA[area];
+        const n = contagem[area] ?? 0;
+        return (
+          <Pressable key={area} onPress={() => onTrocar(area)} accessibilityRole="tab" accessibilityState={{ selected: ativo }} accessibilityLabel={n ? `${rotulo}, ${n} pendentes` : rotulo} style={s.aba}>
+            <View>
+              <MaterialCommunityIcons name={icone} size={22} color={ativo ? palette.accent : palette.textSubtle} />
+              {n ? (
+                <View style={[s.abaBolinha, { backgroundColor: palette.accent, borderColor: palette.background }]}>
+                  <Text style={[s.abaBolinhaTexto, { color: palette.background }]}>{n > 9 ? "9+" : n}</Text>
+                </View>
+              ) : null}
             </View>
-            <MaterialCommunityIcons name="chevron-right" size={18} color={palette.textSubtle} />
-          </View>
-          <Text numberOfLines={1} style={[s.atalhoRotulo, { color: palette.text }]}>{item.rotulo}</Text>
-          <Text numberOfLines={1} style={[s.atalhoDetalhe, { color: item.alerta ? palette.accent : palette.textSubtle }]}>{item.detalhe}</Text>
-        </Pressable>
-      ))}
+            <Text numberOfLines={1} style={[s.abaRotulo, { color: ativo ? palette.accent : palette.textSubtle }]}>{rotulo}</Text>
+            <View style={[s.abaTraco, { backgroundColor: ativo ? palette.accent : "transparent" }]} />
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
-/** Título de bloco: ícone do bloco num selo da cor do perfil, nome em serifa e o contador. */
-export function TituloDoBloco({ ancora, titulo, contagem, palette }: { ancora: AncoraDoSocial; titulo: string; contagem?: number; palette: ProfileShellPalette }) {
+/**
+ * Fileira de "stories": os amigos e depois os colegas da turma (online primeiro em cada grupo),
+ * cada um na moldura do próprio perfil, e no fim o atalho para encontrar colegas. Tocar no rosto
+ * abre a conversa, como no Instagram; a aba já deixava conversar com colega que não é amigo.
+ * A tela só desenha a fileira quando há alguém nela: sozinho, o "Encontrar" repetiria a aba
+ * Descobrir e ocuparia a altura de uma fileira inteira.
+ */
+export function SocialStories({ amigos, colegas = [], palette, onConversar, onEncontrar }: { amigos: SocialPerson[]; colegas?: SocialPerson[]; palette: ProfileShellPalette; onConversar: (p: SocialPerson) => void; onEncontrar: () => void }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.stories}>
+      {[...onlinePrimeiro(amigos), ...onlinePrimeiro(colegas)].map((p) => {
+        const nome = p.apelido || p.nome;
+        return (
+          <Pressable key={p.alunoId} onPress={() => onConversar(p)} accessibilityRole="button" accessibilityLabel={`Conversar com ${nome}${p.online ? ", online" : ""}`} style={s.story}>
+            <View>
+              <FramedProfileImage profile={normalizeBrainHexProfile(p.perfilAtivo)} source={p.fotoUrl ? { uri: p.fotoUrl } : undefined} size={48} />
+              {p.online ? <View style={[s.storyOnline, { borderColor: palette.background }]} /> : null}
+            </View>
+            <Text numberOfLines={1} style={[s.storyNome, { color: palette.textMuted }]}>{nome.split(" ")[0]}</Text>
+          </Pressable>
+        );
+      })}
+      <Pressable onPress={onEncontrar} accessibilityRole="button" accessibilityLabel="Encontrar colegas" style={s.story}>
+        <View style={[s.storyNovo, { borderColor: palette.accent, backgroundColor: palette.accentMuted }]}>
+          <MaterialCommunityIcons name="account-plus-outline" size={22} color={palette.accent} />
+        </View>
+        <Text numberOfLines={1} style={[s.storyNome, { color: palette.textMuted }]}>Encontrar</Text>
+      </Pressable>
+    </ScrollView>
+  );
+}
+
+/**
+ * Título de bloco: ícone do bloco num selo da cor do perfil, nome em serifa e o contador.
+ * `atalho` põe à direita um botão para um bloco vizinho (na Arena, o evento da turma, que também
+ * é disputa), com ícone e rótulo; com a folga do `hitSlop` o alvo passa de 44 pt.
+ */
+export function TituloDoBloco({ ancora, titulo, contagem, palette, atalho }: { ancora: AncoraDoSocial; titulo: string; contagem?: number; palette: ProfileShellPalette; atalho?: { ancora: AncoraDoSocial; rotulo: string; onPress: () => void } }) {
   return (
     <View style={s.tituloBloco}>
       <View style={[s.tituloBlocoIcone, { backgroundColor: palette.accentSoft, borderColor: palette.border }]}>
@@ -302,6 +341,12 @@ export function TituloDoBloco({ ancora, titulo, contagem, palette }: { ancora: A
       </View>
       <Text accessibilityRole="header" style={[s.tituloBlocoTexto, { color: palette.text }]}>{titulo}</Text>
       {contagem ? <Text style={[s.tituloBlocoContagem, { color: palette.text, backgroundColor: palette.surfaceElevated }]}>{contagem}</Text> : null}
+      {atalho ? (
+        <Pressable onPress={atalho.onPress} accessibilityRole="button" accessibilityLabel={atalho.rotulo} hitSlop={6} style={[s.tituloBlocoAtalho, { borderColor: palette.accent, backgroundColor: palette.accentMuted }]}>
+          <MaterialCommunityIcons name={ICONE_DA_ANCORA[atalho.ancora]} size={18} color={palette.accent} />
+          <Text numberOfLines={1} style={[s.tituloBlocoAtalhoTexto, { color: palette.accent }]}>{atalho.rotulo}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -332,15 +377,21 @@ const s = StyleSheet.create({
   acoes: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
   botao: { flexGrow: 1, flexBasis: 200, minHeight: 48, borderRadius: 12, paddingHorizontal: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
   botaoTexto: { fontFamily: FontFamily.interMedium, fontSize: 15, fontWeight: "800", flexShrink: 1 },
-  grade: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 14 },
-  // Em coluna (ícone em cima): na linha, ícone, texto e seta cortavam o rótulo em 360 pt.
-  atalho: { flexGrow: 1, flexBasis: "45%", minHeight: 96, gap: 6, borderWidth: 1, borderRadius: 14, padding: 12 },
-  atalhoTopo: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 2 },
-  atalhoIcone: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  atalhoRotulo: { fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "700" },
-  atalhoDetalhe: { fontFamily: FontFamily.interMedium, fontSize: 12 },
+  abas: { flexDirection: "row", borderBottomWidth: 1 },
+  aba: { flex: 1, minHeight: 48, alignItems: "center", justifyContent: "flex-end", gap: 2, paddingTop: 6 },
+  abaRotulo: { fontFamily: FontFamily.interMedium, fontSize: 11.5, fontWeight: "700" },
+  abaTraco: { alignSelf: "stretch", height: 2.5, borderRadius: 2, marginHorizontal: 14, marginTop: 3 },
+  abaBolinha: { position: "absolute", top: -5, right: -12, minWidth: 18, height: 18, borderRadius: 9, borderWidth: 1.5, paddingHorizontal: 4, alignItems: "center", justifyContent: "center" },
+  abaBolinhaTexto: { fontFamily: FontFamily.interMedium, fontSize: 10, fontWeight: "800" },
+  stories: { gap: 10, paddingTop: 4, paddingBottom: 8, paddingRight: 8 },
+  story: { width: 56, alignItems: "center", gap: 3 },
+  storyOnline: { position: "absolute", right: 0, bottom: 0, width: 12, height: 12, borderRadius: 6, borderWidth: 2, backgroundColor: ONLINE },
+  storyNovo: { width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, borderStyle: "dashed", alignItems: "center", justifyContent: "center" },
+  storyNome: { fontFamily: FontFamily.interMedium, fontSize: 11, maxWidth: 56 },
   tituloBloco: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 4, marginBottom: 10 },
   tituloBlocoIcone: { width: 32, height: 32, borderRadius: 9, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   tituloBlocoTexto: { fontFamily: FontFamily.inikaBold, fontSize: 19, flexShrink: 1 },
   tituloBlocoContagem: { fontFamily: FontFamily.interMedium, fontSize: 12, fontWeight: "700", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: "hidden" },
+  tituloBlocoAtalho: { marginLeft: "auto", minHeight: 38, flexDirection: "row", alignItems: "center", gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12 },
+  tituloBlocoAtalhoTexto: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700" },
 });

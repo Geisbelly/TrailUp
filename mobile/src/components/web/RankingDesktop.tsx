@@ -1,15 +1,18 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { RankDetalhe } from "@/app/(tabs)/ranking/[id]";
 import { HallBackground } from "@/components/HallTheme";
+import { RankEstadoVazio } from "@/components/ranking/RankEstadoVazio";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useUsuario } from "@/context/SessaoContext";
+import { useTrilha } from "@/context/TrilhaContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { resumirMinhaPosicao } from "@/utils/minhaPosicaoRank";
 import { formatRankScore } from "@/utils/rankingPodium";
+import { motivoSemRankDaTurma, ninguemPontuou } from "@/utils/rankEstadoVazio";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
@@ -26,9 +29,11 @@ const arteDoCriterio = (criterio?: string | null) =>
  * categoria do app (`RankDetalhe`), embutida.
  */
 export function RankingDesktop() {
-  const { ranking, carregando } = useConquistaRank();
+  const { ranking, carregando, erroRanking, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(perfilVisualDoAluno(usuario));
+  const { classeAtual } = useTrilha();
+  const perfil = perfilVisualDoAluno(usuario);
+  const palette = getProfileShellPalette(perfil);
   const ranks = ranking?.ranks ?? [];
   const [aberto, setAberto] = useState<number | null>(null);
   const alvoTour = useRef<View | null>(null);
@@ -39,8 +44,17 @@ export function RankingDesktop() {
   const rankAberto = ranks.find((r) => r.info.rank_id === idAberto);
   const criterio = rankAberto?.info.criterio ?? null;
   const resumo = resumirMinhaPosicao(rankAberto?.posicoes ?? [], usuario?.id, criterio);
-  // Turma sem ranking: o aviso vai num cartão à direita, como o estado "Vazio" do protótipo v4.
-  const semRanking = !carregando && !ranks.length;
+  // Sem categoria (carregando, erro, sem turma, sem ranking): o cartão vai à direita, como o
+  // estado "Vazio" do protótipo v4.
+  const motivoVazio = motivoSemRankDaTurma({
+    quantidadeDeRanks: ranks.length,
+    carregando,
+    erro: erroRanking,
+    temTurma: !!classeAtual,
+  });
+  // Categoria com gente pontuando e sem a linha do aluno: ele ainda não entrou nela.
+  const abertoSemPontuacao = !!rankAberto && ninguemPontuou(rankAberto.posicoes);
+  const semPosicao = !!rankAberto && !resumo.minha && !abertoSemPontuacao;
 
   return (
     <View style={[s.tela, { backgroundColor: palette.background }]}>
@@ -76,7 +90,8 @@ export function RankingDesktop() {
                   {rank.info.descricao ? (
                     <Text style={[s.descricao, { color: palette.textSubtle }]} numberOfLines={1}>{rank.info.descricao}</Text>
                   ) : null}
-                  {minha?.posicao ? (
+                  {/* Com todo mundo em zero, "1º · 0" não é posição: o cartão à direita explica. */}
+                  {minha?.posicao && !ninguemPontuou(rank.posicoes) ? (
                     <Text style={[s.voce, { color: palette.textMuted }]} numberOfLines={1}>
                       Você: <Text style={[s.negrito, { color: palette.text }]}>{minha.posicao}º</Text> · {formatRankScore(minha.pontuacao, rank.info.criterio)}
                     </Text>
@@ -88,10 +103,8 @@ export function RankingDesktop() {
           })}
         </View>
 
-        {carregando && !ranks.length ? <ActivityIndicator color={palette.accent} style={s.vazio} /> : null}
-
         {/* Sua posição: sai do rodapé da tabela e fica aqui, sempre visível enquanto a classificação rola. */}
-        {rankAberto && resumo.minha ? (
+        {rankAberto && resumo.minha && !abertoSemPontuacao ? (
           <View style={[s.posicao, { borderColor: palette.accent, backgroundColor: palette.surfaceElevated }]}>
             <Text style={[s.eyebrow, { color: palette.accent }]} numberOfLines={1}>
               SUA POSIÇÃO · {rankAberto.info.nome_rank.toUpperCase()}
@@ -118,15 +131,19 @@ export function RankingDesktop() {
             </View>
             <Text style={[s.posNota, { color: palette.textSubtle }]}>Sua posição continua aqui mesmo quando você filtra os colegas.</Text>
           </View>
+        ) : semPosicao ? (
+          <View style={s.posicaoVazia}>
+            <RankEstadoVazio motivo="sem_posicao" palette={palette} profile={perfil} compacto />
+          </View>
         ) : null}
       </View>
 
       {/* A categoria aberta fica num cartão, como no protótipo v4. */}
-      {semRanking ? (
-        <View style={[s.direita, s.cartaoVazio, { borderColor: palette.border, backgroundColor: palette.surface }]}>
-          <UtilityIcon kind="medal" size={52} height={58} />
-          <Text style={[s.vazioTitulo, { color: palette.text }]}>Nenhum ranking ainda</Text>
-          <Text style={[s.vazioTexto, { color: palette.textMuted }]}>Nenhum ranking disponível nesta turma.</Text>
+      {motivoVazio ? (
+        <View style={[s.direita, s.direitaVazia]}>
+          <View style={s.cartaoVazio}>
+            <RankEstadoVazio motivo={motivoVazio} palette={palette} profile={perfil} onTentarDeNovo={reloadRanking} />
+          </View>
         </View>
       ) : (
         <View style={[s.direita, { borderColor: palette.border, backgroundColor: palette.background }]}>
@@ -148,10 +165,10 @@ const s = StyleSheet.create({
   copia: { flex: 1, minWidth: 0 },
   nomeCategoria: { fontFamily: FontFamily.inikaBold, fontSize: 15.5 },
   descricao: { fontFamily: FontFamily.interMedium, fontSize: 12, marginTop: 1 },
-  vazio: { marginTop: 24 },
-  cartaoVazio: { flex: 1, alignSelf: "flex-start", alignItems: "center", gap: 10, paddingVertical: 40, paddingHorizontal: 24 },
-  vazioTitulo: { fontFamily: FontFamily.interMedium, fontSize: 17, fontWeight: "700", marginTop: 6 },
-  vazioTexto: { fontFamily: FontFamily.interMedium, fontSize: 14, textAlign: "center" },
+  // O cartão já tem borda e fundo: a coluna da direita só o centraliza, sem moldura dupla.
+  direitaVazia: { borderWidth: 0, alignItems: "center", paddingTop: 24 },
+  cartaoVazio: { width: "100%", maxWidth: 520 },
+  posicaoVazia: { marginTop: 20 },
   voce: { fontFamily: FontFamily.interMedium, fontSize: 11.5, marginTop: 2 },
   direita: { flex: 1, minWidth: 0, marginTop: 24, marginRight: 24, marginBottom: 24, borderRadius: 20, borderWidth: 1, overflow: "hidden" },
   // Logo abaixo das categorias, como no protótipo (antes ficava presa ao pé da coluna).

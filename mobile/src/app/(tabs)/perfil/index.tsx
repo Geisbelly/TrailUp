@@ -407,30 +407,20 @@ export default function PerfilHome() {
     </>
   );
 
-  // Troca de perfil no celular, logo abaixo do nome. Uma linha por perfil: emblema, nome,
-  // a afinidade com a própria barra e o marcador do que está em uso. Antes eram um cabeçalho
-  // repetindo o perfil ativo, uma grade de botões e uma barra empilhada com legenda; a barra
-  // não dizia qual cor era qual e a legenda repetia os números dos botões.
+  // Troca de perfil no celular, logo abaixo do nome, em formato compacto: um rótulo e um
+  // botão por perfil (emblema, nome, afinidade), o em uso destacado na cor dele. O que a
+  // troca faz está no guia da seção (passo "Troca de perfil").
   const trocaDePerfil = (
     <>
         {desktop ? null : perfisRepresentativos.length > 1 ? (
-          <View
-            ref={profileSwitcherGuideRef}
-            collapsable={false}
-            style={[styles.trocaPerfil, { backgroundColor: shellPalette.surface, borderColor: shellPalette.border }]}
-          >
-            <View style={styles.trocaPerfilTitulo}>
-              <MaterialCommunityIcons name="account-switch-outline" size={20} color={shellPalette.accent} />
-              <Text style={[styles.trocaPerfilTituloTexto, { color: shellPalette.text }]}>Seu perfil BrainHex</Text>
-            </View>
-            <Text style={[styles.trocaPerfilAjuda, { color: shellPalette.textSubtle }]}>
-              Escolha o perfil que o app usa. Muda a apresentação e os recursos; progresso e conquistas ficam.
-            </Text>
-            <View accessibilityRole="radiogroup" accessibilityLabel="Perfil em uso" style={styles.trocaPerfilLista}>
+          <View ref={profileSwitcherGuideRef} collapsable={false} style={styles.trocaPerfil}>
+            <Text style={[styles.trocaPerfilRotulo, { color: shellPalette.textSubtle }]}>PERFIL BRAINHEX</Text>
+            <View accessibilityRole="radiogroup" accessibilityLabel="Perfil BrainHex em uso" style={styles.trocaPerfilLista}>
               {perfisRepresentativos.map((profileKey) => {
                 const config = getBrainHexConfig(profileKey);
                 const corDoPerfil = getProfileShellPalette(profileKey).accent;
                 const afinidade = Math.round(afinidadeDe(profileKey));
+                const ehDominante = profileKey === dominante;
                 const selected = profileKey === perfil;
                 const saving = profileKey === perfilSalvando;
 
@@ -439,47 +429,35 @@ export default function PerfilHome() {
                     key={profileKey}
                     accessibilityRole="radio"
                     accessibilityState={{ selected, busy: saving }}
-                    accessibilityLabel={`${config.label}, ${afinidade}% de afinidade${profileKey === dominante ? ", dominante" : ""}`}
+                    accessibilityLabel={`${config.label}, ${afinidade}% de afinidade${ehDominante ? ", dominante" : ""}`}
                     disabled={Boolean(perfilSalvando)}
                     onPress={() => void handleSelecionarPerfil(profileKey)}
                     style={[
                       styles.trocaPerfilOpcao,
                       {
-                        borderColor: selected ? corDoPerfil : "transparent",
+                        borderColor: selected ? corDoPerfil : shellPalette.border,
                         backgroundColor: selected
                           ? tinycolor(config.color).setAlpha(0.18).toRgbString()
-                          : tinycolor(shellPalette.background).setAlpha(0.55).toRgbString(),
+                          : shellPalette.surface,
                         opacity: perfilSalvando && !saving ? 0.55 : 1,
                       },
                     ]}
                   >
-                    <ProfileArtwork source={profileEmblems[profileKey]} profile={profileKey} width={34} height={34} />
-                    <View style={styles.trocaPerfilMeio}>
-                      <View style={styles.trocaPerfilNomeLinha}>
-                        <Text numberOfLines={1} style={[styles.trocaPerfilNome, { color: shellPalette.text }]}>
-                          {config.label}
-                        </Text>
-                        {profileKey === dominante ? (
-                          <View style={[styles.trocaPerfilSelo, { backgroundColor: shellPalette.accentMuted }]}>
-                            <Text style={[styles.trocaPerfilSeloTexto, { color: shellPalette.accent }]}>Dominante</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      <View style={[styles.trocaPerfilBarra, { backgroundColor: shellPalette.surfaceElevated }]}>
-                        <View style={[styles.trocaPerfilBarraFill, { width: `${Math.max(0, Math.min(100, afinidade))}%`, backgroundColor: corDoPerfil }]} />
-                      </View>
-                      <Text style={[styles.trocaPerfilAfinidade, { color: shellPalette.textSubtle }]}>
-                        {saving ? "Salvando..." : `${afinidade}% de afinidade`}
+                    <ProfileArtwork source={profileEmblems[profileKey]} profile={profileKey} width={26} height={26} />
+                    <View style={styles.trocaPerfilTexto}>
+                      <Text numberOfLines={1} style={[styles.trocaPerfilNome, { color: selected ? corDoPerfil : shellPalette.text }]}>
+                        {config.label}
                       </Text>
-                    </View>
-                    {selected ? (
-                      <View style={styles.trocaPerfilEmUso}>
-                        <MaterialCommunityIcons name="check-circle" size={20} color={corDoPerfil} />
-                        <Text style={[styles.trocaPerfilEmUsoTexto, { color: corDoPerfil }]}>Em uso</Text>
+                      {/* Estrela no dominante e ✓ no em uso, ao lado do percentual: em 360 px a
+                          palavra "dominante" e um ✓ no fim do botão cortavam o nome. */}
+                      <View style={styles.trocaPerfilAfinidadeLinha}>
+                        <Text numberOfLines={1} style={[styles.trocaPerfilAfinidade, { color: shellPalette.textSubtle }]}>
+                          {saving ? "Salvando..." : `${afinidade}%`}
+                        </Text>
+                        {ehDominante && !saving ? <MaterialCommunityIcons name="star" size={11} color={shellPalette.accent} /> : null}
+                        {selected && !saving ? <MaterialCommunityIcons name="check-circle" size={12} color={corDoPerfil} /> : null}
                       </View>
-                    ) : (
-                      <MaterialCommunityIcons name="circle-outline" size={20} color={shellPalette.textSubtle} />
-                    )}
+                    </View>
                   </TouchableOpacity>
                 );
               })}
@@ -931,22 +909,14 @@ const styles = StyleSheet.create({
   acaoPerfilIcone: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   acaoPerfilTexto: { fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "600" },
   infoContainer: { alignItems: "center", gap: 2, paddingTop: 10 },
-  trocaPerfil: { marginTop: 18, marginHorizontal: 14, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1 },
-  trocaPerfilTitulo: { flexDirection: "row", alignItems: "center", gap: 8 },
-  trocaPerfilTituloTexto: { fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: "700" },
-  trocaPerfilAjuda: { fontFamily: FontFamily.interMedium, fontSize: 12.5, lineHeight: 18, marginTop: 4, marginBottom: 12 },
-  trocaPerfilLista: { gap: 8 },
-  trocaPerfilOpcao: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 64, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1.5 },
-  trocaPerfilMeio: { flex: 1, minWidth: 0 },
-  trocaPerfilNomeLinha: { flexDirection: "row", alignItems: "center", gap: 8 },
-  trocaPerfilNome: { flexShrink: 1, fontFamily: FontFamily.interMedium, fontSize: 14.5, fontWeight: "700" },
-  trocaPerfilSelo: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  trocaPerfilSeloTexto: { fontFamily: FontFamily.interMedium, fontSize: 10.5, fontWeight: "700" },
-  trocaPerfilBarra: { height: 5, borderRadius: 999, overflow: "hidden", marginTop: 7 },
-  trocaPerfilBarraFill: { height: "100%", borderRadius: 999 },
-  trocaPerfilAfinidade: { fontFamily: FontFamily.interMedium, fontSize: 11.5, marginTop: 4 },
-  trocaPerfilEmUso: { alignItems: "center", gap: 1 },
-  trocaPerfilEmUsoTexto: { fontFamily: FontFamily.interMedium, fontSize: 10.5, fontWeight: "700" },
+  trocaPerfil: { marginTop: 16, marginHorizontal: 14 },
+  trocaPerfilRotulo: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.1, marginBottom: 8, marginLeft: 2 },
+  trocaPerfilLista: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  trocaPerfilOpcao: { flexBasis: "45%", flexGrow: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, paddingVertical: 6, paddingLeft: 8, paddingRight: 10, borderRadius: 12, borderWidth: 1 },
+  trocaPerfilTexto: { flex: 1, minWidth: 0 },
+  trocaPerfilNome: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "700" },
+  trocaPerfilAfinidadeLinha: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 1 },
+  trocaPerfilAfinidade: { fontFamily: FontFamily.interMedium, fontSize: 11 },
   username: {
     fontFamily: FontFamily.interMedium,
     fontSize: 12.5,
