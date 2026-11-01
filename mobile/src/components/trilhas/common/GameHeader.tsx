@@ -14,6 +14,8 @@ type Props = {
   rightSlot?: React.ReactNode;
   palette?: ProfileShellPalette | null;
   progressTargetRef?: React.RefObject<View | null>;
+  /** O cabeçalho inteiro (título e progresso), para o passo "Seu progresso" do tutorial inicial. */
+  topoTargetRef?: React.RefObject<View | null>;
   /** Emblema do perfil (32px), à esquerda do título. */
   emblema?: ImageSourcePropType;
   /** Texto ao lado do percentual, por exemplo "4 de 8 módulos". Com `contagemAviso`, vira o chip de aviso. */
@@ -29,6 +31,7 @@ export const GameHeader = ({
   rightSlot,
   palette = null,
   progressTargetRef,
+  topoTargetRef,
   emblema,
   contagem,
   contagemAviso = false,
@@ -38,6 +41,8 @@ export const GameHeader = ({
 
   return (
     <View
+      ref={topoTargetRef}
+      collapsable={false}
       style={[
         s.root,
         palette

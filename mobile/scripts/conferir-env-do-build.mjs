@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// Roda no `eas-build-pre-install`, antes de instalar dependência: as EAS Environment
-// Variables já estão no ambiente, e o build ainda não gastou tempo nenhum.
+// Roda no `eas-build-post-install`: as EAS Environment Variables já estão no ambiente, e o
+// build ainda não começou a compilar. Já foi `eas-build-pre-install`, e todo build EAS
+// quebrava ali: antes do `npm ci` não existe `tsx`, e o Node do EAS (20) não importa `.ts`
+// sozinho (`ERR_MODULE_NOT_FOUND: Cannot find package 'tsx'`).
 //
 // A regra mora em `src/utils/envDoBuild.ts`, que tem teste. Aqui só se lê o ambiente e se
 // decide o código de saída.

@@ -113,21 +113,90 @@ export function isTruncationFailure(params: {
   );
 }
 
+/** Um bloco que truncou: o que ajuda a achar a causa sem o log do servidor. */
+export interface BlocoTruncado {
+  /** Slides pedidos no bloco. */
+  slides: number;
+  modelo?: string;
+  /** usageMetadata.candidatesTokenCount, quando o SDK devolveu. */
+  tokensSaida?: number;
+}
+
+/** Quantos blocos falharam por causa. Um bloco conta uma vez por tentativa. */
+export interface ContagemDeFalhas {
+  truncados: BlocoTruncado[];
+  cota: number;
+  outros: number;
+}
+
+export function contagemVazia(): ContagemDeFalhas {
+  return { truncados: [], cota: 0, outros: 0 };
+}
+
+const MAX_TRUNCADOS_NO_RESUMO = 3;
+
+/**
+ * Resumo das falhas por bloco (#775). A apresentacao do socializer falhou
+ * inteira com "limite de resposta", e o que tinha acontecido em cada bloco -
+ * qual modelo truncou, com quantos tokens, se o resto morreu por cota - so
+ * existia no log. Este resumo vai junto da mensagem, que e o que o console
+ * mostra.
+ */
+export function resumirFalhas(contagem: ContagemDeFalhas): string {
+  const partes: string[] = [];
+  if (contagem.truncados.length > 0) {
+    const detalhes = contagem.truncados.slice(0, MAX_TRUNCADOS_NO_RESUMO).map((t) => {
+      const modelo = t.modelo ?? "modelo ?";
+      const tokens = typeof t.tokensSaida === "number" ? `, ${t.tokensSaida} tokens de saída` : "";
+      return `${modelo}: ${t.slides} slide(s)${tokens}`;
+    });
+    const resto = contagem.truncados.length - detalhes.length;
+    partes.push(
+      `${contagem.truncados.length} por resposta truncada (${detalhes.join("; ")}${resto > 0 ? `; +${resto}` : ""})`,
+    );
+  }
+  if (contagem.cota > 0) partes.push(`${contagem.cota} por cota`);
+  if (contagem.outros > 0) partes.push(`${contagem.outros} por outro erro`);
+  return partes.length > 0 ? `Blocos que falharam: ${partes.join(", ")}.` : "";
+}
+
 /**
  * Mensagem de falha que diz a causa de verdade. "Verifique as chaves" mandava o
  * professor caçar um problema que nao existia.
+ *
+ * Com `contagem`, a causa principal e a que derrubou MAIS blocos (empate fica
+ * com o truncamento, como antes). Sem ela, bastava um bloco truncar para a
+ * mensagem culpar o tamanho, mesmo com o resto do deck perdido por cota - que
+ * no free tier e o desfecho comum, porque cada divisao reenvia a entrada
+ * inteira.
  */
 export function describeGenerationFailure(params: {
   truncou: boolean;
   cotaEsgotada: boolean;
+  contagem?: ContagemDeFalhas;
 }): string {
-  if (params.truncou) {
+  const mensagem = mensagemPrincipal(params);
+  const resumo = params.contagem ? resumirFalhas(params.contagem) : "";
+  return resumo ? `${mensagem} ${resumo}` : mensagem;
+}
+
+function mensagemPrincipal(params: {
+  truncou: boolean;
+  cotaEsgotada: boolean;
+  contagem?: ContagemDeFalhas;
+}): string {
+  const contagem = params.contagem;
+  const truncou = contagem
+    ? contagem.truncados.length > 0 && contagem.truncados.length >= contagem.cota
+    : params.truncou;
+  const cotaEsgotada = contagem ? contagem.cota > 0 : params.cotaEsgotada;
+  if (truncou) {
     return (
       "A IA não conseguiu gerar os slides dentro do limite de resposta, mesmo dividindo o conteúdo " +
       "em blocos menores. Reduza o tamanho do conteúdo deste tópico ou divida-o em mais tópicos."
     );
   }
-  if (params.cotaEsgotada) {
+  if (cotaEsgotada) {
     return (
       "A cota da API de IA se esgotou durante a geração dos slides. " +
       "Aguarde a renovação do limite ou configure chaves adicionais antes de tentar de novo."

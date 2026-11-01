@@ -153,6 +153,10 @@ export interface MaterialPart {
   arquivo_url: string | null;
   storage_path: string | null;
   failed?: boolean; // NOVO — aditivo, permite computeAggregatedApresentacaoEntry recomputar status sem reconstruir mensagens de erro de partes antigas
+  // Motivo da falha DESTA parte (#776), igual ao MaterialPart do brainhexpdf:
+  // la a gravacao e parte a parte, e sem isso a parte seguinte que dava certo
+  // apagava o motivo da metadata agregada.
+  failure?: { stage: string; error: string };
 }
 
 export interface MaterialEntry {

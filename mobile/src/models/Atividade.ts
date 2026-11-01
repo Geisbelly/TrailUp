@@ -73,56 +73,29 @@ export class Atividade {
     avaliacao_metadata?: Record<string, unknown> | null
   ): Promise<void> {
     try {
-      const agora = new Date().toISOString();
       const acertosNormalizado = clampPercent(acertos_percentual);
       const tempoNormalizado =
         tempo_gasto_min != null ? normalizeNonNegativeNumber(tempo_gasto_min) : null;
 
-      // O banco grava a tentativa pelo relógio dele (#136): recusa prazo vencido e
-      // tentativas esgotadas, e vale a última. Sem a RPC no banco, segue o upsert antigo.
+      // Só o banco conclui (#136): a RPC grava a tentativa pelo relógio dele, recusa
+      // prazo vencido e tentativas esgotadas, e vale a última. O upsert direto que
+      // ficava de reserva é recusado desde a `20261102_04`.
       const retorno = await responderTentativa(this.id, {
         acertosPercentual: acertosNormalizado,
         pontuacaoObtida: pontuacao_obtida ?? null,
         avaliacaoMetadata: avaliacao_metadata ?? null,
       });
-      if (retorno) {
-        this.status = "concluido";
-        this.percentual_concluido = 100;
-        this.acertos_percentual = clampPercent(retorno.acertosPercentual);
-        if (tempoNormalizado != null) this.tempo_gasto_min = tempoNormalizado;
-        this.pontuacao_obtida = retorno.pontuacaoObtida;
-        this.pontuacao_maxima_avaliada =
-          retorno.pontuacaoMaxima ?? pontuacao_maxima ?? this.pontuacao_maxima_avaliada ?? this.pontuacao_maxima ?? null;
-        return;
+      if (!retorno) {
+        // Sem a RPC no banco, ou retorno ilegível: não há outro caminho para concluir.
+        throw new Error("O servidor não registrou a conclusão da atividade.");
       }
-
-      const { error } = await supabase.from("atividade_aluno").upsert(
-        {
-          aluno_id,
-          atividade_id: this.id,
-          status: "concluido",
-          percentual_concluido: 100,
-          acertos_percentual: acertosNormalizado,
-          pontuacao_obtida: pontuacao_obtida ?? null,
-          pontuacao_maxima: pontuacao_maxima ?? this.pontuacao_maxima ?? null,
-          avaliacao_metadata: avaliacao_metadata ?? {},
-          ultima_visualizacao: agora,
-          updated_at: agora,
-        },
-        {
-          onConflict: "aluno_id,atividade_id",
-        }
-      );
-
-      if (error) throw error;
-
       this.status = "concluido";
       this.percentual_concluido = 100;
-      this.acertos_percentual = acertosNormalizado;
+      this.acertos_percentual = clampPercent(retorno.acertosPercentual);
       if (tempoNormalizado != null) this.tempo_gasto_min = tempoNormalizado;
-      this.pontuacao_obtida = pontuacao_obtida ?? this.pontuacao_obtida;
+      this.pontuacao_obtida = retorno.pontuacaoObtida;
       this.pontuacao_maxima_avaliada =
-        pontuacao_maxima ?? this.pontuacao_maxima_avaliada ?? this.pontuacao_maxima ?? null;
+        retorno.pontuacaoMaxima ?? pontuacao_maxima ?? this.pontuacao_maxima_avaliada ?? this.pontuacao_maxima ?? null;
     } catch (err) {
       console.warn("[Atividade] Erro ao registrar conclusão:", err);
       throw err;

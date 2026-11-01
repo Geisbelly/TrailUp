@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.estudo import EstudoRepository
 from app.repositories.tentativas import TentativasRepository
 from app.schemas.common import DesempenhoSummary, Evento
 from app.schemas.perfil import PerfilScore
@@ -203,6 +204,11 @@ class ContextRepository:
         )
         self._classe_aluno_uses_camel_case = bool(result.scalar())
         return self._classe_aluno_uses_camel_case
+
+    async def fetch_personalizacao_retida(self, *, classe_id: int | None) -> bool:
+        """A turma está com a personalização retida pelo estudo (#13)? Ver `EstudoRepository`."""
+        return await EstudoRepository(self.session).personalizacao_retida(classe_id)
+
     async def fetch_foco_de_estudo(
         self, *, aluno_id: str, classe_id: int, topico_id: int | None
     ) -> dict[str, Any] | None:

@@ -3,8 +3,10 @@ import test from 'node:test';
 
 import {
   DEFAULT_SLIDES_PER_BATCH,
+  contagemVazia,
   describeGenerationFailure,
   isTruncationFailure,
+  resumirFalhas,
   planejarRetomada,
   planSlideBatches,
   splitBatch,
@@ -150,4 +152,61 @@ test('nunca aproveita mais slides do que o bloco pediu', () => {
 
   assert.equal(plano.aproveitar, 2);
   assert.deepEqual(plano.reenfileirar, []);
+});
+
+// #775: o socializer falhou inteiro com "limite de resposta". Bastava UM bloco
+// truncar para a mensagem culpar o tamanho, e o que houve em cada bloco so
+// existia no log.
+test('com a contagem, a causa principal e a que derrubou mais blocos: um truncamento e cinco 429 e cota', () => {
+  const contagem = {
+    truncados: [{ slides: 4, modelo: 'gemini-3.1-flash-lite', tokensSaida: 32768 }],
+    cota: 5,
+    outros: 0,
+  };
+  const mensagem = describeGenerationFailure({ truncou: true, cotaEsgotada: true, contagem });
+  assert.match(mensagem, /^A cota da API de IA se esgotou/);
+  assert.match(mensagem, /1 por resposta truncada \(gemini-3\.1-flash-lite: 4 slide\(s\), 32768 tokens de saída\)/);
+  assert.match(mensagem, /5 por cota/);
+});
+
+test('com a contagem, truncamento que domina continua culpando o tamanho e diz modelo e tokens', () => {
+  const contagem = {
+    truncados: [
+      { slides: 4, modelo: 'gemini-3.7-flash', tokensSaida: 32768 },
+      { slides: 2, modelo: 'gemini-flash-latest', tokensSaida: 32768 },
+      { slides: 1, modelo: 'gemini-3.7-flash' },
+      { slides: 1 },
+    ],
+    cota: 1,
+    outros: 2,
+  };
+  const mensagem = describeGenerationFailure({ truncou: true, cotaEsgotada: true, contagem });
+  assert.match(mensagem, /limite de resposta/);
+  assert.match(mensagem, /4 por resposta truncada/);
+  assert.match(mensagem, /gemini-3\.7-flash: 1 slide\(s\)(;|\))/, 'sem tokens, o detalhe nao inventa numero');
+  assert.match(mensagem, /; \+1\)/, 'so os 3 primeiros detalhados');
+  assert.match(mensagem, /1 por cota, 2 por outro erro\.$/);
+});
+
+test('empate entre truncamento e cota fica com o truncamento, como antes', () => {
+  const contagem = { truncados: [{ slides: 1 }], cota: 1, outros: 0 };
+  assert.match(describeGenerationFailure({ truncou: true, cotaEsgotada: true, contagem }), /limite de resposta/);
+});
+
+test('contagem vazia nao acrescenta resumo e cai na orientacao sobre configuracao', () => {
+  assert.equal(resumirFalhas(contagemVazia()), '');
+  assert.equal(
+    describeGenerationFailure({ truncou: false, cotaEsgotada: false, contagem: contagemVazia() }),
+    describeGenerationFailure({ truncou: false, cotaEsgotada: false }),
+  );
+});
+
+test('so erros que nao sao tamanho nem cota: mensagem generica com a contagem', () => {
+  const mensagem = describeGenerationFailure({
+    truncou: false,
+    cotaEsgotada: false,
+    contagem: { truncados: [], cota: 0, outros: 3 },
+  });
+  assert.match(mensagem, /^Falha na geração dos slides com IA/);
+  assert.match(mensagem, /Blocos que falharam: 3 por outro erro\.$/);
 });
