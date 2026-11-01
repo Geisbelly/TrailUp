@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -49,7 +49,8 @@ export function BagEditorModal({ visible, initialItem, context, accent, surface,
   };
 
   return <Modal visible={visible} transparent animationType={desktop ? "fade" : "slide"} onRequestClose={onClose}>
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[styles.backdrop, desktop && styles.backdropCentro]}><View style={[styles.modal, desktop && styles.modalCentro, { backgroundColor: surface, paddingBottom: Math.max(insets.bottom, 20) }]}>
+    {/* "padding" também no Android: com edge-to-edge a janela do Modal não encolhe com o teclado (ver AuthCelular). */}
+    <KeyboardAvoidingView behavior="padding" style={[styles.backdrop, desktop && styles.backdropCentro]}><View style={[styles.modal, desktop && styles.modalCentro, { backgroundColor: surface, paddingBottom: Math.max(insets.bottom, 20) }]}>
       <View style={styles.header}><View><Text style={[styles.kicker, { color: accent }]}>BAG</Text><Text style={styles.title}>{initialItem ? "Editar item" : "Novo item"}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Fechar editor da Bag" onPress={onClose} style={styles.close}><MaterialCommunityIcons name="close" size={25} color={accent} /></Pressable></View>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Text style={[styles.label, { color: muted }]}>TIPO</Text><View style={styles.types}>{(["anotacao", "resumo", "card"] as BagDraftType[]).map((option) => <Pressable key={option} accessibilityRole="tab" accessibilityState={{ selected: type === option }} onPress={() => setType(option)} style={[styles.typeButton, { borderColor: type === option ? accent : muted }]}><Text style={{ color: type === option ? accent : "#fff" }}>{option === "anotacao" ? "Anotação" : option === "resumo" ? "Resumo" : "Card"}</Text></Pressable>)}</View>

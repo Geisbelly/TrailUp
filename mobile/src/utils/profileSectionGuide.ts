@@ -253,14 +253,14 @@ export function buildProfileGuideSteps({
       id: "profile-library",
       target: "profile_library",
       title: "Biblioteca de conquistas",
-      description: "O troféu abre a biblioteca completa, separando conquistas concluídas, em progresso e bloqueadas, com o requisito e a porcentagem de cada uma.",
+      description: "O troféu abre a biblioteca completa, separando conquistas concluídas, em progresso e bloqueadas, com o requisito e a porcentagem de cada uma. Ela também está nas Configurações.",
       icon: "trophy-variant-outline",
     },
     {
       id: "settings-main",
       target: "profile_settings",
       title: "Configurações do perfil",
-      description: "A engrenagem abre informações da conta, estilo das métricas, coleta e acessos, relatório dos dados, privacidade, segurança e informações do aplicativo.",
+      description: "A engrenagem abre informações da conta, biblioteca de conquistas, estilo das métricas, coleta e acessos, relatório dos dados, privacidade, segurança, informações do aplicativo e o botão Sair.",
       icon: "cog-outline",
     },
     {

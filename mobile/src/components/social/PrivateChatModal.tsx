@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -111,10 +110,10 @@ export function PrivateChatModal({
         <SafeAreaView
           style={[s.screen, desktop && [s.painelLateral, { borderLeftColor: palette.border }], { backgroundColor: palette.background }]}
         >
-          <KeyboardAvoidingView
-            style={s.screen}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-          >
+          {/* "padding" também no Android: com edge-to-edge (SDK 54) a janela do Modal não encolhe com o
+              teclado, e sem behavior o campo de mensagem ficava atrás dele. Onde a janela ainda encolher,
+              a sobreposição dá zero e nada muda. */}
+          <KeyboardAvoidingView style={s.screen} behavior="padding">
             <View style={[s.header, { borderBottomColor: palette.border }]}>
               <View style={s.heading}>
                 <Text style={[s.title, { color: palette.text }]}>
