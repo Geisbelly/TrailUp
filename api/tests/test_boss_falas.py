@@ -9,6 +9,10 @@ O que estes testes protegem:
    pagaria uma chamada por tópico × perfil.
 4. **Falha nunca vira exceção nem `failed` no target.** Falas são enfeite da batalha.
 5. **A tabela nasce legível para quem está na turma, e só para leitura.**
+6. **Cada perfil tem um nome de boss próprio no mesmo conteúdo**, garantido na gravação e não
+   só pedido ao modelo. O caso medido em produção (01/11) está aqui: Conqueror e Daredevil com
+   "Sentinela das Partes Fracionadas" e Survivor com "Guardião das Partes Fracionadas".
+7. **A assinatura editorial inteira chega ao prompt**, não só tom e ritmo.
 """
 
 from __future__ import annotations
@@ -27,12 +31,18 @@ from app.services import boss_falas, personalizacao_jobs
 from app.services.boss_falas import (
     BOSS_FALAS_VERSION,
     MOMENTOS,
+    NOME_MAX,
+    PERFIS,
+    PERFIS_COM_BATALHA,
     FalasDoBoss,
     FalasDoTopico,
     gerar_falas_do_topico,
     hash_do_topico,
     limpar_falas,
+    nome_unico,
+    nomes_colidem,
 )
+from app.services.personalizacao import _BRAINHEX_EDITORIAL_SIGNATURES
 
 API_ROOT = Path(__file__).resolve().parents[1]
 TOPICO = {"id": 7, "nome": "Frações", "descricao": "Partes de um inteiro", "classe_id": 68}
@@ -134,6 +144,147 @@ def test_payload_nao_leva_nada_do_aluno_e_traz_o_tom_do_perfil() -> None:
     assert "aluno" not in str(payload).lower()
 
 
+def test_versao_subiu_para_regerar_as_falas_genericas() -> None:
+    # As linhas de 2026-11-01.1 têm nome repetido entre perfis: precisam ser regeradas.
+    assert BOSS_FALAS_VERSION > "2026-11-01.1"
+
+
+# ---------------------------------------------------------------- assinatura do perfil
+
+ASSINATURA_NO_PROMPT = (
+    "tom_voz",
+    "ritmo",
+    "abertura_estilo",
+    "convencimento_estilo",
+    "progressao_narrativa",
+    "fechamento_estilo",
+    "narrativa_preferencial",
+    "marcadores_linguisticos",
+    "proibicoes_estilo",
+)
+
+
+@pytest.mark.parametrize("perfil", sorted(PERFIS_COM_BATALHA))
+def test_payload_leva_a_assinatura_editorial_inteira_do_perfil(perfil: str) -> None:
+    payload = boss_falas.montar_payload(perfil=perfil, topico=TOPICO, conteudos=CONTEUDOS)
+    assinatura = _BRAINHEX_EDITORIAL_SIGNATURES[perfil.capitalize()]
+    for campo in ASSINATURA_NO_PROMPT:
+        assert payload["perfil"][campo] == assinatura[campo], campo
+    assert payload["perfil"]["framing_narrativo"]
+    assert payload["perfil"]["ritmo_das_falas"]
+    assert payload["perfil"]["direcao_do_nome"]
+
+
+def test_ritmo_vira_tamanho_de_frase_diferente_por_perfil() -> None:
+    # Medido em 01/11: Daredevil (dinâmico) e Survivor (médio-lento) com falas do mesmo tamanho.
+    ritmos = {
+        perfil: boss_falas.montar_payload(perfil=perfil, topico=TOPICO, conteudos=CONTEUDOS)["perfil"]["ritmo_das_falas"]
+        for perfil in ("daredevil", "survivor")
+    }
+    assert ritmos["daredevil"] != ritmos["survivor"]
+
+
+def test_todo_perfil_tem_direcao_de_nome_e_epitetos_proprios() -> None:
+    assert set(boss_falas._DIRECAO_DO_NOME) == set(PERFIS)
+    assert set(boss_falas._EPITETOS) == set(PERFIS)
+    todos = [e for epitetos in boss_falas._EPITETOS.values() for e in epitetos]
+    # Epíteto repetido entre perfis faria dois nomes colididos virarem o mesmo de novo.
+    assert len(todos) == len(set(todos))
+
+
+def test_prompt_usa_cada_campo_da_assinatura_e_os_nomes_em_uso() -> None:
+    prompt = (API_ROOT / "app/agent/prompts/boss_falas.txt").read_text(encoding="utf-8")
+    payload = boss_falas.montar_payload(perfil="survivor", topico=TOPICO, conteudos=CONTEUDOS)
+    for campo in payload["perfil"]:
+        if campo in {"nome", "narrativa_preferencial"}:
+            continue
+        assert f'"{campo}"' in prompt, campo
+    assert '"nomes_em_uso"' in prompt
+
+
+def test_hash_muda_quando_a_assinatura_do_perfil_muda(monkeypatch) -> None:
+    base = hash_do_topico(perfil="survivor", topico=TOPICO, conteudos=CONTEUDOS)
+    alterada = {**_BRAINHEX_EDITORIAL_SIGNATURES["Survivor"], "tom_voz": "outro tom"}
+    monkeypatch.setitem(_BRAINHEX_EDITORIAL_SIGNATURES, "Survivor", alterada)
+    assert base != hash_do_topico(perfil="survivor", topico=TOPICO, conteudos=CONTEUDOS)
+
+
+def test_payload_conta_os_nomes_dos_outros_perfis_so_do_conteudo_certo() -> None:
+    payload = boss_falas.montar_payload(
+        perfil="survivor",
+        topico=TOPICO,
+        conteudos=CONTEUDOS,
+        nomes_em_uso={10: ["Sentinela das Partes Fracionadas"], 999: ["Fora do pedido"]},
+    )
+    assert payload["nomes_em_uso"] == [{"conteudo_id": 10, "nomes": ["Sentinela das Partes Fracionadas"]}]
+
+
+# ---------------------------------------------------------------- nome próprio por perfil
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        ("Sentinela das Partes Fracionadas", "Sentinela das Partes Fracionadas"),
+        ("Sentinela das Partes Fracionadas", "sentinela das partes fracionadas"),
+        ("Guardiã das Frações", "Guardia das Fracoes"),
+        # o caso de produção: só o título muda
+        ("Sentinela das Partes Fracionadas", "Guardião das Partes Fracionadas"),
+        ("Eco da Revolução", "Voz da Revolução"),
+    ],
+)
+def test_nomes_iguais_ou_que_so_trocam_o_titulo_colidem(a: str, b: str) -> None:
+    assert nomes_colidem(a, b)
+
+
+@pytest.mark.parametrize(
+    ("a", "b"),
+    [
+        ("Sentinela das Partes Fracionadas", "Soberano do Denominador"),
+        ("Guardiã das Frações", "Turbilhão das Frações Equivalentes"),
+        ("Sentinela das Partes Fracionadas", "Sentinela das Partes Fracionadas, Coroa Invicta"),
+    ],
+)
+def test_nomes_diferentes_nao_colidem(a: str, b: str) -> None:
+    assert not nomes_colidem(a, b)
+
+
+def test_nome_livre_fica_como_o_modelo_deu() -> None:
+    assert nome_unico("Armadilha do Denominador", "survivor", ["Soberano das Partes"]) == "Armadilha do Denominador"
+
+
+def test_os_tres_perfis_com_o_mesmo_nome_saem_com_nomes_proprios() -> None:
+    # Reproduz 01/11, na ordem em que o worker grava.
+    gravados: list[str] = []
+    for perfil, pedido in (
+        ("conqueror", "Sentinela das Partes Fracionadas"),
+        ("daredevil", "Sentinela das Partes Fracionadas"),
+        ("survivor", "Guardião das Partes Fracionadas"),
+    ):
+        nome = nome_unico(pedido, perfil, gravados)
+        assert len(nome) <= NOME_MAX
+        assert limpar_falas(_boss(10, nome=nome)) is not None, "o nome corrigido tem de passar na limpeza"
+        assert nome.startswith(pedido[: len(pedido) // 2]), "o nome do modelo continua no começo"
+        gravados.append(nome)
+    for i, a in enumerate(gravados):
+        for b in gravados[i + 1 :]:
+            assert not nomes_colidem(a, b), (a, b)
+
+
+def test_nome_longo_com_epiteto_cabe_no_limite() -> None:
+    longo = "Grande Sentinela Ancestral das Partes Fracionadas"  # 49 caracteres
+    nome = nome_unico(longo, "daredevil", [longo])
+    assert len(nome) <= NOME_MAX
+    assert not nomes_colidem(nome, longo)
+
+
+def test_nome_unico_termina_mesmo_com_os_epitetos_ocupados() -> None:
+    pedido = "Sentinela das Partes"
+    em_uso = [pedido] + [boss_falas._com_epiteto(pedido, e) for e in boss_falas._EPITETOS["survivor"]]
+    nome = nome_unico(pedido, "survivor", em_uso)
+    assert all(not nomes_colidem(nome, u) for u in em_uso)
+
+
 def test_prompt_pede_exatamente_os_momentos_do_schema() -> None:
     prompt = (API_ROOT / "app/agent/prompts/boss_falas.txt").read_text(encoding="utf-8")
     for momento in MOMENTOS:
@@ -152,7 +303,7 @@ class _Sessao:
 
 @pytest.fixture
 def banco(monkeypatch):
-    estado = SimpleNamespace(gravados={}, hashes={}, tabela=True, conteudos=list(CONTEUDOS))
+    estado = SimpleNamespace(gravados={}, hashes={}, tabela=True, conteudos=list(CONTEUDOS), outros={}, eventos=[])
 
     async def _tabela_existe(_session):
         return estado.tabela
@@ -164,7 +315,15 @@ def banco(monkeypatch):
         return dict(estado.hashes)
 
     async def _gravar(_session, **kwargs):
+        estado.eventos.append("gravar")
         estado.gravados[kwargs["conteudo_id"]] = kwargs
+
+    async def _outros(_session, *, topico_id, perfil):
+        estado.eventos.append("ler_nomes")
+        return {k: list(v) for k, v in estado.outros.items()}
+
+    async def _travar(_session, topico_id):
+        estado.eventos.append("travar")
 
     class _Repo:
         def __init__(self, _session):
@@ -177,6 +336,8 @@ def banco(monkeypatch):
     monkeypatch.setattr(boss_falas, "_topico", _topico)
     monkeypatch.setattr(boss_falas, "_hashes_gravados", _hashes)
     monkeypatch.setattr(boss_falas, "_gravar", _gravar)
+    monkeypatch.setattr(boss_falas, "_nomes_de_outros_perfis", _outros)
+    monkeypatch.setattr(boss_falas, "_travar_topico", _travar)
     monkeypatch.setattr(boss_falas, "ConteudoClasseRepository", _Repo)
     return estado
 
@@ -204,6 +365,41 @@ async def test_gera_e_grava_um_boss_por_conteudo(banco) -> None:
     sessao.rollback.assert_awaited()
     sessao.commit.assert_awaited_once()
     assert llm.ainvoke_structured.await_args.kwargs["prompt_name"] == "boss_falas.txt"
+
+
+@pytest.mark.asyncio
+async def test_nome_de_outro_perfil_vai_no_pedido_e_e_corrigido_na_gravacao(banco) -> None:
+    banco.outros = {10: ["Sentinela das Partes Fracionadas"]}
+    llm = _llm(
+        FalasDoTopico(
+            bosses=[_boss(10, nome="Guardião das Partes Fracionadas"), _boss(11, nome="Eco Equivalente")]
+        )
+    )
+    resultado = await gerar_falas_do_topico(session=_Sessao(), settings=None, topico_id=7, perfil="survivor", llm=llm)
+    assert resultado.status == "gerado"
+    payload = llm.ainvoke_structured.await_args.kwargs["payload"]
+    assert payload["nomes_em_uso"] == [{"conteudo_id": 10, "nomes": ["Sentinela das Partes Fracionadas"]}]
+    nome = banco.gravados[10]["nome"]
+    assert not nomes_colidem(nome, "Sentinela das Partes Fracionadas")
+    assert nome.startswith("Guardião das Partes Fracionadas")
+    # Conteúdo sem colisão fica com o nome do modelo.
+    assert banco.gravados[11]["nome"] == "Eco Equivalente"
+    # A checagem é relida sob a trava do tópico, antes de gravar.
+    assert banco.eventos[-4:-2] == ["travar", "ler_nomes"]
+
+
+@pytest.mark.asyncio
+async def test_nome_gravado_por_outro_perfil_durante_a_chamada_tambem_conta(banco) -> None:
+    llm = _llm(FalasDoTopico(bosses=[_boss(10), _boss(11, nome="Eco Equivalente")]))
+
+    async def _chamada(**_kwargs):
+        # Outro perfil gravou enquanto o modelo pensava.
+        banco.outros = {10: ["Guardiã das Frações"]}
+        return FalasDoTopico(bosses=[_boss(10), _boss(11, nome="Eco Equivalente")])
+
+    llm.ainvoke_structured.side_effect = _chamada
+    await gerar_falas_do_topico(session=_Sessao(), settings=None, topico_id=7, perfil="daredevil", llm=llm)
+    assert not nomes_colidem(banco.gravados[10]["nome"], "Guardiã das Frações")
 
 
 @pytest.mark.asyncio
@@ -319,6 +515,33 @@ async def test_fase_do_job_gera_uma_vez_por_topico_e_perfil(monkeypatch) -> None
         app=_app(), job={"kind": personalizacao_jobs.JOB_KIND_CLASS_DELTA}, targets=targets
     )
     assert sorted(chamadas) == [(1, "daredevil"), (1, "survivor")]
+
+
+@pytest.mark.asyncio
+async def test_fase_do_job_gera_os_perfis_de_um_topico_um_depois_do_outro(monkeypatch) -> None:
+    # Em paralelo, os perfis do mesmo tópico pediriam nome sem saber o dos outros.
+    ativos: dict[int, int] = {}
+    pico: dict[int, int] = {}
+    chamadas: list[tuple[int, str]] = []
+
+    async def _gerar(*, session, settings, topico_id, perfil):
+        ativos[topico_id] = ativos.get(topico_id, 0) + 1
+        pico[topico_id] = max(pico.get(topico_id, 0), ativos[topico_id])
+        await asyncio.sleep(0.01)
+        ativos[topico_id] -= 1
+        chamadas.append((topico_id, perfil))
+        if perfil == "survivor":
+            raise RuntimeError("provedor fora")
+        return boss_falas.ResultadoFalas(status="gerado")
+
+    monkeypatch.setattr(personalizacao_jobs, "gerar_falas_do_topico", _gerar)
+    targets = [_target(1, "survivor"), _target(1, "daredevil"), _target(2, "conqueror"), _target(2, "daredevil")]
+    await personalizacao_jobs._gerar_falas_boss_do_job(
+        app=_app(), job={"kind": personalizacao_jobs.JOB_KIND_CLASS_DELTA}, targets=targets
+    )
+    assert pico == {1: 1, 2: 1}
+    # A falha de um perfil não impede o seguinte do mesmo tópico.
+    assert sorted(chamadas) == [(1, "daredevil"), (1, "survivor"), (2, "conqueror"), (2, "daredevil")]
 
 
 @pytest.mark.asyncio

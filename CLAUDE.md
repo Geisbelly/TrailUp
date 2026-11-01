@@ -280,6 +280,11 @@ Cada perfil carrega:
   gerado entra no inimigo, mas o `enemy.id` **não muda** — ele está na chave do estado salvo
   da batalha, e trocá-lo zeraria o boss do aluno. Versão própria (`BOSS_FALAS_VERSION`): subir
   `_PERSONALIZACAO_PIPELINE_VERSION` por causa de fala regeraria a mídia de todas as turmas.
+  **Nome próprio por perfil é garantido na gravação**, não no prompt: os perfis de um tópico são
+  gerados um depois do outro (cada um recebe `nomes_em_uso`), e `nome_unico` relê os nomes sob
+  `pg_advisory_xact_lock` do tópico e acrescenta o epíteto do perfil a nome igual ou que só troca o
+  título. O prompt recebe a assinatura editorial inteira (`_assinatura`), amarrada a momentos da
+  batalha; ela entra no `source_hash`, então mudar a voz de um perfil regera as falas dele.
 - `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
   sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
   ou por aluno (estes vêm do `agente_intervencao`, quando um estado negativo
