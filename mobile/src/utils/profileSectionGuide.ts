@@ -253,7 +253,7 @@ export function buildProfileGuideSteps({
       id: "profile-library",
       target: "profile_library",
       title: "Biblioteca de conquistas",
-      description: "A biblioteca completa fica nas Configurações (na tela larga, também no troféu do banner): ela separa conquistas concluídas, em progresso e bloqueadas, com o requisito e a porcentagem de cada uma.",
+      description: "O troféu abre a biblioteca completa, separando conquistas concluídas, em progresso e bloqueadas, com o requisito e a porcentagem de cada uma. Ela também está nas Configurações.",
       icon: "trophy-variant-outline",
     },
     {

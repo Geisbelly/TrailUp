@@ -4,7 +4,7 @@ import React, { createContext, useContext, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Line, Path, Polygon, Rect, Text as SvgText } from "react-native-svg";
 import tinycolor from "tinycolor2";
-import { BrainHexProfile, getBrainHexConfig } from "@/constants/profileImages";
+import { BrainHexProfile, getBrainHexConfig, normalizeBrainHexProfile } from "@/constants/profileImages";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { MetricsThemeResolved, getMetricsThemeOption } from "@/utils/profileMetricThemes";
 import { ProfileMetricsViewModel } from "./profileMetricsViewModel";
@@ -29,7 +29,16 @@ type ThemePalette = {
   cardAlt: string;
   muted: string;
   text: string;
+  /** Trilhas de barra, setores vazios e ícones apagados: um tom acima do fundo do cartão. */
+  track: string;
+  /** Fundo dos números e das caixas dentro do cartão (o `--bg-a55` do protótipo). */
+  tile: string;
+  subtle: string;
+  accentMuted: string;
 };
+
+// O amarelo de aviso do protótipo (`--warning`), o mesmo das telas de entrada.
+const AVISO = "#e0b34d";
 
 type DashboardProps = {
   profile: BrainHexProfile;
@@ -65,9 +74,30 @@ function formatLastEvent(value?: string | null) {
   });
 }
 
-function buildPalette(baseColor: string): ThemePalette {
+function buildPalette(baseColor: string, larga: boolean): ThemePalette {
   const shell = buildProfileShellPaletteFromAccent(baseColor);
-  return { accent: shell.accent, heroTop: shell.surface, heroBottom: shell.background, border: shell.border, soft: shell.accentSoft, card: shell.background, cardAlt: shell.surface, muted: shell.textMuted, text: shell.text };
+  return {
+    accent: shell.accent,
+    heroTop: shell.surface,
+    heroBottom: shell.background,
+    border: shell.border,
+    soft: shell.accentSoft,
+    card: shell.background,
+    cardAlt: shell.surface,
+    muted: shell.textMuted,
+    text: shell.text,
+    // No celular o cartão passou a ter o fundo `surface`; uma trilha da mesma cor sumiria.
+    // A tela larga já desenhava assim e continua igual.
+    track: larga ? shell.surface : shell.surfaceElevated,
+    tile: tinycolor(shell.background).setAlpha(0.55).toRgbString(),
+    subtle: shell.textSubtle,
+    accentMuted: shell.accentMuted,
+  };
+}
+
+// As afinidades chegam com a chave do perfil ("mastermind"); na tela vai o nome em português.
+function nomeDoPerfil(nome: string) {
+  return normalizeBrainHexProfile(nome) ? getBrainHexConfig(nome).label : nome;
 }
 
 function SurfaceCard({ children, palette, targetRef, meia }: { children: React.ReactNode; palette: ThemePalette; targetRef?: React.RefObject<View | null>; meia?: boolean }) {
@@ -79,7 +109,7 @@ function SurfaceCard({ children, palette, targetRef, meia }: { children: React.R
       style={
         larga
           ? [s.cartaoLargo, meia && s.meiaLarga, { backgroundColor: palette.cardAlt, borderColor: palette.border }]
-          : [s.surfaceCard, { backgroundColor: palette.card, borderColor: palette.border }]
+          : [s.surfaceCard, { backgroundColor: palette.cardAlt, borderColor: palette.border }]
       }
     >
       {children}
@@ -100,15 +130,22 @@ function SectionTitle({
 }) {
   // Tela larga (protótipo v4): título sem serifa e sem o ícone redondo.
   const larga = useMetricasLargas();
+  if (!larga) {
+    // Celular (mobile-v1, 08-perfil-hub): ícone solto na cor do perfil, título sem serifa.
+    return (
+      <View style={s.tituloCelularWrap}>
+        <View style={s.tituloCelularLinha}>
+          {icon ? <MaterialCommunityIcons name={icon} size={20} color={palette.accent} /> : null}
+          <Text style={[s.tituloCelular, { color: palette.text }]}>{title}</Text>
+        </View>
+        {subtitle ? <Text style={[s.subtituloCelular, { color: palette.subtle }]}>{subtitle}</Text> : null}
+      </View>
+    );
+  }
   return (
     <View style={s.sectionTitleWrap}>
       <View style={s.sectionTitleRow}>
-        {icon && !larga ? (
-          <View style={[s.sectionIconWrap, { backgroundColor: palette.soft }]}>
-            <MaterialCommunityIcons name={icon} size={16} color={palette.accent} />
-          </View>
-        ) : null}
-        <Text style={[s.sectionTitle, larga && s.sectionTitleLargo, { color: palette.text }]}>{title}</Text>
+        <Text style={[s.sectionTitle, s.sectionTitleLargo, { color: palette.text }]}>{title}</Text>
       </View>
       {subtitle ? <Text style={[s.sectionSubtitle, { color: palette.muted }]}>{subtitle}</Text> : null}
     </View>
@@ -125,8 +162,16 @@ function DashboardThemeBadge({
   badge: DashboardProps["themeBadge"];
 }) {
   const larga = useMetricasLargas();
+  if (!larga) {
+    return (
+      <View style={[s.selo, { backgroundColor: palette.accentMuted }]}>
+        <MaterialCommunityIcons name={badge.icon} size={13} color={accent} />
+        <Text style={[s.seloTexto, { color: accent }]}>{badge.label}</Text>
+      </View>
+    );
+  }
   return (
-    <View style={[s.modeChipInline, larga && s.chipNoCanto, { borderColor: palette.border, backgroundColor: palette.soft }]}>
+    <View style={[s.modeChipInline, s.chipNoCanto, { borderColor: palette.border, backgroundColor: palette.soft }]}>
       <MaterialCommunityIcons name={badge.icon} size={15} color={accent} />
       <Text style={[s.modeChipText, { color: palette.text }]}>{badge.label}</Text>
     </View>
@@ -151,13 +196,26 @@ function StatTile({
   targetRef?: React.RefObject<View | null>;
 }) {
   const larga = useMetricasLargas();
+  if (!larga) {
+    // Celular: o `.kpi` do protótipo, ícone ao lado do número em vez de empilhado.
+    return (
+      <View ref={targetRef} collapsable={false} style={[s.kpiCelular, { backgroundColor: palette.tile }]}>
+        <MaterialCommunityIcons name={icon} size={20} color={accent} />
+        <View style={s.kpiCelularTexto}>
+          <Text style={[s.kpiCelularRotulo, { color: palette.subtle }]} numberOfLines={2}>{label}</Text>
+          <Text style={[s.kpiCelularValor, { color: palette.text }]} numberOfLines={1}>{value}</Text>
+          {helper ? <Text style={[s.kpiCelularAjuda, { color: palette.subtle }]} numberOfLines={2}>{helper}</Text> : null}
+        </View>
+      </View>
+    );
+  }
   return (
-    <View ref={targetRef} collapsable={false} style={[s.statTile, larga && s.statTileLargo, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
+    <View ref={targetRef} collapsable={false} style={[s.statTile, s.statTileLargo, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
       <View style={[s.statIconWrap, { backgroundColor: tinycolor(accent).setAlpha(0.18).toRgbString() }]}>
         <MaterialCommunityIcons name={icon} size={18} color={accent} />
       </View>
       <Text style={[s.statLabel, { color: palette.muted }]}>{label}</Text>
-      <Text style={[s.statValue, larga && s.statValueLargo, { color: palette.text }]}>{value}</Text>
+      <Text style={[s.statValue, s.statValueLargo, { color: palette.text }]}>{value}</Text>
       {helper ? <Text style={[s.statHelper, { color: palette.muted }]}>{helper}</Text> : null}
     </View>
   );
@@ -176,17 +234,18 @@ function ProgressLine({
   accent: string;
   palette: ThemePalette;
 }) {
+  const larga = useMetricasLargas();
   const pct = total > 0 ? Math.max(0, Math.min(100, (current / total) * 100)) : 0;
   return (
-    <View style={s.progressLine}>
-      <View style={s.progressLineHeader}>
-        <Text style={[s.progressLineLabel, { color: palette.text }]}>{label}</Text>
-        <Text style={[s.progressLineValue, { color: palette.muted }]}>
+    <View style={[s.progressLine, !larga && s.linhaCelular]}>
+      <View style={[s.progressLineHeader, !larga && s.linhaCelularTopo]}>
+        <Text style={[s.progressLineLabel, !larga && s.linhaCelularRotulo, { color: palette.text }]}>{label}</Text>
+        <Text style={[s.progressLineValue, !larga && s.linhaCelularValor, { color: larga ? palette.muted : palette.text }]}>
           {current}/{total}
         </Text>
       </View>
-      <View style={s.progressTrack}>
-        <View style={[s.progressFill, { width: `${pct}%`, backgroundColor: accent }]} />
+      <View style={[s.progressTrack, !larga && [s.barraCelular, { backgroundColor: palette.heroBottom, borderColor: palette.border }]]}>
+        <View style={[s.progressFill, !larga && s.barraCelularFill, { width: `${pct}%`, backgroundColor: accent }]} />
       </View>
     </View>
   );
@@ -199,6 +258,17 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
     vm.analysisInsights.length > 0 ||
     vm.analysisWarnings.length > 0 ||
     vm.analysisRecommendations.length > 0;
+  // Celular: `.chip-accent` / `.chip-neutral` e `.caixa` do protótipo; a tela larga segue como estava.
+  const chipDestaque = larga
+    ? [s.chip, { backgroundColor: palette.soft }]
+    : [s.chip, s.chipCelular, { backgroundColor: palette.accentMuted, borderColor: palette.soft }];
+  const chipNeutro = larga
+    ? [s.chip, { backgroundColor: palette.soft }]
+    : [s.chip, s.chipCelular, { backgroundColor: palette.track, borderColor: palette.track }];
+  const caixa = larga
+    ? [s.analysisBox, s.analysisBoxLargo, { backgroundColor: palette.cardAlt, borderColor: palette.border }]
+    : [s.analysisBox, s.caixaCelular, { backgroundColor: palette.tile }];
+  const tamanhoIconeChip = larga ? 16 : 13;
 
   return (
     <SurfaceCard palette={palette} targetRef={targetRef}>
@@ -209,24 +279,24 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
         palette={palette}
       />
       <View style={s.chipRow}>
-        <View style={[s.chip, { backgroundColor: palette.soft }]}>
-          <MaterialCommunityIcons name="emoticon-outline" size={16} color={accent} />
-          <Text style={[s.chipText, { color: palette.text }]}>{vm.emotionLabel}</Text>
+        <View style={chipDestaque}>
+          <MaterialCommunityIcons name="emoticon-outline" size={tamanhoIconeChip} color={accent} />
+          <Text style={[s.chipText, !larga && s.chipTextCelular, { color: larga ? palette.text : accent }]}>{vm.emotionLabel}</Text>
         </View>
-        <View style={[s.chip, { backgroundColor: palette.soft }]}>
+        <View style={chipNeutro}>
           <MaterialCommunityIcons
             name={vm.cameraLabel.includes("ativa") ? "camera-outline" : "camera-off-outline"}
-            size={16}
-            color={accent}
+            size={tamanhoIconeChip}
+            color={larga ? accent : palette.muted}
           />
-          <Text style={[s.chipText, { color: palette.text }]}>{vm.cameraLabel}</Text>
+          <Text style={[s.chipText, !larga && s.chipTextCelular, { color: larga ? palette.text : palette.muted }]}>{vm.cameraLabel}</Text>
         </View>
       </View>
       {vm.cicloId ? (
         <>
-          <Text style={[s.sectionSubtitle, { color: palette.muted }]}>Ciclo atual: {vm.cicloId}</Text>
+          <Text style={[s.sectionSubtitle, { color: larga ? palette.muted : palette.subtle }]}>Ciclo atual: {vm.cicloId}</Text>
           {vm.analysisSummary ? (
-            <Text style={[s.storyBody, { color: palette.text, marginTop: 10 }]}>{vm.analysisSummary}</Text>
+            <Text style={[s.storyBody, !larga && s.resumoCelular, { color: larga ? palette.text : palette.muted, marginTop: larga ? 10 : 6 }]}>{vm.analysisSummary}</Text>
           ) : null}
         </>
       ) : (
@@ -239,9 +309,9 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
           {vm.analysisSignals.map((signal) => (
             <View
               key={signal}
-              style={[s.actionPill, { backgroundColor: palette.soft, borderColor: palette.border }]}
+              style={larga ? [s.actionPill, { backgroundColor: palette.soft, borderColor: palette.border }] : chipDestaque}
             >
-              <Text style={[s.actionText, { color: palette.text }]}>{signal}</Text>
+              <Text style={[s.actionText, !larga && s.chipTextCelularSolto, { color: larga ? palette.text : accent }]}>{signal}</Text>
             </View>
           ))}
         </View>
@@ -249,8 +319,8 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
       {vm.actions.length ? (
         <View style={s.actionsWrap}>
           {vm.actions.map((action) => (
-            <View key={action} style={[s.actionPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-              <Text style={[s.actionText, { color: palette.text }]}>{action}</Text>
+            <View key={action} style={larga ? [s.actionPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }] : chipNeutro}>
+              <Text style={[s.actionText, !larga && s.chipTextCelularSolto, { color: larga ? palette.text : palette.muted }]}>{action}</Text>
             </View>
           ))}
         </View>
@@ -258,20 +328,20 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
       {hasAnalysisDetail ? (
         <View style={[s.analysisStack, larga && s.analysisLinha]}>
           {vm.analysisInsights.length ? (
-            <View style={[s.analysisBox, larga && s.analysisBoxLargo, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-              <Text style={[s.analysisBoxTitle, { color: palette.text }]}>Leituras da IA</Text>
+            <View style={caixa}>
+              <Text style={[s.analysisBoxTitle, !larga && s.caixaTitulo, { color: palette.text }]}>Leituras da IA</Text>
               {vm.analysisInsights.map((item) => (
-                <Text key={item} style={[s.analysisBoxItem, { color: palette.muted }]}>
+                <Text key={item} style={[s.analysisBoxItem, !larga && s.caixaItem, { color: palette.muted }]}>
                   {"•"} {item}
                 </Text>
               ))}
             </View>
           ) : null}
           {vm.analysisRecommendations.length ? (
-            <View style={[s.analysisBox, larga && s.analysisBoxLargo, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-              <Text style={[s.analysisBoxTitle, { color: palette.text }]}>Ajustes aplicados</Text>
+            <View style={caixa}>
+              <Text style={[s.analysisBoxTitle, !larga && s.caixaTitulo, { color: palette.text }]}>Ajustes aplicados</Text>
               {vm.analysisRecommendations.map((item) => (
-                <Text key={item} style={[s.analysisBoxItem, { color: palette.muted }]}>
+                <Text key={item} style={[s.analysisBoxItem, !larga && s.caixaItem, { color: palette.muted }]}>
                   {"•"} {item}
                 </Text>
               ))}
@@ -279,18 +349,22 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
           ) : null}
           {vm.analysisWarnings.length ? (
             <View
-              style={[
-                s.analysisBox,
-                larga && s.analysisBoxLargo,
-                {
-                  backgroundColor: tinycolor(accent).setAlpha(0.08).toRgbString(),
-                  borderColor: tinycolor(accent).setAlpha(0.22).toRgbString(),
-                },
-              ]}
+              style={
+                larga
+                  ? [
+                      s.analysisBox,
+                      s.analysisBoxLargo,
+                      {
+                        backgroundColor: tinycolor(accent).setAlpha(0.08).toRgbString(),
+                        borderColor: tinycolor(accent).setAlpha(0.22).toRgbString(),
+                      },
+                    ]
+                  : [...caixa, s.caixaAviso, { borderLeftColor: AVISO }]
+              }
             >
-              <Text style={[s.analysisBoxTitle, { color: palette.text }]}>Pontos de atenção</Text>
+              <Text style={[s.analysisBoxTitle, !larga && s.caixaTitulo, { color: palette.text }]}>Pontos de atenção</Text>
               {vm.analysisWarnings.map((item) => (
-                <Text key={item} style={[s.analysisBoxItem, { color: palette.muted }]}>
+                <Text key={item} style={[s.analysisBoxItem, !larga && s.caixaItem, { color: palette.muted }]}>
                   {"•"} {item}
                 </Text>
               ))}
@@ -344,11 +418,18 @@ function formatMinutesTimer(totalMin?: number | null) {
   return `${min}min ${sec}s`;
 }
 
-function KpiPill({ label, value, palette }: { label: string; value: string; palette: ThemePalette }) {
+function KpiPill({ label, value, palette, painel }: { label: string; value: React.ReactNode; palette: ThemePalette; painel?: boolean }) {
+  const larga = useMetricasLargas();
   return (
-    <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-      <Text style={[s.kpiLabel, { color: palette.muted }]}>{label}</Text>
-      <Text style={[s.kpiValue, { color: palette.text }]}>{value}</Text>
+    <View
+      style={
+        larga
+          ? [painel ? s.metricPanel : s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]
+          : [painel ? s.metricPanel : s.kpiPill, s.caixaCelular, { backgroundColor: palette.tile }]
+      }
+    >
+      <Text style={[s.kpiLabel, { color: larga ? palette.muted : palette.subtle }]}>{label}</Text>
+      <Text style={[s.kpiValue, !larga && s.kpiValueCelular, { color: palette.text }]}>{value}</Text>
     </View>
   );
 }
@@ -372,14 +453,14 @@ function EngagementBar({
   return (
     <View style={s.chartWrap}>
       <Svg width={CHART_W} height={38}>
-        <Rect x={0} y={0} width={CHART_W} height={14} rx={7} fill={tinycolor(palette.cardAlt).toString()} />
+        <Rect x={0} y={0} width={CHART_W} height={14} rx={7} fill={palette.track} />
         {activeW > 0 && (
           <Rect x={0} y={0} width={activeW} height={14} rx={7} fill={accent} />
         )}
-        <SvgText x={0} y={34} fontSize={11} fill={accent}>
+        <SvgText fontFamily={FontFamily.interMedium} x={0} y={34} fontSize={11} fill={accent}>
           Ativo {formatSeconds(activeSec)}
         </SvgText>
-        <SvgText x={CHART_W} y={34} textAnchor="end" fontSize={11} fill={palette.muted}>
+        <SvgText fontFamily={FontFamily.interMedium} x={CHART_W} y={34} textAnchor="end" fontSize={11} fill={palette.muted}>
           Ocioso {formatSeconds(idleSec)}
         </SvgText>
       </Svg>
@@ -421,14 +502,14 @@ function TimeDistributionBars({
         const y = idx * (BAR_H + GAP);
         return (
           <React.Fragment key={idx}>
-            <SvgText x={0} y={y + BAR_H - 2} fontSize={11} fill={palette.muted}>
+            <SvgText fontFamily={FontFamily.interMedium} x={0} y={y + BAR_H - 2} fontSize={11} fill={palette.muted}>
               {label}
             </SvgText>
-            <Rect x={LABEL_W} y={y} width={BAR_AREA} height={BAR_H} rx={4} fill={tinycolor(palette.cardAlt).toString()} />
+            <Rect x={LABEL_W} y={y} width={BAR_AREA} height={BAR_H} rx={4} fill={palette.track} />
             {barW > 0 && (
               <Rect x={LABEL_W} y={y} width={barW} height={BAR_H} rx={4} fill={color} />
             )}
-            <SvgText x={LABEL_W + barW + 6} y={y + BAR_H - 2} fontSize={11} fill={palette.text}>
+            <SvgText fontFamily={FontFamily.interMedium} x={LABEL_W + barW + 6} y={y + BAR_H - 2} fontSize={11} fill={palette.text}>
               {formatSeconds(value)}
             </SvgText>
           </React.Fragment>
@@ -494,12 +575,14 @@ function RadarChart({
   const larga = useMetricasLargas();
   const N = axes.length;
   if (N < 3) return null;
-  const SIZE = 300;
+  // Celular: cabe no cartão de 360 px (área útil ~298) e mostra o valor de cada eixo,
+  // como o protótipo, numa segunda linha para os nomes longos não saírem do quadro.
+  const SIZE = larga ? 300 : 244;
   // Com o valor junto do rótulo, os eixos dos lados precisam de mais espaço na horizontal.
-  const LARGURA = larga ? 400 : SIZE;
+  const LARGURA = larga ? 400 : 296;
   const cx = LARGURA / 2;
   const cy = SIZE / 2;
-  const R = 84;
+  const R = larga ? 84 : 70;
   const allZero = axes.every((a) => a.value === 0);
 
   return (
@@ -549,7 +632,7 @@ function RadarChart({
             stroke={palette.border}
             strokeWidth={1}
           />
-          <SvgText
+          <SvgText fontFamily={FontFamily.interMedium}
             x={cx}
             y={cy + 5}
             textAnchor="middle"
@@ -589,17 +672,34 @@ function RadarChart({
         const ly = cy + (R + 14) * Math.sin(angle);
         const cosA = Math.cos(angle);
         const anchor = cosA > 0.2 ? "start" : cosA < -0.2 ? "end" : "middle";
+        if (!larga) {
+          const sinA = Math.sin(angle);
+          const xc = cx + (R + 10) * cosA;
+          const yc = cy + (R + 10) * sinA;
+          // Topo: as duas linhas acima da ponta; base: abaixo; lados: centradas na ponta.
+          const yNome = sinA < -0.5 ? yc - 10 : sinA > 0.5 ? yc + 8 : yc - 1;
+          return (
+            <React.Fragment key={i}>
+              <SvgText x={xc} y={yNome} textAnchor={anchor} fontSize={10.5} fontFamily={FontFamily.interMedium} fill={palette.muted}>
+                {a.label}
+              </SvgText>
+              <SvgText x={xc} y={yNome + 13} textAnchor={anchor} fontSize={11} fontWeight="700" fontFamily={FontFamily.interMedium} fill={palette.text}>
+                {Math.round(Math.max(0, Math.min(100, a.value)))}
+              </SvgText>
+            </React.Fragment>
+          );
+        }
         return (
           <SvgText
             key={i}
             x={lx}
             y={ly + 4}
             textAnchor={anchor}
-            fontSize={larga ? 12 : 10}
-            fontFamily={larga ? FontFamily.interMedium : undefined}
-            fill={larga ? palette.text : palette.muted}
+            fontSize={12}
+            fontFamily={FontFamily.interMedium}
+            fill={palette.text}
           >
-            {larga ? `${a.label} ${Math.round(Math.max(0, Math.min(100, a.value)))}` : a.label}
+            {`${a.label} ${Math.round(Math.max(0, Math.min(100, a.value)))}`}
           </SvgText>
         );
       })}
@@ -643,7 +743,7 @@ function WeeklyBars({ data, accent, palette }: { data: number[]; accent: string;
                 opacity={0.9}
               />
             )}
-            <SvgText
+            <SvgText fontFamily={FontFamily.interMedium}
               x={bx + barW / 2}
               y={CHART_H - 2}
               textAnchor="middle"
@@ -707,7 +807,7 @@ function ConcentricRings({
             />
           )}
           {/* Percentage label */}
-          <SvgText
+          <SvgText fontFamily={FontFamily.interMedium}
             x={cx + r * Math.cos(0)}
             y={cy + 4}
             textAnchor="middle"
@@ -723,7 +823,7 @@ function ConcentricRings({
         const lx = cx;
         const ly = cy - r - 8;
         return (
-          <SvgText key={idx} x={lx} y={ly} textAnchor="middle" fontSize={9} fill={color}>
+          <SvgText fontFamily={FontFamily.interMedium} key={idx} x={lx} y={ly} textAnchor="middle" fontSize={9} fill={color}>
             {label}
           </SvgText>
         );
@@ -756,7 +856,7 @@ function DiscoveryRadial({
       <Svg width={SIZE} height={SIZE}>
         <Circle cx={cx} cy={cy} r={RO} fill="none" stroke={palette.border} strokeWidth={2} strokeDasharray="6 4" />
         <Circle cx={cx} cy={cy} r={RI} fill={palette.card} stroke={accent} strokeWidth={1.5} />
-        <SvgText x={cx} y={cy + 5} textAnchor="middle" fontSize={22} fill={palette.muted}>
+        <SvgText fontFamily={FontFamily.interMedium} x={cx} y={cy + 5} textAnchor="middle" fontSize={22} fill={palette.muted}>
           ?
         </SvgText>
       </Svg>
@@ -790,17 +890,17 @@ function DiscoveryRadial({
           <Path
             key={i}
             d={sectorPath(i, isFilled)}
-            fill={isFilled ? tinycolor(accent).setAlpha(0.7).toRgbString() : palette.cardAlt}
+            fill={isFilled ? tinycolor(accent).setAlpha(0.7).toRgbString() : palette.track}
             stroke={tinycolor(palette.border).setAlpha(0.5).toRgbString()}
             strokeWidth={1}
           />
         );
       })}
       <Circle cx={cx} cy={cy} r={RI - 2} fill={palette.card} stroke={accent} strokeWidth={1.5} />
-      <SvgText x={cx} y={cy - 5} textAnchor="middle" fontSize={13} fill={palette.text}>
+      <SvgText fontFamily={FontFamily.interMedium} x={cx} y={cy - 5} textAnchor="middle" fontSize={13} fill={palette.text}>
         {Math.min(discovered, N)}/{N}
       </SvgText>
-      <SvgText x={cx} y={cy + 12} textAnchor="middle" fontSize={9} fill={palette.muted}>
+      <SvgText fontFamily={FontFamily.interMedium} x={cx} y={cy + 12} textAnchor="middle" fontSize={9} fill={palette.muted}>
         tópicos
       </SvgText>
     </Svg>
@@ -834,16 +934,16 @@ function PresenceGrid({ data, accent, palette }: { data: number[]; accent: strin
               cx={dotCx}
               cy={dotCy}
               r={dotR}
-              fill={hasActivity ? tinycolor(accent).setAlpha(opacity).toRgbString() : palette.cardAlt}
+              fill={hasActivity ? tinycolor(accent).setAlpha(opacity).toRgbString() : palette.track}
               stroke={hasActivity ? accent : palette.border}
               strokeWidth={hasActivity ? 0 : 1}
             />
             {count > 0 && (
-              <SvgText x={dotCx} y={dotCy + 4} textAnchor="middle" fontSize={9} fill={palette.text}>
+              <SvgText fontFamily={FontFamily.interMedium} x={dotCx} y={dotCy + 4} textAnchor="middle" fontSize={9} fill={palette.text}>
                 {count}
               </SvgText>
             )}
-            <SvgText x={dotCx} y={dotCy + dotR + 16} textAnchor="middle" fontSize={9} fill={palette.muted}>
+            <SvgText fontFamily={FontFamily.interMedium} x={dotCx} y={dotCy + dotR + 16} textAnchor="middle" fontSize={9} fill={palette.muted}>
               {dayLabels[i]}
             </SvgText>
           </React.Fragment>
@@ -889,14 +989,14 @@ function TopicBarChart({
         const y = idx * (BAR_H + GAP);
         return (
           <React.Fragment key={idx}>
-            <SvgText x={0} y={y + BAR_H - 3} fontSize={11} fill={palette.muted}>
+            <SvgText fontFamily={FontFamily.interMedium} x={0} y={y + BAR_H - 3} fontSize={11} fill={palette.muted}>
               {label}
             </SvgText>
-            <Rect x={LABEL_W} y={y} width={BAR_AREA} height={BAR_H} rx={4} fill={tinycolor(palette.cardAlt).toString()} />
+            <Rect x={LABEL_W} y={y} width={BAR_AREA} height={BAR_H} rx={4} fill={palette.track} />
             {barW > 0 && (
               <Rect x={LABEL_W} y={y} width={barW} height={BAR_H} rx={4} fill={color} />
             )}
-            <SvgText x={LABEL_W + barW + 6} y={y + BAR_H - 3} fontSize={11} fill={palette.text}>
+            <SvgText fontFamily={FontFamily.interMedium} x={LABEL_W + barW + 6} y={y + BAR_H - 3} fontSize={11} fill={palette.text}>
               {value}
             </SvgText>
           </React.Fragment>
@@ -923,7 +1023,7 @@ function AffinityBoard({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
         vm.afinidades.map((item) => (
           <ProgressLine
             key={item.id}
-            label={item.nome}
+            label={nomeDoPerfil(item.nome)}
             current={Math.round(item.afinidade)}
             total={100}
             accent={accent}
@@ -1028,12 +1128,12 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
     <View style={s.dashboard}>
       <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, larga && s.heroLargo, { borderColor: palette.border }]}>
         <DashboardThemeBadge palette={palette} accent={accent} badge={themeBadge} />
-        <Text style={[s.heroEyebrow, larga && s.eyebrowLargo, { color: larga ? accent : palette.muted }]}>{copy.eyebrow}</Text>
+        <Text style={[s.heroEyebrow, larga ? s.eyebrowLargo : s.eyebrowCelular, { color: accent }]}>{copy.eyebrow}</Text>
         <Text style={[s.heroTitle, { color: palette.text }]}>{copy.title}</Text>
         <Text style={[s.heroSubtitle, { color: palette.muted }]}>
           {vm.materiaNome ? `Classe atual: ${vm.materiaNome}. ${copy.subtitle}` : copy.subtitle}
         </Text>
-        <View style={[s.statGrid, larga && s.statGridLargo]}>
+        <View style={[s.statGrid, larga ? s.statGridLargo : s.statGridCelular]}>
           <StatTile targetRef={guideRef(guideRefs, "arena-precision")} icon="crosshairs-gps" label="Precisão" value={formatPercent(vm.acertos)} helper="desempenho nas respostas" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "arena-position")} icon="trophy-outline" label="Posição" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem rank"} helper="melhor marca na classe" palette={palette} accent={accent} />
           <StatTile
@@ -1068,18 +1168,9 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
             <SectionTitle title={copy.mission} subtitle="Visão rápida da campanha atual." icon="sword-cross" palette={palette} />
             {larga ? null : (
             <View style={s.tripleRow}>
-              <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                <Text style={[s.kpiLabel, { color: palette.muted }]}>Concluídos</Text>
-                <Text style={[s.kpiValue, { color: palette.text }]}>{vm.concluidos}</Text>
-              </View>
-              <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                <Text style={[s.kpiLabel, { color: palette.muted }]}>Em andamento</Text>
-                <Text style={[s.kpiValue, { color: palette.text }]}>{vm.emAndamento}</Text>
-              </View>
-              <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                <Text style={[s.kpiLabel, { color: palette.muted }]}>Conquistas</Text>
-                <Text style={[s.kpiValue, { color: palette.text }]}>{vm.totalConquistas}</Text>
-              </View>
+              <KpiPill label="Concluídos" value={vm.concluidos} palette={palette} />
+              <KpiPill label="Em andamento" value={vm.emAndamento} palette={palette} />
+              <KpiPill label="Conquistas" value={vm.totalConquistas} palette={palette} />
             </View>
             )}
             <ProgressLine label="Tópicos dominados" current={vm.concluidos} total={vm.totalTopicos} accent={accent} palette={palette} />
@@ -1152,12 +1243,12 @@ function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
     <View style={s.dashboard}>
       <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, larga && s.heroLargo, { borderColor: palette.border }]}>
         <DashboardThemeBadge palette={palette} accent={accent} badge={themeBadge} />
-        <Text style={[s.heroEyebrow, larga && s.eyebrowLargo, { color: larga ? accent : palette.muted }]}>CENTRO DE METAS</Text>
+        <Text style={[s.heroEyebrow, larga ? s.eyebrowLargo : s.eyebrowCelular, { color: accent }]}>CENTRO DE METAS</Text>
         <Text style={[s.heroTitle, { color: palette.text }]}>Seu avanço em marcos visíveis</Text>
         <Text style={[s.heroSubtitle, { color: palette.muted }]}>
           {vm.materiaNome ? `Classe atual: ${vm.materiaNome}. O foco aqui é transformar estudo em metas claras.` : "O foco aqui é transformar estudo em metas claras, mensuráveis e motivadoras."}
         </Text>
-        <View style={[s.statGrid, larga && s.statGridLargo]}>
+        <View style={[s.statGrid, larga ? s.statGridLargo : s.statGridCelular]}>
           <StatTile targetRef={guideRef(guideRefs, "goals-main")} icon="target" label="Meta principal" value={formatPercent(vm.progresso)} helper="progresso da trilha" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "goals-achievements")} icon="check-decagram-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="recompensas desbloqueadas" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "goals-invested-time")} icon="clock-outline" label="Tempo investido" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
@@ -1182,7 +1273,7 @@ function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
             <SectionTitle title="Checklist da jornada" subtitle="Metas que ajudam a visualizar o que já foi entregue." icon="clipboard-check-outline" palette={palette} />
             {checkpoints.map((item) => (
               <View key={item.label} style={[s.checkRow, { borderColor: palette.border }]}>
-                <View style={[s.checkIconWrap, { backgroundColor: item.done ? palette.soft : palette.cardAlt }]}>
+                <View style={[s.checkIconWrap, { backgroundColor: item.done ? palette.soft : palette.track }]}>
                   <MaterialCommunityIcons name={item.done ? "check-circle-outline" : "circle-outline"} size={18} color={item.done ? accent : palette.muted} />
                 </View>
                 <View style={s.checkTextWrap}>
@@ -1221,18 +1312,9 @@ function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
             <SectionTitle title="Próximo marco" subtitle="Uma meta por vez, com clareza do que falta." icon="flag-outline" palette={palette} />
             <Text style={[s.storyHeadline, { color: palette.text }]}>{vm.proximoMarco}</Text>
             <View style={s.tripleRow}>
-              <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                <Text style={[s.kpiLabel, { color: palette.muted }]}>Exploração</Text>
-                <Text style={[s.kpiValue, { color: palette.text }]}>{formatPercent(vm.taxaExploracao)}</Text>
-              </View>
-              <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                <Text style={[s.kpiLabel, { color: palette.muted }]}>Conteúdo</Text>
-                <Text style={[s.kpiValue, { color: palette.text }]}>{formatPercent(vm.taxaConteudo)}</Text>
-              </View>
-              <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                <Text style={[s.kpiLabel, { color: palette.muted }]}>Atividades</Text>
-                <Text style={[s.kpiValue, { color: palette.text }]}>{formatPercent(vm.taxaAtividade)}</Text>
-              </View>
+              <KpiPill label="Exploração" value={formatPercent(vm.taxaExploracao)} palette={palette} />
+              <KpiPill label="Conteúdo" value={formatPercent(vm.taxaConteudo)} palette={palette} />
+              <KpiPill label="Atividades" value={formatPercent(vm.taxaAtividade)} palette={palette} />
             </View>
           </SurfaceCard>
           <AffinityBoard vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "goals-affinity")} />
@@ -1248,14 +1330,14 @@ function MysteryDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashbo
     <View style={s.dashboard}>
       <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, larga && s.heroLargo, { borderColor: palette.border }]}>
         <DashboardThemeBadge palette={palette} accent={accent} badge={themeBadge} />
-        <Text style={[s.heroEyebrow, larga && s.eyebrowLargo, { color: larga ? accent : palette.muted }]}>DOSSIÊ DE EXPLORAÇÃO</Text>
+        <Text style={[s.heroEyebrow, larga ? s.eyebrowLargo : s.eyebrowCelular, { color: accent }]}>DOSSIÊ DE EXPLORAÇÃO</Text>
         <Text style={[s.heroTitle, { color: palette.text }]}>Cada métrica vira uma pista da jornada</Text>
         <Text style={[s.heroSubtitle, { color: palette.muted }]}>
           {vm.materiaNome
             ? `Classe atual: ${vm.materiaNome}. O painel mostra o quanto do território acadêmico você já descobriu.`
             : "O painel mostra o quanto do território acadêmico você já descobriu e o que ainda está oculto."}
         </Text>
-        <View style={[s.statGrid, larga && s.statGridLargo]}>
+        <View style={[s.statGrid, larga ? s.statGridLargo : s.statGridCelular]}>
           <StatTile targetRef={guideRef(guideRefs, "mystery-revealed")} icon="compass-outline" label="Mapa revelado" value={formatPercent(vm.taxaExploracao)} helper={`${vm.topicosDescobertos}/${vm.totalTopicos} tópicos vistos`} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "mystery-content")} icon="book-open-page-variant-outline" label="Arquivos lidos" value={String(vm.conteudosConcluidos)} helper={`${vm.totalConteudos} no total`} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "mystery-challenges")} icon="help-circle-outline" label="Desafios resolvidos" value={String(vm.atividadesConcluidas)} helper={`${vm.totalAtividades} registrados`} palette={palette} accent={accent} />
@@ -1328,14 +1410,14 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
     <View style={s.dashboard}>
       <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, larga && s.heroLargo, { borderColor: palette.border }]}>
         <DashboardThemeBadge palette={palette} accent={accent} badge={themeBadge} />
-        <Text style={[s.heroEyebrow, larga && s.eyebrowLargo, { color: larga ? accent : palette.muted }]}>PAINEL ANALÍTICO</Text>
+        <Text style={[s.heroEyebrow, larga ? s.eyebrowLargo : s.eyebrowCelular, { color: accent }]}>PAINEL ANALÍTICO</Text>
         <Text style={[s.heroTitle, { color: palette.text }]}>Sua evolução em leitura operacional</Text>
         <Text style={[s.heroSubtitle, { color: palette.muted }]}>
           {vm.materiaNome
             ? `Classe atual: ${vm.materiaNome}. Este modo organiza tudo com foco em clareza e comparação.`
             : "Este modo organiza tudo com foco em clareza, leitura rápida e acompanhamento consistente."}
         </Text>
-        <View style={[s.statGrid, larga && s.statGridLargo]}>
+        <View style={[s.statGrid, larga ? s.statGridLargo : s.statGridCelular]}>
           <StatTile targetRef={guideRef(guideRefs, "analytics-progress")} icon="chart-donut" label="Progresso" value={formatPercent(vm.progresso)} helper={`${vm.concluidos}/${vm.totalTopicos} tópicos`} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "analytics-accuracy")} icon="target" label="Acertos" value={formatPercent(vm.acertos)} helper="média da turma atual" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "analytics-time")} icon="clock-outline" label="Tempo de estudo" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
@@ -1376,7 +1458,7 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
             {vm.afinidades.length >= 3 ? (
               <View style={s.chartCenter}>
                 <RadarChart
-                  axes={vm.afinidades.map((a) => ({ label: a.nome, value: a.afinidade }))}
+                  axes={vm.afinidades.map((a) => ({ label: nomeDoPerfil(a.nome), value: a.afinidade }))}
                   accent={accent}
                   palette={palette}
                   glowStyle="plain"
@@ -1388,7 +1470,7 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
               vm.afinidades.map((item) => (
                 <ProgressLine
                   key={item.id}
-                  label={item.nome}
+                  label={nomeDoPerfil(item.nome)}
                   current={Math.round(item.afinidade)}
                   total={100}
                   accent={accent}
@@ -1400,14 +1482,8 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "analytics-recent")}>
             <SectionTitle title="Engajamento recente" subtitle="Recorte dos últimos registros do aluno." icon="pulse" palette={palette} />
             <View style={s.doubleRow}>
-              <View style={[s.metricPanel, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                <Text style={[s.kpiLabel, { color: palette.muted }]}>Dias ativos</Text>
-                <Text style={[s.kpiValue, { color: palette.text }]}>{vm.diasAtivos}</Text>
-              </View>
-              <View style={[s.metricPanel, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                <Text style={[s.kpiLabel, { color: palette.muted }]}>Últimos 7 dias</Text>
-                <Text style={[s.kpiValue, { color: palette.text }]}>{vm.eventosRecentes}</Text>
-              </View>
+              <KpiPill painel label="Dias ativos" value={vm.diasAtivos} palette={palette} />
+              <KpiPill painel label="Últimos 7 dias" value={vm.eventosRecentes} palette={palette} />
             </View>
             <Text style={[s.sectionSubtitle, { color: palette.muted }]}>Último registro: {formatLastEvent(vm.ultimoEvento)}</Text>
           </SurfaceCard>
@@ -1419,14 +1495,8 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
                 <TimeDistributionBars tempoTopico={vm.tempoTopico} tempoConteudo={vm.tempoConteudo} tempoAtividade={vm.tempoAtividade} accent={accent} palette={palette} />
               </View>
               <View style={s.doubleRow}>
-                <View style={[s.metricPanel, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                  <Text style={[s.kpiLabel, { color: palette.muted }]}>Interações</Text>
-                  <Text style={[s.kpiValue, { color: palette.text }]}>{vm.touchTotal}</Text>
-                </View>
-                <View style={[s.metricPanel, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}>
-                  <Text style={[s.kpiLabel, { color: palette.muted }]}>Engajamento</Text>
-                  <Text style={[s.kpiValue, { color: palette.text }]}>{Math.round(vm.sessionEngajamento)}%</Text>
-                </View>
+                <KpiPill painel label="Interações" value={vm.touchTotal} palette={palette} />
+                <KpiPill painel label="Engajamento" value={`${Math.round(vm.sessionEngajamento)}%`} palette={palette} />
               </View>
             </SurfaceCard>
           )}
@@ -1443,14 +1513,14 @@ function SquadDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
     <View style={s.dashboard}>
       <LinearGradient colors={[palette.heroTop, palette.heroBottom]} style={[s.heroCard, larga && s.heroLargo, { borderColor: palette.border }]}>
         <DashboardThemeBadge palette={palette} accent={accent} badge={themeBadge} />
-        <Text style={[s.heroEyebrow, larga && s.eyebrowLargo, { color: larga ? accent : palette.muted }]}>SALA DO SQUAD</Text>
+        <Text style={[s.heroEyebrow, larga ? s.eyebrowLargo : s.eyebrowCelular, { color: accent }]}>SALA DO SQUAD</Text>
         <Text style={[s.heroTitle, { color: palette.text }]}>Seu ritmo visto como presença e energia</Text>
         <Text style={[s.heroSubtitle, { color: palette.muted }]}>
           {vm.materiaNome
             ? `Classe atual: ${vm.materiaNome}. O foco é mostrar como você aparece, participa e cresce ao longo da trilha.`
             : "O foco é mostrar como você aparece, participa e cresce ao longo da trilha."}
         </Text>
-        <View style={[s.statGrid, larga && s.statGridLargo]}>
+        <View style={[s.statGrid, larga ? s.statGridLargo : s.statGridCelular]}>
           <StatTile targetRef={guideRef(guideRefs, "squad-presence-hero")} icon="account-group-outline" label="Presença" value={`${vm.diasAtivos} dias`} helper={vm.presencaResumo} palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "squad-ranking")} icon="podium" label="Ranking" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem posição"} helper="melhor colocação" palette={palette} accent={accent} />
           <StatTile targetRef={guideRef(guideRefs, "squad-achievements")} icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="emblemas e marcos" palette={palette} accent={accent} />
@@ -1474,9 +1544,9 @@ function SquadDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "squad-energy")}>
             <SectionTitle title="Energia do grupo" subtitle="Indicadores que valorizam presença e constância." icon="star-circle-outline" palette={palette} />
             <View style={s.tripleRow}>
-              <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}><Text style={[s.kpiLabel, { color: palette.muted }]}>Progresso</Text><Text style={[s.kpiValue, { color: palette.text }]}>{formatPercent(vm.progresso)}</Text></View>
-              <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}><Text style={[s.kpiLabel, { color: palette.muted }]}>Acertos</Text><Text style={[s.kpiValue, { color: palette.text }]}>{formatPercent(vm.acertos)}</Text></View>
-              <View style={[s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]}><Text style={[s.kpiLabel, { color: palette.muted }]}>Tempo</Text><Text style={[s.kpiValue, { color: palette.text }]}>{formatMinutes(vm.tempo)}</Text></View>
+              <KpiPill label="Progresso" value={formatPercent(vm.progresso)} palette={palette} />
+              <KpiPill label="Acertos" value={formatPercent(vm.acertos)} palette={palette} />
+              <KpiPill label="Tempo" value={formatMinutes(vm.tempo)} palette={palette} />
             </View>
             <Text style={[s.storyBody, { color: palette.muted }]}>
               Último pulso registrado em {formatLastEvent(vm.ultimoEvento)}. O painel valoriza continuidade e visibilidade dentro da turma.
@@ -1531,7 +1601,7 @@ export function ProfileMetricsViews({
 }) {
   const hexConfig = getBrainHexConfig(profile);
   const accent = buildProfileShellPaletteFromAccent(hexConfig.color).accent;
-  const palette = useMemo(() => buildPalette(hexConfig.color), [hexConfig.color]);
+  const palette = useMemo(() => buildPalette(hexConfig.color, larga), [hexConfig.color, larga]);
   const themeOption = getMetricsThemeOption(theme);
 
   return (
@@ -1630,21 +1700,36 @@ const s = StyleSheet.create({
     paddingVertical: 8,
     marginBottom: 10,
   },
-  heroCard: { paddingVertical: 20, paddingHorizontal: 4, borderBottomWidth: 1, overflow: "hidden" },
+  // Celular (mobile-v1, 08-perfil-hub): `.cartao` = raio 14, borda de 1 px, 14 × 16 de respiro.
+  // A tela larga sobrepõe raio e respiro com `heroLargo`.
+  heroCard: { borderRadius: 14, borderWidth: 1, paddingVertical: 14, paddingHorizontal: 16, overflow: "hidden" },
   heroEyebrow: { fontFamily: FontFamily.interMedium, fontSize: 11, letterSpacing: 0, marginBottom: 8 },
+  eyebrowCelular: { fontWeight: "700", letterSpacing: 1.1 },
+  selo: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 10 },
+  seloTexto: { fontFamily: FontFamily.interMedium, fontSize: 11.5, fontWeight: "700" },
   heroTitle: { fontFamily: FontFamily.inikaBold, fontSize: 22, marginBottom: 6 },
   heroSubtitle: { fontFamily: FontFamily.interMedium, fontSize: 13, lineHeight: 20, marginBottom: 14 },
   statGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  statGridCelular: { justifyContent: "flex-start", gap: 8 },
+  // `.kpi` do protótipo: duas colunas, ícone ao lado, fundo do app a 55%.
+  kpiCelular: { flexBasis: "45%", flexGrow: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10 },
+  kpiCelularTexto: { flex: 1, minWidth: 0 },
+  kpiCelularRotulo: { fontFamily: FontFamily.interMedium, fontSize: 11.5, lineHeight: 15 },
+  kpiCelularValor: { fontFamily: FontFamily.interMedium, fontWeight: "700", fontSize: 16, lineHeight: 21 },
+  kpiCelularAjuda: { fontFamily: FontFamily.interMedium, fontSize: 11, lineHeight: 14, marginTop: 1 },
   statTile: { width: "48.3%", borderRadius: 6, padding: 14, marginBottom: 10, borderWidth: 1 },
   statIconWrap: { width: 34, height: 34, borderRadius: 6, alignItems: "center", justifyContent: "center", marginBottom: 10 },
   statLabel: { fontFamily: FontFamily.interMedium, fontSize: 12, marginBottom: 4 },
   statValue: { fontFamily: FontFamily.inikaBold, fontSize: 20, marginBottom: 4 },
   statValueLargo: { fontFamily: FontFamily.interMedium, fontWeight: "700", fontSize: 24 },
   statHelper: { fontFamily: FontFamily.interMedium, fontSize: 11, lineHeight: 16 },
-  surfaceCard: { paddingVertical: 20, paddingHorizontal: 4, borderBottomWidth: 1 },
+  surfaceCard: { borderRadius: 14, borderWidth: 1, paddingVertical: 14, paddingHorizontal: 16 },
+  tituloCelularWrap: { marginBottom: 12 },
+  tituloCelularLinha: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tituloCelular: { flex: 1, fontFamily: FontFamily.interMedium, fontWeight: "700", fontSize: 16 },
+  subtituloCelular: { fontFamily: FontFamily.interMedium, fontSize: 12.5, lineHeight: 18, marginTop: 4 },
   sectionTitleWrap: { marginBottom: 14 },
   sectionTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
-  sectionIconWrap: { width: 28, height: 28, borderRadius: 14, alignItems: "center", justifyContent: "center", marginRight: 10 },
   sectionTitle: { fontFamily: FontFamily.inikaBold, fontSize: 16 },
   sectionTitleLargo: { fontFamily: FontFamily.interMedium, fontWeight: "700" },
   sectionSubtitle: { fontFamily: FontFamily.interMedium, fontSize: 12, lineHeight: 18 },
@@ -1654,15 +1739,27 @@ const s = StyleSheet.create({
   metricPanel: { flex: 1, minWidth: 0, borderRadius: 6, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 14 },
   kpiLabel: { fontFamily: FontFamily.interMedium, fontSize: 11, marginBottom: 4 },
   kpiValue: { fontFamily: FontFamily.inikaBold, fontSize: 18 },
+  kpiValueCelular: { fontFamily: FontFamily.interMedium, fontWeight: "700", fontSize: 16 },
   progressLine: { marginBottom: 14 },
   progressLineHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
   progressLineLabel: { fontFamily: FontFamily.interMedium, fontSize: 13 },
   progressLineValue: { fontFamily: FontFamily.interMedium, fontSize: 12 },
   progressTrack: { height: 8, borderRadius: 2, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" },
   progressFill: { height: "100%", borderRadius: 1 },
+  // `.linha-b` + `.barra` do protótipo.
+  linhaCelular: { marginBottom: 10 },
+  linhaCelularTopo: { marginBottom: 5 },
+  linhaCelularRotulo: { fontSize: 13.5 },
+  linhaCelularValor: { fontSize: 13.5, fontWeight: "700" },
+  barraCelular: { height: 6, borderRadius: 999, borderWidth: 1 },
+  barraCelularFill: { borderRadius: 999 },
   chipRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: 10 },
   chip: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, marginRight: 8, marginBottom: 8 },
   chipText: { marginLeft: 8, fontFamily: FontFamily.interMedium, fontSize: 12 },
+  chipCelular: { paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, marginRight: 6, marginBottom: 6 },
+  chipTextCelular: { marginLeft: 5, fontSize: 11.5, fontWeight: "600" },
+  chipTextCelularSolto: { fontSize: 11.5, fontWeight: "600" },
+  resumoCelular: { fontSize: 14, lineHeight: 21 },
   actionsWrap: { flexDirection: "row", flexWrap: "wrap", marginTop: 10 },
   actionPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, borderWidth: 1, marginRight: 8, marginBottom: 8 },
   actionText: { fontFamily: FontFamily.interMedium, fontSize: 11 },
@@ -1670,6 +1767,11 @@ const s = StyleSheet.create({
   analysisBox: { borderRadius: 6, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12 },
   analysisBoxTitle: { fontFamily: FontFamily.inikaBold, fontSize: 13, marginBottom: 6 },
   analysisBoxItem: { fontFamily: FontFamily.interMedium, fontSize: 12, lineHeight: 18, marginBottom: 4 },
+  // `.caixa` do protótipo: sem borda, raio 10; a de aviso ganha a faixa amarela à esquerda.
+  caixaCelular: { borderWidth: 0, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  caixaAviso: { borderLeftWidth: 3 },
+  caixaTitulo: { fontFamily: FontFamily.interMedium, fontWeight: "700", marginBottom: 4 },
+  caixaItem: { fontSize: 13.5, lineHeight: 20, marginBottom: 2 },
   emptyIconWrap: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center", marginBottom: 12 },
   emptyTitle: { fontFamily: FontFamily.inikaBold, fontSize: 17, marginBottom: 8 },
   emptyText: { fontFamily: FontFamily.interMedium, fontSize: 13, lineHeight: 20 },
