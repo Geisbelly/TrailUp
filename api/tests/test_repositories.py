@@ -769,6 +769,8 @@ async def test_context_repository_builds_initial_state_context() -> None:
     assert context["aluno"]["nome"] == "Aluno"
     assert context["perfil_brainhex"][0]["perfil"] == "Achiever"
     assert context["progresso_trilha"]["1"]["percentual_concluido"] == 40
+    # Banco sem `atividade_tentativas` (a sessão falsa não responde à checagem): sem dado, sem erro.
+    assert context["desempenho_recente"]["tentativas"] == {}
 
 
 @pytest.mark.asyncio

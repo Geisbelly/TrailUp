@@ -423,11 +423,26 @@ export async function fetchAdequacaoGrupo(
 
 // ── Sugestao de material por aluno ────────────────────────────────────────────
 
+/**
+ * Por que um formato esta onde esta (#66): a regra do catalogo
+ * (`api/app/services/evidencias_pedagogicas.py`) e os numeros do aluno que a
+ * decisao viu. `confianca` = `forte` | `moderada` | `hipotese` | `dado_do_aluno`.
+ */
+export type SugestaoEvidencia = {
+  regra: string;
+  enunciado: string;
+  fontes: string[];
+  confianca: string;
+  dados: Record<string, unknown>;
+};
+
 export type SugestaoMaterialItem = {
   formato: string;
   posicao: number;
   score: number;
   motivos: string[];
+  /** Ausente em sugestao gravada antes da #66. */
+  evidencias?: SugestaoEvidencia[];
 };
 
 export type SugestaoMaterial = {
@@ -450,6 +465,8 @@ export type SugestaoHistoricoItem = {
   seguiu_inicio: boolean | null;
   desempenho: number | null;
   desempenho_posterior: number | null;
+  /** Versao do catalogo de regras que justificou a decisao; null antes da #66. */
+  catalogo_versao?: string | null;
 };
 
 export type SugestaoEfetividade = {

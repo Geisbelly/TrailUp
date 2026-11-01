@@ -48,11 +48,11 @@ class NotificacaoRepository:
                     """
                     INSERT INTO notificacoes_ia (
                       aluno_id, tipo, contexto, titulo, corpo,
-                      resposta_hash, status, origem, prioridade
+                      resposta_hash, status, origem, prioridade, horario_sugerido
                     )
                     VALUES (
                       :aluno_id, :tipo, CAST(:contexto AS JSONB), :titulo, :corpo,
-                      :resposta_hash, 'sugerida', 'ciclo', :prioridade
+                      :resposta_hash, 'sugerida', 'ciclo', :prioridade, :horario_sugerido
                     )
                     ON CONFLICT (resposta_hash) WHERE resposta_hash IS NOT NULL
                     DO NOTHING
@@ -67,6 +67,11 @@ class NotificacaoRepository:
                     "corpo": payload.corpo,
                     "prioridade": payload.prioridade,
                     "resposta_hash": f"{aluno_id}:{payload.tipo}:{payload.horario.isoformat()}",
+                    # Antes o horário só entrava no hash e o banco promovia com
+                    # `now()` (medido: entregue às 00:34). Quem decide de fato é
+                    # `notificacoes_ia_promover` (20261102_01): suporte sai logo,
+                    # lembrete vai para o horário habitual do aluno se houver.
+                    "horario_sugerido": payload.horario,
                 },
             )
         ).scalar()

@@ -1,6 +1,6 @@
 ---
 tags: [moc, trailup, tcc]
-updated: 2026-10-13
+updated: 2026-11-01
 ---
 
 # TrailUp — Segundo Cérebro (TCC)
@@ -24,7 +24,7 @@ Mapa de conteúdo (MOC) do vault Obsidian do TCC TrailUp de **Geisbelly Victóri
 | [[07-Parceiros/bots\|Parceiros / bots]] | Hub bots (Testes, Sync, Validação, Alertas, …) |
 | [[08-Infra-Supabase/supabase-traiup\|Infra Supabase]] | TraiUp Free (sem secrets no vault) |
 | [[09-Testes-Reflect/reflect-local\|Testes Reflect]] | Docker local only (:8080/:8000/:3000) |
-| [[10-Incidentes/perda-dados-console-2026-10-01\|Incidentes]] | Wipe console ~16:40 BRT 01/10 |
+| [[10-Incidentes/README\|Incidentes]] | Wipe do console (01/10) · API em 502 por migration (01/11) |
 | [[05-PRs-Repos/pr-124-sync-espelho\|PR #124 sync]] | Lab → espelho merged |
 | [[CHANGELOG-vault\|CHANGELOG vault]] | Entradas de hoje |
 | [[RELATORIO-INVENTARIO\|Relatório de inventário]] | Existe vs gaps |
@@ -53,9 +53,10 @@ Pasta documentação: [Drive root](https://drive.google.com/drive/folders/1-hMe8
 - Inventário Drive: ✅ (2026-10-01 ~18:40 America/Sao_Paulo)
 - Skeleton Obsidian: ✅
 - Plano de capítulos: ✅ (espelha Monografia TrailUp.docx)
-- **Sync BitStudioLabs/trail-up `main`:** ✅ (2026-10-13 ~13:25 America/Sao_Paulo) — SHA `b5491b02` (#413; delta 99 commits desde `b7e74cdd`) → [[05-PRs-Repos/ultimo-sync-main]]
+- **Sync BitStudioLabs/trail-up `main`:** ✅ (2026-11-01) — SHA `11aa1c65` (#763; delta de 305 commits desde `b5491b02`) → [[05-PRs-Repos/ultimo-sync-main]]
 - Pastas **08 Infra / 09 Reflect / 10 Incidentes** + CHANGELOG: ✅ (2026-10-01 ~20:15 America/Sao_Paulo)
 - Incidente dados console: documentado → [[10-Incidentes/perda-dados-console-2026-10-01]]
+- Incidente API em 502 por migration (01/11): documentado → [[10-Incidentes/api-fora-por-migration-2026-11-01]]
 
 ## Espelho Drive (escrita)
 

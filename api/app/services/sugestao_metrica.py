@@ -318,6 +318,9 @@ def montar_registros_do_log(
                     "desempenho_posterior": (
                         desempenhos[indice + 1] if indice + 1 < len(desempenhos) else None
                     ),
+                    # Registro anterior à #66 não tem: a decisão foi justificada
+                    # sem catálogo, e None diz isso melhor que uma versão inventada.
+                    "catalogo_versao": evidencia.get("catalogo_versao"),
                 }
             )
 

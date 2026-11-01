@@ -38,6 +38,7 @@ def build_graph(
         "agente_intervencao",
         partial(nodes.agente_intervencao, settings=settings, session_factory=session_factory),
     )
+    graph.add_node("agente_cronometro", nodes.agente_cronometro)
     graph.add_node("agente_ui", partial(nodes.agente_ui, settings=settings))
     graph.add_node("agente_texto", partial(nodes.agente_texto, settings=settings))
     graph.add_node("persist_personalizacao", partial(nodes.persist_personalizacao, session_factory=session_factory, settings=settings))
@@ -58,6 +59,7 @@ def build_graph(
             "agente_midias_personalizadas": "agente_midias_personalizadas",
             "agente_notificacao": "agente_notificacao",
             "agente_intervencao": "agente_intervencao",
+            "agente_cronometro": "agente_cronometro",
             "agente_ui": "agente_ui",
             "agente_texto": "agente_texto",
             "persist_personalizacao": "persist_personalizacao",

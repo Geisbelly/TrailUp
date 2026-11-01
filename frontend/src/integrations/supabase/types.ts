@@ -652,6 +652,7 @@ export type Database = {
           id: number
           metadata: Json
           pontuacao_maxima: number | null
+          tentativas_max: number | null
           tipo: string | null
           titulo: string
           topico_id: number
@@ -663,6 +664,7 @@ export type Database = {
           id?: number
           metadata?: Json
           pontuacao_maxima?: number | null
+          tentativas_max?: number | null
           tipo?: string | null
           titulo: string
           topico_id: number
@@ -674,6 +676,7 @@ export type Database = {
           id?: number
           metadata?: Json
           pontuacao_maxima?: number | null
+          tentativas_max?: number | null
           tipo?: string | null
           titulo?: string
           topico_id?: number

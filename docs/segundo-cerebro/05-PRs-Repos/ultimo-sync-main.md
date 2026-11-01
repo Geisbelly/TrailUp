@@ -8,92 +8,167 @@ branch: main
 
 | Campo | Valor |
 |-------|-------|
-| **Tipo** | DELTA sync → vault TCC Obsidian |
+| **Tipo** | Atualização do vault TCC (Obsidian) com o que entrou na `main` |
 | **Repo** | [BitStudioLabs/trail-up](https://github.com/BitStudioLabs/trail-up) `main` |
-| **SHA** | `b5491b02` |
-| **Tip commit** | `feat(web): números e títulos das métricas do Perfil sem serifa, radar com valores (#346) (#413)` |
-| **Tip author date** | 2026-10-13 12:55 America/Sao_Paulo |
-| **Sync vault em** | **2026-10-13 ~13:25 America/Sao_Paulo** |
-| **Método** | `gh api` compare (conta Geisbelly). Sem cursor-github no Lab, sem clone. |
-| **Range** | `b7e74cdd…b5491b02` (ahead_by=**99**) |
-| **Espelho** | Sync TrailUp: Geisbelly/TrailUp [#127](https://github.com/Geisbelly/TrailUp/pull/127) já em Lab tip `b5491b0` (não mergear Geisbelly/*) |
+| **SHA** | `11aa1c65` |
+| **Tip commit** | `fix(api): cada perfil ganha um nome de boss próprio e as falas carregam a assinatura do perfil (#763)` |
+| **Tip author date** | 2026-11-01 |
+| **Sync vault em** | **2026-11-01** (America/Sao_Paulo) |
+| **Método** | `git log b5491b02..origin/main` num worktree da `main` |
+| **Range** | `b5491b02…11aa1c65`: **305** commits e **122** migrations novas |
+| **Alembic (main)** | cabeça única `20261101_14` (e-mail pelo Apps Script) |
+| **Espelho** | `main` do Geisbelly/TrailUp em `370b0ba3`: merge da [#205](https://github.com/Geisbelly/TrailUp/pull/205), que traz o Lab até `234d81f` (#761). **A #762 e a #763 ainda não chegaram ao espelho.** |
 
-## Changelog delta `b7e74cdd…b5491b02` (agrupado por área)
+## O que entrou entre `b5491b02` e `11aa1c65` (13/10 → 01/11), por área
 
-### IA / emoção (material para a tese)
-- **#305** estágio de emoção que olha a imagem (**FER+ local**, `api/app/services/emotion_vision.py`, integrado em `linear_analysis_pipeline.py`).
-- **#306** termo v4 no mobile descreve a análise de expressão facial; **#309** câmera **desligada por padrão** — aceitar o termo não a liga.
-- **#271** docs Jev: evidência de avaliação e limites de custo.
-- **#310** signup: instrumento BrainHex com estilo de resposta controlado (`BrainHexOrdenacaoStep`; spec perfil BrainHex probabilístico 2026-10-02).
+### Console do professor
+- **#419:** redesign V9 de Turmas, Meus dados, Rankings, Personalizações, Aprovações e Trilhas.
+  - Na mesma leva: remoção de código morto (#420–#442) e testes das funções puras (#452–#462).
+- Telas novas:
+  - **Conquistas** (#473–#482);
+  - **Notas**, com fila de correção (#483–#489, #516);
+  - **Missões** (#490–#494, #518);
+  - **Eventos**, com os painéis Durante e Resultado (#495–#496, #506–#509, #523–#528);
+  - **Rank de batalhas** (#512–#513).
+- **#703:** o assistente do professor passa a se chamar **Lumi**.
+- **Personalizações:** o card de gargalos mostra as falhas por formato (**#735**, #15).
+- **Insights:** alertas por aluno (**#737**, #64).
+- **Painel de risco de reprovação** (**#741**, #135).
+- **#747:** importar a turma e exportar notas e XP em CSV (#146).
 
-### Segurança / privacidade / RLS
-- #299 `.env.example` sem chave anon real + teste guard; #318 aluno não envia push a outro aluno; #270 OAuth Google callback derivado + PKCE.
-- #325 RLS tema do mapa; #328 trigger fns fora do REST; #337 banco recusa URL loopback em material; #338 retenção de texto livre em `ia_decision_logs` (#195); #339 consentimento de telemetria provável no servidor.
-- Docs: #302 views sem `security_invoker`/GRANT; #327 tabela nova nasce com RLS; #342 anônimo lê 3 linhas de `app_config`.
+### Gamificação: eventos, missões, ranks, modos e economia
+- Spec: `docs/superpowers/specs/2026-10-19-eventos-missoes-ranks-modos-design.md`.
+- **#544:** economia completa, com configuração do professor, compra, uso de itens na trilha e auditoria.
+- Fases 1 a 10 (#546–#564):
+  - eixos de consequência e de dificuldade;
+  - missões como entidade própria;
+  - um avaliador só para conquista e missão;
+  - missão diária determinística por coorte, com o texto reescrito pelo Gemini (#553);
+  - aposta e piso nos eventos;
+  - o desafio fecha e paga;
+  - composição solo, dupla, guilda e turma;
+  - tela de jogo.
+- **#567:** escopo e aprovação da missão.
+- **#568:** ranking com período manual.
+- **#569:** janela de formação de guildas.
+- **#570/#571:** a arena volta, com Elo.
+- **#639:** o evento abre e encerra sozinho no horário, pelo pg_cron (#141).
+- **#634/#637/#726/#731:** pontos e guildas em evento (#153).
+- **#654/#723:** conquistas da turma (#158).
+- **#742:** fundo coletivo da turma (#144).
+- Boss:
+  - **#465/#466:** a vida passa a ser proporcional ao percurso;
+  - **#751:** segue a paleta do perfil;
+  - **#753:** sai a imagem gerada pelo Gemini;
+  - **#755/#761/#763:** nome e falas gerados por conteúdo × perfil, com nome único por perfil.
 
-### Banco / migrations (Alembic)
-- 12 migrations novas `20261002_02` … `20261003_10` (social/provisionar sem grant, item personalizado, medida BrainHex, RLS mapa, realtime, trigger ACL, índices duplicados #330, contato versionado #336, URL local, retenção, consentimento).
-- #308 advisory lock serializa migrações entre instâncias; #326 realtime publica tabelas assinadas.
+### Métricas (F0–F5, #12) e risco
+Spec em `docs/superpowers/specs/2026-10-28-metricas-ponta-a-ponta-design.md`; planos em `docs/superpowers/plans/2026-10-2*-f*.md`.
 
-### Console professor
-- #301 fallback de URL de material; #304 contagem de alunos por perfil (não mais 0); #307 presença + tempo ativo; #334 duplicar turma sem cópia parcial.
+- **F0 (#701):** medir antes de mexer: por onde o lote chegou (`via`), catálogo e invariantes diárias.
+- **F1 (#704):** o ranking sai só do banco.
+- **F2 (#707/#709):** o banco fecha a sessão de telemetria.
+- **F3 (#712):** o banco enfileira a análise de todo lote (`telemetria_analise_fila`) e a API consome a fila.
+- **F4a (#714):** tempo de estudo é o tempo ativo, e só um lugar o calcula.
+- **F5 (#727–#729):** views versionadas; no console, KPIs nos quatro estados e abandono por etapa. A #12 foi fechada em 01/11.
+- **Modelo de evasão:** #738/#739. Com a **#752**, só julga quem tem atividade avaliável ao alcance.
+- **Risco de reprovação por aluno:** #740/#741 (#135).
+- **Nota média da matrícula:** o banco passa a calcular (#750/#756/#757, `20261101_10`), e quem tem nota NULL sai da faixa "baixa".
 
-### Regras de jogo / API
-- #321 prazo não vence um dia antes e aluno o vê; #322 pontos não pagos N vezes; #323 telemetria: lote ruim não trava fila; #324 reaplica pilha da issue #1 (signup); #341 API sobe no Windows (`run_api.py`).
+### LGPD e segurança (#195)
+- Falhas de SECURITY DEFINER e de RLS corrigidas (#532, #533, #538, #539), com portões no CI que as pegam (#534, #535).
+- **#576:** cadastro em uma etapa, sem o oráculo de enumeração de e-mail (#329).
+- **#591/#593:** as conversas do aluno saem do log e são cifradas em repouso.
+- **#613:** consentimento do responsável e modo restrito.
+- **#616:** janelas de retenção e expurgo agendado.
+- **#618/#619:** dados mínimos nos prompts; menor de 18 anos só usa a OpenAI (`store=false`), nunca o Gemini.
+- **#621:** registro de transferências e Política de Privacidade.
+- **#622/#624:** exclusão da conta de professor e aviso de inatividade por e-mail.
+- **#631:** buckets privados e ciclo do R2.
+- **#762:** o e-mail sai do banco por um Google Apps Script, no lugar da Brevo (`20261101_14`). A #172 foi fechada.
 
-### Web do aluno (redesign “tela larga”, protótipo v4) — ~60 PRs #346–#413
-- Moldura desktop (#347), protótipos v1–v4 (#348); Notificações, Ranking, Configurações, Trilha (mapa de países, Cinzel), Loja/Bag, Perfil, Tutorial, Social/chats, Login/recuperar senha, Tópico/confronto, modal de conquista, radar de métricas (#359–#413). Fix #405 restaura `SecaoConfigDesktop`.
+### IA, RAG e personalização
+- **#612:** o mentor faz RAG no OpenAI Vector Store (ADR 0002, #166/#165).
+- **#638:** a busca do `file_search` fica registrada em `ia_decision_logs`, sem o texto.
+- **#614/#615/#617:** BrainHex com limites científicos explícitos (#1).
+- **#710:** "personalização por perfil não é estilo de aprendizagem".
+- **#711:** avaliação dos 47 documentos da Evidence Base (#218).
+- **#736:** nó de intervenção para estado negativo recorrente; `memoria_aluno` volta a chegar ao grafo (#64).
+- **#744:** notificação por aluno e perfil BrainHex, com RAG e LLM (#66).
+- **#758:** quando o professor altera um item que o aluno já viu, a mudança é destacada e avisada, e a IA decide quem revisa.
+- Mídia (#652):
+  - **#587:** o motivo da falha aparece;
+  - **#700:** o worker pode ficar restrito a turmas;
+  - **#718:** "Reprocessar falhas" só reprocessa os perfis que falharam;
+  - **#732:** o escopo do "Reprocessar falhas" fica documentado;
+  - **#733:** o retry volta a chamar o microservice.
+  - **A falha de áudio e apresentação continua aberta.**
 
-### CI / testes / qualidade
-- #303/#340 CI da main não é cancelado/perdido em merges sequenciais; #294 mobile roda testes (+24 órfãos); #332 13 erros de tipo + gate; #333 brainhexpdf no CI; #344 manifestos de teste mobile; #296 tipos Supabase regenerados; #293 microservice sem crypto.
+### Mobile
+- **#579:** sai o `expo-av`; entram o `expo-audio` e o `expo-video` (#25).
+- **#642, #687, #691–#698, #702:** protótipo mobile-v1 aplicado no app.
+- **#720:** trocar de turma pelo Perfil.
+- **#689:** app e console passam a chamar `https://api.trailup.promora.dev.br`, que tem certificado válido. O `*.traefik.me` usava certificado autoassinado, então todo lote caía no caminho direto.
+- **#586:** o build EAS para quando falta um `EXPO_PUBLIC_*`.
+- **#721:** o lote informa de onde veio (#96).
+- **#759/#760** (#136, fases 1 e 2):
+  - tentativas pelo relógio do servidor;
+  - cronômetro por perfil, que o aluno pode desligar;
+  - bônus de XP por terminar no tempo, e o tempo deixa de contar na nota.
 
-### Docs de sprint
-- Relatórios semanais W40 (#316) e W41 (#345) em `docs/sprint/` (HTML/PDF).
+### Web do aluno
+- Continuação do protótipo v4 em tela larga: #415, #416, #497–#504 e #508 (#594–#599).
+
+### Banco, ops e CI
+- 122 migrations, de `20261011_*` a `20261101_14`.
+- **#545:** a migração feita sob a trava passa a ser gravada.
+- **#699/#730/#757:** a cadeia do Alembic é alinhada com a produção, e a `main` volta a ter uma cabeça só.
+- **#749:** o professor volta a gravar conteúdo; faltava `GRANT EXECUTE` numa função usada em índice de expressão.
+- **#583:** o recálculo de progresso roda uma vez por comando.
+- **#640:** teste do executor do Alembic em Postgres.
+- CI: #467 e #743.
+
+### Docs, protótipos e sprint
+- **#418:** guia do professor (#147).
+- **#440:** mapa das telas do console.
+- Protótipos do app no celular (mobile-v1): #600–#610 e #641.
+- Relatórios semanais W42 (#521), W43, e W44 (#713/#716).
+- **#746:** o site no ar sai do espelho, e o sync tem de acompanhar a `main` do Lab.
+- Este vault entrou no repo pela **#542** (19/10).
 
 ## Histórico anterior
-### Delta b3a8de39…b7e74cdd (desde `b3a8de39`)
 
-1. **`b7e74cdd`** — `fix(api): lineariza Alembic — 20260930_01 após 20260929_02`
-   - Arquivo: `api/alembic/versions/20260930_01_telemetria_erro_de_analise.py` (+2/−2)
-   - Mudança: `down_revision` / `Revises` de `20260922_06` → `20260929_02`
-   - Motivo: CI `test_alembic_tem_uma_unica_cabeca_e_cadeia_continua` falhou com duas heads `[20260929_02, 20260930_01]` (ambas partiam de `20260922_06`)
-   - Nota: espelho Geisbelly/TrailUp já tinha `down_revision=20260929_02`; Lab alinhou a cadeia
+- **`b7e74cdd…b5491b02`** (13/10, 99 commits):
+  - FER+ local (#305) e câmera desligada por padrão (#309);
+  - 12 migrations de RLS, retenção e consentimento;
+  - OAuth com PKCE (#270);
+  - web do aluno em tela larga v4 (#346–#413);
+  - relatórios W40 e W41.
+- **`b3a8de39…b7e74cdd`** (02/10): cadeia do Alembic linearizada (`20260930_01` revisa `20260929_02`).
 
-## Changelog curto (histórico recente — tip anterior)
-
-1. `#292` — docs: reparo mojibake + remoção de BOM (`b3a8de39`, tip anterior)
-2. `#291` — api: remove `build_personalizacao_state`
-3. `#290` — api: UTF-8 sem BOM + mojibake
-4. `#289` — docs: API no **Dokploy**, não Render
-5. `#288`–`#283` + RAG/M2 — ver baseline anterior
-
-## Espelho Geisbelly (READ only)
+## Espelho Geisbelly (bots só leem)
 
 | Repo | Tip | Nota |
 |------|-----|------|
-| [Geisbelly/TrailUp](https://github.com/Geisbelly/TrailUp) | `8e08d7f1` — `Merge pull request #126 from Geisbelly/sync/lab-b7e74cd` (~2026-10-02 11:54 America/Sao_Paulo) | Lab tip `b7e74cdd` já syncado no espelho; **nunca merge Geisbelly/*** |
+| [Geisbelly/TrailUp](https://github.com/Geisbelly/TrailUp) | `370b0ba3`: merge da #205 (`sync/lab-234d81f`), 01/11 ~04:39 BRT | Syncs de 01/11: da #201 à #205. O Vercel e a API (Dokploy) publicam a partir daqui. **O merge é da Geisbelly.** |
 
-## Arquivos do vault atualizados neste delta
+## Impacto na monografia
 
-- `05-PRs-Repos/ultimo-sync-main.md` (este)
-- `02-Timeline/timeline.md`
-- `01-Arquitetura/mapa-arquitetura.md` (SHA + nota Alembic)
-- `03-Glossario/glossario.md` (SHA sync only)
-- `00-Home.md`
-- `CHANGELOG-vault.md`
+- **Cap. 5 (Desenvolvimento):**
+  - console V9 e telas de gamificação;
+  - motor de eventos, missões, ranks e modos no banco;
+  - tentativas pelo relógio do servidor;
+  - nota média e modelo de evasão no banco.
+- **Cap. 6 (Evidence Base e RAG):**
+  - RAG do mentor no OpenAI Vector Store (ADR 0002), no lugar do plano com pgvector;
+  - avaliação documento a documento da Evidence Base (#711);
+  - "perfil não é estilo de aprendizagem" (#710).
+- **Cap. 7 (Avaliação):** métricas F0–F5, que fecharam a #12. Baseline e cohort ficam com a #13, em andamento.
+- **Ética e LGPD:**
+  - consentimento do responsável;
+  - menores só pela OpenAI, com `store=false`;
+  - retenção e expurgo;
+  - conversas cifradas;
+  - e-mail enviado pelo Google.
 
-## Impacto monografia
-
-**Não** exige reescrita de capítulo. É fix de cadeia de migrations (ops/CI). Cap. 5 (Desenvolvimento) / apêndice de schema: opcional 1 linha “cadeia Alembic linearizada (`20260930_01` após `20260929_02`) em 2026-10-02”. Sem mudança de produto, RAG, telemetria funcional ou arquitetura de agentes.
-
-← [[00-Home]] · [[05-PRs-Repos/links-repos]]
-
-## Status Sync TrailUp
-
-| Campo | Valor |
-|-------|-------|
-| **Recheck em** | 2026-10-02 ~16:09 America/Sao_Paulo |
-| **Lab tip** | `b7e74cdd` |
-| **Espelho main** | `8e08d7f1` — merge #126 `sync/lab-b7e74cd` |
-| **PR sync aberto** | nenhum (após #126) |
-| **Regra** | Sync só abre PR no espelho; **nunca** mergeia Geisbelly/* |
+← [[00-Home]] · [[05-PRs-Repos/links-repos]] · [[10-Incidentes/api-fora-por-migration-2026-11-01]]

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.tentativas_atividade import decidir_desligar_cronometro
+
 ANALYZE_SPECIALIST_NODES = {
     "agente_emocao",
     "agente_perfil",
@@ -10,6 +12,7 @@ ANALYZE_SPECIALIST_NODES = {
     "agente_geracao_midia",
     "agente_notificacao",
     "agente_intervencao",
+    "agente_cronometro",
     "agente_ui",
     "agente_texto",
 }
@@ -80,6 +83,17 @@ def _needs_intervencao(state: dict[str, Any], completed: set[str]) -> bool:
     return bool((memoria.get("mental_state_recorrente") or {}).get("recorrente"))
 
 
+def _needs_cronometro(state: dict[str, Any], completed: set[str]) -> bool:
+    """A regra do #136 (fase 4) e pura e barata: o roteamento pergunta a ela mesma. Sem turma
+    nao ha onde avisar o professor, entao nao desliga."""
+    if "agente_cronometro" in completed or state.get("cronometro_payload"):
+        return False
+    if not state.get("classe_id"):
+        return False
+    tentativas = (state.get("desempenho_recente") or {}).get("tentativas")
+    return decidir_desligar_cronometro(tentativas, state.get("memoria_aluno")) is not None
+
+
 def _needs_texto(state: dict[str, Any], completed: set[str]) -> bool:
     if "agente_texto" in completed or state.get("textos_gerados"):
         return False
@@ -109,6 +123,8 @@ def compute_supervisor_next(state: dict[str, Any]) -> list[str]:
         next_nodes.append("agente_notificacao")
     if _needs_intervencao(state, completed):
         next_nodes.append("agente_intervencao")
+    if _needs_cronometro(state, completed):
+        next_nodes.append("agente_cronometro")
     if _needs_texto(state, completed):
         next_nodes.append("agente_texto")
 
@@ -124,6 +140,7 @@ def compute_supervisor_next(state: dict[str, Any]) -> list[str]:
             "materiais_gerados",
             "notificacao_payload",
             "intervencao_payload",
+            "cronometro_payload",
             "ui_config",
             "textos_gerados",
         ]

@@ -555,10 +555,20 @@ class DeepKnowledgeTracingAnalyzer:
             if topico_id is not None
             else None
         )
+        # Sem dominio persistido, a base e o acerto da 1a tentativa (#136): a nota que vale e a da
+        # ultima, que pode ter vindo depois de ver o gabarito, e mediria a memoria da correcao, nao
+        # o que o aluno sabia. Sem tentativa no banco (atividade feita pelo app antigo), segue a
+        # media de `atividade_aluno`.
+        primeira = (desempenho.get("tentativas") or {}).get("media_acertos_primeira")
         if dominio_persistido:
             base_mastery = _safe_float(dominio_persistido.get("dominio_estimado"), 0.5)
+            base_origem = "dominio_persistido"
+        elif primeira is not None:
+            base_mastery = _safe_float(primeira, 50.0) / 100.0
+            base_origem = "primeira_tentativa"
         else:
             base_mastery = _safe_float(desempenho.get("media_acertos"), 50.0) / 100.0
+            base_origem = "media_acertos"
         correct = counts.get("atividade_acertada", 0)
         wrong = counts.get("atividade_errada", 0)
         delta = (correct * 0.08) - (wrong * 0.07)
@@ -577,6 +587,7 @@ class DeepKnowledgeTracingAnalyzer:
             confianca=0.66,
             resumo={
                 "media_acertos_base": round(base_mastery, 2),
+                "base_origem": base_origem,
                 "acertos_lote": correct,
                 "erros_lote": wrong,
             },

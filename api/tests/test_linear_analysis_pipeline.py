@@ -244,3 +244,31 @@ def test_deep_knowledge_tracing_cai_no_flat_quando_sem_dominio_persistido() -> N
     resultado = asyncio.run(analyzer.analyze(eventos_novos=[], state=state))
 
     assert resultado.dominio_estimado == 0.8
+
+
+def test_deep_knowledge_tracing_parte_da_primeira_tentativa_e_nao_da_ultima() -> None:
+    """#136: a nota que vale é a da última tentativa, que pode vir depois do gabarito."""
+    analyzer = DeepKnowledgeTracingAnalyzer()
+    state = {
+        "payload_topico_id": 10,
+        "desempenho_recente": {"media_acertos": 95, "tentativas": {"media_acertos_primeira": 40.0}},
+        "memoria_aluno": {"dominio_por_topico": {}},
+    }
+
+    resultado = asyncio.run(analyzer.analyze(eventos_novos=[], state=state))
+
+    assert resultado.dominio_estimado == 0.4
+    assert resultado.resumo["base_origem"] == "primeira_tentativa"
+
+
+def test_deep_knowledge_tracing_sem_tentativa_segue_a_media_e_o_persistido_vence() -> None:
+    analyzer = DeepKnowledgeTracingAnalyzer()
+    sem_tentativa = {"desempenho_recente": {"media_acertos": 70, "tentativas": {"media_acertos_primeira": None}}}
+    assert asyncio.run(analyzer.analyze(eventos_novos=[], state=sem_tentativa)).resumo["base_origem"] == "media_acertos"
+
+    persistido = {
+        "payload_topico_id": 10,
+        "desempenho_recente": {"tentativas": {"media_acertos_primeira": 10.0}},
+        "memoria_aluno": {"dominio_por_topico": {"10": {"dominio_estimado": 0.9}}},
+    }
+    assert asyncio.run(analyzer.analyze(eventos_novos=[], state=persistido)).dominio_estimado > 0.8

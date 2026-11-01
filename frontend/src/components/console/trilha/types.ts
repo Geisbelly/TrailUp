@@ -83,6 +83,8 @@ export interface Atividade {
   descricao: string | null;
   tipo: string | null;
   data_entrega: string | null;
+  /** Tentativas por aluno; `null` = ilimitadas (#136). */
+  tentativas_max?: number | null;
 }
 
 export interface Questao {

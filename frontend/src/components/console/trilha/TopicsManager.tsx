@@ -101,6 +101,7 @@ export default function TopicsManager() {
     descricao: "",
     tipo: "",
     data_entrega: "",
+    tentativas_max: "",
   });
   const [cards, setCards] = useState<CardItem[]>([]);
   const [cardForm, setCardForm] = useState({
@@ -130,6 +131,7 @@ export default function TopicsManager() {
     descricao: "",
     tipo: "",
     data_entrega: "",
+    tentativas_max: "",
     questionEnunciado: "",
     questionTipo: "multipla",
     questionResposta: "",
@@ -619,7 +621,7 @@ export default function TopicsManager() {
     if (activityId) {
       await loadActivities(editingTopic.id);
       await loadActivityLinks(editingTopic.id);
-      setActivityForm({ id: 0, titulo: "", descricao: "", tipo: "", data_entrega: "" });
+      setActivityForm({ id: 0, titulo: "", descricao: "", tipo: "", data_entrega: "", tentativas_max: "" });
     }
   };
 
@@ -720,6 +722,7 @@ export default function TopicsManager() {
         descricao: "",
         tipo: "",
         data_entrega: "",
+        tentativas_max: "",
         questionEnunciado: "",
         questionTipo: "multipla",
         questionResposta: "",
@@ -859,6 +862,7 @@ export default function TopicsManager() {
       descricao: "",
       tipo: "",
       data_entrega: "",
+      tentativas_max: "",
       questionEnunciado: "",
       questionTipo: "multipla",
       questionResposta: "",

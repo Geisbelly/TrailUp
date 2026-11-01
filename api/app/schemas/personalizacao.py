@@ -199,11 +199,29 @@ class PersonalizacaoMediaStatusResponse(BaseModel):
     materiais: list[PersonalizacaoMediaItemStatusResponse] = Field(default_factory=list)
 
 
+class SugestaoEvidencia(BaseModel):
+    """Por que um formato está onde está: a regra do catálogo e os números do aluno.
+
+    ``confianca`` vem do catálogo (``app/services/evidencias_pedagogicas.py``):
+    ``forte``/``moderada`` têm estudo por trás, ``hipotese`` não tem, e
+    ``dado_do_aluno`` é o resultado do próprio aluno. ``dados`` é o snapshot do
+    que a decisão viu (tempo ativo, acertos, % concluído, afinidades).
+    """
+
+    regra: str
+    enunciado: str = ""
+    fontes: list[str] = Field(default_factory=list)
+    confianca: str = "hipotese"
+    dados: dict[str, Any] = Field(default_factory=dict)
+
+
 class SugestaoMaterialItem(BaseModel):
     formato: str
     posicao: int
     score: float = 0.0
     motivos: list[str] = Field(default_factory=list)
+    # Sugestão gravada antes da #66 não tem: lista vazia, não erro.
+    evidencias: list[SugestaoEvidencia] = Field(default_factory=list)
 
 
 class SugestaoMaterialResponse(BaseModel):
@@ -233,6 +251,7 @@ class SugestaoHistoricoItem(BaseModel):
     seguiu_inicio: bool | None = None
     desempenho: float | None = None
     desempenho_posterior: float | None = None
+    catalogo_versao: str | None = None
 
 
 class SugestaoEfetividadeResponse(BaseModel):

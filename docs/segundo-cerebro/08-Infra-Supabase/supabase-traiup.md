@@ -1,6 +1,6 @@
 ---
 tags: [infra, supabase]
-updated: 2026-10-01
+updated: 2026-11-01
 ---
 
 # Supabase — projeto TraiUp
@@ -18,6 +18,9 @@ updated: 2026-10-01
 ## O que a stack usa
 
 - **API (FastAPI):** migrations via **Alembic**; orquestração IA; telemetria. Pode apontar para Postgres local quando o pooler remoto estiver bloqueado (a confirmar no ambiente do dia).
+  - **A API aplica `alembic upgrade head` ao subir.** Migration aplicada em produção antes de o código dela chegar ao espelho derruba a API no próximo reinício → [[10-Incidentes/api-fora-por-migration-2026-11-01]].
+  - **Revisão em produção (01/11):** `20261101_13` conferida no dia. A `20261101_14` (e-mail pelo Apps Script) está na `main`; falta conferir se já foi aplicada.
+- **Motor no banco:** notificações (pg_net → Expo, pg_cron a cada 5 min); eventos que abrem e encerram no horário (pg_cron, #639); nota média recalculada de hora em hora para prazos vencidos (`trailup_notas_com_prazo`); fila de análise da telemetria; e-mail por `net.http_post` para o Apps Script, com URL e segredo no Vault (#762).
 - **Frontend (console professor):** Vite/React em `:8080` local; prod web espelho em `https://trailup.vercel.app` — **testes Reflect NÃO usam o deploy Vercel**; usam Docker local.
 - **Mobile (aluno):** Expo; fala direto com Supabase quando não há LLM (regra de fronteira do monorepo).
 - **Microservice:** mídia BrainHex; também usa `.env` / Supabase conforme serviço.
@@ -39,7 +42,7 @@ updated: 2026-10-01
 | Ambiente | URL / nota |
 |----------|------------|
 | Web prod (espelho) | `https://trailup.vercel.app` |
-| API prod | Dokploy (VPS) — ver docs Lab `#289` |
+| API prod | Dokploy (VPS), publicada do espelho: `https://api.trailup.promora.dev.br` (#689) |
 | Local Docker | frontend `:8080`, API `:8000`, MS `:3000` · `npm run docker:up` |
 
 ← [[00-Home]] · [[01-Arquitetura/mapa-arquitetura]] · [[10-Incidentes/perda-dados-console-2026-10-01]]
