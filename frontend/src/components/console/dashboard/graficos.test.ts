@@ -105,4 +105,11 @@ describe("distribuicaoDeNotas", () => {
       { faixa: "baixa", total: 2, tom: "destructive" },
     ]);
   });
+
+  it("aluno sem nota não entra em faixa nenhuma; só sem nota, a rosca fica vazia", () => {
+    expect(distribuicaoDeNotas([linha("sem_dado", 3), linha("media", 1)])).toEqual([
+      { faixa: "media", total: 1, tom: "warning" },
+    ]);
+    expect(distribuicaoDeNotas([linha("sem_dado", 2)])).toEqual([]);
+  });
 });
