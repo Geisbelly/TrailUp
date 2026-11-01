@@ -311,44 +311,47 @@ function SettingsLista() {
         }}
         scrollEventThrottle={16}
       >
-        <View ref={settingsListGuideRef} collapsable={false}>
-          <View
-            style={[
-              styles.searchContainer,
-              { backgroundColor: palette.surface, borderColor: palette.border },
-            ]}
-          >
-            <Feather name="search" size={17} color={palette.textSubtle} style={styles.searchIcon} />
-            <TextInput
-              placeholder="Pesquisar"
-              placeholderTextColor={palette.textSubtle}
-              style={[styles.searchInput, { color: palette.text }]}
-              value={busca}
-              onChangeText={setBusca}
-              accessibilityLabel="Pesquisar nas configurações"
-            />
-          </View>
+        <View
+          style={[
+            styles.searchContainer,
+            { backgroundColor: palette.surface, borderColor: palette.border },
+          ]}
+        >
+          <Feather name="search" size={17} color={palette.textSubtle} style={styles.searchIcon} />
+          <TextInput
+            placeholder="Pesquisar"
+            placeholderTextColor={palette.textSubtle}
+            style={[styles.searchInput, { color: palette.text }]}
+            value={busca}
+            onChangeText={setBusca}
+            accessibilityLabel="Pesquisar nas configurações"
+          />
         </View>
 
         {/* Quatro grupos, um cartão cada (mobile-v1, 11-configuracoes.html, GRUPOS). */}
-        <GrupoConfig titulo="Conta" palette={palette} itens={[ligacao("Informações"), <View key="senha" ref={securityGuideRef} collapsable={false}>{ligacao("Resetar senha")}</View>]} />
-        <View ref={legalGuideRef} collapsable={false}>
-          <GrupoConfig
-            titulo="Privacidade e termos"
-            palette={palette}
-            itens={[
-              ligacao("Coleta e acessos"),
-              ligacao("Gerar relatório dos dados"),
-              ...legalLinks.map((item) => (
-                <LinhaConfig key={item.label} icone="shield" externo onPress={item.onPress} palette={palette}>
-                  {item.label}
-                </LinhaConfig>
-              )),
-              ligacao("Solicitar exclusão da conta"),
-            ]}
-          />
+        {/* O alvo "Conta, estilo das métricas, coleta de dados e privacidade" são os três
+            primeiros grupos. Na #694 a ref ficou só em volta da busca, e o tutorial acendia
+            o campo "Pesquisar" (#33). */}
+        <View ref={settingsListGuideRef} collapsable={false}>
+          <GrupoConfig titulo="Conta" palette={palette} itens={[ligacao("Informações"), <View key="senha" ref={securityGuideRef} collapsable={false}>{ligacao("Resetar senha")}</View>]} />
+          <View ref={legalGuideRef} collapsable={false}>
+            <GrupoConfig
+              titulo="Privacidade e termos"
+              palette={palette}
+              itens={[
+                ligacao("Coleta e acessos"),
+                ligacao("Gerar relatório dos dados"),
+                ...legalLinks.map((item) => (
+                  <LinhaConfig key={item.label} icone="shield" externo onPress={item.onPress} palette={palette}>
+                    {item.label}
+                  </LinhaConfig>
+                )),
+                ligacao("Solicitar exclusão da conta"),
+              ]}
+            />
+          </View>
+          <GrupoConfig titulo="Preferências" palette={palette} itens={[ligacao("Lembrete diário"), ligacao("Estilo das métricas")]} />
         </View>
-        <GrupoConfig titulo="Preferências" palette={palette} itens={[ligacao("Lembrete diário"), ligacao("Estilo das métricas")]} />
         <View ref={aboutGuideRef} collapsable={false}>
           <GrupoConfig
             titulo="Tutorial e informações do app"

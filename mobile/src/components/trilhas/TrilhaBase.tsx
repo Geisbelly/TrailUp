@@ -54,6 +54,8 @@ export const TrilhaBase: React.FC<{
   const capabilities = getBrainHexProfileCapabilities(perfil);
   const progressGuideTargetRef = useRef<View | null>(null);
   const journeyGuideTargetRef = useRef<View | null>(null);
+  // "Aqui ficam a classe e a porcentagem": o topo inteiro, não só a barra (#33).
+  const topoTourRef = useRef<View | null>(null);
   const guideTargetRefs = useMemo<GuideTargetRefs>(
     () => ({
       progress: progressGuideTargetRef,
@@ -73,7 +75,7 @@ export const TrilhaBase: React.FC<{
   useEffect(
     () => {
       if (!isFocused) return;
-      return registrarAlvoTour("trilha_resumo", progressGuideTargetRef);
+      return registrarAlvoTour("trilha_resumo", topoTourRef);
     },
     [isFocused],
   );
@@ -162,6 +164,7 @@ export const TrilhaBase: React.FC<{
         meta={100}
         palette={palette}
         progressTargetRef={progressGuideTargetRef}
+        topoTargetRef={topoTourRef}
         rightSlot={
           <View style={st.headerActions}>
             {onOpenBag ? <Pressable onPress={onOpenBag} accessibilityRole="button" accessibilityLabel="Abrir Bag" style={({ pressed }) => ({ width: 44, height: 44, alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1 })}><UtilityIcon kind="bag" size={34} /></Pressable> : null}
