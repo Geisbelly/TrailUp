@@ -91,6 +91,9 @@ const DELETE_NAO_CHEGA: Record<string, string> = {
   conteudo_aluno: 'caminho quente; so apagada em cascata',
   atividade_aluno: 'caminho quente; so apagada em cascata',
   conteudo_personalizado: 'caminho quente (8881 updates); so apagada na regeracao',
+  // 20261101_12: so sai em cascata, junto com o item alterado; destaque de item que nao existe
+  // mais nao aparece em bloco nenhum, entao perder o DELETE nao muda a tela.
+  alteracao_aluno: 'so apagada em cascata com o item; a tela so mostra o que tem bloco',
 };
 
 /**
