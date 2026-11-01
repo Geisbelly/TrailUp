@@ -15,6 +15,7 @@ import {
   type MotivoDescarte,
 } from "./insights";
 import { useInsightsDaTurma } from "./useInsightsDaTurma";
+import SecaoAlteracoesDaTrilha from "./SecaoAlteracoesDaTrilha";
 import type { Aluno } from "./aluno/tipos";
 
 const FILTROS: { value: EscopoDoFiltro; label: string }[] = [
@@ -320,6 +321,8 @@ export default function AbaInsights({
           ))}
         </ul>
       )}
+
+      <SecaoAlteracoesDaTrilha classIds={classIds} alunos={alunos} mostrarTurma={mostrarTurma} nomeDaTurma={nomeDaTurma} />
     </div>
   );
 }

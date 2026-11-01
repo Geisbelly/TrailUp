@@ -37,6 +37,8 @@ const NA_PUBLICACAO = new Set([
   "conteudo_personalizado",
   "eventos_aluno",
   "topico_aluno",
+  // entrou em 20261101_12
+  "alteracao_aluno",
 ]);
 
 function arquivosFonte(dir: string): string[] {

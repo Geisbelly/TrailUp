@@ -14,6 +14,34 @@ export type Database = {
   }
   public: {
     Tables: {
+      // 20261101_12: alteracao do professor em item ja visto, e a decisao da IA por aluno.
+      alteracao_professor: {
+        Row: {
+          id: number; classe_id: number; topico_id: number; alvo_tipo: string;
+          conteudo_id: number | null; atividade_id: number | null; mudancas: Json; status: string;
+          classificacao: string | null; resumo: string | null; motivo: string | null;
+          proxima_tentativa_em: string; tentativas: number; travado_em: string | null;
+          ultimo_erro: string | null; criada_em: string; atualizada_em: string; analisada_em: string | null
+        }
+        Insert: { id?: number }
+        Update: { id?: number }
+        Relationships: []
+      }
+      alteracao_aluno: {
+        Row: {
+          id: number; alteracao_id: number; aluno_id: string; classe_id: number; topico_id: number;
+          conteudo_id: number | null; atividade_id: number | null; situacao: string; decisao: string;
+          decisao_professor: string | null; decisao_efetiva: string; motivo: string | null;
+          resumo: string | null; recorrigida: boolean; revisar_desde: string | null;
+          nota_anterior: number | null; maxima_anterior: number | null; nota_registrada_em: string | null;
+          revisada_em: string | null; vista_em: string | null; notificada_como: string | null;
+          decidida_em: string | null; decisao_professor_em: string | null;
+          decisao_professor_por: string | null; criada_em: string
+        }
+        Insert: { id?: number }
+        Update: { id?: number }
+        Relationships: []
+      }
       aluno_perfil_medida: {
         Row: { id: number; aluno_id: string; versao_instrumento: string; respondido_em: string;
           ordenacao: string[]; afinidade: Json; confianca: number | null; concordancia: number | null;
@@ -8508,6 +8536,14 @@ export type Database = {
         Returns: string
       }
 
+      alteracao_decidir: {
+        Args: { p_alteracao_id: number; p_aluno_id?: string | null; p_decisao?: string }
+        Returns: number
+      }
+      alteracao_marcar_vista: {
+        Args: { p_conteudo_id?: number | null; p_atividade_id?: number | null }
+        Returns: number
+      }
       app_alunos_do_professor: { Args: never; Returns: string[] }
       app_classe_da_atividade: {
         Args: { p_atividade: number }

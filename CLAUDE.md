@@ -289,6 +289,18 @@ Cada perfil carrega:
   aluno não lê; o professor só atualiza `status`/`motivo_descarte`/`resolved_at`
   (GRANT por coluna) — nunca o texto que a IA gravou. Sem modelo disponível,
   nada é gravado: não existe insight "de reserva".
+- `alteracao_professor` + `alteracao_aluno` — o professor mudou um conteúdo ou
+  uma atividade que algum aluno já viu ou fez (`20261101_12`). **O banco
+  registra** (gatilho nas quatro tabelas do editor e em `questao_gabarito`, só
+  quando quem salva é o dono da turma) e **a IA decide**: cosmético × relevante,
+  e, por aluno, se precisa revisar (worker `alteracao_professor_loop`). Sem
+  modelo, fica `pendente_analise`: nada é inventado, o aluno não vê selo e o
+  professor decide no console (`alteracao_decidir`). Gabarito corrigido é
+  recorrigido pelo banco e a nota só sobe. Revisão pedida guarda a nota de antes
+  (`nota_anterior`) e `trailup_recalcular_nota_classe_aluno` usa a maior. Ela
+  **nunca** mexe em `atividade_aluno.status`: o progresso continua concluído. O
+  aviso sai por `notificacoes_ia`. `alteracao_professor` guarda o gabarito antes
+  e depois e o aluno não a lê; ele lê só `alteracao_aluno`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere

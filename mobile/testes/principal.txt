@@ -156,3 +156,4 @@ src/utils/fotoPerfil.test.ts
 src/utils/authValidacao.test.ts
 src/utils/painelTopicoTrilha.celular.test.ts
 src/database/supabase.sessaoNaUrl.test.ts
+src/utils/alteracoesDoProfessor.test.ts

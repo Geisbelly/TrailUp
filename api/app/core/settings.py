@@ -242,6 +242,14 @@ class Settings(BaseSettings):
     # Restringe o worker a estas turmas, como PERSONALIZACAO_JOBS_CLASSE_IDS (#652).
     # Vazia = usa PERSONALIZACAO_JOBS_CLASSE_IDS; as duas vazias = todas (producao).
     telemetria_analise_fila_classe_ids: list[int] = []
+    # Analise da alteracao do professor (20261101_12): o banco registra o que mudou num item
+    # ja visto e quem importa; este laco pede a IA se e cosmetico e quem precisa revisar.
+    alteracao_professor_enabled: bool = True
+    alteracao_professor_interval_seconds: int = 30
+    alteracao_professor_lote: int = 5
+    alteracao_professor_trava_seconds: int = 600
+    # Restringe o worker a estas turmas, como PERSONALIZACAO_JOBS_CLASSE_IDS (#652).
+    alteracao_professor_classe_ids: list[int] = []
     personalizacao_job_concurrency: int = 2
     # Restringe o worker local a estas turmas (ex.: PERSONALIZACAO_JOBS_CLASSE_IDS=[66]).
     # Vazio = todas, que e o que a producao usa. Sem isso, uma API subida na maquina de
