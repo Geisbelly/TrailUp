@@ -7,6 +7,8 @@ const estadoDoHook = vi.hoisted(() => ({
   valor: {} as Record<string, unknown>,
 }));
 vi.mock("./useInsightsDaTurma", () => ({ useInsightsDaTurma: () => estadoDoHook.valor }));
+// A seção de alterações da trilha tem teste próprio (SecaoAlteracoesDaTrilha.test.ts).
+vi.mock("./useAlteracoesDaTrilha", () => ({ useAlteracoesDaTrilha: () => ({ estado: { tipo: "indisponivel" } }) }));
 import AbaInsights from "./AbaInsights";
 
 const alerta: Insight = {

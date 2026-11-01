@@ -68,6 +68,9 @@ import {
 } from "@/utils/trilhaCheckpoint";
 import { useCheckpointResume } from "@/hooks/trilha/useCheckpointResume";
 import { useMaterialSuggestion } from "@/hooks/trilha/useMaterialSuggestion";
+import { useAlteracoesDoProfessor } from "@/hooks/trilha/useAlteracoesDoProfessor";
+import { SeloAlteracaoProfessor } from "@/components/trilhas/SeloAlteracaoProfessor";
+import { chaveDoItem, type Destaque } from "@/utils/alteracoesDoProfessor";
 import { usePersonalizedFlow } from "@/hooks/trilha/usePersonalizedFlow";
 import { useStudyTimeTracking } from "@/hooks/trilha/useStudyTimeTracking";
 import { useTopicScreenTimeTracking } from "@/hooks/trilha/useTopicScreenTimeTracking";
@@ -133,6 +136,19 @@ function formatConteudoTipo(tipo?: string | null): string | null {
 // (ex.: "Etapa personalizada 3") — nao tem valor informativo pro aluno,
 // entao a UI cai pro nome do topico em vez de mostrar o placeholder.
 const PLACEHOLDER_TITLE_PATTERN = /^(Etapa personalizada|Conteudo|Atividade)\s+\d+$/i;
+
+/**
+ * Id do item do professor por trás do bloco. Material personalizado tem id negativo e aponta
+ * para o conteúdo ou a atividade de origem; a alteração do professor é registrada no de origem.
+ */
+function idDoProfessor(item: any, campoDeOrigem: "conteudo_id" | "atividade_id"): number | null {
+  const candidatos = [item?.id, item?.[campoDeOrigem], item?.metadata?.[campoDeOrigem]];
+  for (const candidato of candidatos) {
+    const id = Number(candidato);
+    if (Number.isFinite(id) && id > 0) return id;
+  }
+  return null;
+}
 
 function isPlaceholderTitle(title?: string | null): boolean {
   return !title || PLACEHOLDER_TITLE_PATTERN.test(title.trim());
@@ -718,6 +734,45 @@ export default function TrilhaConteudoScreen() {
     topicoId,
   });
 
+  // O que o professor mudou depois que o aluno já tinha visto ou feito (20261101_12): selo
+  // "Atualizado" e atividade de volta como revisão pendente. Camada à parte: nunca mexe no
+  // status da atividade, então o progresso e a posição de retomada continuam os mesmos.
+  const { alteracoes, marcarVista } = useAlteracoesDoProfessor({
+    alunoId: usuario?.id ?? null,
+    classeId: classeAtual?.classe_id ?? topico?.classe_id ?? null,
+  });
+  const revisaoDaAtividade = useCallback(
+    (atividade: any): Destaque | null => {
+      const id = idDoProfessor(atividade, "atividade_id");
+      return id != null ? alteracoes.revisoesPendentes.get(id) ?? null : null;
+    },
+    [alteracoes]
+  );
+  // O selo fica enquanto o aluno está no bloco, mesmo depois de marcado como visto no banco.
+  const [seloDoBloco, setSeloDoBloco] = useState<{ chave: string; destaque: Destaque } | null>(null);
+  const chaveDoBlocoAtual = useMemo(() => {
+    if (!atualBlock) return null;
+    const id =
+      atualBlock.kind === "conteudo"
+        ? idDoProfessor(atualBlock.conteudo, "conteudo_id")
+        : idDoProfessor(atualBlock.atividade, "atividade_id");
+    return id != null ? chaveDoItem(atualBlock.kind, id) : null;
+  }, [atualBlock]);
+  useEffect(() => {
+    if (!chaveDoBlocoAtual) {
+      setSeloDoBloco(null);
+      return;
+    }
+    const destaque = alteracoes.destaques.get(chaveDoBlocoAtual);
+    setSeloDoBloco((atual) =>
+      destaque ? { chave: chaveDoBlocoAtual, destaque } : atual?.chave === chaveDoBlocoAtual ? atual : null
+    );
+    if (destaque) {
+      const [tipo, id] = chaveDoBlocoAtual.split(":");
+      marcarVista(tipo as "conteudo" | "atividade", Number(id));
+    }
+  }, [alteracoes, chaveDoBlocoAtual, marcarVista]);
+
   const conteudoBlocks = useMemo(
     () =>
       atualBlock?.kind === "conteudo"
@@ -945,10 +1000,11 @@ export default function TrilhaConteudoScreen() {
         const feito =
           bloco.kind === "conteudo"
             ? isConteudoConcluido(bloco.conteudo, conteudosVistosLocal)
-            : isAtividadeConcluida(bloco.atividade, atividadesResolvidasLocal);
+            : isAtividadeConcluida(bloco.atividade, atividadesResolvidasLocal) &&
+              !revisaoDaAtividade(bloco.atividade);
         return feito ? "feito" : "pendente";
       }),
-    [atividadesResolvidasLocal, conteudosVistosLocal, displayedBlocks, index]
+    [atividadesResolvidasLocal, conteudosVistosLocal, displayedBlocks, index, revisaoDaAtividade]
   );
   const chaveBatalha =
     atualBlock?.kind === "atividade" && atualBlock.vinculadoConteudoId != null
@@ -1346,7 +1402,11 @@ export default function TrilhaConteudoScreen() {
         const linkedContentItemKey =
           linkedContentId != null ? buildIAItemKey("content", linkedContentId) : null;
 
-        if (!revisao && !isPersonalizedLocal) {
+        // Revisão pedida pelo professor (20261101_12): refazer volta a gravar a nota. O banco
+        // guarda a de antes e vale a maior, então gravar uma nota menor não tira nada do aluno.
+        // Sem pontuação (o "Continuar" do resumo) não grava: apagaria a nota com nulo.
+        const refezRevisao = revisaoDaAtividade(atividade) != null && scoreAwarded != null;
+        if ((!revisao || refezRevisao) && !isPersonalizedLocal) {
           await registrarAtividadeConcluida(topicoId, atividadeId, percentual, {
             pontuacaoObtida: scoreAwarded,
             pontuacaoMaxima: scoreMaximo,
@@ -1526,6 +1586,7 @@ export default function TrilhaConteudoScreen() {
       salvarProgressoItemPersonalizado,
       moduleDifficulty,
       topicoConcluido,
+      revisaoDaAtividade,
     ]
   );
 
@@ -1848,6 +1909,14 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 : atualBlock.atividade.titulo ?? "Atividade"}
             </Text>
 
+            {seloDoBloco && seloDoBloco.chave === chaveDoBlocoAtual ? (
+              <SeloAlteracaoProfessor
+                resumo={seloDoBloco.destaque.resumo}
+                revisar={atualBlock.kind === "atividade" && revisaoDaAtividade(atualBlock.atividade) != null}
+                palette={profilePalette}
+              />
+            ) : null}
+
             {atualBlock.kind === "conteudo" && !leituraLarga && !leituraCelular && formatConteudoTipo(atualBlock.conteudo.tipo) ? (
               <Text
                 style={[
@@ -1912,6 +1981,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 }}
                 timedOut={currentTimedOutActivityId === Number(atualBlock.atividade.id)}
                 reviewMode={isAtividadeConcluida(atualBlock.atividade, atividadesResolvidasLocal)}
+                revisaoPedida={revisaoDaAtividade(atualBlock.atividade)}
               />
             )}
           </View>

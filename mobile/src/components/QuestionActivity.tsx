@@ -32,6 +32,11 @@ type Props = {
   reviewMode?: boolean;
   /** Incrementa quando o aluno gasta uma segunda chance comprada. */
   novaTentativa?: number;
+  /**
+   * Refazendo a pedido do professor (a atividade mudou). As questões abrem como primeira
+   * tentativa: sem a resposta antiga, sem trava e sem o desconto de nova tentativa.
+   */
+  refazendoRevisao?: boolean;
   alunoId?: string | null;
   classeId?: number | null;
   onComplete?: (result?: {
@@ -427,6 +432,7 @@ export default function QuestionActivity({
   timedOut = false,
   reviewMode = false,
   novaTentativa = 0,
+  refazendoRevisao = false,
   alunoId = null,
   classeId = null,
 }: Props) {
@@ -572,7 +578,8 @@ export default function QuestionActivity({
     const percentualConcluido = Number(atividade?.percentual_concluido ?? 0);
     return statusConcl || percentualConcluido >= 100;
   }, [atividade?.status, atividade?.percentual_concluido]);
-  const respondidaAntes = hasQuestionAttempt(questao, respostaAnterior);
+  // Na revisão pedida pelo professor a resposta antiga não conta: a questão pode ter mudado.
+  const respondidaAntes = !refazendoRevisao && hasQuestionAttempt(questao, respostaAnterior);
   const scrollRef = useRef<ScrollView | null>(null)
   const questionStartedAtRef = useRef(Date.now());
 
@@ -1190,11 +1197,17 @@ export default function QuestionActivity({
             }
 
             const statusLocal = stas[idx];
-            const acertoPersistido = Number((item as any)?.acertos_percentual ?? NaN);
+            // Refazendo a revisão, só vale o que foi respondido agora: completar a atividade com
+            // a resposta de antes deixaria de fora justamente a questão que mudou.
+            const acertoPersistido = refazendoRevisao
+              ? NaN
+              : Number((item as any)?.acertos_percentual ?? NaN);
             return {
-              respondida: (item as any)?.resposta_aluno != null || !!confirmados[idx],
+              respondida: refazendoRevisao
+                ? !!confirmados[idx]
+                : (item as any)?.resposta_aluno != null || !!confirmados[idx],
               correta:
-                (item as any)?.correta_aluno ??
+                (refazendoRevisao ? null : (item as any)?.correta_aluno) ??
                 (statusLocal === 'certo' ? true : statusLocal === 'errado' ? false : null),
               acertosPercentual: Number.isFinite(acertoPersistido)
                 ? acertoPersistido

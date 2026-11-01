@@ -16,6 +16,7 @@ from app.core.settings import Settings, get_settings
 from app.core.tracing import aplicar_politica_de_tracing
 from app.db.migrations import upgrade_database_to_head
 from app.db.session import build_session_factory, execute_with_database_retry
+from app.services.alteracao_professor import alteracao_professor_loop
 from app.services.analise_fila import analise_fila_loop
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
 from app.services.personalizacao_jobs import personalizacao_jobs_loop
@@ -95,10 +96,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if app_settings.telemetria_analise_fila_enabled and database_url.startswith("postgres"):
             analise_fila_task = asyncio.create_task(analise_fila_loop(app))
         app.state.analise_fila_task = analise_fila_task
+        alteracao_professor_task = None
+        if app_settings.alteracao_professor_enabled and database_url.startswith("postgres"):
+            alteracao_professor_task = asyncio.create_task(alteracao_professor_loop(app))
+        app.state.alteracao_professor_task = alteracao_professor_task
 
         try:
             yield
         finally:
+            if alteracao_professor_task is not None:
+                alteracao_professor_task.cancel()
+                try:
+                    await alteracao_professor_task
+                except asyncio.CancelledError:
+                    pass
             if analise_fila_task is not None:
                 analise_fila_task.cancel()
                 try:

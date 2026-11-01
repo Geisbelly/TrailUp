@@ -34,6 +34,12 @@ type Props = {
   timedOut?: boolean;
   reviewMode?: boolean;
   classeId?: number | null;
+  /**
+   * O professor mudou a atividade e a IA pediu que este aluno a refaça (`alteracao_aluno`). A nota
+   * de antes fica guardada no banco: refazer só pode subir. Não é segunda chance: não custa nada
+   * e não tem o desconto de nova tentativa.
+   */
+  revisaoPedida?: { resumo: string | null } | null;
 };
 
 export { normalizeActivityType } from '@/utils/activityType';
@@ -55,6 +61,7 @@ function ActivityRendererContent({
   reviewMode = false,
   classeId = null,
   alunoId = null,
+  revisaoPedida = null,
 }: Props & { alunoId?: string | null }) {
   const { usuario } = useUsuario();
   const palette = useMemo(
@@ -64,6 +71,7 @@ function ActivityRendererContent({
   const [localReviewMode, setLocalReviewMode] = React.useState(reviewMode);
   const [retryLiberada, setRetryLiberada] = React.useState(false);
   const [novaTentativa, setNovaTentativa] = React.useState(0);
+  const [refazendoRevisao, setRefazendoRevisao] = React.useState(false);
   const userChoseReviewRef = React.useRef(false);
   const painelDeItens = alunoId && classeId && atividade?.id ? (
     <UsarItemNaAtividade
@@ -102,7 +110,7 @@ function ActivityRendererContent({
   const chave = activityRendererKey(tipo, hasQuestoes);
   const Component = chave ? componentes[chave] : undefined;
 
-  if (atividadeConcluida && !localReviewMode && !retryLiberada) {
+  if (atividadeConcluida && !localReviewMode && !retryLiberada && !refazendoRevisao) {
     const acertosPct = Number(atividade?.acertos_percentual ?? 0);
     const temAcertos = Number.isFinite(acertosPct) && acertosPct > 0;
 
@@ -116,12 +124,31 @@ function ActivityRendererContent({
         <Text style={[summaryStyles.title, { color: palette.text }]}>
           {atividade?.titulo ?? 'Atividade concluída'}
         </Text>
+        {revisaoPedida && hasQuestoes ? (
+          <Text style={[summaryStyles.revisao, { color: palette.text }]}>
+            O professor mudou esta atividade. Refaça quando puder: a sua nota de antes continua
+            garantida e só pode subir.
+          </Text>
+        ) : null}
         {temAcertos && (
           <Text style={[summaryStyles.score, { color: palette.textMuted }]}>
             {Math.round(acertosPct)}% de acertos
           </Text>
         )}
         <View style={summaryStyles.btnRow}>
+          {revisaoPedida && hasQuestoes ? (
+            <Pressable
+              onPress={() => {
+                userChoseReviewRef.current = false;
+                setLocalReviewMode(false);
+                setRefazendoRevisao(true);
+              }}
+              style={[summaryStyles.btn, { backgroundColor: palette.accent, borderColor: palette.accent }]}
+              accessibilityRole="button"
+            >
+              <Text style={[summaryStyles.btnPrimaryText, { color: palette.background }]}>Refazer a atividade</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             onPress={() => onComplete?.({ completed: true })}
             style={[summaryStyles.btn, { backgroundColor: palette.accent, borderColor: palette.accent }]}
@@ -162,6 +189,7 @@ function ActivityRendererContent({
         timedOut={timedOut}
         reviewMode={localReviewMode}
         novaTentativa={novaTentativa}
+        refazendoRevisao={refazendoRevisao}
         alunoId={alunoId}
         classeId={classeId}
       />
@@ -193,6 +221,12 @@ const summaryStyles = StyleSheet.create({
   title: {
     fontFamily: FontFamily.inikaBold,
     fontSize: 17,
+    textAlign: 'center',
+  },
+  revisao: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
   },
   score: {
