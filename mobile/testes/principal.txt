@@ -34,6 +34,7 @@ src/services/social/guildModel.test.ts
 src/services/social/guildWindowModel.test.ts
 src/services/social/publicProfileModel.test.ts
 src/services/social/socialModel.test.ts
+src/services/social/socialDestaque.test.ts
 src/services/studySessions.test.ts
 src/services/telemetriaApi.persistence.test.ts
 src/services/telemetriaCliente.core.test.ts
