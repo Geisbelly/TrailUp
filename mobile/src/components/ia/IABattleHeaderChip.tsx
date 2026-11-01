@@ -133,7 +133,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
 
   const battleState = battleScope ? getBattleState(battleScope) : null;
   const resolvedBattle = battleScope ? resolveFeature(battleScope, "battle_mode") : null;
-  const teacherBoss = useContentBossVisual(topicoId, battleScope?.scope === 'item' ? battleScope.itemKey : resolvedBattle?.battle?.sourceItemKey, resolvedBattle?.battle?.enemy.contentId);
+  const bossArt = useContentBossVisual(topicoId, battleScope?.scope === 'item' ? battleScope.itemKey : resolvedBattle?.battle?.sourceItemKey, resolvedBattle?.battle?.enemy.contentId);
 
   // Coluna lateral do Tópico (web em tela larga, #508; protótipo v4, "Batalha suspensa"):
   // se a leitura emocional desligou a batalha, o aluno vê o porquê em vez de o painel sumir.
@@ -182,11 +182,6 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
     Number(battleState?.currentHp ?? resolvedBattle.battle.enemy.hpMax ?? hpMax)
   );
   const hpPct = Math.max(0, Math.min(100, (hpCurrent / hpMax) * 100));
-  const avatarUrl =
-    battleState?.enemy.visual?.avatarUrl ??
-    resolvedBattle.battle.enemy.visual?.avatarUrl ??
-    enemy.avatarUrl ??
-    null;
   const battleStatusLabel = battleState?.defeated ? "Derrotado" : "Em batalha";
   const scopeLabel =
     battleScope.scope === "item" ? "Confronto do conteúdo" : "Confronto do módulo";
@@ -225,15 +220,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
             },
           ]}
         >
-          {teacherBoss || avatarUrl ? (
-            <Image source={teacherBoss ?? { uri: avatarUrl! }} style={styles.avatar} resizeMode="contain" />
-          ) : (
-            <MaterialCommunityIcons
-              name={battleState?.defeated ? "shield-check" : "sword-cross"}
-              size={16}
-              color={palette.accent}
-            />
-          )}
+          <Image source={bossArt} style={styles.avatar} resizeMode="contain" />
         </View>
         <View style={styles.info}>
           <View style={styles.labelRow}>
@@ -242,7 +229,8 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
               style={[
                 styles.statusLabel,
                 {
-                  color: battleState?.defeated ? palette.accentStrong : palette.accent,
+                  // Texto: só o `accent` tem a luminosidade elevada até 4.5:1.
+                  color: palette.accent,
                 },
               ]}
             >
@@ -355,7 +343,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
                         styles.summaryBadgeText,
                         {
                           color: battleState?.defeated
-                            ? palette.accentStrong
+                            ? palette.accent
                             : palette.textMuted,
                         },
                       ]}
