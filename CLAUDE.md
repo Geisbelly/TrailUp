@@ -353,14 +353,26 @@ Cada perfil carrega:
   - duração e tolerância ficam em `app_config` (`cronometro_atividade_padrao_seg`, `cronometro_tolerancia_seg`).
 
   **Limite conhecido:** a pontuação ainda é a que o app calcula, porque o gabarito
-  continua no aparelho. A RPC só limita os valores. Fechar a escrita direta do app
-  em `atividade_aluno` é a fase 5 da #136.
+  continua no aparelho. A RPC só limita os valores. A escrita direta do app em
+  `atividade_aluno` é fechada pela fase 5 (`20261102_04`, item abaixo).
 - **E-mail sai do banco por um Google Apps Script** (`20261101_14`, no lugar da
   Brevo). Isso vale para o contato do app, o contato do site e o aviso de conta
   inativa:
   - todos passam por `fn_email_apps_script`, que lê URL e segredo do Vault e faz o `net.http_post`;
   - o código do script fica em `scripts/apps-script-email/`;
   - **um 2xx não prova envio.** O pg_net segue o 302 do Apps Script, e tanto o sucesso quanto o erro do script chegam como 200. Quem decide é `fn_email_apps_script_aceito`, que exige `"ok": true` no corpo. Uma regra que confie só no código HTTP começaria a contar o prazo de exclusão de quem nunca foi avisado.
+- **`atividade_aluno`: só o servidor conclui e grava nota** (`20261102_04`, #136, fase 5).
+  O app marca visita e "em andamento" e mais nada. Conclusão, nota, acerto, progresso e
+  tempo saem de RPC ou gatilho `SECURITY DEFINER` (`atividade_responder_tentativa`,
+  `avaliar_entrega`, o recálculo por resposta). Mais duas regras:
+  - `questao_aluno` recusa a resposta do cliente depois do prazo efetivo (`prazo_expirado`),
+    exceto na revisão pedida pelo professor;
+  - `atividade_concluida`/`_acertada`/`_revisada` vindos do cliente exigem a atividade concluída.
+
+  As três guardas decidem por `current_user`, não pelas claims. Por isso **função nova que
+  escreva nessas tabelas precisa ser `SECURITY DEFINER`**, ou será tratada como o aluno. No
+  UPDATE, a coluna nova de `atividade_aluno` nasce protegida; no INSERT, entra na lista da
+  migration (o e2e reclama).
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere

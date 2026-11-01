@@ -7,8 +7,9 @@
  * última tentativa). A pontuação continua sendo a que o app calcula; o banco só a
  * limita.
  *
- * Sem as RPCs no banco (local sem a migration), as duas devolvem `null` e quem
- * chama segue pelo caminho antigo.
+ * Sem as RPCs no banco (local sem a migration), as duas devolvem `null`. Abrir
+ * segue sem relógio do servidor; concluir falha, porque desde a `20261102_04` o
+ * banco recusa a conclusão gravada direto pelo app.
  */
 
 import { supabase } from "@/database/supabase";

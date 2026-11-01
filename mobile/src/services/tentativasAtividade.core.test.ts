@@ -6,6 +6,7 @@ import {
   TentativaRecusada,
   lerRetorno,
   lerTentativa,
+  mensagemDaRecusa,
   motivoDoErro,
   segundosRestantes,
 } from "./tentativasAtividade.core";
@@ -63,4 +64,12 @@ test("TentativaRecusada carrega o motivo e a mensagem para o aluno", () => {
   assert.equal(erro.motivo, "sem_tentativas");
   assert.equal(erro.message, MENSAGEM_DA_RECUSA.sem_tentativas.descricao);
   assert.ok(erro instanceof Error);
+});
+
+test("mensagemDaRecusa: recusa do banco vira a mensagem; o resto, nada", () => {
+  // A resposta de questão gravada direto depois do prazo (20261102_04).
+  assert.deepEqual(mensagemDaRecusa({ message: "prazo_expirado", code: "P0001" }), MENSAGEM_DA_RECUSA.prazo_expirado);
+  assert.equal(mensagemDaRecusa({ message: "Could not find the function", code: "PGRST202" }), null);
+  assert.equal(mensagemDaRecusa({ message: "Failed to fetch" }), null);
+  assert.equal(mensagemDaRecusa(null), null);
 });

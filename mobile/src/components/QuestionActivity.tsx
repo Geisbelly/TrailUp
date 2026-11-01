@@ -14,6 +14,8 @@ import { canShowQuestionAnswer, getQuestionPreviousAnswer, hasQuestionAttempt } 
 import { QuestaoAluno } from '@/models/QuestaoAluno';
 import { gastarSegundaChance } from '@/services/loja/lojaService';
 import { mensagemDeUso, podeResponderComCompra } from '@/services/loja/usoItem';
+// Do .core: o tentativasAtividade.ts carrega o cliente do Supabase.
+import { mensagemDaRecusa } from '@/services/tentativasAtividade.core';
 import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayValidation';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1401,7 +1403,13 @@ export default function QuestionActivity({
               }
             } catch (error) {
               setConfirmados((prev) => ({ ...prev, [questaoIndex]: false }));
-              setModalInfo({ titulo: 'Resposta não salva', descricao: 'Não foi possível salvar sua resposta. Confirme novamente para tentar sincronizar.' });
+              // Depois do prazo o banco recusa a resposta (20261102_04): tentar de novo não adianta.
+              setModalInfo(
+                mensagemDaRecusa(error as { message?: unknown; code?: unknown } | null) ?? {
+                  titulo: 'Resposta não salva',
+                  descricao: 'Não foi possível salvar sua resposta. Confirme novamente para tentar sincronizar.',
+                }
+              );
               console.warn('[QuestaoAluno] Falha ao salvar resposta:', error);
               return;
             }
