@@ -17,7 +17,6 @@ ANALYZE_SPECIALIST_NODES = {
 PERSONALIZATION_SPECIALIST_NODES = {
     "agente_plano_personalizacao",
     "agente_ai_patch",
-    "agente_boss_visual",
     "agente_midias_personalizadas",
 }
 
@@ -88,15 +87,6 @@ def _needs_texto(state: dict[str, Any], completed: set[str]) -> bool:
     return bool(ui_config.get("precisa_texto") or state.get("notificacao_payload"))
 
 
-def _has_battle_ai_patch(state: dict[str, Any]) -> bool:
-    ai_patch = state.get("ai_patch") or {}
-    items = ai_patch.get("items") or {}
-    for patches in items.values():
-        if any((patch.get("key") == "battle_mode") for patch in patches or []):
-            return True
-    return any((patch.get("key") == "battle_mode") for patch in (ai_patch.get("topic") or []))
-
-
 def compute_supervisor_next(state: dict[str, Any]) -> list[str]:
     completed = set(state.get("completed_nodes", []))
     if "executor" in completed:
@@ -156,13 +146,6 @@ def compute_personalizacao_next(state: dict[str, Any]) -> list[str]:
         next_nodes.append("agente_ai_patch")
     if state.get("plano_personalizacao") and "agente_midias_personalizadas" not in completed and not state.get("materiais_personalizados"):
         next_nodes.append("agente_midias_personalizadas")
-    if (
-        state.get("ai_patch")
-        and _has_battle_ai_patch(state)
-        and "agente_boss_visual" not in completed
-        and not state.get("boss_visual_processado")
-    ):
-        next_nodes.append("agente_boss_visual")
 
     if next_nodes:
         return next_nodes
@@ -189,7 +172,6 @@ def build_state_summary(state: dict[str, Any]) -> dict[str, Any]:
             "plano_pronto": bool(state.get("plano_personalizacao")),
             "ai_patch_pronto": bool(state.get("ai_patch")),
             "materiais_prontos": bool(state.get("materiais_personalizados")),
-            "boss_visual_processado": bool(state.get("boss_visual_processado")),
         }
     return {
         "aluno_id": state.get("aluno_id"),
