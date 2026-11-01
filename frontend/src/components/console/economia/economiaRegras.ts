@@ -158,3 +158,41 @@ export function progressoDoFundo(arrecadado: number, meta: number): string {
   const pct = meta > 0 ? Math.min(100, Math.floor((100 * arrecadado) / meta)) : 0;
   return `${arrecadado} de ${meta} moedas (${pct}%)`;
 }
+
+export type LinhaDaCarteira = { aluno_id: string; delta: number; motivo: string; classe_id: number | null };
+
+export type CarteiraDoAluno = {
+  id: string;
+  nome: string;
+  /** Moedas ganhas NESTA turma (eventos, metas, concessões), fora as devolvidas. */
+  ganhou: number;
+  /** Moedas gastas NESTA turma (loja e doações ao fundo). */
+  gastou: number;
+  /** Devolvidas nesta turma (compra estornada, fundo cancelado). */
+  devolvido: number;
+  /** Saldo da carteira do aluno, somando todas as turmas: é o que ele vê na loja. */
+  saldo: number;
+};
+
+/** Resumo da moeda individual de cada aluno, a partir do razão (`moedas_ledger`). */
+export function resumirCarteiras(
+  alunos: { id: string; nome: string }[],
+  linhas: LinhaDaCarteira[],
+  classeId: number,
+): CarteiraDoAluno[] {
+  const porAluno = new Map(alunos.map((a) => [a.id, { id: a.id, nome: a.nome, ganhou: 0, gastou: 0, devolvido: 0, saldo: 0 }]));
+  for (const l of linhas) {
+    const c = porAluno.get(l.aluno_id);
+    if (!c) continue;
+    const delta = Number(l.delta) || 0;
+    c.saldo += delta;
+    if (Number(l.classe_id) !== classeId) continue;
+    if (l.motivo === "estorno") c.devolvido += delta;
+    else if (delta > 0) c.ganhou += delta;
+    else c.gastou += -delta;
+  }
+  return [...porAluno.values()];
+}
+
+/** "padrão: 5" — o que vale quando a turma não personaliza. */
+export const textoDoPadrao = (valor: number) => `padrão: ${valor}`;

@@ -10,6 +10,7 @@ import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
 import {
   arquivarMeta,
   carregarAlunos,
+  carregarCarteiras,
   carregarConfig,
   carregarExtrato,
   carregarItens,
@@ -43,14 +44,17 @@ import {
   limiteDoTexto,
   numeroOuNulo,
   textoDoLimite,
+  textoDoPadrao,
   type CampoDeLimite,
+  type CarteiraDoAluno,
   type LimitesDeUso,
 } from "./economiaRegras";
 
-type Aba = "valores" | "prazos" | "loja" | "fundo" | "metas" | "historico";
+type Aba = "valores" | "alunos" | "prazos" | "loja" | "fundo" | "metas" | "historico";
 
 const ABAS: { id: Aba; rotulo: string }[] = [
   { id: "valores", rotulo: "Valores" },
+  { id: "alunos", rotulo: "Moedas por aluno" },
   { id: "prazos", rotulo: "Prazos e tempo" },
   { id: "loja", rotulo: "Loja" },
   { id: "fundo", rotulo: "Fundo da turma" },
@@ -113,6 +117,7 @@ export default function EconomiaSection({ professorId }: { professorId?: string 
             ))}
           </div>
           {aba === "valores" && <AbaValores classeId={turmaId} />}
+          {aba === "alunos" && <AbaMoedasPorAluno classeId={turmaId} />}
           {aba === "prazos" && <AbaPrazos classeId={turmaId} />}
           {aba === "loja" && <AbaLoja classeId={turmaId} />}
           {aba === "fundo" && <AbaFundo classeId={turmaId} />}
@@ -147,7 +152,13 @@ function AbaValores({ classeId }: { classeId: number }) {
   if (estado === "carregando") return <Loader2 className="mx-auto my-10 h-6 w-6 animate-spin text-primary" />;
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">Vazio herda o valor global. Pontos e moedas são independentes: gastar moeda não mexe no rank.</p>
+      <div className="space-y-1 text-sm text-muted-foreground">
+        <p>
+          <strong className="text-foreground">Quanto cada aluno ganha, individualmente,</strong> quando faz a ação nesta turma. As moedas vão
+          para a carteira dele; os pontos, para o rank. Campo vazio usa o padrão da plataforma.
+        </p>
+        <p>Pontos e moedas são independentes: gastar moeda não mexe no rank. A moeda coletiva da turma é a do Fundo da turma, não esta.</p>
+      </div>
       {linhas.map((linha) => (
         <ValorLinha key={linha.tipo} classeId={classeId} linha={linha} onSalvou={() => void carregar()} />
       ))}
@@ -169,7 +180,7 @@ function ValorLinha({ classeId, linha, onSalvou }: { classeId: number; linha: Va
     setSalvando(true);
     try {
       await salvarValor(classeId, linha.tipo, p, m);
-      toast.success("Valor da turma salvo.");
+      toast.success("Valor por aluno salvo para esta turma.");
       onSalvou();
     } catch (e) {
       toast.error((e as Error).message);
@@ -182,13 +193,24 @@ function ValorLinha({ classeId, linha, onSalvou }: { classeId: number; linha: Va
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[180px] flex-1">
           <p className="font-semibold">{linha.descricao || linha.tipo}</p>
-          <p className="text-xs text-muted-foreground">Global: {linha.pontos} pontos · {linha.moedas} moedas</p>
+          <p className="text-xs text-muted-foreground">
+            Padrão da plataforma: {linha.pontos} pontos · {linha.moedas} moedas
+            {(linha.pontosTurma !== null || linha.moedasTurma !== null) && (
+              <span className="ml-2 rounded-full bg-muted px-2 py-0.5 font-semibold text-foreground">personalizado nesta turma</span>
+            )}
+          </p>
+          {linha.tipo === "atividade_concluida" && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              As moedas da conclusão só saem quando você aprova a entrega (nota de pelo menos 60% da máxima). Se o tópico tiver valor
+              próprio em Prazos e tempo, ele vale antes deste.
+            </p>
+          )}
         </div>
-        <label className="text-sm">Pontos da turma
-          <Input aria-label={`Pontos de ${linha.tipo}`} value={pontos} onChange={(e) => setPontos(e.target.value)} placeholder={String(linha.pontos)} className="mt-1 w-28" />
+        <label className="text-sm">Pontos por aluno
+          <Input aria-label={`Pontos por aluno em ${linha.descricao || linha.tipo}`} value={pontos} onChange={(e) => setPontos(e.target.value)} placeholder={textoDoPadrao(linha.pontos)} className="mt-1 w-28" />
         </label>
-        <label className="text-sm">Moedas da turma
-          <Input aria-label={`Moedas de ${linha.tipo}`} value={moedas} onChange={(e) => setMoedas(e.target.value)} placeholder={String(linha.moedas)} className="mt-1 w-28" />
+        <label className="text-sm">Moedas por aluno
+          <Input aria-label={`Moedas por aluno em ${linha.descricao || linha.tipo}`} value={moedas} onChange={(e) => setMoedas(e.target.value)} placeholder={textoDoPadrao(linha.moedas)} className="mt-1 w-28" />
         </label>
         <Button type="button" className="rounded-full" disabled={salvando} onClick={() => void salvar()}>{salvando ? "Salvando…" : "Salvar"}</Button>
       </div>
@@ -558,6 +580,60 @@ function AbaMetas({ classeId }: { classeId: number }) {
           </div>
         </Caixa>
       ))}
+    </div>
+  );
+}
+
+function AbaMoedasPorAluno({ classeId }: { classeId: number }) {
+  const [carteiras, setCarteiras] = useState<CarteiraDoAluno[] | null>(null);
+  const [erro, setErro] = useState("");
+  const carregar = useCallback(async () => {
+    try {
+      setCarteiras(await carregarCarteiras(classeId));
+      setErro("");
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  }, [classeId]);
+  useEffect(() => { void carregar(); }, [carregar]);
+  if (erro) return <ErroDaPagina titulo="Não foi possível carregar as moedas dos alunos" detalhe={erro} onTentarNovamente={() => void carregar()} />;
+  if (!carteiras) return <Loader2 className="mx-auto my-10 h-6 w-6 animate-spin text-primary" />;
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        A moeda individual de cada aluno nesta turma. O saldo é o da carteira dele, somando todas as turmas: é o que ele vê na loja.
+        Para ver cada movimentação, use Histórico.
+      </p>
+      {carteiras.length === 0 ? (
+        <Caixa><p className="text-sm text-muted-foreground">Nenhum aluno matriculado nesta turma ainda.</p></Caixa>
+      ) : (
+        <Caixa>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr>
+                  <th scope="col" className="px-2 py-2 font-semibold">Aluno</th>
+                  <th scope="col" className="px-2 py-2 font-semibold">Ganhou aqui</th>
+                  <th scope="col" className="px-2 py-2 font-semibold">Gastou aqui</th>
+                  <th scope="col" className="px-2 py-2 font-semibold">Devolvido</th>
+                  <th scope="col" className="px-2 py-2 font-semibold">Saldo da carteira</th>
+                </tr>
+              </thead>
+              <tbody>
+                {carteiras.map((c) => (
+                  <tr key={c.id} className="border-t border-border">
+                    <th scope="row" className="px-2 py-2 font-semibold text-foreground">{c.nome}</th>
+                    <td className="px-2 py-2">{c.ganhou}</td>
+                    <td className="px-2 py-2">{c.gastou}</td>
+                    <td className="px-2 py-2">{c.devolvido}</td>
+                    <td className="px-2 py-2 font-semibold">{c.saldo}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Caixa>
+      )}
     </div>
   );
 }

@@ -251,6 +251,19 @@ export default function ClassManagementSection({ professorId }: Props) {
     void loadData(true);
   };
 
+  // Importação por CSV (#146): um INSERT só, atômico — ou entram todos, ou nenhum. Cada linha dispara
+  // o mesmo gatilho de matrícula do banco (material do aluno enfileirado).
+  const handleAddManyStudentsToClass = async (alunoIds: string[]) => {
+    if (!selectedClassForStudents || alunoIds.length === 0) return;
+    const classId = selectedClassForStudents.id;
+    const novos = alunoIds.filter((id) => !classStudents[classId]?.includes(id));
+    const { error } = await supabase.from("classe_aluno").insert(novos.map((aluno_id) => ({ classe_id: classId, aluno_id })));
+    if (error) throw new Error(`Não foi possível matricular: ${error.message}`);
+    setClassStudents((prev) => ({ ...prev, [classId]: [...(prev[classId] || []), ...novos] }));
+    toast.success(novos.length === 1 ? "1 aluno matriculado." : `${novos.length} alunos matriculados.`);
+    void loadData(true);
+  };
+
   const handleRemoveStudentFromClass = async (alunoId: string) => {
     if (!selectedClassForStudents) return;
     const classId = selectedClassForStudents.id;
@@ -368,6 +381,7 @@ export default function ClassManagementSection({ professorId }: Props) {
         candidatos={students}
         matriculadosIds={selectedClassForStudents ? classStudents[selectedClassForStudents.id] || [] : []}
         onMatricular={handleAddStudentToClass}
+        onMatricularVarios={handleAddManyStudentsToClass}
         onRemover={handleRemoveStudentFromClass}
         onFechar={() => setSelectedClassForStudents(null)}
       />
