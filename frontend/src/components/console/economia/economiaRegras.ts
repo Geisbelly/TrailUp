@@ -37,6 +37,11 @@ export function concedido(
 }
 
 export const MENSAGEM_DE_ERRO: Record<string, string> = {
+  fundo_ja_ativo: "Esta turma já tem um fundo aberto. Encerre o atual antes de abrir outro.",
+  meta_invalida: "A meta precisa ser um número inteiro entre 1 e 100.000 moedas.",
+  texto_invalido: "Preencha o nome (até 80 caracteres) e o benefício (até 300).",
+  meta_nao_atingida: "Só dá para entregar depois que a turma bater a meta.",
+  fundo_ja_encerrado: "Este fundo já foi encerrado.",
   sem_permissao: "Você não pode alterar a economia desta turma.",
   sem_sessao: "A sessão expirou. Entre de novo.",
   faixa_invalida: "Confira os números: o mínimo não pode passar do máximo, nem o máximo do teto.",
@@ -137,4 +142,19 @@ export function descreverPadrao(item: string, campo: CampoDeLimite): string {
 /** Preço da n-ésima unidade (0 = primeira) com aumento por compra; fator 1 desliga o aumento. */
 export function precoDaUnidade(base: number, fator: number, jaCompradas: number): number {
   return Math.round(base * Math.pow(fator, jaCompradas));
+}
+
+export type StatusDoFundo = "aberto" | "atingido" | "entregue" | "cancelado";
+
+export const ROTULO_DO_FUNDO: Record<StatusDoFundo, string> = {
+  aberto: "Arrecadando",
+  atingido: "Meta atingida",
+  entregue: "Benefício entregue",
+  cancelado: "Cancelado (moedas devolvidas)",
+};
+
+/** "30 de 50 moedas (60%)"; o percentual nunca passa de 100. */
+export function progressoDoFundo(arrecadado: number, meta: number): string {
+  const pct = meta > 0 ? Math.min(100, Math.floor((100 * arrecadado) / meta)) : 0;
+  return `${arrecadado} de ${meta} moedas (${pct}%)`;
 }

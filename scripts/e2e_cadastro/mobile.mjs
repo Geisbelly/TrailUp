@@ -15,6 +15,9 @@ export async function materialDoAluno(client, uid) {
   }}],
   resolve:{alias:[{find:/^@\/(?!database\/supabase$|services\/apiBaseUrl$)(.*)$/,replacement:`${root}mobile/src/$1`}]},
   optimizeDeps:{noDiscovery:true,include:[]},server:{middlewareMode:true},
+  // Sem isto o Vite lê o tsconfig de mobile/, que estende expo/tsconfig.base, e o job de frontend
+  // não instala o Expo. Mesma correção de scripts/validar-cadastro-ate-material.mjs.
+  esbuild:{tsconfigRaw:JSON.stringify({compilerOptions:{useDefineForClassFields:true}})},
  });
  try{
   (await server.ssrLoadModule('virtual:client')).setClient(client);

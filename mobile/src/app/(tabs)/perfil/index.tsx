@@ -868,7 +868,9 @@ const styles = StyleSheet.create({
     // Identidade mais alta que a janela volta a rolar por dentro, senão o fim dela fica
     // inalcançável — é o modo de falha que `sticky` tem e `fixed` não resolveria.
     maxHeight: "100vh" as unknown as number,
-    overflowY: "auto" as unknown as "scroll",
+    // `overflowY` só existe na web (o react-native-web repassa ao CSS); o tipo de estilo do RN não o
+    // conhece e um cast no valor não basta, porque a chave é que é desconhecida.
+    ...({ overflowY: "auto" } as object),
   },
   // Retrato de 160 px sobre o canto do banner: 72 px dele descem abaixo da borda, como no protótipo.
   retrato: { position: "absolute", left: 64, top: 28 + 240 - 88, zIndex: 5 },

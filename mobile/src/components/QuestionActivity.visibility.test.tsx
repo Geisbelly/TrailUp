@@ -7,7 +7,7 @@ const mockModule = (path: string, exports: unknown) => {
   (require.cache as Record<string, unknown>)[require.resolve(path)] = { exports };
 };
 function Host({ children }: { children?: React.ReactNode }) { return <div>{children}</div>; }
-mockModule('react-native', { View: Host, Text: Host, ScrollView: Host, TouchableOpacity: Host, TextInput: () => null, Image: () => null,
+mockModule('react-native', { Platform: { OS: 'ios', select: (o: Record<string, unknown>) => o.ios ?? o.default }, View: Host, Text: Host, ScrollView: Host, TouchableOpacity: Host, TextInput: () => null, Image: () => null,
   Modal: ({ visible, children }: { visible: boolean; children: React.ReactNode }) => visible ? <div>{children}</div> : null });
 mockModule('@expo/vector-icons', { Ionicons: () => null });
 mockModule('@/components/ContentRenderer', { ContentRenderer: () => null });

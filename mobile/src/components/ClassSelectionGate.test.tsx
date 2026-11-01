@@ -25,6 +25,8 @@ const buttons: { label: string; onPress: () => void }[] = [];
 function Host({ children }: { children?: React.ReactNode }) { return <div>{children}</div>; }
 mockModule("react-native", {
   View: Host, Text: Host, ScrollView: Host,
+  // A tela de escolha mostra a arte do perfil (getProfileArtwork); a imagem não importa aqui.
+  Image: () => null,
   StyleSheet: { create: (value: unknown) => value },
   ActivityIndicator: () => <span>loading</span>,
   Pressable: ({ children, accessibilityLabel, onPress }: { children: React.ReactNode; accessibilityLabel?: string; onPress: () => void }) => {

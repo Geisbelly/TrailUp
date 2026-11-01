@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { mensagemDeErro, type LimitesDeUso } from "./economiaRegras";
+import { mensagemDeErro, type LimitesDeUso, type StatusDoFundo } from "./economiaRegras";
 
 type Resposta = { ok?: boolean; erro?: string; id?: number; devolvido?: number };
 
@@ -239,4 +239,48 @@ export async function salvarEscopo(classeId: number, escopo: "topico" | "ativida
     p_uso_max_tempo: null,
     p_uso_max_retry: null,
   });
+}
+
+export type FundoDaTurma = {
+  id: number;
+  titulo: string;
+  beneficio: string;
+  meta: number;
+  arrecadado: number;
+  status: StatusDoFundo;
+  criado_em: string;
+  encerrado_em: string | null;
+};
+
+/** Fundos da turma, o ativo primeiro, e quantos alunos doaram a cada um (a RLS dá ao professor todas as doações). */
+export async function carregarFundos(classeId: number): Promise<{ fundos: FundoDaTurma[]; doadores: Map<number, number> }> {
+  const { data, error } = await db
+    .from("fundos_turma")
+    .select("id, titulo, beneficio, meta, arrecadado, status, criado_em, encerrado_em")
+    .eq("classe_id", classeId)
+    .order("criado_em", { ascending: false })
+    .limit(20);
+  if (error) throw new Error(error.message);
+  const fundos = (data ?? []) as FundoDaTurma[];
+  const doadores = new Map<number, number>();
+  if (fundos.length) {
+    const doacoes = await db.from("fundos_turma_contribuicao").select("fundo_id, aluno_id").in("fundo_id", fundos.map((f) => f.id));
+    if (doacoes.error) throw new Error(doacoes.error.message);
+    const porFundo = new Map<number, Set<string>>();
+    for (const d of (doacoes.data ?? []) as { fundo_id: number; aluno_id: string }[]) {
+      if (!porFundo.has(d.fundo_id)) porFundo.set(d.fundo_id, new Set());
+      porFundo.get(d.fundo_id)!.add(d.aluno_id);
+    }
+    for (const [id, alunos] of porFundo) doadores.set(id, alunos.size);
+  }
+  return { fundos, doadores };
+}
+
+export async function criarFundo(classeId: number, titulo: string, beneficio: string, meta: number) {
+  await chamar("fundo_turma_criar", { p_classe_id: classeId, p_titulo: titulo, p_beneficio: beneficio, p_meta: meta });
+}
+
+/** `entregue = false` cancela e devolve as moedas a quem doou. */
+export async function encerrarFundo(fundoId: number, entregue: boolean) {
+  await chamar("fundo_turma_encerrar", { p_fundo_id: fundoId, p_entregue: entregue });
 }
