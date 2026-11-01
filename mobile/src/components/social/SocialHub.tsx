@@ -4,8 +4,9 @@ import { bossVisuals } from "@/constants/bossVisuals";
 import { journeyObjects, profileBanners, rankingArenas } from "@/constants/designAssets";
 import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brainHexProfiles";
 import { brainHexGuideNames, getBrainHexConfig, guardianFullImages } from "@/constants/profileImages";
+import { rotuloDoContador } from "@/services/social/chatNaoLidasModel";
 import type { Guild } from "@/services/social/guildModel";
-import type { AbaDoSocial, AncoraDoSocial, AreaDoSocial } from "@/services/social/socialDestaque";
+import { cabecaDaDisputa, type AbaDoSocial, type AncoraDoSocial, type AreaDoSocial } from "@/services/social/socialDestaque";
 import type { SocialPerson } from "@/services/social/socialModel";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { bossDoPerfil } from "@/utils/contentBossVisual";
@@ -13,7 +14,7 @@ import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
-import { Image, ImageBackground, type ImageSourcePropType, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, ImageBackground, type ImageSourcePropType, Pressable, ScrollView, type StyleProp, StyleSheet, Text, View, type ViewStyle } from "react-native";
 
 type Icone = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -259,39 +260,50 @@ export function SocialHubDestaque({ area, profile, palette, resumo, onIr, onConv
   );
 }
 
-/** Ícone e nome de cada aba de página do celular. O evento é bloco da Arena, não aba. */
+/** Ícone e nome de cada aba de página do celular. */
 export const ABA_DA_AREA: Record<AbaDoSocial, { icone: Icone; rotulo: string }> = {
   arena: { icone: "sword-cross", rotulo: "Arena" },
   conversa: { icone: "forum-outline", rotulo: "Conversa" },
   descobrir: { icone: "compass-outline", rotulo: "Descobrir" },
 };
 
+/** A aba de disputa veste o perfil: Arena para quem joga por confronto, Eventos para os demais. */
+export function abaDoPerfil(aba: AbaDoSocial, perfil: string | null | undefined, temTurma: boolean): { icone: Icone; rotulo: string } {
+  if (aba === "arena" && cabecaDaDisputa(perfil, temTurma) === "eventos") return { icone: "calendar-star", rotulo: "Eventos" };
+  return ABA_DA_AREA[aba];
+}
+
 /**
  * Abas de página, como as do perfil do Instagram: ícone e nome em partes iguais, a ativa na cor
  * do perfil com o traço embaixo. Trocam a página inteira em vez de rolar até uma âncora.
  */
-export function AbasDoSocial({ abas, ativa, palette, contagem, onTrocar }: { abas: AbaDoSocial[]; ativa: AbaDoSocial; palette: ProfileShellPalette; contagem: Partial<Record<AbaDoSocial, number>>; onTrocar: (aba: AbaDoSocial) => void }) {
+export function AbasDoSocial({ abas, ativa, perfil, temTurma, palette, contagem, onTrocar }: { abas: AbaDoSocial[]; perfil: string | null | undefined; temTurma: boolean; ativa: AbaDoSocial; palette: ProfileShellPalette; contagem: Partial<Record<AbaDoSocial, number>>; onTrocar: (aba: AbaDoSocial) => void }) {
   return (
     <View accessibilityRole="tablist" style={[s.abas, { borderBottomColor: palette.border, backgroundColor: palette.background }]}>
       {abas.map((area) => {
         const ativo = area === ativa;
-        const { icone, rotulo } = ABA_DA_AREA[area];
+        const { icone, rotulo } = abaDoPerfil(area, perfil, temTurma);
         const n = contagem[area] ?? 0;
         return (
           <Pressable key={area} onPress={() => onTrocar(area)} accessibilityRole="tab" accessibilityState={{ selected: ativo }} accessibilityLabel={n ? `${rotulo}, ${n} pendentes` : rotulo} style={s.aba}>
             <View>
               <MaterialCommunityIcons name={icone} size={22} color={ativo ? palette.accent : palette.textSubtle} />
-              {n ? (
-                <View style={[s.abaBolinha, { backgroundColor: palette.accent, borderColor: palette.background }]}>
-                  <Text style={[s.abaBolinhaTexto, { color: palette.background }]}>{n > 9 ? "9+" : n}</Text>
-                </View>
-              ) : null}
+              {n ? <SeloDeNaoLidas n={n} palette={palette} style={s.abaBolinha} /> : null}
             </View>
             <Text numberOfLines={1} style={[s.abaRotulo, { color: ativo ? palette.accent : palette.textSubtle }]}>{rotulo}</Text>
             <View style={[s.abaTraco, { backgroundColor: ativo ? palette.accent : "transparent" }]} />
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+/** Selo com o número na cor do perfil, no canto do ícone ou do rosto; passa de 9 para "9+". */
+export function SeloDeNaoLidas({ n, palette, style }: { n: number; palette: ProfileShellPalette; style?: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[s.contador, { backgroundColor: palette.accent, borderColor: palette.background }, style]}>
+      <Text style={[s.contadorTexto, { color: palette.background }]}>{rotuloDoContador(n)}</Text>
     </View>
   );
 }
@@ -303,16 +315,21 @@ export function AbasDoSocial({ abas, ativa, palette, contagem, onTrocar }: { aba
  * A tela só desenha a fileira quando há alguém nela: sozinho, o "Encontrar" repetiria a aba
  * Descobrir e ocuparia a altura de uma fileira inteira.
  */
-export function SocialStories({ amigos, colegas = [], palette, onConversar, onEncontrar }: { amigos: SocialPerson[]; colegas?: SocialPerson[]; palette: ProfileShellPalette; onConversar: (p: SocialPerson) => void; onEncontrar: () => void }) {
+export function SocialStories({ amigos, colegas = [], naoLidas = {}, palette, onConversar, onEncontrar }: { amigos: SocialPerson[]; colegas?: SocialPerson[]; naoLidas?: Readonly<Record<string, number>>; palette: ProfileShellPalette; onConversar: (p: SocialPerson) => void; onEncontrar: () => void }) {
+  const pessoas = [...onlinePrimeiro(amigos), ...onlinePrimeiro(colegas)];
+  // Quem mandou mensagem que o aluno ainda não leu vem antes (sort estável: o resto mantém a ordem).
+  const ordem = pessoas.some((p) => naoLidas[p.alunoId]) ? [...pessoas].sort((a, b) => Number(Boolean(naoLidas[b.alunoId])) - Number(Boolean(naoLidas[a.alunoId]))) : pessoas;
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.stories}>
-      {[...onlinePrimeiro(amigos), ...onlinePrimeiro(colegas)].map((p) => {
+      {ordem.map((p) => {
         const nome = p.apelido || p.nome;
+        const n = naoLidas[p.alunoId] ?? 0;
         return (
-          <Pressable key={p.alunoId} onPress={() => onConversar(p)} accessibilityRole="button" accessibilityLabel={`Conversar com ${nome}${p.online ? ", online" : ""}`} style={s.story}>
+          <Pressable key={p.alunoId} onPress={() => onConversar(p)} accessibilityRole="button" accessibilityLabel={`Conversar com ${nome}${p.online ? ", online" : ""}${n ? `, ${n} ${n === 1 ? "mensagem nova" : "mensagens novas"}` : ""}`} style={s.story}>
             <View>
               <FramedProfileImage profile={normalizeBrainHexProfile(p.perfilAtivo)} source={p.fotoUrl ? { uri: p.fotoUrl } : undefined} size={48} />
               {p.online ? <View style={[s.storyOnline, { borderColor: palette.background }]} /> : null}
+              {n ? <SeloDeNaoLidas n={n} palette={palette} style={s.storySelo} /> : null}
             </View>
             <Text numberOfLines={1} style={[s.storyNome, { color: palette.textMuted }]}>{nome.split(" ")[0]}</Text>
           </Pressable>
@@ -381,8 +398,10 @@ const s = StyleSheet.create({
   aba: { flex: 1, minHeight: 48, alignItems: "center", justifyContent: "flex-end", gap: 2, paddingTop: 6 },
   abaRotulo: { fontFamily: FontFamily.interMedium, fontSize: 11.5, fontWeight: "700" },
   abaTraco: { alignSelf: "stretch", height: 2.5, borderRadius: 2, marginHorizontal: 14, marginTop: 3 },
-  abaBolinha: { position: "absolute", top: -5, right: -12, minWidth: 18, height: 18, borderRadius: 9, borderWidth: 1.5, paddingHorizontal: 4, alignItems: "center", justifyContent: "center" },
-  abaBolinhaTexto: { fontFamily: FontFamily.interMedium, fontSize: 10, fontWeight: "800" },
+  abaBolinha: { top: -5, right: -12 },
+  contador: { position: "absolute", minWidth: 18, height: 18, borderRadius: 9, borderWidth: 1.5, paddingHorizontal: 4, alignItems: "center", justifyContent: "center" },
+  contadorTexto: { fontFamily: FontFamily.interMedium, fontSize: 10, fontWeight: "800" },
+  storySelo: { top: -3, right: -5 },
   stories: { gap: 10, paddingTop: 4, paddingBottom: 8, paddingRight: 8 },
   story: { width: 56, alignItems: "center", gap: 3 },
   storyOnline: { position: "absolute", right: 0, bottom: 0, width: 12, height: 12, borderRadius: 6, borderWidth: 2, backgroundColor: ONLINE },

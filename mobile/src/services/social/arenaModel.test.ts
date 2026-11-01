@@ -9,6 +9,7 @@ import {
   pendentes,
   resultadoParaMim,
   situacaoNaArena,
+  sortearParaArena,
   tituloDoDesafio,
   validarNovoDesafio,
 } from "./arenaModel";
@@ -147,5 +148,60 @@ describe("arenaModel", () => {
       mensagemDaArena({ message: "arena_limite_diario_adversario" }),
       "Vocês já jogaram o limite de partidas ranqueadas de hoje um contra o outro. Amanhã tem revanche.",
     );
+  });
+});
+
+describe("sortearParaArena (busca aleatória)", () => {
+  const DUDA = "00000000-0000-0000-0000-00000000000d";
+  const vazio = { aliado: null, adversarios: [], guildaId: null, guildaRival: null };
+  // Sorteio fixo: sempre 0 deixa a ordem embaralhada previsível.
+  const zero = () => 0;
+  const colegas = [
+    { alunoId: ANA, online: false },
+    { alunoId: BIA, online: true },
+    { alunoId: CAIO, online: false },
+    { alunoId: DUDA, online: true },
+  ];
+
+  it("duelo: sorteia um adversário, online primeiro, e o desafio fica válido", () => {
+    const n = sortearParaArena({ ...vazio, formato: "solo" }, colegas, [], zero);
+    assert.equal(n.adversarios.length, 1);
+    assert.ok([BIA, DUDA].includes(n.adversarios[0]));
+    assert.equal(validarNovoDesafio(n, null), null);
+  });
+
+  it("dupla: completa a dupla e os dois adversários, sem repetir ninguém", () => {
+    const n = sortearParaArena({ ...vazio, formato: "dupla" }, colegas, [], zero);
+    assert.ok(n.aliado);
+    assert.equal(n.adversarios.length, 2);
+    assert.equal(new Set([n.aliado, ...n.adversarios]).size, 3);
+    assert.equal(validarNovoDesafio(n, null), null);
+  });
+
+  it("dupla: a dupla que o aluno escolheu fica, e só os adversários são sorteados", () => {
+    const n = sortearParaArena({ ...vazio, formato: "dupla", aliado: BIA }, colegas, [], zero);
+    assert.equal(n.aliado, BIA);
+    assert.ok(!n.adversarios.includes(BIA));
+    assert.equal(n.adversarios.length, 2);
+  });
+
+  it("guilda: sorteia uma rival que não é a própria guilda", () => {
+    const n = sortearParaArena({ ...vazio, formato: "guilda", guildaId: "g1" }, [], [{ id: "g1" }, { id: "g2" }], zero);
+    assert.equal(n.guildaRival, "g2");
+    assert.equal(validarNovoDesafio(n, null), null);
+  });
+
+  it("sem gente suficiente, o desafio fica incompleto e a validação diz o que falta", () => {
+    const n = sortearParaArena({ ...vazio, formato: "dupla" }, [{ alunoId: ANA, online: true }], [], zero);
+    assert.equal(n.aliado, ANA);
+    assert.deepEqual(n.adversarios, []);
+    assert.equal(validarNovoDesafio(n, null), "Escolha os dois adversários.");
+  });
+
+  it("todos online ou todos offline: qualquer um pode sair, nunca alguém de fora da lista", () => {
+    for (let i = 0; i < 20; i++) {
+      const n = sortearParaArena({ ...vazio, formato: "solo" }, colegas.map((c) => ({ ...c, online: false })), []);
+      assert.ok(colegas.some((c) => c.alunoId === n.adversarios[0]));
+    }
   });
 });

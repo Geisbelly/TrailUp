@@ -15,12 +15,16 @@ import { registrarAlvoTour } from "@/utils/tourTargets";
 import { useIsFocused } from "@react-navigation/native";
 import { router } from "expo-router";
 import { UtilityIcon } from "@/components/UtilityIcon";
+import { RastreadorDeMissoes } from "@/components/missoes/RastreadorDeMissoes";
+import { perfilDaMissao } from "@/services/missoes/missaoModel";
+import type { TopicoDoRastreador } from "@/services/missoes/rastreadorDeMissoes";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 import { ArvoreCelular } from "./ArvoreCelular";
 import { TrilhaArvoreSimple } from "./ArvoreView";
 import { GameHeader } from "./common/GameHeader";
 import { ALTURA_FOLHA_RECOLHIDA, FolhaTopicoTrilha } from "./FolhaTopicoTrilha";
+import { BASE_DOS_FLUTUANTES } from "./flutuantesDaTrilha";
 import { ListaCelular } from "./ListaCelular";
 import { TrilhaLinearList } from "./ListaSimplesView";
 import { MapaMosaicoCelular } from "./MapaMosaicoCelular";
@@ -131,6 +135,14 @@ export const TrilhaBase: React.FC<{
   const local = visual === "mapa" && pais ? `${pais.countryName} · Capital: ${pais.capitalName}` : null;
   const justificativa = idFolha ? String(personalizedTopics?.[Number(idFolha)]?.planMeta?.justification ?? "").trim() : "";
   const guiaDisponivel = resolveFeature({ scope: "session" }, "mentor_character").enabled;
+  // O rastreador precisa do bloqueio (grafo) e das atividades do professor (classe) de cada tópico.
+  const topicosDoRastreador: TopicoDoRastreador[] = nos.map((n) => ({
+    id: Number(n.id),
+    locked: n.locked,
+    completed: n.completed,
+    sequence: n.sequence,
+    atividadeIds: (topicoDe(n.id)?.atividades ?? []).map((a) => Number(a.id)),
+  }));
   const tocarNo = (id: string) => {
     const no = nos.find((n) => String(n.id) === String(id));
     const acao = aoTocarNoCelular(no, selecionado);
@@ -257,6 +269,20 @@ export const TrilhaBase: React.FC<{
         }}
         expandida={folhaExpandida}
         onExpandir={setFolhaExpandida}
+      />
+      {/* Missões como nos jogos: a da vez num botão, a lista com "Ir" por trás dele. */}
+      <RastreadorDeMissoes
+        classeId={classeAtual.classe_id}
+        perfilDaMissao={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)}
+        topicos={topicosDoRastreador}
+        atualId={currentTopicId}
+        palette={palette}
+        base={BASE_DOS_FLUTUANTES}
+        oculto={folhaExpandida}
+        onVerTopicoBloqueado={(id) => {
+          setSelecionado(String(id));
+          setFolhaExpandida(true);
+        }}
       />
     </View>
   );

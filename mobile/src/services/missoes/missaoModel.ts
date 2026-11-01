@@ -15,7 +15,8 @@
 
 export type OrigemDaMissao = "sistema" | "professor";
 export type EscopoDaMissao = "aluno" | "turma" | "guilda";
-export type StatusDaMissao = "pendente" | "em_andamento" | "concluida";
+/** `expirada` é do banco (`missao_aluno.status`): a janela fechou sem a missão ser cumprida. */
+export type StatusDaMissao = "pendente" | "em_andamento" | "concluida" | "expirada";
 
 export type MissaoDoAluno = {
   id: number;
@@ -24,6 +25,10 @@ export type MissaoDoAluno = {
   progresso: number;
   status: StatusDaMissao;
   criterioRotulo: string;
+  /** `criterio.metrica`, cru. É o que diz para onde o "Ir" do rastreador leva. */
+  metrica: string;
+  /** `criterio.atividade_id` da missão-entrega (`atividade_especifica`); `null` nas outras. */
+  atividadeId: number | null;
   origem: OrigemDaMissao;
   escopo: EscopoDaMissao;
   /** `janela_fim`. `null` = sem prazo. */
@@ -36,8 +41,17 @@ export type MissaoDoAluno = {
 export function statusDe(s: string | null | undefined): StatusDaMissao {
   const v = (s ?? "").toLowerCase();
   if (v.includes("conclu")) return "concluida";
+  if (v.includes("expir")) return "expirada";
   if (v.includes("andamento") || v.includes("progress")) return "em_andamento";
   return "pendente";
+}
+
+/** A atividade que a missão-entrega aponta. Só `atividade_especifica` tem uma. */
+export function atividadeDoCriterio(criterio: unknown): number | null {
+  const c = criterio && typeof criterio === "object" ? (criterio as Record<string, unknown>) : null;
+  if (String(c?.metrica ?? "") !== "atividade_especifica") return null;
+  const id = Number(c?.atividade_id);
+  return Number.isInteger(id) && id > 0 ? id : null;
 }
 
 export function rotuloCriterio(criterio: unknown): string {
@@ -221,6 +235,8 @@ export function montarMissoes(
         progresso: Number(p?.progresso ?? 0),
         status: statusDe(p?.status),
         criterioRotulo: rotuloCriterio(m.criterio),
+        metrica: String((m.criterio as Record<string, unknown> | null)?.metrica ?? ""),
+        atividadeId: atividadeDoCriterio(m.criterio),
         origem: m.origem === "professor" ? "professor" : "sistema",
         escopo: m.escopo === "guilda" ? "guilda" : m.escopo === "aluno" ? "aluno" : "turma",
         prazo: m.janela_fim,

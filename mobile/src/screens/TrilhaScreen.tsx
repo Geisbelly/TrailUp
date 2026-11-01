@@ -3,6 +3,7 @@ import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { EsqueletoTrilha } from "@/components/trilhas/EsqueletoTrilha";
 import { BagModal } from "@/components/bag/BagModal";
 import { TrilhaBase } from "@/components/trilhas/TrilhaBase";
+import { BASE_DOS_FLUTUANTES } from "@/components/trilhas/flutuantesDaTrilha";
 import { TrilhaDesktop } from "@/components/web/TrilhaDesktop";
 import { useIA } from "@/context/IAContext";
 import { useTrilha } from "@/context/TrilhaContext";
@@ -129,7 +130,7 @@ export default function TrilhasIndex() {
         classeId={classeAtual?.classe_id ?? null}
         topicoId={trailMentorCue?.topicoId ?? null}
         scope="trilha_home"
-        bottomOffset={desktop ? 10 : 112}
+        bottomOffset={desktop ? 10 : BASE_DOS_FLUTUANTES}
         guideTargetRef={chatGuideTargetRef}
         // Na tela larga o guia fica no canto do mapa, à esquerda do painel do tópico, como no protótipo v4.
         ancora={desktop ? { direita: 380, base: 44, largura: 380 } : undefined}

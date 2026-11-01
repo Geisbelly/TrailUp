@@ -12,6 +12,7 @@ import { caminhoLigacao, layoutArvoreCelular } from "@/utils/arvoreCelular";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import { textShadowStyle } from "@/utils/webShadow";
 import { BalaoVoceParouAqui, ChipEstadoTopico, textoDoEstado } from "./MarcadoresTopico";
+import { RESERVA_DOS_FLUTUANTES } from "./flutuantesDaTrilha";
 
 const IS_WEB = Platform.OS === "web";
 const SOMBRA_NOME = { offset: { width: 0, height: 1 }, radius: 8 };
@@ -133,7 +134,7 @@ export function ArvoreCelular({
 
 const s = StyleSheet.create({
   rolagem: { flex: 1 },
-  conteudo: { paddingTop: 16 },
+  conteudo: { paddingTop: 16, paddingBottom: RESERVA_DOS_FLUTUANTES },
   no: { position: "absolute", height: ALTURA_NO, flexDirection: "row", alignItems: "center", gap: 10 },
   rotulo: { alignItems: "flex-start", gap: 5 },
   nome: {
