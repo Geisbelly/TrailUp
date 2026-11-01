@@ -57,8 +57,8 @@ export default function AbaFundo({ classeId }: { classeId: number }) {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        A recompensa coletiva: a turma junta moedas para um benefício que você escolhe. Cada aluno vê o total e a própria
-        doação, nunca a dos colegas. Um fundo ativo por turma.
+        A recompensa coletiva: a turma junta moedas para um benefício que você escolhe. Cada aluno doa da própria carteira (a moeda
+        individual, de Valores) e vê o total e a própria doação, nunca a dos colegas. Um fundo ativo por turma.
       </p>
 
       {ativo ? (

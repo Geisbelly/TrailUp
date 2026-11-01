@@ -93,3 +93,25 @@ describe("fundo da turma", () => {
     expect(Object.keys(ROTULO_DO_FUNDO).sort()).toEqual(["aberto", "atingido", "cancelado", "entregue"]);
   });
 });
+
+describe("carteiras por aluno", () => {
+  const alunos = [{ id: "a", nome: "Ana" }, { id: "b", nome: "Beto" }];
+  it("ganho, gasto e devolvido só desta turma; saldo soma todas", async () => {
+    const { resumirCarteiras } = await import("./economiaRegras");
+    const r = resumirCarteiras(
+      alunos,
+      [
+        { aluno_id: "a", delta: 10, motivo: "evento", classe_id: 1 },
+        { aluno_id: "a", delta: 5, motivo: "evento", classe_id: 2 }, // outra turma: só no saldo
+        { aluno_id: "a", delta: -6, motivo: "compra", classe_id: 1 },
+        { aluno_id: "a", delta: 6, motivo: "estorno", classe_id: 1 },
+        { aluno_id: "z", delta: 99, motivo: "evento", classe_id: 1 }, // fora da turma
+      ],
+      1,
+    );
+    expect(r).toEqual([
+      { id: "a", nome: "Ana", ganhou: 10, gastou: 6, devolvido: 6, saldo: 15 },
+      { id: "b", nome: "Beto", ganhou: 0, gastou: 0, devolvido: 0, saldo: 0 },
+    ]);
+  });
+});

@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { mensagemDeErro, type LimitesDeUso, type StatusDoFundo } from "./economiaRegras";
+import { mensagemDeErro, resumirCarteiras, type CarteiraDoAluno, type LimitesDeUso, type LinhaDaCarteira, type StatusDoFundo } from "./economiaRegras";
 
 type Resposta = { ok?: boolean; erro?: string; id?: number; devolvido?: number };
 
@@ -283,4 +283,14 @@ export async function criarFundo(classeId: number, titulo: string, beneficio: st
 /** `entregue = false` cancela e devolve as moedas a quem doou. */
 export async function encerrarFundo(fundoId: number, entregue: boolean) {
   await chamar("fundo_turma_encerrar", { p_fundo_id: fundoId, p_entregue: entregue });
+}
+
+/** A moeda individual de cada aluno da turma: o razão dele (a RLS dá ao professor os seus alunos). */
+export async function carregarCarteiras(classeId: number): Promise<CarteiraDoAluno[]> {
+  const alunos = await carregarAlunos(classeId);
+  if (!alunos.length) return [];
+  const linhas = await ler<LinhaDaCarteira[]>(
+    db.from("moedas_ledger").select("aluno_id, delta, motivo, classe_id").in("aluno_id", alunos.map((a) => a.id)).limit(10000),
+  );
+  return resumirCarteiras(alunos, linhas ?? [], classeId);
 }
