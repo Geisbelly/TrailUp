@@ -1,15 +1,14 @@
 import { useIA } from "@/context/IAContext";
 import { useContentBossVisual } from '@/hooks/useContentBossVisual';
-import {
-  IAEnemyPalette,
-  IAEnemyVisualSpec,
-  IAFeatureSelectorScope,
-} from "@/interfaces/personalizacao/IAContracts";
+import { useTrilha } from "@/context/TrilhaContext";
+import { IAFeatureSelectorScope } from "@/interfaces/personalizacao/IAContracts";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View, Platform } from "react-native";
 import { shadowStyle } from "@/utils/webShadow";
+import { paletaDoBossNoPerfil } from "@/utils/bossPerfilPalette";
+import { getProfileShellPalette } from "@/utils/profileShellTheme";
 
 const IS_WEB = Platform.OS === "web";
 
@@ -31,77 +30,14 @@ function formatCountdown(totalSeconds: number) {
   return `${minutes}:${seconds}`;
 }
 
-function buildFallbackVisual(archetype?: string | null): IAEnemyVisualSpec {
+// Selo quando a IA não mandou `visual`. A paleta que acompanhava cada arquétipo saiu: o painel
+// segue a paleta do perfil do aluno (`paletaDoBossNoPerfil`).
+function fallbackBadgeLabel(archetype?: string | null) {
   const normalized = String(archetype ?? "").trim().toLowerCase();
-
-  if (normalized.includes("mech")) {
-    return {
-      preset: "mech",
-      badgeLabel: "Boss mecânico",
-      palette: {
-        primaryColor: "#38bdf8",
-        secondaryColor: "#0f172a",
-        accentColor: "#f8fafc",
-        hpColor: "#fb7185",
-        shieldColor: "#38bdf8",
-        textColor: "#e2e8f0",
-      },
-    };
-  }
-
-  if (normalized.includes("scholar") || normalized.includes("mage")) {
-    return {
-      preset: "scholar",
-      badgeLabel: "Boss arcano",
-      palette: {
-        primaryColor: "#a78bfa",
-        secondaryColor: "#1e1b4b",
-        accentColor: "#fef08a",
-        hpColor: "#f97316",
-        shieldColor: "#60a5fa",
-        textColor: "#f8fafc",
-      },
-    };
-  }
-
-  if (normalized.includes("beast")) {
-    return {
-      preset: "beast",
-      badgeLabel: "Boss selvagem",
-      palette: {
-        primaryColor: "#fb7185",
-        secondaryColor: "#3f1d2e",
-        accentColor: "#fde68a",
-        hpColor: "#ef4444",
-        shieldColor: "#60a5fa",
-        textColor: "#fff7ed",
-      },
-    };
-  }
-
-  return {
-    preset: "phantom",
-    badgeLabel: "Boss",
-    palette: {
-      primaryColor: "#f97316",
-      secondaryColor: "#26162b",
-      accentColor: "#fcd34d",
-      hpColor: "#f97316",
-      shieldColor: "#60a5fa",
-      textColor: "#f8fafc",
-    },
-  };
-}
-
-function mergePalette(palette?: IAEnemyPalette | null) {
-  return {
-    primaryColor: palette?.primaryColor ?? "#f97316",
-    secondaryColor: palette?.secondaryColor ?? "#26162b",
-    accentColor: palette?.accentColor ?? "#fcd34d",
-    hpColor: palette?.hpColor ?? "#f97316",
-    shieldColor: palette?.shieldColor ?? "#60a5fa",
-    textColor: palette?.textColor ?? "#f8fafc",
-  };
+  if (normalized.includes("mech")) return "Boss mecânico";
+  if (normalized.includes("scholar") || normalized.includes("mage")) return "Boss arcano";
+  if (normalized.includes("beast")) return "Boss selvagem";
+  return "Boss";
 }
 
 function ProgressBar({
@@ -137,7 +73,7 @@ function ProgressBar({
 export function IABattlePanel({ scope, surface = "inline" }: Props) {
   const { getBattleState, resolveFeature, setUserFeaturePreference, emitSignal } = useIA();
   const resolvedBattle = resolveFeature(scope, "battle_mode");
-  const teacherBoss = useContentBossVisual(scope.topicoId, scope.scope === 'item' ? scope.itemKey : resolvedBattle.battle?.sourceItemKey, resolvedBattle.battle?.enemy.contentId);
+  const bossArt = useContentBossVisual(scope.topicoId, scope.scope === 'item' ? scope.itemKey : resolvedBattle.battle?.sourceItemKey, resolvedBattle.battle?.enemy.contentId);
   const battleState = getBattleState(scope);
   const previewState = useMemo(() => {
     if (!resolvedBattle.battle) return null;
@@ -150,26 +86,14 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
       itemKey: scope.scope === "item" ? scope.itemKey : resolvedBattle.battle.sourceItemKey ?? null,
     };
   }, [resolvedBattle.battle, scope]);
-  const visual = useMemo(
-    () =>
-      battleState?.enemy.visual ??
-      previewState?.enemy.visual ??
-      resolvedBattle.battle?.enemy.visual ??
-      buildFallbackVisual(
-        battleState?.enemy.archetype ??
-          previewState?.enemy.archetype ??
-          resolvedBattle.battle?.enemy.archetype
-      ),
-    [
-      battleState?.enemy.archetype,
-      battleState?.enemy.visual,
-      previewState?.enemy.archetype,
-      previewState?.enemy.visual,
-      resolvedBattle.battle?.enemy.archetype,
-      resolvedBattle.battle?.enemy.visual,
-    ]
-  );
-  const palette = mergePalette(visual?.palette);
+  const visual =
+    battleState?.enemy.visual ??
+    previewState?.enemy.visual ??
+    resolvedBattle.battle?.enemy.visual ??
+    null;
+  // A paleta segue o perfil do aluno, não a que a IA manda por arquétipo do inimigo.
+  const { perfil } = useTrilha();
+  const palette = useMemo(() => paletaDoBossNoPerfil(getProfileShellPalette(perfil)), [perfil]);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   // Guarda o encounterEndsAt para o qual ja disparamos o contra-ataque,
   // evitando emitir o sinal repetidamente enquanto o tempo fica em 0.
@@ -212,9 +136,7 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
 
   const enemy = effectiveState.enemy;
   const defeated = effectiveState.defeated;
-  const artUrl = visual?.avatarUrl ?? enemy.avatarUrl ?? null;
   const backgroundUrl = visual?.backgroundUrl ?? null;
-  const frameUrl = teacherBoss ? null : visual?.frameUrl ?? null;
   const effectUrl = visual?.effectUrl ?? null;
   const helperText = defeated
     ? resolvedBattle.battle.victoryMessage ?? "Inimigo derrotado neste conteúdo."
@@ -268,21 +190,7 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
 
         {/* Derrotado: a arte fica apagada, como no protótipo v4. */}
         <View style={[styles.arteLateral, defeated && styles.arteDerrotada]}>
-          {teacherBoss || artUrl ? (
-            <Image
-              source={teacherBoss ?? { uri: artUrl! }}
-              style={styles.avatarImage}
-              resizeMode="contain"
-              accessibilityLabel={enemy.name}
-            />
-          ) : (
-            <MaterialCommunityIcons
-              name={defeated ? "chess-king" : "skull-outline"}
-              size={72}
-              color={palette.accentColor}
-            />
-          )}
-          {frameUrl ? <Image source={{ uri: frameUrl }} style={styles.frameLayer} resizeMode="stretch" /> : null}
+          <Image source={bossArt} style={styles.avatarImage} resizeMode="contain" accessibilityLabel={enemy.name} />
         </View>
 
         <Text style={[styles.nomeLateral, { color: palette.textColor }]}>{enemy.name}</Text>
@@ -353,7 +261,9 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
             color={defeated ? "#34d399" : palette.primaryColor}
           />
           <Text style={[styles.title, { color: palette.accentColor }]}>
-            {visual?.badgeLabel ?? (scope.scope === "item" ? "Boss do conteúdo" : "Modo batalha")}
+            {visual
+              ? visual.badgeLabel ?? (scope.scope === "item" ? "Boss do conteúdo" : "Modo batalha")
+              : fallbackBadgeLabel(enemy.archetype)}
           </Text>
         </View>
         <Pressable
@@ -381,16 +291,7 @@ export function IABattlePanel({ scope, surface = "inline" }: Props) {
             },
           ]}
         >
-          {teacherBoss || artUrl ? (
-            <Image source={teacherBoss ?? { uri: artUrl! }} style={styles.avatarImage} resizeMode="contain" />
-          ) : (
-            <MaterialCommunityIcons
-              name={defeated ? "chess-king" : "skull-outline"}
-              size={34}
-              color={palette.accentColor}
-            />
-          )}
-          {frameUrl ? <Image source={{ uri: frameUrl }} style={styles.frameLayer} resizeMode="stretch" /> : null}
+          <Image source={bossArt} style={styles.avatarImage} resizeMode="contain" />
         </View>
 
         <View style={styles.heroTextColumn}>
@@ -581,13 +482,6 @@ const styles = StyleSheet.create({
   avatarImage: {
     width: "100%",
     height: "100%",
-  },
-  frameLayer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
   },
   enemyName: {
     fontFamily: FontFamily.inikaBold,

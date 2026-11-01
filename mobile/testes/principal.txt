@@ -52,6 +52,7 @@ src/utils/consentimentoDaCamera.test.ts
 src/utils/consentimentoVigente.test.ts
 src/utils/consentimentoResponsavel.test.ts
 src/utils/contentBossVisual.test.ts
+src/utils/bossPerfilPalette.test.ts
 src/utils/contentVisibility.test.ts
 src/utils/deckProgressMessage.test.ts
 src/utils/estadoDoPrazo.test.ts

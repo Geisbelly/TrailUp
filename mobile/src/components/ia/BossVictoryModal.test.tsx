@@ -23,8 +23,8 @@ mockModule('@/context/IAContext', { useIA: () => ({ pendingBattleVictories: pend
 mockModule('@/context/SessaoContext', { useUsuario: () => ({ usuario: { id: 'aluno' } }) });
 mockModule('@/context/TrilhaContext', { useTrilha: () => ({ perfil: 'conqueror', classeAtual: { topicos: [{ id: classTopic }] } }) });
 mockModule('@/hooks/useDesktopWeb', { useDesktopWeb: () => false });
-mockModule('@/hooks/useContentBossVisual', { useContentBossVisual: (topic: number, key: string, content: number) => topic === 131 && key === 'content:192' && content === 192 ? 'teacher-boss.png' : null });
-mockModule('@/constants/bossVisuals', { bossVisuals: { 'boss-01': 'fallback.png' } });
+// O hook nunca devolve vazio: escolha do professor ou, no Automático, um boss da paleta do perfil.
+mockModule('@/hooks/useContentBossVisual', { useContentBossVisual: (topic: number, key: string, content: number) => topic === 131 && key === 'content:192' && content === 192 ? 'teacher-boss.png' : 'perfil-boss.png' });
 mockModule('@/utils/profileShellTheme', { getProfileShellPalette: () => ({}) });
 const { BossVictoryModal } = require('./BossVictoryModal');
 
@@ -44,4 +44,10 @@ test('vitória não aparece para outra turma ou outro aluno', () => {
   assert.equal(renderToString(<BossVictoryModal />), '');
   pending = [{ ...victory, userId: 'outro' }]; classTopic = 131;
   assert.equal(renderToString(<BossVictoryModal />), '');
+});
+test('no Automático mostra o boss do perfil, não a imagem da IA nem a fênix fixa', () => {
+  pending = [{ ...victory, state: { ...victory.state, itemKey: 'content:193', enemy: { ...victory.state.enemy, contentId: 193 } } }];
+  classTopic = 131; imageSource = undefined;
+  assert.match(renderToString(<BossVictoryModal />), /Parabéns!/);
+  assert.equal(imageSource, 'perfil-boss.png');
 });
