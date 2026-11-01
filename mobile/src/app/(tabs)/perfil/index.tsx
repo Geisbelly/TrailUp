@@ -895,10 +895,13 @@ const styles = StyleSheet.create({
     zIndex: 3,
   },
   // Quebra a linha quando os dois botões não cabem lado a lado: sem o wrap, em tela
-  // estreita "Editar perfil" e "Trocar turma" vazavam pelas duas bordas.
+  // estreita "Editar perfil" e "Trocar turma" vazavam pelas duas bordas. Base e teto
+  // iguais para os dois, para ficarem da mesma largura lado a lado e empilhados.
   acoesPerfil: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 14, alignSelf: "stretch", justifyContent: "center" },
   acaoPerfil: {
-    maxWidth: "100%",
+    flexGrow: 1,
+    flexBasis: 140,
+    maxWidth: 220,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -914,7 +917,8 @@ const styles = StyleSheet.create({
   trocaPerfil: { marginTop: 16, marginHorizontal: 14 },
   trocaPerfilRotulo: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.1, marginBottom: 8, marginLeft: 2 },
   trocaPerfilLista: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  trocaPerfilOpcao: { flexBasis: "45%", flexGrow: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, paddingVertical: 6, paddingLeft: 8, paddingRight: 10, borderRadius: 12, borderWidth: 1 },
+  // gap 6 e respiro direito 8: em 320 px "Conquistador" tinha 88 px para 91 e saía cortado.
+  trocaPerfilOpcao: { flexBasis: "45%", flexGrow: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 48, paddingVertical: 6, paddingLeft: 8, paddingRight: 8, borderRadius: 12, borderWidth: 1 },
   trocaPerfilTexto: { flex: 1, minWidth: 0 },
   trocaPerfilNome: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "700" },
   trocaPerfilAfinidadeLinha: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 1 },

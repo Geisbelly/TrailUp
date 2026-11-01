@@ -431,14 +431,14 @@ function formatMinutesTimer(totalMin?: number | null) {
   return `${min}min ${sec}s`;
 }
 
-function KpiPill({ label, value, palette, painel }: { label: string; value: React.ReactNode; palette: ThemePalette; painel?: boolean }) {
+function KpiPill({ label, value, palette, painel, trio }: { label: string; value: React.ReactNode; palette: ThemePalette; painel?: boolean; trio?: boolean }) {
   const larga = useMetricasLargas();
   return (
     <View
       style={
         larga
           ? [painel ? s.metricPanel : s.kpiPill, { backgroundColor: palette.cardAlt, borderColor: palette.border }]
-          : [painel ? s.metricPanel : s.kpiPill, s.caixaCelular, { backgroundColor: palette.tile }]
+          : [painel ? s.metricPanel : s.kpiPill, s.caixaCelular, trio && s.kpiTrio, { backgroundColor: palette.tile }]
       }
     >
       <Text style={[s.kpiLabel, { color: larga ? palette.muted : palette.subtle }]}>{label}</Text>
@@ -1197,9 +1197,9 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
             <SectionTitle title={copy.mission} subtitle="Visão rápida da campanha atual." icon="sword-cross" palette={palette} />
             {larga ? null : (
             <View style={s.tripleRow}>
-              <KpiPill label="Concluídos" value={vm.concluidos} palette={palette} />
-              <KpiPill label="Em andamento" value={vm.emAndamento} palette={palette} />
-              <KpiPill label="Conquistas" value={vm.totalConquistas} palette={palette} />
+              <KpiPill trio label="Concluídos" value={vm.concluidos} palette={palette} />
+              <KpiPill trio label="Em andamento" value={vm.emAndamento} palette={palette} />
+              <KpiPill trio label="Conquistas" value={vm.totalConquistas} palette={palette} />
             </View>
             )}
             <ProgressLine label="Tópicos dominados" current={vm.concluidos} total={vm.totalTopicos} accent={accent} palette={palette} />
@@ -1246,9 +1246,9 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
               <SectionTitle title="Operação em tempo real" subtitle="Eficiência e intensidade da última sessão de estudo." icon="timer-outline" palette={palette} />
               <EngagementBar activeSec={vm.sessionActiveSec} idleSec={vm.sessionIdleSec} accent={accent} palette={palette} />
               <View style={s.tripleRow}>
-                <KpiPill label="Eficiência" value={`${Math.round(vm.sessionEngajamento)}%`} palette={palette} />
-                <KpiPill label="Ações" value={String(vm.touchTotal)} palette={palette} />
-                <KpiPill label="Tópicos" value={String(vm.topicosVisitados)} palette={palette} />
+                <KpiPill trio label="Eficiência" value={`${Math.round(vm.sessionEngajamento)}%`} palette={palette} />
+                <KpiPill trio label="Ações" value={String(vm.touchTotal)} palette={palette} />
+                <KpiPill trio label="Tópicos" value={String(vm.topicosVisitados)} palette={palette} />
               </View>
             </SurfaceCard>
           )}
@@ -1341,9 +1341,9 @@ function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
             <SectionTitle title="Próximo marco" subtitle="Uma meta por vez, com clareza do que falta." icon="flag-outline" palette={palette} />
             <Text style={[s.storyHeadline, { color: palette.text }]}>{vm.proximoMarco}</Text>
             <View style={s.tripleRow}>
-              <KpiPill label="Exploração" value={formatPercent(vm.taxaExploracao)} palette={palette} />
-              <KpiPill label="Conteúdo" value={formatPercent(vm.taxaConteudo)} palette={palette} />
-              <KpiPill label="Atividades" value={formatPercent(vm.taxaAtividade)} palette={palette} />
+              <KpiPill trio label="Exploração" value={formatPercent(vm.taxaExploracao)} palette={palette} />
+              <KpiPill trio label="Conteúdo" value={formatPercent(vm.taxaConteudo)} palette={palette} />
+              <KpiPill trio label="Atividades" value={formatPercent(vm.taxaAtividade)} palette={palette} />
             </View>
           </SurfaceCard>
           <AffinityBoard vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "goals-affinity")} />
@@ -1408,9 +1408,9 @@ function MysteryDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashbo
             <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "mystery-traces")}>
               <SectionTitle title="Rastros da exploração" subtitle="Intensidade e profundidade da última sessão." icon="foot-print" palette={palette} />
               <View style={s.tripleRow}>
-                <KpiPill label="Tópicos visitados" value={String(vm.topicosVisitados)} palette={palette} />
-                <KpiPill label="Profundidade" value={`${Math.round(vm.scrollTotal / 100)}m`} palette={palette} />
-                <KpiPill label="Ativo" value={formatSeconds(vm.sessionActiveSec)} palette={palette} />
+                <KpiPill trio label="Tópicos visitados" value={String(vm.topicosVisitados)} palette={palette} />
+                <KpiPill trio label="Profundidade" value={`${Math.round(vm.scrollTotal / 100)}m`} palette={palette} />
+                <KpiPill trio label="Ativo" value={formatSeconds(vm.sessionActiveSec)} palette={palette} />
               </View>
               {vm.materialFocadoTipo ? (
                 <Text style={[s.storyBody, { color: palette.muted }]}>
@@ -1573,9 +1573,9 @@ function SquadDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "squad-energy")}>
             <SectionTitle title="Energia do grupo" subtitle="Indicadores que valorizam presença e constância." icon="star-circle-outline" palette={palette} />
             <View style={s.tripleRow}>
-              <KpiPill label="Progresso" value={formatPercent(vm.progresso)} palette={palette} />
-              <KpiPill label="Acertos" value={formatPercent(vm.acertos)} palette={palette} />
-              <KpiPill label="Tempo" value={formatMinutes(vm.tempo)} palette={palette} />
+              <KpiPill trio label="Progresso" value={formatPercent(vm.progresso)} palette={palette} />
+              <KpiPill trio label="Acertos" value={formatPercent(vm.acertos)} palette={palette} />
+              <KpiPill trio label="Tempo" value={formatMinutes(vm.tempo)} palette={palette} />
             </View>
             <Text style={[s.storyBody, { color: palette.muted }]}>
               Último pulso registrado em {formatLastEvent(vm.ultimoEvento)}. O painel valoriza continuidade e visibilidade dentro da turma.
@@ -1592,9 +1592,9 @@ function SquadDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
               <SectionTitle title="Energia da sessão" subtitle="Qualidade do tempo de presença mais recente." icon="lightning-bolt-circle" palette={palette} />
               <EngagementBar activeSec={vm.sessionActiveSec} idleSec={vm.sessionIdleSec} accent={accent} palette={palette} />
               <View style={s.tripleRow}>
-                <KpiPill label="Tempo ativo" value={formatSeconds(vm.sessionActiveSec)} palette={palette} />
-                <KpiPill label="Interações" value={String(vm.touchTotal)} palette={palette} />
-                <KpiPill label="Engajamento" value={`${Math.round(vm.sessionEngajamento)}%`} palette={palette} />
+                <KpiPill trio label="Tempo ativo" value={formatSeconds(vm.sessionActiveSec)} palette={palette} />
+                <KpiPill trio label="Interações" value={String(vm.touchTotal)} palette={palette} />
+                <KpiPill trio label="Engajamento" value={`${Math.round(vm.sessionEngajamento)}%`} palette={palette} />
               </View>
             </SurfaceCard>
           )}
@@ -1762,7 +1762,11 @@ const s = StyleSheet.create({
   sectionTitle: { fontFamily: FontFamily.inikaBold, fontSize: 16 },
   sectionTitleLargo: { fontFamily: FontFamily.interMedium, fontWeight: "700" },
   sectionSubtitle: { fontFamily: FontFamily.interMedium, fontSize: 12, lineHeight: 18 },
-  tripleRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  tripleRow: { flexDirection: "row", gap: 6, marginBottom: 16 },
+  // Três pílulas numa linha: em 320 px sobravam 57 px para "Concluídos" (59) e a
+  // palavra quebrava no meio. Menos respiro lateral só aqui; as de duas colunas
+  // continuam com o da caixaCelular.
+  kpiTrio: { paddingHorizontal: 8 },
   doubleRow: { flexDirection: "row", gap: 10, marginBottom: 12 },
   kpiPill: { flex: 1, minWidth: 0, borderRadius: 6, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 10 },
   metricPanel: { flex: 1, minWidth: 0, borderRadius: 6, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 14 },
