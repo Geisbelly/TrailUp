@@ -32,6 +32,8 @@ function isInvalidBigintDataError(error: unknown) {
 type ConquistaRankState = {
   carregando: boolean;
   ranking: ClasseRanking | null;
+  /** A última leitura do ranking falhou. Separa "turma sem ranking" de "não deu para ler". */
+  erroRanking: boolean;
   posicoesDoAluno: PosicaoDoAluno[];
   eventos: EventoAluno[];
   presenca: StudyPresence | null;
@@ -46,6 +48,7 @@ type ConquistaRankState = {
 const ConquistaRankContext = createContext<ConquistaRankState>({
   carregando: true,
   ranking: null,
+  erroRanking: false,
   posicoesDoAluno: [],
   eventos: [],
   presenca: null,
@@ -64,6 +67,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
 
   const [carregando, setCarregando] = useState(true);
   const [ranking, setRanking] = useState<ClasseRanking | null>(null);
+  const [erroRanking, setErroRanking] = useState(false);
   const [posicoesDoAluno, setPosicoes] = useState<PosicaoDoAluno[]>([]);
   const [eventos, setEventos] = useState<EventoAluno[]>([]);
   const [presenca, setPresenca] = useState<StudyPresence | null>(null);
@@ -94,20 +98,25 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
     if (!classeId || !uid) {
       setRanking(null);
       setPosicoes([]);
+      setErroRanking(false);
       return;
     }
 
     try {
       const rk = await ClasseRanking.loadAllByClasse(classeId);
       setRanking(rk);
+      setErroRanking(false);
       const pos = await rk.getPosicoesDoAluno(uid);
       setPosicoes(pos);
     } catch (err) {
-      if (!isInvalidBigintDataError(err)) {
+      // Id de turma inválido não é falha de rede: a tela mostra "sem ranking", não "tente de novo".
+      const idInvalido = isInvalidBigintDataError(err);
+      if (!idInvalido) {
         console.warn('[ConquistaRank] Erro ao recarregar ranking:', err);
       }
       setRanking(null);
       setPosicoes([]);
+      setErroRanking(!idInvalido);
     }
   }, [classeAtual?.classe_id, uid]);
 
@@ -299,6 +308,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
     () => ({
       carregando,
       ranking,
+      erroRanking,
       posicoesDoAluno,
       eventos,
       presenca,
@@ -312,6 +322,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
     [
       carregando,
       conquistas,
+      erroRanking,
       eventos,
       presenca,
       posicoesDoAluno,
