@@ -44,7 +44,7 @@ describe("contato público", () => {
   });
 
   it("outras falhas viram mensagem genérica", async () => {
-    const { cliente: c } = cliente({ message: "segredo brevo_api_key ausente no Vault" });
+    const { cliente: c } = cliente({ message: "segredo apps_script_email_segredo ausente no Vault" });
     expect(await enviarContatoPublico(c, valido)).toMatchObject({ ok: false, motivo: "falha" });
   });
 });

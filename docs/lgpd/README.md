@@ -20,7 +20,7 @@ Documentos e decisões de proteção de dados do projeto. A issue de acompanhame
 
 ## Contato (site e app)
 
-- O formulário de `/contato` do site usa `fn_enviar_contato_publico` (migration `20261024_06`), que reaproveita a chave `brevo_api_key` do Vault e a API da Brevo, como o app já fazia. O formsubmit saiu.
+- O formulário de `/contato` do site usa `fn_enviar_contato_publico` (migration `20261024_06`). Desde a `20261101_14`, ele e o contato do app enviam pelo Google Apps Script (`scripts/apps-script-email/`), com a URL e o segredo no Vault (`apps_script_email_url`, `apps_script_email_segredo`). A Brevo e o formsubmit saíram.
 - **Destino:** `app_config.contato_email_destino`, uma chave opcional e privada. Sem ela, vale `app_config.dono_email`. Nenhum e-mail fica no frontend.
 - **Proteção:** campo armadilha (honeypot), limites de tamanho, teto por origem (`contato_publico_por_hora_origem`, padrão 3/h) e teto global (`contato_publico_por_hora_total`, padrão 30/h). O contador guarda só o hash do IP e é limpo a cada 24 h.
 
@@ -41,9 +41,9 @@ Documentos e decisões de proteção de dados do projeto. A issue de acompanhame
 
 ## Aviso de conta inativa por e-mail (migration `20261024_07`)
 
-- **Regra:** conta de aluno sem acesso há 24 meses (`retencao_inatividade_dias`) recebe aviso no app e por e-mail. Se continuar sem acesso, é apagada 30 dias (`retencao_aviso_dias`) **depois que a Brevo aceitou o e-mail**. Sem e-mail entregue, não há exclusão: a conta fica em `retidas_sem_email` no relatório.
-- **Envio:** `retencao_avisos_email()` usa a chave `brevo_api_key` do Vault e o `net.http_post`, como o contato. Roda dentro de `trailup_retencao()` e a cada 30 min (`trailup_retencao_avisos` no pg_cron), além de no loop do worker da API.
-- **Remetente:** `app_config.retencao_aviso_remetente`, ou `contato_email_destino`, ou `dono_email`. Precisa ser um remetente verificado na Brevo. Link de entrada: `app_config.retencao_aviso_link`.
+- **Regra:** conta de aluno sem acesso há 24 meses (`retencao_inatividade_dias`) recebe aviso no app e por e-mail. Se continuar sem acesso, é apagada 30 dias (`retencao_aviso_dias`) **depois que o Apps Script aceitou o e-mail** (resposta com `"ok": true`; 200 sozinho não basta, porque a página de erro do script também é 200; ver `20261101_14`). Sem e-mail entregue, não há exclusão: a conta fica em `retidas_sem_email` no relatório.
+- **Envio:** `retencao_avisos_email()` chama `fn_email_apps_script` (Apps Script, URL e segredo no Vault) por `net.http_post`, como o contato. Roda dentro de `trailup_retencao()` e a cada 30 min (`trailup_retencao_avisos` no pg_cron), além de no loop do worker da API.
+- **Remetente:** a conta Google que publicou o Apps Script (`retencao_aviso_remetente` não é mais lido). Link de entrada: `app_config.retencao_aviso_link`.
 - **Falhas:** sem e-mail, sem chave, sem pg_net ou resposta não 2xx ficam gravados em `retencao_avisos_inatividade.email_ultimo_erro` e são tentados de novo (espera crescente, até `retencao_aviso_email_max_tentativas`). Também vão para o log do Postgres (`RAISE LOG`).
 - **Menor de idade:** o esquema não guarda e-mail do responsável (só nome e relação em `consentimento_responsavel`). O aviso vai para o e-mail da conta, com uma linha pedindo que o aluno mostre a mensagem ao responsável.
 - **Cancelamento:** entrar de novo apaga o aviso e zera o prazo.
