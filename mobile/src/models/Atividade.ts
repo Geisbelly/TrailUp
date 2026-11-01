@@ -1,5 +1,6 @@
 import { supabase } from "@/database/supabase";
 import { clampPercent, normalizeNonNegativeNumber } from "@/utils/dataValidation";
+import { responderTentativa } from "@/services/tentativasAtividade";
 import { Questao } from "./Questao";
 
 export type AtividadeTipo =
@@ -76,6 +77,24 @@ export class Atividade {
       const acertosNormalizado = clampPercent(acertos_percentual);
       const tempoNormalizado =
         tempo_gasto_min != null ? normalizeNonNegativeNumber(tempo_gasto_min) : null;
+
+      // O banco grava a tentativa pelo relógio dele (#136): recusa prazo vencido e
+      // tentativas esgotadas, e vale a última. Sem a RPC no banco, segue o upsert antigo.
+      const retorno = await responderTentativa(this.id, {
+        acertosPercentual: acertosNormalizado,
+        pontuacaoObtida: pontuacao_obtida ?? null,
+        avaliacaoMetadata: avaliacao_metadata ?? null,
+      });
+      if (retorno) {
+        this.status = "concluido";
+        this.percentual_concluido = 100;
+        this.acertos_percentual = clampPercent(retorno.acertosPercentual);
+        if (tempoNormalizado != null) this.tempo_gasto_min = tempoNormalizado;
+        this.pontuacao_obtida = retorno.pontuacaoObtida;
+        this.pontuacao_maxima_avaliada =
+          retorno.pontuacaoMaxima ?? pontuacao_maxima ?? this.pontuacao_maxima_avaliada ?? this.pontuacao_maxima ?? null;
+        return;
+      }
 
       const { error } = await supabase.from("atividade_aluno").upsert(
         {
