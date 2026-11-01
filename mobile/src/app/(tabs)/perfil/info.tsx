@@ -20,6 +20,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 import { useAviso } from "@/hooks/useAviso";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { InterruptorCronometro } from "@/components/perfil/InterruptorCronometro";
 import { ImagemDoStorage } from "@/components/ImagemDoStorage";
 import { shadowStyle } from "@/utils/webShadow";
 
@@ -384,6 +385,10 @@ export default function Infor() {
             Imediato mostra o gabarito na hora; Pensante esconde e libera
             quando você quiser ver.
           </Text>
+        </View>
+
+        <View style={styles.fieldContainer}>
+          <InterruptorCronometro alunoId={usuario?.id} perfil={perfilVisualDoAluno(usuario)} palette={palette} />
         </View>
       </View>
 

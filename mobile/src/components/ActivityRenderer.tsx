@@ -8,6 +8,7 @@ import { questionActivityScope } from '@/utils/questionAnswerVisibility'
 import { activityRendererKey, normalizeActivityType } from '@/utils/activityType'
 
 import { UsarItemNaAtividade } from '@/components/loja/UsarItemNaAtividade'
+import { garantirTentativa } from '@/services/tentativasAtividade'
 import QuestionActivity from './QuestionActivity'
 import TextoActivity from './TextoActivity'
 import VideoActivity from './VideoActivity'
@@ -80,6 +81,11 @@ function ActivityRendererContent({
       atividadeId={Number(atividade.id)}
       dataEntrega={atividade.data_entrega ?? null}
       onSegundaChance={() => {
+        // A nova tentativa grava nota, e vale a última (#136): o relógio dela começa no
+        // servidor agora. Recusa (prazo, tentativas) aparece ao responder, com o motivo.
+        if (!(atividade as any)?.isPersonalizedLocal) {
+          garantirTentativa(Number(atividade.id)).catch(() => undefined);
+        }
         setRetryLiberada(true);
         setLocalReviewMode(false);
         userChoseReviewRef.current = false;
