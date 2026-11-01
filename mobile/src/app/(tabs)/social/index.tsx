@@ -23,12 +23,14 @@ import { StoreModal } from "@/components/loja/StoreModal";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Classe } from "@/models/Classe";
-import { aceitarConvite, bloquear, carregarSocial, desbloquear, desfazerAmizade, enviarConvite, recusarConvite } from "@/services/social/socialService";
+import { aceitarConvite, bloquear, carregarNaoLidas, carregarSocial, desbloquear, desfazerAmizade, enviarConvite, marcarConversaLida, recusarConvite } from "@/services/social/socialService";
+import { SEM_NAO_LIDAS, zerarConversa, type NaoLidas, type TipoDeConversa } from "@/services/social/chatNaoLidasModel";
 import { carregarGuildas, carregarJanelaDaFormacao } from "@/services/social/guildService";
 import { peopleForSocialSection, type SocialPeopleSection, type SocialPerson } from "@/services/social/socialModel";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -81,6 +83,7 @@ export default function SocialScreen() {
   const [chatPerson, setChatPerson] = useState<SocialPerson | null>(null);
   // "Conversa da guilda" no cartão em destaque abre a mesma conversa do bloco Guildas.
   const [chatGuilda, setChatGuilda] = useState<Guild | null>(null);
+  const [naoLidas, setNaoLidas] = useState<NaoLidas>(SEM_NAO_LIDAS);
   const shareOptions = useMemo<GuildShareOption[]>(() => {
     const topics = (classeAtual as any)?.topicos ?? [];
     const result: GuildShareOption[] = [];
@@ -121,6 +124,25 @@ export default function SocialScreen() {
   }, [activeClasseId, autenticado, usuario?.id]);
   useEffect(() => { void load(); }, [load]);
 
+  const atualizarNaoLidas = useCallback(async () => {
+    if (!autenticado || !usuario?.id) return setNaoLidas(SEM_NAO_LIDAS);
+    setNaoLidas(await carregarNaoLidas());
+  }, [autenticado, usuario?.id]);
+  // Enquanto a aba está à vista, o contador acompanha o que chega. O aviso com a aba fechada é o
+  // push que o próprio banco manda (`20261102_06`), um por leva de mensagens não lidas.
+  useFocusEffect(useCallback(() => {
+    void atualizarNaoLidas();
+    const id = setInterval(() => void atualizarNaoLidas(), 30_000);
+    return () => clearInterval(id);
+  }, [atualizarNaoLidas]));
+  /** Abrir e fechar a conversa marcam como lida: o que chegou com ela aberta também foi visto. */
+  const marcarLida = useCallback((tipo: TipoDeConversa, conversaId: string) => {
+    setNaoLidas((atual) => zerarConversa(atual, tipo, conversaId));
+    void marcarConversaLida(tipo, conversaId);
+  }, []);
+  const abrirConversa = (person: SocialPerson) => { marcarLida("privado", person.alunoId); setChatPerson(person); };
+  const abrirGuilda = (guilda: Guild) => { marcarLida("guilda", guilda.id); setChatGuilda(guilda); };
+
   const people = useMemo(() => {
     if (!social || section === "guilds" || section === "arena") return [];
     const query = search.trim().toLocaleLowerCase("pt-BR");
@@ -156,7 +178,7 @@ export default function SocialScreen() {
   async function unblockAndOpenChat(person: SocialPerson) {
     if (!person.relationshipId) return;
     const succeeded = await act(person.alunoId, () => desbloquear(person.relationshipId!));
-    if (succeeded) setChatPerson({ ...person, status: "candidate" });
+    if (succeeded) abrirConversa({ ...person, status: "candidate" });
   }
 
   // Na tela larga a lista é uma grade de três colunas; no celular o cartão segue sem invólucro.
@@ -175,7 +197,7 @@ export default function SocialScreen() {
     person.status === "incoming" ? (
       <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} />
     ) : (
-      <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => setChatPerson(person)} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />
+      <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => abrirConversa(person)} naoLidas={naoLidas.privado[person.alunoId]} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />
     );
 
   const vazioDe: Record<string, string> = {
@@ -221,8 +243,8 @@ export default function SocialScreen() {
     convitesEnviados: social?.outgoing.length ?? 0,
     guildas: guilds,
   };
-  // Bolinha só onde há algo a fazer: convite recebido espera resposta.
-  const pendentesDaAba: Partial<Record<AbaDoSocial, number>> = { conversa: social?.incoming.length ?? 0 };
+  // Bolinha só onde há algo a fazer: convite recebido espera resposta e mensagem nova espera leitura.
+  const pendentesDaAba: Partial<Record<AbaDoSocial, number>> = { conversa: (social?.incoming.length ?? 0) + naoLidas.total };
   /** Troca de página; se a rolagem já passou das abas, a página nova começa logo abaixo delas. */
   const trocarAba = (aba: AbaDoSocial) => {
     setAbaEscolhida(aba);
@@ -246,7 +268,7 @@ export default function SocialScreen() {
     rolagemRef.current?.scrollTo({ y: 0, animated: true });
   };
   const destaque = social ? (
-    <SocialHubDestaque area={areaDestaque} profile={profile} palette={palette} resumo={resumo} onIr={irParaDoDestaque} onConversar={setChatPerson} onAbrirGuilda={setChatGuilda} mostrarRostos={desktop} />
+    <SocialHubDestaque area={areaDestaque} profile={profile} palette={palette} resumo={resumo} onIr={irParaDoDestaque} onConversar={abrirConversa} onAbrirGuilda={abrirGuilda} mostrarRostos={desktop} />
   ) : null;
   const busca = (
     <View style={[styles.search, { backgroundColor: palette.surface, borderColor: palette.border }]}>
@@ -269,7 +291,7 @@ export default function SocialScreen() {
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
       <HallBackground palette={palette} />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <ScrollView ref={rolagemRef} onScroll={desktop ? undefined : aoRolar} scrollEventThrottle={64} stickyHeaderIndices={desktop ? undefined : [1]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => void load()} tintColor={palette.accent} />}>
+        <ScrollView ref={rolagemRef} onScroll={desktop ? undefined : aoRolar} scrollEventThrottle={64} stickyHeaderIndices={desktop ? undefined : [1]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => { void load(); void atualizarNaoLidas(); }} tintColor={palette.accent} />}>
           <View style={desktop ? styles.header : styles.headerCelular}>
             {desktop ? (
               <View style={styles.cabecalhoLargo}>
@@ -289,7 +311,7 @@ export default function SocialScreen() {
               </View>
             )}
             {desktop ? <Text style={[styles.subtitle, { color: palette.textMuted }]}>Encontre sua turma e avance em companhia.</Text> : null}
-            {!desktop && social && social.friends.length + social.candidates.length > 0 ? <SocialStories amigos={social.friends} colegas={social.candidates} palette={palette} onConversar={setChatPerson} onEncontrar={() => irPara("encontrar")} /> : null}
+            {!desktop && social && social.friends.length + social.candidates.length > 0 ? <SocialStories amigos={social.friends} colegas={social.candidates} naoLidas={naoLidas.privado} palette={palette} onConversar={abrirConversa} onEncontrar={() => irPara("encontrar")} /> : null}
           </View>
           <View style={[desktop ? styles.tabsSticky : styles.abasSticky, { backgroundColor: palette.background }]}>
             {desktop ? (
@@ -351,7 +373,7 @@ export default function SocialScreen() {
                     {blocoPessoas("friends", "amigos", "Amigos")}
                     <View {...ancora("guildas")} style={styles.blocoCelular}>
                       {tituloBloco("guildas", "Guildas da turma")}
-                      <GuildSection guilds={guilds} janela={janela} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} />
+                      <GuildSection guilds={guilds} janela={janela} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} naoLidas={naoLidas.guilda} onConversaLida={(id) => marcarLida("guilda", id)} />
                     </View>
                     {temBloqueados ? blocoPessoas("blocked", "bloqueados", "Bloqueados") : null}
                   </>
@@ -391,7 +413,7 @@ export default function SocialScreen() {
           ) : section === "arena" ? (
             <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} dueloCom={dueloCom} abrirLobby={lobbyArena} />
           ) : section === "guilds" ? (
-            <GuildSection guilds={guilds} janela={janela} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} />
+            <GuildSection guilds={guilds} janela={janela} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} naoLidas={naoLidas.guilda} onConversaLida={(id) => marcarLida("guilda", id)} />
           ) : people.length === 0 ? (
             <View style={styles.empty}>
               <JourneySymbol section="social" size={64} />
@@ -399,7 +421,7 @@ export default function SocialScreen() {
               <Text style={[styles.message, { color: palette.textMuted }]}>{search.trim() ? "Tente outro nome ou limpe a busca." : emptyMessage}</Text>
               {section === "friends" && !search.trim() ? <Pressable onPress={() => setSection("discover")} style={[styles.retry, { backgroundColor: palette.surfaceElevated, borderColor: palette.borderStrong, borderWidth: 1 }]}><Text style={styles.retryText}>Encontrar colegas</Text></Pressable> : null}
             </View>
-          ) : <View style={[styles.list, desktop && styles.grade]}>{people.map((person) => celula(person.relationshipId ?? person.alunoId, person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => setChatPerson(person)} onDesafiar={desktop && person.status === "friend" && activeClasseId > 0 ? () => { setDueloCom({ alunoId: person.alunoId, chave: Date.now() }); setSection("arena"); setSearch(""); } : undefined} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />))}</View>}
+          ) : <View style={[styles.list, desktop && styles.grade]}>{people.map((person) => celula(person.relationshipId ?? person.alunoId, person.status === "incoming" ? <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} /> : <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => abrirConversa(person)} naoLidas={naoLidas.privado[person.alunoId]} onDesafiar={desktop && person.status === "friend" && activeClasseId > 0 ? () => { setDueloCom({ alunoId: person.alunoId, chave: Date.now() }); setSection("arena"); setSearch(""); } : undefined} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />))}</View>}
           </>
           )}
           </Envolve>
@@ -409,9 +431,9 @@ export default function SocialScreen() {
       </SafeAreaView>
       <BagModal visible={bagVisible} classeId={activeClasseId > 0 ? activeClasseId : null} profile={profile} onClose={() => setBagVisible(false)} />
       {usuario?.id && activeClasseId > 0 ? <StoreModal visible={storeVisible} alunoId={usuario.id} classeId={activeClasseId} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}
-      <SocialProfileModal visible={selectedPerson !== null} alunoId={selectedPerson?.alunoId ?? null} classeId={activeClasseId} accent={palette.accent} online={selectedPerson?.online} onPressChat={() => { if (selectedPerson) setChatPerson(selectedPerson); setSelectedPerson(null); }} onClose={() => setSelectedPerson(null)} />
-      <GuildChatModal visible={chatGuilda !== null} guild={chatGuilda} accent={palette.accent} profile={profile} options={shareOptions} onClose={() => setChatGuilda(null)} />
-      {chatPerson ? <PrivateChatModal visible={chatPerson !== null} person={chatPerson} accent={palette.accent} profile={profile} onClose={() => setChatPerson(null)} /> : null}
+      <SocialProfileModal visible={selectedPerson !== null} alunoId={selectedPerson?.alunoId ?? null} classeId={activeClasseId} accent={palette.accent} online={selectedPerson?.online} onPressChat={() => { if (selectedPerson) abrirConversa(selectedPerson); setSelectedPerson(null); }} onClose={() => setSelectedPerson(null)} />
+      <GuildChatModal visible={chatGuilda !== null} guild={chatGuilda} accent={palette.accent} profile={profile} options={shareOptions} onClose={() => { if (chatGuilda) marcarLida("guilda", chatGuilda.id); setChatGuilda(null); }} />
+      {chatPerson ? <PrivateChatModal visible={chatPerson !== null} person={chatPerson} accent={palette.accent} profile={profile} onClose={() => { marcarLida("privado", chatPerson.alunoId); setChatPerson(null); }} /> : null}
     </View>
   );
 }

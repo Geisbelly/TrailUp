@@ -3,6 +3,7 @@ import {
   getBrainHexConfig,
   normalizeBrainHexProfile,
 } from "@/constants/profileImages";
+import { SeloDeNaoLidas } from "@/components/social/SocialHub";
 import type { SocialPerson } from "@/services/social/socialModel";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -20,6 +21,8 @@ type Props = {
   onSecondary?: () => void;
   onPressProfile?: () => void;
   onPressChat?: () => void;
+  /** Mensagens dele que o aluno ainda não leu: vira o selo no botão de conversa. */
+  naoLidas?: number;
   /** Só na web em tela larga: "Desafiar" o amigo para um duelo 1x1 na Arena (#508). */
   onDesafiar?: () => void;
 };
@@ -32,6 +35,7 @@ export function SocialPersonCard({
   onSecondary,
   onPressProfile,
   onPressChat,
+  naoLidas = 0,
   onDesafiar,
 }: Props) {
   const canChat = person.status === "friend" || person.status === "candidate";
@@ -42,6 +46,7 @@ export function SocialPersonCard({
   const desktop = useDesktopWeb();
   const [menuAberto, setMenuAberto] = useState(false);
   const nome = person.apelido || person.nome;
+  const rotuloDaConversa = `Conversar com ${nome}${naoLidas ? `, ${naoLidas} ${naoLidas === 1 ? "mensagem nova" : "mensagens novas"}` : ""}`;
 
   if (desktop) {
     const amigo = person.status === "friend";
@@ -79,11 +84,12 @@ export function SocialPersonCard({
             {canChat ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Conversar com ${nome}`}
+                accessibilityLabel={rotuloDaConversa}
                 onPress={onPressChat ?? onPressProfile}
                 style={[s.botaoRedondo, { borderColor: palette.borderStrong }]}
               >
                 <MaterialCommunityIcons name="message-text-outline" size={16} color={palette.text} />
+                {naoLidas ? <SeloDeNaoLidas n={naoLidas} palette={palette} style={s.seloNoBotao} /> : null}
               </Pressable>
             ) : null}
             {onDesafiar && !menuAberto ? (
@@ -179,7 +185,7 @@ export function SocialPersonCard({
         {canChat ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Conversar com ${person.apelido || person.nome}`}
+            accessibilityLabel={rotuloDaConversa}
             onPress={onPressChat ?? onPressProfile}
             style={[s.chat, { borderColor: `${accent}70` }]}
           >
@@ -188,6 +194,7 @@ export function SocialPersonCard({
               size={20}
               color="#ffffff"
             />
+            {naoLidas ? <SeloDeNaoLidas n={naoLidas} palette={palette} style={s.seloNoBotao} /> : null}
           </Pressable>
         ) : null}
       </View>
@@ -298,6 +305,7 @@ const s = StyleSheet.create({
   subLargo: { marginTop: 1, fontSize: 12 },
   linhaAcoes: { flexDirection: "row", alignItems: "center", gap: 8 },
   espaco: { flex: 1 },
+  seloNoBotao: { top: -6, right: -8 },
   botaoRedondo: { width: 34, height: 34, borderRadius: 17, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   pilulaMenu: { minHeight: 34, paddingHorizontal: 12, borderRadius: 999, borderWidth: 1, justifyContent: "center" },
   pilulaDesafio: { flexDirection: "row", alignItems: "center", gap: 6 },
