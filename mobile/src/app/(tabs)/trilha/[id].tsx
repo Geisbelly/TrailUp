@@ -95,6 +95,7 @@ import {
   contarProgressoDeBlocos,
   isAtividadeConcluida,
   isConteudoConcluido,
+  resolveCheckpointPosition,
   resolveConteudoMaterialContext,
   todosOsBlocosConcluidos,
   type Atividade,
@@ -186,7 +187,7 @@ export default function TrilhaConteudoScreen() {
   const isScreenFocused = useIsFocused();
   const router = useRouter();
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ id?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; atividade?: string | string[] }>();
 
   const {
     carregando,
@@ -244,6 +245,13 @@ export default function TrilhaConteudoScreen() {
     const m = String(rawId).match(/(\d+)(?!.*\d)/);
     return m ? Number(m[1]) : null;
   }, [rawId]);
+
+  // `?atividade=`: o "Ir" de uma missão-entrega pede para abrir nesta atividade.
+  const focoAtividadeId = useMemo(() => {
+    const bruto = Array.isArray(params.atividade) ? params.atividade[0] : params.atividade;
+    const id = Number(bruto);
+    return Number.isInteger(id) && id > 0 ? id : null;
+  }, [params.atividade]);
 
   const topico =
     topicoId == null || !classeAtual
@@ -543,6 +551,7 @@ export default function TrilhaConteudoScreen() {
     // mesmo render) OU a tentativa terminou sem ela. Cobre tambem o caso em que
     // `personalizedTopic` ja vinha em cache e o efeito de carga nem roda.
     blocosProntos: Boolean(personalizedTopic) || personalizacaoTentada,
+    focoAtividadeId,
   });
 
   useEffect(() => {
@@ -2088,9 +2097,17 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 ]}
                 onPress={async () => {
                   setMostrarResumo(false);
-                  const posicao = topicoJaIniciado
-                    ? calcularPosicaoInicial(displayedBlocks)
-                    : 0;
+                  // Veio de uma missão (`?atividade=`): o "Iniciar" leva à atividade dela.
+                  const posicaoDoFoco =
+                    focoAtividadeId != null
+                      ? resolveCheckpointPosition(displayedBlocks, "atividade", focoAtividadeId)
+                      : -1;
+                  const posicao =
+                    posicaoDoFoco >= 0
+                      ? posicaoDoFoco
+                      : topicoJaIniciado
+                        ? calcularPosicaoInicial(displayedBlocks)
+                        : 0;
                   setIndex(Math.max(0, posicao));
                   if (topicoId) {
                     await marcarTopicoIniciado(topicoId);

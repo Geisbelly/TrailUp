@@ -38,6 +38,8 @@ describe("statusDe", () => {
     assert.equal(statusDe("in_progress"), "em_andamento");
     assert.equal(statusDe(null), "pendente");
     assert.equal(statusDe("qualquer coisa"), "pendente");
+    // `expirada` é estado do banco: virar "pendente" mostrava como aberta a missão que já fechou.
+    assert.equal(statusDe("expirada"), "expirada");
   });
 });
 
@@ -102,7 +104,7 @@ describe("rotuloDoPrazo", () => {
 describe("ordenarMissoes", () => {
   const m = (over: Partial<MissaoDoAluno>): MissaoDoAluno => ({
     id: 1, titulo: "t", descricao: "", progresso: 0, status: "pendente", criterioRotulo: "",
-    origem: "sistema", escopo: "aluno", prazo: null, dia: null, slot: null, ...over,
+    metrica: "", atividadeId: null, origem: "sistema", escopo: "aluno", prazo: null, dia: null, slot: null, ...over,
   });
 
   it("a diária vem primeiro, por slot", () => {

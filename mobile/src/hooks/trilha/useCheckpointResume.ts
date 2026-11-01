@@ -34,6 +34,14 @@ export function useCheckpointResume(args: {
    * resto chega. E a razao de a trilha "sempre voltar pro comeco".
    */
   blocosProntos: boolean;
+  /**
+   * Atividade pedida por quem abriu o tópico (o "Ir" do rastreador de missões, `?atividade=`).
+   *
+   * Vence o checkpoint só em tópico já começado ou concluído — o caso em que a retomada também
+   * cairia direto num bloco. Tópico novo continua abrindo no resumo, porque é o "Iniciar" de lá
+   * que marca o tópico como iniciado; o foco é usado nesse toque (ver `[id].tsx`).
+   */
+  focoAtividadeId?: number | null;
 }): {
   index: number;
   mostrarResumo: boolean;
@@ -53,6 +61,7 @@ export function useCheckpointResume(args: {
     topicoJaIniciado,
     topicoConcluido,
     blocosProntos,
+    focoAtividadeId = null,
   } = args;
 
   const [index, setIndex] = useState(-1);
@@ -111,7 +120,14 @@ export function useCheckpointResume(args: {
         );
       }
 
-      if (checkpoint?.mostrarResumo) {
+      const posicaoDoFoco =
+        focoAtividadeId != null ? resolveCheckpointPosition(blocks, "atividade", focoAtividadeId) : -1;
+
+      if (posicaoDoFoco >= 0 && (topicoJaIniciado || topicoConcluido)) {
+        decisao(`foco pedido na atividade ${focoAtividadeId} -> bloco ${posicaoDoFoco}`);
+        setIndex(posicaoDoFoco);
+        setMostrarResumo(false);
+      } else if (checkpoint?.mostrarResumo) {
         decisao("gravado pedia resumo -> tela inicial");
         setIndex(-1);
         setMostrarResumo(true);
@@ -158,6 +174,7 @@ export function useCheckpointResume(args: {
     blocks,
     blocosProntos,
     checkpointParams,
+    focoAtividadeId,
     primeiraVez,
     topico?.ultima_atividade,
     topicoConcluido,
