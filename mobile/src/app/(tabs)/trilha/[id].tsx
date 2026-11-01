@@ -80,6 +80,13 @@ import { useTopicoCompletion } from "@/hooks/trilha/useTopicoCompletion";
 import { usePersonalizationRefresh } from "@/hooks/trilha/usePersonalizationRefresh";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { createBagItem } from "@/services/bag/bagService";
+import {
+  MENSAGEM_DA_RECUSA,
+  TentativaRecusada,
+  garantirTentativa,
+  tentativaAberta,
+  type TentativaAberta,
+} from "@/services/tentativasAtividade";
 import { normalizeBagContentId, type BagDraft } from "@/services/bag/bagModel";
 import {
   buildBlocksForTopico,
@@ -833,6 +840,50 @@ export default function TrilhaConteudoScreen() {
     if (isCurrentStudyBlockTrackable) return;
     moduleSessionStartedAtRef.current = null;
   }, [isCurrentStudyBlockTrackable]);
+  // A tentativa começa quando a atividade aparece, pelo relógio do servidor (#136): o
+  // banco decide prazo, tentativas e "no tempo". Só atividade do professor ainda não
+  // concluída, ou com revisão pedida; a personalizada local não passa por aqui.
+  const [tentativasDoServidor, setTentativasDoServidor] = useState<Record<number, TentativaAberta>>({});
+  const atividadeParaTentativa =
+    atualBlock?.kind === "atividade" &&
+    !(atualBlock.atividade as any)?.isPersonalizedLocal &&
+    (!atividadeAtualResolvida || revisaoDaAtividade(atualBlock.atividade) != null)
+      ? Number(atualBlock.atividade.id)
+      : null;
+  useEffect(() => {
+    if (atividadeParaTentativa == null || !Number.isFinite(atividadeParaTentativa)) return;
+    let ativo = true;
+    garantirTentativa(atividadeParaTentativa)
+      .then((tentativa) => {
+        if (!ativo || !tentativa) return;
+        setTentativasDoServidor((prev) =>
+          prev[atividadeParaTentativa]?.tentativaId === tentativa.tentativaId
+            ? prev
+            : { ...prev, [atividadeParaTentativa]: tentativa }
+        );
+      })
+      .catch((err) => {
+        if (!ativo) return;
+        if (err instanceof TentativaRecusada) {
+          showDialog({
+            title: MENSAGEM_DA_RECUSA[err.motivo].titulo,
+            description: MENSAGEM_DA_RECUSA[err.motivo].descricao,
+            tone: "warning",
+          });
+          return;
+        }
+        // Rede: a resposta abre a tentativa de novo ao ser enviada.
+        console.warn("[TrilhaConteudo] Tentativa não aberta no servidor:", err);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [atividadeParaTentativa, showDialog]);
+  // O servidor disse que esta tentativa não é cronometrada (perfil sem cronômetro ou
+  // o aluno desligou): o contador local não aparece.
+  const tentativaSemCronometro =
+    atualBlock?.kind === "atividade" &&
+    tentativasDoServidor[Number(atualBlock.atividade.id)]?.cronometrada === false;
   const currentTimedOutActivityId = useMemo(() => {
     if (!atualBlock || atualBlock.kind !== "atividade" || atividadeAtualResolvida) return null;
     return activityTimeoutMap[Number(atualBlock.atividade.id)] ? Number(atualBlock.atividade.id) : null;
@@ -843,8 +894,10 @@ export default function TrilhaConteudoScreen() {
     // Ja foi respondida: o timer de atividade (contagem regressiva) nao deve
     // continuar rodando depois da confirmacao da resposta.
     if (atualBlock?.kind === "atividade" && atividadeAtualResolvida) return false;
+    if (tentativaSemCronometro) return false;
     return true;
   }, [
+    tentativaSemCronometro,
     atividadeAtualResolvida,
     atualBlock?.kind,
     currentOverlayTimerFeature,
@@ -1408,7 +1461,10 @@ export default function TrilhaConteudoScreen() {
         // guarda a de antes e vale a maior, então gravar uma nota menor não tira nada do aluno.
         // Sem pontuação (o "Continuar" do resumo) não grava: apagaria a nota com nulo.
         const refezRevisao = revisaoDaAtividade(atividade) != null && scoreAwarded != null;
-        if ((!revisao || refezRevisao) && !isPersonalizedLocal) {
+        // Nova tentativa em atividade já concluída (a segunda chance da loja) também grava, e
+        // vale a última (#136, decisão de 01/11). O sinal é a tentativa aberta no servidor.
+        const refezTentativa = revisao && scoreAwarded != null && tentativaAberta(atividadeId) != null;
+        if ((!revisao || refezRevisao || refezTentativa) && !isPersonalizedLocal) {
           await registrarAtividadeConcluida(topicoId, atividadeId, percentual, {
             pontuacaoObtida: scoreAwarded,
             pontuacaoMaxima: scoreMaximo,
@@ -1565,7 +1621,14 @@ export default function TrilhaConteudoScreen() {
         });
       } catch (err) {
         console.error("[TrilhaConteudo] Erro ao processar atividade:", err);
-        if (!conclusaoPersistida) {
+        if (err instanceof TentativaRecusada) {
+          // O banco recusou (prazo, tentativas): repetir não adianta, então diz o porquê.
+          showDialog({
+            title: MENSAGEM_DA_RECUSA[err.motivo].titulo,
+            description: MENSAGEM_DA_RECUSA[err.motivo].descricao,
+            tone: "warning",
+          });
+        } else if (!conclusaoPersistida) {
           showDialog({
             title: "Resposta não sincronizada",
             description: "Não conseguimos salvar a conclusão desta atividade. Tente confirmar novamente antes de avançar.",

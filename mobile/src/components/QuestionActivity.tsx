@@ -1263,8 +1263,10 @@ export default function QuestionActivity({
           // O botao de nova tentativa some nesse caso; isto aqui e' a rede de
           // seguranca para a pontuacao, e zera em vez de apenas descontar.
           const gatilhoEliminacao = restaApenasUmaOpcao;
+          // Tempo não mexe na nota, só no XP (#136, decisão de 01/11): o "no tempo" é do
+          // servidor e vira bônus. `zero_if_timeout` e `penalty_timeout_pct` ficam nas regras
+          // (e o gatilho no metadata), mas não tiram pontos.
           const zeradoPorRegra =
-            (gradingRules.zero_if_timeout && gatilhoTimeout) ||
             (gradingRules.zero_if_wrong && gatilhoErro) ||
             (gradingRules.zero_if_answer_revealed && gatilhoRespostaRevelada) ||
             gatilhoEliminacao;
@@ -1273,12 +1275,6 @@ export default function QuestionActivity({
           if (zeradoPorRegra) {
             pontosGanhos = 0;
           } else {
-            if (gatilhoTimeout && gradingRules.penalty_timeout_pct > 0) {
-              pontosGanhos = Math.max(
-                0,
-                Math.round(pontosGanhos * (1 - gradingRules.penalty_timeout_pct / 100))
-              );
-            }
             if (gatilhoReTentativa && gradingRules.penalty_retry_pct > 0) {
               pontosGanhos = Math.max(
                 0,

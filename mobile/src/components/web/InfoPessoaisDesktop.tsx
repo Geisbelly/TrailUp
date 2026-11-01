@@ -9,6 +9,8 @@ import type { useInfoPessoais } from "@/hooks/useInfoPessoais";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import { ImagemDoStorage } from "@/components/ImagemDoStorage";
+import { InterruptorCronometro } from "@/components/perfil/InterruptorCronometro";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 type Form = ReturnType<typeof useInfoPessoais>;
 
@@ -109,6 +111,8 @@ export function InfoPessoaisDesktop({ form, palette }: { form: Form; palette: Pr
           <Text style={[s.ajuda, { color: palette.textSubtle }]}>
             Imediato mostra o gabarito na hora; Pensante esconde e libera quando você quiser ver.
           </Text>
+
+          <InterruptorCronometro alunoId={usuario?.id} perfil={perfilVisualDoAluno(usuario)} palette={palette} />
 
           <Pressable
             accessibilityRole="button"
