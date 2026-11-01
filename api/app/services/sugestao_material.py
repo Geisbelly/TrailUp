@@ -23,6 +23,8 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
+from app.services.evidencias_pedagogicas import CATALOGO_VERSAO, evidencia
+
 # Ordem canônica: usada como critério de desempate estável. Sem ela, formatos
 # empatados sairiam em ordem arbitrária de dicionário e a sugestão deixaria de
 # ser reprodutível — quebrando a métrica de efetividade.
@@ -146,6 +148,10 @@ def sugerir_ordem_material(
 
     Só considera formato que existe de fato: sugerir áudio para um tópico sem
     áudio gerado mandaria o aluno num beco sem saída.
+
+    Cada item leva ``evidencias``: a regra do catálogo que o moveu e os números
+    do aluno que ela viu. O peso por perfil sai marcado como hipótese, porque é
+    o que a base de evidências diz dele (ver ``evidencias_pedagogicas``).
     """
     disponiveis = [
         formato
@@ -163,6 +169,8 @@ def sugerir_ordem_material(
     for formato in disponiveis:
         score = 0.0
         motivos: list[str] = []
+        evidencias: list[dict[str, Any]] = []
+        afinidades_que_contam: dict[str, int] = {}
 
         for perfil, peso_perfil in afinidades:
             contribuicao = _PESOS_POR_PERFIL[perfil].get(formato, 0.0) * peso_perfil
@@ -171,14 +179,32 @@ def sugerir_ordem_material(
                 detalhe = _MOTIVO_POR_PERFIL_FORMATO.get((perfil, formato))
                 rotulo = _ROTULO_PERFIL[perfil]
                 motivos.append(f"{rotulo}: {detalhe}" if detalhe else f"afinidade {rotulo}")
+                afinidades_que_contam[perfil] = round(peso_perfil * 100)
+
+        if afinidades_que_contam:
+            evidencias.append(
+                evidencia(
+                    "perfil_formato",
+                    afinidades=afinidades_que_contam,
+                    contribuicao=round(score, 4),
+                )
+            )
 
         ajuste = ajuste_modo.get(formato, 0.0)
         if ajuste:
             score += ajuste
             if ajuste > 0 and modo in _MOTIVO_POR_MODO:
                 motivos.append(_MOTIVO_POR_MODO[modo])
+            evidencias.append(evidencia("modo_operacao", modo=modo, ajuste=ajuste))
 
-        itens.append({"formato": formato, "score": round(score, 4), "motivos": motivos})
+        itens.append(
+            {
+                "formato": formato,
+                "score": round(score, 4),
+                "motivos": motivos,
+                "evidencias": evidencias,
+            }
+        )
 
     # Desempate pela ordem canônica (índice), nunca pela ordem de iteração de
     # dicionário — é o que garante reprodutibilidade.
@@ -201,12 +227,22 @@ _PENALIDADE_LEITURA_LENTA_COM_ERRO = 0.25
 _PENALIDADE_ABANDONO = 0.6
 _BONUS_ACERTO_ALTO = 0.4
 _BONUS_ENGAJAMENTO = 0.3
+# Piso do bônus de reexposição, acima do limiar de mudança de propósito: a
+# dificuldade no tópico é o sinal com a evidência mais forte do catálogo
+# (DAT-21), e um bônus abaixo do limiar nunca mudaria a ordem. O bônus real é o
+# que leva os cards ao topo (ver ``revisar_ordem_material``).
+_BONUS_REEXPOSICAO = 0.5
+_MARGEM_REEXPOSICAO = 0.05
 
 # Limiares de leitura dos sinais.
 _ACERTO_ALTO = 75.0
 _ACERTO_SUFICIENTE = 60.0
 _PERCENTUAL_ABANDONO = 40.0
 _TEMPO_MIN_ABANDONO = 3.0
+# Dificuldade no tópico exige mais de um item com acerto: uma questão errada é
+# tropeço, não dificuldade.
+_MINIMO_ITENS_DIFICULDADE = 2
+_FORMATO_DE_REEXPOSICAO = "cards"
 
 MINIMO_EVIDENCIA_PADRAO = 2
 LIMIAR_MUDANCA_PADRAO = 0.35
@@ -221,9 +257,18 @@ def _tem_evidencia(sinal: dict[str, Any]) -> bool:
     return float(sinal.get("active_sec") or 0) > 0
 
 
-def _ajuste_por_sinal(sinal: dict[str, Any], active_sec_medio: float) -> tuple[float, list[str]]:
+def _ajuste_por_sinal(
+    sinal: dict[str, Any], active_sec_medio: float
+) -> tuple[float, list[str], list[dict[str, Any]]]:
+    """Ajuste de score, motivos legíveis e as evidências que moveram o score.
+
+    Só vira evidência o que mexeu no score: "leitura lenta, mas com bom
+    desempenho" é motivo (explica por que NÃO desceu), não evidência.
+    """
     ajuste = 0.0
     motivos: list[str] = []
+    engajamento = False
+    desempenho = False
 
     acertos = sinal.get("acertos")
     acertos_valor = float(acertos) if acertos is not None else None
@@ -231,6 +276,7 @@ def _ajuste_por_sinal(sinal: dict[str, Any], active_sec_medio: float) -> tuple[f
     if sinal.get("skimming"):
         ajuste -= _PENALIDADE_SKIMMING
         motivos.append("passou os olhos sem ler")
+        engajamento = True
 
     if sinal.get("leitura_lenta"):
         # Leitura lenta COM bom desempenho não é problema: o formato funciona,
@@ -241,6 +287,7 @@ def _ajuste_por_sinal(sinal: dict[str, Any], active_sec_medio: float) -> tuple[f
         else:
             ajuste -= _PENALIDADE_LEITURA_LENTA_COM_ERRO
             motivos.append("leitura lenta sem desempenho")
+            engajamento = True
 
     percentual = sinal.get("percentual")
     tempo_min = sinal.get("tempo_min")
@@ -253,17 +300,66 @@ def _ajuste_por_sinal(sinal: dict[str, Any], active_sec_medio: float) -> tuple[f
         # Tempo gasto sem avançar é abandono, não dificuldade momentânea.
         ajuste -= _PENALIDADE_ABANDONO
         motivos.append("abandonado no meio")
+        engajamento = True
 
     if acertos_valor is not None and acertos_valor >= _ACERTO_ALTO:
         ajuste += _BONUS_ACERTO_ALTO
         motivos.append("desempenho alto depois deste formato")
+        desempenho = True
 
     active_sec = float(sinal.get("active_sec") or 0)
     if active_sec_medio > 0 and active_sec > active_sec_medio * 1.25:
         ajuste += _BONUS_ENGAJAMENTO
         motivos.append("tempo ativo acima da média")
+        engajamento = True
 
-    return ajuste, motivos
+    evidencias: list[dict[str, Any]] = []
+    if engajamento:
+        evidencias.append(
+            evidencia(
+                "engajamento_comportamental",
+                skimming=True if sinal.get("skimming") else None,
+                leitura_lenta=True if sinal.get("leitura_lenta") else None,
+                active_sec=round(active_sec, 1),
+                active_sec_medio=round(active_sec_medio, 1),
+                percentual=_arredondado(percentual),
+                tempo_min=_arredondado(tempo_min),
+            )
+        )
+    if desempenho:
+        evidencias.append(evidencia("desempenho_do_aluno", acertos=acertos_valor))
+
+    return ajuste, motivos, evidencias
+
+
+def _arredondado(valor: Any) -> float | None:
+    return round(float(valor), 2) if valor is not None else None
+
+
+def _em_dificuldade(desempenho_topico: dict[str, Any] | None) -> bool:
+    """O aluno está com dificuldade no tópico? Acerto médio baixo em itens suficientes."""
+    if not desempenho_topico:
+        return False
+    media = desempenho_topico.get("media_acertos")
+    itens = int(desempenho_topico.get("itens") or 0)
+    return (
+        media is not None
+        and itens >= _MINIMO_ITENS_DIFICULDADE
+        and float(media) < _ACERTO_SUFICIENTE
+    )
+
+
+def _ja_reexposto(item: dict[str, Any]) -> bool:
+    """O bônus de reexposição já entrou neste item numa revisão anterior?
+
+    Os ajustes da revisão são somados ao score anterior. Sem esta guarda, cada
+    ciclo com o aluno ainda em dificuldade empurraria os cards mais para cima
+    sem nenhuma informação nova.
+    """
+    return any(
+        isinstance(ev, dict) and ev.get("regra") == "reexposicao_quiz"
+        for ev in item.get("evidencias") or []
+    )
 
 
 def revisar_ordem_material(
@@ -272,6 +368,7 @@ def revisar_ordem_material(
     sinais_por_formato: dict[str, dict[str, Any]],
     minimo_evidencia: int = MINIMO_EVIDENCIA_PADRAO,
     limiar_mudanca: float = LIMIAR_MUDANCA_PADRAO,
+    desempenho_topico: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Decide se a ordem muda, e devolve a decisão pronta para o log.
 
@@ -286,13 +383,19 @@ def revisar_ordem_material(
       ``minimo_evidencia``, não revisa;
     * **limiar de mudança** — mesmo com nova ordem, só aceita se algum score
       mudou acima de ``limiar_mudanca``.
+
+    ``desempenho_topico`` (``{"media_acertos", "itens"}``) é o sinal de
+    dificuldade no tópico. Ele não passa pelo mínimo de evidência por formato:
+    é desempenho do tópico, não atribuição a um formato, e é o sinal com a
+    evidência mais forte do catálogo (reexposição). Com dificuldade, os cards
+    vão para o topo, uma vez só.
     """
     if not ordem_atual:
         return {
             "acao": "mantida",
             "ordem": [],
             "motivos": ["sem sugestão anterior para revisar"],
-            "evidencia": {"formatos_com_evidencia": 0},
+            "evidencia": {"formatos_com_evidencia": 0, "catalogo_versao": CATALOGO_VERSAO},
         }
 
     com_evidencia = {
@@ -306,9 +409,18 @@ def revisar_ordem_material(
         "minimo_evidencia": minimo_evidencia,
         "limiar_mudanca": limiar_mudanca,
         "sinais": com_evidencia,
+        "catalogo_versao": CATALOGO_VERSAO,
     }
+    if desempenho_topico:
+        evidencia_snapshot["desempenho_topico"] = desempenho_topico
 
-    if len(com_evidencia) < minimo_evidencia:
+    usar_sinais = len(com_evidencia) >= minimo_evidencia
+    reexpor = _em_dificuldade(desempenho_topico) and any(
+        item.get("formato") == _FORMATO_DE_REEXPOSICAO and not _ja_reexposto(item)
+        for item in ordem_atual
+    )
+
+    if not usar_sinais and not reexpor:
         return {
             "acao": "mantida",
             "ordem": ordem_atual,
@@ -324,31 +436,69 @@ def revisar_ordem_material(
     nova_ordem: list[dict[str, Any]] = []
     maior_delta = 0.0
     motivos_da_revisao: list[str] = []
+    reexposto: dict[str, Any] = {}
 
     for item in ordem_atual:
         formato = item.get("formato")
         score_anterior = float(item.get("score") or 0)
-        sinal = com_evidencia.get(formato)
+        sinal = com_evidencia.get(formato) if usar_sinais else None
+        reexpor_este = (
+            reexpor and formato == _FORMATO_DE_REEXPOSICAO and not _ja_reexposto(item)
+        )
 
-        if sinal is None:
+        if sinal is None and not reexpor_este:
             nova_ordem.append({**item, "score": round(score_anterior, 4)})
             continue
 
-        ajuste, motivos = _ajuste_por_sinal(sinal, active_sec_medio)
-        maior_delta = max(maior_delta, abs(ajuste))
+        ajuste, motivos, evidencias = (
+            _ajuste_por_sinal(sinal, active_sec_medio) if sinal is not None else (0.0, [], [])
+        )
+        if reexpor_este:
+            # O bônus entra depois do laço, quando os scores dos outros formatos
+            # já estão ajustados: ele depende do líder.
+            motivos.append("dificuldade no tópico: praticar com cards")
+            evidencias.append(
+                evidencia(
+                    "reexposicao_quiz",
+                    media_acertos=_arredondado((desempenho_topico or {}).get("media_acertos")),
+                    itens=int((desempenho_topico or {}).get("itens") or 0),
+                )
+            )
+            reexposto = {"ajuste": ajuste}
+        else:
+            maior_delta = max(maior_delta, abs(ajuste))
         if motivos:
             motivos_da_revisao.extend(f"{formato}: {motivo}" for motivo in motivos)
 
-        nova_ordem.append(
-            {
-                **item,
-                "score": round(score_anterior + ajuste, 4),
-                # Os motivos da revisão ficam SOMADOS aos originais: o log tem
-                # que mostrar tanto por que o formato entrou quanto por que
-                # subiu ou desceu depois.
-                "motivos": list(item.get("motivos") or []) + motivos,
-            }
+        novo_item = {
+            **item,
+            "score": round(score_anterior + ajuste, 4),
+            # Os motivos da revisão ficam SOMADOS aos originais: o log tem
+            # que mostrar tanto por que o formato entrou quanto por que
+            # subiu ou desceu depois.
+            "motivos": list(item.get("motivos") or []) + motivos,
+            "evidencias": list(item.get("evidencias") or []) + evidencias,
+        }
+        if reexpor_este:
+            reexposto["item"] = novo_item
+        nova_ordem.append(novo_item)
+
+    if reexposto:
+        # Com dificuldade no tópico os cards vão para o TOPO, não só "sobem um
+        # pouco": um bônus fixo some contra o vetor de afinidades (um aluno com
+        # três perfis soma score acima de 1) e a regra de evidência mais forte
+        # do catálogo viraria um empate desfeito pela ordem canônica.
+        item_cards = reexposto["item"]
+        lider = max(
+            (float(i.get("score") or 0) for i in nova_ordem if i is not item_cards),
+            default=0.0,
         )
+        bonus = max(
+            _BONUS_REEXPOSICAO,
+            round(lider - float(item_cards["score"]) + _MARGEM_REEXPOSICAO, 4),
+        )
+        item_cards["score"] = round(float(item_cards["score"]) + bonus, 4)
+        maior_delta = max(maior_delta, abs(reexposto["ajuste"] + bonus))
 
     nova_ordem.sort(
         key=lambda item: (

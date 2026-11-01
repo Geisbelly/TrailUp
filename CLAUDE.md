@@ -272,6 +272,10 @@ Cada perfil carrega:
   opera se **as duas** tabelas existirem (sem log, a métrica de efetividade
   ficaria furada justamente onde vai olhar). Ver
   `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
+  Cada item da ordem leva `evidencias` (regra do catálogo
+  `evidencias_pedagogicas.py`, fontes `DAT-xx`, confiança e os números do
+  aluno); o peso por perfil é **hipótese sem evidência** e a emoção não
+  reordena. Mudou regra, suba `CATALOGO_VERSAO`: o log grava a versão (#66).
 - `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_11`):
   entrada, derrota, provocação de dano, marcos de metade/um quarto da vida, alerta de tempo,
   contra-ataque e a mensagem de vitória. **Gerar é IA, então é API**: o worker da fila faz uma
@@ -355,6 +359,13 @@ Cada perfil carrega:
   `pg_net` → Expo, e `pg_cron` varre a cada 5min. A **rotina diária é
   notificação local** agendada no aparelho: dispara com o app fechado sem
   servidor. Ver `docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md`.
+  **Horário e texto da revisão diária são do banco** (`20261102_01`): o job
+  `notificacoes_recalcular_rotinas` (pg_cron, diário) põe a rotina 30 min antes
+  do horário habitual (`notificacoes_horario_preferido`, dias distintos em
+  `aluno_sessoes_app`) e troca o texto pelo modelo do perfil com o tópico em
+  andamento. `hora_origem = 'aluno'` nunca é sobrescrita. A sugestão da IA
+  traz `horario_sugerido`, e o gatilho de promoção decide o horário, sempre
+  fora do silêncio no fuso do aluno.
 - **Eventos de turma abrem e encerram no horário pelo banco (#141).**
   `pg_cron` roda `fn_eventos_classe_varrer()` a cada minuto (job
   `trailup_eventos_classe_varredura`, migração `20261025_04`): encerra e apura

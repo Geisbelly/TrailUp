@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.context import ContextRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
 from app.repositories.sugestao_material import SugestaoMaterialRepository
+from app.services.evidencias_pedagogicas import CATALOGO_VERSAO
 from app.services.sugestao_material import (
     LIMIAR_MUDANCA_PADRAO,
     MINIMO_EVIDENCIA_PADRAO,
@@ -65,19 +66,25 @@ async def garantir_sugestao(
         # ela viraria "sugestão versão 1" sem conteúdo e sujaria a métrica.
         return None
 
-    salvo = await repo.salvar(
+    # A versão do catálogo vai junto: o "por quê" de cada item cita regras do
+    # catálogo, e uma auditoria precisa saber com que texto foi justificado.
+    evidencia_inicial = {"modo_operacao": modo_operacao, "catalogo_versao": CATALOGO_VERSAO}
+    salvo = await repo.criar(
         aluno_id=aluno_id,
         topico_id=topico_id,
         conteudo_id=conteudo_id,
         classe_id=classe_id,
         formato_inicial=sugestao["formato_inicial"],
         ordem=sugestao["ordem"],
-        origem="inicial",
-        evidencia={"modo_operacao": modo_operacao},
-        versao=1,
+        evidencia=evidencia_inicial,
     )
     if not salvo:
-        return None
+        # Outra chamada criou entre o ``buscar`` e o INSERT (o app pede a mesma
+        # sugestão em paralelo). Ela já logou ``criada``; aqui só devolvemos a
+        # linha dela. Logar de novo daria dois ``criada`` para uma sugestão.
+        return await repo.buscar(
+            aluno_id=aluno_id, topico_id=topico_id, conteudo_id=conteudo_id
+        )
 
     await repo.registrar_log(
         sugestao_id=salvo.get("id"),
@@ -94,11 +101,11 @@ async def garantir_sugestao(
             for item in sugestao["ordem"]
             for motivo in (item.get("motivos") or [])
         ],
-        evidencia={"modo_operacao": modo_operacao},
+        evidencia=evidencia_inicial,
     )
 
     return {
-        **(salvo or {}),
+        **salvo,
         "aluno_id": aluno_id,
         "topico_id": topico_id,
         "conteudo_id": conteudo_id,
@@ -120,6 +127,7 @@ async def revisar_sugestao(
     evidencia_extra: dict[str, Any] | None = None,
     minimo_evidencia: int = MINIMO_EVIDENCIA_PADRAO,
     limiar_mudanca: float = LIMIAR_MUDANCA_PADRAO,
+    desempenho_topico: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Roda a revisão do ciclo e grava a decisão. Devolve a decisão tomada."""
     atual = await repo.buscar(
@@ -134,6 +142,7 @@ async def revisar_sugestao(
         sinais_por_formato=sinais_por_formato or {},
         minimo_evidencia=minimo_evidencia,
         limiar_mudanca=limiar_mudanca,
+        desempenho_topico=desempenho_topico,
     )
 
     versao_atual = int(atual.get("versao") or 1)
@@ -228,13 +237,17 @@ async def revisar_sugestoes_do_ciclo(
     if not sinais:
         return None
 
+    repo = SugestaoMaterialRepository(session)
     return await revisar_sugestao(
-        SugestaoMaterialRepository(session),
+        repo,
         aluno_id=aluno_id,
         topico_id=topico_id,
         classe_id=classe_id,
         sinais_por_formato=sinais,
         evidencia_extra={"ordem_observada": ordem_de_consumo(materiais)},
+        desempenho_topico=await repo.desempenho_no_topico(
+            aluno_id=aluno_id, topico_id=topico_id
+        ),
     )
 
 

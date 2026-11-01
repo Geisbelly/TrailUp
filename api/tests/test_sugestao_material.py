@@ -417,3 +417,176 @@ def test_grafia_britanica_do_socializador_nao_e_descartada():
 
     assert britanica["formato_inicial"] == "audio"
     assert britanica["ordem"] == americana["ordem"]
+
+
+# --- #66: evidência em cada item -------------------------------------------
+
+from app.services.evidencias_pedagogicas import CATALOGO_VERSAO  # noqa: E402
+
+
+def _regras(item: dict) -> list[str]:
+    return [ev["regra"] for ev in item.get("evidencias") or []]
+
+
+def test_peso_por_perfil_sai_como_hipotese_sem_evidencia():
+    # A base de evidências não achou efeito de casar formato com perfil
+    # (DAT-14, 35, 40): o motor pode usar, mas não pode apresentar como fato.
+    resultado = sugerir_ordem_material(perfis=_perfil("socializer"), formatos_disponiveis=TODOS)
+
+    primeiro = resultado["ordem"][0]
+    ev = next(e for e in primeiro["evidencias"] if e["regra"] == "perfil_formato")
+    assert ev["confianca"] == "hipotese"
+    assert "DAT-14" in ev["fontes"]
+    assert ev["dados"]["afinidades"] == {"socializer": 100}
+
+
+def test_modo_de_operacao_vira_evidencia_so_onde_mexe():
+    resultado = sugerir_ordem_material(
+        perfis=_perfil("mastermind"), formatos_disponiveis=TODOS, modo_operacao="imediato"
+    )
+
+    por_formato = {item["formato"]: item for item in resultado["ordem"]}
+    assert "modo_operacao" in _regras(por_formato["cards"])
+    assert "modo_operacao" not in _regras(por_formato["apresentacao"])
+
+
+def test_evidencia_do_aluno_traz_os_numeros_que_a_decisao_viu():
+    ordem = [
+        {"formato": "markdown", "posicao": 1, "score": 1.0, "motivos": [], "evidencias": []},
+        {"formato": "audio", "posicao": 2, "score": 0.8, "motivos": [], "evidencias": []},
+    ]
+    decisao = revisar_ordem_material(
+        ordem_atual=ordem,
+        sinais_por_formato={
+            "markdown": _sinal(skimming=True, active_sec=30, percentual=20, tempo_min=5),
+            "audio": _sinal(acertos=90, active_sec=300),
+        },
+    )
+
+    por_formato = {item["formato"]: item for item in decisao["ordem"]}
+    ev_texto = next(
+        e for e in por_formato["markdown"]["evidencias"] if e["regra"] == "engajamento_comportamental"
+    )
+    assert ev_texto["dados"]["skimming"] is True
+    assert ev_texto["dados"]["active_sec"] == 30.0
+    assert ev_texto["dados"]["percentual"] == 20.0
+    ev_audio = next(
+        e for e in por_formato["audio"]["evidencias"] if e["regra"] == "desempenho_do_aluno"
+    )
+    assert ev_audio["dados"] == {"acertos": 90.0}
+    assert ev_audio["confianca"] == "dado_do_aluno"
+    assert decisao["evidencia"]["catalogo_versao"] == CATALOGO_VERSAO
+
+
+def test_leitura_lenta_com_bom_desempenho_e_motivo_mas_nao_evidencia():
+    # Explica por que NÃO desceu; não moveu o score, então não é evidência.
+    ordem = [
+        {"formato": "markdown", "posicao": 1, "score": 1.0, "motivos": [], "evidencias": []},
+        {"formato": "audio", "posicao": 2, "score": 0.8, "motivos": [], "evidencias": []},
+    ]
+    decisao = revisar_ordem_material(
+        ordem_atual=ordem,
+        sinais_por_formato={
+            "markdown": _sinal(leitura_lenta=True, acertos=70, active_sec=100),
+            "audio": _sinal(active_sec=100),
+        },
+    )
+
+    texto = next(i for i in decisao["ordem"] if i["formato"] == "markdown")
+    assert "engajamento_comportamental" not in _regras(texto)
+
+
+def test_emocao_nao_reordena_material():
+    # DAT-45: telemetria mede engajamento, não emoção; nenhuma regra liga
+    # emoção a formato. Campo de emoção no sinal é ignorado.
+    ordem = [
+        {"formato": "markdown", "posicao": 1, "score": 1.0, "motivos": [], "evidencias": []},
+        {"formato": "audio", "posicao": 2, "score": 0.8, "motivos": [], "evidencias": []},
+    ]
+    sinais = {"markdown": _sinal(active_sec=100), "audio": _sinal(active_sec=100)}
+    com_emocao = {
+        formato: {**sinal, "emocao": "frustrated", "estado_mental": "anxious"}
+        for formato, sinal in sinais.items()
+    }
+
+    sem = revisar_ordem_material(ordem_atual=ordem, sinais_por_formato=sinais)
+    com = revisar_ordem_material(ordem_atual=ordem, sinais_por_formato=com_emocao)
+
+    assert [i["formato"] for i in com["ordem"]] == [i["formato"] for i in sem["ordem"]]
+    assert com["acao"] == sem["acao"]
+
+
+# --- reexposição (DAT-21) ---------------------------------------------------
+
+
+def _ordem_estrategista():
+    return sugerir_ordem_material(
+        perfis=[{"perfil": "mastermind", "afinidade": 100}, {"perfil": "seeker", "afinidade": 90}],
+        formatos_disponiveis=["markdown", "apresentacao", "cards"],
+    )["ordem"]
+
+
+def test_dificuldade_no_topico_leva_cards_ao_topo_mesmo_com_varios_perfis():
+    decisao = revisar_ordem_material(
+        ordem_atual=_ordem_estrategista(),
+        sinais_por_formato={},
+        desempenho_topico={"media_acertos": 35, "itens": 4},
+    )
+
+    assert decisao["acao"] == "revisada"
+    assert decisao["ordem"][0]["formato"] == "cards"
+    ev = next(e for e in decisao["ordem"][0]["evidencias"] if e["regra"] == "reexposicao_quiz")
+    assert ev["confianca"] == "forte"
+    assert "DAT-21" in ev["fontes"]
+    assert ev["dados"] == {"media_acertos": 35.0, "itens": 4}
+
+
+def test_reexposicao_nao_se_acumula_entre_revisoes():
+    primeira = revisar_ordem_material(
+        ordem_atual=_ordem_estrategista(),
+        sinais_por_formato={},
+        desempenho_topico={"media_acertos": 35, "itens": 4},
+    )
+    segunda = revisar_ordem_material(
+        ordem_atual=primeira["ordem"],
+        sinais_por_formato={},
+        desempenho_topico={"media_acertos": 30, "itens": 5},
+    )
+
+    assert segunda["acao"] == "mantida"
+    cards = next(i for i in segunda["ordem"] if i["formato"] == "cards")
+    assert _regras(cards).count("reexposicao_quiz") == 1
+
+
+def test_um_tropeco_nao_e_dificuldade():
+    decisao = revisar_ordem_material(
+        ordem_atual=_ordem_estrategista(),
+        sinais_por_formato={},
+        desempenho_topico={"media_acertos": 0, "itens": 1},
+    )
+
+    assert decisao["acao"] == "mantida"
+
+
+def test_acerto_suficiente_nao_aciona_reexposicao():
+    decisao = revisar_ordem_material(
+        ordem_atual=_ordem_estrategista(),
+        sinais_por_formato={},
+        desempenho_topico={"media_acertos": 80, "itens": 5},
+    )
+
+    assert decisao["acao"] == "mantida"
+
+
+def test_sem_cards_gerados_dificuldade_nao_inventa_formato():
+    ordem = sugerir_ordem_material(
+        perfis=_perfil("mastermind"), formatos_disponiveis=["markdown", "audio"]
+    )["ordem"]
+    decisao = revisar_ordem_material(
+        ordem_atual=ordem,
+        sinais_por_formato={},
+        desempenho_topico={"media_acertos": 20, "itens": 3},
+    )
+
+    assert decisao["acao"] == "mantida"
+    assert {i["formato"] for i in decisao["ordem"]} == {"markdown", "audio"}

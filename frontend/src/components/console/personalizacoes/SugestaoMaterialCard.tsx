@@ -5,11 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchSugestaoAluno, type SugestaoAlunoResponse } from "./personalizacoesApi";
 import {
+  dadosDaEvidencia,
   formatarFracao,
   formatarPercentual,
   historicoMaisRecentePrimeiro,
   leiturasDeEfetividade,
   rotuloDaAcao,
+  rotuloDaConfianca,
   rotuloDoFormato,
 } from "./sugestaoDisplay";
 
@@ -23,6 +25,15 @@ const CORES_DA_ACAO: Record<string, string> = {
   criada: "border-info/40 text-info",
   revisada: "border-warning/40 text-warning",
   mantida: "border-border text-muted-foreground",
+};
+
+// Hipótese em warning de propósito: é o peso por perfil, e sem o destaque o
+// professor o leria como recomendação comprovada.
+const CORES_DA_CONFIANCA: Record<string, string> = {
+  forte: "border-success/40 text-success",
+  moderada: "border-info/40 text-info",
+  hipotese: "border-warning/40 text-warning",
+  dado_do_aluno: "border-border text-foreground",
 };
 
 /**
@@ -115,18 +126,67 @@ export function SugestaoMaterialCard({ alunoId, topicoId, resolveToken }: Props)
               </p>
             )}
 
-            {/* Por que essa ordem */}
-            {ordem.some((item) => item.motivos.length > 0) && (
-              <ul className="space-y-1 text-xs text-muted-foreground">
-                {ordem
-                  .filter((item) => item.motivos.length > 0)
-                  .map((item) => (
-                    <li key={`motivo-${item.formato}`}>
-                      <strong className="text-foreground">{rotuloDoFormato(item.formato)}:</strong>{" "}
-                      {item.motivos.join("; ")}
-                    </li>
-                  ))}
-              </ul>
+            {/* Por que essa ordem (#66): a regra, a confiança dela e os
+                números do aluno. Sugestão anterior à #66 não tem evidências e
+                cai nos motivos em texto. */}
+            {ordem.some(
+              (item) => (item.evidencias?.length ?? 0) > 0 || item.motivos.length > 0
+            ) && (
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground">Por quê</p>
+                <ul className="space-y-3">
+                  {ordem
+                    .filter(
+                      (item) =>
+                        (item.evidencias?.length ?? 0) > 0 || item.motivos.length > 0
+                    )
+                    .map((item) => (
+                      <li key={`porque-${item.formato}`} className="space-y-1.5 text-xs">
+                        <strong className="text-sm text-foreground">
+                          {item.posicao}º {rotuloDoFormato(item.formato)}
+                        </strong>
+                        {item.evidencias?.length ? (
+                          <ul className="space-y-1.5">
+                            {item.evidencias.map((evidencia, indice) => {
+                              const dadosLegiveis = dadosDaEvidencia(evidencia);
+                              return (
+                                <li
+                                  key={`${item.formato}-${evidencia.regra}-${indice}`}
+                                  className="rounded-md border border-border/60 p-2"
+                                >
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <Badge
+                                      variant="outline"
+                                      className={`font-normal ${
+                                        CORES_DA_CONFIANCA[evidencia.confianca] ??
+                                        "border-border"
+                                      }`}
+                                    >
+                                      {rotuloDaConfianca(evidencia.confianca)}
+                                    </Badge>
+                                    {evidencia.fontes.length > 0 && (
+                                      <span className="text-muted-foreground">
+                                        {evidencia.fontes.join(", ")}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="mt-1 text-foreground">{evidencia.enunciado}</p>
+                                  {dadosLegiveis.length > 0 && (
+                                    <p className="mt-0.5 text-muted-foreground">
+                                      {dadosLegiveis.join(" · ")}
+                                    </p>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : (
+                          <p className="text-muted-foreground">{item.motivos.join("; ")}</p>
+                        )}
+                      </li>
+                    ))}
+                </ul>
+              </div>
             )}
 
             {/* Efetividade */}

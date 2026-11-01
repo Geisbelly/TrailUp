@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import type { SugestaoEfetividade, SugestaoHistoricoItem } from "./personalizacoesApi";
+import type {
+  SugestaoEfetividade,
+  SugestaoEvidencia,
+  SugestaoHistoricoItem,
+} from "./personalizacoesApi";
 import {
+  dadosDaEvidencia,
   formatarDelta,
   formatarFracao,
   formatarPercentual,
   historicoMaisRecentePrimeiro,
   leiturasDeEfetividade,
   rotuloDaAcao,
+  rotuloDaConfianca,
   rotuloDoFormato,
 } from "./sugestaoDisplay";
 
@@ -202,5 +208,45 @@ describe("historico", () => {
 
   it("lista vazia nao quebra", () => {
     expect(historicoMaisRecentePrimeiro(null)).toEqual([]);
+  });
+});
+
+describe("por quê (#66)", () => {
+  const evidencia = (dados: Record<string, unknown>, regra = "x"): SugestaoEvidencia => ({
+    regra,
+    enunciado: "",
+    fontes: [],
+    confianca: "moderada",
+    dados,
+  });
+
+  it("hipótese diz por extenso que não tem evidência", () => {
+    expect(rotuloDaConfianca("hipotese")).toBe("hipótese sem evidência");
+    expect(rotuloDaConfianca("forte")).toBe("evidência forte");
+    expect(rotuloDaConfianca("dado_do_aluno")).toBe("resultado do aluno");
+    expect(rotuloDaConfianca(null)).toBe("—");
+  });
+
+  it("traduz os números do aluno", () => {
+    expect(
+      dadosDaEvidencia(
+        evidencia({ skimming: true, active_sec: 30, active_sec_medio: 150, percentual: 20 })
+      )
+    ).toEqual(["só passou os olhos", "tempo ativo 30 s (média 3 min)", "20% concluído"]);
+    expect(dadosDaEvidencia(evidencia({ acertos: 90 }))).toEqual(["acertos 90%"]);
+    expect(dadosDaEvidencia(evidencia({ media_acertos: 35, itens: 4 }))).toEqual([
+      "acerto médio 35% em 4 atividade(s) do tópico",
+    ]);
+  });
+
+  it("afinidades saem com o nome do perfil", () => {
+    expect(
+      dadosDaEvidencia(evidencia({ afinidades: { socializer: 100, mastermind: 60 } }))
+    ).toEqual(["afinidade Socializador 100%, Estrategista 60%"]);
+  });
+
+  it("campo ausente não vira zero", () => {
+    expect(dadosDaEvidencia(evidencia({}))).toEqual([]);
+    expect(dadosDaEvidencia(evidencia({ acertos: null, percentual: "" }))).toEqual([]);
   });
 });

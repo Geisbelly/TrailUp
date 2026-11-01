@@ -10,8 +10,13 @@ Ordem de decisão (decisão de 01/11):
    (emoção negativa, inatividade) é dado, não opinião do modelo.
 
 O horário que sai do modelo passa por uma guarda: nunca no passado, nunca a mais de 24 h e nunca
-entre 22h e 7h de Brasília. O que vai ao modelo não identifica o aluno (#195); a rota de menor vale
-pelos dois caminhos (o RAG já é OpenAI com `store=False`).
+entre 22h e 7h de Brasília. Ele vai para `notificacoes_ia.horario_sugerido`, e quem decide de fato é
+o banco (`notificacoes_ia_promover`, 20261102_01): suporte sai logo, lembrete vai para o horário
+habitual do aluno quando há, e o silêncio vale no fuso dele. O texto recebe o tópico em andamento e
+o próximo conteúdo (`foco`), também no texto pronto da regra.
+
+O que vai ao modelo não identifica o aluno (#195); a rota de menor vale pelos dois caminhos (o RAG
+já é OpenAI com `store=False`).
 """
 
 from datetime import UTC, datetime, timedelta, timezone
@@ -111,19 +116,77 @@ _TEXTOS_DA_REGRA: dict[str, dict[str, tuple[str, str]]] = {
 }
 
 
-def notificacao_da_regra(perfil: str, motivo: str, agora: datetime) -> NotificacaoPayload:
-    """Pura. Sem modelo: texto no tom do perfil, horário pela guarda."""
-    textos = _TEXTOS_DA_REGRA.get(perfil, _TEXTOS_DA_REGRA["Mastermind"])
+# Mesma regra, quando se sabe o tópico em andamento: lembrete ligado ao progresso
+# funciona, genérico e frequente pode gerar ansiedade (DAT-33, DAT-45). `{topico}`
+# entra cortado em `_LIMITE_TOPICO` para o corpo caber nos 200 caracteres.
+_TEXTOS_COM_TOPICO: dict[str, dict[str, str]] = {
+    "Seeker": {
+        "suporte": "Em {topico}, explore só o próximo trecho. Ele está mais curto e guiado.",
+        "lembrete": "{topico} ainda guarda uma descoberta. Dá uma olhada quando puder.",
+    },
+    "Survivor": {
+        "suporte": "Em {topico}, o próximo passo está mais curto. Faça um item e siga no seu ritmo.",
+        "lembrete": "Um passo pequeno em {topico} hoje mantém a trilha em dia.",
+    },
+    "Daredevil": {
+        "suporte": "Missão curta em {topico}: um item agora e você já sai do lugar.",
+        "lembrete": "Tem uma missão rápida em {topico}. Topa resolver hoje?",
+    },
+    "Mastermind": {
+        "suporte": "Quebre {topico} em partes: o primeiro bloco já está pronto para você.",
+        "lembrete": "Há um conceito de {topico} para encaixar no que você já sabe.",
+    },
+    "Conqueror": {
+        "suporte": "Uma etapa curta em {topico} e você volta ao controle da trilha.",
+        "lembrete": "Falta pouco para fechar {topico}. Avance mais uma etapa hoje.",
+    },
+    "Socializer": {
+        "suporte": "Vamos juntos no próximo passo de {topico}: ele está mais curto e guiado.",
+        "lembrete": "Sua turma está avançando em {topico}. Seu próximo passo já está pronto.",
+    },
+    "Achiever": {
+        "suporte": "Feche só o próximo item de {topico}. Cada passo conta para a sua meta.",
+        "lembrete": "O próximo item de {topico} está pronto. Avance hoje e veja o progresso subir.",
+    },
+}
+_LIMITE_TOPICO = 60
+
+
+def _foco(state: dict[str, Any]) -> dict[str, Any]:
+    """Tópico em andamento, percentual e próximo conteúdo (montado por `build_initial_state`)."""
+    foco = state.get("foco_estudo") if isinstance(state.get("foco_estudo"), dict) else {}
+    topico = str(foco.get("topico") or "").strip()[:_LIMITE_TOPICO]
+    if not topico:
+        return {}
+    proximo = str(foco.get("proximo_conteudo") or "").strip()[:_LIMITE_TOPICO] or None
+    return {
+        "topico": topico,
+        "percentual_concluido": foco.get("percentual_concluido"),
+        "proximo_conteudo": proximo,
+    }
+
+
+def notificacao_da_regra(
+    perfil: str, motivo: str, agora: datetime, foco: dict[str, Any] | None = None
+) -> NotificacaoPayload:
+    """Pura. Sem modelo: texto no tom do perfil (com o tópico, se houver), horário pela guarda."""
+    chave = perfil if perfil in _TEXTOS_DA_REGRA else "Mastermind"
     tipo = "suporte" if motivo == "emocao_negativa" else "lembrete"
-    titulo, corpo = textos[tipo]
+    titulo, corpo = _TEXTOS_DA_REGRA[chave][tipo]
+    topico = (foco or {}).get("topico")
+    if topico:
+        corpo = _TEXTOS_COM_TOPICO[chave][tipo].format(topico=topico)
     proposto = agora + (timedelta(minutes=5) if tipo == "suporte" else timedelta(minutes=30))
+    contexto: dict[str, Any] = {"motivo": motivo, "perfil": perfil, "origem": "regra"}
+    if topico:
+        contexto["topico"] = topico
     return NotificacaoPayload(
         tipo=tipo,
         titulo=titulo,
         corpo=corpo,
         horario=ajustar_horario(proposto, agora),
         prioridade=2 if tipo == "suporte" else 1,
-        contexto={"motivo": motivo, "perfil": perfil, "origem": "regra"},
+        contexto=contexto,
     )
 
 
@@ -140,6 +203,8 @@ def _payload_do_modelo(state: dict[str, Any], perfil: dict[str, Any], motivo: st
             k: desempenho.get(k) for k in ("media_acertos", "percentual_concluido", "topico_concluido") if k in desempenho
         },
         "eventos_novos": [str(e.get("tipo")) for e in state.get("eventos_novos") or [] if isinstance(e, dict)][:10],
+        # Nome do tópico e do conteúdo é do professor, não do aluno: não identifica ninguém.
+        "foco": _foco(state),
     }
 
 
@@ -167,9 +232,11 @@ async def agente_notificacao(state: dict[str, Any], settings: Settings, agora: d
             continue
 
     if gerada is None:
-        notificacao = notificacao_da_regra(perfil["perfil_dominante"], motivo, agora)
+        notificacao = notificacao_da_regra(perfil["perfil_dominante"], motivo, agora, payload["foco"])
     else:
         contexto: dict[str, Any] = {"motivo": motivo, "perfil": perfil["perfil_dominante"], "origem": origem}
+        if payload["foco"]:
+            contexto["topico"] = payload["foco"]["topico"]
         if gerada.evidencia:
             contexto["evidencia"] = gerada.evidencia
         notificacao = NotificacaoPayload(

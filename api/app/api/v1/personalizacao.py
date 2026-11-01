@@ -8,6 +8,7 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.graph.guardrails import checar_grounding_chat, gerar_validado
@@ -59,6 +60,7 @@ from app.schemas.personalizacao import (
     RegenerarSlideResponse,
     SugestaoAlunoResponse,
     SugestaoEfetividadeResponse,
+    SugestaoEvidencia,
     SugestaoHistoricoItem,
     SugestaoMaterialItem,
     SugestaoMaterialResponse,
@@ -2929,15 +2931,7 @@ async def obter_historico_de_sugestao(
         if gravada:
             atual = SugestaoMaterialResponse(
                 formato_inicial=gravada.get("formato_inicial"),
-                ordem=[
-                    SugestaoMaterialItem(
-                        formato=str(item.get("formato")),
-                        posicao=int(item.get("posicao") or 0),
-                        score=float(item.get("score") or 0),
-                        motivos=list(item.get("motivos") or []),
-                    )
-                    for item in (gravada.get("ordem") or [])
-                ],
+                ordem=_itens_da_sugestao(gravada.get("ordem")),
                 versao=int(gravada.get("versao") or 1),
                 origem=str(gravada.get("origem") or "inicial"),
             )
@@ -2961,6 +2955,7 @@ async def obter_historico_de_sugestao(
                 seguiu_inicio=registro.get("seguiu_inicio"),
                 desempenho=registro.get("desempenho"),
                 desempenho_posterior=registro.get("desempenho_posterior"),
+                catalogo_versao=registro.get("catalogo_versao"),
             )
             for registro in reversed(registros)
         ],
@@ -3065,6 +3060,32 @@ async def listar_personalizacoes(
     )
 
 
+def _itens_da_sugestao(ordem: Any) -> list[SugestaoMaterialItem]:
+    """Itens gravados no JSONB -> resposta. Evidência malformada é descartada, não 500."""
+    itens: list[SugestaoMaterialItem] = []
+    for item in ordem or []:
+        if not isinstance(item, dict):
+            continue
+        evidencias: list[SugestaoEvidencia] = []
+        for ev in item.get("evidencias") or []:
+            if not isinstance(ev, dict) or not ev.get("regra"):
+                continue
+            try:
+                evidencias.append(SugestaoEvidencia.model_validate(ev))
+            except ValidationError:
+                continue
+        itens.append(
+            SugestaoMaterialItem(
+                formato=str(item.get("formato")),
+                posicao=int(item.get("posicao") or 0),
+                score=float(item.get("score") or 0),
+                motivos=list(item.get("motivos") or []),
+                evidencias=evidencias,
+            )
+        )
+    return itens
+
+
 async def _resolver_sugestao_do_aluno(
     session: AsyncSession,
     *,
@@ -3108,15 +3129,7 @@ async def _resolver_sugestao_do_aluno(
 
     return SugestaoMaterialResponse(
         formato_inicial=sugestao.get("formato_inicial"),
-        ordem=[
-            SugestaoMaterialItem(
-                formato=str(item.get("formato")),
-                posicao=int(item.get("posicao") or 0),
-                score=float(item.get("score") or 0),
-                motivos=list(item.get("motivos") or []),
-            )
-            for item in (sugestao.get("ordem") or [])
-        ],
+        ordem=_itens_da_sugestao(sugestao.get("ordem")),
         versao=int(sugestao.get("versao") or 1),
         origem=str(sugestao.get("origem") or "inicial"),
     )

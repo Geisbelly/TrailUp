@@ -62,6 +62,9 @@ class TrailUpState(TypedDict, total=False):
     # declarada aqui, o LangGraph descarta a chave na entrada do grafo e todo no
     # le `None` - a recorrencia do agente_ui nunca disparava (#64).
     memoria_aluno: dict[str, Any] | None
+    # Tópico em andamento e próximo conteúdo, para o texto da notificação (#66).
+    # Também montado por `build_initial_state`; mesma razão de estar declarado.
+    foco_estudo: dict[str, Any] | None
     intervencao_payload: dict[str, Any] | None
     # `CronometroDecisao` (#136): o executor desliga o cronometro e avisa o professor.
     cronometro_payload: dict[str, Any] | None
