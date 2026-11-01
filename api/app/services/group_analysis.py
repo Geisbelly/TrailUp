@@ -47,6 +47,15 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def _float_ou_none(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def compute_distribuicao(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Computa contagem/percentual por perfil a partir do perfil dominante de cada aluno.
 
@@ -56,6 +65,8 @@ def compute_distribuicao(rows: list[dict[str, Any]]) -> dict[str, Any]:
     contagem: dict[str, int] = {chave: 0 for chave in BRAINHEX_PROFILES}
     total_alunos = 0
     desempenhos: list[dict[str, float]] = []
+    # Nota é do banco (20261101_10): NULL é "sem nota" e não entra na média; 0 é zero.
+    notas: list[float] = []
 
     for row in rows:
         chave = _normalize_profile(row.get("perfil"))
@@ -66,9 +77,11 @@ def compute_distribuicao(rows: list[dict[str, Any]]) -> dict[str, Any]:
             {
                 "media_acertos": _safe_float(row.get("media_acertos")),
                 "percentual_concluido": _safe_float(row.get("percentual_concluido")),
-                "nota_media": _safe_float(row.get("nota_media")),
             }
         )
+        nota = _float_ou_none(row.get("nota_media"))
+        if nota is not None:
+            notas.append(nota)
 
     com_perfil = sum(contagem.values())
     distribuicao: dict[str, dict[str, Any]] = {}
@@ -98,10 +111,10 @@ def compute_distribuicao(rows: list[dict[str, Any]]) -> dict[str, Any]:
             "percentual_concluido": round(
                 sum(d["percentual_concluido"] for d in desempenhos) / len(desempenhos), 2
             ),
-            "nota_media": round(sum(d["nota_media"] for d in desempenhos) / len(desempenhos), 2),
+            "nota_media": round(sum(notas) / len(notas), 2) if notas else None,
         }
     else:
-        media_desempenho = {"media_acertos": 0.0, "percentual_concluido": 0.0, "nota_media": 0.0}
+        media_desempenho = {"media_acertos": 0.0, "percentual_concluido": 0.0, "nota_media": None}
 
     return {
         "distribuicao": distribuicao,
@@ -166,7 +179,7 @@ class GroupAnalysisService:
                 ca.aluno_id,
                 AVG(COALESCE(ca.{col_acertos}, 0)) AS media_acertos,
                 AVG(COALESCE(ca.{col_concl}, 0)) AS percentual_concluido,
-                AVG(COALESCE(ca.{col_nota}, 0)) AS nota_media
+                AVG(ca.{col_nota}) AS nota_media
               FROM classe_aluno ca
               WHERE ca.classe_id = :classe_id
               GROUP BY ca.aluno_id

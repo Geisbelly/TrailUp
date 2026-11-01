@@ -23,6 +23,7 @@ import {
   type PersonalizacaoPerfilItem,
   type PersonalizacaoPorPerfilResponse,
 } from "./personalizacoesApi";
+import { valorDoDesempenho } from "./desempenho";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { PerfilConteudoPage } from "./PerfilConteudoPage";
 import type { MaterialTipo } from "./PerfilConteudoView";
@@ -1071,7 +1072,7 @@ function GrupoResumo({ resumo }: { resumo: ClassePerfilSummaryResponse }) {
           <Card key={key}>
             <CardHeader className="pb-2">
               <CardDescription>{DESEMPENHO_LABELS[key]}</CardDescription>
-              <CardTitle className="text-2xl">{value.toFixed(1)}%</CardTitle>
+              <CardTitle className="text-2xl">{valorDoDesempenho(key, value)}</CardTitle>
             </CardHeader>
           </Card>
         ))}
