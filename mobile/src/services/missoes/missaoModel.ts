@@ -29,6 +29,11 @@ export type MissaoDoAluno = {
   metrica: string;
   /** `criterio.atividade_id` da missão-entrega (`atividade_especifica`); `null` nas outras. */
   atividadeId: number | null;
+  /**
+   * Só se cumpre fazendo atividade: `atividades_concluidas`, `acertos_percentual` e
+   * `eventos_no_dia` de evento de atividade. O "Ir" dessas não pode levar a tópico sem atividade.
+   */
+  pedeAtividade: boolean;
   origem: OrigemDaMissao;
   escopo: EscopoDaMissao;
   /** `janela_fim`. `null` = sem prazo. */
@@ -52,6 +57,14 @@ export function atividadeDoCriterio(criterio: unknown): number | null {
   if (String(c?.metrica ?? "") !== "atividade_especifica") return null;
   const id = Number(c?.atividade_id);
   return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+/** A missão só se cumpre fazendo atividade? Ver `MissaoDoAluno.pedeAtividade`. */
+export function pedeAtividade(criterio: unknown): boolean {
+  const c = criterio && typeof criterio === "object" ? (criterio as Record<string, unknown>) : null;
+  const metrica = String(c?.metrica ?? "");
+  if (metrica === "atividades_concluidas" || metrica === "acertos_percentual") return true;
+  return metrica === "eventos_no_dia" && String(c?.evento ?? "").includes("atividade");
 }
 
 export function rotuloCriterio(criterio: unknown): string {
@@ -237,6 +250,7 @@ export function montarMissoes(
         criterioRotulo: rotuloCriterio(m.criterio),
         metrica: String((m.criterio as Record<string, unknown> | null)?.metrica ?? ""),
         atividadeId: atividadeDoCriterio(m.criterio),
+        pedeAtividade: pedeAtividade(m.criterio),
         origem: m.origem === "professor" ? "professor" : "sistema",
         escopo: m.escopo === "guilda" ? "guilda" : m.escopo === "aluno" ? "aluno" : "turma",
         prazo: m.janela_fim,

@@ -278,6 +278,7 @@ export const TrilhaBase: React.FC<{
         atualId={currentTopicId}
         palette={palette}
         base={BASE_DOS_FLUTUANTES}
+        perfil={perfil}
         oculto={folhaExpandida}
         onVerTopicoBloqueado={(id) => {
           setSelecionado(String(id));

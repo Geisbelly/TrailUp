@@ -538,6 +538,20 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   fluxo de coleta e a realimentação por ciclo intactos.
 - **Não quebrar o existente:** os 7 perfis, o grafo LangGraph, os endpoints e os
   schemas JSONB são pontos de extensão — corrigir/estender, não reescrever.
+- **Um ícone, um significado.** O mesmo ícone (ou arte) não pode representar duas
+  coisas diferentes no app: o aluno aprende "medalha = conquista" e passa a ler
+  errado tudo que reaproveita a medalha. Já aconteceu: o botão de missões da
+  Trilha saiu com a medalha das conquistas no Conqueror e no Achiever, o rosto do
+  guia (que marca "Você parou aqui") no Socializer e a bússola do mapa no Seeker.
+  Antes de escolher ícone para uma coisa nova, procure o nome dele em
+  `mobile/src` e `frontend/src`; se já tiver dono com outro sentido, escolha
+  outro. Repetir é certo só quando o sentido é o mesmo — ícones de **estado**
+  (check = concluído, cadeado = bloqueado, atualizar, fechar). Os ícones das
+  missões estão em `mobile/src/components/missoes/variantesDoRastreador.ts`, e o
+  teste ao lado falha se algum deles aparecer em outro arquivo do app. Vale também
+  para nome na interface: "Campanha" já é o avanço na turma (métricas do perfil) e
+  "Desafio" já é a métrica de atividades e o título da Ember — por isso as folhas
+  de missões do Conqueror e do Daredevil não usam essas palavras.
 - **RLS é a autorização, não defesa extra.** `anon` e `authenticated` têm GRANT
   de SELECT/INSERT/UPDATE/DELETE nas 84 tabelas — RLS é a única barreira. A
   posse está implementada (`20260826_08` a `20260826_10`):
