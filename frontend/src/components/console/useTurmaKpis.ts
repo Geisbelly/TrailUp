@@ -70,8 +70,8 @@ export type TurmaKpis = {
 };
 
 // Le direto das views agregadas do Supabase (versionadas na F5). Os numeros por
-// topico e com janela vem da RPC metricas_engajamento_turma (useKpisPorTopico,
-// em dashboard/kpisEngajamentoApi.ts); nao misture os dois contratos.
+// topico e com janela vem da RPC metricas_engajamento_turma (dashboard/useKpisPorTopico.ts
+// e dashboard/kpisEngajamentoApi.ts); nao misture os dois contratos.
 export function useTurmaKpis(classIds: number[]): TurmaKpis {
   const [turmaMetricas, setTurmaMetricas] = useState<TurmaGeralMetricas[]>([]);
   const [perfilMetricas, setPerfilMetricas] = useState<TurmaPerfilMetricas[]>([]);
