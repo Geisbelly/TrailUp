@@ -894,8 +894,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 3,
   },
-  acoesPerfil: { flexDirection: "row", gap: 10, marginTop: 14, alignSelf: "stretch", justifyContent: "center" },
+  // Quebra a linha quando os dois botões não cabem lado a lado: sem o wrap, em tela
+  // estreita "Editar perfil" e "Trocar turma" vazavam pelas duas bordas.
+  acoesPerfil: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 14, alignSelf: "stretch", justifyContent: "center" },
   acaoPerfil: {
+    maxWidth: "100%",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -906,7 +909,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   acaoPerfilIcone: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
-  acaoPerfilTexto: { fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "600" },
+  acaoPerfilTexto: { flexShrink: 1, fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "600" },
   infoContainer: { alignItems: "center", gap: 2, paddingTop: 10 },
   trocaPerfil: { marginTop: 16, marginHorizontal: 14 },
   trocaPerfilRotulo: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.1, marginBottom: 8, marginLeft: 2 },

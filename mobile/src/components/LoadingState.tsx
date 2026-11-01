@@ -53,6 +53,9 @@ export function LoadingState({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    // Ocupa a largura toda mesmo dentro de um pai com alignItems: "center":
+    // sem isso, na web o fundo cobria só a faixa do texto e as laterais ficavam brancas.
+    alignSelf: "stretch",
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,

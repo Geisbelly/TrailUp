@@ -131,7 +131,7 @@ export default function RootLayout() {
 
   if (!sessionChecked) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+      <View style={{ flex: 1 }}>
         <LoadingState title="Preparando sessão" message="Validando suas credenciais..." />
       </View>
     );

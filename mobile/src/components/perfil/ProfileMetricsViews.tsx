@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { createContext, useContext, useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Line, Path, Polygon, Rect, Text as SvgText } from "react-native-svg";
 import tinycolor from "tinycolor2";
 import { BrainHexProfile, getBrainHexConfig, normalizeBrainHexProfile } from "@/constants/profileImages";
@@ -12,6 +12,19 @@ import { formatStudyMinutes as formatMinutes } from '@/utils/studyTimeFormat';
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 
 const CHART_W = 280;
+
+// Os gráficos eram desenhados com 280 fixos e vazavam do cartão em tela estreita
+// (a barra da Jornada passava da borda). Mede a largura que sobra e só encolhe:
+// nunca passa dos 280, para não mudar o desenho onde já cabia. Antes da medida
+// (e nos testes, onde onLayout não dispara) vale o 280 de sempre.
+function useLarguraDoGrafico() {
+  const [medida, setMedida] = useState(0);
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    const w = Math.floor(e.nativeEvent.layout.width);
+    setMedida((atual) => (atual === w ? atual : w));
+  }, []);
+  return { largura: medida > 0 ? Math.min(medida, CHART_W) : CHART_W, onLayout };
+}
 
 // Web em tela larga (#346, protótipo v4, 08-perfil-hub.html): seções em cartões,
 // números numa linha só e o chip do estilo no canto do destaque. Só o Perfil de
@@ -447,20 +460,21 @@ function EngagementBar({
   accent: string;
   palette: ThemePalette;
 }) {
+  const { largura, onLayout } = useLarguraDoGrafico();
   const total = activeSec + idleSec;
-  const activeW = total > 0 ? Math.max(4, (activeSec / total) * CHART_W) : 0;
+  const activeW = total > 0 ? Math.max(4, (activeSec / total) * largura) : 0;
 
   return (
-    <View style={s.chartWrap}>
-      <Svg width={CHART_W} height={38}>
-        <Rect x={0} y={0} width={CHART_W} height={14} rx={7} fill={palette.track} />
+    <View style={s.chartWrap} onLayout={onLayout}>
+      <Svg width={largura} height={38}>
+        <Rect x={0} y={0} width={largura} height={14} rx={7} fill={palette.track} />
         {activeW > 0 && (
           <Rect x={0} y={0} width={activeW} height={14} rx={7} fill={accent} />
         )}
         <SvgText fontFamily={FontFamily.interMedium} x={0} y={34} fontSize={11} fill={accent}>
           Ativo {formatSeconds(activeSec)}
         </SvgText>
-        <SvgText fontFamily={FontFamily.interMedium} x={CHART_W} y={34} textAnchor="end" fontSize={11} fill={palette.muted}>
+        <SvgText fontFamily={FontFamily.interMedium} x={largura} y={34} textAnchor="end" fontSize={11} fill={palette.muted}>
           Ocioso {formatSeconds(idleSec)}
         </SvgText>
       </Svg>
@@ -486,7 +500,8 @@ function TimeDistributionBars({
   const BAR_H = 16;
   const GAP = 14;
   const LABEL_W = 76;
-  const BAR_AREA = CHART_W - LABEL_W - 82;
+  const { largura, onLayout } = useLarguraDoGrafico();
+  const BAR_AREA = Math.max(0, largura - LABEL_W - 82);
   const maxVal = Math.max(tempoTopico, tempoConteudo, tempoAtividade, 1);
   const bars = [
     { label: "Tópico", value: tempoTopico, color: accent },
@@ -496,26 +511,28 @@ function TimeDistributionBars({
   const svgH = bars.length * (BAR_H + GAP);
 
   return (
-    <Svg width={CHART_W} height={svgH}>
-      {bars.map(({ label, value, color }, idx) => {
-        const barW = Math.max(0, (value / maxVal) * BAR_AREA);
-        const y = idx * (BAR_H + GAP);
-        return (
-          <React.Fragment key={idx}>
-            <SvgText fontFamily={FontFamily.interMedium} x={0} y={y + BAR_H - 2} fontSize={11} fill={palette.muted}>
-              {label}
-            </SvgText>
-            <Rect x={LABEL_W} y={y} width={BAR_AREA} height={BAR_H} rx={4} fill={palette.track} />
-            {barW > 0 && (
-              <Rect x={LABEL_W} y={y} width={barW} height={BAR_H} rx={4} fill={color} />
-            )}
-            <SvgText fontFamily={FontFamily.interMedium} x={LABEL_W + barW + 6} y={y + BAR_H - 2} fontSize={11} fill={palette.text}>
-              {formatSeconds(value)}
-            </SvgText>
-          </React.Fragment>
-        );
-      })}
-    </Svg>
+    <View style={s.larguraDoGrafico} onLayout={onLayout}>
+      <Svg width={largura} height={svgH}>
+        {bars.map(({ label, value, color }, idx) => {
+          const barW = Math.max(0, (value / maxVal) * BAR_AREA);
+          const y = idx * (BAR_H + GAP);
+          return (
+            <React.Fragment key={idx}>
+              <SvgText fontFamily={FontFamily.interMedium} x={0} y={y + BAR_H - 2} fontSize={11} fill={palette.muted}>
+                {label}
+              </SvgText>
+              <Rect x={LABEL_W} y={y} width={BAR_AREA} height={BAR_H} rx={4} fill={palette.track} />
+              {barW > 0 && (
+                <Rect x={LABEL_W} y={y} width={barW} height={BAR_H} rx={4} fill={color} />
+              )}
+              <SvgText fontFamily={FontFamily.interMedium} x={LABEL_W + barW + 6} y={y + BAR_H - 2} fontSize={11} fill={palette.text}>
+                {formatSeconds(value)}
+              </SvgText>
+            </React.Fragment>
+          );
+        })}
+      </Svg>
+    </View>
   );
 }
 
@@ -711,51 +728,54 @@ function RadarChart({
 
 function WeeklyBars({ data, accent, palette }: { data: number[]; accent: string; palette: ThemePalette }) {
   const CHART_H = 120;
-  const barW = 24;
-  const gap = (CHART_W - 7 * barW) / 8;
+  const { largura, onLayout } = useLarguraDoGrafico();
+  const barW = Math.min(24, Math.floor(largura / 10));
+  const gap = (largura - 7 * barW) / 8;
   const maxVal = Math.max(...data, 1);
   const labels = ["D-6", "D-5", "D-4", "D-3", "D-2", "D-1", "Hoje"];
 
   return (
-    <Svg width={CHART_W} height={CHART_H + 4}>
-      {data.map((val, i) => {
-        const barH = Math.max(4, (val / maxVal) * (CHART_H - 22));
-        const bx = gap + i * (barW + gap);
-        const by = CHART_H - barH - 18;
-        return (
-          <React.Fragment key={i}>
-            <Rect
-              x={bx}
-              y={by}
-              width={barW}
-              height={barH}
-              rx={4}
-              fill={tinycolor(accent).setAlpha(val > 0 ? 0.55 : 0.15).toRgbString()}
-            />
-            {val > 0 && (
+    <View style={s.larguraDoGraficoCentro} onLayout={onLayout}>
+      <Svg width={largura} height={CHART_H + 4}>
+        {data.map((val, i) => {
+          const barH = Math.max(4, (val / maxVal) * (CHART_H - 22));
+          const bx = gap + i * (barW + gap);
+          const by = CHART_H - barH - 18;
+          return (
+            <React.Fragment key={i}>
               <Rect
                 x={bx}
                 y={by}
                 width={barW}
-                height={3}
-                rx={2}
-                fill={accent}
-                opacity={0.9}
+                height={barH}
+                rx={4}
+                fill={tinycolor(accent).setAlpha(val > 0 ? 0.55 : 0.15).toRgbString()}
               />
-            )}
-            <SvgText fontFamily={FontFamily.interMedium}
-              x={bx + barW / 2}
-              y={CHART_H - 2}
-              textAnchor="middle"
-              fontSize={9}
-              fill={palette.muted}
-            >
-              {labels[i]}
-            </SvgText>
-          </React.Fragment>
-        );
-      })}
-    </Svg>
+              {val > 0 && (
+                <Rect
+                  x={bx}
+                  y={by}
+                  width={barW}
+                  height={3}
+                  rx={2}
+                  fill={accent}
+                  opacity={0.9}
+                />
+              )}
+              <SvgText fontFamily={FontFamily.interMedium}
+                x={bx + barW / 2}
+                y={CHART_H - 2}
+                textAnchor="middle"
+                fontSize={9}
+                fill={palette.muted}
+              >
+                {labels[i]}
+              </SvgText>
+            </React.Fragment>
+          );
+        })}
+      </Svg>
+    </View>
   );
 }
 
@@ -910,8 +930,9 @@ function DiscoveryRadial({
 // ─── PresenceGrid ─────────────────────────────────────────────────────────────
 
 function PresenceGrid({ data, accent, palette }: { data: number[]; accent: string; palette: ThemePalette }) {
-  const dotR = 12;
-  const spacing = CHART_W / 7;
+  const { largura, onLayout } = useLarguraDoGrafico();
+  const spacing = largura / 7;
+  const dotR = Math.min(12, Math.floor(spacing / 2) - 2);
   const dotCy = 28;
 
   const startDay = new Date();
@@ -923,33 +944,35 @@ function PresenceGrid({ data, accent, palette }: { data: number[]; accent: strin
   });
 
   return (
-    <Svg width={CHART_W} height={72}>
-      {data.map((count, i) => {
-        const dotCx = spacing / 2 + i * spacing;
-        const hasActivity = count > 0;
-        const opacity = hasActivity ? 0.5 + 0.5 * Math.min(count / 5, 1) : 1;
-        return (
-          <React.Fragment key={i}>
-            <Circle
-              cx={dotCx}
-              cy={dotCy}
-              r={dotR}
-              fill={hasActivity ? tinycolor(accent).setAlpha(opacity).toRgbString() : palette.track}
-              stroke={hasActivity ? accent : palette.border}
-              strokeWidth={hasActivity ? 0 : 1}
-            />
-            {count > 0 && (
-              <SvgText fontFamily={FontFamily.interMedium} x={dotCx} y={dotCy + 4} textAnchor="middle" fontSize={9} fill={palette.text}>
-                {count}
+    <View style={s.larguraDoGraficoCentro} onLayout={onLayout}>
+      <Svg width={largura} height={72}>
+        {data.map((count, i) => {
+          const dotCx = spacing / 2 + i * spacing;
+          const hasActivity = count > 0;
+          const opacity = hasActivity ? 0.5 + 0.5 * Math.min(count / 5, 1) : 1;
+          return (
+            <React.Fragment key={i}>
+              <Circle
+                cx={dotCx}
+                cy={dotCy}
+                r={dotR}
+                fill={hasActivity ? tinycolor(accent).setAlpha(opacity).toRgbString() : palette.track}
+                stroke={hasActivity ? accent : palette.border}
+                strokeWidth={hasActivity ? 0 : 1}
+              />
+              {count > 0 && (
+                <SvgText fontFamily={FontFamily.interMedium} x={dotCx} y={dotCy + 4} textAnchor="middle" fontSize={9} fill={palette.text}>
+                  {count}
+                </SvgText>
+              )}
+              <SvgText fontFamily={FontFamily.interMedium} x={dotCx} y={dotCy + dotR + 16} textAnchor="middle" fontSize={9} fill={palette.muted}>
+                {dayLabels[i]}
               </SvgText>
-            )}
-            <SvgText fontFamily={FontFamily.interMedium} x={dotCx} y={dotCy + dotR + 16} textAnchor="middle" fontSize={9} fill={palette.muted}>
-              {dayLabels[i]}
-            </SvgText>
-          </React.Fragment>
-        );
-      })}
-    </Svg>
+            </React.Fragment>
+          );
+        })}
+      </Svg>
+    </View>
   );
 }
 
@@ -973,7 +996,11 @@ function TopicBarChart({
   const BAR_H = 18;
   const GAP = 14;
   const LABEL_W = 88;
-  const BAR_AREA = CHART_W - LABEL_W;
+  // Sobra para o número depois da barra: com o tópico todo concluído, a barra
+  // ocupava a área inteira e o número saía para fora do desenho.
+  const VALOR_W = 24;
+  const { largura, onLayout } = useLarguraDoGrafico();
+  const BAR_AREA = Math.max(0, largura - LABEL_W - VALOR_W);
   const safeTotal = Math.max(total, 1);
   const bars = [
     { label: "Concluídos", value: concluidos, color: accent },
@@ -983,26 +1010,28 @@ function TopicBarChart({
   const svgH = bars.length * (BAR_H + GAP);
 
   return (
-    <Svg width={CHART_W} height={svgH}>
-      {bars.map(({ label, value, color }, idx) => {
-        const barW = Math.max(0, (value / safeTotal) * BAR_AREA);
-        const y = idx * (BAR_H + GAP);
-        return (
-          <React.Fragment key={idx}>
-            <SvgText fontFamily={FontFamily.interMedium} x={0} y={y + BAR_H - 3} fontSize={11} fill={palette.muted}>
-              {label}
-            </SvgText>
-            <Rect x={LABEL_W} y={y} width={BAR_AREA} height={BAR_H} rx={4} fill={palette.track} />
-            {barW > 0 && (
-              <Rect x={LABEL_W} y={y} width={barW} height={BAR_H} rx={4} fill={color} />
-            )}
-            <SvgText fontFamily={FontFamily.interMedium} x={LABEL_W + barW + 6} y={y + BAR_H - 3} fontSize={11} fill={palette.text}>
-              {value}
-            </SvgText>
-          </React.Fragment>
-        );
-      })}
-    </Svg>
+    <View style={s.larguraDoGrafico} onLayout={onLayout}>
+      <Svg width={largura} height={svgH}>
+        {bars.map(({ label, value, color }, idx) => {
+          const barW = Math.max(0, (value / safeTotal) * BAR_AREA);
+          const y = idx * (BAR_H + GAP);
+          return (
+            <React.Fragment key={idx}>
+              <SvgText fontFamily={FontFamily.interMedium} x={0} y={y + BAR_H - 3} fontSize={11} fill={palette.muted}>
+                {label}
+              </SvgText>
+              <Rect x={LABEL_W} y={y} width={BAR_AREA} height={BAR_H} rx={4} fill={palette.track} />
+              {barW > 0 && (
+                <Rect x={LABEL_W} y={y} width={barW} height={BAR_H} rx={4} fill={color} />
+              )}
+              <SvgText fontFamily={FontFamily.interMedium} x={LABEL_W + barW + 6} y={y + BAR_H - 3} fontSize={11} fill={palette.text}>
+                {value}
+              </SvgText>
+            </React.Fragment>
+          );
+        })}
+      </Svg>
+    </View>
   );
 }
 
@@ -1777,6 +1806,10 @@ const s = StyleSheet.create({
   emptyText: { fontFamily: FontFamily.interMedium, fontSize: 13, lineHeight: 20 },
   chartCenter: { alignItems: "center", paddingVertical: 8 },
   chartWrap: { marginTop: 4, marginBottom: 12 },
+  // Ocupa a largura do pai mesmo dentro de chartCenter (alignItems: center),
+  // senão a medida seria a do próprio gráfico e nunca encolheria.
+  larguraDoGrafico: { alignSelf: "stretch" },
+  larguraDoGraficoCentro: { alignSelf: "stretch", alignItems: "center" },
   storyHeadline: { fontFamily: FontFamily.inikaBold, fontSize: 17, lineHeight: 24, marginBottom: 8 },
   storyBody: { fontFamily: FontFamily.interMedium, fontSize: 13, lineHeight: 20 },
   checkRow: { flexDirection: "row", alignItems: "center", borderBottomWidth: 1, paddingVertical: 10 },
