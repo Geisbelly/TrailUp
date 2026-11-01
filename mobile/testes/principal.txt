@@ -1,5 +1,6 @@
 src/components/PresentationSlidesBlock.test.ts
 src/components/bag/BagModal.test.tsx
+src/components/auth/alturaDaCena.test.ts
 src/components/ornamentDividerColors.test.ts
 src/components/studyCards.test.ts
 src/constants/designAssets.test.ts
