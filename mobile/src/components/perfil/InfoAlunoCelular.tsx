@@ -19,12 +19,15 @@ export function InfoAlunoCelular({
   professor,
   email,
   classeId,
+  onTrocarTurma,
   palette,
 }: {
   turma?: string | null;
   professor?: string | null;
   email?: string | null;
   classeId?: number | null;
+  /** Presente quando o aluno tem mais de uma turma: volta à escolha da turma. */
+  onTrocarTurma?: () => void;
   palette: ProfileShellPalette;
 }) {
   const [guilda, setGuilda] = useState<string | null>(null);
@@ -70,7 +73,16 @@ export function InfoAlunoCelular({
           </Text>
         </View>
       ))}
-      <Pressable accessibilityRole="link" onPress={() => router.push("/(tabs)/perfil/info")} style={s.editar}>
+      {onTrocarTurma ? (
+        <Pressable accessibilityRole="button" onPress={onTrocarTurma} style={[s.editar, { borderTopWidth: 1, borderTopColor: palette.border }]}>
+          <Text style={[s.editarTexto, { color: palette.accent }]}>Trocar de turma</Text>
+        </Pressable>
+      ) : null}
+      <Pressable
+        accessibilityRole="link"
+        onPress={() => router.push("/(tabs)/perfil/info")}
+        style={[s.editar, onTrocarTurma ? { borderTopWidth: 1, borderTopColor: palette.border } : null]}
+      >
         <Text style={[s.editarTexto, { color: palette.accent }]}>Editar informações</Text>
       </Pressable>
     </View>

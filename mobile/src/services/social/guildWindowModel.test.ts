@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { dataHoraBrasilia, estadoDaJanela, formacaoAberta, mensagemDeErroDaGuilda, normalizeJanela, resumoDaJanela } from "./guildWindowModel";
+import { avisoDoAceite, dataHoraBrasilia, estadoDaJanela, formacaoAberta, mensagemDeErroDaGuilda, normalizeJanela, resumoDaJanela } from "./guildWindowModel";
 
 const base = { classe_id: 65, configurada: true, tamanho_maximo: 4, agora: "2026-10-20T15:00:00Z" };
 
@@ -54,4 +54,19 @@ test("outros erros de guilda", () => {
   assert.equal(mensagemDeErroDaGuilda({ message: "guilda_cheia" }), "Esta guilda já está completa.");
   assert.equal(mensagemDeErroDaGuilda({ message: "guilda_membro_existente" }), "Você já participa de uma guilda nesta turma.");
   assert.equal(mensagemDeErroDaGuilda(new Error("x")), "Não foi possível concluir a ação.");
+});
+
+test("guilda_evento_aberto explica que a composição está congelada, mesmo com a janela aberta", () => {
+  const erro = { message: 'guilda_evento_aberto' };
+  const esperado = "Há um evento em guilda acontecendo nesta turma. As guildas ficam como estão até ele encerrar.";
+  assert.equal(mensagemDeErroDaGuilda(erro), esperado);
+  // A janela de formação aberta não muda a frase: o portão aqui é o evento, não a janela.
+  const j = normalizeJanela({ ...base, janela_aberta: true })!;
+  assert.equal(mensagemDeErroDaGuilda(erro, j), esperado);
+});
+
+test("aceite cancelado por bloqueio avisa sem dizer quem bloqueou", () => {
+  assert.equal(avisoDoAceite({ status: "cancelled", guilda_id: "g" }), "Este convite não está mais disponível.");
+  assert.equal(avisoDoAceite({ status: "accepted" }), null);
+  assert.equal(avisoDoAceite(null), null);
 });

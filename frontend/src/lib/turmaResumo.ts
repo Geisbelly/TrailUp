@@ -1,57 +1,91 @@
-// Resumo agregado das métricas de turma no escopo selecionado (uma ou várias
-// classes). Pondera cada métrica por `total_alunos` da linha — uma média
-// simples entre classes distorce fortemente quando os tamanhos das turmas
-// são muito diferentes (ex.: uma classe de 50 alunos com 10% de abandono e
-// outra de 5 alunos com 90% dariam 50% de média simples, quando o valor
-// real ponderado por aluno é ~17%).
+// Resumo das métricas de turma no escopo selecionado (uma ou várias classes).
+//
+// - Contagens (alunos inativos, parados, evadidos, sem dado, em risco alto) somam.
+// - Médias e taxas ponderam pelo denominador de cada linha: alunos para conclusão, nota, acertos e
+//   tempo; semanas elegíveis para o retorno semanal. Uma média simples entre classes distorce quando
+//   os tamanhos diferem (uma classe de 50 alunos com 10% e outra de 5 com 90% dariam 50%, quando o
+//   valor por aluno é ~17%).
+// - Linha sem o dado (null) não entra na média: "sem dado" ≠ 0. Sem nenhuma linha com dado, o
+//   resumo daquela métrica é null.
 
 export type TurmaResumoRow = {
   total_alunos: number;
-  taxa_media_abandono_pct: number;
-  taxa_media_conclusao_pct: number;
-  media_nota_turma: number;
-  taxa_media_acertos_pct: number;
-  tempo_medio_uso_seg: number;
-  uso_chat_apos_erro_pct: number;
+  taxa_risco_abandono_pct: number | null;
+  alunos_risco_alto: number;
+  alunos_risco_com_dado: number;
+  tempo_medio_uso_seg: number | null;
+  taxa_media_conclusao_pct: number | null;
+  media_nota_turma: number | null;
+  taxa_media_acertos_pct: number | null;
+  tempo_ativo_medio_seg: number | null;
+  uso_chat_apos_erro_pct: number | null;
+  retorno_semanal_pct: number | null;
+  retorno_semanal_elegiveis: number;
+  alunos_inativos: number;
+  alunos_estagnados: number;
+  alunos_evadidos: number;
+  alunos_sem_dado: number;
 };
 
-const METRIC_KEYS = [
-  "taxa_media_abandono_pct",
+const MEDIAS_POR_ALUNO = [
   "taxa_media_conclusao_pct",
   "media_nota_turma",
   "taxa_media_acertos_pct",
+  "tempo_ativo_medio_seg",
   "tempo_medio_uso_seg",
   "uso_chat_apos_erro_pct",
 ] as const satisfies readonly (keyof TurmaResumoRow)[];
 
-export type TurmaResumo = Pick<TurmaResumoRow, (typeof METRIC_KEYS)[number]>;
+const CONTAGENS = [
+  "total_alunos",
+  "alunos_inativos",
+  "alunos_estagnados",
+  "alunos_evadidos",
+  "alunos_sem_dado",
+  "alunos_risco_alto",
+  "alunos_risco_com_dado",
+] as const;
 
-const EMPTY_RESUMO: TurmaResumo = {
-  taxa_media_abandono_pct: 0,
-  taxa_media_conclusao_pct: 0,
-  media_nota_turma: 0,
-  taxa_media_acertos_pct: 0,
-  tempo_medio_uso_seg: 0,
-  uso_chat_apos_erro_pct: 0,
-};
+export type TurmaResumo = Record<(typeof MEDIAS_POR_ALUNO)[number] | "retorno_semanal_pct" | "taxa_risco_abandono_pct", number | null> &
+  Record<(typeof CONTAGENS)[number] | "retorno_semanal_elegiveis", number>;
+
+const numero = (v: unknown): number | null => (v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v));
+
+function mediaPonderada(rows: TurmaResumoRow[], valor: (r: TurmaResumoRow) => number | null, peso: (r: TurmaResumoRow) => number) {
+  let soma = 0;
+  let pesos = 0;
+  let somaSimples = 0;
+  let n = 0;
+  for (const r of rows) {
+    const v = valor(r);
+    if (v === null) continue;
+    soma += v * peso(r);
+    pesos += peso(r);
+    somaSimples += v;
+    n += 1;
+  }
+  if (n === 0) return null;
+  // Sem peso para ponderar (todas as linhas com 0): média simples em vez de dividir por zero.
+  return pesos > 0 ? soma / pesos : somaSimples / n;
+}
 
 export function computeTurmaResumo(rows: TurmaResumoRow[]): TurmaResumo {
-  if (!rows.length) return { ...EMPTY_RESUMO };
-
-  const totalAlunos = rows.reduce((sum, row) => sum + Number(row.total_alunos ?? 0), 0);
-  // Sem alunos para ponderar (ex.: todas as classes do escopo com 0 alunos):
-  // cai para média simples em vez de dividir por zero.
-  const weight = (row: TurmaResumoRow) =>
-    totalAlunos > 0 ? Number(row.total_alunos ?? 0) : 1;
-  const totalWeight = totalAlunos > 0 ? totalAlunos : rows.length;
-
-  const resumo = { ...EMPTY_RESUMO };
-  for (const key of METRIC_KEYS) {
-    const weightedSum = rows.reduce(
-      (sum, row) => sum + Number(row[key] ?? 0) * weight(row),
-      0
-    );
-    resumo[key] = weightedSum / totalWeight;
+  const resumo = {} as TurmaResumo;
+  for (const chave of CONTAGENS) resumo[chave] = rows.reduce((s, r) => s + (numero(r[chave]) ?? 0), 0);
+  resumo.retorno_semanal_elegiveis = rows.reduce((s, r) => s + (numero(r.retorno_semanal_elegiveis) ?? 0), 0);
+  for (const chave of MEDIAS_POR_ALUNO) {
+    resumo[chave] = mediaPonderada(rows, (r) => numero(r[chave]), (r) => numero(r.total_alunos) ?? 0);
   }
+  // Taxa de abandono: pondera pelos alunos com dado (o denominador da taxa), não pelo total.
+  resumo.taxa_risco_abandono_pct = mediaPonderada(
+    rows,
+    (r) => numero(r.taxa_risco_abandono_pct),
+    (r) => numero(r.alunos_risco_com_dado) ?? 0,
+  );
+  resumo.retorno_semanal_pct = mediaPonderada(
+    rows,
+    (r) => numero(r.retorno_semanal_pct),
+    (r) => numero(r.retorno_semanal_elegiveis) ?? 0,
+  );
   return resumo;
 }

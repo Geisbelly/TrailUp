@@ -940,6 +940,16 @@ async def enqueue_personalizacao_job(
 ) -> dict[str, Any]:
     repo = PersonalizacaoJobsRepository(session)
     scoped_aluno_id = aluno_id if kind in {JOB_KIND_ENROLLMENT, JOB_KIND_CLEANUP} else None
+    # Perfis pedidos (ex.: "Reprocessar falhas" manda so os que falharam).
+    # Chave desconhecida some; lista vazia = todos os perfis, como sempre foi.
+    requested_profiles = sorted(
+        {
+            str(key).strip().lower()
+            for key in (brainhex_profile_keys or [])
+            if str(key).strip().lower() in _BRAINHEX_PROFILE_KEYS
+        }
+    )
+    brainhex_profile_keys = requested_profiles or None
 
     # Portao de modo manual: so afeta class_delta_sync (disparo automatico
     # por edicao de topico/conteudo). Matricula/limpeza continuam sempre
@@ -983,6 +993,7 @@ async def enqueue_personalizacao_job(
         if (
             _normalized_id_list(candidate_payload.get("topico_ids")) == requested_topico_ids
             and _normalized_id_list(candidate_payload.get("conteudo_ids")) == requested_conteudo_ids
+            and sorted(candidate_payload.get("brainhex_profile_keys") or []) == requested_profiles
         ):
             detail = await get_job_detail(session=session, job_id=str(candidate["id"]))
             if detail:
@@ -1013,6 +1024,8 @@ async def enqueue_personalizacao_job(
                 _normalized_id_list(candidate_payload.get("topico_ids")) != requested_topico_ids
                 or _normalized_id_list(candidate_payload.get("conteudo_ids"))
                 != requested_conteudo_ids
+                or sorted(candidate_payload.get("brainhex_profile_keys") or [])
+                != requested_profiles
             ):
                 continue
 
@@ -1042,6 +1055,7 @@ async def enqueue_personalizacao_job(
         "topico_ids": resolved_topicos,
         "conteudo_ids": [int(item) for item in (conteudo_ids or [])],
         "target_profile_map": target_profile_map,
+        "brainhex_profile_keys": requested_profiles,
     }
     # conteudo_id e so um hint informativo (coluna com FK pra conteudos) — tem
     # que vir de um conteudo que _build_targets confirmou existir (via
@@ -1413,8 +1427,17 @@ async def _process_media_render_target(
         return {"skipped": True}
 
     # Legacy path: jobs with media_snapshot + personalizacao_id → direct media materialization
+    #
+    # O snapshot tem de estar PREENCHIDO. O repositorio devolve `{}` para todo
+    # job sem snapshot, e o alvo ganha `personalizacao_id` assim que uma
+    # tentativa devolve registro (adiamento, geracao incompleta). Com o teste
+    # antigo (`is not None`, sempre verdadeiro) a 2a tentativa de qualquer alvo
+    # caia aqui: recalculava o status com os materiais velhos e nunca chamava o
+    # microservice - que so recebia o /api/health de cima. Foi o "Reprocessar
+    # falhas" da turma 66 em 16/10: 7 alvos, 3 tentativas, todos
+    # "geracao nao concluida (status=failed)" (#652).
     media_snapshot = job.get("media_snapshot") if isinstance(job.get("media_snapshot"), dict) else {}
-    if target.get("personalizacao_id") is not None and media_snapshot is not None:
+    if target.get("personalizacao_id") is not None and media_snapshot:
         personalizacao_id = int(target["personalizacao_id"])
         repo_cp = ConteudoPersonalizadoRepository(session)
         record = await repo_cp.buscar_por_id(personalizacao_id)

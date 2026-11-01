@@ -18,7 +18,7 @@ const ABAS: { value: Aba; label: string }[] = [
 
 export default function DetalheAluno({
   aluno,
-  abandonoDaTurmaPct,
+  taxaAbandonoDaTurmaPct,
   rotuloVoltar,
   onVoltar,
   evolucaoAluno,
@@ -26,7 +26,7 @@ export default function DetalheAluno({
   personalizacao,
 }: {
   aluno: AlunoAnalisado;
-  abandonoDaTurmaPct: number | null;
+  taxaAbandonoDaTurmaPct: number | null;
   rotuloVoltar: string;
   onVoltar: () => void;
   evolucaoAluno: EvolucaoAluno[];
@@ -44,7 +44,7 @@ export default function DetalheAluno({
 
   return (
     <div ref={topo} className="space-y-6">
-      <CabecalhoAluno aluno={aluno} abandonoDaTurmaPct={abandonoDaTurmaPct} rotuloVoltar={rotuloVoltar} onVoltar={onVoltar} />
+      <CabecalhoAluno aluno={aluno} taxaAbandonoDaTurmaPct={taxaAbandonoDaTurmaPct} rotuloVoltar={rotuloVoltar} onVoltar={onVoltar} />
       <SegmentedPills ariaLabel="Seções do aluno" opcoes={ABAS} valor={aba} onChange={(a) => setAba(a)} className="w-fit" />
       {aba === "visao" && <AbaVisaoGeral aluno={aluno} evolucaoAluno={evolucaoAluno} evolucaoTurma={evolucaoTurma} onVerTrilha={() => setAba("trilha")} />}
       {aba === "perfil" && <AbaPerfil aluno={aluno} />}

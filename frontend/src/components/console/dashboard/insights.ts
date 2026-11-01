@@ -52,6 +52,18 @@ export function loteMaisRecentePorTurma(linhas: Insight[]): Insight[] {
     .sort((a, b) => a.created_at.localeCompare(b.created_at) || a.id.localeCompare(b.id));
 }
 
+/**
+ * Alertas por aluno (#64): o que o `agente_intervencao` grava quando um aluno registra o mesmo
+ * estado difícil em vários ciclos seguidos. Não tem lote (`geracao_id` nulo) porque nasce do ciclo
+ * de estudo do aluno, não do botão de gerar; por isso `loteMaisRecentePorTurma` não os mostra.
+ * Só os pendentes: decidido sai daqui e entra na taxa de aceitação. Mais novo primeiro.
+ */
+export function alertasPorAluno(linhas: Insight[]): Insight[] {
+  return linhas
+    .filter((l) => l.escopo === "aluno" && l.geracao_id === null && l.status === "pending" && Boolean(l.texto?.trim()))
+    .sort((a, b) => b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id));
+}
+
 /** Quando o lote mais novo mostrado foi gerado (null = nunca). */
 export function geradoEm(lote: Insight[]): string | null {
   return lote.reduce<string | null>((max, l) => (max === null || l.created_at > max ? l.created_at : max), null);

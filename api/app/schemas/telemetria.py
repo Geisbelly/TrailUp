@@ -154,6 +154,51 @@ class TelemetriaAppEventPayload(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
+CLIENTE_CAMPO_MAX = 120
+
+
+def _texto_do_cliente(valor: Any) -> str | None:
+    if not isinstance(valor, str):
+        return None
+    return valor.strip()[:CLIENTE_CAMPO_MAX] or None
+
+
+class TelemetriaClientePayload(BaseModel):
+    """Quem mandou o lote: build, ambiente e host da API que o app tentou.
+
+    `via` e `fallback_motivo` dizem por onde o lote chegou; isto diz de onde ele
+    veio. Sem isto, um build EAS falando com a API de producao e um build de
+    desenvolvimento com uma API local ligada ao mesmo banco gravavam lotes
+    identicos (#96). Espelha `mobile/src/services/telemetriaCliente.core.ts`.
+    """
+
+    app_version: str | None = None
+    build_profile: str | None = None
+    ambiente: str | None = None
+    dev: bool = False
+    plataforma: str | None = None
+    api_host: str | None = None
+
+    _texto = field_validator(
+        "app_version", "build_profile", "ambiente", "plataforma", "api_host", mode="before"
+    )(_texto_do_cliente)
+
+
+def _cliente_aproveitavel(valor: Any) -> Any:
+    """Metadado de origem nunca custa o lote: invalido vira ausente.
+
+    Mesmo motivo de `_entradas_aproveitaveis`: 422 aqui mandaria o lote inteiro
+    para o fallback direto, que grava sem validar.
+    """
+    if valor is None or isinstance(valor, TelemetriaClientePayload):
+        return valor
+    try:
+        return TelemetriaClientePayload.model_validate(valor)
+    except ValidationError:
+        logger.warning("telemetria: `cliente` invalido descartado; o resto do lote foi preservado.")
+        return None
+
+
 class TelemetriaLotePayload(BaseModel):
     sessao_id: str
     classe_id: int
@@ -178,6 +223,10 @@ class TelemetriaLotePayload(BaseModel):
     eventos_app: list[TelemetriaAppEventPayload] = Field(default_factory=list)
     touch_samples: list[TelemetriaTouchSamplePayload] = Field(default_factory=list)
     camera: TelemetriaCameraPayload = Field(default_factory=TelemetriaCameraPayload)
+    # Build antigo nao manda: fica nulo, como `fallback_motivo` nos lotes diretos.
+    cliente: TelemetriaClientePayload | None = None
+
+    _cliente_aproveitavel = field_validator("cliente", mode="before")(_cliente_aproveitavel)
 
 
 class TelemetriaAnalysisResponse(BaseModel):

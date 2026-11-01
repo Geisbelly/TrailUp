@@ -1092,6 +1092,64 @@ async def test_enqueue_job_does_not_reuse_open_job_from_different_topico(
 
 
 @pytest.mark.asyncio
+async def test_enqueue_manual_retry_so_dos_perfis_pedidos_e_nao_reusa_job_de_outro_escopo(
+    monkeypatch,
+) -> None:
+    """#652: 'Reprocessar falhas' reprocessava os 7 perfis. Agora o pedido leva
+    so os que falharam; chave desconhecida some e um job aberto dos 7 perfis
+    nao engole o pedido de 1."""
+    target = {
+        "aluno_id": None,
+        "topico_id": 170,
+        "conteudo_id": None,
+        "brainhex_profile_key": "seeker",
+        "is_profile_template": True,
+    }
+    build_targets_mock = AsyncMock(return_value=([target], [170], {}))
+    create_mock = AsyncMock(return_value={"id": "job-retry"})
+    monkeypatch.setattr(jobs_module, "_build_targets", build_targets_mock)
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_open_jobs_by_payload",
+        AsyncMock(
+            return_value=[
+                {
+                    "id": "job-todos-os-perfis",
+                    "kind": "manual_retry",
+                    "status": "processing",
+                    "payload": {"topico_ids": [170], "conteudo_ids": [], "brainhex_profile_keys": []},
+                }
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.list_resumable_jobs_by_payload",
+        AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.criar_job_com_targets",
+        create_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "get_job_detail",
+        AsyncMock(return_value={"job": {"id": "job-retry"}, "targets": [target]}),
+    )
+
+    result = await jobs_module.enqueue_personalizacao_job(
+        session=object(),
+        kind="manual_retry",
+        classe_id=66,
+        trigger_source="web_console",
+        topico_ids=[170],
+        brainhex_profile_keys=["Seeker", "inexistente"],
+    )
+
+    assert result["job"]["id"] == "job-retry"
+    assert build_targets_mock.await_args.kwargs["brainhex_profile_keys"] == ["seeker"]
+    assert create_mock.await_args.kwargs["payload"]["brainhex_profile_keys"] == ["seeker"]
+
+
+@pytest.mark.asyncio
 async def test_enqueue_class_delta_no_op_quando_professor_em_modo_manual(monkeypatch) -> None:
     """Professor com geracao_automatica=False: class_delta_sync (disparo por
     edicao de topico/conteudo) nao deve criar job nenhum."""
@@ -2169,6 +2227,75 @@ async def test_process_media_render_target_retries_when_existing_record_is_stuck
     assert dispatch_mock.await_args.kwargs["wait_for_completion"] is True
     assert dispatch_mock.await_args.kwargs["contract_prechecked"] is True
     assert claim_mock.await_args.kwargs["stale_processing_min"] >= 53
+
+
+@pytest.mark.asyncio
+async def test_retry_de_alvo_com_personalizacao_id_redispara_o_microservice(monkeypatch) -> None:
+    """#652: alvo que ja ganhou `personalizacao_id` numa tentativa anterior, em
+    job sem snapshot (o repositorio devolve `{}`), tem de voltar ao microservice.
+    Antes caia no caminho legado: o status era recalculado dos materiais velhos,
+    `failed` de novo, e o microservice so via o /api/health."""
+    existing = _existing_record(status="failed")
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        AsyncMock(return_value=existing),
+    )
+    claim_mock = AsyncMock(return_value=existing)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.claim_retry_incomplete_generation",
+        claim_mock,
+    )
+    completed = _completed_record(existing)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_id",
+        AsyncMock(return_value=completed),
+    )
+    legado_mock = AsyncMock()
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.atualizar_materiais_e_status",
+        legado_mock,
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "fetch_personalizacao_context",
+        AsyncMock(return_value={"source_hash": "hash-249", "fontes": []}),
+    )
+    dispatch_mock = AsyncMock(return_value=True)
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch_mock)
+    monkeypatch.setattr(
+        jobs_module,
+        "enrich_content_blocks",
+        AsyncMock(return_value={"blocos": [{"id": "bloco-01"}]}),
+    )
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(settings=SimpleNamespace(personalizacao_job_stale_processing_min=15))
+    )
+    job = {
+        "id": "job-retry",
+        "classe_id": 32,
+        "kind": "manual_retry",
+        "payload": {},
+        "media_snapshot": {},
+    }
+    target = {
+        "id": 590,
+        "aluno_id": None,
+        "topico_id": 117,
+        "conteudo_id": None,
+        "brainhex_profile_key": "seeker",
+        "personalizacao_id": existing["id"],
+    }
+
+    result = await _process_media_render_target(
+        app=app, session=_FakeSession(is_stuck=False), job=job, target=target
+    )
+
+    legado_mock.assert_not_awaited()
+    assert dispatch_mock.await_count == 1
+    assert dispatch_mock.await_args.kwargs["personalizacao_id"] == existing["id"]
+    assert result["retried_failed"] is True
+    assert result["record"] == completed
 
 
 @pytest.mark.asyncio

@@ -8,6 +8,7 @@ import {
   type FallbackMotivo,
   TelemetriaHttpError,
 } from "@/services/telemetriaFallback";
+import { lerClienteDoApp } from "@/services/telemetriaCliente";
 import { sanitizarCameraParaBanco } from "@/services/telemetriaPayload";
 import {
   normalizeNonNegativeNumber,
@@ -23,6 +24,9 @@ import {
 const API_BASE_CANDIDATES = resolveApiBaseCandidates(
   process.env.EXPO_PUBLIC_APITRAIUP_URL
 );
+
+// Quem manda o lote nao muda durante a execucao: le uma vez.
+const CLIENTE_DO_APP = lerClienteDoApp(API_BASE_CANDIDATES[0]);
 
 function buildUrls(path: string) {
   if (!API_BASE_CANDIDATES.length) return [] as string[];
@@ -192,6 +196,10 @@ function sanitizeTelemetryPayload(payload: TelemetryBatchPayload): TelemetryBatc
   const timeMetrics = payload.time_metrics;
   return {
     ...payload,
+    // Carimbado aqui, no envio, e nao na coleta: um lote que ficou na fila
+    // durante uma atualizacao do app sai pelo build que de fato o enviou, o
+    // mesmo que decide `via` e `fallback_motivo`.
+    cliente: CLIENTE_DO_APP,
     classe_id: classeId,
     topico_id: normalizePositiveInteger(payload.topico_id) ?? null,
     conteudo_id: normalizePositiveInteger(payload.conteudo_id) ?? null,

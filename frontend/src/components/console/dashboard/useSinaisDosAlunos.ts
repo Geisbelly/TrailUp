@@ -1,38 +1,42 @@
 import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { selectView } from "@/lib/supabaseViews";
 import { createRequestGuard } from "@/lib/requestGuard";
-import { JANELA_SESSOES_DIAS } from "./risco";
-import { juntarSinais, type LinhaEngajamento, type LinhaSessao, type SinaisDoAluno } from "./sinais";
+import type { SinaisDoBanco } from "./risco";
+import { juntarSinais, type LinhaEngajamento } from "./sinais";
 
 /**
- * Abandono por aluno (vw_metricas_engajamento_aluno_classe) e última sessão de
- * estudo na turma (vw_metricas_sessoes_aluno_dia, só a janela de
- * JANELA_SESSOES_DIAS). Leitura direta do Supabase — sem modelo de linguagem,
- * não passa pela API (regra de fronteira do CLAUDE.md).
+ * A faixa de risco de abandono (modelo de evasão do core-trailup) e os três sinais de cada aluno (inatividade, evasão e estagnação) já calculados no banco, em
+ * vw_metricas_engajamento_aluno_classe (F5, 20261031_05), e o nome dos tópicos para dizer onde o
+ * aluno parou. Leitura direta do Supabase — sem modelo de linguagem, não passa pela API (regra de
+ * fronteira do CLAUDE.md).
  */
 export function useSinaisDosAlunos(classIds: number[]) {
-  const [sinais, setSinais] = useState<Map<string, SinaisDoAluno>>(new Map());
-  const [temAbandono, setTemAbandono] = useState(false);
+  const [sinais, setSinais] = useState<Map<string, SinaisDoBanco>>(new Map());
+  const [erro, setErro] = useState<string | null>(null);
   const guarda = useRef(createRequestGuard());
 
   useEffect(() => {
     const request = guarda.current.next();
     if (classIds.length === 0) {
       setSinais(new Map());
-      setTemAbandono(false);
+      setErro(null);
       return;
     }
-    const desde = new Date(Date.now() - JANELA_SESSOES_DIAS * 86_400_000).toISOString().slice(0, 10);
     void Promise.all([
-      selectView("vw_metricas_engajamento_aluno_classe", "aluno_id, classe_id, taxa_abandono_pct").in("classe_id", classIds),
-      selectView("vw_metricas_sessoes_aluno_dia", "aluno_id, classe_id, dia").in("classe_id", classIds).gte("dia", desde),
-    ]).then(([{ data: engajamento }, { data: sessoes }]) => {
+      selectView(
+        "vw_metricas_engajamento_aluno_classe",
+        "aluno_id, classe_id, sem_dado, ultima_atividade_em, inativo_desde, evadido_desde, estagnado_desde, estagnado_topico_id, risco_abandono_faixa, risco_abandono_origem",
+      ).in("classe_id", classIds),
+      supabase.from("topicos").select("id, nome").in("classe_id", classIds),
+    ]).then(([engajamento, topicos]) => {
       if (!request.isCurrent()) return;
-      const linhasEngajamento = (engajamento ?? []) as LinhaEngajamento[];
-      setSinais(juntarSinais(linhasEngajamento, (sessoes ?? []) as LinhaSessao[]));
-      setTemAbandono(linhasEngajamento.some((l) => l.taxa_abandono_pct !== null));
+      const falha = engajamento.error?.message ?? topicos.error?.message ?? null;
+      setErro(falha);
+      const nomes = new Map((topicos.data ?? []).map((t) => [Number(t.id), String(t.nome)]));
+      setSinais(juntarSinais((engajamento.data ?? []) as LinhaEngajamento[], nomes));
     });
   }, [classIds]);
 
-  return { sinais, temAbandono };
+  return { sinais, erro };
 }

@@ -128,6 +128,7 @@ def test_a_lista_antiga_continua_funcionando() -> None:
 # Os testes acima cobrem a função pura. Sem os dois abaixo, tirar o motivo DA MENSAGEM
 # passaria despercebido — e a mensagem é justamente o que faltou em #522.
 
+
 def _registro_para_assert(materiais):
     return {"id": 42, "ciclo_id": "ciclo-1", "source_hash": "hash-1", "status": "pronto", "materiais": materiais}
 

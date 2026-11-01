@@ -1,78 +1,111 @@
 import { describe, expect, it } from "vitest";
-import { avaliarRisco, descricaoDosCriterios, faixaDoAbandono, inatividade, notaParaRisco, observacaoNotaEAbandono } from "./risco";
+import {
+  avaliarRisco,
+  descricaoDosCriterios,
+  diasDesde,
+  faixaDoRisco,
+  notaParaRisco,
+  observacaoNotaEAbandono,
+  type SinaisDoBanco,
+} from "./risco";
 
-const turma = { abandonoMedioPct: 18.5, notaMedia: 7.4 };
-const hoje = new Date("2026-09-29T15:00:00Z");
+const hoje = new Date("2026-10-31T15:00:00Z");
+const turma = { notaMedia: 7.4 };
+const nada: SinaisDoBanco = {
+  semDado: false,
+  ultimaAtividadeEm: "2026-10-30T12:00:00Z",
+  inativoDesde: null,
+  evadidoDesde: null,
+  estagnadoDesde: null,
+  estagnadoTopico: null,
+  riscoFaixa: "normal",
+  riscoOrigem: "modelo",
+};
 
 describe("avaliarRisco", () => {
-  it("sem sinal nenhum não entra na lista", () => {
-    expect(avaliarRisco({ abandonoPct: 12, nota: 8, inatividade: { dias: 2, peloMenos: false } }, turma)).toBeNull();
+  it("aluno no meio da trilha, estudando, não tem sinal (era 'crítico' pela taxa antiga)", () => {
+    expect(avaliarRisco({ sinais: nada, nota: 8 }, turma, hoje)).toBeNull();
   });
 
-  it("abandono acima de 30% é crítico sozinho", () => {
-    const r = avaliarRisco({ abandonoPct: 38, nota: 7, inatividade: null }, turma);
+  it("inativo há 9 dias: um fator, com a data", () => {
+    const r = avaliarRisco({ sinais: { ...nada, inativoDesde: "2026-10-22T12:00:00Z" }, nota: null }, turma, hoje);
+    expect(r?.nivel).toBe("atencao");
+    expect(r?.fatores).toHaveLength(1);
+    expect(r?.fatores[0].criterio).toBe("inatividade");
+    expect(r?.fatores[0].motivo).toBe("9 dias sem estudar");
+    expect(r?.fatores[0].comparacao).toContain("última atividade em");
+  });
+
+  it("evadido há 31 dias: só a evasão aparece, não a inatividade junto", () => {
+    const desde = "2026-09-30T12:00:00Z";
+    const r = avaliarRisco({ sinais: { ...nada, inativoDesde: desde, evadidoDesde: desde }, nota: null }, turma, hoje);
+    expect(r?.fatores.map((f) => f.criterio)).toEqual(["evasao"]);
+    expect(r?.fatores[0].motivo).toBe("Sem estudar há 31 dias");
+  });
+
+  it("estagnado mostra o tópico e há quantos dias", () => {
+    const r = avaliarRisco(
+      { sinais: { ...nada, estagnadoDesde: "2026-10-16T12:00:00Z", estagnadoTopico: "Frações" }, nota: null },
+      turma,
+      hoje,
+    );
+    expect(r?.fatores[0]).toEqual({
+      criterio: "estagnacao",
+      motivo: "Parado em Frações há 15 dias",
+      comparacao: "abaixo da mediana da turma nesse tópico",
+    });
+  });
+
+  it("sem dado não é sinal, nem com datas preenchidas por engano", () => {
+    expect(avaliarRisco({ sinais: { ...nada, semDado: true, inativoDesde: "2026-10-01" }, nota: null }, turma, hoje)).toBeNull();
+    expect(avaliarRisco({ sinais: null, nota: null }, turma, hoje)).toBeNull();
+  });
+
+  it("faixa alta do modelo do core é crítico, com a taxa da turma", () => {
+    const r = avaliarRisco({ sinais: { ...nada, riscoFaixa: "alto" }, nota: null }, { notaMedia: 7.4, taxaAbandonoPct: 12.5 }, hoje);
+    expect(r).toEqual({
+      nivel: "critico",
+      fatores: [{ criterio: "abandono", motivo: "Risco alto de abandono", comparacao: "turma: 12.5% em risco alto" }],
+    });
+  });
+
+  it("faixa vinda da inatividade é crítico sem repetir o fato como 'risco de abandono'", () => {
+    const desde = "2026-09-30T12:00:00Z";
+    const r = avaliarRisco(
+      { sinais: { ...nada, riscoFaixa: "alto", riscoOrigem: "inatividade", inativoDesde: desde, evadidoDesde: desde }, nota: null },
+      turma,
+      hoje,
+    );
     expect(r?.nivel).toBe("critico");
-    expect(r?.fatores).toEqual([{ criterio: "abandono", motivo: "Abandono em 38%", comparacao: "turma: 18.5%" }]);
+    expect(r?.fatores.map((f) => f.criterio)).toEqual(["evasao"]);
   });
 
-  it("exatamente 30% não dispara (o critério é acima de 30%)", () => {
-    expect(avaliarRisco({ abandonoPct: 30, nota: null, inatividade: null }, turma)).toBeNull();
+  it("faixa atenção do modelo é atenção; normal não é sinal", () => {
+    expect(avaliarRisco({ sinais: { ...nada, riscoFaixa: "atencao" }, nota: null }, turma, hoje)?.nivel).toBe("atencao");
+    expect(avaliarRisco({ sinais: { ...nada, riscoFaixa: "normal" }, nota: null }, turma, hoje)).toBeNull();
   });
 
-  it("nota abaixo de 5.0 sozinha é atenção", () => {
-    const r = avaliarRisco({ abandonoPct: null, nota: 4.6, inatividade: null }, turma);
-    expect(r).toEqual({ nivel: "atencao", fatores: [{ criterio: "nota", motivo: "Nota 4.6, abaixo de 5.0", comparacao: "turma: 7.4" }] });
+  it("crítico vem só do modelo: fatos juntos continuam atenção", () => {
+    const r = avaliarRisco({ sinais: { ...nada, inativoDesde: "2026-10-22T12:00:00Z" }, nota: 4 }, turma, hoje);
+    expect(r?.nivel).toBe("atencao");
+    expect(r?.fatores.map((f) => f.criterio)).toEqual(["inatividade", "nota"]);
   });
 
-  it("7 dias sem atividade é atenção; com outro sinal junto vira crítico", () => {
-    expect(avaliarRisco({ abandonoPct: null, nota: null, inatividade: { dias: 7, peloMenos: false } }, turma)?.nivel).toBe("atencao");
-    expect(avaliarRisco({ abandonoPct: null, nota: null, inatividade: { dias: 6, peloMenos: false } }, turma)).toBeNull();
-    expect(avaliarRisco({ abandonoPct: null, nota: 4, inatividade: { dias: 9, peloMenos: false } }, turma)?.nivel).toBe("critico");
-  });
-
-  it("inatividade maior que a janela aparece como 'mais de'", () => {
-    const r = avaliarRisco({ abandonoPct: null, nota: null, inatividade: { dias: 60, peloMenos: true } }, turma);
-    expect(r?.fatores[0].motivo).toBe("Mais de 60 dias sem atividade na turma");
-  });
-
-  it("sem média da turma, não inventa comparação", () => {
-    const r = avaliarRisco({ abandonoPct: 40, nota: null, inatividade: null }, { abandonoMedioPct: null, notaMedia: null });
-    expect(r?.fatores[0].comparacao).toBeNull();
+  it("nota abaixo de 5.0 sozinha continua sendo sinal, com a média da turma", () => {
+    const r = avaliarRisco({ sinais: nada, nota: 4.6 }, turma, hoje);
+    expect(r?.fatores).toEqual([{ criterio: "nota", motivo: "Nota 4.6, abaixo de 5.0", comparacao: "turma: 7.4" }]);
   });
 });
 
-describe("inatividade", () => {
-  it("conta da última sessão", () => {
-    expect(inatividade("2026-09-20", "2026-03-01T10:00:00Z", hoje)).toEqual({ dias: 9, peloMenos: false });
+describe("diasDesde e descricaoDosCriterios", () => {
+  it("conta dias de calendário", () => {
+    expect(diasDesde("2026-10-22T23:59:00Z", hoje)).toBe(9);
+    expect(diasDesde("2026-11-02T00:00:00Z", hoje)).toBe(0);
   });
 
-  it("sem sessão, conta da matrícula", () => {
-    expect(inatividade(null, "2026-09-25T10:00:00Z", hoje)).toEqual({ dias: 4, peloMenos: false });
-  });
-
-  it("sem sessão e matrícula mais antiga que a janela: pelo menos 60", () => {
-    expect(inatividade(null, "2026-03-04T10:00:00Z", hoje)).toEqual({ dias: 60, peloMenos: true });
-  });
-
-  it("sem sessão e sem matrícula: sem referência", () => {
-    expect(inatividade(null, null, hoje)).toBeNull();
-  });
-});
-
-describe("observacaoNotaEAbandono", () => {
-  it("compara o abandono médio de quem está abaixo de 5.0 com o da turma", () => {
-    const alunos = [
-      { nota: 4, abandonoPct: 40 },
-      { nota: 4.8, abandonoPct: 30 },
-      { nota: 8, abandonoPct: 10 },
-      { nota: 3, abandonoPct: null },
-    ];
-    expect(observacaoNotaEAbandono(alunos, 18.5)).toBe("2 alunos com nota abaixo de 5.0 têm abandono médio de 35% (turma: 18.5%).");
-  });
-
-  it("sem ninguém abaixo, ou sem média da turma, não há frase", () => {
-    expect(observacaoNotaEAbandono([{ nota: 8, abandonoPct: 10 }], 18.5)).toBeNull();
-    expect(observacaoNotaEAbandono([{ nota: 4, abandonoPct: 40 }], null)).toBeNull();
+  it("descreve os critérios e diz que sem dado não conta", () => {
+    expect(descricaoDosCriterios()).toContain("7 dias sem estudar");
+    expect(descricaoDosCriterios()).toContain("Sem dado não conta");
   });
 });
 
@@ -85,15 +118,25 @@ describe("notaParaRisco", () => {
   });
 });
 
-describe("descricaoDosCriterios e faixaDoAbandono", () => {
-  it("lista só os critérios ligados", () => {
-    expect(descricaoDosCriterios(["abandono", "nota", "inatividade"])).toBe(
-      "Critério: abandono acima de 30%, nota abaixo de 5.0 ou 7 dias sem atividade na turma",
-    );
-    expect(descricaoDosCriterios(["nota"])).toBe("Critério: nota abaixo de 5.0");
+describe("faixaDoRisco e observacaoNotaEAbandono", () => {
+  it("'sem dados' e valor desconhecido viram null, não 'normal'", () => {
+    expect(faixaDoRisco("alto")).toBe("alto");
+    expect(faixaDoRisco("sem dados")).toBeNull();
+    expect(faixaDoRisco(undefined)).toBeNull();
   });
 
-  it("faixas: até a meta de 15% saudável, até 30% atenção, acima crítico", () => {
-    expect([11, 15, 15.1, 30, 30.1].map(faixaDoAbandono)).toEqual(["saudavel", "saudavel", "atencao", "atencao", "critico"]);
+  it("compara quem está abaixo de 5.0 com a taxa da turma", () => {
+    const alunos = [
+      { nota: 4, riscoFaixa: "alto" as const },
+      { nota: 4.8, riscoFaixa: "normal" as const },
+      { nota: 8, riscoFaixa: "alto" as const },
+      { nota: 3, riscoFaixa: null },
+    ];
+    expect(observacaoNotaEAbandono(alunos, 18.5)).toBe("2 alunos com nota abaixo de 5.0: 50% em risco alto de abandono (turma: 18.5%).");
+  });
+
+  it("sem ninguém abaixo com dado, ou sem taxa da turma, não há frase", () => {
+    expect(observacaoNotaEAbandono([{ nota: 8, riscoFaixa: "alto" }], 18.5)).toBeNull();
+    expect(observacaoNotaEAbandono([{ nota: 4, riscoFaixa: "alto" }], null)).toBeNull();
   });
 });

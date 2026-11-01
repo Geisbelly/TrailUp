@@ -6,18 +6,23 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_BUILD_PROFILE": "development"
+      }
     },
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_APITRAIUP_URL": "https://api.trailup.promora.dev.br"
+        "EXPO_PUBLIC_APITRAIUP_URL": "https://api.trailup.promora.dev.br",
+        "EXPO_PUBLIC_BUILD_PROFILE": "preview"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_APITRAIUP_URL": "https://api.trailup.promora.dev.br"
+        "EXPO_PUBLIC_APITRAIUP_URL": "https://api.trailup.promora.dev.br",
+        "EXPO_PUBLIC_BUILD_PROFILE": "production"
       },
       "android": {
         "buildType": "apk"    
@@ -29,7 +34,8 @@
     "productionAAB": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_APITRAIUP_URL": "https://api.trailup.promora.dev.br"
+        "EXPO_PUBLIC_APITRAIUP_URL": "https://api.trailup.promora.dev.br",
+        "EXPO_PUBLIC_BUILD_PROFILE": "productionAAB"
       },
       "android": {
         "buildType": "app-bundle"

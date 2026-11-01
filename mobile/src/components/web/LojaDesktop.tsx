@@ -9,6 +9,7 @@ import { useDialog } from "@/context/DialogContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { carregarGanhoMoedas, carregarLoja, comprarItem, type StoreItem, type StoreSnapshot } from "@/services/loja/lojaService";
+import { FundoDaTurmaCard } from "@/components/loja/FundoDaTurmaCard";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { avisoCompraFeita, textoConfirmacao } from "@/utils/compraLoja";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -143,6 +144,16 @@ export function LojaDesktop() {
           </View>
         ) : null}
       </View>
+
+      {alunoId && classeId ? (
+        <FundoDaTurmaCard
+          alunoId={alunoId}
+          classeId={classeId}
+          saldo={loja?.balance ?? null}
+          palette={palette}
+          onDoou={() => void carregar()}
+        />
+      ) : null}
 
       {erro ? (
         <View accessibilityRole="alert" style={[s.faixa, { borderColor: palette.borderStrong }]}>

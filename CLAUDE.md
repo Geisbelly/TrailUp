@@ -270,7 +270,8 @@ Cada perfil carrega:
   `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
 - `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
   sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
-  ou por aluno. **Só a geração passa pela API**
+  ou por aluno (estes vêm do `agente_intervencao`, quando um estado negativo
+  se repete; uma pendente por aluno × estado a cada 7 dias). **Só a geração passa pela API**
   (`POST /api/v1/insights/turma/{classe_id}/gerar`, em segundo plano, com
   intervalo mínimo de 5 min); listar, aceitar e ignorar é Supabase direto. O
   aluno não lê; o professor só atualiza `status`/`motivo_descarte`/`resolved_at`
@@ -329,6 +330,13 @@ mobile dispara novo ciclo quando uma ação casa com `refresh_policy.trigger_act
 > é o app quem manda e **nunca é obrigatória**: build antigo grava direto sem ela,
 > e recusar o lote perderia telemetria — a falta só aparece na invariante I18.
 > Linhas anteriores à migration ficam com as duas colunas nulas, de propósito.
+>
+> `via` diz por onde o lote chegou, **não quem o mandou**: qualquer API ligada ao
+> banco de produção grava `api`, inclusive uma subida na máquina de alguém. Quem
+> mandou está em `payload->'cliente'` (`app_version`, `build_profile` do
+> `eas.json`, `ambiente`, `dev`, `plataforma`, `api_host`), carimbado no envio
+> pelos dois caminhos (`mobile/src/services/telemetriaCliente.core.ts`). Lote de
+> build anterior vem sem ele, e `cliente` inválido vira ausente: nunca custa o lote.
 
 Fase 4 (`23b38ef`): endpoint `GET /personalizar/grupo/{classe_id}`
 (`app/services/group_analysis.py`) computa e persiste a distribuição de perfis
@@ -361,14 +369,30 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > escopos diferentes multiplica o tempo — filtre por `scope` sempre.
 >
 > Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
-> `atividade_aluno` é **derivado por trigger** a partir da telemetria. Nenhum
-> cliente escreve essa coluna.
+> `atividade_aluno` é **tempo ativo** (`trailup_tempo_telemetria_min`, soma de
+> `active_sec` / 60 por escopo). A **conta** é uma só, mas três lugares a
+> gravam, todos na `20261030_01`: o gatilho da telemetria
+> (`trailup_sync_tempo_da_telemetria`, `trg_tme_sync_tempo_*`), que depois
+> recalcula a matrícula onde o tempo do tópico mudou, e as duas RPCs do
+> cronômetro (`trailup_registrar_sessao_estudo` e
+> `trailup_registrar_intervalo_estudo`), quando criam ou tocam a linha. Mudar a
+> conta é mudar os três. Nenhum cliente escreve essa coluna. `estudo_sessoes` (e `estudo_intervalos`) é presença e sessões, não
+> tempo de estudo; `tempo_direto_min` é livro-caixa e não entra na conta. A
+> `20260921_01` tinha decidido o contrário (tempo = sessões do cronômetro); a
+> D-1 da spec de métricas reverteu. Medido no aluno de QA: tempo ativo 7,68 min,
+> material aberto (`dwell_sec`) 35,63, sessões do cronômetro 68,40, e o que a
+> coluna mostrava, 45,04 (17,90 de `tempo_direto_min`).
 
 > O histórico em `aluno_mental_state_history` **é lido de volta** (isto já foi
 > descrito aqui como lacuna aberta; não é mais). `memoria_aluno.ler_memoria`
 > chama `MentalStateHistoryRepository.listar_por_aluno` e
 > `state_builder.build_initial_state` põe o resultado no estado inicial do
-> grafo. Três detalhes que não são óbvios:
+> grafo. **Só chega aos nós porque `memoria_aluno` está declarada em
+> `TrailUpState`**: chave fora do schema é descartada em silêncio na entrada
+> do LangGraph, e até a #64 foi o que aconteceu — todo nó lia `None`. Quem usa:
+> `agente_ui` (tema de suporte) e `agente_intervencao` (grava em `intervencoes`
+> com escopo aluno e, se for o caso, sugere notificação em `notificacoes_ia`).
+> Três detalhes que não são óbvios:
 >
 > - **A leitura é uma janela, não o histórico.** `listar_por_aluno` vem com
 >   `limit=_JANELA_RECORRENCIA` (5). Recorrência é 3 dos **últimos 5** registros

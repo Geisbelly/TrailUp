@@ -3,6 +3,7 @@ from app.agent.graph.nodes.agente_boss_visual import agente_boss_visual
 from app.agent.graph.nodes.agente_conteudo import agente_conteudo
 from app.agent.graph.nodes.agente_emocao import agente_emocao
 from app.agent.graph.nodes.agente_geracao_midia import agente_geracao_midia
+from app.agent.graph.nodes.agente_intervencao import agente_intervencao
 from app.agent.graph.nodes.agente_midias_personalizadas import agente_midias_personalizadas
 from app.agent.graph.nodes.agente_notificacao import agente_notificacao
 from app.agent.graph.nodes.agente_perfil import agente_perfil
@@ -26,6 +27,7 @@ __all__ = [
     "agente_conteudo",
     "agente_geracao_midia",
     "agente_notificacao",
+    "agente_intervencao",
     "agente_ui",
     "agente_texto",
     "persist_personalizacao",

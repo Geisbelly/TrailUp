@@ -10,6 +10,8 @@ export interface ITrilhaContextData {
   classes: Classe[]
   classeAtual: Classe | null
   selecionarClasse: (classeId: number) => void
+  /** Volta à tela de escolha da turma, sem sair da conta. */
+  trocarTurma: () => void
 
   // ainda existe, mas não decide mais o visual
   modoOperacao: ModoOperacao

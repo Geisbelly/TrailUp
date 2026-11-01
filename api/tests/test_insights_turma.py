@@ -43,8 +43,17 @@ def test_payload_troca_uuid_por_ref_e_mantem_ausencia_como_none() -> None:
     payload, refs, nomes_por_ref = montar_payload(
         alunos,
         nomes={"u-a": "Ana Clara Souza", "u-b": None},
-        abandono={"u-a": 12.5},
-        ultima_sessao={"u-a": date(2026, 9, 20)},
+        sinais={
+            "u-a": {
+                "ultima_atividade": date(2026, 9, 20),
+                "inativo": True,
+                "evadido": False,
+                "estagnado_topico": "Frações",
+                "estagnado_desde": date(2026, 9, 10),
+                "risco_abandono": "alto",
+                "risco_abandono_origem": "modelo",
+            }
+        },
         respostas={"u-a": {"respostas": 8, "acertos_pct": 62.5}},
         topicos=[],
         descartados=[],
@@ -61,13 +70,19 @@ def test_payload_troca_uuid_por_ref_e_mantem_ausencia_como_none() -> None:
         "conclusao_pct": None,
         "respostas_30d": 8,
         "acertos_30d_pct": 62.5,
-        "abandono_material_pct": 12.5,
-        "dias_sem_sessao": 9,
+        "dias_sem_atividade": 9,
+        "sinal": "inatividade",
+        "parado_em_topico": "Frações",
+        "dias_parado_no_topico": 19,
+        "risco_abandono": "alto",
+        "risco_abandono_origem": "modelo",
     }
     # Sem dado continua sem dado: nada vira zero no caminho ate o modelo.
     assert a2["acertos_30d_pct"] is None
-    assert a2["abandono_material_pct"] is None
-    assert a2["dias_sem_sessao"] is None
+    assert a2["dias_sem_atividade"] is None
+    assert a2["sinal"] is None
+    assert a2["parado_em_topico"] is None
+    assert a2["risco_abandono"] is None
     assert payload["turma"] == {"total_alunos": 2, "perfis": {"seeker": 2}}
     assert "u-a" not in str(payload)
 
@@ -289,3 +304,27 @@ def test_migration_insights_downgrade_devolve_policy_do_aluno() -> None:
     )
     assert "CREATE POLICY intervencoes_sel ON public.intervencoes" in rendered
     assert "DROP POLICY IF EXISTS intervencoes_professor_upd" in rendered
+
+
+def test_evasao_e_o_sinal_mais_grave() -> None:
+    payload, _, _ = montar_payload(
+        [{"aluno_id": "u-a", "perfil": "seeker", "percentual_concluido": 10}],
+        nomes={},
+        sinais={"u-a": {"ultima_atividade": date(2026, 8, 20), "inativo": True, "evadido": True}},
+        respostas={},
+        topicos=[],
+        descartados=[],
+        hoje=date(2026, 9, 29),
+    )
+    assert payload["alunos"][0]["sinal"] == "evasao"
+    assert payload["alunos"][0]["dias_sem_atividade"] == 40
+
+
+def test_instante_do_banco_vira_dia_de_brasilia() -> None:
+    from datetime import UTC, datetime
+
+    from app.services.insights_turma import _data
+
+    # 01:30 UTC de 21/10 = 22:30 de 20/10 em Brasilia.
+    assert _data(datetime(2026, 10, 21, 1, 30, tzinfo=UTC)) == date(2026, 10, 20)
+    assert _data(None) is None

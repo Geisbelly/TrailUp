@@ -42,6 +42,12 @@ const client = { from(table: string) {
 (require.cache as Record<string,unknown>)[require.resolve('@/services/apiBaseUrl')] = {
   exports: { resolveApiBaseCandidates:()=>[], isNetworkRequestFailedError:()=>false },
 };
+// O adaptador real le `expo-constants`/`react-native`, que nao carregam em Node.
+const clienteFixo = { app_version:'1.0.4', build_profile:'preview', ambiente:'standalone', dev:false, plataforma:'android', api_host:null };
+let apiBaseRecebida: unknown = 'nao chamado';
+(require.cache as Record<string,unknown>)[require.resolve('@/services/telemetriaCliente')] = {
+  exports: { lerClienteDoApp:(base: unknown)=>{ apiBaseRecebida = base; return clienteFixo; } },
+};
 const { enviarLoteTelemetria } = require('./telemetriaApi') as typeof import('./telemetriaApi');
 
 test('resposta perdida e reenvio reutilizam o lote, sem somar o tempo novamente', async () => {
@@ -205,4 +211,23 @@ test('a lista terminal do aparelho é a mesma da API', () => {
   const daApi = [...achado[1].matchAll(/["']([a-z_]+)["']/g)].map((m) => m[1]).sort();
   assert.ok(daApi.length > 0);
   assert.deepEqual([...TERMINAL_FLUSH_REASONS].sort(), daApi);
+});
+
+test('o lote gravado direto diz de onde veio (build, ambiente, host da API)', async () => {
+  batch = null;
+  metrics.clear();
+  loteErros = [];
+  await enviarLoteTelemetria(payloadDeLote('99999999-9999-4999-8999-999999999999'));
+  assert.deepEqual(batch.payload.cliente, clienteFixo);
+  // Sem URL configurada nao ha host: o adaptador recebe a primeira candidata, nenhuma.
+  assert.equal(apiBaseRecebida, undefined);
+});
+
+test('o cliente do lote e o do app que envia, nao o que veio no payload da fila', async () => {
+  batch = null;
+  metrics.clear();
+  loteErros = [];
+  const antigo = { ...payloadDeLote('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'), cliente: { ...clienteFixo, app_version:'0.9.0' } };
+  await enviarLoteTelemetria(antigo as any);
+  assert.equal(batch.payload.cliente.app_version, '1.0.4');
 });

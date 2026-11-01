@@ -330,7 +330,7 @@ const MEDIA_STATUS_MAP: Record<string, "ready" | "pending" | "failed"> = {
   error: "failed",
 };
 
-function normalizeMediaStatus(material: Record<string, unknown>): "ready" | "pending" | "failed" | "partial" {
+export function normalizeMediaStatus(material: Record<string, unknown>): "ready" | "pending" | "failed" | "partial" {
   const metadata =
     material.metadata && typeof material.metadata === "object" && !Array.isArray(material.metadata)
       ? (material.metadata as Record<string, unknown>)

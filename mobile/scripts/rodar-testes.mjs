@@ -32,7 +32,7 @@ if (caminhos.length === 0) {
 
 const resultado = spawnSync(
   process.execPath,
-  ["--import", "tsx", "--test", ...caminhos],
+  ["--require", "./scripts/stub-de-imagens.cjs", "--import", "tsx", "--test", ...caminhos],
   { cwd: raiz, stdio: "inherit" }
 );
 
