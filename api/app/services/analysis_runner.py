@@ -58,6 +58,13 @@ def extract_mental_state(result: dict) -> dict | None:
     return mental_state
 
 
+async def _revisar_sugestao(state: dict, session: AsyncSession, **kwargs: Any) -> dict | None:
+    """Turma retida pelo estudo (#13): a ordem aconselhada também é personalização, não revisa."""
+    if state.get("personalizacao_retida"):
+        return None
+    return await revisar_sugestoes_do_ciclo(session, **kwargs)
+
+
 def build_analysis_response(result: dict) -> AnalisarResponse:
     return AnalisarResponse(
         ciclo_id=result.get("ciclo_id", ""),
@@ -192,7 +199,8 @@ async def _run_analysis_na_rota(
             await session.rollback()
             logger.warning("Falha ao persistir memoria de dominio: %s", exc)
     try:
-        decisao_sugestao = await revisar_sugestoes_do_ciclo(
+        decisao_sugestao = await _revisar_sugestao(
+            state,
             session,
             aluno_id=aluno_id,
             classe_id=classe_id,

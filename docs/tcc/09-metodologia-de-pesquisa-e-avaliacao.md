@@ -59,10 +59,18 @@ O protocolo segue os passos do fluxo acima:
    corte quando a data dele chega. A turma de comparação também recebe um corte, que vale como
    data de referência.
 2. **Coletar o baseline.** A janela é `[baseline_inicio, corte)` e dura pelo menos 7 dias. A
-   personalização tem de ficar retida durante essa janela, mas a trava ainda **não existe** e é
-   pré-requisito para iniciar o estudo. Enquanto ela faltar, o relatório marca
-   `baseline_contaminado`.
-3. **Aplicar a intervenção.** A partir do corte, a turma de intervenção recebe a personalização.
+   personalização fica **retida desde o registro** nos dois braços:
+   - o aluno não vê o material gerado, os cards, as falas geradas do boss nem o andamento da
+     geração, e o app mostra o material do professor;
+   - o ciclo de análise só mede e avisa o professor: não muda tema, cronômetro nem ordem do
+     material, e não manda notificação ao aluno.
+
+   A geração continua, então o material está pronto no corte. As regras fixas do jogo por
+   perfil (tema, cronômetro padrão, batalha) e o guia ficam iguais nos dois braços. Se algo
+   escapar da trava, o relatório marca `baseline_contaminado`, que mede a exposição.
+3. **Aplicar a intervenção.** A partir do corte, a turma de intervenção recebe a personalização,
+   sem job: a trava libera pela data. A turma de comparação fica retida até o fim do estudo e
+   recebe a personalização no dia seguinte (lista de espera).
    Cada aluno tem duas datas de entrada, a atribuída e a observada, que aparecem em
    `vw_estudo_participantes`.
 4. **Coletar as métricas operacionais.** A coleta já é automática:

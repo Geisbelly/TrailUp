@@ -18,6 +18,7 @@ from app.repositories.access import AccessRepository
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.context import ContextRepository
+from app.repositories.estudo import EstudoRepository
 from app.repositories.evento import EventoRepository
 from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
 from app.repositories.ia_decision_logs import IADecisionLogRepository
@@ -1352,6 +1353,13 @@ async def personalizar(
         topico_id=payload.topico_id,
         conteudo_id=payload.conteudo_id,
     )
+    if await EstudoRepository(session).personalizacao_retida(int(payload.classe_id)):
+        # Turma no baseline ou no grupo de comparação do estudo (#13): o grafo nem roda. O app só
+        # chama aqui para refazer mídia de material que ele vê, e a RLS esconde esse material.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="personalizacao_retida_pelo_estudo",
+        )
 
     settings = request.app.state.settings
     logger.info(
@@ -3049,6 +3057,10 @@ async def listar_personalizacoes(
         topico_id=topico_id,
         limit=limit,
     )
+    if user.is_aluno:
+        # A API lê como service_role, por cima da RLS: a trava do estudo (#13) tem de ser
+        # repetida aqui para o aluno. O professor continua vendo o material da turma.
+        records = await _sem_turmas_retidas(session, records)
     itens = [_to_response(r) for r in records]
     return PersonalizacaoListResponse(
         aluno_id=aluno_id,
@@ -3086,6 +3098,16 @@ def _itens_da_sugestao(ordem: Any) -> list[SugestaoMaterialItem]:
     return itens
 
 
+async def _sem_turmas_retidas(session: AsyncSession, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    estudo = EstudoRepository(session)
+    retidas = {
+        classe_id
+        for classe_id in {r.get("classe_id") for r in records if r.get("classe_id")}
+        if await estudo.personalizacao_retida(int(classe_id))
+    }
+    return [r for r in records if r.get("classe_id") not in retidas] if retidas else records
+
+
 async def _resolver_sugestao_do_aluno(
     session: AsyncSession,
     *,
@@ -3104,6 +3126,10 @@ async def _resolver_sugestao_do_aluno(
 
     classe_id = next((item.classe_id for item in itens if item.classe_id), None)
     if classe_id is None:
+        return None
+    if await EstudoRepository(session).personalizacao_retida(int(classe_id)):
+        # A ordem aconselhada também é personalização (#13). Nem criada é: o log de efetividade
+        # da sugestão (#66) começa na liberação, não com uma ordem que o aluno nunca viu.
         return None
 
     formatos = sorted({formato for item in itens for formato in (item.formatos_gerados or [])})

@@ -287,9 +287,20 @@ Cada perfil carrega:
     a migration).
   - **Célula com menos de `n_minimo` alunos volta nula.** As contagens cruas
     (`estudo_indicadores_*`) não têm EXECUTE para cliente nenhum.
-  - **Ainda não existe trava que segure a personalização** no baseline nem na turma de
-    comparação. A RPC acusa `baseline_contaminado` em vez de supor um baseline limpo. Ver
-    `docs/superpowers/specs/2026-11-01-cohort-e-baseline-design.md`.
+  - **A trava da personalização** (`20261102_05`) retém a turma desde o registro. A intervenção
+    é liberada no corte, e a comparação no dia seguinte ao `fim`. A liberação é pela data, sem
+    job, e a regra está numa função só, `estudo_coorte_retem`. A trava **esconde, não impede a
+    geração**:
+    - uma policy `RESTRICTIVE` de SELECT esconde do aluno `conteudo_personalizado`,
+      `cards_personalizados`, `boss_falas` e `personalizacao_jobs`; o professor dono continua vendo;
+    - a API repete a trava onde ela lê como `service_role`, por cima da RLS. O grafo só mede
+      (`RETIDA_SPECIALIST_NODES`), `POST /personalizar` responde 409, a sugestão nem é criada e a
+      listagem do aluno tira a turma (`EstudoRepository`).
+
+    **Caminho novo que entregue personalização ao aluno pela API precisa perguntar a
+    `EstudoRepository`.** A RLS não o cobre. A contaminação na RPC é a exposição medida (tempo
+    ativo no escopo `material` dentro da janela retida). Ver
+    `docs/superpowers/specs/2026-11-01-cohort-e-baseline-design.md` §6.
 - `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_11`):
   entrada, derrota, provocação de dano, marcos de metade/um quarto da vida, alerta de tempo,
   contra-ataque e a mensagem de vitória. **Gerar é IA, então é API**: o worker da fila faz uma
