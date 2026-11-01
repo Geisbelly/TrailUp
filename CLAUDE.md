@@ -452,16 +452,18 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 - **RLS é a autorização, não defesa extra.** `anon` e `authenticated` têm GRANT
   de SELECT/INSERT/UPDATE/DELETE nas 84 tabelas — RLS é a única barreira. A
   posse está implementada (`20260826_08` a `20260826_10`):
-  - **anônimo lê exatamente três linhas, e nada mais.** Este texto já disse
+  - **anônimo lê exatamente cinco linhas, e nada mais.** Este texto já disse
     "anônimo não lê nada — nem tabela nem view", e é o mesmo erro que o
     parágrafo das views descreve: afirmação categórica errada faz alguém tratar
     a exceção como defeito e "consertá-la".
 
     A exceção é `app_config`, pela policy `app_config_sel`
     (`USING (publico)`, só `SELECT`, para `anon` e `authenticated`). Hoje são
-    três chaves públicas, todas parâmetro de UI que o cliente precisa antes do
-    login: `prazo_atraso_fator`, `presenca_aula_pontos` e
-    `rank_limite_visivel`.
+    cinco chaves públicas, todas parâmetro de UI: `prazo_atraso_fator`,
+    `presenca_aula_pontos` e `rank_limite_visivel`, que o cliente precisa antes
+    do login, e `cronometro_atividade_padrao_seg` e `cronometro_tolerancia_seg`,
+    que o console mostra ao professor (`20261101_15`, #136). O app já mostra a
+    duração na tela, e quem decide se a tentativa saiu no tempo é a RPC.
 
     **O que está `publico = false` é que importa:** `contato_envios_por_hora`,
     `credito_extra_maximo` e `conquista_recompensa_maxima` são tetos
@@ -472,7 +474,7 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
     Varredura que sustenta isso, de 2026-10-08 (dá para repetir): para cada um
     dos **121** objetos de `public` (tabela, view e matview), contar as linhas
     como `postgres` e como `anon`, dentro de `BEGIN/ROLLBACK`. Dos 49 com dado,
-    o único em que `anon` vê linha é `app_config` (3 de 6); 38 devolvem zero
+    o único em que `anon` vê linha é `app_config` (3 de 6, antes das duas chaves do cronômetro); 38 devolvem zero
     por RLS e 38 nem chegam lá (`42501`, sem GRANT). Os 72 vazios não provam
     nada — a varredura só conclui onde existe dado, e a base de personalização
     está vazia hoje.
