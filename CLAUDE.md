@@ -181,7 +181,11 @@ Cada perfil carrega:
   `microservice/src/constants/guardianVoices.ts` (Gemini TTS ativo). Além do
   preset, cada Guardião possui direção de idade, sexo, origem cultural e
   interpretação; o fallback Python espelha esses campos em
-  `_BRAINHEX_GUIDE_PERSONAS`.
+  `_BRAINHEX_GUIDE_PERSONAS`. Quando o Gemini TTS recusa (402 de crédito, 429
+  de cota, resposta sem áudio), a voz sai pela OpenAI
+  (`microservice/src/services/ttsRecovery.ts`, #652): o texto já tinha
+  contingência e o áudio não, e foi assim que a turma 68 ficou com texto e sem
+  nenhum áudio. 402 não é repetido — esperar não devolve crédito.
 
 > Backend (`_build_design_tokens` em `api/app/api/v1/personalizacao.py`) e
 > frontend (`frontend/src/lib/personalizacao-theme-guide.ts`,

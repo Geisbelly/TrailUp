@@ -25,6 +25,14 @@ import {
   type StructuredContentGenerationCall,
 } from "./contentGenerationService";
 import {
+  openAiVoiceFor,
+  prepareTextForOpenAiTts,
+  resolveOpenAiTtsFallback,
+  synthesizeOpenAiPcm,
+  synthesizeSpeechWithRecovery,
+  TtsNoAudioError,
+} from "./ttsRecovery";
+import {
   ApiKeysConfig,
   EnrichedContentBlock,
   InternalBlock,
@@ -1944,50 +1952,49 @@ export async function generateNaturalAudio(
   text: string,
   voice: GeminiTtsVoice = 'Kore',
   direction = "Voz natural, didática e expressiva em português brasileiro.",
-  retries = 3
 ): Promise<{ wav: string, mp3: string | null }> {
-  let response;
-  try {
-    response = await generateGeminiContent({
-      model: "gemini-3.1-flash-tts-preview",
-      contents: [{
-        parts: [{
-          text:
-            "Sintetize somente o conteúdo depois de TRANSCRIÇÃO. Não leia estas instruções em voz alta.\n" +
-            `DIREÇÃO DE VOZ: ${direction}\n` +
-            "CENA: mentoria educacional em uma jornada fantástica, com naturalidade e emoção controlada.\n" +
-            `TRANSCRIÇÃO:\n${text}`,
+  const fallback = resolveOpenAiTtsFallback();
+  return synthesizeSpeechWithRecovery({
+    label: "narração",
+    synthesizeWithGemini: async () => {
+      const response = await generateGeminiContent({
+        model: "gemini-3.1-flash-tts-preview",
+        contents: [{
+          parts: [{
+            text:
+              "Sintetize somente o conteúdo depois de TRANSCRIÇÃO. Não leia estas instruções em voz alta.\n" +
+              `DIREÇÃO DE VOZ: ${direction}\n` +
+              "CENA: mentoria educacional em uma jornada fantástica, com naturalidade e emoção controlada.\n" +
+              `TRANSCRIÇÃO:\n${text}`,
+          }],
         }],
-      }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: voice },
+        config: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: voice },
+            },
           },
         },
-      },
-    }, resolveGeminiTtsFallbackModels());
-  } catch (error: any) {
-    const isRateLimit = error?.message?.includes("429")
-      || error?.message?.includes("quota")
-      || error?.message?.includes("RESOURCE_EXHAUSTED");
-    if (retries > 0 && isRateLimit) {
-      const delay = (4 - retries) * 5000;
-      console.warn(`[brainhex] TTS rate-limit — retry em ${delay/1000}s (${retries} restantes)`);
-      await new Promise((r) => setTimeout(r, delay));
-      return generateNaturalAudio(text, voice, direction, retries - 1);
-    }
-    throw error;
-  }
+      }, resolveGeminiTtsFallbackModels());
 
-  const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  if (!data) throw new Error("A voz mística falhou em se materializar.");
+      const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (!data) throw new TtsNoAudioError("A voz mística falhou em se materializar.");
 
-  // Gemini returns raw PCM 24kHz. We need to add a WAV header for the browser to play it in <audio>
-  const pcmBinary = atob(data);
-  const pcmBuffer = new Uint8Array(pcmBinary.length).map((_, i) => pcmBinary.charCodeAt(i));
-  return encodePcmToWavAndMp3(pcmBuffer);
+      // Gemini returns raw PCM 24kHz. We need to add a WAV header for the browser to play it in <audio>
+      const pcmBinary = atob(data);
+      const pcmBuffer = new Uint8Array(pcmBinary.length).map((_, i) => pcmBinary.charCodeAt(i));
+      return encodePcmToWavAndMp3(pcmBuffer);
+    },
+    synthesizeWithOpenAI: fallback.enabled
+      ? async () => encodePcmToWavAndMp3(await synthesizeOpenAiPcm({
+          text: prepareTextForOpenAiTts(text),
+          voice: openAiVoiceFor(voice),
+          instructions: direction,
+          model: fallback.model,
+        }))
+      : null,
+  });
 }
 
 function splitTtsChapters(text: string, maxChars = 6_000): string[] {
@@ -2068,53 +2075,54 @@ export async function generateConversationalAudio(
   text: string,
   speakerA: { name: string; voice: GeminiTtsVoice; direction?: string },
   speakerB: { name: string; voice: GeminiTtsVoice; direction?: string },
-  retries = 3
 ): Promise<{ wav: string, mp3: string | null }> {
-  let response;
-  try {
-    response = await generateGeminiContent({
-      model: "gemini-3.1-flash-tts-preview",
-      contents: [{
-        parts: [{
-          text:
-            "Sintetize somente o diálogo depois de TRANSCRIÇÃO. Não leia estas instruções em voz alta.\n" +
-            `DIREÇÃO DE ${speakerA.name}: ${speakerA.direction ?? "voz natural e expressiva"}\n` +
-            `DIREÇÃO DE ${speakerB.name}: ${speakerB.direction ?? "voz natural e expressiva"}\n` +
-            "CENA: conversa calorosa entre mentores durante uma jornada educacional fantástica.\n" +
-            `TRANSCRIÇÃO:\n${text}`,
+  const fallback = resolveOpenAiTtsFallback();
+  return synthesizeSpeechWithRecovery({
+    label: "diálogo",
+    synthesizeWithGemini: async () => {
+      const response = await generateGeminiContent({
+        model: "gemini-3.1-flash-tts-preview",
+        contents: [{
+          parts: [{
+            text:
+              "Sintetize somente o diálogo depois de TRANSCRIÇÃO. Não leia estas instruções em voz alta.\n" +
+              `DIREÇÃO DE ${speakerA.name}: ${speakerA.direction ?? "voz natural e expressiva"}\n` +
+              `DIREÇÃO DE ${speakerB.name}: ${speakerB.direction ?? "voz natural e expressiva"}\n` +
+              "CENA: conversa calorosa entre mentores durante uma jornada educacional fantástica.\n" +
+              `TRANSCRIÇÃO:\n${text}`,
+          }],
         }],
-      }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          multiSpeakerVoiceConfig: {
-            speakerVoiceConfigs: [
-              { speaker: speakerA.name, voiceConfig: { prebuiltVoiceConfig: { voiceName: speakerA.voice } } },
-              { speaker: speakerB.name, voiceConfig: { prebuiltVoiceConfig: { voiceName: speakerB.voice } } },
-            ],
+        config: {
+          responseModalities: [Modality.AUDIO],
+          speechConfig: {
+            multiSpeakerVoiceConfig: {
+              speakerVoiceConfigs: [
+                { speaker: speakerA.name, voiceConfig: { prebuiltVoiceConfig: { voiceName: speakerA.voice } } },
+                { speaker: speakerB.name, voiceConfig: { prebuiltVoiceConfig: { voiceName: speakerB.voice } } },
+              ],
+            },
           },
         },
-      },
-    }, resolveGeminiTtsFallbackModels());
-  } catch (error: any) {
-    const isRateLimit = error?.message?.includes("429")
-      || error?.message?.includes("quota")
-      || error?.message?.includes("RESOURCE_EXHAUSTED");
-    if (retries > 0 && isRateLimit) {
-      const delay = (4 - retries) * 5000;
-      console.warn(`[brainhex] TTS rate-limit (dialogo) — retry em ${delay/1000}s (${retries} restantes)`);
-      await new Promise((r) => setTimeout(r, delay));
-      return generateConversationalAudio(text, speakerA, speakerB, retries - 1);
-    }
-    throw error;
-  }
+      }, resolveGeminiTtsFallbackModels());
 
-  const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  if (!data) throw new Error("A conversa mística falhou em se materializar.");
+      const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+      if (!data) throw new TtsNoAudioError("A conversa mística falhou em se materializar.");
 
-  const pcmBinary = atob(data);
-  const pcmBuffer = new Uint8Array(pcmBinary.length).map((_, i) => pcmBinary.charCodeAt(i));
-  return encodePcmToWavAndMp3(pcmBuffer);
+      const pcmBinary = atob(data);
+      const pcmBuffer = new Uint8Array(pcmBinary.length).map((_, i) => pcmBinary.charCodeAt(i));
+      return encodePcmToWavAndMp3(pcmBuffer);
+    },
+    // A reserva não tem diálogo de duas vozes: o Guardião principal lê as
+    // falas dos dois, sem os prefixos "Nome: " que só o Gemini usa.
+    synthesizeWithOpenAI: fallback.enabled
+      ? async () => encodePcmToWavAndMp3(await synthesizeOpenAiPcm({
+          text: prepareTextForOpenAiTts(text, [speakerA.name, speakerB.name]),
+          voice: openAiVoiceFor(speakerA.voice),
+          instructions: speakerA.direction,
+          model: fallback.model,
+        }))
+      : null,
+  });
 }
 
 export async function generateLongConversationalAudio(
