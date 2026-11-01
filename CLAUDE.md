@@ -550,6 +550,14 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 - **`ON CONFLICT` sobre índice PARCIAL exige repetir o predicado**
   (`ON CONFLICT (col) WHERE col IS NOT NULL`). Sem ele o Postgres não casa o
   índice e levanta "no unique or exclusion constraint matching".
+- **Função usada em índice de expressão roda com o papel de quem escreve.**
+  `REVOKE EXECUTE ... FROM authenticated` numa função que aparece em
+  `CREATE INDEX ... ((fn(coluna)))` faz todo INSERT do cliente na tabela falhar
+  com `permission denied for function` — e a API, que escreve como
+  `service_role`, não vê. Foi assim que `trailup_caminho_arquivo` (`20261024_07`,
+  índices da `_10`) tirou do professor a criação de conteúdo, mídia, questão e
+  card por uma semana (`20261101_07`). Função pura em índice precisa de EXECUTE
+  para quem escreve na tabela.
 
 ## Fontes de contexto (fora do código)
 
