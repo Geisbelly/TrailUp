@@ -25,6 +25,16 @@ Datas aproximadas a partir de `modifiedTime` do Drive (convertidas para BRT) + s
 | **2026-10-02 ~16:09** | **DELTA sync vault ↔ BitStudioLabs/trail-up `main`** | SHA **`b7e74cdd331a4b215d8b07cda5e3b338220f060d`** · Alembic lineariza `20260930_01` após `20260929_02` · [[05-PRs-Repos/ultimo-sync-main]] |
 | 2026-10-01 ~20:59–21:01 | Issues Lab fechadas (exemplos telemetria/docs): #18 #38 #89 #90 #92 #93 #99 | BitStudioLabs/trail-up |
 | 2026-10-01 ~20:15 | Enrich vault: pastas 08/09/10 + CHANGELOG | [[CHANGELOG-vault]] |
+| 2026-10-13 | Console do professor no redesign V9 | #419 |
+| 2026-10-16 | Telas novas do console: Conquistas, Notas, Missões, Eventos, Rank de batalhas | #473–#528 |
+| 2026-10-19 | Correções de SECURITY DEFINER e RLS; Economia completa; eventos, missões, ranks e modos (fases 1–10); vault entra no repo | #532–#564, #544, #542 |
+| 2026-10-20 | Arena volta com Elo; ranking com período manual | #568–#571 |
+| 2026-10-22–25 | LGPD (#195): cadastro em uma etapa, conversas cifradas, consentimento do responsável, retenção, menores só na OpenAI, buckets privados; RAG do mentor no OpenAI Vector Store | #576–#631, #612 |
+| 2026-10-26 | Evento abre e encerra sozinho (pg_cron) | #639 |
+| **2026-10-28** | App mobile-v1 na main; API passa a `api.trailup.promora.dev.br` (certificado válido); **espelho cai em 502 por duas cabeças no Alembic** | #687, #689, #699 |
+| 2026-10-29–31 | Métricas F0–F5 (fila de análise da telemetria no banco, tempo ativo, views versionadas); Insights e intervenção; risco de reprovação | #701–#741 |
+| **2026-11-01 ~01:30–03:47** | **Incidente:** API em 502 por migration aplicada antes de o código chegar ao espelho | [[10-Incidentes/api-fora-por-migration-2026-11-01]] |
+| 2026-11-01 | Nota média e modelo de evasão no banco; alteração do professor avisada; tentativas pelo relógio do servidor (#136, fases 1–2); falas do boss; e-mail pelo Apps Script; issues #12, #15 e #172 fechadas; syncs do espelho #201–#205 | #749–#763 · [[05-PRs-Repos/ultimo-sync-main]] |
 
 ## Fases lógicas
 
@@ -40,5 +50,9 @@ Datas aproximadas a partir de `modifiedTime` do Drive (convertidas para BRT) + s
 9. **03/10** — lote segurança/RLS/CI (#293–#318), relatório W40
 10. **07–09/10** — FER+ local (#305), câmera opt-in (#309), 12 migrations RLS/retenção/consentimento, OAuth PKCE (#270), Jev docs (#271), relatório W41
 11. **12–13/10** — web do aluno tela larga v4 (#346–#413); tip `b5491b02` sincronizado no vault 13/10
+12. **13–20/10** — console V9 e telas de gamificação; motor de eventos, missões, ranks e modos no banco; economia completa
+13. **22–26/10** — LGPD (#195) e RAG do mentor no Vector Store; protótipo mobile-v1
+14. **28–31/10** — app mobile-v1 na main; métricas F0–F5 (#12); a API ganha domínio com certificado válido
+15. **01/11** — nota, evasão e tentativas decididas pelo banco (#136); incidente de 502 por migration; tip `11aa1c65` sincronizado no vault
 
-← [[00-Home]] · [[05-PRs-Repos/ultimo-sync-main]] · [[10-Incidentes/perda-dados-console-2026-10-01]]
+← [[00-Home]] · [[05-PRs-Repos/ultimo-sync-main]] · [[10-Incidentes/perda-dados-console-2026-10-01]] · [[10-Incidentes/api-fora-por-migration-2026-11-01]]

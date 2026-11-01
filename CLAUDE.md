@@ -306,6 +306,39 @@ Cada perfil carrega:
   **nunca** mexe em `atividade_aluno.status`: o progresso continua concluído. O
   aviso sai por `notificacoes_ia`. `alteracao_professor` guarda o gabarito antes
   e depois e o aluno não a lê; ele lê só `alteracao_aluno`.
+- **A nota média da matrícula é do banco** (`classe_aluno."notaMedia"`, `20261101_10`).
+  Antes ninguém a gravava, e console, CSV de notas e modelo de evasão liam uma
+  coluna vazia. A conta é `trailup_recalcular_nota_classe_aluno`:
+  10 × pontos obtidos ÷ pontos possíveis. Prazo vencido sem entrega conta 0 até o
+  professor dar nota, e **sem nada avaliado o resultado é NULL, não 0**. Quem
+  dispara a conta:
+  - o gancho em `trailup_recalcular_classe_aluno`;
+  - `trailup_recalcular_notas_com_prazo`, de hora em hora pelo `pg_cron`
+    (`trailup_notas_com_prazo`), para o prazo que vence sem ninguém gravar nada.
+
+  O cliente não grava a nota. Quando `anon` ou `authenticated` escreve
+  `"notaMedia"` sem a marca `trailup.nota_pelo_banco`, o gatilho
+  `trg_classe_aluno_nota_pelo_banco` **ignora** o valor em silêncio: o UPDATE
+  mantém o antigo e o INSERT grava NULL. Não há erro. NULL é "sem nota" em
+  toda parte (faixa `sem_dado` nas views, fora da média da turma). Não volte a
+  tratar "0 sem progresso" como sem nota.
+- **Tentativas de atividade pelo relógio do banco** (#136, `20261101_13`):
+  - `atividade_iniciar_tentativa` abre a tentativa e devolve a que já está aberta, então reabrir o app não zera o relógio;
+  - `atividade_responder_tentativa` fecha a tentativa. Ela recusa prazo vencido e tentativas esgotadas (`atividades.tentativas_max`, NULL = ilimitado), decide `no_tempo` e grava `atividade_aluno`;
+  - vale a **última** tentativa;
+  - o cronômetro é ligado pelo perfil (`fn_cronometro_ligado`, mesma lista de `TIMER_PROFILES` do mobile), e o aluno ou a IA podem desligá-lo (`aluno_cronometro.origem`, RPC `aluno_definir_cronometro`);
+  - **o tempo não mexe na nota, só no XP**: os eventos `atividade_no_tempo_70/80/90` pagam 10 pontos cada, são cumulativos, saem uma vez por atividade e só a RPC os grava (`trg_eventos_aluno_bonus_tempo`);
+  - duração e tolerância ficam em `app_config` (`cronometro_atividade_padrao_seg`, `cronometro_tolerancia_seg`).
+
+  **Limite conhecido:** a pontuação ainda é a que o app calcula, porque o gabarito
+  continua no aparelho. A RPC só limita os valores. Fechar a escrita direta do app
+  em `atividade_aluno` é a fase 5 da #136.
+- **E-mail sai do banco por um Google Apps Script** (`20261101_14`, no lugar da
+  Brevo). Isso vale para o contato do app, o contato do site e o aviso de conta
+  inativa:
+  - todos passam por `fn_email_apps_script`, que lê URL e segredo do Vault e faz o `net.http_post`;
+  - o código do script fica em `scripts/apps-script-email/`;
+  - **um 2xx não prova envio.** O pg_net segue o 302 do Apps Script, e tanto o sucesso quanto o erro do script chegam como 200. Quem decide é `fn_email_apps_script_aceito`, que exige `"ok": true` no corpo. Uma regra que confie só no código HTTP começaria a contar o prazo de exclusão de quem nunca foi avisado.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
@@ -638,9 +671,23 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
   Migration de PR do Lab costuma ser aplicada em produção antes de chegar ao
   espelho. Enquanto o espelho estiver atrás, o banco está à frente do código no ar;
   quanto mais tempo o sync demora, maior essa janela.
-- **Deploys:** web em `https://trailup.vercel.app`, publicada do **espelho** (acima)
-  — não usar como alvo de regressão do console; API em Dokploy (VPS); local via
-  `npm run docker:up` (`:8080` / `:8000` / `:3000`).
+
+  **E essa janela derruba a API.** A API roda `alembic upgrade head` ao subir
+  (`database_migrations_on_startup`, ligado por padrão; `lifespan` de
+  `app/main.py`). Se o código publicado não conhece a revisão gravada no banco
+  (`Can't locate revision`), ou se a `main` tem duas cabeças (`Multiple head
+  revisions`), o `lifespan` aborta e o Traefik devolve 502. Foi assim em 28/10
+  (duas cabeças) e em 01/11 (`_10` e depois `_13` aplicadas com o espelho atrás).
+  Ver `docs/segundo-cerebro/10-Incidentes/api-fora-por-migration-2026-11-01.md`.
+  Então:
+  - ao aplicar uma migration em produção, avisar que a API só pode ser reiniciada
+    depois que o código dela estiver no espelho, e abrir o sync na mesma hora;
+  - depois de todo merge com migration, conferir `alembic heads` na `main`. Duas
+    PRs abertas ao mesmo tempo costumam pegar o mesmo número de revisão.
+- **Deploys:**
+  - **web:** `https://trailup.vercel.app`, publicada do **espelho** (acima). Não usar como alvo de regressão do console.
+  - **API:** Dokploy (VPS), em `https://api.trailup.promora.dev.br` (Let's Encrypt, #689). A evidência de 01/11 é que ela também publica do espelho. O `*.traefik.me` tem certificado autoassinado: o fetch do aparelho falha como erro de rede.
+  - **local:** `npm run docker:up` (`:8080` / `:8000` / `:3000`).
 - **Mais docs do repo:** [`docs/README.md`](docs/README.md) (índice),
   [`docs/MANUAL.md`](docs/MANUAL.md),
   [coleta de métricas](docs/architecture/coleta-de-metricas.md),

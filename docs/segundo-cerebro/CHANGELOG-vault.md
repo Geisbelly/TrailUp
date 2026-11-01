@@ -1,9 +1,24 @@
 ---
 tags: [changelog, vault]
-updated: 2026-10-02
+updated: 2026-11-01
 ---
 
 # CHANGELOG — vault TCC TrailUp
+
+## 2026-11-01 — TCC TrailUp (delta main `b5491b02…11aa1c65`, 305 commits)
+
+### Criados
+
+- `10-Incidentes/api-fora-por-migration-2026-11-01.md` — API em 502 por migration aplicada antes de o código chegar ao espelho; precedente de 28/10 (duas cabeças)
+
+### Atualizados
+
+- `05-PRs-Repos/ultimo-sync-main.md` — tip `11aa1c65`, changelog por área, espelho em `370b0ba3` (#205), impacto na monografia
+- `02-Timeline/timeline.md` — 13/10 a 01/11 e fases 12–15
+- `01-Arquitetura/mapa-arquitetura.md` — SHA; migration na subida; RAG no OpenAI Vector Store; métricas F0–F5; URL da API; e-mail pelo Apps Script
+- `03-Glossario/glossario.md` — SHA; FER+ corrigido; termos novos (V9, mobile-v1, Lumi, Vector Store, F0–F5, tentativa/cronômetro, nota média, falas do boss, alteração do professor, Apps Script)
+- `08-Infra-Supabase/supabase-traiup.md` — migration na subida, revisão em produção, motor no banco, URL da API
+- `10-Incidentes/README.md`, `00-Home.md` — links e status
 
 ## 2026-10-02 (~16:09 America/Sao_Paulo) — TCC TrailUp (delta main)
 

@@ -1,8 +1,8 @@
 ---
 tags: [glossario]
 synced_from: BitStudioLabs/trail-up
-synced_sha: b7e74cdd331a4b215d8b07cda5e3b338220f060d
-synced_at: 2026-10-02 16:09 America/Sao_Paulo
+synced_sha: 11aa1c65
+synced_at: 2026-11-01 America/Sao_Paulo
 ---
 
 # Glossário TrailUp
@@ -14,7 +14,7 @@ synced_at: 2026-10-02 16:09 America/Sao_Paulo
 | **BrainHex** | Tipologia neurobiológica de 7 arquétipos de jogador (Seeker, Survivor, Daredevil, Mastermind, Conqueror, Socialiser, Achiever) | TCC 1, UX, Monografia §2.7; `microservice` / personalização |
 | **Hexad** | Modelo rival/complementar de tipos de usuário em gamificação | Leituras (papers Hexad) |
 | **Trilha de aprendizagem** | Percurso estruturado de conteúdos/atividades | TCC 1; `agente_trilha` |
-| **IA emocional / FER** | Facial Expression Recognition — proposta original via câmera; **fora do MVP** (telemetria no lugar) | Proposta; mobile termo coleta (#286) |
+| **IA emocional / FER** | Facial Expression Recognition. Era a proposta original via câmera; saiu do MVP (#286) e voltou como **FER+ local**, com a câmera desligada por padrão (#305, #309) | Proposta; `emotion_vision.py` |
 | **RAG** | Retrieval-Augmented Generation — recuperar evidências antes de gerar | Monografia cap. 6; `docs/architecture/rag.md`; `docs/rag/*` |
 | **Evidence Base** | Base de evidências científicas curadas para fundamentar estratégias | Monografia; Leituras Aprovadas; corpus RAG |
 | **pgvector** | Extensão Postgres para embeddings / vector store do RAG (ADR-0001) | `docs/adr/0001-rag-vector-store.md` |
@@ -55,3 +55,16 @@ synced_at: 2026-10-02 16:09 America/Sao_Paulo
 - **PKCE** — extensão OAuth exigida no login Google (#270).
 - **Advisory lock** — trava do Postgres que serializa migrações Alembic entre instâncias (#308).
 - **Protótipo v4 / tela larga** — redesign da web do aluno (#346–#413).
+- **Console V9** — redesign do console do professor (#419), com as telas Conquistas, Notas, Missões, Eventos e Rank de batalhas.
+- **mobile-v1** — protótipo do app do aluno no celular, aplicado no app (#642–#702).
+- **Lumi** — nome do assistente do professor no console (#703).
+- **OpenAI Vector Store / `file_search`** — onde o RAG do mentor busca evidências (#612, ADR 0002). Substituiu o plano com pgvector.
+- **F0–F5** — fases do plano de métricas de ponta a ponta (#12): medir, segurança, coletor, transporte para a IA, tempo ativo, views versionadas.
+- **`via` do lote** — por onde o lote de telemetria chegou: `api` ou `direta` (direto no Supabase).
+- **Fila de análise** (`telemetria_analise_fila`) — o banco enfileira a análise de todo lote, e a API consome a fila (F3).
+- **Tentativa / cronômetro** — tentativa de atividade aberta e fechada pelo relógio do banco (`atividade_tentativas`). O cronômetro vem pelo perfil BrainHex, e o aluno ou a IA podem desligá-lo (`aluno_cronometro`). O tempo vale XP, não nota (#136).
+- **Nota média da matrícula** — 10 × pontos obtidos ÷ pontos possíveis, calculada pelo banco. Prazo vencido sem entrega conta 0; sem nada avaliado, é NULL.
+- **Falas do boss** — nome e falas por conteúdo × perfil, geradas em lote pela IA (`boss_falas`), com nome único por perfil (#755, #763).
+- **Alteração do professor** — mudança num item que o aluno já viu. O banco registra, a IA decide quem precisa revisar e o aluno é avisado (#758).
+- **Apps Script (e-mail)** — o banco envia e-mail por um app da web do Google Apps Script, no lugar da Brevo (#762).
+- **Migration na subida** — a API roda `alembic upgrade head` ao iniciar. Banco à frente do código publicado derruba a API (502).

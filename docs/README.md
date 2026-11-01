@@ -32,6 +32,11 @@ Documentação que não pertence a um único serviço:
   estado medido da realimentação (2026-09-30). Leia antes de interpretar
   qualquer número de tempo de estudo.
 - **[Mapa ponta a ponta de dados, métricas e KPIs](./architecture/mapa-dados-metricas-kpis.md)** — inventário por aluno/professor, fluxos de cliente, banco, API e geração, fórmulas conhecidas e lacunas de evidência.
+- **[Métricas de ponta a ponta](./superpowers/specs/2026-10-28-metricas-ponta-a-ponta-design.md)**: catálogo, validação constante e IA. É a spec das fases F0 a F5, que fecharam a #12. Os planos de cada fase estão em [`superpowers/plans/`](./superpowers/plans/), de `2026-10-28-f0-medir.md` a `2026-10-31-f5-views-e-rpc.md`.
+- **[Eventos, missões, ranks e modos](./superpowers/specs/2026-10-19-eventos-missoes-ranks-modos-design.md)**: o desenho do motor de gamificação no banco e o que a implementação revelou em cada fase. Acompanham:
+  - a [economia completa](./superpowers/specs/2026-10-19-economia-completa-design.md);
+  - o [plano depois da arena](./superpowers/specs/2026-10-20-plano-depois-da-arena-design.md).
+- **[E-mail pelo Apps Script](../scripts/apps-script-email/)**: o script que envia os e-mails do banco no lugar da Brevo (#762), com o passo a passo de publicação.
 
 
 - **[Schema não versionado](./architecture/schema-nao-versionado.md)** —
