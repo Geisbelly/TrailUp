@@ -59,6 +59,18 @@ def _boss(conteudo_id: int, **override) -> FalasDoBoss:
     return FalasDoBoss(**campos)
 
 
+# ---------------------------------------------------------------- schema
+
+
+def test_schema_enviado_ao_modelo_exige_cada_momento_com_o_minimo() -> None:
+    # Sem isto o Gemini devolvia `derrota: []` e o boss inteiro era descartado (01/11).
+    schema = FalasDoTopico.model_json_schema()
+    boss = schema["$defs"]["FalasDoBoss"]
+    assert set(boss["required"]) == {"conteudo_id", "nome", *MOMENTOS}
+    for momento, (minimo, _maximo) in MOMENTOS.items():
+        assert boss["properties"][momento]["minItems"] == minimo
+
+
 # ---------------------------------------------------------------- limpeza
 
 
