@@ -97,7 +97,7 @@ visitava alunos com rotina vencida: uma sugestão marcada para as 20h esperaria 
 próximo login.
 
 Revision ID: 20261102_01
-Revises: 20261101_14
+Revises: 20261101_15
 Create Date: 2026-11-02
 """
 
@@ -110,7 +110,7 @@ from pathlib import Path
 from alembic import op
 
 revision = "20261102_01"
-down_revision = "20261101_14"
+down_revision = "20261101_15"
 branch_labels = None
 depends_on = None
 

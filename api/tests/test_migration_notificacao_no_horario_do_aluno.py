@@ -41,9 +41,11 @@ UP = _sql()
 DOWN = _sql("downgrade")
 
 
-def test_encadeia_depois_da_14_de_01_11():
+def test_encadeia_depois_da_15_de_01_11():
+    # Nasceu sobre a _14, como a _15 (#764); as duas entraram juntas e a main ficou com duas
+    # cabeças. Esta é a que não está em produção, então é ela que vai para depois da _15.
     assert M.revision == "20261102_01"
-    assert M.down_revision == "20261101_14"
+    assert M.down_revision == "20261101_15"
 
 
 def test_upgrade_sem_porcentagem_literal():

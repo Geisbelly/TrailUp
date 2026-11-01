@@ -276,6 +276,20 @@ Cada perfil carrega:
   `evidencias_pedagogicas.py`, fontes `DAT-xx`, confiança e os números do
   aluno); o peso por perfil é **hipótese sem evidência** e a emoção não
   reordena. Mudou regra, suba `CATALOGO_VERSAO`: o log grava a versão (#66).
+- **Estudo de efetividade (#13):** `estudo_coorte`, `marco_produto` e
+  `topico_aluno_conclusao` (`20261102_02`), e a RPC `metricas_estudo_coortes` (`_03`).
+  - **Cohort = turma com data de corte.** O baseline é `[baseline_inicio, corte)` e a
+    turma de comparação também tem corte.
+  - **O registro é prospectivo**: a RPC recusa baseline no passado, e um gatilho trava o
+    corte quando a data dele chega. Não "conserte" isso dando `UPDATE` como dono: escolher
+    a janela depois de ver o dado é o viés que a trava impede.
+  - **Cada migration aplicada vira marco** (gatilho em `alembic_version`, que nunca derruba
+    a migration).
+  - **Célula com menos de `n_minimo` alunos volta nula.** As contagens cruas
+    (`estudo_indicadores_*`) não têm EXECUTE para cliente nenhum.
+  - **Ainda não existe trava que segure a personalização** no baseline nem na turma de
+    comparação. A RPC acusa `baseline_contaminado` em vez de supor um baseline limpo. Ver
+    `docs/superpowers/specs/2026-11-01-cohort-e-baseline-design.md`.
 - `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_11`):
   entrada, derrota, provocação de dano, marcos de metade/um quarto da vida, alerta de tempo,
   contra-ataque e a mensagem de vitória. **Gerar é IA, então é API**: o worker da fila faz uma
