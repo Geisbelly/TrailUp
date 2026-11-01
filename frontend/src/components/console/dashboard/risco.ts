@@ -2,8 +2,10 @@
 //
 // CRÍTICO = faixa "alto" do modelo de evasão do core-trailup (trailup_risco_evasao, migration
 // 20261031_08): risco de abandonar nas próximas 4 semanas entre os 10% mais altos. A faixa
-// "atencao" do modelo é Atenção. O modelo só roda em semana com evento (o domínio em que foi
-// medido); sem evento, o banco decide a faixa pela inatividade (30 dias = alto, 7 = atenção). A taxa antiga (tópicos não concluídos ÷ tópicos com linha) marcava
+// "atencao" do modelo é Atenção. O modelo só decide quando o aluno tem atividade avaliável ao
+// alcance (20261101_09: com questões ou pontuação, num tópico iniciado ou com prazo vencido, ou já
+// tem nota) e não está numa semana sem evento e sem pendência (20261101_02); fora disso o banco
+// decide a faixa pela inatividade (30 dias = alto, 7 = atenção). A taxa antiga (tópicos não concluídos ÷ tópicos com linha) marcava
 // "crítico" o aluno no meio da trilha e saiu da conta; o rótulo continua.
 //
 // Ao lado do modelo, como Atenção, os fatos com data (vw_metricas_engajamento_aluno_classe, 20261031_05):
