@@ -583,9 +583,25 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
 - **Repositórios:** `BitStudioLabs/trail-up` é o canônico (PRs aqui).
   [`Geisbelly/TrailUp`](https://github.com/Geisbelly/TrailUp) é o espelho
   (sync da `main`, CI badge e GitHub Pages dos relatórios) — não abrir trabalho lá.
-- **Deploys:** web em `https://trailup.vercel.app` (não usar como alvo de
-  regressão do console); API em Dokploy (VPS); local via `npm run docker:up`
-  (`:8080` / `:8000` / `:3000`).
+
+  **O site no ar sai do espelho, não do Lab.** O Vercel de `trailup.vercel.app`
+  publica a `main` do `Geisbelly/TrailUp`. PR mesclado no Lab **não aparece no ar**
+  até o espelho receber a `main` do Lab; conferir produção antes disso mostra a
+  versão velha. Por isso, **toda vez que a `main` do Lab avançar, abrir o sync no
+  espelho na mesma hora**, no formato dos anteriores:
+  - remoto `espelho` → `Geisbelly/TrailUp`; branch `sync/lab-<sha curto>` a partir
+    de `espelho/main`; `git merge origin/main` (sem rebase, sem force-push);
+  - título `sync: Lab main até <sha> (#PRs)`; corpo com os commits trazidos, as
+    **migrations novas** (e se produção já as tem), os conflitos e como foram
+    resolvidos, e o que foi verificado;
+  - o merge é da Geisbelly, como no Lab. Só depois do deploy conferir no ar.
+
+  Migration de PR do Lab costuma ser aplicada em produção antes de chegar ao
+  espelho. Enquanto o espelho estiver atrás, o banco está à frente do código no ar;
+  quanto mais tempo o sync demora, maior essa janela.
+- **Deploys:** web em `https://trailup.vercel.app`, publicada do **espelho** (acima)
+  — não usar como alvo de regressão do console; API em Dokploy (VPS); local via
+  `npm run docker:up` (`:8080` / `:8000` / `:3000`).
 - **Mais docs do repo:** [`docs/README.md`](docs/README.md) (índice),
   [`docs/MANUAL.md`](docs/MANUAL.md),
   [coleta de métricas](docs/architecture/coleta-de-metricas.md),
