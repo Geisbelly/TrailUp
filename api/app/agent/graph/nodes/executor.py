@@ -90,8 +90,13 @@ async def executor(
                 else:
                     acoes.append("intervencao_registrada")
                     # Uma notificacao por ciclo: se o agente_notificacao ja mandou a
-                    # dele (valencia negativa agora), a intervencao nao manda outra.
-                    if intervencao.acao == "notificacao" and not state.get("notificacao_payload"):
+                    # dele (valencia negativa agora), a intervencao nao manda outra. Turma
+                    # retida pelo estudo (#13): o professor fica sabendo, o aluno nao recebe.
+                    if (
+                        intervencao.acao == "notificacao"
+                        and not state.get("notificacao_payload")
+                        and not state.get("personalizacao_retida")
+                    ):
                         await notificacao_repo.enfileirar(
                             state["aluno_id"],
                             NotificacaoPayload(

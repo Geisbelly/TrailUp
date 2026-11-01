@@ -884,7 +884,10 @@ class LinearAnalysisOrchestrator:
             "attention": {"modelo": attention.provider_name, **attention.resumo, "estado_atencao": attention.estado_atencao, "dificuldade": attention.dificuldade, "frustracao": attention.frustracao, "engajamento": attention.engajamento, "score": attention.score},
             "decision": {"modelo": decision.provider_name, **decision.resumo, "acoes": decision.acoes, "modo_sugerido": decision.modo_sugerido},
         }
-        if decision.modo_sugerido and not state.get("payload_modo"):
+        # Turma retida pelo estudo (#13): a decisão fica registrada (decision_snapshot e
+        # pipeline_stage_outputs, que vão para ia_decision_logs), mas não chega ao app.
+        retida = bool(state.get("personalizacao_retida"))
+        if decision.modo_sugerido and not state.get("payload_modo") and not retida:
             state["payload_modo"] = decision.modo_sugerido
         state["acoes_aplicadas"] = _dedupe_preserve_order(
             [
@@ -894,7 +897,7 @@ class LinearAnalysisOrchestrator:
                 f"analise_desempenho:{performance.provider_name}",
                 f"analise_atencao:{attention.provider_name}",
                 f"decisao_adaptativa:{decision.provider_name}",
-                *decision.acoes,
+                *([] if retida else decision.acoes),
             ]
         )
 

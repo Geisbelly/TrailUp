@@ -27,6 +27,7 @@ import { extractFinalReflectionIntoOwnSlide } from './src/utils/finalReflectionS
 import { paginateSlidesByDensity } from './src/utils/slidePagination';
 import {
   DEFAULT_SLIDES_PER_BATCH,
+  contagemVazia,
   describeGenerationFailure,
   isTruncationFailure,
   planejarRetomada,
@@ -1506,6 +1507,7 @@ INSTRUÇÕES CRÍTICAS DE EXECUÇÃO:
   let lastKeyIndexUsed: number | undefined;
   let houveTruncamento = false;
   let houveCotaEsgotada = false;
+  const falhasPorBloco = contagemVazia();
 
   const fila: SlideBatch[] = planSlideBatches(effectiveTotalSlides, DEFAULT_SLIDES_PER_BATCH);
   let primeiroBlocoPendente = true;
@@ -1563,6 +1565,17 @@ ${isLast ? `Este é o bloco final: inclua o clímax da aula e o desfecho dinâmi
       const cota = /429|quota|RESOURCE_EXHAUSTED/i.test(String(err?.message ?? ''));
       houveTruncamento = houveTruncamento || truncou;
       houveCotaEsgotada = houveCotaEsgotada || cota;
+      if (truncou) {
+        falhasPorBloco.truncados.push({
+          slides: b.count,
+          modelo: genResult?.modelUsed,
+          tokensSaida: genResult?.usageMetadata?.candidatesTokenCount,
+        });
+      } else if (cota) {
+        falhasPorBloco.cota += 1;
+      } else {
+        falhasPorBloco.outros += 1;
+      }
 
       // O texto cortado nao e lixo: tudo o que veio ANTES do corte e JSON
       // valido. Aproveitar os slides que fecharam resolve os dois furos que o
@@ -1612,7 +1625,11 @@ ${isLast ? `Este é o bloco final: inclua o clímax da aula e o desfecho dinâmi
   }
 
   throw new Error(
-    describeGenerationFailure({ truncou: houveTruncamento, cotaEsgotada: houveCotaEsgotada }),
+    describeGenerationFailure({
+      truncou: houveTruncamento,
+      cotaEsgotada: houveCotaEsgotada,
+      contagem: falhasPorBloco,
+    }),
   );
 }
 

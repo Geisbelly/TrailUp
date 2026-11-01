@@ -1,6 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { generationKeyFor, persistApresentacaoResult, computeAggregatedApresentacaoEntry } from "./materialsPersistence";
+import {
+  generationKeyFor,
+  persistApresentacaoResult,
+  computeAggregatedApresentacaoEntry,
+  aggregatedApresentacaoFailure,
+} from "./materialsPersistence";
 
 test("generationKeyFor monta cicloId:sourceHash", () => {
   const key = generationKeyFor({ personalizacaoId: 42, cicloId: "ciclo-1", sourceHash: "hash-abc" });
@@ -246,4 +251,74 @@ test("persistApresentacaoResult (multi-parte) agrega com as partes ja existentes
   assert.equal(apresentacao.partes.length, 2);
   assert.equal(apresentacao.metadata.status, "completed");
   assert.equal(apresentacao.arquivo_url, "https://storage/p1.html"); // headline = parte 1
+});
+
+// #776: a parte 1 falhava e gravava o motivo; a parte 2 chegava com sucesso e
+// reescrevia `failure` como null, com o status ainda `failed`. O professor via
+// "Falhou" sem motivo (seeker, turma 68, 01/11).
+const PARTE_1_FALHOU = { stage: "generate", error: "resposta truncada no lote 3" };
+
+test("#776: parte 1 falha, parte 2 da certo - o status fica failed com o motivo da parte 1", async () => {
+  const fence = { personalizacaoId: 42, cicloId: "ciclo-1", sourceHash: "hash-abc" };
+  const versionMetadata = { engine: "e", schema: "s", design_system: "d", media_pipeline_version: "m" };
+
+  // Parte 1 chega primeiro e falha.
+  const primeira = fakeClient({ selectRow: { aluno_id: "aluno-1", conteudo_id: 282, materiais: {} } });
+  await persistApresentacaoResult(primeira.client, {
+    fence, versionMetadata, bucket: "conteudo_aluno", storagePath: "p1.html",
+    presentationUrl: null, failure: PARTE_1_FALHOU, ordem: 1, totalPartes: 2, titulo: "Intro",
+  });
+  const depoisDaParte1 = (primeira.calls.rpc[0].args.p_updates as any).apresentacao;
+  assert.deepEqual(depoisDaParte1.partes[0].failure, PARTE_1_FALHOU);
+  assert.equal(depoisDaParte1.metadata.error, PARTE_1_FALHOU.error);
+
+  // Parte 2 chega depois, com sucesso, lendo o que a parte 1 gravou.
+  const segunda = fakeClient({
+    selectRow: { aluno_id: "aluno-1", conteudo_id: 282, materiais: { apresentacao: depoisDaParte1 } },
+  });
+  await persistApresentacaoResult(segunda.client, {
+    fence, versionMetadata, bucket: "conteudo_aluno", storagePath: "p2.html",
+    presentationUrl: "https://storage/p2.html", failure: null, ordem: 2, totalPartes: 2, titulo: "Fim",
+  });
+  const final = (segunda.calls.rpc[0].args.p_updates as any).apresentacao;
+  assert.equal(final.metadata.status, "failed");
+  assert.equal(final.metadata.error_stage, PARTE_1_FALHOU.stage);
+  assert.equal(final.metadata.error, PARTE_1_FALHOU.error);
+  assert.deepEqual(final.partes[0].failure, PARTE_1_FALHOU);
+  assert.equal(final.partes[1].failure, undefined);
+});
+
+test("#776: parte que da certo nao grava failure, mesmo se vier um motivo junto", async () => {
+  const { client, calls } = fakeClient({ selectRow: { aluno_id: "a", conteudo_id: 1, materiais: {} } });
+  await persistApresentacaoResult(client, {
+    fence: { personalizacaoId: 1, cicloId: "c", sourceHash: "h" },
+    versionMetadata: { engine: "e", schema: "s", design_system: "d", media_pipeline_version: "m" },
+    bucket: "b", storagePath: "p1.html", presentationUrl: "https://storage/p1.html",
+    failure: PARTE_1_FALHOU, ordem: 1, totalPartes: 2,
+  });
+  const apresentacao = (calls.rpc[0].args.p_updates as any).apresentacao;
+  assert.equal(apresentacao.partes[0].failure, undefined);
+  assert.equal(apresentacao.metadata.error, undefined);
+});
+
+test("aggregatedApresentacaoFailure: sem parte falha, nao ha motivo", () => {
+  assert.equal(aggregatedApresentacaoFailure("completed", [], PARTE_1_FALHOU, { error: "velho" }), null);
+});
+
+test("aggregatedApresentacaoFailure: parte antiga sem motivo proprio cai no motivo que ja estava na metadata", () => {
+  const partes = [
+    { ordem: 1, arquivo_url: null, storage_path: null, failed: true },
+    { ordem: 2, arquivo_url: "u", storage_path: "p", failed: false },
+  ];
+  assert.deepEqual(
+    aggregatedApresentacaoFailure("failed", partes, null, { error_stage: "network", error: "This operation was aborted" }),
+    { stage: "network", error: "This operation was aborted" },
+  );
+});
+
+test("aggregatedApresentacaoFailure: a parte que acabou de falhar vem antes das anteriores", () => {
+  const anterior = { stage: "upload", error: "anterior" };
+  const partes = [{ ordem: 1, arquivo_url: null, storage_path: null, failed: true, failure: anterior }];
+  assert.deepEqual(aggregatedApresentacaoFailure("failed", partes, PARTE_1_FALHOU, null), PARTE_1_FALHOU);
+  assert.deepEqual(aggregatedApresentacaoFailure("failed", partes, null, null), anterior);
 });

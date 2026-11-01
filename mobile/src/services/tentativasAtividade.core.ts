@@ -100,6 +100,16 @@ export function motivoDoErro(erro: ErroDoSupabase): MotivoRecusa | "rpc_indispon
   return MOTIVOS.find((motivo) => mensagem.includes(motivo)) ?? null;
 }
 
+/**
+ * O que mostrar ao aluno quando o servidor recusou. Vale também para a resposta de
+ * questão gravada direto em `questao_aluno`, que o banco recusa com `prazo_expirado`
+ * depois do prazo (`20261102_04`). `null`: não foi recusa, é falha comum.
+ */
+export function mensagemDaRecusa(erro: ErroDoSupabase): { titulo: string; descricao: string } | null {
+  const motivo = motivoDoErro(erro);
+  return motivo && motivo !== "rpc_indisponivel" ? MENSAGEM_DA_RECUSA[motivo] : null;
+}
+
 function numero(valor: unknown): number | null {
   if (valor === null || valor === undefined || valor === "") return null;
   const n = Number(valor);

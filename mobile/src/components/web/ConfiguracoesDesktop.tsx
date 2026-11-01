@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
 import Aparencia from "@/app/(tabs)/perfil/appearance";
@@ -21,6 +21,7 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { filtrarGrupos, subtelaDaUrl, type IdSubtela, type Subtela } from "@/utils/subtelasConfiguracao";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { registrarAlvoTour } from "@/utils/tourTargets";
 
 const pkg = require("../../../package.json");
 const PERIGO = "#ff8f8f";
@@ -69,6 +70,10 @@ export function ConfiguracoesDesktop() {
   const { sairDoAparelho, abrirLink, reverTutorialComAbrirAgora } = useAcoesConta();
   const grupos = filtrarGrupos(busca);
   const Tela = TELAS[aberta.id];
+  // Passo "Suas preferências" do tutorial inicial: a lista à esquerda (protótipo v4, `.side`).
+  // Sem o registro o passo abria sem recorte nenhum, com o balão no meio da tela (#33).
+  const alvoTour = useRef<View | null>(null);
+  useEffect(() => registrarAlvoTour("config_lista", alvoTour), []);
 
   const escolher = (s: Subtela) => {
     if (s.id === "relatorio") return router.push("/(tabs)/perfil/relatorio");
@@ -81,7 +86,7 @@ export function ConfiguracoesDesktop() {
 
   return (
     <View style={[s.tela, { backgroundColor: palette.background }]}>
-      <View style={[s.lado, { borderRightColor: palette.border }]}>
+      <View ref={alvoTour} collapsable={false} style={[s.lado, { borderRightColor: palette.border }]}>
         <ScrollView contentContainerStyle={s.ladoConteudo}>
           <Text style={[s.titulo, { color: palette.text }]}>Configurações</Text>
           <View style={[s.busca, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>

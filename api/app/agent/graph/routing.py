@@ -25,6 +25,11 @@ PERSONALIZATION_SPECIALIST_NODES = {
 
 SPECIALIST_NODES = ANALYZE_SPECIALIST_NODES | PERSONALIZATION_SPECIALIST_NODES
 
+# Turma com a personalização retida pelo estudo (#13): o ciclo só mede (emoção, perfil) e avisa o
+# professor (intervenção). Tema de suporte, conteúdo e mídia, trilha, notificação, cronômetro e
+# texto agem no aluno, e ficariam fora do baseline e da turma de comparação.
+RETIDA_SPECIALIST_NODES = {"agente_emocao", "agente_perfil", "agente_intervencao"}
+
 
 def _needs_profile_update(state: dict[str, Any], completed: set[str]) -> bool:
     if "agente_perfil" in completed or state.get("perfil_update"):
@@ -127,6 +132,8 @@ def compute_supervisor_next(state: dict[str, Any]) -> list[str]:
         next_nodes.append("agente_cronometro")
     if _needs_texto(state, completed):
         next_nodes.append("agente_texto")
+    if state.get("personalizacao_retida"):
+        next_nodes = [node for node in next_nodes if node in RETIDA_SPECIALIST_NODES]
 
     if next_nodes:
         return next_nodes

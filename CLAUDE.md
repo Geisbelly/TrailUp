@@ -287,9 +287,20 @@ Cada perfil carrega:
     a migration).
   - **Célula com menos de `n_minimo` alunos volta nula.** As contagens cruas
     (`estudo_indicadores_*`) não têm EXECUTE para cliente nenhum.
-  - **Ainda não existe trava que segure a personalização** no baseline nem na turma de
-    comparação. A RPC acusa `baseline_contaminado` em vez de supor um baseline limpo. Ver
-    `docs/superpowers/specs/2026-11-01-cohort-e-baseline-design.md`.
+  - **A trava da personalização** (`20261102_05`) retém a turma desde o registro. A intervenção
+    é liberada no corte, e a comparação no dia seguinte ao `fim`. A liberação é pela data, sem
+    job, e a regra está numa função só, `estudo_coorte_retem`. A trava **esconde, não impede a
+    geração**:
+    - uma policy `RESTRICTIVE` de SELECT esconde do aluno `conteudo_personalizado`,
+      `cards_personalizados`, `boss_falas` e `personalizacao_jobs`; o professor dono continua vendo;
+    - a API repete a trava onde ela lê como `service_role`, por cima da RLS. O grafo só mede
+      (`RETIDA_SPECIALIST_NODES`), `POST /personalizar` responde 409, a sugestão nem é criada e a
+      listagem do aluno tira a turma (`EstudoRepository`).
+
+    **Caminho novo que entregue personalização ao aluno pela API precisa perguntar a
+    `EstudoRepository`.** A RLS não o cobre. A contaminação na RPC é a exposição medida (tempo
+    ativo no escopo `material` dentro da janela retida). Ver
+    `docs/superpowers/specs/2026-11-01-cohort-e-baseline-design.md` §6.
 - `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_11`):
   entrada, derrota, provocação de dano, marcos de metade/um quarto da vida, alerta de tempo,
   contra-ataque e a mensagem de vitória. **Gerar é IA, então é API**: o worker da fila faz uma
@@ -353,14 +364,26 @@ Cada perfil carrega:
   - duração e tolerância ficam em `app_config` (`cronometro_atividade_padrao_seg`, `cronometro_tolerancia_seg`).
 
   **Limite conhecido:** a pontuação ainda é a que o app calcula, porque o gabarito
-  continua no aparelho. A RPC só limita os valores. Fechar a escrita direta do app
-  em `atividade_aluno` é a fase 5 da #136.
+  continua no aparelho. A RPC só limita os valores. A escrita direta do app em
+  `atividade_aluno` é fechada pela fase 5 (`20261102_04`, item abaixo).
 - **E-mail sai do banco por um Google Apps Script** (`20261101_14`, no lugar da
   Brevo). Isso vale para o contato do app, o contato do site e o aviso de conta
   inativa:
   - todos passam por `fn_email_apps_script`, que lê URL e segredo do Vault e faz o `net.http_post`;
   - o código do script fica em `scripts/apps-script-email/`;
   - **um 2xx não prova envio.** O pg_net segue o 302 do Apps Script, e tanto o sucesso quanto o erro do script chegam como 200. Quem decide é `fn_email_apps_script_aceito`, que exige `"ok": true` no corpo. Uma regra que confie só no código HTTP começaria a contar o prazo de exclusão de quem nunca foi avisado.
+- **`atividade_aluno`: só o servidor conclui e grava nota** (`20261102_04`, #136, fase 5).
+  O app marca visita e "em andamento" e mais nada. Conclusão, nota, acerto, progresso e
+  tempo saem de RPC ou gatilho `SECURITY DEFINER` (`atividade_responder_tentativa`,
+  `avaliar_entrega`, o recálculo por resposta). Mais duas regras:
+  - `questao_aluno` recusa a resposta do cliente depois do prazo efetivo (`prazo_expirado`),
+    exceto na revisão pedida pelo professor;
+  - `atividade_concluida`/`_acertada`/`_revisada` vindos do cliente exigem a atividade concluída.
+
+  As três guardas decidem por `current_user`, não pelas claims. Por isso **função nova que
+  escreva nessas tabelas precisa ser `SECURITY DEFINER`**, ou será tratada como o aluno. No
+  UPDATE, a coluna nova de `atividade_aluno` nasce protegida; no INSERT, entra na lista da
+  migration (o e2e reclama).
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere

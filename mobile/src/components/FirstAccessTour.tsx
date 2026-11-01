@@ -27,6 +27,7 @@ import { BalaoTourDesktop } from "@/components/web/BalaoTourDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { adaptarTourParaTelaLarga } from "@/utils/tourTelaLarga";
+import { ladoDoBalao, retanguloDoDestaque, setaDoBalao } from "@/utils/destaqueTour.core";
 import { obterAlvoTour, revelarAlvoTour } from "@/utils/tourTargets";
 import {
   buildFirstAccessTourSteps,
@@ -168,20 +169,14 @@ export function FirstAccessTour({
         void revelarAlvoTour(currentStep.target);
         const ref = obterAlvoTour(currentStep.target);
         ref?.current?.measureInWindow((x, y, largura, altura) => {
-          if (!ativo || largura < 2 || altura < 2) return;
-          // Fora da tela: manter o que ja havia em vez de acender um retangulo
-          // grampeado sobre o elemento errado.
-          if (y + altura < 0 || y > height) return;
-          const respiro = 8;
-          setAlvoRect({
-            // No Android, measureInWindow parte da area de conteudo, enquanto
-            // o Modal translucido parte do topo fisico da tela. Sem o inset o
-            // recorte inteiro ficava uma barra de status acima do componente.
-            top: Math.max(0, y + insets.top - respiro),
-            left: Math.max(0, x - respiro),
-            width: Math.min(width, largura + respiro * 2),
-            height: Math.min(height, altura + respiro * 2),
-          });
+          if (!ativo) return;
+          // Sem medida que sirva, fica o recorte que ja havia.
+          const recorte = retanguloDoDestaque(
+            { x, y, width: largura, height: altura },
+            { width, height },
+            { plataforma: Platform.OS, insetTopo: insets.top },
+          );
+          if (recorte) setAlvoRect(recorte);
         });
       }, atraso),
     );
@@ -287,19 +282,17 @@ export function FirstAccessTour({
   const coachWidth = Math.min(164, width * 0.43);
   const coachHeight = Math.min(310, height * 0.41);
   const targetCenterY = safeHighlight.top + safeHighlight.height / 2;
-  const coachOnBottom = targetCenterY < height * 0.5;
+  // O guia vai para o lado do balão oposto ao alvo; com o balão abaixo do alvo,
+  // ele desce junto, em vez de subir e cobrir o item explicado.
+  const ladoBalao = ladoDoBalao(safeHighlight, { top: balaoTop, height: balaoAltura });
+  const coachOnBottom = ladoBalao === "abaixo" || (ladoBalao === "sobre" && targetCenterY < height * 0.5);
   const coachTop = coachOnBottom
     ? Math.min(height - insets.bottom - coachHeight - 8, balaoTop + Math.max(70, balaoAltura * 0.42))
     : Math.max(insets.top + 58, balaoTop - coachHeight * 0.52);
   const dialogLeft = Math.min(width * 0.28, 112);
-  const arrowStart = {
-    x: dialogLeft + (width - dialogLeft - 14) * 0.5,
-    y: coachOnBottom ? balaoTop : balaoTop + balaoAltura,
-  };
-  const arrowEnd = {
-    x: Math.max(22, Math.min(width - 22, safeHighlight.left + safeHighlight.width / 2)),
-    y: coachOnBottom ? safeHighlight.top + safeHighlight.height : safeHighlight.top,
-  };
+  const seta = alvoRect
+    ? setaDoBalao(safeHighlight, { top: balaoTop, height: balaoAltura, left: dialogLeft, right: width - 12 }, width)
+    : null;
 
   return (
     <Modal
@@ -391,23 +384,8 @@ export function FirstAccessTour({
           </View>
         ) : null}
 
-        <View style={[styles.topBar, { paddingTop: insets.top + Math.max(8, height * 0.012) }]}>
-          <View style={[styles.pageChip, { backgroundColor: palette.surfaceElevated, borderColor: bubbleBorder }]}>
-            <MaterialCommunityIcons name="map-marker-path" size={15} color={accent} />
-            <Text style={[styles.pageChipText, { color: palette.text }]}>{currentStep.page}</Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Pular tutorial inicial"
-            onPress={() => void finish()}
-            style={[styles.skipButton, { borderColor: palette.border }]}
-          >
-            <Text style={[styles.skipText, { color: palette.textMuted }]}>Pular</Text>
-          </Pressable>
-        </View>
-
-        {!isIntroduction && highlightRect ? (
-          <TourArrow start={arrowStart} end={arrowEnd} accent={accent} />
+        {!isIntroduction && seta ? (
+          <TourArrow start={seta.inicio} end={seta.fim} accent={accent} />
         ) : null}
 
         {!isIntroduction ? (
@@ -451,8 +429,11 @@ export function FirstAccessTour({
           <View>
             <View style={styles.guideHeader}>
               <View style={styles.guideHeaderCopy}>
+                {/* A página e o "Pular" moravam numa barra no topo da tela, por cima do
+                    cabeçalho das páginas: no passo do guia o recorte enquadrava o "Pular",
+                    não o botão "?" (#33). No balão, como no cartão do protótipo mobile-v1. */}
                 <View style={styles.speakerRow}>
-                  <Text style={[styles.speaker, { color: accent }]}>{guideName}</Text>
+                  <Text style={[styles.speaker, { color: accent }]}>{currentStep.page}</Text>
                   <Text style={[styles.counter, { color: palette.textSubtle }]}>
                     {index + 1}/{steps.length}
                   </Text>
@@ -481,6 +462,14 @@ export function FirstAccessTour({
           </View>
 
           <View style={styles.actions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Pular tutorial inicial"
+              onPress={() => void finish()}
+              style={styles.skipButton}
+            >
+              <Text style={[styles.skipText, { color: palette.textMuted }]}>Pular</Text>
+            </Pressable>
             <Pressable
               disabled={index === 0}
               onPress={() => setIndex((value) => Math.max(0, value - 1))}
@@ -590,35 +579,13 @@ function TourArrow({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  topBar: {
-    position: "absolute",
-    left: 18,
-    right: 18,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    zIndex: 4,
-  },
-  pageChip: {
-    minHeight: 34,
-    maxWidth: "72%",
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-  },
-  pageChipText: { fontSize: 12, fontWeight: "700" },
   skipButton: {
-    minHeight: 34,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    borderWidth: 1,
+    minHeight: 39,
+    paddingHorizontal: 6,
     alignItems: "center",
     justifyContent: "center",
   },
-  skipText: { fontSize: 12, fontWeight: "700" },
+  skipText: { fontSize: 13, fontWeight: "700" },
   speechBubble: {
     position: "absolute",
     right: 12,
@@ -667,7 +634,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  speaker: { fontSize: 12, fontWeight: "900", letterSpacing: 1.2, textTransform: "uppercase" },
+  speaker: { flexShrink: 1, marginRight: 8, fontSize: 12, fontWeight: "900", letterSpacing: 1.2, textTransform: "uppercase" },
   counter: { fontSize: 12, fontWeight: "700" },
   title: { marginTop: 4, fontSize: 18, lineHeight: 22, fontWeight: "900" },
   description: { marginTop: 7, fontSize: 13.5, lineHeight: 18.5 },

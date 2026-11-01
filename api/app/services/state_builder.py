@@ -26,6 +26,18 @@ async def _foco_de_estudo(context_repo: Any, **kwargs: Any) -> dict[str, Any] | 
         return None
 
 
+async def _personalizacao_retida(context_repo: Any, *, classe_id: int | None) -> bool:
+    """Turma retida pelo estudo (#13): o grafo só mede. Repositório sem o método (testes) = não retida.
+
+    Ao contrário do foco, erro aqui sobe: decidir "não retida" por falha de leitura entregaria
+    adequação ao grupo de comparação sem ninguém ver.
+    """
+    buscar = getattr(context_repo, "fetch_personalizacao_retida", None)
+    if buscar is None:
+        return False
+    return bool(await buscar(classe_id=classe_id))
+
+
 async def build_initial_state(
     session: AsyncSession,
     aluno_id: str,
@@ -48,6 +60,7 @@ async def build_initial_state(
         classe_id=payload.classe_id,
         topico_id=payload.topico_id or desempenho.get("topico_recente_id"),
     )
+    personalizacao_retida = await _personalizacao_retida(context_repo, classe_id=payload.classe_id)
     gerar_materiais = bool(
         payload.modo == "prova"
         or float(desempenho.get("media_acertos", 100)) < 50
@@ -69,6 +82,7 @@ async def build_initial_state(
         "ia_descricao_atual": context["ia_descricao_atual"],
         "memoria_aluno": memoria.model_dump(mode="json"),
         "foco_estudo": foco_estudo,
+        "personalizacao_retida": personalizacao_retida,
         "emocao_atual": None,
         "emocao_historico": [],
         "frame_b64": payload.frame_b64,

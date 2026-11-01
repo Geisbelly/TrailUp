@@ -1,7 +1,8 @@
 # Cohort e baseline para medir efetividade (#13)
 
-Desenho aprovado em 01/11/2026. Implementado em `20261102_02_estudo_coorte_e_marcos` e
-`20261102_03_metricas_estudo_coortes`. Atende a PR1 e PR2 de
+Desenho aprovado em 01/11/2026. Implementado em `20261102_02_estudo_coorte_e_marcos`,
+`20261102_03_metricas_estudo_coortes` e, com a trava da personalização (§6),
+`20261102_05_trava_da_personalizacao`. Atende a PR1 e PR2 de
 [TCC 09 §3](../../tcc/09-metodologia-de-pesquisa-e-avaliacao.md) e prepara a #19 (série por
 ciclo) e a #20 (perfil × formato na mesma janela).
 
@@ -71,11 +72,7 @@ precisa existir antes de o estudo começar.
 
 ## 4. O que ficou de fora
 
-- **A trava da personalização.** Hoje nenhuma chave segura a geração. O gatilho de matrícula e o
-  do editor de trilha enfileiram na hora, e a API tem 6 caminhos de `INSERT` em
-  `conteudo_personalizado`. Sem a trava, o baseline e a turma de comparação recebem material. Ela
-  é uma PR separada e **pré-requisito para iniciar o estudo**. Até lá, a RPC acusa a contaminação
-  em vez de supor um baseline limpo.
+- **A trava da personalização** ficou para a `20261102_05`, descrita na §6.
 - **Tela no console.** As RPCs ficam prontas para ela, e o professor registra a turma pelo
   `supabase.rpc`.
 - **Análise entre professores.** A RPC só cruza turmas do mesmo professor. A análise do estudo
@@ -84,9 +81,31 @@ precisa existir antes de o estudo começar.
 
 ## 5. Ameaças à validade (vêm em `limitacoes`, na própria resposta)
 
-1. Sem a trava, a personalização pode vazar para o baseline e para a turma de comparação.
+1. A trava (§6) esconde a personalização, mas um vazamento ainda é possível, por exemplo pelo
+   cache do app ou por um caminho esquecido. Ele aparece como exposição em `contaminacao`.
 2. O tempo ativo depende de telemetria consentida.
 3. Na web não há câmera, e a telemetria muda (#30).
 4. O conteúdo estudado antes e depois do corte é outro. A turma de comparação desconta esse efeito.
 5. As conclusões anteriores à `20261102_02` não têm data.
 6. Uma célula pequena volta nula.
+7. As regras fixas do jogo por perfil (tema, cronômetro padrão, batalha) e o guia (chat) ficam
+   ligados nos dois braços e nas duas fases. O efeito medido é o do que a IA gera e decide.
+8. `ciclos_personalizacao` conta geração, não entrega: na retenção o material é gerado e fica
+   escondido.
+
+## 6. A trava da personalização (`20261102_05`)
+
+Desenho aprovado em 01/11/2026. É o pré-requisito para o estudo começar.
+
+| # | Decisão | Por quê |
+|---|---|---|
+| T-1 | **A turma fica retida desde o registro**, o pré-estudo incluído. A intervenção libera no `corte`. A comparação libera no dia seguinte ao `fim` (lista de espera); sem `fim`, segue retida. A liberação é pela data, sem job. | Personalização logo antes do baseline, retirada no início dele, deixaria efeito residual (carryover). A regra está numa função só, `estudo_coorte_retem`. |
+| T-2 | **A trava esconde, não impede a geração.** A fila, o worker e o microservice seguem como estão. | No corte o material já está pronto, então a semana 0 não carrega o atraso da geração, que leva horas e pode dar 402. A exposição tem um ponto só, a RLS. A geração tem mais de dez caminhos. |
+| T-3 | **A trava cobre o que a IA gera ou decide para o aluno.** Pela RLS: `conteudo_personalizado`, `cards_personalizados`, `boss_falas` e `personalizacao_jobs`. Pela API: o ciclo de análise só mede (emoção e perfil) e avisa o professor; `POST /personalizar` responde 409; a sugestão de ordem nem é criada; a listagem do aluno tira a turma retida. | O baseline é "sem intervenções novas" (TCC 09 §4), e a personalização tem duas camadas: a base por perfil e a adequação por aluno. As regras fixas do jogo ficam iguais nos dois braços (limitação 7). |
+| T-4 | **A policy é `RESTRICTIVE`, de SELECT, para `authenticated`.** O professor dono continua vendo. | Ela entra com E nas policies que já existem, sem reescrever nenhuma, e vale para o Realtime. O app já trata "sem personalização" e cai no material do professor, inclusive o 1.0.4. |
+| T-5 | **O helper da RLS só fala das turmas do próprio aluno** (`app_classes_retidas_do_aluno`). A função da API (`estudo_personalizacao_retida`) não tem EXECUTE para cliente. | A lista de todas as turmas retidas diria a qualquer aluno quem é o grupo de comparação. |
+| T-6 | **A contaminação passa a ser exposição medida.** `baseline_contaminado` e `comparacao_recebeu_personalizacao` contam tempo ativo no escopo `material` dentro da janela retida. Entram `exposicao_antes_do_registro` e `trava` (`retida_agora`, `libera_em`). | Com a trava, material pronto antes do corte é o esperado. O que importa é se o aluno o viu. |
+
+A ordem aconselhada só nasce na liberação, e isso serve à #66: o log de efetividade da sugestão
+começa quando o aluno passa a vê-la. A #19 lê a série semanal da `_03`. A #20 lê perfil × formato
+só na janela pós da intervenção, porque antes dela não há material visível.
