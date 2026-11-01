@@ -2045,18 +2045,42 @@ async def _gerar_falas_boss_do_job(
     session_factory = app.state.session_factory
     semaforo = asyncio.Semaphore(_BOSS_FALAS_CONCORRENCIA)
 
-    async def _gerar(topico_id: int, perfil: str) -> str:
-        async with semaforo, session_factory() as session:
-            resultado = await gerar_falas_do_topico(
-                session=session,
-                settings=app.state.settings,
-                topico_id=topico_id,
-                perfil=perfil,
-            )
-        return resultado.status
+    # Os perfis de um mesmo topico vao um depois do outro: cada chamada le o nome que os perfis
+    # anteriores ja gravaram e pede outro ao modelo (`nomes_em_uso`). Em paralelo, os tres
+    # perfis pediriam as cegas e cairiam no mesmo nome -- `nome_unico` ainda corrigiria na
+    # gravacao, mas com epiteto em vez de um nome pensado para o perfil.
+    por_topico: dict[int, list[str]] = {}
+    for topico_id, perfil in grupos:
+        por_topico.setdefault(topico_id, []).append(perfil)
 
-    resultados = await asyncio.gather(*(_gerar(*grupo) for grupo in grupos), return_exceptions=True)
-    for grupo, resultado in zip(grupos, resultados, strict=True):
+    async def _gerar_topico(topico_id: int, perfis: list[str]) -> list[str | BaseException]:
+        status: list[str | BaseException] = []
+        async with semaforo:
+            for perfil in perfis:
+                try:
+                    async with session_factory() as session:
+                        resultado = await gerar_falas_do_topico(
+                            session=session,
+                            settings=app.state.settings,
+                            topico_id=topico_id,
+                            perfil=perfil,
+                        )
+                    status.append(resultado.status)
+                except Exception as exc:  # um perfil que falha nao impede o proximo
+                    status.append(exc)
+        return status
+
+    por_grupo: dict[tuple[int, str], str | BaseException] = {}
+    lotes = await asyncio.gather(
+        *(_gerar_topico(topico_id, perfis) for topico_id, perfis in por_topico.items()),
+        return_exceptions=True,
+    )
+    for (topico_id, perfis), lote in zip(por_topico.items(), lotes, strict=True):
+        for indice, perfil in enumerate(perfis):
+            por_grupo[(topico_id, perfil)] = lote if isinstance(lote, BaseException) else lote[indice]
+
+    for grupo in grupos:
+        resultado = por_grupo[grupo]
         if isinstance(resultado, BaseException):
             logger.warning(
                 "Falha ao gerar falas do boss: topico=%s perfil=%s erro=%s",
