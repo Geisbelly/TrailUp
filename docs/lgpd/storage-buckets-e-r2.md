@@ -8,7 +8,7 @@ Migrations `api/alembic/versions/20261024_09_buckets_privados.py` (buckets do al
 |---|---|---|---|---|
 | Storage `conteudo_aluno` (e cópia no R2) | `brainhex/<perfil>/classe-N/...` | material gerado por perfil dentro da turma | microservice, brainhexpdf (`render-and-store`) | sim (`conteudo_personalizado.materiais`, `vw_material_storage_paths`) |
 | Storage `conteudo_aluno` (e R2) | `fontes/classe-N/...` | fonte enviada na personalização | API | sim (`fontes_personalizacao.storage_path`) |
-| Storage `conteudo_aluno` | `<uuid do aluno>/boss/...` | avatar do chefe gerado para o aluno | API (`boss_image.py`) | não (URL assinada de 24 h, devolvida na hora) |
+| Storage `conteudo_aluno` | `<uuid do aluno>/boss/...` | **legado:** avatar do chefe gerado por IA para o aluno. A geração foi removida (nunca rodou depois de abril/2026, quando a personalização saiu do LangGraph); nada novo é gravado aqui, mas objetos antigos podem existir | ninguém (era a API, `boss_image.py`) | não (era URL assinada de 24 h, devolvida na hora) |
 | Storage `perfil_fotos` | `<uuid>/<ts>.<ext>` (antigo: `<uuid>-<ts>.<ext>`) | foto de perfil | app (o próprio aluno) | sim (`alunos.foto_url`) |
 | Storage `banners_fotos` | idem | banner do perfil | app (o próprio aluno) | sim (`alunos.banner_url`) |
 | R2 | `telemetria/lotes/AAAA/MM/DD/<lote>.json` | lote bruto de telemetria | API (`repositories/telemetria.py`) | `telemetria_lotes.payload->>'_r2'`, até a redação |

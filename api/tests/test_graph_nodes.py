@@ -4,7 +4,6 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.adapters.mock_emocao import MockEmocaoAdapter
-from app.agent.graph.nodes.agente_boss_visual import agente_boss_visual
 from app.agent.graph.nodes.agente_conteudo import _fallback_conteudo
 from app.agent.graph.nodes.agente_emocao import agente_emocao
 from app.agent.graph.nodes.agente_geracao_midia import agente_geracao_midia
@@ -68,7 +67,6 @@ def test_compute_personalizacao_next_routes_plan_then_ai_patch_and_media() -> No
         "plano_personalizacao": None,
         "ai_patch": None,
         "materiais_personalizados": None,
-        "boss_visual_processado": False,
     }
     after_plan = {
         **initial,
@@ -155,13 +153,13 @@ def test_compute_personalizacao_next_routes_plan_then_ai_patch_and_media() -> No
     final_ready = {
         **after_ai,
         "materiais_personalizados": {"cards": {"payload": []}},
-        "boss_visual_processado": True,
-        "completed_nodes": ["agente_plano_personalizacao", "agente_ai_patch", "agente_midias_personalizadas", "agente_boss_visual"],
+        "completed_nodes": ["agente_plano_personalizacao", "agente_ai_patch", "agente_midias_personalizadas"],
     }
 
     assert compute_personalizacao_next(initial) == ["agente_plano_personalizacao"]
     assert set(compute_personalizacao_next(after_plan)) == {"agente_ai_patch", "agente_midias_personalizadas"}
-    assert "agente_boss_visual" in compute_personalizacao_next(after_ai)
+    # battle_mode no ai_patch nao agenda mais nada alem das midias: a imagem de boss por IA saiu.
+    assert compute_personalizacao_next(after_ai) == ["agente_midias_personalizadas"]
     assert compute_personalizacao_next(final_ready) == ["persist_personalizacao"]
 
 
@@ -359,166 +357,6 @@ async def test_agente_midias_personalizadas_propagates_media_state(monkeypatch) 
     assert result["media_status"]["pdf"] == "pending"
     assert result["media_generation_warnings"] == ["video_unavailable"]
     assert result["media_render_job_id"] == "job-123"
-
-
-@pytest.mark.asyncio
-async def test_agente_boss_visual_keeps_contract_and_sets_avatar_when_generated(monkeypatch) -> None:
-    boss_visual_module = import_module("app.agent.graph.nodes.agente_boss_visual")
-
-    async def _fake_materialize(**kwargs):
-        enemy = kwargs["enemy"].model_copy(deep=True)
-        enemy.avatar_url = "https://cdn.example.com/boss.png"
-        enemy.visual.avatar_url = "https://cdn.example.com/boss.png"
-        return enemy
-
-    monkeypatch.setattr(boss_visual_module, "materialize_boss_visual", _fake_materialize)
-
-    result = await agente_boss_visual(
-        {
-            "aluno_id": "aluno-1",
-            "payload_topico_id": 5,
-            "ciclo_id": "ciclo-1",
-            "ai_patch": {
-                "mentalState": {
-                    "kind": "neutral",
-                    "intensity": 0.2,
-                    "confidence": 0.4,
-                    "reason": "fallback",
-                    "source": "ai",
-                    "observedAt": "2026-04-06T12:00:00Z",
-                    "expiresAt": "2026-04-06T12:20:00Z",
-                },
-                "session": [],
-                "topic": [
-                    {
-                        "key": "battle_mode",
-                        "scope": "topic",
-                        "enabled": True,
-                        "mode": "legacy_topic_mirror",
-                        "priority": 20,
-                        "cooldownSec": 0,
-                        "copy": {},
-                        "battle": {
-                            "topicId": 5,
-                            "sourceItemKey": "content:10",
-                            "enemy": {
-                                "id": "boss:5:10",
-                                "name": "Boss",
-                                "archetype": "warbringer",
-                                "avatarUrl": None,
-                                "imagePrompt": "prompt",
-                                "hpMax": 120,
-                                "shieldMax": 12,
-                                "introLine": "intro",
-                                "defeatLine": "fim",
-                                "contentId": 10,
-                                "itemKey": "content:10",
-                                "visual": {
-                                    "preset": "arena",
-                                    "avatarUrl": None,
-                                    "backgroundUrl": None,
-                                    "frameUrl": None,
-                                    "effectUrl": None,
-                                    "badgeLabel": "Boss",
-                                    "palette": {
-                                        "primaryColor": "#d24c33",
-                                        "secondaryColor": "#4f1710",
-                                        "accentColor": "#ffd27d",
-                                        "hpColor": "#ff5d5d",
-                                        "shieldColor": "#94f7c5",
-                                        "textColor": "#fff8f2",
-                                    },
-                                },
-                            },
-                            "timing": {
-                                "encounterDurationSec": 100,
-                                "warningAtSec": 70,
-                                "introDelayMs": 300,
-                                "defeatDelayMs": 700,
-                            },
-                            "damageOnContentComplete": 16,
-                            "damageOnActivityCorrect": 18,
-                            "damageOnStreakBonus": 10,
-                            "damageOnActivityComplete": 24,
-                            "persistKey": "persist",
-                            "resetOn": ["topic_complete", "cycle_change"],
-                        },
-                        "cues": [],
-                    }
-                ],
-                "items": {
-                    "content:10": [
-                        {
-                            "key": "battle_mode",
-                            "scope": "item",
-                            "itemKey": "content:10",
-                            "enabled": True,
-                            "mode": "content_boss_encounter",
-                            "priority": 60,
-                            "cooldownSec": 0,
-                            "copy": {},
-                            "battle": {
-                                "topicId": 5,
-                                "sourceItemKey": "content:10",
-                                "enemy": {
-                                    "id": "boss:5:10",
-                                    "name": "Boss",
-                                    "archetype": "warbringer",
-                                    "avatarUrl": None,
-                                    "imagePrompt": "prompt",
-                                    "hpMax": 120,
-                                    "shieldMax": 12,
-                                    "introLine": "intro",
-                                    "defeatLine": "fim",
-                                    "contentId": 10,
-                                    "itemKey": "content:10",
-                                    "visual": {
-                                        "preset": "arena",
-                                        "avatarUrl": None,
-                                        "backgroundUrl": None,
-                                        "frameUrl": None,
-                                        "effectUrl": None,
-                                        "badgeLabel": "Boss",
-                                        "palette": {
-                                            "primaryColor": "#d24c33",
-                                            "secondaryColor": "#4f1710",
-                                            "accentColor": "#ffd27d",
-                                            "hpColor": "#ff5d5d",
-                                            "shieldColor": "#94f7c5",
-                                            "textColor": "#fff8f2",
-                                        },
-                                    },
-                                },
-                                "timing": {
-                                    "encounterDurationSec": 100,
-                                    "warningAtSec": 70,
-                                    "introDelayMs": 300,
-                                    "defeatDelayMs": 700,
-                                },
-                                "damageOnContentComplete": 16,
-                                "damageOnActivityCorrect": 18,
-                                "damageOnStreakBonus": 10,
-                                "damageOnActivityComplete": 24,
-                                "persistKey": "persist",
-                                "resetOn": ["topic_complete", "cycle_change"],
-                            },
-                            "cues": [],
-                        }
-                    ]
-                },
-                "triggers": [],
-            },
-        },
-        settings=Settings(gemini_api_key=None),
-    )
-
-    content_battle = result["ai_patch"]["items"]["content:10"][0]["battle"]
-    topic_battle = result["ai_patch"]["topic"][0]["battle"]
-
-    assert result["boss_visual_processado"] is True
-    assert content_battle["enemy"]["avatarUrl"] == "https://cdn.example.com/boss.png"
-    assert content_battle["enemy"]["visual"]["avatarUrl"] == "https://cdn.example.com/boss.png"
-    assert topic_battle["enemy"]["avatarUrl"] == "https://cdn.example.com/boss.png"
 
 
 def test_needs_conteudo_treats_media_acertos_as_percentage_not_fraction() -> None:

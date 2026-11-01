@@ -51,7 +51,7 @@ def test_compute_distribuicao_counts_and_predominante() -> None:
         {"perfil": "Achiever", "media_acertos": 70, "percentual_concluido": 50, "nota_media": 7},
         {"perfil": "Seeker", "media_acertos": 90, "percentual_concluido": 40, "nota_media": 9},
         # aluno sem perfil mapeado ainda conta no total.
-        {"perfil": None, "media_acertos": 0, "percentual_concluido": 0, "nota_media": 0},
+        {"perfil": None, "media_acertos": 0, "percentual_concluido": 0, "nota_media": None},
     ]
 
     summary = compute_distribuicao(rows)
@@ -88,6 +88,19 @@ def test_compute_distribuicao_empty_class() -> None:
     assert summary["total_alunos"] == 0
     assert summary["perfil_predominante"] is None
     assert all(item["quantidade"] == 0 for item in summary["distribuicao"].values())
+    assert summary["media_desempenho"]["nota_media"] is None
+
+
+def test_compute_distribuicao_aluno_sem_nota_nao_entra_como_zero() -> None:
+    rows = [
+        {"perfil": "Seeker", "media_acertos": 0, "percentual_concluido": 100, "nota_media": None},
+        {"perfil": "Seeker", "media_acertos": 0, "percentual_concluido": 100, "nota_media": 0},
+        {"perfil": "Achiever", "media_acertos": 0, "percentual_concluido": 0, "nota_media": 6},
+    ]
+    # Média só de quem tem nota: (0 + 6) / 2. O zero de verdade entra; o sem nota, não.
+    assert compute_distribuicao(rows)["media_desempenho"]["nota_media"] == 3.0
+    sem_ninguem = [{"perfil": "Seeker", "media_acertos": 0, "percentual_concluido": 0, "nota_media": None}]
+    assert compute_distribuicao(sem_ninguem)["media_desempenho"]["nota_media"] is None
 
 
 @pytest.mark.asyncio

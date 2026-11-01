@@ -454,16 +454,6 @@ async def test_gerar_mp3_openai_tts_e_gemini_tts_na_rota_de_menor(monkeypatch) -
 
 
 @pytest.mark.asyncio
-async def test_imagem_do_boss_nao_chama_gemini_para_menor(monkeypatch) -> None:
-    from app.adapters import gemini_boss_image
-
-    monkeypatch.setattr(gemini_boss_image.httpx, "AsyncClient", _HttpProibido)
-    adapter = gemini_boss_image.GeminiBossImageAdapter(_settings(gemini_api_key="g-key"))
-    with usar_rota("menor"):
-        assert await adapter.generate_png(SimpleNamespace()) is None
-
-
-@pytest.mark.asyncio
 async def test_enriquecimento_de_menor_pula_o_gemini(monkeypatch) -> None:
     from app.services import content_enrichment
 

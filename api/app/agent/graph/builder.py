@@ -21,7 +21,6 @@ def build_graph(
     graph.add_node("supervisor", partial(nodes.supervisor, settings=settings))
     graph.add_node("agente_plano_personalizacao", partial(nodes.agente_plano_personalizacao, settings=settings))
     graph.add_node("agente_ai_patch", partial(nodes.agente_ai_patch, settings=settings))
-    graph.add_node("agente_boss_visual", partial(nodes.agente_boss_visual, settings=settings))
     graph.add_node(
         "agente_midias_personalizadas",
         partial(nodes.agente_midias_personalizadas, settings=settings, session_factory=session_factory),
@@ -56,7 +55,6 @@ def build_graph(
             "agente_geracao_midia": "agente_geracao_midia",
             "agente_plano_personalizacao": "agente_plano_personalizacao",
             "agente_ai_patch": "agente_ai_patch",
-            "agente_boss_visual": "agente_boss_visual",
             "agente_midias_personalizadas": "agente_midias_personalizadas",
             "agente_notificacao": "agente_notificacao",
             "agente_intervencao": "agente_intervencao",

@@ -268,6 +268,18 @@ Cada perfil carrega:
   opera se **as duas** tabelas existirem (sem log, a métrica de efetividade
   ficaria furada justamente onde vai olhar). Ver
   `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
+- `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_11`):
+  entrada, derrota, provocação de dano, marcos de metade/um quarto da vida, alerta de tempo,
+  contra-ataque e a mensagem de vitória. **Gerar é IA, então é API**: o worker da fila faz uma
+  chamada ao modelo por tópico × perfil nos jobs de base por perfil
+  (`_gerar_falas_boss_do_job` → `app/services/boss_falas.py`), só para os perfis que têm
+  batalha no app (`PERFIS_COM_BATALHA`, em paridade testada com `BATTLE_PROFILES` do mobile),
+  pula quando o `source_hash` bate e nunca marca target como `failed`. **Ler é banco**: o mobile lê direto
+  (`useFalasDoBoss`, RLS `app_minhas_classes()`) e sorteia no aparelho
+  (`mobile/src/utils/bossFalas.ts`); sem linha, valem as falas fixas do `IAContext`. O nome
+  gerado entra no inimigo, mas o `enemy.id` **não muda** — ele está na chave do estado salvo
+  da batalha, e trocá-lo zeraria o boss do aluno. Versão própria (`BOSS_FALAS_VERSION`): subir
+  `_PERSONALIZACAO_PIPELINE_VERSION` por causa de fala regeraria a mídia de todas as turmas.
 - `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
   sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
   ou por aluno (estes vêm do `agente_intervencao`, quando um estado negativo

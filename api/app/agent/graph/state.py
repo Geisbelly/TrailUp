@@ -51,7 +51,6 @@ class TrailUpState(TypedDict, total=False):
     materiais_origem: list[dict[str, Any]]
     conteudo_boss_foco_id: int | None
     emit_legacy_topic_battle: bool
-    boss_visual_processado: bool
     notificacao_payload: dict[str, Any] | None
     ui_config: dict[str, Any] | None
     textos_gerados: Annotated[list[dict[str, Any]], operator.add]

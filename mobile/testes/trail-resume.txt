@@ -1,6 +1,7 @@
 src/utils/trailResume.test.ts
 src/utils/questionAnswerVisibility.test.ts
 src/components/QuestionActivity.visibility.test.tsx
+src/components/ia/BossFala.test.tsx
 src/components/ia/BossVictoryModal.test.tsx
 src/utils/studyContext.test.ts
 src/utils/studyClock.test.ts

@@ -4,6 +4,7 @@ import asyncio
 import copy
 import logging
 import socket
+import time
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
@@ -23,6 +24,7 @@ from app.repositories.personalizacao_blocos import PersonalizacaoBlocosRepositor
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
 from app.repositories.professor import ProfessorRepository
+from app.services.boss_falas import PERFIS_COM_BATALHA, gerar_falas_do_topico
 from app.services.classe_mapa_tema import gerar_classe_mapa_tema
 from app.services.content_enrichment import derive_base_blocks_and_topic, enrich_base_blocks, enrich_content_blocks
 from app.services.media_agents import (
@@ -1994,6 +1996,81 @@ async def _process_media_render_target(
     return {"record": completed_record}
 
 
+# Falas do boss: no maximo esta quantidade de chamadas ao modelo por rodada do worker (o resto
+# vai na proxima), duas ao mesmo tempo, e um (topico, perfil) que falhou espera antes de tentar
+# de novo -- o job e relido a cada poll, e sem a pausa um provedor fora seria chamado em todos.
+_BOSS_FALAS_POR_RODADA = 4
+_BOSS_FALAS_CONCORRENCIA = 2
+_BOSS_FALAS_PAUSA_APOS_FALHA_SEC = 30 * 60
+
+
+async def _gerar_falas_boss_do_job(
+    *,
+    app: FastAPI,
+    job: dict[str, Any],
+    targets: list[dict[str, Any]],
+) -> None:
+    """Gera as falas do boss de cada (topico x perfil) dos targets de base deste job.
+
+    Fica fora do `try` de cada target de proposito: falha aqui so vira log, nunca `failed`
+    num target. Quem decide se precisa gerar e o hash em `boss_falas` (`gerar_falas_do_topico`
+    devolve "atual" sem chamar o modelo), entao rodar a cada poll so custa leituras.
+    """
+
+    if job.get("kind") not in KINDS_BASE_POR_PERFIL:
+        return
+
+    grupos: list[tuple[int, str]] = []
+    for target in targets:
+        # Sem perfil na linha nao ha base por perfil (e o normalizador cairia em "mastermind").
+        if not target.get("brainhex_profile_key") or target.get("topico_id") is None or target.get("aluno_id") is not None:
+            continue
+        perfil = _normalize_profile_key(target.get("brainhex_profile_key"))
+        if perfil not in PERFIS_COM_BATALHA:
+            continue
+        grupo = (int(target["topico_id"]), perfil)
+        if grupo not in grupos:
+            grupos.append(grupo)
+    if not grupos:
+        return
+
+    falhas: dict[tuple[int, str], float] = _app_state_runtime(app, "boss_falas_falhas", dict)
+    agora = time.monotonic()
+    grupos = [
+        grupo
+        for grupo in grupos
+        if agora - falhas.get(grupo, float("-inf")) >= _BOSS_FALAS_PAUSA_APOS_FALHA_SEC
+    ][:_BOSS_FALAS_POR_RODADA]
+
+    session_factory = app.state.session_factory
+    semaforo = asyncio.Semaphore(_BOSS_FALAS_CONCORRENCIA)
+
+    async def _gerar(topico_id: int, perfil: str) -> str:
+        async with semaforo, session_factory() as session:
+            resultado = await gerar_falas_do_topico(
+                session=session,
+                settings=app.state.settings,
+                topico_id=topico_id,
+                perfil=perfil,
+            )
+        return resultado.status
+
+    resultados = await asyncio.gather(*(_gerar(*grupo) for grupo in grupos), return_exceptions=True)
+    for grupo, resultado in zip(grupos, resultados, strict=True):
+        if isinstance(resultado, BaseException):
+            logger.warning(
+                "Falha ao gerar falas do boss: topico=%s perfil=%s erro=%s",
+                grupo[0],
+                grupo[1],
+                _compact_exception_text(resultado),
+            )
+            falhas[grupo] = time.monotonic()
+        elif resultado in {"failed", "parcial"}:
+            falhas[grupo] = time.monotonic()
+        else:
+            falhas.pop(grupo, None)
+
+
 async def _prewarm_shared_content_enrichments(
     *,
     app: FastAPI,
@@ -2373,6 +2450,7 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
         job=job,
         targets=targets,
     )
+    await _gerar_falas_boss_do_job(app=app, job=job, targets=targets)
 
     target_concurrency = max(
         1,
