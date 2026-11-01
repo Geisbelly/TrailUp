@@ -70,6 +70,7 @@ export default function SocialScreen() {
   // Celular: uma página por área, com abas de ícone como as do perfil do Instagram, em vez da
   // rolagem longa com âncoras (que parecia landing page). Abre na aba do perfil até o aluno tocar outra.
   const rolagemRef = useRef<ScrollView>(null);
+  const [lobbyArena, setLobbyArena] = useState(0);
   const [abaEscolhida, setAbaEscolhida] = useState<AbaDoSocial | null>(null);
   const rolagemY = useRef(0);
   const topoDasAbas = useRef(0);
@@ -237,6 +238,8 @@ export default function SocialScreen() {
   // Na tela larga o destaque leva à aba equivalente; o evento já fica sempre no topo dela.
   const secaoDaAncora: Partial<Record<AncoraDoSocial, Section>> = { arena: "arena", convites: "invites", amigos: "friends", guildas: "guilds", encontrar: "discover", bloqueados: "blocked" };
   const irParaDoDestaque = (chave: AncoraDoSocial) => {
+    // "Entrar na arena" entra de fato: abre o lobby (modo, adversário, começar), além de levar à Arena.
+    if (chave === "arena") setLobbyArena((n) => n + 1);
     if (!desktop) return irPara(chave);
     const destino = secaoDaAncora[chave];
     if (destino) { setSection(destino); setSearch(""); }
@@ -335,7 +338,7 @@ export default function SocialScreen() {
                   ) : (
                     <View key="arena" {...ancora("arena")} style={styles.blocoCelular}>
                       <TituloDoBloco ancora="arena" titulo="Arena" palette={palette} atalho={atalho} />
-                      {carregandoOuErro ?? <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} dueloCom={dueloCom} />}
+                      {carregandoOuErro ?? <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} dueloCom={dueloCom} abrirLobby={lobbyArena} semEntrada={areaDestaque === "arena" && Boolean(destaque)} />}
                     </View>
                   );
                 })
@@ -386,7 +389,7 @@ export default function SocialScreen() {
               <Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={[styles.retryText, { color: palette.background }]}>Tentar novamente</Text></Pressable>
             </View>
           ) : section === "arena" ? (
-            <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} dueloCom={dueloCom} />
+            <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} dueloCom={dueloCom} abrirLobby={lobbyArena} />
           ) : section === "guilds" ? (
             <GuildSection guilds={guilds} janela={janela} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} />
           ) : people.length === 0 ? (
