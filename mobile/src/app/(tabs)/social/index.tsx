@@ -210,7 +210,8 @@ export default function SocialScreen() {
   const abas = abasDoSocial(profile);
   const abaDoDestaque = abaDaArea(areaDestaque);
   const abaAtiva = abaEscolhida ?? abaDoDestaque;
-  // O evento da turma também é disputa: mora na aba Arena, primeiro para quem tem destaque em Eventos.
+  // O evento da turma também é disputa: mora na mesma aba da arena. Para os perfis de batalha a aba
+  // é Arena e o duelo vem primeiro; para os demais ela é Eventos e o evento vem primeiro.
   const blocosArena = blocosDaArena(profile, temTurma);
   const resumo: ResumoDoSocial = {
     amigos: social?.friends ?? [],
@@ -307,7 +308,7 @@ export default function SocialScreen() {
               </ScrollView>
             ) : (
               <View onLayout={(e) => { topoDasAbas.current = e.nativeEvent.layout.y; }}>
-                <AbasDoSocial abas={abas} ativa={abaAtiva} palette={palette} contagem={pendentesDaAba} onTrocar={trocarAba} />
+                <AbasDoSocial abas={abas} ativa={abaAtiva} perfil={profile} temTurma={temTurma} palette={palette} contagem={pendentesDaAba} onTrocar={trocarAba} />
               </View>
             )}
           </View>

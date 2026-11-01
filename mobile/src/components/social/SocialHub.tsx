@@ -5,7 +5,7 @@ import { journeyObjects, profileBanners, rankingArenas } from "@/constants/desig
 import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brainHexProfiles";
 import { brainHexGuideNames, getBrainHexConfig, guardianFullImages } from "@/constants/profileImages";
 import type { Guild } from "@/services/social/guildModel";
-import type { AbaDoSocial, AncoraDoSocial, AreaDoSocial } from "@/services/social/socialDestaque";
+import { cabecaDaDisputa, type AbaDoSocial, type AncoraDoSocial, type AreaDoSocial } from "@/services/social/socialDestaque";
 import type { SocialPerson } from "@/services/social/socialModel";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { bossDoPerfil } from "@/utils/contentBossVisual";
@@ -259,23 +259,29 @@ export function SocialHubDestaque({ area, profile, palette, resumo, onIr, onConv
   );
 }
 
-/** Ícone e nome de cada aba de página do celular. O evento é bloco da Arena, não aba. */
+/** Ícone e nome de cada aba de página do celular. */
 export const ABA_DA_AREA: Record<AbaDoSocial, { icone: Icone; rotulo: string }> = {
   arena: { icone: "sword-cross", rotulo: "Arena" },
   conversa: { icone: "forum-outline", rotulo: "Conversa" },
   descobrir: { icone: "compass-outline", rotulo: "Descobrir" },
 };
 
+/** A aba de disputa veste o perfil: Arena para quem joga por confronto, Eventos para os demais. */
+export function abaDoPerfil(aba: AbaDoSocial, perfil: string | null | undefined, temTurma: boolean): { icone: Icone; rotulo: string } {
+  if (aba === "arena" && cabecaDaDisputa(perfil, temTurma) === "eventos") return { icone: "calendar-star", rotulo: "Eventos" };
+  return ABA_DA_AREA[aba];
+}
+
 /**
  * Abas de página, como as do perfil do Instagram: ícone e nome em partes iguais, a ativa na cor
  * do perfil com o traço embaixo. Trocam a página inteira em vez de rolar até uma âncora.
  */
-export function AbasDoSocial({ abas, ativa, palette, contagem, onTrocar }: { abas: AbaDoSocial[]; ativa: AbaDoSocial; palette: ProfileShellPalette; contagem: Partial<Record<AbaDoSocial, number>>; onTrocar: (aba: AbaDoSocial) => void }) {
+export function AbasDoSocial({ abas, ativa, perfil, temTurma, palette, contagem, onTrocar }: { abas: AbaDoSocial[]; perfil: string | null | undefined; temTurma: boolean; ativa: AbaDoSocial; palette: ProfileShellPalette; contagem: Partial<Record<AbaDoSocial, number>>; onTrocar: (aba: AbaDoSocial) => void }) {
   return (
     <View accessibilityRole="tablist" style={[s.abas, { borderBottomColor: palette.border, backgroundColor: palette.background }]}>
       {abas.map((area) => {
         const ativo = area === ativa;
-        const { icone, rotulo } = ABA_DA_AREA[area];
+        const { icone, rotulo } = abaDoPerfil(area, perfil, temTurma);
         const n = contagem[area] ?? 0;
         return (
           <Pressable key={area} onPress={() => onTrocar(area)} accessibilityRole="tab" accessibilityState={{ selected: ativo }} accessibilityLabel={n ? `${rotulo}, ${n} pendentes` : rotulo} style={s.aba}>
