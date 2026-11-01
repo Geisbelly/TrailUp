@@ -32,6 +32,7 @@ import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { BarraPartesTopico } from "@/components/trilhas/BarraPartesTopico";
 import { CabecalhoTopicoDesktop, type EstadoBlocoTopico } from "@/components/web/CabecalhoTopicoDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
+import { useFalasDoBoss } from "@/hooks/useFalasDoBoss";
 import { getBrainHexConfig } from "@/constants/profileImages";
 import { LoadingState } from "@/components/LoadingState";
 import { TopicoIntroSummary } from "@/components/TopicoIntroSummary";
@@ -200,6 +201,8 @@ export default function TrilhaConteudoScreen() {
     registrarComposicaoDoTopico,
     emitSignal,
   } = useIA();
+  // Nome e falas do boss gerados em lote para a turma e o perfil (falas fixas enquanto nao ha).
+  useFalasDoBoss();
   const {
     beginStudySession,
     updateStudyContext,

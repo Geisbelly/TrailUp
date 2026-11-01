@@ -19,6 +19,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BossFala } from "./BossFala";
 import { IABattlePanel } from "./IABattlePanel";
 
 type BattleScope = Extract<IAFeatureSelectorScope, { scope: "topic" | "item" }>;
@@ -173,7 +174,16 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
   }
 
   // Mesmo confronto que o chip abriria (conteúdo ou módulo), já aberto.
-  if (variante === "painel") return <IABattlePanel scope={battleScope} surface="lateral" />;
+  // O balao da fala do boss fica preso a batalha, nos dois formatos.
+  const chaveDoConfronto = battleScope.scope === "item" ? battleScope.itemKey : null;
+  if (variante === "painel") {
+    return (
+      <View style={styles.painelComFala}>
+        <BossFala topicoId={topicoId} itemKey={chaveDoConfronto} arte={bossArt} palette={palette} />
+        <IABattlePanel scope={battleScope} surface="lateral" />
+      </View>
+    );
+  }
 
   const enemy = battleState?.enemy ?? resolvedBattle.battle.enemy;
   const hpMax = Math.max(1, Number(enemy.hpMax ?? 1));
@@ -200,6 +210,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
 
   return (
     <>
+      <BossFala topicoId={topicoId} itemKey={chaveDoConfronto} arte={bossArt} palette={palette} flutuante />
       <Pressable
         style={[
           styles.chip,
@@ -415,6 +426,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
 }
 
 const styles = StyleSheet.create({
+  painelComFala: { gap: 8 },
   pausada: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 8 },
   pausadaTitulo: { flexDirection: "row", alignItems: "center", gap: 8 },
   pausadaTituloTexto: { fontFamily: FontFamily.interMedium, fontSize: 15, fontWeight: "700" },

@@ -241,6 +241,10 @@ export type IABattleRuntimeState = {
   defeatedAt?: number | null;
   lastDamageAt?: number | null;
   warningSent?: boolean;
+  /** Marcos de vida que o boss já anunciou com fala gerada (cada um uma vez). */
+  bossMarcos?: ("metade_vida" | "um_quarto_vida")[];
+  /** Último balão de contra-ataque (o revide acontece sempre; o aviso, no máximo a cada 10 min). */
+  contraAtaqueAvisadoEm?: number | null;
   updatedAt: number;
 };
 

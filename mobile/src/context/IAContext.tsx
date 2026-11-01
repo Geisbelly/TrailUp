@@ -3,6 +3,7 @@ import { AppState } from "react-native";
 import { applyDamageToBattleState, buildBattleRuntimeKey, findStoredBattle, restoreBattleStates } from '@/utils/battleRuntime';
 import { BATTLE_DIFFICULTY_RULES, type BattleDifficultyKey, type BattleDifficultyRule, normalizeBattleDifficulty } from '@/utils/batalhaRegras';
 import { dimensionarBoss, type ComposicaoDoTopico } from '@/utils/vidaDoBoss';
+import { aplicarFalasNoBoss, conteudoDoBoss, enfileirarCue, escolherFala, falaDoGolpe, type FalasPorConteudo } from '@/utils/bossFalas';
 import { getBrainHexGuideName } from "@/constants/profileImages";
 import { useUsuario } from "@/context/SessaoContext";
 import {
@@ -70,6 +71,8 @@ type IAContextValue = {
   pendingBattleVictories: BattleVictory[];
   dismissBattleVictory: (id: string) => void;
   registerTopicPayload: (payload: PersonalizedTopicPayload | null | undefined) => void;
+  /** Falas geradas em lote (`boss_falas`) da turma e do perfil atuais, por conteúdo. */
+  registrarFalasDoBoss: (falas: FalasPorConteudo) => void;
   setActiveTopic: (topicoId: number | null, cycleId?: string | null) => void;
   registrarComposicaoDoTopico: (
     topicoId: number,
@@ -229,6 +232,8 @@ const DEFAULT_FEATURE_REGISTRY: Record<IAFeatureKey, IAFeatureDescriptor> = {
 };
 
 const IAContext = createContext<IAContextValue | null>(null);
+
+const CONTRA_ATAQUE_AVISO_MS = 10 * 60 * 1000;
 
 function getFeaturePreferenceStorageKey(userId: string) {
   return `@trailup/ia/preferences/${userId}`;
@@ -658,6 +663,20 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
   const [composicoesDeItem, setComposicoesDeItem] = useState<Record<string, ComposicaoDoTopico>>({});
   const composicoesDeItemRef = useRef(composicoesDeItem);
 
+  // Falas do boss por conteudo (`boss_falas`, base por perfil). O estado entra no
+  // `resolveFeature` (nome do boss na tela); o ref serve os cues do `trackSignal`, que sorteiam
+  // a fala na hora do evento. Mapa vazio = falas fixas de sempre.
+  const [falasDoBoss, setFalasDoBoss] = useState<FalasPorConteudo>({});
+  const falasDoBossRef = useRef(falasDoBoss);
+  const registrarFalasDoBoss = useCallback((falas: FalasPorConteudo) => {
+    falasDoBossRef.current = falas;
+    setFalasDoBoss(falas);
+  }, []);
+  const falasDoEstado = (estado: IABattleRuntimeState) => {
+    const conteudoId = conteudoDoBoss(estado.itemKey, estado.enemy);
+    return conteudoId != null ? falasDoBossRef.current[conteudoId] : undefined;
+  };
+
   const registrarComposicaoDoTopico = useCallback((
     topicoId: number,
     composicao: ComposicaoDoTopico,
@@ -845,6 +864,10 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       topicPatchesList.forEach(mergePatch);
       itemPatches.forEach(mergePatch);
 
+      if (key === "battle_mode" && resolved.battle) {
+        resolved.battle = aplicarFalasNoBoss(resolved.battle, falasDoBoss, itemKey);
+      }
+
       if (userPreferences[key] === false) {
         resolved.enabled = false;
         resolved.disabledReason = "user_preference";
@@ -915,6 +938,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
     [
       activeTopicId,
       effectiveMentalState.kind,
+      falasDoBoss,
       featureRegistry,
       getTopicPatch,
       guideName,
@@ -974,7 +998,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       createdAt: getNow(),
     };
 
-    setPendingCharacterCues((prev) => [...prev.slice(-2), nextCue]);
+    setPendingCharacterCues((prev) => enfileirarCue(prev, nextCue));
   }, []);
 
   const getBattleState = useCallback(
@@ -1047,7 +1071,14 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
           previousShieldMax > 0
             ? Math.max(0, Math.min(1, Number(existing.currentShield ?? previousShieldMax) / previousShieldMax))
             : 0;
+        // Falas geradas chegam depois do boss nascer (e o estado fica salvo no aparelho): o
+        // nome e as falas acompanham a config, o id e a vida nao.
+        const falasMudaram =
+          existing.enemy.name !== battle.enemy.name ||
+          existing.enemy.introLine !== battle.enemy.introLine ||
+          existing.enemy.defeatLine !== battle.enemy.defeatLine;
         const needsAdjustment =
+          falasMudaram ||
           previousHpMax !== rule.hpMax ||
           previousShieldMax !== rule.shieldMax ||
           normalizeBattleDifficulty(existing.moduleDifficulty ?? null) !== difficulty;
@@ -1058,6 +1089,9 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
             moduleDifficulty: difficulty,
             enemy: {
               ...existing.enemy,
+              name: battle.enemy.name,
+              introLine: battle.enemy.introLine,
+              defeatLine: battle.enemy.defeatLine,
               hpMax: rule.hpMax,
               shieldMax: rule.shieldMax,
             },
@@ -1364,17 +1398,27 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
                   },
                 },
               }));
-              enqueueCue({
-                message:
-                  "O boss revidou! Recuperou forcas e ergueu as defesas. Acelere para derruba-lo.",
-                title: `${battleState.enemy.name} contra-ataca`,
-                speakerName: battleState.enemy.name,
-                avatarUrl:
-                  battleState.enemy.visual?.avatarUrl ?? battleState.enemy.avatarUrl,
-                topicoId: signal.topicoId,
-                itemKey: battleState.itemKey ?? null,
-                featureKey: "battle_mode",
-              });
+              // O cronometro reinicia a cada contra-ataque: com o aluno parado ele revida a cada
+              // encontro. O balao avisa no maximo uma vez a cada 10 min; a vida volta sempre.
+              if (getNow() - (battleState.contraAtaqueAvisadoEm ?? 0) >= CONTRA_ATAQUE_AVISO_MS) {
+                enqueueCue({
+                  message:
+                    escolherFala(falasDoEstado(battleState), "contra_ataque") ??
+                    "O boss revidou! Recuperou forças e ergueu as defesas. Acelere para derrubá-lo.",
+                  title: `${battleState.enemy.name} contra-ataca`,
+                  speakerName: battleState.enemy.name,
+                  topicoId: signal.topicoId,
+                  itemKey: battleState.itemKey ?? null,
+                  featureKey: "battle_mode",
+                });
+                setRuntimeStates((prev) => ({
+                  ...prev,
+                  battleStates: {
+                    ...prev.battleStates,
+                    [battleKey]: { ...(prev.battleStates[battleKey] ?? battleState), contraAtaqueAvisadoEm: getNow() },
+                  },
+                }));
+              }
             }
             return;
           }
@@ -1388,12 +1432,9 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
 
           if (shouldOpenIntro) {
             enqueueCue({
-              message: battleState.enemy.introLine ?? "",
+              message: escolherFala(falasDoEstado(battleState), "entrada") ?? battleState.enemy.introLine ?? "",
               title: battleState.enemy.name,
               speakerName: battleState.enemy.name,
-              avatarUrl:
-                battleState.enemy.visual?.avatarUrl ??
-                battleState.enemy.avatarUrl,
               topicoId: signal.topicoId,
               itemKey: battleState.itemKey ?? null,
               featureKey: "battle_mode",
@@ -1422,17 +1463,15 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
             if (remainingMs > 0 && remainingMs <= timing.warningAtSec * 1000) {
               warningTriggered = true;
               enqueueCue({
+                // `copy.body` e o texto do modo batalha ("Cada acerto enfraquece..."), nao um alerta.
                 message:
-                  resolvedBattle.copy?.body ??
+                  escolherFala(falasDoEstado(battleState), "alerta_tempo") ??
                   "O encontro está no limite. Mantenha o foco para finalizar este conteúdo.",
                 title: "Boss em alerta",
                 speakerName:
                   battleState.enemy.name ??
                   resolvedBattle.copy?.speakerName ??
                   guideName,
-                avatarUrl:
-                  battleState.enemy.visual?.avatarUrl ??
-                  battleState.enemy.avatarUrl,
                 topicoId: signal.topicoId,
                 itemKey: battleState.itemKey ?? null,
                 featureKey: "battle_mode",
@@ -1457,6 +1496,16 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
           if (damage > 0) {
             const latest = runtimeRef.current.battleStates[battleKey] ?? battleState;
             const { nextState, defeatedNow } = applyDamageToBattleState(latest, damage);
+            const falas = falasDoEstado(latest);
+            // Provocacao, marco de vida (metade / um quarto) ou ultimas palavras, conforme o golpe.
+            const golpe = falaDoGolpe({
+              falas,
+              hpAntes: latest.currentHp,
+              hpDepois: nextState.currentHp,
+              hpMax: Number(latest.enemy.hpMax ?? 1),
+              derrotado: defeatedNow,
+              marcosAnunciados: latest.bossMarcos,
+            });
             setRuntimeStates((prev) => ({
               ...prev,
               battleStates: {
@@ -1464,14 +1513,28 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
                 [battleKey]: {
                   ...nextState,
                   warningSent: latest.warningSent || warningTriggered,
+                  bossMarcos: golpe.marcos,
                 },
               },
             }));
+            if (golpe.texto) {
+              enqueueCue({
+                message: golpe.texto,
+                title: latest.enemy.name,
+                speakerName: latest.enemy.name,
+                topicoId: signal.topicoId,
+                itemKey: latest.itemKey ?? null,
+                featureKey: "battle_mode",
+              });
+            }
 
             if (defeatedNow) {
               const victory: BattleVictory = {
                 id: `${battleKey}:${nextState.defeatedAt}`, userId, state: nextState,
-                message: resolvedBattle.battle.victoryMessage ?? 'Seu esforço venceu este desafio. Continue sua jornada!',
+                message:
+                  escolherFala(falas, "vitoria") ??
+                  resolvedBattle.battle.victoryMessage ??
+                  'Seu esforço venceu este desafio. Continue sua jornada!',
               };
               setPendingBattleVictories((items) => items.some((item) => item.id === victory.id) ? items : [...items, victory]);
             }
@@ -1663,6 +1726,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       pendingBattleVictories,
       dismissBattleVictory,
       registerTopicPayload,
+      registrarFalasDoBoss,
       setActiveTopic,
       registrarComposicaoDoTopico,
       hasFeaturePatch,
@@ -1687,6 +1751,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       dismissBattleVictory,
       pushMentorCue,
       registerTopicPayload,
+      registrarFalasDoBoss,
       resetBattleState,
       resolveFeature,
       resolvedFeatures,
