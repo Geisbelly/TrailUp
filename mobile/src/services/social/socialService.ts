@@ -1,4 +1,5 @@
 import { supabase } from "@/database/supabase";
+import { agruparNaoLidas, SEM_NAO_LIDAS, type NaoLidas, type TipoDeConversa } from "./chatNaoLidasModel";
 import { groupSocialRows, type SocialSnapshot } from "./socialModel";
 
 export async function carregarSocial(classeId?: number): Promise<SocialSnapshot> {
@@ -23,3 +24,17 @@ export const desbloquear = (relationshipId: string) => socialAction("social_desb
 export async function socialChatListar(alunoId: string) { const { data, error } = await supabase.rpc("social_chat_listar", { p_destinatario_id: alunoId }); if (error) throw error; return Array.isArray(data) ? data : []; }
 export async function socialChatEnviar(alunoId: string, texto: string) { return socialAction("social_chat_enviar", { p_destinatario_id: alunoId, p_texto: texto.trim() }); }
 export async function socialChatPresenca(alunoId: string) { const { data, error } = await supabase.rpc("social_presenca_aluno", { p_aluno_id: alunoId }); if (error) throw error; return Boolean((data as { online?: unknown } | null)?.online); }
+/** Contador de não lidas (`20261102_06`). Banco sem a migração ainda: sem contador, sem erro na tela. */
+export async function carregarNaoLidas(): Promise<NaoLidas> {
+  const { data, error } = await supabase.rpc("chat_nao_lidas");
+  if (error) {
+    if (error.code !== "PGRST202") console.warn("[Social] Falha ao contar mensagens não lidas:", error.message);
+    return SEM_NAO_LIDAS;
+  }
+  return agruparNaoLidas(data);
+}
+/** Marca a conversa como lida ao abrir e ao fechar. Melhor esforço: falhar só deixa o contador para a próxima leitura. */
+export async function marcarConversaLida(tipo: TipoDeConversa, conversaId: string): Promise<void> {
+  const { error } = await supabase.rpc("chat_marcar_lido", { p_tipo: tipo, p_conversa_id: conversaId });
+  if (error && error.code !== "PGRST202") console.warn("[Social] Falha ao marcar a conversa como lida:", error.message);
+}

@@ -14,6 +14,7 @@ import type { EstadoTopico } from "@/utils/painelTopicoTrilha";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import { textShadowStyle } from "@/utils/webShadow";
 import { BalaoVoceParouAqui, ChipEstadoTopico, textoDoEstado } from "./MarcadoresTopico";
+import { RESERVA_DOS_FLUTUANTES } from "./flutuantesDaTrilha";
 
 const IS_WEB = Platform.OS === "web";
 const SOMBRA_NOME = { offset: { width: 0, height: 1 }, radius: 8 };
@@ -83,6 +84,8 @@ export function MapaMosaicoCelular({
       {...foco}
       showsVerticalScrollIndicator={false}
       style={s.rolagem}
+      // Folga para o último país subir acima do botão de missões e do mentor.
+      contentContainerStyle={{ paddingBottom: RESERVA_DOS_FLUTUANTES }}
       onLayout={(e) => {
         foco.onLayout(e);
         const w = Math.round(e.nativeEvent.layout.width);

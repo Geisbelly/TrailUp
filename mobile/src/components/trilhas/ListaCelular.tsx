@@ -13,6 +13,7 @@ import type { EstadoTopico } from "@/utils/painelTopicoTrilha";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import { shadowStyle } from "@/utils/webShadow";
 import { RostoGuardiao } from "./MarcadoresTopico";
+import { RESERVA_DOS_FLUTUANTES } from "./flutuantesDaTrilha";
 
 /** Verde de "concluído" fixo (não vem do accent), como o `--success` do protótipo e a folha da Trilha. */
 const SUCESSO = "#62db9b";
@@ -99,7 +100,7 @@ export function ListaCelular({
 }
 
 const s = StyleSheet.create({
-  lista: { gap: ESPACO, paddingTop: 6, paddingHorizontal: 14, paddingBottom: 16 },
+  lista: { gap: ESPACO, paddingTop: 6, paddingHorizontal: 14, paddingBottom: RESERVA_DOS_FLUTUANTES },
   linha: {
     flexDirection: "row",
     alignItems: "center",

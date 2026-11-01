@@ -1,25 +1,24 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ArenaLobby, type InicioDoLobby } from "@/components/social/ArenaLobby";
 import { DesafioModal } from "@/components/social/DesafioModal";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import type { Guild } from "@/services/social/guildModel";
 import type { SocialPerson } from "@/services/social/socialModel";
 import {
-  argumentosDeCriacao,
   mensagemDaArena,
   pendentes,
   resultadoParaMim,
   rotuloDoElo,
   situacaoNaArena,
   tituloDoDesafio,
-  validarNovoDesafio,
   type DesafioDaArena,
   type FormatoDaArena,
   type ModoDaArena,
 } from "@/services/social/arenaModel";
-import { carregarArena, criarDesafioNaArena, responderConviteDaArena } from "@/services/social/guildService";
+import { carregarArena, responderConviteDaArena } from "@/services/social/guildService";
 
 type Props = {
   classeId: number;
@@ -33,6 +32,10 @@ type Props = {
    * escolhido. `chave` muda a cada clique, para repetir o mesmo amigo.
    */
   dueloCom?: { alunoId: string; chave: number } | null;
+  /** O "Entrar na arena" do cartão em destaque: abre o lobby. Muda a cada toque. */
+  abrirLobby?: number;
+  /** Sem o cartão de entrada quando o destaque da Arena, com o mesmo botão, já está logo acima. */
+  semEntrada?: boolean;
 };
 
 const FORMATOS: { key: FormatoDaArena; label: string }[] = [
@@ -45,8 +48,6 @@ const MODOS: { key: ModoDaArena; label: string }[] = [
   { key: "velocidade", label: "Velocidade" },
   { key: "todos", label: "Todos" },
 ];
-const QUANTIDADE = 5;
-
 const RESULTADO: Record<string, string> = {
   vitoria: "Vitória",
   derrota: "Derrota",
@@ -55,30 +56,24 @@ const RESULTADO: Record<string, string> = {
 };
 
 /**
- * A arena (20261021_19): desafio ranqueado com adversário, que vale Elo. Cria, aceita ou recusa
- * convite e abre a partida no `DesafioModal`, que responde por `arena_responder` quando o
- * desafio tem equipe 2.
+ * A arena (20261021_19): desafio ranqueado com adversário, que vale Elo. "Entrar na arena" abre o
+ * lobby (`ArenaLobby`: modo, adversário escolhido ou sorteado, começar); aqui ficam as partidas,
+ * o aceite ou recusa do convite e a partida no `DesafioModal`, que responde por `arena_responder`
+ * quando o desafio tem equipe 2.
  */
-export function ArenaSection({ classeId, meuId, people, guilds, accent, profile, dueloCom }: Props) {
+export function ArenaSection({ classeId, meuId, people, guilds, accent, profile, dueloCom, abrirLobby, semEntrada = false }: Props) {
   const palette = getProfileShellPalette(profile);
   const [lista, setLista] = useState<DesafioDaArena[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [formato, setFormato] = useState<FormatoDaArena>("solo");
-  const [modo, setModo] = useState<ModoDaArena>("precisao");
-  const [aliado, setAliado] = useState<string | null>(null);
-  const [adversarios, setAdversarios] = useState<string[]>([]);
-  const [rival, setRival] = useState<string | null>(null);
+  const [lobby, setLobby] = useState<{ inicio: InicioDoLobby } | null>(null);
   const [jogando, setJogando] = useState<string | null>(null);
 
   const colegas = useMemo(
     () => people.filter((p) => p.status !== "blocked" && p.alunoId !== meuId),
     [people, meuId],
   );
-  const minhaGuilda = guilds.find((g) => g.souMembro) ?? null;
-  const rivais = guilds.filter((g) => !g.souMembro && g.membrosAtivos > 0);
-
   const recarregar = useCallback(async () => {
     if (classeId <= 0) return;
     setCarregando(true);
@@ -97,52 +92,15 @@ export function ArenaSection({ classeId, meuId, people, guilds, accent, profile,
 
   useEffect(() => {
     if (!dueloCom) return;
-    setFormato("solo");
-    setAliado(null);
-    setRival(null);
-    setAdversarios([dueloCom.alunoId]);
     setAviso(null);
+    setLobby({ inicio: { formato: "solo", adversarios: [dueloCom.alunoId] } });
   }, [dueloCom]);
 
-  function trocarFormato(f: FormatoDaArena) {
-    setFormato(f);
-    setAliado(null);
-    setAdversarios([]);
-    setRival(null);
+  useEffect(() => {
+    if (!abrirLobby) return;
     setAviso(null);
-  }
-
-  function alternarAdversario(id: string) {
-    const max = formato === "dupla" ? 2 : 1;
-    setAdversarios((atual) =>
-      atual.includes(id) ? atual.filter((x) => x !== id) : max === 1 ? [id] : [...atual, id].slice(-max),
-    );
-    if (aliado === id) setAliado(null);
-  }
-
-  function alternarAliado(id: string) {
-    setAliado((atual) => (atual === id ? null : id));
-    setAdversarios((atual) => atual.filter((x) => x !== id));
-  }
-
-  const novo = { formato, aliado, adversarios, guildaId: minhaGuilda?.id ?? null, guildaRival: rival };
-  const problema = validarNovoDesafio(novo, meuId);
-
-  async function criar() {
-    if (problema || ocupado) return;
-    setOcupado("criar");
-    setAviso(null);
-    try {
-      await criarDesafioNaArena(argumentosDeCriacao(classeId, novo, modo, QUANTIDADE));
-      trocarFormato(formato);
-      setAviso("Desafio enviado. O convite fica aberto por cerca de 24 h; vale quando o adversário aceitar.");
-      await recarregar();
-    } catch (error) {
-      setAviso(mensagemDaArena(error));
-    } finally {
-      setOcupado(null);
-    }
-  }
+    setLobby({ inicio: null });
+  }, [abrirLobby]);
 
   async function convite(d: DesafioDaArena, aceitar: boolean) {
     setOcupado(d.id);
@@ -174,56 +132,17 @@ export function ArenaSection({ classeId, meuId, people, guilds, accent, profile,
 
   return (
     <View style={s.raiz}>
-      <View style={[s.caixa, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-        <View style={s.cabecalho}>
-          <MaterialCommunityIcons name="sword-cross" size={20} color={accent} />
-          <Text style={[s.titulo, { color: palette.text }]}>Novo desafio</Text>
-          <Text style={[s.selo, { color: accent, borderColor: accent }]}>Vale Elo</Text>
+      {semEntrada ? null : <Pressable onPress={() => { setAviso(null); setLobby({ inicio: null }); }} accessibilityRole="button" accessibilityLabel="Entrar na arena. Vale Elo."
+        style={[s.caixa, s.entrar, { backgroundColor: palette.surface, borderColor: accent }]}>
+        <View style={[s.entrarIcone, { backgroundColor: accent }]}>
+          <MaterialCommunityIcons name="sword-cross" size={24} color={palette.background} />
         </View>
-        <View style={s.linha}>{FORMATOS.map((f) => chip(formato === f.key, f.label, () => trocarFormato(f.key), f.key))}</View>
-
-        {formato === "guilda" ? (
-          <>
-            <Text style={[s.rotulo, { color: palette.textMuted }]}>
-              {minhaGuilda ? `Sua guilda: ${minhaGuilda.nome}. Rival:` : "Entre numa guilda para desafiar outra."}
-            </Text>
-            {minhaGuilda ? (
-              <View style={s.linha}>
-                {rivais.length
-                  ? rivais.map((g) => chip(rival === g.id, g.nome, () => setRival(rival === g.id ? null : g.id), g.id))
-                  : <Text style={{ color: palette.textMuted }}>Nenhuma outra guilda com membros.</Text>}
-              </View>
-            ) : null}
-          </>
-        ) : (
-          <>
-            {formato === "dupla" ? (
-              <>
-                <Text style={[s.rotulo, { color: palette.textMuted }]}>Sua dupla</Text>
-                <View style={s.linha}>{colegas.map((p) => chip(aliado === p.alunoId, p.apelido ?? p.nome, () => alternarAliado(p.alunoId), `a-${p.alunoId}`))}</View>
-              </>
-            ) : null}
-            <Text style={[s.rotulo, { color: palette.textMuted }]}>{formato === "dupla" ? "Adversários (2)" : "Adversário"}</Text>
-            <View style={s.linha}>
-              {colegas.length
-                ? colegas.map((p) => chip(adversarios.includes(p.alunoId), p.apelido ?? p.nome, () => alternarAdversario(p.alunoId), `x-${p.alunoId}`))
-                : <Text style={{ color: palette.textMuted }}>Nenhum colega disponível.</Text>}
-            </View>
-          </>
-        )}
-
-        <Text style={[s.rotulo, { color: palette.textMuted }]}>Modo · {QUANTIDADE} questões · uma tentativa cada</Text>
-        <View style={s.linha}>{MODOS.map((m) => chip(modo === m.key, m.label, () => setModo(m.key), m.key))}</View>
-
-        <Pressable
-          disabled={Boolean(problema) || ocupado !== null}
-          onPress={() => void criar()}
-          style={[s.botao, { backgroundColor: problema || ocupado ? palette.borderStrong : accent }]}
-        >
-          <Text style={[s.botaoTexto, { color: palette.background }]}>{ocupado === "criar" ? "Enviando..." : "Desafiar"}</Text>
-        </Pressable>
-        {problema ? <Text style={[s.dica, { color: palette.textMuted }]}>{problema}</Text> : null}
-      </View>
+        <View style={s.entrarTexto}>
+          <Text style={[s.titulo, { color: palette.text }]}>Entrar na arena</Text>
+          <Text style={[s.rotulo, { color: palette.textMuted }]}>Escolha o modo e o adversário, ou sorteie um.</Text>
+        </View>
+        <Text style={[s.selo, { color: accent, borderColor: accent }]}>Vale Elo</Text>
+      </Pressable>}
 
       {aviso ? <Text style={[s.aviso, { color: palette.text }]}>{aviso}</Text> : null}
 
@@ -268,6 +187,21 @@ export function ArenaSection({ classeId, meuId, people, guilds, accent, profile,
         })
       )}
 
+      <ArenaLobby
+        visible={lobby !== null}
+        inicio={lobby?.inicio ?? null}
+        classeId={classeId}
+        meuId={meuId}
+        colegas={colegas}
+        guilds={guilds}
+        palette={palette}
+        onClose={() => setLobby(null)}
+        onCriado={(texto) => {
+          setAviso(texto);
+          void recarregar();
+        }}
+      />
+
       <DesafioModal
         visible={jogando !== null}
         desafioId={jogando}
@@ -286,15 +220,15 @@ export function ArenaSection({ classeId, meuId, people, guilds, accent, profile,
 const s = StyleSheet.create({
   raiz: { gap: 12 },
   caixa: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 8 },
-  cabecalho: { flexDirection: "row", alignItems: "center", gap: 8 },
+  entrar: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1.5, minHeight: 72 },
+  entrarIcone: { width: 46, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  entrarTexto: { flex: 1, gap: 2 },
   titulo: { fontFamily: FontFamily.inikaBold, fontSize: 16, flexShrink: 1 },
-  selo: { marginLeft: "auto", borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, fontSize: 11 },
+  selo: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, fontSize: 11 },
   rotulo: { fontSize: 12 },
   linha: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
   chipTexto: { fontSize: 13 },
-  botao: { borderRadius: 12, paddingVertical: 10, alignItems: "center", marginTop: 4 },
-  botaoTexto: { fontFamily: FontFamily.inikaBold, fontSize: 14 },
   dica: { fontSize: 12 },
   aviso: { fontSize: 13, textAlign: "center" },
   resultado: { fontFamily: FontFamily.inikaBold, fontSize: 14 },

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { BrainHexProfile } from "@/constants/brainHexProfiles";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
-import { AREA_EM_DESTAQUE, abaDaAncora, abasDoSocial, areaEmDestaque, blocosDaArena, ordemDasAreas } from "./socialDestaque";
+import { AREA_EM_DESTAQUE, abaDaAncora, abasDoSocial, areaEmDestaque, blocosDaArena, cabecaDaDisputa, ordemDasAreas } from "./socialDestaque";
 
 const BRAIN_HEX_PROFILES = Object.keys(AREA_EM_DESTAQUE) as BrainHexProfile[];
 
@@ -42,17 +42,24 @@ test("abas: três, a do perfil abre e nenhuma some", () => {
   for (const perfil of BRAIN_HEX_PROFILES) assert.deepEqual([...abasDoSocial(perfil)].sort(), ["arena", "conversa", "descobrir"], perfil);
 });
 
-test("Eventos mora na Arena: Achiever e Mastermind abrem nela, com o evento primeiro", () => {
-  assert.equal(abasDoSocial("achiever")[0], "arena");
-  assert.equal(abasDoSocial("mastermind")[0], "arena");
-  assert.deepEqual(blocosDaArena("achiever", true), ["evento", "arena"]);
-  assert.deepEqual(blocosDaArena("conqueror", true), ["arena", "evento"]);
-  assert.deepEqual(blocosDaArena("seeker", true), ["arena", "evento"]);
+test("a aba de disputa é Arena só para os perfis de batalha; para os demais, Eventos", () => {
+  for (const perfil of BRAIN_HEX_PROFILES) {
+    const batalha = getBrainHexProfileCapabilities(perfil).hasBattle;
+    assert.equal(cabecaDaDisputa(perfil), batalha ? "arena" : "eventos", perfil);
+    assert.deepEqual(blocosDaArena(perfil, true), batalha ? ["arena", "evento"] : ["evento", "arena"], perfil);
+  }
 });
 
-test("sem turma, a Arena fica sem o bloco do evento", () => {
+test("Achiever e Mastermind abrem na aba de disputa, que para eles é Eventos", () => {
+  assert.equal(abasDoSocial("achiever")[0], "arena");
+  assert.equal(abasDoSocial("mastermind")[0], "arena");
+  assert.equal(cabecaDaDisputa("achiever"), "eventos");
+});
+
+test("sem turma, a aba de disputa é Arena para todos e fica sem o bloco do evento", () => {
   assert.deepEqual(blocosDaArena("achiever", false), ["arena"]);
   assert.deepEqual(blocosDaArena("daredevil", false), ["arena"]);
+  assert.equal(cabecaDaDisputa("achiever", false), "arena");
 });
 
 test("cada bloco mora numa aba, bloqueados na Conversa", () => {

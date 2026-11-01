@@ -6,7 +6,10 @@ import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brai
  */
 export type AreaDoSocial = "arena" | "conversa" | "eventos" | "descobrir";
 
-/** As abas de página do celular. Eventos não é aba: é bloco da Arena. */
+/**
+ * As abas de página do celular. `arena` é a aba de disputa, que junta o evento da turma e a
+ * arena; o nome, o ícone e o bloco que vem primeiro nela dependem do perfil (`cabecaDaDisputa`).
+ */
 export type AbaDoSocial = "arena" | "conversa" | "descobrir";
 
 /** Os blocos que a aba já tinha. */
@@ -80,11 +83,18 @@ export function abasDoSocial(perfil: string | null | undefined): AbaDoSocial[] {
 }
 
 /**
- * Os blocos da aba Arena, na ordem do perfil: o evento primeiro para quem tem destaque em
- * Eventos, a arena primeiro para os demais. Sem turma não há evento nem missão do dia.
+ * O que a aba de disputa é para cada perfil. Só os perfis de batalha (destaque na Arena) a veem
+ * como Arena, com o duelo primeiro. Para os demais ela é Eventos, com o evento e as missões
+ * primeiro e a arena logo abaixo: a mesma ordem de antes do hub, sem vestir de batalha quem não
+ * joga por confronto. Sem turma não há evento, e a aba volta a ser Arena para todos.
  */
+export function cabecaDaDisputa(perfil: string | null | undefined, temTurma = true): "arena" | "eventos" {
+  return temTurma && areaEmDestaque(perfil) !== "arena" ? "eventos" : "arena";
+}
+
+/** Os blocos da aba de disputa, na ordem do perfil. Sem turma não há evento nem missão do dia. */
 export function blocosDaArena(perfil: string | null | undefined, temTurma: boolean): ("evento" | "arena")[] {
-  const blocos: ("evento" | "arena")[] = areaEmDestaque(perfil) === "eventos" ? ["evento", "arena"] : ["arena", "evento"];
+  const blocos: ("evento" | "arena")[] = cabecaDaDisputa(perfil, temTurma) === "arena" ? ["arena", "evento"] : ["evento", "arena"];
   return blocos.filter((bloco) => temTurma || bloco !== "evento");
 }
 

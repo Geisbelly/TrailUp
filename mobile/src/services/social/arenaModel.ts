@@ -193,6 +193,48 @@ export function validarNovoDesafio(n: NovoDesafio, meuId: string | null): string
   return n.guildaRival === n.guildaId ? "A rival tem de ser outra guilda." : null;
 }
 
+/** Embaralha sem mexer na lista original (Fisher-Yates). `sorteio` devolve [0, 1), como `Math.random`. */
+function embaralhar<T>(lista: readonly T[], sorteio: () => number): T[] {
+  const copia = [...lista];
+  for (let i = copia.length - 1; i > 0; i--) {
+    const j = Math.floor(sorteio() * (i + 1));
+    [copia[i], copia[j]] = [copia[j], copia[i]];
+  }
+  return copia;
+}
+
+/**
+ * Busca aleatória da arena: completa o que falta no desafio com quem está na turma, como o
+ * "partida rápida" dos jogos. Vale para os três formatos:
+ * - duelo: um adversário;
+ * - dupla: a dupla (se o aluno ainda não escolheu) e os dois adversários;
+ * - guilda: a guilda rival.
+ *
+ * Quem está online vem antes de quem não está, para o convite ter chance de ser aceito logo; a
+ * ordem dentro de cada grupo é sorteada. O que o aluno já escolheu fica. Sem gente suficiente o
+ * campo fica incompleto, e `validarNovoDesafio` diz o que falta. O sorteio é do lado do aluno:
+ * o convite que sai é o mesmo de quando ele escolhe, e o banco continua cobrando as regras.
+ */
+export function sortearParaArena(
+  n: NovoDesafio,
+  colegas: readonly { alunoId: string; online: boolean }[],
+  rivais: readonly { id: string }[],
+  sorteio: () => number = Math.random,
+): NovoDesafio {
+  if (n.formato === "guilda") {
+    const rival = embaralhar(rivais.filter((g) => g.id !== n.guildaId), sorteio)[0];
+    return { ...n, guildaRival: rival?.id ?? null };
+  }
+  const fila = [
+    ...embaralhar(colegas.filter((c) => c.online), sorteio),
+    ...embaralhar(colegas.filter((c) => !c.online), sorteio),
+  ].map((c) => c.alunoId);
+  const livres = (usados: (string | null)[]) => fila.filter((id) => !usados.includes(id));
+  if (n.formato === "solo") return { ...n, aliado: null, adversarios: livres([]).slice(0, 1) };
+  const aliado = n.aliado ?? livres([])[0] ?? null;
+  return { ...n, aliado, adversarios: livres([aliado]).slice(0, 2) };
+}
+
 /** Os argumentos de `arena_desafio_criar`, com os campos que não valem para o formato em null. */
 export function argumentosDeCriacao(classeId: number, n: NovoDesafio, modo: ModoDaArena, quantidade: number) {
   return {

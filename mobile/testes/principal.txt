@@ -36,6 +36,7 @@ src/services/social/guildWindowModel.test.ts
 src/services/social/publicProfileModel.test.ts
 src/services/social/socialModel.test.ts
 src/services/social/socialDestaque.test.ts
+src/services/social/chatNaoLidasModel.test.ts
 src/services/studySessions.test.ts
 src/services/telemetriaApi.persistence.test.ts
 src/services/telemetriaCliente.core.test.ts
@@ -139,6 +140,7 @@ src/utils/realtimeDeleteObservavel.test.ts
 src/utils/eixosDoDesafio.test.ts
 src/services/eventos/eventoModel.test.ts
 src/services/missoes/missaoModel.test.ts
+src/services/missoes/rastreadorDeMissoes.core.test.ts
 src/utils/estadoDeAudio.test.ts
 src/components/funcionais/VideoPlayer.youtube.test.tsx
 src/utils/tocadorDeAudioWeb.test.ts
