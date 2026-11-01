@@ -1,5 +1,6 @@
 from app.agent.graph.nodes.agente_ai_patch import agente_ai_patch
 from app.agent.graph.nodes.agente_conteudo import agente_conteudo
+from app.agent.graph.nodes.agente_cronometro import agente_cronometro
 from app.agent.graph.nodes.agente_emocao import agente_emocao
 from app.agent.graph.nodes.agente_geracao_midia import agente_geracao_midia
 from app.agent.graph.nodes.agente_intervencao import agente_intervencao
@@ -26,6 +27,7 @@ __all__ = [
     "agente_geracao_midia",
     "agente_notificacao",
     "agente_intervencao",
+    "agente_cronometro",
     "agente_ui",
     "agente_texto",
     "persist_personalizacao",

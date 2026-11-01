@@ -452,8 +452,12 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > grafo. **Só chega aos nós porque `memoria_aluno` está declarada em
 > `TrailUpState`**: chave fora do schema é descartada em silêncio na entrada
 > do LangGraph, e até a #64 foi o que aconteceu — todo nó lia `None`. Quem usa:
-> `agente_ui` (tema de suporte) e `agente_intervencao` (grava em `intervencoes`
-> com escopo aluno e, se for o caso, sugere notificação em `notificacoes_ia`).
+> `agente_ui` (tema de suporte), `agente_intervencao` (grava em `intervencoes`
+> com escopo aluno e, se for o caso, sugere notificação em `notificacoes_ia`) e
+> `agente_cronometro` (#136: desliga o cronômetro das atividades por ansiedade ou
+> sobrecarga recorrente, ou por 3 das últimas 5 tentativas cronometradas fora do
+> tempo, lidas em `desempenho_recente.tentativas`; só desliga, e a escolha do
+> aluno vence — o UPSERT confere `origem <> 'aluno'` na própria escrita).
 > Três detalhes que não são óbvios:
 >
 > - **A leitura é uma janela, não o histórico.** `listar_por_aluno` vem com

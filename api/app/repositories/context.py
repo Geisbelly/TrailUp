@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.tentativas import TentativasRepository
 from app.schemas.common import DesempenhoSummary, Evento
 from app.schemas.perfil import PerfilScore
 
@@ -35,6 +36,7 @@ class ContextRepository:
         desempenho = await self._fetch_desempenho(aluno_id, classe_id)
         trilha = await self._fetch_trilha(aluno_id, classe_id)
         ia_descricao = await self._fetch_ia_descricao(aluno_id)
+        desempenho.tentativas = await TentativasRepository(self.session).resumo_do_aluno(aluno_id, classe_id)
 
         return {
             "aluno": aluno,

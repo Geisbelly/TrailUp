@@ -76,6 +76,7 @@ def test_payload_troca_uuid_por_ref_e_mantem_ausencia_como_none() -> None:
         "dias_parado_no_topico": 19,
         "risco_abandono": "alto",
         "risco_abandono_origem": "modelo",
+        "tentativas_30d": None,
     }
     # Sem dado continua sem dado: nada vira zero no caminho ate o modelo.
     assert a2["acertos_30d_pct"] is None
@@ -83,7 +84,7 @@ def test_payload_troca_uuid_por_ref_e_mantem_ausencia_como_none() -> None:
     assert a2["sinal"] is None
     assert a2["parado_em_topico"] is None
     assert a2["risco_abandono"] is None
-    assert payload["turma"] == {"total_alunos": 2, "perfis": {"seeker": 2}}
+    assert payload["turma"] == {"total_alunos": 2, "perfis": {"seeker": 2}, "tentativas_30d": None}
     assert "u-a" not in str(payload)
 
 
@@ -328,3 +329,38 @@ def test_instante_do_banco_vira_dia_de_brasilia() -> None:
     # 01:30 UTC de 21/10 = 22:30 de 20/10 em Brasilia.
     assert _data(datetime(2026, 10, 21, 1, 30, tzinfo=UTC)) == date(2026, 10, 20)
     assert _data(None) is None
+
+
+def test_payload_leva_as_tentativas_por_aluno_e_da_turma() -> None:
+    """#136: 1a e ultima tentativa, esgotadas e tempo; aluno sem tentativa segue sem dado."""
+    from datetime import UTC, datetime
+
+    from app.services.tentativas_atividade import resumir_tentativas
+
+    def t(atividade, numero, acertos, no_tempo=True, maximo=None):
+        return {
+            "atividade_id": atividade, "numero": numero, "acertos_percentual": acertos, "tentativas_max": maximo,
+            "respondida_em": datetime(2026, 11, 1, 10, numero, tzinfo=UTC), "cronometrada": True, "no_tempo": no_tempo,
+        }
+
+    resumo = resumir_tentativas([t(1, 1, 40, no_tempo=False, maximo=2), t(1, 2, 90, maximo=2)])
+    payload, _, _ = montar_payload(
+        [{"aluno_id": "u-a", "perfil": "achiever"}, {"aluno_id": "u-b", "perfil": "seeker"}],
+        nomes={}, sinais={}, respostas={}, topicos=[], descartados=[], hoje=date(2026, 11, 1),
+        tentativas={"u-a": resumo, "u-fora-da-turma": resumo},
+    )
+    a1, a2 = payload["alunos"]
+    assert a1["tentativas_30d"] == {
+        "respondidas": 2,
+        "media_por_atividade": 2.0,
+        "atividades_esgotadas": 1,
+        "cronometradas": 2,
+        "no_tempo_pct": 50.0,
+        "acertos_primeira_pct": 40.0,
+        "acertos_ultima_pct": 90.0,
+    }
+    assert a2["tentativas_30d"] is None
+    turma = payload["turma"]["tentativas_30d"]
+    # Só os alunos da turma entram no agregado.
+    assert (turma["alunos_com_tentativa"], turma["respondidas"], turma["alunos_com_atividade_esgotada"]) == (1, 2, 1)
+    assert "u-a" not in str(payload)

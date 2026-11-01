@@ -63,6 +63,8 @@ class TrailUpState(TypedDict, total=False):
     # le `None` - a recorrencia do agente_ui nunca disparava (#64).
     memoria_aluno: dict[str, Any] | None
     intervencao_payload: dict[str, Any] | None
+    # `CronometroDecisao` (#136): o executor desliga o cronometro e avisa o professor.
+    cronometro_payload: dict[str, Any] | None
 
     next: list[str]
     ciclo_id: str

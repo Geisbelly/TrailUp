@@ -27,3 +27,5 @@ class DesempenhoSummary(BaseModel):
     atividade_recente_id: int | None = None
     topico_recente_id: int | None = None
     classe_snapshot: dict[str, Any] = Field(default_factory=dict)
+    # Resumo de `atividade_tentativas` na turma (#136): `tentativas_atividade.resumir_tentativas`.
+    tentativas: dict[str, Any] = Field(default_factory=dict)
