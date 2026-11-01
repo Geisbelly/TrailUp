@@ -5,16 +5,15 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { getBrainHexGuideName } from "@/constants/profileImages";
 import { rotuloDoEscopo } from "@/services/missoes/missaoModel";
 import {
   carregarMissoesDoRastreador,
@@ -30,17 +29,14 @@ import {
 } from "@/services/missoes/rastreadorDeMissoes";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
-import { shadowStyle } from "@/utils/webShadow";
 
-const IS_WEB = Platform.OS === "web";
-const SOMBRA = { offset: { width: 0, height: 8 }, opacity: 0.3, radius: 16 };
+import { BotaoDoRastreador } from "./BotaoDoRastreador";
+import { comGuia, varianteDoRastreador, type VarianteDoRastreador } from "./variantesDoRastreador";
+
 // Cores de estado fixas, como as do selo de prazo: não derivam do accent do perfil (AAA).
 const ATENCAO = "#F5B544";
 const CRITICA = "#FF6B6B";
 const SUCESSO = "#4ADE80";
-
-/** Largura do lançador do mentor (58) + a margem dele (16) + o respiro entre os dois (12). */
-const ESPACO_DO_MENTOR = 58 + 16 + 12;
 
 type Props = {
   classeId: number;
@@ -52,6 +48,8 @@ type Props = {
   palette: ProfileShellPalette;
   /** Distância do pé da tela. Na Trilha, a mesma do lançador do mentor: os dois ficam alinhados. */
   base: number;
+  /** O perfil visual: moldura, emblema e progresso do ícone (`variantesDoRastreador`). */
+  perfil: string | null | undefined;
   /** Esconde o botão (folha do tópico aberta por cima do mapa). A folha de missões não fecha. */
   oculto?: boolean;
   /** "Ir" de missão cujo tópico está selado: a Trilha mostra o tópico e o que falta para abrir. */
@@ -61,10 +59,11 @@ type Props = {
 /**
  * O rastreador de missões da Trilha — o "quest tracker" dos jogos.
  *
- * Fechado, é um botão no canto inferior esquerdo com a missão da vez (critério em
- * `ordenarParaRastreador`), o progresso dela e um selo com quantas estão em aberto. Aberto, é
- * uma folha com a lista: cada missão com progresso, prazo, recompensa e o "Ir", que leva ao
- * tópico — ou à atividade, na missão-entrega.
+ * Fechado, é só um ícone — moldura, emblema e progresso do perfil (`variantesDoRastreador`,
+ * `BotaoDoRastreador`) e um selo com quantas estão em aberto —, no canto de baixo à esquerda,
+ * na linha do mentor. Aberto, é uma folha com a lista: cada missão com progresso, prazo,
+ * recompensa e o "Ir", que leva ao tópico — ou à atividade, na missão-entrega. A missão em
+ * destaque é a da vez (critério em `ordenarParaRastreador`).
  *
  * Mesma fonte da aba Social, onde a lista continua: o que aparece, e se está cumprido, é o
  * servidor que diz. Recarrega a cada volta à Trilha, porque é estudando fora dela que a
@@ -77,6 +76,7 @@ export function RastreadorDeMissoes({
   atualId,
   palette,
   base,
+  perfil,
   oculto,
   onVerTopicoBloqueado,
 }: Props) {
@@ -134,6 +134,7 @@ export function RastreadorDeMissoes({
       erro={erro}
       palette={palette}
       base={base}
+      perfil={perfil}
       oculto={oculto}
       onAtualizar={() => void carregar()}
       onIr={ir}
@@ -149,6 +150,7 @@ type PropsDoPainel = {
   erro: boolean;
   palette: ProfileShellPalette;
   base: number;
+  perfil: string | null | undefined;
   oculto?: boolean;
   onAtualizar: () => void;
   onIr: (m: MissaoNoRastreador) => void;
@@ -162,12 +164,12 @@ export function PainelDeMissoes({
   erro,
   palette,
   base,
+  perfil,
   oculto,
   onAtualizar,
   onIr,
 }: PropsDoPainel) {
   const [aberto, setAberto] = useState(false);
-  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
   const { atual, abertas, encerradas } = useMemo(
@@ -183,59 +185,25 @@ export function PainelDeMissoes({
   // Primeira carga sem resposta: nada. Um botão vazio piscando antes da lista é ruído.
   if (missoes === null && !erro) return null;
 
-  const largura = Math.max(168, Math.min(320, width - 16 - ESPACO_DO_MENTOR));
+  const variante = varianteDoRastreador(perfil);
+  const guia = getBrainHexGuideName(variante.perfil);
   const pendentes = abertas.length;
-  const pct = atual ? percentualDaMissao(atual) : 0;
+  // Na linha do mentor, acima da folha do tópico: o lugar é o mesmo em todos os perfis.
+  const posicao = { left: 16, bottom: base };
 
   return (
     <>
       {!oculto ? (
-        <Pressable
+        <BotaoDoRastreador
+          variante={variante}
+          guia={guia}
+          atual={atual}
+          abertas={abertas}
+          encerradas={encerradas}
+          palette={palette}
+          posicao={posicao}
           onPress={() => setAberto(true)}
-          accessibilityRole="button"
-          accessibilityLabel={
-            atual
-              ? `Missões: ${pendentes} em aberto. Próxima: ${atual.titulo}, ${pct}% feito. Abrir lista.`
-              : "Missões: nenhuma em aberto. Abrir lista."
-          }
-          style={({ pressed }) => [
-            s.botao,
-            {
-              bottom: base,
-              maxWidth: largura,
-              backgroundColor: palette.surfaceElevated,
-              borderColor: palette.borderStrong,
-              opacity: pressed ? 0.85 : 1,
-              ...shadowStyle({ ...SOMBRA, color: palette.background }, IS_WEB),
-            },
-          ]}
-        >
-          <View style={[s.emblema, { backgroundColor: palette.accent }]}>
-            <MaterialCommunityIcons
-              name={atual ? "flag-variant" : "check-decagram"}
-              size={22}
-              color={palette.background}
-            />
-            {pendentes > 0 ? (
-              <View style={[s.selo, { backgroundColor: palette.text, borderColor: palette.surfaceElevated }]}>
-                <Text style={[s.seloTexto, { color: palette.background }]}>{pendentes > 9 ? "9+" : pendentes}</Text>
-              </View>
-            ) : null}
-          </View>
-          <View style={s.botaoTextos}>
-            <Text style={[s.eyebrow, { color: palette.accent }]} numberOfLines={1}>
-              {atual ? (atual.categoria === "principal" ? "MISSÃO PRINCIPAL" : "MISSÃO") : "MISSÕES"}
-            </Text>
-            <Text style={[s.botaoTitulo, { color: palette.text }]} numberOfLines={1}>
-              {atual ? atual.titulo : erro && !missoes ? "Toque para ver" : "Tudo em dia"}
-            </Text>
-            {atual ? (
-              <View style={[s.trilho, { backgroundColor: palette.progressTrack }]}>
-                <View style={[s.preenchido, { width: `${pct}%`, backgroundColor: palette.accent }]} />
-              </View>
-            ) : null}
-          </View>
-        </Pressable>
+        />
       ) : null}
 
       <Modal visible={aberto} transparent animationType="slide" onRequestClose={() => setAberto(false)}>
@@ -259,17 +227,17 @@ export function PainelDeMissoes({
           >
             <View style={[s.alca, { backgroundColor: palette.border }]} />
             <View style={s.cabecalho}>
-              <MaterialCommunityIcons name="flag-checkered" size={22} color={palette.accent} />
+              <MaterialCommunityIcons name={variante.emblema as never} size={22} color={palette.accent} />
               <View style={{ flex: 1 }}>
                 <Text style={[s.folhaTitulo, { color: palette.text }]} accessibilityRole="header">
-                  Missões
+                  {comGuia(variante.tituloDaFolha, guia)}
                 </Text>
                 <Text style={[s.folhaSub, { color: palette.textMuted }]}>
                   {pendentes === 0
-                    ? "Nenhuma em aberto agora"
+                    ? "Missões · nenhuma em aberto agora"
                     : pendentes === 1
-                      ? "1 em aberto"
-                      : `${pendentes} em aberto`}
+                      ? "Missões · 1 em aberto"
+                      : `Missões · ${pendentes} em aberto`}
                 </Text>
               </View>
               <Pressable
@@ -312,14 +280,14 @@ export function PainelDeMissoes({
               ) : null}
 
               {abertas.map((m, i) => (
-                <CartaoDeMissao key={m.id} missao={m} destaque={i === 0} palette={palette} onIr={() => ir(m)} />
+                <CartaoDeMissao key={m.id} missao={m} destaque={i === 0} variante={variante} guia={guia} palette={palette} onIr={() => ir(m)} />
               ))}
 
               {encerradas.length ? (
                 <Text style={[s.secao, { color: palette.textMuted }]}>ENCERRADAS</Text>
               ) : null}
               {encerradas.map((m) => (
-                <CartaoDeMissao key={m.id} missao={m} destaque={false} palette={palette} onIr={() => ir(m)} />
+                <CartaoDeMissao key={m.id} missao={m} destaque={false} variante={variante} guia={guia} palette={palette} onIr={() => ir(m)} />
               ))}
             </ScrollView>
           </View>
@@ -332,11 +300,15 @@ export function PainelDeMissoes({
 function CartaoDeMissao({
   missao: m,
   destaque,
+  variante,
+  guia,
   palette,
   onIr,
 }: {
   missao: MissaoNoRastreador;
   destaque: boolean;
+  variante: VarianteDoRastreador;
+  guia: string;
   palette: ProfileShellPalette;
   onIr: () => void;
 }) {
@@ -364,12 +336,12 @@ function CartaoDeMissao({
     >
       {destaque ? (
         <Text style={[s.eyebrow, { color: palette.accent }]}>
-          {m.categoria === "principal" ? "AGORA · MISSÃO PRINCIPAL" : "AGORA"}
+          {comGuia(m.categoria === "principal" ? variante.rotuloPrincipal : variante.rotulo, guia, true)}
         </Text>
       ) : null}
       <View style={s.cartaoTopo}>
         <MaterialCommunityIcons
-          name={cumprida ? "check-circle" : expirada ? "timer-sand-complete" : m.origem === "professor" ? "school" : "calendar-star"}
+          name={cumprida ? "check-circle" : expirada ? "timer-sand-complete" : m.origem === "professor" ? "school" : "calendar-today"}
           size={20}
           color={cumprida ? SUCESSO : expirada ? palette.textSubtle : palette.accent}
         />
@@ -397,13 +369,13 @@ function CartaoDeMissao({
         <View style={s.chips}>
           {prazo ? (
             <View style={[s.chip, { borderColor: corPrazo }]}>
-              <MaterialCommunityIcons name="clock-outline" size={12} color={corPrazo} />
+              <MaterialCommunityIcons name="calendar-clock" size={12} color={corPrazo} />
               <Text style={[s.chipTexto, { color: corPrazo }]}>{prazo.rotulo}</Text>
             </View>
           ) : null}
           {recompensa ? (
             <View style={[s.chip, { borderColor: palette.border, backgroundColor: palette.surface }]}>
-              <MaterialCommunityIcons name="star-four-points" size={12} color={palette.accent} />
+              <MaterialCommunityIcons name="gift-open-outline" size={12} color={palette.accent} />
               <Text style={[s.chipTexto, { color: palette.text }]}>{recompensa}</Text>
             </View>
           ) : null}
@@ -440,38 +412,7 @@ function CartaoDeMissao({
 }
 
 const s = StyleSheet.create({
-  botao: {
-    position: "absolute",
-    left: 16,
-    zIndex: 30,
-    elevation: 12,
-    minHeight: 58,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingLeft: 7,
-    paddingRight: 14,
-    paddingVertical: 7,
-    borderRadius: 29,
-    borderWidth: 1,
-  },
-  emblema: { width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  selo: {
-    position: "absolute",
-    top: -4,
-    right: -6,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  seloTexto: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700" },
-  botaoTextos: { flexShrink: 1, minWidth: 0, gap: 2 },
   eyebrow: { fontFamily: FontFamily.interMedium, fontSize: 10, fontWeight: "700", letterSpacing: 1 },
-  botaoTitulo: { fontFamily: FontFamily.inikaBold, fontSize: 14 },
   trilho: { height: 4, borderRadius: 2, overflow: "hidden", marginTop: 2 },
   trilhoCartao: { flex: 1, height: 6, borderRadius: 3, marginTop: 0 },
   preenchido: { height: "100%", borderRadius: 3 },

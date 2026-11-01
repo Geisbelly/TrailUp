@@ -649,6 +649,9 @@ export function IAMentorPanel({
             styles.card,
             scope === "modulo" ? styles.cardModule : styles.cardFloating,
             {
+              // O mínimo de 320 do módulo nunca passa da janela: em tela de 320 o
+              // painel (windowWidth - 16) vazava 8 px pela direita.
+              ...(scope === "modulo" ? { minWidth: Math.min(320, windowWidth - 16) } : null),
               width: panelWidth,
               maxHeight: panelMaxHeight,
               backgroundColor: palette.surface,
@@ -925,7 +928,6 @@ const styles = StyleSheet.create({
   },
   cardModule: {
     alignSelf: "stretch",
-    minWidth: 320,
   },
   headerRow: {
     flexDirection: "row",

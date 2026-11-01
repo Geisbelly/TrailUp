@@ -104,7 +104,7 @@ describe("rotuloDoPrazo", () => {
 describe("ordenarMissoes", () => {
   const m = (over: Partial<MissaoDoAluno>): MissaoDoAluno => ({
     id: 1, titulo: "t", descricao: "", progresso: 0, status: "pendente", criterioRotulo: "",
-    metrica: "", atividadeId: null, origem: "sistema", escopo: "aluno", prazo: null, dia: null, slot: null, ...over,
+    metrica: "", atividadeId: null, pedeAtividade: false, origem: "sistema", escopo: "aluno", prazo: null, dia: null, slot: null, ...over,
   });
 
   it("a diária vem primeiro, por slot", () => {

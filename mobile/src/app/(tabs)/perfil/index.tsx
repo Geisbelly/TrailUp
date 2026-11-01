@@ -895,8 +895,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 3,
   },
-  acoesPerfil: { flexDirection: "row", gap: 10, marginTop: 14, alignSelf: "stretch", justifyContent: "center" },
+  // Quebra a linha quando os dois botões não cabem lado a lado: sem o wrap, em tela
+  // estreita "Editar perfil" e "Trocar turma" vazavam pelas duas bordas. Base e teto
+  // iguais para os dois, para ficarem da mesma largura lado a lado e empilhados.
+  acoesPerfil: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 14, alignSelf: "stretch", justifyContent: "center" },
   acaoPerfil: {
+    flexGrow: 1,
+    flexBasis: 140,
+    maxWidth: 220,
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -907,12 +913,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   acaoPerfilIcone: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
-  acaoPerfilTexto: { fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "600" },
+  acaoPerfilTexto: { flexShrink: 1, fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "600" },
   infoContainer: { alignItems: "center", gap: 2, paddingTop: 10 },
   trocaPerfil: { marginTop: 16, marginHorizontal: 14 },
   trocaPerfilRotulo: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.1, marginBottom: 8, marginLeft: 2 },
   trocaPerfilLista: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  trocaPerfilOpcao: { flexBasis: "45%", flexGrow: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8, minHeight: 48, paddingVertical: 6, paddingLeft: 8, paddingRight: 10, borderRadius: 12, borderWidth: 1 },
+  // gap 6 e respiro direito 8: em 320 px "Conquistador" tinha 88 px para 91 e saía cortado.
+  trocaPerfilOpcao: { flexBasis: "45%", flexGrow: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 48, paddingVertical: 6, paddingLeft: 8, paddingRight: 8, borderRadius: 12, borderWidth: 1 },
   trocaPerfilTexto: { flex: 1, minWidth: 0 },
   trocaPerfilNome: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "700" },
   trocaPerfilAfinidadeLinha: { flexDirection: "row", alignItems: "center", gap: 3, marginTop: 1 },

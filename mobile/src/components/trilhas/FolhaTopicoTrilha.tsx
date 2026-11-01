@@ -45,7 +45,11 @@ export function FolhaTopicoTrilha({
   onExpandir: (aberta: boolean) => void;
 }) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  const { height } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
+  // Em 320 px o botão ("Revisar tópico") deixava 90 px para o título, que virava
+  // "Equações ...". Título em até duas linhas (cabe na altura mínima da linha) e,
+  // abaixo de 360, botão um pouco mais estreito.
+  const estreita = width < 360;
   const [listaAberta, setListaAberta] = useState(false);
   useEffect(() => {
     if (!expandida) setListaAberta(false);
@@ -75,7 +79,7 @@ export function FolhaTopicoTrilha({
           <HexagonoTopico estado={painel.estado} numero={numero ?? 0} tamanho={40} palette={palette} idBase={`folha-${uid}`} />
           <View style={s.textos}>
             <Text style={[s.eyebrow, { color: corEstado }]}>{painel.eyebrow.toUpperCase()}</Text>
-            <Text numberOfLines={1} style={[s.titulo, { color: palette.text }]}>{painel.titulo}</Text>
+            <Text numberOfLines={2} style={[s.titulo, { color: palette.text }]}>{painel.titulo}</Text>
           </View>
         </Pressable>
         {painel.acao ? (
@@ -84,12 +88,13 @@ export function FolhaTopicoTrilha({
             onPress={abrir}
             style={[
               s.botao,
+              estreita && s.botaoEstreito,
               painel.estado === "done"
                 ? { borderWidth: 1, borderColor: palette.borderStrong }
                 : { backgroundColor: palette.accent },
             ]}
           >
-            <Text style={[s.botaoTexto, { color: painel.estado === "done" ? palette.text : palette.background }]}>{painel.acao}</Text>
+            <Text style={[s.botaoTexto, estreita && s.botaoTextoEstreito, { color: painel.estado === "done" ? palette.text : palette.background }]}>{painel.acao}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -197,9 +202,11 @@ const s = StyleSheet.create({
   linhaTopico: { flex: 1, minWidth: 0, minHeight: 48, flexDirection: "row", alignItems: "center", gap: 12 },
   textos: { flex: 1, minWidth: 0, gap: 2 },
   eyebrow: { fontFamily: FontFamily.interMedium, fontSize: 10.5, fontWeight: "700", letterSpacing: 1 },
-  titulo: { fontFamily: "Georgia, serif", fontSize: 17 },
+  titulo: { fontFamily: "Georgia, serif", fontSize: 17, lineHeight: 21 },
   botao: { minHeight: 48, borderRadius: 999, paddingHorizontal: 18, alignItems: "center", justifyContent: "center" },
   botaoTexto: { fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "700" },
+  botaoEstreito: { paddingHorizontal: 14 },
+  botaoTextoEstreito: { fontSize: 13 },
   rolagem: { flexShrink: 1 },
   rolagemConteudo: { paddingHorizontal: 16, paddingBottom: 16, gap: 14 },
   bloco: { borderRadius: 12, padding: 14, gap: 8 },

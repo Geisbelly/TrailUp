@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { atividadeDoCriterio, montarMissoes } from "./missaoModel";
+import { atividadeDoCriterio, montarMissoes, pedeAtividade } from "./missaoModel";
 import {
   comDestino,
   destinoDaMissao,
@@ -38,6 +38,7 @@ const M = (over: Partial<MissaoComExtras> & { id: number }): MissaoComExtras => 
   criterioRotulo: "",
   metrica: "minutos_no_dia",
   atividadeId: null,
+  pedeAtividade: false,
   origem: "professor",
   escopo: "aluno",
   prazo: null,
@@ -102,7 +103,7 @@ describe("destinoDaMissao", () => {
   ];
 
   it("missão-entrega abre o tópico na atividade", () => {
-    assert.deepEqual(destinoDaMissao({ atividadeId: 101 }, topicos, null), {
+    assert.deepEqual(destinoDaMissao({ atividadeId: 101, pedeAtividade: false }, topicos, null), {
       tipo: "atividade",
       topicoId: 10,
       atividadeId: 101,
@@ -110,16 +111,34 @@ describe("destinoDaMissao", () => {
   });
 
   it("atividade em tópico selado mostra o tópico, não abre", () => {
-    assert.deepEqual(destinoDaMissao({ atividadeId: 200 }, topicos, null), { tipo: "bloqueado", topicoId: 20 });
+    assert.deepEqual(destinoDaMissao({ atividadeId: 200, pedeAtividade: false }, topicos, null), { tipo: "bloqueado", topicoId: 20 });
   });
 
   it("missão-meta, ou atividade fora da trilha: o próximo passo", () => {
-    assert.deepEqual(destinoDaMissao({ atividadeId: null }, topicos, null), { tipo: "topico", topicoId: 10 });
-    assert.deepEqual(destinoDaMissao({ atividadeId: 999 }, topicos, null), { tipo: "topico", topicoId: 10 });
+    assert.deepEqual(destinoDaMissao({ atividadeId: null, pedeAtividade: false }, topicos, null), { tipo: "topico", topicoId: 10 });
+    assert.deepEqual(destinoDaMissao({ atividadeId: 999, pedeAtividade: false }, topicos, null), { tipo: "topico", topicoId: 10 });
+  });
+
+  it("missão de atividade pula o tópico de leitura", () => {
+    const trilha = [T({ id: 1 }), T({ id: 2, locked: true, atividadeIds: [20] }), T({ id: 3, atividadeIds: [30] })];
+    assert.deepEqual(destinoDaMissao({ atividadeId: null, pedeAtividade: true }, trilha, "1"), { tipo: "topico", topicoId: 3 });
+    // A meta de minutos continua no passo da vez.
+    assert.deepEqual(destinoDaMissao({ atividadeId: null, pedeAtividade: false }, trilha, "1"), { tipo: "topico", topicoId: 1 });
+    // Nenhum tópico liberado com atividade: o passo da vez, em vez de botão morto.
+    assert.deepEqual(destinoDaMissao({ atividadeId: null, pedeAtividade: true }, [T({ id: 1 })], "1"), { tipo: "topico", topicoId: 1 });
+  });
+
+  it("pedeAtividade lê o critério", () => {
+    assert.equal(pedeAtividade({ metrica: "atividades_concluidas", minimo: 2 }), true);
+    assert.equal(pedeAtividade({ metrica: "acertos_percentual", percentual: 70 }), true);
+    assert.equal(pedeAtividade({ metrica: "eventos_no_dia", evento: "atividade_concluida", minimo: 2 }), true);
+    assert.equal(pedeAtividade({ metrica: "eventos_no_dia", evento: "conteudo_concluido" }), false);
+    assert.equal(pedeAtividade({ metrica: "minutos_no_dia", minutos: 10 }), false);
+    assert.equal(pedeAtividade(null), false);
   });
 
   it("sem trilha, sem destino", () => {
-    assert.equal(destinoDaMissao({ atividadeId: null }, [], null), null);
+    assert.equal(destinoDaMissao({ atividadeId: null, pedeAtividade: false }, [], null), null);
   });
 });
 
