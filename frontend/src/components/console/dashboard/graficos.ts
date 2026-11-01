@@ -79,7 +79,8 @@ export type FaixaDeNota = { faixa: string; total: number; tom: TomDaFaixa | null
 export function distribuicaoDeNotas(linhas: TurmaDistribuicao[]): FaixaDeNota[] {
   const porFaixa = new Map<string, number>();
   for (const linha of linhas) {
-    if (linha.metrica !== "nota_media") continue;
+    // Sem nota não entra na rosca (20261101_08): sem ninguém com nota, ela mostra o estado vazio.
+    if (linha.metrica !== "nota_media" || linha.faixa === "sem_dado") continue;
     porFaixa.set(linha.faixa, (porFaixa.get(linha.faixa) ?? 0) + Number(linha.total_alunos ?? 0));
   }
   return [...porFaixa.entries()]

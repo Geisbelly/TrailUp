@@ -5,7 +5,6 @@ import { useUsuario } from '@/context/SessaoContext';
 import { useTrilha } from '@/context/TrilhaContext';
 import { useContentBossVisual } from '@/hooks/useContentBossVisual';
 import { useDesktopWeb } from '@/hooks/useDesktopWeb';
-import { bossVisuals } from '@/constants/bossVisuals';
 import { getProfileShellPalette } from '@/utils/profileShellTheme';
 
 export function BossVictoryModal() {
@@ -15,13 +14,12 @@ export function BossVictoryModal() {
   const victory = pendingBattleVictories.find((v) => v.userId === usuario?.id
     && classeAtual?.topicos.some((t) => t.id === v.state.topicoId));
   const state = victory?.state;
-  const teacherArt = useContentBossVisual(state?.topicoId, state?.itemKey, state?.enemy.contentId);
+  // A arte do professor, ou uma da paleta do perfil — nunca a fênix fixa nem a imagem da IA.
+  const artwork = useContentBossVisual(state?.topicoId, state?.itemKey, state?.enemy.contentId);
   // Web em tela larga (#346, protótipo v4): cartão mais estreito e o botão em pílula no centro.
   const desktop = useDesktopWeb();
   if (!victory || !state) return null;
   const palette = getProfileShellPalette(perfil);
-  const artUrl = state.enemy.visual?.avatarUrl ?? state.enemy.avatarUrl;
-  const artwork = teacherArt ?? (artUrl ? { uri: artUrl } : bossVisuals['boss-01']);
   const close = () => dismissBattleVictory(victory.id);
   return (
     <Modal visible transparent animationType="fade" onRequestClose={close}>
@@ -29,7 +27,8 @@ export function BossVictoryModal() {
         <View accessibilityViewIsModal style={[styles.card, desktop && styles.cardLargo, { backgroundColor: palette.surfaceElevated, borderColor: palette.accent }]}>
           <ScrollView contentContainerStyle={styles.content} bounces={false}>
             <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>Parabéns!</Text>
-            <Text style={[styles.subtitle, { color: palette.accentStrong }]}>Você derrotou o boss!</Text>
+            {/* `accent`, não `accentStrong`: este é escurecido e fica abaixo de 3:1 como texto. */}
+            <Text style={[styles.subtitle, { color: palette.accent }]}>Você derrotou o boss!</Text>
             <Image source={artwork} resizeMode="contain" style={styles.art} accessibilityLabel={`Ilustração de ${state.enemy.name}`} />
             <Text style={[styles.name, { color: palette.text }]}>{state.enemy.name}</Text>
             <Text style={[styles.message, { color: palette.textMuted }]}>{victory.message}</Text>
