@@ -38,6 +38,9 @@ export interface MaterialPart {
   arquivo_url: string | null;
   storage_path: string | null;
   failed?: boolean;
+  // Motivo da falha DESTA parte (#776). Sem ele, o motivo so vivia na
+  // metadata agregada, e a parte seguinte que dava certo o apagava.
+  failure?: PresentationFailure;
 }
 
 interface SupabaseRpcResult {
@@ -121,6 +124,32 @@ export function computeAggregatedApresentacaoEntry(
   };
 }
 
+/**
+ * Motivo que a metadata agregada mostra (#776): enquanto alguma parte estiver
+ * `failed`, o motivo fica - mesmo que a ultima parte a chegar tenha dado certo.
+ * Ordem: a parte que acabou de falhar, a primeira parte falha que guardou o
+ * proprio motivo, e por fim o motivo que ja estava na metadata (partes gravadas
+ * antes de `MaterialPart.failure` existir nao tem motivo proprio).
+ */
+export function aggregatedApresentacaoFailure(
+  status: string,
+  partes: MaterialPart[],
+  novaParteFailure: PresentationFailure | null,
+  currentMetadata: { error_stage?: unknown; error?: unknown } | null | undefined,
+): PresentationFailure | null {
+  if (status !== "failed") return null;
+  if (novaParteFailure) return novaParteFailure;
+  const daParte = partes.find((p) => p.failed && p.failure)?.failure;
+  if (daParte) return daParte;
+  if (typeof currentMetadata?.error === "string" && currentMetadata.error) {
+    return {
+      stage: typeof currentMetadata.error_stage === "string" ? currentMetadata.error_stage : "unknown",
+      error: currentMetadata.error,
+    };
+  }
+  return null;
+}
+
 export async function persistApresentacaoResult(
   client: SupabaseClientLike,
   params: PersistApresentacaoParams,
@@ -132,6 +161,7 @@ export async function persistApresentacaoResult(
     arquivo_url: params.presentationUrl,
     storage_path: params.presentationUrl ? params.storagePath : null,
     failed: params.presentationUrl === null,
+    ...(params.presentationUrl === null && params.failure ? { failure: params.failure } : {}),
   };
 
   // Multi-parte precisa do estado atual (partes ja gravadas por chamadas
@@ -176,7 +206,12 @@ export async function persistApresentacaoResult(
         versionMetadata: params.versionMetadata,
         generationKey,
         bucket: aggregated.headline.arquivo_url ? params.bucket : null,
-        failure: novaParte.failed ? params.failure : null,
+        failure: aggregatedApresentacaoFailure(
+          aggregated.status,
+          aggregated.partes,
+          novaParte.failed ? params.failure : null,
+          currentRow?.materiais?.apresentacao?.metadata,
+        ),
       }),
       arquivo_url: aggregated.headline.arquivo_url,
       storage_path: aggregated.headline.storage_path,

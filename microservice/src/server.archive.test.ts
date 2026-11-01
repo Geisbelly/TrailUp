@@ -393,6 +393,10 @@ test("archiveMultiPartToSupabase grava fallback so pra apresentacao quando 1 par
     assert.equal(apresentacao.partes.length, 2);
     assert.equal(apresentacao.partes[1].failed, true);
     assert.equal(apresentacao.metadata.status, "failed");
+    // #776: cada parte guarda o proprio motivo, como no brainhexpdf.
+    assert.deepEqual(apresentacao.partes[1].failure, { stage: "upload", error: "timeout" });
+    assert.equal(apresentacao.partes[0].failure, undefined);
+    assert.equal(apresentacao.metadata.error, "timeout");
   } finally {
     setSupabaseClientForTesting(null);
   }

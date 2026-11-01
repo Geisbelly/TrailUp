@@ -509,6 +509,9 @@ export async function archiveMultiPartToSupabase(params: {
       arquivo_url: presentationResult.presentationUrl,
       storage_path: presentationResult.presentationUrl ? presentationPath : null,
       failed: presentationResult.presentationUrl === null,
+      ...(presentationResult.presentationUrl === null && presentationResult.failure
+        ? { failure: presentationResult.failure }
+        : {}),
     });
   }
 
@@ -870,6 +873,9 @@ export async function retryApresentacaoOnly(
       arquivo_url: presentationResult.presentationUrl,
       storage_path: presentationResult.presentationUrl ? presentationPath : null,
       failed: presentationResult.presentationUrl === null,
+      ...(presentationResult.presentationUrl === null && presentationResult.failure
+        ? { failure: presentationResult.failure }
+        : {}),
     });
   }
 
