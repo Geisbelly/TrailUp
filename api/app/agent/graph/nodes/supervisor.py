@@ -16,7 +16,6 @@ VALID_NEXT = {
     "agente_texto",
     "agente_plano_personalizacao",
     "agente_ai_patch",
-    "agente_boss_visual",
     "agente_midias_personalizadas",
     "persist_personalizacao",
     "executor",

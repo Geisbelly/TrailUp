@@ -331,8 +331,6 @@ class _ClienteHttpFalso:
 async def test_chave_do_gemini_vai_no_header_e_nunca_na_url(monkeypatch) -> None:
     import httpx
 
-    from app.adapters.gemini_boss_image import GeminiBossImageAdapter
-    from app.schemas.ia_patch import IAEnemySpec
     from app.services import audio as audio_module
 
     _ClienteHttpFalso.chamadas = []
@@ -343,17 +341,7 @@ async def test_chave_do_gemini_vai_no_header_e_nunca_na_url(monkeypatch) -> None
         await audio_module.gerar_mp3_gemini_tts(settings=settings, texto="Ola turma")
     except Exception:
         pass
-    campos = {
-        name: ("x" if f.annotation is str else None)
-        for name, f in IAEnemySpec.model_fields.items()
-        if f.is_required()
-    }
-    try:
-        await GeminiBossImageAdapter(settings).generate_png(IAEnemySpec.model_construct(**campos))
-    except Exception:
-        pass
-
-    assert len(_ClienteHttpFalso.chamadas) >= 2
+    assert len(_ClienteHttpFalso.chamadas) >= 1
     for chamada in _ClienteHttpFalso.chamadas:
         assert "key=" not in chamada["url"] and "CHAVE-FALSA-123" not in chamada["url"]
         assert chamada["headers"].get("x-goog-api-key") == "CHAVE-FALSA-123"

@@ -18,3 +18,7 @@ Os PNGs não são recoloridos: são pintados à mão com vários matizes, e ting
 
 A imagem gerada pela IA (`enemy.avatarUrl`, Gemini ou placeholder) **não aparece** no chip, no painel nem no card de vitória: o prompt dela não conhece a cor do perfil e o fluxo ainda não foi validado. O painel também troca a paleta por arquétipo que a IA manda (`enemy.visual.palette`) pela do perfil (`paletaDoBossNoPerfil`): accent com luminosidade elevada até 4.5:1 sobre o fundo do painel, nunca misturado com branco, e escudo em cor fixa.
 
+## Nome e falas do boss
+
+A arte vem do catálogo; o nome e as falas vêm de `boss_falas`, gerados em lote pela fila de personalização (uma chamada ao modelo por tópico × perfil, cobrindo todos os conteúdos do tópico). O app lê direto do Supabase e sorteia: entrada ao abrir o conteúdo, provocação a cada golpe, anúncio ao cruzar metade e um quarto da vida (uma vez cada), alerta de tempo, contra-ataque, últimas palavras na derrota e a mensagem do card de vitória. Momento sem fala gerada usa a fala fixa de sempre; sem falas, a batalha fica como era (sem provocações).
+

@@ -366,7 +366,7 @@ export type ClassePerfilSummaryResponse = {
   distribuicao: Record<string, ClassePerfilDistribuicaoItem>;
   perfil_predominante: string | null;
   total_alunos: number;
-  media_desempenho: Record<string, number>;
+  media_desempenho: Record<string, number | null>;
   atualizado_em?: string | null;
 };
 
@@ -375,7 +375,7 @@ type ClassePerfilSummaryRow = {
   distribuicao: Record<string, ClassePerfilDistribuicaoItem> | null;
   perfil_predominante: string | null;
   total_alunos: number | null;
-  media_desempenho: Record<string, number> | null;
+  media_desempenho: Record<string, number | null> | null;
   atualizado_em: string | null;
 };
 

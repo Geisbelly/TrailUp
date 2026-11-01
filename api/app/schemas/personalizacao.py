@@ -477,7 +477,7 @@ class ClassePerfilSummaryResponse(BaseModel):
     distribuicao: dict[str, ClassePerfilDistribuicaoItem] = Field(default_factory=dict)
     perfil_predominante: str | None = None
     total_alunos: int = 0
-    media_desempenho: dict[str, float] = Field(default_factory=dict)
+    media_desempenho: dict[str, float | None] = Field(default_factory=dict)  # nota_media: None = ninguém com nota
 
 
 # ── Regeneracao de material (professor) ────────────────────────────────────────

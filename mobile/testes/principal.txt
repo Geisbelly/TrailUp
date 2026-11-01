@@ -52,6 +52,7 @@ src/utils/conquistaProgress.test.ts
 src/utils/consentimentoDaCamera.test.ts
 src/utils/consentimentoVigente.test.ts
 src/utils/consentimentoResponsavel.test.ts
+src/utils/bossFalas.test.ts
 src/utils/contentBossVisual.test.ts
 src/utils/bossPerfilPalette.test.ts
 src/utils/contentVisibility.test.ts
