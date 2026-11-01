@@ -4,7 +4,7 @@ import {
 } from "@/components/SectionGuideButton";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ScrollView,
@@ -151,6 +151,14 @@ function SettingsLista() {
           ),
         },
         {
+          label: "Biblioteca de conquistas",
+          render: (
+            <LinhaConfig icone="award" onPress={() => router.push("/(tabs)/perfil/biblioteca-conquistas")} palette={palette}>
+              Biblioteca de conquistas
+            </LinhaConfig>
+          ),
+        },
+        {
           label: "Gerar relatório dos dados",
           render: (
             <LinhaConfig icone="file-text" onPress={() => router.push("/(tabs)/perfil/relatorio")} palette={palette}>
@@ -249,7 +257,7 @@ function SettingsLista() {
         target: "settings_account",
         title: "Conta, métricas e coleta",
         description:
-          "Sua conta reúne informações pessoais, a visualização das métricas, os controles de câmera, uso, desempenho e chat, além da exclusão e do relatório dos dados.",
+          "Sua conta reúne informações pessoais, a biblioteca de conquistas, a visualização das métricas, os controles de câmera, uso, desempenho e chat, além da exclusão e do relatório dos dados.",
         icon: "account-cog-outline",
       },
       {
@@ -293,14 +301,22 @@ function SettingsLista() {
     <View
       style={[styles.outerWrapper, { backgroundColor: palette.background }]}
     >
-      <SectionGuideButton
-        profile={perfilVisualDoAluno(usuario)}
-        sectionTitle="Configurações"
-        steps={settingsGuideSteps}
-        targetRefs={settingsGuideTargets}
-        scrollRef={settingsScrollRef}
-        scrollOffsetRef={settingsScrollOffsetRef}
-        style={styles.guideButton}
+      {/* O guia vive no cabeçalho, como em biblioteca-conquistas.tsx: absoluto sobre o
+          conteúdo ele flutuava solto entre o título e a busca. */}
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <SectionGuideButton
+              profile={perfilVisualDoAluno(usuario)}
+              sectionTitle="Configurações"
+              steps={settingsGuideSteps}
+              targetRefs={settingsGuideTargets}
+              scrollRef={settingsScrollRef}
+              scrollOffsetRef={settingsScrollOffsetRef}
+              style={styles.guideButton}
+            />
+          ),
+        }}
       />
       <ScrollView
         ref={settingsScrollRef}
@@ -334,6 +350,8 @@ function SettingsLista() {
             o campo "Pesquisar" (#33). */}
         <View ref={settingsListGuideRef} collapsable={false}>
           <GrupoConfig titulo="Conta" palette={palette} itens={[ligacao("Informações"), <View key="senha" ref={securityGuideRef} collapsable={false}>{ligacao("Resetar senha")}</View>]} />
+          {/* Veio do corpo do Perfil, que agora abre direto em Métricas e Conquistas. */}
+          <GrupoConfig titulo="Conquistas" palette={palette} itens={[ligacao("Biblioteca de conquistas")]} />
           <View ref={legalGuideRef} collapsable={false}>
             <GrupoConfig
               titulo="Privacidade e termos"
@@ -393,17 +411,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   guideButton: {
-    position: "absolute",
-    top: 14,
-    right: 18,
+    marginRight: 12,
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
   },
   content: {
-    // O botão de ajuda é absoluto (top 14 + 44 de altura); sem este respiro ele cobre a ponta do campo de busca.
-    paddingTop: 44,
+    paddingTop: 12,
     paddingBottom: 32,
     gap: 16,
   },

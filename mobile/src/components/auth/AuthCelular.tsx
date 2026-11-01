@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { app } from "@/constants/definicoes";
 import { COR_AUTH } from "@/components/web/AuthDesktop";
+import { alturaDaCena, SOBREPOSICAO } from "./alturaDaCena";
 
 // Telas de entrar e de recuperar senha no celular (mobile-v1, parte 1): a cena da floresta em faixa
 // no topo e o formulário numa folha que sobe de baixo. A web larga usa `web/AuthDesktop.tsx`.
@@ -30,9 +31,8 @@ const cena = require("@/assets/design/journey-dawn.webp");
 const estrela = require("@/assets/design/trailup-star.png");
 
 const SERIF = Platform.select({ ios: "Georgia", android: "serif", default: "Georgia, serif" });
-const ALTURA_CENA_COM_TECLADO = 72;
-// A folha sobe 24px por cima da cena, para o canto arredondado não deixar um vão.
-const SOBREPOSICAO = 24;
+// Alça (4 + 10 + 10) e a borda de cima da folha: o que a folha ocupa além do conteúdo.
+const ALTURA_ALCA_E_BORDA = 25;
 
 /**
  * Sabe se o aluno está digitando. Vale por foco (não por evento de teclado) para funcionar igual na
@@ -119,7 +119,9 @@ function Vagalumes({ pausado }: { pausado: boolean }) {
 
 /**
  * Cena no topo (~31% da altura) com a frase sobre ela, e o conteúdo numa folha de baixo. Com o
- * teclado aberto (`compacta`) a cena encolhe para uma faixa só com a marca e a natureza pausa.
+ * teclado aberto (`compacta`) a cena encolhe para uma faixa só com a marca e a natureza pausa. Em
+ * tela baixa a cena cede espaço para a folha caber inteira (`alturaDaCena`); se nem assim couber,
+ * a folha rola.
  */
 export function MolduraAuthCelular({
   frase,
@@ -134,7 +136,14 @@ export function MolduraAuthCelular({
 }) {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const alturaCena = compacta ? insets.top + ALTURA_CENA_COM_TECLADO : Math.round(height * 0.31) + 28 + insets.top;
+  const [alturaConteudo, setAlturaConteudo] = useState(0);
+  const respiroDeBaixo = insets.bottom + 18;
+  const { altura: alturaCena, comFrase } = alturaDaCena({
+    alturaTela: height,
+    topo: insets.top,
+    alturaFolha: alturaConteudo > 0 ? alturaConteudo + respiroDeBaixo + ALTURA_ALCA_E_BORDA : 0,
+    compacta,
+  });
 
   return (
     <View style={s.tela}>
@@ -158,22 +167,25 @@ export function MolduraAuthCelular({
             <Text style={s.marcaTexto}>{app.name ?? "TrailUp"}</Text>
           </View>
         </View>
-        {compacta ? null : (
+        {comFrase ? (
           <View style={s.heroi}>
             <Text accessibilityRole="header" style={s.heroiTitulo}>{frase}</Text>
           </View>
-        )}
+        ) : null}
       </View>
 
-      <KeyboardAvoidingView style={[s.folhaBase, { paddingTop: alturaCena - SOBREPOSICAO }]} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      {/* "padding" também no Android: com edge-to-edge (SDK 54) a janela não encolhe mais com o
+          teclado, e sem behavior o botão Entrar ficava atrás dele sem ter como rolar até lá. O
+          cálculo é relativo à sobreposição, então onde a janela ainda encolher ele dá zero. */}
+      <KeyboardAvoidingView style={[s.folhaBase, { paddingTop: alturaCena - SOBREPOSICAO }]} behavior="padding">
         <View style={s.folha}>
           <View style={s.alca} />
           <ScrollView
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[s.folhaConteudo, { paddingBottom: insets.bottom + 18 }]}
+            contentContainerStyle={[s.folhaConteudo, { paddingBottom: respiroDeBaixo }]}
           >
-            {children}
+            <View onLayout={(e) => setAlturaConteudo(Math.ceil(e.nativeEvent.layout.height))}>{children}</View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>

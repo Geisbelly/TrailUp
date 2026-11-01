@@ -1,3 +1,4 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -130,8 +131,22 @@ export default function SelecionarTurmaScreen({ classes, carregando, erro, perfi
             <Text style={[styles.actionText, { color: palette.accent }]}>{erro ? "Tentar novamente" : "Atualizar turmas"}</Text>
           </Pressable>
         ) : null}
-        <Pressable accessibilityRole="button" disabled={saindo} onPress={() => { void sair(); }} style={styles.action}>
-          <Text style={[styles.actionText, { color: palette.textMuted }]}>{saindo ? "Saindo…" : "Sair da conta"}</Text>
+        {/* Borda, fundo e ícone: sem eles, com borda transparente e texto apagado, o "Sair" parecia texto solto e não botão. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sair da conta"
+          disabled={saindo}
+          onPress={() => { void sair(); }}
+          style={({ pressed }) => [styles.action, styles.sair, {
+            backgroundColor: pressed ? palette.surfaceElevated : palette.surface,
+            borderColor: palette.borderStrong,
+            opacity: saindo ? 0.6 : 1,
+          }]}
+        >
+          {saindo
+            ? <ActivityIndicator size="small" color={palette.textMuted} />
+            : <MaterialCommunityIcons name="logout" size={18} color={palette.text} />}
+          <Text style={[styles.actionText, styles.sairTexto, { color: palette.text }]}>{saindo ? "Saindo…" : "Sair da conta"}</Text>
         </Pressable>
         {erroSaida ? <Text accessibilityRole="alert" style={[styles.description, { color: palette.text }]}>{erroSaida}</Text> : null}
       </ScrollView>
@@ -160,4 +175,6 @@ const styles = StyleSheet.create({
   entrarTexto: { fontFamily: FontFamily.interMedium, fontSize: 14.5, fontWeight: "700" },
   action: { minHeight: 48, borderWidth: 1, borderColor: "transparent", borderRadius: 12, padding: 12, alignItems: "center", justifyContent: "center" },
   actionText: { fontFamily: FontFamily.interMedium, fontSize: 14 },
+  sair: { flexDirection: "row", gap: 8 },
+  sairTexto: { fontWeight: "700" },
 });

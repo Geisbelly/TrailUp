@@ -10,7 +10,10 @@ import { GuildSection } from "@/components/social/GuildSection";
 import { MissoesDoDia } from "@/components/missoes/MissoesDoDia";
 import { EventoDaTurma } from "@/components/eventos/EventoDaTurma";
 import { perfilDaMissao } from "@/services/missoes/missaoModel";
-import type { GuildShareOption } from "@/components/social/GuildChatModal";
+import { GuildChatModal, type GuildShareOption } from "@/components/social/GuildChatModal";
+import { ICONE_DA_ANCORA, SocialHubAtalhos, SocialHubDestaque, TituloDoBloco, type ResumoDoSocial } from "@/components/social/SocialHub";
+import { ANCORAS_DA_AREA, ordemDasAncoras, ordemDasAreas, type AncoraDoSocial } from "@/services/social/socialDestaque";
+import type { Guild } from "@/services/social/guildModel";
 import { BagModal } from "@/components/bag/BagModal";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { StoreLauncher } from "@/components/loja/StoreLauncher";
@@ -90,6 +93,8 @@ export default function SocialScreen() {
     if (atual) setAncoraAtiva((anterior) => (anterior === atual ? anterior : atual));
   };
   const [chatPerson, setChatPerson] = useState<SocialPerson | null>(null);
+  // "Conversa da guilda" no cartão em destaque abre a mesma conversa do bloco Guildas.
+  const [chatGuilda, setChatGuilda] = useState<Guild | null>(null);
   const shareOptions = useMemo<GuildShareOption[]>(() => {
     const topics = (classeAtual as any)?.topicos ?? [];
     const result: GuildShareOption[] = [];
@@ -194,19 +199,14 @@ export default function SocialScreen() {
     blocked: "Você não bloqueou ninguém.",
   };
 
-  /** Título de bloco (06-social.html, h2.titulo): serifa de 19 e, se houver, o contador. */
-  const tituloBloco = (titulo: string, contagem?: number) => (
-    <View style={styles.tituloBloco}>
-      <Text accessibilityRole="header" style={[styles.tituloBlocoTexto, { color: palette.text }]}>{titulo}</Text>
-      {contagem ? <Text style={[styles.tituloBlocoContagem, { color: palette.textSubtle, backgroundColor: palette.surfaceElevated }]}>{contagem}</Text> : null}
-    </View>
-  );
+  /** Título de bloco (06-social.html, h2.titulo): ícone do bloco, serifa de 19 e, se houver, o contador. */
+  const tituloBloco = (chave: AncoraDoSocial, titulo: string, contagem?: number) => <TituloDoBloco ancora={chave} titulo={titulo} contagem={contagem} palette={palette} />;
 
-  const blocoPessoas = (secao: SocialPeopleSection, chave: string, titulo: string) => {
+  const blocoPessoas = (secao: SocialPeopleSection, chave: AncoraDoSocial, titulo: string) => {
     const lista = pessoasDe(secao);
     return (
       <View key={chave} {...ancora(chave)} style={styles.blocoCelular}>
-        {tituloBloco(titulo, lista.length)}
+        {tituloBloco(chave, titulo, lista.length)}
         {lista.length === 0 ? (
           <Text style={[styles.message, { color: palette.textSubtle }]}>{search.trim() ? "Nenhuma pessoa encontrada." : vazioDe[secao]}</Text>
         ) : (
@@ -216,14 +216,46 @@ export default function SocialScreen() {
     );
   };
 
-  const atalhosCelular: { chave: string; rotulo: string; contagem?: number }[] = [
-    ...(activeClasseId > 0 ? [{ chave: "evento", rotulo: "Evento" }, { chave: "arena", rotulo: "Arena" }] : []),
-    { chave: "convites", rotulo: "Convites", contagem: social ? social.incoming.length + social.outgoing.length : undefined },
-    { chave: "amigos", rotulo: "Amigos", contagem: social?.friends.length },
-    { chave: "encontrar", rotulo: "Encontrar", contagem: social?.candidates.length },
-    { chave: "guildas", rotulo: "Guildas", contagem: social ? guilds.length : undefined },
-    ...(social && pessoasDe("blocked").length ? [{ chave: "bloqueados", rotulo: "Bloqueados", contagem: pessoasDe("blocked").length }] : []),
-  ];
+  // Hub (rede social de jogo): a área que mais combina com o perfil abre a aba em destaque e os
+  // blocos seguem a ordem dela (`socialDestaque.ts`). Nada sai: os blocos são os mesmos de antes.
+  const temBloqueados = Boolean(social && pessoasDe("blocked").length);
+  const atalhosDisponiveis = new Set<AncoraDoSocial>([
+    ...(activeClasseId > 0 ? (["evento", "arena"] as const) : []),
+    "convites", "amigos", "guildas", "encontrar",
+    ...(temBloqueados ? (["bloqueados"] as const) : []),
+  ]);
+  const ordemDosAtalhos = ordemDasAncoras(profile, atalhosDisponiveis);
+  // A Arena sempre teve bloco no celular, mesmo sem turma; só o atalho dependia dela.
+  const ordemDosBlocos = ordemDasAncoras(profile, new Set<AncoraDoSocial>([...atalhosDisponiveis, "arena"]));
+  const areaDestaque = ordemDasAreas(profile).find((area) => ANCORAS_DA_AREA[area].some((a) => atalhosDisponiveis.has(a))) ?? "conversa";
+  const resumo: ResumoDoSocial = {
+    amigos: social?.friends ?? [],
+    candidatos: social?.candidates ?? [],
+    convitesRecebidos: social?.incoming.length ?? 0,
+    convitesEnviados: social?.outgoing.length ?? 0,
+    guildas: guilds,
+  };
+  const rotuloDoAtalho: Record<AncoraDoSocial, { rotulo: string; contagem?: number }> = {
+    evento: { rotulo: "Evento" },
+    arena: { rotulo: "Arena" },
+    convites: { rotulo: "Convites", contagem: social ? social.incoming.length + social.outgoing.length : undefined },
+    amigos: { rotulo: "Amigos", contagem: social?.friends.length },
+    encontrar: { rotulo: "Encontrar", contagem: social?.candidates.length },
+    guildas: { rotulo: "Guildas", contagem: social ? guilds.length : undefined },
+    bloqueados: { rotulo: "Bloqueados", contagem: temBloqueados ? pessoasDe("blocked").length : undefined },
+  };
+  const atalhosCelular = ordemDosAtalhos.map((chave) => ({ chave, ...rotuloDoAtalho[chave] }));
+  // Na tela larga o destaque leva à aba equivalente; o evento já fica sempre no topo dela.
+  const secaoDaAncora: Partial<Record<AncoraDoSocial, Section>> = { arena: "arena", convites: "invites", amigos: "friends", guildas: "guilds", encontrar: "discover", bloqueados: "blocked" };
+  const irParaDoDestaque = (chave: AncoraDoSocial) => {
+    if (!desktop) return irPara(chave);
+    const destino = secaoDaAncora[chave];
+    if (destino) { setSection(destino); setSearch(""); }
+    rolagemRef.current?.scrollTo({ y: 0, animated: true });
+  };
+  const destaque = social ? (
+    <SocialHubDestaque area={areaDestaque} profile={profile} palette={palette} resumo={resumo} onIr={irParaDoDestaque} onConversar={setChatPerson} onAbrirGuilda={setChatGuilda} />
+  ) : null;
 
   const emptyMessage = section === "friends" ? "Você ainda não tem amigos na jornada." : section === "invites" ? "Nenhum convite por enquanto." : section === "discover" ? "Nenhum colega disponível para convidar." : "Você não bloqueou ninguém.";
 
@@ -277,6 +309,7 @@ export default function SocialScreen() {
                   return (
                     <Pressable key={chave} onLayout={(e) => { posicoesPilulas.current[chave] = { x: e.nativeEvent.layout.x, largura: e.nativeEvent.layout.width }; }} accessibilityRole="button" accessibilityState={{ selected: ativo }} onPress={() => irPara(chave)}
                       style={[styles.tab, styles.pilulaCelular, { borderColor: ativo ? palette.accent : palette.border, backgroundColor: ativo ? palette.accentMuted : palette.surface }]}>
+                      <MaterialCommunityIcons name={ICONE_DA_ANCORA[chave]} size={16} color={ativo ? palette.accent : palette.textMuted} />
                       <Text style={[styles.tabText, styles.tabTextCelular, { color: ativo ? palette.accent : palette.textMuted }]}>{rotulo}</Text>
                       {contagem ? <Text style={[styles.contaCelular, { backgroundColor: palette.accent, color: palette.background }]}>{contagem}</Text> : null}
                     </Pressable>
@@ -296,37 +329,61 @@ export default function SocialScreen() {
           <Envolve {...(desktop ? { style: styles.principal } : {})}>
           {!desktop ? (
             <>
-              {activeClasseId > 0 ? (
-                <View {...ancora("evento")}>
-                  <EventoDaTurma classeId={activeClasseId} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
-                  <MissoesDoDia classeId={activeClasseId} perfil={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
+              {destaque ? (
+                <View style={styles.hub}>
+                  {destaque}
+                  <SocialHubAtalhos ancoras={ordemDosAtalhos.filter((a) => !ANCORAS_DA_AREA[areaDestaque].includes(a))} palette={palette} resumo={resumo} onIr={irPara} />
                 </View>
               ) : null}
-              {loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? (
-                <View style={styles.empty}>
-                  <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
-                  <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>
-                  <Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={[styles.retryText, { color: palette.background }]}>Tentar novamente</Text></Pressable>
-                </View>
-              ) : (
-                <>
-                  <View {...ancora("arena")} style={styles.blocoCelular}>
-                    {tituloBloco("Arena")}
-                    <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} dueloCom={dueloCom} />
-                  </View>
-                  {blocoPessoas("invites", "convites", "Convites")}
-                  {blocoPessoas("friends", "amigos", "Amigos")}
-                  {blocoPessoas("discover", "encontrar", "Encontrar colegas")}
-                  <View {...ancora("guildas")} style={styles.blocoCelular}>
-                    {tituloBloco("Guildas da turma")}
-                    <GuildSection guilds={guilds} janela={janela} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} />
-                  </View>
-                  {pessoasDe("blocked").length ? blocoPessoas("blocked", "bloqueados", "Bloqueados") : null}
-                </>
-              )}
+              {ordemDosBlocos.map((chave) => {
+                if (chave === "evento") {
+                  return (
+                    <View key={chave} {...ancora("evento")} style={styles.blocoCelular}>
+                      {tituloBloco("evento", "Evento e missões")}
+                      <EventoDaTurma classeId={activeClasseId} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
+                      <MissoesDoDia classeId={activeClasseId} perfil={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
+                    </View>
+                  );
+                }
+                // O resto depende do Social carregado: o carregando e o erro aparecem uma vez só,
+                // no lugar do primeiro bloco que precisa dele.
+                if (loading && !social) {
+                  return chave === ordemDosBlocos.find((c) => c !== "evento") ? <ActivityIndicator key="carregando" color={palette.accent} style={styles.loader} /> : null;
+                }
+                if (error) {
+                  return chave === ordemDosBlocos.find((c) => c !== "evento") ? (
+                    <View key="erro" style={styles.empty}>
+                      <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
+                      <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>
+                      <Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={[styles.retryText, { color: palette.background }]}>Tentar novamente</Text></Pressable>
+                    </View>
+                  ) : null;
+                }
+                if (chave === "arena") {
+                  return (
+                    <View key={chave} {...ancora("arena")} style={styles.blocoCelular}>
+                      {tituloBloco("arena", "Arena")}
+                      <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} dueloCom={dueloCom} />
+                    </View>
+                  );
+                }
+                if (chave === "guildas") {
+                  return (
+                    <View key={chave} {...ancora("guildas")} style={styles.blocoCelular}>
+                      {tituloBloco("guildas", "Guildas da turma")}
+                      <GuildSection guilds={guilds} janela={janela} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} />
+                    </View>
+                  );
+                }
+                if (chave === "convites") return blocoPessoas("invites", "convites", "Convites");
+                if (chave === "amigos") return blocoPessoas("friends", "amigos", "Amigos");
+                if (chave === "encontrar") return blocoPessoas("discover", "encontrar", "Encontrar colegas");
+                return blocoPessoas("blocked", "bloqueados", "Bloqueados");
+              })}
             </>
           ) : (
           <>
+          {destaque ? <View style={styles.hubLargo}>{destaque}</View> : null}
           {activeClasseId > 0 ? (
             <EventoDaTurma
               classeId={activeClasseId}
@@ -376,6 +433,7 @@ export default function SocialScreen() {
       <BagModal visible={bagVisible} classeId={activeClasseId > 0 ? activeClasseId : null} profile={profile} onClose={() => setBagVisible(false)} />
       {usuario?.id && activeClasseId > 0 ? <StoreModal visible={storeVisible} alunoId={usuario.id} classeId={activeClasseId} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}
       <SocialProfileModal visible={selectedPerson !== null} alunoId={selectedPerson?.alunoId ?? null} classeId={activeClasseId} accent={palette.accent} online={selectedPerson?.online} onPressChat={() => { if (selectedPerson) setChatPerson(selectedPerson); setSelectedPerson(null); }} onClose={() => setSelectedPerson(null)} />
+      <GuildChatModal visible={chatGuilda !== null} guild={chatGuilda} accent={palette.accent} profile={profile} options={shareOptions} onClose={() => setChatGuilda(null)} />
       {chatPerson ? <PrivateChatModal visible={chatPerson !== null} person={chatPerson} accent={palette.accent} profile={profile} onClose={() => setChatPerson(null)} /> : null}
     </View>
   );
@@ -395,9 +453,8 @@ const styles = StyleSheet.create({
   celula: { width: "32%", minWidth: 240 },
   header: { marginBottom: 16 },
   blocoCelular: { marginTop: 22 },
-  tituloBloco: { flexDirection: "row", alignItems: "center", gap: 8, marginHorizontal: 4, marginBottom: 10 },
-  tituloBlocoTexto: { fontFamily: FontFamily.inikaBold, fontSize: 19 },
-  tituloBlocoContagem: { fontFamily: FontFamily.interMedium, fontSize: 12, fontWeight: "700", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, overflow: "hidden" },
+  hub: { marginTop: 8 },
+  hubLargo: { marginBottom: 16, maxWidth: 720 },
   subtitle: { fontFamily: FontFamily.interMedium, fontSize: 14, lineHeight: 21, marginTop: 12 },
   // Celular (mobile-v1): atalhos como pílulas roláveis, grudadas no topo ao rolar.
   tabsSticky: { marginHorizontal: -20, paddingHorizontal: 20, paddingVertical: 8, zIndex: 2 },

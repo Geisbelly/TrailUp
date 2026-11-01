@@ -107,8 +107,26 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
                     <Pressable accessibilityRole="button" onPress={() => void onRetry()} style={[s.botao, { borderColor: palette.borderStrong }]}>
                       <Text style={[s.botaoTexto, { color: palette.text }]}>Atualizar turmas</Text>
                     </Pressable>
-                    <Pressable accessibilityRole="button" disabled={saindo} onPress={() => void sair()} style={[s.botao, { borderColor: palette.borderStrong }]}>
-                      <Text style={[s.botaoTexto, { color: palette.textMuted }]}>{saindo ? "Saindo…" : "Sair da conta"}</Text>
+                    {/* Fundo, ícone e texto na cor principal, como no celular (#780): só com contorno e texto apagado, o "Sair" parecia texto solto. */}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Sair da conta"
+                      disabled={saindo}
+                      onPress={() => void sair()}
+                      style={({ hovered, pressed }: { hovered?: boolean; pressed: boolean }) => [
+                        s.botao,
+                        s.botaoSair,
+                        {
+                          borderColor: palette.borderStrong,
+                          backgroundColor: hovered || pressed ? palette.surfaceElevated : palette.background,
+                          opacity: saindo ? 0.6 : 1,
+                        },
+                      ]}
+                    >
+                      {saindo
+                        ? <ActivityIndicator size="small" color={palette.textMuted} />
+                        : <MaterialCommunityIcons name="logout" size={16} color={palette.text} />}
+                      <Text style={[s.botaoTexto, { color: palette.text }]}>{saindo ? "Saindo…" : "Sair da conta"}</Text>
                     </Pressable>
                   </View>
                 </>,
@@ -187,6 +205,7 @@ const s = StyleSheet.create({
   preenchido: { height: "100%", borderRadius: 3 },
   botao: { alignItems: "center", justifyContent: "center", borderRadius: 999, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 18 },
   botaoCartao: { marginTop: 6 },
+  botaoSair: { flexDirection: "row", gap: 8 },
   botaoTexto: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "700" },
   atualizar: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 18, padding: 6 },
   atualizarTexto: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700" },

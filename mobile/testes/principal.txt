@@ -1,5 +1,6 @@
 src/components/PresentationSlidesBlock.test.ts
 src/components/bag/BagModal.test.tsx
+src/components/auth/alturaDaCena.test.ts
 src/components/ornamentDividerColors.test.ts
 src/components/studyCards.test.ts
 src/constants/designAssets.test.ts
@@ -34,6 +35,7 @@ src/services/social/guildModel.test.ts
 src/services/social/guildWindowModel.test.ts
 src/services/social/publicProfileModel.test.ts
 src/services/social/socialModel.test.ts
+src/services/social/socialDestaque.test.ts
 src/services/studySessions.test.ts
 src/services/telemetriaApi.persistence.test.ts
 src/services/telemetriaCliente.core.test.ts
@@ -142,6 +144,7 @@ src/components/funcionais/VideoPlayer.youtube.test.tsx
 src/utils/tocadorDeAudioWeb.test.ts
 src/components/funcionais/AudioPlayer.tela.test.tsx
 src/utils/paletaPorPerfil.test.ts
+src/utils/notificacaoDetalheCores.test.ts
 src/components/funcionais/mediaPlayers.paleta.test.tsx
 src/components/tipografiaDosBlocos.test.ts
 src/components/personalizacaoPorPerfil.test.ts
