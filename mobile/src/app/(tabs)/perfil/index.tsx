@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
+  Pressable,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -17,9 +18,6 @@ import tinycolor from "tinycolor2";
 import CardSemDados from "@/components/CardSemDados";
 import { BagModal } from "@/components/bag/BagModal";
 import { StoreModal } from "@/components/loja/StoreModal";
-import { InfoAlunoCelular } from "@/components/perfil/InfoAlunoCelular";
-import { AtalhosPerfil } from "@/components/perfil/AtalhosPerfil";
-import { useAcoesConta } from "@/hooks/useAcoesConta";
 import ConquistaModal from "@/components/ConquistaModal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getProfileArtwork, profileEmblems } from "@/constants/designAssets";
@@ -79,7 +77,6 @@ export default function PerfilHome() {
   const { avisar } = useAviso();
   const [bagOpen, setBagOpen] = useState(false);
   const [lojaAberta, setLojaAberta] = useState(false);
-  const { sairDoAparelho } = useAcoesConta();
 
   const [aba, setAba] = useState<"metricas" | "conquistas">("metricas");
   const [conquistaSelecionada, setConquistaSelecionada] =
@@ -227,11 +224,13 @@ export default function PerfilHome() {
       profile_switcher: profileSwitcherGuideRef,
       profile_tabs: profileTabsGuideRef,
       profile_achievements: profileAchievementsGuideRef,
-      profile_library: profileLibraryGuideRef,
+      // No celular a biblioteca saiu do topo do Perfil e fica nas Configurações: o passo do
+      // guia aponta para a engrenagem, que é por onde se chega a ela.
+      profile_library: desktop ? profileLibraryGuideRef : profileSettingsGuideRef,
       profile_settings: profileSettingsGuideRef,
       ...metricGuideRefs,
     }),
-    [metricGuideRefs],
+    [desktop, metricGuideRefs],
   );
   const prepareProfileGuideStep = useCallback(
     async (step: SectionGuideStep) => {
@@ -322,12 +321,22 @@ export default function PerfilHome() {
           // Sem fundo: o retrato sobe sobre o banner e não pode cobrir a câmera nem o degradê.
           style={[styles.profileCard, { pointerEvents: "box-none" }]}
         >
-          <View style={styles.avatarContainer}>
+          {/* O próprio retrato edita foto e banner: a câmera era um botão solto na lateral do
+              banner, longe do que ela muda. O selo fica no canto oposto ao emblema do perfil. */}
+          <Pressable
+            onPress={() => router.push("/(tabs)/perfil/info")}
+            accessibilityRole="button"
+            accessibilityLabel="Editar foto e banner"
+            style={({ pressed }) => [styles.avatarContainer, { opacity: pressed ? 0.85 : 1 }]}
+          >
             <FramedProfileImage profile={perfil} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={104} label={`Foto de ${usuario?.nome ?? 'Aluno'}`} />
             <View style={styles.hexBadgeContainer}>
               <ProfileArtwork source={profileEmblems[perfil]} profile={perfil} width={30} />
             </View>
-          </View>
+            <View style={[styles.seloEditarFoto, { backgroundColor: shellPalette.accent, borderColor: shellPalette.background }]}>
+              <MaterialCommunityIcons name="camera" size={15} color={shellPalette.background} />
+            </View>
+          </Pressable>
 
           <View style={styles.infoContainer}>
             <Text style={[styles.name, { color: shellPalette.text }]}>
@@ -342,6 +351,40 @@ export default function PerfilHome() {
               >
                 {usuario.descricao}
               </Text>
+            ) : null}
+          </View>
+
+          {/* Editar e trocar de turma como botões com ícone. Turma, e-mail e "na jornada desde"
+              saíram do Perfil no celular: turma, sequência e rank já estão nas Métricas, e os
+              dados da conta ficam em Informações. */}
+          <View style={styles.acoesPerfil}>
+            <Pressable
+              onPress={() => router.push("/(tabs)/perfil/info")}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.acaoPerfil,
+                { backgroundColor: shellPalette.surface, borderColor: shellPalette.border, opacity: pressed ? 0.75 : 1 },
+              ]}
+            >
+              <View style={[styles.acaoPerfilIcone, { backgroundColor: shellPalette.accentMuted }]}>
+                <MaterialCommunityIcons name="account-edit-outline" size={18} color={shellPalette.accent} />
+              </View>
+              <Text style={[styles.acaoPerfilTexto, { color: shellPalette.text }]}>Editar perfil</Text>
+            </Pressable>
+            {classes.length > 1 ? (
+              <Pressable
+                onPress={trocarTurma}
+                accessibilityRole="button"
+                style={({ pressed }) => [
+                  styles.acaoPerfil,
+                  { backgroundColor: shellPalette.surface, borderColor: shellPalette.border, opacity: pressed ? 0.75 : 1 },
+                ]}
+              >
+                <View style={[styles.acaoPerfilIcone, { backgroundColor: shellPalette.accentMuted }]}>
+                  <MaterialCommunityIcons name="swap-horizontal" size={18} color={shellPalette.accent} />
+                </View>
+                <Text style={[styles.acaoPerfilTexto, { color: shellPalette.text }]}>Trocar turma</Text>
+              </Pressable>
             ) : null}
           </View>
         </View>
@@ -364,18 +407,12 @@ export default function PerfilHome() {
             palette={shellPalette}
           />
         ) : null}
+    </>
+  );
 
-        {desktop ? null : (
-          <InfoAlunoCelular
-            turma={classeAtual?.resumo?.materia_nome}
-            professor={classeAtual?.resumo?.professor_nome}
-            email={usuario?.email}
-            classeId={classeAtual?.classe_id}
-            onTrocarTurma={classes.length > 1 ? trocarTurma : undefined}
-            palette={shellPalette}
-          />
-        )}
-
+  // Troca de perfil no celular. Vem depois de Métricas e Conquistas, que abrem a tela.
+  const trocaDePerfil = (
+    <>
         {desktop ? null : perfisRepresentativos.length > 1 ? (
           // Cartão do perfil (08-perfil-hub.html, .cartao/.chip-perfil/.rot): o ativo no topo, depois a troca.
           <View
@@ -470,19 +507,6 @@ export default function PerfilHome() {
                 .map((profileKey) => `${getBrainHexConfig(profileKey).label} ${Math.round(afinidadeDe(profileKey))}%`)
                 .join(" · ")}
             </Text>
-            {/* Três números da jornada (08-perfil-hub.html, .mini). */}
-            <View style={styles.mini}>
-              {[
-                ["Turma", classeAtual?.resumo?.materia_nome ?? "—"],
-                ["Sequência", `${sequenciaDeDias(metricsViewModel.semanaDiaria)} ${sequenciaDeDias(metricsViewModel.semanaDiaria) === 1 ? "dia" : "dias"}`],
-                ["No rank", metricsViewModel.melhorPosicao?.posicao ? `${metricsViewModel.melhorPosicao.posicao}º` : "—"],
-              ].map(([rotulo, valor]) => (
-                <View key={rotulo} style={[styles.miniCaixa, { backgroundColor: tinycolor(shellPalette.background).setAlpha(0.55).toRgbString() }]}>
-                  <Text style={[styles.miniRotulo, { color: shellPalette.textSubtle }]}>{rotulo}</Text>
-                  <Text numberOfLines={1} style={[styles.miniValor, { color: shellPalette.text }]}>{valor}</Text>
-                </View>
-              ))}
-            </View>
           </View>
         ) : null}
     </>
@@ -720,16 +744,6 @@ export default function PerfilHome() {
                 locations={desktop ? undefined : [0, 0.45, 1]}
                 style={StyleSheet.absoluteFill}
               />
-              {desktop ? null : (
-                <TouchableOpacity
-                  style={[styles.bannerCamera, { backgroundColor: tinycolor(shellPalette.surface).setAlpha(0.8).toRgbString(), borderColor: shellPalette.border }]}
-                  onPress={() => router.push("/(tabs)/perfil/info")}
-                  accessibilityRole="button"
-                  accessibilityLabel="Trocar banner"
-                >
-                  <MaterialCommunityIcons name="camera-outline" size={20} color={shellPalette.text} />
-                </TouchableOpacity>
-              )}
               {desktop ? (
                 <AcoesBannerPerfil
                   palette={shellPalette}
@@ -745,40 +759,40 @@ export default function PerfilHome() {
               </View>
             ) : null}
 
-            {/* Na tela larga estes botões ficam dentro do banner (AcoesBannerPerfil). */}
+            {/* Na tela larga estes botões ficam dentro do banner (AcoesBannerPerfil). No celular,
+                Loja e Bag lado a lado e a engrenagem por último: Biblioteca de conquistas,
+                Relatório e Sair moram nas Configurações, não no corpo do Perfil. */}
             {desktop ? null : (
-            <>
-            <View ref={profileSettingsGuideRef} collapsable={false} style={styles.btnSettingsWrap}>
+            <View style={styles.acoesTopo}>
+              {usuario?.id && (classeAtual?.classe_id ?? 0) > 0 ? (
+                <TouchableOpacity
+                  style={styles.btnTopo}
+                  onPress={() => setLojaAberta(true)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir loja"
+                >
+                  <UtilityIcon kind="store" size={34} />
+                </TouchableOpacity>
+              ) : null}
               <TouchableOpacity
-                style={styles.btnSettings}
-                onPress={() => router.push("/(tabs)/perfil/settings")}
-                accessibilityRole="button"
-                accessibilityLabel="Configurações"
-              >
-                <UtilityIcon kind="settings" size={34} />
-              </TouchableOpacity>
-            </View>
-            <View ref={profileLibraryGuideRef} collapsable={false} style={styles.btnLibraryWrap}>
-              <TouchableOpacity
-                style={styles.btnLibrary}
-                onPress={() => router.push("/(tabs)/perfil/biblioteca-conquistas")}
-                accessibilityRole="button"
-                accessibilityLabel="Biblioteca de conquistas"
-              >
-                <UtilityIcon kind="achievements" size={34} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.btnBagWrap}>
-              <TouchableOpacity
-                style={styles.btnLibrary}
+                style={styles.btnTopo}
                 onPress={() => setBagOpen(true)}
                 accessibilityRole="button"
                 accessibilityLabel="Abrir minha Bag"
               >
                 <UtilityIcon kind="bag" size={34} />
               </TouchableOpacity>
+              <View ref={profileSettingsGuideRef} collapsable={false}>
+                <TouchableOpacity
+                  style={styles.btnTopo}
+                  onPress={() => router.push("/(tabs)/perfil/settings")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Configurações"
+                >
+                  <UtilityIcon kind="settings" size={34} />
+                </TouchableOpacity>
+              </View>
             </View>
-            </>
             )}
 
             {desktop ? null : identidade}
@@ -793,19 +807,8 @@ export default function PerfilHome() {
             </View>
           ) : (
             <>
-              <AtalhosPerfil
-                palette={shellPalette}
-                atalhos={[
-                  ...(usuario?.id && (classeAtual?.classe_id ?? 0) > 0
-                    ? [{ chave: "loja", rotulo: "Loja", icone: "storefront-outline" as const, onPress: () => setLojaAberta(true) }]
-                    : []),
-                  { chave: "biblioteca", rotulo: "Biblioteca de conquistas", icone: "trophy-outline", detalhe: conquistas.length ? String(conquistas.length) : null, onPress: () => router.push("/(tabs)/perfil/biblioteca-conquistas") },
-                  { chave: "relatorio", rotulo: "Relatório dos seus dados", icone: "file-chart-outline", onPress: () => router.push("/(tabs)/perfil/relatorio") },
-                  { chave: "config", rotulo: "Configurações", icone: "cog-outline", onPress: () => router.push("/(tabs)/perfil/settings") },
-                  { chave: "sair", rotulo: "Sair", icone: "logout", destrutivo: true, onPress: () => void sairDoAparelho() },
-                ]}
-              />
               {principal}
+              {trocaDePerfil}
             </>
           )}
         </ScrollView>
@@ -877,53 +880,26 @@ const styles = StyleSheet.create({
   colunaPrincipal: { flex: 8, minWidth: 0 },
   // Celular (mobile-v1, 08-perfil-hub.html): 150 px de cenário, não a faixa de 64 de antes.
   bannerWrapper: { width: "100%", height: 150, position: "relative" },
-  bannerCamera: {
-    position: "absolute",
-    left: 12,
-    bottom: 14,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   banner: { width: "100%", height: "100%" },
-  btnSettings: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  btnSettingsWrap: {
+  // Loja, Bag e Configurações numa linha só no canto do banner.
+  acoesTopo: {
     position: "absolute",
     top: 10,
-    right: 20,
+    right: 14,
     zIndex: 10,
+    flexDirection: "row",
+    gap: 4,
+  },
+  btnTopo: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   guideButton: {
     position: "absolute",
     top: 10,
     left: 20,
-  },
-  btnLibraryWrap: {
-    position: "absolute",
-    top: 10,
-    right: 72,
-    zIndex: 10,
-  },
-  btnBagWrap: {
-    position: "absolute",
-    top: 10,
-    right: 124,
-    zIndex: 10,
-  },
-  btnLibrary: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 10,
   },
   // Celular (mobile-v1, 08-perfil-hub.html, .retrato/.ident): retrato de 104 subindo 60 sobre o
   // banner, e nome, @ e bio centrados embaixo.
@@ -952,6 +928,31 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 3,
   },
+  seloEditarFoto: {
+    position: "absolute",
+    bottom: 2,
+    left: 2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 3,
+  },
+  acoesPerfil: { flexDirection: "row", gap: 10, marginTop: 14, alignSelf: "stretch", justifyContent: "center" },
+  acaoPerfil: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    minHeight: 44,
+    paddingLeft: 6,
+    paddingRight: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  acaoPerfilIcone: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  acaoPerfilTexto: { fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "600" },
   infoContainer: { alignItems: "center", gap: 2, paddingTop: 10 },
   profileSwitcherWrap: {
     // O cabeçalho centraliza os filhos: sem isto o cartão encolhia e cortava os nomes.
@@ -992,10 +993,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   afinidades: { flexDirection: "row", height: 10, borderRadius: 999, overflow: "hidden", marginTop: 14, marginBottom: 6, marginHorizontal: 16 },
-  mini: { flexDirection: "row", gap: 8, marginTop: 12, paddingHorizontal: 16 },
-  miniCaixa: { flex: 1, borderRadius: 10, padding: 10, alignItems: "center" },
-  miniRotulo: { fontFamily: FontFamily.interMedium, fontSize: 12 },
-  miniValor: { fontFamily: FontFamily.interMedium, fontSize: 16, fontWeight: "700", marginTop: 2 },
   afinidadesLegenda: { fontFamily: FontFamily.interMedium, fontSize: 12.5, lineHeight: 19, marginHorizontal: 16 },
   profileOptionCheck: { position: "absolute", top: 6, right: 6 },
   profileOptionLabel: {

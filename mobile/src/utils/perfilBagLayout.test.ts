@@ -8,13 +8,20 @@ const source = readFileSync(
   "utf8",
 );
 
-test("botão da Bag tem alvo próprio na linha de atalhos do perfil compacto", () => {
+test("Loja e Bag ficam lado a lado na linha do topo do perfil compacto", () => {
+  const linha = source.match(/<View style=\{styles\.acoesTopo\}>([\s\S]*?)\n {12}<\/View>\n/);
+  assert.ok(linha, "linha de ações do topo não encontrada");
+  const loja = linha[1].indexOf('accessibilityLabel="Abrir loja"');
+  const bag = linha[1].indexOf('accessibilityLabel="Abrir minha Bag"');
+  const config = linha[1].indexOf('accessibilityLabel="Configurações"');
+  assert.ok(loja >= 0 && bag > loja && config > bag, "ordem esperada: Loja, Bag, Configurações");
   assert.match(
     source,
-    /<View[^>]*style=\{styles\.btnBagWrap\}[^>]*>[\s\S]*?accessibilityLabel="Abrir minha Bag"[\s\S]*?<\/View>/,
+    /acoesTopo:\s*\{[\s\S]*?position:\s*"absolute"[\s\S]*?top:\s*10[\s\S]*?zIndex:\s*10[\s\S]*?flexDirection:\s*"row"/,
   );
-  assert.match(
-    source,
-    /btnBagWrap:\s*\{[\s\S]*?position:\s*"absolute"[\s\S]*?top:\s*10[\s\S]*?right:\s*124[\s\S]*?zIndex:\s*10/,
-  );
+});
+
+test("Biblioteca, Relatório e Sair não ficam no corpo do perfil compacto", () => {
+  assert.doesNotMatch(source, /AtalhosPerfil/);
+  assert.doesNotMatch(source, /sairDoAparelho/);
 });
