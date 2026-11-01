@@ -23,7 +23,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,8 +37,11 @@ PROMPT_NAME = "boss_falas.txt"
 # Própria, de propósito: subir `_PERSONALIZACAO_PIPELINE_VERSION` regeraria a mídia de todas as
 # turmas. Suba esta quando o prompt ou os momentos mudarem.
 BOSS_FALAS_VERSION = "2026-11-01.1"
-# O worker é sequencial: uma chamada pendurada travaria a fila de personalização.
-LLM_TIMEOUT_SEC = 90.0
+# O worker é sequencial: uma chamada pendurada travaria a fila de personalização. 90 s não bastava:
+# em 01/11 o `gemini-3.6-flash` levou 100 a 133 s para as falas de um tópico, e toda chamada caía
+# no timeout. Depois de uma falha o (tópico, perfil) pausa 30 min no worker, então o teto só pesa
+# uma vez por pausa.
+LLM_TIMEOUT_SEC = 240.0
 TRECHO_MAX = 800
 
 PERFIS = ("seeker", "survivor", "daredevil", "mastermind", "conqueror", "socializer", "achiever")
@@ -66,17 +69,30 @@ _URL = re.compile(r"https?://|www\.", re.IGNORECASE)
 _MARKDOWN = re.compile(r"[*_`#<>\[\]{}]")
 
 
+def _momento(nome: str) -> Any:
+    # O mínimo vai para o JSON Schema que o modelo recebe (minItems), não para a validação local:
+    # a saída estruturada do Gemini omitia `derrota` (lista vazia), e o boss inteiro era descartado
+    # em `limpar_falas` (01/11, nenhuma fala gravada). `limpar_falas` continua sendo o filtro.
+    return Field(default_factory=list, json_schema_extra={"minItems": MOMENTOS[nome][0]})
+
+
+def _todos_os_momentos_obrigatorios(schema: dict[str, Any]) -> None:
+    schema["required"] = ["conteudo_id", "nome", *MOMENTOS]
+
+
 class FalasDoBoss(BaseModel):
+    model_config = ConfigDict(json_schema_extra=_todos_os_momentos_obrigatorios)
+
     conteudo_id: int
     nome: str
-    entrada: list[str] = Field(default_factory=list)
-    derrota: list[str] = Field(default_factory=list)
-    dano: list[str] = Field(default_factory=list)
-    metade_vida: list[str] = Field(default_factory=list)
-    um_quarto_vida: list[str] = Field(default_factory=list)
-    alerta_tempo: list[str] = Field(default_factory=list)
-    contra_ataque: list[str] = Field(default_factory=list)
-    vitoria: list[str] = Field(default_factory=list)
+    entrada: list[str] = _momento("entrada")
+    derrota: list[str] = _momento("derrota")
+    dano: list[str] = _momento("dano")
+    metade_vida: list[str] = _momento("metade_vida")
+    um_quarto_vida: list[str] = _momento("um_quarto_vida")
+    alerta_tempo: list[str] = _momento("alerta_tempo")
+    contra_ataque: list[str] = _momento("contra_ataque")
+    vitoria: list[str] = _momento("vitoria")
 
 
 class FalasDoTopico(BaseModel):
