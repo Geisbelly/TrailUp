@@ -228,7 +228,7 @@ export default function Console() {
               ) : view === "eventos" ? (
                 <EventosSection professorId={professorData?.id} />
               ) : view === "economia" ? (
-                <EconomiaSection />
+                <EconomiaSection professorId={professorData?.id} />
               ) : view === "personalizacoes" ? (
                 <PersonalizacoesSection professorId={professorData?.id} />
               ) : view === "aprovacoes" ? (
