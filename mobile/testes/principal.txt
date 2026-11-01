@@ -163,3 +163,4 @@ src/utils/authValidacao.test.ts
 src/utils/painelTopicoTrilha.celular.test.ts
 src/database/supabase.sessaoNaUrl.test.ts
 src/utils/alteracoesDoProfessor.test.ts
+src/utils/rankEstadoVazio.test.ts

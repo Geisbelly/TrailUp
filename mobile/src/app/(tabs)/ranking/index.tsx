@@ -1,17 +1,20 @@
 import { HallBackground } from "@/components/HallTheme";
+import { RankEstadoVazio } from "@/components/ranking/RankEstadoVazio";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { RankDetalhe } from "@/app/(tabs)/ranking/[id]";
 import { RankingDesktop } from "@/components/web/RankingDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useUsuario } from "@/context/SessaoContext";
+import { useTrilha } from "@/context/TrilhaContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { motivoSemRankDaTurma } from "@/utils/rankEstadoVazio";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -30,13 +33,21 @@ const NOME_CURTO: Record<string, string> = { tempo: "Tempo", percentual: "Progre
 
 /** Celular (mobile-v1): uma tela só, com as categorias como abas e a categoria aberta embaixo. */
 function RankingCelular() {
-  const { ranking, carregando } = useConquistaRank();
+  const { ranking, carregando, erroRanking, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(perfilVisualDoAluno(usuario));
+  const { classeAtual } = useTrilha();
+  const perfil = perfilVisualDoAluno(usuario);
+  const palette = getProfileShellPalette(perfil);
   const ranks = ranking?.ranks ?? [];
   const [aberto, setAberto] = useState<number | null>(null);
   const idAberto = aberto !== null && ranks.some((r) => r.info.rank_id === aberto) ? aberto : (ranks[0]?.info.rank_id ?? null);
   const rankAberto = ranks.find((r) => r.info.rank_id === idAberto);
+  const motivoVazio = motivoSemRankDaTurma({
+    quantidadeDeRanks: ranks.length,
+    carregando,
+    erro: erroRanking,
+    temTurma: !!classeAtual,
+  });
   const alvoTour = useRef<View | null>(null);
   useEffect(() => registrarAlvoTour("ranking_categorias", alvoTour), []);
 
@@ -81,10 +92,16 @@ function RankingCelular() {
             ) : null}
             {idAberto !== null ? <RankDetalhe rankId={idAberto} semBarraDeVolta /> : null}
           </>
-        ) : carregando ? (
-          <ActivityIndicator style={s.empty} color={palette.accent} />
         ) : (
-          <Text style={[s.empty, { color: palette.textMuted }]}>Nenhum ranking disponível nesta turma.</Text>
+          // Sem categoria para abrir: o cartão diz por quê (carregando, erro, sem turma, sem ranking).
+          <ScrollView contentContainerStyle={s.vazioCelular}>
+            <RankEstadoVazio
+              motivo={motivoVazio ?? "sem_ranks"}
+              palette={palette}
+              profile={perfil}
+              onTentarDeNovo={reloadRanking}
+            />
+          </ScrollView>
         )}
       </SafeAreaView>
     </View>
@@ -134,7 +151,7 @@ const s = StyleSheet.create({
     textAlign: "left",
   },
   description: { fontSize: 14, lineHeight: 20, marginTop: 6 },
-  empty: { marginTop: 40, textAlign: "center" },
+  vazioCelular: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 24 },
   topoCelular: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 8 },
   tituloCelular: { fontFamily: "Georgia, serif", fontSize: 22 },
   abas: { flexDirection: "row", gap: 8, paddingHorizontal: 18 },

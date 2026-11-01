@@ -2,10 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { BrainHexProfile } from "@/constants/brainHexProfiles";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
-import { AREA_EM_DESTAQUE, areaEmDestaque, ordemDasAncoras, ordemDasAreas, type AncoraDoSocial } from "./socialDestaque";
+import { AREA_EM_DESTAQUE, abaDaAncora, abasDoSocial, areaEmDestaque, blocosDaArena, ordemDasAreas } from "./socialDestaque";
 
 const BRAIN_HEX_PROFILES = Object.keys(AREA_EM_DESTAQUE) as BrainHexProfile[];
-const TODAS = new Set<AncoraDoSocial>(["evento", "arena", "convites", "amigos", "guildas", "encontrar", "bloqueados"]);
 
 test("os sete perfis têm destaque", () => {
   assert.equal(BRAIN_HEX_PROFILES.length, 7);
@@ -37,13 +36,29 @@ test("a área em destaque vem primeiro e nenhuma some", () => {
   }
 });
 
-test("blocos: todos presentes, bloqueados por último", () => {
-  const ordem = ordemDasAncoras("socializer", TODAS);
-  assert.deepEqual(ordem, ["convites", "amigos", "guildas", "evento", "arena", "encontrar", "bloqueados"]);
-  assert.equal(ordemDasAncoras("conqueror", TODAS)[0], "arena");
+test("abas: três, a do perfil abre e nenhuma some", () => {
+  assert.deepEqual(abasDoSocial("socializer"), ["conversa", "arena", "descobrir"]);
+  assert.equal(abasDoSocial("conqueror")[0], "arena");
+  for (const perfil of BRAIN_HEX_PROFILES) assert.deepEqual([...abasDoSocial(perfil)].sort(), ["arena", "conversa", "descobrir"], perfil);
 });
 
-test("sem turma, evento e arena não entram", () => {
-  const semTurma = new Set<AncoraDoSocial>(["convites", "amigos", "guildas", "encontrar"]);
-  assert.deepEqual(ordemDasAncoras("daredevil", semTurma), ["convites", "amigos", "guildas", "encontrar"]);
+test("Eventos mora na Arena: Achiever e Mastermind abrem nela, com o evento primeiro", () => {
+  assert.equal(abasDoSocial("achiever")[0], "arena");
+  assert.equal(abasDoSocial("mastermind")[0], "arena");
+  assert.deepEqual(blocosDaArena("achiever", true), ["evento", "arena"]);
+  assert.deepEqual(blocosDaArena("conqueror", true), ["arena", "evento"]);
+  assert.deepEqual(blocosDaArena("seeker", true), ["arena", "evento"]);
+});
+
+test("sem turma, a Arena fica sem o bloco do evento", () => {
+  assert.deepEqual(blocosDaArena("achiever", false), ["arena"]);
+  assert.deepEqual(blocosDaArena("daredevil", false), ["arena"]);
+});
+
+test("cada bloco mora numa aba, bloqueados na Conversa", () => {
+  assert.equal(abaDaAncora("evento"), "arena");
+  assert.equal(abaDaAncora("arena"), "arena");
+  assert.equal(abaDaAncora("guildas"), "conversa");
+  assert.equal(abaDaAncora("encontrar"), "descobrir");
+  assert.equal(abaDaAncora("bloqueados"), "conversa");
 });

@@ -11,8 +11,8 @@ import { MissoesDoDia } from "@/components/missoes/MissoesDoDia";
 import { EventoDaTurma } from "@/components/eventos/EventoDaTurma";
 import { perfilDaMissao } from "@/services/missoes/missaoModel";
 import { GuildChatModal, type GuildShareOption } from "@/components/social/GuildChatModal";
-import { ICONE_DA_ANCORA, SocialHubAtalhos, SocialHubDestaque, TituloDoBloco, type ResumoDoSocial } from "@/components/social/SocialHub";
-import { ANCORAS_DA_AREA, ordemDasAncoras, ordemDasAreas, type AncoraDoSocial } from "@/services/social/socialDestaque";
+import { AbasDoSocial, SocialHubDestaque, SocialStories, TituloDoBloco, type ResumoDoSocial } from "@/components/social/SocialHub";
+import { abaDaAncora, abaDaArea, abasDoSocial, blocosDaArena, ordemDasAreas, type AbaDoSocial, type AncoraDoSocial } from "@/services/social/socialDestaque";
 import type { Guild } from "@/services/social/guildModel";
 import { BagModal } from "@/components/bag/BagModal";
 import { UtilityIcon } from "@/components/UtilityIcon";
@@ -67,31 +67,16 @@ export default function SocialScreen() {
   const [guilds, setGuilds] = useState<Awaited<ReturnType<typeof carregarGuildas>>>([]);
   const [janela, setJanela] = useState<Awaited<ReturnType<typeof carregarJanelaDaFormacao>>>(null);
   const [selectedPerson, setSelectedPerson] = useState<SocialPerson | null>(null);
-  // Celular (mobile-v1, 06-social.html): uma coluna só; os atalhos rolam até a seção (âncoras).
+  // Celular: uma página por área, com abas de ícone como as do perfil do Instagram, em vez da
+  // rolagem longa com âncoras (que parecia landing page). Abre na aba do perfil até o aluno tocar outra.
   const rolagemRef = useRef<ScrollView>(null);
+  const [abaEscolhida, setAbaEscolhida] = useState<AbaDoSocial | null>(null);
+  const rolagemY = useRef(0);
+  const topoDasAbas = useRef(0);
+  const topoDaPagina = useRef(0);
   const posicoes = useRef<Record<string, number>>({});
-  const [ancoraAtiva, setAncoraAtiva] = useState("evento");
-  // A faixa de pílulas rola sozinha até a ativa, senão as últimas (Guildas) ficam fora da tela.
-  const faixaRef = useRef<ScrollView>(null);
-  const posicoesPilulas = useRef<Record<string, { x: number; largura: number }>>({});
-  useEffect(() => {
-    const pilula = posicoesPilulas.current[ancoraAtiva];
-    if (pilula) faixaRef.current?.scrollTo({ x: Math.max(0, pilula.x - 48), animated: true });
-  }, [ancoraAtiva]);
   const ancora = (chave: string) => ({ onLayout: (e: LayoutChangeEvent) => { posicoes.current[chave] = e.nativeEvent.layout.y; } });
-  const irPara = (chave: string) => {
-    setAncoraAtiva(chave);
-    rolagemRef.current?.scrollTo({ y: Math.max(0, (posicoes.current[chave] ?? 0) - 56), animated: true });
-  };
-  const aoRolar = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-    const y = contentOffset.y + 80;
-    const noFim = contentOffset.y + layoutMeasurement.height >= contentSize.height - 24;
-    const ordenadas = Object.entries(posicoes.current).sort((a, b) => b[1] - a[1]);
-    // No fim da rolagem as últimas seções nunca chegam ao topo: a última vira a ativa.
-    const atual = noFim ? ordenadas[0]?.[0] : ordenadas.find(([, pos]) => pos <= y)?.[0];
-    if (atual) setAncoraAtiva((anterior) => (anterior === atual ? anterior : atual));
-  };
+  const aoRolar = (e: NativeSyntheticEvent<NativeScrollEvent>) => { rolagemY.current = e.nativeEvent.contentOffset.y; };
   const [chatPerson, setChatPerson] = useState<SocialPerson | null>(null);
   // "Conversa da guilda" no cartão em destaque abre a mesma conversa do bloco Guildas.
   const [chatGuilda, setChatGuilda] = useState<Guild | null>(null);
@@ -216,18 +201,17 @@ export default function SocialScreen() {
     );
   };
 
-  // Hub (rede social de jogo): a área que mais combina com o perfil abre a aba em destaque e os
-  // blocos seguem a ordem dela (`socialDestaque.ts`). Nada sai: os blocos são os mesmos de antes.
+  // Hub (rede social de jogo): a área que mais combina com o perfil abre a aba (`socialDestaque.ts`).
+  // Nada sai: cada bloco de antes mora numa das abas.
   const temBloqueados = Boolean(social && pessoasDe("blocked").length);
-  const atalhosDisponiveis = new Set<AncoraDoSocial>([
-    ...(activeClasseId > 0 ? (["evento", "arena"] as const) : []),
-    "convites", "amigos", "guildas", "encontrar",
-    ...(temBloqueados ? (["bloqueados"] as const) : []),
-  ]);
-  const ordemDosAtalhos = ordemDasAncoras(profile, atalhosDisponiveis);
-  // A Arena sempre teve bloco no celular, mesmo sem turma; só o atalho dependia dela.
-  const ordemDosBlocos = ordemDasAncoras(profile, new Set<AncoraDoSocial>([...atalhosDisponiveis, "arena"]));
-  const areaDestaque = ordemDasAreas(profile).find((area) => ANCORAS_DA_AREA[area].some((a) => atalhosDisponiveis.has(a))) ?? "conversa";
+  const temTurma = activeClasseId > 0;
+  // O cartão do perfil: sem turma não há evento, e o destaque passa para a área seguinte.
+  const areaDestaque = ordemDasAreas(profile).find((area) => temTurma || area !== "eventos") ?? "arena";
+  const abas = abasDoSocial(profile);
+  const abaDoDestaque = abaDaArea(areaDestaque);
+  const abaAtiva = abaEscolhida ?? abaDoDestaque;
+  // O evento da turma também é disputa: mora na aba Arena, primeiro para quem tem destaque em Eventos.
+  const blocosArena = blocosDaArena(profile, temTurma);
   const resumo: ResumoDoSocial = {
     amigos: social?.friends ?? [],
     candidatos: social?.candidates ?? [],
@@ -235,16 +219,20 @@ export default function SocialScreen() {
     convitesEnviados: social?.outgoing.length ?? 0,
     guildas: guilds,
   };
-  const rotuloDoAtalho: Record<AncoraDoSocial, { rotulo: string; contagem?: number }> = {
-    evento: { rotulo: "Evento" },
-    arena: { rotulo: "Arena" },
-    convites: { rotulo: "Convites", contagem: social ? social.incoming.length + social.outgoing.length : undefined },
-    amigos: { rotulo: "Amigos", contagem: social?.friends.length },
-    encontrar: { rotulo: "Encontrar", contagem: social?.candidates.length },
-    guildas: { rotulo: "Guildas", contagem: social ? guilds.length : undefined },
-    bloqueados: { rotulo: "Bloqueados", contagem: temBloqueados ? pessoasDe("blocked").length : undefined },
+  // Bolinha só onde há algo a fazer: convite recebido espera resposta.
+  const pendentesDaAba: Partial<Record<AbaDoSocial, number>> = { conversa: social?.incoming.length ?? 0 };
+  /** Troca de página; se a rolagem já passou das abas, a página nova começa logo abaixo delas. */
+  const trocarAba = (aba: AbaDoSocial) => {
+    setAbaEscolhida(aba);
+    setSearch("");
+    if (rolagemY.current > topoDasAbas.current) rolagemRef.current?.scrollTo({ y: topoDasAbas.current, animated: false });
   };
-  const atalhosCelular = ordemDosAtalhos.map((chave) => ({ chave, ...rotuloDoAtalho[chave] }));
+  const irPara = (chave: AncoraDoSocial) => {
+    const aba = abaDaAncora(chave);
+    if (aba !== abaAtiva) return trocarAba(aba);
+    const y = posicoes.current[chave];
+    if (y !== undefined) rolagemRef.current?.scrollTo({ y: Math.max(0, topoDaPagina.current + y - 64), animated: true });
+  };
   // Na tela larga o destaque leva à aba equivalente; o evento já fica sempre no topo dela.
   const secaoDaAncora: Partial<Record<AncoraDoSocial, Section>> = { arena: "arena", convites: "invites", amigos: "friends", guildas: "guilds", encontrar: "discover", bloqueados: "blocked" };
   const irParaDoDestaque = (chave: AncoraDoSocial) => {
@@ -254,7 +242,21 @@ export default function SocialScreen() {
     rolagemRef.current?.scrollTo({ y: 0, animated: true });
   };
   const destaque = social ? (
-    <SocialHubDestaque area={areaDestaque} profile={profile} palette={palette} resumo={resumo} onIr={irParaDoDestaque} onConversar={setChatPerson} onAbrirGuilda={setChatGuilda} />
+    <SocialHubDestaque area={areaDestaque} profile={profile} palette={palette} resumo={resumo} onIr={irParaDoDestaque} onConversar={setChatPerson} onAbrirGuilda={setChatGuilda} mostrarRostos={desktop} />
+  ) : null;
+  const busca = (
+    <View style={[styles.search, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+      <MaterialCommunityIcons name="magnify" size={22} color={Color.colorWhite} />
+      <TextInput value={search} onChangeText={setSearch} accessibilityLabel="Buscar pessoas" placeholder="Buscar por nome ou guilda" placeholderTextColor={palette.textMuted} style={[styles.searchInput, { color: palette.text }]} />
+      {search ? <Pressable onPress={() => setSearch("")} accessibilityRole="button" accessibilityLabel="Limpar busca" style={styles.clearSearch}><MaterialCommunityIcons name="close" size={20} color={Color.colorWhite} /></Pressable> : null}
+    </View>
+  );
+  const carregandoOuErro = loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? (
+    <View style={styles.empty}>
+      <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
+      <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>
+      <Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={[styles.retryText, { color: palette.background }]}>Tentar novamente</Text></Pressable>
+    </View>
   ) : null;
 
   const emptyMessage = section === "friends" ? "Você ainda não tem amigos na jornada." : section === "invites" ? "Nenhum convite por enquanto." : section === "discover" ? "Nenhum colega disponível para convidar." : "Você não bloqueou ninguém.";
@@ -263,8 +265,8 @@ export default function SocialScreen() {
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
       <HallBackground palette={palette} />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <ScrollView ref={rolagemRef} onScroll={desktop ? undefined : aoRolar} scrollEventThrottle={100} stickyHeaderIndices={desktop ? undefined : [1]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => void load()} tintColor={palette.accent} />}>
-          <View style={styles.header}>
+        <ScrollView ref={rolagemRef} onScroll={desktop ? undefined : aoRolar} scrollEventThrottle={64} stickyHeaderIndices={desktop ? undefined : [1]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => void load()} tintColor={palette.accent} />}>
+          <View style={desktop ? styles.header : styles.headerCelular}>
             {desktop ? (
               <View style={styles.cabecalhoLargo}>
                 <Text style={[styles.eyebrowLargo, { color: palette.accent }]}>CONEXÕES DA JORNADA</Text>
@@ -275,7 +277,7 @@ export default function SocialScreen() {
                 <JourneyHeading title="Social" eyebrow="CONEXÕES DA JORNADA" section="social" palette={palette} right={
                   <View style={styles.acoesTopo}>
                     <Pressable onPress={() => setBagVisible(true)} accessibilityRole="button" accessibilityLabel="Abrir Bag" style={styles.botaoTopo}>
-                      <UtilityIcon kind="bag" size={30} />
+                      <UtilityIcon kind="bag" size={30} profile={profile} />
                     </Pressable>
                     <StoreLauncher color={Color.colorWhite} onPress={() => setStoreVisible(true)} />
                   </View>
@@ -283,8 +285,9 @@ export default function SocialScreen() {
               </View>
             )}
             {desktop ? <Text style={[styles.subtitle, { color: palette.textMuted }]}>Encontre sua turma e avance em companhia.</Text> : null}
+            {!desktop && social && social.friends.length + social.candidates.length > 0 ? <SocialStories amigos={social.friends} colegas={social.candidates} palette={palette} onConversar={setChatPerson} onEncontrar={() => irPara("encontrar")} /> : null}
           </View>
-          <View style={[styles.tabsSticky, { backgroundColor: palette.background }]}>
+          <View style={[desktop ? styles.tabsSticky : styles.abasSticky, { backgroundColor: palette.background }]}>
             {desktop ? (
               <ScrollView horizontal={!desktop} showsHorizontalScrollIndicator={false} style={desktop ? undefined : styles.tabsFaixa} contentContainerStyle={[styles.tabs, desktop && styles.tabsLargo]}>
                 {sections.map(({ key, label, count }) => {
@@ -303,84 +306,54 @@ export default function SocialScreen() {
                 })}
               </ScrollView>
             ) : (
-              <ScrollView ref={faixaRef} horizontal showsHorizontalScrollIndicator={false} style={styles.tabsFaixa} contentContainerStyle={styles.tabs}>
-                {atalhosCelular.map(({ chave, rotulo, contagem }) => {
-                  const ativo = ancoraAtiva === chave;
-                  return (
-                    <Pressable key={chave} onLayout={(e) => { posicoesPilulas.current[chave] = { x: e.nativeEvent.layout.x, largura: e.nativeEvent.layout.width }; }} accessibilityRole="button" accessibilityState={{ selected: ativo }} onPress={() => irPara(chave)}
-                      style={[styles.tab, styles.pilulaCelular, { borderColor: ativo ? palette.accent : palette.border, backgroundColor: ativo ? palette.accentMuted : palette.surface }]}>
-                      <MaterialCommunityIcons name={ICONE_DA_ANCORA[chave]} size={16} color={ativo ? palette.accent : palette.textMuted} />
-                      <Text style={[styles.tabText, styles.tabTextCelular, { color: ativo ? palette.accent : palette.textMuted }]}>{rotulo}</Text>
-                      {contagem ? <Text style={[styles.contaCelular, { backgroundColor: palette.accent, color: palette.background }]}>{contagem}</Text> : null}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+              <View onLayout={(e) => { topoDasAbas.current = e.nativeEvent.layout.y; }}>
+                <AbasDoSocial abas={abas} ativa={abaAtiva} palette={palette} contagem={pendentesDaAba} onTrocar={trocarAba} />
+              </View>
             )}
           </View>
-          <View style={styles.header}>
-            {desktop && (section === "guilds" || section === "arena") ? null : <View style={[styles.search, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <MaterialCommunityIcons name="magnify" size={22} color={Color.colorWhite} />
-              <TextInput value={search} onChangeText={setSearch} accessibilityLabel="Buscar pessoas" placeholder="Buscar por nome ou guilda" placeholderTextColor={palette.textMuted} style={[styles.searchInput, { color: palette.text }]} />
-              {search ? <Pressable onPress={() => setSearch("")} accessibilityRole="button" accessibilityLabel="Limpar busca" style={styles.clearSearch}><MaterialCommunityIcons name="close" size={20} color={Color.colorWhite} /></Pressable> : null}
-            </View>}
-          </View>
+          {desktop ? <View style={styles.header}>{section === "guilds" || section === "arena" ? null : busca}</View> : null}
           <Envolve {...(desktop ? { style: styles.colunas } : {})}>
           <Envolve {...(desktop ? { style: styles.principal } : {})}>
           {!desktop ? (
-            <>
-              {destaque ? (
-                <View style={styles.hub}>
-                  {destaque}
-                  <SocialHubAtalhos ancoras={ordemDosAtalhos.filter((a) => !ANCORAS_DA_AREA[areaDestaque].includes(a))} palette={palette} resumo={resumo} onIr={irPara} />
-                </View>
-              ) : null}
-              {ordemDosBlocos.map((chave) => {
-                if (chave === "evento") {
-                  return (
-                    <View key={chave} {...ancora("evento")} style={styles.blocoCelular}>
-                      {tituloBloco("evento", "Evento e missões")}
+            <View onLayout={(e) => { topoDaPagina.current = e.nativeEvent.layout.y; }}>
+              {/* O cartão grande só na aba do perfil: nas outras, direto ao conteúdo. */}
+              {abaAtiva === abaDoDestaque && destaque ? <View style={styles.hub}>{destaque}</View> : null}
+              {/* Busca só nas páginas com pessoas, abaixo do destaque e acima das listas. */}
+              {abaAtiva === "conversa" || abaAtiva === "descobrir" ? <View style={styles.buscaCelular}>{busca}</View> : null}
+              {abaAtiva === "arena" ? (
+                blocosArena.map((bloco, i) => {
+                  // O primeiro bloco aponta para o segundo, com o ícone dele: Arena → Evento ou Evento → Arena.
+                  const outro = blocosArena[1 - i];
+                  const atalho = i === 0 && outro ? { ancora: outro, rotulo: outro === "evento" ? "Evento" : "Arena", onPress: () => irPara(outro) } : undefined;
+                  return bloco === "evento" ? (
+                    <View key="evento" {...ancora("evento")} style={styles.blocoCelular}>
+                      <TituloDoBloco ancora="evento" titulo="Evento e missões" palette={palette} atalho={atalho} />
                       <EventoDaTurma classeId={activeClasseId} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
                       <MissoesDoDia classeId={activeClasseId} perfil={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
                     </View>
-                  );
-                }
-                // O resto depende do Social carregado: o carregando e o erro aparecem uma vez só,
-                // no lugar do primeiro bloco que precisa dele.
-                if (loading && !social) {
-                  return chave === ordemDosBlocos.find((c) => c !== "evento") ? <ActivityIndicator key="carregando" color={palette.accent} style={styles.loader} /> : null;
-                }
-                if (error) {
-                  return chave === ordemDosBlocos.find((c) => c !== "evento") ? (
-                    <View key="erro" style={styles.empty}>
-                      <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
-                      <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>
-                      <Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={[styles.retryText, { color: palette.background }]}>Tentar novamente</Text></Pressable>
-                    </View>
-                  ) : null;
-                }
-                if (chave === "arena") {
-                  return (
-                    <View key={chave} {...ancora("arena")} style={styles.blocoCelular}>
-                      {tituloBloco("arena", "Arena")}
-                      <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} dueloCom={dueloCom} />
+                  ) : (
+                    <View key="arena" {...ancora("arena")} style={styles.blocoCelular}>
+                      <TituloDoBloco ancora="arena" titulo="Arena" palette={palette} atalho={atalho} />
+                      {carregandoOuErro ?? <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} dueloCom={dueloCom} />}
                     </View>
                   );
-                }
-                if (chave === "guildas") {
-                  return (
-                    <View key={chave} {...ancora("guildas")} style={styles.blocoCelular}>
+                })
+              ) : carregandoOuErro ?? (
+                abaAtiva === "descobrir" ? (
+                  blocoPessoas("discover", "encontrar", "Encontrar colegas")
+                ) : (
+                  <>
+                    {blocoPessoas("invites", "convites", "Convites")}
+                    {blocoPessoas("friends", "amigos", "Amigos")}
+                    <View {...ancora("guildas")} style={styles.blocoCelular}>
                       {tituloBloco("guildas", "Guildas da turma")}
                       <GuildSection guilds={guilds} janela={janela} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} classeId={activeClasseId} accent={palette.accent} profile={profile} shareOptions={shareOptions} onReload={load} />
                     </View>
-                  );
-                }
-                if (chave === "convites") return blocoPessoas("invites", "convites", "Convites");
-                if (chave === "amigos") return blocoPessoas("friends", "amigos", "Amigos");
-                if (chave === "encontrar") return blocoPessoas("discover", "encontrar", "Encontrar colegas");
-                return blocoPessoas("blocked", "bloqueados", "Bloqueados");
-              })}
-            </>
+                    {temBloqueados ? blocoPessoas("blocked", "bloqueados", "Bloqueados") : null}
+                  </>
+                )
+              )}
+            </View>
           ) : (
           <>
           {destaque ? <View style={styles.hubLargo}>{destaque}</View> : null}
@@ -452,8 +425,12 @@ const styles = StyleSheet.create({
   // Três colunas, como no protótipo v4 (cartão compacto do SocialPersonCard).
   celula: { width: "32%", minWidth: 240 },
   header: { marginBottom: 16 },
+  headerCelular: { marginBottom: 4 },
   blocoCelular: { marginTop: 22 },
-  hub: { marginTop: 8 },
+  hub: { marginTop: 16 },
+  buscaCelular: { marginTop: 2 },
+  // As abas de página ocupam a largura toda, encostadas nas bordas como no Instagram.
+  abasSticky: { marginHorizontal: -20, zIndex: 2 },
   hubLargo: { marginBottom: 16, maxWidth: 720 },
   subtitle: { fontFamily: FontFamily.interMedium, fontSize: 14, lineHeight: 21, marginTop: 12 },
   // Celular (mobile-v1): atalhos como pílulas roláveis, grudadas no topo ao rolar.

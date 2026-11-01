@@ -1,4 +1,5 @@
 import { FolhaMinhaPosicao } from "@/components/ranking/FolhaMinhaPosicao";
+import { RankEstadoVazio } from "@/components/ranking/RankEstadoVazio";
 import { RankingPodium } from "@/components/ranking/RankingPodium";
 import { ProfileEmblem } from "@/components/ProfileEmblem";
 import { SocialProfileModal } from "@/components/social/SocialProfileModal";
@@ -17,6 +18,7 @@ import type { RankPosicao } from "@/models/RankPosicao";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { aplicarCorteDoRank, descreverCorte } from "@/utils/rankCorte";
+import { ninguemPontuou } from "@/utils/rankEstadoVazio";
 import { resumirMinhaPosicao } from "@/utils/minhaPosicaoRank";
 import { formatRankScore, rotuloDoCriterio } from "@/utils/rankingPodium";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -30,6 +32,7 @@ import {
   Platform,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -67,7 +70,7 @@ export function RankDetalhe({
   semBarraDeVolta?: boolean;
 }) {
   const router = useRouter();
-  const { ranking, carregando, reloadRanking } = useConquistaRank();
+  const { ranking, carregando, erroRanking, reloadRanking } = useConquistaRank();
   const { usuario } = useUsuario();
   const profile = perfilVisualDoAluno(usuario);
   const palette = getProfileShellPalette(profile);
@@ -182,6 +185,9 @@ export function RankDetalhe({
   const scoreLabel = rotuloDoCriterio(rank?.info.criterio);
   // Barra "Sua posição": quanto falta para passar o colega logo acima (ou que você lidera).
   const resumoPosicao = resumirMinhaPosicao(rank?.posicoes ?? [], usuario?.id, rank?.info.criterio ?? null);
+  // Turma que ainda não pontuou: a view traz todo matriculado com zero, todos empatados em 1º.
+  // Pódio e lista de zeros não são classificação; o cartão explica e leva à Trilha.
+  const semPontuacao = !!rank && ninguemPontuou(rank.posicoes);
   const textoFalta = resumoPosicao.acima
     ? `Faltam ${resumoPosicao.falta} para passar ${resumoPosicao.acima.nome_aluno}`
     : resumoPosicao.minha?.posicao === 1
@@ -218,14 +224,25 @@ export function RankDetalhe({
           />
         </View>
         ) : null}
-        {!rank ? (
-          carregando ? (
-            <ActivityIndicator color={palette.accent} style={s.empty} />
-          ) : (
-            <Text style={[s.empty, { color: palette.textMuted }]}>
-              Ranking não encontrado.
-            </Text>
-          )
+        {!rank || semPontuacao ? (
+          <ScrollView
+            contentContainerStyle={[s.vazio, embutido && s.vazioLargo]}
+            refreshControl={
+              <RefreshControl
+                refreshing={carregando}
+                onRefresh={() => void reloadRanking()}
+                tintColor={palette.accent}
+              />
+            }
+          >
+            <RankEstadoVazio
+              motivo={rank ? "sem_pontuacao" : carregando ? "carregando" : erroRanking ? "erro" : "nao_encontrado"}
+              palette={palette}
+              profile={profile}
+              criterio={rank?.info.criterio}
+              onTentarDeNovo={reloadRanking}
+            />
+          </ScrollView>
         ) : (
           <>
             <FlatList
@@ -471,9 +488,15 @@ export function RankDetalhe({
                 linhasTabela.length === 0 && filtered.length > 0 ? null : profilesLoading && filter !== "geral" ? (
                   <ActivityIndicator color={palette.accent} style={s.empty} />
                 ) : (
-                  <Text style={[s.empty, { color: palette.textMuted }]}>
-                    Nenhum aluno neste recorte.
-                  </Text>
+                  <View style={s.recorteVazio}>
+                    <RankEstadoVazio
+                      motivo="recorte_vazio"
+                      palette={palette}
+                      profile={profile}
+                      onVerGeral={() => setFilter("geral")}
+                      compacto
+                    />
+                  </View>
                 )
               }
               ListFooterComponent={
@@ -523,6 +546,12 @@ export function RankDetalhe({
                   {formatRankScore(cutoff.minhaLinha.pontuacao, rank.info.criterio)}
                 </Text>
               </Pressable>
+            ) : null}
+            {/* A view traz a própria linha mesmo fora do corte; sem ela, o aluno ainda não entrou nesta classificação. */}
+            {!cutoff.minhaLinha && !embutido ? (
+              <View style={s.semPosicao}>
+                <RankEstadoVazio motivo="sem_posicao" palette={palette} profile={profile} compacto />
+              </View>
             ) : null}
             {cutoff.minhaLinha && !embutido ? (
               <FolhaMinhaPosicao
@@ -660,5 +689,9 @@ const s = StyleSheet.create({
   myLabel: { fontFamily: FontFamily.interMedium, fontSize: 12.5 },
   myScore: { fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "800" },
   empty: { margin: 36, textAlign: "center" },
+  vazio: { paddingHorizontal: 12, paddingTop: 8, paddingBottom: 24 },
+  vazioLargo: { padding: 24, maxWidth: 560, width: "100%", alignSelf: "center" },
+  recorteVazio: { marginHorizontal: 12, marginTop: 4 },
+  semPosicao: { marginHorizontal: 8, marginBottom: 8 },
   notice: { padding: 20, fontSize: 12, lineHeight: 18, textAlign: "center" },
 });

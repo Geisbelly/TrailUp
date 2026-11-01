@@ -1,12 +1,15 @@
 import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brainHexProfiles";
 
 /**
- * As quatro áreas do hub Social. Cada uma agrupa blocos que já existiam na aba (as âncoras da
- * faixa de atalhos): nada some, só muda a ordem e qual área abre a tela em destaque.
+ * As quatro áreas do hub Social. A área decide o cartão em destaque de cada perfil; as abas do
+ * celular são três, porque o evento da turma também é disputa e mora dentro da Arena.
  */
 export type AreaDoSocial = "arena" | "conversa" | "eventos" | "descobrir";
 
-/** Âncoras da rolagem no celular, uma por bloco da aba. */
+/** As abas de página do celular. Eventos não é aba: é bloco da Arena. */
+export type AbaDoSocial = "arena" | "conversa" | "descobrir";
+
+/** Os blocos que a aba já tinha. */
 export type AncoraDoSocial = "evento" | "arena" | "convites" | "amigos" | "guildas" | "encontrar" | "bloqueados";
 
 export const ANCORAS_DA_AREA: Record<AreaDoSocial, readonly AncoraDoSocial[]> = {
@@ -16,7 +19,7 @@ export const ANCORAS_DA_AREA: Record<AreaDoSocial, readonly AncoraDoSocial[]> = 
   descobrir: ["encontrar"],
 };
 
-/** Ordem de quem não tem destaque: a mesma da aba antes do hub. */
+/** Ordem das áreas depois da que abre: a mesma da aba antes do hub. */
 const ORDEM_PADRAO: readonly AreaDoSocial[] = ["eventos", "arena", "conversa", "descobrir"];
 
 /**
@@ -58,12 +61,36 @@ export function ordemDasAreas(perfil: string | null | undefined): AreaDoSocial[]
   return [destaque, ...ORDEM_PADRAO.filter((area) => area !== destaque)];
 }
 
+/** A aba em que cada área mora: Eventos dentro da Arena. */
+export function abaDaArea(area: AreaDoSocial): AbaDoSocial {
+  return area === "eventos" ? "arena" : area;
+}
+
 /**
- * Ordem dos blocos na rolagem do celular. `disponiveis` diz o que existe agora (sem turma não há
- * evento nem arena; bloqueados só aparece quando há alguém bloqueado), e bloqueados fica sempre
- * por último.
+ * As abas de página do celular, na ordem do perfil: a primeira é a que abre. Quem tem destaque
+ * em Eventos (Achiever, Mastermind) abre na Arena, com o cartão do evento no topo dela.
  */
-export function ordemDasAncoras(perfil: string | null | undefined, disponiveis: ReadonlySet<AncoraDoSocial>): AncoraDoSocial[] {
-  const ordem = ordemDasAreas(perfil).flatMap((area) => ANCORAS_DA_AREA[area]);
-  return [...ordem, "bloqueados" as const].filter((ancora) => disponiveis.has(ancora));
+export function abasDoSocial(perfil: string | null | undefined): AbaDoSocial[] {
+  const abas: AbaDoSocial[] = [];
+  for (const area of ordemDasAreas(perfil)) {
+    const aba = abaDaArea(area);
+    if (!abas.includes(aba)) abas.push(aba);
+  }
+  return abas;
+}
+
+/**
+ * Os blocos da aba Arena, na ordem do perfil: o evento primeiro para quem tem destaque em
+ * Eventos, a arena primeiro para os demais. Sem turma não há evento nem missão do dia.
+ */
+export function blocosDaArena(perfil: string | null | undefined, temTurma: boolean): ("evento" | "arena")[] {
+  const blocos: ("evento" | "arena")[] = areaEmDestaque(perfil) === "eventos" ? ["evento", "arena"] : ["arena", "evento"];
+  return blocos.filter((bloco) => temTurma || bloco !== "evento");
+}
+
+/** Em que aba mora cada bloco. Bloqueados fica no fim da Conversa. */
+export function abaDaAncora(ancora: AncoraDoSocial): AbaDoSocial {
+  if (ancora === "bloqueados") return "conversa";
+  const area = (Object.keys(ANCORAS_DA_AREA) as AreaDoSocial[]).find((a) => ANCORAS_DA_AREA[a].includes(ancora)) ?? "conversa";
+  return abaDaArea(area);
 }
