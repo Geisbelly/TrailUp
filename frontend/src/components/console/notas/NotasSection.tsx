@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ClipboardCheck, Loader2 } from "lucide-react";
+import { ClipboardCheck, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina } from "../comum/PaginaDoConsole";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
+import { exportarNotasDaTurma } from "../turmas/baixarCsv";
 import { FilaDeCorrecao } from "./FilaDeCorrecao";
 import { PainelDeCorrecao } from "./PainelDeCorrecao";
 import { contarPendentes, filtrarFila, vizinhas, type FiltroDeStatus, type LinhaDaFila } from "./fila";
@@ -28,6 +30,21 @@ export default function NotasSection({ professorId }: { professorId?: string }) 
   const [status, setStatus] = useState<FiltroDeStatus>("pendentes");
   const [topicoId, setTopicoId] = useState<number | null>(null);
   const [aberta, setAberta] = useState<LinhaDaFila | null>(null);
+  const [exportando, setExportando] = useState(false);
+
+  const exportar = async () => {
+    if (!turmaId || exportando) return;
+    setExportando(true);
+    try {
+      const turma = turmas.find((t) => t.id === turmaId);
+      const n = await exportarNotasDaTurma(turmaId, turma?.descricao || `Turma ${turmaId}`);
+      toast.success(n === 0 ? "A turma não tem alunos: o arquivo saiu só com o cabeçalho." : `Notas de ${n} ${n === 1 ? "aluno exportadas" : "alunos exportadas"}.`);
+    } catch (e) {
+      toast.error(`Não foi possível exportar: ${(e as Error).message}`);
+    } finally {
+      setExportando(false);
+    }
+  };
   const [salvando, setSalvando] = useState(false);
   const [erroDoServidor, setErroDoServidor] = useState<string | null>(null);
 
@@ -76,7 +93,18 @@ export default function NotasSection({ professorId }: { professorId?: string }) 
 
   return (
     <div>
-      <CabecalhoDePagina titulo="Notas" subtitulo="Correção de questões dissertativas e entregas que dependem de leitura." />
+      <CabecalhoDePagina
+        titulo="Notas"
+        subtitulo="Correção de questões dissertativas e entregas que dependem de leitura."
+        acao={
+          turmaId ? (
+            <Button type="button" variant="outline" className="rounded-full" disabled={exportando} onClick={() => void exportar()}>
+              {exportando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Download className="mr-2 h-4 w-4" aria-hidden="true" />}
+              Exportar notas e XP (CSV)
+            </Button>
+          ) : undefined
+        }
+      />
 
       {carregandoTurmas && (
         <div role="status" aria-label="Carregando" className="flex justify-center py-16">

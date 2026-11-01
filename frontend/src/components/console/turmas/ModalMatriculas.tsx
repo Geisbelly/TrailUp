@@ -15,6 +15,7 @@ import {
   type PerfilDoAluno,
 } from "./matriculas";
 import { FormTermoPapel } from "./FormTermoPapel";
+import { ImportarListaCsv } from "./ImportarListaCsv";
 import { listarTermosDaTurma, rotuloDaSituacao, type TermoDoAluno } from "./termosResponsavel";
 
 type Matriculado = { id: string; nome: string; email: string | null; desde: string | null };
@@ -103,6 +104,7 @@ export function ModalMatriculas({
   candidatos,
   matriculadosIds,
   onMatricular,
+  onMatricularVarios,
   onRemover,
   onFechar,
 }: {
@@ -110,6 +112,8 @@ export function ModalMatriculas({
   candidatos: AlunoCandidato[];
   matriculadosIds: string[];
   onMatricular: (alunoId: string) => Promise<void>;
+  /** Importação por CSV (#146): várias matrículas num INSERT só. Sem ela, o bloco não aparece. */
+  onMatricularVarios?: (alunoIds: string[]) => Promise<void>;
   onRemover: (alunoId: string) => Promise<void>;
   onFechar: () => void;
 }) {
@@ -176,6 +180,9 @@ export function ModalMatriculas({
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="px-[26px] pt-5">
+            {onMatricularVarios && (
+              <ImportarListaCsv candidatos={candidatos} matriculadosIds={matriculadosIds} onMatricularVarios={onMatricularVarios} />
+            )}
             <label htmlFor={`${id}-busca`} className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               Adicionar aluno
             </label>
