@@ -268,7 +268,7 @@ Cada perfil carrega:
   opera se **as duas** tabelas existirem (sem log, a métrica de efetividade
   ficaria furada justamente onde vai olhar). Ver
   `docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`.
-- `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_09`):
+- `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_11`):
   entrada, derrota, provocação de dano, marcos de metade/um quarto da vida, alerta de tempo,
   contra-ataque e a mensagem de vitória. **Gerar é IA, então é API**: o worker da fila faz uma
   chamada ao modelo por tópico × perfil nos jobs de base por perfil

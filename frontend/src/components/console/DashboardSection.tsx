@@ -359,7 +359,7 @@ export default function DashboardSection() {
     const hoje = new Date();
     const notasPorTurma = new Map<number, number[]>();
     for (const a of alunos) {
-      const nota = a.temNota ? notaParaRisco(a.notaMedia, a.porcentagemConcluida) : null;
+      const nota = a.temNota ? notaParaRisco(a.notaMedia) : null;
       if (nota !== null) notasPorTurma.set(a.classe_id, [...(notasPorTurma.get(a.classe_id) ?? []), nota]);
     }
     const mediaDaTurma = (classeId: number) => {
@@ -369,7 +369,7 @@ export default function DashboardSection() {
     return alunos.map((a) => {
       const sinal = sinais.get(chaveAlunoTurma(a.id, a.classe_id)) ?? null;
       const risco = avaliarRisco(
-        { sinais: sinal, nota: a.temNota ? notaParaRisco(a.notaMedia, a.porcentagemConcluida) : null },
+        { sinais: sinal, nota: a.temNota ? notaParaRisco(a.notaMedia) : null },
         { notaMedia: mediaDaTurma(a.classe_id), taxaAbandonoPct: taxaAbandonoPorTurma.get(a.classe_id) ?? null },
         hoje
       );
@@ -504,7 +504,7 @@ export default function DashboardSection() {
   const observacaoDaRosca = temAbandono
     ? observacaoNotaEAbandono(
         alunosDaTurma.map((a) => ({
-          nota: a.temNota ? notaParaRisco(a.notaMedia, a.porcentagemConcluida) : null,
+          nota: a.temNota ? notaParaRisco(a.notaMedia) : null,
           riscoFaixa: a.riscoFaixa,
         })),
         hasTurmaKpis ? turmaResumo.taxa_risco_abandono_pct : null

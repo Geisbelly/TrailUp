@@ -110,11 +110,10 @@ describe("diasDesde e descricaoDosCriterios", () => {
 });
 
 describe("notaParaRisco", () => {
-  it("0 sem progresso nenhum é 'sem nota'; 0 com progresso é nota de verdade", () => {
-    expect(notaParaRisco(0, 0)).toBeNull();
-    expect(notaParaRisco(0, 20)).toBe(0);
-    expect(notaParaRisco(null, 50)).toBeNull();
-    expect(notaParaRisco(4.2, 0)).toBe(4.2);
+  it("só NULL é 'sem nota'; 0 é zero, com ou sem progresso (a nota é do banco, 20261101_10)", () => {
+    expect(notaParaRisco(0)).toBe(0);
+    expect(notaParaRisco(null)).toBeNull();
+    expect(notaParaRisco(4.2)).toBe(4.2);
   });
 });
 
