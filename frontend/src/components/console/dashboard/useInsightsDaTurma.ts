@@ -28,7 +28,7 @@ export type EstadoDosInsights =
 export type AvisoDaGeracao = { tom: "info" | "erro"; texto: string } | null;
 
 const COLUNAS =
-  "id, classe_id, aluno_id, escopo, natureza, texto, base, status, motivo_descarte, geracao_id, created_at, resolved_at";
+  "id, classe_id, aluno_id, escopo, natureza, texto, base, contexto, status, motivo_descarte, geracao_id, created_at, resolved_at";
 const INTERVALO_DE_CONSULTA_MS = 4_000;
 const LIMITE_DE_ESPERA_MS = 3 * 60_000;
 

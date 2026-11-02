@@ -32,6 +32,18 @@ gera um resumo (`app/services/rag_observabilidade.py`). O chat do mentor
 
 **Sem texto, de propósito.** O resumo não guarda a mensagem do aluno, as consultas geradas a partir dela, o trecho recuperado nem o nome do arquivo. Menor de idade (#195): a busca continua só na OpenAI, com `store=False`; este registro fica no nosso banco.
 
+O nó `agente_intervencao` (#64) também usa `OpenAIRagService.invoke_structured`
+para gerar a sugestão ao professor: tenta `file_search` primeiro quando
+`OPENAI_RAG_ENABLED`, `OPENAI_RAG_VECTOR_STORE_ID` e `OPENAI_API_KEY` estão
+configurados; se a chamada RAG falhar, tenta o modelo sem busca e, se esse
+também falhar, mantém a intervenção determinística por regra. O campo
+`origem` do payload distingue `rag`, `modelo` e `regra`. A coleta para
+`ia_decision_logs` continua específica do chat do mentor. Na intervenção, os
+nomes dos arquivos citados pelo modelo são conferidos contra os resultados
+recuperados e salvos em `intervencoes.contexto.fontes_rag`; a aba Insights os
+mostra junto à mensagem. Consultas e trechos recuperados não são persistidos.
+Isso lista fontes citadas pelo modelo, não todos os resultados de retrieval.
+
 ## Métricas (SQL)
 
 ```sql

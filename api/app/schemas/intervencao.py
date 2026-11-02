@@ -24,4 +24,5 @@ class IntervencaoPayload(BaseModel):
     acao: Literal["notificacao", "acompanhar"]
     notificacao_titulo: str | None = None
     notificacao_corpo: str | None = None
-    origem: Literal["modelo", "regra"]
+    origem: Literal["modelo", "rag", "regra"]
+    fontes_rag: list[str] = Field(default_factory=list, max_length=20)

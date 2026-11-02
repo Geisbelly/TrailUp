@@ -87,6 +87,35 @@ def test_resumo_limita_a_lista_de_resultados():
     assert len(resumo["resultados"]) == 20
 
 
+def test_resumo_retorna_so_fontes_citadas_dos_arquivos_recuperados():
+    resposta = SimpleNamespace(
+        output=[
+            SimpleNamespace(
+                type="file_search_call",
+                queries=["intervencao"],
+                results=[SimpleNamespace(file_id="f-valid", score=0.9)],
+            ),
+            SimpleNamespace(
+                type="message",
+                content=[
+                    SimpleNamespace(
+                        type="output_text",
+                        annotations=[
+                            SimpleNamespace(type="file_citation", file_id="f-valid", filename="Guia.pdf"),
+                            SimpleNamespace(type="file_citation", file_id="f-outra", filename="Nao recuperado.pdf"),
+                            SimpleNamespace(type="file_citation", file_id="f-valid", filename="Guia.pdf"),
+                        ],
+                    )
+                ],
+            ),
+        ]
+    )
+
+    resumo = resumo_da_busca(resposta, latencia_ms=1, prompt_name="p", model="m", top_k=3)
+
+    assert resumo["fontes_citadas"] == ["Guia.pdf"]
+
+
 @pytest.mark.asyncio
 async def test_gravar_buscas_uma_linha_por_busca_sem_texto():
     repo = _RepoFalso()
@@ -94,6 +123,7 @@ async def test_gravar_buscas_uma_linha_por_busca_sem_texto():
         resumo_da_busca(None, latencia_ms=10, prompt_name="p", model="gpt", top_k=5),
         resumo_da_busca(None, latencia_ms=20, prompt_name="p", model="gpt", top_k=5, erro=TimeoutError("x")),
     ]
+    buscas[1]["fontes_citadas"] = ["Nao vazar.pdf"]
 
     total = await gravar_buscas_rag(
         repo, buscas, aluno_id="aluno-1", classe_id=7, topico_id=3, trigger_event="topico", intervencao=True
@@ -110,6 +140,7 @@ async def test_gravar_buscas_uma_linha_por_busca_sem_texto():
     assert linha["input_summary"]["status"] == "erro"
     assert linha["input_summary"]["erro"] == "TimeoutError"
     assert "prompt_text" not in linha and "raw_response" not in linha
+    assert "fontes_citadas" not in linha["input_summary"]
     assert linha["decision_summary"] == "rag erro: 0 resultado(s) em 20.0 ms"
 
 

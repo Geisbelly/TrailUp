@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import SegmentedPills from "./SegmentedPills";
 import {
   filtrarPorEscopo,
+  fontesRagDoInsight,
   formatarGeradoHa,
   geradoEm,
   MOTIVOS_DE_DESCARTE,
@@ -44,6 +45,7 @@ function CartaoDeInsight({
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const sugestao = insight.natureza === "sugestao";
+  const fontesRag = fontesRagDoInsight(insight);
 
   const decidir = async (status: "applied" | "dismissed") => {
     setSalvando(true);
@@ -78,6 +80,18 @@ function CartaoDeInsight({
       </div>
       <p className="mt-2.5 text-[14.5px] font-semibold leading-normal text-foreground">{insight.texto}</p>
       {insight.base && <p className="mt-2 text-[11px] text-muted-foreground">com base em: {insight.base}</p>}
+      {fontesRag.length > 0 && (
+        <details className="mt-2 text-[11px] text-muted-foreground">
+          <summary className="w-fit cursor-pointer rounded-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            Fontes citadas pelo modelo ({fontesRag.length})
+          </summary>
+          <ul className="mt-1.5 flex flex-col gap-1 pl-5">
+            {fontesRag.map((fonte) => (
+              <li key={fonte}>{fonte}</li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {sugestao && insight.status === "applied" && (
         <p className="mt-3 text-xs font-semibold text-[hsl(var(--success))]">Aceita</p>

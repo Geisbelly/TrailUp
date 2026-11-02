@@ -15,8 +15,19 @@ export type Insight = {
   motivo_descarte: MotivoDescarte | null;
   geracao_id: string | null;
   created_at: string;
+  contexto?: Record<string, unknown> | null;
   resolved_at: string | null;
 };
+
+export function fontesRagDoInsight(insight: Pick<Insight, "contexto">): string[] {
+  const fontes = insight.contexto?.fontes_rag;
+  if (!Array.isArray(fontes)) return [];
+  const nomes = fontes
+    .filter((fonte): fonte is string => typeof fonte === "string")
+    .map((fonte) => fonte.trim())
+    .filter((fonte) => fonte.length > 0 && fonte.length <= 255);
+  return [...new Set(nomes)].slice(0, 20);
+}
 
 export type MotivoDescarte = "ja_resolvido" | "nao_se_aplica" | "revisar_depois";
 
