@@ -395,7 +395,27 @@ Cada perfil carrega:
   Perfil. Os limites e os títulos não existem no código do app: mudar faixa é mudar a tabela. O XP é
   o **da matrícula**, a mesma conta do critério `pontuacao` do rank e do CSV do professor, sem janela
   de período, e o negativo conta como 0. Os títulos são etapas da subida, não pessoas, para não ter
-  gênero. O peso do XP na nota ainda não existe: `"notaMedia"` não usa XP.
+  gênero.
+- **Peso do XP na nota final** (#143, `20261102_13`). É uma coluna **nova**,
+  `classe_aluno.nota_final`. `"notaMedia"` não muda de sentido: continua sendo só
+  o desempenho nas atividades, e é ela que o risco, a distribuição e o modelo de
+  evasão leem. Pôr XP ali contaria o engajamento duas vezes no modelo.
+  - **A conta**, decidida em 02/11: `nota_xp = 10 × min(XP, meta) ÷ meta` e
+    `nota_final = max(notaMedia, (1 − peso) × notaMedia + peso × nota_xp)`.
+    - É contra a **meta da turma**, não contra o maior XP: a nota de um aluno depende só dele.
+    - O XP **só soma**: quem tem pouco XP fica com a nota das atividades.
+    - `notaMedia` NULL dá `nota_final` NULL, porque XP sozinho não vira nota.
+  - **A configuração** é por turma, em `classe.xp_peso_nota_pct` (0 a 50, **padrão 0**)
+    e `classe.xp_meta_nota` (padrão 1000). O professor edita os dois no console, em
+    Turmas → Editar. Com peso 0, `nota_final` é igual a `notaMedia`. O estudo de base
+    usava 2,9%, e o número do piloto é do professor.
+  - **Só o banco grava**, por três gatilhos:
+    - `trg_classe_aluno_z_nota_final` refaz a nota final a cada gravação de nota e ignora o
+      valor do cliente. O `z` é de propósito: o BEFORE roda em ordem alfabética, e este tem
+      de ler a nota já filtrada pela guarda `trg_classe_aluno_nota_pelo_banco`;
+    - `trg_eventos_aluno_nota_final` recalcula quando o XP muda, só em turma com peso;
+    - `trg_classe_nota_final` recalcula a turma inteira quando o peso ou a meta mudam.
+  - O CSV (`professor_notas_da_turma`) traz as duas notas.
 - **Tentativas de atividade pelo relógio do banco** (#136, `20261101_13`):
   - `atividade_iniciar_tentativa` abre a tentativa e devolve a que já está aberta, então reabrir o app não zera o relógio;
   - `atividade_responder_tentativa` fecha a tentativa. Ela recusa prazo vencido e tentativas esgotadas (`atividades.tentativas_max`), decide `no_tempo` e grava `atividade_aluno`;

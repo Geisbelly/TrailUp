@@ -1142,6 +1142,8 @@ export type Database = {
           id: number
           materia_id: number | null
           professor_id: string | null
+          xp_meta_nota: number
+          xp_peso_nota_pct: number
         }
         Insert: {
           created_at?: string
@@ -1149,6 +1151,8 @@ export type Database = {
           id?: number
           materia_id?: number | null
           professor_id?: string | null
+          xp_meta_nota?: number
+          xp_peso_nota_pct?: number
         }
         Update: {
           created_at?: string
@@ -1156,6 +1160,8 @@ export type Database = {
           id?: number
           materia_id?: number | null
           professor_id?: string | null
+          xp_meta_nota?: number
+          xp_peso_nota_pct?: number
         }
         Relationships: [
           {
@@ -1185,6 +1191,7 @@ export type Database = {
           id: number
           isComplete: boolean | null
           notaMedia: number | null
+          nota_final: number | null
           porcentagemConcluida: number | null
           tempoGastoMin: number | null
           tempoMedioPorAtividade: number | null
@@ -1201,6 +1208,7 @@ export type Database = {
           id?: number
           isComplete?: boolean | null
           notaMedia?: number | null
+          nota_final?: number | null
           porcentagemConcluida?: number | null
           tempoGastoMin?: number | null
           tempoMedioPorAtividade?: number | null
@@ -1217,6 +1225,7 @@ export type Database = {
           id?: number
           isComplete?: boolean | null
           notaMedia?: number | null
+          nota_final?: number | null
           porcentagemConcluida?: number | null
           tempoGastoMin?: number | null
           tempoMedioPorAtividade?: number | null

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { CAMPOS_VAZIOS, criarTurma, nomeDaTurma, validarFormulario, type BancoDeTurmas } from "./formulario";
+import { CAMPOS_VAZIOS, criarTurma, nomeDaTurma, notaComMetaCumprida, validarFormulario, type BancoDeTurmas } from "./formulario";
 
 const campos = (c: Partial<typeof CAMPOS_VAZIOS>) => ({ ...CAMPOS_VAZIOS, ...c });
 
@@ -28,6 +28,43 @@ describe("validarFormulario", () => {
       ok: true,
       dados: { materiaId: 7, novaMateria: null },
     });
+  });
+});
+
+describe("peso do XP na nota final (#143)", () => {
+  it("ao editar, peso com vírgula e meta inteira viram números", () => {
+    expect(validarFormulario(campos({ nome: "T", xpPeso: "2,9", xpMeta: "1000" }), "editar")).toMatchObject({
+      ok: true,
+      dados: { xpNota: { pesoPct: 2.9, meta: 1000 } },
+    });
+    expect(validarFormulario(campos({ nome: "T", xpPeso: "0", xpMeta: "1" }), "editar")).toMatchObject({
+      ok: true,
+      dados: { xpNota: { pesoPct: 0, meta: 1 } },
+    });
+  });
+
+  it("os limites são os do CHECK do banco", () => {
+    for (const xpPeso of ["50,01", "-1", "", "abc", "2,999"]) {
+      expect(validarFormulario(campos({ nome: "T", xpPeso, xpMeta: "1000" }), "editar")).toMatchObject({ ok: false, erros: { xpPeso: expect.any(String) } });
+    }
+    for (const xpMeta of ["0", "", "10,5", "1000001"]) {
+      expect(validarFormulario(campos({ nome: "T", xpPeso: "3", xpMeta }), "editar")).toMatchObject({ ok: false, erros: { xpMeta: expect.any(String) } });
+    }
+    expect(validarFormulario(campos({ nome: "T", xpPeso: "50", xpMeta: "1000" }), "editar")).toMatchObject({ ok: true });
+  });
+
+  it("sem as colunas no banco, e ao criar, o peso fica de fora", () => {
+    expect(validarFormulario(campos({ nome: "T" }), "editar")).toEqual({ ok: true, dados: { descricao: "T", materiaId: null, novaMateria: null } });
+    expect(validarFormulario(campos({ nome: "T", xpPeso: "99", xpMeta: "0" }), "criar")).toEqual({
+      ok: true,
+      dados: { descricao: "T", materiaId: null, novaMateria: null },
+    });
+  });
+
+  it("o exemplo da tela: o XP só soma", () => {
+    expect(notaComMetaCumprida(7, 2.9)).toBe(7.09);
+    expect(notaComMetaCumprida(7, 0)).toBe(7);
+    expect(notaComMetaCumprida(10, 50)).toBe(10);
   });
 });
 
