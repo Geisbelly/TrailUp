@@ -2937,12 +2937,7 @@ async def obter_historico_de_sugestao(
     if topico_id is not None:
         gravada = await repo.buscar(aluno_id=aluno_id, topico_id=topico_id)
         if gravada:
-            atual = SugestaoMaterialResponse(
-                formato_inicial=gravada.get("formato_inicial"),
-                ordem=_itens_da_sugestao(gravada.get("ordem")),
-                versao=int(gravada.get("versao") or 1),
-                origem=str(gravada.get("origem") or "inicial"),
-            )
+            atual = _resposta_da_sugestao(gravada)
 
     return SugestaoAlunoResponse(
         aluno_id=aluno_id,
@@ -3072,6 +3067,17 @@ async def listar_personalizacoes(
     )
 
 
+def _resposta_da_sugestao(sugestao: dict[str, Any]) -> SugestaoMaterialResponse:
+    evidencia = sugestao.get("evidencia") if isinstance(sugestao.get("evidencia"), dict) else {}
+    return SugestaoMaterialResponse(
+        formato_inicial=sugestao.get("formato_inicial"),
+        ordem=_itens_da_sugestao(sugestao.get("ordem")),
+        versao=int(sugestao.get("versao") or 1),
+        origem=str(sugestao.get("origem") or "inicial"),
+        necessidades=[n for n in evidencia.get("necessidades") or [] if isinstance(n, dict)],
+    )
+
+
 def _itens_da_sugestao(ordem: Any) -> list[SugestaoMaterialItem]:
     """Itens gravados no JSONB -> resposta. Evidência malformada é descartada, não 500."""
     itens: list[SugestaoMaterialItem] = []
@@ -3093,6 +3099,8 @@ def _itens_da_sugestao(ordem: Any) -> list[SugestaoMaterialItem]:
                 score=float(item.get("score") or 0),
                 motivos=list(item.get("motivos") or []),
                 evidencias=evidencias,
+                camada=item.get("camada") if isinstance(item.get("camada"), int) else None,
+                motivo_aluno=(str(item["motivo_aluno"]).strip() or None) if item.get("motivo_aluno") else None,
             )
         )
     return itens
@@ -3153,9 +3161,4 @@ async def _resolver_sugestao_do_aluno(
     if not sugestao:
         return None
 
-    return SugestaoMaterialResponse(
-        formato_inicial=sugestao.get("formato_inicial"),
-        ordem=_itens_da_sugestao(sugestao.get("ordem")),
-        versao=int(sugestao.get("versao") or 1),
-        origem=str(sugestao.get("origem") or "inicial"),
-    )
+    return _resposta_da_sugestao(sugestao)

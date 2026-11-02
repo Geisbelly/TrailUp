@@ -12,7 +12,7 @@ import { EventoDaTurma } from "@/components/eventos/EventoDaTurma";
 import { perfilDaMissao } from "@/services/missoes/missaoModel";
 import { GuildChatModal, type GuildShareOption } from "@/components/social/GuildChatModal";
 import { AbasDoSocial, SocialHubDestaque, SocialStories, TituloDoBloco, type ResumoDoSocial } from "@/components/social/SocialHub";
-import { abaDaAncora, abaDaArea, abasDoSocial, blocosDaArena, ordemDasAreas, type AbaDoSocial, type AncoraDoSocial } from "@/services/social/socialDestaque";
+import { abaDaAncora, abaDaArea, abasDoSocial, blocosDaArena, ordemDasAreas, type AbaDoSocial, type AncoraDoSocial, type AreaDoSocial } from "@/services/social/socialDestaque";
 import type { Guild } from "@/services/social/guildModel";
 import { BagModal } from "@/components/bag/BagModal";
 import { UtilityIcon } from "@/components/UtilityIcon";
@@ -46,6 +46,13 @@ function errorMessage(error: unknown) {
   return "Não foi possível carregar o Social.";
 }
 
+const SECAO_LARGA_DA_AREA: Record<AreaDoSocial, Section> = {
+  arena: "arena",
+  conversa: "friends",
+  descobrir: "discover",
+  eventos: "friends",
+};
+
 export default function SocialScreen() {
   // Web em tela larga (#346, protótipo v4): cabeçalho como o da Loja, pílulas, lista em grade e coluna lateral.
   const desktop = useDesktopWeb();
@@ -56,7 +63,14 @@ export default function SocialScreen() {
   const activeClasseId = classeId > 0 ? classeId : fallbackClasseId;
   const profile = perfilVisualDoAluno(usuario);
   const palette = getProfileShellPalette(profile);
-  const [section, setSection] = useState<Section>("friends");
+  // Hub (rede social de jogo): a área que mais combina com o perfil abre a aba (`socialDestaque.ts`).
+  // Sem turma não há evento, e o destaque passa para a área seguinte.
+  const temTurma = activeClasseId > 0;
+  const areaDestaque = ordemDasAreas(profile).find((area) => temTurma || area !== "eventos") ?? "arena";
+  // Na tela larga a pílula que abre também segue o perfil, até o aluno escolher outra. O evento
+  // e as missões ficam sempre no topo, então quem tem destaque em Eventos abre em Amigos.
+  const [secaoEscolhida, setSection] = useState<Section | null>(null);
+  const section = secaoEscolhida ?? SECAO_LARGA_DA_AREA[areaDestaque];
   // "Desafiar" no cartão do amigo (tela larga, #508): abre a Arena com o duelo 1x1 já montado.
   const [dueloCom, setDueloCom] = useState<{ alunoId: string; chave: number } | null>(null);
   const [search, setSearch] = useState("");
@@ -224,12 +238,8 @@ export default function SocialScreen() {
     );
   };
 
-  // Hub (rede social de jogo): a área que mais combina com o perfil abre a aba (`socialDestaque.ts`).
-  // Nada sai: cada bloco de antes mora numa das abas.
+  // Nada sai do hub: cada bloco de antes mora numa das abas.
   const temBloqueados = Boolean(social && pessoasDe("blocked").length);
-  const temTurma = activeClasseId > 0;
-  // O cartão do perfil: sem turma não há evento, e o destaque passa para a área seguinte.
-  const areaDestaque = ordemDasAreas(profile).find((area) => temTurma || area !== "eventos") ?? "arena";
   const abas = abasDoSocial(profile);
   const abaDoDestaque = abaDaArea(areaDestaque);
   const abaAtiva = abaEscolhida ?? abaDoDestaque;
@@ -311,7 +321,8 @@ export default function SocialScreen() {
               </View>
             )}
             {desktop ? <Text style={[styles.subtitle, { color: palette.textMuted }]}>Encontre sua turma e avance em companhia.</Text> : null}
-            {!desktop && social && social.friends.length + social.candidates.length > 0 ? <SocialStories amigos={social.friends} colegas={social.candidates} naoLidas={naoLidas.privado} palette={palette} onConversar={abrirConversa} onEncontrar={() => irPara("encontrar")} /> : null}
+            {/* Stories (#789): na tela larga, "Encontrar" leva à pílula de mesmo nome. */}
+            {social && social.friends.length + social.candidates.length > 0 ? <SocialStories amigos={social.friends} colegas={social.candidates} naoLidas={naoLidas.privado} palette={palette} onConversar={abrirConversa} onEncontrar={() => { if (!desktop) return irPara("encontrar"); setSection("discover"); setSearch(""); }} /> : null}
           </View>
           <View style={[desktop ? styles.tabsSticky : styles.abasSticky, { backgroundColor: palette.background }]}>
             {desktop ? (

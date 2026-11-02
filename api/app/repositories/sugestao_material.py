@@ -23,6 +23,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 _TABELA_SUGESTAO = "personalizacao_sugestao"
 _TABELA_LOG = "personalizacao_sugestao_log"
 
+# Por que o banco marcou a sugestão para revisão (`20261102_07`). O CHECK da coluna tem a mesma
+# lista; `test_migration_recomendacao_conteudo_x_aluno.py` confere a paridade.
+MOTIVOS_REVISAO = ("atividade_concluida", "demanda_do_conteudo")
+
 
 def _json(value: Any) -> str:
     return json.dumps(value if value is not None else [], ensure_ascii=False, default=str)
@@ -41,6 +45,7 @@ class SugestaoMaterialRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self._tabelas_existem: bool | None = None
+        self._colunas_revisao: bool | None = None
 
     async def _disponivel(self) -> bool:
         """As duas tabelas existem? Sem AMBAS, não há como manter o contrato.
@@ -66,6 +71,37 @@ class SugestaoMaterialRepository:
         self._tabelas_existem = int(result.scalar() or 0) == 2
         return self._tabelas_existem
 
+    async def _tem_colunas_revisao(self) -> bool:
+        """``revisao_pendente`` existe? Sem a ``20261102_07``, a sugestão segue sem a marca."""
+        if self._colunas_revisao is not None:
+            return self._colunas_revisao
+        if not await self._disponivel():
+            self._colunas_revisao = False
+            return False
+        result = await self.session.execute(
+            text(
+                """
+                SELECT EXISTS (
+                  SELECT 1 FROM information_schema.columns
+                  WHERE table_schema = 'public'
+                    AND table_name = :tabela
+                    AND column_name = 'revisao_pendente'
+                )
+                """
+            ),
+            {"tabela": _TABELA_SUGESTAO},
+        )
+        self._colunas_revisao = bool(result.scalar())
+        return self._colunas_revisao
+
+    def _colunas_de_revisao_sql(self, tem: bool) -> str:
+        if tem:
+            return "revisao_pendente, revisao_motivo, revisao_pendente_em"
+        return (
+            "false AS revisao_pendente, CAST(NULL AS text) AS revisao_motivo, "
+            "CAST(NULL AS timestamptz) AS revisao_pendente_em"
+        )
+
     async def buscar(
         self,
         *,
@@ -76,12 +112,13 @@ class SugestaoMaterialRepository:
         if not await self._disponivel():
             return None
 
+        revisao = self._colunas_de_revisao_sql(await self._tem_colunas_revisao())
         result = await self.session.execute(
             text(
                 f"""
                 SELECT id, aluno_id, classe_id, topico_id, conteudo_id,
                        formato_inicial, ordem, versao, origem, evidencia,
-                       criado_em, atualizado_em
+                       criado_em, atualizado_em, {revisao}
                 FROM {_TABELA_SUGESTAO}
                 WHERE aluno_id = :aluno_id
                   AND topico_id = :topico_id
@@ -207,6 +244,53 @@ class SugestaoMaterialRepository:
         )
         row = result.mappings().first()
         return dict(row) if row else None
+
+    async def topicos_com_revisao_pendente(
+        self, *, aluno_id: str, classe_id: int | None = None
+    ) -> list[int]:
+        """Tópicos do aluno cuja sugestão o banco marcou para revisão (mais antiga primeiro)."""
+        if not await self._tem_colunas_revisao():
+            return []
+        result = await self.session.execute(
+            text(
+                f"""
+                SELECT topico_id
+                FROM {_TABELA_SUGESTAO}
+                WHERE aluno_id = CAST(:aluno_id AS uuid)
+                  AND revisao_pendente
+                  AND conteudo_id IS NULL
+                  AND (CAST(:classe_id AS bigint) IS NULL OR classe_id = CAST(:classe_id AS bigint))
+                ORDER BY revisao_pendente_em NULLS FIRST, topico_id
+                LIMIT 20
+                """
+            ),
+            {"aluno_id": aluno_id, "classe_id": classe_id},
+        )
+        return [int(row.topico_id) for row in result]
+
+    async def limpar_revisao_pendente(self, *, sugestao_id: int, marcada_em: Any) -> None:
+        """Tira a marca que esta revisão atendeu, e só ela.
+
+        ``marcada_em`` é o ``revisao_pendente_em`` lido antes de decidir. Uma marca que o banco
+        gravou durante a revisão (outra atividade concluída) tem outra hora e fica: a próxima
+        leitura revisa de novo, em vez de a decisão de agora engolir o evento novo.
+        """
+        if not await self._tem_colunas_revisao():
+            return
+        await self.session.execute(
+            text(
+                f"""
+                UPDATE {_TABELA_SUGESTAO}
+                SET revisao_pendente = false,
+                    revisao_motivo = NULL,
+                    revisao_pendente_em = NULL
+                WHERE id = :id
+                  AND revisao_pendente
+                  AND revisao_pendente_em IS NOT DISTINCT FROM CAST(:marcada_em AS timestamptz)
+                """
+            ),
+            {"id": sugestao_id, "marcada_em": marcada_em},
+        )
 
     async def desempenho_no_topico(
         self, *, aluno_id: str, topico_id: int

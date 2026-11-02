@@ -27,6 +27,7 @@ from app.repositories.professor import ProfessorRepository
 from app.services.boss_falas import PERFIS_COM_BATALHA, gerar_falas_do_topico
 from app.services.classe_mapa_tema import gerar_classe_mapa_tema
 from app.services.content_enrichment import derive_base_blocks_and_topic, enrich_base_blocks, enrich_content_blocks
+from app.services.demanda_formato import analisar_demanda_do_topico
 from app.services.media_agents import (
     brainhex_contract_ready,
     disparar_brainhex_async,
@@ -2095,6 +2096,72 @@ async def _gerar_falas_boss_do_job(
             falhas.pop(grupo, None)
 
 
+# Demanda de formato do conteudo: uma chamada ao modelo por TOPICO (nao por perfil), no
+# maximo esta quantidade por rodada, e um topico que caiu na regra fixa espera antes de tentar o
+# modelo de novo -- sem a pausa, um provedor fora seria chamado a cada poll.
+_DEMANDA_FORMATO_KINDS = KINDS_BASE_POR_PERFIL | {JOB_KIND_ENROLLMENT}
+_DEMANDA_FORMATO_POR_RODADA = 3
+_DEMANDA_FORMATO_PAUSA_APOS_FALHA_SEC = 30 * 60
+
+
+async def _analisar_demanda_do_job(
+    *,
+    app: FastAPI,
+    job: dict[str, Any],
+    targets: list[dict[str, Any]],
+) -> None:
+    """Analisa o formato que os conteudos de cada topico do job pedem (`demanda_formato`).
+
+    Mesmo molde das falas do boss: fora do `try` de cada target, falha so vira log e nunca
+    `failed` num target. O hash em `conteudo_demanda_formato` decide se precisa chamar o modelo,
+    entao rodar a cada poll so custa leituras. Matricula entra porque um topico anterior a
+    migracao so seria analisado quando o professor o editasse.
+    """
+
+    if job.get("kind") not in _DEMANDA_FORMATO_KINDS:
+        return
+
+    topicos: list[int] = []
+    for target in targets:
+        if target.get("topico_id") is None:
+            continue
+        topico_id = int(target["topico_id"])
+        if topico_id not in topicos:
+            topicos.append(topico_id)
+    if not topicos:
+        return
+
+    falhas: dict[int, float] = _app_state_runtime(app, "demanda_formato_falhas", dict)
+    agora = time.monotonic()
+    topicos = [
+        topico_id
+        for topico_id in topicos
+        if agora - falhas.get(topico_id, float("-inf")) >= _DEMANDA_FORMATO_PAUSA_APOS_FALHA_SEC
+    ][:_DEMANDA_FORMATO_POR_RODADA]
+
+    session_factory = app.state.session_factory
+    for topico_id in topicos:
+        try:
+            async with session_factory() as session:
+                resultado = await analisar_demanda_do_topico(
+                    session=session,
+                    settings=app.state.settings,
+                    topico_id=topico_id,
+                )
+        except Exception as exc:  # um topico que falha nao impede o proximo
+            logger.warning(
+                "Falha ao analisar demanda de formato: topico=%s erro=%s",
+                topico_id,
+                _compact_exception_text(exc),
+            )
+            falhas[topico_id] = time.monotonic()
+            continue
+        if resultado.status in {"heuristica", "parcial"}:
+            falhas[topico_id] = time.monotonic()
+        else:
+            falhas.pop(topico_id, None)
+
+
 async def _prewarm_shared_content_enrichments(
     *,
     app: FastAPI,
@@ -2475,6 +2542,7 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
         targets=targets,
     )
     await _gerar_falas_boss_do_job(app=app, job=job, targets=targets)
+    await _analisar_demanda_do_job(app=app, job=job, targets=targets)
 
     target_concurrency = max(
         1,

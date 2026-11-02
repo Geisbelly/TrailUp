@@ -222,6 +222,12 @@ class SugestaoMaterialItem(BaseModel):
     motivos: list[str] = Field(default_factory=list)
     # Sugestão gravada antes da #66 não tem: lista vazia, não erro.
     evidencias: list[SugestaoEvidencia] = Field(default_factory=list)
+    # 0 = necessidade do aluno, 1 = o conteúdo pede, 2 = preferência. Sugestão gravada antes
+    # das camadas não tem: None.
+    camada: int | None = None
+    # A frase curta que o app mostra ao aluno ("Comece por aqui: ..."). `motivos` é para o
+    # professor e o log, nunca vai para a tela do aluno.
+    motivo_aluno: str | None = None
 
 
 class SugestaoMaterialResponse(BaseModel):
@@ -237,6 +243,9 @@ class SugestaoMaterialResponse(BaseModel):
     ordem: list[SugestaoMaterialItem] = Field(default_factory=list)
     versao: int = 1
     origem: str = "inicial"
+    # O que pesou acima da preferência: dificuldade no tópico, formato essencial que o conteúdo
+    # pede e não foi gerado. Snapshot da última decisão.
+    necessidades: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class SugestaoHistoricoItem(BaseModel):

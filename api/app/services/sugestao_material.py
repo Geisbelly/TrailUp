@@ -2,7 +2,8 @@
 
 Decide **quais formatos** usar e **em que ordem**, para um aluno específico,
 entre os que realmente existem para aquele conteúdo. Ver
-``docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md``.
+``docs/superpowers/specs/2026-08-25-sugestao-de-material-por-aluno-design.md`` e
+``docs/superpowers/specs/2026-11-01-recomendacao-conteudo-x-aluno-design.md``.
 
 Por que determinístico e não LLM (decisão validada em 2026-08-25):
 
@@ -13,14 +14,30 @@ Por que determinístico e não LLM (decisão validada em 2026-08-25):
 * **sem cota** — a geração de conteúdo já disputa a cota do Gemini; ordenar
   material não precisa disputar também.
 
+A ordem sai em **camadas**, e a preferência do aluno nunca passa por cima de
+uma camada mais alta:
+
+0. **necessidade forte do aluno** — dificuldade no tópico leva os cards ao topo
+   (DAT-21). O aluno já passou pelo conteúdo quando ela aparece;
+1. **o que o conteúdo pede** — formato essencial para entender aquele conteúdo
+   (diagrama pede apresentação, fórmula pede texto). A análise é por IA, na
+   fila (``demanda_formato.py``); aqui só entra o resultado;
+2. **preferência e uso** — perfil BrainHex, modo de estudo declarado e
+   telemetria. Ordena dentro de cada camada.
+
+As camadas são recalculadas a cada decisão, nunca acumuladas: quando a
+necessidade some, o formato volta para onde a preferência o põe, e a revisão
+registra por quê.
+
 Os pesos por perfil NÃO foram inventados aqui: são a tradução das "pistas de
 entrega" que o próprio sistema já declara em
 ``api/app/agent/prompts/planejador_conteudo.txt``, para que motor e prompt
-concordem em vez de divergirem.
+concordem em vez de divergirem. E são hipótese (ver ``evidencias_pedagogicas``).
 """
 
 from __future__ import annotations
 
+import unicodedata
 from typing import Any, Iterable
 
 from app.services.evidencias_pedagogicas import CATALOGO_VERSAO, evidencia
@@ -53,15 +70,27 @@ _PESOS_POR_PERFIL: dict[str, dict[str, float]] = {
     "survivor": {"markdown": 1.0, "audio": 0.8, "apresentacao": 0.5, "cards": 0.4, "pdf": 0.3},
 }
 
-# Ajuste pelo modo de operação declarado pelo aluno (o "preferência" que o
-# sistema realmente guarda), também vindo do prompt:
-#   imediato     — curto, direto, rápida assimilação
-#   analitico    — profundidade, sequência guiada, consolidação
-#   exploratorio — variedade de mídia, conexões, apresentação mais aberta
+# Ajuste pelo modo de operação declarado pelo aluno. Os três primeiros são os
+# do prompt do planejador; os dois últimos são os nomes que o banco guarda de
+# verdade (``"modoOperacao".nome``: "Conteúdo Primeiro", "Pergunta Primeiro",
+# "Misto"). Medido em 01/11: nenhum aluno tinha um dos três do prompt, então o
+# ajuste nunca era aplicado. "Misto" é neutro de propósito.
 _AJUSTE_POR_MODO: dict[str, dict[str, float]] = {
     "imediato": {"cards": 0.3, "audio": 0.2, "markdown": -0.2, "pdf": -0.2},
     "analitico": {"markdown": 0.3, "pdf": 0.2, "cards": -0.1},
     "exploratorio": {"apresentacao": 0.3, "audio": 0.1},
+    "conteudo_primeiro": {"markdown": 0.2, "apresentacao": 0.2, "audio": 0.1, "cards": -0.2},
+    "pratica_primeiro": {"cards": 0.35, "markdown": -0.1},
+}
+
+# Nome gravado no banco (sem acento, minúsculo, com "_") -> chave do ajuste.
+# "Pergunta primeiro" e "atividade primeiro" são a mesma escolha que o app já
+# lê em ``modoFromTexto`` (``mobile/src/utils/presentationOrder.ts``).
+_ALIAS_MODO = {
+    "conteudo_primeiro": "conteudo_primeiro",
+    "pergunta_primeiro": "pratica_primeiro",
+    "atividade_primeiro": "pratica_primeiro",
+    "pratica_primeiro": "pratica_primeiro",
 }
 
 _ROTULO_PERFIL = {
@@ -89,6 +118,8 @@ _MOTIVO_POR_MODO = {
     "imediato": "modo imediato: curto e direto",
     "analitico": "modo analítico: sequência guiada",
     "exploratorio": "modo exploratório: variedade de mídia",
+    "conteudo_primeiro": "modo conteúdo primeiro: material antes da prática",
+    "pratica_primeiro": "modo pergunta primeiro: prática antes do material",
 }
 
 _PESO_MINIMO_PARA_MOTIVO = 0.15
@@ -107,14 +138,34 @@ def _normalizar_perfil(nome: Any) -> str:
     return _ALIAS_PERFIL.get(chave, chave)
 
 
-def _afinidades(perfis: Iterable[Any]) -> list[tuple[str, float]]:
-    """Normaliza o vetor de afinidades para (perfil, peso 0..1).
+def normalizar_modo(modo: Any) -> str:
+    """Chave do ajuste para o modo gravado no banco ou vindo do prompt.
 
-    Usa o vetor INTEIRO, não só o dominante: um aluno 70% Estrategista e 60%
-    Socializador não é a mesma coisa que um 70% Estrategista puro, e a ordem do
-    material deveria refletir isso.
+    "Conteúdo Primeiro" vira ``conteudo_primeiro``; modo desconhecido devolve a
+    forma normalizada, que não casa com nenhum ajuste (e por isso não mexe).
     """
-    resultado: list[tuple[str, float]] = []
+    texto = unicodedata.normalize("NFKD", str(modo or ""))
+    texto = "".join(c for c in texto if not unicodedata.combining(c)).strip().lower()
+    chave = "_".join(texto.replace("-", " ").split())
+    return _ALIAS_MODO.get(chave, chave)
+
+
+def _afinidades(perfis: Iterable[Any]) -> list[tuple[str, float, float]]:
+    """Vetor de afinidades como (perfil, afinidade 0..100, peso relativo 0..1).
+
+    O peso é o quanto a afinidade passa da **fatia uniforme** (soma ÷ 7, o que o
+    aluno teria se não se inclinasse para perfil nenhum), dividido pelo maior
+    excesso. Somar o vetor cru, como antes, fazia os seis perfis secundários
+    abafarem o dominante: o quiz devolve vetores quase planos (18, 16, 14, 14,
+    13, 13, 12), e os seis alunos medidos em 01/11 recebiam a mesma ordem —
+    Aventureiro dominante abria por texto. Um aluno 70% Estrategista e 60%
+    Socializador continua diferente de um Estrategista puro: os dois passam da
+    fatia uniforme.
+
+    Vetor perfeitamente plano não tem perfil que se destaque; aí ninguém pesa,
+    e a ordem cai na canônica em vez de inventar uma inclinação.
+    """
+    brutas: dict[str, float] = {}
     for item in perfis or []:
         if isinstance(item, dict):
             nome = _normalizar_perfil(
@@ -132,10 +183,280 @@ def _afinidades(perfis: Iterable[Any]) -> list[tuple[str, float]]:
             afinidade = 0.0
         # Afinidade vem 0..100 no banco; valores fora da faixa são aparados em
         # vez de virarem peso negativo ou dominante absoluto.
-        peso = max(0.0, min(100.0, afinidade)) / 100.0
-        if peso > 0:
-            resultado.append((nome, peso))
+        afinidade = max(0.0, min(100.0, afinidade))
+        brutas[nome] = max(afinidade, brutas.get(nome, 0.0))
+
+    soma = sum(brutas.values())
+    if soma <= 0:
+        return []
+    fatia_uniforme = soma / len(_PESOS_POR_PERFIL)
+    excessos = {nome: af - fatia_uniforme for nome, af in brutas.items()}
+    maior = max(excessos.values())
+    if maior <= 0:
+        return []
+    return [
+        (nome, brutas[nome], excesso / maior)
+        for nome, excesso in excessos.items()
+        if excesso > 0
+    ]
+
+
+# ---------------------------------------------------------------------------
+# Camadas: necessidade do aluno e o que o conteúdo pede
+# ---------------------------------------------------------------------------
+
+CAMADA_NECESSIDADE = 0
+CAMADA_CONTEUDO = 1
+CAMADA_PREFERENCIA = 2
+
+# Regras cuja evidência é recalculada a cada decisão: elas moram na camada e
+# saem quando o motivo some.
+_REGRAS_DE_CAMADA = frozenset({"reexposicao_quiz", "demanda_do_conteudo"})
+
+# Dimensão da análise do conteúdo -> formatos que a atendem.
+FORMATOS_POR_DIMENSAO: dict[str, tuple[str, ...]] = {
+    "visual": ("apresentacao",),
+    "escrito": ("markdown", "pdf"),
+    "sonoro": ("audio",),
+    "pratica": ("cards",),
+}
+NIVEIS_DEMANDA = ("essencial", "ajuda", "indiferente")
+_ROTULO_DIMENSAO = {
+    "visual": "ver (imagem, diagrama)",
+    "escrito": "ler com atenção (texto, fórmula)",
+    "sonoro": "ouvir",
+    "pratica": "praticar",
+}
+# "Ajuda" pesa como uma preferência forte, não como camada: o conteúdo se
+# beneficia do formato, mas não depende dele.
+_BONUS_AJUDA_DO_CONTEUDO = 0.35
+
+# Dificuldade no tópico exige mais de um item com acerto: uma questão errada é
+# tropeço, não dificuldade.
+_ACERTO_SUFICIENTE = 60.0
+_MINIMO_ITENS_DIFICULDADE = 2
+_FORMATO_DE_REEXPOSICAO = "cards"
+
+# O que o app mostra ao aluno no "comece por aqui". Frases curtas, sobre o
+# conteúdo e sobre ele — nunca nota interna do sistema.
+_FRASE_CONTEUDO = {
+    "apresentacao": "Este conteúdo se entende melhor vendo: comece pela apresentação.",
+    "markdown": "Este conteúdo pede leitura atenta: comece pelo texto.",
+    "pdf": "Este conteúdo pede leitura atenta: comece pelo texto.",
+    "audio": "Este conteúdo se entende melhor ouvindo: comece pelo áudio.",
+    "cards": "Este conteúdo se fixa praticando: comece pelos cards.",
+}
+_FRASE_DIFICULDADE = "Você teve dificuldade nas atividades deste tópico: praticar com os cards ajuda a fixar."
+_FRASE_MODO = {
+    "conteudo_primeiro": "Você prefere ver o conteúdo antes de praticar.",
+    "pratica_primeiro": "Você prefere começar praticando.",
+    "imediato": "Você prefere material curto e direto.",
+    "analitico": "Você prefere uma sequência guiada.",
+    "exploratorio": "Você prefere variar o tipo de material.",
+}
+_FRASE_PERFIL = "Combina com o seu jeito de estudar."
+
+
+def demanda_por_formato(demanda: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """Traduz a demanda do conteúdo (por dimensão) para formato.
+
+    ``demanda`` é o agregado do tópico (``demanda_formato.agregar_do_topico``):
+    ``{"dimensoes": {"visual": {"nivel", "motivo", "conteudos"}, ...}, "origem"}``.
+    Nível desconhecido conta como indiferente: análise malformada não pode
+    virar camada.
+    """
+    resultado: dict[str, dict[str, Any]] = {}
+    dimensoes = (demanda or {}).get("dimensoes") or {}
+    for dimensao, formatos in FORMATOS_POR_DIMENSAO.items():
+        dado = dimensoes.get(dimensao) or {}
+        nivel = str(dado.get("nivel") or "").strip().lower()
+        if nivel not in ("essencial", "ajuda"):
+            continue
+        for formato in formatos:
+            resultado[formato] = {
+                "dimensao": dimensao,
+                "nivel": nivel,
+                "motivo": str(dado.get("motivo") or "").strip(),
+                "conteudos": list(dado.get("conteudos") or []),
+            }
     return resultado
+
+
+def _em_dificuldade(desempenho_topico: dict[str, Any] | None) -> bool:
+    """O aluno está com dificuldade no tópico? Acerto médio baixo em itens suficientes."""
+    if not desempenho_topico:
+        return False
+    media = desempenho_topico.get("media_acertos")
+    itens = int(desempenho_topico.get("itens") or 0)
+    return (
+        media is not None
+        and itens >= _MINIMO_ITENS_DIFICULDADE
+        and float(media) < _ACERTO_SUFICIENTE
+    )
+
+
+def _arredondado(valor: Any) -> float | None:
+    return round(float(valor), 2) if valor is not None else None
+
+
+def _aplicar_camadas(
+    itens: list[dict[str, Any]],
+    *,
+    demanda: dict[str, Any] | None,
+    desempenho_topico: dict[str, Any] | None,
+) -> tuple[list[str], list[dict[str, Any]]]:
+    """Recalcula camada, ajuste do conteúdo e evidências de camada de cada item.
+
+    Muta ``itens`` (que já são cópias). Devolve as mudanças em texto (para os
+    motivos da revisão) e as necessidades encontradas (para o log).
+    """
+    por_formato = demanda_por_formato(demanda)
+    dificuldade = _em_dificuldade(desempenho_topico)
+    origem_demanda = (demanda or {}).get("origem")
+    mudancas: list[str] = []
+    necessidades: list[dict[str, Any]] = []
+    formatos_presentes = {item.get("formato") for item in itens}
+
+    for item in itens:
+        formato = item.get("formato")
+        camada_antes = int(item.get("camada", CAMADA_PREFERENCIA))
+        ajuste_antes = float(item.get("ajuste_conteudo") or 0.0)
+
+        evidencias = [
+            ev
+            for ev in item.get("evidencias") or []
+            if not (isinstance(ev, dict) and ev.get("regra") in _REGRAS_DE_CAMADA)
+        ]
+        camada = CAMADA_PREFERENCIA
+        ajuste = 0.0
+        motivos_camada: list[str] = []
+
+        pedido = por_formato.get(formato)
+        if pedido:
+            rotulo = _ROTULO_DIMENSAO[pedido["dimensao"]]
+            texto = f"o conteúdo pede {rotulo}" + (
+                f": {pedido['motivo']}" if pedido["motivo"] else ""
+            )
+            if pedido["nivel"] == "essencial":
+                camada = CAMADA_CONTEUDO
+            else:
+                ajuste = _BONUS_AJUDA_DO_CONTEUDO
+                texto = texto.replace("o conteúdo pede", "o conteúdo se beneficia de", 1)
+            motivos_camada.append(texto)
+            evidencias.append(
+                evidencia(
+                    "demanda_do_conteudo",
+                    dimensao=pedido["dimensao"],
+                    nivel=pedido["nivel"],
+                    origem=origem_demanda,
+                    conteudos=pedido["conteudos"] or None,
+                )
+            )
+
+        if dificuldade and formato == _FORMATO_DE_REEXPOSICAO:
+            camada = CAMADA_NECESSIDADE
+            motivos_camada.insert(0, "dificuldade no tópico: praticar com cards")
+            evidencias.append(
+                evidencia(
+                    "reexposicao_quiz",
+                    media_acertos=_arredondado((desempenho_topico or {}).get("media_acertos")),
+                    itens=int((desempenho_topico or {}).get("itens") or 0),
+                )
+            )
+
+        item["camada"] = camada
+        item["ajuste_conteudo"] = round(ajuste, 4)
+        item["motivos_camada"] = motivos_camada
+        item["evidencias"] = evidencias
+
+        if camada < camada_antes or (camada == camada_antes and ajuste > ajuste_antes):
+            mudancas.append(f"{formato}: {motivos_camada[0]}")
+        elif camada > camada_antes or ajuste < ajuste_antes:
+            if camada_antes == CAMADA_NECESSIDADE:
+                mudancas.append(f"{formato}: dificuldade superada, volta à ordem do aluno")
+            else:
+                mudancas.append(f"{formato}: o conteúdo deixou de pedir este formato")
+
+    if dificuldade:
+        necessidades.append(
+            {
+                "id": "dificuldade_no_topico",
+                "acao": (
+                    "cards_no_topo"
+                    if _FORMATO_DE_REEXPOSICAO in formatos_presentes
+                    else "sem_cards_gerados"
+                ),
+                "media_acertos": _arredondado((desempenho_topico or {}).get("media_acertos")),
+                "itens": int((desempenho_topico or {}).get("itens") or 0),
+            }
+        )
+
+    # Formato que o conteúdo pede como essencial mas não foi gerado: a sugestão
+    # não inventa formato (mandaria o aluno a um beco sem saída), só registra
+    # para o console mostrar ao professor.
+    dimensoes = (demanda or {}).get("dimensoes") or {}
+    for dimensao, formatos in FORMATOS_POR_DIMENSAO.items():
+        dado = dimensoes.get(dimensao) or {}
+        if str(dado.get("nivel") or "").lower() != "essencial":
+            continue
+        if not any(formato in formatos_presentes for formato in formatos):
+            necessidades.append(
+                {
+                    "id": "formato_essencial_faltando",
+                    "dimensao": dimensao,
+                    "formatos": list(formatos),
+                    "motivo": str(dado.get("motivo") or "").strip() or None,
+                }
+            )
+
+    return mudancas, necessidades
+
+
+def _motivo_aluno(item: dict[str, Any]) -> str | None:
+    """A frase que o app mostra ao aluno para este formato."""
+    camada = int(item.get("camada", CAMADA_PREFERENCIA))
+    formato = item.get("formato")
+    if camada == CAMADA_NECESSIDADE:
+        return _FRASE_DIFICULDADE
+    if camada == CAMADA_CONTEUDO or float(item.get("ajuste_conteudo") or 0) > 0:
+        return _FRASE_CONTEUDO.get(formato)
+    regras = {
+        ev.get("regra"): ev for ev in item.get("evidencias") or [] if isinstance(ev, dict)
+    }
+    modo = regras.get("modo_operacao")
+    if modo and float((modo.get("dados") or {}).get("ajuste") or 0) > 0:
+        frase = _FRASE_MODO.get((modo.get("dados") or {}).get("modo"))
+        if frase:
+            return frase
+    if "perfil_formato" in regras:
+        return _FRASE_PERFIL
+    return None
+
+
+def _indice_canonico(formato: Any) -> int:
+    return (
+        FORMATOS_CANONICOS.index(formato)
+        if formato in FORMATOS_CANONICOS
+        else len(FORMATOS_CANONICOS)
+    )
+
+
+def _ordenar(itens: list[dict[str, Any]]) -> None:
+    """Ordena por camada, depois pelo score (preferência + uso + ajuste do conteúdo).
+
+    Desempate pela ordem canônica (índice), nunca pela ordem de iteração de
+    dicionário — é o que garante reprodutibilidade.
+    """
+    itens.sort(
+        key=lambda item: (
+            int(item.get("camada", CAMADA_PREFERENCIA)),
+            -(float(item.get("score") or 0) + float(item.get("ajuste_conteudo") or 0)),
+            _indice_canonico(item.get("formato")),
+        )
+    )
+    for posicao, item in enumerate(itens, start=1):
+        item["posicao"] = posicao
+        item["motivo_aluno"] = _motivo_aluno(item)
 
 
 def sugerir_ordem_material(
@@ -143,6 +464,8 @@ def sugerir_ordem_material(
     perfis: Iterable[Any],
     formatos_disponiveis: Iterable[str],
     modo_operacao: str | None = None,
+    demanda: dict[str, Any] | None = None,
+    desempenho_topico: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Devolve a ordem sugerida e o formato inicial, com os motivos de cada um.
 
@@ -161,7 +484,7 @@ def sugerir_ordem_material(
     if not disponiveis:
         return {"formato_inicial": None, "ordem": []}
 
-    modo = str(modo_operacao or "").strip().lower()
+    modo = normalizar_modo(modo_operacao)
     ajuste_modo = _AJUSTE_POR_MODO.get(modo, {})
     afinidades = _afinidades(perfis)
 
@@ -171,21 +494,24 @@ def sugerir_ordem_material(
         motivos: list[str] = []
         evidencias: list[dict[str, Any]] = []
         afinidades_que_contam: dict[str, int] = {}
+        pesos_que_contam: dict[str, float] = {}
 
-        for perfil, peso_perfil in afinidades:
+        for perfil, afinidade, peso_perfil in afinidades:
             contribuicao = _PESOS_POR_PERFIL[perfil].get(formato, 0.0) * peso_perfil
             score += contribuicao
             if contribuicao >= _PESO_MINIMO_PARA_MOTIVO:
                 detalhe = _MOTIVO_POR_PERFIL_FORMATO.get((perfil, formato))
                 rotulo = _ROTULO_PERFIL[perfil]
                 motivos.append(f"{rotulo}: {detalhe}" if detalhe else f"afinidade {rotulo}")
-                afinidades_que_contam[perfil] = round(peso_perfil * 100)
+                afinidades_que_contam[perfil] = round(afinidade)
+                pesos_que_contam[perfil] = round(peso_perfil, 4)
 
         if afinidades_que_contam:
             evidencias.append(
                 evidencia(
                     "perfil_formato",
                     afinidades=afinidades_que_contam,
+                    pesos_relativos=pesos_que_contam,
                     contribuicao=round(score, 4),
                 )
             )
@@ -206,18 +532,20 @@ def sugerir_ordem_material(
             }
         )
 
-    # Desempate pela ordem canônica (índice), nunca pela ordem de iteração de
-    # dicionário — é o que garante reprodutibilidade.
-    itens.sort(key=lambda item: (-item["score"], FORMATOS_CANONICOS.index(item["formato"])))
+    _, necessidades = _aplicar_camadas(
+        itens, demanda=demanda, desempenho_topico=desempenho_topico
+    )
+    _ordenar(itens)
 
-    for posicao, item in enumerate(itens, start=1):
-        item["posicao"] = posicao
-
-    return {"formato_inicial": itens[0]["formato"], "ordem": itens}
+    return {
+        "formato_inicial": itens[0]["formato"],
+        "ordem": itens,
+        "necessidades": necessidades,
+    }
 
 
 # ---------------------------------------------------------------------------
-# Revisão (fase 2): ajustar a ordem com o que a telemetria mostrou
+# Revisão: ajustar a ordem com o que a telemetria, o aluno e o conteúdo mostram
 # ---------------------------------------------------------------------------
 
 # Ajustes de score por sinal. Valores pequenos de propósito: a revisão corrige
@@ -227,22 +555,11 @@ _PENALIDADE_LEITURA_LENTA_COM_ERRO = 0.25
 _PENALIDADE_ABANDONO = 0.6
 _BONUS_ACERTO_ALTO = 0.4
 _BONUS_ENGAJAMENTO = 0.3
-# Piso do bônus de reexposição, acima do limiar de mudança de propósito: a
-# dificuldade no tópico é o sinal com a evidência mais forte do catálogo
-# (DAT-21), e um bônus abaixo do limiar nunca mudaria a ordem. O bônus real é o
-# que leva os cards ao topo (ver ``revisar_ordem_material``).
-_BONUS_REEXPOSICAO = 0.5
-_MARGEM_REEXPOSICAO = 0.05
 
 # Limiares de leitura dos sinais.
 _ACERTO_ALTO = 75.0
-_ACERTO_SUFICIENTE = 60.0
 _PERCENTUAL_ABANDONO = 40.0
 _TEMPO_MIN_ABANDONO = 3.0
-# Dificuldade no tópico exige mais de um item com acerto: uma questão errada é
-# tropeço, não dificuldade.
-_MINIMO_ITENS_DIFICULDADE = 2
-_FORMATO_DE_REEXPOSICAO = "cards"
 
 MINIMO_EVIDENCIA_PADRAO = 2
 LIMIAR_MUDANCA_PADRAO = 0.35
@@ -332,34 +649,13 @@ def _ajuste_por_sinal(
     return ajuste, motivos, evidencias
 
 
-def _arredondado(valor: Any) -> float | None:
-    return round(float(valor), 2) if valor is not None else None
-
-
-def _em_dificuldade(desempenho_topico: dict[str, Any] | None) -> bool:
-    """O aluno está com dificuldade no tópico? Acerto médio baixo em itens suficientes."""
-    if not desempenho_topico:
-        return False
-    media = desempenho_topico.get("media_acertos")
-    itens = int(desempenho_topico.get("itens") or 0)
-    return (
-        media is not None
-        and itens >= _MINIMO_ITENS_DIFICULDADE
-        and float(media) < _ACERTO_SUFICIENTE
-    )
-
-
-def _ja_reexposto(item: dict[str, Any]) -> bool:
-    """O bônus de reexposição já entrou neste item numa revisão anterior?
-
-    Os ajustes da revisão são somados ao score anterior. Sem esta guarda, cada
-    ciclo com o aluno ainda em dificuldade empurraria os cards mais para cima
-    sem nenhuma informação nova.
-    """
-    return any(
-        isinstance(ev, dict) and ev.get("regra") == "reexposicao_quiz"
-        for ev in item.get("evidencias") or []
-    )
+def _copia(item: dict[str, Any]) -> dict[str, Any]:
+    """Cópia rasa com as listas copiadas: a revisão nunca muta a ordem recebida."""
+    return {
+        **item,
+        "motivos": list(item.get("motivos") or []),
+        "evidencias": list(item.get("evidencias") or []),
+    }
 
 
 def revisar_ordem_material(
@@ -369,6 +665,8 @@ def revisar_ordem_material(
     minimo_evidencia: int = MINIMO_EVIDENCIA_PADRAO,
     limiar_mudanca: float = LIMIAR_MUDANCA_PADRAO,
     desempenho_topico: dict[str, Any] | None = None,
+    demanda: dict[str, Any] | None = None,
+    observacoes: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Decide se a ordem muda, e devolve a decisão pronta para o log.
 
@@ -377,18 +675,22 @@ def revisar_ordem_material(
     decidiu não mexer" é informação: sem isso, não há como distinguir um motor
     estável de um motor que nunca rodou.
 
-    Dois freios, que são o que evita reordenar por ruído:
+    Dois freios valem para a telemetria, que é o que evita reordenar por ruído:
 
     * **mínimo de evidência** — com telemetria de menos formatos que
-      ``minimo_evidencia``, não revisa;
+      ``minimo_evidencia``, os sinais por formato não entram;
     * **limiar de mudança** — mesmo com nova ordem, só aceita se algum score
       mudou acima de ``limiar_mudanca``.
 
-    ``desempenho_topico`` (``{"media_acertos", "itens"}``) é o sinal de
-    dificuldade no tópico. Ele não passa pelo mínimo de evidência por formato:
-    é desempenho do tópico, não atribuição a um formato, e é o sinal com a
-    evidência mais forte do catálogo (reexposição). Com dificuldade, os cards
-    vão para o topo, uma vez só.
+    Mudança de **camada** não passa por esses freios: ``desempenho_topico``
+    (``{"media_acertos", "itens"}``) é desempenho do tópico, não atribuição a
+    formato, e ``demanda`` é o que o conteúdo pede. As duas são recalculadas a
+    cada decisão; entrar ou sair de uma camada é sempre uma revisão, mesmo que
+    a ordem fique igual, porque o "por quê" mostrado ao aluno mudou.
+
+    ``observacoes`` vai só para o snapshot do log (ex.: estado mental negativo
+    recorrente). Não reordena: nenhuma regra do catálogo liga emoção a formato
+    (DAT-45).
     """
     if not ordem_atual:
         return {
@@ -396,6 +698,7 @@ def revisar_ordem_material(
             "ordem": [],
             "motivos": ["sem sugestão anterior para revisar"],
             "evidencia": {"formatos_com_evidencia": 0, "catalogo_versao": CATALOGO_VERSAO},
+            "necessidades": [],
         }
 
     com_evidencia = {
@@ -413,14 +716,67 @@ def revisar_ordem_material(
     }
     if desempenho_topico:
         evidencia_snapshot["desempenho_topico"] = desempenho_topico
+    if demanda:
+        evidencia_snapshot["demanda_do_conteudo"] = {
+            "origem": demanda.get("origem"),
+            "versao": demanda.get("versao"),
+            "assinatura": demanda.get("assinatura"),
+            "dimensoes": {
+                dimensao: (dado or {}).get("nivel")
+                for dimensao, dado in (demanda.get("dimensoes") or {}).items()
+            },
+        }
+    if observacoes:
+        evidencia_snapshot["observacoes"] = observacoes
 
     usar_sinais = len(com_evidencia) >= minimo_evidencia
-    reexpor = _em_dificuldade(desempenho_topico) and any(
-        item.get("formato") == _FORMATO_DE_REEXPOSICAO and not _ja_reexposto(item)
-        for item in ordem_atual
-    )
+    nova_ordem = [_copia(item) for item in ordem_atual]
+    maior_delta = 0.0
+    motivos_da_revisao: list[str] = []
 
-    if not usar_sinais and not reexpor:
+    if usar_sinais:
+        valores_active = [float(s.get("active_sec") or 0) for s in com_evidencia.values()]
+        active_sec_medio = sum(valores_active) / len(valores_active) if valores_active else 0.0
+        for item in nova_ordem:
+            sinal = com_evidencia.get(item.get("formato"))
+            if sinal is None:
+                continue
+            ajuste, motivos, evidencias = _ajuste_por_sinal(sinal, active_sec_medio)
+            maior_delta = max(maior_delta, abs(ajuste))
+            item["score"] = round(float(item.get("score") or 0) + ajuste, 4)
+            # Os motivos da revisão ficam SOMADOS aos originais: o log tem que
+            # mostrar tanto por que o formato entrou quanto por que subiu ou
+            # desceu depois.
+            item["motivos"].extend(motivos)
+            item["evidencias"].extend(evidencias)
+            motivos_da_revisao.extend(f"{item.get('formato')}: {motivo}" for motivo in motivos)
+
+    mudancas_de_camada, necessidades = _aplicar_camadas(
+        nova_ordem, demanda=demanda, desempenho_topico=desempenho_topico
+    )
+    motivos_da_revisao.extend(mudancas_de_camada)
+    if necessidades:
+        evidencia_snapshot["necessidades"] = necessidades
+
+    _ordenar(nova_ordem)
+
+    ordem_mudou = [i.get("formato") for i in nova_ordem] != [
+        i.get("formato") for i in ordem_atual
+    ]
+    evidencia_snapshot["maior_delta"] = round(maior_delta, 4)
+    evidencia_snapshot["ordem_mudou"] = ordem_mudou
+    evidencia_snapshot["mudou_camada"] = bool(mudancas_de_camada)
+
+    if mudancas_de_camada:
+        return {
+            "acao": "revisada",
+            "ordem": nova_ordem,
+            "motivos": motivos_da_revisao,
+            "evidencia": evidencia_snapshot,
+            "necessidades": necessidades,
+        }
+
+    if not usar_sinais:
         return {
             "acao": "mantida",
             "ordem": ordem_atual,
@@ -428,94 +784,8 @@ def revisar_ordem_material(
                 f"evidência insuficiente: {len(com_evidencia)} de {minimo_evidencia} formatos"
             ],
             "evidencia": evidencia_snapshot,
+            "necessidades": necessidades,
         }
-
-    valores_active = [float(s.get("active_sec") or 0) for s in com_evidencia.values()]
-    active_sec_medio = sum(valores_active) / len(valores_active) if valores_active else 0.0
-
-    nova_ordem: list[dict[str, Any]] = []
-    maior_delta = 0.0
-    motivos_da_revisao: list[str] = []
-    reexposto: dict[str, Any] = {}
-
-    for item in ordem_atual:
-        formato = item.get("formato")
-        score_anterior = float(item.get("score") or 0)
-        sinal = com_evidencia.get(formato) if usar_sinais else None
-        reexpor_este = (
-            reexpor and formato == _FORMATO_DE_REEXPOSICAO and not _ja_reexposto(item)
-        )
-
-        if sinal is None and not reexpor_este:
-            nova_ordem.append({**item, "score": round(score_anterior, 4)})
-            continue
-
-        ajuste, motivos, evidencias = (
-            _ajuste_por_sinal(sinal, active_sec_medio) if sinal is not None else (0.0, [], [])
-        )
-        if reexpor_este:
-            # O bônus entra depois do laço, quando os scores dos outros formatos
-            # já estão ajustados: ele depende do líder.
-            motivos.append("dificuldade no tópico: praticar com cards")
-            evidencias.append(
-                evidencia(
-                    "reexposicao_quiz",
-                    media_acertos=_arredondado((desempenho_topico or {}).get("media_acertos")),
-                    itens=int((desempenho_topico or {}).get("itens") or 0),
-                )
-            )
-            reexposto = {"ajuste": ajuste}
-        else:
-            maior_delta = max(maior_delta, abs(ajuste))
-        if motivos:
-            motivos_da_revisao.extend(f"{formato}: {motivo}" for motivo in motivos)
-
-        novo_item = {
-            **item,
-            "score": round(score_anterior + ajuste, 4),
-            # Os motivos da revisão ficam SOMADOS aos originais: o log tem
-            # que mostrar tanto por que o formato entrou quanto por que
-            # subiu ou desceu depois.
-            "motivos": list(item.get("motivos") or []) + motivos,
-            "evidencias": list(item.get("evidencias") or []) + evidencias,
-        }
-        if reexpor_este:
-            reexposto["item"] = novo_item
-        nova_ordem.append(novo_item)
-
-    if reexposto:
-        # Com dificuldade no tópico os cards vão para o TOPO, não só "sobem um
-        # pouco": um bônus fixo some contra o vetor de afinidades (um aluno com
-        # três perfis soma score acima de 1) e a regra de evidência mais forte
-        # do catálogo viraria um empate desfeito pela ordem canônica.
-        item_cards = reexposto["item"]
-        lider = max(
-            (float(i.get("score") or 0) for i in nova_ordem if i is not item_cards),
-            default=0.0,
-        )
-        bonus = max(
-            _BONUS_REEXPOSICAO,
-            round(lider - float(item_cards["score"]) + _MARGEM_REEXPOSICAO, 4),
-        )
-        item_cards["score"] = round(float(item_cards["score"]) + bonus, 4)
-        maior_delta = max(maior_delta, abs(reexposto["ajuste"] + bonus))
-
-    nova_ordem.sort(
-        key=lambda item: (
-            -float(item.get("score") or 0),
-            FORMATOS_CANONICOS.index(item["formato"])
-            if item.get("formato") in FORMATOS_CANONICOS
-            else len(FORMATOS_CANONICOS),
-        )
-    )
-    for posicao, item in enumerate(nova_ordem, start=1):
-        item["posicao"] = posicao
-
-    ordem_mudou = [i.get("formato") for i in nova_ordem] != [
-        i.get("formato") for i in ordem_atual
-    ]
-    evidencia_snapshot["maior_delta"] = round(maior_delta, 4)
-    evidencia_snapshot["ordem_mudou"] = ordem_mudou
 
     if not ordem_mudou:
         return {
@@ -523,6 +793,7 @@ def revisar_ordem_material(
             "ordem": nova_ordem,
             "motivos": motivos_da_revisao or ["sinais não alteraram a ordem"],
             "evidencia": evidencia_snapshot,
+            "necessidades": necessidades,
         }
 
     if maior_delta < limiar_mudanca:
@@ -536,6 +807,7 @@ def revisar_ordem_material(
                 f"mudança abaixo do limiar ({round(maior_delta, 2)} < {limiar_mudanca})"
             ],
             "evidencia": evidencia_snapshot,
+            "necessidades": necessidades,
         }
 
     return {
@@ -543,4 +815,5 @@ def revisar_ordem_material(
         "ordem": nova_ordem,
         "motivos": motivos_da_revisao,
         "evidencia": evidencia_snapshot,
+        "necessidades": necessidades,
     }

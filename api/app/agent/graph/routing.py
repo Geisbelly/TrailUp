@@ -212,6 +212,8 @@ def build_state_summary(state: dict[str, Any]) -> dict[str, Any]:
             "conteudo_adaptado": bool(state.get("conteudo_adaptado")),
             "materiais_gerados": bool(state.get("materiais_gerados")),
             "notificacao_payload": bool(state.get("notificacao_payload")),
+            "intervencao_payload": bool(state.get("intervencao_payload")),
+            "cronometro_payload": bool(state.get("cronometro_payload")),
             "ui_config": bool(state.get("ui_config")),
             "textos_gerados": bool(state.get("textos_gerados")),
         },

@@ -10,6 +10,19 @@ O motor (``sugestao_material.py``) continua puro, sem saber que banco existe —
 * ``revisar_sugestao`` — roda a revisão do ciclo e registra a decisão, inclusive
   quando ela é "não mexer".
 
+Toda decisão, de criação ou de revisão, recebe as mesmas três entradas além do
+perfil e da telemetria (``_contexto_da_decisao``):
+
+* o que o conteúdo pede (``conteudo_demanda_formato``, ``demanda_formato.py``);
+* a dificuldade do aluno no tópico (acerto médio das atividades concluídas);
+* o estado mental negativo recorrente, que só vai para o log (DAT-45: emoção não
+  reordena material).
+
+O banco marca a sugestão para revisão quando o aluno conclui uma atividade ou a
+análise do conteúdo muda (``revisao_pendente``, ``20261102_07``). A marca é
+atendida na próxima leitura da sugestão (``garantir_sugestao_do_aluno``) ou no
+próximo ciclo de telemetria do aluno, mesmo sem material no lote.
+
 Nada aqui levanta exceção por ausência das tabelas: o repositório devolve
 ``None`` quando a migração não foi aplicada, e a sugestão é camada de consumo —
 não pode impedir o material de ser gerado.
@@ -17,14 +30,18 @@ não pode impedir o material de ser gerado.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Iterable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.context import ContextRepository
+from app.repositories.mental_state import MentalStateHistoryRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
 from app.repositories.sugestao_material import SugestaoMaterialRepository
+from app.services import demanda_formato
 from app.services.evidencias_pedagogicas import CATALOGO_VERSAO
+from app.services.memoria_aluno import _JANELA_RECORRENCIA, _detectar_recorrencia
 from app.services.sugestao_material import (
     LIMIAR_MUDANCA_PADRAO,
     MINIMO_EVIDENCIA_PADRAO,
@@ -37,6 +54,69 @@ from app.services.sugestao_sinais import (
     sinais_por_formato,
 )
 
+logger = logging.getLogger(__name__)
+
+
+def resumo_da_demanda(demanda: dict[str, Any] | None) -> dict[str, Any] | None:
+    """O que o log guarda da análise do conteúdo: origem, versão, assinatura e o nível de cada
+    dimensão. Sem os motivos, que já estão nos itens da ordem."""
+    if not demanda:
+        return None
+    return {
+        "origem": demanda.get("origem"),
+        "versao": demanda.get("versao"),
+        "assinatura": demanda.get("assinatura"),
+        "dimensoes": {
+            dimensao: (dado or {}).get("nivel")
+            for dimensao, dado in (demanda.get("dimensoes") or {}).items()
+        },
+    }
+
+
+async def _ler_demanda(session: AsyncSession, topico_id: int) -> dict[str, Any] | None:
+    try:
+        async with session.begin_nested():
+            return await demanda_formato.ler_do_topico(session, topico_id)
+    except Exception as exc:  # noqa: BLE001 - entrada opcional, não pode derrubar a sugestão
+        logger.warning("Falha ao ler demanda de formato: topico=%s erro=%s", topico_id, exc)
+        return None
+
+
+async def _estado_mental_recorrente(session: AsyncSession, aluno_id: str) -> dict[str, Any] | None:
+    """Mesma regra de ``memoria_aluno`` (3 dos últimos 5 com o mesmo estado negativo)."""
+    try:
+        async with session.begin_nested():
+            registros = await MentalStateHistoryRepository(session).listar_por_aluno(
+                aluno_id=aluno_id, limit=_JANELA_RECORRENCIA
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Falha ao ler estado mental para a sugestao: %s", exc)
+        return None
+    recorrencia = _detectar_recorrencia(registros)
+    if not recorrencia.recorrente:
+        return None
+    return {
+        "estado_mental_recorrente": {
+            "kind": recorrencia.kind,
+            "ocorrencias": recorrencia.ocorrencias,
+            "janela": _JANELA_RECORRENCIA,
+        }
+    }
+
+
+async def _contexto_da_decisao(
+    session: AsyncSession,
+    repo: SugestaoMaterialRepository,
+    *,
+    aluno_id: str,
+    topico_id: int,
+) -> dict[str, Any]:
+    return {
+        "demanda": await _ler_demanda(session, topico_id),
+        "desempenho_topico": await repo.desempenho_no_topico(aluno_id=aluno_id, topico_id=topico_id),
+        "observacoes": await _estado_mental_recorrente(session, aluno_id),
+    }
+
 
 async def garantir_sugestao(
     repo: SugestaoMaterialRepository,
@@ -48,6 +128,9 @@ async def garantir_sugestao(
     perfis: Iterable[Any] = (),
     formatos_disponiveis: Iterable[str] = (),
     modo_operacao: str | None = None,
+    demanda: dict[str, Any] | None = None,
+    desempenho_topico: dict[str, Any] | None = None,
+    observacoes: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     """Devolve a sugestão do aluno, criando-a se ainda não existir."""
     existente = await repo.buscar(
@@ -60,6 +143,8 @@ async def garantir_sugestao(
         perfis=perfis,
         formatos_disponiveis=formatos_disponiveis,
         modo_operacao=modo_operacao,
+        demanda=demanda,
+        desempenho_topico=desempenho_topico,
     )
     if not sugestao["ordem"]:
         # Sem formato gerado ainda não há o que sugerir. Não grava linha vazia:
@@ -68,7 +153,18 @@ async def garantir_sugestao(
 
     # A versão do catálogo vai junto: o "por quê" de cada item cita regras do
     # catálogo, e uma auditoria precisa saber com que texto foi justificado.
-    evidencia_inicial = {"modo_operacao": modo_operacao, "catalogo_versao": CATALOGO_VERSAO}
+    evidencia_inicial: dict[str, Any] = {
+        "modo_operacao": modo_operacao,
+        "catalogo_versao": CATALOGO_VERSAO,
+    }
+    if demanda:
+        evidencia_inicial["demanda_do_conteudo"] = resumo_da_demanda(demanda)
+    if desempenho_topico:
+        evidencia_inicial["desempenho_topico"] = desempenho_topico
+    if sugestao.get("necessidades"):
+        evidencia_inicial["necessidades"] = sugestao["necessidades"]
+    if observacoes:
+        evidencia_inicial["observacoes"] = observacoes
     salvo = await repo.criar(
         aluno_id=aluno_id,
         topico_id=topico_id,
@@ -113,6 +209,8 @@ async def garantir_sugestao(
         "formato_inicial": sugestao["formato_inicial"],
         "ordem": sugestao["ordem"],
         "origem": "inicial",
+        "evidencia": evidencia_inicial,
+        "revisao_pendente": False,
     }
 
 
@@ -128,13 +226,24 @@ async def revisar_sugestao(
     minimo_evidencia: int = MINIMO_EVIDENCIA_PADRAO,
     limiar_mudanca: float = LIMIAR_MUDANCA_PADRAO,
     desempenho_topico: dict[str, Any] | None = None,
+    demanda: dict[str, Any] | None = None,
+    observacoes: dict[str, Any] | None = None,
+    atual: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
-    """Roda a revisão do ciclo e grava a decisão. Devolve a decisão tomada."""
-    atual = await repo.buscar(
-        aluno_id=aluno_id, topico_id=topico_id, conteudo_id=conteudo_id
-    )
+    """Roda a revisão do ciclo e grava a decisão. Devolve a decisão tomada.
+
+    Se o banco tinha marcado a sugestão para revisão, o motivo vai para o log como
+    ``gatilho`` e a marca é tirada depois da decisão, seja ela qual for.
+    """
+    if atual is None:
+        atual = await repo.buscar(
+            aluno_id=aluno_id, topico_id=topico_id, conteudo_id=conteudo_id
+        )
     if not atual:
         return None
+    pendente = bool(atual.get("revisao_pendente"))
+    if pendente and atual.get("revisao_motivo"):
+        evidencia_extra = {**(evidencia_extra or {}), "gatilho": atual.get("revisao_motivo")}
 
     ordem_antes = atual.get("ordem") or []
     decisao = revisar_ordem_material(
@@ -143,6 +252,8 @@ async def revisar_sugestao(
         minimo_evidencia=minimo_evidencia,
         limiar_mudanca=limiar_mudanca,
         desempenho_topico=desempenho_topico,
+        demanda=demanda,
+        observacoes=observacoes,
     )
 
     versao_atual = int(atual.get("versao") or 1)
@@ -168,6 +279,10 @@ async def revisar_sugestao(
             motivos=decisao["motivos"],
             evidencia=evidencia_do_log,
         )
+        if pendente:
+            await repo.limpar_revisao_pendente(
+                sugestao_id=int(atual["id"]), marcada_em=atual.get("revisao_pendente_em")
+            )
         return decisao
 
     nova_ordem = decisao["ordem"]
@@ -197,6 +312,10 @@ async def revisar_sugestao(
         motivos=decisao["motivos"],
         evidencia=evidencia_do_log,
     )
+    if pendente:
+        await repo.limpar_revisao_pendente(
+            sugestao_id=int(atual["id"]), marcada_em=atual.get("revisao_pendente_em")
+        )
 
     return decisao
 
@@ -212,43 +331,55 @@ async def revisar_sugestoes_do_ciclo(
 ) -> dict[str, Any] | None:
     """Ponto de entrada do ciclo de análise: revisa a sugestão com a telemetria.
 
-    Sem ``topico_id`` não há alvo — a sugestão é por (aluno, tópico), e revisar
-    "a sugestão do aluno em geral" não significa nada.
+    Duas fontes de revisão, que se somam:
+
+    * a telemetria do lote, para o tópico do lote. Lote sem material aberto não é
+      evidência sobre formato nenhum e não revisa por si;
+    * as sugestões do aluno nesta turma que o banco marcou para revisão (atividade
+      concluída, análise do conteúdo nova), em qualquer tópico, mesmo sem material
+      no lote. Antes a atividade concluída não revisava nada.
+
+    Devolve a decisão do tópico do lote, quando houve.
     """
-    if topico_id is None:
-        return None
+    repo = SugestaoMaterialRepository(session)
+    decisao: dict[str, Any] | None = None
 
     materiais = ((telemetry_payload or {}).get("time_metrics") or {}).get("materials") or []
     ritmo = ((stage_outputs or {}).get("reading") or {}).get("reading_material_pace") or []
-    if not materiais:
-        # Lote sem material aberto não é evidência sobre formato nenhum. Registrar
-        # "mantida" aqui encheria o histórico de ciclos que não olharam nada.
-        return None
+    if topico_id is not None and materiais:
+        itens = await PersonalizacaoProgressoRepository(session).listar_por_aluno(
+            aluno_id=aluno_id, classe_id=classe_id, topico_id=topico_id
+        )
+        sinais = sinais_por_formato(
+            materiais_telemetria=materiais,
+            ritmo_por_material=ritmo,
+            progresso_por_conteudo=indexar_progresso_por_conteudo(itens),
+        )
+        if sinais:
+            decisao = await revisar_sugestao(
+                repo,
+                aluno_id=aluno_id,
+                topico_id=topico_id,
+                classe_id=classe_id,
+                sinais_por_formato=sinais,
+                evidencia_extra={"ordem_observada": ordem_de_consumo(materiais)},
+                **await _contexto_da_decisao(
+                    session, repo, aluno_id=aluno_id, topico_id=topico_id
+                ),
+            )
 
-    itens = await PersonalizacaoProgressoRepository(session).listar_por_aluno(
-        aluno_id=aluno_id, classe_id=classe_id, topico_id=topico_id
-    )
+    for pendente in await repo.topicos_com_revisao_pendente(aluno_id=aluno_id, classe_id=classe_id):
+        resultado = await revisar_sugestao(
+            repo,
+            aluno_id=aluno_id,
+            topico_id=pendente,
+            classe_id=classe_id,
+            **await _contexto_da_decisao(session, repo, aluno_id=aluno_id, topico_id=pendente),
+        )
+        if pendente == topico_id and decisao is None:
+            decisao = resultado
 
-    sinais = sinais_por_formato(
-        materiais_telemetria=materiais,
-        ritmo_por_material=ritmo,
-        progresso_por_conteudo=indexar_progresso_por_conteudo(itens),
-    )
-    if not sinais:
-        return None
-
-    repo = SugestaoMaterialRepository(session)
-    return await revisar_sugestao(
-        repo,
-        aluno_id=aluno_id,
-        topico_id=topico_id,
-        classe_id=classe_id,
-        sinais_por_formato=sinais,
-        evidencia_extra={"ordem_observada": ordem_de_consumo(materiais)},
-        desempenho_topico=await repo.desempenho_no_topico(
-            aluno_id=aluno_id, topico_id=topico_id
-        ),
-    )
+    return decisao
 
 
 async def garantir_sugestao_do_aluno(
@@ -261,21 +392,40 @@ async def garantir_sugestao_do_aluno(
 ) -> dict[str, Any] | None:
     """Cria (uma vez) a sugestão do aluno para um tópico, ao servir o material.
 
-    Lê perfil e modo de operação do contexto do aluno — as duas entradas do
-    motor. Perfil vazio não impede: o motor cai na ordem canônica, que ainda é
-    melhor do que nenhuma ordem.
+    Lê perfil e modo de operação do contexto do aluno, as entradas de preferência
+    do motor. Perfil vazio não impede: o motor cai na ordem canônica, que ainda é
+    melhor do que nenhuma ordem. Se o banco marcou a sugestão para revisão, revisa
+    antes de devolver: o aluno recebe a ordem que já considera o que mudou.
     """
+    repo = SugestaoMaterialRepository(session)
+    existente = await repo.buscar(aluno_id=aluno_id, topico_id=topico_id)
+    if existente and not existente.get("revisao_pendente"):
+        return existente
+
+    decisao_ctx = await _contexto_da_decisao(session, repo, aluno_id=aluno_id, topico_id=topico_id)
+    if existente:
+        await revisar_sugestao(
+            repo,
+            aluno_id=aluno_id,
+            topico_id=topico_id,
+            classe_id=classe_id,
+            atual=existente,
+            **decisao_ctx,
+        )
+        return await repo.buscar(aluno_id=aluno_id, topico_id=topico_id)
+
     contexto = await ContextRepository(session).fetch_aluno_context(
         aluno_id=aluno_id, classe_id=classe_id
     )
     aluno = contexto.get("aluno") if isinstance(contexto.get("aluno"), dict) else {}
 
     return await garantir_sugestao(
-        SugestaoMaterialRepository(session),
+        repo,
         aluno_id=aluno_id,
         topico_id=topico_id,
         classe_id=classe_id,
         perfis=contexto.get("perfil_brainhex") or [],
         formatos_disponiveis=formatos_disponiveis,
         modo_operacao=aluno.get("modo_operacao"),
+        **decisao_ctx,
     )

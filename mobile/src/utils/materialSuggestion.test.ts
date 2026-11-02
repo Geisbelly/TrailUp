@@ -4,9 +4,13 @@ import test from "node:test";
 import type { ContentBlock } from "@/interfaces/componentes_simples/IContentBlock";
 import {
   blocoInicialSugerido,
+  destaquesDaSugestao,
+  formatoInicialDaSugestao,
   formatoSugeridoDoBloco,
+  motivoAlunoDoFormato,
   motivosDoFormato,
   ordenarBlocosPorSugestao,
+  ordenarPorSugestao,
   type SugestaoMaterial,
 } from "./materialSuggestion";
 
@@ -146,7 +150,7 @@ test("formato aconselhado ausente nao destaca outro no lugar", () => {
   assert.equal(blocoInicialSugerido(blocks, sugestao(["audio"], "audio")), null);
 });
 
-test("motivos do formato chegam para exibir ao aluno", () => {
+test("motivos internos do formato continuam acessiveis (nao sao texto para o aluno)", () => {
   const comMotivos: SugestaoMaterial = {
     formato_inicial: "audio",
     ordem: [{ formato: "audio", posicao: 1, motivos: ["narrativa em diálogo"] }],
@@ -155,4 +159,78 @@ test("motivos do formato chegam para exibir ao aluno", () => {
   assert.deepEqual(motivosDoFormato(comMotivos, "audio"), ["narrativa em diálogo"]);
   assert.deepEqual(motivosDoFormato(comMotivos, "markdown"), []);
   assert.deepEqual(motivosDoFormato(null, "audio"), []);
+});
+
+test("motivo para o aluno vem de motivo_aluno, nunca de motivos", () => {
+  const comMotivo: SugestaoMaterial = {
+    formato_inicial: "apresentacao",
+    ordem: [
+      {
+        formato: "apresentacao",
+        posicao: 1,
+        motivos: ["imagens=3"],
+        motivo_aluno: "Este conteúdo depende de imagens: comece pela apresentação.",
+      },
+      { formato: "markdown", posicao: 2, motivos: ["nota interna"] },
+    ],
+  };
+
+  assert.equal(
+    motivoAlunoDoFormato(comMotivo, "apresentacao"),
+    "Este conteúdo depende de imagens: comece pela apresentação."
+  );
+  assert.equal(motivoAlunoDoFormato(comMotivo, "markdown"), null);
+  assert.equal(motivoAlunoDoFormato(null, "markdown"), null);
+});
+
+test("sem formato_inicial, comeca pelo primeiro da ordem", () => {
+  assert.equal(
+    formatoInicialDaSugestao({ ordem: [{ formato: "audio", posicao: 2 }, { formato: "cards", posicao: 1 }] }),
+    "cards"
+  );
+  assert.equal(formatoInicialDaSugestao(sugestao(["markdown"], "audio")), "audio");
+  assert.equal(formatoInicialDaSugestao(null), null);
+});
+
+// --- grupos (passos de conteudos diferentes) ------------------------------
+
+type Passo = { id: string; formato: string | null; grupo: string };
+const passo = (id: string, formato: string | null, grupo: string): Passo => ({ id, formato, grupo });
+const opcoesDoPasso = {
+  formatoDe: (item: Passo) => item.formato,
+  grupoDe: (item: Passo) => item.grupo,
+};
+
+test("so troca de lugar dentro do mesmo grupo", () => {
+  const passos = [
+    passo("a-texto", "markdown", "A"),
+    passo("a-audio", "audio", "A"),
+    passo("a-quiz", null, "A"),
+    passo("b-texto", "markdown", "B"),
+    passo("b-audio", "audio", "B"),
+  ];
+
+  const resultado = ordenarPorSugestao(passos, sugestao(["audio", "markdown"]), opcoesDoPasso);
+
+  assert.deepEqual(
+    resultado.map((item) => item.id),
+    ["a-audio", "a-texto", "a-quiz", "b-audio", "b-texto"]
+  );
+});
+
+test("destaque: o primeiro do formato inicial em cada grupo", () => {
+  const passos = [
+    passo("a-audio-1", "audio", "A"),
+    passo("a-audio-2", "audio", "A"),
+    passo("b-texto", "markdown", "B"),
+  ];
+
+  const destaques = destaquesDaSugestao(passos, sugestao(["audio", "markdown"]), {
+    ...opcoesDoPasso,
+    chaveDe: (item) => item.id,
+  });
+
+  assert.deepEqual([...destaques.keys()], ["a-audio-1"]);
+  assert.deepEqual(destaques.get("a-audio-1"), { formato: "audio", motivo: null });
+  assert.equal(destaquesDaSugestao(passos, null, { ...opcoesDoPasso, chaveDe: (item) => item.id }).size, 0);
 });

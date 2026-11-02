@@ -65,6 +65,7 @@ import {
   orderPersonalizationRecordsByTeacherContent,
 } from '@/utils/personalization';
 import { inferModoApresentacao } from '@/utils/presentationOrder';
+import { mesclarSugestoes, type SugestaoMaterial } from '@/utils/materialSuggestion';
 import { perfilVisualDoAluno } from '@/utils/brainHex';
 import { houveVisita, payloadDeVisitaDoTopico } from '@/utils/visitaDoTopico';
 import { buildSupabasePublicStorageUrl, looksLikeStorageObjectPath } from '@/utils/supabaseStorage';
@@ -106,6 +107,13 @@ function buildPersonalizacaoCacheKey(
   profile: BrainHexProfile,
 ) {
   return `@trailup/personalizacao-v4/${alunoId}/${classeId}/${profile}`
+}
+
+// Ordem aconselhada de material por tópico. É do aluno na turma, não do perfil
+// (a sugestão é por aluno × tópico), e fica fora do cache da personalização para
+// não mexer no payload que já está gravado lá.
+function buildSugestoesMaterialCacheKey(alunoId: string, classeId: number) {
+  return `@trailup/sugestao-material-v1/${alunoId}/${classeId}`
 }
 
 function buildProgressoItensCacheKey(
@@ -660,6 +668,15 @@ type TrilhaContextValue = {
   deveMostrarGabaritoAoErrar: (atividade?: any, questao?: any) => boolean
   getProximosTopicos: (topicoId?: number | null) => Topico[]
   personalizedTopics: Record<number, PersonalizedTopicPayload>
+  /**
+   * Ordem aconselhada de material por tópico, já disponível ANTES de o tópico
+   * abrir (lida do banco junto com a personalização, e do cache local). A tela
+   * do tópico congela a do tópico ao abrir; o que chegar depois vale para a
+   * próxima abertura.
+   */
+  sugestoesMaterial: Record<number, SugestaoMaterial>
+  /** Guarda a sugestão que a API devolveu (mapa + cache) para a próxima abertura. */
+  registrarSugestaoMaterial: (topicoId: number, sugestao: SugestaoMaterial) => void
   ensureTopicoPersonalizado: (
     topicoId: number,
     options?: EnsurePersonalizationOptions
@@ -704,6 +721,8 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const unlockedScopeRef = useRef<string | null>(null)
   const unlockedPersistQueueRef = useRef<Promise<void>>(Promise.resolve())
   const [personalizedTopics, setPersonalizedTopics] = useState<Record<number, PersonalizedTopicPayload>>({})
+  const [sugestoesMaterial, setSugestoesMaterial] = useState<Record<number, SugestaoMaterial>>({})
+  const sugestoesMaterialRef = useRef<Record<number, SugestaoMaterial>>({})
   // Tópicos que ainda têm passo personalizado pendente. Isso afeta o estado de
   // conclusão/progresso, mas não pode revogar um desbloqueio já conquistado.
   // Só entra tópico cujo payload personalizado está carregado.
@@ -849,7 +868,53 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     personalizationRequestsRef.current.clear()
     personalizationAttemptedRef.current.clear()
     setPersonalizedTopics({})
+    sugestoesMaterialRef.current = {}
+    setSugestoesMaterial({})
   }, [personalizationScope])
+
+  // Junta sugestões ao mapa e grava o cache. Mesclar (e não substituir) é o que
+  // impede uma leitura vazia do banco — RLS ainda sem policy — de apagar o que a
+  // API já tinha devolvido.
+  const aplicarSugestoesMaterial = useCallback((
+    alunoId: string,
+    classeId: number,
+    novas: Record<number, SugestaoMaterial> | null | undefined,
+  ) => {
+    const atuais = sugestoesMaterialRef.current
+    const mescladas = mesclarSugestoes(atuais, novas)
+    if (mescladas === atuais) return
+    sugestoesMaterialRef.current = mescladas
+    setSugestoesMaterial(mescladas)
+    AsyncStorage.setItem(
+      buildSugestoesMaterialCacheKey(alunoId, classeId),
+      JSON.stringify(mescladas)
+    ).catch((err) => {
+      console.warn('[TrilhaContext] Erro ao salvar cache de sugestao de material:', err)
+    })
+  }, [])
+
+  const registrarSugestaoMaterial = useCallback((topicoId: number, sugestao: SugestaoMaterial) => {
+    const classe = classeAtualRef.current
+    if (!usuario?.id || !classe) return
+    // Resposta atrasada de um tópico de outra turma não entra no mapa desta.
+    if (!classe.topicos.some((topico) => topico.id === topicoId)) return
+    aplicarSugestoesMaterial(usuario.id, classe.classe_id, { [topicoId]: sugestao })
+  }, [aplicarSugestoesMaterial, usuario?.id])
+
+  // Leitura do banco, best-effort: falha (rede, RLS) vira "nada novo", e a
+  // tela segue na ordem canônica ou na sugestão que já estava em cache.
+  const lerSugestoesMaterial = useCallback(async (
+    alunoId: string,
+    classeId: number,
+    topicoId?: number | null,
+  ) => {
+    try {
+      return await personalizacaoProvider.listarSugestoesMaterialTurma({ alunoId, classeId, topicoId })
+    } catch (err) {
+      console.warn('[TrilhaContext] Sugestao de material indisponivel no banco:', err)
+      return null
+    }
+  }, [personalizacaoProvider])
 
   useEffect(() => {
     const classeId = classeAtual?.classe_id
@@ -858,10 +923,28 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     let ativo = true
     ;(async () => {
       try {
-        const raw = await AsyncStorage.getItem(
-          buildPersonalizacaoCacheKey(usuario.id, classeId, perfil)
-        )
-        if (!raw || !ativo) return
+        // As duas leituras chegam juntas ao estado: a sugestão precisa estar no
+        // mapa no mesmo render em que o payload em cache deixa o tópico pronto,
+        // senão a tela congelaria a ordem sem ela.
+        const [raw, rawSugestoes] = await Promise.all([
+          AsyncStorage.getItem(buildPersonalizacaoCacheKey(usuario.id, classeId, perfil)),
+          AsyncStorage.getItem(buildSugestoesMaterialCacheKey(usuario.id, classeId)).catch(() => null),
+        ])
+        if (!ativo) return
+        if (rawSugestoes) {
+          try {
+            const sugestoes = JSON.parse(rawSugestoes) as Record<number, SugestaoMaterial>
+            if (sugestoes && typeof sugestoes === 'object') {
+              // Cache primeiro, banco por cima: o que já chegou do banco/API vence.
+              const mescladas = mesclarSugestoes(sugestoes, sugestoesMaterialRef.current)
+              sugestoesMaterialRef.current = mescladas
+              setSugestoesMaterial(mescladas)
+            }
+          } catch (err) {
+            console.warn('[TrilhaContext] Cache de sugestao de material ilegivel:', err)
+          }
+        }
+        if (!raw) return
         const parsed = JSON.parse(raw) as Record<number, PersonalizedTopicPayload>
         if (parsed && typeof parsed === 'object') {
           // Remote data may have arrived while AsyncStorage was being read.
@@ -1078,12 +1161,17 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         (total, topico) => total + Math.max(1, topico.conteudos?.length ?? 0),
         0
       )
+      // Uma consulta por turma, em paralelo com a personalização, para a ordem
+      // aconselhada estar no mapa quando o payload chegar (ver `aplicarSugestoesMaterial`).
+      const sugestoesPromise = lerSugestoesMaterial(usuario.id, classeAtual.classe_id)
       const response = await personalizacaoProvider.listarPersonalizacoesPersistidasPerfil({
         classeId: classeAtual.classe_id,
         brainhexProfileKey: activeProfileKey,
         limit: Math.max(20, expectedContentCount * 2),
       })
+      const sugestoes = await sugestoesPromise
       if (personalizationScopeRef.current !== hydrationKey) return
+      aplicarSugestoesMaterial(usuario.id, classeAtual.classe_id, sugestoes)
 
       const byTopico: Record<number, PersonalizedTopicPayload> = {}
       const topicosById = new Map(classeAtual.topicos.map((topico) => [topico.id, topico] as const))
@@ -1131,7 +1219,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       if (personalizationScopeRef.current === hydrationKey) personalizationHydratedClassRef.current = null
       console.warn('[TrilhaContext] Erro ao hidratar personalizacoes:', err)
     }
-  }, [activeProfileKey, buildPayloadForTopico, classeAtual, maybeRequestMissingMediaForRecord, persistPersonalizedTopicsCache, personalizacaoProvider, usuario?.id])
+  }, [activeProfileKey, aplicarSugestoesMaterial, buildPayloadForTopico, classeAtual, lerSugestoesMaterial, maybeRequestMissingMediaForRecord, persistPersonalizedTopicsCache, personalizacaoProvider, usuario?.id])
 
   const ensureTopicoPersonalizado = useCallback(async (
     topicoId: number,
@@ -1173,13 +1261,16 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     const request = (async () => {
       try {
         personalizationAttemptedRef.current.add(key)
+        const sugestoesPromise = lerSugestoesMaterial(usuario.id, classeAtual.classe_id, topicoId)
         const listResponse = await personalizacaoProvider.listarPersonalizacoesPersistidasPerfil({
           classeId: classeAtual.classe_id,
           topicoId,
           brainhexProfileKey: activeProfileKey,
           limit: Math.max(10, (topico.conteudos?.length ?? 0) * 2),
         })
+        const sugestoes = await sugestoesPromise
         if (personalizationScopeRef.current !== personalizationScope) return null
+        aplicarSugestoesMaterial(usuario.id, classeAtual.classe_id, sugestoes)
 
         const records = orderPersonalizationRecordsByTeacherContent(
           listResponse?.itens ?? [],
@@ -1234,9 +1325,11 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     personalizationRequestsRef.current.set(requestKey, request)
     return request
   }, [
+    aplicarSugestoesMaterial,
     buildPayloadForTopico,
     classeAtual,
     activeProfileKey,
+    lerSugestoesMaterial,
     maybeRequestMissingMediaForRecord,
     persistPersonalizedTopicsCache,
     personalizedTopics,
@@ -2327,6 +2420,8 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       deveMostrarGabaritoAoErrar,
       getProximosTopicos,
       personalizedTopics,
+      sugestoesMaterial,
+      registrarSugestaoMaterial,
       ensureTopicoPersonalizado,
       getNodePersonalizationHint,
       mapTheme,
@@ -2360,6 +2455,8 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       deveMostrarGabaritoAoErrar,
       getProximosTopicos,
       personalizedTopics,
+      sugestoesMaterial,
+      registrarSugestaoMaterial,
       ensureTopicoPersonalizado,
       getNodePersonalizationHint,
       mapTheme,

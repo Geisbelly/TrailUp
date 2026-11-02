@@ -17,6 +17,7 @@ src/utils/batalhaRegras.test.ts
 src/hooks/trilha/topicScreenBlock.test.ts
 src/hooks/trilha/usePersonalizedFlow.test.ts
 src/hooks/trilha/studyIntervalPersistence.test.ts
+src/hooks/trilha/sugestaoNoPercurso.test.ts
 src/models/Rank.semFallback.test.ts
 src/models/Topico.canonicalProgress.test.ts
 src/services/apiBaseUrl.core.test.ts
@@ -71,6 +72,7 @@ src/utils/lockedNodeMessage.test.ts
 src/utils/markdownDataUri.test.ts
 src/utils/materialCacheVersion.test.ts
 src/utils/materialSuggestion.test.ts
+src/components/trilhas/SeloComecePorAqui.test.tsx
 src/utils/mediaPayload.test.ts
 src/utils/pendingRoute.test.ts
 src/utils/perfilBagLayout.test.ts

@@ -38,6 +38,7 @@ export function IdentidadePerfilDesktop({
   email,
   classeId,
   palette,
+  onTrocarTurma,
 }: {
   nome: string;
   apelido: string;
@@ -50,6 +51,8 @@ export function IdentidadePerfilDesktop({
   email: string | null | undefined;
   classeId: number | null | undefined;
   palette: ProfileShellPalette;
+  /** Só com mais de uma turma (`InfoAlunoDesktop`). */
+  onTrocarTurma?: () => void;
 }) {
   // A guilda do aluno na turma atual, se ele estiver em uma.
   const [guilda, setGuilda] = useState<string | null>(null);
@@ -93,6 +96,7 @@ export function IdentidadePerfilDesktop({
         email={email}
         desde={formatarJornadaDesde(criadoEm)}
         palette={palette}
+        onTrocarTurma={onTrocarTurma}
       />
       <View
         accessibilityLabel={`${ehDominante ? "Perfil dominante" : "Perfil ativo"}: ${ativo.label}${afinidadeAtivo !== null ? `, ${Math.round(afinidadeAtivo)}% de afinidade` : ""}`}

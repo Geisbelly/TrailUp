@@ -276,6 +276,30 @@ Cada perfil carrega:
   `evidencias_pedagogicas.py`, fontes `DAT-xx`, confiança e os números do
   aluno); o peso por perfil é **hipótese sem evidência** e a emoção não
   reordena. Mudou regra, suba `CATALOGO_VERSAO`: o log grava a versão (#66).
+
+  **A ordem tem camadas, recalculadas a cada decisão** (`20261102_07`). Ver
+  `docs/superpowers/specs/2026-11-01-recomendacao-conteudo-x-aluno-design.md`.
+  Da mais forte para a mais fraca:
+  - **0, necessidade do aluno:** dificuldade no tópico (acerto médio baixo nas atividades
+    concluídas) põe os cards no topo (DAT-21);
+  - **1, o que o conteúdo pede:** formato `essencial` em `conteudo_demanda_formato`
+    (visual → apresentação, escrito → texto, sonoro → áudio, prática → cards). O
+    nível `ajuda` só soma pontos;
+  - **2, preferência:** perfil (só o que passa da fatia uniforme do vetor de afinidades),
+    modo declarado e telemetria.
+
+  A preferência do aluno não passa por cima do conteúdo que depende de um formato.
+  Estado mental recorrente vai para o log como observação e não reordena.
+
+  A análise do conteúdo é IA, então é API: o worker faz uma chamada por tópico
+  (`demanda_formato.py`, versão própria). Sem modelo, uma regra fixa grava `origem =
+  'heuristica'`, e essa regra não conta como atual: o modelo é tentado de novo depois da
+  pausa. Quem marca a revisão é o banco. Atividade concluída e análise nova do conteúdo
+  ligam `revisao_pendente`, e a API revisa na próxima leitura ou no próximo ciclo, mesmo
+  sem material no lote. O aluno lê a própria sugestão direto do Supabase (policy +
+  trava do estudo). `motivo_aluno` é a frase que vai para a tela; `motivos`, nunca.
+  A identidade dos passos no app é calculada na ordem canônica, antes de a sugestão
+  reordenar: reordenar não pode mudar `item_key` nem id.
 - **Estudo de efetividade (#13):** `estudo_coorte`, `marco_produto` e
   `topico_aluno_conclusao` (`20261102_02`), e a RPC `metricas_estudo_coortes` (`_03`).
   - **Cohort = turma com data de corte.** O baseline é `[baseline_inicio, corte)` e a
@@ -292,7 +316,8 @@ Cada perfil carrega:
     job, e a regra está numa função só, `estudo_coorte_retem`. A trava **esconde, não impede a
     geração**:
     - uma policy `RESTRICTIVE` de SELECT esconde do aluno `conteudo_personalizado`,
-      `cards_personalizados`, `boss_falas` e `personalizacao_jobs`; o professor dono continua vendo;
+      `cards_personalizados`, `boss_falas`, `personalizacao_jobs` e `personalizacao_sugestao`
+      (esta pela `20261102_07`); o professor dono continua vendo;
     - a API repete a trava onde ela lê como `service_role`, por cima da RLS. O grafo só mede
       (`RETIDA_SPECIALIST_NODES`), `POST /personalizar` responde 409, a sugestão nem é criada e a
       listagem do aluno tira a turma (`EstudoRepository`).

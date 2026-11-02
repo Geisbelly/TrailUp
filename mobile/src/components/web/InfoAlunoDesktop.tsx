@@ -9,7 +9,8 @@ import type { ProfileShellPalette } from "@/utils/profileShellTheme";
  * Informações do aluno embaixo do nome, no Perfil da web em tela larga (#346,
  * protótipo v4, 08-perfil-hub.md §2): turma, guilda, e-mail e desde quando
  * está na jornada, e o atalho para editar, que abre "Informações pessoais"
- * nas Configurações. Linha sem dado não aparece.
+ * nas Configurações. Linha sem dado não aparece. Com mais de uma turma, ao lado
+ * do atalho vem "Trocar turma" (#720), como no celular.
  */
 export function InfoAlunoDesktop({
   turma,
@@ -18,6 +19,7 @@ export function InfoAlunoDesktop({
   email,
   desde,
   palette,
+  onTrocarTurma,
 }: {
   turma: string | null | undefined;
   professor: string | null | undefined;
@@ -25,6 +27,7 @@ export function InfoAlunoDesktop({
   email: string | null | undefined;
   desde?: string | null;
   palette: ProfileShellPalette;
+  onTrocarTurma?: () => void;
 }) {
   const linhas: [string, string][] = [];
   if (turma) linhas.push(["Turma", professor ? `${turma} · Prof. ${professor}` : turma]);
@@ -39,9 +42,16 @@ export function InfoAlunoDesktop({
           <Text style={[s.valor, { color: palette.textMuted }]} numberOfLines={1}>{valor}</Text>
         </View>
       ))}
-      <Pressable accessibilityRole="link" onPress={() => router.push("/(tabs)/perfil/settings?sub=info")}>
-        <Text style={[s.editar, { color: palette.accent }]}>Editar informações</Text>
-      </Pressable>
+      <View style={s.atalhos}>
+        <Pressable accessibilityRole="link" onPress={() => router.push("/(tabs)/perfil/settings?sub=info")}>
+          <Text style={[s.editar, { color: palette.accent }]}>Editar informações</Text>
+        </Pressable>
+        {onTrocarTurma ? (
+          <Pressable accessibilityRole="button" onPress={onTrocarTurma}>
+            <Text style={[s.editar, { color: palette.accent }]}>Trocar turma</Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -51,5 +61,6 @@ const s = StyleSheet.create({
   linha: { flexDirection: "row", gap: 8 },
   rotulo: { width: 118, fontFamily: FontFamily.interMedium, fontSize: 13 },
   valor: { flex: 1, fontFamily: FontFamily.interMedium, fontSize: 13 },
+  atalhos: { flexDirection: "row", gap: 20 },
   editar: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700", marginTop: 4 },
 });

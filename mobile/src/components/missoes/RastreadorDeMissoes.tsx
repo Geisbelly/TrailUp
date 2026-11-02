@@ -54,7 +54,11 @@ type Props = {
   oculto?: boolean;
   /** "Ir" de missão cujo tópico está selado: a Trilha mostra o tópico e o que falta para abrir. */
   onVerTopicoBloqueado: (topicoId: number) => void;
+  /** Tela larga: o botão vai a este canto e a lista abre como janela no meio, não como folha. */
+  ancora?: AncoraDoRastreador;
 };
+
+export type AncoraDoRastreador = { esquerda: number; base: number; largura: number };
 
 /**
  * O rastreador de missões da Trilha — o "quest tracker" dos jogos.
@@ -79,6 +83,7 @@ export function RastreadorDeMissoes({
   perfil,
   oculto,
   onVerTopicoBloqueado,
+  ancora,
 }: Props) {
   const [missoes, setMissoes] = useState<MissaoComExtras[] | null>(null);
   const [carregando, setCarregando] = useState(false);
@@ -136,6 +141,7 @@ export function RastreadorDeMissoes({
       base={base}
       perfil={perfil}
       oculto={oculto}
+      ancora={ancora}
       onAtualizar={() => void carregar()}
       onIr={ir}
     />
@@ -152,6 +158,7 @@ type PropsDoPainel = {
   base: number;
   perfil: string | null | undefined;
   oculto?: boolean;
+  ancora?: AncoraDoRastreador;
   onAtualizar: () => void;
   onIr: (m: MissaoNoRastreador) => void;
 };
@@ -166,6 +173,7 @@ export function PainelDeMissoes({
   base,
   perfil,
   oculto,
+  ancora,
   onAtualizar,
   onIr,
 }: PropsDoPainel) {
@@ -189,7 +197,7 @@ export function PainelDeMissoes({
   const guia = getBrainHexGuideName(variante.perfil);
   const pendentes = abertas.length;
   // Na linha do mentor, acima da folha do tópico: o lugar é o mesmo em todos os perfis.
-  const posicao = { left: 16, bottom: base };
+  const posicao = ancora ? { left: ancora.esquerda, bottom: ancora.base } : { left: 16, bottom: base };
 
   return (
     <>
@@ -206,8 +214,8 @@ export function PainelDeMissoes({
         />
       ) : null}
 
-      <Modal visible={aberto} transparent animationType="slide" onRequestClose={() => setAberto(false)}>
-        <View style={s.modalRaiz}>
+      <Modal visible={aberto} transparent animationType={ancora ? "fade" : "slide"} onRequestClose={() => setAberto(false)}>
+        <View style={ancora ? s.modalRaizLarga : s.modalRaiz}>
           <Pressable
             style={[StyleSheet.absoluteFill, s.fundo]}
             onPress={() => setAberto(false)}
@@ -216,7 +224,7 @@ export function PainelDeMissoes({
           />
           <View
             style={[
-              s.folha,
+              ancora ? [s.janela, { width: ancora.largura }] : s.folha,
               {
                 backgroundColor: palette.surface,
                 borderColor: palette.borderStrong,
@@ -225,7 +233,8 @@ export function PainelDeMissoes({
             ]}
             accessibilityViewIsModal
           >
-            <View style={[s.alca, { backgroundColor: palette.border }]} />
+            {/* A alça é de folha que se arrasta; a janela da tela larga não tem. */}
+            {ancora ? null : <View style={[s.alca, { backgroundColor: palette.border }]} />}
             <View style={s.cabecalho}>
               <MaterialCommunityIcons name={variante.emblema as never} size={22} color={palette.accent} />
               <View style={{ flex: 1 }}>
@@ -417,6 +426,8 @@ const s = StyleSheet.create({
   trilhoCartao: { flex: 1, height: 6, borderRadius: 3, marginTop: 0 },
   preenchido: { height: "100%", borderRadius: 3 },
   modalRaiz: { flex: 1, justifyContent: "flex-end" },
+  modalRaizLarga: { flex: 1, justifyContent: "center", alignItems: "center", padding: 32 },
+  janela: { maxWidth: "100%", maxHeight: "80%", borderRadius: 20, borderWidth: 1, paddingTop: 8 },
   fundo: { backgroundColor: "rgba(0,0,0,0.5)" },
   folha: {
     maxHeight: "80%",
