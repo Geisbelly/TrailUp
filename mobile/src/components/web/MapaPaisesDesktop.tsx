@@ -98,9 +98,19 @@ export function MapaPaisesDesktop({
     return () => no.removeEventListener("wheel", rolar);
   }, []);
 
+  // Mapa mais alto que o quadro (fileiras no mínimo): a barra aparece, para se ver
+  // que há mais embaixo, e o mapa abre com o tópico atual no meio do quadro.
+  const rolaVertical = L.altura > quadro.altura + 1;
+  const rolagemVertical = useRef<ScrollView | null>(null);
+  const yAtual = atual >= 0 ? L.nos[atual]?.y : undefined;
+  useEffect(() => {
+    if (!rolaVertical || yAtual === undefined) return;
+    rolagemVertical.current?.scrollTo({ y: Math.max(0, yAtual - quadro.altura / 2), animated: false });
+  }, [rolaVertical, yAtual, quadro.altura]);
+
   return (
     <ScrollView ref={rolagem} horizontal showsHorizontalScrollIndicator={false} style={s.rolagem}>
-      <ScrollView showsVerticalScrollIndicator={false} scrollEnabled={L.altura > quadro.altura + 1}>
+      <ScrollView ref={rolagemVertical} showsVerticalScrollIndicator={rolaVertical} scrollEnabled={rolaVertical}>
         <View style={{ width: L.largura, height: L.altura }}>
           <Svg width={L.largura} height={L.altura} style={StyleSheet.absoluteFill}>
             <Defs>
