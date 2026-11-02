@@ -12,13 +12,20 @@ describe("gerarCsv", () => {
 describe("csvDasNotas", () => {
   it("uma linha por aluno com as colunas do arquivo", () => {
     const notas = lerNotas([
-      { nome: "Bia", email: "bia@x.com", xp: "35", nota_media: 7.456, progresso_pct: 60, atividades_avaliadas: 2, pontos_obtidos: 14, pontos_maximos: 20 },
+      { nome: "Bia", email: "bia@x.com", xp: "35", nota_media: 7.456, nota_final: 7.6, progresso_pct: 60, atividades_avaliadas: 2, pontos_obtidos: 14, pontos_maximos: 20 },
       { nome: "Caio", email: null, xp: 0, nota_media: null, progresso_pct: null, atividades_avaliadas: 0, pontos_obtidos: null, pontos_maximos: null },
     ])!;
     const linhas = csvDasNotas(notas).slice(1).trim().split("\r\n");
-    expect(linhas[0]).toBe("Aluno;E-mail;XP;Nota média;Progresso (%);Atividades avaliadas;Pontos obtidos;Pontos possíveis");
-    expect(linhas[1]).toBe("Bia;bia@x.com;35;7,46;60;2;14;20");
-    expect(linhas[2]).toBe("Caio;;0;;;0;;");
+    expect(linhas[0]).toBe("Aluno;E-mail;XP;Nota média;Nota final;Progresso (%);Atividades avaliadas;Pontos obtidos;Pontos possíveis");
+    expect(linhas[1]).toBe("Bia;bia@x.com;35;7,46;7,6;60;2;14;20");
+    expect(linhas[2]).toBe("Caio;;0;;;;0;;");
+  });
+
+  it("banco sem a migration do peso do XP: a nota final é a nota média", () => {
+    const [n] = lerNotas([{ nome: "Bia", xp: 0, nota_media: 6, atividades_avaliadas: 1 }])!;
+    expect(n.nota_final).toBe(6);
+    const [m] = lerNotas([{ nome: "Bia", xp: 0, nota_media: 6, nota_final: null, atividades_avaliadas: 1 }])!;
+    expect(m.nota_final).toBeNull();
   });
 
   it("resposta que não é lista: null", () => {

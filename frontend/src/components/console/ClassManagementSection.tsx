@@ -11,7 +11,7 @@ import { ConfirmarDuplicacao, FaixaTurmaDuplicada } from "./turmas/ConfirmarDupl
 import { idDaCopia, mensagemDeErroDaDuplicacao } from "./turmas/duplicacao";
 import { ModalMatriculas } from "./turmas/ModalMatriculas";
 import { FaixaTurmaCriada, FormularioDeTurma } from "./turmas/FormularioDeTurma";
-import { CAMPOS_VAZIOS, criarTurma, nomeDaTurma, type BancoDeTurmas, type DadosDaTurma } from "./turmas/formulario";
+import { CAMPOS_VAZIOS, criarTurma, nomeDaTurma, type BancoDeTurmas, type DadosDaTurma, type PesoDoXp } from "./turmas/formulario";
 import { resumirTurmas, type MatriculaDaTurma, type ResumoDaTurma, type TopicoDaTurma } from "./turmas/resumo";
 import { deleteClasseCascade, removeClassStudent } from "./trilha/classDeletion";
 
@@ -37,6 +37,8 @@ export default function ClassManagementSection({ professorId }: Props) {
 
   // Alunos, tópicos e conclusão de cada turma (mesma conta do dashboard).
   const [resumos, setResumos] = useState<Map<number, ResumoDaTurma>>(new Map());
+  // Peso do XP na nota final por turma (#143). Vazio = o banco ainda não tem as colunas.
+  const [pesosDoXp, setPesosDoXp] = useState<Map<number, PesoDoXp>>(new Map());
 
   // --- UI ---
   const [isLoading, setIsLoading] = useState(true);
@@ -104,6 +106,19 @@ export default function ClassManagementSection({ professorId }: Props) {
       });
       setClassStudents(map);
       setResumos(resumirTurmas(classIds, matriculas, topicos));
+
+      // À parte, e sem derrubar a tela: antes da migration 20261102_13 as colunas não existem.
+      const pesos = await supabase.from("classe").select("id, xp_peso_nota_pct, xp_meta_nota").eq("professor_id", professorId);
+      setPesosDoXp(
+        pesos.error
+          ? new Map()
+          : new Map(
+              ((pesos.data ?? []) as { id: number; xp_peso_nota_pct: number | string; xp_meta_nota: number }[]).map((p) => [
+                p.id,
+                { pesoPct: Number(p.xp_peso_nota_pct), meta: p.xp_meta_nota },
+              ]),
+            ),
+      );
     } catch (e) {
       setErroDeCarga(e instanceof Error ? e.message : "Erro desconhecido ao carregar as turmas.");
     } finally {
@@ -156,14 +171,21 @@ export default function ClassManagementSection({ professorId }: Props) {
         await loadData(true);
       } else {
         // Sem linha de volta = o RLS barrou em silêncio; não dizer "atualizada".
+        // Mudar o peso ou a meta faz o banco recalcular a nota final da turma (trg_classe_nota_final).
+        const antes = pesosDoXp.get(formulario.turma.id);
+        const pesoMudou = !!dados.xpNota && (dados.xpNota.pesoPct !== antes?.pesoPct || dados.xpNota.meta !== antes?.meta);
         const { data, error } = await supabase
           .from("classe")
-          .update({ descricao: dados.descricao, materia_id: dados.materiaId })
+          .update({
+            descricao: dados.descricao,
+            materia_id: dados.materiaId,
+            ...(pesoMudou ? { xp_peso_nota_pct: dados.xpNota!.pesoPct, xp_meta_nota: dados.xpNota!.meta } : {}),
+          })
           .eq("id", formulario.turma.id)
           .select("id");
         if (error) throw new Error(error.message);
         if (!data?.length) throw new Error("sem permissão para alterar esta turma");
-        toast.success("Turma atualizada.");
+        toast.success(pesoMudou ? "Turma atualizada. A nota final dos alunos foi recalculada." : "Turma atualizada.");
         setFormulario(null);
         await loadData(true);
       }
@@ -313,7 +335,13 @@ export default function ClassManagementSection({ professorId }: Props) {
           modo={formulario.modo}
           inicial={
             formulario.modo === "editar"
-              ? { ...CAMPOS_VAZIOS, nome: formulario.turma.descricao ?? "", materiaId: formulario.turma.materia_id?.toString() ?? "" }
+              ? {
+                  ...CAMPOS_VAZIOS,
+                  nome: formulario.turma.descricao ?? "",
+                  materiaId: formulario.turma.materia_id?.toString() ?? "",
+                  xpPeso: pesosDoXp.get(formulario.turma.id)?.pesoPct.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) ?? "",
+                  xpMeta: pesosDoXp.get(formulario.turma.id)?.meta.toString() ?? "",
+                }
               : CAMPOS_VAZIOS
           }
           materias={materias}
