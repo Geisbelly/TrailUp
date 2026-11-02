@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { renderAndUploadPresentationViaBrainHexPdf } from "./brainHexPdfClient";
+import {
+  DEFAULT_BRAINHEXPDF_TIMEOUT_MS,
+  renderAndUploadPresentationViaBrainHexPdf,
+  resolveBrainHexPdfTimeoutMs,
+} from "./brainHexPdfClient";
 
 async function withEnv(vars: Record<string, string | undefined>, fn: () => Promise<void>) {
   const original: Record<string, string | undefined> = {};
@@ -364,8 +368,47 @@ test("timeout (AbortSignal) vira failure com stage 'network', distinto de upload
 
     assert.equal(result.presentationUrl, null);
     assert.equal(result.failure?.stage, "network");
-    assert.match(result.failure?.error ?? "", /aborted/i);
+    // O relogio e daqui: a falha diz isso e quanto tempo esperamos, em vez do
+    // "This operation was aborted" do fetch, que o console mostrava pelado.
+    assert.match(result.failure?.error ?? "", /^tempo esgotado: o BrainHexPDF nao respondeu em 0 s$/);
   });
+});
+
+test("abort que nao veio do nosso relogio mantem a mensagem original", async () => {
+  await withEnv({ BRAINHEXPDF_API_URL: "http://localhost:3002" }, async () => {
+    const fetchImpl = (async () => {
+      const abortError = new Error("This operation was aborted");
+      abortError.name = "AbortError";
+      throw abortError;
+    }) as unknown as typeof fetch;
+
+    const result = await renderAndUploadPresentationViaBrainHexPdf(
+      { markdown: "## Aula", topic: "Aula 1", profile: "seeker", bucket: "conteudo_aluno", presentationPath: "x.html" },
+      { fetchImpl },
+    );
+
+    assert.equal(result.failure?.stage, "network");
+    assert.equal(result.failure?.error, "This operation was aborted");
+  });
+});
+
+// Job b46c9fa7 (turma 68, 02/11): com 120 s o microservice desistiu de um deck
+// que o BrainHexPDF terminou ~4min50s depois de comecar.
+test("sem BRAINHEXPDF_TIMEOUT_MS, espera 10 min; a variavel ainda manda", async () => {
+  await withEnv({ BRAINHEXPDF_TIMEOUT_MS: undefined }, async () => {
+    assert.equal(resolveBrainHexPdfTimeoutMs(), 600_000);
+    assert.equal(resolveBrainHexPdfTimeoutMs(), DEFAULT_BRAINHEXPDF_TIMEOUT_MS);
+  });
+  await withEnv({ BRAINHEXPDF_TIMEOUT_MS: "900000" }, async () => {
+    assert.equal(resolveBrainHexPdfTimeoutMs(), 900_000);
+  });
+  await withEnv({ BRAINHEXPDF_TIMEOUT_MS: "abc" }, async () => {
+    assert.equal(resolveBrainHexPdfTimeoutMs(), DEFAULT_BRAINHEXPDF_TIMEOUT_MS);
+  });
+});
+
+test("o padrao cabe no teto de um job de personalizacao (30 min)", () => {
+  assert.ok(DEFAULT_BRAINHEXPDF_TIMEOUT_MS < 30 * 60 * 1000);
 });
 
 test("inclui attachments no body quando fornecidos, mapeando data para dataBase64", async () => {
