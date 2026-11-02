@@ -26,7 +26,13 @@ ALTER TABLE public.intervencoes ADD CONSTRAINT intervencoes_status_check
 M_INSIGHTS = f5.modulo("20260929_01_intervencoes_insights_turma.py")
 
 
-def _intervencao(kind: str = "abandono", tipo: str = "engajamento") -> IntervencaoPayload:
+def _intervencao(
+    kind: str = "abandono",
+    tipo: str = "engajamento",
+    *,
+    origem: str = "regra",
+    fontes_rag: list[str] | None = None,
+) -> IntervencaoPayload:
     return IntervencaoPayload(
         tipo=tipo,
         kind=kind,
@@ -37,7 +43,8 @@ def _intervencao(kind: str = "abandono", tipo: str = "engajamento") -> Intervenc
         acao="notificacao",
         notificacao_titulo="Um passo de cada vez",
         notificacao_corpo="Seu próximo passo está mais curto.",
-        origem="regra",
+        origem=origem,
+        fontes_rag=fontes_rag or [],
     )
 
 
@@ -55,7 +62,10 @@ async def test_grava_deduplica_e_so_o_professor_da_turma_le() -> None:
                 repo = IntervencaoRepository(s)
                 assert await repo.existe_pendente(aluno_id=str(f5.A), classe_id=f5.TURMA, kind="abandono") is False
                 primeira = await repo.registrar_do_aluno(
-                    aluno_id=str(f5.A), classe_id=f5.TURMA, intervencao=_intervencao(), ciclo_id="c1"
+                    aluno_id=str(f5.A),
+                    classe_id=f5.TURMA,
+                    intervencao=_intervencao(origem="rag", fontes_rag=["Guia.pdf"]),
+                    ciclo_id="c1",
                 )
                 repetida = await repo.registrar_do_aluno(
                     aluno_id=str(f5.A), classe_id=f5.TURMA, intervencao=_intervencao(), ciclo_id="c2"
@@ -76,11 +86,22 @@ async def test_grava_deduplica_e_so_o_professor_da_turma_le() -> None:
         assert outro_estado is not None
 
         linha = c.execute(
-            "SELECT escopo, natureza, tipo, motivo, acao, status, classe_id, contexto->>'ciclo_id' "
+            "SELECT escopo, natureza, tipo, motivo, acao, status, classe_id, "
+            "contexto->>'ciclo_id', contexto->'fontes_rag' "
             "FROM public.intervencoes WHERE id = %s",
             (primeira,),
         ).fetchone()
-        assert linha == ("aluno", "sugestao", "engajamento", "abandono", "notificacao", "pending", f5.TURMA, "c1")
+        assert linha == (
+            "aluno",
+            "sugestao",
+            "engajamento",
+            "abandono",
+            "notificacao",
+            "pending",
+            f5.TURMA,
+            "c1",
+            ["Guia.pdf"],
+        )
 
         # Dispensada pelo professor, deixa de bloquear: a próxima recorrência gera outra.
         c.execute("UPDATE public.intervencoes SET status = 'dismissed' WHERE id = %s", (primeira,))

@@ -1,18 +1,19 @@
 """Observabilidade do RAG (#67): o que a busca no Vector Store fez, sem texto do aluno.
 
 `OpenAIRagService.invoke_structured` monta um resumo de cada chamada com `file_search`
-(`resumo_da_busca`) e o entrega a quem estiver coletando (`coletar_buscas_rag`). Quem tem
-sessão e aluno (o chat do mentor) grava os resumos em `ia_decision_logs`
-(`gravar_buscas_rag`), uma linha por busca, `source='chat'` e `stage='rag_retrieval'`.
+(`resumo_da_busca`) e o entrega a quem estiver coletando (`coletar_buscas_rag`). O chat do mentor
+grava os resumos em `ia_decision_logs` (`source='chat'`, `stage='rag_retrieval'`); essa persistência
+omite nomes de arquivo. O nó de intervenção usa apenas `fontes_citadas`, validando cada citação
+contra os IDs de arquivo recuperados, e salva os nomes em `intervencoes.contexto`.
 
-O que entra no resumo, e por quê:
+O que é persistido no resumo, e por quê:
 
-- **Sem texto.** Nem a mensagem do aluno, nem as consultas que o modelo gerou a partir dela
-  (`file_search_call.queries` deriva do texto do aluno), nem o trecho recuperado, nem o nome do
-  arquivo. Das consultas fica só a quantidade.
-- **Recuperação:** `file_id` e `score` de cada resultado (a API não expõe id de chunk; o par
-  arquivo e score é o que identifica o que voltou), `n_resultados`, `score_max` e
-  `score_medio` (relevância) e `com_resultado` (cobertura).
+- **Sem conteúdo.** Nem a mensagem do aluno, nem as consultas geradas, nem o trecho recuperado,
+  nem o nome do arquivo. Das consultas fica só a quantidade.
+- **Recuperação:** `file_id` e `score` de cada resultado (a API não expõe id de chunk), `n_resultados`,
+  `score_max`, `score_medio` (relevância) e `com_resultado` (cobertura).
+- **Citações da intervenção:** `fontes_citadas` é transitório; só nomes citados pelo modelo e
+  correspondentes a IDs recuperados. Não é copiado para `ia_decision_logs`.
 - **Custo:** `latencia_ms` é a chamada inteira da Responses API (busca e geração juntas; a API
   não separa o tempo da busca). `top_k` é o `max_num_results` configurado
   (`OPENAI_RAG_TOP_K`), ou `null` quando vale o padrão da OpenAI.
@@ -45,6 +46,35 @@ def _campo(item: Any, nome: str) -> Any:
     return getattr(item, nome, None)
 
 
+def _fontes_citadas(response: Any, resultados: list[dict[str, Any]]) -> list[str]:
+    """Só aceita citações do texto gerado que apontem para arquivo recuperado."""
+    ids_recuperados = {resultado.get("file_id") for resultado in resultados}
+    fontes: list[str] = []
+    vistos: set[str] = set()
+    for item in _campo(response, "output") or []:
+        if _campo(item, "type") != "message":
+            continue
+        for conteudo in _campo(item, "content") or []:
+            for anotacao in _campo(conteudo, "annotations") or []:
+                if _campo(anotacao, "type") != "file_citation":
+                    continue
+                file_id = _campo(anotacao, "file_id")
+                filename = _campo(anotacao, "filename")
+                if (
+                    not isinstance(file_id, str)
+                    or file_id not in ids_recuperados
+                    or not isinstance(filename, str)
+                    or not (filename := filename.strip()[:255])
+                    or filename in vistos
+                ):
+                    continue
+                vistos.add(filename)
+                fontes.append(filename)
+                if len(fontes) == MAX_RESULTADOS_NO_LOG:
+                    return fontes
+    return fontes
+
+
 def resumo_da_busca(
     response: Any,
     *,
@@ -69,6 +99,7 @@ def resumo_da_busca(
                     "score": round(float(score), 4) if isinstance(score, (int, float)) else None,
                 }
             )
+    fontes_citadas = _fontes_citadas(response, resultados)
     scores = [r["score"] for r in resultados if r["score"] is not None]
     return {
         "provider": "openai",
@@ -84,6 +115,7 @@ def resumo_da_busca(
         "score_max": max(scores) if scores else None,
         "score_medio": round(sum(scores) / len(scores), 4) if scores else None,
         "resultados": resultados[:MAX_RESULTADOS_NO_LOG],
+        "fontes_citadas": fontes_citadas,
     }
 
 
@@ -142,6 +174,7 @@ async def gravar_buscas_rag(
 ) -> int:
     """Uma linha de `ia_decision_logs` por busca. Sem `prompt_text` nem `raw_response`."""
     for busca in buscas:
+        resumo_persistido = {k: v for k, v in busca.items() if k != "fontes_citadas"}
         await repo.log(
             aluno_id=aluno_id,
             classe_id=classe_id,
@@ -152,7 +185,7 @@ async def gravar_buscas_rag(
             provider=busca.get("provider"),
             model_name=busca.get("model"),
             trigger_event=trigger_event,
-            input_summary={**busca, "intervencao": bool(intervencao)},
+            input_summary={**resumo_persistido, "intervencao": bool(intervencao)},
             decision_summary=(
                 f"rag {busca.get('status')}: {busca.get('n_resultados')} resultado(s) em {busca.get('latencia_ms')} ms"
             ),

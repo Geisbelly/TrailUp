@@ -58,6 +58,13 @@ describe("AbaInsights · alertas por aluno (#64)", () => {
     expect(html).toContain("Aceitar");
     // O estado vazio do lote continua lá: são coisas diferentes.
     expect(html).toContain("Ainda sem sínteses geradas");
+    expect(html).not.toContain("Fontes citadas pelo modelo");
+  });
+
+  it("mostra as fontes citadas pelo modelo dentro do alerta", () => {
+    const html = render([{ ...alerta, contexto: { fontes_rag: ["Guia de estratégias.pdf"] } }]);
+    expect(html).toContain("Fontes citadas pelo modelo (1)");
+    expect(html).toContain("Guia de estratégias.pdf");
   });
 
   it("sem alerta, a seção não aparece", () => {

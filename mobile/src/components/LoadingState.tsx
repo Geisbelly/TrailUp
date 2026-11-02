@@ -1,20 +1,12 @@
-import { FontFamily } from "@/styles/GlobalStyle";
-import { Design } from "@/styles/design";
-import {
-  getProfileShellPalette,
-  ProfileShellPalette,
-} from "@/utils/profileShellTheme";
+import { TelaCarregamento } from "@/components/carregamento/TelaCarregamento";
+import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import React from "react";
-import { ActivityIndicator, StyleSheet, Text, View, Platform } from "react-native";
-import tinycolor from "tinycolor2";
-import { textShadowStyle } from "@/utils/webShadow";
-
-const IS_WEB = Platform.OS === "web";
 
 type Props = {
   title?: string;
   message?: string;
   color?: string;
+  /** O perfil sai de `palette.profile`; sem ele (ou sem paleta), a variante neutra do TrailUp. */
   palette?: ProfileShellPalette | null;
 };
 
@@ -24,61 +16,12 @@ export function LoadingState({
   color,
   palette,
 }: Props) {
-  const effectivePalette = palette ?? getProfileShellPalette(null);
-  const indicatorColor = color || effectivePalette.accent;
-  const gold = tinycolor(effectivePalette.accent).lighten(10).toHexString();
-  const goldDim = tinycolor(effectivePalette.accent).setAlpha(0.4).toRgbString();
-
   return (
-    <View style={[styles.container, { backgroundColor: effectivePalette.background }]}>
-      <View
-        style={[
-          styles.indicatorShell,
-          {
-            backgroundColor: effectivePalette.surfaceElevated,
-            borderColor: goldDim,
-          },
-        ]}
-      >
-        <ActivityIndicator size="large" color={indicatorColor} />
-      </View>
-      <Text style={[styles.title, { color: gold, ...textShadowStyle({ color: "rgba(0,0,0,0.7)", offset: { width: 0, height: 1 }, radius: 4 }, IS_WEB) }]}>{title}</Text>
-      <Text style={[styles.message, { color: effectivePalette.textMuted }]}>
-        {message}
-      </Text>
-    </View>
+    <TelaCarregamento
+      perfil={palette?.profile ?? null}
+      titulo={title}
+      mensagem={message}
+      corDestaque={color}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    // Ocupa a largura toda mesmo dentro de um pai com alignItems: "center":
-    // sem isso, na web o fundo cobria só a faixa do texto e as laterais ficavam brancas.
-    alignSelf: "stretch",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    gap: 8,
-  },
-  indicatorShell: {
-    width: 82,
-    height: 82,
-    borderRadius: Design.radius,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
-  },
-  title: {
-    fontFamily: FontFamily.inikaBold,
-    fontSize: 18,
-    marginTop: 6,
-    textAlign: "center",
-  },
-  message: {
-    fontFamily: FontFamily.interMedium,
-    fontSize: 14,
-    textAlign: "center",
-  },
-});
