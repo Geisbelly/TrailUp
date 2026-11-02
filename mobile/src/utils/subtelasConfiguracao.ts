@@ -11,6 +11,7 @@ export type IdSubtela =
   | "termos"
   | "excluir"
   | "lembrete"
+  | "foco"
   | "aparencia"
   | "metricas"
   | "tutorial"
@@ -77,6 +78,14 @@ export const GRUPOS_CONFIGURACAO: GrupoSubtelas[] = [
         titulo: "Lembrete diário",
         descricao:
           "Escolha o horário em que o TrailUp te avisa para continuar a trilha. Funciona mesmo com o app fechado (no navegador, só quando o app está aberto).",
+      },
+      {
+        id: "foco",
+        rotulo: "Modo foco e avisos",
+        grupo: PREFERENCIAS,
+        titulo: "Modo foco",
+        descricao:
+          "Com o foco ligado, nenhuma notificação chega. Aqui também ficam os tipos de aviso que você silenciou.",
       },
       { id: "aparencia", rotulo: "Aparência", grupo: PREFERENCIAS, titulo: "Aparência", descricao: "Personalize a aparência do aplicativo." },
       {

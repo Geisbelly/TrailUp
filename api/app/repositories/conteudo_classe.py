@@ -298,6 +298,15 @@ class ConteudoClasseRepository:
         row = result.mappings().first()
         return dict(row) if row else None
 
+    async def buscar_arco_narrativo(self, classe_id: int) -> str | None:
+        """Arco narrativo que o professor escreveu para a turma (#145, `20261102_16`). Sem linha, None."""
+        result = await self.session.execute(
+            text("SELECT texto FROM classe_arco_narrativo WHERE classe_id = :classe_id"),
+            {"classe_id": classe_id},
+        )
+        texto = str(result.scalar() or "").strip()
+        return texto or None
+
     async def buscar_topico_id_por_conteudo(self, conteudo_id: int) -> int | None:
         result = await self.session.execute(
             text("SELECT topico_id FROM conteudos WHERE id = :id"),

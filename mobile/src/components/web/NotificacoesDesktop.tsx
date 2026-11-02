@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import CardSemDados from "@/components/CardSemDados";
+import { SectionGuideButton, type SectionGuideScrollable, type SectionGuideStep } from "@/components/SectionGuideButton";
 import { HallBackground } from "@/components/HallTheme";
 import { useDialog } from "@/context/DialogContext";
 import { useNotifications } from "@/context/NotificacaoContext";
@@ -11,6 +12,7 @@ import type { Notificacao } from "@/models/Notificacoes";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { agruparPorData } from "@/utils/gruposNotificacao";
 import { iconeDaNotificacao } from "@/utils/iconeNotificacao";
+import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
@@ -62,6 +64,41 @@ export function NotificacoesDesktop() {
   const alvoTour = useRef<View | null>(null);
   useEffect(() => registrarAlvoTour("notificacoes_lista", alvoTour), []);
 
+  // Guia da seção, como o "?" do celular, com os passos do jeito da tela larga: clicar
+  // abre o aviso no próprio item (não há página interna, arrastar nem puxar para atualizar).
+  const perfilVisual = perfilVisualDoAluno(usuario);
+  const alvoCabecalho = useRef<View | null>(null);
+  const alvoFiltros = useRef<View | null>(null);
+  const rolagem = useRef<ScrollView | null>(null);
+  const deslocamento = useRef(0);
+  const passosDoGuia = useMemo<SectionGuideStep[]>(
+    () => [
+      {
+        id: "notifications-header",
+        target: "cabecalho",
+        title: "Central de notificações",
+        description: `Aqui ficam avisos da plataforma, atualizações acadêmicas e eventos importantes. ${getProfileGuideEmphasis(perfilVisual, "notifications")}`,
+        icon: "bell-outline",
+      },
+      {
+        id: "notifications-filters",
+        target: "filtros",
+        title: "Filtros de leitura",
+        description: "Alterne entre todas, não lidas e lidas para encontrar o que ainda precisa da sua atenção. \"Marcar todas como lidas\" limpa as não lidas de uma vez.",
+        icon: "filter-variant",
+      },
+      {
+        id: "notifications-list",
+        target: "lista",
+        title: "Lista de avisos",
+        description: "Clique em um aviso para abrir a mensagem ali mesmo; abrir marca como lida. Aberto, ele mostra quando foi enviado e as ações \"Marcar como não lida\" e \"Excluir\".",
+        icon: "cursor-default-click-outline",
+      },
+    ],
+    [perfilVisual],
+  );
+  const alvosDoGuia = useMemo(() => ({ cabecalho: alvoCabecalho, filtros: alvoFiltros, lista: alvoTour }), []);
+
   const agora = new Date();
   const naoLidas = itens.filter((n) => !estaLida(n)).length;
   const contagem: Record<Filtro, number> = { todas: itens.length, nao_lidas: naoLidas, lidas: itens.length - naoLidas };
@@ -111,15 +148,25 @@ export function NotificacoesDesktop() {
   return (
     <View style={[s.tela, { backgroundColor: palette.background }]}>
       <HallBackground palette={palette} />
-      <View style={s.cabecalho}>
-        <Text style={[s.eyebrow, { color: palette.accent }]}>CAIXA DE ENTRADA</Text>
-        <Text accessibilityRole="header" style={[s.tituloPagina, { color: palette.text }]}>Notificações</Text>
-        <Text style={[s.subtitulo, { color: palette.textMuted }]}>
-          Aqui ficam avisos da plataforma, atualizações acadêmicas e eventos importantes.
-        </Text>
+      <View ref={alvoCabecalho} collapsable={false} style={s.cabecalho}>
+        <View style={s.cabecalhoTextos}>
+          <Text style={[s.eyebrow, { color: palette.accent }]}>CAIXA DE ENTRADA</Text>
+          <Text accessibilityRole="header" style={[s.tituloPagina, { color: palette.text }]}>Notificações</Text>
+          <Text style={[s.subtitulo, { color: palette.textMuted }]}>
+            Aqui ficam avisos da plataforma, atualizações acadêmicas e eventos importantes.
+          </Text>
+        </View>
+        <SectionGuideButton
+          profile={perfilVisual}
+          sectionTitle="Notificações"
+          steps={passosDoGuia}
+          targetRefs={alvosDoGuia}
+          scrollRef={rolagem as unknown as React.RefObject<SectionGuideScrollable | null>}
+          scrollOffsetRef={deslocamento}
+        />
       </View>
 
-      <View style={s.filtros}>
+      <View ref={alvoFiltros} collapsable={false} style={s.filtros}>
         {FILTROS.map(({ id, rotulo }) => {
           const ativo = filtro === id;
           return (
@@ -148,7 +195,12 @@ export function NotificacoesDesktop() {
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={s.conteudo}>
+      <ScrollView
+        ref={rolagem}
+        onScroll={(e) => { deslocamento.current = e.nativeEvent.contentOffset.y; }}
+        scrollEventThrottle={32}
+        contentContainerStyle={s.conteudo}
+      >
         <View ref={alvoTour} collapsable={false}>
           {excluida ? (
             <View style={[s.aviso, { borderColor: palette.borderStrong, backgroundColor: palette.surfaceElevated }]}>
@@ -227,7 +279,8 @@ export function NotificacoesDesktop() {
 
 const s = StyleSheet.create({
   tela: { flex: 1 },
-  cabecalho: { gap: 4, paddingHorizontal: 32, paddingTop: 28 },
+  cabecalho: { flexDirection: "row", alignItems: "flex-start", gap: 16, paddingHorizontal: 32, paddingTop: 28 },
+  cabecalhoTextos: { flex: 1, minWidth: 0, gap: 4 },
   eyebrow: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
   tituloPagina: { fontFamily: FontFamily.inikaBold, fontSize: 30 },
   subtitulo: { fontFamily: FontFamily.interMedium, fontSize: 14 },

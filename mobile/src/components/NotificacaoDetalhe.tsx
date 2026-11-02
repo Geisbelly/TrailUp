@@ -20,6 +20,8 @@ type Props = {
   quandoCompleto: string;
   onMarcarNaoLida: () => void;
   onExcluir: () => void;
+  /** Silenciar o tipo desta notificação (#149). Ausente: o tipo não pode ser silenciado. */
+  onSilenciar?: () => void;
   /** Alvos do guia da seção (cabeçalho, mensagem e ações). */
   cabecalhoRef?: React.Ref<View>;
   corpoRef?: React.Ref<View>;
@@ -42,6 +44,7 @@ export function NotificacaoDetalheView({
   quandoCompleto,
   onMarcarNaoLida,
   onExcluir,
+  onSilenciar,
   cabecalhoRef,
   corpoRef,
   acoesRef,
@@ -107,6 +110,18 @@ export function NotificacaoDetalheView({
           <Text style={[s.rotulo, { color: c.textoSutil }]}>MENSAGEM</Text>
           <Text style={[s.mensagem, { color: c.texto }]}>{corpo}</Text>
         </View>
+
+        {onSilenciar ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityHint="Para de receber notificações deste tipo. Dá para desfazer em Modo foco e avisos."
+            onPress={onSilenciar}
+            style={({ pressed }) => [s.silenciar, { opacity: pressed ? 0.7 : 1 }]}
+          >
+            <MaterialCommunityIcons name="bell-off-outline" size={16} color={c.textoMudo} />
+            <Text style={[s.silenciarTexto, { color: c.textoMudo }]}>Não quero avisos assim</Text>
+          </Pressable>
+        ) : null}
       </ScrollView>
 
       <View
@@ -210,6 +225,15 @@ const s = StyleSheet.create({
   cartaoCorpo: { padding: 16, gap: 10 },
   rotulo: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1 },
   mensagem: { fontFamily: FontFamily.interMedium, fontSize: 15.5, lineHeight: 25 },
+  silenciar: {
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    minHeight: 44,
+    paddingHorizontal: 12,
+  },
+  silenciarTexto: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "600" },
   rodape: {
     position: "absolute",
     left: 0,

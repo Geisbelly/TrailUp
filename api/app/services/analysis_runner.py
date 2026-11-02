@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.estado_atencao import EstadoAtencaoRepository, estado_da_atencao
 from app.repositories.evento import EventoRepository
 from app.repositories.ia_decision_logs import IADecisionLogRepository
 from app.repositories.mental_state import MentalStateHistoryRepository
@@ -180,6 +181,23 @@ async def _run_analysis_na_rota(
     except Exception as exc:  # pragma: no cover
         await session.rollback()
         logger.warning("Falha ao persistir aluno_mental_state_history: %s", exc)
+
+    # Estado de atenção corrente (#149): o motor de notificações lê para decidir se segura a entrega.
+    # O pipeline escreve `attention_snapshot` no `state` que recebeu; o resultado do grafo pode não
+    # trazer a chave (chave fora de `TrailUpState` é descartada).
+    atencao = estado_da_atencao(state) or estado_da_atencao(result)
+    if atencao is not None:
+        try:
+            await EstadoAtencaoRepository(session).registrar(
+                aluno_id=aluno_id,
+                estado=atencao[0],
+                score=atencao[1],
+                ciclo_id=response.ciclo_id or state.get("ciclo_id"),
+            )
+            await session.commit()
+        except Exception as exc:  # pragma: no cover
+            await session.rollback()
+            logger.warning("Falha ao persistir aluno_estado_atencao: %s", exc)
 
     performance_resumo = (result.get("pipeline_stage_outputs") or {}).get("performance")
     if performance_resumo:

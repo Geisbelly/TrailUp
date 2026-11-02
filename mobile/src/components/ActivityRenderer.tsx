@@ -1,11 +1,14 @@
 // src/components/activities/ActivityRenderer.tsx
 import React, { useMemo } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useMetricas } from '@/context/MetricasContext'
 import { useUsuario } from '@/context/SessaoContext'
+import { useBloqueioDeCaptura } from '@/hooks/useBloqueioDeCaptura'
 import { FontFamily } from '@/styles/GlobalStyle'
 import { getProfileShellPalette } from '@/utils/profileShellTheme'
 import { questionActivityScope } from '@/utils/questionAnswerVisibility'
 import { activityRendererKey, normalizeActivityType } from '@/utils/activityType'
+import { deveBloquearCaptura } from '@/utils/bloqueioDeCaptura'
 
 import { UsarItemNaAtividade } from '@/components/loja/UsarItemNaAtividade'
 import {
@@ -134,6 +137,30 @@ function ActivityRendererContent({
       setLocalReviewMode(reviewMode);
     }
   }, [reviewMode]);
+
+  // Print bloqueado só enquanto o aluno responde (#139). Calculado antes dos `return`
+  // abaixo porque é um hook; as mesmas condições decidem o que é desenhado.
+  const { recordAppEvent } = useMetricas();
+  useBloqueioDeCaptura(
+    deveBloquearCaptura({
+      plataforma: Platform.OS,
+      componente: activityRendererKey(
+        normalizeActivityType(atividade?.tipo),
+        Array.isArray(atividade?.questoes) && atividade.questoes.length > 0
+      ),
+      revisao: localReviewMode,
+      mostrandoResumo:
+        concluidaAgora && !localReviewMode && !retryLiberada && !refazendoRevisao && !refazendoErradas,
+    }),
+    () =>
+      recordAppEvent({
+        eventGroup: 'interaction',
+        eventName: 'screen_capture_attempt',
+        topicoId: topicoId ?? null,
+        atividadeId: Number.isFinite(atividadeId) ? atividadeId : null,
+        payload: { plataforma: Platform.OS },
+      })
+  );
 
   if (!atividade) return null;
 

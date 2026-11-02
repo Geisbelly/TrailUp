@@ -7,6 +7,7 @@ import { getProfileArtwork } from "@/constants/designAssets";
 import type { Classe } from "@/models/Classe";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { porcentagemDaTurma } from "@/utils/progressoDaTurma";
 
 type Props = {
   classes: Classe[];
@@ -18,14 +19,6 @@ type Props = {
   /** Tenta de novo só a turma cujo detalhe não carregou. */
   onRetryTurma: (classeId: number) => Promise<void>;
 };
-
-/** % de tópicos concluídos da turma. É só o que cabe aqui: o cálculo completo da Trilha usa o progresso personalizado, que esta tela não tem. */
-function percentualDaTurma(classe: Classe): number {
-  const topicos = classe.topicos ?? [];
-  if (!topicos.length) return 0;
-  const concluidos = topicos.filter((t) => String(t.status ?? "").toLowerCase().includes("concl") || Number(t.percentual_concluido ?? 0) >= 100).length;
-  return Math.round((concluidos / topicos.length) * 100);
-}
 
 /**
  * Escolha de turma (mobile-v1, `03-trilha.html`, estado "Escolha de turma"): o cenário
@@ -131,7 +124,7 @@ export default function SelecionarTurmaScreen({ classes, carregando, erro, perfi
                   </View>
                 );
               }
-              const progresso = percentualDaTurma(classe);
+              const progresso = porcentagemDaTurma(classe);
               return (
                 <Pressable
                   key={classe.classe_id}

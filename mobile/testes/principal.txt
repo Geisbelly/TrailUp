@@ -27,6 +27,7 @@ src/services/consentimentoRemoto.test.ts
 src/services/encerrarSessao.test.ts
 src/services/loja/storeTheme.test.ts
 src/services/notificacoesDb.test.ts
+src/services/focoLocal.test.ts
 src/services/personalizacao/TrailupApiProvider.loading.test.ts
 src/services/progressoOutbox.test.ts
 src/utils/visitaDoTopico.test.ts
@@ -175,3 +176,5 @@ src/utils/telaCarregamento.test.ts
 src/components/carregamento/TelaCarregamento.tela.test.tsx
 src/utils/esqueleto.test.ts
 src/components/carregamento/Esqueleto.tela.test.tsx
+src/utils/bloqueioDeCaptura.test.ts
+src/utils/progressoDaTurma.test.ts

@@ -259,6 +259,13 @@ class Settings(BaseSettings):
     alteracao_professor_trava_seconds: int = 600
     # Restringe o worker a estas turmas, como PERSONALIZACAO_JOBS_CLASSE_IDS (#652).
     alteracao_professor_classe_ids: list[int] = []
+    # Missoes sugeridas pela IA (20261102_20, #151): o professor pede pelo banco e este laco atende.
+    missoes_ia_enabled: bool = True
+    missoes_ia_interval_seconds: int = 30
+    missoes_ia_lote: int = 2
+    missoes_ia_trava_seconds: int = 600
+    # Restringe o worker a estas turmas, como PERSONALIZACAO_JOBS_CLASSE_IDS (#652).
+    missoes_ia_classe_ids: list[int] = []
     personalizacao_job_concurrency: int = 2
     # Restringe o worker local a estas turmas (ex.: PERSONALIZACAO_JOBS_CLASSE_IDS=[66]).
     # Vazio = todas, que e o que a producao usa. Sem isso, uma API subida na maquina de

@@ -383,7 +383,10 @@ async def _gravar(
               falas = EXCLUDED.falas,
               source_hash = EXCLUDED.source_hash,
               versao = EXCLUDED.versao,
-              gerado_em = now()
+              gerado_em = now(),
+              -- Texto novo é texto que ninguém leu: religa o que o professor tinha desligado
+              -- (20261102_17). Sem mudança de conteúdo o modelo nem é chamado, e a decisão vale.
+              ativa = true
             """
         ),
         {

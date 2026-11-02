@@ -10,7 +10,8 @@ Entradas possíveis:
 - `formato`: `global` | `apresentacao` | `audio` | `markdown` | `cards`
 - `topico`, `perfil_contexto`, `perfil_editorial`, `visual_contexto`, `fontes_chunks`,
   `plano_personalizacao`, `conteudo_estudado`, `modelo_editorial`,
-  `metas_tamanho_adaptativas`, `payload_anterior`, `revisao`, `checklist_qualidade`, `ciclo_revisao`.
+  `metas_tamanho_adaptativas`, `payload_anterior`, `revisao`, `checklist_qualidade`, `ciclo_revisao`,
+  `arco_narrativo_turma`.
 
 Regras globais obrigatórias:
 1. Retorne somente JSON válido.
@@ -47,6 +48,19 @@ Contrato de saída (sempre objeto JSON):
     "ajustes": ["string"]
   }
 }
+
+Arco narrativo da turma (`arco_narrativo_turma`, quando presente):
+- É a história da TURMA que o professor escreveu: cenário, personagens e o fio que liga
+  os tópicos. Vale igual para os 7 perfis.
+- Em `estudo_conteudo`, registre em `modelo_editorial` como cada conceito nuclear se liga ao
+  arco. Nas etapas seguintes, a abertura situa o tópico no arco, os exemplos se passam nele e
+  o fechamento aponta o próximo passo da história.
+- A voz continua a do guia e da assinatura de `perfil_editorial` (tom, ritmo, proibições): o
+  arco diz ONDE e POR QUE, o perfil diz COMO.
+- A história serve ao conteúdo: cada cena carrega um conceito do material, e a regra 9 vale
+  igual. Não invente fatos técnicos para encaixar na história nem contradiga o arco.
+- Se o arco conflitar com a ambientação padrão (regra 8, medieval/mística), vence o arco.
+- Quando ausente ou vazio, ignore esta seção.
 
 Persona por formato (aplicar em `estilizacao` e `correcao`):
 - `apresentacao`: especialista em design instrucional visual; hierarquia forte e leitura rápida.
