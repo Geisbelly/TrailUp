@@ -3092,6 +3092,8 @@ def _coerce_dict_list(value: Any) -> list[dict[str, Any]]:
 # _PESOS_POR_PERFIL em sugestao_material.py; nenhuma das duas e calibrada ainda.
 # Reutilizado para recomendar formatos e para reordenar o plano gerado pelo LLM,
 # de modo que o material mais interessante para o perfil apareca primeiro.
+# Para calibrar: `metricas_perfil_formato` (PR3) e o caminho em
+# docs/superpowers/specs/2026-11-02-perfil-formato-pr3-design.md, secao 5.
 _PROFILE_FORMAT_PREFERENCES: dict[str, list[str]] = {
     "Achiever": ["markdown", "apresentacao", "cards", "audio"],
     "Conqueror": ["apresentacao", "cards", "markdown", "audio"],

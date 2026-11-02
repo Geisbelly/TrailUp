@@ -92,6 +92,18 @@ O protocolo segue os passos do fluxo acima:
    O resultado é só agregado: uma célula com menos de 5 alunos volta nula. A lista `limitacoes`
    da resposta acompanha qualquer resultado reportado (§10).
 
+### 6.2 PR3: perfil × formato (#20)
+
+`metricas_perfil_formato(turmas, inicio, fim)` cruza o perfil BrainHex com o formato do material
+personalizado: engajamento (uso, tempo ativo e fatia do tempo) e acerto na 1ª tentativa pelo
+formato dominante de cada tópico, com intervalo de Wilson a 95%. Para PR3, a janela é o `corte`
+e o `fim` da turma de intervenção. O perfil é lido de duas formas, pelo dominante e pelo vetor
+completo de afinidades. Abaixo de 5 alunos (ou de n efetivo 5), a célula volta nula.
+
+O resultado é observacional: o grafo escolhe o formato pelo perfil, então ele mostra
+associação, não causa. A conclusão só volta para a priorização por um ajuste manual, e o caminho
+está em [`2026-11-02-perfil-formato-pr3-design.md`](../superpowers/specs/2026-11-02-perfil-formato-pr3-design.md) §5.
+
 ## 7. Controle de vieses
 - padronizar janelas temporais;
 - registrar alteracoes de produto durante coleta;
