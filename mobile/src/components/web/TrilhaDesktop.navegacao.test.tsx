@@ -37,6 +37,8 @@ mockModule("@expo/vector-icons", { MaterialCommunityIcons: () => null });
 mockModule("@react-navigation/native", { useIsFocused: () => true });
 mockModule("expo-router", { router: { push: (href: string) => pushes.push(href) } });
 mockModule("@/components/ProfileEmblem", { ProfileEmblem: () => null });
+mockModule("@/components/missoes/RastreadorDeMissoes", { RastreadorDeMissoes: () => null });
+mockModule("@/services/missoes/missaoModel", { perfilDaMissao: () => null });
 mockModule("@/components/trilhas/ArvoreView", {
   TrilhaArvoreSimple: ({ onSelecionarTopico }: { onSelecionarTopico: (id: string) => void }) => {
     cliques.arvore = onSelecionarTopico;
