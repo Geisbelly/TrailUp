@@ -1,4 +1,5 @@
 import { chaveDoPerfil } from "../perfilCores";
+import { TENTATIVAS_PADRAO } from "../../trilha/atividades";
 
 /**
  * Tentativas de atividade e cronômetro de um aluno, para o professor ler (#136, fase 3).
@@ -138,7 +139,8 @@ export function resumirTentativas(
       atividadeId,
       titulo: atividade?.titulo?.trim() || `Atividade ${atividadeId}`,
       feitas: respondidas.length,
-      maximo: atividade?.tentativas_max ?? null,
+      // Sem limite gravado (banco antes da `20261102_08`) vale o padrão; sem a atividade, não se sabe.
+      maximo: atividade ? (atividade.tentativas_max ?? TENTATIVAS_PADRAO) : null,
       emAberto: lista.some((t) => !t.respondida_em),
       ultima: ultimaLinha
         ? {
@@ -205,7 +207,7 @@ export function formatarDuracao(segundos: number | null): string {
   return seg === 0 ? `${min} min` : `${min} min ${seg} s`;
 }
 
-/** "feitas/máximo" ou só "feitas" quando é ilimitado. */
+/** "feitas/máximo", ou só "feitas" quando a atividade não veio. */
 export function textoDasTentativas(feitas: number, maximo: number | null): string {
-  return maximo === null ? `${feitas} (ilimitadas)` : `${feitas}/${maximo}`;
+  return maximo === null ? `${feitas}` : `${feitas}/${maximo}`;
 }

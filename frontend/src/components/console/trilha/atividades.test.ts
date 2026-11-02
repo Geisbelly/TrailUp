@@ -3,6 +3,7 @@ import {
   prazoDaAtividade,
   rotuloDasTentativas,
   rotuloDoTipoDeAtividade,
+  TENTATIVAS_PADRAO,
   tentativasDoFormulario,
   tentativasParaFormulario,
 } from "./atividades";
@@ -34,16 +35,17 @@ describe("prazoDaAtividade", () => {
 });
 
 describe("tentativasDoFormulario", () => {
-  it("vazio é ilimitado", () => {
-    expect(tentativasDoFormulario("")).toEqual({ valido: true, valor: null });
-    expect(tentativasDoFormulario("  ")).toEqual({ valido: true, valor: null });
-    expect(tentativasDoFormulario(undefined)).toEqual({ valido: true, valor: null });
+  it("vazio é o padrão, nunca ilimitado (#136, decisão de 02/11)", () => {
+    expect(TENTATIVAS_PADRAO).toBe(3);
+    expect(tentativasDoFormulario("")).toEqual({ valido: true, valor: TENTATIVAS_PADRAO });
+    expect(tentativasDoFormulario("  ")).toEqual({ valido: true, valor: TENTATIVAS_PADRAO });
+    expect(tentativasDoFormulario(undefined)).toEqual({ valido: true, valor: TENTATIVAS_PADRAO });
   });
   it("inteiro positivo vira número", () => {
     expect(tentativasDoFormulario("3")).toEqual({ valido: true, valor: 3 });
     expect(tentativasDoFormulario(" 1 ")).toEqual({ valido: true, valor: 1 });
   });
-  it("zero não é ilimitado: é inválido (o banco recusaria)", () => {
+  it("zero é inválido (o banco recusaria)", () => {
     expect(tentativasDoFormulario("0").valido).toBe(false);
   });
   it("fração, negativo, texto e exagero são inválidos", () => {
@@ -56,10 +58,10 @@ describe("tentativasDoFormulario", () => {
 });
 
 describe("rotuloDasTentativas", () => {
-  it("singular, plural e ilimitado", () => {
+  it("singular, plural e o padrão quando o banco ainda não tem limite", () => {
     expect(rotuloDasTentativas(1)).toBe("1 tentativa");
-    expect(rotuloDasTentativas(3)).toBe("3 tentativas");
-    expect(rotuloDasTentativas(null)).toBe("tentativas ilimitadas");
-    expect(rotuloDasTentativas(undefined)).toBe("tentativas ilimitadas");
+    expect(rotuloDasTentativas(5)).toBe("5 tentativas");
+    expect(rotuloDasTentativas(null)).toBe("3 tentativas");
+    expect(rotuloDasTentativas(undefined)).toBe("3 tentativas");
   });
 });

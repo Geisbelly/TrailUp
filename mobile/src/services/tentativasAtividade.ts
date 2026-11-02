@@ -16,15 +16,18 @@ import { supabase } from "@/database/supabase";
 
 import {
   TentativaRecusada,
+  guardarRetorno,
   lerRetorno,
+  lerSituacao,
   lerTentativa,
   motivoDoErro,
   type RetornoTentativa,
+  type SituacaoTentativas,
   type TentativaAberta,
 } from "./tentativasAtividade.core";
 
 export { MENSAGEM_DA_RECUSA, TentativaRecusada, segundosRestantes } from "./tentativasAtividade.core";
-export type { RetornoTentativa, TentativaAberta } from "./tentativasAtividade.core";
+export type { RetornoTentativa, SituacaoTentativas, TentativaAberta } from "./tentativasAtividade.core";
 
 // Uma por atividade. O banco também devolve a aberta, então perder este mapa (app
 // reaberto) não zera o relógio: a próxima chamada recebe a mesma tentativa.
@@ -85,7 +88,21 @@ export async function responderTentativa(
     return falha(error);
   }
   abertas.delete(atividadeId);
-  return lerRetorno(data);
+  const retorno = lerRetorno(data);
+  // A tela que respondeu mostra o veredito do servidor (no tempo, bônus) ao aluno.
+  if (retorno) guardarRetorno(atividadeId, retorno, Date.now());
+  return retorno;
+}
+
+/**
+ * Quantas tentativas a atividade dá e quantas sobram (`atividade_situacao_tentativas`,
+ * `20261102_08`). `null` sem a RPC no banco ou em falha de rede: a tela só deixa de
+ * oferecer a próxima tentativa.
+ */
+export async function situacaoDasTentativas(atividadeId: number): Promise<SituacaoTentativas | null> {
+  const { data, error } = await supabase.rpc("atividade_situacao_tentativas", { p_atividade: atividadeId });
+  if (error) return null;
+  return lerSituacao(data);
 }
 
 /** O interruptor do aluno (`aluno_definir_cronometro`). Devolve o que ficou gravado. */

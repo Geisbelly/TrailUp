@@ -1272,7 +1272,7 @@ export default function PersonalizedTopicView({
         : "Tempo esgotado";
     const descricao =
       currentStep?.kind === "activity"
-        ? "O tempo desta atividade terminou. Você ainda pode concluir a etapa, mas a pontuação final recebe penalidade de 20%."
+        ? "O tempo desta atividade terminou. Você ainda pode concluir a etapa: a nota vale, só o bônus de XP por tempo fica de fora."
         : "O tempo desta etapa terminou. Revise o material e avance quando estiver pronto.";
 
     showDialog({
