@@ -23,6 +23,8 @@ from app.core.settings import Settings
 from app.repositories.intervencao import IntervencaoRepository
 from app.schemas.intervencao import IntervencaoPayload, IntervencaoSugestao
 from app.services.llm import JsonLLMService, StructuredOutputError
+from app.services.openai_rag import OpenAIRagService
+from app.services.rag_observabilidade import coletar_buscas_rag
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +91,11 @@ def _sugestao_valida(sugestao: IntervencaoSugestao) -> bool:
 
 
 def montar_intervencao(
-    kind: str, ocorrencias: int, sugestao: IntervencaoSugestao | None
+    kind: str,
+    ocorrencias: int,
+    sugestao: IntervencaoSugestao | None,
+    origem_sugestao: str = "modelo",
+    fontes_rag: list[str] | None = None,
 ) -> IntervencaoPayload:
     """Pura. Sem sugestao valida do modelo, vale a regra (nunca fica sem intervencao:
     a recorrencia e dado, nao opiniao do modelo)."""
@@ -112,7 +118,8 @@ def montar_intervencao(
             acao="notificacao" if notifica else "acompanhar",
             notificacao_titulo=sugestao.notificacao_titulo.strip() if notifica else None,
             notificacao_corpo=sugestao.notificacao_corpo.strip() if notifica else None,
-            origem="modelo",
+            fontes_rag=fontes_rag or [],
+            origem=origem_sugestao,
         )
     # Dificuldade: o professor olha antes; a resposta e pedagogica, e mensagem automatica
     # sobre erro pode soar como vigilancia.
@@ -157,24 +164,42 @@ async def agente_intervencao(
 
     desempenho = state.get("desempenho_recente") or {}
     sugestao: IntervencaoSugestao | None = None
-    try:
-        sugestao = await JsonLLMService(settings).ainvoke_structured(
-            prompt_name="intervencao.txt",
-            # Minimizacao: nada que identifique o aluno vai ao modelo.
-            payload={
-                "estado": _ESTADO_PT[kind],
-                "ocorrencias": ocorrencias,
-                "janela": _JANELA,
-                "desempenho_recente": {
-                    k: desempenho.get(k) for k in ("media_acertos", "percentual_concluido") if k in desempenho
-                },
-            },
-            schema=IntervencaoSugestao,
-        )
-    except StructuredOutputError:
-        sugestao = None
+    origem_sugestao = "modelo"
+    llm = JsonLLMService(settings)
+    tentativas = [True, False] if OpenAIRagService(settings).is_configured() else [False]
+    with coletar_buscas_rag() as buscas:
+        for usar_rag in tentativas:
+            try:
+                sugestao = await llm.ainvoke_structured(
+                    prompt_name="intervencao.txt",
+                    # Minimizacao: nada que identifique o aluno vai ao modelo.
+                    payload={
+                        "estado": _ESTADO_PT[kind],
+                        "ocorrencias": ocorrencias,
+                        "janela": _JANELA,
+                        "desempenho_recente": {
+                            k: desempenho.get(k) for k in ("media_acertos", "percentual_concluido") if k in desempenho
+                        },
+                    },
+                    schema=IntervencaoSugestao,
+                    use_rag=usar_rag,
+                )
+                origem_sugestao = "rag" if usar_rag else "modelo"
+                break
+            except StructuredOutputError:
+                continue
 
-    intervencao = montar_intervencao(kind, ocorrencias, sugestao)
+    fontes_rag = []
+    if origem_sugestao == "rag" and sugestao is not None and _sugestao_valida(sugestao):
+        fontes_rag = list(
+            dict.fromkeys(
+                fonte
+                for busca in buscas
+                for fonte in busca.get("fontes_citadas", [])
+                if isinstance(fonte, str) and fonte.strip()
+            )
+        )[:20]
+    intervencao = montar_intervencao(kind, ocorrencias, sugestao, origem_sugestao, fontes_rag)
     return {
         "intervencao_payload": intervencao.model_dump(mode="json"),
         "completed_nodes": ["agente_intervencao"],

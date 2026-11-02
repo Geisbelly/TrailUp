@@ -35,7 +35,7 @@ export function resolveSystemVisualTheme(profileName?: string | null): SystemVis
  * misturar com branco (que desatura e deixa a cor "apagada"), aqui só a
  * luminosidade sobe, preservando a identidade/vibração da cor-assinatura do perfil.
  */
-function ensureMinContrast(
+export function ensureMinContrast(
   color: string,
   background: tinycolor.Instance | string,
   minRatio: number,

@@ -170,3 +170,5 @@ src/utils/painelTopicoTrilha.celular.test.ts
 src/database/supabase.sessaoNaUrl.test.ts
 src/utils/alteracoesDoProfessor.test.ts
 src/utils/rankEstadoVazio.test.ts
+src/utils/telaCarregamento.test.ts
+src/components/carregamento/TelaCarregamento.tela.test.tsx

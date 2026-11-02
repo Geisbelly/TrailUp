@@ -15,6 +15,7 @@ from app.agent.graph.state import TrailUpState
 from app.core.settings import Settings
 from app.schemas.intervencao import IntervencaoSugestao
 from app.services.llm import StructuredOutputError
+from app.services.rag_observabilidade import registrar_busca
 
 # `app.agent.graph.nodes` reexporta as funcoes com o nome dos modulos.
 modulo = import_module("app.agent.graph.nodes.agente_intervencao")
@@ -149,6 +150,47 @@ async def test_no_usa_o_modelo_e_nao_manda_dado_pessoal(monkeypatch) -> None:
     assert "Fulana" not in str(payload) and "f@x" not in str(payload)
     assert payload["estado"] == "atividade aberta e deixada sem concluir"
     assert "emocao_atual" not in payload
+
+
+
+
+@pytest.mark.asyncio
+async def test_no_tenta_rag_antes_do_modelo_sem_rag(monkeypatch) -> None:
+    async def gerar(**kwargs):
+        if kwargs["use_rag"]:
+            registrar_busca({"fontes_citadas": ["nao-validada.pdf"]})
+            raise StructuredOutputError("RAG indisponível")
+        return IntervencaoSugestao(texto="Converse com o aluno.", acao="acompanhar")
+
+    chamada = AsyncMock(side_effect=gerar)
+    monkeypatch.setattr(modulo.JsonLLMService, "ainvoke_structured", chamada)
+    monkeypatch.setattr(modulo.OpenAIRagService, "is_configured", lambda self: True)
+    monkeypatch.setattr(modulo, "_ja_pendente", AsyncMock(return_value=False))
+
+    resultado = await agente_intervencao(_estado(), Settings(openai_api_key=None), _Fabrica())
+
+    assert [call.kwargs["use_rag"] for call in chamada.await_args_list] == [True, False]
+    assert resultado["intervencao_payload"]["origem"] == "modelo"
+    assert resultado["intervencao_payload"]["fontes_rag"] == []
+
+
+@pytest.mark.asyncio
+async def test_no_registra_origem_rag_quando_busca_funciona(monkeypatch) -> None:
+    async def gerar(**kwargs):
+        registrar_busca({"fontes_citadas": ["Guia.pdf"]})
+        return IntervencaoSugestao(texto="Converse com o aluno.", acao="acompanhar")
+
+    chamada = AsyncMock(side_effect=gerar)
+    monkeypatch.setattr(modulo.JsonLLMService, "ainvoke_structured", chamada)
+    monkeypatch.setattr(modulo.OpenAIRagService, "is_configured", lambda self: True)
+    monkeypatch.setattr(modulo, "_ja_pendente", AsyncMock(return_value=False))
+
+    resultado = await agente_intervencao(_estado(), Settings(openai_api_key=None), _Fabrica())
+
+    chamada.assert_awaited_once()
+    assert chamada.await_args.kwargs["use_rag"] is True
+    assert resultado["intervencao_payload"]["origem"] == "rag"
+    assert resultado["intervencao_payload"]["fontes_rag"] == ["Guia.pdf"]
 
 
 @pytest.mark.asyncio

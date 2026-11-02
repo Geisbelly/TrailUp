@@ -55,6 +55,7 @@ class IntervencaoRepository:
             "acao": intervencao.acao,
             "redacao": intervencao.origem,
             "ciclo_id": ciclo_id,
+            "fontes_rag": intervencao.fontes_rag,
         }
         resultado = await self.session.execute(
             text(

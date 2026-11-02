@@ -85,6 +85,7 @@ Documentação que não pertence a um único serviço:
 - Personalização: [gamificação/recursos](./mobile/funcionamento-personalizacao-gamificacao-recursos-pedagogicos.md) · [detalhado](./mobile/funcionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado.md) · [multimídia do aluno](./mobile/personalizacao-multimidia-aluno.md)
 - [Guia de uso](./mobile/guia-uso-app.md) · [Segurança](./mobile/seguranca.md) · [Políticas de dados/privacidade](./mobile/politicas-dados-privacidade.md)
 - [Planos e specs (superpowers)](./mobile/superpowers/) · [SQL](./mobile/sql/)
+- [Tela de carregamento por perfil BrainHex (pesquisa e decisões)](./superpowers/specs/2026-11-02-tela-de-carregamento-por-perfil-design.md)
 
 ---
 
