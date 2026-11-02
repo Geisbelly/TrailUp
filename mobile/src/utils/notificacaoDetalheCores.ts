@@ -1,14 +1,14 @@
 import type { ProfileShellPalette } from "./profileShellPalette";
 
 /**
- * Vermelho de "Excluir" no detalhe da notificação: o mesmo do protótipo mobile-v1
- * (`--danger`/`--danger-border` em `assets/app.css`) e da caixa de entrada larga
- * (`NotificacoesDesktop`). Fixo, como `success`/`warning`/`info`: derivar do accent
+ * Vermelho de "Excluir" no detalhe da notificação. Mais apagado que o `--danger` do
+ * protótipo (`#f0847c`): a ação é secundária aqui, e o vermelho vivo com borda vermelha
+ * chamava mais atenção que a própria mensagem. Só o texto e o ícone são avermelhados; a
+ * borda é a neutra dos cartões. Fixo, como `success`/`warning`/`info`: derivar do accent
  * deixaria o botão destrutivo da cor do perfil — no Daredevil, vermelho sobre vermelho.
  */
 export const PERIGO_NOTIFICACAO = {
-  texto: "#f0847c",
-  borda: "#8a4250",
+  texto: "#d9a39e",
 } as const;
 
 /**
@@ -35,6 +35,6 @@ export function coresDoDetalheDaNotificacao(palette: ProfileShellPalette, lida: 
     seloBorda: lida ? palette.borderStrong : palette.accent,
     seloTexto: lida ? palette.textMuted : palette.background,
     perigoTexto: PERIGO_NOTIFICACAO.texto,
-    perigoBorda: PERIGO_NOTIFICACAO.borda,
+    perigoBorda: palette.border,
   };
 }
