@@ -5467,6 +5467,66 @@ export type Database = {
         }
         Relationships: []
       }
+      professor_notificacoes: {
+        Row: {
+          atualizado_em: string
+          classe_id: number | null
+          contagem: number
+          corpo: string
+          created_at: string
+          dedupe_key: string
+          destino: string | null
+          id: number
+          lida_em: string | null
+          professor_id: string
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          atualizado_em?: string
+          classe_id?: number | null
+          contagem?: number
+          corpo?: string
+          created_at?: string
+          dedupe_key: string
+          destino?: string | null
+          id?: number
+          lida_em?: string | null
+          professor_id: string
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          atualizado_em?: string
+          classe_id?: number | null
+          contagem?: number
+          corpo?: string
+          created_at?: string
+          dedupe_key?: string
+          destino?: string | null
+          id?: number
+          lida_em?: string | null
+          professor_id?: string
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professor_notificacoes_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: false
+            referencedRelation: "classe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professor_notificacoes_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       questao_aluno: {
         Row: {
           acertos_percentual: number | null

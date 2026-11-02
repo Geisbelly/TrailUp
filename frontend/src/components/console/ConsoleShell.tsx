@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DESIGN_ART } from "@/lib/design-art";
 import { CONSOLE_SECTIONS, consolePathForView, type ConsoleView } from "@/pages/consoleSections";
 import Escriba from "./escriba/Escriba";
+import SinoDeNotificacoes from "./notificacoes/SinoDeNotificacoes";
 import { useContagemDeRecomendacoes } from "./recomendacoes/useRecomendacoesDaIA";
 import { rotuloDoSelo } from "./recomendacoes/recomendacoes";
 
@@ -59,6 +60,7 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         <span className="console-topbar-divider" aria-hidden="true" />
         <span className="console-workspace-name">Console do professor</span>
         <div className="console-account">
+          <SinoDeNotificacoes />
           <Avatar className="h-[38px] w-[38px]"><AvatarFallback className="bg-primary text-primary-foreground text-[13px] font-bold">{initials}</AvatarFallback></Avatar>
           <div className="console-account-copy"><strong>{name}</strong>{institution && <span>{institution}</span>}</div>
           <button type="button" className="console-icon-button" onClick={onSignOut} aria-label="Sair da conta" title="Sair da conta"><LogOut size={18} /></button>

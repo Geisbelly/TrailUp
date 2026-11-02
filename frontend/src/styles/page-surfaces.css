@@ -75,6 +75,7 @@
 .console-account-copy span { color: hsl(var(--muted-foreground)); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console-icon-button { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; flex: none; color: hsl(var(--muted-foreground)); }
 .console-icon-button:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+.console-bell-badge { position: absolute; top: 3px; right: 2px; min-width: 17px; padding: 0 4px; border-radius: 999px; background: hsl(var(--console-violet)); color: #fff; font-size: 10px; font-weight: 700; line-height: 17px; text-align: center; }
 .console-navigation { padding: 20px 16px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid hsl(var(--border)); background: hsl(var(--console-sidebar)); overflow-y: auto; }
 .console-navigation a { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; color: hsl(var(--muted-foreground)); font-size: 14.5px; white-space: nowrap; }
 .console-navigation a svg { flex: none; }

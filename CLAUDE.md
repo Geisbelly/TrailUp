@@ -521,6 +521,14 @@ Cada perfil carrega:
   andamento. `hora_origem = 'aluno'` nunca é sobrescrita. A sugestão da IA
   traz `horario_sugerido`, e o gatilho de promoção decide o horário, sempre
   fora do silêncio no fuso do aluno.
+- **Notificações do professor — também no banco** (`20261102_17`). `professor_notificacoes` é a caixa
+  do console (sino no cabeçalho), **separada** das quatro tabelas do aluno acima: uma linha por assunto
+  (`dedupe_key` única por professor), com `contagem` e `lida_em`, que volta a nulo quando o assunto se
+  repete. Quem grava são gatilhos `SECURITY DEFINER` (recomendação da IA em `intervencoes`, dissertação
+  em `questao_aluno`, job de geração `failed`/`partial`, evento `encerrado`), e **nunca derrubam a
+  transação de quem os causa** (`EXCEPTION WHEN OTHERS` → `WARNING`). O cliente só lê e muda `lida_em`
+  (GRANT por coluna, sem policy de INSERT). Risco de reprovação **não** notifica: é calculado na hora,
+  não há evento de banco para ligar um gatilho.
 - **Eventos de turma abrem e encerram no horário pelo banco (#141).**
   `pg_cron` roda `fn_eventos_classe_varrer()` a cada minuto (job
   `trailup_eventos_classe_varredura`, migração `20261025_04`): encerra e apura
