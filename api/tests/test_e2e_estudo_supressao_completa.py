@@ -1,6 +1,6 @@
-"""`20261102_24`: abaixo de `n_minimo`, a célula do estudo volta nula inteira (#17).
+"""`20261102_25`: abaixo de `n_minimo`, a célula do estudo volta nula inteira (#17).
 
-Mesmo banco e mesmos dados do e2e da `_03` (`test_e2e_estudo_coorte`), com a `_24` por cima: a turma 1
+Mesmo banco e mesmos dados do e2e da `_03` (`test_e2e_estudo_coorte`), com a `_25` por cima: a turma 1
 tem 3 pareados, e o catálogo pede 5. Com o mínimo em 1, os números são os mesmos de antes.
 """
 
@@ -9,7 +9,7 @@ from __future__ import annotations
 from tests import _f5_banco as f5
 from tests import test_e2e_estudo_coorte as e
 
-M = f5.modulo("20261102_24_estudo_supressao_completa.py")
+M = f5.modulo("20261102_25_estudo_supressao_completa.py")
 
 
 def _banco():

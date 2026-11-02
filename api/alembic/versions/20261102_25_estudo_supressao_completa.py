@@ -18,8 +18,8 @@ função (`estudo_indicadores_janela` não tem EXECUTE para cliente).
 Remenda a função da `_03` por troca de texto, como a `_05` faz com a RPC: se a `_03` mudar de forma,
 esta migration falha alto em vez de gravar uma função pela metade.
 
-Revision ID: 20261102_24
-Revises: 20261102_23
+Revision ID: 20261102_25
+Revises: 20261102_24
 Create Date: 2026-11-02
 """
 
@@ -28,8 +28,8 @@ from pathlib import Path
 
 from alembic import op
 
-revision = "20261102_24"
-down_revision = "20261102_23"
+revision = "20261102_25"
+down_revision = "20261102_24"
 branch_labels = None
 depends_on = None
 
@@ -70,7 +70,7 @@ def funcao_nova() -> str:
     for antigo, novo in _TROCAS:
         if texto.count(antigo) != 1:
             raise RuntimeError(
-                "estudo_indicadores_publicos mudou de forma desde a 20261102_03; revise a 20261102_24"
+                "estudo_indicadores_publicos mudou de forma desde a 20261102_03; revise a 20261102_25"
             )
         texto = texto.replace(antigo, novo)
     return texto
