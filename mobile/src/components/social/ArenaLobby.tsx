@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import type { Guild } from "@/services/social/guildModel";
@@ -53,6 +54,8 @@ type Props = {
  * que vale para os três modos. "Começar" manda o mesmo convite de antes (`arena_desafio_criar`).
  */
 export function ArenaLobby({ visible, inicio, classeId, meuId, colegas, guilds, palette, onClose, onCriado }: Props) {
+  // Na tela larga a tela cheia esticava cada modo por 1.500 px: lá o lobby é uma janela no meio.
+  const desktop = useDesktopWeb();
   const minhaGuilda = guilds.find((g) => g.souMembro) ?? null;
   const rivais = useMemo(() => guilds.filter((g) => !g.souMembro && g.membrosAtivos > 0), [guilds]);
   const vazio: NovoDesafio = { formato: "solo", aliado: null, adversarios: [], guildaId: minhaGuilda?.id ?? null, guildaRival: null };
@@ -142,8 +145,10 @@ export function ArenaLobby({ visible, inicio, classeId, meuId, colegas, guilds, 
       : null;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={[s.fundo, { backgroundColor: palette.background }]}>
+    <Modal visible={visible} animationType={desktop ? "fade" : "slide"} transparent onRequestClose={onClose}>
+      <View style={desktop ? s.fundoLargo : s.fundo}>
+      {desktop ? <Pressable accessibilityLabel="Sair da arena" onPress={onClose} style={StyleSheet.absoluteFill} /> : null}
+      <View style={[desktop ? [s.janela, { borderColor: palette.borderStrong }] : s.fundo, { backgroundColor: palette.background }]}>
         <View style={[s.topo, { borderBottomColor: palette.border }]}>
           {passo === "adversario" ? (
             <Pressable onPress={() => setPasso("modo")} accessibilityRole="button" accessibilityLabel="Voltar para os modos" hitSlop={10} style={s.icone}>
@@ -234,12 +239,16 @@ export function ArenaLobby({ visible, inicio, classeId, meuId, colegas, guilds, 
           </View>
         ) : null}
       </View>
+      </View>
     </Modal>
   );
 }
 
 const s = StyleSheet.create({
   fundo: { flex: 1 },
+  fundoLargo: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, backgroundColor: "rgba(0,0,0,0.5)" },
+  // Altura definida: sem ela o ScrollView do corpo, que mede pelo pai, fecha em 0.
+  janela: { width: 560, maxWidth: "100%", height: "80%", maxHeight: 640, borderRadius: 20, borderWidth: 1, overflow: "hidden" },
   topo: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingTop: 18, paddingBottom: 12, borderBottomWidth: 1 },
   icone: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   tituloTopo: { flex: 1, textAlign: "center", fontFamily: FontFamily.inikaBold, fontSize: 20 },
