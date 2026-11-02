@@ -289,7 +289,7 @@ Cada perfil carrega:
     modo declarado e telemetria.
 
   A preferência do aluno não passa por cima do conteúdo que depende de um formato.
-  Estado mental recorrente vai para o log como observação e não reordena.
+  Alerta de estudo recorrente vai para o log como observação e não reordena.
 
   A análise do conteúdo é IA, então é API: o worker faz uma chamada por tópico
   (`demanda_formato.py`, versão própria). Sem modelo, uma regra fixa grava `origem =
@@ -345,8 +345,8 @@ Cada perfil carrega:
   batalha; ela entra no `source_hash`, então mudar a voz de um perfil regera as falas dele.
 - `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
   sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
-  ou por aluno (estes vêm do `agente_intervencao`, quando um estado negativo
-  se repete; uma pendente por aluno × estado a cada 7 dias). **Só a geração passa pela API**
+  ou por aluno (estes vêm do `agente_intervencao`, quando um alerta de estudo
+  se repete; uma pendente por aluno × alerta a cada 7 dias). **Só a geração passa pela API**
   (`POST /api/v1/insights/turma/{classe_id}/gerar`, em segundo plano, com
   intervalo mínimo de 5 min); listar, aceitar e ignorar é Supabase direto. O
   aluno não lê; o professor só atualiza `status`/`motivo_descarte`/`resolved_at`
@@ -539,17 +539,30 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > do LangGraph, e até a #64 foi o que aconteceu — todo nó lia `None`. Quem usa:
 > `agente_ui` (tema de suporte), `agente_intervencao` (grava em `intervencoes`
 > com escopo aluno e, se for o caso, sugere notificação em `notificacoes_ia`) e
-> `agente_cronometro` (#136: desliga o cronômetro das atividades por ansiedade ou
-> sobrecarga recorrente, ou por 3 das últimas 5 tentativas cronometradas fora do
-> tempo, lidas em `desempenho_recente.tentativas`; só desliga, e a escolha do
-> aluno vence — o UPSERT confere `origem <> 'aluno'` na própria escrita).
-> Três detalhes que não são óbvios:
+> `agente_cronometro` (#136: desliga o cronômetro das atividades por 3 das
+> últimas 5 tentativas cronometradas fora do tempo, lidas em
+> `desempenho_recente.tentativas`, e não lê o histórico; só desliga, e a escolha
+> do aluno vence — o UPSERT confere `origem <> 'aluno'` na própria escrita).
+> Fora do grafo, `professor_risco_reprovacao_turma` lê a mesma tabela
+> (`20261102_10`).
 >
+> **O que a tabela guarda é estado de estudo, não emoção** (DAT-45, desde
+> 02/11): `analysis_runner` grava um registro por ciclo, `abandono`,
+> `dificuldade` ou `sem_alerta` (`app/services/estado_de_estudo.py`). Antes ela
+> receberia o `mentalState` do `ai_patch` (`anxious` saído de nota baixa), mas
+> nenhum caminho de produção o gravava, e a tabela estava vazia. Não volte a
+> gravar emoção inferida aqui: a intervenção diria ao professor algo que ninguém
+> mediu. O nome da tabela ficou por compatibilidade.
+>
+> Quatro detalhes que não são óbvios:
+>
+> - **`sem_alerta` também é gravado.** Sem ele, a janela pularia os ciclos sem
+>   problema e juntaria alertas de semanas diferentes.
 > - **A leitura é uma janela, não o histórico.** `listar_por_aluno` vem com
 >   `limit=_JANELA_RECORRENCIA` (5). Recorrência é 3 dos **últimos 5** registros
->   com o mesmo `kind` negativo (`frustrated`, `anxious`, `overwhelmed`,
->   `tired`) — não "3 vezes desde sempre". Aumentar a janela muda o significado
->   do sinal, não só a sensibilidade.
+>   com o mesmo alerta (`dificuldade` ou `abandono`) — não "3 vezes desde
+>   sempre". Aumentar a janela muda o significado do sinal, não só a
+>   sensibilidade.
 > - **`_detectar_recorrencia` é pura e assume ordenação do mais recente para o
 >   mais antigo**, que é o que o repositório devolve. Trocar o `ORDER BY` lá
 >   inverte o sentido da janela sem erro nenhum — os 5 mais **antigos**

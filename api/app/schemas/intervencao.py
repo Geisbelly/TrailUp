@@ -15,7 +15,7 @@ class IntervencaoSugestao(BaseModel):
 
 
 class IntervencaoPayload(BaseModel):
-    tipo: Literal["emocional", "engajamento"]
+    tipo: Literal["pedagogica", "engajamento"]
     kind: str
     ocorrencias: int = Field(ge=1)
     janela: int = Field(ge=1)

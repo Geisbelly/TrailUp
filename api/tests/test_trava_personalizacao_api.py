@@ -129,7 +129,7 @@ def test_turma_retida_so_mede_e_avisa_o_professor() -> None:
 @pytest.mark.asyncio
 async def test_executor_da_turma_retida_grava_o_insight_e_nao_notifica_o_aluno(monkeypatch) -> None:
     registrar, enfileirar = _mock_executor(monkeypatch, "uuid-1")
-    payload = montar_intervencao("frustrated", 3, None).model_dump(mode="json")
+    payload = montar_intervencao("abandono", 3, None).model_dump(mode="json")
     r = await executor(
         {"aluno_id": "a", "classe_id": 7, "ciclo_id": "c", "intervencao_payload": payload, "personalizacao_retida": True},
         _Fabrica(),

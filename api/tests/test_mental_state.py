@@ -6,7 +6,6 @@ import pytest
 from app.repositories.aluno_topico_dominio import AlunoTopicoDominioRepository
 from app.repositories.mental_state import MentalStateHistoryRepository
 from app.services import analysis_runner
-from app.services.analysis_runner import extract_mental_state
 
 
 class MappingRows:
@@ -41,29 +40,6 @@ class RecordingSession:
 
     async def rollback(self) -> None:
         return None
-
-
-def test_extract_mental_state_from_ai_patch_camel() -> None:
-    result = {
-        "ai_patch": {
-            "mentalState": {
-                "kind": "anxious",
-                "intensity": 0.81,
-                "confidence": 0.74,
-                "reason": "Baixo acerto.",
-            }
-        }
-    }
-    snapshot = extract_mental_state(result)
-    assert snapshot is not None
-    assert snapshot["kind"] == "anxious"
-    assert snapshot["intensity"] == 0.81
-
-
-def test_extract_mental_state_returns_none_when_absent() -> None:
-    assert extract_mental_state({}) is None
-    assert extract_mental_state({"ai_patch": {}}) is None
-    assert extract_mental_state({"ai_patch": {"mentalState": {"kind": ""}}}) is None
 
 
 @pytest.mark.asyncio

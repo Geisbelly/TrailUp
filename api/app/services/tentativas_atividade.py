@@ -10,16 +10,14 @@ cronometro. Aqui ficam as partes puras que a IA usa:
 
 ## A regra do cronometro
 
-A IA **so desliga, nunca liga**, e a escolha explicita do aluno vence a dela. Desliga quando:
+A IA **so desliga, nunca liga**, e a escolha explicita do aluno vence a dela. Desliga quando 3
+das ultimas 5 tentativas cronometradas sairam fora do tempo. Tempo nao mexe na nota (so no bonus
+de XP), entao "fora do tempo" repetido nao e castigo: e pressao sem retorno, o que a regra corta.
 
-- a memoria do aluno tem recorrencia de ansiedade ou sobrecarga (3 dos ultimos 5 registros de
-  estado mental, a mesma janela de `memoria_aluno`); ou
-- 3 das ultimas 5 tentativas cronometradas sairam fora do tempo.
-
-O segundo criterio existe porque o primeiro depende de `aluno_mental_state_history`, que estava
-vazio em producao (nota da #66): sem ele a regra ficaria dormente. Tempo nao mexe na nota (so no
-bonus de XP), entao "fora do tempo" repetido nao e castigo: e pressao sem retorno, o que a regra
-corta.
+Havia um primeiro criterio, a recorrencia de ansiedade ou sobrecarga em `memoria_aluno`. Saiu em
+02/11: aquela "ansiedade" era regra fixa sobre nota e progresso, e a telemetria nao mede emocao
+(DAT-45). O historico agora guarda estado de estudo (`estado_de_estudo.py`), e a pressao de tempo
+ja e medida aqui com dado real.
 """
 
 from __future__ import annotations
@@ -29,16 +27,15 @@ from typing import Any
 
 from pydantic import BaseModel
 
-# Mesma janela e limiar de `memoria_aluno` (3 dos ultimos 5): os dois criterios falam a mesma lingua.
+# Mesma janela e limiar de `memoria_aluno` (3 dos ultimos 5).
 JANELA = 5
 LIMIAR = 3
-KINDS_QUE_DESLIGAM = {"anxious": "ansiedade", "overwhelmed": "sobrecarga"}
 
 
 class CronometroDecisao(BaseModel):
     """O que o executor grava em `aluno_cronometro` (origem `ia`) e avisa ao professor."""
 
-    criterio: str  # "estado_mental" ou "fora_do_tempo"
+    criterio: str  # "fora_do_tempo"
     motivo: str
     ocorrencias: int
     janela: int = JANELA
@@ -110,25 +107,12 @@ def resumir_tentativas(linhas: list[dict[str, Any]], cronometro: dict[str, Any] 
     }
 
 
-def decidir_desligar_cronometro(
-    tentativas: dict[str, Any] | None,
-    memoria: dict[str, Any] | None,
-) -> CronometroDecisao | None:
+def decidir_desligar_cronometro(tentativas: dict[str, Any] | None) -> CronometroDecisao | None:
     """`None` = nada a fazer. Pura: quem grava e o executor, que confere de novo a escolha do aluno."""
     cronometro = (tentativas or {}).get("cronometro") or {}
     # Sem saber o estado de agora, nao decide: desligar o que ja esta desligado so geraria aviso falso.
     if not cronometro.get("ligado") or cronometro.get("origem") == "aluno":
         return None
-
-    recorrencia = (memoria or {}).get("mental_state_recorrente") or {}
-    kind = str(recorrencia.get("kind") or "")
-    if recorrencia.get("recorrente") and kind in KINDS_QUE_DESLIGAM:
-        ocorrencias = int(recorrencia.get("ocorrencias") or LIMIAR)
-        return CronometroDecisao(
-            criterio="estado_mental",
-            motivo=f"{KINDS_QUE_DESLIGAM[kind]} em {ocorrencias} dos últimos {JANELA} registros de estado mental",
-            ocorrencias=ocorrencias,
-        )
 
     janela = list((tentativas or {}).get("ultimas_cronometradas_no_tempo") or [])[:JANELA]
     fora = sum(1 for no_tempo in janela if not no_tempo)

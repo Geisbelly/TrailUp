@@ -103,7 +103,7 @@ def _estado_do_ciclo(**extra) -> dict[str, Any]:
         },
         "payload_topico_id": 203,
         "gerar_materiais": True,
-        "memoria_aluno": {"mental_state_recorrente": {"recorrente": True, "kind": "frustrated"}},
+        "memoria_aluno": {"mental_state_recorrente": {"recorrente": True, "kind": "dificuldade"}},
         "completed_nodes": [],
         **extra,
     }

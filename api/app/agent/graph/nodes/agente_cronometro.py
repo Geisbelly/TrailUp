@@ -12,7 +12,7 @@ from app.services.tentativas_atividade import decidir_desligar_cronometro
 
 def decisao_do_estado(state: dict[str, Any]):
     tentativas = (state.get("desempenho_recente") or {}).get("tentativas")
-    return decidir_desligar_cronometro(tentativas, state.get("memoria_aluno"))
+    return decidir_desligar_cronometro(tentativas)
 
 
 async def agente_cronometro(state: dict[str, Any]) -> dict[str, Any]:

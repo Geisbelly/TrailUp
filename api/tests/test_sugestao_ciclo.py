@@ -551,7 +551,7 @@ async def test_estado_mental_recorrente_vai_para_o_log_sem_reordenar(repo_do_cic
         perfis=_perfil("mastermind"), formatos_disponiveis=TODOS,
     )
     ordem_antes = [i["formato"] for i in repo.linhas[("a1", 10, -1)]["ordem"]]
-    repo.contexto["observacoes"] = {"estado_mental_recorrente": {"kind": "anxious", "ocorrencias": 3, "janela": 5}}
+    repo.contexto["observacoes"] = {"estado_mental_recorrente": {"kind": "abandono", "ocorrencias": 3, "janela": 5}}
     repo.marcar("a1", 10, "atividade_concluida")
 
     decisao = await revisar_sugestoes_do_ciclo(
@@ -560,7 +560,7 @@ async def test_estado_mental_recorrente_vai_para_o_log_sem_reordenar(repo_do_cic
 
     assert decisao["acao"] == "mantida"
     assert [i["formato"] for i in repo.linhas[("a1", 10, -1)]["ordem"]] == ordem_antes
-    assert repo.log[-1]["evidencia"]["observacoes"]["estado_mental_recorrente"]["kind"] == "anxious"
+    assert repo.log[-1]["evidencia"]["observacoes"]["estado_mental_recorrente"]["kind"] == "abandono"
 
 
 @pytest.mark.asyncio

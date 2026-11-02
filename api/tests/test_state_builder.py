@@ -30,7 +30,7 @@ async def test_build_initial_state_propaga_memoria_aluno(monkeypatch) -> None:
     async def fake_ler_memoria(_session, *, aluno_id, classe_id):
         return MemoriaAluno(
             dominio_por_topico={},
-            mental_state_recorrente=MentalStateRecorrente(recorrente=True, kind="frustrated", ocorrencias=3),
+            mental_state_recorrente=MentalStateRecorrente(recorrente=True, kind="dificuldade", ocorrencias=3),
         )
 
     monkeypatch.setattr(state_builder, "ler_memoria", fake_ler_memoria)
@@ -41,7 +41,7 @@ async def test_build_initial_state_propaga_memoria_aluno(monkeypatch) -> None:
     )
 
     assert state["memoria_aluno"]["mental_state_recorrente"]["recorrente"] is True
-    assert state["memoria_aluno"]["mental_state_recorrente"]["kind"] == "frustrated"
+    assert state["memoria_aluno"]["mental_state_recorrente"]["kind"] == "dificuldade"
 
 
 @pytest.mark.asyncio
