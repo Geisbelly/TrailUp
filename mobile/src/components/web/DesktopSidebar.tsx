@@ -9,11 +9,13 @@ import { useDialog } from "@/context/DialogContext";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
+import { useNaoLidasDoChat } from "@/hooks/useNaoLidasDoChat";
 import { supabase } from "@/database/supabase";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellPalette";
 import type { Aberturas, Funcionalidade } from "@/utils/portoes";
 import { registrarAlvoTour } from "@/utils/tourTargets";
+import { iconeDoSocial } from "@/services/social/socialDestaque";
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 
@@ -49,6 +51,8 @@ export function DesktopSidebar({ state, navigation, palette, aberturas, onBloque
   // Contadores do protótipo v4: não lidas ao lado de Notificações e o saldo ao lado de Loja.
   const { itens: notificacoes } = useNotifications();
   const naoLidas = notificacoes.filter((n) => !(n.read ?? n.status === "lida")).length;
+  // Mensagens não lidas ao lado de Social: a mesma contagem da barra de baixo.
+  const { total: mensagensNaoLidas } = useNaoLidasDoChat();
   const [saldo, setSaldo] = useState<number | null>(null);
   useEffect(() => {
     // Relido a cada troca de tela: o saldo muda com o estudo e com as compras.
@@ -128,13 +132,17 @@ export function DesktopSidebar({ state, navigation, palette, aberturas, onBloque
     <View ref={alvoTour} collapsable={false} style={[s.barra, { backgroundColor: palette.surface, borderRightColor: palette.border }]}>
       {ITENS.map(({ rota, rotulo, icone, portao }) => {
         const bloqueado = portao ? !aberturas[portao] : false;
+        const n = rota === "notificacoes" ? naoLidas : rota === "social" ? mensagensNaoLidas : 0;
         const contador =
-          rota === "notificacoes" && naoLidas > 0 ? (
-            <View accessibilityLabel={`${naoLidas} não lidas`} style={[s.contador, { backgroundColor: palette.accent }]}>
-              <Text style={[s.contadorTexto, { color: palette.background }]}>{naoLidas > 99 ? "99+" : naoLidas}</Text>
+          n > 0 ? (
+            <View accessibilityLabel={rota === "social" ? `${n} ${n === 1 ? "mensagem não lida" : "mensagens não lidas"}` : `${n} não lidas`} style={[s.contador, { backgroundColor: palette.accent }]}>
+              <Text style={[s.contadorTexto, { color: palette.background }]}>{n > 99 ? "99+" : n}</Text>
             </View>
           ) : null;
-        const elemento = item(rota, rotulo, icone, rota === rotaAtual && !naConfiguracao && !naLoja, () =>
+        const ativo = rota === rotaAtual && !naConfiguracao && !naLoja;
+        // O Social veste o perfil, como na barra de baixo (`iconeDoSocial`).
+        const iconeDoItem = rota === "social" ? (iconeDoSocial(palette.profile, ativo) as IconName) : icone;
+        const elemento = item(rota, rotulo, iconeDoItem, ativo, () =>
           bloqueado && portao ? onBloqueado(portao) : abrir(rota),
           { bloqueado, fim: contador });
         // A Loja é uma página da pilha do Perfil (perfil/loja.tsx), só na tela larga.

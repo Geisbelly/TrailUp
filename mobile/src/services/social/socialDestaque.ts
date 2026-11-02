@@ -104,3 +104,34 @@ export function abaDaAncora(ancora: AncoraDoSocial): AbaDoSocial {
   const area = (Object.keys(ANCORAS_DA_AREA) as AreaDoSocial[]).find((a) => ANCORAS_DA_AREA[a].includes(ancora)) ?? "conversa";
   return abaDaArea(area);
 }
+
+/**
+ * Ícone da aba Social na barra de baixo (e na lateral do desktop), por perfil: ele mostra a área
+ * que o perfil vê primeiro ao entrar, para o aluno reconhecer o próprio Social antes de abrir.
+ * `ativo` é o da aba aberta (cheio); `inativo`, o contorno.
+ *
+ * Nenhum repete o ícone da Trilha do mesmo perfil (`brainHexConfig` em `profileImages.ts`), que
+ * fica na mesma barra: o Daredevil já tem `sword-cross` na Trilha e o Survivor também, por isso
+ * só o Conqueror usa as espadas da Arena. O teste confere essa regra. E cada um já quer dizer
+ * a mesma coisa dentro do Social (um ícone, um significado — CLAUDE.md) ou não tinha dono.
+ */
+export const ICONE_DO_SOCIAL: Record<BrainHexProfile, { ativo: string; inativo: string }> = {
+  conqueror: { ativo: "sword-cross", inativo: "sword-cross" },
+  // O duelo de risco, mano a mano. O raio já é "Próximo movimento" nas métricas do perfil.
+  daredevil: { ativo: "boxing-glove", inativo: "boxing-glove" },
+  // Quem sobrevive se junta ao redor da fogueira: a Arena em grupo.
+  survivor: { ativo: "campfire", inativo: "campfire" },
+  socializer: { ativo: "forum", inativo: "forum-outline" },
+  // A lupa de "Encontrar colegas". A bússola já é o mapa revelado e o tutorial.
+  seeker: { ativo: "account-search", inativo: "account-search-outline" },
+  achiever: { ativo: "calendar-star", inativo: "calendar-star-outline" },
+  mastermind: { ativo: "strategy", inativo: "strategy" },
+};
+
+/** Sem perfil conhecido, o ícone de antes: o grupo de pessoas. */
+export function iconeDoSocial(perfil: string | null | undefined, ativo: boolean): string {
+  const perfilNormalizado = normalizeBrainHexProfile(perfil);
+  if (!perfilNormalizado) return ativo ? "account-group" : "account-group-outline";
+  const icone = ICONE_DO_SOCIAL[perfilNormalizado];
+  return ativo ? icone.ativo : icone.inativo;
+}
