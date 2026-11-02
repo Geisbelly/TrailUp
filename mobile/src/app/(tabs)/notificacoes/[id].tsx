@@ -163,7 +163,7 @@ export default function NotificacaoDetalhe() {
     return (
       <View style={[s.outer, { backgroundColor: palette.background }]}>
         <SafeAreaView style={{ flex: 1 }} edges={["top", "left", "right"]}>
-          <LoadingState title="Carregando notificação" message="Buscando detalhes..." />
+          <LoadingState title="Carregando notificação" message="Buscando detalhes..." palette={palette} />
         </SafeAreaView>
       </View>
     );
