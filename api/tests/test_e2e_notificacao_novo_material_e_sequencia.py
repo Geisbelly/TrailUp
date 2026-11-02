@@ -1,7 +1,7 @@
-"""`20261102_20`: os produtores de `novo_material` e `sequencia` (#149).
+"""`20261102_21`: os produtores de `novo_material` e `sequencia` (#149).
 
-Postgres local, esqueleto da produção e o motor de notificações como a `20261102_19` o deixa (o mesmo
-banco do e2e dela), com a `20261102_20` por cima. Além dos dublês daquele e2e (`net.http_post` e a
+Postgres local, esqueleto da produção e o motor de notificações como a `20261102_18` o deixa (o mesmo
+banco do e2e dela), com a `20261102_21` por cima. Além dos dublês daquele e2e (`net.http_post` e a
 view do rank), entram a tabela `estudo_coorte` da `20261102_02` e as funções da trava da
 `20261102_05`, recortadas das migrações, porque o produtor de `novo_material` pergunta à trava.
 
@@ -21,7 +21,7 @@ from tests.test_e2e_kpis_por_topico import _trecho
 
 pytestmark = f5.e2e
 
-M = f5.modulo("20261102_20_notificacao_novo_material_e_sequencia.py")
+M = f5.modulo("20261102_21_notificacao_novo_material_e_sequencia.py")
 M05 = f5.modulo("20261102_05_trava_da_personalizacao.py")
 
 COORTE = _trecho("20261102_02_estudo_coorte_e_marcos.py", "CREATE TABLE IF NOT EXISTS public.estudo_coorte (", "\n);")

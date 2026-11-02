@@ -119,7 +119,7 @@ Expô-las deixaria o app disparar entrega em nome de qualquer aluno.
   a cada ciclo; a rotina é a *verificação* que revisa e promove. Uma chamada de
   LLM por aluno por dia só para reescrever o que já existe seria custo sem ganho.
 
-## Para quem e quando (#149, `20261102_19`)
+## Para quem e quando (#149, `20261102_18`)
 
 A IA continua só sugerindo em `notificacoes_ia`, e a redação é do `agente_notificacao`. O que esta
 seção decide é o destino e o momento, e quem decide é o banco.
@@ -151,7 +151,7 @@ RPCs do app: `notificacoes_meu_foco`, `notificacoes_iniciar_foco(minutos)` (de 5
 Perfil → Configurações → "Modo foco e avisos". O botão "Não quero avisos assim" fica no detalhe da
 notificação.
 
-### Quem produz `novo_material` e `sequencia` (`20261102_20`)
+### Quem produz `novo_material` e `sequencia` (`20261102_21`)
 
 Os dois são gatilhos e entram por `notificacoes_enfileirar_evento`, então o perfil, o silêncio, o
 horário, a expiração e o dedupe do dia valem como para o rank.

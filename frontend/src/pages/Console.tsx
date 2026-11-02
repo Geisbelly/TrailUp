@@ -28,6 +28,7 @@ const NotasSection = lazyWithReload(() => import("@/components/console/notas/Not
 const EventosSection = lazyWithReload(() => import("@/components/console/eventos/EventosSection"));
 const EconomiaSection = lazyWithReload(() => import("@/components/console/economia/EconomiaSection"));
 const ClassManagementSection = lazyWithReload(() => import("@/components/console/ClassManagementSection"));
+const PainelTecnicoSection = lazyWithReload(() => import("@/components/console/tecnico/PainelTecnicoSection"));
 const RecomendacoesSection = lazyWithReload(() => import("@/components/console/recomendacoes/RecomendacoesSection"));
 const PersonalizacoesSection = lazyWithReload(() => import("@/components/console/personalizacoes/PersonalizacoesSection"));
 const ProfessorApprovalSection = lazyWithReload(() =>
@@ -234,6 +235,10 @@ export default function Console() {
                 <RecomendacoesSection professorId={professorData?.id} />
               ) : view === "personalizacoes" ? (
                 <PersonalizacoesSection professorId={professorData?.id} />
+              ) : view === "tecnico" ? (
+                // Mesma regra da aba Aprovações: a URL é digitável, e o banco é quem de fato recusa quem
+                // não é o dono (`painel_tecnico` confere `app_e_dono()`).
+                isOwner ? <PainelTecnicoSection /> : professorData && ownerStatus === false ? <Navigate to={consolePathForView("dashboard")} replace /> : null
               ) : view === "aprovacoes" ? (
                 // Agora que /console/aprovacoes e uma URL de verdade, qualquer
                 // professor pode digita-la. Sem dono confirmado, manda pro

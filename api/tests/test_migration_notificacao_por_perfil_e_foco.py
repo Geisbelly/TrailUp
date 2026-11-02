@@ -1,4 +1,4 @@
-"""Estrutura da `20261102_19` (notificação por perfil, por amizade e com modo de foco, #149)."""
+"""Estrutura da `20261102_18` (notificação por perfil, por amizade e com modo de foco, #149)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import re
 
 from tests import _f5_banco as f5
 
-M = f5.modulo("20261102_19_notificacao_por_perfil_e_foco.py")
+M = f5.modulo("20261102_18_notificacao_por_perfil_e_foco.py")
 UP = "\n".join(f5.sql_de(M))
 DOWN = "\n".join(f5.sql_de(M, "downgrade"))
 
@@ -21,8 +21,8 @@ TABELAS_NOVAS = (
 
 
 def test_encadeia_depois_da_17_de_02_11():
-    assert M.revision == "20261102_19"
-    assert M.down_revision == "20261102_18"
+    assert M.revision == "20261102_18"
+    assert M.down_revision == "20261102_17"
 
 
 def test_sem_porcentagem_literal():

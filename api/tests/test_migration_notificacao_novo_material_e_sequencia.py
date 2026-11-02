@@ -1,4 +1,4 @@
-"""Estrutura da `20261102_20` (quem produz `novo_material` e `sequencia`, #149)."""
+"""Estrutura da `20261102_21` (quem produz `novo_material` e `sequencia`, #149)."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ import re
 
 from tests import _f5_banco as f5
 
-M = f5.modulo("20261102_20_notificacao_novo_material_e_sequencia.py")
-M18 = f5.modulo("20261102_19_notificacao_por_perfil_e_foco.py")
+M = f5.modulo("20261102_21_notificacao_novo_material_e_sequencia.py")
+M18 = f5.modulo("20261102_18_notificacao_por_perfil_e_foco.py")
 UP = "\n".join(f5.sql_de(M))
 DOWN = "\n".join(f5.sql_de(M, "downgrade"))
 
@@ -19,8 +19,8 @@ def _funcao(nome: str) -> str:
 
 
 def test_encadeia_depois_da_18_de_02_11():
-    assert M.revision == "20261102_20"
-    assert M.down_revision == "20261102_19"
+    assert M.revision == "20261102_21"
+    assert M.down_revision == "20261102_20"
 
 
 def test_sem_porcentagem_literal():

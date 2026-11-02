@@ -1,7 +1,7 @@
-"""`20261102_19`: para quem (matriz por perfil, amizade, silenciar) e quando (foco) cada notificação sai (#149).
+"""`20261102_18`: para quem (matriz por perfil, amizade, silenciar) e quando (foco) cada notificação sai (#149).
 
 Postgres local, esqueleto da produção e o motor de notificações como a `20261102_01` o deixa (o
-mesmo `_motor()` do e2e dela), com a `20261102_19` por cima. Três dublês, todos declarados aqui:
+mesmo `_motor()` do e2e dela), com a `20261102_18` por cima. Três dublês, todos declarados aqui:
 
 - `net.http_post` grava o corpo do POST numa tabela: o pg_net não existe no Postgres local, e o que
   se mede é se o push sai, não a Expo;
@@ -29,7 +29,7 @@ from tests.test_e2e_kpis_por_topico import _trecho
 
 pytestmark = f5.e2e
 
-M = f5.modulo("20261102_19_notificacao_por_perfil_e_foco.py")
+M = f5.modulo("20261102_18_notificacao_por_perfil_e_foco.py")
 M01 = h.M
 M_LIMITE = f5.modulo("20260909_02_rank_limite_visivel.py")
 

@@ -115,6 +115,12 @@ SEM_SESSAO_POR_DECISAO: dict[str, str] = {
         "Mesma delegacao de `aprovacoes_pendentes`: `app_e_dono()` antes de "
         "qualquer leitura, e so o dono do sistema passa."
     ),
+    "painel_tecnico": (
+        "Mesma delegacao de `aprovacoes_pendentes` (20261102_22): a primeira "
+        "instrucao do corpo e `IF NOT public.app_e_dono() THEN RAISE ... 42501`, "
+        "antes ate da validacao de `p_horas`. So agrega (fila, custo, latencia, "
+        "invariantes); nao devolve dado de aluno. Sem `anon`."
+    ),
     "app_elo_inicial": (
         "Wrapper de UMA chave (20261029_04): devolve o rating inicial do Elo (`elo_inicial`, padrao "
         "1000), um numero que o proprio ranking ja mostra pelo resultado. Nao recebe parametro, "

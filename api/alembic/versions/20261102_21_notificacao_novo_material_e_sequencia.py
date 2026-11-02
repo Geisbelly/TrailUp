@@ -1,6 +1,6 @@
 """Quem produz `novo_material` e `sequencia`: dois gatilhos no banco, sem passar pela API (#149)
 
-A `20261102_19` pôs os dois tipos na matriz de Monterrat (`novo_material`: Seeker e Achiever;
+A `20261102_18` pôs os dois tipos na matriz de Monterrat (`novo_material`: Seeker e Achiever;
 `sequencia`: Achiever), mas ninguém os enfileirava. Os dois produtores são gatilhos e entram pela porta
 dos eventos do banco, `notificacoes_enfileirar_evento`. Ela já decide o destino (perfil e silêncio), o
 horário fora da janela de silêncio, a expiração e o dedupe do dia. Nenhum dos dois passa por modelo de
@@ -80,8 +80,8 @@ A tabela entra em `retencao_politica` como `vida_da_conta` e sai com o aluno pel
 
 Nenhum `%` literal no SQL desta migração: o SQL offline do Alembic o dobra.
 
-Revision ID: 20261102_20
-Revises: 20261102_19
+Revision ID: 20261102_21
+Revises: 20261102_20
 Create Date: 2026-11-02
 """
 
@@ -89,8 +89,8 @@ from __future__ import annotations
 
 from alembic import op
 
-revision = "20261102_20"
-down_revision = "20261102_19"
+revision = "20261102_21"
+down_revision = "20261102_20"
 branch_labels = None
 depends_on = None
 

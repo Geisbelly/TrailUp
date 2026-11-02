@@ -521,14 +521,14 @@ Cada perfil carrega:
   andamento. `hora_origem = 'aluno'` nunca é sobrescrita. A sugestão da IA
   traz `horario_sugerido`, e o gatilho de promoção decide o horário, sempre
   fora do silêncio no fuso do aluno.
-  **Para quem e quando é do banco também** (#149, `20261102_19`): a matriz de
+  **Para quem e quando é do banco também** (#149, `20261102_18`): a matriz de
   Monterrat (`notificacoes_config.perfil_pesos_<tipo>`) barra tipo pelo perfil
   dominante, o silêncio do aluno barra pelo tipo, e `notificacoes_rank_varrer`
   (pg_cron) gera `rank`/`amigo_rank`, nomeando amigo só dentro do corte visível do
   rank. Em modo foco (explícito, `aluno_modo_foco`, ou atenção recente que a API
   grava em `aluno_estado_atencao`), nada é entregue: a pendente vira
   `gatilho = 'fim_foco'` e, na saída, colapsa por tipo, sob o teto diário.
-  **`novo_material` e `sequencia` também saem do banco** (`20261102_20`), por gatilhos que
+  **`novo_material` e `sequencia` também saem do banco** (`20261102_21`), por gatilhos que
   entram por `notificacoes_enfileirar_evento`. O de `novo_material` fica em
   `conteudo_personalizado` e avisa quando o tópico termina de gerar para o perfil
   dominante do aluno. O aviso sai **uma vez por aluno × tópico**
@@ -545,6 +545,15 @@ Cada perfil carrega:
   transação de quem os causa** (`EXCEPTION WHEN OTHERS` → `WARNING`). O cliente só lê e muda `lida_em`
   (GRANT por coluna, sem policy de INSERT). Risco de reprovação **não** notifica: é calculado na hora,
   não há evento de banco para ligar um gatilho.
+- **Painel técnico (#21, `20261102_22`) — só o dono, e a API fica de fora.** `painel_tecnico(horas)` agrega
+  fila, erro e latência por formato e os quatro gatilhos do §11 (`ok`/`alerta`/`sem_dado`), com o **mesmo
+  SLO da #14** (`app_config.personalizacao_kpi_slo`). Confere `app_e_dono()` antes de qualquer leitura e só
+  agrega (nenhum `aluno_id`, nenhum texto de erro). Duas regras de honestidade: **o que o banco não mediu é
+  `sem_dado`, nunca `ok`** (o que a tela não entende também), e o gatilho de custo é um **proxy**
+  (execuções por alvo), porque tokens e custo em dinheiro não são gravados. A divergência de progresso é o
+  resultado das invariantes (`metricas_invariante_resultado`). Disponibilidade = quando cada worker mexeu
+  por último; o banco não enxerga a API. Alerta só visual; avisar sem o dono abrir seria uma varredura
+  agendada gravando em `professor_notificacoes`.
 
 - **Missões sugeridas pela IA (#151, `20261102_20`) — a IA propõe, o banco decide o que entra, o
   professor aprova.** Reaproveita `missoes` (`origem = 'ia'`, `aprovacao = 'pendente'`); o `CHECK`
