@@ -209,7 +209,9 @@ regras de XP. O estado salvo por um deck antigo volta no novo (quiz, checklist,
 decisão, segredo, ideias-chave), e o quiz já premiado não premia de novo.
 Também conferi a narração com a ponte de voz do app (`SCRIPT_PONTE_DE_VOZ`).
 
-Fica fora do deck: dentro do app, o tema segue o aparelho
-(`userInterfaceStyle: automatic`), mas o app é sempre escuro. Num aparelho em
-modo claro, o deck aparece claro dentro do app escuro. Para casar com o app,
-o app pode mandar `?tema=escuro`, e o aluno continua podendo trocar no painel.
+**Dentro do app, o deck abre escuro** (decidido em 02/11). O app é sempre
+escuro, mas o WebView segue o tema do aparelho (`userInterfaceStyle:
+automatic`). Num aparelho em modo claro, o deck aparecia claro dentro do app.
+Agora o `DocumentBlock` manda `?tema=escuro` na URL que vira `baseUrl`
+(`withTemaEscuroDoApp`), e o aluno ainda pode trocar no painel Leitura.
+Fora do app (console, link aberto no navegador), o deck segue o aparelho.
