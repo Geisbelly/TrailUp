@@ -37,6 +37,7 @@ import {
 } from '@/utils/classMapTheme';
 import { buildClasseResumoFallback } from '@/utils/classeMetrics';
 import { findSelectedClass } from '@/utils/classSelection';
+import { manterDetalheAnterior } from '@/utils/detalheDasTurmas';
 import {
   buildSlideBonusDedupeKey,
   computeSlideBonusPercent,
@@ -629,6 +630,8 @@ type TrilhaContextValue = {
   visual: Visual
   grafo: GraphLayout
   reload: () => Promise<void>
+  /** Tenta de novo só o detalhe de uma turma que falhou na escolha de turma. */
+  recarregarTurma: (classeId: number) => Promise<void>
   refreshTopico: (topicoId: number) => Promise<void>
   
   // ✅ Novos métodos
@@ -743,6 +746,8 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   // salvo) no seu useCallback — caso contrario cada marcacao de progresso recria fetchGraphData
   // e realimenta o useEffect que o dispara, num loop que nunca deixa o grafo/progresso estabilizar.
   const classeAtualRef = useRef<Classe | null>(null)
+  const classesRef = useRef<Classe[]>([])
+  useEffect(() => { classesRef.current = classes }, [classes])
   const personalizedTopicsRef = useRef<Record<number, PersonalizedTopicPayload>>({})
   const topicosPendentesPersonalizadosRef = useRef<Set<number>>(new Set())
   classeAtualRef.current = classeAtual
@@ -1015,12 +1020,17 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     setCarregando(true)
     setErro(null)
     try {
-      const lista = await Classe.findAllByAluno(usuario.id, { withDetalhe: true })
+      const lista = manterDetalheAnterior(
+        await Classe.findAllByAluno(usuario.id, { withDetalhe: true }),
+        classesRef.current
+      )
       if (requestId !== classesRequestRef.current) return
       setClasses(lista)
       // O login exige escolha, inclusive com uma única matrícula. Um refresh
       // conserva a escolha, mas nunca escolhe outra turma se ela foi removida.
-      const selected = findSelectedClass(lista, classeAtualRef.current?.classe_id, usuario.id)
+      // Turma sem detalhe não abre: volta para a escolha, onde aparece o aviso dela.
+      const found = findSelectedClass(lista, classeAtualRef.current?.classe_id, usuario.id)
+      const selected = found?.detalheErro ? null : found
       classeAtualRef.current = selected
       setClasseAtual(selected)
     } catch (e: any) {
@@ -1039,12 +1049,28 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const selecionarClasse = useCallback(
     (classeId: number) => {
       const selected = findSelectedClass(classes, classeId, usuario?.id)
-      if (!selected) return
+      if (!selected || selected.detalheErro) return
       classeAtualRef.current = selected
       setClasseAtual(selected)
     },
     [classes, usuario?.id]
   )
+
+  const recarregarTurma = useCallback(async (classeId: number) => {
+    const requestId = classesRequestRef.current
+    const turma = classesRef.current.find((c) => c.classe_id === classeId)
+    if (!turma) return
+    let patch: Partial<Classe>
+    try {
+      patch = { topicos: await Classe.loadDetalhado(turma.aluno_id, turma.classe_id), detalheErro: null }
+    } catch (e: any) {
+      console.warn(`[TrilhaContext] Detalhe da turma ${classeId} falhou de novo (${e?.code ?? 'sem código'}):`, e?.message)
+      patch = { detalheErro: e instanceof Error ? e : new Error(String(e?.message ?? e)) }
+    }
+    // Um "Atualizar turmas" no meio do caminho já trouxe uma lista mais nova.
+    if (requestId !== classesRequestRef.current) return
+    setClasses((prev) => prev.map((c) => (c.classe_id === classeId ? cloneClasse(c, patch) : c)))
+  }, [])
 
   // Esquece a turma escolhida: o `ClassSelectionGate` volta a mostrar a escolha, como no
   // login. Sem isto a única saída da tela de tópicos era encerrar a sessão.
@@ -2404,6 +2430,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       visual,
       grafo,
       reload,
+      recarregarTurma,
       refreshTopico,
       marcarTopicoIniciado,
       marcarTopicoConcluido,
@@ -2439,6 +2466,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       visual,
       grafo,
       reload,
+      recarregarTurma,
       refreshTopico,
       marcarTopicoIniciado,
       marcarTopicoConcluido,

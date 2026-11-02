@@ -2,6 +2,7 @@
 import { getSessionSafe, supabase } from '@/database/supabase'
 import { buildClasseAcademicMetrics } from '@/utils/classeMetrics'
 import { mapClasseResumoRow } from '@/utils/classeResumo'
+import { carregarDetalhesDasTurmas } from '@/utils/detalheDasTurmas'
 import { Atividade } from './Atividade'
 import { ClasseResumo } from './ClasseResumo'
 import { Conteudo } from './Conteudo'
@@ -81,6 +82,8 @@ function mergeMediaCandidates(...values: unknown[]) {
 export class Classe {
   public resumo: ClasseResumo | null = null
   public topicos: Topico[] = []
+  /** O detalhe (tópicos) desta turma não carregou; `topicos` está vazio e a escolha de turma mostra o aviso dela. */
+  public detalheErro: Error | null = null
 
   private constructor(
     public readonly aluno_id: string,
@@ -145,14 +148,23 @@ export class Classe {
       return rows.map(Classe.fromResumoRow)
     }
 
-    const promises = rows.map(async (row: any) => {
-      const classe = new Classe(row.aluno_id, row.classe_id)
-      classe.resumo = Classe.mapResumoRow(row)
-      classe.topicos = await Classe.loadDetalhado(row.aluno_id, row.classe_id)
+    // Uma turma que falha (statement timeout no pico da abertura) fica com o erro
+    // em `detalheErro`; as outras aparecem. Ver `utils/detalheDasTurmas.ts`.
+    const detalhes = await carregarDetalhesDasTurmas(rows, (row: any) =>
+      Classe.loadDetalhado(row.aluno_id, row.classe_id)
+    )
+    return rows.map((row: any, i: number) => {
+      const classe = Classe.fromResumoRow(row)
+      classe.topicos = detalhes[i].topicos
+      classe.detalheErro = detalhes[i].erro
+      if (classe.detalheErro) {
+        console.warn(
+          `[Classe] Detalhe da turma ${row.classe_id} não carregou (${(classe.detalheErro as any).code ?? 'sem código'}):`,
+          classe.detalheErro.message
+        )
+      }
       return classe
     })
-
-    return Promise.all(promises)
   }
 
   static async findAllForCurrentUser(opts: { withDetalhe?: boolean } = {}): Promise<Classe[]> {
@@ -169,6 +181,7 @@ export class Classe {
     ])
     this.resumo = resumo
     this.topicos = topicos
+    this.detalheErro = null
   }
 
   /** Recarrega somente o resumo calculado pelo banco. */

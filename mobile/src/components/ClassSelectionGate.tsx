@@ -9,7 +9,7 @@ import { isTopicOutsideSelectedClass } from "@/utils/classSelection";
 
 /** Não monta telas de estudo, timers ou o tour antes da escolha da turma. */
 export function ClassSelectionGate({ children }: { children: React.ReactNode }) {
-  const { classeAtual, classes, carregando, erro, perfil, selecionarClasse, reload } = useTrilha();
+  const { classeAtual, classes, carregando, erro, perfil, selecionarClasse, reload, recarregarTurma } = useTrilha();
   const pathname = usePathname();
   const desktop = useDesktopWeb();
 
@@ -26,9 +26,9 @@ export function ClassSelectionGate({ children }: { children: React.ReactNode }) 
   if (!classeAtual) {
     // Na web em tela larga (#346, protótipo v4) a escolha aparece dentro da moldura, em cartões.
     if (desktop) {
-      return <EscolhaTurmaDesktop classes={classes} carregando={carregando} erro={erro} perfil={perfil} onSelect={selecionarClasse} onRetry={reload} />;
+      return <EscolhaTurmaDesktop classes={classes} carregando={carregando} erro={erro} perfil={perfil} onSelect={selecionarClasse} onRetry={reload} onRetryTurma={recarregarTurma} />;
     }
-    return <SelecionarTurmaScreen classes={classes} carregando={carregando} erro={erro} perfil={perfil} onSelect={selecionarClasse} onRetry={reload} />;
+    return <SelecionarTurmaScreen classes={classes} carregando={carregando} erro={erro} perfil={perfil} onSelect={selecionarClasse} onRetry={reload} onRetryTurma={recarregarTurma} />;
   }
 
   // Preserva links de tópicos da turma escolhida. Se o aluno escolheu outra,

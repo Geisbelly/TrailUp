@@ -15,6 +15,8 @@ type Props = {
   perfil: string;
   onSelect: (classeId: number) => void;
   onRetry: () => Promise<void>;
+  /** Tenta de novo só a turma cujo detalhe não carregou. */
+  onRetryTurma: (classeId: number) => Promise<void>;
 };
 
 /** % de tópicos concluídos da turma. É só o que cabe aqui: o cálculo completo da Trilha usa o progresso personalizado, que esta tela não tem. */
@@ -30,9 +32,19 @@ function percentualDaTurma(classe: Classe): number {
  * do perfil ao fundo, o título à esquerda e, em cada turma, a matéria numa pílula, o
  * professor, o progresso e o botão "Entrar na turma".
  */
-export default function SelecionarTurmaScreen({ classes, carregando, erro, perfil, onSelect, onRetry }: Props) {
+export default function SelecionarTurmaScreen({ classes, carregando, erro, perfil, onSelect, onRetry, onRetryTurma }: Props) {
   const palette = getProfileShellPalette(perfil);
   const [saindo, setSaindo] = useState(false);
+  const [tentando, setTentando] = useState<number[]>([]);
+
+  const tentarTurma = async (classeId: number) => {
+    setTentando((ids) => [...ids, classeId]);
+    try {
+      await onRetryTurma(classeId);
+    } finally {
+      setTentando((ids) => ids.filter((id) => id !== classeId));
+    }
+  };
   const [erroSaida, setErroSaida] = useState<string | null>(null);
 
   const sair = async () => {
@@ -87,6 +99,38 @@ export default function SelecionarTurmaScreen({ classes, carregando, erro, perfi
             {classes.map((classe) => {
               const materia = classe.resumo?.materia_nome || "Turma";
               const professor = classe.resumo?.professor_nome;
+              if (classe.detalheErro) {
+                // Só esta turma não carregou: as outras seguem na lista e esta tem a própria nova tentativa.
+                const emTentativa = tentando.includes(classe.classe_id);
+                return (
+                  <View key={classe.classe_id} style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                    <View style={[styles.materia, { backgroundColor: palette.accentMuted, borderColor: palette.accentSoft }]}>
+                      <Text style={[styles.materiaTexto, { color: palette.accent }]}>{materia.toUpperCase()}</Text>
+                    </View>
+                    <Text style={[styles.cardTitle, { color: palette.text }]}>{materia}</Text>
+                    <Text style={[styles.professor, { color: palette.textMuted }]}>
+                      {professor ? `Prof. ${professor} · ` : ""}Turma {classe.classe_id}
+                    </Text>
+                    <View style={styles.avisoTurma}>
+                      <MaterialCommunityIcons name="alert-circle-outline" size={18} color={palette.textMuted} />
+                      <Text accessibilityRole="alert" style={[styles.professor, styles.avisoTurmaTexto, { color: palette.textMuted }]}>
+                        Não conseguimos abrir esta turma agora.
+                      </Text>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Tentar de novo a turma ${classe.classe_id}`}
+                      disabled={saindo || emTentativa}
+                      onPress={() => { void tentarTurma(classe.classe_id); }}
+                      style={[styles.entrar, { borderColor: palette.accent, opacity: saindo ? 0.5 : 1 }]}
+                    >
+                      {emTentativa
+                        ? <ActivityIndicator size="small" color={palette.accent} />
+                        : <Text style={[styles.entrarTexto, { color: palette.text }]}>Tentar de novo</Text>}
+                    </Pressable>
+                  </View>
+                );
+              }
               const progresso = percentualDaTurma(classe);
               return (
                 <Pressable
@@ -173,6 +217,8 @@ const styles = StyleSheet.create({
   progresso: { fontFamily: FontFamily.interMedium, fontSize: 13 },
   entrar: { minHeight: 48, borderWidth: 1, borderRadius: 8, alignItems: "center", justifyContent: "center", marginTop: 6 },
   entrarTexto: { fontFamily: FontFamily.interMedium, fontSize: 14.5, fontWeight: "700" },
+  avisoTurma: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
+  avisoTurmaTexto: { flex: 1 },
   action: { minHeight: 48, borderWidth: 1, borderColor: "transparent", borderRadius: 12, padding: 12, alignItems: "center", justifyContent: "center" },
   actionText: { fontFamily: FontFamily.interMedium, fontSize: 14 },
   sair: { flexDirection: "row", gap: 8 },

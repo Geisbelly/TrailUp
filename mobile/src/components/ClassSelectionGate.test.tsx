@@ -18,6 +18,7 @@ let pathname = "/";
 let loading = false;
 let error: Error | null = null;
 let retries = 0;
+let turmasTentadas: number[] = [];
 let childMounts = 0;
 let logoutScope: string | null = null;
 const buttons: { label: string; onPress: () => void }[] = [];
@@ -51,6 +52,7 @@ mockModule("@/context/TrilhaContext", {
     classeAtual: selected, classes: availableClasses, carregando: loading, erro: error, perfil: "seeker",
     selecionarClasse: (id: number) => { selected = findSelectedClass(availableClasses, id, "aluno"); },
     reload: async () => { retries += 1; },
+    recarregarTurma: async (id: number) => { turmasTentadas.push(id); },
   }),
 });
 const { ClassSelectionGate } = require("./ClassSelectionGate") as typeof import("./ClassSelectionGate");
@@ -62,7 +64,7 @@ function render() {
 
 test.beforeEach(() => {
   selected = null; availableClasses = classes; pathname = "/";
-  loading = false; error = null; retries = 0; childMounts = 0; logoutScope = null;
+  loading = false; error = null; retries = 0; childMounts = 0; logoutScope = null; turmasTentadas = [];
 });
 
 test("antes da escolha não monta estudo e mostra as turmas com matéria e professor", () => {
@@ -117,6 +119,21 @@ test("falha de rede permite tentar novamente e não exibe turmas antigas", () =>
   buttons[0].onPress();
   assert.equal(retries, 1);
   assert.equal(childMounts, 0);
+});
+
+test("turma cujo detalhe falhou tem aviso e nova tentativa só dela, e as outras seguem", () => {
+  availableClasses = [classes[0], { ...classes[1], topicos: [], detalheErro: new Error("57014") }] as typeof classes;
+  const html = render();
+  assert.doesNotMatch(html, /Não foi possível carregar suas turmas/);
+  assert.match(html, /Matemática/);
+  assert.match(html, /História/);
+  assert.match(html, /Não conseguimos abrir esta turma agora/);
+  assert.equal(buttons.some((button) => button.label.startsWith("Entrar em História")), false);
+  buttons.find((button) => button.label === "Tentar de novo a turma 54")!.onPress();
+  assert.deepEqual(turmasTentadas, [54]);
+  assert.equal(retries, 0);
+  buttons.find((button) => button.label.includes("turma 32"))!.onPress();
+  assert.equal(selected?.classe_id, 32);
 });
 
 test("link direto aguarda escolha e retoma o tópico quando pertence à turma", () => {
