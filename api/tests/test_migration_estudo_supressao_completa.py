@@ -1,4 +1,4 @@
-"""`20261102_24`: a supressão do estudo vale para a célula inteira (#17).
+"""`20261102_25`: a supressão do estudo vale para a célula inteira (#17).
 
 O comportamento está em `test_e2e_estudo_supressao_completa.py` (Postgres local). Aqui fica o que dá
 para travar sem banco.
@@ -17,8 +17,8 @@ VERSOES = Path(__file__).resolve().parents[1] / "alembic" / "versions"
 
 
 def _modulo():
-    path = VERSOES / "20261102_24_estudo_supressao_completa.py"
-    spec = importlib.util.spec_from_file_location("m_20261102_24_teste", path)
+    path = VERSOES / "20261102_25_estudo_supressao_completa.py"
+    spec = importlib.util.spec_from_file_location("m_20261102_25_teste", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -26,14 +26,14 @@ def _modulo():
 
 def _upgrade_sql() -> str:
     output = StringIO()
-    migrations.command.upgrade(_offline_alembic_config(output), "20261102_23:20261102_24", sql=True)
+    migrations.command.upgrade(_offline_alembic_config(output), "20261102_24:20261102_25", sql=True)
     return output.getvalue().replace("%%", "%")
 
 
-def test_a_arvore_continua_com_uma_cabeca_e_vem_depois_da_23() -> None:
+def test_a_arvore_continua_com_uma_cabeca_e_vem_depois_da_24() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
     assert len(scripts.get_heads()) == 1
-    assert scripts.get_revision("20261102_24").down_revision == "20261102_23"
+    assert scripts.get_revision("20261102_25").down_revision == "20261102_24"
 
 
 def test_todo_campo_da_celula_passa_pela_mesma_regra() -> None:

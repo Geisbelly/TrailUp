@@ -42,9 +42,30 @@ function rich(value: unknown): string {
     .replace(/`([^`\n]+)`/g, '<code>$1</code>');
 }
 
-/** Valor para data-* que o script le de volta com decodeURIComponent. */
-function encodedAttr(value: unknown): string {
-  return escapeHtmlAttribute(encodeURIComponent(String(value ?? '')));
+/**
+ * Valor para data-*: o dataset devolve o texto original, sem precisar de
+ * encodeURIComponent (que lanca URIError com surrogate solitario e derrubava
+ * o render inteiro).
+ */
+function dataAttr(value: unknown): string {
+  return escapeHtmlAttribute(value);
+}
+
+/** Texto do modelo sem a marcacao leve (para alt, title e leitor de tela). */
+function plain(value: unknown): string {
+  return String(value ?? '').split('**').join('').split('`').join('');
+}
+
+/**
+ * Divisor SVG vindo do estudio (endpoint de decoracoes). Unico campo que
+ * entra como marcacao: so' passa SVG sem script, handler, link ou HTML
+ * embutido; o resto cai no divisor padrao do perfil.
+ */
+function safeDividerSvg(svg: unknown): string {
+  const text = String(svg ?? '').trim();
+  if (!/^<svg[\s>]/i.test(text) || !/<\/svg>$/i.test(text)) return '';
+  if (/<\s*(script|foreignObject|iframe|object|embed|a|use|image|style)\b|\son\w+\s*=|href\s*=|javascript:/i.test(text)) return '';
+  return text;
 }
 
 /**
@@ -104,17 +125,17 @@ export function generateThemedSlideHtml(
   const titleId = `slide-title-${idx}`;
   const guideName = s.characterGuide?.name || identity.guideName;
   const guideSpeech = s.characterGuide?.speechText || s.thematicStorytelling?.narrativeBeat || '';
-  const dividerSvg = s.aiDecorations?.customDividerSvg || generateMedievalSvgDivider(deck.targetProfile);
+  const dividerSvg = safeDividerSvg(s.aiDecorations?.customDividerSvg) || generateMedievalSvgDivider(deck.targetProfile);
   const dividerHtml = dividerSvg ? `<div class="slide-divider" aria-hidden="true">${dividerSvg}</div>` : '';
   const paragraphs = s.contentParagraphs || [];
 
   // Imagem(ns) de referencia do professor. Legenda nomeia o que a imagem
   // ilustra (subtopic/title), nunca um rodape generico.
-  const referenceImageCaption = escapeHtmlText(s.subtopic || s.title || 'Ilustração do tópico');
+  const referenceImageCaption = rich(s.subtopic || s.title || 'Ilustração do tópico');
   const allReferenceImages = s.referenceImageDataUri
     ? [s.referenceImageDataUri, ...(s.additionalReferenceImageDataUris || [])]
     : [];
-  const referenceImageAlt = escapeHtmlAttribute(s.subtopic || s.title);
+  const referenceImageAlt = escapeHtmlAttribute(plain(s.subtopic || s.title));
   const referenceImageHtml = allReferenceImages.length > 1
     ? `
       <figure class="figure">
@@ -164,7 +185,7 @@ export function generateThemedSlideHtml(
     const q = resolvedQuiz || {
       question: s.contentParagraphs && s.contentParagraphs[0] ? s.contentParagraphs[0] : 'Desafio prático: escolha a melhor abordagem.',
       options: [
-        { id: 'opt-1', text: s.keyTakeaways && s.keyTakeaways[0] ? s.keyTakeaways[0] : 'Aplicar os padrões e boas práticas recomendadas.', isCorrect: true, explanation: 'Isso! Essa é a abordagem recomendada.' },
+        { id: 'opt-1', text: s.keyTakeaways && s.keyTakeaways[0] ? s.keyTakeaways[0] : 'Aplicar os padrões e as boas práticas recomendadas.', isCorrect: true, explanation: 'Isso! Essa é a abordagem recomendada.' },
         { id: 'opt-2', text: 'Ignorar as boas práticas e seguir sem testar.', isCorrect: false, explanation: 'Essa escolha deixa o resultado frágil e arriscado.' },
         { id: 'opt-3', text: 'Pular a verificação final.', isCorrect: false, explanation: 'Sem verificar, não há como saber se deu certo.' },
       ],
@@ -188,7 +209,7 @@ export function generateThemedSlideHtml(
                 class="quiz-option-btn option"
                 id="opt-${escapeHtmlAttribute(optId)}"
                 aria-pressed="false"
-                data-explanation="${encodedAttr(opt.explanation || '')}"
+                data-explanation="${dataAttr(opt.explanation || '')}"
                 onclick="handleQuizAnswer(this, ${isCorrectBool}, this.dataset.explanation)"
               >
                 <span class="quiz-letter-badge option-letter" aria-hidden="true">${letter}</span>
@@ -242,7 +263,7 @@ export function generateThemedSlideHtml(
               class="decision-card-btn choice"
               aria-pressed="false"
               data-choice-id="${escapeHtmlAttribute(c.id)}"
-              data-outcome="${encodedAttr(c.outcome)}"
+              data-outcome="${dataAttr(c.outcome)}"
               onclick="selectDecisionPath(this, this.dataset.choiceId, ${Number(c.xpReward) || 100}, this.dataset.outcome)"
             >
               <span class="choice-top">
@@ -299,7 +320,7 @@ export function generateThemedSlideHtml(
         <div class="tile-grid">
           ${s.bentoCards.map((b) => `
             <div class="tile${b.highlight ? ' is-focus' : ''}">
-              ${b.tag || b.stat ? `<div class="tile-top">${b.tag ? `<span class="tag">${escapeHtmlText(b.tag)}</span>` : '<span></span>'}${b.stat ? `<span class="metric-value" style="font-size: 1.125rem">${escapeHtmlText(b.stat)}</span>` : ''}</div>` : ''}
+              ${b.tag || b.stat ? `<div class="tile-top">${b.tag ? `<span class="tag">${rich(b.tag)}</span>` : '<span></span>'}${b.stat ? `<span class="metric-value" style="font-size: 1.125rem">${escapeHtmlText(b.stat)}</span>` : ''}</div>` : ''}
               <p class="tile-title">${rich(b.title)}</p>
               <p class="tile-desc">${rich(b.description)}</p>
             </div>`).join('')}
@@ -316,7 +337,7 @@ export function generateThemedSlideHtml(
             <div class="tile${col.highlight ? ' is-focus' : ''}">
               <div class="tile-top">
                 <p class="tile-title">${rich(col.title)}</p>
-                ${col.badge ? `<span class="tag">${escapeHtmlText(col.badge)}</span>` : ''}
+                ${col.badge ? `<span class="tag">${rich(col.badge)}</span>` : ''}
               </div>
               ${col.subtitle ? `<p class="tile-desc">${rich(col.subtitle)}</p>` : ''}
               <ul class="tile-list">
@@ -342,12 +363,14 @@ export function generateThemedSlideHtml(
         </div>
       </section>`;
   }
-  // I. Ideias-chave (quando nao ha outro widget)
-  else if (s.keyTakeaways && s.keyTakeaways.length > 0 && s.type !== 'epic_conclusion' && s.type !== 'reward_certificate') {
+  // I. Ideias-chave (quando nao ha outro widget). Vale tambem no fechamento:
+  // la' sempre foram marcaveis e davam XP (25 cada), e o app soma esse XP.
+  else if (s.keyTakeaways && s.keyTakeaways.length > 0) {
+    const takeawaysLabel = s.type === 'epic_conclusion' || s.type === 'reward_certificate' ? 'O que levar deste tópico' : 'Ideias-chave';
     interactiveWidgetHtml = `
-      <section class="widget" aria-label="Ideias-chave">
+      <section class="widget" aria-label="${takeawaysLabel}">
         <div class="widget-head">
-          <p class="widget-label">Ideias-chave</p>
+          <p class="widget-label">${takeawaysLabel}</p>
           <p class="widget-hint">Marque o que você domina (+25 XP)</p>
         </div>
         <ul class="option-list">
@@ -395,7 +418,7 @@ export function generateThemedSlideHtml(
           <span class="xp-tag">+${Number(uniqueInteractive.xpReward) || 100} XP</span>
         </div>
         <h3 class="widget-title" id="unique-title-${idx}">${rich(uniqueInteractive.title)}</h3>
-        ${uniqueInteractive.badge ? `<p class="widget-hint">${escapeHtmlText(uniqueInteractive.badge)}</p>` : ''}
+        ${uniqueInteractive.badge ? `<p class="widget-hint">${rich(uniqueInteractive.badge)}</p>` : ''}
         <p style="margin: 0">${rich(uniqueInteractive.prompt)}</p>
         ${uniqueInteractive.contextHint ? `<p class="widget-hint">${rich(uniqueInteractive.contextHint)}</p>` : ''}
         ${guidanceItems.length > 0 ? `
@@ -450,7 +473,7 @@ export function generateThemedSlideHtml(
 
   const stickyNoteHtml = s.stickyNote ? `
     <div class="note" role="note">
-      <span class="note-label">${escapeHtmlText(s.stickyNote.badge || 'Nota')}</span>
+      <span class="note-label">${rich(s.stickyNote.badge || 'Nota')}</span>
       <p>${rich(s.stickyNote.text)}</p>
     </div>` : '';
 
@@ -492,7 +515,7 @@ export function generateThemedSlideHtml(
           ${dividerHtml}
         </header>
         <div class="centered">
-          ${guideCalloutHtml(guideName, guideSpeech)}
+          ${guideCalloutHtml(guideName, guideSpeech, s.characterGuide?.title)}
           <div class="prose prose--lead">
             ${paragraphs.map((p) => `<p>${rich(p)}</p>`).join('')}
           </div>
@@ -501,7 +524,6 @@ export function generateThemedSlideHtml(
   }
   // --- Fechamento --------------------------------------------------------
   else if (s.type === 'epic_conclusion' || s.type === 'reward_certificate') {
-    const recap = (s.keyTakeaways || []).filter(Boolean);
     bodyHtml = `
       <article class="slide slide--finale" aria-labelledby="${titleId}">
         <header class="hero">
@@ -514,14 +536,9 @@ export function generateThemedSlideHtml(
           <div class="prose prose--lead">
             <p>${rich((s.contentParagraphs && s.contentParagraphs[0]) || `Você completou a trilha ${deck.title}.`)}</p>
           </div>
-          ${recap.length > 0 ? `
-            <section class="card" aria-label="O que levar deste tópico">
-              <p class="widget-label" style="margin-bottom: 10px">O que levar deste tópico</p>
-              <ul class="takeaway-recap">${recap.map((t) => `<li>${UI_ICONS.check}<span>${rich(t)}</span></li>`).join('')}</ul>
-            </section>` : ''}
+          ${interactiveWidgetHtml}
           ${quoteHtml}
           <div><button type="button" onclick="goToSlide(0)" class="btn btn-secondary">${UI_ICONS.restart}<span>Revisar trilha</span></button></div>
-          ${interactiveWidgetHtml}
         </div>
       </article>`;
   }
@@ -578,7 +595,7 @@ export function generateThemedSlideHtml(
     bodyHtml = `
       <article class="slide${isSparse ? ' slide--sparse' : ''}" aria-labelledby="${titleId}">
         <header class="slide-head">
-          ${s.subtopic ? `<p class="slide-kicker">${escapeHtmlText(s.subtopic)}</p>` : ''}
+          ${s.subtopic ? `<p class="slide-kicker">${rich(s.subtopic)}</p>` : ''}
           <h2 class="slide-title" id="${titleId}" tabindex="-1">${rich(s.title)}</h2>
           ${s.subtitle ? `<p class="slide-subtitle">${rich(s.subtitle)}</p>` : ''}
           ${s.pedagogicalObjective ? `<p class="slide-objective"><strong>Objetivo:</strong> ${rich(s.pedagogicalObjective)}</p>` : ''}
@@ -608,7 +625,7 @@ export function generateInteractiveHtml(
   // So' no cabecalho, ao lado do XP ja obtido (ver
   // docs/superpowers/specs/2026-08-24-capa-final-redesign-design.md).
   const estimatedTotalXp = (totalSlides || 8) * 150;
-  const slideTitles = (deck.slides || []).map((sl) => String(sl.title || ''));
+  const slideTitles = (deck.slides || []).map((sl) => plain(sl.title));
 
   return `<!DOCTYPE html>
 <html lang="pt-BR" translate="no" class="notranslate">
@@ -617,7 +634,7 @@ export function generateInteractiveHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="google" content="notranslate" />
   <meta name="color-scheme" content="dark light" />
-  <title>${escapeHtmlText(deck.title)} · TrailUp (${escapeHtmlText(identity.label)})</title>
+  <title>${escapeHtmlText(plain(deck.title))} · TrailUp (${escapeHtmlText(identity.label)})</title>
   <script>
     // Antes do primeiro desenho: tema e ajustes de leitura, sem piscar.
     (function () {
@@ -655,7 +672,7 @@ export function generateInteractiveHtml(
   </style>
 </head>
 <body class="tu-deck">
-  <a class="sr-only" href="#slide-stage">Ir para o conteúdo do slide</a>
+  <a class="skip-link" href="#slide-stage" onclick="event.preventDefault(); document.getElementById('slide-stage').focus();">Ir para o conteúdo do slide</a>
   <div class="deck-container" id="deck-wrapper">
     <canvas id="magic-particle-canvas" aria-hidden="true"></canvas>
 
@@ -664,7 +681,7 @@ export function generateInteractiveHtml(
         <span class="profile-emblem" title="Perfil ${escapeHtmlAttribute(identity.label)}">${emblemSvg(deck.targetProfile)}</span>
         <div class="deck-titles">
           <p class="deck-kicker">${escapeHtmlText(identity.label)} · ${escapeHtmlText(identity.styleName)}</p>
-          <h1 class="deck-title deck-header-title" title="${escapeHtmlAttribute(deck.title)}">${escapeHtmlText(deck.title)}</h1>
+          <h1 class="deck-title deck-header-title" title="${escapeHtmlAttribute(plain(deck.title))}">${rich(deck.title)}</h1>
         </div>
       </div>
 
@@ -1046,7 +1063,7 @@ export function generateInteractiveHtml(
       const container = btnEl.closest('.quiz-widget-container') || btnEl.closest('#slide-stage') || document;
       const feedback = container.querySelector('.quiz-feedback-box');
       let explanation = '';
-      try { explanation = decodeURIComponent(explanationEncoded || ''); } catch (e) { explanation = String(explanationEncoded || ''); }
+      explanation = String(explanationEncoded || '');
       const rect = btnEl.getBoundingClientRect();
       const optId = btnEl.id ? btnEl.id.replace('opt-', '') : '';
 
@@ -1157,12 +1174,16 @@ export function generateInteractiveHtml(
       const rect = el.getBoundingClientRect();
       const realItemId = itemId || (el.id ? el.id.replace('chk-', '') : '');
 
+      // Chave por slide: o modelo repete ids (c1, c2...) entre slides, e a
+      // chave so' pelo id abria o segundo checklist ja marcado.
+      const storeKey = currentIndex + ':' + realItemId;
+
       if (isCompleted) {
-        savedData.checklist[realItemId] = false;
+        savedData.checklist[storeKey] = false;
         totalXp = Math.max(0, totalXp - (xp || 50));
         setCheckRow(el, false);
       } else {
-        savedData.checklist[realItemId] = true;
+        savedData.checklist[storeKey] = true;
         totalXp += (xp || 50);
         reportProgressToHost('slide:' + currentIndex + ':checklist:' + realItemId, xp || 50, xp || 50);
         playAudio('checklist');
@@ -1273,7 +1294,7 @@ export function generateInteractiveHtml(
       }
 
       let outcome = '';
-      try { outcome = decodeURIComponent(outcomeEncoded || ''); } catch (e) { outcome = String(outcomeEncoded || ''); }
+      outcome = String(outcomeEncoded || '');
       savedData.decisions[currentIndex] = { choiceId, xpReward, outcome };
       persistState();
 
@@ -1382,10 +1403,19 @@ export function generateInteractiveHtml(
       const focusTarget = id === 'dlg-toc' ? dlg.querySelector('[aria-current="true"]') : dlg.querySelector('input:checked');
       if (focusTarget) focusTarget.focus();
     }
-    function closeDialog(id) {
+    function closeDialog(id, keepFocus) {
       const dlg = document.getElementById(id);
-      if (!dlg) return;
-      if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
+      if (!dlg || !dlg.hasAttribute('open')) return;
+      // Quem fecha para levar o foco a outro lugar (o sumario leva ao titulo
+      // do slide) nao quer o foco de volta no botao que abriu o dialogo: o
+      // evento close chega depois e o roubaria.
+      if (keepFocus) dialogReturnFocus = null;
+      if (typeof dlg.close === 'function') dlg.close();
+      else {
+        // Navegador sem <dialog> (iOS < 15.4): fecha e avisa como o nativo.
+        dlg.removeAttribute('open');
+        dlg.dispatchEvent(new Event('close'));
+      }
     }
     document.querySelectorAll('.tu-dialog').forEach((dlg) => {
       dlg.addEventListener('close', () => {
@@ -1408,10 +1438,10 @@ export function generateInteractiveHtml(
         num.className = 'toc-num';
         num.textContent = String(i + 1);
         const text = document.createElement('span');
-        text.textContent = title.split('**').join('').split('\`').join('');
+        text.textContent = title;
         btn.appendChild(num);
         btn.appendChild(text);
-        btn.addEventListener('click', () => { closeDialog('dlg-toc'); goToSlide(i, true); });
+        btn.addEventListener('click', () => { closeDialog('dlg-toc', true); goToSlide(i, true); });
         li.appendChild(btn);
         list.appendChild(li);
       });
@@ -1460,7 +1490,9 @@ export function generateInteractiveHtml(
       // 2. Checklist
       stage.querySelectorAll('.chk-item-row').forEach(el => {
         const id = el.dataset.itemId || el.id.replace('chk-', '');
-        if (savedData.checklist[id]) setCheckRow(el, true);
+        const bySlide = savedData.checklist[currentIndex + ':' + id];
+        // Estado salvo antes da chave por slide: so' o id.
+        if (bySlide === true || (bySlide === undefined && savedData.checklist[id])) setCheckRow(el, true);
       });
 
       // 3. Ideias-chave
@@ -1544,7 +1576,7 @@ export function generateInteractiveHtml(
       }
 
       if (!firstRender) {
-        announce('Slide ' + (currentIndex + 1) + ' de ' + deck.slides.length + ': ' + (SLIDE_TITLES[currentIndex] || '').split('**').join(''));
+        announce('Slide ' + (currentIndex + 1) + ' de ' + deck.slides.length + ': ' + (SLIDE_TITLES[currentIndex] || ''));
         if (moveFocus) {
           const heading = stage ? stage.querySelector('.slide-title') : null;
           if (heading) heading.focus({ preventScroll: true });
@@ -1587,8 +1619,17 @@ export function generateInteractiveHtml(
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
       const t = e.target;
       const tag = t && t.tagName ? t.tagName.toLowerCase() : '';
+      const openDlg = document.querySelector('.tu-dialog[open]');
+      if (openDlg) {
+        // O <dialog> nativo ja fecha com Esc; isto cobre o navegador sem ele
+        // (o foco costuma estar num radio do painel, por isso vem antes do
+        // filtro de campo de texto).
+        if (e.key === 'Escape' && typeof openDlg.close !== 'function') closeDialog(openDlg.id);
+        return;
+      }
       if (tag === 'input' || tag === 'textarea' || tag === 'select' || (t && t.isContentEditable)) return;
-      if (document.querySelector('.tu-dialog[open]')) return;
+      // Bloco de codigo rolavel: as setas rolam o codigo, nao trocam de slide.
+      if (t && t.closest && t.closest('pre')) return;
       if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); nextSlide(true); }
       else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prevSlide(true); }
       else if (e.key === 'Home') { e.preventDefault(); goToSlide(0, true); }

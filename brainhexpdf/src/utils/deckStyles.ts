@@ -326,9 +326,6 @@ export function getDeckScopedCss(deck: Pick<DeckData, 'targetProfile'>): string 
     .tu-deck .reflect-q { padding: 14px 16px; }
     .tu-deck .reflect-q p { margin: 0 0 10px; font-weight: 700; }
     .tu-deck .reflect-lines { height: 56px; background-image: repeating-linear-gradient(to bottom, transparent 0 26px, var(--border) 26px 28px); }
-    .tu-deck .takeaway-recap { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; text-align: start; }
-    .tu-deck .takeaway-recap li { display: flex; gap: 10px; align-items: flex-start; }
-    .tu-deck .takeaway-recap svg { flex: none; width: 20px; height: 20px; margin-top: 3px; color: var(--accent); }
 
     /* Animacoes (desligadas por prefers-reduced-motion ou pela escolha do aluno) */
     .tu-deck .slide-enter-next { animation: tuSlideNext .32s cubic-bezier(.16, 1, .3, 1) both; }
@@ -435,6 +432,13 @@ export function getDeckShellCss(): string {
       flex-shrink: 0;
     }
     #slide-stage:focus { outline: none; }
+    /* Atalho de teclado para o conteudo: invisivel ate receber foco. */
+    .tu-deck .skip-link {
+      position: absolute; left: 12px; top: 12px; z-index: 70; padding: 10px 14px; border-radius: 12px;
+      background: var(--accent); color: var(--on-accent); font-weight: 800; text-decoration: none;
+      transform: translateY(-200%);
+    }
+    .tu-deck .skip-link:focus { transform: none; }
 
     .tu-deck .deck-footer {
       display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none;
@@ -452,6 +456,16 @@ export function getDeckShellCss(): string {
     @media (max-width: 400px) {
       .tu-deck .deck-titles { display: none; }
     }
+    /* Paisagem no celular: cabecalho e rodape comiam 2/3 da altura. Os alvos
+       continuam com 44px; so' sai o respiro e o rotulo do perfil. */
+    @media (max-height: 480px) {
+      .tu-deck .deck-header { min-height: 0; padding-top: 4px; padding-bottom: 4px; }
+      .tu-deck .deck-header .deck-kicker { display: none; }
+      .tu-deck .profile-emblem { width: 36px; height: 36px; }
+      .tu-deck .deck-footer { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+      .tu-deck .deck-footer .btn { min-height: 44px; padding-top: 6px; padding-bottom: 6px; }
+      #slide-stage { padding-top: 14px; padding-bottom: 16px; }
+    }
 
     .tu-deck .tu-dialog {
       width: min(560px, calc(100vw - 24px)); max-height: min(85vh, 680px); padding: 0;
@@ -459,6 +473,10 @@ export function getDeckShellCss(): string {
       box-shadow: 0 30px 80px -30px rgb(0 0 0 / .6);
     }
     .tu-deck .tu-dialog::backdrop { background: rgb(0 0 0 / .55); }
+    /* Navegador sem <dialog> (iOS < 15.4): sem isto os dois dialogos ficavam
+       sempre visiveis no pe do deck. Com showModal, o nativo ja faz o mesmo. */
+    .tu-deck .tu-dialog:not([open]) { display: none; }
+    .tu-deck .tu-dialog[open] { position: fixed; inset: 0; margin: auto; z-index: 60; height: fit-content; }
     .tu-deck .dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 14px 6px 18px; }
     .tu-deck .dialog-title { margin: 0; font-size: calc(var(--scale) * 1.25rem); font-weight: 800; }
     .tu-deck .dialog-body { padding: 8px 18px 18px; overflow: auto; max-height: calc(min(85vh, 680px) - 70px); }

@@ -173,3 +173,43 @@ passo separado, com aprovação.
 - Tailwind CSS, *Play CDN* (feito para desenvolvimento, não para produção):
   https://tailwindcss.com/docs/installation/play-cdn
 - MDN, `prefers-color-scheme` e `prefers-reduced-motion`.
+
+## Revisão depois do merge (#863)
+
+Comparei a versão anterior e a nova slide a slide, no navegador. Usei os 7
+decks de exemplo e um deck sintético com todos os ramos (batalha, cartões,
+números, comparação, inspeção de código, quiz e checklist vindos do
+`interactiveElement`, reflexões e fechamento). Saíram estas correções:
+
+- **XP perdido no fechamento.** As ideias-chave tinham virado lista estática, e
+  o aluno perdia os 25 XP de cada uma. Elas voltaram a ser marcáveis. Agora as
+  fontes de XP por slide (quantidade e valor) batem com a versão anterior.
+- **O atalho "Ir para o conteúdo" tirava o deck do iframe do console.** Num
+  `srcdoc`, o `#` é resolvido pela página mãe. O atalho agora só move o foco.
+- **Render quebrava com caractere cortado ao meio** (surrogate solitário, que
+  o `slice` do sanitizador de quiz pode produzir). O `encodeURIComponent` dos
+  `data-*` saiu, porque o `dataset` já devolve o texto original.
+- **O divisor SVG do estúdio era o único campo que entrava sem filtro.** Agora
+  só passa SVG sem script, handler, link ou HTML embutido.
+- **O checklist guardava o estado só pelo id do item.** Como o modelo repete
+  `c1`, `c2`… entre slides, o segundo checklist abria marcado. A chave agora é
+  por slide, e o estado salvo antes da mudança continua valendo.
+- **iOS anterior ao 15.4, sem `<dialog>`.** Os dois diálogos ficavam abertos no
+  pé do deck. O CSS esconde o diálogo fechado, e o Esc fecha.
+- **Foco e teclado.**
+  - O Sumário devolvia o foco ao botão em vez do título do slide.
+  - As setas num bloco de código trocavam de slide em vez de rolar o código.
+- **Texto.** Ficavam `**` visíveis no subtópico, na legenda e nas tags. O
+  título do guia voltou à capa.
+- **Paisagem no celular.** Cabeçalho e rodapé ficaram mais compactos quando a
+  altura é pequena, sempre com alvos de 44px.
+
+Conferido sem mudança: as mensagens `trailup:progress` (as mesmas chaves) e as
+regras de XP. O estado salvo por um deck antigo volta no novo (quiz, checklist,
+decisão, segredo, ideias-chave), e o quiz já premiado não premia de novo.
+Também conferi a narração com a ponte de voz do app (`SCRIPT_PONTE_DE_VOZ`).
+
+Fica fora do deck: dentro do app, o tema segue o aparelho
+(`userInterfaceStyle: automatic`), mas o app é sempre escuro. Num aparelho em
+modo claro, o deck aparece claro dentro do app escuro. Para casar com o app,
+o app pode mandar `?tema=escuro`, e o aluno continua podendo trocar no painel.
