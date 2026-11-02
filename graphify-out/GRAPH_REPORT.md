@@ -1,6736 +1,4320 @@
-# Graph Report - trail-up  (2026-09-13)
+# Graph Report - trail-up  (2026-11-02)
 
 ## Corpus Check
-- 998 files · ~2,951,733 words
+- 2569 files · ~2,770,068 words
 - Verdict: corpus is large enough that graph structure adds value.
+- Unclassified: 63 file(s) not represented in the graph (top: (none) 29, .css 10, .example 5)
 
 ## Summary
-- 38424 nodes · 59562 edges · 8168 communities (7047 shown, 1121 thin omitted)
-- Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 4747 edges (avg confidence: 0.74)
+- 24424 nodes · 58553 edges · 1120 communities (833 shown, 287 thin omitted)
+- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 3626 edges (avg confidence: 0.92)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d39953ea`
+- Built from commit: `c6ab3b67`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_cn|cn]]
-- [[_COMMUNITY_servicespersonalizacao.py|services/personalizacao.py]]
-- [[_COMMUNITY_QuestionsManager.tsx|QuestionsManager.tsx]]
-- [[_COMMUNITY_perfilindex.tsx|perfil/index.tsx]]
-- [[_COMMUNITY_getProfileShellPalette|getProfileShellPalette]]
-- [[_COMMUNITY_ClassManagementSection.tsx|ClassManagementSection.tsx]]
-- [[_COMMUNITY_Evento|Evento]]
-- [[_COMMUNITY_TopicEditDrawer.tsx|TopicEditDrawer.tsx]]
-- [[_COMMUNITY_main.py|main.py]]
-- [[_COMMUNITY_AccessRepository|AccessRepository]]
-- [[_COMMUNITY_button.tsx|button.tsx]]
-- [[_COMMUNITY_MediaPipelineContext|MediaPipelineContext]]
-- [[_COMMUNITY_GlobalStyle.ts|GlobalStyle.ts]]
-- [[_COMMUNITY_generate-content-aiindex.ts|generate-content-ai/index.ts]]
-- [[_COMMUNITY_behavioral_personalization.py|behavioral_personalization.py]]
-- [[_COMMUNITY_api.py|api.py]]
-- [[_COMMUNITY_PersonalizacoesSection.tsx|PersonalizacoesSection.tsx]]
-- [[_COMMUNITY_HallTheme.tsx|HallTheme.tsx]]
-- [[_COMMUNITY_test_personalizacao_service.py|test_personalizacao_service.py]]
-- [[_COMMUNITY_trilhaid.tsx|trilha/[id].tsx]]
-- [[_COMMUNITY_MetricasContext.tsx|MetricasContext.tsx]]
-- [[_COMMUNITY_expo-router|expo-router]]
-- [[_COMMUNITY_test_api.py|test_api.py]]
-- [[_COMMUNITY_test_graph_nodes.py|test_graph_nodes.py]]
-- [[_COMMUNITY_servicespersonalizacao_jobs.py|services/personalizacao_jobs.py]]
-- [[_COMMUNITY_IAContext.tsx|IAContext.tsx]]
-- [[_COMMUNITY_UserContext|UserContext]]
-- [[_COMMUNITY_test_repositories.py|test_repositories.py]]
-- [[_COMMUNITY_sidebar.tsx|sidebar.tsx]]
-- [[_COMMUNITY_compilerOptions|compilerOptions]]
-- [[_COMMUNITY_SupabaseStorage|SupabaseStorage]]
-- [[_COMMUNITY_AlunoSignupWizard.tsx|AlunoSignupWizard.tsx]]
-- [[_COMMUNITY_GenerateTrailDialog.tsx|GenerateTrailDialog.tsx]]
-- [[_COMMUNITY_supabase.ts|supabase.ts]]
-- [[_COMMUNITY_ProfileMetricsViews.tsx|ProfileMetricsViews.tsx]]
-- [[_COMMUNITY_IAContracts.ts|IAContracts.ts]]
-- [[_COMMUNITY_ContentRenderer.tsx|ContentRenderer.tsx]]
-- [[_COMMUNITY_presentationOrder.ts|presentationOrder.ts]]
-- [[_COMMUNITY_docsREADME|docs/README.md]]
-- [[_COMMUNITY_server.ts|server.ts]]
-- [[_COMMUNITY_TrilhaContext.tsx|TrilhaContext.tsx]]
-- [[_COMMUNITY_QuestionActivity.tsx|QuestionActivity.tsx]]
-- [[_COMMUNITY_v1personalizacao.py|v1/personalizacao.py]]
-- [[_COMMUNITY_GroupAnalysisService|GroupAnalysisService]]
-- [[_COMMUNITY_use-grafo-trilha.ts|use-grafo-trilha.ts]]
-- [[_COMMUNITY_Rank.ts|Rank.ts]]
-- [[_COMMUNITY_PersonalizedTopicView.tsx|PersonalizedTopicView.tsx]]
-- [[_COMMUNITY_personalization.ts|personalization.ts]]
-- [[_COMMUNITY_TrailupApiProvider.ts|TrailupApiProvider.ts]]
-- [[_COMMUNITY_fluxo-completo-ecossistema|fluxo-completo-ecossistema.md]]
-- [[_COMMUNITY_dependencies|dependencies]]
-- [[_COMMUNITY_clampPercent|clampPercent]]
-- [[_COMMUNITY_contentBlocks.ts|contentBlocks.ts]]
-- [[_COMMUNITY_v1telemetria.py|v1/telemetria.py]]
-- [[_COMMUNITY_dependencies|dependencies]]
-- [[_COMMUNITY_ContentFileUpload.tsx|ContentFileUpload.tsx]]
-- [[_COMMUNITY_hooksuse-toast.ts|hooks/use-toast.ts]]
-- [[_COMMUNITY_geminiService.ts|geminiService.ts]]
-- [[_COMMUNITY_nativeDocumentParsers.ts|nativeDocumentParsers.ts]]
-- [[_COMMUNITY_mobilesrccomponentsuicollapsible.tsx|mobile/src/components/ui/collapsible.tsx]]
-- [[_COMMUNITY_media_agents.py|media_agents.py]]
-- [[_COMMUNITY_IAHeaderTimer.tsx|IAHeaderTimer.tsx]]
-- [[_COMMUNITY_DashboardSection.tsx|DashboardSection.tsx]]
-- [[_COMMUNITY_MentalStateHistoryRepository|MentalStateHistoryRepository]]
-- [[_COMMUNITY_IABattlePanel.tsx|IABattlePanel.tsx]]
-- [[_COMMUNITY_settings.py|settings.py]]
-- [[_COMMUNITY_models.py|models.py]]
-- [[_COMMUNITY_servicesclasse_mapa_tema.py|services/classe_mapa_tema.py]]
-- [[_COMMUNITY_PersonalizacaoJobsRepository|PersonalizacaoJobsRepository]]
-- [[_COMMUNITY_settings.tsx|settings.tsx]]
-- [[_COMMUNITY_Topico|Topico]]
-- [[_COMMUNITY__build_design_tokens|_build_design_tokens]]
-- [[_COMMUNITY_ConteudoClasseRepository|ConteudoClasseRepository]]
-- [[_COMMUNITY_devDependencies|devDependencies]]
-- [[_COMMUNITY_telemetriaApi.ts|telemetriaApi.ts]]
-- [[_COMMUNITY_scripts|scripts]]
-- [[_COMMUNITY_DocumentBlock.tsx|DocumentBlock.tsx]]
-- [[_COMMUNITY_ConteudoPersonalizadoRepository|ConteudoPersonalizadoRepository]]
-- [[_COMMUNITY_mobilefuncionamento-api-arquitetura-fluxos|mobile/funcionamento-api-arquitetura-fluxos.md]]
-- [[_COMMUNITY_database-schema.ts|database-schema.ts]]
-- [[_COMMUNITY_profileMetricsViewModel.ts|profileMetricsViewModel.ts]]
-- [[_COMMUNITY__normalize_personalized_activities|_normalize_personalized_activities]]
-- [[_COMMUNITY_validate-essay-answer-aiindex.ts|validate-essay-answer-ai/index.ts]]
-- [[_COMMUNITY_extractors__init__.py|extractors/__init__.py]]
-- [[_COMMUNITY_ContextRepository|ContextRepository]]
-- [[_COMMUNITY_MateriaisRepository|MateriaisRepository]]
-- [[_COMMUNITY_compilerOptions|compilerOptions]]
-- [[_COMMUNITY_pdfService.ts|pdfService.ts]]
-- [[_COMMUNITY_telemetryConsent.ts|telemetryConsent.ts]]
-- [[_COMMUNITY_pipeline.py|pipeline.py]]
-- [[_COMMUNITY_frontendfuncionamento-api-arquitetura-fluxos|frontend/funcionamento-api-arquitetura-fluxos.md]]
-- [[_COMMUNITY_components.json|components.json]]
-- [[_COMMUNITY_rankingid.tsx|ranking/[id].tsx]]
-- [[_COMMUNITY_classMapTheme.ts|classMapTheme.ts]]
-- [[_COMMUNITY_ArtefatosPersonalizadosRepository|ArtefatosPersonalizadosRepository]]
-- [[_COMMUNITY_devDependencies|devDependencies]]
-- [[_COMMUNITY_devDependencies|devDependencies]]
-- [[_COMMUNITY_logger.ts|logger.ts]]
-- [[_COMMUNITY_apiarquitetura-app-detalhada|api/arquitetura-app-detalhada.md]]
-- [[_COMMUNITY_FontesPersonalizacaoRepository|FontesPersonalizacaoRepository]]
-- [[_COMMUNITY_TelemetriaRepository|TelemetriaRepository]]
-- [[_COMMUNITY_BrainHexShowcase.tsx|BrainHexShowcase.tsx]]
-- [[_COMMUNITY_EventoRepository|EventoRepository]]
-- [[_COMMUNITY_Settings|Settings]]
-- [[_COMMUNITY_PersonalizacaoProgressoRepository|PersonalizacaoProgressoRepository]]
-- [[_COMMUNITY_validators.ts|validators.ts]]
-- [[_COMMUNITY_useAuth|useAuth]]
-- [[_COMMUNITY_carousel.tsx|carousel.tsx]]
-- [[_COMMUNITY_expo|expo]]
-- [[_COMMUNITY_classeMetrics.ts|classeMetrics.ts]]
-- [[_COMMUNITY_ArvoreView.tsx|ArvoreView.tsx]]
-- [[_COMMUNITY_Classe.ts|Classe.ts]]
-- [[_COMMUNITY_nativeContentCache.ts|nativeContentCache.ts]]
-- [[_COMMUNITY_Nova Paleta BrainHex (Psicologia das Cores) Implementation Plan|Nova Paleta BrainHex (Psicologia das Cores) Implementation Plan]]
-- [[_COMMUNITY_expo-image|expo-image]]
-- [[_COMMUNITY_frontendpackage.json|frontend/package.json]]
-- [[_COMMUNITY__normalize_personalized_activities|_normalize_personalized_activities]]
-- [[_COMMUNITY_compilerOptions|compilerOptions]]
-- [[_COMMUNITY_scripts|scripts]]
-- [[_COMMUNITY_mobilepackage.json|mobile/package.json]]
-- [[_COMMUNITY_include|include]]
-- [[_COMMUNITY_Modelagem de Dados e Modelagem de Banco (Supabase)|Modelagem de Dados e Modelagem de Banco (Supabase)]]
-- [[_COMMUNITY_chart.tsx|chart.tsx]]
-- [[_COMMUNITY_android|android]]
-- [[_COMMUNITY_EventoAluno|EventoAluno]]
-- [[_COMMUNITY_supabaseStorage.ts|supabaseStorage.ts]]
-- [[_COMMUNITY_Block|Block]]
-- [[_COMMUNITY_ArvoreView.tsx|ArvoreView.tsx]]
-- [[_COMMUNITY_video.py|video.py]]
-- [[_COMMUNITY_supabaseService.ts|supabaseService.ts]]
-- [[_COMMUNITY_semantic_chunker.py|semantic_chunker.py]]
-- [[_COMMUNITY_rateLimit.ts|rateLimit.ts]]
-- [[_COMMUNITY_reset-project.js|reset-project.js]]
-- [[_COMMUNITY_TelemetryContracts.ts|TelemetryContracts.ts]]
-- [[_COMMUNITY_test_graph_invocation.py|test_graph_invocation.py]]
-- [[_COMMUNITY_serialQueue.ts|serialQueue.ts]]
-- [[_COMMUNITY_apifuncionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado|api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado.md]]
-- [[_COMMUNITY_wav.test.ts|wav.test.ts]]
-- [[_COMMUNITY_NodeBadge.tsx|NodeBadge.tsx]]
-- [[_COMMUNITY_frontendestrutura-banco-supabase|frontend/estrutura-banco-supabase.md]]
-- [[_COMMUNITY_listar_personalizacoes_por_perfil|listar_personalizacoes_por_perfil]]
-- [[_COMMUNITY_dependencies|dependencies]]
-- [[_COMMUNITY_RankDaClasse|RankDaClasse]]
-- [[_COMMUNITY_pdf.py|pdf.py]]
-- [[_COMMUNITY_react-dom|react-dom]]
-- [[_COMMUNITY_@supabasesupabase-js|@supabase/supabase-js]]
-- [[_COMMUNITY_Refatoração de `srcapp(tabs)trilhaid.tsx`|Refatoração de `src/app/(tabs)/trilha/[id].tsx`]]
-- [[_COMMUNITY_media_pipeline.py|media_pipeline.py]]
-- [[_COMMUNITY_extra|extra]]
-- [[_COMMUNITY_splash|splash]]
-- [[_COMMUNITY_dev.sh|dev.sh]]
-- [[_COMMUNITY_20260405_01_langgraph_checkpoints.py|20260405_01_langgraph_checkpoints.py]]
-- [[_COMMUNITY_20260405_02_materiais_gerados.py|20260405_02_materiais_gerados.py]]
-- [[_COMMUNITY_20260406_01_conteudo_personalizado.py|20260406_01_conteudo_personalizado.py]]
-- [[_COMMUNITY_20260406_02_conteudo_personalizado_ai_patch.py|20260406_02_conteudo_personalizado_ai_patch.py]]
-- [[_COMMUNITY_20260406_03_telemetria_tables.py|20260406_03_telemetria_tables.py]]
-- [[_COMMUNITY_20260408_01_fontes_personalizacao.py|20260408_01_fontes_personalizacao.py]]
-- [[_COMMUNITY_20260410_01_personalizacao_jobs.py|20260410_01_personalizacao_jobs.py]]
-- [[_COMMUNITY_20260410_02_ia_decision_logs.py|20260410_02_ia_decision_logs.py]]
-- [[_COMMUNITY_20260410_03_conteudo_personalizado_unique.py|20260410_03_conteudo_personalizado_unique.py]]
-- [[_COMMUNITY_20260410_04_questoes_nota_estabelecida.py|20260410_04_questoes_nota_estabelecida.py]]
-- [[_COMMUNITY_20260410_05_personalizacao_artefatos.py|20260410_05_personalizacao_artefatos.py]]
-- [[_COMMUNITY_20260410_06_job_targets_unique_per_content.py|20260410_06_job_targets_unique_per_content.py]]
-- [[_COMMUNITY_20260413_01_classe_mapa_tema_sync.py|20260413_01_classe_mapa_tema_sync.py]]
-- [[_COMMUNITY_20260415_01_media_render_jobs.py|20260415_01_media_render_jobs.py]]
-- [[_COMMUNITY_nativeContentCache.ts|nativeContentCache.ts]]
-- [[_COMMUNITY_FontesPersonalizacaoRepository|FontesPersonalizacaoRepository]]
-- [[_COMMUNITY_20260420_02_aluno_mental_state_history.py|20260420_02_aluno_mental_state_history.py]]
-- [[_COMMUNITY_20260421_01_telemetria_eventos_app_and_time_metrics.py|20260421_01_telemetria_eventos_app_and_time_metrics.py]]
-- [[_COMMUNITY_20260421_02_personalizacao_item_progresso.py|20260421_02_personalizacao_item_progresso.py]]
-- [[_COMMUNITY_mobilearquitetura-app-detalhada|mobile/arquitetura-app-detalhada.md]]
-- [[_COMMUNITY_lucide-react|lucide-react]]
-- [[_COMMUNITY_tailwind-merge|tailwind-merge]]
-- [[_COMMUNITY_frontendarquitetura-funcionamento-geral-sistema|frontend/arquitetura-funcionamento-geral-sistema.md]]
-- [[_COMMUNITY_mobileeslint.config.js|mobile/eslint.config.js]]
-- [[_COMMUNITY_@react-navigationnative|@react-navigation/native]]
-- [[_COMMUNITY_tela_de_entradalogin.tsx|tela_de_entrada/login.tsx]]
-- [[_COMMUNITY_ImagemBlock.tsx|ImagemBlock.tsx]]
-- [[_COMMUNITY_RegionMap.ts|RegionMap.ts]]
-- [[_COMMUNITY_agent__init__.py|agent/__init__.py]]
-- [[_COMMUNITY_api__init__.py|api/__init__.py]]
-- [[_COMMUNITY_core__init__.py|core/__init__.py]]
-- [[_COMMUNITY_test_content_enrichment.py|test_content_enrichment.py]]
-- [[_COMMUNITY_repositories__init__.py|repositories/__init__.py]]
-- [[_COMMUNITY_compilerOptions|compilerOptions]]
-- [[_COMMUNITY_mobilepackage.json|mobile/package.json]]
-- [[_COMMUNITY_mobileREADME|mobile/README.md]]
-- [[_COMMUNITY_Slides de Apresentação Temáticos (estilo Slidesgo) Design|Slides de Apresentação Temáticos (estilo Slidesgo): Design]]
-- [[_COMMUNITY_PARTE B — trailup microservice (`CUsersgeisbdocumentsgithubtrailup`)|PARTE B — trailup microservice (`C:\Users\geisb\documents\github\trailup`)]]
-- [[_COMMUNITY_normalizeNonNegativeNumber|normalizeNonNegativeNumber]]
-- [[_COMMUNITY_cmdk|cmdk]]
-- [[_COMMUNITY_date-fns|date-fns]]
-- [[_COMMUNITY_CLAUDE.md — TrailUp|CLAUDE.md — TrailUp]]
-- [[_COMMUNITY_Personalização Longa — Integração ApiBrainHex Implementation Plan|Personalização Longa — Integração ApiBrainHex Implementation Plan]]
-- [[_COMMUNITY_Integração Direta ApiTraiUp → ApiBrainHex Implementation Plan|Integração Direta ApiTraiUp → ApiBrainHex: Implementation Plan]]
-- [[_COMMUNITY_apiarquitetura-microservico-detalhada|api/arquitetura-microservico-detalhada.md]]
-- [[_COMMUNITY_expo-constants|expo-constants]]
-- [[_COMMUNITY_Progresso, Persistência, Mídias e Atividades — Implementation Plan|Progresso, Persistência, Mídias e Atividades — Implementation Plan]]
-- [[_COMMUNITY_TextoActivity.tsx|TextoActivity.tsx]]
-- [[_COMMUNITY_openaiImageService.ts|openaiImageService.ts]]
-- [[_COMMUNITY_frontendpoliticas-dados-privacidade|frontend/politicas-dados-privacidade.md]]
-- [[_COMMUNITY_expo-linear-gradient|expo-linear-gradient]]
-- [[_COMMUNITY_mobilearquitetura-microservico-e-app|mobile/arquitetura-microservico-e-app.md]]
-- [[_COMMUNITY_TrailUp — Monorepo|TrailUp — Monorepo]]
-- [[_COMMUNITY_apifuncionamento-personalizacao-gamificacao-recursos-pedagogicos|api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos.md]]
-- [[_COMMUNITY_apiBaseUrl.ts|apiBaseUrl.ts]]
-- [[_COMMUNITY_expo-system-ui|expo-system-ui]]
-- [[_COMMUNITY_@expovector-icons|@expo/vector-icons]]
-- [[_COMMUNITY_expo-web-browser|expo-web-browser]]
-- [[_COMMUNITY_get_settings|get_settings]]
-- [[_COMMUNITY_microservicearquitetura-app-detalhada|microservice/arquitetura-app-detalhada.md]]
-- [[_COMMUNITY_pipeline.py|pipeline.py]]
-- [[_COMMUNITY_ArvoreView.tsx|ArvoreView.tsx]]
-- [[_COMMUNITY_@radix-uireact-alert-dialog|@radix-ui/react-alert-dialog]]
-- [[_COMMUNITY_Design da Correção|Design da Correção]]
-- [[_COMMUNITY_Índice por projeto|Índice por projeto]]
-- [[_COMMUNITY_compilerOptions|compilerOptions]]
-- [[_COMMUNITY_@radix-uireact-dialog|@radix-ui/react-dialog]]
-- [[_COMMUNITY_@radix-uireact-dropdown-menu|@radix-ui/react-dropdown-menu]]
-- [[_COMMUNITY_Design status da personalização no console do professor|Design: status da personalização no console do professor]]
-- [[_COMMUNITY_@radix-uireact-label|@radix-ui/react-label]]
-- [[_COMMUNITY_@radix-uireact-menubar|@radix-ui/react-menubar]]
-- [[_COMMUNITY_@radix-uireact-navigation-menu|@radix-ui/react-navigation-menu]]
-- [[_COMMUNITY_@radix-uireact-popover|@radix-ui/react-popover]]
-- [[_COMMUNITY_ClasseMapaTemaRepository|ClasseMapaTemaRepository]]
-- [[_COMMUNITY_@radix-uireact-separator|@radix-ui/react-separator]]
-- [[_COMMUNITY_frontendpoliticas-dados-privacidade|frontend/politicas-dados-privacidade.md]]
-- [[_COMMUNITY_@radix-uireact-slot|@radix-ui/react-slot]]
-- [[_COMMUNITY_@radix-uireact-switch|@radix-ui/react-switch]]
-- [[_COMMUNITY_@radix-uireact-tooltip|@radix-ui/react-tooltip]]
-- [[_COMMUNITY_DOCS_API|DOCS_API.md]]
-- [[_COMMUNITY_integracao-apitraiup|integracao-apitraiup.md]]
-- [[_COMMUNITY_IContentBlock.ts|IContentBlock.ts]]
-- [[_COMMUNITY_3.1.1 Diagrama por camada|3.1.1 Diagrama por camada]]
-- [[_COMMUNITY_Métricas — Correções de Cálculo + Novas Seções de UI|Métricas — Correções de Cálculo + Novas Seções de UI]]
-- [[_COMMUNITY_TelemetriaRepository|TelemetriaRepository]]
-- [[_COMMUNITY_tailwindcss-animate|tailwindcss-animate]]
-- [[_COMMUNITY_sonner|sonner]]
-- [[_COMMUNITY_Geração granular e retomável de conteúdo personalizado (por blocoparteperfil)|Geração granular e retomável de conteúdo personalizado (por bloco/parte/perfil)]]
-- [[_COMMUNITY_Arquitetura|Arquitetura]]
-- [[_COMMUNITY_docsmicroserviceREADME|docs/microservice/README.md]]
-- [[_COMMUNITY_node-html-parser|node-html-parser]]
-- [[_COMMUNITY_pg|pg]]
-- [[_COMMUNITY_.to_dict|.to_dict]]
-- [[_COMMUNITY_pdf.py|pdf.py]]
-- [[_COMMUNITY_@react-native-async-storageasync-storage|@react-native-async-storage/async-storage]]
-- [[_COMMUNITY_session.py|session.py]]
-- [[_COMMUNITY_personalizar|personalizar]]
-- [[_COMMUNITY_apiarquitetura-microservico-e-app|api/arquitetura-microservico-e-app.md]]
-- [[_COMMUNITY__build_profile_editorial_context|_build_profile_editorial_context]]
-- [[_COMMUNITY_builder.py|builder.py]]
-- [[_COMMUNITY_react-native-screens|react-native-screens]]
-- [[_COMMUNITY__profile_render_targets_ready_now|_profile_render_targets_ready_now]]
-- [[_COMMUNITY_react-native-webview|react-native-webview]]
-- [[_COMMUNITY_react-native-worklets|react-native-worklets]]
-- [[_COMMUNITY_pptx.py|pptx.py]]
-- [[_COMMUNITY_20260405_01_langgraph_checkpoints.py|20260405_01_langgraph_checkpoints.py]]
-- [[_COMMUNITY_tinycolor2|tinycolor2]]
-- [[_COMMUNITY_hello-wave.tsx|hello-wave.tsx]]
-- [[_COMMUNITY__usePanZoom.ts|_usePanZoom.ts]]
-- [[_COMMUNITY_icon-symbol.ios.tsx|icon-symbol.ios.tsx]]
-- [[_COMMUNITY_use-color-scheme.web.ts|use-color-scheme.web.ts]]
-- [[_COMMUNITY_IModal.ts|IModal.ts]]
-- [[_COMMUNITY_IPop.ts|IPop.ts]]
-- [[_COMMUNITY_isUrl.ts|isUrl.ts]]
-- [[_COMMUNITY_webpack.config.js|webpack.config.js]]
-- [[_COMMUNITY_20260405_02_materiais_gerados.py|20260405_02_materiais_gerados.py]]
-- [[_COMMUNITY_20260406_02_conteudo_personalizado_ai_patch.py|20260406_02_conteudo_personalizado_ai_patch.py]]
-- [[_COMMUNITY_frontendeslint.config.js|frontend/eslint.config.js]]
-- [[_COMMUNITY_postcss.config.js|postcss.config.js]]
-- [[_COMMUNITY_aspect-ratio.tsx|aspect-ratio.tsx]]
-- [[_COMMUNITY_frontendsrccomponentsuicollapsible.tsx|frontend/src/components/ui/collapsible.tsx]]
-- [[_COMMUNITY_vite-env.d.ts|vite-env.d.ts]]
-- [[_COMMUNITY_tailwind.config.ts|tailwind.config.ts]]
-- [[_COMMUNITY_frontendvite.config.ts|frontend/vite.config.ts]]
-- [[_COMMUNITY_vitest.config.ts|vitest.config.ts]]
-- [[_COMMUNITY_microservicevite.config.ts|microservice/vite.config.ts]]
-- [[_COMMUNITY_patch_trilha.py|patch_trilha.py]]
-- [[_COMMUNITY_trailup-api|trailup-api]]
-- [[_COMMUNITY_db-migrate.ps1|db-migrate.ps1]]
-- [[_COMMUNITY_20260406_03_telemetria_tables.py|20260406_03_telemetria_tables.py]]
-- [[_COMMUNITY_20260408_01_fontes_personalizacao.py|20260408_01_fontes_personalizacao.py]]
-- [[_COMMUNITY_20260410_01_personalizacao_jobs.py|20260410_01_personalizacao_jobs.py]]
-- [[_COMMUNITY_20260410_02_ia_decision_logs.py|20260410_02_ia_decision_logs.py]]
-- [[_COMMUNITY_20260410_03_conteudo_personalizado_unique.py|20260410_03_conteudo_personalizado_unique.py]]
-- [[_COMMUNITY_01-visao-geral-do-projeto|01-visao-geral-do-projeto.md]]
-- [[_COMMUNITY_20260410_04_questoes_nota_estabelecida.py|20260410_04_questoes_nota_estabelecida.py]]
-- [[_COMMUNITY_20260410_05_personalizacao_artefatos.py|20260410_05_personalizacao_artefatos.py]]
-- [[_COMMUNITY_10-metricas-e-analise-de-resultados|10-metricas-e-analise-de-resultados.md]]
-- [[_COMMUNITY_20260411_02_production_schema_baseline.py|20260411_02_production_schema_baseline.py]]
-- [[_COMMUNITY_IAFloatingOverlay.tsx|IAFloatingOverlay.tsx]]
-- [[_COMMUNITY_20260413_01_classe_mapa_tema_sync.py|20260413_01_classe_mapa_tema_sync.py]]
-- [[_COMMUNITY_02-fundamentacao-teorica-e-modelo-adaptativo|02-fundamentacao-teorica-e-modelo-adaptativo.md]]
-- [[_COMMUNITY_05-logica-e-automacoes-do-banco|05-logica-e-automacoes-do-banco.md]]
-- [[_COMMUNITY_06-implementacao|06-implementacao.md]]
-- [[_COMMUNITY_07-documento-de-ux|07-documento-de-ux.md]]
-- [[_COMMUNITY_08-consentimento-privacidade-lgpd-e-seguranca|08-consentimento-privacidade-lgpd-e-seguranca.md]]
-- [[_COMMUNITY_09-metodologia-de-pesquisa-e-avaliacao|09-metodologia-de-pesquisa-e-avaliacao.md]]
-- [[_COMMUNITY_11-contribuicoes-limitacoes-e-trabalhos-futuros|11-contribuicoes-limitacoes-e-trabalhos-futuros.md]]
-- [[_COMMUNITY_20260415_01_media_render_jobs.py|20260415_01_media_render_jobs.py]]
-- [[_COMMUNITY_20260416_01_media_render_profile_dedupe_indexes.py|20260416_01_media_render_profile_dedupe_indexes.py]]
-- [[_COMMUNITY_20260420_01_classe_perfil_summary.py|20260420_01_classe_perfil_summary.py]]
-- [[_COMMUNITY_20260420_02_aluno_mental_state_history.py|20260420_02_aluno_mental_state_history.py]]
-- [[_COMMUNITY_20260421_01_telemetria_eventos_app_and_time_metrics.py|20260421_01_telemetria_eventos_app_and_time_metrics.py]]
-- [[_COMMUNITY_04-modelagem-do-sistema|04-modelagem-do-sistema.md]]
-- [[_COMMUNITY_mobilearquitetura-microservico-e-app|mobile/arquitetura-microservico-e-app.md]]
-- [[_COMMUNITY_20260727_01_brainhex_profile_targets.py|20260727_01_brainhex_profile_targets.py]]
-- [[_COMMUNITY_20260728_01_drop_legacy_job_target_unique.py|20260728_01_drop_legacy_job_target_unique.py]]
-- [[_COMMUNITY_apifuncionamento-api-arquitetura-fluxos|api/funcionamento-api-arquitetura-fluxos.md]]
-- [[_COMMUNITY__FakeSession|_FakeSession]]
-- [[_COMMUNITY_20260728_02_drop_legacy_content_unique.py|20260728_02_drop_legacy_content_unique.py]]
-- [[_COMMUNITY_20260728_03_repair_generation_fencing_rpcs.py|20260728_03_repair_generation_fencing_rpcs.py]]
-- [[_COMMUNITY_20260728_04_scope_personalization_by_content.py|20260728_04_scope_personalization_by_content.py]]
-- [[_COMMUNITY_20260728_05_dynamic_generation_fencing.py|20260728_05_dynamic_generation_fencing.py]]
-- [[_COMMUNITY_20260728_06_idempotent_generated_materials.py|20260728_06_idempotent_generated_materials.py]]
-- [[_COMMUNITY_3.1.1 Diagrama por camada|3.1.1 Diagrama por camada]]
-- [[_COMMUNITY_microservicearquitetura-microservico-e-app|microservice/arquitetura-microservico-e-app.md]]
-- [[_COMMUNITY_Chat no Módulo — Remoção de Preview Automático e Botão de Descarte|Chat no Módulo — Remoção de Preview Automático e Botão de Descarte]]
-- [[_COMMUNITY_agent__init__.py|agent/__init__.py]]
-- [[_COMMUNITY_api__init__.py|api/__init__.py]]
-- [[_COMMUNITY_5. Fluxos operacionais (sequencias)|5. Fluxos operacionais (sequencias)]]
-- [[_COMMUNITY_core__init__.py|core/__init__.py]]
-- [[_COMMUNITY_repositories__init__.py|repositories/__init__.py]]
-- [[_COMMUNITY_tccREADME|tcc/README.md]]
-- [[_COMMUNITY_schemas__init__.py|schemas/__init__.py]]
-- [[_COMMUNITY_NativeDocxViewer.tsx|NativeDocxViewer.tsx]]
-- [[_COMMUNITY_docx.py|docx.py]]
-- [[_COMMUNITY_essayValidation.ts|essayValidation.ts]]
-- [[_COMMUNITY_expo-sharing|expo-sharing]]
-- [[_COMMUNITY_3.1.1 Diagrama por camada|3.1.1 Diagrama por camada]]
-- [[_COMMUNITY_apiestrutura-banco-supabase|api/estrutura-banco-supabase.md]]
-- [[_COMMUNITY_3.1.1 Diagrama por camada|3.1.1 Diagrama por camada]]
-- [[_COMMUNITY_@radix-uireact-avatar|@radix-ui/react-avatar]]
-- [[_COMMUNITY_@radix-uireact-checkbox|@radix-ui/react-checkbox]]
-- [[_COMMUNITY_14. Edge Functions, RPCs, Functions e Triggers|14. Edge Functions, RPCs, Functions e Triggers]]
-- [[_COMMUNITY_@radix-uireact-collapsible|@radix-ui/react-collapsible]]
-- [[_COMMUNITY_expo-router|expo-router]]
-- [[_COMMUNITY_Memória do aluno (estado mental histórico + domínio por tópico) Implementation Plan|Memória do aluno (estado mental histórico + domínio por tópico) Implementation Plan]]
-- [[_COMMUNITY_buildContentBlocks|buildContentBlocks]]
-- [[_COMMUNITY_@radix-uireact-progress|@radix-ui/react-progress]]
-- [[_COMMUNITY_gerar_pdf_slides|gerar_pdf_slides]]
-- [[_COMMUNITY_@radix-uireact-toggle|@radix-ui/react-toggle]]
-- [[_COMMUNITY__reset_circuits|_reset_circuits]]
-- [[_COMMUNITY_react-dom|react-dom]]
-- [[_COMMUNITY_@radix-uireact-toggle-group|@radix-ui/react-toggle-group]]
-- [[_COMMUNITY_react-hook-form|react-hook-form]]
-- [[_COMMUNITY_@supabasesupabase-js|@supabase/supabase-js]]
-- [[_COMMUNITY_@tanstackreact-query|@tanstack/react-query]]
-- [[_COMMUNITY_TextoActivity.tsx|TextoActivity.tsx]]
-- [[_COMMUNITY_zod|zod]]
-- [[_COMMUNITY_expo-symbols|expo-symbols]]
-- [[_COMMUNITY_formatSeconds|formatSeconds]]
-- [[_COMMUNITY_lucide-react|lucide-react]]
-- [[_COMMUNITY_guardian-recolorpackage.json|guardian-recolor/package.json]]
-- [[_COMMUNITY_react-markdown|react-markdown]]
-- [[_COMMUNITY_cmdk|cmdk]]
-- [[_COMMUNITY_upload_fontes_personalizacao|upload_fontes_personalizacao]]
-- [[_COMMUNITY_2. Leitura rapida (mapa geral)|2. Leitura rapida (mapa geral)]]
-- [[_COMMUNITY_turmaResumo.ts|turmaResumo.ts]]
-- [[_COMMUNITY_react-native-svg|react-native-svg]]
-- [[_COMMUNITY_@react-navigationelements|@react-navigation/elements]]
-- [[_COMMUNITY_5. Fluxos operacionais (sequencias)|5. Fluxos operacionais (sequencias)]]
-- [[_COMMUNITY_pptxImageContext.ts|pptxImageContext.ts]]
-- [[_COMMUNITY_.to_dict|.to_dict]]
-- [[_COMMUNITY_adapters__init__.py|adapters/__init__.py]]
-- [[_COMMUNITY_express|express]]
-- [[_COMMUNITY_mammoth|mammoth]]
-- [[_COMMUNITY_jszip|jszip]]
-- [[_COMMUNITY_Structured Output + Guardrails no grafo LangGraph Implementation Plan|Structured Output + Guardrails no grafo LangGraph Implementation Plan]]
-- [[_COMMUNITY_tests__init__.py|tests/__init__.py]]
-- [[_COMMUNITY_Controle de geração manualautomática de personalização — Plano de Implementação|Controle de geração manual/automática de personalização — Plano de Implementação]]
-- [[_COMMUNITY_Rotação de modelos Gemini free-tier antes do fallback obrigatório pra OpenAI|Rotação de modelos Gemini free-tier antes do fallback obrigatório pra OpenAI]]
-- [[_COMMUNITY_dev.ps1|dev.ps1]]
-- [[_COMMUNITY_sample-hue.mjs|sample-hue.mjs]]
-- [[_COMMUNITY_14. Edge Functions, RPCs, Functions e Triggers|14. Edge Functions, RPCs, Functions e Triggers]]
-- [[_COMMUNITY_IPersonalizedTopic.ts|IPersonalizedTopic.ts]]
-- [[_COMMUNITY_testSetup.ts|testSetup.ts]]
-- [[_COMMUNITY_expo-splash-screen|expo-splash-screen]]
-- [[_COMMUNITY_upload_fontes_personalizacao|upload_fontes_personalizacao]]
-- [[_COMMUNITY_frontendpoliticas-dados-privacidade|frontend/politicas-dados-privacidade.md]]
-- [[_COMMUNITY_microservicepackage.json|microservice/package.json]]
-- [[_COMMUNITY_Button-Inicial.tsx|Button-Inicial.tsx]]
-- [[_COMMUNITY_14. Edge Functions, RPCs, Functions e Triggers|14. Edge Functions, RPCs, Functions e Triggers]]
-- [[_COMMUNITY_ArvoreView.tsx|ArvoreView.tsx]]
-- [[_COMMUNITY_dotenv|dotenv]]
-- [[_COMMUNITY_normalize|normalize]]
-- [[_COMMUNITY_NativeDocxViewer.tsx|NativeDocxViewer.tsx]]
-- [[_COMMUNITY_20260801_01_bump_merge_materiais_timeout.py|20260801_01_bump_merge_materiais_timeout.py]]
-- [[_COMMUNITY_2. Leitura rapida (mapa geral)|2. Leitura rapida (mapa geral)]]
-- [[_COMMUNITY_personalizar|personalizar]]
-- [[_COMMUNITY_formatSeconds|formatSeconds]]
-- [[_COMMUNITY_expo-linking|expo-linking]]
-- [[_COMMUNITY__parse_gemini_keys|_parse_gemini_keys]]
-- [[_COMMUNITY_5. Fluxos operacionais (sequencias)|5. Fluxos operacionais (sequencias)]]
-- [[_COMMUNITY_builder.py|builder.py]]
-- [[_COMMUNITY_Reaproveitamento de imagens entre mídias (D2) — Design|Reaproveitamento de imagens entre mídias (D2) — Design]]
-- [[_COMMUNITY_@config-pluginsreact-native-blob-util|@config-plugins/react-native-blob-util]]
-- [[_COMMUNITY_.__init__|.__init__]]
-- [[_COMMUNITY_normalizeNonNegativeNumber|normalizeNonNegativeNumber]]
-- [[_COMMUNITY_mobilearquitetura-funcionamento-geral-sistema|mobile/arquitetura-funcionamento-geral-sistema.md]]
-- [[_COMMUNITY_Slides Imersivos — Wiring no Pipeline Implementation Plan|Slides Imersivos — Wiring no Pipeline Implementation Plan]]
-- [[_COMMUNITY_File Structure|File Structure]]
-- [[_COMMUNITY_Imagem vinculada a minutagem do áudio (D3) Implementation Plan|Imagem vinculada a minutagem do áudio (D3) Implementation Plan]]
-- [[_COMMUNITY_@hookformresolvers|@hookform/resolvers]]
-- [[_COMMUNITY_expo-av|expo-av]]
-- [[_COMMUNITY_@radix-uireact-scroll-area|@radix-ui/react-scroll-area]]
-- [[_COMMUNITY_Reaproveitamento de imagens entre mídias (D2) Implementation Plan|Reaproveitamento de imagens entre mídias (D2) Implementation Plan]]
-- [[_COMMUNITY_XP de slides com checkpoint (D1a) Implementation Plan|XP de slides com checkpoint (D1a) Implementation Plan]]
-- [[_COMMUNITY_Testabilidade do pipeline de upload no microservice|Testabilidade do pipeline de upload no microservice]]
-- [[_COMMUNITY_Imagem vinculada a minutagem do áudio (D3) — Design|Imagem vinculada a minutagem do áudio (D3) — Design]]
-- [[_COMMUNITY_react-markdown|react-markdown]]
-- [[_COMMUNITY_apiestrutura-banco-supabase|api/estrutura-banco-supabase.md]]
-- [[_COMMUNITY_mobilemodelagem-dados-banco|mobile/modelagem-dados-banco.md]]
-- [[_COMMUNITY_react-native-blob-util|react-native-blob-util]]
-- [[_COMMUNITY_microservicearquitetura-microservico-e-app|microservice/arquitetura-microservico-e-app.md]]
-- [[_COMMUNITY_Rotação de Modelos Gemini Free-Tier por Qualidade — Implementation Plan|Rotação de Modelos Gemini Free-Tier por Qualidade — Implementation Plan]]
-- [[_COMMUNITY_Memória do aluno (estado mental histórico + domínio por tópico)|Memória do aluno (estado mental histórico + domínio por tópico)]]
-- [[_COMMUNITY_Structured Output + Guardrails no grafo LangGraph|Structured Output + Guardrails no grafo LangGraph]]
-- [[_COMMUNITY_Quiz dinâmico por modoOperacao — Design|Quiz dinâmico por modoOperacao — Design]]
-- [[_COMMUNITY_XP de slides com checkpoint (D1a) — Design|XP de slides com checkpoint (D1a) — Design]]
-- [[_COMMUNITY_react-native-web|react-native-web]]
-- [[_COMMUNITY_Slides Imersivos — Guardas nos Consumidores Implementation Plan|Slides Imersivos — Guardas nos Consumidores Implementation Plan]]
-- [[_COMMUNITY_isHtmlDeckUrl|isHtmlDeckUrl]]
-- [[_COMMUNITY_WebContentFrame.tsx|WebContentFrame.tsx]]
-- [[_COMMUNITY_Quiz dinâmico por modoOperacao Implementation Plan|Quiz dinâmico por modoOperacao Implementation Plan]]
-- [[_COMMUNITY_Hash completo no path do fallback Python (MultiOutputPipeline)|Hash completo no path do fallback Python (MultiOutputPipeline)]]
-- [[_COMMUNITY_docsmobileREADME|docs/mobile/README.md]]
-- [[_COMMUNITY_.mergeCardsIntoPersonalizacaoRecords|.mergeCardsIntoPersonalizacaoRecords]]
-- [[_COMMUNITY_devDependencies|devDependencies]]
-- [[_COMMUNITY_Testabilidade do Pipeline de Upload no Microservice — Implementation Plan|Testabilidade do Pipeline de Upload no Microservice — Implementation Plan]]
-- [[_COMMUNITY_.coerce_referencia|.coerce_referencia]]
-- [[_COMMUNITY_personalizacao-multimidia-aluno|personalizacao-multimidia-aluno.md]]
-- [[_COMMUNITY_browserslist|browserslist]]
-- [[_COMMUNITY_20260803_01_personalizacao_jobs_conteudo_fk.py|20260803_01_personalizacao_jobs_conteudo_fk.py]]
-- [[_COMMUNITY_20260818_01_geracao_granular_retomavel.py|20260818_01_geracao_granular_retomavel.py]]
-- [[_COMMUNITY_20260819_01_memoria_aluno.py|20260819_01_memoria_aluno.py]]
-- [[_COMMUNITY_20260821_01_professor_geracao_automatica.py|20260821_01_professor_geracao_automatica.py]]
-- [[_COMMUNITY_.coerce_referencia|.coerce_referencia]]
-- [[_COMMUNITY_Hash Completo no Path do Fallback Python — Implementation Plan|Hash Completo no Path do Fallback Python — Implementation Plan]]
-- [[_COMMUNITY_PresentationSlidesBlock.test.ts|PresentationSlidesBlock.test.ts]]
-- [[_COMMUNITY_env.py|env.py]]
-- [[_COMMUNITY_@radix-uireact-accordion|@radix-ui/react-accordion]]
-- [[_COMMUNITY_react-dom|react-dom]]
-- [[_COMMUNITY_.coerce_referencia|.coerce_referencia]]
-- [[_COMMUNITY_caniuse-lite|caniuse-lite]]
-- [[_COMMUNITY_2. Leitura rapida (mapa geral)|2. Leitura rapida (mapa geral)]]
-- [[_COMMUNITY_14. Edge Functions, RPCs, Functions e Triggers|14. Edge Functions, RPCs, Functions e Triggers]]
-- [[_COMMUNITY_@googlegenai|@google/genai]]
-- [[_COMMUNITY_docsapiREADME|docs/api/README.md]]
-- [[_COMMUNITY_react-router-dom|react-router-dom]]
-- [[_COMMUNITY_react-dom|react-dom]]
-- [[_COMMUNITY_2. Leitura rapida (mapa geral)|2. Leitura rapida (mapa geral)]]
-- [[_COMMUNITY_openai|openai]]
-- [[_COMMUNITY_@tailwindcssvite|@tailwindcss/vite]]
-- [[_COMMUNITY_apiestrutura-banco-supabase-executivo|api/estrutura-banco-supabase-executivo.md]]
-- [[_COMMUNITY_react-native|react-native]]
-- [[_COMMUNITY_@vitejsplugin-react|@vitejs/plugin-react]]
-- [[_COMMUNITY_lamejs|lamejs]]
-- [[_COMMUNITY_mammoth|mammoth]]
-- [[_COMMUNITY_GUIA_USO|GUIA_USO.md]]
-- [[_COMMUNITY_docsmicroserviceREADME|docs/microservice/README.md]]
-- [[_COMMUNITY_upload_fontes_personalizacao|upload_fontes_personalizacao]]
-- [[_COMMUNITY_motion|motion]]
-- [[_COMMUNITY_caniuse-lite|caniuse-lite]]
-- [[_COMMUNITY_openai|openai]]
-- [[_COMMUNITY_react|react]]
-- [[_COMMUNITY_@tailwindcssvite|@tailwindcss/vite]]
-- [[_COMMUNITY_jszip|jszip]]
-- [[_COMMUNITY_node-html-parser|node-html-parser]]
-- [[_COMMUNITY_react-dom|react-dom]]
-- [[_COMMUNITY_react-native-gesture-handler|react-native-gesture-handler]]
-- [[_COMMUNITY_react-native-safe-area-context|react-native-safe-area-context]]
-- [[_COMMUNITY_react-native-webview|react-native-webview]]
-- [[_COMMUNITY_apiseguranca|api/seguranca.md]]
-- [[_COMMUNITY_2. Leitura rapida (mapa geral)|2. Leitura rapida (mapa geral)]]
-- [[_COMMUNITY_gerar_pdf_slides|gerar_pdf_slides]]
-- [[_COMMUNITY_docsmicroserviceREADME|docs/microservice/README.md]]
-- [[_COMMUNITY_8. Constraints e indexes crÃ­ticos|8. Constraints e indexes crÃ­ticos]]
-- [[_COMMUNITY_media_contract.py|media_contract.py]]
-- [[_COMMUNITY_cmdk|cmdk]]
-- [[_COMMUNITY_@config-pluginsreact-native-blob-util|@config-plugins/react-native-blob-util]]
-- [[_COMMUNITY_mobileguia-uso-app|mobile/guia-uso-app.md]]
-- [[_COMMUNITY_20260826_07_push_em_expo_tokens.py|20260826_07_push_em_expo_tokens.py]]
-- [[_COMMUNITY_20260826_08_rls_sem_anonimo.py|20260826_08_rls_sem_anonimo.py]]
-- [[_COMMUNITY_react-native-markdown-display|react-native-markdown-display]]
-- [[_COMMUNITY_gerar_pdf_slides|gerar_pdf_slides]]
-- [[_COMMUNITY_GUIA_USO|GUIA_USO.md]]
-- [[_COMMUNITY_createConcurrencyGate|createConcurrencyGate]]
-- [[_COMMUNITY_20260826_12_conquistas_por_perfil.py|20260826_12_conquistas_por_perfil.py]]
-- [[_COMMUNITY__professor_em_modo_automatico|_professor_em_modo_automatico]]
-- [[_COMMUNITY_20260826_13_perfil_ativo_aluno.py|20260826_13_perfil_ativo_aluno.py]]
-- [[_COMMUNITY_LockBadge.tsx|LockBadge.tsx]]
-- [[_COMMUNITY_Community 506|Community 506]]
-- [[_COMMUNITY_Community 507|Community 507]]
-- [[_COMMUNITY_Community 508|Community 508]]
-- [[_COMMUNITY_Community 509|Community 509]]
-- [[_COMMUNITY_Community 510|Community 510]]
-- [[_COMMUNITY_Community 511|Community 511]]
-- [[_COMMUNITY_Community 512|Community 512]]
-- [[_COMMUNITY_Community 513|Community 513]]
-- [[_COMMUNITY_Community 514|Community 514]]
-- [[_COMMUNITY_Community 515|Community 515]]
-- [[_COMMUNITY_Community 516|Community 516]]
-- [[_COMMUNITY_Community 517|Community 517]]
-- [[_COMMUNITY_Community 518|Community 518]]
-- [[_COMMUNITY_Community 519|Community 519]]
-- [[_COMMUNITY_Community 520|Community 520]]
-- [[_COMMUNITY_Community 521|Community 521]]
-- [[_COMMUNITY_Community 522|Community 522]]
-- [[_COMMUNITY_Community 523|Community 523]]
-- [[_COMMUNITY_Community 524|Community 524]]
-- [[_COMMUNITY_Community 525|Community 525]]
-- [[_COMMUNITY_Community 526|Community 526]]
-- [[_COMMUNITY_Community 527|Community 527]]
-- [[_COMMUNITY_Community 528|Community 528]]
-- [[_COMMUNITY_Community 529|Community 529]]
-- [[_COMMUNITY_Community 530|Community 530]]
-- [[_COMMUNITY_Community 531|Community 531]]
-- [[_COMMUNITY_Community 532|Community 532]]
-- [[_COMMUNITY_Community 533|Community 533]]
-- [[_COMMUNITY_Community 534|Community 534]]
-- [[_COMMUNITY_Community 535|Community 535]]
-- [[_COMMUNITY_Community 536|Community 536]]
-- [[_COMMUNITY_Community 537|Community 537]]
-- [[_COMMUNITY_Community 538|Community 538]]
-- [[_COMMUNITY_Community 539|Community 539]]
-- [[_COMMUNITY_Community 540|Community 540]]
-- [[_COMMUNITY_Community 541|Community 541]]
-- [[_COMMUNITY_Community 542|Community 542]]
-- [[_COMMUNITY_Community 543|Community 543]]
-- [[_COMMUNITY_Community 544|Community 544]]
-- [[_COMMUNITY_Community 545|Community 545]]
-- [[_COMMUNITY_Community 546|Community 546]]
-- [[_COMMUNITY_Community 547|Community 547]]
-- [[_COMMUNITY_Community 548|Community 548]]
-- [[_COMMUNITY_Community 549|Community 549]]
-- [[_COMMUNITY_Community 550|Community 550]]
-- [[_COMMUNITY_Community 551|Community 551]]
-- [[_COMMUNITY_Community 552|Community 552]]
-- [[_COMMUNITY_Community 553|Community 553]]
-- [[_COMMUNITY_Community 554|Community 554]]
-- [[_COMMUNITY_Community 555|Community 555]]
-- [[_COMMUNITY_Community 556|Community 556]]
-- [[_COMMUNITY_Community 557|Community 557]]
-- [[_COMMUNITY_Community 558|Community 558]]
-- [[_COMMUNITY_Community 559|Community 559]]
-- [[_COMMUNITY_Community 560|Community 560]]
-- [[_COMMUNITY_Community 561|Community 561]]
-- [[_COMMUNITY_Community 562|Community 562]]
-- [[_COMMUNITY_Community 563|Community 563]]
-- [[_COMMUNITY_Community 564|Community 564]]
-- [[_COMMUNITY_Community 565|Community 565]]
-- [[_COMMUNITY_Community 566|Community 566]]
-- [[_COMMUNITY_Community 567|Community 567]]
-- [[_COMMUNITY_Community 568|Community 568]]
-- [[_COMMUNITY_Community 569|Community 569]]
-- [[_COMMUNITY_Community 570|Community 570]]
-- [[_COMMUNITY_Community 571|Community 571]]
-- [[_COMMUNITY_Community 572|Community 572]]
-- [[_COMMUNITY_Community 573|Community 573]]
-- [[_COMMUNITY_Community 574|Community 574]]
-- [[_COMMUNITY_Community 575|Community 575]]
-- [[_COMMUNITY_Community 577|Community 577]]
-- [[_COMMUNITY_Community 578|Community 578]]
-- [[_COMMUNITY_Community 579|Community 579]]
-- [[_COMMUNITY_Community 580|Community 580]]
-- [[_COMMUNITY_Community 581|Community 581]]
-- [[_COMMUNITY_Community 582|Community 582]]
-- [[_COMMUNITY_Community 583|Community 583]]
-- [[_COMMUNITY_Community 584|Community 584]]
-- [[_COMMUNITY_Community 585|Community 585]]
-- [[_COMMUNITY_Community 586|Community 586]]
-- [[_COMMUNITY_Community 587|Community 587]]
-- [[_COMMUNITY_Community 588|Community 588]]
-- [[_COMMUNITY_Community 589|Community 589]]
-- [[_COMMUNITY_Community 590|Community 590]]
-- [[_COMMUNITY_Community 591|Community 591]]
-- [[_COMMUNITY_Community 592|Community 592]]
-- [[_COMMUNITY_Community 593|Community 593]]
-- [[_COMMUNITY_Community 594|Community 594]]
-- [[_COMMUNITY_Community 595|Community 595]]
-- [[_COMMUNITY_Community 596|Community 596]]
-- [[_COMMUNITY_Community 597|Community 597]]
-- [[_COMMUNITY_Community 598|Community 598]]
-- [[_COMMUNITY_Community 599|Community 599]]
-- [[_COMMUNITY_Community 600|Community 600]]
-- [[_COMMUNITY_Community 601|Community 601]]
-- [[_COMMUNITY_Community 602|Community 602]]
-- [[_COMMUNITY_Community 603|Community 603]]
-- [[_COMMUNITY_Community 604|Community 604]]
-- [[_COMMUNITY_Community 605|Community 605]]
-- [[_COMMUNITY_Community 606|Community 606]]
-- [[_COMMUNITY_Community 607|Community 607]]
-- [[_COMMUNITY_Community 608|Community 608]]
-- [[_COMMUNITY_Community 609|Community 609]]
-- [[_COMMUNITY_Community 610|Community 610]]
-- [[_COMMUNITY_Community 611|Community 611]]
-- [[_COMMUNITY_Community 612|Community 612]]
-- [[_COMMUNITY_Community 613|Community 613]]
-- [[_COMMUNITY_Community 614|Community 614]]
-- [[_COMMUNITY_Community 615|Community 615]]
-- [[_COMMUNITY_Community 616|Community 616]]
-- [[_COMMUNITY_Community 617|Community 617]]
-- [[_COMMUNITY_Community 618|Community 618]]
-- [[_COMMUNITY_Community 619|Community 619]]
-- [[_COMMUNITY_Community 620|Community 620]]
-- [[_COMMUNITY_Community 621|Community 621]]
-- [[_COMMUNITY_Community 622|Community 622]]
-- [[_COMMUNITY_Community 623|Community 623]]
-- [[_COMMUNITY_Community 624|Community 624]]
-- [[_COMMUNITY_Community 625|Community 625]]
-- [[_COMMUNITY_Community 626|Community 626]]
-- [[_COMMUNITY_Community 627|Community 627]]
-- [[_COMMUNITY_Community 628|Community 628]]
-- [[_COMMUNITY_Community 629|Community 629]]
-- [[_COMMUNITY_Community 630|Community 630]]
-- [[_COMMUNITY_Community 631|Community 631]]
-- [[_COMMUNITY_Community 632|Community 632]]
-- [[_COMMUNITY_Community 633|Community 633]]
-- [[_COMMUNITY_Community 634|Community 634]]
-- [[_COMMUNITY_Community 635|Community 635]]
-- [[_COMMUNITY_Community 636|Community 636]]
-- [[_COMMUNITY_Community 637|Community 637]]
-- [[_COMMUNITY_Community 638|Community 638]]
-- [[_COMMUNITY_Community 639|Community 639]]
-- [[_COMMUNITY_Community 640|Community 640]]
-- [[_COMMUNITY_Community 641|Community 641]]
-- [[_COMMUNITY_Community 642|Community 642]]
-- [[_COMMUNITY_Community 644|Community 644]]
-- [[_COMMUNITY_Community 648|Community 648]]
-- [[_COMMUNITY_Community 649|Community 649]]
-- [[_COMMUNITY_Community 650|Community 650]]
-- [[_COMMUNITY_Community 651|Community 651]]
-- [[_COMMUNITY_Community 652|Community 652]]
-- [[_COMMUNITY_Community 653|Community 653]]
-- [[_COMMUNITY_Community 654|Community 654]]
-- [[_COMMUNITY_Community 655|Community 655]]
-- [[_COMMUNITY_Community 656|Community 656]]
-- [[_COMMUNITY_Community 657|Community 657]]
-- [[_COMMUNITY_Community 658|Community 658]]
-- [[_COMMUNITY_Community 659|Community 659]]
-- [[_COMMUNITY_Community 660|Community 660]]
-- [[_COMMUNITY_Community 661|Community 661]]
-- [[_COMMUNITY_Community 662|Community 662]]
-- [[_COMMUNITY_Community 663|Community 663]]
-- [[_COMMUNITY_Community 664|Community 664]]
-- [[_COMMUNITY_Community 665|Community 665]]
-- [[_COMMUNITY_Community 666|Community 666]]
-- [[_COMMUNITY_Community 667|Community 667]]
-- [[_COMMUNITY_Community 668|Community 668]]
-- [[_COMMUNITY_Community 669|Community 669]]
-- [[_COMMUNITY_Community 670|Community 670]]
-- [[_COMMUNITY_Community 671|Community 671]]
-- [[_COMMUNITY_Community 672|Community 672]]
-- [[_COMMUNITY_Community 673|Community 673]]
-- [[_COMMUNITY_Community 674|Community 674]]
-- [[_COMMUNITY_Community 675|Community 675]]
-- [[_COMMUNITY_Community 676|Community 676]]
-- [[_COMMUNITY_Community 677|Community 677]]
-- [[_COMMUNITY_Community 678|Community 678]]
-- [[_COMMUNITY_Community 679|Community 679]]
-- [[_COMMUNITY_Community 680|Community 680]]
-- [[_COMMUNITY_Community 681|Community 681]]
-- [[_COMMUNITY_Community 682|Community 682]]
-- [[_COMMUNITY_Community 683|Community 683]]
-- [[_COMMUNITY_Community 684|Community 684]]
-- [[_COMMUNITY_Community 685|Community 685]]
-- [[_COMMUNITY_Community 686|Community 686]]
-- [[_COMMUNITY_Community 687|Community 687]]
-- [[_COMMUNITY_Community 688|Community 688]]
-- [[_COMMUNITY_Community 689|Community 689]]
-- [[_COMMUNITY_Community 690|Community 690]]
-- [[_COMMUNITY_Community 691|Community 691]]
-- [[_COMMUNITY_Community 692|Community 692]]
-- [[_COMMUNITY_Community 693|Community 693]]
-- [[_COMMUNITY_Community 694|Community 694]]
-- [[_COMMUNITY_Community 695|Community 695]]
-- [[_COMMUNITY_Community 696|Community 696]]
-- [[_COMMUNITY_Community 698|Community 698]]
-- [[_COMMUNITY_Community 699|Community 699]]
-- [[_COMMUNITY_Community 700|Community 700]]
-- [[_COMMUNITY_Community 701|Community 701]]
-- [[_COMMUNITY_Community 702|Community 702]]
-- [[_COMMUNITY_Community 703|Community 703]]
-- [[_COMMUNITY_Community 704|Community 704]]
-- [[_COMMUNITY_Community 705|Community 705]]
-- [[_COMMUNITY_Community 706|Community 706]]
-- [[_COMMUNITY_Community 707|Community 707]]
-- [[_COMMUNITY_Community 708|Community 708]]
-- [[_COMMUNITY_Community 709|Community 709]]
-- [[_COMMUNITY_Community 710|Community 710]]
-- [[_COMMUNITY_Community 711|Community 711]]
-- [[_COMMUNITY_Community 712|Community 712]]
-- [[_COMMUNITY_Community 713|Community 713]]
-- [[_COMMUNITY_Community 714|Community 714]]
-- [[_COMMUNITY_Community 715|Community 715]]
-- [[_COMMUNITY_Community 716|Community 716]]
-- [[_COMMUNITY_Community 717|Community 717]]
-- [[_COMMUNITY_Community 718|Community 718]]
-- [[_COMMUNITY_Community 719|Community 719]]
-- [[_COMMUNITY_Community 720|Community 720]]
-- [[_COMMUNITY_Community 721|Community 721]]
-- [[_COMMUNITY_Community 722|Community 722]]
-- [[_COMMUNITY_Community 723|Community 723]]
-- [[_COMMUNITY_Community 724|Community 724]]
-- [[_COMMUNITY_Community 725|Community 725]]
-- [[_COMMUNITY_Community 726|Community 726]]
-- [[_COMMUNITY_Community 727|Community 727]]
-- [[_COMMUNITY_Community 728|Community 728]]
-- [[_COMMUNITY_Community 729|Community 729]]
-- [[_COMMUNITY_Community 730|Community 730]]
-- [[_COMMUNITY_Community 731|Community 731]]
-- [[_COMMUNITY_Community 732|Community 732]]
-- [[_COMMUNITY_Community 733|Community 733]]
-- [[_COMMUNITY_Community 734|Community 734]]
-- [[_COMMUNITY_Community 735|Community 735]]
-- [[_COMMUNITY_Community 736|Community 736]]
-- [[_COMMUNITY_Community 737|Community 737]]
-- [[_COMMUNITY_Community 738|Community 738]]
-- [[_COMMUNITY_Community 739|Community 739]]
-- [[_COMMUNITY_Community 740|Community 740]]
-- [[_COMMUNITY_Community 741|Community 741]]
-- [[_COMMUNITY_Community 742|Community 742]]
-- [[_COMMUNITY_Community 743|Community 743]]
-- [[_COMMUNITY_Community 744|Community 744]]
-- [[_COMMUNITY_Community 745|Community 745]]
-- [[_COMMUNITY_Community 746|Community 746]]
-- [[_COMMUNITY_Community 747|Community 747]]
-- [[_COMMUNITY_Community 748|Community 748]]
-- [[_COMMUNITY_Community 749|Community 749]]
-- [[_COMMUNITY_Community 750|Community 750]]
-- [[_COMMUNITY_Community 751|Community 751]]
-- [[_COMMUNITY_Community 752|Community 752]]
-- [[_COMMUNITY_Community 753|Community 753]]
-- [[_COMMUNITY_Community 754|Community 754]]
-- [[_COMMUNITY_Community 755|Community 755]]
-- [[_COMMUNITY_Community 756|Community 756]]
-- [[_COMMUNITY_Community 757|Community 757]]
-- [[_COMMUNITY_Community 758|Community 758]]
-- [[_COMMUNITY_Community 759|Community 759]]
-- [[_COMMUNITY_Community 760|Community 760]]
-- [[_COMMUNITY_Community 761|Community 761]]
-- [[_COMMUNITY_Community 762|Community 762]]
-- [[_COMMUNITY_Community 764|Community 764]]
-- [[_COMMUNITY_Community 766|Community 766]]
-- [[_COMMUNITY_Community 768|Community 768]]
-- [[_COMMUNITY_Community 769|Community 769]]
-- [[_COMMUNITY_Community 770|Community 770]]
-- [[_COMMUNITY_Community 771|Community 771]]
-- [[_COMMUNITY_Community 772|Community 772]]
-- [[_COMMUNITY_Community 773|Community 773]]
-- [[_COMMUNITY_Community 774|Community 774]]
-- [[_COMMUNITY_Community 775|Community 775]]
-- [[_COMMUNITY_Community 776|Community 776]]
-- [[_COMMUNITY_Community 777|Community 777]]
-- [[_COMMUNITY_Community 778|Community 778]]
-- [[_COMMUNITY_Community 779|Community 779]]
-- [[_COMMUNITY_Community 780|Community 780]]
-- [[_COMMUNITY_Community 781|Community 781]]
-- [[_COMMUNITY_Community 782|Community 782]]
-- [[_COMMUNITY_Community 783|Community 783]]
-- [[_COMMUNITY_Community 784|Community 784]]
-- [[_COMMUNITY_Community 785|Community 785]]
-- [[_COMMUNITY_Community 786|Community 786]]
-- [[_COMMUNITY_Community 787|Community 787]]
-- [[_COMMUNITY_Community 788|Community 788]]
-- [[_COMMUNITY_Community 789|Community 789]]
-- [[_COMMUNITY_Community 790|Community 790]]
-- [[_COMMUNITY_Community 791|Community 791]]
-- [[_COMMUNITY_Community 792|Community 792]]
-- [[_COMMUNITY_Community 793|Community 793]]
-- [[_COMMUNITY_Community 794|Community 794]]
-- [[_COMMUNITY_Community 795|Community 795]]
-- [[_COMMUNITY_Community 796|Community 796]]
-- [[_COMMUNITY_Community 797|Community 797]]
-- [[_COMMUNITY_Community 798|Community 798]]
-- [[_COMMUNITY_Community 799|Community 799]]
-- [[_COMMUNITY_Community 800|Community 800]]
-- [[_COMMUNITY_Community 802|Community 802]]
-- [[_COMMUNITY_Community 803|Community 803]]
-- [[_COMMUNITY_Community 804|Community 804]]
-- [[_COMMUNITY_Community 805|Community 805]]
-- [[_COMMUNITY_Community 806|Community 806]]
-- [[_COMMUNITY_Community 807|Community 807]]
-- [[_COMMUNITY_Community 808|Community 808]]
-- [[_COMMUNITY_Community 809|Community 809]]
-- [[_COMMUNITY_Community 810|Community 810]]
-- [[_COMMUNITY_Community 811|Community 811]]
-- [[_COMMUNITY_Community 812|Community 812]]
-- [[_COMMUNITY_Community 813|Community 813]]
-- [[_COMMUNITY_Community 814|Community 814]]
-- [[_COMMUNITY_Community 815|Community 815]]
-- [[_COMMUNITY_Community 816|Community 816]]
-- [[_COMMUNITY_Community 817|Community 817]]
-- [[_COMMUNITY_Community 818|Community 818]]
-- [[_COMMUNITY_Community 819|Community 819]]
-- [[_COMMUNITY_Community 820|Community 820]]
-- [[_COMMUNITY_Community 821|Community 821]]
-- [[_COMMUNITY_Community 822|Community 822]]
-- [[_COMMUNITY_Community 823|Community 823]]
-- [[_COMMUNITY_Community 824|Community 824]]
-- [[_COMMUNITY_Community 825|Community 825]]
-- [[_COMMUNITY_Community 826|Community 826]]
-- [[_COMMUNITY_Community 827|Community 827]]
-- [[_COMMUNITY_Community 828|Community 828]]
-- [[_COMMUNITY_Community 829|Community 829]]
-- [[_COMMUNITY_Community 830|Community 830]]
-- [[_COMMUNITY_Community 831|Community 831]]
-- [[_COMMUNITY_Community 832|Community 832]]
-- [[_COMMUNITY_Community 836|Community 836]]
-- [[_COMMUNITY_Community 837|Community 837]]
-- [[_COMMUNITY_Community 840|Community 840]]
-- [[_COMMUNITY_Community 841|Community 841]]
-- [[_COMMUNITY_Community 843|Community 843]]
-- [[_COMMUNITY_Community 844|Community 844]]
-- [[_COMMUNITY_Community 845|Community 845]]
-- [[_COMMUNITY_Community 846|Community 846]]
-- [[_COMMUNITY_Community 847|Community 847]]
-- [[_COMMUNITY_Community 848|Community 848]]
-- [[_COMMUNITY_Community 849|Community 849]]
-- [[_COMMUNITY_Community 850|Community 850]]
-- [[_COMMUNITY_Community 851|Community 851]]
-- [[_COMMUNITY_Community 852|Community 852]]
-- [[_COMMUNITY_Community 853|Community 853]]
-- [[_COMMUNITY_Community 854|Community 854]]
-- [[_COMMUNITY_Community 855|Community 855]]
-- [[_COMMUNITY_Community 856|Community 856]]
-- [[_COMMUNITY_Community 857|Community 857]]
-- [[_COMMUNITY_Community 858|Community 858]]
-- [[_COMMUNITY_Community 859|Community 859]]
-- [[_COMMUNITY_Community 860|Community 860]]
-- [[_COMMUNITY_Community 861|Community 861]]
-- [[_COMMUNITY_Community 862|Community 862]]
-- [[_COMMUNITY_Community 863|Community 863]]
-- [[_COMMUNITY_Community 864|Community 864]]
-- [[_COMMUNITY_Community 865|Community 865]]
-- [[_COMMUNITY_Community 866|Community 866]]
-- [[_COMMUNITY_Community 867|Community 867]]
-- [[_COMMUNITY_Community 868|Community 868]]
-- [[_COMMUNITY_Community 869|Community 869]]
-- [[_COMMUNITY_Community 870|Community 870]]
-- [[_COMMUNITY_Community 871|Community 871]]
-- [[_COMMUNITY_Community 872|Community 872]]
-- [[_COMMUNITY_Community 873|Community 873]]
-- [[_COMMUNITY_Community 874|Community 874]]
-- [[_COMMUNITY_Community 875|Community 875]]
-- [[_COMMUNITY_Community 876|Community 876]]
-- [[_COMMUNITY_Community 877|Community 877]]
-- [[_COMMUNITY_Community 878|Community 878]]
-- [[_COMMUNITY_Community 879|Community 879]]
-- [[_COMMUNITY_Community 880|Community 880]]
-- [[_COMMUNITY_Community 881|Community 881]]
-- [[_COMMUNITY_Community 882|Community 882]]
-- [[_COMMUNITY_Community 883|Community 883]]
-- [[_COMMUNITY_Community 885|Community 885]]
-- [[_COMMUNITY_Community 886|Community 886]]
-- [[_COMMUNITY_Community 887|Community 887]]
-- [[_COMMUNITY_Community 888|Community 888]]
-- [[_COMMUNITY_Community 889|Community 889]]
-- [[_COMMUNITY_Community 890|Community 890]]
-- [[_COMMUNITY_Community 891|Community 891]]
-- [[_COMMUNITY_Community 892|Community 892]]
-- [[_COMMUNITY_Community 893|Community 893]]
-- [[_COMMUNITY_Community 894|Community 894]]
-- [[_COMMUNITY_Community 895|Community 895]]
-- [[_COMMUNITY_Community 896|Community 896]]
-- [[_COMMUNITY_Community 897|Community 897]]
-- [[_COMMUNITY_Community 898|Community 898]]
-- [[_COMMUNITY_Community 899|Community 899]]
-- [[_COMMUNITY_Community 900|Community 900]]
-- [[_COMMUNITY_Community 901|Community 901]]
-- [[_COMMUNITY_Community 902|Community 902]]
-- [[_COMMUNITY_Community 903|Community 903]]
-- [[_COMMUNITY_Community 904|Community 904]]
-- [[_COMMUNITY_Community 905|Community 905]]
-- [[_COMMUNITY_Community 906|Community 906]]
-- [[_COMMUNITY_Community 907|Community 907]]
-- [[_COMMUNITY_Community 908|Community 908]]
-- [[_COMMUNITY_Community 909|Community 909]]
-- [[_COMMUNITY_Community 910|Community 910]]
-- [[_COMMUNITY_Community 911|Community 911]]
-- [[_COMMUNITY_Community 912|Community 912]]
-- [[_COMMUNITY_Community 913|Community 913]]
-- [[_COMMUNITY_Community 914|Community 914]]
-- [[_COMMUNITY_Community 917|Community 917]]
-- [[_COMMUNITY_Community 919|Community 919]]
-- [[_COMMUNITY_Community 925|Community 925]]
-- [[_COMMUNITY_Community 926|Community 926]]
-- [[_COMMUNITY_Community 927|Community 927]]
-- [[_COMMUNITY_Community 928|Community 928]]
-- [[_COMMUNITY_Community 929|Community 929]]
-- [[_COMMUNITY_Community 930|Community 930]]
-- [[_COMMUNITY_Community 931|Community 931]]
-- [[_COMMUNITY_Community 932|Community 932]]
-- [[_COMMUNITY_Community 933|Community 933]]
-- [[_COMMUNITY_Community 934|Community 934]]
-- [[_COMMUNITY_Community 935|Community 935]]
-- [[_COMMUNITY_Community 936|Community 936]]
-- [[_COMMUNITY_Community 937|Community 937]]
-- [[_COMMUNITY_Community 938|Community 938]]
-- [[_COMMUNITY_Community 939|Community 939]]
-- [[_COMMUNITY_Community 940|Community 940]]
-- [[_COMMUNITY_Community 941|Community 941]]
-- [[_COMMUNITY_Community 942|Community 942]]
-- [[_COMMUNITY_Community 943|Community 943]]
-- [[_COMMUNITY_Community 944|Community 944]]
-- [[_COMMUNITY_Community 945|Community 945]]
-- [[_COMMUNITY_Community 946|Community 946]]
-- [[_COMMUNITY_Community 947|Community 947]]
-- [[_COMMUNITY_Community 948|Community 948]]
-- [[_COMMUNITY_Community 949|Community 949]]
-- [[_COMMUNITY_Community 954|Community 954]]
-- [[_COMMUNITY_Community 955|Community 955]]
-- [[_COMMUNITY_Community 956|Community 956]]
-- [[_COMMUNITY_Community 957|Community 957]]
-- [[_COMMUNITY_Community 958|Community 958]]
-- [[_COMMUNITY_Community 959|Community 959]]
-- [[_COMMUNITY_Community 960|Community 960]]
-- [[_COMMUNITY_Community 961|Community 961]]
-- [[_COMMUNITY_Community 962|Community 962]]
-- [[_COMMUNITY_Community 963|Community 963]]
-- [[_COMMUNITY_Community 964|Community 964]]
-- [[_COMMUNITY_Community 965|Community 965]]
-- [[_COMMUNITY_Community 966|Community 966]]
-- [[_COMMUNITY_Community 967|Community 967]]
-- [[_COMMUNITY_Community 968|Community 968]]
-- [[_COMMUNITY_Community 969|Community 969]]
-- [[_COMMUNITY_Community 970|Community 970]]
-- [[_COMMUNITY_Community 971|Community 971]]
-- [[_COMMUNITY_Community 972|Community 972]]
-- [[_COMMUNITY_Community 973|Community 973]]
-- [[_COMMUNITY_Community 974|Community 974]]
-- [[_COMMUNITY_Community 975|Community 975]]
-- [[_COMMUNITY_Community 976|Community 976]]
-- [[_COMMUNITY_Community 977|Community 977]]
-- [[_COMMUNITY_Community 978|Community 978]]
-- [[_COMMUNITY_Community 979|Community 979]]
-- [[_COMMUNITY_Community 980|Community 980]]
-- [[_COMMUNITY_Community 981|Community 981]]
-- [[_COMMUNITY_Community 982|Community 982]]
-- [[_COMMUNITY_Community 983|Community 983]]
-- [[_COMMUNITY_Community 984|Community 984]]
-- [[_COMMUNITY_Community 985|Community 985]]
-- [[_COMMUNITY_Community 986|Community 986]]
-- [[_COMMUNITY_Community 987|Community 987]]
-- [[_COMMUNITY_Community 988|Community 988]]
-- [[_COMMUNITY_Community 989|Community 989]]
-- [[_COMMUNITY_Community 990|Community 990]]
-- [[_COMMUNITY_Community 991|Community 991]]
-- [[_COMMUNITY_Community 992|Community 992]]
-- [[_COMMUNITY_Community 994|Community 994]]
-- [[_COMMUNITY_Community 995|Community 995]]
-- [[_COMMUNITY_Community 996|Community 996]]
-- [[_COMMUNITY_Community 997|Community 997]]
-- [[_COMMUNITY_Community 998|Community 998]]
-- [[_COMMUNITY_Community 999|Community 999]]
-- [[_COMMUNITY_Community 1000|Community 1000]]
-- [[_COMMUNITY_Community 1001|Community 1001]]
-- [[_COMMUNITY_Community 1002|Community 1002]]
-- [[_COMMUNITY_Community 1003|Community 1003]]
-- [[_COMMUNITY_Community 1004|Community 1004]]
-- [[_COMMUNITY_Community 1005|Community 1005]]
-- [[_COMMUNITY_Community 1006|Community 1006]]
-- [[_COMMUNITY_Community 1007|Community 1007]]
-- [[_COMMUNITY_Community 1008|Community 1008]]
-- [[_COMMUNITY_Community 1009|Community 1009]]
-- [[_COMMUNITY_Community 1010|Community 1010]]
-- [[_COMMUNITY_Community 1011|Community 1011]]
-- [[_COMMUNITY_Community 1012|Community 1012]]
-- [[_COMMUNITY_Community 1013|Community 1013]]
-- [[_COMMUNITY_Community 1014|Community 1014]]
-- [[_COMMUNITY_Community 1015|Community 1015]]
-- [[_COMMUNITY_Community 1016|Community 1016]]
-- [[_COMMUNITY_Community 1017|Community 1017]]
-- [[_COMMUNITY_Community 1018|Community 1018]]
-- [[_COMMUNITY_Community 1019|Community 1019]]
-- [[_COMMUNITY_Community 1020|Community 1020]]
-- [[_COMMUNITY_Community 1021|Community 1021]]
-- [[_COMMUNITY_Community 1022|Community 1022]]
-- [[_COMMUNITY_Community 1023|Community 1023]]
-- [[_COMMUNITY_Community 1024|Community 1024]]
-- [[_COMMUNITY_Community 1025|Community 1025]]
-- [[_COMMUNITY_Community 1026|Community 1026]]
-- [[_COMMUNITY_Community 1027|Community 1027]]
-- [[_COMMUNITY_Community 1028|Community 1028]]
-- [[_COMMUNITY_Community 1029|Community 1029]]
-- [[_COMMUNITY_Community 1030|Community 1030]]
-- [[_COMMUNITY_Community 1031|Community 1031]]
-- [[_COMMUNITY_Community 1032|Community 1032]]
-- [[_COMMUNITY_Community 1033|Community 1033]]
-- [[_COMMUNITY_Community 1034|Community 1034]]
-- [[_COMMUNITY_Community 1035|Community 1035]]
-- [[_COMMUNITY_Community 1036|Community 1036]]
-- [[_COMMUNITY_Community 1037|Community 1037]]
-- [[_COMMUNITY_Community 1038|Community 1038]]
-- [[_COMMUNITY_Community 1039|Community 1039]]
-- [[_COMMUNITY_Community 1040|Community 1040]]
-- [[_COMMUNITY_Community 1041|Community 1041]]
-- [[_COMMUNITY_Community 1042|Community 1042]]
-- [[_COMMUNITY_Community 1043|Community 1043]]
-- [[_COMMUNITY_Community 1044|Community 1044]]
-- [[_COMMUNITY_Community 1045|Community 1045]]
-- [[_COMMUNITY_Community 1046|Community 1046]]
-- [[_COMMUNITY_Community 1047|Community 1047]]
-- [[_COMMUNITY_Community 1048|Community 1048]]
-- [[_COMMUNITY_Community 1049|Community 1049]]
-- [[_COMMUNITY_Community 1050|Community 1050]]
-- [[_COMMUNITY_Community 1053|Community 1053]]
-- [[_COMMUNITY_Community 1056|Community 1056]]
-- [[_COMMUNITY_Community 1059|Community 1059]]
-- [[_COMMUNITY_Community 1060|Community 1060]]
-- [[_COMMUNITY_Community 1061|Community 1061]]
-- [[_COMMUNITY_Community 1062|Community 1062]]
-- [[_COMMUNITY_Community 1063|Community 1063]]
-- [[_COMMUNITY_Community 1064|Community 1064]]
-- [[_COMMUNITY_Community 1065|Community 1065]]
-- [[_COMMUNITY_Community 1066|Community 1066]]
-- [[_COMMUNITY_Community 1067|Community 1067]]
-- [[_COMMUNITY_Community 1068|Community 1068]]
-- [[_COMMUNITY_Community 1069|Community 1069]]
-- [[_COMMUNITY_Community 1070|Community 1070]]
-- [[_COMMUNITY_Community 1071|Community 1071]]
-- [[_COMMUNITY_Community 1072|Community 1072]]
-- [[_COMMUNITY_Community 1073|Community 1073]]
-- [[_COMMUNITY_Community 1074|Community 1074]]
-- [[_COMMUNITY_Community 1075|Community 1075]]
-- [[_COMMUNITY_Community 1076|Community 1076]]
-- [[_COMMUNITY_Community 1077|Community 1077]]
-- [[_COMMUNITY_Community 1078|Community 1078]]
-- [[_COMMUNITY_Community 1079|Community 1079]]
-- [[_COMMUNITY_Community 1080|Community 1080]]
-- [[_COMMUNITY_Community 1081|Community 1081]]
-- [[_COMMUNITY_Community 1082|Community 1082]]
-- [[_COMMUNITY_Community 1083|Community 1083]]
-- [[_COMMUNITY_Community 1084|Community 1084]]
-- [[_COMMUNITY_Community 1085|Community 1085]]
-- [[_COMMUNITY_Community 1086|Community 1086]]
-- [[_COMMUNITY_Community 1087|Community 1087]]
-- [[_COMMUNITY_Community 1088|Community 1088]]
-- [[_COMMUNITY_Community 1089|Community 1089]]
-- [[_COMMUNITY_Community 1090|Community 1090]]
-- [[_COMMUNITY_Community 1091|Community 1091]]
-- [[_COMMUNITY_Community 1092|Community 1092]]
-- [[_COMMUNITY_Community 1093|Community 1093]]
-- [[_COMMUNITY_Community 1094|Community 1094]]
-- [[_COMMUNITY_Community 1095|Community 1095]]
-- [[_COMMUNITY_Community 1096|Community 1096]]
-- [[_COMMUNITY_Community 1097|Community 1097]]
-- [[_COMMUNITY_Community 1098|Community 1098]]
-- [[_COMMUNITY_Community 1099|Community 1099]]
-- [[_COMMUNITY_Community 1100|Community 1100]]
-- [[_COMMUNITY_Community 1101|Community 1101]]
-- [[_COMMUNITY_Community 1104|Community 1104]]
-- [[_COMMUNITY_Community 1105|Community 1105]]
-- [[_COMMUNITY_Community 1106|Community 1106]]
-- [[_COMMUNITY_Community 1107|Community 1107]]
-- [[_COMMUNITY_Community 1108|Community 1108]]
-- [[_COMMUNITY_Community 1109|Community 1109]]
-- [[_COMMUNITY_Community 1110|Community 1110]]
-- [[_COMMUNITY_Community 1111|Community 1111]]
-- [[_COMMUNITY_Community 1112|Community 1112]]
-- [[_COMMUNITY_Community 1113|Community 1113]]
-- [[_COMMUNITY_Community 1114|Community 1114]]
-- [[_COMMUNITY_Community 1115|Community 1115]]
-- [[_COMMUNITY_Community 1116|Community 1116]]
-- [[_COMMUNITY_Community 1117|Community 1117]]
-- [[_COMMUNITY_Community 1118|Community 1118]]
-- [[_COMMUNITY_Community 1119|Community 1119]]
-- [[_COMMUNITY_Community 1120|Community 1120]]
-- [[_COMMUNITY_Community 1121|Community 1121]]
-- [[_COMMUNITY_Community 1122|Community 1122]]
-- [[_COMMUNITY_Community 1123|Community 1123]]
-- [[_COMMUNITY_Community 1124|Community 1124]]
-- [[_COMMUNITY_Community 1126|Community 1126]]
-- [[_COMMUNITY_Community 1127|Community 1127]]
-- [[_COMMUNITY_Community 1128|Community 1128]]
-- [[_COMMUNITY_Community 1129|Community 1129]]
-- [[_COMMUNITY_Community 1130|Community 1130]]
-- [[_COMMUNITY_Community 1131|Community 1131]]
-- [[_COMMUNITY_Community 1132|Community 1132]]
-- [[_COMMUNITY_Community 1133|Community 1133]]
-- [[_COMMUNITY_Community 1135|Community 1135]]
-- [[_COMMUNITY_Community 1136|Community 1136]]
-- [[_COMMUNITY_Community 1137|Community 1137]]
-- [[_COMMUNITY_Community 1138|Community 1138]]
-- [[_COMMUNITY_Community 1139|Community 1139]]
-- [[_COMMUNITY_Community 1140|Community 1140]]
-- [[_COMMUNITY_Community 1141|Community 1141]]
-- [[_COMMUNITY_Community 1142|Community 1142]]
-- [[_COMMUNITY_Community 1143|Community 1143]]
-- [[_COMMUNITY_Community 1144|Community 1144]]
-- [[_COMMUNITY_Community 1145|Community 1145]]
-- [[_COMMUNITY_Community 1146|Community 1146]]
-- [[_COMMUNITY_Community 1147|Community 1147]]
-- [[_COMMUNITY_Community 1148|Community 1148]]
-- [[_COMMUNITY_Community 1149|Community 1149]]
-- [[_COMMUNITY_Community 1150|Community 1150]]
-- [[_COMMUNITY_Community 1151|Community 1151]]
-- [[_COMMUNITY_Community 1152|Community 1152]]
-- [[_COMMUNITY_Community 1153|Community 1153]]
-- [[_COMMUNITY_Community 1154|Community 1154]]
-- [[_COMMUNITY_Community 1155|Community 1155]]
-- [[_COMMUNITY_Community 1156|Community 1156]]
-- [[_COMMUNITY_Community 1157|Community 1157]]
-- [[_COMMUNITY_Community 1158|Community 1158]]
-- [[_COMMUNITY_Community 1159|Community 1159]]
-- [[_COMMUNITY_Community 1160|Community 1160]]
-- [[_COMMUNITY_Community 1161|Community 1161]]
-- [[_COMMUNITY_Community 1162|Community 1162]]
-- [[_COMMUNITY_Community 1163|Community 1163]]
-- [[_COMMUNITY_Community 1164|Community 1164]]
-- [[_COMMUNITY_Community 1165|Community 1165]]
-- [[_COMMUNITY_Community 1166|Community 1166]]
-- [[_COMMUNITY_Community 1167|Community 1167]]
-- [[_COMMUNITY_Community 1168|Community 1168]]
-- [[_COMMUNITY_Community 1169|Community 1169]]
-- [[_COMMUNITY_Community 1170|Community 1170]]
-- [[_COMMUNITY_Community 1171|Community 1171]]
-- [[_COMMUNITY_Community 1172|Community 1172]]
-- [[_COMMUNITY_Community 1173|Community 1173]]
-- [[_COMMUNITY_Community 1174|Community 1174]]
-- [[_COMMUNITY_Community 1175|Community 1175]]
-- [[_COMMUNITY_Community 1176|Community 1176]]
-- [[_COMMUNITY_Community 1177|Community 1177]]
-- [[_COMMUNITY_Community 1178|Community 1178]]
-- [[_COMMUNITY_Community 1179|Community 1179]]
-- [[_COMMUNITY_Community 1180|Community 1180]]
-- [[_COMMUNITY_Community 1181|Community 1181]]
-- [[_COMMUNITY_Community 1182|Community 1182]]
-- [[_COMMUNITY_Community 1183|Community 1183]]
-- [[_COMMUNITY_Community 1184|Community 1184]]
-- [[_COMMUNITY_Community 1185|Community 1185]]
-- [[_COMMUNITY_Community 1186|Community 1186]]
-- [[_COMMUNITY_Community 1187|Community 1187]]
-- [[_COMMUNITY_Community 1188|Community 1188]]
-- [[_COMMUNITY_Community 1189|Community 1189]]
-- [[_COMMUNITY_Community 1190|Community 1190]]
-- [[_COMMUNITY_Community 1191|Community 1191]]
-- [[_COMMUNITY_Community 1192|Community 1192]]
-- [[_COMMUNITY_Community 1193|Community 1193]]
-- [[_COMMUNITY_Community 1194|Community 1194]]
-- [[_COMMUNITY_Community 1195|Community 1195]]
-- [[_COMMUNITY_Community 1196|Community 1196]]
-- [[_COMMUNITY_Community 1197|Community 1197]]
-- [[_COMMUNITY_Community 1198|Community 1198]]
-- [[_COMMUNITY_Community 1199|Community 1199]]
-- [[_COMMUNITY_Community 1200|Community 1200]]
-- [[_COMMUNITY_Community 1201|Community 1201]]
-- [[_COMMUNITY_Community 1202|Community 1202]]
-- [[_COMMUNITY_Community 1203|Community 1203]]
-- [[_COMMUNITY_Community 1204|Community 1204]]
-- [[_COMMUNITY_Community 1205|Community 1205]]
-- [[_COMMUNITY_Community 1206|Community 1206]]
-- [[_COMMUNITY_Community 1207|Community 1207]]
-- [[_COMMUNITY_Community 1208|Community 1208]]
-- [[_COMMUNITY_Community 1209|Community 1209]]
-- [[_COMMUNITY_Community 1210|Community 1210]]
-- [[_COMMUNITY_Community 1211|Community 1211]]
-- [[_COMMUNITY_Community 1212|Community 1212]]
-- [[_COMMUNITY_Community 1213|Community 1213]]
-- [[_COMMUNITY_Community 1214|Community 1214]]
-- [[_COMMUNITY_Community 1215|Community 1215]]
-- [[_COMMUNITY_Community 1216|Community 1216]]
-- [[_COMMUNITY_Community 1217|Community 1217]]
-- [[_COMMUNITY_Community 1218|Community 1218]]
-- [[_COMMUNITY_Community 1219|Community 1219]]
-- [[_COMMUNITY_Community 1220|Community 1220]]
-- [[_COMMUNITY_Community 1221|Community 1221]]
-- [[_COMMUNITY_Community 1222|Community 1222]]
-- [[_COMMUNITY_Community 1223|Community 1223]]
-- [[_COMMUNITY_Community 1224|Community 1224]]
-- [[_COMMUNITY_Community 1225|Community 1225]]
-- [[_COMMUNITY_Community 1226|Community 1226]]
-- [[_COMMUNITY_Community 1227|Community 1227]]
-- [[_COMMUNITY_Community 1228|Community 1228]]
-- [[_COMMUNITY_Community 1229|Community 1229]]
-- [[_COMMUNITY_Community 1230|Community 1230]]
-- [[_COMMUNITY_Community 1231|Community 1231]]
-- [[_COMMUNITY_Community 1232|Community 1232]]
-- [[_COMMUNITY_Community 1233|Community 1233]]
-- [[_COMMUNITY_Community 1234|Community 1234]]
-- [[_COMMUNITY_Community 1235|Community 1235]]
-- [[_COMMUNITY_Community 1236|Community 1236]]
-- [[_COMMUNITY_Community 1237|Community 1237]]
-- [[_COMMUNITY_Community 1238|Community 1238]]
-- [[_COMMUNITY_Community 1239|Community 1239]]
-- [[_COMMUNITY_Community 1240|Community 1240]]
-- [[_COMMUNITY_Community 1241|Community 1241]]
-- [[_COMMUNITY_Community 1242|Community 1242]]
-- [[_COMMUNITY_Community 1243|Community 1243]]
-- [[_COMMUNITY_Community 1244|Community 1244]]
-- [[_COMMUNITY_Community 1245|Community 1245]]
-- [[_COMMUNITY_Community 1246|Community 1246]]
-- [[_COMMUNITY_Community 1247|Community 1247]]
-- [[_COMMUNITY_Community 1248|Community 1248]]
-- [[_COMMUNITY_Community 1249|Community 1249]]
-- [[_COMMUNITY_Community 1250|Community 1250]]
-- [[_COMMUNITY_Community 1251|Community 1251]]
-- [[_COMMUNITY_Community 1252|Community 1252]]
-- [[_COMMUNITY_Community 1253|Community 1253]]
-- [[_COMMUNITY_Community 1254|Community 1254]]
-- [[_COMMUNITY_Community 1255|Community 1255]]
-- [[_COMMUNITY_Community 1256|Community 1256]]
-- [[_COMMUNITY_Community 1257|Community 1257]]
-- [[_COMMUNITY_Community 1258|Community 1258]]
-- [[_COMMUNITY_Community 1259|Community 1259]]
-- [[_COMMUNITY_Community 1260|Community 1260]]
-- [[_COMMUNITY_Community 1261|Community 1261]]
-- [[_COMMUNITY_Community 1262|Community 1262]]
-- [[_COMMUNITY_Community 1263|Community 1263]]
-- [[_COMMUNITY_Community 1264|Community 1264]]
-- [[_COMMUNITY_Community 1265|Community 1265]]
-- [[_COMMUNITY_Community 1266|Community 1266]]
-- [[_COMMUNITY_Community 1267|Community 1267]]
-- [[_COMMUNITY_Community 1268|Community 1268]]
-- [[_COMMUNITY_Community 1269|Community 1269]]
-- [[_COMMUNITY_Community 1270|Community 1270]]
-- [[_COMMUNITY_Community 1271|Community 1271]]
-- [[_COMMUNITY_Community 1272|Community 1272]]
-- [[_COMMUNITY_Community 1273|Community 1273]]
-- [[_COMMUNITY_Community 1274|Community 1274]]
-- [[_COMMUNITY_Community 1275|Community 1275]]
-- [[_COMMUNITY_Community 1276|Community 1276]]
-- [[_COMMUNITY_Community 1277|Community 1277]]
-- [[_COMMUNITY_Community 1278|Community 1278]]
-- [[_COMMUNITY_Community 1279|Community 1279]]
-- [[_COMMUNITY_Community 1280|Community 1280]]
-- [[_COMMUNITY_Community 1281|Community 1281]]
-- [[_COMMUNITY_Community 1282|Community 1282]]
-- [[_COMMUNITY_Community 1283|Community 1283]]
-- [[_COMMUNITY_Community 1284|Community 1284]]
-- [[_COMMUNITY_Community 1285|Community 1285]]
-- [[_COMMUNITY_Community 1286|Community 1286]]
-- [[_COMMUNITY_Community 1287|Community 1287]]
-- [[_COMMUNITY_Community 1288|Community 1288]]
-- [[_COMMUNITY_Community 1289|Community 1289]]
-- [[_COMMUNITY_Community 1290|Community 1290]]
-- [[_COMMUNITY_Community 1291|Community 1291]]
-- [[_COMMUNITY_Community 1292|Community 1292]]
-- [[_COMMUNITY_Community 1293|Community 1293]]
-- [[_COMMUNITY_Community 1294|Community 1294]]
-- [[_COMMUNITY_Community 1295|Community 1295]]
-- [[_COMMUNITY_Community 1296|Community 1296]]
-- [[_COMMUNITY_Community 1297|Community 1297]]
-- [[_COMMUNITY_Community 1298|Community 1298]]
-- [[_COMMUNITY_Community 1299|Community 1299]]
-- [[_COMMUNITY_Community 1300|Community 1300]]
-- [[_COMMUNITY_Community 1301|Community 1301]]
-- [[_COMMUNITY_Community 1302|Community 1302]]
-- [[_COMMUNITY_Community 1303|Community 1303]]
-- [[_COMMUNITY_Community 1304|Community 1304]]
-- [[_COMMUNITY_Community 1305|Community 1305]]
-- [[_COMMUNITY_Community 1306|Community 1306]]
-- [[_COMMUNITY_Community 1307|Community 1307]]
-- [[_COMMUNITY_Community 1308|Community 1308]]
-- [[_COMMUNITY_Community 1309|Community 1309]]
-- [[_COMMUNITY_Community 1310|Community 1310]]
-- [[_COMMUNITY_Community 1311|Community 1311]]
-- [[_COMMUNITY_Community 1312|Community 1312]]
-- [[_COMMUNITY_Community 1313|Community 1313]]
-- [[_COMMUNITY_Community 1314|Community 1314]]
-- [[_COMMUNITY_Community 1315|Community 1315]]
-- [[_COMMUNITY_Community 1316|Community 1316]]
-- [[_COMMUNITY_Community 1317|Community 1317]]
-- [[_COMMUNITY_Community 1318|Community 1318]]
-- [[_COMMUNITY_Community 1319|Community 1319]]
-- [[_COMMUNITY_Community 1320|Community 1320]]
-- [[_COMMUNITY_Community 1321|Community 1321]]
-- [[_COMMUNITY_Community 1322|Community 1322]]
-- [[_COMMUNITY_Community 1323|Community 1323]]
-- [[_COMMUNITY_Community 1324|Community 1324]]
-- [[_COMMUNITY_Community 1325|Community 1325]]
-- [[_COMMUNITY_Community 1326|Community 1326]]
-- [[_COMMUNITY_Community 1327|Community 1327]]
-- [[_COMMUNITY_Community 1328|Community 1328]]
-- [[_COMMUNITY_Community 1329|Community 1329]]
-- [[_COMMUNITY_Community 1330|Community 1330]]
-- [[_COMMUNITY_Community 1331|Community 1331]]
-- [[_COMMUNITY_Community 1332|Community 1332]]
-- [[_COMMUNITY_Community 1333|Community 1333]]
-- [[_COMMUNITY_Community 1334|Community 1334]]
-- [[_COMMUNITY_Community 1335|Community 1335]]
-- [[_COMMUNITY_Community 1336|Community 1336]]
-- [[_COMMUNITY_Community 1337|Community 1337]]
-- [[_COMMUNITY_Community 1338|Community 1338]]
-- [[_COMMUNITY_Community 1339|Community 1339]]
-- [[_COMMUNITY_Community 1340|Community 1340]]
-- [[_COMMUNITY_Community 1341|Community 1341]]
-- [[_COMMUNITY_Community 1342|Community 1342]]
-- [[_COMMUNITY_Community 1343|Community 1343]]
-- [[_COMMUNITY_Community 1344|Community 1344]]
-- [[_COMMUNITY_Community 1345|Community 1345]]
-- [[_COMMUNITY_Community 1346|Community 1346]]
-- [[_COMMUNITY_Community 1347|Community 1347]]
-- [[_COMMUNITY_Community 1348|Community 1348]]
-- [[_COMMUNITY_Community 1349|Community 1349]]
-- [[_COMMUNITY_Community 1350|Community 1350]]
-- [[_COMMUNITY_Community 1351|Community 1351]]
-- [[_COMMUNITY_Community 1352|Community 1352]]
-- [[_COMMUNITY_Community 1353|Community 1353]]
-- [[_COMMUNITY_Community 1354|Community 1354]]
-- [[_COMMUNITY_Community 1355|Community 1355]]
-- [[_COMMUNITY_Community 1356|Community 1356]]
-- [[_COMMUNITY_Community 1357|Community 1357]]
-- [[_COMMUNITY_Community 1358|Community 1358]]
-- [[_COMMUNITY_Community 1359|Community 1359]]
-- [[_COMMUNITY_Community 1360|Community 1360]]
-- [[_COMMUNITY_Community 1361|Community 1361]]
-- [[_COMMUNITY_Community 1362|Community 1362]]
-- [[_COMMUNITY_Community 1363|Community 1363]]
-- [[_COMMUNITY_Community 1364|Community 1364]]
-- [[_COMMUNITY_Community 1365|Community 1365]]
-- [[_COMMUNITY_Community 1366|Community 1366]]
-- [[_COMMUNITY_Community 1367|Community 1367]]
-- [[_COMMUNITY_Community 1368|Community 1368]]
-- [[_COMMUNITY_Community 1369|Community 1369]]
-- [[_COMMUNITY_Community 1370|Community 1370]]
-- [[_COMMUNITY_Community 1371|Community 1371]]
-- [[_COMMUNITY_Community 1372|Community 1372]]
-- [[_COMMUNITY_Community 1373|Community 1373]]
-- [[_COMMUNITY_Community 1374|Community 1374]]
-- [[_COMMUNITY_Community 1375|Community 1375]]
-- [[_COMMUNITY_Community 1376|Community 1376]]
-- [[_COMMUNITY_Community 1377|Community 1377]]
-- [[_COMMUNITY_Community 1378|Community 1378]]
-- [[_COMMUNITY_Community 1379|Community 1379]]
-- [[_COMMUNITY_Community 1380|Community 1380]]
-- [[_COMMUNITY_Community 1381|Community 1381]]
-- [[_COMMUNITY_Community 1382|Community 1382]]
-- [[_COMMUNITY_Community 1383|Community 1383]]
-- [[_COMMUNITY_Community 1384|Community 1384]]
-- [[_COMMUNITY_Community 1385|Community 1385]]
-- [[_COMMUNITY_Community 1386|Community 1386]]
-- [[_COMMUNITY_Community 1387|Community 1387]]
-- [[_COMMUNITY_Community 1388|Community 1388]]
-- [[_COMMUNITY_Community 1389|Community 1389]]
-- [[_COMMUNITY_Community 1390|Community 1390]]
-- [[_COMMUNITY_Community 1391|Community 1391]]
-- [[_COMMUNITY_Community 1392|Community 1392]]
-- [[_COMMUNITY_Community 1393|Community 1393]]
-- [[_COMMUNITY_Community 1394|Community 1394]]
-- [[_COMMUNITY_Community 1395|Community 1395]]
-- [[_COMMUNITY_Community 1396|Community 1396]]
-- [[_COMMUNITY_Community 1397|Community 1397]]
-- [[_COMMUNITY_Community 1398|Community 1398]]
-- [[_COMMUNITY_Community 1399|Community 1399]]
-- [[_COMMUNITY_Community 1400|Community 1400]]
-- [[_COMMUNITY_Community 1401|Community 1401]]
-- [[_COMMUNITY_Community 1402|Community 1402]]
-- [[_COMMUNITY_Community 1403|Community 1403]]
-- [[_COMMUNITY_Community 1404|Community 1404]]
-- [[_COMMUNITY_Community 1405|Community 1405]]
-- [[_COMMUNITY_Community 1406|Community 1406]]
-- [[_COMMUNITY_Community 1407|Community 1407]]
-- [[_COMMUNITY_Community 1408|Community 1408]]
-- [[_COMMUNITY_Community 1409|Community 1409]]
-- [[_COMMUNITY_Community 1410|Community 1410]]
-- [[_COMMUNITY_Community 1411|Community 1411]]
-- [[_COMMUNITY_Community 1412|Community 1412]]
-- [[_COMMUNITY_Community 1413|Community 1413]]
-- [[_COMMUNITY_Community 1414|Community 1414]]
-- [[_COMMUNITY_Community 1415|Community 1415]]
-- [[_COMMUNITY_Community 1416|Community 1416]]
-- [[_COMMUNITY_Community 1417|Community 1417]]
-- [[_COMMUNITY_Community 1418|Community 1418]]
-- [[_COMMUNITY_Community 1419|Community 1419]]
-- [[_COMMUNITY_Community 1420|Community 1420]]
-- [[_COMMUNITY_Community 1421|Community 1421]]
-- [[_COMMUNITY_Community 1422|Community 1422]]
-- [[_COMMUNITY_Community 1423|Community 1423]]
-- [[_COMMUNITY_Community 1424|Community 1424]]
-- [[_COMMUNITY_Community 1425|Community 1425]]
-- [[_COMMUNITY_Community 1426|Community 1426]]
-- [[_COMMUNITY_Community 1427|Community 1427]]
-- [[_COMMUNITY_Community 1428|Community 1428]]
-- [[_COMMUNITY_Community 1429|Community 1429]]
-- [[_COMMUNITY_Community 1430|Community 1430]]
-- [[_COMMUNITY_Community 1431|Community 1431]]
-- [[_COMMUNITY_Community 1432|Community 1432]]
-- [[_COMMUNITY_Community 1433|Community 1433]]
-- [[_COMMUNITY_Community 1434|Community 1434]]
-- [[_COMMUNITY_Community 1435|Community 1435]]
-- [[_COMMUNITY_Community 1436|Community 1436]]
-- [[_COMMUNITY_Community 1437|Community 1437]]
-- [[_COMMUNITY_Community 1438|Community 1438]]
-- [[_COMMUNITY_Community 1439|Community 1439]]
-- [[_COMMUNITY_Community 1440|Community 1440]]
-- [[_COMMUNITY_Community 1441|Community 1441]]
-- [[_COMMUNITY_Community 1442|Community 1442]]
-- [[_COMMUNITY_Community 1443|Community 1443]]
-- [[_COMMUNITY_Community 1444|Community 1444]]
-- [[_COMMUNITY_Community 1445|Community 1445]]
-- [[_COMMUNITY_Community 1446|Community 1446]]
-- [[_COMMUNITY_Community 1447|Community 1447]]
-- [[_COMMUNITY_Community 1448|Community 1448]]
-- [[_COMMUNITY_Community 1449|Community 1449]]
-- [[_COMMUNITY_Community 1450|Community 1450]]
-- [[_COMMUNITY_Community 1451|Community 1451]]
-- [[_COMMUNITY_Community 1452|Community 1452]]
-- [[_COMMUNITY_Community 1453|Community 1453]]
-- [[_COMMUNITY_Community 1454|Community 1454]]
-- [[_COMMUNITY_Community 1455|Community 1455]]
-- [[_COMMUNITY_Community 1456|Community 1456]]
-- [[_COMMUNITY_Community 1457|Community 1457]]
-- [[_COMMUNITY_Community 1458|Community 1458]]
-- [[_COMMUNITY_Community 1459|Community 1459]]
-- [[_COMMUNITY_Community 1460|Community 1460]]
-- [[_COMMUNITY_Community 1461|Community 1461]]
-- [[_COMMUNITY_Community 1462|Community 1462]]
-- [[_COMMUNITY_Community 1463|Community 1463]]
-- [[_COMMUNITY_Community 1464|Community 1464]]
-- [[_COMMUNITY_Community 1465|Community 1465]]
-- [[_COMMUNITY_Community 1466|Community 1466]]
-- [[_COMMUNITY_Community 1467|Community 1467]]
-- [[_COMMUNITY_Community 1468|Community 1468]]
-- [[_COMMUNITY_Community 1469|Community 1469]]
-- [[_COMMUNITY_Community 1470|Community 1470]]
-- [[_COMMUNITY_Community 1471|Community 1471]]
-- [[_COMMUNITY_Community 1472|Community 1472]]
-- [[_COMMUNITY_Community 1473|Community 1473]]
-- [[_COMMUNITY_Community 1474|Community 1474]]
-- [[_COMMUNITY_Community 1475|Community 1475]]
-- [[_COMMUNITY_Community 1476|Community 1476]]
-- [[_COMMUNITY_Community 1477|Community 1477]]
-- [[_COMMUNITY_Community 1478|Community 1478]]
-- [[_COMMUNITY_Community 1479|Community 1479]]
-- [[_COMMUNITY_Community 1480|Community 1480]]
-- [[_COMMUNITY_Community 1481|Community 1481]]
-- [[_COMMUNITY_Community 1482|Community 1482]]
-- [[_COMMUNITY_Community 1483|Community 1483]]
-- [[_COMMUNITY_Community 1484|Community 1484]]
-- [[_COMMUNITY_Community 1485|Community 1485]]
-- [[_COMMUNITY_Community 1486|Community 1486]]
-- [[_COMMUNITY_Community 1487|Community 1487]]
-- [[_COMMUNITY_Community 1488|Community 1488]]
-- [[_COMMUNITY_Community 1489|Community 1489]]
-- [[_COMMUNITY_Community 1490|Community 1490]]
-- [[_COMMUNITY_Community 1491|Community 1491]]
-- [[_COMMUNITY_Community 1492|Community 1492]]
-- [[_COMMUNITY_Community 1493|Community 1493]]
-- [[_COMMUNITY_Community 1494|Community 1494]]
-- [[_COMMUNITY_Community 1495|Community 1495]]
-- [[_COMMUNITY_Community 1496|Community 1496]]
-- [[_COMMUNITY_Community 1497|Community 1497]]
-- [[_COMMUNITY_Community 1498|Community 1498]]
-- [[_COMMUNITY_Community 1499|Community 1499]]
-- [[_COMMUNITY_Community 1500|Community 1500]]
-- [[_COMMUNITY_Community 1501|Community 1501]]
-- [[_COMMUNITY_Community 1502|Community 1502]]
-- [[_COMMUNITY_Community 1503|Community 1503]]
-- [[_COMMUNITY_Community 1504|Community 1504]]
-- [[_COMMUNITY_Community 1505|Community 1505]]
-- [[_COMMUNITY_Community 1506|Community 1506]]
-- [[_COMMUNITY_Community 1507|Community 1507]]
-- [[_COMMUNITY_Community 1508|Community 1508]]
-- [[_COMMUNITY_Community 1509|Community 1509]]
-- [[_COMMUNITY_Community 1510|Community 1510]]
-- [[_COMMUNITY_Community 1511|Community 1511]]
-- [[_COMMUNITY_Community 1512|Community 1512]]
-- [[_COMMUNITY_Community 1513|Community 1513]]
-- [[_COMMUNITY_Community 1514|Community 1514]]
-- [[_COMMUNITY_Community 1515|Community 1515]]
-- [[_COMMUNITY_Community 1516|Community 1516]]
-- [[_COMMUNITY_Community 1517|Community 1517]]
-- [[_COMMUNITY_Community 1518|Community 1518]]
-- [[_COMMUNITY_Community 1519|Community 1519]]
-- [[_COMMUNITY_Community 1520|Community 1520]]
-- [[_COMMUNITY_Community 1521|Community 1521]]
-- [[_COMMUNITY_Community 1522|Community 1522]]
-- [[_COMMUNITY_Community 1523|Community 1523]]
-- [[_COMMUNITY_Community 1524|Community 1524]]
-- [[_COMMUNITY_Community 1525|Community 1525]]
-- [[_COMMUNITY_Community 1526|Community 1526]]
-- [[_COMMUNITY_Community 1527|Community 1527]]
-- [[_COMMUNITY_Community 1528|Community 1528]]
-- [[_COMMUNITY_Community 1529|Community 1529]]
-- [[_COMMUNITY_Community 1530|Community 1530]]
-- [[_COMMUNITY_Community 1531|Community 1531]]
-- [[_COMMUNITY_Community 1532|Community 1532]]
-- [[_COMMUNITY_Community 1533|Community 1533]]
-- [[_COMMUNITY_Community 1534|Community 1534]]
-- [[_COMMUNITY_Community 1535|Community 1535]]
-- [[_COMMUNITY_Community 1536|Community 1536]]
-- [[_COMMUNITY_Community 1537|Community 1537]]
-- [[_COMMUNITY_Community 1538|Community 1538]]
-- [[_COMMUNITY_Community 1539|Community 1539]]
-- [[_COMMUNITY_Community 1540|Community 1540]]
-- [[_COMMUNITY_Community 1541|Community 1541]]
-- [[_COMMUNITY_Community 1542|Community 1542]]
-- [[_COMMUNITY_Community 1543|Community 1543]]
-- [[_COMMUNITY_Community 1544|Community 1544]]
-- [[_COMMUNITY_Community 1545|Community 1545]]
-- [[_COMMUNITY_Community 1546|Community 1546]]
-- [[_COMMUNITY_Community 1547|Community 1547]]
-- [[_COMMUNITY_Community 1548|Community 1548]]
-- [[_COMMUNITY_Community 1549|Community 1549]]
-- [[_COMMUNITY_Community 1550|Community 1550]]
-- [[_COMMUNITY_Community 1551|Community 1551]]
-- [[_COMMUNITY_Community 1552|Community 1552]]
-- [[_COMMUNITY_Community 1553|Community 1553]]
-- [[_COMMUNITY_Community 1554|Community 1554]]
-- [[_COMMUNITY_Community 1555|Community 1555]]
-- [[_COMMUNITY_Community 1556|Community 1556]]
-- [[_COMMUNITY_Community 1557|Community 1557]]
-- [[_COMMUNITY_Community 1558|Community 1558]]
-- [[_COMMUNITY_Community 1559|Community 1559]]
-- [[_COMMUNITY_Community 1560|Community 1560]]
-- [[_COMMUNITY_Community 1561|Community 1561]]
-- [[_COMMUNITY_Community 1562|Community 1562]]
-- [[_COMMUNITY_Community 1563|Community 1563]]
-- [[_COMMUNITY_Community 1564|Community 1564]]
-- [[_COMMUNITY_Community 1565|Community 1565]]
-- [[_COMMUNITY_Community 1566|Community 1566]]
-- [[_COMMUNITY_Community 1567|Community 1567]]
-- [[_COMMUNITY_Community 1568|Community 1568]]
-- [[_COMMUNITY_Community 1569|Community 1569]]
-- [[_COMMUNITY_Community 1570|Community 1570]]
-- [[_COMMUNITY_Community 1571|Community 1571]]
-- [[_COMMUNITY_Community 1572|Community 1572]]
-- [[_COMMUNITY_Community 1573|Community 1573]]
-- [[_COMMUNITY_Community 1574|Community 1574]]
-- [[_COMMUNITY_Community 1575|Community 1575]]
-- [[_COMMUNITY_Community 1576|Community 1576]]
-- [[_COMMUNITY_Community 1577|Community 1577]]
-- [[_COMMUNITY_Community 1578|Community 1578]]
-- [[_COMMUNITY_Community 1579|Community 1579]]
-- [[_COMMUNITY_Community 1580|Community 1580]]
-- [[_COMMUNITY_Community 1581|Community 1581]]
-- [[_COMMUNITY_Community 1582|Community 1582]]
-- [[_COMMUNITY_Community 1583|Community 1583]]
-- [[_COMMUNITY_Community 1584|Community 1584]]
-- [[_COMMUNITY_Community 1585|Community 1585]]
-- [[_COMMUNITY_Community 1586|Community 1586]]
-- [[_COMMUNITY_Community 1587|Community 1587]]
-- [[_COMMUNITY_Community 1588|Community 1588]]
-- [[_COMMUNITY_Community 1589|Community 1589]]
-- [[_COMMUNITY_Community 1590|Community 1590]]
-- [[_COMMUNITY_Community 1591|Community 1591]]
-- [[_COMMUNITY_Community 1592|Community 1592]]
-- [[_COMMUNITY_Community 1593|Community 1593]]
-- [[_COMMUNITY_Community 1594|Community 1594]]
-- [[_COMMUNITY_Community 1595|Community 1595]]
-- [[_COMMUNITY_Community 1596|Community 1596]]
-- [[_COMMUNITY_Community 1597|Community 1597]]
-- [[_COMMUNITY_Community 1598|Community 1598]]
-- [[_COMMUNITY_Community 1599|Community 1599]]
-- [[_COMMUNITY_Community 1600|Community 1600]]
-- [[_COMMUNITY_Community 1601|Community 1601]]
-- [[_COMMUNITY_Community 1602|Community 1602]]
-- [[_COMMUNITY_Community 1603|Community 1603]]
-- [[_COMMUNITY_Community 1604|Community 1604]]
-- [[_COMMUNITY_Community 1605|Community 1605]]
-- [[_COMMUNITY_Community 1606|Community 1606]]
-- [[_COMMUNITY_Community 1607|Community 1607]]
-- [[_COMMUNITY_Community 1608|Community 1608]]
-- [[_COMMUNITY_Community 1609|Community 1609]]
-- [[_COMMUNITY_Community 1610|Community 1610]]
-- [[_COMMUNITY_Community 1611|Community 1611]]
-- [[_COMMUNITY_Community 1612|Community 1612]]
-- [[_COMMUNITY_Community 1613|Community 1613]]
-- [[_COMMUNITY_Community 1614|Community 1614]]
-- [[_COMMUNITY_Community 1615|Community 1615]]
-- [[_COMMUNITY_Community 1616|Community 1616]]
-- [[_COMMUNITY_Community 1617|Community 1617]]
-- [[_COMMUNITY_Community 1618|Community 1618]]
-- [[_COMMUNITY_Community 1619|Community 1619]]
-- [[_COMMUNITY_Community 1622|Community 1622]]
-- [[_COMMUNITY_Community 1624|Community 1624]]
-- [[_COMMUNITY_Community 1633|Community 1633]]
-- [[_COMMUNITY_Community 1636|Community 1636]]
-- [[_COMMUNITY_Community 1638|Community 1638]]
-- [[_COMMUNITY_Community 1639|Community 1639]]
-- [[_COMMUNITY_Community 1640|Community 1640]]
-- [[_COMMUNITY_Community 1641|Community 1641]]
-- [[_COMMUNITY_Community 1642|Community 1642]]
-- [[_COMMUNITY_Community 1643|Community 1643]]
-- [[_COMMUNITY_Community 1644|Community 1644]]
-- [[_COMMUNITY_Community 1645|Community 1645]]
-- [[_COMMUNITY_Community 1646|Community 1646]]
-- [[_COMMUNITY_Community 1647|Community 1647]]
-- [[_COMMUNITY_Community 1648|Community 1648]]
-- [[_COMMUNITY_Community 1649|Community 1649]]
-- [[_COMMUNITY_Community 1650|Community 1650]]
-- [[_COMMUNITY_Community 1651|Community 1651]]
-- [[_COMMUNITY_Community 1652|Community 1652]]
-- [[_COMMUNITY_Community 1653|Community 1653]]
-- [[_COMMUNITY_Community 1654|Community 1654]]
-- [[_COMMUNITY_Community 1655|Community 1655]]
-- [[_COMMUNITY_Community 1656|Community 1656]]
-- [[_COMMUNITY_Community 1657|Community 1657]]
-- [[_COMMUNITY_Community 1658|Community 1658]]
-- [[_COMMUNITY_Community 1659|Community 1659]]
-- [[_COMMUNITY_Community 1660|Community 1660]]
-- [[_COMMUNITY_Community 1661|Community 1661]]
-- [[_COMMUNITY_Community 1662|Community 1662]]
-- [[_COMMUNITY_Community 1663|Community 1663]]
-- [[_COMMUNITY_Community 1664|Community 1664]]
-- [[_COMMUNITY_Community 1665|Community 1665]]
-- [[_COMMUNITY_Community 1666|Community 1666]]
-- [[_COMMUNITY_Community 1667|Community 1667]]
-- [[_COMMUNITY_Community 1668|Community 1668]]
-- [[_COMMUNITY_Community 1669|Community 1669]]
-- [[_COMMUNITY_Community 1670|Community 1670]]
-- [[_COMMUNITY_Community 1671|Community 1671]]
-- [[_COMMUNITY_Community 1672|Community 1672]]
-- [[_COMMUNITY_Community 1673|Community 1673]]
-- [[_COMMUNITY_Community 1674|Community 1674]]
-- [[_COMMUNITY_Community 1675|Community 1675]]
-- [[_COMMUNITY_Community 1676|Community 1676]]
-- [[_COMMUNITY_Community 1677|Community 1677]]
-- [[_COMMUNITY_Community 1678|Community 1678]]
-- [[_COMMUNITY_Community 1679|Community 1679]]
-- [[_COMMUNITY_Community 1680|Community 1680]]
-- [[_COMMUNITY_Community 1681|Community 1681]]
-- [[_COMMUNITY_Community 1682|Community 1682]]
-- [[_COMMUNITY_Community 1683|Community 1683]]
-- [[_COMMUNITY_Community 1684|Community 1684]]
-- [[_COMMUNITY_Community 1685|Community 1685]]
-- [[_COMMUNITY_Community 1686|Community 1686]]
-- [[_COMMUNITY_Community 1688|Community 1688]]
-- [[_COMMUNITY_Community 1690|Community 1690]]
-- [[_COMMUNITY_Community 1691|Community 1691]]
-- [[_COMMUNITY_Community 1695|Community 1695]]
-- [[_COMMUNITY_Community 1696|Community 1696]]
-- [[_COMMUNITY_Community 1697|Community 1697]]
-- [[_COMMUNITY_Community 1698|Community 1698]]
-- [[_COMMUNITY_Community 1699|Community 1699]]
-- [[_COMMUNITY_Community 1700|Community 1700]]
-- [[_COMMUNITY_Community 1701|Community 1701]]
-- [[_COMMUNITY_Community 1702|Community 1702]]
-- [[_COMMUNITY_Community 1703|Community 1703]]
-- [[_COMMUNITY_Community 1704|Community 1704]]
-- [[_COMMUNITY_Community 1705|Community 1705]]
-- [[_COMMUNITY_Community 1706|Community 1706]]
-- [[_COMMUNITY_Community 1707|Community 1707]]
-- [[_COMMUNITY_Community 1708|Community 1708]]
-- [[_COMMUNITY_Community 1709|Community 1709]]
-- [[_COMMUNITY_Community 1712|Community 1712]]
-- [[_COMMUNITY_Community 1713|Community 1713]]
-- [[_COMMUNITY_Community 1715|Community 1715]]
-- [[_COMMUNITY_Community 1716|Community 1716]]
-- [[_COMMUNITY_Community 1717|Community 1717]]
-- [[_COMMUNITY_Community 1718|Community 1718]]
-- [[_COMMUNITY_Community 1719|Community 1719]]
-- [[_COMMUNITY_Community 1720|Community 1720]]
-- [[_COMMUNITY_Community 1721|Community 1721]]
-- [[_COMMUNITY_Community 1722|Community 1722]]
-- [[_COMMUNITY_Community 1723|Community 1723]]
-- [[_COMMUNITY_Community 1724|Community 1724]]
-- [[_COMMUNITY_Community 1725|Community 1725]]
-- [[_COMMUNITY_Community 1726|Community 1726]]
-- [[_COMMUNITY_Community 1727|Community 1727]]
-- [[_COMMUNITY_Community 1728|Community 1728]]
-- [[_COMMUNITY_Community 1729|Community 1729]]
-- [[_COMMUNITY_Community 1730|Community 1730]]
-- [[_COMMUNITY_Community 1731|Community 1731]]
-- [[_COMMUNITY_Community 1732|Community 1732]]
-- [[_COMMUNITY_Community 1733|Community 1733]]
-- [[_COMMUNITY_Community 1734|Community 1734]]
-- [[_COMMUNITY_Community 1735|Community 1735]]
-- [[_COMMUNITY_Community 1736|Community 1736]]
-- [[_COMMUNITY_Community 1737|Community 1737]]
-- [[_COMMUNITY_Community 1738|Community 1738]]
-- [[_COMMUNITY_Community 1739|Community 1739]]
-- [[_COMMUNITY_Community 1740|Community 1740]]
-- [[_COMMUNITY_Community 1741|Community 1741]]
-- [[_COMMUNITY_Community 1742|Community 1742]]
-- [[_COMMUNITY_Community 1743|Community 1743]]
-- [[_COMMUNITY_Community 1744|Community 1744]]
-- [[_COMMUNITY_Community 1745|Community 1745]]
-- [[_COMMUNITY_Community 1746|Community 1746]]
-- [[_COMMUNITY_Community 1747|Community 1747]]
-- [[_COMMUNITY_Community 1748|Community 1748]]
-- [[_COMMUNITY_Community 1749|Community 1749]]
-- [[_COMMUNITY_Community 1750|Community 1750]]
-- [[_COMMUNITY_Community 1751|Community 1751]]
-- [[_COMMUNITY_Community 1752|Community 1752]]
-- [[_COMMUNITY_Community 1753|Community 1753]]
-- [[_COMMUNITY_Community 1754|Community 1754]]
-- [[_COMMUNITY_Community 1755|Community 1755]]
-- [[_COMMUNITY_Community 1756|Community 1756]]
-- [[_COMMUNITY_Community 1757|Community 1757]]
-- [[_COMMUNITY_Community 1758|Community 1758]]
-- [[_COMMUNITY_Community 1759|Community 1759]]
-- [[_COMMUNITY_Community 1760|Community 1760]]
-- [[_COMMUNITY_Community 1761|Community 1761]]
-- [[_COMMUNITY_Community 1762|Community 1762]]
-- [[_COMMUNITY_Community 1763|Community 1763]]
-- [[_COMMUNITY_Community 1764|Community 1764]]
-- [[_COMMUNITY_Community 1765|Community 1765]]
-- [[_COMMUNITY_Community 1766|Community 1766]]
-- [[_COMMUNITY_Community 1767|Community 1767]]
-- [[_COMMUNITY_Community 1768|Community 1768]]
-- [[_COMMUNITY_Community 1769|Community 1769]]
-- [[_COMMUNITY_Community 1770|Community 1770]]
-- [[_COMMUNITY_Community 1771|Community 1771]]
-- [[_COMMUNITY_Community 1772|Community 1772]]
-- [[_COMMUNITY_Community 1773|Community 1773]]
-- [[_COMMUNITY_Community 1774|Community 1774]]
-- [[_COMMUNITY_Community 1775|Community 1775]]
-- [[_COMMUNITY_Community 1776|Community 1776]]
-- [[_COMMUNITY_Community 1777|Community 1777]]
-- [[_COMMUNITY_Community 1778|Community 1778]]
-- [[_COMMUNITY_Community 1779|Community 1779]]
-- [[_COMMUNITY_Community 1780|Community 1780]]
-- [[_COMMUNITY_Community 1781|Community 1781]]
-- [[_COMMUNITY_Community 1782|Community 1782]]
-- [[_COMMUNITY_Community 1783|Community 1783]]
-- [[_COMMUNITY_Community 1784|Community 1784]]
-- [[_COMMUNITY_Community 1785|Community 1785]]
-- [[_COMMUNITY_Community 1786|Community 1786]]
-- [[_COMMUNITY_Community 1787|Community 1787]]
-- [[_COMMUNITY_Community 1788|Community 1788]]
-- [[_COMMUNITY_Community 1789|Community 1789]]
-- [[_COMMUNITY_Community 1790|Community 1790]]
-- [[_COMMUNITY_Community 1791|Community 1791]]
-- [[_COMMUNITY_Community 1792|Community 1792]]
-- [[_COMMUNITY_Community 1793|Community 1793]]
-- [[_COMMUNITY_Community 1794|Community 1794]]
-- [[_COMMUNITY_Community 1795|Community 1795]]
-- [[_COMMUNITY_Community 1796|Community 1796]]
-- [[_COMMUNITY_Community 1797|Community 1797]]
-- [[_COMMUNITY_Community 1798|Community 1798]]
-- [[_COMMUNITY_Community 1799|Community 1799]]
-- [[_COMMUNITY_Community 1800|Community 1800]]
-- [[_COMMUNITY_Community 1801|Community 1801]]
-- [[_COMMUNITY_Community 1802|Community 1802]]
-- [[_COMMUNITY_Community 1803|Community 1803]]
-- [[_COMMUNITY_Community 1804|Community 1804]]
-- [[_COMMUNITY_Community 1805|Community 1805]]
-- [[_COMMUNITY_Community 1806|Community 1806]]
-- [[_COMMUNITY_Community 1807|Community 1807]]
-- [[_COMMUNITY_Community 1808|Community 1808]]
-- [[_COMMUNITY_Community 1809|Community 1809]]
-- [[_COMMUNITY_Community 1810|Community 1810]]
-- [[_COMMUNITY_Community 1811|Community 1811]]
-- [[_COMMUNITY_Community 1812|Community 1812]]
-- [[_COMMUNITY_Community 1813|Community 1813]]
-- [[_COMMUNITY_Community 1814|Community 1814]]
-- [[_COMMUNITY_Community 1815|Community 1815]]
-- [[_COMMUNITY_Community 1816|Community 1816]]
-- [[_COMMUNITY_Community 1817|Community 1817]]
-- [[_COMMUNITY_Community 1818|Community 1818]]
-- [[_COMMUNITY_Community 1819|Community 1819]]
-- [[_COMMUNITY_Community 1820|Community 1820]]
-- [[_COMMUNITY_Community 1821|Community 1821]]
-- [[_COMMUNITY_Community 1822|Community 1822]]
-- [[_COMMUNITY_Community 1823|Community 1823]]
-- [[_COMMUNITY_Community 1824|Community 1824]]
-- [[_COMMUNITY_Community 1825|Community 1825]]
-- [[_COMMUNITY_Community 1826|Community 1826]]
-- [[_COMMUNITY_Community 1827|Community 1827]]
-- [[_COMMUNITY_Community 1828|Community 1828]]
-- [[_COMMUNITY_Community 1829|Community 1829]]
-- [[_COMMUNITY_Community 1830|Community 1830]]
-- [[_COMMUNITY_Community 1831|Community 1831]]
-- [[_COMMUNITY_Community 1832|Community 1832]]
-- [[_COMMUNITY_Community 1833|Community 1833]]
-- [[_COMMUNITY_Community 1834|Community 1834]]
-- [[_COMMUNITY_Community 1835|Community 1835]]
-- [[_COMMUNITY_Community 1838|Community 1838]]
-- [[_COMMUNITY_Community 1846|Community 1846]]
-- [[_COMMUNITY_Community 1853|Community 1853]]
-- [[_COMMUNITY_Community 1866|Community 1866]]
-- [[_COMMUNITY_Community 1870|Community 1870]]
-- [[_COMMUNITY_Community 1871|Community 1871]]
-- [[_COMMUNITY_Community 1872|Community 1872]]
-- [[_COMMUNITY_Community 1873|Community 1873]]
-- [[_COMMUNITY_Community 1874|Community 1874]]
-- [[_COMMUNITY_Community 1875|Community 1875]]
-- [[_COMMUNITY_Community 1876|Community 1876]]
-- [[_COMMUNITY_Community 1877|Community 1877]]
-- [[_COMMUNITY_Community 1878|Community 1878]]
-- [[_COMMUNITY_Community 1879|Community 1879]]
-- [[_COMMUNITY_Community 1880|Community 1880]]
-- [[_COMMUNITY_Community 1881|Community 1881]]
-- [[_COMMUNITY_Community 1882|Community 1882]]
-- [[_COMMUNITY_Community 1883|Community 1883]]
-- [[_COMMUNITY_Community 1884|Community 1884]]
-- [[_COMMUNITY_Community 1885|Community 1885]]
-- [[_COMMUNITY_Community 1887|Community 1887]]
-- [[_COMMUNITY_Community 1888|Community 1888]]
-- [[_COMMUNITY_Community 1889|Community 1889]]
-- [[_COMMUNITY_Community 1890|Community 1890]]
-- [[_COMMUNITY_Community 1891|Community 1891]]
-- [[_COMMUNITY_Community 1892|Community 1892]]
-- [[_COMMUNITY_Community 1893|Community 1893]]
-- [[_COMMUNITY_Community 1894|Community 1894]]
-- [[_COMMUNITY_Community 1895|Community 1895]]
-- [[_COMMUNITY_Community 1896|Community 1896]]
-- [[_COMMUNITY_Community 1897|Community 1897]]
-- [[_COMMUNITY_Community 1898|Community 1898]]
-- [[_COMMUNITY_Community 1899|Community 1899]]
-- [[_COMMUNITY_Community 1900|Community 1900]]
-- [[_COMMUNITY_Community 1901|Community 1901]]
-- [[_COMMUNITY_Community 1902|Community 1902]]
-- [[_COMMUNITY_Community 1903|Community 1903]]
-- [[_COMMUNITY_Community 1904|Community 1904]]
-- [[_COMMUNITY_Community 1905|Community 1905]]
-- [[_COMMUNITY_Community 1906|Community 1906]]
-- [[_COMMUNITY_Community 1907|Community 1907]]
-- [[_COMMUNITY_Community 1908|Community 1908]]
-- [[_COMMUNITY_Community 1909|Community 1909]]
-- [[_COMMUNITY_Community 1910|Community 1910]]
-- [[_COMMUNITY_Community 1911|Community 1911]]
-- [[_COMMUNITY_Community 1912|Community 1912]]
-- [[_COMMUNITY_Community 1913|Community 1913]]
-- [[_COMMUNITY_Community 1914|Community 1914]]
-- [[_COMMUNITY_Community 1915|Community 1915]]
-- [[_COMMUNITY_Community 1916|Community 1916]]
-- [[_COMMUNITY_Community 1917|Community 1917]]
-- [[_COMMUNITY_Community 1918|Community 1918]]
-- [[_COMMUNITY_Community 1919|Community 1919]]
-- [[_COMMUNITY_Community 1920|Community 1920]]
-- [[_COMMUNITY_Community 1921|Community 1921]]
-- [[_COMMUNITY_Community 1922|Community 1922]]
-- [[_COMMUNITY_Community 1923|Community 1923]]
-- [[_COMMUNITY_Community 1924|Community 1924]]
-- [[_COMMUNITY_Community 1925|Community 1925]]
-- [[_COMMUNITY_Community 1926|Community 1926]]
-- [[_COMMUNITY_Community 1927|Community 1927]]
-- [[_COMMUNITY_Community 1928|Community 1928]]
-- [[_COMMUNITY_Community 1929|Community 1929]]
-- [[_COMMUNITY_Community 1930|Community 1930]]
-- [[_COMMUNITY_Community 1931|Community 1931]]
-- [[_COMMUNITY_Community 1932|Community 1932]]
-- [[_COMMUNITY_Community 1933|Community 1933]]
-- [[_COMMUNITY_Community 1934|Community 1934]]
-- [[_COMMUNITY_Community 1935|Community 1935]]
-- [[_COMMUNITY_Community 1936|Community 1936]]
-- [[_COMMUNITY_Community 1937|Community 1937]]
-- [[_COMMUNITY_Community 1947|Community 1947]]
-- [[_COMMUNITY_Community 1948|Community 1948]]
-- [[_COMMUNITY_Community 1949|Community 1949]]
-- [[_COMMUNITY_Community 1950|Community 1950]]
-- [[_COMMUNITY_Community 1951|Community 1951]]
-- [[_COMMUNITY_Community 1952|Community 1952]]
-- [[_COMMUNITY_Community 1953|Community 1953]]
-- [[_COMMUNITY_Community 1954|Community 1954]]
-- [[_COMMUNITY_Community 1955|Community 1955]]
-- [[_COMMUNITY_Community 1956|Community 1956]]
-- [[_COMMUNITY_Community 1957|Community 1957]]
-- [[_COMMUNITY_Community 1958|Community 1958]]
-- [[_COMMUNITY_Community 1959|Community 1959]]
-- [[_COMMUNITY_Community 1960|Community 1960]]
-- [[_COMMUNITY_Community 1961|Community 1961]]
-- [[_COMMUNITY_Community 1962|Community 1962]]
-- [[_COMMUNITY_Community 1963|Community 1963]]
-- [[_COMMUNITY_Community 1964|Community 1964]]
-- [[_COMMUNITY_Community 1965|Community 1965]]
-- [[_COMMUNITY_Community 1966|Community 1966]]
-- [[_COMMUNITY_Community 1967|Community 1967]]
-- [[_COMMUNITY_Community 1971|Community 1971]]
-- [[_COMMUNITY_Community 1972|Community 1972]]
-- [[_COMMUNITY_Community 1979|Community 1979]]
-- [[_COMMUNITY_Community 1980|Community 1980]]
-- [[_COMMUNITY_Community 1981|Community 1981]]
-- [[_COMMUNITY_Community 1982|Community 1982]]
-- [[_COMMUNITY_Community 1983|Community 1983]]
-- [[_COMMUNITY_Community 1984|Community 1984]]
-- [[_COMMUNITY_Community 1985|Community 1985]]
-- [[_COMMUNITY_Community 1986|Community 1986]]
-- [[_COMMUNITY_Community 1987|Community 1987]]
-- [[_COMMUNITY_Community 1988|Community 1988]]
-- [[_COMMUNITY_Community 1989|Community 1989]]
-- [[_COMMUNITY_Community 1990|Community 1990]]
-- [[_COMMUNITY_Community 1991|Community 1991]]
-- [[_COMMUNITY_Community 1992|Community 1992]]
-- [[_COMMUNITY_Community 1993|Community 1993]]
-- [[_COMMUNITY_Community 1994|Community 1994]]
-- [[_COMMUNITY_Community 1995|Community 1995]]
-- [[_COMMUNITY_Community 1996|Community 1996]]
-- [[_COMMUNITY_Community 1997|Community 1997]]
-- [[_COMMUNITY_Community 1998|Community 1998]]
-- [[_COMMUNITY_Community 1999|Community 1999]]
-- [[_COMMUNITY_Community 2000|Community 2000]]
-- [[_COMMUNITY_Community 2001|Community 2001]]
-- [[_COMMUNITY_Community 2004|Community 2004]]
-- [[_COMMUNITY_Community 2005|Community 2005]]
-- [[_COMMUNITY_Community 2006|Community 2006]]
-- [[_COMMUNITY_Community 2008|Community 2008]]
-- [[_COMMUNITY_Community 2009|Community 2009]]
-- [[_COMMUNITY_Community 2027|Community 2027]]
-- [[_COMMUNITY_Community 2082|Community 2082]]
-- [[_COMMUNITY_Community 2083|Community 2083]]
-- [[_COMMUNITY_Community 2084|Community 2084]]
-- [[_COMMUNITY_Community 2085|Community 2085]]
-- [[_COMMUNITY_Community 2086|Community 2086]]
-- [[_COMMUNITY_Community 2092|Community 2092]]
-- [[_COMMUNITY_Community 2093|Community 2093]]
-- [[_COMMUNITY_Community 2103|Community 2103]]
-- [[_COMMUNITY_Community 2104|Community 2104]]
-- [[_COMMUNITY_Community 2105|Community 2105]]
-- [[_COMMUNITY_Community 2106|Community 2106]]
-- [[_COMMUNITY_Community 2107|Community 2107]]
-- [[_COMMUNITY_Community 2108|Community 2108]]
-- [[_COMMUNITY_Community 2109|Community 2109]]
-- [[_COMMUNITY_Community 2110|Community 2110]]
-- [[_COMMUNITY_Community 2111|Community 2111]]
-- [[_COMMUNITY_Community 2112|Community 2112]]
-- [[_COMMUNITY_Community 2113|Community 2113]]
-- [[_COMMUNITY_Community 2114|Community 2114]]
-- [[_COMMUNITY_Community 2115|Community 2115]]
-- [[_COMMUNITY_Community 2116|Community 2116]]
-- [[_COMMUNITY_Community 2117|Community 2117]]
-- [[_COMMUNITY_Community 2118|Community 2118]]
-- [[_COMMUNITY_Community 2119|Community 2119]]
-- [[_COMMUNITY_Community 2120|Community 2120]]
-- [[_COMMUNITY_Community 2121|Community 2121]]
-- [[_COMMUNITY_Community 2122|Community 2122]]
-- [[_COMMUNITY_Community 2123|Community 2123]]
-- [[_COMMUNITY_Community 2124|Community 2124]]
-- [[_COMMUNITY_Community 2125|Community 2125]]
-- [[_COMMUNITY_Community 2126|Community 2126]]
-- [[_COMMUNITY_Community 2127|Community 2127]]
-- [[_COMMUNITY_Community 2128|Community 2128]]
-- [[_COMMUNITY_Community 2129|Community 2129]]
-- [[_COMMUNITY_Community 2130|Community 2130]]
-- [[_COMMUNITY_Community 2131|Community 2131]]
-- [[_COMMUNITY_Community 2132|Community 2132]]
-- [[_COMMUNITY_Community 2133|Community 2133]]
-- [[_COMMUNITY_Community 2134|Community 2134]]
-- [[_COMMUNITY_Community 2135|Community 2135]]
-- [[_COMMUNITY_Community 2136|Community 2136]]
-- [[_COMMUNITY_Community 2137|Community 2137]]
-- [[_COMMUNITY_Community 2138|Community 2138]]
-- [[_COMMUNITY_Community 2139|Community 2139]]
-- [[_COMMUNITY_Community 2140|Community 2140]]
-- [[_COMMUNITY_Community 2141|Community 2141]]
-- [[_COMMUNITY_Community 2142|Community 2142]]
-- [[_COMMUNITY_Community 2143|Community 2143]]
-- [[_COMMUNITY_Community 2144|Community 2144]]
-- [[_COMMUNITY_Community 2145|Community 2145]]
-- [[_COMMUNITY_Community 2146|Community 2146]]
-- [[_COMMUNITY_Community 2147|Community 2147]]
-- [[_COMMUNITY_Community 2148|Community 2148]]
-- [[_COMMUNITY_Community 2149|Community 2149]]
-- [[_COMMUNITY_Community 2150|Community 2150]]
-- [[_COMMUNITY_Community 2151|Community 2151]]
-- [[_COMMUNITY_Community 2152|Community 2152]]
-- [[_COMMUNITY_Community 2153|Community 2153]]
-- [[_COMMUNITY_Community 2154|Community 2154]]
-- [[_COMMUNITY_Community 2155|Community 2155]]
-- [[_COMMUNITY_Community 2156|Community 2156]]
-- [[_COMMUNITY_Community 2157|Community 2157]]
-- [[_COMMUNITY_Community 2158|Community 2158]]
-- [[_COMMUNITY_Community 2159|Community 2159]]
-- [[_COMMUNITY_Community 2160|Community 2160]]
-- [[_COMMUNITY_Community 2161|Community 2161]]
-- [[_COMMUNITY_Community 2162|Community 2162]]
-- [[_COMMUNITY_Community 2163|Community 2163]]
-- [[_COMMUNITY_Community 2164|Community 2164]]
-- [[_COMMUNITY_Community 2165|Community 2165]]
-- [[_COMMUNITY_Community 2166|Community 2166]]
-- [[_COMMUNITY_Community 2167|Community 2167]]
-- [[_COMMUNITY_Community 2168|Community 2168]]
-- [[_COMMUNITY_Community 2169|Community 2169]]
-- [[_COMMUNITY_Community 2170|Community 2170]]
-- [[_COMMUNITY_Community 2171|Community 2171]]
-- [[_COMMUNITY_Community 2172|Community 2172]]
-- [[_COMMUNITY_Community 2173|Community 2173]]
-- [[_COMMUNITY_Community 2174|Community 2174]]
-- [[_COMMUNITY_Community 2175|Community 2175]]
-- [[_COMMUNITY_Community 2176|Community 2176]]
-- [[_COMMUNITY_Community 2177|Community 2177]]
-- [[_COMMUNITY_Community 2178|Community 2178]]
-- [[_COMMUNITY_Community 2179|Community 2179]]
-- [[_COMMUNITY_Community 2180|Community 2180]]
-- [[_COMMUNITY_Community 2181|Community 2181]]
-- [[_COMMUNITY_Community 2182|Community 2182]]
-- [[_COMMUNITY_Community 2183|Community 2183]]
-- [[_COMMUNITY_Community 2184|Community 2184]]
-- [[_COMMUNITY_Community 2185|Community 2185]]
-- [[_COMMUNITY_Community 2186|Community 2186]]
-- [[_COMMUNITY_Community 2187|Community 2187]]
-- [[_COMMUNITY_Community 2188|Community 2188]]
-- [[_COMMUNITY_Community 2189|Community 2189]]
-- [[_COMMUNITY_Community 2190|Community 2190]]
-- [[_COMMUNITY_Community 2191|Community 2191]]
-- [[_COMMUNITY_Community 2192|Community 2192]]
-- [[_COMMUNITY_Community 2193|Community 2193]]
-- [[_COMMUNITY_Community 2194|Community 2194]]
-- [[_COMMUNITY_Community 2195|Community 2195]]
-- [[_COMMUNITY_Community 2196|Community 2196]]
-- [[_COMMUNITY_Community 2197|Community 2197]]
-- [[_COMMUNITY_Community 2198|Community 2198]]
-- [[_COMMUNITY_Community 2199|Community 2199]]
-- [[_COMMUNITY_Community 2200|Community 2200]]
-- [[_COMMUNITY_Community 2201|Community 2201]]
-- [[_COMMUNITY_Community 2202|Community 2202]]
-- [[_COMMUNITY_Community 2203|Community 2203]]
-- [[_COMMUNITY_Community 2204|Community 2204]]
-- [[_COMMUNITY_Community 2205|Community 2205]]
-- [[_COMMUNITY_Community 2206|Community 2206]]
-- [[_COMMUNITY_Community 2207|Community 2207]]
-- [[_COMMUNITY_Community 2208|Community 2208]]
-- [[_COMMUNITY_Community 2209|Community 2209]]
-- [[_COMMUNITY_Community 2210|Community 2210]]
-- [[_COMMUNITY_Community 2211|Community 2211]]
-- [[_COMMUNITY_Community 2212|Community 2212]]
-- [[_COMMUNITY_Community 2213|Community 2213]]
-- [[_COMMUNITY_Community 2214|Community 2214]]
-- [[_COMMUNITY_Community 2215|Community 2215]]
-- [[_COMMUNITY_Community 2216|Community 2216]]
-- [[_COMMUNITY_Community 2217|Community 2217]]
-- [[_COMMUNITY_Community 2218|Community 2218]]
-- [[_COMMUNITY_Community 2219|Community 2219]]
-- [[_COMMUNITY_Community 2220|Community 2220]]
-- [[_COMMUNITY_Community 2221|Community 2221]]
-- [[_COMMUNITY_Community 2222|Community 2222]]
-- [[_COMMUNITY_Community 2223|Community 2223]]
-- [[_COMMUNITY_Community 2224|Community 2224]]
-- [[_COMMUNITY_Community 2225|Community 2225]]
-- [[_COMMUNITY_Community 2226|Community 2226]]
-- [[_COMMUNITY_Community 2227|Community 2227]]
-- [[_COMMUNITY_Community 2228|Community 2228]]
-- [[_COMMUNITY_Community 2229|Community 2229]]
-- [[_COMMUNITY_Community 2230|Community 2230]]
-- [[_COMMUNITY_Community 2231|Community 2231]]
-- [[_COMMUNITY_Community 2232|Community 2232]]
-- [[_COMMUNITY_Community 2233|Community 2233]]
-- [[_COMMUNITY_Community 2234|Community 2234]]
-- [[_COMMUNITY_Community 2235|Community 2235]]
-- [[_COMMUNITY_Community 2236|Community 2236]]
-- [[_COMMUNITY_Community 2237|Community 2237]]
-- [[_COMMUNITY_Community 2238|Community 2238]]
-- [[_COMMUNITY_Community 2239|Community 2239]]
-- [[_COMMUNITY_Community 2240|Community 2240]]
-- [[_COMMUNITY_Community 2241|Community 2241]]
-- [[_COMMUNITY_Community 2242|Community 2242]]
-- [[_COMMUNITY_Community 2243|Community 2243]]
-- [[_COMMUNITY_Community 2244|Community 2244]]
-- [[_COMMUNITY_Community 2245|Community 2245]]
-- [[_COMMUNITY_Community 2246|Community 2246]]
-- [[_COMMUNITY_Community 2247|Community 2247]]
-- [[_COMMUNITY_Community 2248|Community 2248]]
-- [[_COMMUNITY_Community 2249|Community 2249]]
-- [[_COMMUNITY_Community 2250|Community 2250]]
-- [[_COMMUNITY_Community 2251|Community 2251]]
-- [[_COMMUNITY_Community 2252|Community 2252]]
-- [[_COMMUNITY_Community 2253|Community 2253]]
-- [[_COMMUNITY_Community 2254|Community 2254]]
-- [[_COMMUNITY_Community 2255|Community 2255]]
-- [[_COMMUNITY_Community 2256|Community 2256]]
-- [[_COMMUNITY_Community 2257|Community 2257]]
-- [[_COMMUNITY_Community 2258|Community 2258]]
-- [[_COMMUNITY_Community 2259|Community 2259]]
-- [[_COMMUNITY_Community 2260|Community 2260]]
-- [[_COMMUNITY_Community 2261|Community 2261]]
-- [[_COMMUNITY_Community 2262|Community 2262]]
-- [[_COMMUNITY_Community 2263|Community 2263]]
-- [[_COMMUNITY_Community 2264|Community 2264]]
-- [[_COMMUNITY_Community 2265|Community 2265]]
-- [[_COMMUNITY_Community 2266|Community 2266]]
-- [[_COMMUNITY_Community 2267|Community 2267]]
-- [[_COMMUNITY_Community 2268|Community 2268]]
-- [[_COMMUNITY_Community 2269|Community 2269]]
-- [[_COMMUNITY_Community 2270|Community 2270]]
-- [[_COMMUNITY_Community 2271|Community 2271]]
-- [[_COMMUNITY_Community 2272|Community 2272]]
-- [[_COMMUNITY_Community 2273|Community 2273]]
-- [[_COMMUNITY_Community 2274|Community 2274]]
-- [[_COMMUNITY_Community 2275|Community 2275]]
-- [[_COMMUNITY_Community 2276|Community 2276]]
-- [[_COMMUNITY_Community 2277|Community 2277]]
-- [[_COMMUNITY_Community 2278|Community 2278]]
-- [[_COMMUNITY_Community 2279|Community 2279]]
-- [[_COMMUNITY_Community 2280|Community 2280]]
-- [[_COMMUNITY_Community 2281|Community 2281]]
-- [[_COMMUNITY_Community 2282|Community 2282]]
-- [[_COMMUNITY_Community 2283|Community 2283]]
-- [[_COMMUNITY_Community 2284|Community 2284]]
-- [[_COMMUNITY_Community 2285|Community 2285]]
-- [[_COMMUNITY_Community 2286|Community 2286]]
-- [[_COMMUNITY_Community 2287|Community 2287]]
-- [[_COMMUNITY_Community 2288|Community 2288]]
-- [[_COMMUNITY_Community 2289|Community 2289]]
-- [[_COMMUNITY_Community 2290|Community 2290]]
-- [[_COMMUNITY_Community 2291|Community 2291]]
-- [[_COMMUNITY_Community 2292|Community 2292]]
-- [[_COMMUNITY_Community 2293|Community 2293]]
-- [[_COMMUNITY_Community 2294|Community 2294]]
-- [[_COMMUNITY_Community 2295|Community 2295]]
-- [[_COMMUNITY_Community 2296|Community 2296]]
-- [[_COMMUNITY_Community 2297|Community 2297]]
-- [[_COMMUNITY_Community 2298|Community 2298]]
-- [[_COMMUNITY_Community 2299|Community 2299]]
-- [[_COMMUNITY_Community 2300|Community 2300]]
-- [[_COMMUNITY_Community 2301|Community 2301]]
-- [[_COMMUNITY_Community 2302|Community 2302]]
-- [[_COMMUNITY_Community 2303|Community 2303]]
-- [[_COMMUNITY_Community 2304|Community 2304]]
-- [[_COMMUNITY_Community 2305|Community 2305]]
-- [[_COMMUNITY_Community 2306|Community 2306]]
-- [[_COMMUNITY_Community 2307|Community 2307]]
-- [[_COMMUNITY_Community 2308|Community 2308]]
-- [[_COMMUNITY_Community 2309|Community 2309]]
-- [[_COMMUNITY_Community 2310|Community 2310]]
-- [[_COMMUNITY_Community 2311|Community 2311]]
-- [[_COMMUNITY_Community 2312|Community 2312]]
-- [[_COMMUNITY_Community 2313|Community 2313]]
-- [[_COMMUNITY_Community 2314|Community 2314]]
-- [[_COMMUNITY_Community 2315|Community 2315]]
-- [[_COMMUNITY_Community 2316|Community 2316]]
-- [[_COMMUNITY_Community 2336|Community 2336]]
-- [[_COMMUNITY_Community 2341|Community 2341]]
-- [[_COMMUNITY_Community 2342|Community 2342]]
-- [[_COMMUNITY_Community 2347|Community 2347]]
-- [[_COMMUNITY_Community 2348|Community 2348]]
-- [[_COMMUNITY_Community 2349|Community 2349]]
-- [[_COMMUNITY_Community 2350|Community 2350]]
-- [[_COMMUNITY_Community 2391|Community 2391]]
-- [[_COMMUNITY_Community 2392|Community 2392]]
-- [[_COMMUNITY_Community 2393|Community 2393]]
-- [[_COMMUNITY_Community 2394|Community 2394]]
-- [[_COMMUNITY_Community 2395|Community 2395]]
-- [[_COMMUNITY_Community 2396|Community 2396]]
-- [[_COMMUNITY_Community 2397|Community 2397]]
-- [[_COMMUNITY_Community 2398|Community 2398]]
-- [[_COMMUNITY_Community 2399|Community 2399]]
-- [[_COMMUNITY_Community 2400|Community 2400]]
-- [[_COMMUNITY_Community 2404|Community 2404]]
-- [[_COMMUNITY_Community 2405|Community 2405]]
-- [[_COMMUNITY_Community 2406|Community 2406]]
-- [[_COMMUNITY_Community 2407|Community 2407]]
-- [[_COMMUNITY_Community 2408|Community 2408]]
-- [[_COMMUNITY_Community 2409|Community 2409]]
-- [[_COMMUNITY_Community 2421|Community 2421]]
-- [[_COMMUNITY_Community 2422|Community 2422]]
-- [[_COMMUNITY_Community 2423|Community 2423]]
-- [[_COMMUNITY_Community 2424|Community 2424]]
-- [[_COMMUNITY_Community 2425|Community 2425]]
-- [[_COMMUNITY_Community 2426|Community 2426]]
-- [[_COMMUNITY_Community 2427|Community 2427]]
-- [[_COMMUNITY_Community 2428|Community 2428]]
-- [[_COMMUNITY_Community 2429|Community 2429]]
-- [[_COMMUNITY_Community 2430|Community 2430]]
-- [[_COMMUNITY_Community 2431|Community 2431]]
-- [[_COMMUNITY_Community 2432|Community 2432]]
-- [[_COMMUNITY_Community 2435|Community 2435]]
-- [[_COMMUNITY_Community 2436|Community 2436]]
-- [[_COMMUNITY_Community 2437|Community 2437]]
-- [[_COMMUNITY_Community 2438|Community 2438]]
-- [[_COMMUNITY_Community 2439|Community 2439]]
-- [[_COMMUNITY_Community 2440|Community 2440]]
-- [[_COMMUNITY_Community 2441|Community 2441]]
-- [[_COMMUNITY_Community 2442|Community 2442]]
-- [[_COMMUNITY_Community 2443|Community 2443]]
-- [[_COMMUNITY_Community 2444|Community 2444]]
-- [[_COMMUNITY_Community 2445|Community 2445]]
-- [[_COMMUNITY_Community 2446|Community 2446]]
-- [[_COMMUNITY_Community 2447|Community 2447]]
-- [[_COMMUNITY_Community 2448|Community 2448]]
-- [[_COMMUNITY_Community 2449|Community 2449]]
-- [[_COMMUNITY_Community 2450|Community 2450]]
-- [[_COMMUNITY_Community 2451|Community 2451]]
-- [[_COMMUNITY_Community 2452|Community 2452]]
-- [[_COMMUNITY_Community 2453|Community 2453]]
-- [[_COMMUNITY_Community 2454|Community 2454]]
-- [[_COMMUNITY_Community 2455|Community 2455]]
-- [[_COMMUNITY_Community 2456|Community 2456]]
-- [[_COMMUNITY_Community 2457|Community 2457]]
-- [[_COMMUNITY_Community 2458|Community 2458]]
-- [[_COMMUNITY_Community 2459|Community 2459]]
-- [[_COMMUNITY_Community 2460|Community 2460]]
-- [[_COMMUNITY_Community 2461|Community 2461]]
-- [[_COMMUNITY_Community 2462|Community 2462]]
-- [[_COMMUNITY_Community 2463|Community 2463]]
-- [[_COMMUNITY_Community 2464|Community 2464]]
-- [[_COMMUNITY_Community 2465|Community 2465]]
-- [[_COMMUNITY_Community 2466|Community 2466]]
-- [[_COMMUNITY_Community 2467|Community 2467]]
-- [[_COMMUNITY_Community 2468|Community 2468]]
-- [[_COMMUNITY_Community 2469|Community 2469]]
-- [[_COMMUNITY_Community 2470|Community 2470]]
-- [[_COMMUNITY_Community 2471|Community 2471]]
-- [[_COMMUNITY_Community 2472|Community 2472]]
-- [[_COMMUNITY_Community 2473|Community 2473]]
-- [[_COMMUNITY_Community 2474|Community 2474]]
-- [[_COMMUNITY_Community 2475|Community 2475]]
-- [[_COMMUNITY_Community 2476|Community 2476]]
-- [[_COMMUNITY_Community 2477|Community 2477]]
-- [[_COMMUNITY_Community 2478|Community 2478]]
-- [[_COMMUNITY_Community 2479|Community 2479]]
-- [[_COMMUNITY_Community 2480|Community 2480]]
-- [[_COMMUNITY_Community 2481|Community 2481]]
-- [[_COMMUNITY_Community 2482|Community 2482]]
-- [[_COMMUNITY_Community 2483|Community 2483]]
-- [[_COMMUNITY_Community 2484|Community 2484]]
-- [[_COMMUNITY_Community 2485|Community 2485]]
-- [[_COMMUNITY_Community 2486|Community 2486]]
-- [[_COMMUNITY_Community 2487|Community 2487]]
-- [[_COMMUNITY_Community 3503|Community 3503]]
-- [[_COMMUNITY_Community 3504|Community 3504]]
-- [[_COMMUNITY_Community 3505|Community 3505]]
-- [[_COMMUNITY_Community 3506|Community 3506]]
-- [[_COMMUNITY_Community 3507|Community 3507]]
-- [[_COMMUNITY_Community 3508|Community 3508]]
-- [[_COMMUNITY_Community 3510|Community 3510]]
-- [[_COMMUNITY_Community 3516|Community 3516]]
-- [[_COMMUNITY_Community 3517|Community 3517]]
-- [[_COMMUNITY_Community 3519|Community 3519]]
-- [[_COMMUNITY_Community 8151|Community 8151]]
-- [[_COMMUNITY_Community 8152|Community 8152]]
-- [[_COMMUNITY_Community 8153|Community 8153]]
-- [[_COMMUNITY_Community 8154|Community 8154]]
-- [[_COMMUNITY_Community 8155|Community 8155]]
-- [[_COMMUNITY_Community 8158|Community 8158]]
-- [[_COMMUNITY_Community 8161|Community 8161]]
-- [[_COMMUNITY_Community 8164|Community 8164]]
+- Button
+- ref_react
+- QuestionsManager.tsx
+- test_repositories.py
+- guildService.ts
+- (tabs)/_layout.tsx
+- Evento
+- personalization.ts
+- TrilhaContext.tsx
+- AccessRepository
+- Input
+- test_trava_personalizacao_api.py
+- test_insights_turma.py
+- Settings
+- test_personalizacao_service.py
+- api.py
+- test_api.py
+- supabase.ts
+- supabaseService.ts
+- DocumentBlock.tsx
+- expo-router
+- test_api.py
+- trilha/[id].tsx
+- schema_prod_esqueleto_20261024.sql
+- test_rpc_chamada_tem_migracao.py
+- retencao_externa.py
+- test_roteamento_ia_menores.py
+- vitest
+- test_pseudonimizacao_ia.py
+- FormularioDaConquista.tsx
+- MetricasContext.tsx
+- src/types.ts
+- dependencies
+- mobile/package.json
+- presentationOrder.ts
+- run.mjs
+- ref_lucide_react
+- EconomiaSection.tsx
+- v1/personalizacao.py
+- RastreadorDeMissoes.tsx
+- use-grafo-trilha.ts
+- react-hook-form
+- DeckStage
+- DeckStage
+- Rank.ts
+- DeckStage
+- DeckStage
+- linear_analysis_pipeline.py
+- DeckStage
+- DeckStage
+- DeckStage
+- DeckStage
+- test_e2e_sessao_fecha_pelo_banco.py
+- alembic_config
+- nativeDocumentParsers.ts
+- mobile/src/components/ui/collapsible.tsx
+- missao.ts
+- zod
+- test_demanda_formato.py
+- docs/README.md
+- main.py
+- useDesktopWeb
+- services/classe_mapa_tema.py
+- SlideViewer.tsx
+- test_e2e_economia_banco.py
+- ref_react_dom
+- IAMentorPanel.tsx
+- (auth)/login.tsx
+- test_analise_fila.py
+- DetalheAluno.tsx
+- test_e2e_analise_de_lote_pela_fila.py
+- JornadaReal.tsx
+- afrouxa
+- test_e2e_tempo_ativo_fonte_unica.py
+- ModalMatriculas.tsx
+- test_e2e_eventos_aluno_trava_do_cliente.py
+- validators.ts
+- validate-essay-answer-ai/index.ts
+- test_e2e_bucket_conteudos_privado.py
+- test_openai_rag.py
+- test_e2e_tentativas_com_tempo_do_servidor.py
+- test_migration_aposta_ranqueada.py
+- TabelaAlunos.tsx
+- materialSuggestion.ts
+- pytest
+- frontend/funcionamento-api-arquitetura-fluxos.md
+- test_alteracao_professor.py
+- test_e2e_estudo_coorte.py
+- hashlib
+- slideIllustrations.ts
+- devDependencies
+- analise_fila.py
+- test_auth.py
+- test_emotion_vision.py
+- 11. Prompts de cada fase
+- GuildasSection.tsx
+- services/personalizacao_jobs.py
+- override_session
+- test_e2e_notificacao_no_horario_do_aluno.py
+- AnalisarResponse
+- topic
+- FirstAccessTour.tsx
+- datetime
+- psycopg
+- test_segunda_chance.py
+- Conquista.ts
+- test_boss_falas.py
+- test_e2e_catalogo_de_metricas.py
+- Mapa ponta a ponta de dados, métricas e KPIs
+- frontend/package.json
+- nativeContentCache.ts
+- SecaoAlteracoesDaTrilha.tsx
+- lojaService.ts
+- Classe.ts
+- SlideData
+- Modelagem de Dados e Modelagem de Banco (Supabase)
+- 2. Social
+- KpisSecundarios.tsx
+- tentativas.ts
+- supabaseStorage.ts
+- Block
+- test_e2e_conversas_cifradas.py
+- types
+- test_trava_de_migracao.py
+- api
+- rateLimit.ts
+- Avaliação dos documentos da Evidence Base
+- SocialLateralDesktop.tsx
+- test_loja_compra.py
+- telemetriaApi.ts
+- 00-Home.md
+- supabaseStorage.ts
+- tcc1-desenvolvimento.md
+- sql_de
+- environment
+- 20260912_03_guildas_perfil_publico.sql
+- listar_personalizacoes_por_perfil
+- test_e2e_evento_abre_e_encerra_no_horario.py
+- RankDaClasse
+- ClassManagementSection.tsx
+- react-dom
+- test_e2e_invariantes_das_metricas.py
+- test_ganho_de_moedas.py
+- telemetryConsent.ts
+- test_migration_sessao_fecha_pelo_banco.py
+- test_e2e_exclusao_professor_aviso.py
+- test_e2e_ranking_le_config_por_wrapper.py
+- test_migration_desafio_fecha_e_paga.py
+- test_migration_missao_diaria_coorte_e_minutos.py
+- personalizacaoFallback.ts
+- 20260406_01_conteudo_personalizado.py
+- 20260406_02_conteudo_personalizado_ai_patch.py
+- Topico
+- PainelDeCorrecao.tsx
+- evolucao.ts
+- semear_turma
+- dependencies
+- test_e2e_chat_nao_lidas.py
+- test_migration_conversas_cifradas.py
+- test_migration_guilda_trava_com_evento_aberto.py
+- Loja de moedas — mecânica de ponta a ponta
+- test_run_api_windows.py
+- public."atividades"
+- brainhex.ts
+- test_migration_missao_diaria.py
+- test_midia_faltando_diz_o_motivo.py
+- 20260421_02_personalizacao_item_progresso.py
+- v1/support.js
+- v2/support.js
+- v3/support.js
+- v4/support.js
+- v5/support.js
+- v6/support.js
+- v7/support.js
+- v9/support.js
+- test_migration_formato_do_desafio.py
+- 4. Inventário bloco a bloco
+- useStudyTimeTracking.ts
+- boss_falas.py
+- missao_diaria_texto.py
+- test_jobs_partial_reenfileira.py
+- quizSanitize.ts
+- test_sugestao_ciclo.py
+- mobile/README.md
+- Slides de Apresentação Temáticos (estilo Slidesgo): Design
+- PARTE B — trailup microservice (`C:\Users\geisb\documents\github\trailup`)
+- public.guilda_membros
+- logger.ts
+- bg
+- como
+- copiar-storage-para-r2.ts
+- test_e2e_lote_diz_por_onde_chegou.py
+- test_migration_arena_volta.py
+- schema.sql
+- StoreLauncher
+- profileMetricsViewModel.ts
+- classeMetrics.ts
+- test_e2e_kpis_engajamento_banco.py
+- expo-linear-gradient
+- brainhexpdf/server.ts
+- processMediaWithGemini
+- test_economia_completa.py
+- test_pontuacao_do_banco.py
+- test_presenca_concedida.py
+- Registro de transferência internacional de dados pessoais (LGPD, arts. 33 a 36)
+- SupabaseStorage
+- get_settings
+- CartaoItemLoja.tsx
+- tentativasAtividade.ts
+- revisao-04-lacunas-mobile/README.md
+- environment
+- test_loja_catalogo.py
+- test_migration_conquista_valida_criterio.py
+- microservice/package.json
+- test_migration_missoes_entidade.py
+- cadastro.integrado.ts
+- FundoDaTurmaCard.tsx
+- StoreModal.tsx
+- ProfileMetricsViews.tsx
+- test_conquistas_por_metrica.py
+- test_e2e_retencao_expurgo.py
+- use-grafo-trilha.ts
+- test_m2_gate.py
+- m2_inference.py
+- test_missao_diaria_texto.py
+- test_e2e_guilda_mantem_quem_saiu_da_turma.py
+- test_kpis_engajamento.py
+- test_migration_analise_de_lote_pela_fila.py
+- integracao-apitraiup.md
+- IContentBlock.ts
+- test_migration_guilda_chat_e_config.py
+- Tabelas Supabase (personalização)
+- TelemetriaRepository
+- test_e2e_kpis_por_topico.py
+- test_migration_dificuldade_da_questao.py
+- test_migration_guilda_formacao.py
+- test_migration_invariantes_das_metricas.py
+- test_migration_missao_de_guilda.py
+- test_migration_rank_periodo_manual.py
+- test_migration_tempo_ativo_fonte_unica.py
+- Estrutura proposta (espelho do doc atual)
+- pdf.py
+- @react-native-async-storage/async-storage
+- session.py
+- presentationOrder.ts
+- 20261021_19_arena_volta.py
+- test_coortes_engajamento.py
+- test_e2e_pontos_do_evento_no_rank.py
+- test_jobs_worker_filtra_turma.py
+- test_migration_conquistas_sem_cascade.py
+- RanksSection.tsx
+- react-native-worklets
+- test_migration_eventos_aluno_trava_do_cliente.py
+- test_migration_missao_diaria_texto.py
+- test_retencao_ia_decision_logs.py
+- Issue #1 — cadastro e descoberta do perfil BrainHex
+- Análise — as 5 telas novas do console (Missões, Notas, Eventos, Rank de batalhas, Conquistas)
+- schemas/telemetria.py
+- use-color-scheme.web.ts
+- Plano do que falta — ranqueada, guildas, missões, eventos
+- eixos.ts
+- apiBaseUrl.core.ts
+- progressoOutbox.ts
+- telemetriaOutbox.ts
+- 5. Painéis (um por item). Cabeçalho de painel: H2 Cinzel 700 22 + descrição 14 `textMuted`, `margin-bottom: 22px`
+- test_agente_notificacao_personalizada.py
+- test_sugestao_material.py
+- postcss.config.js
+- html2canvas@^1.4.1
+- test_e2e_consentimento_telemetria.py
+- test_e2e_fundo_da_turma.py
+- test_e2e_recomendacao_conteudo_x_aluno.py
+- test_migration_avaliador_de_metrica.py
+- test_migration_eixos_de_modo.py
+- test_migration_missao_no_gatilho.py
+- test_migrations_sessoes_estudo.py
+- test_retencao_politica.py
+- devDependencies
+- io
+- ConteudoClasseRepository
+- 20260410_01_personalizacao_jobs.py
+- ProfessorApprovalSection.tsx
+- 20260410_03_conteudo_personalizado_unique.py
+- Social completo com amizades — Design
+- relatorio-tecnico-play-store.md
+- chunkReload.ts
+- 20261102_01_notificacao_no_horario_do_aluno.py
+- test_e2e_email_apps_script.py
+- test_e2e_nota_media_da_matricula.py
+- test_e2e_risco_de_reprovacao.py
+- test_e2e_views_metricas_tempo.py
+- 02-fundamentacao-teorica-e-modelo-adaptativo.md
+- Segurança do Ecossistema TrailUp
+- test_migration_notificacao_no_horario_do_aluno.py
+- test_moedas_razao.py
+- Perfil BrainHex probabilístico: quiz como prior, métricas do aluno como evidência
+- gargalos.ts
+- riscoReprovacao.test.ts
+- profileImageRestyle.ts
+- alteracoesDoProfessor.ts
+- EventoAluno
+- progressoPersonalizado.ts
+- getReact
+- getReact
+- getReact
+- getReact
+- getReact
+- getReact
+- SugestaoMaterialRepository
+- 20260728_02_drop_legacy_content_unique.py
+- mergePersonalizacaoMateriais
+- getReact
+- getReact
+- FontesPersonalizacaoRepository
+- test_migration_ranking_le_config_por_wrapper.py
+- dependencies
+- Base por perfil sem aluno — design
+- ANEXOS
+- api/__init__.py
+- PARTE A — BrainHexPDF (`C:\Users\geisb\Documents\GitHub\BrainHexPDF`)
+- classMapTheme.ts
+- tema.js
+- 00-sistema-visual.md
+- Componentes globais
+- Componentes globais
+- Componentes globais
+- incrementar_revisao
+- test_checkpoint_retention.py
+- test_detalhado_progresso_atividade.py
+- test_e2e_tentativas_no_editor.py
+- test_migration_portoes_por_turma.py
+- test_migrations_tempo_por_lote.py
+- compilerOptions
+- PROJETO DE UX — TRAILUP
+- _offline_alembic_config
+- normalizeCards
+- _rich_response
+- storage-redirect/index.ts
+- buildContentBlocks
+- @radix-ui/react-progress
+- gerar_pdf_slides
+- @radix-ui/react-toggle
+- storeTheme.test.ts
+- criarCicloSessao
+- 5. Blocos
+- Personalizações — descrição detalhada do estado atual (com dados reais)
+- Trilha — descrição detalhada do estado atual (com dados reais)
+- createExternalModules
+- createExternalModules
+- createExternalModules
+- createExternalModules
+- createExternalModules
+- createExternalModules
+- createExternalModules
+- createExternalModules
+- _app
+- test_card_descricao_sem_resposta.py
+- test_definer_sem_checagem_de_quem_ve.py
+- test_migration_evento_abre_e_encerra_no_horario.py
+- test_migration_fechar_quando_ninguem_pode.py
+- test_migration_telemetria_so_na_propria_sessao.py
+- test_migrations_postgres.py
+- pptxImageContext.ts
+- test_rank_limite_visivel.py
+- Arquitetura do Microserviço (ApiBrainHex) - Integração a partir da API TrailUp
+- test_registro_transferencias.py
+- graficos.ts
+- public.trailup_progresso_percurso
+- Bag de itens de estudo — Design
+- fluxo-trailup.md
+- monografia-trailup.md
+- consentimentoRemoto.ts
+- 4. Blocos
+- revisao-02-feedback-geis/telas/06-social.md
+- ✦ TRAILUP / CONSOLE
+- Página Dashboard (prints 1, 2 e 13)
+- Prompt Fase 2 — Turmas
+- ✦ TRAILUP / CONSOLE
+- ✦ TRAILUP / CONSOLE
+- test_base_sem_aluno_repositorios.py
+- frontend/politicas-dados-privacidade.md
+- microservice/package.json
+- ✦ TRAILUP / CONSOLE
+- 14. Edge Functions, RPCs, Functions e Triggers
+- failed
+- dotenv
+- ✦ TRAILUP / CONSOLE
+- ✦ TRAILUP / CONSOLE
+- ✦ TRAILUP / CONSOLE
+- nomes_colidem
+- public.social_relacionamentos
+- MappingResult
+- test_migrations_base_por_perfil.py
+- Guia do professor — TrailUp
+- O que entrou entre `b5491b02` e `11aa1c65` (13/10 → 01/11), por área
+- 3. Issues da sprint, por frente
+- r2Presign.ts
+- uses
+- 09-biblioteca-conquistas.md
+- revisao-02-feedback-geis/telas/07-notificacoes.md
+- Prompt Fase 2 — Meus dados
+- test_chat_log_sem_texto_do_aluno.py
+- group_analysis.py
+- GroupAnalysisService
+- File Structure
+- test_laco_drena_sem_dormir_enquanto_a_passada_enche_o_lote
+- _sql
+- expo-av
+- @radix-ui/react-scroll-area
+- Reaproveitamento de imagens entre mídias (D2) Implementation Plan
+- TrailupApiProvider
+- microservice/server.ts
+- Imagem vinculada a minutagem do áudio (D3) — Design
+- test_migration_responder_participacao.py
+- Eventos, missões, ranks e modos — desenho
+- Mapa de arquitetura — TrailUp (main)
+- Regeração granular de material — design
+- Design: Social, perfil público e guildas
+- Plano depois da arena — o que falta quando o produto está construído
+- Projeto de UX — TrailUp
+- 5 DESENVOLVIMENTO DO TRAILUP
+- 00-entrada.md
+- revisao-01-base-v7/telas/07-notificacoes.md
+- Prompt — nova tela: Conquistas da classe
+- createRuntime
+- DashboardSection.tsx
+- react-native
+- Quiz dinâmico por modoOperacao Implementation Plan
+- createRuntime
+- docs/mobile/README.md
+- createRuntime
+- presentationThemes.ts
+- visualReferenceAnalyzer.ts
+- createRuntime
+- createRuntime
+- createRuntime
+- createRuntime
+- createRuntime
+- 20261021_15_missao_de_guilda_soma_os_membros.py
+- 20261021_20_missao_diaria_coorte_representativa_e_minutos.py
+- 20261024_11_urls_em_textos_e_versao_minima.py
+- m2_features.py
+- _sql_de
+- test_migration_arena_desafio_eixos.py
+- test_migration_guilda_aceite_reconfere_bloqueio.py
+- test_migration_recomendacao_conteudo_x_aluno.py
+- test_migration_telas_eixos_missoes.py
+- test_migration_topico_aluno_rls.py
+- 2 ANÁLISE DAS RESPOSTAS
+- 2 FUNDAMENTAÇÃO TEÓRICA
+- 4 METODOLOGIA
+- batalhasApi.ts
+- buildDesignTokensForProfile
+- ci.yml
+- profileSectionGuide.ts
+- SeloDePrazo.tsx
+- mobile-v1/assets/social.js
+- mobile-v1/README.md
+- revisao-01-base-v7/telas/08-perfil-hub.md
+- 10-relatorio-dados.md
+- v4/assets/bag.js
+- TrailUp / Console — Apontamentos sobre o protótipo já ajustado (rodada 2)
+- Classes (Turmas) — descrição detalhada do estado atual (com dados reais)
+- Ranks — descrição detalhada do estado atual (com dados reais)
+- Tela 2 — Editor de um Tópico (ao clicar/editar um cartão do mapa)
+- Prompt — nova tela: Missões
+- Estrutura da tela
+- Prompt — nova tela: Notas (correção de dissertativas e trabalhos)
+- openai
+- Slides de Apresentação Temáticos (estilo Slidesgo) Implementation Plan
+- @tailwindcss/vite
+- test_linear_analysis_pipeline.py
+- node-html-parser
+- devDependencies
+- 20261030_01_tempo_ativo_fonte_unica.py
+- 20261101_10_nota_media_da_matricula.py
+- XGBoostDecisionEngine
+- test_contato_versionado.py
+- test_migration_periodo_e_progresso_do_rank.py
+- test_migration_pontos_do_evento_no_rank.py
+- test_migration_ranks_info_com_invoker.py
+- test_worker_finaliza_em_sessao_nova_quando_a_do_job_nao_aceita_escrita
+- brainhexpdf/package.json
+- CHANGELOG — vault TCC TrailUp
+- CHANGELOG — vault TCC TrailUp
+- storeModel.ts
+- O que este desenho acrescenta
+- 2.1 — ENTREVISTA COM ALUNOS
+- 10 CONCLUSÃO
+- envDoBuild.test.ts
+- O que muda no celular
+- revisao-02-feedback-geis/telas/05-ranking.md
+- 2. Regras que valem em todas as telas desta revisão
+- revisao-03-loja/telas/12-loja.md
+- v4/assets/social.js
+- Contexto geral — Redesign do console do professor (TrailUp)
+- Paleta de Cores — Fase 2
+- Prompt Fase 2 — Trilhas, PARTE 1 de 5: mapa/canvas + modais de duplicar/excluir tópico
+- Prompt Fase 2 — Trilhas, PARTE 2 de 5: modal "Gerar trilha com IA"
+- Prompt Fase 2 — Rankings
+- PersonalizacaoProgressoRepository
+- test_migrations_trilha_checkpoint.py
+- Prompt — nova tela: Rank de batalhas (arena)
+- archiveMultiPartToSupabase
+- Arquitetura do Microserviço ApiBrainHex - Versão Detalhada
+- Funcionamento Detalhado - Personalização, Gamificação e Recursos Pedagógicos (ApiBrainHex)
+- Arquitetura do Microservico e do App (Contexto API TrailUp)
+- Prompt — nova tela: Dashboard com sínteses e sugestões da IA
+- Prompt — nova tela: Aprovações de compras com efeito acadêmico
+- Contexto geral — Redesign do console do professor (TrailUp)
+- Contexto geral — Redesign do console do professor (TrailUp)
+- Contexto geral — Redesign do console do professor (TrailUp)
+- Contexto geral — Redesign do console do professor (TrailUp)
+- Contexto geral — Redesign do console do professor (TrailUp)
+- Contexto geral — Redesign do console do professor (TrailUp)
+- Paleta de Cores — Fase 2
+- Contexto geral — Redesign do console do professor (TrailUp)
+- Paleta de Cores — Fase 2
+- banco
+- test_consentimento_provavel.py
+- test_contato_publico_brevo.py
+- test_migration_conquistas_da_turma_funcoes.py
+- _afrouxa
+- test_migration_evento_classe_durante.py
+- test_migration_eventos_classe_apuracao.py
+- test_migration_lote_diz_por_onde_chegou.py
+- test_migration_professor_aluno_acesso.py
+- test_migrations_reexpoe_resposta_correta.py
+- DeckInteractionContext.tsx
+- Issue #1 — validação integrada local
+- Inventário: o schema que existe em produção e não está no git
+- Políticas de Dados e Privacidade
+- Relatório de inventário — TCC TrailUp
+- projeto-de-ux.md
+- 2.2 Perguntas Abertas
+- Persona(s) do Usuário – TrailUp
+- missoesDiariasApi.ts
+- profileImageFrame.ts
+- scripts
+- recolor.mjs
+- TrailUp API
+- telemetriaCliente.core.ts
+- renderAndUploadPresentationViaBrainHexPdf
+- test_supervisor_roteamento.py
+- Controle de geração manual/automática de personalização — Plano de Implementação
+- _build_design_tokens
+- telemetriaApi.persistence.test.ts
+- runPipeline
+- Notificações via banco — desenho
+- 01. Visao geral do projeto
+- mobile-v1/assets/bag.js
+- Contexto geral — Prototipação da área web do aluno (TrailUp)
+- O que muda no celular
+- 2. Regras que valem em TODAS as telas desta revisão (vieram do feedback)
+- ADICIONAR — o que falta, com posição exata
+- Prompt Fase 2 — Visão geral (Dashboard), PARTE 3 de 3: detalhe do aluno
+- Prompt Fase 2 — Personalizações, PARTE 1 de 3: cabeçalho, filtros, resumo e aba "Por perfil"
+- Prompt — nova tela: História da turma
+- 20261021_05_missao_diaria_deterministica.py
+- 20261025_01_pontos_do_evento_no_rank.py
+- 20261025_02_periodo_e_progresso_do_rank.py
+- 20261025_03_guilda_mantem_quem_saiu_da_turma.py
+- 20261025_04_evento_abre_e_encerra_no_horario.py
+- 20261101_12_alteracao_do_professor.py
+- 20261101_14_email_pelo_apps_script.py
+- 20261102_05_trava_da_personalizacao.py
+- banco
+- test_evento_referencia.py
+- XP de slides — demais interações (D1b) Implementation Plan
+- Personalizacao e Multimidia no App
+- Global Constraints
+- 6 EVIDENCE BASE E RAG
+- 7 AVALIAÇÃO
+- run
+- ClassSelectionGate.test.tsx
+- DesbloqueioModal.icone.test.tsx
+- MarkdownIt
+- tocadorDeAudioWeb.test.ts
+- Parte 1 — Entrada, login e recuperar senha (celular)
+- Parte 4 — Ranking (celular)
+- O que muda no celular
+- O que muda no celular
+- revisao-01-base-v7/telas/01-login.md
+- revisao-03-loja/telas/06-social.md
+- 2. O que muda
+- Implementar o protótipo `mobile-v1` no app do aluno
+- Prompt Fase 2 — Visão geral (Dashboard), PARTE 1 de 3: estados da tela + aba "Visão geral"
+- Prompt Fase 2 — Trilhas, PARTE 3 de 5: editor de tópico — estrutura + aba "Conteúdo"
+- Prompt Fase 2 — Trilhas, PARTE 5 de 5: editor de tópico — aba "Cards"
+- Prompt — adição à Visão geral: sinal de risco de reprovação
+- appsscript.json
+- 20261024_02_consentimento_do_responsavel.py
+- 20261024_03_retencao_e_expurgo.py
+- 20261029_02_catalogo_de_metricas.py
+- _Sessao
+- test_migration_avaliar_entrega.py
+- test_migration_evento_medalhas.py
+- test_migration_guilda_mantem_quem_saiu_da_turma.py
+- Diversidade de exemplos visuais no deck — Design
+- scripts
+- storageReadUrl.ts
+- compilerOptions
+- mobile/tsconfig.json
+- TrailUp — Segundo Cérebro (TCC)
+- Loop issue ↔ PR — 2026-10-01
+- Suite Robot Framework — Personalização no Console do Professor Implementation Plan
+- Repos & PRs — TrailUp
+- ranking/[id].tsx
+- 03. Aplicacao do modelo adaptativo
+- Incidente — perda de dados do console professor (2026-10-01)
+- mobile/README.md
+- Loja Vitrine Única Implementation Plan
+- Loja Social — vitrine única
+- 1 INTRODUÇÃO
+- jobs
+- arvoreCelular.ts
+- gruposNotificacao.ts
+- markdownDataUri.test.ts
+- rankCorte.test.ts
+- utils/ultimaAtividade.ts
+- Revisão 03 — Loja como página própria, Social como hub e Trilha sem seletor
+- Paleta de cores — TrailUp (console do professor)
+- Prompt Fase 2 — Personalizações, PARTE 2 de 3: abas "Estrutura e paleta", "Por aluno" e "Turma"
+- Prompt Fase 2 — Personalizações, PARTE 3 de 3: modal "Ver conteúdo gerado"
+- Prompt Fase 2 — Aprovações
+- boot
+- Paleta de cores — TrailUp (console do professor)
+- boot
+- Paleta de cores — TrailUp (console do professor)
+- boot
+- Paleta de cores — TrailUp (console do professor)
+- boot
+- Paleta de cores — TrailUp (console do professor)
+- boot
+- Paleta de cores — TrailUp (console do professor)
+- boot
+- Paleta de cores — TrailUp (console do professor)
+- boot
+- Paleta de cores — TrailUp (console do professor)
+- boot
+- 20261021_08_telas_eixos_e_missoes.py
+- 20261021_11_formato_do_desafio.py
+- test_migracoes_higiene.py
+- test_migration_matricula_pelo_banco.py
+- _ClienteHttpFalso
+- Issue #1 — verificação da implantação
+- Estrutura do Banco Supabase
+- Mapa da coleta de métricas
+- O que o TrailUp precisaria para falar LTI 1.3
+- pptx.py
+- Estrutura do Banco Supabase (Consumo Mobile)
+- TrilhaBase.tsx
+- conteudo.ts
+- slides_pdf.py
+- slidePagination.ts
+- 02. Fundamentacao teorica e modelo adaptativo
+- 05. Logica e automacoes do banco
+- 06. Implementacao
+- 07. Documento de UX
+- 08. Consentimento, privacidade, LGPD e seguranca
+- 09. Metodologia de pesquisa e avaliacao
+- 11. Contribuicoes, limitacoes e trabalhos futuros
+- PRs Lab com impacto em arquitetura / docs (2026-10-01)
+- DESCOBERTA (IMERSÃO E PESQUISA)
+- outputs
+- with
+- scripts
+- resolveRealSlideOrder
+- wav.test.ts
+- supabase.sessaoNaUrl.test.ts
+- services/studyPresence.test.ts
+- studySessions.ts
+- grupoNotificacao.ts
+- matematicaLegivel.ts
+- paletaPorPerfil.test.ts
+- models — artefatos treinados
+- Inventário das rotas → telas → prompts
+- Celular v1 — regras gerais (cole inteiro antes de qualquer tela)
+- Revisão 01 — área do aluno sobre a base do V7 do professor
+- 02-recuperar-senha.md
+- Revisão 02 — feedback da Geisbelly sobre o v1 da área do aluno
+- revisao-02-feedback-geis/telas/03-trilha.md
+- revisao-02-feedback-geis/telas/08-perfil-hub.md
+- celebracoes.md
+- 00-entrada/prompt.md
+- mentor.js
+- Prompt Fase 2 — Visão geral (Dashboard), PARTE 2 de 3: abas "Evolução" e "Conteúdo"
+- 14-eventos-estrutura-modular.md
+- 20261003_04_realtime_das_tabelas_assinadas.py
+- 20261016_03_nota_professor_evento_creditado.py
+- 20261017_04_progresso_inicial_security_definer.py
+- 20261021_06_aposta_e_pontuacao_ranqueada.py
+- 20261021_09_o_desafio_fecha_e_paga.py
+- 20261021_10_dificuldade_da_questao.py
+- 20261021_12_responder_checa_participacao.py
+- 20261021_14_fechar_so_quando_ninguem_mais_pode.py
+- banco
+- _como_aluno
+- XP de slides — demais interações (D1b) — Design
+- Mobile: arte facetada
+- Inventário Google Drive — documentação TrailUp
+- Validação espelho — 2026-10-01
+- Evidências de avaliação — TrailUp (2026-10-01)
+- os
+- Personalização Longa — Integração ApiBrainHex Implementation Plan
+- Testes Reflect — regras e escopo local
+- 2.2 — ENTREVISTA COM PROFESSORES
+- public.fn_enqueue_classe_mapa_tema_job
+- contentBlocks.ts
+- graphNodeAccess.ts
+- generateInteractiveHtml
+- Suite Robot Framework — Personalização de Conteúdo no Console do Professor
+- encerrarSessao.ts
+- conquistaProgress.test.ts
+- 04. Modelagem do sistema
+- nativeDocumentParsers.web.ts
+- personalizationAvailability.ts
+- referenciaDeEvento.test.ts
+- 04-topico-batalha.md
+- 05-ranking/prompt.md
+- 10-relatorio-dados/prompt.md
+- 11-configuracoes/prompt.md
+- celebracoes.js
+- Mapeamento dos prints → telas → prompts
+- revisao-03-prompts-finais/04-personalizacoes.md
+- prompt-geral.md
+- 00-dashboard/prompt.md
+- 00-prompt-mestre-fase-2.md
+- Prompt Fase 2 — Trilhas, PARTE 4 de 5: editor de tópico — aba "Atividades"
+- Novas telas — leia antes dos prompts
+- 20260826_18_progresso_professor_opcional.py
+- 20260909_04_detalhado_traz_progresso_da_atividade.py
+- 20260913_10_chat_colegas_sem_amizade.py
+- 20261003_05_trigger_fns_fora_do_rest.py
+- 20261018_05_notas_fila_aceita_apelidos_de_dissertativa.py
+- 20261021_13_arena_desafio_devolve_os_eixos.py
+- 20261029_08_telemetria_so_na_propria_sessao.py
+- 20261031_03_views_de_metricas_no_alembic.py
+- _fila_ausente
+- test_worker_aceita_o_job_no_formato_do_trigger
+- Seguranca - API TrailUp
+- Supabase — projeto TraiUp
+- Frontend Immersive Design
+- 1. Descoberta (Imersão e Pesquisa)
+- 2. Definição do Problema
+- ENTREGA FINAL
+- 3 TRABALHOS RELACIONADOS
+- 8 RESULTADOS E DISCUSSÃO
+- materialBucket.ts
+- steps
+- microservice
+- mobile
+- realtimeTabelasAssinadas.test.ts
+- desenhar
+- Parte 8 — Configurações e subtelas (celular)
+- Parte 10 — Tutorial de primeiro acesso (celular)
+- revisao-03-loja/telas/03-trilha.md
+- revisao-03-loja/telas/08-perfil-hub.md
+- 01-login/prompt.md
+- 02-recuperar-senha/prompt.md
+- 03-trilha/prompt.md
+- 04-topico/prompt.md
+- 06-social-guildas-loja/prompt.md
+- 07-notificacoes/prompt.md
+- 08-perfil-hub/prompt.md
+- 09-biblioteca-conquistas/prompt.md
+- services/sugestao_material.py
+- _incomplete_openai_factory
+- reset-project.js
+- 06-trilha-refazer.md
+- Arquitetura do Microservico e do App (Contexto Mobile)
+- TrailUp — Monorepo
+- social/index.tsx
+- SlideContent
+- File Structure
+- Síntese — o que os 3 documentos, juntos, revelam
+- 03-classes.md
+- 01-trilha-remover-id-e-transparencia-dos-cards.md
+- 08-personalizacoes-proposta-mais-substancial.md
+- 10-trilha-preview-automatica-de-conteudo-anexado.md
+- 14-global-assistente-de-ia-nome-e-persona.md
+- 09-cadastro-conta/prompt.md
+- 10-finalizar-cadastro/prompt.md
+- 12-reverter-navegacao-para-itens-separados.md
+- 15-historia-da-turma-fora-do-escopo-atual.md
+- 16-campo-de-moedas.md
+- 17-remover-extensoes-de-prazo-de-aprovacoes.md
+- 01-turmas-falta-presenca.md
+- Envio de e-mail pelo Google Apps Script
+- Arquitetura do App (Studio/Frontend do ApiBrainHex) - Versão Detalhada
+- Arquitetura do RAG do TrailUp
+- Arquitetura do Microservico e do App (Contexto ApiBrainHex)
+- Índice por projeto
+- modulo
+- AbaInsights.tsx
+- scripts
+- createDedupedTimeoutRunner
+- serialQueue.test.ts
+- GraphAdaptiveContentGenerator
+- PR #124 — sync Lab → espelho
+- Parceiros / papéis de agentes
+- IDEAÇÃO — GERAÇÃO DE SOLUÇÕES
+- GradientBlobs.tsx
+- HallOrnaments.tsx
+- aplicar-ciclo-de-vida.sh
+- motion@^12.23.24
+- revisao-03-loja/telas/11-configuracoes.md
+- 05-ranking-scroll.md
+- 00-direcao-e-regras-gerais.md
+- revisao-01-apontamentos/01-dashboard.md
+- 02-jornada-aluno.md
+- revisao-01-apontamentos/04-personalizacoes.md
+- 07-geracao-trilha-ia.md
+- 08-canvas-trilha.md
+- 02-trilha-fluxo-edicao-questoes-e-cards.md
+- 03-trilha-modal-para-pagina-com-autosave.md
+- 04-trilha-duplicar-e-excluir-topico.md
+- 05-dashboard-historico-de-sugestoes-e-intervencoes-da-ia.md
+- 06-dashboard-tutor-de-ia-para-o-professor.md
+- 07-dashboard-barra-de-rolagem-fora-do-padrao.md
+- 09-classes-confirmacao-ao-duplicar-turma.md
+- 11-trilha-edicao-de-atividade-incompleta.md
+- 12-trilha-cabecalho-duplicado-no-editor-de-topico.md
+- 13-personalizacoes-modal-nao-abre.md
+- 01-trilha/prompt.md
+- 02-turmas/prompt.md
+- 03-personalizacoes/prompt.md
+- 04-ranks/prompt.md
+- 06-aprovacoes/prompt.md
+- 07-login/prompt.md
+- 08-recuperar-senha/prompt.md
+- 10-reorganizar-navegacao-missoes-e-notas.md
+- 11-reorganizar-navegacao-eventos-batalhas-conquistas.md
+- 13-personalizacoes-multiplos-formatos-por-conteudo.md
+- 02-personalizacoes-modal-nao-abre-por-perfil.md
+- 03-aprovacoes-conteudo-desalinhado.md
+- Slides Imersivos — Guardas nos Consumidores Implementation Plan
+- _SessionCtx
+- vite
+- Run and deploy your AI Studio app
+- Web Theme Completion
+- 03-meus-dados-ranks.md
+- 05-classes.md
+- 09-telas-aprovadas.md
+- 05-ranks.md
+- 05-meus-dados/prompt.md
+- createRegistry
+- createRegistry
+- createRegistry
+- createRegistry
+- createRegistry
+- createRegistry
+- createRegistry
+- createRegistry
+- with_structured_output
+- with_structured_output
+- dotenv@^17.2.3
+- @google/genai@^2.4.0
+- @tailwindcss/vite@^4.1.14
+- @radix-ui/react-alert-dialog
+- @radix-ui/react-avatar
+- @radix-ui/react-dropdown-menu
+- @radix-ui/react-navigation-menu
+- @radix-ui/react-scroll-area
+- @radix-ui/react-switch
+- @radix-ui/react-toggle-group
+- @radix-ui/react-tooltip
+- react-day-picker
+- react-markdown@^10.1.0
+- trailup-monorepo@file:..
+- clsx@^2.1.1
+- dotenv@^17.2.3
+- @google/genai@^1.29.0
+- jspdf@^4.2.1
+- jszip@^3.10.1
+- mammoth@^1.12.0
+- react-markdown@^10.1.0
+- @supabase/supabase-js@^2.103.3
+- vite@^6.2.0
+- 20260826_09_rls_posse_por_tabela.py
+- _run_media_generation_wiring
+- _reset_circuits
+- NodeBadge.tsx
+- ref_node_fs
+- Estrutura do Banco (Supabase) - Resumo Executivo
+- shouldHideQuiz
+- fontes-drive/README.md
+- frontend/package.json
+- textSanitize.ts
+- pathlib
+- Documentacao tecnica
+- Documentacao tecnica
+- Documentacao tecnica
+- json
+- re
+- dev.sh
+- ref_node_assert
+- RegionMap.ts
+- vercel.json
+- IModal.ts
+- IPop.ts
+- webpack.config.js
+- trailup-api
+- tests/__init__.py
+- @radix-ui/react-aspect-ratio
+- @radix-ui/react-collapsible
+- tailwind.config.ts
 
 ## God Nodes (most connected - your core abstractions)
-1. `Settings` - 241 edges
-2. `String()` - 214 edges
-3. `v1/personalizacao.py` - 182 edges
-4. `services/personalizacao.py` - 170 edges
-5. `text()` - 142 edges
-6. `react-native` - 123 edges
-7. `getProfileShellPalette()` - 114 edges
-8. `useUsuario()` - 100 edges
-9. `trilha/[id].tsx` - 93 edges
-10. `cn()` - 91 edges
+1. `cn()` - 270 edges
+2. `Settings` - 236 edges
+3. `_offline_alembic_config()` - 226 edges
+4. `react-native` - 209 edges
+5. `getProfileShellPalette()` - 177 edges
+6. `useUsuario()` - 143 edges
+7. `vitest` - 139 edges
+8. `FontFamily` - 134 edges
+9. `Button` - 128 edges
+10. `perfilVisualDoAluno()` - 101 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `normalizeActivityType()` --calls--> `String()`  [INFERRED]
-  frontend/supabase/functions/generate-content-ai/index.ts → mobile/src/components/perfil/ProfileMetricsViews.tsx
-- `normalizeMediaType()` --calls--> `String()`  [INFERRED]
-  frontend/supabase/functions/generate-content-ai/index.ts → mobile/src/components/perfil/ProfileMetricsViews.tsx
-- `callGemini()` --calls--> `String()`  [INFERRED]
-  frontend/supabase/functions/generate-content-ai/index.ts → mobile/src/components/perfil/ProfileMetricsViews.tsx
-- `requireSecret()` --calls--> `next()`  [INFERRED]
-  brainhexpdf/server.ts → frontend/src/components/auth/AlunoSignupWizard.tsx
-- `hojeLocal()` --calls--> `String()`  [INFERRED]
-  frontend/src/components/console/PresencaDialog.tsx → mobile/src/components/perfil/ProfileMetricsViews.tsx
+- `Task 10: `checar_evidencia_dominio` usa domínio persistido por tópico` --references--> `checar_evidencia_dominio()`  [INFERRED]
+  docs/superpowers/plans/2026-08-19-memoria-aluno.md → api/app/agent/graph/guardrails.py
+- `Intervenção psicopedagógica` --references--> `agente_intervencao()`  [INFERRED]
+  docs/architecture/rag.md → api/app/agent/graph/nodes/agente_intervencao.py
+- `Decisões que são fáceis de errar` --references--> `agente_notificacao()`  [INFERRED]
+  docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md → api/app/agent/graph/nodes/agente_notificacao.py
+- `Glossário TrailUp` --references--> `agente_trilha()`  [INFERRED]
+  docs/segundo-cerebro/03-Glossario/glossario.md → api/app/agent/graph/nodes/agente_trilha.py
+- `Task 12: `agente_ui` força tema de suporte com frustração recorrente` --references--> `agente_ui()`  [INFERRED]
+  docs/superpowers/plans/2026-08-19-memoria-aluno.md → api/app/agent/graph/nodes/agente_ui.py
 
-## Communities (8168 total, 1121 thin omitted)
+## Import Cycles
+- 2-file cycle: `mobile/src/models/Classe.ts -> mobile/src/utils/classeMetrics.ts -> mobile/src/models/Classe.ts`
+- 2-file cycle: `mobile/src/utils/telemetryConsent.ts -> mobile/src/utils/telemetryConsentVersao.ts -> mobile/src/utils/telemetryConsent.ts`
 
-### Community 0 - "cn"
-Cohesion: 0.0
-Nodes (30): Config, default_next_capacity, noncopyable, adl_swap(), archive_constructed(), bad_archive_exception(), force_ptr(), mref() (+22 more)
+## Communities (1120 total, 287 thin omitted)
 
-### Community 1 - "services/personalizacao.py"
-Cohesion: 0.02
-Nodes (271): (auth)/index.tsx, AUTH_PALETTE, style, (auth)/login.tsx, AUTH_PALETTE, Login(), styles, AUTH_PALETTE (+263 more)
+### Community 0 - "Button"
+Cohesion: 0.03
+Nodes (175): 4.5 Formulário de turma (criar e editar), aproveitamento(), LinhaDoRanking, ordenarRanking(), posicoes(), ROTULO_DO_FORMATO, ROTULO_DO_MODO, rotuloDoDesfecho() (+167 more)
+
+### Community 1 - "ref_react"
+Cohesion: 0.03
+Nodes (198): Seção 3: Componentes e dados, NotificacaoDetalhe(), s, FilterPill(), FilterTab, Notificacoes(), NotificacoesLista(), styles (+190 more)
 
 ### Community 2 - "QuestionsManager.tsx"
+Cohesion: 0.05
+Nodes (124): agente_plano_personalizacao(), persist_personalizacao(), _adaptive_size_targets(), _apply_media_job_metadata(), backfill_media_render_jobs(), _brainhex_profile_key(), _build_anchor_pool(), _build_editorial_format_adaptation() (+116 more)
+
+### Community 3 - "test_repositories.py"
+Cohesion: 0.05
+Nodes (62): ConteudoPersonalizadoRepository, DummyResult, FakeRow, _job_row(), _job_target(), MappingResult, MappingRows, RecordingSession (+54 more)
+
+### Community 4 - "guildService.ts"
 Cohesion: 0.03
-Nodes (207): agente_ai_patch(), Settings, chunks_to_plain_text(), Converte chunks em texto corrido sem metadados de fonte.     Evita poluir payloa, services/personalizacao.py, _adaptive_size_targets(), _apply_media_job_metadata(), backfill_media_render_jobs() (+199 more)
+Nodes (151): Task 3: Criar modelos e serviços mobile, ArenaLobby(), buscaAleatoria(), comecar(), FORMATOS, Icone, InicioDoLobby, MODOS (+143 more)
 
-### Community 3 - "perfil/index.tsx"
+### Community 5 - "(tabs)/_layout.tsx"
 Cohesion: 0.03
-Nodes (112): executor(), Any, async_sessionmaker, AsyncSession, AlunoTopicoDominioRepository, Any, AsyncSession, ConteudoPersonalizadoRepository (+104 more)
-
-### Community 4 - "getProfileShellPalette"
-Cohesion: 0.02
-Nodes (58): HallBackground(), ImagemFilter(), coresDoDivisor(), buildMediaCandidates(), normalizeMediaBlocks(), VigiaDePresenca(), getBrainHexConfig(), getBrainHexGuideName() (+50 more)
-
-### Community 5 - "ClassManagementSection.tsx"
-Cohesion: 0.02
-Nodes (180): _app_state_runtime(), _assert_brainhex_media_completed(), _build_generation_key(), _build_targets(), _compact_exception_text(), _compute_failure_backoff_sec(), _content_enrichment_cache_key(), derivar_personalizacao_do_base() (+172 more)
+Nodes (109): ComMolduraDesktop(), IconeNotificacoes(), TabLayout(), TourAwareTabBar(), ClassSelectionGate(), DesbloqueioModal(), ICONE, Props (+101 more)
 
 ### Community 6 - "Evento"
-Cohesion: 0.03
-Nodes (179): ensure_professor_access(), v1/personalizacao.py, _aggregate_media_status(), _as_datetime(), _blend(), _build_design_tokens(), _build_generation_status(), _build_generation_summary() (+171 more)
+Cohesion: 0.04
+Nodes (119): ensure_professor_access(), listar_materiais(), _aggregate_media_status(), _as_datetime(), _build_generation_status(), _build_generation_summary(), _build_student_metrics_summary(), _build_student_reading_summary() (+111 more)
 
-### Community 7 - "TopicEditDrawer.tsx"
-Cohesion: 0.03
-Nodes (150): block(), ContentRenderer(), DefaultWebView, MidiaIndisponivel(), Props, readString(), renderAudio(), renderImage() (+142 more)
+### Community 7 - "personalization.ts"
+Cohesion: 0.12
+Nodes (46): Contexto de como funciona hoje (confirmado por leitura direta do código), { normalizePersonalizedTopicPayload, orderPersonalizationRecordsByTeacherContent }, supabaseModulePath, aggregatePersonalizedTopicPayloads(), asArray(), asLooseRecord(), buildContentScopedPersonalizationItemKey(), buildMarkdownContentBlock() (+38 more)
 
-### Community 8 - "main.py"
-Cohesion: 0.03
-Nodes (131): buildAnalysisView(), BuildMetricsViewModelParams, buildMissionSummary(), buildNextMilestone(), buildPresenceSummary(), buildProfileMetricsViewModel(), clampPercent(), collectStringValues() (+123 more)
+### Community 8 - "TrilhaContext.tsx"
+Cohesion: 0.07
+Nodes (47): asLooseArray(), asLooseRecord(), buildPersonalizacaoCacheKey(), buildProgressoItensCacheKey(), buildSugestoesMaterialCacheKey(), cloneClasse(), collectMissingRequestedMediaFormats(), decorateNodesWithPersonalization() (+39 more)
 
 ### Community 9 - "AccessRepository"
 Cohesion: 0.03
-Nodes (149): BattleScope, formatBattleDate(), formatBattleDuration(), formatEncounterLimit(), IABattleHeaderChip(), Props, styles, BattlePanelScope (+141 more)
+Nodes (160): [#755](https://github.com/BitStudioLabs/trail-up/pull/755) · feat: nome e falas do boss gerados em lote, por conteúdo × perfil, BossFala(), Props, styles, BattleMetaStat(), BattleScope, formatBattleDate(), formatBattleDuration() (+152 more)
 
-### Community 10 - "button.tsx"
-Cohesion: 0.05
-Nodes (112): ProfessorSignupForm(), Props, ActivityRow, CardRow, Classe, ContentRow, LinkRow, Materia (+104 more)
-
-### Community 11 - "MediaPipelineContext"
-Cohesion: 0.06
-Nodes (152): addAnimatedEventToView(), addListener(), addMenuItem(), addNetworkingHandler(), addWebSocketHandler(), alertWithArgs(), animatedShouldSignalBatch(), announceForAccessibility() (+144 more)
-
-### Community 12 - "GlobalStyle.ts"
-Cohesion: 0.05
-Nodes (152): addAnimatedEventToView(), addListener(), addMenuItem(), addNetworkingHandler(), addWebSocketHandler(), alertWithArgs(), animatedShouldSignalBatch(), announceForAccessibility() (+144 more)
-
-### Community 13 - "generate-content-ai/index.ts"
-Cohesion: 0.03
-Nodes (120): MockEmocaoAdapter, agente_conteudo(), _fallback_conteudo(), Any, agente_emocao(), Any, agente_geracao_midia(), Any (+112 more)
-
-### Community 14 - "behavioral_personalization.py"
+### Community 10 - "Input"
 Cohesion: 0.04
-Nodes (147): agente_plano_personalizacao(), persist_personalizacao(), _extract_numeric_reference(), _infer_reference_prefix(), _sanitize_reference(), gerar_docx(), gerar_pdf(), render_pdf_html() (+139 more)
+Nodes (111): Task 7: Toggle em "Meus Dados", AuthBrand(), AuthScenery(), ProfessorSignupForm(), Props, StudentBasicsStep(), AlterarSenhaCard(), NIVEL_COR (+103 more)
+
+### Community 11 - "test_trava_personalizacao_api.py"
+Cohesion: 0.04
+Nodes (65): agente_cronometro(), decisao_do_estado(), agente_intervencao(), _base(), _ja_pendente(), montar_intervencao(), _recorrencia(), _sugestao_valida() (+57 more)
+
+### Community 12 - "test_insights_turma.py"
+Cohesion: 0.04
+Nodes (52): _aviso_do_cronometro(), _checar_dono(), _geracoes(), gerar_insights_da_turma(), _rodar_geracao(), status_dos_insights_da_turma(), TentativasRepository, InsightGerado (+44 more)
+
+### Community 13 - "Settings"
+Cohesion: 0.02
+Nodes (146): checar_evidencia_dominio(), checar_grounding_chat(), checar_ordem_sequencial(), checar_topicos_existem(), gerar_validado(), GuardrailViolation, agente_conteudo(), _fallback_conteudo() (+138 more)
+
+### Community 14 - "test_personalizacao_service.py"
+Cohesion: 0.03
+Nodes (72): build_personalizacao_steps(), _build_source_hash(), _merge_source_materials(), _normalize_materiais(), _split_text_chunks(), _BackfillResult, _BackfillSession, _FakeSessionWithNoOpCommit (+64 more)
 
 ### Community 15 - "api.py"
 Cohesion: 0.02
-Nodes (122): MODO_OPERACAO_OPTIONS, MODO_APRESENTACAO_OPTIONS, HexagonNode(), ListNode(), PROFILE_COLORS, StudentTrailVisualizationProps, TopicoStatus, NavLink (+114 more)
+Nodes (185): @radix-ui/react-slot@^1.2.3, MODO_OPERACAO_OPTIONS, StudentModeStep(), MODO_APRESENTACAO_OPTIONS, StudentPresentationStep(), NavLink, NavLinkCompatProps, AccordionContent (+177 more)
 
-### Community 16 - "PersonalizacoesSection.tsx"
-Cohesion: 0.03
-Nodes (97): get_current_user(), get_session(), get_settings(), AsyncSession, UserContext, require_admin(), require_aluno(), require_professor() (+89 more)
+### Community 16 - "test_api.py"
+Cohesion: 0.02
+Nodes (100): admin_professores_page(), _dashboard_html(), _load_dashboard(), _schema_unavailable_html(), AdminContext, get_current_user(), get_session(), get_settings() (+92 more)
 
-### Community 17 - "HallTheme.tsx"
-Cohesion: 0.05
-Nodes (78): next(), jsinspector_modern(), executor(), AlunoTopicoDominioRepository, EventoRepository, _conteudo_asset_ref_sql(), FontesContextLimitExceeded, FontesPersonalizacaoRepository (+70 more)
+### Community 18 - "supabase.ts"
+Cohesion: 0.06
+Nodes (39): Perfil salvo até o material da trilha, AuthenticatedRedirect(), LoadingOverlay(), RootLayout(), unstable_settings, VerificacaoDeRota(), AtualizacaoObrigatoriaGate(), styles (+31 more)
 
-### Community 18 - "test_personalizacao_service.py"
-Cohesion: 0.03
-Nodes (50): (auth)/_layout.tsx, TabLayout(), NotificationsContext, NotificationsProvider(), NotificationsState, StatusFiltro, ToastMessage, ToastType (+42 more)
+### Community 19 - "supabaseService.ts"
+Cohesion: 0.07
+Nodes (51): Task 1: Ponto de injeção em `getClient()`, Task 3: Revisão final da branch, Testabilidade do Pipeline de Upload no Microservice — Implementation Plan, Escopo cirúrgico, Fora de escopo, Mudança 3 — Testes novos, Tratamento de erro, Contexto (+43 more)
 
-### Community 19 - "trilha/[id].tsx"
-Cohesion: 0.04
-Nodes (88): AppOptions, archiveMultiPartToSupabase(), archiveToSupabase(), buildApp(), buildPresentationMaterialMetadata(), downloadFonteStreamed(), express-serve-static-core, fetchFontesAsFileData() (+80 more)
-
-### Community 20 - "MetricasContext.tsx"
-Cohesion: 0.04
-Nodes (100): slide(), appendQuery(), buildEmbeddedOfficeViewerUrl(), buildGoogleSlidesUrl(), buildGoogleViewerUrl(), buildOfficeViewerUrl(), buildOfficeViewUrl(), buildPdfViewerHtml() (+92 more)
+### Community 20 - "DocumentBlock.tsx"
+Cohesion: 0.02
+Nodes (155): Apresentação: visual nativo no mobile Implementation Plan, Retrospectiva (achados durante a execução), Task 1: Tipos — `ContentBlockType`, payload e `RichPresentationSlide`, Task 2: `normalizeRichPresentationSlides` + emitir 1 bloco em vez de N, Task 3: `ContentRenderer.tsx` roteia `apresentacao-slides`, Task 4: `PresentationSlidesBlock.tsx` — componente novo, Task 5: Verificação manual, 2.1 PDF → Markdown Nativo + Paginação (+147 more)
 
 ### Community 21 - "expo-router"
 Cohesion: 0.04
-Nodes (100): microservice/src/App.tsx, App(), GUARDIAN_VOICE_PROFILES, GuardianVoiceProfile, buildImageSourceContexts(), ImageSourceContext, parseSlideImageRelIds(), parseSlideImageRels() (+92 more)
+Nodes (85): Task 3: Microservice — endpoint `POST /api/v1/generate/part-audio`, Microservice — endpoints granulares novos (`server.ts`), Restrição explícita do usuário — LIDA COM MÁXIMA PRIORIDADE, buildImageSourceContexts(), ImageSourceContext, parseSlideImageRelIds(), parseSlideImageRels(), parseSlideText() (+77 more)
 
 ### Community 22 - "test_api.py"
+Cohesion: 0.02
+Nodes (154): 2.1 Encaixe no console, 2.2 Estrutura do `ClassManagementSection.tsx` (570 linhas, um componente só), 2.3 Comportamentos atuais que valem registro, 2. Como a tela é montada hoje, Task 6: Frontend — API helpers em `personalizacoesApi.ts`, Task 8: Botão "Gerar" individual por card de perfil, Onde aplicar, valorDoDesempenho() (+146 more)
+
+### Community 23 - "trilha/[id].tsx"
+Cohesion: 0.02
+Nodes (186): Checklist Final, Mapa de Arquivos, Progresso, Persistência, Mídias e Atividades — Implementation Plan, Task 1: TrilhaContext — Local-first + debounce RT, Task 2: MarkdownBlock — renderização nativa + paginação, Task 3: QuestionActivity + ActivityRenderer — reviewMode e fluxo de atividades concluídas, Task 4: Cards — ordem + renderização de mídia no verso, Task 5: VideoPlayer — seek bar e controles ±10s (+178 more)
+
+### Community 24 - "schema_prod_esqueleto_20261024.sql"
 Cohesion: 0.04
-Nodes (101): limitarPercentual(), PerfilComGeracao, resolverGeracaoFormato(), resumirGeracaoConteudo(), ResumoGeracaoConteudo, statusGeracaoDoPerfil(), temGeracaoAtiva(), buildMaterialPath() (+93 more)
+Nodes (105): auth.users, public."alembic_version", public."aluno_atividade_diaria", public."aluno_mental_state_history", public."aluno_perfil_medida", public."aluno_topico_dominio", public."alunos", public."app_config" (+97 more)
 
-### Community 23 - "test_graph_nodes.py"
-Cohesion: 0.04
-Nodes (94): trilha/[id].tsx, CONTEUDO_TIPO_LABELS, formatConteudoTipo(), isPlaceholderTitle(), normalizeModuleDifficulty(), TrilhaConteudoScreen(), WebView, ActivityCompletePayload (+86 more)
-
-### Community 24 - "services/personalizacao_jobs.py"
-Cohesion: 0.04
-Nodes (93): AllocateMemory(), CheckMode(), Copy32b(), Dither8x8(), DitherRow(), DoFilter(), DoTransform(), DoUVTransform() (+85 more)
-
-### Community 25 - "IAContext.tsx"
-Cohesion: 0.05
-Nodes (82): resumeIdentity(), react-native-markdown-display, PersonalizacaoAuthError, PersonalizacaoNetworkError, PersonalizacaoRlsError, react-native-markdown-display, parseImageCues(), asObject() (+74 more)
-
-### Community 26 - "UserContext"
+### Community 25 - "test_rpc_chamada_tem_migracao.py"
 Cohesion: 0.03
-Nodes (72): ActivityRenderer(), normalizeActivityType(), buildOfficialPersonalizedSteps(), buildPersonalizationDecisionText(), buildPersonalizedActivitySteps(), buildPersonalizedContentSteps(), buildTeacherAcademicSteps(), buildUnifiedSteps() (+64 more)
+Nodes (47): _confere_sessao(), _corpos(), _desprotegidas(), _expostas(), _migracoes(), test_a_lista_de_excecoes_nao_cria_excecao_muda(), test_a_lista_nao_guarda_nome_que_ja_saiu(), test_o_portao_realmente_sinaliza_quem_nao_confere() (+39 more)
 
-### Community 27 - "test_repositories.py"
+### Community 26 - "retencao_externa.py"
 Cohesion: 0.04
-Nodes (20): ClasseMapaTemaRepository, _normalize_json_field(), ConteudoClasseRepository, _normalize_profile_key(), Retorna todos os conteúdos dos tópicos, preservando a ordem docente., ContextRepository, Registra a sugestao da IA. Devolve o id, ou `None` se ja existia.          O `ON, _media_snapshot_select_expr() (+12 more)
+Nodes (45): _codificar_key(), ConfigR2, derivar_chave_de_assinatura(), enviar_para_r2(), _hmac(), ler_config_r2(), presign_r2(), _ainda_usado() (+37 more)
 
-### Community 28 - "sidebar.tsx"
+### Community 27 - "test_roteamento_ia_menores.py"
+Cohesion: 0.04
+Nodes (53): MenorSemOpenAIError, bloquear_gemini_na_rota_de_menor(), decidir_rota(), IAIndisponivelParaMenor, _ids_validos(), provedor_efetivo(), rota_atual(), rota_ia_para_alunos() (+45 more)
+
+### Community 28 - "vitest"
+Cohesion: 0.02
+Nodes (157): 1. O que a leitura do código revelou (e muda o plano), 2. Mapa (Parte 1) — protótipo × atual, 3. "Gerar trilha com IA" (Parte 2), 4. Editor de tópico (Partes 3–5), 5. Não levar para a tela real, 6. Plano de entrega — 5 PRs empilhados, Análise — Trilhas do console do professor: código atual × protótipo V9, prazoDaAtividade() (+149 more)
+
+### Community 30 - "test_pseudonimizacao_ia.py"
 Cohesion: 0.05
-Nodes (93): ClassManagementSection(), ClassStudentsDialog(), ACTIVE_JOB_STATUSES, API_BASE_URL_CANDIDATES, apiRequest(), enqueueClassDeltaJob(), enqueueCleanupJob(), enqueueEnrollmentJob() (+85 more)
+Nodes (49): perguntar_ao_escriba(), _sem_nome(), aplicar_politica_de_tracing(), tracing_permitido(), EscribaSaida, MensagemEscriba, PerguntaEscriba, RespostaEscriba (+41 more)
 
-### Community 29 - "compilerOptions"
-Cohesion: 0.04
-Nodes (85): BaseModel, AccessRepository, IAPersonalizationPatch, CardItem, ClassePerfilDistribuicaoItem, ClassePerfilSummaryResponse, DesignTokens, DesignTokensCores (+77 more)
-
-### Community 30 - "SupabaseStorage"
-Cohesion: 0.04
-Nodes (87): isTurn(), TryWaitResult(), ApplyFiltersAndEncode(), CompressAlphaJob(), EncodeAlpha(), GetFilterMap(), GetNumColors(), InitFilterTrial() (+79 more)
-
-### Community 31 - "AlunoSignupWizard.tsx"
+### Community 31 - "FormularioDaConquista.tsx"
 Cohesion: 0.05
-Nodes (96): AllocateAlphaPlane(), ALPHDecode(), ALPHDelete(), ALPHInit(), ALPHNew(), VP8DecompressAlphaRows(), WebPDeallocateAlphaMemory(), WebPFreeDecBuffer() (+88 more)
+Nodes (75): COR_PADRAO, corDaConquista(), corValida(), ICONE_PADRAO, IconeChave, ICONES_DA_CONQUISTA, iconeValido(), PALETA_DE_CORES (+67 more)
 
-### Community 32 - "GenerateTrailDialog.tsx"
-Cohesion: 0.04
-Nodes (93): CameraPermissionResponse, styles, TelemetryConsentGate(), accumulateContextTime(), accumulateEntryTime(), BatchAccumulator, buildDisabledUsageTimeMetrics(), buildEmptyBatch() (+85 more)
-
-### Community 33 - "supabase.ts"
+### Community 32 - "MetricasContext.tsx"
 Cohesion: 0.06
-Nodes (90): asBigInt(), asNumber(), BigIntKind(), compare(), create(), createFromAscii(), createFromHostObject(), createFromJsonUtf8() (+82 more)
+Nodes (65): 2. Os quatro escopos são aninhados — somá-los multiplica o tempo, accumulateContextTime(), accumulateEntryTime(), BatchAccumulator, buildEmptyBatch(), buildTimeMetricEntry(), CurrentStudyContext, EMPTY_STUDY_CONTEXT (+57 more)
 
-### Community 34 - "ProfileMetricsViews.tsx"
-Cohesion: 0.03
-Nodes (37): folly(), folly(), grow_capacity_by(), reserve_if_available(), folly(), Exception, folly(), folly() (+29 more)
+### Community 33 - "src/types.ts"
+Cohesion: 0.05
+Nodes (71): App(), BrainHexAvatar(), BrainHexGuideModal(), DeckEditorModal(), DeckEditorModalProps, ALL_BRAINHEX_PROFILES, GeneratorModal(), GeneratorModalProps (+63 more)
 
-### Community 35 - "IAContracts.ts"
+### Community 35 - "dependencies"
+Cohesion: 0.05
+Nodes (43): dependencies, class-variance-authority@^0.7.1, cmdk@^1.1.1, date-fns@^3.6.0, embla-carousel-react@^8.6.0, lucide-react@^0.462.0, @radix-ui/react-accordion@^1.2.11, @radix-ui/react-checkbox@^1.3.2 (+35 more)
+
+### Community 36 - "mobile/package.json"
 Cohesion: 0.02
-Nodes (87): browserslist, caniuse-lite, date-fns, dependencies, browserslist, caniuse-lite, clsx, date-fns (+79 more)
-
-### Community 36 - "ContentRenderer.tsx"
-Cohesion: 0.02
-Nodes (80): HapticTab(), ParallaxScrollView(), ThemedText(), ThemedView(), @config-plugins/react-native-blob-util, @config-plugins/react-native-pdf, expo-camera, expo-dev-client (+72 more)
+Nodes (123): { defineConfig }, expoConfig, dependencies, @config-plugins/react-native-blob-util@^12.0.0, @config-plugins/react-native-pdf@^12.0.0, expo@~54.0.37, expo-asset@~12.0.14, expo-audio@~1.1.1 (+115 more)
 
 ### Community 37 - "presentationOrder.ts"
-Cohesion: 0.05
-Nodes (72): compute_distribuicao(), GroupAnalysisService, _normalize_profile(), Any, AsyncSession, Adequacao de grupo: analisa a distribuicao de perfis BrainHex por classe.  Difer, Computa e persiste o summary de perfis BrainHex de uma classe., classe_aluno pode ter colunas em camelCase (com aspas) ou snake_case,         de (+64 more)
+Cohesion: 0.08
+Nodes (42): aderencia_da_sugestao(), churn_de_sugestoes(), comparar_seguiu_versus_ignorou(), _desempenho_dos_sinais(), efeito_das_revisoes(), _formatos(), _media(), montar_registros_do_log() (+34 more)
 
-### Community 38 - "docs/README.md"
+### Community 38 - "run.mjs"
+Cohesion: 0.03
+Nodes (56): caminhos, grupos, manifesto, raiz, resultado, arquivos(), ESPECIAIS_CP1252, EXTENSOES (+48 more)
+
+### Community 39 - "ref_lucide_react"
+Cohesion: 0.03
+Nodes (86): Task 17: Verificação final, Continuity Verification, Follow-up: Grounded Guides and Auth Logo, Follow-up: Mobile Guide Framing, Follow-up: One Background per Guide, Follow-up: Scene Continuity, Frontend Immersive Implementation Plan, Results (+78 more)
+
+### Community 40 - "EconomiaSection.tsx"
 Cohesion: 0.06
-Nodes (85): OptimizeSingleFrame(), WebPAnimEncoderDeleteChunk(), WebPAnimEncoderGetChunk(), WebPAnimEncoderSetChunk(), AddDataToChunkList(), CreateFrameData(), CreateVP8XChunk(), DeleteAllImages() (+77 more)
-
-### Community 39 - "server.ts"
-Cohesion: 0.04
-Nodes (58): frontend/src/App.tsx, App(), queryClient, BrainHexShowcase(), extractHex(), extractPtLabel(), GuardianButton(), GUIDES (+50 more)
-
-### Community 40 - "TrilhaContext.tsx"
-Cohesion: 0.05
-Nodes (48): facebook(), appendQuery(), buildEmbeddedOfficeViewerUrl(), buildGoogleSlidesUrl(), buildGoogleViewerUrl(), buildOfficeViewerUrl(), buildOfficeViewUrl(), clampPage() (+40 more)
-
-### Community 41 - "QuestionActivity.tsx"
-Cohesion: 0.05
-Nodes (53): EmocaoAdapter, BaseSettings, get_settings(), Settings, Protocol, coerce_referencia(), Evento, AdaptiveContentGenerator (+45 more)
+Nodes (82): AbaFundo(), AlunoDaTurma, arquivarMeta(), carregarAlunos(), carregarCarteiras(), carregarConfig(), carregarExtrato(), carregarFundos() (+74 more)
 
 ### Community 42 - "v1/personalizacao.py"
-Cohesion: 0.05
-Nodes (61): analisar(), analisar_stream(), AsyncSession, post, UserContext, IADecisionLogRepository, Any, AsyncSession (+53 more)
+Cohesion: 0.04
+Nodes (61): TrailUpState, AlunoTopicoDominioRepository, MentalStateHistoryRepository, AnalisarPayload, DominioTopico, MemoriaAluno, MentalStateRecorrente, extract_mental_state() (+53 more)
 
-### Community 43 - "GroupAnalysisService"
+### Community 43 - "RastreadorDeMissoes.tsx"
 Cohesion: 0.05
-Nodes (72): EmitSampledRGB(), WebPInitSamplersMIPS32(), WebPInitSamplersMIPSdspR2(), ConvertARGBToUV_NEON(), ConvertARGBToY_NEON(), ConvertBGR24ToY_NEON(), ConvertRGB24ToY_NEON(), ConvertRGBToY_NEON() (+64 more)
+Nodes (71): BotaoDoRastreador(), Emblema(), hexagono(), LADO_DO_ICONE, Moldura(), placa(), PropsDoBotao, s (+63 more)
 
 ### Community 44 - "use-grafo-trilha.ts"
+Cohesion: 0.09
+Nodes (26): isPersonalizacaoAuthError(), PersonalizacaoAuthError, PersonalizacaoNetworkError, PersonalizacaoRlsError, IPersonalizacaoProvider, PersonalizacaoProviderContext, AuthHeaders, defaultTrailupApiProvider (+18 more)
+
+### Community 48 - "Rank.ts"
+Cohesion: 0.08
+Nodes (23): buildPosicaoDoAluno(), buildRankInfoFromRow(), buildRankPosicao(), ClasseRanking, loadFallbackRankInfosByClasse(), loadRankRowsByClasse(), normalizeClasseId(), RankDaClasse (+15 more)
+
+### Community 51 - "linear_analysis_pipeline.py"
+Cohesion: 0.11
+Nodes (25): Evento, AdaptiveContentGenerator, AttentionAnalyzer, _count_switches(), DecisionEngine, DeepFaceEmotionAnalyzer, EmotionAnalyzer, EmotionStageResult (+17 more)
+
+### Community 56 - "test_e2e_sessao_fecha_pelo_banco.py"
 Cohesion: 0.07
-Nodes (29): isPersonalizacaoAuthError(), PersonalizacaoAuthError, PersonalizacaoNetworkError, PersonalizacaoRlsError, personalizacao/index.ts, IPersonalizacaoProvider, PersonalizacaoProviderContext, PersonalizacaoProviderProvider() (+21 more)
+Nodes (50): _abre(), _banco(), _como_aluno(), _downgrade(), _i17(), _indice_do_lote(), _lote_direto(), _m_sessao() (+42 more)
 
-### Community 45 - "Rank.ts"
-Cohesion: 0.03
-Nodes (15): class-variance-authority, cmdk, embla-carousel-react, class-variance-authority, cmdk, embla-carousel-react, input-otp, react-hook-form (+7 more)
-
-### Community 46 - "PersonalizedTopicView.tsx"
-Cohesion: 0.05
-Nodes (54): create_app(), TelemetriaLotePayload, UserContext, aluno_user(), app(), FakeGraph, FakeSession, professor_user() (+46 more)
-
-### Community 47 - "personalization.ts"
-Cohesion: 0.06
-Nodes (61): addWavHeader(), bigBlock(), block(), withGeminiApiKeys(), clientForGeminiKey(), consolidateBlockBatchGenerations(), cooldownKey(), distributeEvenly() (+53 more)
-
-### Community 48 - "TrailupApiProvider.ts"
-Cohesion: 0.05
-Nodes (41): ConquistaRankContext, ConquistaRankProvider(), ConquistaRankState, isInvalidBigintDataError(), normalizeClasseId(), buildCriterioResumo(), clampPercent(), Conquista (+33 more)
-
-### Community 49 - "fluxo-completo-ecossistema.md"
+### Community 57 - "alembic_config"
 Cohesion: 0.04
-Nodes (50): IADecisionLogRepository, MentalStateHistoryRepository, Persistencia e leitura do historico de mental-state inferido pela IA., DominioTopico, MemoriaAluno, MentalStateRecorrente, TelemetriaAnalysisResponse, build_analysis_graph_config() (+42 more)
-
-### Community 50 - "dependencies"
-Cohesion: 0.07
-Nodes (61): admin_professores_page(), _dashboard_html(), _load_dashboard(), _schema_unavailable_html(), checar_evidencia_dominio(), checar_grounding_chat(), checar_ordem_sequencial(), checar_topicos_existem() (+53 more)
-
-### Community 51 - "clampPercent"
-Cohesion: 0.07
-Nodes (52): Evento, Any, AdaptiveContentGenerator, AttentionAnalyzer, AttentionStageResult, build_linear_analysis_orchestrator(), _count_switches(), DecisionEngine (+44 more)
-
-### Community 52 - "contentBlocks.ts"
-Cohesion: 0.12
-Nodes (71): after(), all_after(), all_before(), around(), bigintIsInt64(), bigintIsUint64(), bigintToString(), call() (+63 more)
-
-### Community 53 - "v1/telemetria.py"
-Cohesion: 0.03
-Nodes (16): i_(), impl(), template apply<N1,N2>::type
-#else
-    : aux::msvc_eti_base< typename apply_wrap2<
-          AUX778076_OP_IMPL_NAME<
-              typename AUX778076_OP_TAG_NAME<N1>::type
-            , typename AUX778076_OP_TAG_NAME<N2>::type
-            >
-        , N1
-        , N2
-        >::type >::type(), _chooser(), _impl(), vartempl_placement_new(), Enum, Block (+8 more)
-
-### Community 54 - "dependencies"
-Cohesion: 0.07
-Nodes (57): enrich_content_blocks(), Separa, aprofunda e só então libera blocos neutros para personalização., _clean_circuits(), _context(), _failing_gemini_factory(), _failing_openai_factory(), _FailingOpenAIClient, _FailingOpenAIResponses (+49 more)
-
-### Community 55 - "ContentFileUpload.tsx"
-Cohesion: 0.05
-Nodes (45): remark-gfm, apiRequest(), buildApiBaseUrlCandidates(), executeApiFetch(), extractErrorDetail(), isAuthFailure(), parseJsonSafe(), resolveAccessToken() (+37 more)
-
-### Community 56 - "hooks/use-toast.ts"
-Cohesion: 0.06
-Nodes (71): ensure_professor_access(), _aggregate_media_status(), _as_datetime(), _blend(), _build_design_tokens(), _build_generation_status(), _build_storage_path(), _build_student_metrics_summary() (+63 more)
-
-### Community 57 - "geminiService.ts"
-Cohesion: 0.07
-Nodes (71): after(), all_after(), all_before(), around(), bigintIsInt64(), bigintIsUint64(), bigintToString(), call() (+63 more)
+Nodes (51): _render(), test_a_guarda_vem_antes_do_alter(), test_as_duas_colunas_viram_not_null(), test_confere_as_orfas_antes_de_alterar(), test_downgrade_devolve_o_nullable(), _sql_da_migracao(), test_cria_policy_de_select_na_classe_mapa_tema(), test_nao_abre_escrita_para_o_cliente() (+43 more)
 
 ### Community 58 - "nativeDocumentParsers.ts"
-Cohesion: 0.06
-Nodes (66): gerar_mp3_gemini_tts(), gerar_mp3_gtts(), _brainhex_contract_matches(), brainhex_contract_ready(), _build_brainhex_presentation_theme(), disparar_brainhex_async(), _extract_brainhex_error_detail(), _extract_inline_audio_parts() (+58 more)
+Cohesion: 0.05
+Nodes (65): gerar_mp3_gemini_tts(), gerar_mp3_gtts(), gerar_mp3_openai_tts(), gemini_generate_url(), gemini_headers(), _brainhex_contract_matches(), brainhex_contract_ready(), _build_brainhex_presentation_theme() (+57 more)
 
 ### Community 59 - "mobile/src/components/ui/collapsible.tsx"
-Cohesion: 0.08
-Nodes (44): _build_guardian_tts_prompt(), AudioPipeline, _dominant_profile_theme(), MarkdownPipeline, MediaPipeline, MediaPipelineContext, _merge_tema_visual(), MultiOutputPipeline (+36 more)
-
-### Community 60 - "media_agents.py"
-Cohesion: 0.03
-Nodes (46): build_personalizacao_steps(), _BackfillResult, _BackfillSession, _FakeSessionWithNoOpCommit, _FakeSessionWithNoOpCommitContext, _FakeSessionWithNoOpCommitFactory, _PersistSessionContext, _PersistSessionFactory (+38 more)
-
-### Community 61 - "IAHeaderTimer.tsx"
-Cohesion: 0.03
-Nodes (16): ProtectedRoute(), handleSubmit(), limpar(), react-router-dom, zod, AuthProvider(), useAuth(), useProfessorClasses() (+8 more)
-
-### Community 62 - "DashboardSection.tsx"
-Cohesion: 0.12
-Nodes (67): computeBorderForAxis(), computeFlexEndBorder(), computeFlexEndMargin(), computeFlexEndPadding(), computeFlexEndPaddingAndBorder(), computeFlexEndPosition(), computeFlexStartBorder(), computeFlexStartMargin() (+59 more)
-
-### Community 63 - "MentalStateHistoryRepository"
-Cohesion: 0.03
-Nodes (67): api/arquitetura-estrutura-app-camadas.md, Camadas, Regra de dependencia, api/arquitetura-funcionamento-geral-sistema.md, Componentes, Fluxo macro, Princípios atuais, api/estrutura-banco-supabase.md (+59 more)
-
-### Community 64 - "IABattlePanel.tsx"
-Cohesion: 0.04
-Nodes (49): MockEmocaoAdapter, EmocaoAdapter, build_state_summary(), compute_personalizacao_next(), compute_supervisor_next(), _has_battle_ai_patch(), _needs_conteudo(), _needs_emotion() (+41 more)
-
-### Community 65 - "settings.py"
-Cohesion: 0.06
-Nodes (46): build_graph(), Any, async_sessionmaker, AsyncSession, close_checkpointer(), get_checkpointer(), get_ephemeral_checkpointer(), get_persistent_checkpointer() (+38 more)
-
-### Community 66 - "models.py"
 Cohesion: 0.05
-Nodes (49): asLooseArray(), asLooseRecord(), buildGraphFromTopicos(), collectMissingRequestedMediaFormats(), collectPrefetchEntries(), decorateNodesWithPersonalization(), formatToIconName(), getRecommendedTopicIds() (+41 more)
+Nodes (60): _build_guardian_tts_prompt(), AudioPipeline, _dominant_profile_theme(), MarkdownPipeline, MediaPipeline, MediaPipelineContext, _merge_tema_visual(), MultiOutputPipeline (+52 more)
+
+### Community 60 - "missao.ts"
+Cohesion: 0.05
+Nodes (66): aguardaDecisao(), Aprovacao, aprovacaoDe(), APROVACOES, EscopoDaMissao, escopoDe(), ESCOPOS, MOTIVO_MAX (+58 more)
+
+### Community 62 - "test_demanda_formato.py"
+Cohesion: 0.07
+Nodes (55): agregar_do_topico(), analisar_demanda_do_topico(), _arquivos(), _avaliar(), demanda_heuristica(), DemandaDoConteudo, DemandaDoTopico, DimensaoAvaliada (+47 more)
+
+### Community 63 - "docs/README.md"
+Cohesion: 0.03
+Nodes (53): Comportamento entregue, Evidências e limites, Implantação e aceite, Integridade da conclusão e preservação do legado — migração 06, Issue #1 — conclusão do cadastro e introdução independente de turma, E-mail duplicado, Evidência que orienta a mudança, Issue #1 — e-mail duplicado e material correspondente ao perfil (+45 more)
+
+### Community 65 - "main.py"
+Cohesion: 0.03
+Nodes (52): EmocaoAdapter, MockEmocaoAdapter, build_graph(), close_checkpointer(), get_checkpointer(), get_ephemeral_checkpointer(), get_persistent_checkpointer(), upgrade_database_to_head() (+44 more)
+
+### Community 66 - "useDesktopWeb"
+Cohesion: 0.05
+Nodes (64): Bag de itens pessoais Implementation Plan, Task 1: Criar o modelo autoral e a leitura unificada, Task 2: Criar contrato e serviço mobile da Bag, Task 3: Implementar a tela reutilizável da Bag, Task 4: Adicionar entradas na Trilha e no Perfil, Task 5: Permitir criação contextual dentro dos conteúdos, Task 6: Compartilhar itens na conversa com autorização, Task 7: Verificação final e publicação (+56 more)
 
 ### Community 67 - "services/classe_mapa_tema.py"
+Cohesion: 0.14
+Nodes (35): IABattleConfig, IABattleTiming, IACamelModel, IACharacterCue, IAEnemyPalette, IAEnemySpec, IAEnemyVisualSpec, IAFeatureDescriptor (+27 more)
+
+### Community 68 - "SlideViewer.tsx"
+Cohesion: 0.06
+Nodes (67): Como o ornamento preserva a proporção sem cálculo manual, Como os limites esquerda/ornamento/direita foram escolhidos, Contexto, Decisão, Divisor SVG com viewport aninhado — Design, Escopo, AvatarProps, BrainHexFullBodyGuide() (+59 more)
+
+### Community 69 - "test_e2e_economia_banco.py"
+Cohesion: 0.10
+Nodes (49): _admin(), chave(), como(), conceder(), linhas(), m(), _razao_eventos(), _recusado() (+41 more)
+
+### Community 71 - "ref_react_dom"
+Cohesion: 0.03
+Nodes (34): comGuardiao, html, PropsDeHost, { renderToString }, ESPERADOS, PropsDeHost, { renderToString }, SENTINELA (+26 more)
+
+### Community 72 - "IAMentorPanel.tsx"
+Cohesion: 0.06
+Nodes (57): DataNascimentoForm(), mascarar(), styles, ITENS, ResponsavelConsentForm(), styles, buildDefaultGuideMessage(), buildTutorialTips() (+49 more)
+
+### Community 73 - "(auth)/login.tsx"
 Cohesion: 0.08
-Nodes (53): BossImageAdapter, IAEnemySpec, GeminiBossImageAdapter, Any, IAEnemySpec, PlaceholderBossImageAdapter, IAEnemySpec, agente_boss_visual() (+45 more)
+Nodes (49): AvisoDeLogin, Login(), styles, RecuperarSenhaScreen(), styles, ALTURA_CENA_COM_FRASE, ALTURA_CENA_COM_TECLADO, alturaDaCena() (+41 more)
 
-### Community 68 - "PersonalizacaoJobsRepository"
-Cohesion: 0.05
-Nodes (51): _bounded_float(), _bounded_int(), _chunk_without_truncation(), ContentEnrichmentError, derive_base_blocks_and_topic(), enrich_base_blocks(), _enrich_base_blocks_with_gemini(), _enrich_base_blocks_with_openai() (+43 more)
-
-### Community 69 - "settings.tsx"
-Cohesion: 0.05
-Nodes (39): buildPresentationVersionMetadata(), generationStorageSegment(), getRenderGitCommit(), versionStoragePath(), createConcurrencyGate(), createRateLimiter(), createKeyedQueue(), isMaterialCompletedForGeneration() (+31 more)
-
-### Community 70 - "Topico"
+### Community 74 - "test_analise_fila.py"
 Cohesion: 0.07
-Nodes (41): MediaPipeline, _build_guardian_tts_prompt(), AudioPipeline, _dominant_profile_theme(), _get_semaphore(), MarkdownPipeline, MediaPipeline, MediaPipelineContext (+33 more)
+Nodes (37): analisar_lote_da_fila(), _app(), _gravado_pela_api(), _gravado_pelo_app(), _lote(), _payload(), _payload_com_frames(), _run_analysis_que_nao_pode_rodar() (+29 more)
 
-### Community 71 - "_build_design_tokens"
-Cohesion: 0.05
-Nodes (43): AdminContext, get_current_user(), get_session(), require_admin(), require_aluno(), require_professor(), healthcheck(), build_engine() (+35 more)
+### Community 75 - "DetalheAluno.tsx"
+Cohesion: 0.08
+Nodes (51): 5. Estilização: de → para, AbaPerfil(), AbaPersonalizacao(), dataHora(), Etiqueta(), justificativaDe(), Numero(), AbaTrilha() (+43 more)
 
-### Community 72 - "ConteudoClasseRepository"
+### Community 76 - "test_e2e_analise_de_lote_pela_fila.py"
+Cohesion: 0.09
+Nodes (40): banco(), _banco(), _downgrade(), _espera_alguem_esperar_trava(), _falhou(), _fila(), _item(), _lote() (+32 more)
+
+### Community 77 - "JornadaReal.tsx"
 Cohesion: 0.06
-Nodes (62): EncodeAlphaInternal(), EncodeLossless(), VP8LFreeHistogramSet(), ClosestDiscretizedArgb(), FindClosestDiscretized(), IsNear(), IsSmooth(), NearLossless() (+54 more)
+Nodes (53): ABANDONO_APOS_MS, AtividadeNoPasso, atribuirTempo(), ehPasso(), EventoDoApp, formatarTempo(), Jornada, montarJornada() (+45 more)
 
-### Community 73 - "devDependencies"
-Cohesion: 0.07
-Nodes (56): ApplyFilter2_NEON(), ApplyFilter2NoFlip_NEON(), ApplyFilter4_NEON(), ApplyFilter6_NEON(), DC16_NEON(), DC16NoLeft_NEON(), DC16NoTop_NEON(), DC16NoTopLeft_NEON() (+48 more)
+### Community 78 - "afrouxa"
+Cohesion: 0.10
+Nodes (38): afrouxa(), evento(), _banco(), _esperada(), _estudo(), _faixa(), _matricula_ha(), _prazo() (+30 more)
 
-### Community 74 - "telemetriaApi.ts"
-Cohesion: 0.05
-Nodes (60): gerar_mp3_gemini_tts(), gerar_mp3_gtts(), _brainhex_contract_matches(), brainhex_contract_ready(), _build_brainhex_presentation_theme(), disparar_brainhex_async(), _extract_brainhex_error_detail(), _extract_inline_audio_parts() (+52 more)
+### Community 79 - "test_e2e_tempo_ativo_fonte_unica.py"
+Cohesion: 0.09
+Nodes (40): _ativo(), _ativo_de_1_5(), banco(), _banco(), _camada_de_progresso(), _como_esta_em_producao(), _config(), _conta() (+32 more)
 
-### Community 75 - "scripts"
-Cohesion: 0.12
-Nodes (66): avifDiagnosticsPrintf(), avifFileTypeHasBrand(), avifFileTypeIsCompatible(), avifParse(), avifParseAuxiliaryTypeProperty(), avifParseAV1LayeredImageIndexingProperty(), avifParseChunkOffsetBox(), avifParseCleanApertureBoxProperty() (+58 more)
+### Community 80 - "ModalMatriculas.tsx"
+Cohesion: 0.08
+Nodes (47): baixarArquivo(), exportarNotasDaTurma(), arredondar(), campo(), csvDasNotas(), gerarCsv(), lerEmailsDoCsv(), lerNotas() (+39 more)
 
-### Community 76 - "DocumentBlock.tsx"
-Cohesion: 0.05
-Nodes (60): DoGradientFilter_C(), DoHorizontalFilter_C(), DoVerticalFilter_C(), GradientFilter_C(), GradientPredictor_C(), GradientUnfilter_C(), HorizontalFilter_C(), HorizontalUnfilter_C() (+52 more)
+### Community 81 - "test_e2e_eventos_aluno_trava_do_cliente.py"
+Cohesion: 0.08
+Nodes (36): _agora_utc(), _banco(), _cliente_atualiza_repetida(), _cliente_insere(), _cliente_insere_padrao(), _como_cliente(), _linha(), _policies_de_eventos_aluno() (+28 more)
 
-### Community 77 - "ConteudoPersonalizadoRepository"
-Cohesion: 0.12
-Nodes (62): animatedShouldSignalBatch(), commonTestFlag(), cxxNativeAnimatedEnabled(), cxxNativeAnimatedRemoveJsSync(), disableMainQueueSyncDispatchIOS(), disableMountItemReorderingAndroid(), disableTextLayoutManagerCacheAndroid(), enableAccessibilityOrder() (+54 more)
-
-### Community 78 - "mobile/funcionamento-api-arquitetura-fluxos.md"
-Cohesion: 0.07
-Nodes (64): adl(), advance_to(), align(), arg(), arg_id(), basic_appender(), basic_format_arg(), basic_format_parse_context() (+56 more)
-
-### Community 79 - "database-schema.ts"
-Cohesion: 0.07
-Nodes (49): handleUnifiedActivityComplete(), applyDamageToBattleState(), buildDefaultCueId(), clampBattleDamage(), deriveItemKey(), getDefaultBattleDamage(), getEffectiveMentalState(), getNow() (+41 more)
-
-### Community 80 - "profileMetricsViewModel.ts"
-Cohesion: 0.1
-Nodes (59): A, allocate(), allocation_command(), assign(), back_ptr(), BOOST_NOEXCEPT_OR_NOTHROW(), deallocate(), emplace() (+51 more)
-
-### Community 82 - "_normalize_personalized_activities"
-Cohesion: 0.06
-Nodes (54): RFC-1918, RFC-6890, constants/brainHex.ts, BRAIN_HEX_CONFIG, BrainHexConfig, BrainHexProfile, PROFILES, buildPresentationDesignPlan() (+46 more)
+### Community 82 - "validators.ts"
+Cohesion: 0.13
+Nodes (25): RFC-1918, RFC-6890, PresentationLayout, PresentationThemeInput, BaseContentBlock, ContentBlock, ContentEnrichmentRequest, FonteItem (+17 more)
 
 ### Community 83 - "validate-essay-answer-ai/index.ts"
-Cohesion: 0.07
-Nodes (44): consolidar_partes_a_partir_dos_blocos(), criar_ciclo_media_generation(), criar_targets_fase_b(), fase_a_completa(), MediaGenerationTargetError, persistir_parte_em_materiais(), processar_job_media_generation_once(), processar_target_apresentacao() (+36 more)
-
-### Community 84 - "extractors/__init__.py"
 Cohesion: 0.05
-Nodes (15): Atividade, Classe, mergeMediaCandidates(), pickFirstString(), safeJsonParse(), toArrayValue(), toObjectRecord(), Conteudo (+7 more)
+Nodes (39): consolidar_partes_a_partir_dos_blocos(), criar_ciclo_media_generation(), criar_targets_fase_b(), fase_a_completa(), MediaGenerationTargetError, persistir_parte_em_materiais(), processar_job_media_generation_once(), processar_target_apresentacao() (+31 more)
 
-### Community 85 - "ContextRepository"
-Cohesion: 0.15
-Nodes (56): accessibilityExtraExtraLarge(), accessibilityLarge(), alert(), alertBody(), allowExternalStorage(), anchor(), applicationIconBadgeNumber(), Builder() (+48 more)
+### Community 84 - "test_e2e_bucket_conteudos_privado.py"
+Cohesion: 0.09
+Nodes (43): _banco(), _caminhos(), _como(), _confere_leitores(), _politicas_de_producao(), _seed(), test_downgrade_volta_as_politicas_e_as_funcoes_da_09(), test_fechar_reescreve_para_caminho_e_reabrir_mantem() (+35 more)
 
-### Community 86 - "MateriaisRepository"
+### Community 85 - "test_openai_rag.py"
+Cohesion: 0.09
+Nodes (23): OpenAIRagError, OpenAIRagService, _strict_json_schema(), visit(), _validate_attributes(), coletar_buscas_rag, _Answer, _FakeClient (+15 more)
+
+### Community 86 - "test_e2e_tentativas_com_tempo_do_servidor.py"
+Cohesion: 0.12
+Nodes (42): _banco(), _evento(), _linha(), _responder_questao(), _semear(), test_a_rpc_conclui_e_abrir_de_novo_nao_desfaz(), test_aluno_nao_grava_nota_nem_conclusao_mas_marca_visita_e_inicio(), test_downgrade_volta_ao_estado_anterior() (+34 more)
+
+### Community 87 - "test_migration_aposta_ranqueada.py"
 Cohesion: 0.06
-Nodes (38): BagStoreItem(), metadataText(), normalizeBrainHexProfile(), getGuardianFaceImage(), getProfileImage(), getProfileImageByString(), hashString(), pickBySeed() (+30 more)
+Nodes (30): _downgrade_sql(), _sem_comentarios(), test_a_aposta_alcanca_o_negativo(), test_a_aposta_vem_antes_do_atraso(), test_a_arena_devolve_os_eixos_ao_cliente(), test_a_derrota_e_so_de_quem_perdeu_de_alguem_em_ranqueada(), test_a_derrota_nao_tira_moeda(), test_a_soma_e_a_mesma_nos_dois_lugares() (+22 more)
 
-### Community 87 - "compilerOptions"
-Cohesion: 0.08
-Nodes (58): avifDiagnosticsClearError(), avifIODestroy(), avifCodecConfigurationBoxGetDepth(), avifCodecConfigurationBoxGetFormat(), avifCodecDecodeInputFillFromDecoderItem(), avifCodecDecodeInputFillFromSampleTable(), avifDecoderCleanup(), avifDecoderCreateCodecs() (+50 more)
-
-### Community 88 - "pdfService.ts"
+### Community 88 - "TabelaAlunos.tsx"
 Cohesion: 0.07
-Nodes (45): annexb_open(), annexb_probe(), annexb_read(), leb(), leb128(), parse_obu_header(), section5_open(), section5_probe() (+37 more)
+Nodes (40): Task 7: quatro estados e risco com três construtos (PR B), AlunoFiltravel, alunosDaTurma(), filtrarPorBusca(), alunos, TODAS_AS_TURMAS, avaliarRisco(), Criterio (+32 more)
 
-### Community 89 - "telemetryConsent.ts"
-Cohesion: 0.08
-Nodes (57): AddSingleLiteralWithCostModel(), BackwardReferencesHashChainDistanceOnly(), BackwardReferencesHashChainFollowChosenPath(), ConnectIntervals(), ConvertPopulationCountTableToBitEstimates(), CostIntervalAddToFreeList(), CostIntervalIsInFreeList(), CostManagerClear() (+49 more)
+### Community 89 - "materialSuggestion.ts"
+Cohesion: 0.07
+Nodes (38): {
+  aggregatePersonalizedTopicPayloads,
+  normalizePersonalizedTopicPayload,
+}, {
+  avancarSugestaoCongelada,
+  mesclarSugestoes,
+  sugestoesPorTopico,
+}, { buildPersonalizedFlow }, { buildStableNegativeId }, {
+  normalizePersonalizedStepActivity,
+  normalizePersonalizedStepContent,
+}, supabaseModulePath, { Topico }, buildPersonalizedFlow() (+30 more)
 
-### Community 90 - "pipeline.py"
-Cohesion: 0.13
-Nodes (56): accessibilityExtraExtraLarge(), accessibilityLarge(), alert(), alertBody(), allowExternalStorage(), anchor(), applicationIconBadgeNumber(), Builder() (+48 more)
+### Community 90 - "pytest"
+Cohesion: 0.10
+Nodes (43): _aparelho(), _banco(), _Coletor, como(), _dsn_para(), _elegiveis(), _nasc(), _papel() (+35 more)
 
 ### Community 91 - "frontend/funcionamento-api-arquitetura-fluxos.md"
-Cohesion: 0.06
-Nodes (53): generate-content-ai/index.ts, AiAtividade, AiCard, AiSourceFile, AiSourceInput, AiStructuredError, asContentItems(), asString() (+45 more)
-
-### Community 92 - "components.json"
 Cohesion: 0.07
-Nodes (43): ABC, BossImageAdapter, GeminiBossImageAdapter, PlaceholderBossImageAdapter, BossImageAdapter, agente_ai_patch(), IABattleConfig, IABattleTiming (+35 more)
+Nodes (36): AiAtividade, AiCard, AiSourceFile, AiSourceInput, AiStructuredError, buildSourceBlock(), buildStandardPrompt(), callGemini() (+28 more)
 
-### Community 93 - "ranking/[id].tsx"
-Cohesion: 0.07
-Nodes (55): CollectHistogram_SSE2(), DC16_SSE2(), DC16Mode_SSE2(), DC16NoLeft_SSE2(), DC16NoTop_SSE2(), DC16NoTopLeft_SSE2(), DC4_SSE2(), DC8uv_SSE2() (+47 more)
-
-### Community 94 - "classMapTheme.ts"
-Cohesion: 0.06
-Nodes (43): agente_notificacao(), _fallback_notificacao(), agente_texto(), _fallback_texto(), _coerce_text_content(), extract_json(), _is_gemini_model_unavailable_error(), _is_gemini_quota_error() (+35 more)
-
-### Community 95 - "ArtefatosPersonalizadosRepository"
-Cohesion: 0.07
-Nodes (52): AllocateBuffer(), CheckDecBuffer(), IsValidColorspace(), WebPAllocateDecBuffer(), WebPAvoidSlowMemory(), WebPCopyDecBuffer(), WebPCopyDecBufferPixels(), WebPFlipBuffer() (+44 more)
-
-### Community 96 - "devDependencies"
+### Community 93 - "test_alteracao_professor.py"
 Cohesion: 0.08
-Nodes (54): WebPMemoryWriterClear(), WebPMemoryWriterInit(), CacheFrame(), ClearRectangle(), clip(), ComparePixelsLossy(), CopyCurrentCanvas(), DecodeFrameOntoCanvas() (+46 more)
+Nodes (23): AlteracaoProfessorSaida, DecisaoDoAluno, _curto(), decidir_alteracao(), _falhou(), _json(), montar_payload(), processar_alteracoes_uma_vez() (+15 more)
+
+### Community 94 - "test_e2e_estudo_coorte.py"
+Cohesion: 0.14
+Nodes (37): sessao(), tempo(), _anon(), _banco(), _como(), _coorte(), _dados_da_turma1(), _n_minimo() (+29 more)
+
+### Community 95 - "hashlib"
+Cohesion: 0.06
+Nodes (28): _md5(), _prosrc(), test_as_seis_sao_o_texto_de_producao_byte_a_byte(), test_cada_uma_e_definer_com_search_path_fixo(), test_o_downgrade_nao_remove_nada(), test_o_sql_offline_dobra_o_porcento_e_nao_serve_para_aplicar(), test_so_authenticated_e_service_role_executam(), _upgrade_sql() (+20 more)
+
+### Community 96 - "slideIllustrations.ts"
+Cohesion: 0.06
+Nodes (39): File Structure, Imagens Visuais Reais e Fim do Scroll Implementation Plan, Self-Review, Task 1: `generateImageWithKeyRotation` aceita imagem de referência (image-to-image), Task 2: `slideIllustrations.ts` — reaproveitar, reilustrar ou gerar por subtópico, Task 3: `slidePagination.ts` — capa entra na paginação, pesos de imagem/capa, Task 4: Schema e prompt — `restyleReferenceImage` + limite de reilustrações, Task 5: Liga `resolveSlideIllustrations` no `/api/v1/render-and-store` (+31 more)
 
 ### Community 97 - "devDependencies"
+Cohesion: 0.08
+Nodes (38): comProxyDoGateway(), createHtmlBlobUrl(), fetchHtmlDeckSource(), ALLOWED_INLINE_IMAGE_PREFIXES, markdownUrlTransform(), MaterialGenerationStatus, resolverStatusDeGeracao(), getMaterialPartes() (+30 more)
+
+### Community 98 - "analise_fila.py"
 Cohesion: 0.07
-Nodes (39): createHtmlBlobUrl(), fetchHtmlDeckSource(), SupabaseStorageDownloader, ALLOWED_INLINE_IMAGE_PREFIXES, markdownUrlTransform(), getMaterialPartes(), MaterialPartInfo, normalizePartEntry() (+31 more)
+Nodes (25): _analisar(), analise_fila_loop(), _consumidor(), _descreve(), _e_ponteiro_do_r2(), _FalhaTransitoria, _falhou(), _gravar() (+17 more)
 
-### Community 98 - "logger.ts"
-Cohesion: 0.06
-Nodes (38): clip_8b(), DC16_C(), DC16NoLeft_C(), DC16NoTop_C(), DC16NoTopLeft_C(), DC8uv_C(), DC8uvNoLeft_C(), DC8uvNoTop_C() (+30 more)
+### Community 99 - "test_auth.py"
+Cohesion: 0.07
+Nodes (20): AuthService, _jwks_client(), AlunoRepo, BlockedProfessorRepo, DualRoleBlockedProfessorRepo, DualRoleRepo, test_authenticate_keeps_student_access_for_dual_role_with_unreleased_professor(), test_authenticate_rejects_professor_without_release() (+12 more)
 
-### Community 99 - "api/arquitetura-app-detalhada.md"
+### Community 100 - "test_emotion_vision.py"
+Cohesion: 0.08
+Nodes (22): _amostrar(), _analisar_frames(), _carregar_recursos(), LocalVisionEmotionAnalyzer, _softmax(), _Visao, _EventoFake, _HeuristicaFake (+14 more)
+
+### Community 101 - "11. Prompts de cada fase"
 Cohesion: 0.04
-Nodes (57): SDImageCache, -applicationDidEnterBackground, -applicationWillTerminate, -_archivedDataWithImageforKey, -cachePathForKey, -calculateSizeWithCompletionBlock, -clearDiskOnCompletion, -clearMemory (+49 more)
+Nodes (46): 10. Fases de implementação (da mais fácil para a mais difícil), 11.0 Regras comuns (todos os prompts mandam ler esta seção), 11. Prompts de cada fase, 1. Resumo, 2.1 Encaixe no console, 2.3 Comportamentos atuais que valem registro, 2. Como a tela é montada hoje, 3. Como o protótipo é montado (+38 more)
 
-### Community 100 - "FontesPersonalizacaoRepository"
-Cohesion: 0.08
-Nodes (54): advance_to(), align(), arg_id(), assign_pow10(), assume(), big_decimal_fp(), bigint(), bytes() (+46 more)
-
-### Community 101 - "TelemetriaRepository"
-Cohesion: 0.06
-Nodes (32): accept(), bind_t, BOOST_BIND(), eval(), function_equal(), function_equal_impl(), implementation, list0 (+24 more)
-
-### Community 102 - "BrainHexShowcase.tsx"
-Cohesion: 0.08
-Nodes (54): buf(), chrono_format_checker(), day(), detail(), formatter(), get_locale(), localtime(), lowest() (+46 more)
-
-### Community 103 - "EventoRepository"
-Cohesion: 0.07
-Nodes (55): _app_state_runtime(), _compact_exception_text(), _compute_failure_backoff_sec(), _content_enrichment_cache_key(), _exception_signature(), _get_app_shared_content_enrichment(), _get_job_content_enrichment(), _get_runtime_cached_dict() (+47 more)
-
-### Community 104 - "Settings"
-Cohesion: 0.04
-Nodes (12): handleDialogClose(), handleSubmit(), handleDialogClose(), handleSubmit(), next-themes, sonner, next-themes, sonner (+4 more)
-
-### Community 105 - "PersonalizacaoProgressoRepository"
-Cohesion: 0.11
-Nodes (52): assign(), back(), Base(), before_begin(), begin(), BOOST_IF_CONSTEXPR(), BOOST_NOEXCEPT(), cbefore_begin() (+44 more)
-
-### Community 106 - "validators.ts"
-Cohesion: 0.08
-Nodes (47): append(), avifAreGridDimensionsValid(), avifCleanApertureBoxConvertCropRect(), avifCodecCreate(), avifCodecTypeFromChoice(), avifCodecVersions(), avifCropRectConvertCleanApertureBox(), avifCropRectIsValid() (+39 more)
-
-### Community 107 - "useAuth"
-Cohesion: 0.06
-Nodes (36): CustomSetup(), CustomTeardown(), EmitAlphaRGB(), EmitAlphaRGBA4444(), EmitAlphaYUV(), EmitRescaledAlphaRGB(), EmitRescaledAlphaYUV(), EmitRescaledRGB() (+28 more)
-
-### Community 108 - "carousel.tsx"
-Cohesion: 0.08
-Nodes (52): BOOST_NOEXCEPT_OR_NOTHROW(), copy(), copy_assign_range_alloc_n(), copy_n(), copy_n_source(), copy_n_source_dest(), deep_swap_alloc_n(), destroy_alloc() (+44 more)
-
-### Community 109 - "expo"
+### Community 102 - "GuildasSection.tsx"
 Cohesion: 0.12
-Nodes (43): EmocaoAdapter, Protocol, api/admin.py, admin_professores_page(), _dashboard_html(), _load_dashboard(), AsyncSession, get (+35 more)
+Nodes (41): abrirSemPrazo(), dataHora(), deCampoLocal(), DESCRICAO_MAX, erroDoTamanho(), ErrosDaFormacao, ErrosDaGuilda, EstadoDaJanela (+33 more)
 
-### Community 110 - "classeMetrics.ts"
+### Community 103 - "services/personalizacao_jobs.py"
+Cohesion: 0.02
+Nodes (128): _analisar_demanda_do_job(), _app_state_runtime(), _build_generation_key(), _build_targets(), _append_target(), _cleanup_target(), _compact_exception_text(), _compute_failure_backoff_sec() (+120 more)
+
+### Community 104 - "override_session"
+Cohesion: 0.06
+Nodes (22): _regenerar_professor_user(), _stored_record_com_materiais(), test_admin_page_and_posts_manage_professors(), test_admin_page_returns_503_when_schema_is_missing(), test_admin_post_returns_503_when_schema_is_missing(), test_analisar_route_returns_graph_result(), override_session(), test_criar_job_class_delta_route_devolve_skip_quando_modo_manual() (+14 more)
+
+### Community 105 - "test_e2e_notificacao_no_horario_do_aluno.py"
+Cohesion: 0.15
+Nodes (41): _agora(), _banco(), _cfg(), _em_andamento(), _motor(), _preferido(), _rotina(), _salvar() (+33 more)
+
+### Community 106 - "AnalisarResponse"
+Cohesion: 0.10
+Nodes (32): AnalisarResponse, lento(), falso(), falso(), falso(), _analise(), _i15(), _vence() (+24 more)
+
+### Community 107 - "topic"
+Cohesion: 0.05
+Nodes (42): 1. O que já existe e quem pode ler, 2. O que é um passo, 3. De onde vem cada campo do painel, 4. Desvios (função pura, com testes), 5. Banco — migration `20260929_02` (não aplicada), 6. O que não dá para obter, Desenho — Jornada real do aluno (Fase 9), 1. Personalização da loja por perfil (+34 more)
+
+### Community 108 - "FirstAccessTour.tsx"
 Cohesion: 0.08
-Nodes (51): aderencia_da_sugestao(), churn_de_sugestoes(), comparar_seguiu_versus_ignorou(), _desempenho_dos_sinais(), efeito_das_revisoes(), _formatos(), _media(), montar_registros_do_log() (+43 more)
+Nodes (35): FirstAccessTour(), SOMBRA_APRESENTACAO, SOMBRA_SETA, SOMBRA_SPOTLIGHT, StoredTourState, styles, TourArrow(), TourRect (+27 more)
 
-### Community 111 - "ArvoreView.tsx"
-Cohesion: 0.12
-Nodes (51): avifCodecName(), avifROStreamReadVarInt(), avifRWStreamFinishBox(), avifRWStreamFinishWrite(), avifRWStreamOffset(), avifRWStreamSetOffset(), avifRWStreamStart(), avifRWStreamWrite() (+43 more)
-
-### Community 112 - "Classe.ts"
-Cohesion: 0.08
-Nodes (45): dav1d_cdf_thread_alloc(), dav1d_cdf_thread_init_static(), dav1d_cdf_thread_ref(), dav1d_cdf_thread_unref(), dav1d_cdf_thread_update(), get_qcat_idx(), dav1d_data_create_internal(), dav1d_data_props_copy() (+37 more)
-
-### Community 113 - "nativeContentCache.ts"
-Cohesion: 0.1
-Nodes (51): BitsEntropyRefine(), ComputeHistogramCost(), DominantCostRangeInit(), FinalHuffmanCost(), GetBinIdForEntropy(), GetCombineCostFactor(), GetCombinedEntropy(), GetCombinedHistogramEntropy() (+43 more)
-
-### Community 114 - "Nova Paleta BrainHex (Psicologia das Cores) Implementation Plan"
+### Community 109 - "datetime"
 Cohesion: 0.07
-Nodes (50): _completed_record(), _existing_record(), _FakeSession, asyncio, parametrize, Os kinds manuais (gerar individual/gerar tudo) nunca passam pelo     portao de g, Cleanup e por aluno: um job aberto para outro aluno na mesma classe     nao deve, Sessao minima: so precisa responder ao SELECT de staleness (session.execute). (+42 more)
+Nodes (20): agente_notificacao(), ajustar_horario(), _contexto_do_perfil(), _foco(), _motivo(), notificacao_da_regra(), NotificacaoGerada, _payload_do_modelo() (+12 more)
 
-### Community 115 - "expo-image"
-Cohesion: 0.1
-Nodes (42): checar_evidencia_dominio(), checar_grounding_chat(), checar_ordem_sequencial(), checar_topicos_existem(), gerar_validado(), GuardrailViolation, Any, T (+34 more)
+### Community 110 - "psycopg"
+Cohesion: 0.10
+Nodes (28): _sql_de(), _afrouxa(), _banco(), _Coletor, _dsn_para(), _percentuais(), _seed(), _sql_de() (+20 more)
+
+### Community 111 - "test_segunda_chance.py"
+Cohesion: 0.08
+Nodes (23): _corpo_comprar(), _modulo(), _offline_alembic_config(), _sql(), test_a_comparacao_de_tipo_ignora_caixa_e_espaco(), test_a_compra_confere_o_gate_antes_de_cobrar(), test_a_nota_e_noventa_da_melhor_e_dez_da_pior(), test_a_nota_nao_e_gravada_como_conclusao() (+15 more)
+
+### Community 112 - "Conquista.ts"
+Cohesion: 0.10
+Nodes (25): Filtro, FILTROS, s, ConquistasDestaque(), s, getAchievementArtwork(), journeyObjects, buildCriterioResumo() (+17 more)
+
+### Community 113 - "test_boss_falas.py"
+Cohesion: 0.13
+Nodes (28): FalasDoBoss, FalasDoTopico, limpar_falas(), _boss(), _llm(), _Sessao, _sql(), test_boss_completo_passa_com_todos_os_momentos() (+20 more)
+
+### Community 114 - "test_e2e_catalogo_de_metricas.py"
+Cohesion: 0.13
+Nodes (32): _banco(), _como_cliente(), _disponibilidade(), _rodada(), test_aluno_le_catalogo_resultado_e_a_view(), test_aluno_le_o_resultado_sem_a_coluna_erro(), test_aluno_nao_le_amostra_nem_escreve(), test_anonimo_nao_le_nada_disto() (+24 more)
+
+### Community 115 - "Mapa ponta a ponta de dados, métricas e KPIs"
+Cohesion: 0.05
+Nodes (33): 1. Leitura executiva, 2. Mapa de sistemas e fluxo, 3. Aluno: sinais e dados, 4. Professor: dados, sinais e KPIs, 5. API, análise e persistência, 6. Catálogo de KPIs: medido, derivado, proposto, 7. Privacidade, qualidade e interpretação, 8. Lacunas encontradas e próximos itens de investigação (+25 more)
 
 ### Community 116 - "frontend/package.json"
-Cohesion: 0.09
-Nodes (51): _bounded_float(), _bounded_int(), _chunk_without_truncation(), ContentEnrichmentError, derive_base_blocks_and_topic(), enrich_base_blocks(), _enrich_base_blocks_with_gemini(), _enrich_base_blocks_with_openai() (+43 more)
+Cohesion: 0.07
+Nodes (43): _bounded_float(), _bounded_int(), _chunk_without_truncation(), derive_base_blocks_and_topic(), enrich_base_blocks(), _enrich_base_blocks_with_gemini(), _enrich_base_blocks_with_openai(), _gemini_client() (+35 more)
 
-### Community 117 - "_normalize_personalized_activities"
+### Community 117 - "nativeContentCache.ts"
 Cohesion: 0.08
-Nodes (40): ComplexMask_SSE2(), DC16_SSE2(), DC16NoLeft_SSE2(), DC16NoTop_SSE2(), DC16NoTopLeft_SSE2(), DC8uv_SSE2(), DC8uvNoLeft_SSE2(), DC8uvNoTop_SSE2() (+32 more)
+Nodes (32): A decisão, A função `storage-redirect`, A regra que define o desenho inteiro, Arquivos no Cloudflare R2 com o Supabase como gateway — design, Decisões tomadas, Migração dos 712 MB, O bloqueio real: o app não manda header, O problema (+24 more)
 
-### Community 118 - "compilerOptions"
+### Community 118 - "SecaoAlteracoesDaTrilha.tsx"
+Cohesion: 0.10
+Nodes (33): AlteracaoDaTrilha, AlteracaoDoAluno, CAMPOS, COLUNAS_ALTERACAO, COLUNAS_ALTERACAO_ALUNO, Decisao, DecisaoDoProfessor, eEstruturaAusente() (+25 more)
+
+### Community 119 - "lojaService.ts"
+Cohesion: 0.10
+Nodes (35): UsarItemNaAtividade(), usar(), LinhaRazao, ACOES_QUE_RENDEM, Linha, resolverGanhoMoedas(), carregarInventario(), fallbackTheme (+27 more)
+
+### Community 120 - "Classe.ts"
+Cohesion: 0.10
+Nodes (11): Classe, mergeMediaCandidates(), pickFirstString(), safeJsonParse(), toArrayValue(), toObjectRecord(), ClasseResumo, Conteudo (+3 more)
+
+### Community 121 - "SlideData"
 Cohesion: 0.08
-Nodes (32): handleAccept(), handleReject(), buildDisabledUsageTimeMetrics(), buildTimeMetricsSnapshot(), MetricasProvider(), publishSnapshot(), registerContextScroll(), registerContextTouch() (+24 more)
-
-### Community 119 - "scripts"
-Cohesion: 0.08
-Nodes (28): EventoAluno, registrarAtividadeProgresso(), registrarConteudoProgresso(), registrarEventoPontos(), registrarTopicoProgresso(), resolveStatusByPercentual(), buildAllMetricRows(), buildFallbackResponse() (+20 more)
-
-### Community 120 - "mobile/package.json"
-Cohesion: 0.08
-Nodes (41): avg_cycles_per_call(), balance_tree(), check_cpu_flag(), check_err(), checkasm_check_func(), checkasm_fail_func(), checkasm_malloc(), checkasm_report() (+33 more)
-
-### Community 121 - "include"
-Cohesion: 0.1
-Nodes (44): Data(), emplace_equal(), emplace_hint_equal(), emplace_hint_unique(), emplace_unique(), enable_if_transparent<key_compare, K, bool>::type
-         contains(), enable_if_transparent<key_compare, K, const_iterator>::type
-      find(), enable_if_transparent<key_compare, K, const_iterator>::type
-         lower_bound() (+36 more)
+Nodes (25): canvas-confetti@^1.9.4, getConceptIcon(), SmartConceptVisualizer(), SmartConceptVisualizerProps, UniqueInteractiveCardProps, InteractiveElementType, SlideData, UniqueInteractiveChecklistItem (+17 more)
 
 ### Community 122 - "Modelagem de Dados e Modelagem de Banco (Supabase)"
-Cohesion: 0.13
-Nodes (20): PersonalizacaoJobsRepository, Any, AsyncSession, INSERT simples (sem upsert) para targets granulares (bloco/parte)         de um, Mesmo filtro de find_open_job_by_payload, mas sem `topico_id`         (kinds com, Retorna o target da geração mais recente de cada perfil.          O escopo de co, process_personalizacao_job_once(), Sem pace_sec explicito (default 300s), uma rodada fresca so libera 1     dos N p (+12 more)
+Cohesion: 0.15
+Nodes (4): PersonalizacaoJobsRepository, get_job_detail(), test_upsert_target_casa_base_sem_aluno(), Task 10: Python — extensão de `PersonalizacaoJobsRepository` para targets granulares
 
-### Community 123 - "chart.tsx"
-Cohesion: 0.08
-Nodes (46): any_base_hook, any_member_hook, avl_multiset, avl_set, avl_set_base_hook, avl_set_member_hook, avltree, avltree_algorithms (+38 more)
+### Community 123 - "2. Social"
+Cohesion: 0.05
+Nodes (37): 1. Perfil, 2. Social, 3. Trilha e missões, 4. Notificações, Rank e escolha de turma, 5. Login e responsividade, 6. Boss, atividade e alterações do professor, [#724](https://github.com/BitStudioLabs/trail-up/pull/724) · test(mobile): tira a entrada duplicada do sessaoNaUrl no manifesto principal, [#725](https://github.com/BitStudioLabs/trail-up/pull/725) · guildas: evento aberto trava a formação, e o aluno pontua por uma guilda só (#153) (+29 more)
 
-### Community 124 - "android"
-Cohesion: 0.11
-Nodes (46): a(), at(), back(), clear(), computeInsertCapacity(), crbegin(), D_destroy_range_a(), D_uninitialized_fill_n_a() (+38 more)
+### Community 124 - "KpisSecundarios.tsx"
+Cohesion: 0.10
+Nodes (27): AbandonoPorEtapa(), minutos(), CHAVE, ChaveDoCatalogo, Disponibilidade, EstadoDoCard, estadoDoCard(), TEXTO_DO_ESTADO (+19 more)
 
-### Community 125 - "EventoAluno"
-Cohesion: 0.04
-Nodes (47): SDAnimatedImageFrameProvider, -animatedImageData, -animatedImageDurationAtIndex, -animatedImageFrameAtIndex, -animatedImageFrameCount, -animatedImageLoopCount, -hash, -initWithProvidertransformer (+39 more)
+### Community 125 - "tentativas.ts"
+Cohesion: 0.12
+Nodes (33): AbaTentativas(), CelulaDaNota(), CelulaDoTempo(), fmt(), TextoDaRegra(), AtividadeDoResumo, BonusPago, duracaoEmSegundos() (+25 more)
 
 ### Community 126 - "supabaseStorage.ts"
-Cohesion: 0.09
-Nodes (39): hasFrame(), REAL_CODE_LANGUAGES, replaceAsciiDiagramsWithSvg(), FLUXO_COM_DESDOBRAMENTO, FLUXO_COM_FAN_IN, QUADRO_DE_RAIAS, QUADRO_SEM_RAIAS, arrowMarkerDefs() (+31 more)
+Cohesion: 0.08
+Nodes (47): hasFrame(), REAL_CODE_LANGUAGES, replaceAsciiDiagramsWithSvg(), FLUXO_COM_DESDOBRAMENTO, FLUXO_COM_FAN_IN, QUADRO_DE_RAIAS, QUADRO_SEM_RAIAS, arrowMarkerDefs() (+39 more)
 
 ### Community 127 - "Block"
-Cohesion: 0.04
-Nodes (47): backgroundColor, foregroundImage, adaptiveIcon, edgeToEdgeEnabled, package, permissions, predictiveBackGestureEnabled, usesCleartextTraffic (+39 more)
+Cohesion: 0.05
+Nodes (41): backgroundColor, foregroundImage, adaptiveIcon, edgeToEdgeEnabled, package, permissions, predictiveBackGestureEnabled, versionCode (+33 more)
 
-### Community 128 - "ArvoreView.tsx"
+### Community 128 - "test_e2e_conversas_cifradas.py"
+Cohesion: 0.12
+Nodes (25): _aplica(), _banco(), como(), _conversa(), _dsn_para(), _funcoes_de_producao(), _id_questao(), _leituras() (+17 more)
+
+### Community 129 - "types"
+Cohesion: 0.07
+Nodes (9): _payload_com_frames(), _requisicao(), _sem_bytes(), test_endpoint_manda_o_payload_sanitizado_para_a_analise(), fake_run_analysis(), test_os_frames_continuam_chegando_ao_pipeline(), test_reenvio_repara_itens_antes_de_confirmar_sem_repetir_analise(), test_sanitize_aguenta_lote_sem_camera() (+1 more)
+
+### Community 130 - "test_trava_de_migracao.py"
+Cohesion: 0.08
+Nodes (15): _encerra_transacao_da_trava(), trava_de_migracao(), _ConexaoFalsa, _Dialeto, test_a_trava_nao_deixa_transacao_aberta_para_o_alembic(), test_adquire_e_solta_a_trava_no_postgres(), test_falha_ao_soltar_nao_mascara_o_sucesso(), test_fora_do_postgres_nao_executa_nada() (+7 more)
+
+### Community 131 - "api"
 Cohesion: 0.06
-Nodes (19): enqueueFullSyncJob(), enqueueManualRetryJob(), getPersonalizacaoJobContentIds(), isPersonalizacaoJobActive(), listPersonalizacaoJobs(), parsePositiveInteger(), selectFailedJobTopicoIds(), summarizePersonalizacaoJobs() (+11 more)
-
-### Community 129 - "video.py"
-Cohesion: 0.1
-Nodes (39): PreLoopInitialize(), PutCoeffs(), EmitPartitionsSize(), GeneratePartition0(), IsVP8XNeeded(), PutAlphaChunk(), PutFilterHeader(), PutPaddingByte() (+31 more)
-
-### Community 131 - "semantic_chunker.py"
-Cohesion: 0.14
-Nodes (45): assign(), at(), back(), begin(), buffer(), capacity(), clear(), computeNewSize() (+37 more)
+Nodes (34): build, container_name, depends_on, env_file, environment, ports, restart, volumes (+26 more)
 
 ### Community 132 - "rateLimit.ts"
 Cohesion: 0.04
-Nodes (41): 10.1 Job agregado, 10.2 Target individual, 10. Estados de processamento, 11. Regra de nota opcional em questÃµes, 12.1 Edge Functions usadas, 12.2 RPCs usadas no app, 12.3 Trigger-functions de automacao relevantes, 12. Artefatos de plataforma (SQL e Edge) (+33 more)
+Nodes (42): 10.1 Job agregado, 10.2 Target individual, 10. Estados de processamento, 11. Regra de nota opcional em questões, 12.1 Edge Functions usadas, 12.2 RPCs usadas no app, 12.3 Trigger-functions de automacao relevantes, 12. Artefatos de plataforma (SQL e Edge) (+34 more)
 
-### Community 133 - "reset-project.js"
-Cohesion: 0.09
-Nodes (44): dav1d_cdf_thread_copy(), affine_lowest_px(), affine_lowest_px_chroma(), affine_lowest_px_luma(), checked_decode_b(), dav1d_decode_frame_init_cdf(), dav1d_decode_frame_main(), dav1d_decode_tile_sbrow() (+36 more)
-
-### Community 135 - "TelemetryContracts.ts"
-Cohesion: 0.12
-Nodes (44): at(), backend_(), basic_fbstring(), c_str(), category_type(), clear(), compare(), create() (+36 more)
-
-### Community 136 - "test_graph_invocation.py"
-Cohesion: 0.07
-Nodes (27): buildPersonalizacaoThemeGuide(), formatSupabaseFunctionError(), payloadMessage(), getFileExtension(), isMimeAllowed(), isMimePrefixAllowed(), isProfessorUploadFileAllowed(), isQuestionMediaFileAllowed() (+19 more)
-
-### Community 137 - "serialQueue.ts"
-Cohesion: 0.11
-Nodes (38): avifFillAlpha(), avifReformatAlpha(), avifRGBImagePremultiplyAlpha(), avifRGBImageUnpremultiplyAlpha(), avifRGBFormatChannelCount(), avifRGBFormatHasAlpha(), avifCreateYUVToRGBLookUpTables(), avifCreateYUVToRGBThread() (+30 more)
-
-### Community 138 - "api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado.md"
-Cohesion: 0.07
-Nodes (31): AiStructuredError, asString(), buildSourceBlock(), buildStandardPrompt(), buildThemeGuideBlock(), callGemini(), callGeminiJson(), clampInt() (+23 more)
-
-### Community 139 - "wav.test.ts"
+### Community 133 - "Avaliação dos documentos da Evidence Base"
 Cohesion: 0.06
-Nodes (19): WebPInitUpsamplersMIPSdspR2(), WebPInitYUV444ConvertersMIPSdspR2(), Clip8(), WebPInitUpsamplersMSA(), YuvToArgb(), YuvToBgr(), YuvToBgra(), YuvToRgb() (+11 more)
+Nodes (30): As três lentes, Avaliação dos documentos da Evidence Base, Critério de inclusão e exclusão, Documentos, Escopo, Pendências, Resultado, Texto derivado e golden set (#75) (+22 more)
 
-### Community 141 - "NodeBadge.tsx"
+### Community 134 - "SocialLateralDesktop.tsx"
 Cohesion: 0.14
-Nodes (40): allocate_node(), BOOST_CATCH(), BOOST_NOEXCEPT(), BOOST_TRY(), check_invariant_(), clear_(), construct_value(), copy_construct_from() (+32 more)
+Nodes (30): dataCurta(), EventoDaTurma(), Props, s, GuildShareOption, s, SocialLateralDesktop(), EventoDaTurma (+22 more)
 
-### Community 142 - "frontend/estrutura-banco-supabase.md"
-Cohesion: 0.14
-Nodes (42): buffer_and_update_key(), calculate_total_combined(), ceil_merge_multiple(), ceil_sqrt(), ceil_sqrt_multiple(), collect_unique(), combine_params(), count_if_with() (+34 more)
+### Community 135 - "test_loja_compra.py"
+Cohesion: 0.10
+Nodes (19): _corpo_comprar(), _offline_alembic_config(), _sql(), test_a_compra_e_uma_transacao_so(), test_a_compra_nao_toca_no_xp(), test_a_escalada_usa_as_compradas_e_nao_as_gratuitas(), test_a_posse_guarda_de_onde_veio(), test_a_vitrine_esconde_o_que_o_professor_desligou() (+11 more)
+
+### Community 136 - "telemetriaApi.ts"
+Cohesion: 0.12
+Nodes (29): 4. Câmera, Task 2: o mobile manda o motivo do fallback, TelemetryBatchResponse, TelemetryTimeMetricEntry, TERMINAL_FLUSH_REASONS, isNetworkRequestFailedError(), API_BASE_CANDIDATES, buildAllMetricRows() (+21 more)
+
+### Community 137 - "00-Home.md"
+Cohesion: 0.18
+Nodes (9): Fases lógicas, Timeline TrailUp / TCC, Glossário TrailUp, PR #126 espelho — sync tip Lab (2026-10-02), 08 — Infra / Supabase, 09 — Testes / Reflect, 10 — Incidentes, Segundo cérebro — TCC TrailUp (+1 more)
+
+### Community 138 - "supabaseStorage.ts"
+Cohesion: 0.19
+Nodes (25): Verificado no mobile (2026-08-29), extrairReferenciaDeDeck(), hostSoAlcancavelNoDeploy(), mesmaOrigem(), origemDeStorageConfiavel(), reancorarDeckNaOrigemPublica(), reancorarNaOrigemDoApp(), ReferenciaDeDeck (+17 more)
+
+### Community 139 - "tcc1-desenvolvimento.md"
+Cohesion: 0.06
+Nodes (33): 1️⃣ Camada de coleta de dados, 1. Personalização gamificada com BrainHex, 1. Trilhas de Aprendizagem: Modelos, Vantagens e Aplicações, 2️⃣ Camada de interpretação, 2. Estratégias de Organização, Representação e Gestão de Trilhas de Aprendizagem, 2. Gamificação universitária orientada por BrainHex, 3. BrainHex dentro de um framework pedagógico, 3️⃣ Camada de diagnóstico pedagógico (+25 more)
+
+### Community 140 - "sql_de"
+Cohesion: 0.19
+Nodes (24): _Coletor, sql_de(), _sql_da_cadeia(), _atividade(), _banco(), _comeca(), _novo_e_ativo(), _risco() (+16 more)
+
+### Community 141 - "environment"
+Cohesion: 0.06
+Nodes (32): depends_on, image, ports, condition, environment, healthcheck, image, tmpfs (+24 more)
+
+### Community 142 - "20260912_03_guildas_perfil_publico.sql"
+Cohesion: 0.12
+Nodes (23): public."aluno_perfil", public."conquistas", public."conquistas_aluno", public."perfil", guilda_convite_pendente_unico, guilda_membro_ativo_unico, guilda_membros_guilda_idx, guilda_snapshot_evento_idx (+15 more)
 
 ### Community 143 - "listar_personalizacoes_por_perfil"
 Cohesion: 0.05
-Nodes (44): frontend/estrutura-banco-supabase.md, 10.1 Matriz de acesso resumida, 10. RLS e seguran?a, 11.1 Quadro de comandos por fluxo, 11.2 Swimlane de ownership operacional, 11. Fluxos de escrita/leitura entre sistemas, 12. Checklist de consistencia para evoluÃ§Ã£o de schema, 13. Estado recomendado para deploy (nota opcional) (+36 more)
+Nodes (40): 10.1 Matriz de acesso resumida, 10. RLS e seguran?a, 11.1 Quadro de comandos por fluxo, 11.2 Swimlane de ownership operacional, 11. Fluxos de escrita/leitura entre sistemas, 12. Checklist de consistencia para evolução de schema, 13. Estado recomendado para deploy (nota opcional), 14.1 Edge Functions consumidas (+32 more)
 
-### Community 144 - "dependencies"
-Cohesion: 0.05
-Nodes (42): SDImageBaseTransformer, -init, -transformedImageWithImageforKey, -transformerKey, SDImageBlurTransformer, -transformedImageWithImageforKey, -transformerKey, -transformerWithRadius (+34 more)
+### Community 144 - "test_e2e_evento_abre_e_encerra_no_horario.py"
+Cohesion: 0.21
+Nodes (25): _banco(), _como_professor(), _creditos(), _evento(), _seed(), _snapshot(), _status(), test_a_janela_e_instante_o_fuso_da_sessao_nao_muda_nada() (+17 more)
 
 ### Community 145 - "RankDaClasse"
 Cohesion: 0.11
-Nodes (41): _flag_por_material(), formato_do_material(), indexar_progresso_por_conteudo(), _numero(), _opcional(), ordem_de_consumo(), Any, Traduz telemetria em sinais por formato, no formato que o motor espera.  ``revis (+33 more)
+Nodes (34): _flag_por_material(), formato_do_material(), indexar_progresso_por_conteudo(), _numero(), _opcional(), ordem_de_consumo(), sinais_por_formato(), _material() (+26 more)
 
-### Community 146 - "pdf.py"
-Cohesion: 0.08
-Nodes (39): collectMetadataFilePaths(), ConteudoSourceRow, deleteClasseCascade(), deleteClassTrail(), deleteContentCascade(), deleteStoragePaths(), deleteTopicCascade(), DynamicDeleteQuery (+31 more)
+### Community 146 - "ClassManagementSection.tsx"
+Cohesion: 0.05
+Nodes (70): Classe, ClassManagementSection(), Materia, ProfessorAlunoRow, Props, RpcDuplicar, Student, collectMetadataFilePaths() (+62 more)
 
 ### Community 147 - "react-dom"
 Cohesion: 0.05
-Nodes (43): frontend/funcionamento-api-arquitetura-fluxos.md, 10.1 Tabelas de runtime mais sensiveis, 10.2 Views analiticas versionadas, 10.3 Functions e triggers, 10. Banco de dados usado pela API, 11. IntegraÃ§Ãµes com Edge Functions (Web), 12. Matriz de responsabilidades por repositÃ³rio, 13. ConfiguraÃ§Ã£o operacional critica (+35 more)
+Nodes (39): 10.1 Tabelas de runtime mais sensiveis, 10.2 Views analiticas versionadas, 10.3 Functions e triggers, 10. Banco de dados usado pela API, 11. Integrações com Edge Functions (Web), 12. Matriz de responsabilidades por repositório, 13. Configuração operacional critica, 14. Operação, saude e diagnostico (+31 more)
 
-### Community 148 - "@supabase/supabase-js"
-Cohesion: 0.08
-Nodes (28): InteractiveQuiz(), InteractiveVisualRenderer(), MagicalParticleCanvas(), handleBatchGenerateAmbientBackgrounds(), handleBatchGenerateIllustrations(), handleBossAttack(), handleDecision(), handleGenerateAiDecorationsForSlide() (+20 more)
+### Community 148 - "test_e2e_invariantes_das_metricas.py"
+Cohesion: 0.17
+Nodes (25): _amostra(), _banco(), _como_cliente(), _lote(), _resultado(), _rodar(), _sem_fk(), _semeia_coerente() (+17 more)
 
-### Community 149 - "Refatoração de `src/app/(tabs)/trilha/[id].tsx`"
-Cohesion: 0.1
-Nodes (40): _flag_por_material(), formato_do_material(), indexar_progresso_por_conteudo(), _numero(), _opcional(), ordem_de_consumo(), Traduz telemetria em sinais por formato, no formato que o motor espera.  ``revis, Monta ``sinais_por_formato`` a partir de um lote de telemetria.      ``materiais (+32 more)
-
-### Community 150 - "media_pipeline.py"
-Cohesion: 0.07
-Nodes (16): FakeBlocosRepo, FakeConteudoPersonalizadoRepo, FakeJobsRepo, FakeJobsRepoCompleto, FakeJobsRepoComTargets, test_criar_ciclo_media_generation_cria_um_target_de_enriquecimento_e_capitulo_por_bloco(), test_criar_ciclo_media_generation_reaproveita_job_aberto_existente(), test_criar_targets_fase_b_um_audio_e_uma_apresentacao_por_parte() (+8 more)
-
-### Community 151 - "extra"
-Cohesion: 0.12
-Nodes (40): VP8IteratorRotateI4(), VP8IteratorStartI4(), VP8SetIntra4Mode(), VP8SetIntraUVMode(), AddScore(), CheckLambdaValue(), clip(), CopyScore() (+32 more)
-
-### Community 152 - "splash"
+### Community 149 - "test_ganho_de_moedas.py"
 Cohesion: 0.09
-Nodes (35): clip_8b(), clip_max(), CollectHistogram_C(), Copy(), Copy16x8_C(), Copy4x4_C(), DC4(), DCMode() (+27 more)
+Nodes (17): _modulo(), _offline_alembic_config(), _sql(), test_a_turma_sobrepoe_o_padrao_global(), test_a_turma_vence_o_global_quando_define(), test_errar_nao_tira_e_nao_da(), test_estudar_paga_mais_que_abrir_a_tela(), test_evento_concedido_tambem_paga() (+9 more)
 
-### Community 154 - "dev.sh"
-Cohesion: 0.15
-Nodes (39): assign(), back(), Base(), begin(), BOOST_NOEXCEPT(), cbegin(), cend(), check() (+31 more)
+### Community 150 - "telemetryConsent.ts"
+Cohesion: 0.13
+Nodes (24): Atalho, ResumoColeta(), s, Chave, contarSinaisAtivos(), descreverTermo(), SINAIS_COLETA, DEFAULT_TELEMETRY_PREFERENCES (+16 more)
 
-### Community 155 - "20260405_01_langgraph_checkpoints.py"
-Cohesion: 0.05
-Nodes (41): SDWebImageDownloader, -cancelAllDownloads, -canRequestImageForURL, -canRequestImageForURLoptionscontext, -createDownloaderOperationWithUrloptionscontext, -currentDownloadCount, -dealloc, -downloadImageWithURLcompleted (+33 more)
+### Community 151 - "test_migration_sessao_fecha_pelo_banco.py"
+Cohesion: 0.11
+Nodes (23): _config(), _sql(), test_cadeia_e_cabeca_unica(), test_cliente_nao_escreve_direto_nas_tabelas_novas(), test_contagem_crua_nao_tem_execute_para_cliente(), test_downgrade_remove_tudo_que_o_upgrade_cria(), test_pr1_so_soma_o_escopo_de_topico_e_active_sec(), test_rpcs_expostas_conferem_sessao_e_posse() (+15 more)
 
-### Community 156 - "20260405_02_materiais_gerados.py"
-Cohesion: 0.05
-Nodes (36): Separator, SheetContent, SheetContentProps, SheetDescription, SheetFooter(), SheetHeader(), SheetOverlay, SheetTitle (+28 more)
+### Community 152 - "test_e2e_exclusao_professor_aviso.py"
+Cohesion: 0.18
+Nodes (26): _aplicar(), _aviso(), _banco(), _chave(), _como(), _id_sql(), _ids_da_turma(), _inserir() (+18 more)
+
+### Community 153 - "test_e2e_ranking_le_config_por_wrapper.py"
+Cohesion: 0.14
+Nodes (21): _banco(), _como_cliente(), _helpers(), _i10_ids(), _le_ranking(), test_aluno_le_o_ranking_da_sua_turma(), test_aluno_nao_executa_fn_app_config_int(), test_anon_nao_executa_os_wrappers_e_nao_le_o_ranking() (+13 more)
+
+### Community 154 - "test_migration_desafio_fecha_e_paga.py"
+Cohesion: 0.11
+Nodes (20): _downgrade_sql(), _sem_comentarios(), test_a_chave_de_varredura_nasce_privada(), test_a_criacao_preserva_o_que_a_fase_7_poe(), test_a_criacao_registra_os_participantes(), test_a_porta_do_cliente_mantem_a_checagem(), test_a_tentativa_passa_a_ser_contada(), test_a_ultima_resposta_fecha() (+12 more)
+
+### Community 155 - "test_migration_missao_diaria_coorte_e_minutos.py"
+Cohesion: 0.13
+Nodes (23): _corpo(), _downgrade_sql(), _funcao(), _normal(), _predicado(), test_a_coorte_e_o_perfil_da_missao_de_cada_aluno(), test_a_funcao_nasce_antes_de_quem_a_usa(), test_conclui_uma_vez_e_paga_so_se_a_linha_mudou() (+15 more)
+
+### Community 156 - "personalizacaoFallback.ts"
+Cohesion: 0.11
+Nodes (29): Regra de fronteira (a mais importante do repo), aggregateMediaStatus(), APELIDOS_DE_PERFIL, asRecord(), BRAINHEX_PROFILES, contarAlunosPorPerfilDominante(), ConteudoPersonalizadoFallbackRow, extractProfileKeyFromRecord() (+21 more)
 
 ### Community 157 - "20260406_01_conteudo_personalizado.py"
-Cohesion: 0.08
-Nodes (27): AnalyticsDashboard(), arcPath(), ArenaDashboard(), buildPalette(), ConcentricRings(), DashboardProps, EngagementBar(), formatLastEvent() (+19 more)
+Cohesion: 0.38
+Nodes (25): Task 4: Novas seções de UI e reorganização do layout, AffinityBoard(), AnalysisPanel(), AnalyticsDashboard(), ArenaDashboard(), BossSection(), DashboardThemeBadge(), EmptyState() (+17 more)
 
 ### Community 158 - "20260406_02_conteudo_personalizado_ai_patch.py"
 Cohesion: 0.05
-Nodes (42): mobile/funcionamento-api-arquitetura-fluxos.md, 10.1 Tabelas de runtime mais sensiveis, 10.2 Views analiticas versionadas, 10.3 Functions e triggers, 10. Banco de dados usado pela API, 11. IntegraÃ§Ãµes com Edge Functions (Web), 12. Matriz de responsabilidades por repositÃ³rio, 13. ConfiguraÃ§Ã£o operacional critica (+34 more)
+Nodes (38): 10.1 Tabelas de runtime mais sensiveis, 10.2 Views analiticas versionadas, 10.3 Functions e triggers, 10. Banco de dados usado pela API, 11. Integrações com Edge Functions (Web), 12. Matriz de responsabilidades por repositório, 13. Configuração operacional critica, 14. Operação, saude e diagnostico (+30 more)
 
-### Community 159 - "20260406_03_telemetria_tables.py"
-Cohesion: 0.08
-Nodes (17): VerificacaoDeRota(), verificarSessao(), SessionProvider(), blockAuthNetworkTemporarily(), clearAuthNetworkBlock(), clearInvalidSupabaseSession(), consumeSupabaseUrlAuthError(), extractProjectRef() (+9 more)
+### Community 159 - "Topico"
+Cohesion: 0.10
+Nodes (6): Sistema de personalização — decisões de arquitetura, Atividade, AtividadeTipo, Questao, Topico, clampPercent()
 
-### Community 160 - "20260408_01_fontes_personalizacao.py"
-Cohesion: 0.1
-Nodes (39): AccumulateSSE16_NEON(), Add4x4_NEON(), CollectHistogram_NEON(), ConvertU8ToS16_NEON(), DCMode_NEON(), DiffU8ToS16_NEON(), Disto16x16_NEON(), Disto4x4_NEON() (+31 more)
+### Community 160 - "PainelDeCorrecao.tsx"
+Cohesion: 0.17
+Nodes (25): TomDoSelo, contarPendentes(), diasDeEspera(), EstadoDaEntrega, estadoDaEntrega(), filtrarFila(), FiltroDeStatus, FiltrosDaFila (+17 more)
 
-### Community 161 - "20260410_01_personalizacao_jobs.py"
-Cohesion: 0.08
-Nodes (25): deleteClasseCascade(), deleteClassTrail(), deleteStoragePaths(), deleteTopicCascade(), fetchTopicDependencyIds(), fetchTrailIds(), tryDeleteEq(), tryDeleteIn() (+17 more)
+### Community 161 - "evolucao.ts"
+Cohesion: 0.14
+Nodes (27): AbaEvolucao(), COR_DO_DELTA, dataCurta(), KpiDeEvolucao(), Matricula, Delta, deltaDeAcertos(), deltaDeEntregas() (+19 more)
 
-### Community 162 - "20260410_02_ia_decision_logs.py"
+### Community 162 - "semear_turma"
+Cohesion: 0.20
+Nodes (20): semear_turma(), _banco(), _eng(), _estudo(), _geral(), _progresso(), _semana(), test_aluno_no_meio_da_trilha_nao_aparece_como_abandono() (+12 more)
+
+### Community 163 - "dependencies"
 Cohesion: 0.11
-Nodes (36): decode_frame(), decoder_thread_main(), destroy_pic(), dp_rd_ctx_create(), dp_rd_ctx_destroy(), dp_rd_ctx_handle_seek(), dp_rd_ctx_is_paused(), dp_rd_ctx_parse_args() (+28 more)
+Nodes (19): dependencies, cors@^2.8.6, express@^4.21.2, lamejs@^1.2.1, lucide-react@^0.546.0, openai@^6.49.0, react@^19.0.0, react-dom@^19.0.0 (+11 more)
 
-### Community 163 - "20260410_03_conteudo_personalizado_unique.py"
-Cohesion: 0.05
-Nodes (39): cors, dotenv, express, @google/genai, lamejs, dependencies, clsx, cors (+31 more)
+### Community 164 - "test_e2e_chat_nao_lidas.py"
+Cohesion: 0.21
+Nodes (24): _avisos(), _banco(), como(), _dsn_para(), _guilda(), _manda(), _marca(), _nao_lidas() (+16 more)
 
-### Community 164 - "20260410_04_questoes_nota_estabelecida.py"
+### Community 165 - "test_migration_conversas_cifradas.py"
 Cohesion: 0.09
-Nodes (9): TrailupApiProvider, addCandidate(), defaultDevBaseUrl(), isNetworkRequestFailedError(), mapLocalhostForAndroid(), metroHostBaseUrl(), montarCandidatos(), normalizeBaseUrl() (+1 more)
+Nodes (15): _cabecalho(), _md5(), _prosrc(), test_a_chave_e_conferida_antes_de_mexer_em_tabela(), test_a_copia_de_producao_bate_com_as_migrations_de_origem(), test_docstring_nao_promete_barrar_o_service_role(), test_downgrade_devolve_o_texto_de_producao_byte_a_byte(), test_escritoras_nao_sao_reescritas() (+7 more)
 
-### Community 165 - "20260410_05_personalizacao_artefatos.py"
-Cohesion: 0.12
-Nodes (35): avifCodecDestroy(), avifCodecSpecificOptionsClear(), avifCodecSpecificOptionsCreate(), avifCodecSpecificOptionsDestroy(), avifCodecSpecificOptionsSet(), avifImageDestroy(), avifStrdup(), avifIOCreateFileReader() (+27 more)
+### Community 166 - "test_migration_guilda_trava_com_evento_aberto.py"
+Cohesion: 0.15
+Nodes (20): _abrir_evento(), _corpo(), _corrida_entrada_primeiro(), abrir(), _na_copia(), _na_guilda(), test_a_copia_poe_cada_aluno_em_uma_guilda_so(), test_aluno_em_duas_guildas_entra_na_copia_so_pela_primeira() (+12 more)
 
-### Community 166 - "20260410_06_job_targets_unique_per_content.py"
-Cohesion: 0.06
-Nodes (10): HFilter16i(), HFilterVertEdge16i(), SimpleHFilter16(), SimpleHFilter16i(), SimpleVFilter16(), SimpleVFilter16i(), TransformOne(), TransformTwo() (+2 more)
+### Community 167 - "Loja de moedas — mecânica de ponta a ponta"
+Cohesion: 0.07
+Nodes (29): 10. Ordem de implementação, 11. Decisões em aberto, 12. O que este desenho deliberadamente não faz, 1. O que este documento decide, 2. As decisões que amarram o resto, 3.1 `moedas_ledger` — a única fonte de saldo, 3.2 `eventos_pontuacao` ganha uma coluna, e um irmão por turma, 3.3 `loja_itens` — catálogo global (+21 more)
 
-### Community 167 - "20260413_01_classe_mapa_tema_sync.py"
+### Community 168 - "test_run_api_windows.py"
 Cohesion: 0.11
-Nodes (32): apply_gamma(), apply_hlg(), apply_hlginv(), apply_pq(), apply_sign(), apply_tf(), approx_exp(), approx_exp2() (+24 more)
+Nodes (12): aplicar_politica_de_loop(), loop_do_uvicorn(), main(), test_a_fabrica_chega_ao_uvicorn_run(), test_a_fabrica_do_uvicorn_instalado_monta_selector(), test_a_politica_vem_antes_do_uvicorn(), test_fora_do_windows_nao_mexe_na_politica(), test_no_windows_aplica_a_politica_de_selector() (+4 more)
 
-### Community 168 - "20260415_01_media_render_jobs.py"
+### Community 169 - "public."atividades""
 Cohesion: 0.11
-Nodes (37): BOOST_CATCH(), check_rollback_(), clear_(), extract_(), final_check_invariant_(), final_clear_(), final_delete_all_nodes_(), final_delete_node_() (+29 more)
+Nodes (27): public."aluno_sessoes_app", public."atividade_aluno", public."atividade_aprovacao", public."atividade_conteudos", public."atividade_prazo_aluno", public."atividade_tempo_aluno", public."atividades", public."classe_aluno" (+19 more)
 
-### Community 169 - "nativeContentCache.ts"
-Cohesion: 0.05
-Nodes (38): SDAnimatedImage, -animatedImageData, -animatedImageDurationAtIndex, -animatedImageFormat, -animatedImageFrameAtIndex, -animatedImageFrameCount, -animatedImageLoopCount, -encodeWithCoder (+30 more)
+### Community 170 - "brainhex.ts"
+Cohesion: 0.03
+Nodes (117): 1. Fontes primárias verificadas e limites de aplicação, 2. Mudanças implementadas, 3. O que não ganhou fundamentação por causa desta mudança, 4. Dados, migration e implantação, 5. Verificação e reprodução, 6. Critério para uma adaptação empiricamente sustentada, Adaptação BrainHex v3: evidência, decisões e limites, Continuação da jornada após o PR #617 (+109 more)
 
-### Community 170 - "FontesPersonalizacaoRepository"
-Cohesion: 0.1
-Nodes (29): AlunoSignupWizard(), StepKey, BrainHexProfileCards(), BrainHexQuizStep(), BrainHexResultStep(), BrainHexResultStepProps, StudentBasics, StudentBasicsStep() (+21 more)
-
-### Community 171 - "20260420_02_aluno_mental_state_history.py"
-Cohesion: 0.09
-Nodes (37): _corpo_comprar(), _modulo(), _offline_alembic_config(), Refazer vale nota, mas so' com revisao no meio e nunca em V ou F.  A politica e', Em Illinois, exigir tarefa antes de liberar o retry derrubou o retake de     49%, dwell_sec inclui tempo parado com o material aberto: aceitaria o aluno     deixa, Dentro de um lote, topic/content/material trazem o mesmo intervalo: somar     es, max = min, entao 0.9x + 0.1x = x. Quem nunca comprou o item nao sente. (+29 more)
-
-### Community 172 - "20260421_01_telemetria_eventos_app_and_time_metrics.py"
+### Community 171 - "test_migration_missao_diaria.py"
 Cohesion: 0.12
-Nodes (35): repositories/personalizacao_jobs.py, ProfessorRepository, AsyncSession, True (default seguro) quando a classe/professor nao for         encontrado - nun, services/personalizacao_jobs.py, _assert_brainhex_media_completed(), _build_generation_key(), _build_targets() (+27 more)
+Nodes (19): _downgrade_sql(), _guarda_da_fase_2(), _guarda_do_upgrade(), _sem_comentarios(), test_a_conversao_de_fuso_esta_na_ordem_certa(), test_a_diaria_nao_pede_aprovacao(), test_a_escolha_do_molde_e_deterministica_e_sem_repetir(), test_a_guarda_aceita_as_metricas_de_delta() (+11 more)
+
+### Community 172 - "test_midia_faltando_diz_o_motivo.py"
+Cohesion: 0.20
+Nodes (19): _assert_brainhex_media_completed(), _incomplete_brainhex_media_for_generation(), _motivos_de_midia_incompleta(), _apresentacao_ok(), _completo(), _material(), _registro(), _registro_para_assert() (+11 more)
 
 ### Community 173 - "20260421_02_personalizacao_item_progresso.py"
-Cohesion: 0.1
-Nodes (32): ContentFilePreview(), ContentFileUpload(), EXT_LABELS, getExtLabel(), isStoragePath(), parseStorageDisplayName(), Props, AUDIO_EXTENSIONS (+24 more)
+Cohesion: 0.10
+Nodes (34): ContentFilePreview(), ContentFileUpload(), EXT_LABELS, getExtLabel(), isStoragePath(), parseStorageDisplayName(), Props, AUDIO_EXTENSIONS (+26 more)
 
-### Community 174 - "mobile/arquitetura-app-detalhada.md"
-Cohesion: 0.11
-Nodes (30): expo-constants, expo-notifications, expo-constants, expo-notifications, isNativePdfViewerAvailable(), loadNativePdfComponent(), formatarHora(), persistir() (+22 more)
+### Community 174 - "v1/support.js"
+Cohesion: 0.10
+Nodes (18): cdnScriptFor(), compileTemplate(), contentKey(), createPseudoSheet(), dcNameFromPath(), encodeCamelAttrs(), encodeCase(), findTopLevelEquality() (+10 more)
 
-### Community 175 - "lucide-react"
-Cohesion: 0.14
-Nodes (30): garantir_sugestao(), garantir_sugestao_do_aluno(), Amarra o motor de sugestão ao banco: cria, revisa e registra cada decisão.  O mo, Roda a revisão do ciclo e grava a decisão. Devolve a decisão tomada., Ponto de entrada do ciclo de análise: revisa a sugestão com a telemetria.      S, Cria (uma vez) a sugestão do aluno para um tópico, ao servir o material.      Lê, Devolve a sugestão do aluno, criando-a se ainda não existir., revisar_sugestao() (+22 more)
+### Community 175 - "v2/support.js"
+Cohesion: 0.10
+Nodes (18): cdnScriptFor(), compileTemplate(), contentKey(), createPseudoSheet(), dcNameFromPath(), encodeCamelAttrs(), encodeCase(), findTopLevelEquality() (+10 more)
 
-### Community 176 - "tailwind-merge"
-Cohesion: 0.08
-Nodes (27): _coerce_datetime(), _coerce_float(), _coerce_int(), Manda o payload bruto para o R2 e devolve so um ponteiro.          O bruto e ~96, Sobe os payloads do lote inteiro num UNICO objeto e devolve ponteiros., _codificar_key(), ConfigR2, derivar_chave_de_assinatura() (+19 more)
+### Community 176 - "v3/support.js"
+Cohesion: 0.10
+Nodes (18): cdnScriptFor(), compileTemplate(), contentKey(), createPseudoSheet(), dcNameFromPath(), encodeCamelAttrs(), encodeCase(), findTopLevelEquality() (+10 more)
 
-### Community 177 - "frontend/arquitetura-funcionamento-geral-sistema.md"
-Cohesion: 0.05
-Nodes (36): ZXCapture, -actionForLayerforKey, -back, -binary, -captureOutputdidOutputSampleBufferfromConnection, -createRotatedImagedegrees, -dealloc, -decodeImage (+28 more)
+### Community 177 - "v4/support.js"
+Cohesion: 0.10
+Nodes (18): cdnScriptFor(), compileTemplate(), contentKey(), createPseudoSheet(), dcNameFromPath(), encodeCamelAttrs(), encodeCase(), findTopLevelEquality() (+10 more)
 
-### Community 178 - "mobile/eslint.config.js"
-Cohesion: 0.1
-Nodes (25): intra_pred_dsp_init_arm(), ipred_z1_neon(), ipred_z3_neon(), bitfn(), cfl_pred(), dc_gen(), dc_gen_left(), dc_gen_top() (+17 more)
+### Community 178 - "v5/support.js"
+Cohesion: 0.10
+Nodes (18): cdnScriptFor(), compileTemplate(), contentKey(), createPseudoSheet(), dcNameFromPath(), encodeCamelAttrs(), encodeCase(), findTopLevelEquality() (+10 more)
 
-### Community 180 - "tela_de_entrada/login.tsx"
-Cohesion: 0.09
-Nodes (25): useCheckpointResume(), buildPersonalizedFlow(), usePersonalizedFlow(), useTopicoCompletion(), normalizePersonalizedStepActivity(), normalizePersonalizedStepContent(), buildBlocksForTopico(), buildStableNegativeId() (+17 more)
+### Community 179 - "v6/support.js"
+Cohesion: 0.10
+Nodes (18): cdnScriptFor(), compileTemplate(), contentKey(), createPseudoSheet(), dcNameFromPath(), encodeCamelAttrs(), encodeCase(), findTopLevelEquality() (+10 more)
 
-### Community 181 - "ImagemBlock.tsx"
+### Community 180 - "v7/support.js"
+Cohesion: 0.10
+Nodes (18): cdnScriptFor(), compileTemplate(), contentKey(), createPseudoSheet(), dcNameFromPath(), encodeCamelAttrs(), encodeCase(), findTopLevelEquality() (+10 more)
+
+### Community 181 - "v9/support.js"
+Cohesion: 0.10
+Nodes (18): cdnScriptFor(), compileTemplate(), contentKey(), createPseudoSheet(), dcNameFromPath(), encodeCamelAttrs(), encodeCase(), findTopLevelEquality() (+10 more)
+
+### Community 182 - "test_migration_formato_do_desafio.py"
+Cohesion: 0.13
+Nodes (18): _criar(), _downgrade_sql(), _sem_comentarios(), test_a_assinatura_antiga_sai_antes(), test_a_criacao_preserva_as_fases_7_8_e_9(), test_aliado_em_formato_que_nao_usa_e_recusado(), test_cada_formato_matricula_quem_deve(), test_cooperativo_e_nao_ter_equipe_2() (+10 more)
+
+### Community 183 - "4. Inventário bloco a bloco"
 Cohesion: 0.07
-Nodes (17): buildFallbackRankRows(), buildPosicaoDoAluno(), buildRankInfoFromRow(), buildRankPosicao(), ClasseRanking, isTipoLike(), loadFallbackRankInfosByClasse(), loadFallbackRankRowsByClasse() (+9 more)
+Nodes (27): 10. Fases de implementação (da mais fácil para a mais difícil), 11. Prompts de cada fase, 1. Resumo, 3. Como o protótipo é montado, 4.10 Atalho para a trilha, 4.11 Registrar presença (modal), 4.12 Código morto, 4.1 Moldura e Escriba (+19 more)
 
-### Community 182 - "RegionMap.ts"
-Cohesion: 0.09
-Nodes (25): deleteContentCascade(), handleDelete(), handleSubmit(), loadData(), createClassWithMateria(), deleteActivity(), deleteCard(), deleteContent() (+17 more)
+### Community 184 - "useStudyTimeTracking.ts"
+Cohesion: 0.13
+Nodes (15): GravadoresDoIntervalo, persistirIntervaloDeEstudo(), bloco, intervalo, planSessionRegistrations(), SessionRegistrationPlan, baseBlock, ProgressoItemPersonalizado (+7 more)
 
-### Community 183 - "agent/__init__.py"
+### Community 185 - "boss_falas.py"
 Cohesion: 0.14
-Nodes (34): AddGreenToBlueAndRed(), ColorCodeToMultipliers(), ComputeResidualsForTile(), CopyImageWithPrediction(), CopyTileWithColorTransform(), GetAccumulatedHisto(), GetBestColorTransformForTile(), GetBestGreenRedToBlue() (+26 more)
+Nodes (21): _assinatura(), _chave_da_trava(), gerar_falas_do_topico(), _gravar(), hash_do_topico(), _hashes_gravados(), _limpar_texto(), _momento() (+13 more)
 
-### Community 184 - "api/__init__.py"
-Cohesion: 0.1
-Nodes (26): DC4(), DCMode16x16(), DCMode8x8(), Disto16x16_MSA(), Disto4x4_MSA(), HD4(), HE4(), HorizontalPred16x16() (+18 more)
-
-### Community 185 - "core/__init__.py"
+### Community 186 - "missao_diaria_texto.py"
 Cohesion: 0.15
-Nodes (32): adaptive_xbuf, add(), aligned_trailing(), buffered_merge(), gcd(), insert(), is_raw_ptr(), merge_adaptive_ONlogN() (+24 more)
+Nodes (17): alvo_e_unidade(), _dia_do_payload(), enriquecer_coorte(), _limpar(), _materia_da_turma(), _missoes_da_coorte(), montar_payload(), processar_job_missao_diaria() (+9 more)
 
-### Community 186 - "test_content_enrichment.py"
+### Community 187 - "test_jobs_partial_reenfileira.py"
+Cohesion: 0.10
+Nodes (13): _falha_streak_excedido(), _fonte(), test_job_reaberto_volta_a_ser_reivindicavel(), test_partial_nao_conta_como_job_aberto(), test_partial_recebe_finished_at(), test_retomada_nao_refaz_o_que_ja_deu_certo(), test_retomada_so_vale_para_pedido_manual(), test_retomada_zera_tentativas_do_alvo() (+5 more)
+
+### Community 188 - "quizSanitize.ts"
 Cohesion: 0.11
-Nodes (29): adopt_sequence(), BOOST_NOEXCEPT_IF(), BOOST_NOEXCEPT_OR_NOTHROW(), contains(), count(), emplace(), emplace_hint(), erase() (+21 more)
+Nodes (22): Correções visuais rápidas do deck — Implementation Plan, Encerramento, Task 1: Remover o badge de ambiente (bug do "R…"), Task 2: Corrigir truncamento do badge "OBJ:", Task 3: Card com altura flexível (piso + teto) em vez de altura fixa, Task 4: Embaralhar a ordem das alternativas do quiz, Contexto, Correções visuais rápidas do deck — Design (+14 more)
 
-### Community 187 - "repositories/__init__.py"
-Cohesion: 0.1
-Nodes (7): apply(), generate(), seed(), subtract_with_carry, subtract_with_carry_01, subtract_with_carry_01_engine, subtract_with_carry_engine
-
-### Community 188 - "compilerOptions"
-Cohesion: 0.06
-Nodes (34): SDImageIOAnimatedCoder, -animatedImageData, -animatedImageDurationAtIndex, -animatedImageFrameAtIndex, -animatedImageFrameCount, -animatedImageLoopCount, -animatedImageUTType, -canDecodeFromData (+26 more)
-
-### Community 189 - "mobile/package.json"
-Cohesion: 0.17
-Nodes (28): garantir_sugestao(), Any, Roda a revisão do ciclo e grava a decisão. Devolve a decisão tomada., Ponto de entrada do ciclo de análise: revisa a sugestão com a telemetria.      S, Devolve a sugestão do aluno, criando-a se ainda não existir., revisar_sugestao(), revisar_sugestoes_do_ciclo(), _perfil() (+20 more)
+### Community 189 - "test_sugestao_ciclo.py"
+Cohesion: 0.08
+Nodes (41): _contexto_da_decisao(), _estado_mental_recorrente(), garantir_sugestao(), garantir_sugestao_do_aluno(), _ler_demanda(), resumo_da_demanda(), revisar_sugestao(), revisar_sugestoes_do_ciclo() (+33 more)
 
 ### Community 190 - "mobile/README.md"
-Cohesion: 0.21
-Nodes (35): enrich_content_blocks(), Separa, aprofunda e só então libera blocos neutros para personalização., _context(), _gemini_factory(), _large_single_segment_context(), asyncio, MonkeyPatch, Com 2+ chaves configuradas, uma chave esgotada nao deve derrubar o     enriqueci (+27 more)
+Cohesion: 0.17
+Nodes (40): ContentEnrichmentError, enrich_content_blocks(), openai_estimated_spend_usd(), _context(), _failing_gemini_factory(), _gemini_factory(), _large_single_segment_context(), _near_miss_response() (+32 more)
 
 ### Community 191 - "Slides de Apresentação Temáticos (estilo Slidesgo): Design"
-Cohesion: 0.13
-Nodes (34): clampOpacity(), clampPercent(), collectParagraphText(), collectTextFragments(), convertHtmlNodeToBlocks(), extensionToMimeType(), extractCellText(), extractPictureElement() (+26 more)
+Cohesion: 0.10
+Nodes (38): fast-xml-parser@^5.5.10, node-html-parser@^7.1.0, clampOpacity(), clampPercent(), collectParagraphText(), collectTextFragments(), convertHtmlNodeToBlocks(), extensionToMimeType() (+30 more)
 
 ### Community 192 - "PARTE B — trailup microservice (`C:\Users\geisb\documents\github\trailup`)"
-Cohesion: 0.06
-Nodes (35): api/arquitetura-app-detalhada.md, 10.1 Tabela canônica, 10.2 Campo de materiais, 10.3 Garantias, 10. Persistência e contratos centrais, 11.1 Entrada, 11.2 Papel, 11.3 Não objetivos (+27 more)
+Cohesion: 0.07
+Nodes (28): 11.1 Entrada, 11.2 Papel, 11.3 Não objetivos, 11. Telemetria, 12. Segurança, 13. Observabilidade, 14. Riscos e mitigação, 15. Decisões arquiteturais explícitas (+20 more)
 
-### Community 193 - "normalizeNonNegativeNumber"
+### Community 193 - "public.guilda_membros"
+Cohesion: 0.14
+Nodes (18): guilda_mensagens_feed_idx, public.guilda_chat_enviar(), public.guilda_chat_listar(), public.guilda_configurar_turma(), public.guilda_criar(), public.guilda_mensagens, public.guilda_chat_listar(), public.guilda_chat_enviar() (+10 more)
+
+### Community 194 - "logger.ts"
+Cohesion: 0.18
+Nodes (13): buildLogger(), createLogger(), CreateLoggerOptions, emit(), formatValue(), LEVEL_PRIORITY, LogFields, LoggerInternals (+5 more)
+
+### Community 195 - "bg"
+Cohesion: 0.08
+Nodes (25): 1. Feedback, 2. Fica como está, 3.1 Dois painéis, 3.2 Formulário, 3.3 Erro perto do formulário, 3. O que muda, 4. Estados (seletor flutuante, na paleta pré-login), 5. Aplicar o mesmo esqueleto em `02-recuperar-senha.html` (+17 more)
+
+### Community 196 - "como"
+Cohesion: 0.28
+Nodes (21): como(), _alteracoes(), _alunos(), _banco(), _decide(), _nota(), _revisar_a(), _semear() (+13 more)
+
+### Community 197 - "copiar-storage-para-r2.ts"
+Cohesion: 0.20
+Nodes (16): assinarR2(), cabecalhosDaOrigem(), codificarCaminho(), Config, copiarUm(), emMB(), lerConfig(), listarCaminhosVivos() (+8 more)
+
+### Community 198 - "test_e2e_lote_diz_por_onde_chegou.py"
+Cohesion: 0.20
+Nodes (17): _banco(), _como_aluno(), _inserir(), _linha(), test_aluno_nao_chama_a_funcao_do_gatilho(), test_aluno_nao_escolhe_a_via(), test_build_antigo_sem_motivo_e_aceito(), test_conexao_que_ja_viu_claims_vazias_nao_perde_o_lote() (+9 more)
+
+### Community 199 - "test_migration_arena_volta.py"
+Cohesion: 0.15
+Nodes (18): _corpo_novo(), _downgrade_sql(), _md5(), _prosrc(), _sem_linhas_de_comentario(), test_arena_responder_parte_do_corpo_de_producao(), test_arena_responder_recusa_cooperativo_antes_de_gravar(), test_as_guardas_sao_espelhadas() (+10 more)
+
+### Community 200 - "schema.sql"
 Cohesion: 0.11
-Nodes (28): normalizeOptionalPositiveScore(), parseOptionalPositiveScore(), round2(), scoreToInputString(), EssayQuestionRenderer(), asNumber(), asString(), buildActivityContentContext() (+20 more)
+Nodes (14): public.social_enviar_convite(), public.social_listar_pessoas(), public.social_relacionamentos, public.social_sao_colegas(), social_rel_status_a_idx, social_rel_status_b_idx, aluno_nascimento, aluno_perfil (+6 more)
 
-### Community 194 - "cmdk"
-Cohesion: 0.09
-Nodes (27): buildLogger(), createLogger(), CreateLoggerOptions, emit(), formatValue(), LEVEL_PRIORITY, LogFields, LoggerInternals (+19 more)
-
-### Community 195 - "date-fns"
-Cohesion: 0.13
-Nodes (33): fast-xml-parser, fast-xml-parser, node-html-parser, node-html-parser, clampOpacity(), clampPercent(), collectParagraphText(), collectTextFragments() (+25 more)
-
-### Community 196 - "CLAUDE.md — TrailUp"
-Cohesion: 0.13
-Nodes (28): buildAnalysisView(), buildMissionSummary(), buildNextMilestone(), buildPresenceSummary(), buildProfileMetricsViewModel(), clampPercent(), collectStringValues(), getEmotionLabel() (+20 more)
-
-### Community 197 - "Personalização Longa — Integração ApiBrainHex Implementation Plan"
-Cohesion: 0.12
-Nodes (24): assinarR2(), codificarCaminho(), copiarUm(), emMB(), lerConfig(), listarCaminhosVivos(), main(), tamanhoDe() (+16 more)
-
-### Community 198 - "Integração Direta ApiTraiUp → ApiBrainHex: Implementation Plan"
-Cohesion: 0.09
-Nodes (17): compute_distribuicao(), GroupAnalysisService, _normalize_profile(), Adequacao de grupo: analisa a distribuicao de perfis BrainHex por classe.  Difer, Computa e persiste o summary de perfis BrainHex de uma classe., classe_aluno pode ter colunas em camelCase (com aspas) ou snake_case,         de, Busca, por aluno da classe, o perfil dominante e o desempenho agregado., Computa contagem/percentual por perfil a partir do perfil dominante de cada alun (+9 more)
-
-### Community 199 - "api/arquitetura-microservico-detalhada.md"
+### Community 201 - "StoreLauncher"
 Cohesion: 0.08
-Nodes (15): ApplyAlphaMultiply4444_C(), ApplyAlphaMultiply_16b_C(), dither_hi(), dither_lo(), GetScale(), MakeARGB32(), Mult(), multiply() (+7 more)
+Nodes (22): Loja Modal Social por Perfil Implementation Plan, Task 1: Banco da loja e contrato transacional, Task 3: Modal visual da loja, Task 4: Integrar na superfície social existente, Task 5: Verificação final, Social completo com amizades — Implementation Plan, Task 1: Modelo social, RPCs, view segura e RLS, Task 3: Componentes da aba Social (+14 more)
 
-### Community 200 - "expo-constants"
-Cohesion: 0.1
-Nodes (27): AddSubtractComponentFull(), AddSubtractComponentHalf(), Average2(), Average3(), Average4(), ClampedAddSubtractFull(), ClampedAddSubtractHalf(), Clip255() (+19 more)
+### Community 202 - "profileMetricsViewModel.ts"
+Cohesion: 0.15
+Nodes (21): buildAnalysisView(), buildMissionSummary(), buildNextMilestone(), buildPresenceSummary(), buildProfileMetricsViewModel(), clampPercent(), collectStringValues(), getEmotionLabel() (+13 more)
 
-### Community 201 - "Progresso, Persistência, Mídias e Atividades — Implementation Plan"
-Cohesion: 0.08
-Nodes (19): WebPRescalerDspInitMIPS32(), WebPRescalerDspInitMIPSdspR2(), WebPRescalerDspInitMSA(), Interpolate_NEON(), RescalerExportRowExpand_NEON(), WebPRescalerDspInitNEON(), LoadDispatchAndMult_SSE2(), LoadEightPixels_SSE2() (+11 more)
+### Community 203 - "classeMetrics.ts"
+Cohesion: 0.16
+Nodes (21): AtividadeLike, buildClasseAcademicMetrics(), clampPercent(), ClasseAcademicMetrics, ConteudoLike, isDoing(), isDone(), QuestaoLike (+13 more)
 
-### Community 202 - "TextoActivity.tsx"
-Cohesion: 0.13
-Nodes (31): ch_to_digit(), detail(), emulu(), exact_power_of_ten(), fast_float(), full_multiplication(), if(), infinite_power() (+23 more)
-
-### Community 203 - "openaiImageService.ts"
-Cohesion: 0.08
-Nodes (21): dav1d_get_cpu_flags_arm(), parse_proc_cpuinfo(), dav1d_get_cpu_flags_ppc(), dav1d_init_cpu(), init_internal(), dav1d_init_qm_tables(), subsample(), transpose() (+13 more)
-
-### Community 204 - "frontend/politicas-dados-privacidade.md"
-Cohesion: 0.06
-Nodes (32): SDWebImageCombinedOperation, -cancel, -isCancelled, SDWebImageManager, -cacheKeyForURL, -cacheKeyForURLcontext, -callCacheProcessForOperationurloptionscontextprogresscompleted, -callCompletionBlockForOperationcompletionerrorqueueurl (+24 more)
+### Community 204 - "test_e2e_kpis_engajamento_banco.py"
+Cohesion: 0.19
+Nodes (20): _admin(), _como(), mundo(), _rpc(), _rpc_coortes(), test_cobertura_traz_sete_perfis_e_secundario_elegivel(), test_conclusao_e_identificada_como_estado_atual(), test_coorte_vazia_preserva_nulos_e_sinal_de_amostra() (+12 more)
 
 ### Community 205 - "expo-linear-gradient"
-Cohesion: 0.12
-Nodes (31): buildBlockSignature(), buildMediaBlocks(), clampPenalty(), collectMediaCandidates(), formatFillBlankStatement(), formatTrueFalseLabel(), getAcceptedAnswers(), GradingRules (+23 more)
-
-### Community 206 - "mobile/arquitetura-microservico-e-app.md"
-Cohesion: 0.11
-Nodes (20): buildPedagogicalSystemPrompt(), generateDeckSlidesInBatches(), generateImageWithKeyRotation(), generateSlideIllustration(), generateWithKeyRotation(), getApiKeysPool(), getGuideForProfile(), getServiceRoleClient() (+12 more)
-
-### Community 207 - "TrailUp — Monorepo"
-Cohesion: 0.11
-Nodes (29): callOpenAIStructured(), CONTENT_GENERATION_RESPONSE_SCHEMA, CONTENT_GENERATION_SLIDES_SCHEMA, CONTENT_GENERATION_TEXT_SCHEMA, ContentGenerationQualityError, DEFAULT_GEMINI_CONTENT_GENERATION_MODEL, DEFAULT_OPENAI_CONTENT_GENERATION_FALLBACK_MODEL, errorDetails() (+21 more)
-
-### Community 208 - "api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos.md"
-Cohesion: 0.11
-Nodes (31): _corpo_comprar(), _offline_alembic_config(), Comprar debita e concede, ou nao faz nada.  E' o aceite do #144, e a razao de a, Debita e concede, ou nao faz nada -- aceite do #144., O pedido pode ter chegado e a resposta ter se perdido. Repetir nao pode     cobr, O lock trava a carteira antes de conferir: sem ele, duas compras     simultaneas, Ela e' de graca: consultar saldo para dar algo gratis seria negar o item     a q, Sem compra_id no razao, o extrato diz que saiu moeda mas nao diz por que. (+23 more)
-
-### Community 209 - "apiBaseUrl.ts"
-Cohesion: 0.17
-Nodes (31): FixedPointInterpolation(), FromLinear470Bg(), FromLinear470M(), FromLinear709(), FromLinearBt1361(), FromLinearHlg(), FromLinearIec61966(), FromLinearLog100() (+23 more)
-
-### Community 210 - "expo-system-ui"
-Cohesion: 0.15
-Nodes (31): DoSegmentsJob(), VP8InitFilter(), BranchCost(), CalcSkipProba(), CalcTokenProba(), Clamp(), ComputeNextQ(), FinalizeSkipProba() (+23 more)
-
-### Community 211 - "@expo/vector-icons"
 Cohesion: 0.09
-Nodes (14): basic_ios_all_saver, basic_ios_exception_saver, basic_ios_fill_saver, basic_ios_iostate_saver, basic_ios_locale_saver, basic_ios_rdbuf_saver, basic_ios_tie_saver, ios_all_word_saver (+6 more)
+Nodes (40): buildBlockSignature(), buildMediaBlocks(), clampPenalty(), collectMediaCandidates(), formatFillBlankStatement(), formatTrueFalseLabel(), getAcceptedAnswers(), GradingRules (+32 more)
 
-### Community 212 - "expo-web-browser"
-Cohesion: 0.14
-Nodes (17): build_public_storage_url(), _decode_text_bytes_preserve_ptbr(), _extract_text_from_docx(), _extract_text_from_pdf(), _extract_text_from_pptx(), _normalize_bucket_and_path(), Any, Sobe um arquivo no Supabase Storage via PUT autenticado         (service role) c (+9 more)
+### Community 206 - "brainhexpdf/server.ts"
+Cohesion: 0.05
+Nodes (46): apiSharedSecret, app, BRAINHEX_GUIDES, buildPedagogicalSystemPrompt(), DECK_RESPONSE_SCHEMA, DEFAULT_SLIDE_TARGET, FREE_TIER_MODELS, generateDeckSlidesInBatches() (+38 more)
+
+### Community 207 - "processMediaWithGemini"
+Cohesion: 0.05
+Nodes (67): Rotação de Modelos Gemini Free-Tier por Qualidade — Implementation Plan, Task 1: Extrair helper compartilhado `generateAndValidateContent`, Task 2: Adicionar rotação por modelos fallback na falha de qualidade, Task 3: Injetar a lista de modelos fallback no chamador real, Task 4: Ampliar a lista de modelos fallback (+6) e atualizar docs/testes, Task 5: Relaxar o gate de cobertura mínima em `validateBlockBatchGeneration`, Task 6: Revisão final da branch, Achado adicional durante o mapeamento de arquivos (+59 more)
+
+### Community 208 - "test_economia_completa.py"
+Cohesion: 0.13
+Nodes (18): concedido(), _config(), _sql(), _sql_down(), test_a_cabeca_nova_continua_a_cadeia(), test_a_compra_trava_estoque_antes_da_carteira_e_nao_deixa_saldo_negativo(), test_a_conta_do_prazo_recusa_o_que_nao_cabe(), test_anonimo_nao_le_a_auditoria_e_o_dev_nao_ganha_escrita() (+10 more)
+
+### Community 209 - "test_pontuacao_do_banco.py"
+Cohesion: 0.12
+Nodes (13): _modulo(), _offline_alembic_config(), _sql(), test_a_tabela_e_configuravel_e_nao_gravavel_pelo_cliente(), test_errar_nunca_tira_ponto(), test_estudar_vale_mais_que_abrir_a_tela(), test_evento_creditado_mantem_o_valor_de_quem_concedeu(), test_o_ciclo_da_ia_deixa_de_valer_pontos() (+5 more)
+
+### Community 210 - "test_presenca_concedida.py"
+Cohesion: 0.12
+Nodes (13): _modulo(), _offline_alembic_config(), _sql(), test_a_auditoria_registra_quem_concedeu(), test_a_rpc_confere_a_posse_da_classe_e_o_tipo(), test_a_view_resolve_pela_forma_da_referencia_e_nao_pelo_tipo(), test_conceder_duas_vezes_no_mesmo_dia_nao_paga_em_dobro(), test_conceder_para_a_turma_nao_avalia_conquista() (+5 more)
+
+### Community 211 - "Registro de transferência internacional de dados pessoais (LGPD, arts. 33 a 36)"
+Cohesion: 0.08
+Nodes (21): Arquivos do aluno no Storage e no R2 (migration `20261024_09`), Aviso de conta inativa por e-mail (migration `20261024_07`), Contato (site e app), Exclusão da conta de professor (migration `20261024_07`), LGPD no TrailUp: índice, Regra de processo (resumo), Arquivos do aluno: buckets privados e ciclo de vida do R2 (#195), Ciclo de vida do R2 (+13 more)
+
+### Community 212 - "SupabaseStorage"
+Cohesion: 0.06
+Nodes (25): _download_source_bytes(), build_public_storage_url(), _decode_text_bytes_preserve_ptbr(), _extract_text_from_docx(), _extract_text_from_pdf(), _extract_text_from_pptx(), material_url_de_leitura(), _normalize_bucket_and_path() (+17 more)
 
 ### Community 213 - "get_settings"
-Cohesion: 0.15
-Nodes (13): _configure_database_url(), run_migrations_offline(), run_migrations_online(), get_settings(), normalize_database_url_for_alembic(), Aplica as migracoes pendentes antes de a API aceitar requisicoes., upgrade_database_to_head(), AsyncSession (+5 more)
-
-### Community 214 - "microservice/arquitetura-app-detalhada.md"
-Cohesion: 0.13
-Nodes (22): arrowMarkerDefs(), contrastRatio(), ensureContrast(), escapeXml(), hexToRgb(), hslToHex(), relativeLuminance(), rgbToHsl() (+14 more)
-
-### Community 215 - "pipeline.py"
-Cohesion: 0.08
-Nodes (10): dimensionsSupported(), getFrameCount(), getFrameInfo(), getRepetitionCount(), onDimensionsSupported(), onGetFrameCount(), onGetFrameInfo(), onGetRepetitionCount() (+2 more)
-
-### Community 216 - "ArvoreView.tsx"
-Cohesion: 0.12
-Nodes (29): adaptive_pool, allocator, basic_string, deque, devector, dummy(), flat_map, flat_multimap (+21 more)
-
-### Community 217 - "@radix-ui/react-alert-dialog"
-Cohesion: 0.12
-Nodes (18): make_guard(), make_guard_if(), make_guard_if_c(), make_obj_guard(), make_obj_guard_if(), make_obj_guard_if_c(), null_guard(), obj_scope_guard_impl0 (+10 more)
-
-### Community 218 - "Design da Correção"
-Cohesion: 0.11
-Nodes (7): fill(), generate(), lagged_fibonacci, lagged_fibonacci_01, lagged_fibonacci_01_engine, lagged_fibonacci_engine, seed()
-
-### Community 219 - "Índice por projeto"
-Cohesion: 0.21
-Nodes (29): blockingRead(), blockingReadWithTicket(), computeStride(), dequeue(), dequeueImpl(), dequeueWithTicketBase(), destroyContents(), detail() (+21 more)
-
-### Community 220 - "compilerOptions"
-Cohesion: 0.06
-Nodes (31): microservice/package.json, description, devDependencies, autoprefixer, tailwindcss, tsx, @types/cors, @types/express (+23 more)
-
-### Community 221 - "@radix-ui/react-dialog"
-Cohesion: 0.08
-Nodes (12): react-native-svg, react-native-svg, AchievementIcon(), GuildIcon(), normalizePublicProfile(), carregarPerfilPublico(), SocialProfileModal(), clipToHex() (+4 more)
-
-### Community 222 - "@radix-ui/react-dropdown-menu"
-Cohesion: 0.13
-Nodes (22): GuildChatModal(), normalizeGuildMessages(), normalizeShare(), normalizeGuild(), normalizeGuilds(), normalizeMember(), actionError(), aceitarConviteGuilda() (+14 more)
-
-### Community 223 - "Design: status da personalização no console do professor"
 Cohesion: 0.14
-Nodes (15): build_public_storage_url(), _decode_text_bytes_preserve_ptbr(), _extract_text_from_docx(), _extract_text_from_pdf(), _extract_text_from_pptx(), _normalize_bucket_and_path(), Sobe um arquivo no Supabase Storage via PUT autenticado         (service role) c, Upload media/document artifacts to Supabase and return updated materiais. (+7 more)
+Nodes (13): _hydrate_materiais_public_urls(), _resolve_public_asset_fields(), MateriaisRepository, build_material_url(), test_fonte_do_professor_tambem_usa_o_gateway(), test_hidratador_da_rota_corrige_url_direta_ja_gravada(), test_hidratador_da_rota_nao_troca_gateway_pela_url_direta(), test_material_do_bucket_conteudo_aluno_usa_o_gateway() (+5 more)
 
-### Community 224 - "@radix-ui/react-label"
-Cohesion: 0.13
-Nodes (10): ConteudoPersonalizadoRepository, _extract_profile_key_from_record(), _normalize_json_field(), _normalize_profile_key(), _pick_string(), Reserva atomicamente a primeira geracao de um alvo ainda inexistente.          C, Atualiza somente o estado, preservando materiais parciais e diagnosticos., Incrementa (ou reinicia) o contador de falhas consecutivas da mesma         gera (+2 more)
+### Community 214 - "CartaoItemLoja.tsx"
+Cohesion: 0.19
+Nodes (20): s, SeletorQuantidade(), StoreItemIcon(), StoreCard(), CartaoItemLoja(), NOTA_ESTADO, s, contagem() (+12 more)
 
-### Community 225 - "@radix-ui/react-menubar"
-Cohesion: 0.09
-Nodes (20): ColorTransformDelta(), TransformColorInverse_MIPSdspR2(), AddGreenToBlueAndRed_NEON(), Average2_NEON(), Average2_u8_NEON(), Average3_NEON(), ClampedAddSubtractHalf_NEON(), ConvertBGRAToRGBA_NEON() (+12 more)
+### Community 215 - "tentativasAtividade.ts"
+Cohesion: 0.18
+Nodes (21): abertas, ErroDoSupabase, lerRetorno(), lerTentativa(), MENSAGEM_DA_RECUSA, mensagemDaRecusa(), motivoDoErro(), MotivoRecusa (+13 more)
 
-### Community 226 - "@radix-ui/react-navigation-menu"
-Cohesion: 0.13
-Nodes (28): ARRAY(), at(), bool_or(), comp(), count(), descend_(), double_or(), dynamic() (+20 more)
+### Community 216 - "revisao-04-lacunas-mobile/README.md"
+Cohesion: 0.08
+Nodes (19): Revisão 04 — o que o app mobile tem e o web ainda não, 2. Na web, 3. Estados (no seletor que já existe), 4. Aceite, 2. Na web, 3. Estados (no seletor do Social), 4. Aceite, Dados de exemplo (+11 more)
 
-### Community 227 - "@radix-ui/react-popover"
-Cohesion: 0.15
-Nodes (28): advance_write_buffer(), bigint(), carrier_uint(), detail(), do_put(), double(), float(), flush() (+20 more)
+### Community 217 - "environment"
+Cohesion: 0.08
+Nodes (25): environment, API_EXTERNAL_URL, DB_NAMESPACE, GOTRUE_API_HOST, GOTRUE_API_PORT, GOTRUE_DB_DATABASE_URL, GOTRUE_DB_DRIVER, GOTRUE_EXTERNAL_EMAIL_ENABLED (+17 more)
 
-### Community 228 - "ClasseMapaTemaRepository"
-Cohesion: 0.07
-Nodes (29): SDWebImageDownloaderOperation, -addHandlersForProgresscompleted, -addHandlersForProgresscompleteddecodeOptions, -callCompletionBlocksWithError, -callCompletionBlocksWithImageimageDataerrorfinished, -callCompletionBlockWithTokenimageimageDataerrorfinished, -cancel, -cancelInternal (+21 more)
-
-### Community 229 - "@radix-ui/react-separator"
+### Community 218 - "test_loja_catalogo.py"
 Cohesion: 0.12
-Nodes (21): GuildSection(), act(), errorMessage(), unblockAndOpenChat(), send(), SocialInviteCard(), groupSocialRows(), normalizeSocialRow() (+13 more)
+Nodes (13): _modulo(), _offline_alembic_config(), _sql(), test_a_dotacao_cobre_os_itens_de_recuperacao(), test_a_turma_tem_teto_de_prazo_e_ele_e_do_professor(), test_nenhum_item_da_vantagem_de_um_aluno_sobre_outro(), test_o_aluno_ve_o_catalogo_e_nao_escreve_nele(), test_o_catalogo_existe_e_e_global() (+5 more)
 
-### Community 230 - "frontend/politicas-dados-privacidade.md"
-Cohesion: 0.11
-Nodes (28): _modulo(), _offline_alembic_config(), O professor define o ganho; o banco decide o valor.  `eventos_pontuacao` ja deci, Via helper SECURITY DEFINER: o predicado que consultasse classe_aluno     direto, Recusar quebraria o fluxo do aluno na cara dele se algum cliente     emitisse um, O DO NOTHING e' o que impede a faucet infinita: se moeda viesse de     acerto em, Gasto nunca altera XP nem posicao no rank -- aceite do #142. O gatilho     e' AF, Presenca concedida pelo professor e' esforco do aluno tanto quanto     concluir (+20 more)
-
-### Community 231 - "@radix-ui/react-slot"
-Cohesion: 0.07
-Nodes (28): ZXBitArray, -appendBit, -appendBitArray, -appendBitsnumBits, -bitArray, -clear, -copyWithZone, -dealloc (+20 more)
-
-### Community 232 - "@radix-ui/react-switch"
+### Community 219 - "test_migration_conquista_valida_criterio.py"
 Cohesion: 0.18
-Nodes (27): a(), at(), begin(), clear(), cont_(), contains(), count(), data() (+19 more)
+Nodes (19): banco(), _instalacao(), _recusa(), _salvar(), _seed(), _sql_de_upgrade(), test_aparencia_fora_da_lista_e_recusada(), test_as_27_conquistas_de_producao_passam_no_check() (+11 more)
 
-### Community 233 - "@radix-ui/react-tooltip"
+### Community 220 - "microservice/package.json"
+Cohesion: 0.12
+Nodes (23): description, devDependencies, autoprefixer@^10.4.21, tailwindcss@^4.1.14, tsx@^4.21.0, @types/cors@^2.8.19, @types/express@^4.17.21, @types/node@^22.14.0 (+15 more)
+
+### Community 221 - "test_migration_missoes_entidade.py"
 Cohesion: 0.13
-Nodes (27): A1, A2, A3, A4, A5, A6, A7, A8 (+19 more)
+Nodes (15): _downgrade_sql(), _sem_comentarios(), test_aprovacao_obrigatoria_so_para_guilda_da_ia(), test_as_duas_tabelas_nascem_com_rls_e_policy(), test_downgrade_nao_apaga_pontuacao_ja_usada(), test_guarda_congela_o_que_a_ia_escreveu(), test_indice_da_diaria_tem_slot_e_e_parcial(), test_migracao_preserva_o_vinculo_e_nao_move_entregas() (+7 more)
 
-### Community 234 - "DOCS_API.md"
+### Community 222 - "cadastro.integrado.ts"
+Cohesion: 0.12
+Nodes (16): ambiente(), user, client(), countEmail(), criarEConfirmar(), linkDeConfirmacao(), profiles, somenteLocal() (+8 more)
+
+### Community 223 - "FundoDaTurmaCard.tsx"
+Cohesion: 0.19
+Nodes (20): FundoDaTurmaCard(), Props, s, avisoDaDoacao(), ERROS, faltaParaAMeta(), FundoDaTurma, mensagemDaDoacao() (+12 more)
+
+### Community 224 - "StoreModal.tsx"
+Cohesion: 0.15
+Nodes (21): ConfirmarCompra(), FILTROS_EXTRATO, Props, s, StoreModal(), buy(), comprar(), diasDePrazoUsados() (+13 more)
+
+### Community 225 - "ProfileMetricsViews.tsx"
+Cohesion: 0.12
+Nodes (21): arcPath(), buildPalette(), ConcentricRings(), DashboardProps, DiscoveryRadial(), formatMinutesTimer(), MetricasLargas, PresenceGrid() (+13 more)
+
+### Community 226 - "test_conquistas_por_metrica.py"
+Cohesion: 0.13
+Nodes (10): _modulo_da_migracao(), _offline_alembic_config(), _sql_da_migracao(), test_a_metrica_e_obrigatoria_no_banco_e_nao_so_no_codigo(), test_agregados_saem_do_laco(), test_o_enum_de_status_nao_e_coagido_e_o_acento_sobrevive(), test_o_sql_nao_carrega_porcentagem(), test_premio_da_conquista_chega_ao_rank_sem_reentrar_no_gatilho() (+2 more)
+
+### Community 227 - "test_e2e_retencao_expurgo.py"
+Cohesion: 0.21
+Nodes (18): _banco(), _linhas(), _seed(), _telemetria(), test_cliente_nao_le_nem_roda(), test_conta_apagada_deixa_so_prova_anonimizada(), test_conta_inativa_aviso_depois_exclusao(), test_downgrade_e_upgrade_de_novo() (+10 more)
+
+### Community 228 - "use-grafo-trilha.ts"
+Cohesion: 0.15
+Nodes (13): GraphLayout, NodeId, NodeItem, NodeState, Options, ITrilhaBaseProps, ITrilhaContextData, ITrilhaProps (+5 more)
+
+### Community 229 - "test_m2_gate.py"
+Cohesion: 0.21
+Nodes (15): AttentionStageResult, DecisionStageResult, _dedupe_preserve_order(), M2GatedDecisionEngine, PerformanceStageResult, get_m2_inference(), _attention(), _performance() (+7 more)
+
+### Community 230 - "m2_inference.py"
+Cohesion: 0.15
+Nodes (4): M2Bundle, M2Inference, _to_diff_dict(), test_m2_missing_artifact_falls_back_to_rule()
+
+### Community 231 - "test_missao_diaria_texto.py"
+Cohesion: 0.24
+Nodes (13): TextoMissao, TextoMissoesDiarias, _llm(), _rodar(), _Sessao, test_banco_que_recusa_nao_vira_sucesso(), test_llm_fora_do_ar_deixa_o_molde_e_nao_escreve(), test_llm_pendurada_cai_no_molde_pelo_timeout() (+5 more)
+
+### Community 232 - "test_e2e_guilda_mantem_quem_saiu_da_turma.py"
+Cohesion: 0.22
+Nodes (15): _afrouxa(), _apurar(), _banco(), _Coletor, _desmatricula(), _dsn_para(), _guildas(), _individual() (+7 more)
+
+### Community 233 - "test_kpis_engajamento.py"
+Cohesion: 0.16
+Nodes (17): _config(), _modulo(), _sql(), test_aluno_sem_perfil_cai_no_mastermind_sem_sumir(), test_conclusao_e_cobertura_sao_estado_atual(), test_material_compartilhado_e_individual_cobrem_o_alvo(), test_material_failed_quality_nunca_conta_como_disponivel(), test_migration_e_a_cabeca_unica() (+9 more)
+
+### Community 234 - "test_migration_analise_de_lote_pela_fila.py"
 Cohesion: 0.18
-Nodes (27): Accessor(), add(), begin(), contains(), count(), data(), equal(), erase() (+19 more)
+Nodes (17): _downgrade_sql(), _funcao(), _sql_bruto(), test_assinaturas_antigas_saem_antes_das_novas(), test_downgrade_tira_tudo_e_nao_desfaz_o_rotulo(), test_falha_espera_2_elevado_a_n_e_desiste_na_quinta(), test_falha_trava_o_lote_antes_do_item(), test_funcoes_definer_com_search_path_vazio_e_sem_execute_para_cliente() (+9 more)
 
 ### Community 235 - "integracao-apitraiup.md"
-Cohesion: 0.11
-Nodes (27): Toast, ToastAction, ToastActionElement, ToastClose, ToastDescription, ToastProps, ToastTitle, toastVariants (+19 more)
+Cohesion: 0.13
+Nodes (25): Toast, ToastAction, ToastActionElement, ToastClose, ToastDescription, ToastProps, ToastTitle, toastVariants (+17 more)
 
 ### Community 236 - "IContentBlock.ts"
-Cohesion: 0.18
-Nodes (26): useMonitorDeSessao(), chamar(), desativarDispositivo(), encerrarSessao(), enviarHeartbeat(), HeartbeatResultado, listarRotinas(), LoginResultado (+18 more)
+Cohesion: 0.14
+Nodes (30): HEARTBEAT_MS, useMonitorDeSessao(), chamar(), desativarDispositivo(), encerrarSessao(), enviarHeartbeat(), HeartbeatResultado, listarRotinas() (+22 more)
 
-### Community 237 - "3.1.1 Diagrama por camada"
-Cohesion: 0.15
-Nodes (25): BOOST_CATCH(), contains(), count(), emplace_hint_impl(), emplace_impl(), equal_range(), extract_(), find() (+17 more)
+### Community 237 - "test_migration_guilda_chat_e_config.py"
+Cohesion: 0.12
+Nodes (11): _cabecalho(), _md5(), _prosrc(), test_as_quatro_sao_o_texto_de_producao_byte_a_byte(), test_cada_uma_e_definer_com_search_path_fixo(), test_listar_continua_sql_e_stable(), test_listar_so_entrega_mensagem_de_quem_e_membro(), test_o_downgrade_nao_remove_nada() (+3 more)
 
-### Community 238 - "Métricas — Correções de Cálculo + Novas Seções de UI"
-Cohesion: 0.13
-Nodes (19): BagEditorModal(), save(), actionsForBagItem(), bagTypeFilterOptions(), isBagClassReady(), normalizeBagContentId(), normalizeBagItem(), nullableNumber() (+11 more)
+### Community 238 - "Tabelas Supabase (personalização)"
+Cohesion: 0.16
+Nodes (19): Tabelas Supabase (personalização), Fora deste plano, Ordem e por quê, Por que este plano é só metade, Regeração granular — Plano A: os defeitos, Riscos, Task 1: `revisao` por material, incrementado na regeração, Task 2: Mobile versiona a URL de cache (+11 more)
 
 ### Community 239 - "TelemetriaRepository"
-Cohesion: 0.12
-Nodes (25): ApplyDecoderOptions(), BlendChannelNonPremult(), BlendPixelNonPremult(), BlendPixelPremult(), BlendPixelRowNonPremult(), BlendPixelRowPremult(), ChannelwiseMultiply(), CopyCanvas() (+17 more)
+Cohesion: 0.22
+Nodes (4): _deixa_para_a_fila(), registrar_lote_telemetria(), TelemetriaRepository, _rodar()
 
-### Community 240 - "tailwindcss-animate"
-Cohesion: 0.11
-Nodes (21): DC4(), DCMode16(), DCMode8(), Disto16x16_MIPSdspR2(), Disto4x4_MIPSdspR2(), HD4(), HE4(), HU4() (+13 more)
+### Community 240 - "test_e2e_kpis_por_topico.py"
+Cohesion: 0.28
+Nodes (15): _banco(), _estudo(), _progresso(), _rpc(), _semear(), test_abandono_por_etapa_e_estagnado_por_topico(), test_downgrade_volta_a_versao_1(), test_o_resto_do_contrato_nao_mudou() (+7 more)
 
-### Community 241 - "sonner"
-Cohesion: 0.11
-Nodes (23): Average2_m128i(), Average2_SSE2(), Average2_uint32_16_SSE2(), Average2_uint32_SSE2(), Average3_SSE2(), Average4_SSE2(), ClampedAddSubtractFull_SSE2(), ClampedAddSubtractHalf_SSE2() (+15 more)
-
-### Community 242 - "Geração granular e retomável de conteúdo personalizado (por bloco/parte/perfil)"
-Cohesion: 0.31
-Nodes (23): backgroundColor(), color(), drawerBackgroundColor(), drawerLockMode(), drawerWidth(), fromRawValue(), initialHidden(), ModalHostViewAnimationType() (+15 more)
-
-### Community 243 - "Arquitetura"
+### Community 241 - "test_migration_dificuldade_da_questao.py"
 Cohesion: 0.15
-Nodes (23): attach(), check_belongs_in_some_index(), check_decrementable_iterator(), check_dereferenceable_iterator(), check_different_container(), check_equal_allocators(), check_in_bounds(), check_incrementable_iterator() (+15 more)
+Nodes (13): _downgrade_sql(), _sem_comentarios(), test_a_chave_nasce_privada(), test_a_criacao_preserva_as_fases_7_e_8(), test_downgrade_tira_tudo(), test_downgrade_troca_a_selecao_antes_de_tirar_a_coluna(), test_e_preferencia_nao_filtro(), test_nao_marcada_e_null_nao_media() (+5 more)
 
-### Community 244 - "docs/microservice/README.md"
-Cohesion: 0.16
-Nodes (26): allocSize(), beforeBuild(), buildArgForItem(), computeKeyHash(), destroyItem(), destroyItemOnClear(), indexToIter(), isAvalanchingHasher() (+18 more)
+### Community 242 - "test_migration_guilda_formacao.py"
+Cohesion: 0.20
+Nodes (17): _corpo(), _corpo_janela(), _downgrade_sql(), _md5(), _prosrc(), _sem_comentarios(), test_configurar_turma_muda_de_proposito_e_o_downgrade_volta_a_producao(), test_guilda_atualizar_entra_no_alembic_sem_mudanca() (+9 more)
 
-### Community 245 - "node-html-parser"
-Cohesion: 0.07
-Nodes (28): SDImageWebPCoder, -animatedImageData, -animatedImageDurationAtIndex, -animatedImageFrameAtIndex, -animatedImageFrameCount, -animatedImageLoopCount, -canDecodeFromData, -canEncodeToFormat (+20 more)
+### Community 243 - "test_migration_invariantes_das_metricas.py"
+Cohesion: 0.19
+Nodes (15): _bloco(), _corpo(), _downgrade_sql(), test_as_vinte_invariantes_tem_o_contrato(), test_cron_guardado_as_0330_de_sao_paulo(), test_downgrade_desagenda_antes_de_dropar(), test_executor_apaga_mais_de_30_dias_e_devolve_o_resumo(), test_executor_roda_cada_uma_numa_subtransacao() (+7 more)
 
-### Community 246 - "pg"
-Cohesion: 0.07
-Nodes (27): SDAnimatedImageRep, SDImageCoderHelper, -animatedImageWithFrames, -CGImageContainsAlpha, -CGImageCreateDecoded, -CGImageCreateDecodedorientation, -CGImageCreateScaledsize, -CGImageIsHardwareSupported (+19 more)
+### Community 244 - "test_migration_missao_de_guilda.py"
+Cohesion: 0.18
+Nodes (14): _downgrade_sql(), _funcao(), _gatilho(), _sem_comentarios(), test_as_mesmas_chaves_de_alvo_do_avaliador_individual(), test_avaliar_e_idempotente_e_paga_uma_vez(), test_downgrade_volta_o_gatilho_e_a_guarda_e_tira_as_funcoes(), test_funcoes_novas_definer_com_search_path_e_revogadas() (+6 more)
 
-### Community 247 - ".to_dict"
-Cohesion: 0.07
-Nodes (27): UIButton, -sd_backgroundImageOperationKeyForState, -sd_backgroundImageURLForState, -sd_cancelBackgroundImageLoadForState, -sd_cancelImageLoadForState, -sd_currentBackgroundImageURL, -sd_currentImageURL, -sd_imageOperationKeyForState (+19 more)
+### Community 245 - "test_migration_rank_periodo_manual.py"
+Cohesion: 0.21
+Nodes (17): _cte(), _downgrade_sql(), _funcao(), _sem_comentarios(), test_a_view_filtra_por_data_so_nos_criterios_de_soma(), test_downgrade_desfaz_na_ordem_e_restaura_as_views(), test_downgrade_tira_o_gatilho_que_bloqueia_a_exclusao(), test_duplo_clique_devolve_o_periodo_ja_aberto() (+9 more)
+
+### Community 246 - "test_migration_tempo_ativo_fonte_unica.py"
+Cohesion: 0.19
+Nodes (14): _downgrade_sql(), _funcao(), _sql_bruto(), test_downgrade_restaura_rpcs_e_gatilho_de_producao(), test_funcoes_com_search_path_vazio_e_nomes_qualificados(), test_gatilho_de_progresso_por_linha_ganha_search_path(), test_gatilho_ignora_aluno_e_topico_que_ja_nao_existem(), test_gatilho_recalcula_so_a_matricula_e_so_o_que_mudou() (+6 more)
+
+### Community 247 - "Estrutura proposta (espelho do doc atual)"
+Cohesion: 0.10
+Nodes (21): 10 Conclusão, 1 Introdução, 2 Fundamentação teórica, 3 Trabalhos relacionados, 4 Metodologia, 5 Desenvolvimento do TrailUp, 6 Evidence Base e RAG, 7 Avaliação (+13 more)
 
 ### Community 248 - "pdf.py"
-Cohesion: 0.13
-Nodes (11): PersonalizacaoBlocosRepository, Any, AsyncSession, Cache de conteudo por bloco, escopado a um job (ciclo de geracao).      Nao guar, MappingResult, MappingRows, asyncio, RecordingSession (+3 more)
+Cohesion: 0.14
+Nodes (7): PersonalizacaoBlocosRepository, MappingResult, MappingRows, RecordingSession, test_listar_por_job_retorna_todos_os_blocos(), test_upsert_capitulo_grava_markdown_audio_slides(), test_upsert_enriquecimento_grava_enriched_payload()
 
 ### Community 249 - "@react-native-async-storage/async-storage"
 Cohesion: 0.11
-Nodes (13): _Client, _extract_blocks_payload(), _FailingGeminiClient, _FailingGeminiStructuredClient, _FailingOpenAIClient, _FailingOpenAIResponses, _GeminiClient, _GeminiStructuredClient (+5 more)
+Nodes (12): _Client, _extract_blocks_payload(), factory(), factory(), _FailingGeminiClient, _FailingGeminiStructuredClient, _FailingOpenAIClient, _FailingOpenAIResponses (+4 more)
 
 ### Community 250 - "session.py"
-Cohesion: 0.12
-Nodes (18): styles, ParallaxScrollView(), Props, styles, styles, ThemedText(), ThemedTextProps, ThemedView() (+10 more)
+Cohesion: 0.14
+Nodes (19): ModalScreen(), styles, ParallaxScrollView(), Props, styles, styles, ThemedText(), ThemedTextProps (+11 more)
 
-### Community 251 - "personalizar"
-Cohesion: 0.12
-Nodes (17): fetchClassContextIds(), handleAddStudentToClass(), handleDelete(), handleRemoveStudentFromClass(), hojeLocal(), PresencaDialog(), argumentosDaRpc(), descreverResultado() (+9 more)
+### Community 251 - "presentationOrder.ts"
+Cohesion: 0.17
+Nodes (19): PersonalizedHeroFormat, PersonalizedUiConfig, ordenarConteudoPorPerfil(), blockPriorityScore(), getConteudoDominantType(), heroMatchesType(), inferModoApresentacao(), isDocumentType() (+11 more)
 
-### Community 252 - "api/arquitetura-microservico-e-app.md"
-Cohesion: 0.1
-Nodes (25): _falha_streak_excedido(), Verifica se essa MESMA geracao (mesmo generation_key) ja falhou     max_streak v, Verifica se essa MESMA geracao (mesmo generation_key) ja falhou     max_streak v, _fonte(), Job `partial` nao pode bloquear geracao nova.  Defeito real, em producao (30/08/, Reabrir automaticamente faria geracao quebrada girar em loop.      O disparo aut, So `failed`/`pending` voltam para a fila.      Reabrir `completed`/`skipped` tra, Sem zerar, o alvo que ja bateu o teto volta a `failed` na primeira     passada d (+17 more)
+### Community 252 - "20261021_19_arena_volta.py"
+Cohesion: 0.23
+Nodes (15): arena_desafio_anterior(), arena_desafio_com_competitivo(), convite_com_recusa_e_limite(), criar_com_limite(), _da_producao(), downgrade(), listar_com_elo(), _load() (+7 more)
 
-### Community 253 - "_build_profile_editorial_context"
-Cohesion: 0.07
-Nodes (26): ZXPDF417ScanningDecoder, -adjustBoundingBoxrowIndicatorColumnerror, -adjustCodewordCountbarcodeMatrix, -adjustCodewordStartColumnminColumnmaxColumnleftToRightcodewordStartColumnimageRow, -barcodeMetadatarightRowIndicatorColumn, -bitCountForCodeword, -checkCodewordSkewminCodewordWidthmaxCodewordWidth, -codewordBucketNumber (+18 more)
+### Community 253 - "test_coortes_engajamento.py"
+Cohesion: 0.17
+Nodes (15): _config(), _modulo(), _sql(), test_agregado_geral_reusa_o_contrato_da_issue_12(), test_amostra_pequena_e_sinalizada_sem_fabricar_privacidade(), test_conclusao_continua_identificada_como_estado_atual(), test_coortes_declaram_os_sete_perfis(), test_dominantes_sao_disjuntos_e_aluno_sem_vetor_nao_some() (+7 more)
 
-### Community 254 - "builder.py"
-Cohesion: 0.09
-Nodes (9): mc_dsp_init_arm(), bitfn(), prep_8tap_c(), prep_bilin_c(), prep_c(), put_8tap_c(), put_bilin_c(), put_c() (+1 more)
+### Community 254 - "test_e2e_pontos_do_evento_no_rank.py"
+Cohesion: 0.19
+Nodes (13): _afrouxa(), _apurar(), _banco(), _Coletor, _creditos(), _dsn_para(), _seed(), _sql_de() (+5 more)
 
-### Community 255 - "react-native-screens"
-Cohesion: 0.26
-Nodes (23): backgroundColor(), color(), drawerBackgroundColor(), drawerLockMode(), drawerWidth(), fromRawValue(), initialHidden(), ModalHostViewAnimationType() (+15 more)
+### Community 255 - "test_jobs_worker_filtra_turma.py"
+Cohesion: 0.13
+Nodes (9): _reivindicar(), _Resultado, _SessaoFalsa, test_com_filtro_so_reivindica_as_turmas_pedidas(), test_filtro_vale_para_todos_os_status_reivindicaveis(), test_lista_vazia_equivale_a_sem_filtro(), test_sem_filtro_manda_null_e_a_consulta_aceita_todas(), test_settings_le_a_lista_do_ambiente() (+1 more)
 
-### Community 256 - "_profile_render_targets_ready_now"
-Cohesion: 0.11
-Nodes (14): SkApplySign(), SkCLZ(), SkCLZ_portable(), SkCopySign32(), SkCTZ(), SkCTZ_portable(), SkNextLog2(), SkNextLog2_portable() (+6 more)
+### Community 256 - "test_migration_conquistas_sem_cascade.py"
+Cohesion: 0.22
+Nodes (13): _banco(), _Coletor, _como(), _evento(), _ganhou(), _instalacao(), _ler_log_como(), _seed() (+5 more)
 
-### Community 257 - "react-native-webview"
-Cohesion: 0.1
-Nodes (20): AlterarSenhaCard(), RanksSection(), ActivitiesManager(), ClassesManager(), buildContentDeltaPayload(), ContentsManager(), emailValido(), falha() (+12 more)
+### Community 257 - "RanksSection.tsx"
+Cohesion: 0.06
+Nodes (75): ConsoleShell(), navigation, useConsoleThemeOnDocument(), HISTORICO_ENVIADO, historicoParaEnvio(), Mensagem, MENSAGEM_INICIAL, mensagemDeErro() (+67 more)
 
 ### Community 258 - "react-native-worklets"
-Cohesion: 0.07
-Nodes (27): frontend/modelagem-dados-banco.md, 10. Functions e triggers custom, 11. Ciclo de vida dos dados, 12. Checklist de evolução segura da modelagem, 1. Objetivo, 2. Fontes consideradas, 3. Modelagem de dados (conceitual), 4.1 Identidade e Acesso (+19 more)
-
-### Community 259 - "pptx.py"
-Cohesion: 0.16
-Nodes (21): hardware_timestamp(), hardware_timestamp_measurement_stop(), now(), callOpenAIStructured(), ContentGenerationQualityError, errorDetails(), generateAfterPrimaryGeminiFailure(), generateAndValidateContent() (+13 more)
-
-### Community 260 - "20260405_01_langgraph_checkpoints.py"
 Cohesion: 0.08
-Nodes (25): ZXBitMatrix, -bottomRightOnBit, -clear, -copyWithZone, -dealloc, -description, -descriptionWithSetStringunsetString, -descriptionWithSetStringunsetStringlineSeparator (+17 more)
+Nodes (25): 10. Functions e triggers custom, 11. Ciclo de vida dos dados, 12. Checklist de evolução segura da modelagem, 1. Objetivo, 2. Fontes consideradas, 3. Modelagem de dados (conceitual), 4.2 Estrutura Pedagógica, 4.3 Progresso de Aprendizagem (+17 more)
 
-### Community 261 - "tinycolor2"
-Cohesion: 0.1
-Nodes (14): itx_dsp_init_arm(), dav1d_inv_dct16_1d_c(), dav1d_inv_dct32_1d_c(), dav1d_inv_dct4_1d_c(), dav1d_inv_dct64_1d_c(), dav1d_inv_dct8_1d_c(), dav1d_inv_wht4_1d_c(), inv_dct16_1d_internal_c() (+6 more)
-
-### Community 262 - "hello-wave.tsx"
-Cohesion: 0.11
-Nodes (16): FilterLoop24(), FilterLoop26(), HFilter16(), HFilter16i(), HFilter8(), HFilter8i(), SimpleHFilter16(), SimpleHFilter16i() (+8 more)
-
-### Community 263 - "_usePanZoom.ts"
-Cohesion: 0.08
-Nodes (25): SDCallbackQueue, SDWebImagePrefetcher, -addRunningToken, -callCompletionBlockForToken, -callProgressBlockForTokenimageURL, -cancelPrefetching, -countOfRunningTokens, -delegateQueue (+17 more)
-
-### Community 264 - "icon-symbol.ios.tsx"
+### Community 259 - "test_migration_eventos_aluno_trava_do_cliente.py"
 Cohesion: 0.18
-Nodes (26): v1/telemetria.py, _analysis_from_result(), _is_activity_signal(), _normalize_eventos_legados(), _prefixed_reference(), Any, AsyncSession, post (+18 more)
+Nodes (13): _corpo_da_funcao(), _downgrade(), _sql(), test_cliente_e_decidido_por_current_user_e_nao_pelas_claims(), test_downgrade_nao_revoga_o_usage_que_ja_existia(), test_downgrade_remove_gatilho_e_funcao(), test_funcao_e_invoker_com_search_path_vazio(), test_gatilho_antes_de_insert_e_update_e_ordena_antes_do_de_valor() (+5 more)
+
+### Community 260 - "test_migration_missao_diaria_texto.py"
+Cohesion: 0.17
+Nodes (15): _downgrade_sql(), _guarda_nova(), _modulo(), test_colunas_texto_nao_nascem_preenchidas_nem_sao_editaveis(), test_config_nasce_privada(), test_cron_proprio_depois_da_geracao(), test_downgrade_devolve_a_guarda_da_5b(), test_enfileirar_e_idempotente_e_tem_teto_do_dia() (+7 more)
+
+### Community 261 - "test_retencao_ia_decision_logs.py"
+Cohesion: 0.17
+Nodes (17): _sql(), test_downgrade_devolve_funcao_e_indice_de_antes(), test_funcao_mantem_os_tres_prefixos_de_antes_e_acrescenta_um(), test_indice_unico_inclui_o_tipo_novo_e_continua_parcial(), test_nao_mexe_em_dados_de_eventos(), test_prefixo_novo_e_especifico_para_nao_capturar_tipo_de_estudo(), _upgrade_sql(), _render() (+9 more)
+
+### Community 262 - "Issue #1 — cadastro e descoberta do perfil BrainHex"
+Cohesion: 0.10
+Nodes (20): 10. Texto sugerido para atualizar a issue, 1. Decisão recomendada, 2. Como a análise foi feita, 3. O que já existe no repositório, 4.1 Pesquisa própria do projeto, 4.2 Correções necessárias nas referências e nas alegações existentes, 4. O que os estudos permitem concluir, 6. Como interpretar os números do questionário (+12 more)
+
+### Community 263 - "Análise — as 5 telas novas do console (Missões, Notas, Eventos, Rank de batalhas, Conquistas)"
+Cohesion: 0.10
+Nodes (19): 1.1 Navegação (as correções vencem os prompts originais), 1.2 O que ficou fora, por decisão registrada, 1.3 As cinco telas, 1. O que o protótipo realmente pede, 2.1 Console, 2.2 Banco — por tela, 2.3 Mobile, 2. O que existe hoje (código e banco) (+11 more)
+
+### Community 264 - "schemas/telemetria.py"
+Cohesion: 0.08
+Nodes (36): _analysis_from_result(), _sanitize_lote_payload(), _summarize_telemetria_payload(), _cliente_aproveitavel(), _entradas_aproveitaveis(), TelemetriaAnalysisResponse, TelemetriaAppEventPayload, TelemetriaCameraFramePayload (+28 more)
 
 ### Community 265 - "use-color-scheme.web.ts"
+Cohesion: 0.07
+Nodes (26): 10. Indicadores de operação e aprendizagem, 11. Antipadrões a evitar, 12. Evolução sugerida, 1. Objetivo do documento, 2.1 Entrada de contexto, 2.2 Decisão de execução, 2.3 Geração e persistência, 2. Personalização - visão funcional (+18 more)
+
+### Community 266 - "Plano do que falta — ranqueada, guildas, missões, eventos"
+Cohesion: 0.11
+Nodes (20): Correção: o índice da diária precisa de `slot`, Furo: as 12 métricas são acumuladas, não de delta — **resolvido na 5b**, Missão de guilda precisa de aprovação, Missão diária: lote por coorte, Quando a LLM cai, Quantas, e a que hora, Como este plano foi levantado, Decidido (+12 more)
+
+### Community 267 - "eixos.ts"
+Cohesion: 0.16
+Nodes (16): Consequencia, CONSEQUENCIAS, consequenciaValida(), Dificuldade, DIFICULDADES, dificuldadeValida(), Formato, FORMATOS (+8 more)
+
+### Community 268 - "apiBaseUrl.core.ts"
+Cohesion: 0.18
+Nodes (17): avisarApiNaoConfigurada(), avisarEsquemaRecusado(), addCandidate(), defaultDevBaseUrl(), EntradaCandidatos, esquemaPermitido(), HOSTS_SEM_REDE, mapLocalhostForAndroid() (+9 more)
+
+### Community 269 - "progressoOutbox.ts"
+Cohesion: 0.22
+Nodes (18): contarProgressoItensPendentes(), drenarProgressoOutbox(), enfileirarProgressoItem(), escoarItens(), gravar(), identidade(), ItemEnfileirado, ler() (+10 more)
+
+### Community 270 - "telemetriaOutbox.ts"
+Cohesion: 0.22
+Nodes (17): contarLotesPendentes(), drenarLotesTelemetria(), enfileirarLoteTelemetria(), escoarLotes(), gravar(), identity(), ler(), LoteEnfileirado (+9 more)
+
+### Community 271 - "5. Painéis (um por item). Cabeçalho de painel: H2 Cinzel 700 22 + descrição 14 `textMuted`, `margin-bottom: 22px`"
+Cohesion: 0.10
+Nodes (19): 1. Fonte da verdade, 2. Estrutura real do hub (4 grupos, nesta ordem) + Sair, 3. Grade (main de 1096px), 4. Menu (card `padding: 16px`, sticky `top: 108px`), 5.10 Resetar senha (`#senha`, `resetar-senha.tsx`), grupo Segurança, 5.11 Sair, 5.1 Informações (`#informacoes`, `info.tsx`), 5.2 Estilo das métricas (`#metricas`, `metricas-estilo.tsx`) (+11 more)
+
+### Community 272 - "test_agente_notificacao_personalizada.py"
+Cohesion: 0.21
+Nodes (10): _gerada(), _rag(), test_com_rag_usa_a_evidencia_e_o_perfil_sem_dado_pessoal(), test_guarda_de_horario(), test_modelo_recebe_o_topico_e_o_proximo_conteudo(), test_rag_falhando_cai_no_llm_sem_rag(), test_regra_cita_o_topico_quando_ha(), test_sem_foco_o_modelo_recebe_foco_vazio() (+2 more)
+
+### Community 273 - "test_sugestao_material.py"
 Cohesion: 0.08
-Nodes (26): api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado.md, 10. Indicadores de operação e aprendizagem, 11. Antipadrões a evitar, 12. Evolução sugerida, 1. Objetivo do documento, 2.1 Entrada de contexto, 2.2 Decisão de execução, 2.3 Geração e persistência (+18 more)
-
-### Community 266 - "IModal.ts"
-Cohesion: 0.13
-Nodes (9): _hydrate(), PersonalizacaoBlocosRepository, Cache de conteudo por bloco, escopado a um job (ciclo de geracao).      Nao guar, MappingResult, MappingRows, RecordingSession, test_listar_por_job_retorna_todos_os_blocos(), test_upsert_capitulo_grava_markdown_audio_slides() (+1 more)
-
-### Community 267 - "IPop.ts"
-Cohesion: 0.2
-Nodes (24): Devolve a ordem sugerida e o formato inicial, com os motivos de cada um.      Só, sugerir_ordem_material(), _ordem(), _perfil(), Motor determinístico de sugestão de material por aluno., test_aceita_perfil_como_string_simples(), test_afinidade_invalida_ou_fora_da_faixa_nao_distorce(), test_aventureiro_comeca_por_apresentacao() (+16 more)
-
-### Community 268 - "isUrl.ts"
-Cohesion: 0.09
-Nodes (5): fix_int_mv_precision(), fix_mv_precision(), get_gmv_2d(), get_jnt_comp_ctx(), get_poc_diff()
-
-### Community 269 - "webpack.config.js"
-Cohesion: 0.17
-Nodes (21): clip(), clip_8b(), clip_bit_depth(), ConvertWRGBToYUV(), DoSharpArgbToYuv(), Filter2(), SharpYuvInitGammaTables(), GetPrecisionShift() (+13 more)
-
-### Community 270 - "20260405_02_materiais_gerados.py"
-Cohesion: 0.17
-Nodes (23): await_ready(), await_resume(), await_suspend(), bool(), error(), Expected(), expected_detail(), expected_detail_ExpectedHelper() (+15 more)
-
-### Community 272 - "20260406_02_conteudo_personalizado_ai_patch.py"
-Cohesion: 0.08
-Nodes (24): SDImageCachesManager, -addCache, -caches, -clearWithCacheTypecompletion, -concurrentClearWithCacheTypecompletionenumeratoroperation, -concurrentContainsImageForKeycacheTypecompletionenumeratoroperation, -concurrentQueryImageForKeyoptionscontextcacheTypecompletionenumeratoroperation, -concurrentRemoveImageForKeycacheTypecompletionenumeratoroperation (+16 more)
-
-### Community 273 - "frontend/eslint.config.js"
-Cohesion: 0.2
-Nodes (24): Devolve a ordem sugerida e o formato inicial, com os motivos de cada um.      Só, sugerir_ordem_material(), _ordem(), _perfil(), Motor determinístico de sugestão de material por aluno., test_aceita_perfil_como_string_simples(), test_afinidade_invalida_ou_fora_da_faixa_nao_distorce(), test_aventureiro_comeca_por_apresentacao() (+16 more)
+Nodes (69): normalizar_modo(), revisar_ordem_material(), sugerir_ordem_material(), _demanda(), _ordem(), _ordem_base(), _ordem_estrategista(), _perfil() (+61 more)
 
 ### Community 274 - "postcss.config.js"
-Cohesion: 0.08
-Nodes (24): compilerOptions, allowImportingTsExtensions, baseUrl, isolatedModules, jsx, lib, module, moduleDetection (+16 more)
+Cohesion: 0.10
+Nodes (20): compilerOptions, allowImportingTsExtensions, baseUrl, isolatedModules, jsx, lib, module, moduleDetection (+12 more)
 
-### Community 275 - "aspect-ratio.tsx"
-Cohesion: 0.1
-Nodes (15): PdfExportModal(), PresenterModal(), DeckInteractionProvider(), getStorageKey(), loadInitialState(), useDeckInteraction(), html2canvas, jspdf (+7 more)
-
-### Community 276 - "frontend/src/components/ui/collapsible.tsx"
-Cohesion: 0.14
-Nodes (22): avifGetExifOrientationOffset(), avifGetExifTiffHeaderOffset(), avifImageExtractExifOrientationToIrotImir(), avifImageSetMetadataExif(), avifROStreamReadU16Endianness(), avifROStreamReadU32Endianness(), avifROStreamSetOffset(), avifROStreamStart() (+14 more)
-
-### Community 277 - "vite-env.d.ts"
-Cohesion: 0.13
-Nodes (18): refmvs_dsp_init_arm(), check_save_tmvs(), check_splat_mv(), checkasm_check_refmvs(), gen_mv(), add_compound_extended_candidate(), add_single_extended_candidate(), add_spatial_candidate() (+10 more)
-
-### Community 278 - "tailwind.config.ts"
-Cohesion: 0.18
-Nodes (23): abs_mips32(), do_filter2(), do_filter4(), do_filter6(), FilterLoop24(), FilterLoop26(), hev(), HFilter16() (+15 more)
-
-### Community 279 - "frontend/vite.config.ts"
-Cohesion: 0.2
-Nodes (22): append(), assign(), begin(), c_str(), cbegin(), cend(), cerase(), compare() (+14 more)
-
-### Community 280 - "vitest.config.ts"
-Cohesion: 0.09
-Nodes (3): ComputePtBounds(), points(), pointsEnd()
-
-### Community 281 - "microservice/vite.config.ts"
-Cohesion: 0.16
-Nodes (22): ireplace_all(), ireplace_all_copy(), ireplace_first(), ireplace_first_copy(), ireplace_last(), ireplace_last_copy(), ireplace_nth(), ireplace_nth_copy() (+14 more)
-
-### Community 282 - "patch_trilha.py"
-Cohesion: 0.16
-Nodes (22): erase_all(), erase_all_copy(), erase_first(), erase_first_copy(), erase_head(), erase_head_copy(), erase_last(), erase_last_copy() (+14 more)
-
-### Community 283 - "trailup-api"
+### Community 276 - "test_e2e_consentimento_telemetria.py"
 Cohesion: 0.19
-Nodes (18): adl_begin(), adl_end(), assign(), copy_range(), enable_if<
-            mpl::not_<boost::is_base_and_derived<iterator_range_detail::iterator_range_tag, ForwardRange> >,
-            bool
-        >::type
-        operator!=(), enable_if<
-            mpl::not_<is_base_and_derived<iterator_range_detail::iterator_range_tag, ForwardRange> >,
-            bool
-        >::type
-        operator==(), equal(), greater_or_equal_than() (+10 more)
+Nodes (10): _alunos_que_leio(), _banco(), _como_cliente(), _estado(), test_a_tabela_esta_sob_rls_com_so_duas_policies_do_proprio_aluno(), test_aluno_so_le_o_proprio_consentimento(), test_anon_nao_le_consentimento_telemetria(), test_consentimento_e_imutavel_para_o_cliente() (+2 more)
 
-### Community 284 - "db-migrate.ps1"
-Cohesion: 0.08
-Nodes (23): NSButton, -sd_cancelCurrentAlternateImageLoad, -sd_cancelCurrentImageLoad, -sd_currentAlternateImageURL, -sd_currentImageURL, -sd_setAlternateImageWithURL, -sd_setAlternateImageWithURLcompleted, -sd_setAlternateImageWithURLplaceholderImage (+15 more)
+### Community 277 - "test_e2e_fundo_da_turma.py"
+Cohesion: 0.35
+Nodes (15): _banco(), _como(), _criar(), _rpc(), _saldo(), _semear(), test_as_duas_tabelas_tem_politica_de_retencao(), test_cancelar_devolve_tudo_e_entregar_exige_meta() (+7 more)
 
-### Community 285 - "20260406_03_telemetria_tables.py"
+### Community 278 - "test_e2e_recomendacao_conteudo_x_aluno.py"
+Cohesion: 0.27
+Nodes (15): _banco(), _como_aluno(), _limpar(), _pendentes(), _semear(), sessoes(), test_aluno_le_so_a_propria_sugestao_e_o_professor_a_da_turma(), test_analise_nova_do_conteudo_marca_as_sugestoes_do_topico() (+7 more)
+
+### Community 279 - "test_migration_avaliador_de_metrica.py"
 Cohesion: 0.18
-Nodes (21): ingestion/__init__.py, Módulo de ingestão de arquivos do TrailUp.  Pipeline:   arquivo (bytes + mime) →, Chunk, NormalizedDocument, _basename_from_locator(), _infer_bucket(), ingest_bytes(), ingest_source() (+13 more)
+Nodes (13): _downgrade_sql(), _sem_comentarios(), test_atividade_especifica_entra_no_avaliador_mas_nao_em_conquista(), test_downgrade_devolve_o_gatilho_monolitico(), test_duas_funcoes_e_nao_uma(), test_guardas_do_gatilho_intactas(), test_nao_liga_missao_ainda(), test_nenhuma_das_novas_e_exposta_ao_cliente() (+5 more)
 
-### Community 286 - "20260408_01_fontes_personalizacao.py"
-Cohesion: 0.12
-Nodes (4): ConteudoClasseRepository, Any, AsyncSession, Retorna todos os conteúdos dos tópicos, preservando a ordem docente.
+### Community 280 - "test_migration_eixos_de_modo.py"
+Cohesion: 0.16
+Nodes (11): _constraints_alteradas(), _downgrade_sql(), test_config_nasce_privada(), test_default_de_consequencia_preserva_a_arena_que_ja_pontua(), test_dificuldade_min_fica_para_depois(), test_dificuldade_nao_virou_valor_de_modo(), test_downgrade_desfaz_tudo(), test_formato_ganha_turma_sem_tocar_as_outras_constraints() (+3 more)
+
+### Community 281 - "test_migration_missao_no_gatilho.py"
+Cohesion: 0.20
+Nodes (13): _downgrade_sql(), _gatilho(), _sem_comentarios(), test_conquista_segue_intacta(), test_downgrade_tira_o_laco_e_mantem_a_conquista(), test_filtros_do_laco_de_missao(), test_guarda_de_recursao_do_premio(), test_nao_cria_nem_altera_tabela() (+5 more)
+
+### Community 282 - "test_migrations_sessoes_estudo.py"
+Cohesion: 0.19
+Nodes (16): _carregar(), _funcao_registrar_sessao(), _sql(), test_cadeia_de_revisao(), test_congela_a_contribuicao_da_telemetria_antes_de_desligar_o_trigger(), test_congelamento_cobre_os_tres_escopos(), test_conta_soma_a_tabela_nova_nao_a_telemetria(), test_downgrade_e_manual() (+8 more)
+
+### Community 283 - "test_retencao_politica.py"
+Cohesion: 0.19
+Nodes (15): _colunas(), _isentas(), _migracoes(), _modulo(), _tabelas_com_pessoa(), _tabelas_registradas_por_insert(), test_detector_pega_tabela_nova_sem_politica(), test_encadeamento() (+7 more)
+
+### Community 284 - "devDependencies"
+Cohesion: 0.11
+Nodes (19): devDependencies, autoprefixer@^10.4.21, esbuild@^0.25.0, tailwindcss@^4.1.14, tsx@^4.21.0, @types/canvas-confetti@^1.9.0, @types/d3@^7.4.3, @types/express@^4.17.21 (+11 more)
+
+### Community 285 - "io"
+Cohesion: 0.04
+Nodes (51): _clean_text(), _detect_language(), _is_noise(), normalize(), extract(), _empty(), extract(), _empty() (+43 more)
+
+### Community 286 - "ConteudoClasseRepository"
+Cohesion: 0.05
+Nodes (28): _build_storage_path(), conversar_com_mentor_personalizacao(), _ensure_topico_conteudo_belongs_to_classe(), _graph_config(), listar_personalizacoes_por_perfil(), _parse_links_json(), personalizar(), _sanitize_filename() (+20 more)
 
 ### Community 287 - "20260410_01_personalizacao_jobs.py"
-Cohesion: 0.22
-Nodes (17): repositories/classe_mapa_tema.py, ClasseMapaTemaRepository, Any, AsyncSession, services/classe_mapa_tema.py, _as_text(), _build_fallback_theme(), gerar_classe_mapa_tema() (+9 more)
+Cohesion: 0.24
+Nodes (11): ClasseMapaTemaRepository, _as_text(), _build_fallback_theme(), gerar_classe_mapa_tema(), _normalize_countries(), _normalize_country_entry(), _normalize_palette(), _normalize_theme() (+3 more)
 
-### Community 288 - "20260410_02_ia_decision_logs.py"
-Cohesion: 0.08
-Nodes (23): Convenção de imports, Critérios de aceitação, Custom hooks, Decisões de design, Estrutura de arquivos resultante, Helpers extraídos para `src/utils/personalizedFlow.ts`, Helpers extraídos para `src/utils/trilhaBlocks.ts`, Motivação (+15 more)
+### Community 288 - "ProfessorApprovalSection.tsx"
+Cohesion: 0.22
+Nodes (16): Console do professor — mapa das telas, Onde está o resto, Regras que costumam pegar quem chega agora, Rotas, dataCurta(), DIAS_URGENTE, diasAguardando(), dominioBase() (+8 more)
 
 ### Community 289 - "20260410_03_conteudo_personalizado_unique.py"
 Cohesion: 0.08
 Nodes (23): 🏆 Achiever, 🟡 Amarelo / Ouro, 🔵 Azul, ⚪ Branco, Conclusão, 👑 Conqueror, 🔥 Daredevil, Então qual cor combina com cada BrainHex? (+15 more)
 
-### Community 290 - "01-visao-geral-do-projeto.md"
-Cohesion: 0.16
-Nodes (20): _offline_alembic_config(), Duas cabecas fazem `upgrade head` falhar -- e o nome antigo deste teste     ("id, test_alembic_tem_uma_unica_cabeca_e_cadeia_continua(), test_conciliacao_de_push_liga_ticket_ao_token(), test_content_scoped_personalization_indexes_render_offline_sql(), test_dynamic_generation_fencing_has_no_hardcoded_pipeline_version(), test_generated_material_history_is_idempotent_per_generation(), test_generation_fencing_rpc_repair_renders_complete_idempotent_offline_sql() (+12 more)
+### Community 290 - "Social completo com amizades — Design"
+Cohesion: 0.11
+Nodes (18): Aceitar convite, Bloquear, Colegas elegíveis, Desbloquear, Desfazer amizade, Enviar convite, Experiência mobile, Fora de escopo (+10 more)
 
-### Community 291 - "20260410_04_questoes_nota_estabelecida.py"
-Cohesion: 0.14
-Nodes (16): AccumulateSSE_SSE2(), HorizontalAdd16b_SSE2(), HorizontalAdd32b_SSE2(), SSIMGet_SSE2(), SubtractAndSquare_SSE2(), VP8SSIMDspInitSSE2(), SSIMCalculation(), SSIMGet_C() (+8 more)
+### Community 291 - "relatorio-tecnico-play-store.md"
+Cohesion: 0.11
+Nodes (18): Classificação e Segurança, Configuração da Ficha da Loja, Criação da Conta no Google Play Console, Criação do Aplicativo, Envio da Versão para Acesso Antecipado, Funcionalidades, GERAÇÃO DO BUILD DO APLICATIVO, IDENTIFICAÇÃO DO PROJETO (+10 more)
 
-### Community 292 - "20260410_05_personalizacao_artefatos.py"
-Cohesion: 0.15
-Nodes (16): BOOST_SYMBOL_VISIBLE, clone_base(), copy_boost_exception(), enable_current_exception(), enable_error_info(), error_info, error_info_base, error_info_container() (+8 more)
-
-### Community 293 - "10-metricas-e-analise-de-resultados.md"
-Cohesion: 0.3
-Nodes (19): backfaceVisibility(), backgroundColor(), borderColors(), borderCurves(), borderRadii(), borderStyles(), cursor(), events() (+11 more)
-
-### Community 295 - "20260411_02_production_schema_baseline.py"
-Cohesion: 0.15
-Nodes (17): advance(), decrement(), dereference(), distance_from(), equal(), increment(), iterator_core_access, iterator_facade (+9 more)
-
-### Community 296 - "IAFloatingOverlay.tsx"
-Cohesion: 0.21
-Nodes (21): begin(), contains(), containsEqualValue(), count(), end(), erase(), eraseInto(), eraseUnderlyingKey() (+13 more)
-
-### Community 297 - "20260413_01_classe_mapa_tema_sync.py"
+### Community 292 - "chunkReload.ts"
 Cohesion: 0.17
-Nodes (21): EssayQuestionRenderer(), EssayQuestionRendererProps, asNumber(), asString(), buildActivityContentContext(), clamp(), EssayValidationInput, EssayValidationResult (+13 more)
+Nodes (10): CHUNK_RELOAD_KEY, CHUNK_RELOAD_WINDOW_MS, defaultStorage(), installChunkReloadHandler(), isChunkLoadError(), lazyWithReload(), loadWithReload(), ReloadDeps (+2 more)
+
+### Community 293 - "20261102_01_notificacao_no_horario_do_aluno.py"
+Cohesion: 0.20
+Nodes (11): anteriores(), _Coletor, downgrade(), _funcao(), garantir_rotinas_anterior(), garantir_rotinas_nova(), _load(), sementes() (+3 more)
+
+### Community 294 - "test_e2e_email_apps_script.py"
+Cohesion: 0.28
+Nodes (16): _aceito(), _aviso(), _banco(), _responder(), _segredos(), test_aviso_sem_segredo_nao_envia(), test_aviso_so_conta_prazo_com_ok_do_script(), test_contato_do_app_vai_para_o_dono_com_responder_para() (+8 more)
+
+### Community 295 - "test_e2e_nota_media_da_matricula.py"
+Cohesion: 0.42
+Nodes (15): _atividade(), _banco(), _linha(), _nota(), _recalcula(), _semear(), test_a_varredura_pega_o_prazo_que_venceu_sem_ninguem_gravar(), test_antes_ninguem_gravava_a_nota() (+7 more)
+
+### Community 296 - "test_e2e_risco_de_reprovacao.py"
+Cohesion: 0.32
+Nodes (14): _aula(), _banco(), _estado(), _eventos(), _prazos_vencidos(), _respostas(), _risco(), _semear() (+6 more)
+
+### Community 297 - "test_e2e_views_metricas_tempo.py"
+Cohesion: 0.36
+Nodes (14): _banco(), _engajamento(), _semear(), test_aluno_sem_telemetria_nao_ganha_linha(), test_antes_da_correcao_a_i16_acusa_o_fan_out(), test_as_dependentes_continuam_de_pe(), test_conclusao_media_ignora_abertura_sem_conclusao(), test_downgrade_volta_ao_texto_de_producao() (+6 more)
 
 ### Community 298 - "02-fundamentacao-teorica-e-modelo-adaptativo.md"
 Cohesion: 0.09
 Nodes (22): description, name, private, scripts, android:mobile, build:frontend, dev, dev:frontend (+14 more)
 
-### Community 299 - "05-logica-e-automacoes-do-banco.md"
-Cohesion: 0.09
-Nodes (23): frontend/politicas-dados-privacidade.md, 1. Objetivo, 2. Tipos de dados tratados, 3. Bases legais e consentimento, 4. Retenção e descarte, 5. Compartilhamento, 6. Direitos do titular, 7. Segurança e confidencialidade (+15 more)
+### Community 299 - "Segurança do Ecossistema TrailUp"
+Cohesion: 0.17
+Nodes (12): 10. Observações, 1. Objetivo, 2. Visão geral de camadas, 3. Controles principais, 4. Identidade e acesso, 5. Segurança de dados, 6. Segurança de IA, 7. Backup e recuperação (+4 more)
 
-### Community 300 - "06-implementacao.md"
-Cohesion: 0.13
-Nodes (12): getFileCategory(), handleCopyLink(), handleFilesUpload(), handleGenerateSingle(), handleRemoveAttachment(), handleStartBatchAllProfiles(), prepareApiAttachments(), uploadDeckToSupabase() (+4 more)
+### Community 300 - "test_migration_notificacao_no_horario_do_aluno.py"
+Cohesion: 0.12
+Nodes (3): _Coletor, _modulo(), _sql()
 
-### Community 301 - "07-documento-de-ux.md"
-Cohesion: 0.14
-Nodes (21): _modulo(), _offline_alembic_config(), Presenca e participacao concedidas pelo professor.  Os quatro bloqueios que esta, Dois cliques do professor sao um caso real de sala de aula., Sem isto o indice unico deixaria o aluno receber uma conquista por classe., Recolar 200 linhas geradas desfaria em silencio ajustes de outra migracao., Bloqueio 1.      Amarrar a resolucao ao prefixo do tipo obrigaria a mexer na vie, Bloqueio 2.      `eventos_totais` destrava "Primeiro Passo" com um unico evento; (+13 more)
+### Community 301 - "test_moedas_razao.py"
+Cohesion: 0.17
+Nodes (10): _offline_alembic_config(), _sql(), test_o_aluno_le_so_o_proprio_extrato(), test_o_cliente_nao_escreve_no_razao(), test_o_extrato_diz_de_onde_veio_cada_moeda(), test_o_mesmo_ganho_nao_paga_duas_vezes(), test_o_professor_le_o_razao_dos_alunos_dele(), test_o_razao_e_append_only_e_guarda_a_origem() (+2 more)
 
-### Community 302 - "08-consentimento-privacidade-lgpd-e-seguranca.md"
-Cohesion: 0.15
-Nodes (21): _modulo(), _offline_alembic_config(), Quem decide quanto vale um evento e o banco, nao o cliente.  O ranking de pontua, Recusar quebraria o fluxo do aluno se um cliente emitisse tipo novo.      Valend, A semente e o gatilho saem da mesma estrutura: um tipo sem linha valeria     zer, Os valores gravados vieram do cliente e nao significam nada. Como o rank     ja, O defeito em uma linha: `registrarEventoPontos` escolhia o valor., Eram 6466 dos 6470 pontos do aluno de demonstracao -- e ciclo de     personaliza (+13 more)
+### Community 302 - "Perfil BrainHex probabilístico: quiz como prior, métricas do aluno como evidência"
+Cohesion: 0.11
+Nodes (17): 1.1 Todos os itens são positivos, 1.2 Itens desiguais por eixo, 1.3 Falta a parte ipsativa do instrumento original, 1.4 Desejabilidade social, 1. O problema, 2. O que a literatura diz sobre confiar na autoavaliação, 3.1 Três camadas, 3.2 Camada 1 — instrumento corrigido (+9 more)
 
-### Community 303 - "09-metodologia-de-pesquisa-e-avaliacao.md"
-Cohesion: 0.09
-Nodes (17): Guardas para a base por perfil (aluno_id NULL) nos repositorios.  Sao testes de, O ramo tem que devolver {"record": ...}: o chamador so marca o target     como c, A base e (classe x topico x perfil) montada do conteudo do professor.     Buscar, `str(None)` devolve a string 'None', e o asyncpg tenta encodar isso como     UUI, O contrato do microservice pede string. As TRES chamadas de     disparar_brainhe, A 20260827_04 acrescentou `aluno_id IS NOT NULL` ao predicado dos indices     po, progresso e' comportamento: a linha exige dono (aluno_id NOT NULL) e     _seed_p, Com `= NULL` a busca volta vazia e os cards sao regerados a cada     tentativa - (+9 more)
+### Community 303 - "gargalos.ts"
+Cohesion: 0.18
+Nodes (15): contarGargalosPorFormato(), FormatoDoGargalo, FORMATOS_DO_GARGALO, GargaloDoFormato, GargalosDePersonalizacao, LinhaBaseDaPersonalizacao, SELECT_DA_BASE, Situacao (+7 more)
 
-### Community 304 - "11-contribuicoes-limitacoes-e-trabalhos-futuros.md"
-Cohesion: 0.23
-Nodes (5): agente_geracao_midia(), MateriaisRepository, _normalize_json_field(), _pick_string(), listar_materiais()
-
-### Community 305 - "20260415_01_media_render_jobs.py"
-Cohesion: 0.09
-Nodes (21): ZXRSSExpandedReader, -adjustOddEvenCounts, -checkChecksum, -checkRows, -checkRowscurrent, -constructResulterror, -decodeDataCharacterpatternisOddPatternleftChar, -decodeRow2pairsrowerror (+13 more)
-
-### Community 306 - "20260416_01_media_render_profile_dedupe_indexes.py"
-Cohesion: 0.2
-Nodes (21): bitfn(), check_avg(), check_blend(), check_blend_h(), check_blend_v(), check_emuedge(), check_mask(), check_mc() (+13 more)
-
-### Community 307 - "20260420_01_classe_perfil_summary.py"
-Cohesion: 0.19
-Nodes (17): check_decode_bool(), check_decode_bool_adapt(), check_decode_bool_equi(), check_decode_bool_funcs(), check_decode_hi_tok(), check_decode_symbol(), checkasm_check_msac(), msac_cmp() (+9 more)
-
-### Community 308 - "20260420_02_aluno_mental_state_history.py"
-Cohesion: 0.15
-Nodes (17): dav1d_sgr_filter1_neon(), dav1d_sgr_filter2_neon(), loop_restoration_dsp_init_arm(), sgr_filter_3x3_neon(), sgr_filter_5x5_neon(), sgr_filter_mix_neon(), loop_restoration_dsp_init_ppc(), bitfn() (+9 more)
-
-### Community 309 - "20260421_01_telemetria_eventos_app_and_time_metrics.py"
-Cohesion: 0.15
-Nodes (19): AddChunk(), CheckFrameBounds(), ChunkCount(), GetChunk(), GetFrame(), GetFramePayload(), InitMemBuffer(), IsValidExtendedFormat() (+11 more)
-
-### Community 310 - "04-modelagem-do-sistema.md"
-Cohesion: 0.14
-Nodes (15): Average2(), Average3(), Average4(), ClampedAddSubtractFull(), ClampedAddSubtractHalf(), Predictor10_MIPSdspR2(), Predictor11_MIPSdspR2(), Predictor12_MIPSdspR2() (+7 more)
-
-### Community 311 - "mobile/arquitetura-microservico-e-app.md"
-Cohesion: 0.1
-Nodes (8): Average2_m256i(), PredictorAdd10_AVX2(), VP8LDspInitAVX2(), VP8LDspInitMIPSdspR2(), VP8LDspInitMSA(), VP8LDspInitNEON(), VP8LDspInitSSE2(), VP8LDspInit()
-
-### Community 312 - "20260727_01_brainhex_profile_targets.py"
-Cohesion: 0.14
-Nodes (11): ColorTransformDelta(), GetCombinedEntropyUnrefined_C(), GetEntropyUnrefined_C(), GetEntropyUnrefinedHelper(), TransformColor_SSE2(), TransformColorBlue(), TransformColorRed(), U32ToS8() (+3 more)
-
-### Community 313 - "20260728_01_drop_legacy_job_target_unique.py"
+### Community 304 - "riscoReprovacao.test.ts"
 Cohesion: 0.22
-Nodes (20): cleanup(), contains(), elementsCapacity(), erase(), folly(), get(), getLocalCache(), getOrAllocate() (+12 more)
+Nodes (14): AlunoDaTurma, RiscoDeReprovacao(), eFuncaoAusente(), FatorDeRisco, lerRiscoDeReprovacao(), resumirRisco(), ResumoDoRisco, RiscoDoAluno (+6 more)
 
-### Community 314 - "api/funcionamento-api-arquitetura-fluxos.md"
-Cohesion: 0.09
-Nodes (21): SDAnimatedImagePlayer, -calculateMaxBufferCountWithFrame, -clearFrameBuffer, -dealloc, -defaultRunLoopMode, -displayDidRefresh, -displayLink, -handleFrameChange (+13 more)
+### Community 305 - "profileImageRestyle.ts"
+Cohesion: 0.20
+Nodes (15): applyProfileRestyle(), buildRestylePrompt(), DEFAULT_MAX_RESTYLES_PER_MATERIAL, ImageRestyler, isRestyleEnabled(), maxRestylesPerMaterial(), pareceCotaEsgotada(), podeReilustrar() (+7 more)
 
-### Community 315 - "_FakeSession"
-Cohesion: 0.16
-Nodes (15): repositories/sugestao_material.py, _carregar_json(), _json(), Any, AsyncSession, Persistência da sugestão de material por aluno + log append-only.  Duas tabelas,, Cria ou atualiza a sugestão atual. Devolve a linha resultante.          A versão, Grava UMA decisão no histórico. Nunca atualiza linha existente.          Registr (+7 more)
+### Community 306 - "alteracoesDoProfessor.ts"
+Cohesion: 0.24
+Nodes (13): useAlteracoesDoProfessor(), carregarAlteracoesDoAluno(), marcarAlteracaoVista(), AlteracoesDoAluno, chaveDoItem(), COLUNAS_ALTERACAO_ALUNO, contarDestaquesDoTopico(), DecisaoEfetiva (+5 more)
+
+### Community 307 - "EventoAluno"
+Cohesion: 0.18
+Nodes (5): EventoAluno, normalizeEventType(), normalizeNonNegativeNumber(), normalizeNullableNonNegativeNumber(), normalizeReferencia()
+
+### Community 308 - "progressoPersonalizado.ts"
+Cohesion: 0.24
+Nodes (15): agregarProgressoPersonalizado(), aplicarEventoProgresso(), ContadoresUnificados, conteudoIdDaChave(), itemConcluido(), LinhaProgressoItem, mesclarLinhasProgresso(), NaturezaDoItem (+7 more)
+
+### Community 309 - "getReact"
+Cohesion: 0.25
+Nodes (18): collectProps(), compileAttr(), cssToObj(), getReact(), hostPositionStyle(), isDeckMountTag(), kebabToCamel(), renderDeckKids() (+10 more)
+
+### Community 310 - "getReact"
+Cohesion: 0.25
+Nodes (18): collectProps(), compileAttr(), cssToObj(), getReact(), hostPositionStyle(), isDeckMountTag(), kebabToCamel(), renderDeckKids() (+10 more)
+
+### Community 311 - "getReact"
+Cohesion: 0.25
+Nodes (18): collectProps(), compileAttr(), cssToObj(), getReact(), hostPositionStyle(), isDeckMountTag(), kebabToCamel(), renderDeckKids() (+10 more)
+
+### Community 312 - "getReact"
+Cohesion: 0.25
+Nodes (18): collectProps(), compileAttr(), cssToObj(), getReact(), hostPositionStyle(), isDeckMountTag(), kebabToCamel(), renderDeckKids() (+10 more)
+
+### Community 313 - "getReact"
+Cohesion: 0.25
+Nodes (18): collectProps(), compileAttr(), cssToObj(), getReact(), hostPositionStyle(), isDeckMountTag(), kebabToCamel(), renderDeckKids() (+10 more)
+
+### Community 314 - "getReact"
+Cohesion: 0.25
+Nodes (18): collectProps(), compileAttr(), cssToObj(), getReact(), hostPositionStyle(), isDeckMountTag(), kebabToCamel(), renderDeckKids() (+10 more)
+
+### Community 315 - "SugestaoMaterialRepository"
+Cohesion: 0.10
+Nodes (10): _carregar_json(), _json(), SugestaoMaterialRepository, test_repositorio_le_a_marca_lista_e_so_limpa_a_que_atendeu(), banco(), sessoes(), test_criacao_concorrente_grava_uma_linha_e_um_criada(), uma() (+2 more)
 
 ### Community 316 - "20260728_02_drop_legacy_content_unique.py"
 Cohesion: 0.09
-Nodes (22): mobile/arquitetura-app-detalhada.md, 10. Telemetria, 11. Segurança, 12. Riscos e mitigação, 13. Objetivos de qualidade, 1. Objetivo, 2. Escopo, 3. Diagrama de componentes (+14 more)
+Nodes (22): 10. Telemetria, 11. Segurança, 12. Riscos e mitigação, 13. Objetivos de qualidade, 1. Objetivo, 2. Escopo, 3. Diagrama de componentes, 4.1 Apresentação (+14 more)
 
-### Community 317 - "20260728_03_repair_generation_fencing_rpcs.py"
-Cohesion: 0.09
-Nodes (21): Addendum: os 3 pontos de chamada (não só o single-shot), Arquitetura (mudança), `brainHexPdfClient.ts`, Caminho de falha — ponto crítico, Campos novos no request (além dos já listados), Cliente Supabase, Contexto, Decisão de design: sem duplicar constantes de versão (+13 more)
+### Community 317 - "mergePersonalizacaoMateriais"
+Cohesion: 0.04
+Nodes (58): Task 6: fetchFontesAsFileData + POST /api/personalizar aceita fontes[], 3.1 Novo contrato de POST /api/personalizar, 3.2 Novo fluxo em background, 3.3 Arquivos modificados, 3.4 Sem fontes disponíveis, Seção 3: Mudanças no ApiBrainHex, Geração granular e retomável de conteúdo personalizado — Implementation Plan, Task 11: Python — orquestrador do job inteiro (`processar_job_media_generation_once`) (+50 more)
 
-### Community 318 - "20260728_04_scope_personalization_by_content.py"
-Cohesion: 0.15
-Nodes (10): buildCriterioResumo(), Conquista, fetchProgressMetrics(), isConcluido(), longestDayStreak(), conquistaVisivelParaPerfil(), conquistaVisivelParaPerfis(), normalizeConquistaEscopo() (+2 more)
+### Community 318 - "getReact"
+Cohesion: 0.25
+Nodes (18): collectProps(), compileAttr(), cssToObj(), getReact(), hostPositionStyle(), isDeckMountTag(), kebabToCamel(), renderDeckKids() (+10 more)
 
-### Community 319 - "20260728_05_dynamic_generation_fencing.py"
-Cohesion: 0.13
-Nodes (9): checkpoint_retention_loop(), CheckpointCleanupResult, cleanup_persisted_checkpoints(), run_checkpoint_retention_once(), _FakeCheckpointer, _FakeCursor, _FakeCursorContext, _FakeResult (+1 more)
+### Community 319 - "getReact"
+Cohesion: 0.25
+Nodes (18): collectProps(), compileAttr(), cssToObj(), getReact(), hostPositionStyle(), isDeckMountTag(), kebabToCamel(), renderDeckKids() (+10 more)
 
-### Community 320 - "20260728_06_idempotent_generated_materials.py"
-Cohesion: 0.15
-Nodes (20): _modulo(), _offline_alembic_config(), O catalogo e global; o professor liga e desliga, nao inventa item.  Preco unico, Nenhuma turma precisa ser configurada: os defaults valem., Economia onde moeda e proporcional ao desempenho e itens de recuperacao     cust, Estoque finito, preco crescente e teto duro sao os tres parametros para     que, Nada de roubar ponto, pular a vez ou subir no rank. O custo de evitar e'     zer, troca_formato nao tem consequencia avaliativa: existe para o aluno ter o     que (+12 more)
+### Community 321 - "test_migration_ranking_le_config_por_wrapper.py"
+Cohesion: 0.24
+Nodes (14): _downgrade(), _funcao(), _sql(), test_downgrade_nao_restaura_o_grant_da_fn_app_config_int(), test_downgrade_volta_a_view_e_a_i10_da_f0_e_dropa_os_wrappers(), test_fn_app_config_int_continua_fechada(), test_i10_mede_as_dependencias_das_duas_views_e_nao_o_texto_da_definicao(), test_so_a_i10_e_redefinida() (+6 more)
 
-### Community 321 - "3.1.1 Diagrama por camada"
-Cohesion: 0.21
-Nodes (16): dav1d_bytealign_get_bits(), dav1d_get_bit(), dav1d_get_bits_subexp(), dav1d_get_uleb128(), dav1d_get_uniform(), dav1d_get_vlc(), dav1d_init_get_bits(), get_bits_subexp_u() (+8 more)
+### Community 322 - "dependencies"
+Cohesion: 0.12
+Nodes (17): dependencies, d3@^7.9.0, express@^4.21.2, jspdf@^4.2.1, motion@^12.23.24, react@^19.0.1, react-dom@^19.0.1, @supabase/supabase-js@^2.112.3 (+9 more)
 
-### Community 322 - "microservice/arquitetura-microservico-e-app.md"
-Cohesion: 0.36
-Nodes (17): RCTCATransform3DFromTransformMatrix(), RCTCGPointFromPoint(), RCTCGRectFromRect(), RCTCGSizeFromSize(), RCTCreateCGColorRefFromSharedColor(), RCTEdgeInsetsFromUIEdgeInsets(), RCTFloatFromCGFloat(), RCTLayoutDirection() (+9 more)
+### Community 323 - "Base por perfil sem aluno — design"
+Cohesion: 0.12
+Nodes (16): Alternativas descartadas, Base por perfil sem aluno — design, Correção incluída no escopo, Dados existentes, Decisão, Derivação por aluno, Fora de escopo, Geração de targets (+8 more)
 
-### Community 323 - "Chat no Módulo — Remoção de Preview Automático e Botão de Descarte"
-Cohesion: 0.36
-Nodes (17): RCTCATransform3DFromTransformMatrix(), RCTCGPointFromPoint(), RCTCGRectFromRect(), RCTCGSizeFromSize(), RCTCreateCGColorRefFromSharedColor(), RCTEdgeInsetsFromUIEdgeInsets(), RCTFloatFromCGFloat(), RCTLayoutDirection() (+9 more)
-
-### Community 324 - "agent/__init__.py"
-Cohesion: 0.11
-Nodes (5): GrColorTypeChannelFlags(), GrColorTypeHasAlpha(), GrColorTypeIsAlphaOnly(), GrFillRuleForPathFillType(), GrFillRuleForSkPath()
+### Community 324 - "ANEXOS"
+Cohesion: 0.12
+Nodes (17): Anexo A – Questionário aplicado aos alunos, Anexo B – Diário de Campo, Anexo C – Persona, Anexo D – Mapa de Empatia, Anexo E – Matriz CSD, Anexo F – Storyboard, Anexo G – Protótipo no Figma, Anexo H – Relatório de Testes (+9 more)
 
 ### Community 325 - "api/__init__.py"
-Cohesion: 0.1
-Nodes (21): frontend/arquitetura-funcionamento-geral-sistema.md, 10. DependÃªncias criticas, 11. ConclusÃ£o operacional, 1.1 Atualizacoes recentes (2026-04-13), 1. Objetivo, 2. Escopo do ecossistema, 3. VisÃ£o de alto nivel, 4.1 Web (professor) (+13 more)
+Cohesion: 0.10
+Nodes (20): 10. Dependências criticas, 11. Conclusão operacional, 1.1 Atualizacoes recentes (2026-04-13), 1. Objetivo, 2. Escopo do ecossistema, 3. Visão de alto nivel, 4.1 Web (professor), 4.2 API (backend) (+12 more)
 
-### Community 326 - "5. Fluxos operacionais (sequencias)"
-Cohesion: 0.1
-Nodes (20): BrainHexPDF como motor de apresentação — Implementation Plan, PARTE A — BrainHexPDF (`C:\Users\geisb\Documents\GitHub\BrainHexPDF`), PARTE B — trailup microservice (`C:\Users\geisb\documents\github\trailup`), Task 10: Remover geração de imagens/ícones e renderização local em `server.ts`, Task 11: Remover o motor imersivo de `geminiService.ts`, Task 12: Apagar arquivos mortos, script de QA e ajustar `package.json`, Task 13: Corrigir `server.test.ts` / `server.archive.test.ts`, Task 14: Rodar a suíte completa (+12 more)
+### Community 326 - "PARTE A — BrainHexPDF (`C:\Users\geisb\Documents\GitHub\BrainHexPDF`)"
+Cohesion: 0.22
+Nodes (8): BrainHexPDF como motor de apresentação — Implementation Plan, PARTE A — BrainHexPDF (`C:\Users\geisb\Documents\GitHub\BrainHexPDF`), Task 17: Revisão final, Task 1: Branch + variáveis de ambiente, Task 2: Porta configurável via env, Task 3: Middleware `requireSecret`, Task 4: Cliente Supabase com service role key, Task 6: Push da branch
 
-### Community 327 - "core/__init__.py"
-Cohesion: 0.15
-Nodes (11): canSendAsGeminiInlineData(), ImageGenerationUnavailableError, isImageGenerationUnavailableError(), buildIllustrationPrompt(), buildRestylePrompt(), createFallbackIllustrationSvg(), dataUri(), escapeXml() (+3 more)
-
-### Community 328 - "repositories/__init__.py"
-Cohesion: 0.15
-Nodes (19): consolidar_partes_a_partir_dos_blocos(), criar_ciclo_media_generation(), criar_targets_fase_b(), fase_a_completa(), MediaGenerationTargetError, persistir_parte_em_materiais(), processar_job_media_generation_once(), processar_target_apresentacao() (+11 more)
-
-### Community 329 - "tcc/README.md"
-Cohesion: 0.15
-Nodes (19): _modulo_da_migracao(), _offline_alembic_config(), A migracao que tira as conquistas mortas do ar.  21 das 27 conquistas nunca dest, Os dois lados do segundo defeito: pagar, e pagar sem se morder., Duas conquistas do Conqueror pediam `topico_concluido`.      Esse tipo de evento, Antes cada conquista rodava a propria agregacao, 27 vezes por evento., `status` e o enum `status_atividade`; COALESCE sem `::text` aborta em     produc, Carrega o arquivo de versao pelo caminho -- `alembic/versions` nao e pacote. (+11 more)
-
-### Community 330 - "schemas/__init__.py"
-Cohesion: 0.1
-Nodes (19): ZXRSSExpandedGeneralAppIdDecoder, -decodeAllCodesinitialPositionerror, -decodeAlphanumeric, -decodeGeneralPurposeFieldremaining, -decodeIsoIec646, -decodeNumeric, -extractNumericValueFromBitArraybits, -extractNumericValueFromBitArrayposbits (+11 more)
-
-### Community 331 - "NativeDocxViewer.tsx"
-Cohesion: 0.1
-Nodes (19): ZXResultParser, -appendKeyValueresult, -countPrecedingBackslashespos, -findFirstEscape, -initialize, -isStringOfDigitslength, -isSubstringOfDigitsoffsetlength, -massagedText (+11 more)
-
-### Community 332 - "docx.py"
-Cohesion: 0.13
-Nodes (12): cdef_dsp_init_arm(), cdef_dsp_init_ppc(), copy4xN(), copy8xN(), filter_4xN(), filter_8xN(), bitfn(), cdef_filter_block_c() (+4 more)
-
-### Community 333 - "essayValidation.ts"
-Cohesion: 0.34
-Nodes (16): alwaysBounceHorizontal(), alwaysBounceVertical(), automaticallyAdjustContentInsets(), centerContent(), contentInset(), contentOffset(), directionalLockEnabled(), endDraggingSensitivityMultiplier() (+8 more)
-
-### Community 334 - "expo-sharing"
-Cohesion: 0.34
-Nodes (16): alwaysBounceHorizontal(), alwaysBounceVertical(), automaticallyAdjustContentInsets(), centerContent(), contentInset(), contentOffset(), directionalLockEnabled(), endDraggingSensitivityMultiplier() (+8 more)
-
-### Community 335 - "3.1.1 Diagrama por camada"
-Cohesion: 0.19
-Nodes (18): gcd_evaluator, integer_traits, integer_traits< bool >, integer_traits<  ::boost::long_long_type>, integer_traits<  ::boost::ulong_long_type >, integer_traits< char >, integer_traits< int >, integer_traits<__int64> (+10 more)
-
-### Community 336 - "api/estrutura-banco-supabase.md"
-Cohesion: 0.18
-Nodes (12): invalid_utf32_code_point(), is_high_surrogate(), is_low_surrogate(), is_surrogate(), u16_to_u32_iterator, u32_to_u16_iterator, u32_to_u8_iterator, u8_to_u32_iterator (+4 more)
-
-### Community 337 - "3.1.1 Diagrama por camada"
-Cohesion: 0.18
-Nodes (12): invalid_utf32_code_point(), is_high_surrogate(), is_low_surrogate(), is_surrogate(), u16_to_u32_iterator, u32_to_u16_iterator, u32_to_u8_iterator, u8_to_u32_iterator (+4 more)
-
-### Community 339 - "@radix-ui/react-avatar"
-Cohesion: 0.1
-Nodes (19): SDWebImageActivityIndicator, -commonInit, -grayIndicator, -grayLargeIndicator, -init, -largeIndicator, -mediumIndicator, -startAnimatingIndicator (+11 more)
-
-### Community 340 - "@radix-ui/react-checkbox"
-Cohesion: 0.16
-Nodes (16): extract(), Factory: escolhe o extrator correto com base na família do arquivo., Roteia para o extrator específico e retorna dict com:       - family, title, blo, _empty(), extract(), Extrator de DOCX: python-docx → lista de Block., Extrai blocos estruturados de um DOCX.      Retorna dict com:       - family, ti, _classify_line() (+8 more)
-
-### Community 341 - "14. Edge Functions, RPCs, Functions e Triggers"
+### Community 327 - "classMapTheme.ts"
 Cohesion: 0.24
-Nodes (19): db/__init__.py, Banco de dados e sessoes., _offline_alembic_config(), Duas cabecas fazem `upgrade head` falhar -- e o nome antigo deste teste     ("i, test_alembic_tem_uma_unica_cabeca_e_cadeia_continua(), test_content_scoped_personalization_indexes_render_offline_sql(), test_dynamic_generation_fencing_has_no_hardcoded_pipeline_version(), test_generated_material_history_is_idempotent_per_generation() (+11 more)
+Nodes (16): buildClassMapTheme(), buildCountries(), buildCountryTheme(), buildWorldName(), compactTitle(), hashString(), MapCountryTheme, MapWorldPalette (+8 more)
 
-### Community 342 - "@radix-ui/react-collapsible"
-Cohesion: 0.1
-Nodes (19): Aluno, AlunoPerfil, AppConfig, AppRole, Atividade, AtividadeModulo, BRAINHEX_PROFILES, BrainHexProfile (+11 more)
+### Community 328 - "tema.js"
+Cohesion: 0.14
+Nodes (14): ABAS, abasHTML(), aplicarTema(), clarear(), HEX_DENTRO, HEX_ESTILO, HEX_FORA, HEX_SEL (+6 more)
 
-### Community 343 - "expo-router"
-Cohesion: 0.25
-Nodes (18): openai_estimated_spend_usd(), _failing_gemini_factory(), _failing_openai_factory(), _incomplete_openai_factory(), _openai_factory(), _rich_response(), _settings_with_openai(), test_ambos_provedores_falham_gera_erro_combinado() (+10 more)
+### Community 329 - "00-sistema-visual.md"
+Cohesion: 0.12
+Nodes (16): 0. O produto em 5 linhas, 1. Quadro de referência e grade, 2.1 Valores calculados (rodando a fórmula com `tinycolor2`, não estimados), 2.2 Como cada papel de cor do V7 vira token do aluno, 2.3 Cores de estado — fixas, iguais para os 7 perfis (V7), 2.4 Contraste conferido (fórmula aplicada, pior caso entre os 7 perfis), 2. Tokens de cor — a fórmula (não é paleta fixa), 3. Tipografia (+8 more)
 
-### Community 344 - "Memória do aluno (estado mental histórico + domínio por tópico) Implementation Plan"
-Cohesion: 0.11
-Nodes (11): featherWeight(), hueInRange(), featherWeight(), hueInRange(), guardian-recolor/package.json, dependencies, sharp, name (+3 more)
+### Community 330 - "Componentes globais"
+Cohesion: 0.12
+Nodes (16): Assets, Botões, Cards, Chips/badges, Componentes globais, Contexto Geral — Fase 2, Estados vazios / carregamento, Gráficos (+8 more)
+
+### Community 331 - "Componentes globais"
+Cohesion: 0.12
+Nodes (16): Assets, Botões, Cards, Chips/badges, Componentes globais, Contexto Geral — Fase 2, Estados vazios / carregamento, Gráficos (+8 more)
+
+### Community 332 - "Componentes globais"
+Cohesion: 0.12
+Nodes (16): Assets, Botões, Cards, Chips/badges, Componentes globais, Contexto Geral — Fase 2, Estados vazios / carregamento, Gráficos (+8 more)
+
+### Community 333 - "incrementar_revisao"
+Cohesion: 0.20
+Nodes (8): incrementar_revisao(), revisao_atual(), test_incremento_nao_muta_o_original(), test_incremento_preserva_o_resto_do_material(), test_material_ausente_vira_material_novo(), test_material_sem_campo_conta_como_revisao_1(), test_regeneracao_de_texto_nao_toca_no_audio(), test_valor_invalido_nao_derruba_a_regeracao()
+
+### Community 334 - "test_checkpoint_retention.py"
+Cohesion: 0.17
+Nodes (5): _FakeCheckpointer, _FakeCursor, _FakeCursorContext, _FakeResult, test_cleanup_persisted_checkpoints_deletes_in_expected_order()
+
+### Community 335 - "test_detalhado_progresso_atividade.py"
+Cohesion: 0.18
+Nodes (8): _offline_alembic_config(), _sql(), test_a_view_continua_respeitando_o_rls(), test_a_view_passa_a_juntar_atividade_aluno(), test_as_colunas_novas_entram_no_fim(), test_o_cliente_recebe_o_que_ja_esperava_ler(), test_o_downgrade_derruba_a_view_antes_de_recria_la(), test_o_sql_nao_carrega_porcentagem()
+
+### Community 336 - "test_e2e_tentativas_no_editor.py"
+Cohesion: 0.32
+Nodes (10): _banco(), _config_visivel(), _jobs(), _salvar_do_editor(), _semear(), test_downgrade_volta_o_gatilho_e_fecha_a_regra(), test_limite_de_tentativas_nao_regera_e_conteudo_continua_regerando(), test_regra_do_cronometro_legivel_pelo_cliente() (+2 more)
+
+### Community 337 - "test_migration_portoes_por_turma.py"
+Cohesion: 0.12
+Nodes (4): test_a_view_roda_como_quem_chama(), test_o_rotulo_do_enum_nao_tem_acento(), test_recorta_pelo_proprio_aluno(), test_toda_matricula_tem_linha()
+
+### Community 338 - "test_migrations_tempo_por_lote.py"
+Cohesion: 0.26
+Nodes (13): _carregar(), _sem_comentarios(), _sql(), test_a_conta_e_soma_direta_do_dwell(), test_a_regra_de_incremento_sai_do_upgrade(), test_cadeia_de_revisao(), test_chave_de_dedup_nao_usa_item_key_sozinho(), test_dedup_entra_antes_de_a_conta_mudar() (+5 more)
+
+### Community 339 - "compilerOptions"
+Cohesion: 0.12
+Nodes (15): compilerOptions, allowImportingTsExtensions, allowJs, experimentalDecorators, isolatedModules, jsx, lib, module (+7 more)
+
+### Community 340 - "PROJETO DE UX — TRAILUP"
+Cohesion: 0.12
+Nodes (16): CONCLUSÃO, DEFINIÇÃO DO PROBLEMA, Design Centrado no Usuário (DCU), Design Thinking, FUNDAMENTAÇÃO TEÓRICA, Insight, ITERAÇÃO E REFINAMENTO, Lean UX (+8 more)
+
+### Community 341 - "_offline_alembic_config"
+Cohesion: 0.03
+Nodes (127): test_migration_insights_downgrade_devolve_policy_do_aluno(), test_migration_insights_renderiza_colunas_e_rls_do_professor(), test_dono_vem_de_chave_privada_e_e_conferido_no_banco(), test_downgrade_remove_funcoes_e_chave(), test_execute_so_para_autenticado(), test_nao_dono_e_recusado_antes_de_ler_auth_users(), test_so_devolve_pendentes_do_mais_antigo_ao_mais_novo_e_so_o_que_a_tela_usa(), _upgrade_sql() (+119 more)
+
+### Community 342 - "normalizeCards"
+Cohesion: 0.17
+Nodes (16): asContentItems(), asString(), asStringArray(), buildThemeGuideBlock(), dedupeBy(), ensureCardAnswerText(), ensureCardQuestionTitle(), ensureMin() (+8 more)
+
+### Community 343 - "_rich_response"
+Cohesion: 0.10
+Nodes (19): _failing_openai_factory(), factory(), _GeminiClient, _rich_response(), borderline(), verbose(), shallow(), shallow_once() (+11 more)
+
+### Community 344 - "storage-redirect/index.ts"
+Cohesion: 0.23
+Nodes (10): normalizarStoragePath(), SEGMENTOS_PROIBIDOS, temCaractereDeControle(), AssinadorDoStorage, bucketDoCaminho(), codificarCaminho(), urlAssinadaDoSupabase(), urlPublicaDoSupabase() (+2 more)
 
 ### Community 345 - "buildContentBlocks"
-Cohesion: 0.1
-Nodes (20): mobile/funcionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado.md, 1. Objetivo, 2.1 Entrada funcional, 2.2 Fluxo, 2.3 Motivos, 2.4 Objetivos, 2. Personalização, 3.1 Componentes visíveis (+12 more)
+Cohesion: 0.10
+Nodes (20): 1. Objetivo, 2.1 Entrada funcional, 2.2 Fluxo, 2.3 Motivos, 2.4 Objetivos, 2. Personalização, 3.1 Componentes visíveis, 3.2 Dependências técnicas (+12 more)
 
 ### Community 346 - "@radix-ui/react-progress"
-Cohesion: 0.1
-Nodes (20): frontend/estrutura-banco-supabase-executivo.md, 10. Controles de integridade (resumo), 11. Leitura complementar, 1. Objetivo, 2. Arquitetura fim a fim, 3. Quem faz o que, 4.1 Edge Functions em uso, 4.2 RPCs Supabase em uso (+12 more)
+Cohesion: 0.10
+Nodes (19): 10. Controles de integridade (resumo), 11. Leitura complementar, 1. Objetivo, 2. Arquitetura fim a fim, 3. Quem faz o que, 4.1 Edge Functions em uso, 4.2 RPCs Supabase em uso, 4.3 SQL functions e trigger-functions identificadas (+11 more)
 
 ### Community 347 - "gerar_pdf_slides"
-Cohesion: 0.1
-Nodes (19): 1. Progresso da Trilha + Persistência, 2.1 PDF → Markdown Nativo + Paginação, 2.2 Atividades Abrindo com Resposta Destacada, 2.3 Atividades Respondidas Travando o Fluxo, 2.4 Cards: Ordem e Renderização de Mídia, 2.5 Vídeo: Controles de Seek, 2.6 Markdown: Renderização Nativa e Integrada, 2. Mídias + Atividades (+11 more)
+Cohesion: 0.15
+Nodes (12): 1. Progresso da Trilha + Persistência, 3. Dependências, 4. Ordem de Implementação, A1 — Atualizar estado local antes do round-trip, A2 — Remover round-trip do caminho crítico, A3 — Debounce na subscription realtime, A4 — `refreshTopico` com delay, Arquivos Afetados (+4 more)
 
 ### Community 348 - "@radix-ui/react-toggle"
-Cohesion: 0.1
-Nodes (19): Nova Paleta BrainHex (Psicologia das Cores) Implementation Plan, Paleta de referência (usada em todas as tasks), Task 10: Atualizar os testes de `api/tests/test_personalizacao_service.py`, Task 11: Varredura final por hex antigo no código, Task 12: Preparar o ambiente de recoloração da arte (script `sharp`), Task 13: Recolorir os 5 guardiões com precedente (seeker, survivor, conqueror, socializer, mastermind), Task 14: Recolorir Achiever (sem precedente, mas sem o problema de mistura de matiz), Task 15: Tentar recolorir Daredevil (caso conhecido de risco) (+11 more)
+Cohesion: 0.12
+Nodes (16): Nova Paleta BrainHex (Psicologia das Cores) Implementation Plan, Paleta de referência (usada em todas as tasks), Task 11: Varredura final por hex antigo no código, Task 12: Preparar o ambiente de recoloração da arte (script `sharp`), Task 13: Recolorir os 5 guardiões com precedente (seeker, survivor, conqueror, socializer, mastermind), Task 14: Recolorir Achiever (sem precedente, mas sem o problema de mistura de matiz), Task 15: Tentar recolorir Daredevil (caso conhecido de risco), Task 1: Atualizar a fonte oficial — `microservice/src/constants/brainHex.ts` (+8 more)
 
-### Community 349 - "_reset_circuits"
-Cohesion: 0.16
-Nodes (9): handleFilesSelect(), isStoragePath(), onDrop(), openPreview(), removeExisting(), fileExtension(), officeViewerUrl(), podePreVisualizar() (+1 more)
+### Community 349 - "storeTheme.test.ts"
+Cohesion: 0.20
+Nodes (12): PROFILE_ACCENTS, purchaseErrorMessage(), resolveStoreAccent(), resolveStoreChest(), resolveStoreIcon(), StoreIconKind, storeIconKind(), 4.1 Saldo (card herói) (+4 more)
 
-### Community 350 - "react-dom"
-Cohesion: 0.16
-Nodes (12): buildLogger(), createLogger(), emit(), formatValue(), resolveFormat(), resolveMinLevel(), serializeError(), serializeForJson() (+4 more)
-
-### Community 351 - "@radix-ui/react-toggle-group"
-Cohesion: 0.24
-Nodes (19): Decide se a ordem muda, e devolve a decisão pronta para o log.      Sempre devol, revisar_ordem_material(), _ordem_base(), Ordem inicial de um Estrategista: texto na frente, áudio atrás., _sinal(), test_evidencia_e_snapshot_com_os_numeros_que_a_decisao_viu(), test_formato_sem_sinal_mantem_o_score_original(), test_leitura_lenta_com_bom_desempenho_nao_e_penalizada() (+11 more)
-
-### Community 352 - "react-hook-form"
-Cohesion: 0.11
-Nodes (18): ZXGenericGF, -addOrSubtractb, -AztecData10, -AztecData12, -AztecData6, -AztecData8, -AztecParam, -buildMonomialcoefficient (+10 more)
-
-### Community 353 - "@supabase/supabase-js"
-Cohesion: 0.11
-Nodes (18): ZXCGImageLuminanceSource, -calculateRedgreenblue, -createImageFromBuffer, -createImageFromBufferlefttopwidthheight, -croptopwidthheight, -dealloc, -initializeWithImagelefttopwidthheight, -initWithBuffer (+10 more)
-
-### Community 354 - "@tanstack/react-query"
-Cohesion: 0.22
-Nodes (18): abort_frame(), add_pending(), check_tile(), create_filter_sbrow(), dav1d_task_create_tile_sbrow(), dav1d_task_delayed_fg(), dav1d_task_frame_init(), dav1d_worker_task() (+10 more)
-
-### Community 355 - "TextoActivity.tsx"
+### Community 350 - "criarCicloSessao"
 Cohesion: 0.21
-Nodes (17): gcd(), getopt(), getopt_internal(), getopt_long(), getopt_long_only(), parse_long_options(), permute_args(), _vwarnx() (+9 more)
+Nodes (14): CicloSessao, criarCicloSessao(), abrir(), descarregar(), encerrar(), iniciarTimer(), naFila(), pararTimer() (+6 more)
 
-### Community 356 - "zod"
-Cohesion: 0.26
-Nodes (16): ChangeState(), End(), Execute(), Launch(), pthread_cond_destroy(), pthread_cond_init(), pthread_cond_signal(), pthread_cond_wait() (+8 more)
+### Community 351 - "5. Blocos"
+Cohesion: 0.12
+Nodes (15): 1. Fonte da verdade, 3. Dados de exemplo, 4. Grade: o palco (1440×900), 5.1 Faixa do mundo (HUD) (`position: absolute; top: 24px; left: 24px; right: 408px; height: 88px;`), 5.2 O hexágono (redesenhado, revisão 3; vale para todos os modos, o painel e o modal), 5.3 Modo **Mapa** (Seeker, Conqueror, Daredevil): serpentina, 5.4 Painel de prévia (`position: absolute; top: 24px; right: 24px; bottom: 104px; width: 360px;`), 5.5 Rodapé do palco (+7 more)
 
-### Community 357 - "expo-symbols"
-Cohesion: 0.19
-Nodes (7): generate(), mersenne_twister, mersenne_twister_engine, operator()(), print(), seed(), twist()
+### Community 352 - "Personalizações — descrição detalhada do estado atual (com dados reais)"
+Cohesion: 0.12
+Nodes (15): Aba "Estrutura e paleta" (print 3), Aba "Por aluno" (print 4), Aba "Por perfil" (prints 1 e 2), Aba "Turma" (prints 5 a 8), Bloco de resumo do conteúdo selecionado, Cabeçalho e filtros (iguais nas 4 abas, prints 1 a 8), Cards de perfil (um por perfil BrainHex, cada um com uma barra colorida no topo), Cards de resumo (2 fileiras) (+7 more)
 
-### Community 358 - "formatSeconds"
-Cohesion: 0.11
-Nodes (5): VP8EncDspCostInitMIPS32(), VP8EncDspCostInitMIPSdspR2(), VP8EncDspCostInitNEON(), VP8EncDspCostInitSSE2(), VP8EncDspCostInit()
+### Community 353 - "Trilha — descrição detalhada do estado atual (com dados reais)"
+Cohesion: 0.12
+Nodes (15): Cabeçalho da página, Cabeçalho do painel, Canvas com os nós da trilha, Coluna direita — formulário "Novo Conteúdo" (topo no print 4, fim no print 5), Coluna esquerda (painel do tópico, fixa — igual nos prints 4 e 5), Controles de zoom (canto inferior direito, iguais em todos os prints da tela base), Dropdown de classe aberto (só no print 1), Linha de legenda (abaixo do cabeçalho) (+7 more)
 
-### Community 359 - "lucide-react"
-Cohesion: 0.2
-Nodes (17): assign(), back(), clear(), compare(), detail(), fmt(), front(), literals() (+9 more)
+### Community 354 - "createExternalModules"
+Cohesion: 0.17
+Nodes (14): bundledBlob(), createExternalModules(), ensureBabel(), load(), resolveGlobal(), waitForGlobal(), createHelmetManager(), applyCanvasBg() (+6 more)
 
-### Community 360 - "guardian-recolor/package.json"
-Cohesion: 0.2
-Nodes (17): iswalnum(), iswalpha(), iswcntrl(), iswdigit(), iswgraph(), iswlower(), iswprint(), iswpunct() (+9 more)
+### Community 355 - "createExternalModules"
+Cohesion: 0.17
+Nodes (14): bundledBlob(), createExternalModules(), ensureBabel(), load(), resolveGlobal(), waitForGlobal(), createHelmetManager(), applyCanvasBg() (+6 more)
 
-### Community 361 - "react-markdown"
-Cohesion: 0.2
-Nodes (17): integer_traits, integer_traits_base, integer_traits<bool>, integer_traits< ::boost::long_long_type>, integer_traits< ::boost::ulong_long_type>, integer_traits<char>, integer_traits<int>, integer_traits< __int64> (+9 more)
+### Community 356 - "createExternalModules"
+Cohesion: 0.17
+Nodes (14): bundledBlob(), createExternalModules(), ensureBabel(), load(), resolveGlobal(), waitForGlobal(), createHelmetManager(), applyCanvasBg() (+6 more)
 
-### Community 362 - "cmdk"
-Cohesion: 0.19
-Nodes (6): generate(), linear_congruential, linear_congruential_engine, rand48, read(), seed()
+### Community 357 - "createExternalModules"
+Cohesion: 0.17
+Nodes (14): bundledBlob(), createExternalModules(), ensureBabel(), load(), resolveGlobal(), waitForGlobal(), createHelmetManager(), applyCanvasBg() (+6 more)
 
-### Community 363 - "upload_fontes_personalizacao"
-Cohesion: 0.25
-Nodes (17): abort(), at(), back(), begin(), cbegin(), cend(), clear(), commit() (+9 more)
+### Community 358 - "createExternalModules"
+Cohesion: 0.17
+Nodes (14): bundledBlob(), createExternalModules(), ensureBabel(), load(), resolveGlobal(), waitForGlobal(), createHelmetManager(), applyCanvasBg() (+6 more)
 
-### Community 364 - "2. Leitura rapida (mapa geral)"
-Cohesion: 0.11
-Nodes (18): SDDiskCache, -cachePathForKey, -cachePathForKeyinPath, -commonInit, -containsDataForKey, -createDirectory, -dataForKey, -extendedDataForKey (+10 more)
+### Community 359 - "createExternalModules"
+Cohesion: 0.17
+Nodes (14): bundledBlob(), createExternalModules(), ensureBabel(), load(), resolveGlobal(), waitForGlobal(), createHelmetManager(), applyCanvasBg() (+6 more)
 
-### Community 365 - "turmaResumo.ts"
-Cohesion: 0.11
-Nodes (18): UIView, -sd_cancelCurrentImageLoad, -sd_cancelLatestImageLoad, -sd_imageIndicator, -sd_imageProgress, -sd_imageTransition, -sd_imageURL, -sd_internalSetImageWithURLplaceholderImageoptionscontextsetImageBlockprogresscompleted (+10 more)
+### Community 360 - "createExternalModules"
+Cohesion: 0.17
+Nodes (14): bundledBlob(), createExternalModules(), ensureBabel(), load(), resolveGlobal(), waitForGlobal(), createHelmetManager(), applyCanvasBg() (+6 more)
 
-### Community 366 - "react-native-svg"
-Cohesion: 0.22
-Nodes (17): _dedupe_preserve_order(), extract(), _extract_notes_text(), _extract_with_python_pptx(), _extract_with_xml_fallback(), _join_lines(), _normalize_title(), Any (+9 more)
+### Community 361 - "createExternalModules"
+Cohesion: 0.17
+Nodes (14): bundledBlob(), createExternalModules(), ensureBabel(), load(), resolveGlobal(), waitForGlobal(), createHelmetManager(), applyCanvasBg() (+6 more)
 
-### Community 367 - "@react-navigation/elements"
-Cohesion: 0.18
-Nodes (17): extractors/__init__.py, Extratores de conteudo por familia de arquivo., _empty(), extract(), Extrator de Markdown: parse estrutural → lista de Block., Extrai blocos estruturados de um arquivo Markdown., Remove markdown inline: bold, italic, code, links., _strip_inline_md() (+9 more)
+### Community 362 - "_app"
+Cohesion: 0.20
+Nodes (11): ResultadoFalas, _app(), _FabricaDeSessao, _target(), test_fase_do_job_gera_os_perfis_de_um_topico_um_depois_do_outro(), _gerar(), test_fase_do_job_gera_uma_vez_por_topico_e_perfil(), _gerar() (+3 more)
 
-### Community 368 - "5. Fluxos operacionais (sequencias)"
+### Community 363 - "test_card_descricao_sem_resposta.py"
+Cohesion: 0.16
+Nodes (7): _descricao_sem_resposta(), test_a_persistencia_nao_copia_mais_o_verso_para_descricao(), test_descricao_igual_ao_verso_vira_vazio(), test_descricao_propria_e_preservada(), test_normaliza_so_onde_descricao_e_igual_ao_verso(), test_o_downgrade_devolve_o_verso_sem_inventar_texto(), test_vazio_continua_vazio_e_nunca_vira_none()
+
+### Community 364 - "test_definer_sem_checagem_de_quem_ve.py"
+Cohesion: 0.21
+Nodes (9): _render(), test_a_guarda_vem_antes_de_ler_a_sessao(), test_downgrade_devolve_a_presenca_da_turma_sem_guarda(), test_downgrade_devolve_grant_e_funcao_sem_guarda(), test_presenca_da_turma_tambem_ganha_a_guarda(), test_presenca_nao_e_revogada_e_ganha_a_guarda(), test_revoga_as_tres_sem_cliente(), test_revoga_de_anon_tambem() (+1 more)
+
+### Community 365 - "test_migration_evento_abre_e_encerra_no_horario.py"
 Cohesion: 0.24
-Nodes (19): Decide se a ordem muda, e devolve a decisão pronta para o log.      Sempre devol, revisar_ordem_material(), _ordem_base(), Ordem inicial de um Estrategista: texto na frente, áudio atrás., _sinal(), test_evidencia_e_snapshot_com_os_numeros_que_a_decisao_viu(), test_formato_sem_sinal_mantem_o_score_original(), test_leitura_lenta_com_bom_desempenho_nao_e_penalizada() (+11 more)
+Nodes (10): _corpo(), _downgrade_sql(), test_coluna_opt_in_e_check_de_peca(), test_cron_guardado_a_cada_minuto(), test_downgrade_desagenda_e_volta_as_portas_antigas(), test_miolos_sem_sessao_ficam_fora_do_alcance_do_cliente(), test_miolos_travam_a_linha_e_decidem_pelo_estado(), test_portas_conferem_posse_antes_de_delegar() (+2 more)
+
+### Community 366 - "test_migration_fechar_quando_ninguem_pode.py"
+Cohesion: 0.20
+Nodes (9): _downgrade_sql(), _sem_comentarios(), test_acerto_fecha_o_par_na_hora(), test_downgrade_volta_a_conta_antiga(), test_fecha_por_quem_ainda_pode_responder(), test_o_join_substitui_o_not_exists(), test_o_limite_e_o_mesmo_que_recusa_a_tentativa(), test_o_resto_do_responder_fica_intacto() (+1 more)
+
+### Community 367 - "test_migration_telemetria_so_na_propria_sessao.py"
+Cohesion: 0.24
+Nodes (11): _downgrade_sql(), _funcao(), _normal(), _policy(), _sql_bruto(), test_downgrade_tira_policies_e_helpers_e_nao_toca_na_posse(), test_helpers_sao_definer_com_search_path_vazio_e_sem_anon(), test_policies_sao_restritivas_e_so_para_authenticated() (+3 more)
+
+### Community 368 - "test_migrations_postgres.py"
+Cohesion: 0.28
+Nodes (8): database(), migration_project(), run(), test_commits_revision_and_data_and_retry_is_noop(), test_failed_migration_rolls_back_data_and_revision(), test_two_processes_wait_on_same_session_lock_and_apply_once(), wait_success(), write_revision()
 
 ### Community 369 - "pptxImageContext.ts"
-Cohesion: 0.15
-Nodes (14): validate-essay-answer-ai/index.ts, asNumber(), asString(), clamp(), CORS, ESSAY_EVAL_SCHEMA, extractJsonCandidate(), JsonObject (+6 more)
+Cohesion: 0.12
+Nodes (16): asNumber(), asString(), AuthClient, clamp(), CORS, ESSAY_EVAL_SCHEMA, extractJsonCandidate(), iaIndisponivel() (+8 more)
 
-### Community 370 - ".to_dict"
-Cohesion: 0.11
-Nodes (18): 2.1 Novo contrato interno de personalização, 2.2 Arquivos modificados, 2.3 O que é removido do caminho de personalização, 2.4 Novo payload para disparar_brainhex_async, 3.1 Novo contrato de POST /api/personalizar, 3.2 Novo fluxo em background, 3.3 Arquivos modificados, 3.4 Sem fontes disponíveis (+10 more)
+### Community 370 - "test_rank_limite_visivel.py"
+Cohesion: 0.20
+Nodes (8): _offline_alembic_config(), _sql_da_migracao(), test_app_config_nao_e_gravavel_pelo_cliente(), test_limite_ausente_ou_zerado_nao_vira_mostra_tudo(), test_o_corte_fica_na_view_embrulhada_e_nao_na_base(), test_o_corte_tem_as_tres_condicoes(), test_o_limite_e_configuracao_e_nao_constante_no_sql(), test_o_sql_nao_carrega_porcentagem()
 
-### Community 371 - "adapters/__init__.py"
-Cohesion: 0.11
-Nodes (19): api/arquitetura-microservico-detalhada.md, 10. Observabilidade mínima recomendada, 11. Decisões de arquitetura, 1. Propósito, 2. Papel do microserviço no ecossistema, 3. Diagrama de integração, 4. Contrato principal, 5. Pipeline interno do microserviço (+11 more)
+### Community 371 - "Arquitetura do Microserviço (ApiBrainHex) - Integração a partir da API TrailUp"
+Cohesion: 0.05
+Nodes (37): conteudo_estudado(), 10. Observabilidade mínima recomendada, 11. Decisões de arquitetura, 1. Propósito, 2. Papel do microserviço no ecossistema, 3. Diagrama de integração, 4. Contrato principal, 5. Pipeline interno do microserviço (+29 more)
 
-### Community 372 - "express"
-Cohesion: 0.11
-Nodes (18): Adicionado, Arquitetura, Autenticação (nova — hoje não existe nenhuma), Contexto, Decisões fixas (validadas com o usuário), Design: BrainHexPDF como motor de apresentação, Dev tooling, Fora de escopo (+10 more)
+### Community 372 - "test_registro_transferencias.py"
+Cohesion: 0.21
+Nodes (8): _arquivos(), _coberto(), _encontrados(), _hosts_do_registro(), _imports(), test_cobertura_com_curinga(), test_contato_do_site_nao_tem_email_de_destino_no_frontend(), test_hosts_externos_estao_no_registro()
 
-### Community 373 - "mammoth"
-Cohesion: 0.13
-Nodes (6): useTurmaKpis(), recharts, createRequestGuard(), selectView(), computeTurmaResumo(), recharts
+### Community 373 - "graficos.ts"
+Cohesion: 0.10
+Nodes (31): recharts@^2.15.4, AbandonoPorPerfil(), pct(), Ponto, RotuloDoPerfil(), SEGMENTOS, corDoTom(), DistribuicaoNotas() (+23 more)
 
-### Community 374 - "jszip"
-Cohesion: 0.15
-Nodes (12): handleGoogleLogin(), handleLogin(), handleReset(), expo-web-browser, expo-web-browser, autenticarComGoogle(), autenticarUsuario(), getAuthErrorMessage() (+4 more)
-
-### Community 375 - "Structured Output + Guardrails no grafo LangGraph Implementation Plan"
-Cohesion: 0.11
-Nodes (17): ZXPDF417HighLevelEncoder, -bytesForMessageencoding, -determineConsecutiveBinaryCountstartposencodingerror, -determineConsecutiveDigitCountstartpos, -determineConsecutiveTextCountstartpos, -encodeBinarystartposcountstartmodebuffer, -encodeHighLevelcompactionencodingerror, -encodeNumericstartposcountbuffer (+9 more)
-
-### Community 376 - "tests/__init__.py"
-Cohesion: 0.11
-Nodes (17): ZXPDF417DetectionResult, -adjustIndicatorColumnRowNumbers, -adjustRowNumberIfValidinvalidRowCountscodeword, -adjustRowNumberotherCodeword, -adjustRowNumbers, -adjustRowNumbersByRow, -adjustRowNumberscodewordsRowcodewords, -adjustRowNumbersFromBothRI (+9 more)
-
-### Community 377 - "Controle de geração manual/automática de personalização — Plano de Implementação"
-Cohesion: 0.13
-Nodes (12): Disto16x16_MIPS32(), Disto4x4_MIPS32(), ITransform_MIPS32(), ITransformOne_MIPS32(), Quantize2Blocks_MIPS32(), QuantizeBlock_MIPS32(), VP8EncDspInitMIPS32(), VP8EncDspInitMIPSdspR2() (+4 more)
-
-### Community 378 - "Rotação de modelos Gemini free-tier antes do fallback obrigatório pra OpenAI"
-Cohesion: 0.13
-Nodes (5): Average2_m256i(), GetSumAbsDiff32_AVX2(), PredictorSub10_AVX2(), PredictorSub11_AVX2(), PredictorSub5_AVX2()
-
-### Community 379 - "dev.ps1"
-Cohesion: 0.48
-Nodes (14): endian32(), endian64(), FBxxHash64(), fetch32(), fetch64(), fetch8(), finalize(), h32bytes() (+6 more)
-
-### Community 380 - "sample-hue.mjs"
-Cohesion: 0.42
-Nodes (14): areAttributedStringFragmentsEquivalentDisplayWise(), areAttributedStringFragmentsEquivalentLayoutWise(), areAttributedStringsEquivalentDisplayWise(), areAttributedStringsEquivalentLayoutWise(), areTextAttributesEquivalentLayoutWise(), attributedStringFragmentHashDisplayWise(), attributedStringFragmentHashLayoutWise(), attributedStringHashLayoutWise() (+6 more)
-
-### Community 382 - "14. Edge Functions, RPCs, Functions e Triggers"
-Cohesion: 0.2
-Nodes (14): allocator_multialloc_chain_node_deallocator, allocator_node_destroyer, allocator_node_destroyer_and_chain_builder, null_scoped_array_deallocator(), null_scoped_deallocator(), null_scoped_destructor, scoped_array_deallocator(), scoped_deallocator() (+6 more)
-
-### Community 383 - "IPersonalizedTopic.ts"
-Cohesion: 0.25
-Nodes (16): call(), const_pow(), fill_array_int(), fill_array_int_impl(), fill_array_real(), generate(), generate_from_int(), generate_from_real() (+8 more)
-
-### Community 384 - "testSetup.ts"
+### Community 374 - "public.trailup_progresso_percurso"
 Cohesion: 0.16
-Nodes (11): RCTCGPointFromPoint(), RCTCGRectFromRect(), RCTCGSizeFromSize(), RCTCreateCGColorRefFromSharedColor(), RCTFloatFromCGFloat(), RCTNSStringFromString(), RCTNSStringFromStringNilIfEmpty(), RCTPointFromCGPoint() (+3 more)
+Nodes (6): public.social_enviar_convite(), percurso_recalcular, public.personalizacao_percurso, public.trailup_percurso_recalcular(), public.trailup_progresso_percurso(), conteudo_personalizado
 
-### Community 385 - "expo-splash-screen"
-Cohesion: 0.11
-Nodes (17): SDWeakProxy, -class, -conformsToProtocol, -debugDescription, -description, -forwardingTargetForSelector, -forwardInvocation, -hash (+9 more)
+### Community 375 - "Bag de itens de estudo — Design"
+Cohesion: 0.13
+Nodes (14): API e permissões, Bag de itens de estudo — Design, Compartilhamento social, Decisões de produto, Experiência da Bag, Experiência na trilha, Fluxo de dados, Modelo de dados (+6 more)
 
-### Community 386 - "upload_fontes_personalizacao"
-Cohesion: 0.24
-Nodes (5): ArtefatosPersonalizadosRepository, Any, AsyncSession, Marca artefatos de ciclos anteriores como obsoletos., Cards ja gerados e ativos para (aluno, topico, conteudo).          Cards nao var
+### Community 376 - "fluxo-trailup.md"
+Cohesion: 0.13
+Nodes (14): 1.1. Contexto Geral, 1.2. Perfil de Aprendizagem, 1.3. Interpretação Comportamental (Para o Sistema TrailUp), 1.4. Aplicação no Sistema — *Modo de Operação TrailUp*, 1. PERSONA, 2. LOGIN / ENTRADA, 3. DASHBOARD / MAPA DE TRILHAS, 4. TELA DO MÓDULO — APRESENTAÇÃO (+6 more)
+
+### Community 377 - "monografia-trailup.md"
+Cohesion: 0.13
+Nodes (14): 9 LIMITAÇÕES E TRABALHOS FUTUROS, ABSTRACT, ANEXOS – ARTEFATOS DO PROJETO, APÊNDICE A – MATRIZ DE RASTREABILIDADE DO PROJETO, APÊNDICE B – FORMULÁRIO INICIAL E VARIÁVEIS DE PERSONALIZAÇÃO, APÊNDICE C – MATRIZ DE INTERVENÇÕES DO MVP, APÊNDICE D – MODELO DE REGISTRO DA DECISÃO ADAPTATIVA, APÊNDICE E – PLANO DE ANÁLISE ESTATÍSTICA (+6 more)
+
+### Community 378 - "consentimentoRemoto.ts"
+Cohesion: 0.22
+Nodes (11): CODIGO_JA_REGISTRADO, Insercao, Inserir, LinhaDeConsentimento, linhaDeConsentimento(), Origem, precisaRegistrar(), registrarConsentimento() (+3 more)
+
+### Community 379 - "4. Blocos"
+Cohesion: 0.13
+Nodes (14): 1. Fonte da verdade, 2. Dados de exemplo, 3. Grade (main de 1096px), 4.1 Cabeçalho, 4.2 Barra de abas e busca (`margin-bottom: 20px`, flex `space-between`), 4.3 Card de pessoa (`SocialPersonCard`), grade de 2 colunas, gap 16, 4.4 Convites (`SocialInviteCard`), 4.5 Guildas (`GuildSection`) (+6 more)
+
+### Community 380 - "revisao-02-feedback-geis/telas/06-social.md"
+Cohesion: 0.13
+Nodes (14): 1. Feedback, 2. Fica como está (visual e conteúdo), 3. O que muda, 4. Grade (1164px úteis), 5.1 Título de bloco (igual para os 3), 5.2 Convites (`#convites`), 5.3 Amigos (`#amigos`), 5.4 Encontrar colegas (`#encontrar`) (+6 more)
+
+### Community 381 - "✦ TRAILUP / CONSOLE"
+Cohesion: 0.13
+Nodes (14): 01 — Dashboard, 02 — Jornada do Aluno, 03 — Meus Dados + Ranks, 04 — Personalizações, 05 — Classes, 06 — Trilha: Refazer, 07 — Geração de Trilha com IA, 08 — Malha / Canvas da Trilha (+6 more)
+
+### Community 382 - "Página Dashboard (prints 1, 2 e 13)"
+Cohesion: 0.13
+Nodes (14): Aba "Perfil BrainHex" (print 5), Aba "Personalização" (prints 9, 10, 11 e 12), Aba "Trilha Visual" (prints 6, 7 e 8), Aba "Visão Geral" (prints 3 e 4), Bloco de dois gráficos, lado a lado, Cabeçalho fixo no topo (igual em todas as telas do console, não só no Dashboard), Dashboard — descrição detalhada do estado atual (com dados reais), "Lista de Alunos" (abaixo dos gráficos) (+6 more)
+
+### Community 383 - "Prompt Fase 2 — Turmas"
+Cohesion: 0.13
+Nodes (14): Assistente "Escriba", Cabeçalho, Estado vazio, Estados da tela, Formulário Nova/Editar turma (inline, não é modal), Grade de cards de turma, Identificação, Modal "Duplicar turma" (+6 more)
+
+### Community 384 - "✦ TRAILUP / CONSOLE"
+Cohesion: 0.13
+Nodes (14): 01 — Dashboard, 02 — Jornada do Aluno, 03 — Meus Dados + Ranks, 04 — Personalizações, 05 — Classes, 06 — Trilha: Refazer, 07 — Geração de Trilha com IA, 08 — Malha / Canvas da Trilha (+6 more)
+
+### Community 385 - "✦ TRAILUP / CONSOLE"
+Cohesion: 0.13
+Nodes (14): 01 — Dashboard, 02 — Jornada do Aluno, 03 — Meus Dados + Ranks, 04 — Personalizações, 05 — Classes, 06 — Trilha: Refazer, 07 — Geração de Trilha com IA, 08 — Malha / Canvas da Trilha (+6 more)
+
+### Community 386 - "test_base_sem_aluno_repositorios.py"
+Cohesion: 0.04
+Nodes (25): ArtefatosPersonalizadosRepository, test_artefatos_nao_fabricam_a_string_none(), test_buscar_por_ciclo_id_usa_predicado_seguro_para_base_sem_dono(), test_cards_ativos_casa_base_sem_aluno(), test_contexto_da_base_nao_busca_aluno(), test_derivar_do_base_copia_materiais_sem_regerar(), test_dispatch_de_midia_nunca_manda_none_ao_microservice(), test_enrollment_deriva_antes_de_gerar() (+17 more)
 
 ### Community 387 - "frontend/politicas-dados-privacidade.md"
-Cohesion: 0.11
-Nodes (17): compilerOptions, allowImportingTsExtensions, isolatedModules, lib, module, moduleDetection, moduleResolution, noEmit (+9 more)
+Cohesion: 0.12
+Nodes (15): compilerOptions, allowImportingTsExtensions, isolatedModules, lib, module, moduleDetection, moduleResolution, noEmit (+7 more)
 
 ### Community 388 - "microservice/package.json"
-Cohesion: 0.11
-Nodes (18): microservice/tsconfig.json, compilerOptions, allowImportingTsExtensions, allowJs, experimentalDecorators, isolatedModules, jsx, lib (+10 more)
+Cohesion: 0.13
+Nodes (14): compilerOptions, allowImportingTsExtensions, allowJs, experimentalDecorators, isolatedModules, jsx, lib, module (+6 more)
 
-### Community 389 - "Button-Inicial.tsx"
-Cohesion: 0.11
-Nodes (17): Adicionado, Arquivos Impactados, Contexto, Design: Personalização Longa — Integração ApiBrainHex → ApiTraiUp, Formatos de Saída, `gerador_conteudo.txt`, Mantidos, Migração do Banco (`sql/manual_supabase_migration.sql`) (+9 more)
+### Community 389 - "✦ TRAILUP / CONSOLE"
+Cohesion: 0.13
+Nodes (14): 01 — Dashboard, 02 — Jornada do Aluno, 03 — Meus Dados + Ranks, 04 — Personalizações, 05 — Classes, 06 — Trilha: Refazer, 07 — Geração de Trilha com IA, 08 — Malha / Canvas da Trilha (+6 more)
 
 ### Community 390 - "14. Edge Functions, RPCs, Functions e Triggers"
 Cohesion: 0.11
-Nodes (18): api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos.md, 1. Personalizacao, 2. Gamificacao, 3. Recursos pedagogicos aplicados, 4. Guardrails, 5. Indicadores de sucesso recomendados, Como funciona, Critrios de aplicacao (+10 more)
+Nodes (18): 1. Personalizacao, 2. Gamificacao, 3. Recursos pedagogicos aplicados, 4. Guardrails, 5. Indicadores de sucesso recomendados, Como funciona, Critrios de aplicacao, Elementos no ecossistema (+10 more)
 
-### Community 391 - "ArvoreView.tsx"
-Cohesion: 0.11
-Nodes (17): Arquitetura, Cache do capítulo por bloco (tabela nova), Componentes e fluxo, Contexto e problema, Duas fases com dependência explícita, Fora de escopo (explícito), Geração granular e retomável de conteúdo personalizado (por bloco/parte/perfil), Microservice — endpoints granulares novos (`server.ts`) (+9 more)
+### Community 391 - "failed"
+Cohesion: 0.04
+Nodes (76): falhou(), 10.1 Tabela canônica, 10.2 Campo de materiais, 10.3 Garantias, 10. Persistência e contratos centrais, 8.1 Modelo operacional, 8.2 Estado dos jobs, 8. Fluxo assíncrono de jobs (+68 more)
 
 ### Community 392 - "dotenv"
-Cohesion: 0.22
-Nodes (15): assignImagesToSections(), AssignmentResult, AssignOptions, buildRelationGraph(), frequencias(), imageTerms(), pesosIdf(), RelatableImage (+7 more)
+Cohesion: 0.15
+Nodes (20): assignImagesToSections(), AssignmentResult, AssignOptions, buildRelationGraph(), frequencias(), imageTerms(), pesosIdf(), RelatableImage (+12 more)
 
-### Community 393 - "normalize"
+### Community 394 - "✦ TRAILUP / CONSOLE"
 Cohesion: 0.13
-Nodes (8): expo, ExpoAppDelegate, ExpoReactNativeFactoryDelegate, expo, ModulesProvider, ExpoModulesProvider, AppDelegate, ReactNativeDelegate
+Nodes (14): 01 — Dashboard, 02 — Jornada do Aluno, 03 — Meus Dados + Ranks, 04 — Personalizações, 05 — Classes, 06 — Trilha: Refazer, 07 — Geração de Trilha com IA, 08 — Malha / Canvas da Trilha (+6 more)
 
-### Community 394 - "NativeDocxViewer.tsx"
+### Community 395 - "✦ TRAILUP / CONSOLE"
 Cohesion: 0.13
-Nodes (6): dp_create_sdl_window(), dp_get_renderer(), placebo_renderer_create_common(), placebo_renderer_create_gl(), placebo_renderer_create_vk(), sdl_renderer_create()
+Nodes (14): 01 — Dashboard, 02 — Jornada do Aluno, 03 — Meus Dados + Ranks, 04 — Personalizações, 05 — Classes, 06 — Trilha: Refazer, 07 — Geração de Trilha com IA, 08 — Malha / Canvas da Trilha (+6 more)
 
-### Community 395 - "20260801_01_bump_merge_materiais_timeout.py"
-Cohesion: 0.14
-Nodes (6): VP8LHashChainFindCopy(), VP8LHashChainFindLength(), VP8LHashChainFindOffset(), VP8LRefsCursorNext(), VP8LRefsCursorNextBlock(), VP8LRefsCursorOk()
-
-### Community 396 - "2. Leitura rapida (mapa geral)"
-Cohesion: 0.21
-Nodes (16): InitSegmentJob(), ExportBlock(), ImportBlock(), ImportLine(), InitLeft(), InitTop(), MinSize(), VP8IteratorExport() (+8 more)
-
-### Community 397 - "personalizar"
-Cohesion: 0.25
-Nodes (16): AssignSegments(), clip(), DefaultMBInfo(), FastMBAnalyze(), FinalAlphaValue(), GetAlpha(), InitHistogram(), MBAnalyze() (+8 more)
-
-### Community 398 - "formatSeconds"
-Cohesion: 0.27
-Nodes (16): AddFrame(), MemDataSize(), NewFrame(), ParseAnimationFrame(), ParseSingleImage(), ParseVP8X(), ParseVP8XChunks(), ReadByte() (+8 more)
-
-### Community 399 - "expo-linking"
-Cohesion: 0.29
-Nodes (15): MultHi(), VP8Clip8(), VP8ClipUV(), VP8RGBToU(), VP8RGBToV(), VP8YuvToArgb(), VP8YUVToB(), VP8YuvToBgr() (+7 more)
-
-### Community 400 - "_parse_gemini_keys"
+### Community 396 - "✦ TRAILUP / CONSOLE"
 Cohesion: 0.13
-Nodes (4): VP8LPrefixEncode(), VP8LPrefixEncodeBits(), VP8LPrefixEncodeBitsNoLUT(), VP8LPrefixEncodeNoLUT()
+Nodes (14): 01 — Dashboard, 02 — Jornada do Aluno, 03 — Meus Dados + Ranks, 04 — Personalizações, 05 — Classes, 06 — Trilha: Refazer, 07 — Geração de Trilha com IA, 08 — Malha / Canvas da Trilha (+6 more)
 
-### Community 401 - "5. Fluxos operacionais (sequencias)"
-Cohesion: 0.32
-Nodes (15): align(), Alloc(), allocate(), blockGoodAllocSize(), canReuseExistingBlock(), clear(), folly(), freeBlocks() (+7 more)
-
-### Community 402 - "builder.py"
-Cohesion: 0.22
-Nodes (15): begin(), end(), eraseImpl(), exists(), find(), findWithoutPromotion(), folly(), getPruneHook() (+7 more)
-
-### Community 404 - "Reaproveitamento de imagens entre mídias (D2) — Design"
-Cohesion: 0.23
-Nodes (15): add(), approxBytesUsed(), begin(), contains(), find(), findOrNull(), GetKey(), MakeEnd() (+7 more)
-
-### Community 407 - "@config-plugins/react-native-blob-util"
+### Community 397 - "nomes_colidem"
 Cohesion: 0.19
-Nodes (4): generate(), linear_feedback_shift, linear_feedback_shift_engine, seed()
+Nodes (11): _com_epiteto(), nome_unico(), _livre(), nomes_colidem(), _palavras(), test_nome_livre_fica_como_o_modelo_deu(), test_nome_longo_com_epiteto_cabe_no_limite(), test_nome_unico_termina_mesmo_com_os_epitetos_ocupados() (+3 more)
 
-### Community 408 - ".__init__"
-Cohesion: 0.34
-Nodes (15): contextualLock(), detail(), lock(), LockedPtr(), nxMoveCtor(), operator(), rlock(), SynchronizedMutexMethod() (+7 more)
+### Community 398 - "public.social_relacionamentos"
+Cohesion: 0.18
+Nodes (8): public."notificacoes", public.guilda_bloqueio_ativo(), notificacoes_social_evento_uidx, public.social_aceitar_convite(), public.social_enviar_convite(), public.social_chat_enviar(), public.social_chat_listar(), public.social_presenca_aluno()
 
-### Community 409 - "normalizeNonNegativeNumber"
-Cohesion: 0.26
-Nodes (15): __builtin___clear_cache(), __builtin_clz(), __builtin_clzl(), __builtin_clzll(), __builtin_ctz(), __builtin_ctzl(), __builtin_ctzll(), __builtin_ffs() (+7 more)
+### Community 399 - "MappingResult"
+Cohesion: 0.15
+Nodes (4): MappingResult, MappingRows, RecordingSession, test_group_analysis_service_upsert_persists_summary()
 
-### Community 410 - "mobile/arquitetura-funcionamento-geral-sistema.md"
-Cohesion: 0.12
-Nodes (16): SDWebImageTransition, -curlDownTransition, -curlDownTransitionWithDuration, -curlUpTransition, -curlUpTransitionWithDuration, -fadeTransition, -fadeTransitionWithDuration, -flipFromBottomTransition (+8 more)
+### Community 400 - "test_migrations_base_por_perfil.py"
+Cohesion: 0.25
+Nodes (12): _load_migration(), _load_trigger_migration(), _sql(), test_apenas_tabelas_de_artefato_ficam_nullable(), test_dedup_de_target_cobre_a_base(), test_migration_revision_chain(), test_professor_enxerga_material_de_nivel_topico(), test_trigger_nao_depende_mais_de_classe_aluno() (+4 more)
 
-### Community 411 - "Slides Imersivos — Wiring no Pipeline Implementation Plan"
-Cohesion: 0.12
-Nodes (16): UIImage, -sd_decodeOptions, -sd_imageFormat, -sd_imageFrameCount, -sd_imageLoopCount, -sd_isAnimated, -sd_isHighDynamicRange, -sd_isIncremental (+8 more)
+### Community 401 - "Guia do professor — TrailUp"
+Cohesion: 0.14
+Nodes (13): 1. Em uma página, 2. Antes de começar (custo único), 3. Rotina semanal (custo recorrente), 4. Presença e participação, 5. O que reaproveitar no semestre seguinte, 6.1 Pontos (XP), 6.2 Limite do ranking, 6.3 Moedas e loja (+5 more)
+
+### Community 402 - "O que entrou entre `b5491b02` e `11aa1c65` (13/10 → 01/11), por área"
+Cohesion: 0.14
+Nodes (14): Banco, ops e CI, Console do professor, Docs, protótipos e sprint, Espelho Geisbelly (bots só leem), Gamificação: eventos, missões, ranks, modos e economia, Histórico anterior, IA, RAG e personalização, Impacto na monografia (+6 more)
+
+### Community 403 - "3. Issues da sprint, por frente"
+Cohesion: 0.14
+Nodes (13): 1. Propósito geral, 2. Período, 3. Issues da sprint, por frente, 4. Definição de Pronto (DoD) da sprint, 5. Riscos e decisões em aberto, 6. Fora da sprint, Frente A — Bugs do aluno (dona: Geisbelly), Frente B — Console do professor: protótipo → implementação (owner: JP; verificação: Geisbelly) (+5 more)
+
+### Community 404 - "r2Presign.ts"
+Cohesion: 0.30
+Nodes (12): bufferParaHex(), codificarKey(), derivarChaveDeAssinatura(), hmac(), inicioDaJanela(), NL, paraAmzDate(), paraHex() (+4 more)
+
+### Community 405 - "uses"
+Cohesion: 0.21
+Nodes (14): steps, if, needs, runs-on, steps, steps, steps, brainhexpdf (+6 more)
+
+### Community 406 - "09-biblioteca-conquistas.md"
+Cohesion: 0.14
+Nodes (13): 1. Fonte da verdade, 2. Estrutura real (o app não tem filtro: tem **seções** e **grupos**), 3. Dados de exemplo (18 no total: 6 concluídas, 5 em progresso, 7 bloqueadas), 4. Grade (main de 1096px), 5.1 Cabeçalho, 5.2 Resumo (`aria-label="Resumo da biblioteca"`), 5.3 Índice lateral (sticky `top: 108px`), 5.4 Seção (`margin-bottom: 36px`) (+5 more)
+
+### Community 407 - "revisao-02-feedback-geis/telas/07-notificacoes.md"
+Cohesion: 0.14
+Nodes (13): 1. Feedback, 2. Fica como está, 3. O que muda, 4. Grade (1164px úteis), 5.1 Cabeçalho, 5.2 Filtros, 5.3 Item da lista (`<a href="#n-1">`, um por notificação), 5.4 Detalhe (card `padding: 26px 28px`, raio 20, fundo `surface`, borda `line`) (+5 more)
+
+### Community 408 - "Prompt Fase 2 — Meus dados"
+Cohesion: 0.14
+Nodes (13): Assistente "Escriba", Cabeçalho, Coluna direita, Coluna esquerda (mais larga) — "Informações pessoais", Estados, Identificação, Layout em 2 colunas, Modal "Excluir a sua conta" (+5 more)
+
+### Community 409 - "test_chat_log_sem_texto_do_aluno.py"
+Cohesion: 0.23
+Nodes (6): _resumir_entrada_do_chat(), _PayloadFalso, test_mensagem_que_nao_pede_resposta_marca_falso(), test_nenhum_logger_de_api_app_carrega_texto_livre_do_aluno(), test_nenhuma_palavra_do_aluno_entra_no_resumo(), test_o_que_servia_para_diagnostico_continua()
+
+### Community 410 - "group_analysis.py"
+Cohesion: 0.27
+Nodes (9): compute_distribuicao(), _float_ou_none(), _normalize_profile(), _safe_float(), test_compute_distribuicao_aluno_sem_nota_nao_entra_como_zero(), test_compute_distribuicao_counts_and_predominante(), test_compute_distribuicao_empty_class(), test_compute_distribuicao_no_predominante_on_tie() (+1 more)
 
 ### Community 412 - "File Structure"
 Cohesion: 0.12
 Nodes (16): aliases, components, hooks, lib, ui, utils, rsc, $schema (+8 more)
 
-### Community 413 - "Imagem vinculada a minutagem do áudio (D3) Implementation Plan"
-Cohesion: 0.12
-Nodes (17): eas-cli, eslint-config-expo, devDependencies, eas-cli, eslint, eslint-config-expo, tsx, @types/react (+9 more)
+### Community 413 - "test_laco_drena_sem_dormir_enquanto_a_passada_enche_o_lote"
+Cohesion: 0.18
+Nodes (5): test_laco_drena_sem_dormir_enquanto_a_passada_enche_o_lote(), dormir(), processar(), test_laco_sobe_um_consumidor_por_concorrencia(), test_passada_que_falha_dorme()
 
-### Community 414 - "@hookform/resolvers"
-Cohesion: 0.21
-Nodes (11): fallbackPalette, Props, styles, WebContentFrame(), webFrameStyle, DeckProgressEvent, parseDeckProgressMessage(), parsePedidoDeFala() (+3 more)
+### Community 414 - "_sql"
+Cohesion: 0.15
+Nodes (12): test_a_paleta_e_os_icones_sao_os_do_console(), test_downgrade_volta_a_rpc_anterior_e_tira_check_e_funcao(), test_upgrade_cria_a_funcao_o_check_e_a_rpc_a_chama(), _sql(), test_downgrade_volta_a_cascade_e_remove_o_historico(), test_fk_da_turma_vira_set_null_procurando_o_nome_no_catalogo(), test_historico_tem_rls_de_leitura_e_ninguem_escreve_direto(), test_turma_apagada_desativa_e_nao_deixa_reativar() (+4 more)
 
 ### Community 415 - "expo-av"
-Cohesion: 0.12
-Nodes (17): mobile/funcionamento-personalizacao-gamificacao-recursos-pedagogicos.md, 1. Personalizacao no app, 2. Gamificacao no app, 3. Recursos pedagogicos aplicados, 4. Persistencia e rank, 5. Indicadores recomendados, Aplicacao, Elementos (+9 more)
+Cohesion: 0.11
+Nodes (17): 1. Personalizacao no app, 2. Gamificacao no app, 3. Recursos pedagogicos aplicados, 4. Persistencia e rank, 5. Indicadores recomendados, Aplicacao, Elementos, Fluxo (+9 more)
 
 ### Community 416 - "@radix-ui/react-scroll-area"
-Cohesion: 0.12
-Nodes (17): frontend/arquitetura-estrutura-app-camadas.md, 1. Objetivo, 2. VisÃ£o macro do ecossistema, 3.1 Web (brainhex-navigator), 3.2 API (ApiTraiUp), 3.3 Mobile (trailup-app-dsm-2502), 3. Camadas por repositÃ³rio, 4. Fronteiras de responsabilidade (+9 more)
+Cohesion: 0.11
+Nodes (17): 1. Objetivo, 2. Visão macro do ecossistema, 3.1 Web (brainhex-navigator), 3.2 API (ApiTraiUp), 3.3 Mobile (trailup-app-dsm-2502), 3. Camadas por repositório, 4. Fronteiras de responsabilidade, 5. Principios de separação de camadas (+9 more)
 
 ### Community 417 - "Reaproveitamento de imagens entre mídias (D2) Implementation Plan"
 Cohesion: 0.12
 Nodes (17): 10. Troubleshooting, 1. Visão geral, 2. Pré-requisitos, 3. Instalação, 4. Configuração de ambiente (`.env`), 5. Executando os serviços, 6. Testes e qualidade, 7. Banco de dados (API) (+9 more)
 
-### Community 418 - "XP de slides com checkpoint (D1a) Implementation Plan"
-Cohesion: 0.12
-Nodes (16): Abstração do Provider de Personalização Implementation Plan, Estrutura de arquivos resultante, Métodos da interface (consumo real), Notas finais, Task 0: Preparação, Task 10: Montar `<PersonalizacaoProviderProvider>` no root, Task 11: Validação final e PR, Task 1: Criar tipos compartilhados (+8 more)
+### Community 418 - "TrailupApiProvider"
+Cohesion: 0.06
+Nodes (36): Abstração do Provider de Personalização Implementation Plan, Estrutura de arquivos resultante, Métodos da interface (consumo real), Notas finais, Task 0: Preparação, Task 10: Montar `<PersonalizacaoProviderProvider>` no root, Task 11: Validação final e PR, Task 1: Criar tipos compartilhados (+28 more)
 
-### Community 419 - "Testabilidade do pipeline de upload no microservice"
-Cohesion: 0.12
-Nodes (16): 1. Geração por slide (não deck inteiro numa chamada), 2. Shell fixo + isolamento por slide (nested iframes sandboxed), 3. Validação pós-geração (defesa em profundidade), 4. Modelo de dado, 5. Regenerar 1 slide (rework do endpoint já existente), 6. Console do professor e mobile — mesmo HTML, responsivo, 7. Migração e versionamento, 8. Testes (+8 more)
+### Community 419 - "microservice/server.ts"
+Cohesion: 0.05
+Nodes (50): Task 6: `/api/health` e `buildApp` — remove readiness de renderer, Task 3: Geração de HTML de slide por IA (por slide, não deck inteiro), Task 11: Remover o motor imersivo de `geminiService.ts`, 1. Geração por slide (não deck inteiro numa chamada), 2. Shell fixo + isolamento por slide (nested iframes sandboxed), 3. Validação pós-geração (defesa em profundidade), 4. Modelo de dado, 5. Regenerar 1 slide (rework do endpoint já existente) (+42 more)
 
 ### Community 420 - "Imagem vinculada a minutagem do áudio (D3) — Design"
-Cohesion: 0.12
-Nodes (16): Backend, Botão "Gerar" por card de perfil, Contexto, Controle de geração automática/manual de personalização — Design, Controle "Gerar tudo", Decisões (via brainstorming), Dois novos job kinds, Endpoints novos (+8 more)
-
-### Community 421 - "react-markdown"
-Cohesion: 0.21
-Nodes (11): handleDownloadStandaloneHtml(), handleQuickDownloadHtml(), getBrainHexBorderClassName(), getBrainHexBorderCss(), escapeHtmlAttribute(), escapeHtmlText(), generateBackgroundSceneSvgHtml(), generateInteractiveHtml() (+3 more)
-
-### Community 422 - "api/estrutura-banco-supabase.md"
-Cohesion: 0.21
-Nodes (10): assignImagesToSections(), buildRelationGraph(), imageTerms(), pesosIdf(), sectionTerms(), tokenize(), deriveImagesForMedia(), extractAttachmentsFromMarkdown() (+2 more)
-
-### Community 423 - "mobile/modelagem-dados-banco.md"
-Cohesion: 0.17
-Nodes (6): mapWithConcurrency(), settleWithConcurrency(), runAudioAndPresentationInParallel(), mapWithConcurrency(), settleWithConcurrency(), ContentPart
-
-### Community 424 - "react-native-blob-util"
-Cohesion: 0.2
-Nodes (15): _offline_alembic_config(), O saldo de moedas sai de um razao append-only, nao de uma coluna mutavel.  Colun, Sem isto, reabrir a mesma atividade e' a forma mais barata de enriquecer:     sa, RLS e' a unica barreira, e moeda digitavel pelo cliente e' o mesmo     defeito q, Via helper SECURITY DEFINER: policy que consulta a propria tabela     entraria e, Percentual do topico, tempo de estudo e ranking ja foram calculados no     app,, _sql(), test_o_aluno_le_so_o_proprio_extrato() (+7 more)
-
-### Community 425 - "microservice/arquitetura-microservico-e-app.md"
-Cohesion: 0.22
-Nodes (8): ArtefatosPersonalizadosRepository, _as_float(), _as_int(), _normalize_alternativas(), _normalize_profile_key(), _pick_string(), Marca artefatos de ciclos anteriores como obsoletos., Cards ja gerados e ativos para (aluno, topico, conteudo).          Cards nao var
-
-### Community 426 - "Rotação de Modelos Gemini Free-Tier por Qualidade — Implementation Plan"
-Cohesion: 0.28
-Nodes (14): aligned_free(), aligned_malloc(), allocate(), allocate_sys_buffer(), allocator_delete(), CxxAllocatorAdaptor(), deallocate(), DefaultAlign() (+6 more)
-
-### Community 427 - "Memória do aluno (estado mental histórico + domínio por tópico)"
-Cohesion: 0.23
-Nodes (14): basic_ios_all_saver, basic_ios_exception_saver, basic_ios_fill_saver, basic_ios_iostate_saver, basic_ios_locale_saver, basic_ios_rdbuf_saver, basic_ios_tie_saver, ios_all_word_saver (+6 more)
-
-### Community 428 - "Structured Output + Guardrails no grafo LangGraph"
-Cohesion: 0.23
-Nodes (14): is_alnum(), is_alpha(), is_any_of(), is_classified(), is_cntrl(), is_digit(), is_from_range(), is_graph() (+6 more)
-
-### Community 429 - "Quiz dinâmico por modoOperacao — Design"
 Cohesion: 0.18
-Nodes (6): discrete_distribution, generate_in_range(), init(), init_average(), param_type, test()
+Nodes (10): Backend, Contexto, Controle de geração automática/manual de personalização — Design, Decisões (via brainstorming), Dois novos job kinds, Endpoints novos, Filtro de perfil em `_build_targets`, Fora de escopo (YAGNI) (+2 more)
 
-### Community 430 - "XP de slides com checkpoint (D1a) — Design"
-Cohesion: 0.23
-Nodes (14): clear(), contains_index(), contains_value(), data_(), erase_value(), folly(), forward_view(), index_of_value() (+6 more)
+### Community 421 - "test_migration_responder_participacao.py"
+Cohesion: 0.24
+Nodes (8): _downgrade_sql(), _sem_comentarios(), test_a_assinatura_nao_muda(), test_a_pergunta_e_a_mesma_do_placar(), test_a_permissao_passa_a_ser_participacao(), test_downgrade_devolve_a_guarda_por_guilda(), test_o_resto_da_fase_8_fica_intacto(), _upgrade_sql()
 
-### Community 431 - "react-native-web"
-Cohesion: 0.23
-Nodes (14): bad_function_call, function, function0, function1, function10, function2, function3, function4 (+6 more)
+### Community 422 - "Eventos, missões, ranks e modos — desenho"
+Cohesion: 0.15
+Nodes (11): banco(), _missoes(), Aposta: perder ponto já funciona, e isso é bom e perigoso, Decisões que são fáceis de errar, Eventos, missões, ranks e modos — desenho, Fases, Limites conhecidos, Mapa do pedido para o que já existe (+3 more)
 
-### Community 432 - "Slides Imersivos — Guardas nos Consumidores Implementation Plan"
-Cohesion: 0.12
-Nodes (15): SDImageFramePool, -currentFrameCount, -dealloc, -didReceiveMemoryWarning, -frameAtIndex, -init, -initialize, -prefetchFrameAtIndex (+7 more)
+### Community 423 - "Mapa de arquitetura — TrailUp (main)"
+Cohesion: 0.15
+Nodes (13): Deploys e ambientes (confirmado 2026-10-01), Drift de migrations (reportado pela Análise de PRs, 2026-10-13), Fontes Drive (contexto TCC, não código), Mapa de arquitetura — TrailUp (main), Migrations (Alembic), Models (pesquisa → produto), Monorepo (estrutura real em main), Nota 2026-10-13 — PRs abertos com migration (Lab) (+5 more)
 
-### Community 433 - "isHtmlDeckUrl"
-Cohesion: 0.17
-Nodes (10): DashboardSection(), selectView(), createRequestGuard(), RequestGuard, RequestToken, computeTurmaResumo(), EMPTY_RESUMO, row() (+2 more)
+### Community 424 - "Regeração granular de material — design"
+Cohesion: 0.15
+Nodes (12): 1. O mobile nunca vê o material regerado, 2. Regenerar texto mexe no áudio, 3. Parâmetros insuficientes, Decisões, Escopo, Granularidade: um material por vez, Invalidação: contador de revisão, O que motivou (+4 more)
 
-### Community 434 - "WebContentFrame.tsx"
-Cohesion: 0.13
-Nodes (9): Props, styles, MetaXp(), Props, styles, Props, styles, Props (+1 more)
+### Community 425 - "Design: Social, perfil público e guildas"
+Cohesion: 0.15
+Nodes (12): API mobile, Arquitetura de dados, Critério de conclusão, Design: Social, perfil público e guildas, Escopo aprovado, Eventos e composição, Guildas, Interface mobile (+4 more)
+
+### Community 426 - "Plano depois da arena — o que falta quando o produto está construído"
+Cohesion: 0.15
+Nodes (13): Como foi levantado, Decisões em aberto, Fases propostas, Lacuna genuína (uma), Não são lacunas — e está escrito aqui para ninguém "consertar", O estado, medido, O que a varredura achou de superfície, O que este plano não propõe (+5 more)
+
+### Community 427 - "Projeto de UX — TrailUp"
+Cohesion: 0.15
+Nodes (13): 3. Ideação — Geração de Soluções, 4. Prototipagem, Diretriz de Design, Ferramentas Utilizadas, Ideias levantadas, Mapa de Empatia, Matriz CSD, Matriz de Priorização (Impacto x Esforço) (+5 more)
+
+### Community 428 - "5 DESENVOLVIMENTO DO TRAILUP"
+Cohesion: 0.15
+Nodes (13): 5.10 Telemetria, 5.11 Persistência e controle de estado, 5.12 Qualidade, idempotência e reprocessamento, 5.1 Visão geral, 5.2 Arquitetura do sistema, 5.3 Aplicativo do estudante, 5.4 Interface do professor, 5.5 API e orquestração (+5 more)
+
+### Community 429 - "00-entrada.md"
+Cohesion: 0.15
+Nodes (12): 1. Fonte da verdade, 2. O que a tela precisa comunicar, 3. Grade (1440×900), 4.1 Painel de cenário (esquerda), 4.2 Painel de ação (direita), 4. Blocos, 5.1 Entrada, 5.2 Bem-vindo(a) de volta (transição de 2s, `tela.tsx`) (+4 more)
+
+### Community 430 - "revisao-01-base-v7/telas/07-notificacoes.md"
+Cohesion: 0.15
+Nodes (12): 1. Fonte da verdade, 2. Dados de exemplo (7 itens, 3 não lidos), 3. Grade (main de 1096px), 4.1 Cabeçalho, 4.2 Filtros, 4.3 Item da lista (`CardNotificacao`, `aria-label="Não lida: Hora de estudar"`), 4.4 Detalhe (`notificacoes/[id].tsx`), card `padding: 26px 28px`, sticky `top: 108px`, 4.5 Excluir (modal P destrutivo) (+4 more)
+
+### Community 431 - "Prompt — nova tela: Conquistas da classe"
+Cohesion: 0.15
+Nodes (12): Ao editar o critério de uma conquista já concedida a alunos, Cabeçalho, "Desativar" em vez de "Excluir", Estrutura da tela, Formulário "Nova conquista" / "Editar conquista", Identificação, Lista de conquistas da turma, O que já existe hoje (contexto, não é o que esta tela cria do zero) (+4 more)
+
+### Community 432 - "createRuntime"
+Cohesion: 0.24
+Nodes (11): createComponentFactory(), getDC(), createRuntime(), adoptParsed(), dcUpdate(), ensureFetched(), setStreaming(), updateHtml() (+3 more)
+
+### Community 433 - "DashboardSection.tsx"
+Cohesion: 0.07
+Nodes (39): De onde vêm os dados, AlunoPerfil, PersonalizacaoDocenteResponse, AlunoNaoEncontrado(), DashboardCarregando(), DashboardErro(), DashboardVazio(), JanelaTemporal (+31 more)
+
+### Community 434 - "react-native"
+Cohesion: 0.03
+Nodes (80): expo-linear-gradient@~15.0.8, styles, SERIF, styles, style, Props, styles, ConquistaModalProps (+72 more)
 
 ### Community 435 - "Quiz dinâmico por modoOperacao Implementation Plan"
 Cohesion: 0.12
 Nodes (16): 1. Papel da Web no ecossistema, 2.1 autenticação e autorização, 2.2 Gestão pedagógica, 2.3 Personalização por aluno (via API), 2.4 Edge Functions usadas pelo console, 2. Fluxos principais implementados, 3. Regra de `nota_estabelecida` (questões), 4.1 Documentação complementar (+8 more)
 
-### Community 436 - "Hash completo no path do fallback Python (MultiOutputPipeline)"
-Cohesion: 0.12
-Nodes (15): Estrutura de arquivos resultante, Notas finais, Refatoração de `trilha/[id].tsx` Implementation Plan, Task 0: Preparação — branch de trabalho, Task 10: Extrair `usePersonalizationRefresh`, Task 11: Validação final e PR, Task 1: Extrair helpers puros para `src/utils/trilhaBlocks.ts`, Task 2: Extrair normalizadores para `src/utils/personalizedFlow.ts` (+7 more)
+### Community 436 - "createRuntime"
+Cohesion: 0.24
+Nodes (11): createComponentFactory(), getDC(), createRuntime(), adoptParsed(), dcUpdate(), ensureFetched(), setStreaming(), updateHtml() (+3 more)
 
 ### Community 437 - "docs/mobile/README.md"
-Cohesion: 0.12
-Nodes (15): 1. Correção de Cálculo, 2. Extensão do ViewModel, 3. Atualização do PerfilHome, 4.1 Seção "Tempo de estudo", 4.2 Seção "Boss" (condicional), 4.3 Seção "Melhor tempo" (condicional), 4. Novas Seções de UI, 5. Reorganização do Layout (+7 more)
+Cohesion: 0.10
+Nodes (19): Métricas — Correções de Cálculo + Novas Seções de UI, Task 1: Corrigir `tempoTotalMin` em `classeMetrics.ts`, Task 2: Estender `ProfileMetricsViewModel` e `buildProfileMetricsViewModel`, 1. Correção de Cálculo, 2. Extensão do ViewModel, 3. Atualização do PerfilHome, 4.1 Seção "Tempo de estudo", 4.2 Seção "Boss" (condicional) (+11 more)
 
-### Community 438 - ".mergeCardsIntoPersonalizacaoRecords"
-Cohesion: 0.12
-Nodes (15): Abstração de Provider de Personalização/IA, Critérios de aceitação, Estrutura de arquivos resultante, Exemplo de provider alternativo (fora do escopo), Implementação padrão (`TrailupApiProvider`), Interface, Motivação, Mudanças nos consumidores (+7 more)
+### Community 438 - "createRuntime"
+Cohesion: 0.24
+Nodes (11): createComponentFactory(), getDC(), createRuntime(), adoptParsed(), dcUpdate(), ensureFetched(), setStreaming(), updateHtml() (+3 more)
 
-### Community 439 - "devDependencies"
-Cohesion: 0.12
-Nodes (15): Geração granular e retomável de conteúdo personalizado — Implementation Plan, Pendências explícitas fora deste plano (registrar antes de finalizar a branch), Task 10: Python — extensão de `PersonalizacaoJobsRepository` para targets granulares, Task 11: Python — orquestrador do job inteiro (`processar_job_media_generation_once`), Task 12: Python — wiring em `process_personalizacao_job_once` e `personalizar()`, Task 13: Teste de regressão — retomada não regasta o que já funcionou, Task 1: Microservice — expor os capítulos por bloco em `ProcessedContent`, Task 2: Microservice — endpoint `POST /api/v1/generate/block` (+7 more)
+### Community 439 - "presentationThemes.ts"
+Cohesion: 0.06
+Nodes (35): Task 4: `slideAssetGenerator.ts` — `generateFullSlideImages` com fallback por slide, Task 9: Trocar os imports em `server.ts`, Task 1: Microservice — expor os capítulos por bloco em `ProcessedContent`, reconstructMarkdownPartsFromMaterials(), App(), BRAIN_HEX_CONFIG, BrainHexConfig, BrainHexProfile (+27 more)
 
-### Community 440 - "Testabilidade do Pipeline de Upload no Microservice — Implementation Plan"
-Cohesion: 0.12
-Nodes (15): BrainHexPDF Slides Quality — Implementation Plan, Correction found during planning, File Structure, Self-Review, Task 10: `microservice/src/services/brainHexPdfClient.ts` — forward image attachments, Task 11: `microservice/server.ts` — pass real images from `fetchFontesAsFileData` into the presentation call, Task 1: Trim and extend the `SlideData` schema types, Task 2: Update `DECK_RESPONSE_SCHEMA` (what Gemini is asked to return) (+7 more)
+### Community 440 - "visualReferenceAnalyzer.ts"
+Cohesion: 0.07
+Nodes (34): resolveTargetSlideCount(), InteractiveVisualRenderer(), InteractiveVisualRendererProps, SlideType, VisualCaseExample, VisualDiagramConnection, VisualDiagramData, VisualDiagramNode (+26 more)
 
-### Community 441 - ".coerce_referencia"
-Cohesion: 0.2
-Nodes (9): asNumber(), asString(), clamp(), extractJsonCandidate(), normalizeEvaluation(), normalizeList(), parseGeminiJson(), round2() (+1 more)
+### Community 441 - "createRuntime"
+Cohesion: 0.24
+Nodes (11): createComponentFactory(), getDC(), createRuntime(), adoptParsed(), dcUpdate(), ensureFetched(), setStreaming(), updateHtml() (+3 more)
 
-### Community 442 - "personalizacao-multimidia-aluno.md"
+### Community 442 - "createRuntime"
+Cohesion: 0.24
+Nodes (11): createComponentFactory(), getDC(), createRuntime(), adoptParsed(), dcUpdate(), ensureFetched(), setStreaming(), updateHtml() (+3 more)
+
+### Community 443 - "createRuntime"
+Cohesion: 0.24
+Nodes (11): createComponentFactory(), getDC(), createRuntime(), adoptParsed(), dcUpdate(), ensureFetched(), setStreaming(), updateHtml() (+3 more)
+
+### Community 444 - "createRuntime"
+Cohesion: 0.24
+Nodes (11): createComponentFactory(), getDC(), createRuntime(), adoptParsed(), dcUpdate(), ensureFetched(), setStreaming(), updateHtml() (+3 more)
+
+### Community 445 - "createRuntime"
+Cohesion: 0.24
+Nodes (11): createComponentFactory(), getDC(), createRuntime(), adoptParsed(), dcUpdate(), ensureFetched(), setStreaming(), updateHtml() (+3 more)
+
+### Community 446 - "20261021_15_missao_de_guilda_soma_os_membros.py"
+Cohesion: 0.32
+Nodes (8): downgrade(), gatilho(), gatilho_anterior(), guarda(), guarda_anterior(), _modulo(), _trocar(), upgrade()
+
+### Community 447 - "20261021_20_missao_diaria_coorte_representativa_e_minutos.py"
+Cohesion: 0.32
+Nodes (8): downgrade(), gatilho(), gatilho_anterior(), gerador(), gerador_anterior(), _modulo(), _trocar(), upgrade()
+
+### Community 448 - "20261024_11_urls_em_textos_e_versao_minima.py"
+Cohesion: 0.27
+Nodes (7): _constante_da_10(), downgrade(), turmas_que_usam_com_textos(), turmas_que_usam_da_10(), upgrade(), _versao_sql(), _wrappers_da_10()
+
+### Community 449 - "m2_features.py"
+Cohesion: 0.27
+Nodes (7): build_m2_overrides(), _ewma(), _fetch_attempts(), _fetch_session_events(), _streak(), 7. ML e LLM, p()
+
+### Community 450 - "_sql_de"
+Cohesion: 0.21
+Nodes (7): _Coletor, _modulo(), _sql_de(), test_cadeia_do_dia_sem_id_duplicado(), test_exclusao_so_depois_do_email_aceito(), test_texto_do_email_em_portugues_com_link(), test_turmas_do_professor_sao_apagadas_com_tudo()
+
+### Community 451 - "test_migration_arena_desafio_eixos.py"
+Cohesion: 0.24
+Nodes (7): _downgrade_sql(), test_continua_exigindo_participante_aceito(), test_devolve_os_eixos_e_o_preset(), test_downgrade_tira_so_as_chaves_novas(), test_nada_sai_do_retorno(), test_o_gabarito_continua_escondido_ate_haver_resposta(), _upgrade_sql()
+
+### Community 452 - "test_migration_guilda_aceite_reconfere_bloqueio.py"
+Cohesion: 0.35
+Nodes (6): _bloquear(), _convite(), test_bloqueio_depois_do_convite_cancela_sem_entrar_e_sem_erro(), test_convite_cancelado_nao_pode_ser_aceito_de_novo(), test_sem_bloqueio_aceitar_entra_na_guilda(), _como()
+
+### Community 453 - "test_migration_recomendacao_conteudo_x_aluno.py"
 Cohesion: 0.29
-Nodes (9): formatarDelta(), formatarFracao(), formatarPercentual(), historicoMaisRecentePrimeiro(), leiturasDeEfetividade(), rotuloDaAcao(), rotuloDoFormato(), leitura() (+1 more)
+Nodes (9): _corpo(), _sql(), test_aluno_le_so_a_propria_sugestao_e_professor_a_da_turma(), test_cliente_nao_escreve_em_nenhuma_das_tres_tabelas(), test_downgrade_remove_tudo(), test_gatilhos_sao_definer_seguros_e_nao_escrevem_na_atividade(), test_motivos_da_revisao_batem_com_a_api(), test_tabela_da_demanda_nasce_com_rls_e_policy_de_leitura_do_professor() (+1 more)
 
-### Community 443 - "browserslist"
-Cohesion: 0.18
-Nodes (12): incrementar_revisao(), Contador de revisao por material.  Existe porque o cache do mobile e' chaveado p, Revisao do material, com 1 para o que foi gerado antes deste campo.      Ausenci, Devolve uma COPIA do material com a revisao seguinte., revisao_atual(), O .mp3 NAO e' regerado por este endpoint (ver docstring dele). Escrever     o ro, test_incremento_nao_muta_o_original(), test_incremento_preserva_o_resto_do_material() (+4 more)
-
-### Community 444 - "20260803_01_personalizacao_jobs_conteudo_fk.py"
-Cohesion: 0.23
-Nodes (13): _basename_from_locator(), _infer_bucket(), ingest_bytes(), ingest_source(), _looks_like_filename(), _pick(), Ponto de entrada do pipeline de ingestão.  Fluxo:   bytes → format_detector → ex, Processa bytes de um arquivo e retorna (NormalizedDocument, list[Chunk]).      A (+5 more)
-
-### Community 445 - "20260818_01_geracao_granular_retomavel.py"
+### Community 454 - "test_migration_telas_eixos_missoes.py"
 Cohesion: 0.26
-Nodes (14): _load_migration(), _sql(), test_classe_aluno_detecta_o_dialeto_da_coluna(), test_downgrade_remove_gatilhos_e_funcoes(), test_gatilho_e_recriado_sem_duplicar(), test_gatilho_nas_tres_tabelas_de_item(), test_gatilho_roda_depois_da_escrita(), test_interacoes_de_slide_ficam_fora_do_percurso() (+6 more)
+Nodes (8): _downgrade_sql(), test_criar_desafio_aceita_os_eixos(), test_downgrade_tira_o_criterio_e_restaura_o_criar(), test_painel_diario_do_professor(), test_params_efetivos_so_por_outra_funcao(), test_rank_de_missoes_entra_no_case_e_no_catalogo(), test_resumo_da_arena_devolve_os_eixos(), _upgrade_sql()
 
-### Community 446 - "20260819_01_memoria_aluno.py"
+### Community 455 - "test_migration_topico_aluno_rls.py"
+Cohesion: 0.24
+Nodes (7): _downgrade_sql(), test_downgrade_restaura_as_tres_antigas(), test_insert_deixa_de_aceitar_qualquer_aluno_id(), test_predicado_e_o_mesmo_das_irmas(), test_professor_volta_a_ler_o_progresso_da_turma(), test_remove_os_nomes_antigos_do_painel(), _upgrade_sql()
+
+### Community 456 - "2 ANÁLISE DAS RESPOSTAS"
+Cohesion: 0.17
+Nodes (12): 1 APRESENTAÇÃO DO INSTRUMENTO, 1 APRESENTAÇÃO DO INSTRUMENTO, 2.2 Perfil dos Participantes, 2.3 Percepção das Aulas, 2.4 Motivações para o Aprendizado, 2.5 Ritmo de Aprendizagem, 2.6 Perfis de Jogador (Gamificação), 2.7 Opiniões sobre um Aplicativo Adaptativo de Aprendizagem (TrailUp) (+4 more)
+
+### Community 457 - "2 FUNDAMENTAÇÃO TEÓRICA"
+Cohesion: 0.17
+Nodes (12): 2.10 Telemetria e learning analytics, 2.11 Inteligência artificial generativa e RAG, 2.1 Aprendizagem personalizada e adaptação, 2.2 Modelagem do estudante, 2.3 Autorregulação, prática de recuperação e espaçamento, 2.4 Feedback e avaliação formativa, 2.5 Apresentação multimídia e aprendizagem, 2.6 Gamificação (+4 more)
+
+### Community 458 - "4 METODOLOGIA"
+Cohesion: 0.17
+Nodes (12): 4.10 Avaliação em sala de aula, 4.11 Aspectos éticos e proteção de dados, 4.1 Natureza e estratégia da pesquisa, 4.2 Etapas do desenvolvimento, 4.3 Pesquisa preliminar de descoberta, 4.4 Desenvolvimento do sistema, 4.5 Construção da Evidence Base, 4.6 Protocolo de seleção de fontes (+4 more)
+
+### Community 459 - "batalhasApi.ts"
+Cohesion: 0.32
+Nodes (10): Duelo, Bruto, dentro(), lerBatalhas(), mapearDuelo(), mapearLinhaDoRanking(), numero(), ResumoDasBatalhas (+2 more)
+
+### Community 460 - "buildDesignTokensForProfile"
 Cohesion: 0.29
-Nodes (14): _carregar(), Guardas da `20260830_01` — tempo por lote e dedup por constraint.  Os testes de, _sem_comentarios(), _sql(), test_a_conta_e_soma_direta_do_dwell(), test_a_regra_de_incremento_sai_do_upgrade(), test_cadeia_de_revisao(), test_chave_de_dedup_nao_usa_item_key_sozinho() (+6 more)
+Nodes (12): blend(), buildDesignTokensForProfile(), contrastRatio(), darken(), ensureMinContrast(), hexToRgb(), hlsToRgb(), relativeLuminance() (+4 more)
 
-### Community 447 - "20260821_01_professor_geracao_automatica.py"
-Cohesion: 0.21
-Nodes (8): _carregar_json(), _json(), Persistência da sugestão de material por aluno + log append-only.  Duas tabelas,, Cria ou atualiza a sugestão atual. Devolve a linha resultante.          A versão, Grava UMA decisão no histórico. Nunca atualiza linha existente.          Registr, Histórico para a métrica de efetividade e para o console., As duas tabelas existem? Sem AMBAS, não há como manter o contrato.          Grav, SugestaoMaterialRepository
+### Community 461 - "ci.yml"
+Cohesion: 0.17
+Nodes (11): concurrency, cancel-in-progress, group, name, on, pull_request, push, permissions (+3 more)
 
-### Community 448 - ".coerce_referencia"
-Cohesion: 0.13
-Nodes (14): ZXModulusPoly, -add, -coefficient, -degree, -description, -divide, -evaluateAt, -initWithFieldcoefficients (+6 more)
+### Community 462 - "profileSectionGuide.ts"
+Cohesion: 0.30
+Nodes (9): ProfileMetricsViewModel, MetricsThemeResolved, buildProfileGuideSteps(), heroMetricSteps(), idDoCartaoDeSessao(), metricStep(), ProfileGuideOptions, telemetriaSteps() (+1 more)
 
-### Community 449 - "Hash Completo no Path do Fallback Python — Implementation Plan"
-Cohesion: 0.13
-Nodes (14): ZXUPCEANReader, -barcodeFormat, -checkChecksumerror, -checkStandardUPCEANChecksum, -decodeDigitcountersrowOffsetpatternTypeerror, -decodeEndendStarterror, -decodeMiddlestartRangeresulterror, -decodeRowrowhintserror (+6 more)
+### Community 463 - "SeloDePrazo.tsx"
+Cohesion: 0.35
+Nodes (7): SeloDePrazo(), styles, EstadoDoPrazo, estadoDoPrazo(), meiaNoiteLocal(), rotuloDoPrazo(), urgenciaDoPrazo()
 
-### Community 450 - "PresentationSlidesBlock.test.ts"
-Cohesion: 0.24
-Nodes (13): CoOccurrenceBuild(), CoOccurrenceFindMax(), GetColorPalette(), PaletteColorDistance(), PaletteComponentDistance(), PaletteHasNonMonotonousDeltas(), PaletteSort(), PaletteSortMinimizeDeltas() (+5 more)
+### Community 464 - "mobile-v1/assets/social.js"
+Cohesion: 0.30
+Nodes (10): chatHTML(), fechar(), guilda(), msgHTML(), perfil(), perfilHTML(), privado(), redesenha() (+2 more)
 
-### Community 451 - "env.py"
-Cohesion: 0.2
-Nodes (12): BitsLog2Floor(), GetLE16(), GetLE24(), GetLE32(), PutLE16(), PutLE24(), PutLE32(), WebPInt32ToMem() (+4 more)
+### Community 465 - "mobile-v1/README.md"
+Cohesion: 0.17
+Nodes (9): Protótipo do aluno no celular — v1, De onde vem, O que fica igual ao v4 (não mude), O que muda no celular, Parte 6 — Notificações (celular), De onde vem, O que fica igual ao v4 (não mude), O que muda no celular (+1 more)
 
-### Community 452 - "@radix-ui/react-accordion"
-Cohesion: 0.16
-Nodes (7): Average2_m128i(), BundleColorMap_SSE2(), GetSumAbsDiff32_SSE2(), PredictorSub10_SSE2(), PredictorSub11_SSE2(), PredictorSub5_SSE2(), VP8LBundleColorMap_C()
+### Community 466 - "revisao-01-base-v7/telas/08-perfil-hub.md"
+Cohesion: 0.17
+Nodes (11): 1. Fonte da verdade, 2. Dados de exemplo, 3. Grade (main de 1096px), 4.1 Cartão de identidade (card `padding: 28px 32px`, grid `160px minmax(0,1fr) 300px auto`, gap 28, `align-items: center`), 4.2 Painel de métricas: estilo **Arena Tática** (Conqueror), 4.3 Coluna direita, 4.4 Celebração "Conquista desbloqueada" (modal P, estado), 4. Blocos (+3 more)
 
-### Community 453 - "react-dom"
-Cohesion: 0.43
-Nodes (11): call(), callAsConstructor(), callWithThis(), createFromHostFunction(), facebook(), getPropertyNames(), getValueAtIndex(), lock() (+3 more)
+### Community 467 - "10-relatorio-dados.md"
+Cohesion: 0.17
+Nodes (11): 1. Fonte da verdade, 2. Dados de exemplo, 3. Grade (main de 1096px), 4.1 Cabeçalho, 4.2 Prévia (coluna esquerda): o que o app mostra na tela, antes do PDF, 4.3 Coluna de ação (sticky `top: 108px`, gap 20), 4. Blocos, 5. Estados da ação (seletor: "Pronto" · "Gerando" · "Sucesso" · "Erro" · "Erro repetido" · "Carregando dados") (+3 more)
 
-### Community 454 - ".coerce_referencia"
-Cohesion: 0.47
-Nodes (11): alphaFromHostPlatformColor(), blueFromHostPlatformColor(), Color(), colorComponentsFromHostPlatformColor(), getColorComponents(), greenFromHostPlatformColor(), HostPlatformColor(), hostPlatformColorFromComponents() (+3 more)
+### Community 468 - "v4/assets/bag.js"
+Cohesion: 0.30
+Nodes (10): abrir(), card(), editorHTML(), fechar(), lerEditor(), novo(), render(), salvar() (+2 more)
 
-### Community 455 - "caniuse-lite"
-Cohesion: 0.27
-Nodes (13): chunkAllocSize(), computeCapacity(), f14(), F14HashToken(), final(), folly(), if(), initializeChunks() (+5 more)
+### Community 469 - "TrailUp / Console — Apontamentos sobre o protótipo já ajustado (rodada 2)"
+Cohesion: 0.17
+Nodes (11): 1. Modal "Conteúdo Gerado" (aba Apresentação) — `WhatsApp Image 2026-09-07 at 15.20.56`, 2. Editor de Trilha — breadcrumb "Onde estou" — `WhatsApp Image 2026-09-07 at 15.22.40`, 3. Editor de Trilha — toggle "Conteúdos / Cards" no nível do tópico — `WhatsApp Image 2026-09-07 at 15.23.18`, 4. Grade de Cards de estudo (aba "Cards") — `WhatsApp Image 2026-09-07 at 15.24.23`, 5. Lista de conteúdos de um tópico — `WhatsApp Image 2026-09-07 at 15.24.54`, 6. Mapa da Trilha — nós sem posicionamento livre — `WhatsApp Image 2026-09-07 at 15.25.28`, 7. Detalhe de conteúdo (Cinemática) — barra de rolagem — `WhatsApp Image 2026-09-07 at 15.26.05`, 8. Dashboard — Jornada do Aluno, detalhe de um passo — `WhatsApp Image 2026-09-07 at 15.27.30` (+3 more)
 
-### Community 456 - "2. Leitura rapida (mapa geral)"
-Cohesion: 0.15
-Nodes (4): mapPoints(), mapRectToQuad(), mapVector(), mapVectors()
+### Community 470 - "Classes (Turmas) — descrição detalhada do estado atual (com dados reais)"
+Cohesion: 0.17
+Nodes (11): Cabeçalho da página, Cards de turma (prints 1 e 4) — lado a lado, mesma largura, Classes (Turmas) — descrição detalhada do estado atual (com dados reais), Dropdown "Selecione um aluno..." aberto (só no print 6), Estado de hover/seleção do card (só no print 3), Mapa de correspondência entre os prints, Modal "Gerenciar Alunos" (prints 5 e 6), Modal "Nova Classe / Turma" (print 2) (+3 more)
 
-### Community 458 - "14. Edge Functions, RPCs, Functions e Triggers"
-Cohesion: 0.15
-Nodes (4): SkStrContains(), SkStrFind(), SkString(), SkStringPrintf()
+### Community 471 - "Ranks — descrição detalhada do estado atual (com dados reais)"
+Cohesion: 0.17
+Nodes (11): Cabeçalho, Coluna direita — posições do ranking selecionado, Mapa de correspondência entre os prints, Modal "Editar Tipo de Ranking" (print 4), Modal "Novo Ranking" (print 2), Modal "Novo Tipo de Ranking" (print 3), Observações factuais (sem julgamento de design), Ranks — descrição detalhada do estado atual (com dados reais) (+3 more)
 
-### Community 459 - "@google/genai"
-Cohesion: 0.3
-Nodes (14): endian32(), endian64(), FBxxHash64(), fetch32(), fetch64(), fetch8(), finalize(), h32bytes() (+6 more)
+### Community 472 - "Tela 2 — Editor de um Tópico (ao clicar/editar um cartão do mapa)"
+Cohesion: 0.17
+Nodes (11): A hierarquia correta (não é negociável — está errado se não for isto), ADICIONAR / CORRIGIR, Cabeçalho do editor, Coluna direita — detalhe do conteúdo selecionado na lista da esquerda, Coluna esquerda — dados do tópico (fixa, não rola junto com o conteúdo), MANTER, O que isso substitui, REMOVER (+3 more)
 
-### Community 460 - "docs/api/README.md"
-Cohesion: 0.21
-Nodes (9): areAttributedStringFragmentsEquivalentDisplayWise(), areAttributedStringFragmentsEquivalentLayoutWise(), areAttributedStringsEquivalentDisplayWise(), areAttributedStringsEquivalentLayoutWise(), areTextAttributesEquivalentLayoutWise(), attributedStringFragmentHashDisplayWise(), attributedStringFragmentHashLayoutWise(), attributedStringHashLayoutWise() (+1 more)
+### Community 473 - "Prompt — nova tela: Missões"
+Cohesion: 0.17
+Nodes (11): Cabeçalho, Estrutura da tela, Formulário "Nova missão" / "Editar missão", Identificação, Lista de missões, O que NÃO fazer, O que uma missão é, de acordo com a decisão já tomada (#150), Painel "Sugestões da IA" (dentro da mesma tela, uma aba ou seção separada — fonte #151) (+3 more)
 
-### Community 461 - "react-router-dom"
-Cohesion: 0.24
-Nodes (12): cnull(), cons(), generate_error, get(), ignore(), make_tuple(), non_storeable_type, swallow_assign() (+4 more)
+### Community 474 - "Estrutura da tela"
+Cohesion: 0.17
+Nodes (11): Ao abrir o evento (mudar de Rascunho para Aberto), Cabeçalho, Estrutura da tela, Formulário "Novo evento" / "Editar evento" (só antes de abrir), Identificação, Lista de eventos, O que NÃO fazer, O que um evento é, de acordo com o que já foi decidido (+3 more)
 
-### Community 462 - "react-dom"
-Cohesion: 0.2
-Nodes (4): generate(), seed(), xor_combine, xor_combine_engine
-
-### Community 463 - "2. Leitura rapida (mapa geral)"
-Cohesion: 0.2
-Nodes (4): additive_combine, additive_combine_engine, generate(), seed()
-
-### Community 464 - "openai"
-Cohesion: 0.2
-Nodes (8): assign_in_place(), constant_iterator(), construct_in_place(), default_init_construct_iterator, emplace_iterator, inplace_impl(), repeat_iterator, value_init_construct_iterator
-
-### Community 465 - "@tailwindcss/vite"
-Cohesion: 0.22
-Nodes (10): bind1st(), bind2nd(), binder1st, binder2nd, find_end(), find_first_of(), find_if(), not1() (+2 more)
-
-### Community 466 - "api/estrutura-banco-supabase-executivo.md"
-Cohesion: 0.24
-Nodes (12): BOOST_SYMBOL_VISIBLE, compare_equal(), compare_not_equal(), contains(), function_base, function_buffer(), functor_wrapper(), get_function_tag (+4 more)
-
-### Community 467 - "react-native"
-Cohesion: 0.27
-Nodes (13): BOOST_CONTAINER_CATCH(), copy_n_and_update(), get_insert_value_proxy(), insert_copy_proxy(), insert_emplace_proxy(), insert_emplace_proxy_arg1(), insert_move_proxy(), insert_n_copies_proxy() (+5 more)
-
-### Community 468 - "@vitejs/plugin-react"
-Cohesion: 0.22
-Nodes (5): check_params(), check_probabilities(), check_rates(), hyperexponential_distribution, param_type
-
-### Community 469 - "lamejs"
-Cohesion: 0.21
-Nodes (4): generate(), inversive_congruential, inversive_congruential_engine, seed()
-
-### Community 470 - "mammoth"
-Cohesion: 0.28
-Nodes (13): base(), base_logging(), glog_internal_namespace_(), google(), GOOGLE_GLOG_DLL_DECL(), LogAtLevel(), MakeCheckOpString(), MakeCheckOpValueString() (+5 more)
-
-### Community 471 - "GUIA_USO.md"
-Cohesion: 0.3
-Nodes (13): capacity(), capacityForMaxIndex(), cleanup(), detail(), eagerRecycle(), initialize(), isAllocated(), locateElem() (+5 more)
-
-### Community 472 - "docs/microservice/README.md"
-Cohesion: 0.13
-Nodes (14): SDImageAVIFCoder, -animatedImageData, -animatedImageDurationAtIndex, -animatedImageFrameAtIndex, -animatedImageFrameCount, -animatedImageLoopCount, -canDecodeFromData, -canEncodeToFormat (+6 more)
-
-### Community 473 - "upload_fontes_personalizacao"
-Cohesion: 0.13
-Nodes (14): SDImageHEICCoder, -animatedImageUTType, -canDecodeFromData, -canEncodeToFormat, -canIncrementalDecodeFromData, -defaultLoopCount, -delayTimeProperty, -dictionaryProperty (+6 more)
-
-### Community 474 - "motion"
-Cohesion: 0.13
-Nodes (14): SDGraphicsImageRenderer, -imageWithActions, -initWithSize, -initWithSizeformat, SDGraphicsImageRendererFormat, -init, -initForMainScreen, -opaque (+6 more)
-
-### Community 475 - "caniuse-lite"
-Cohesion: 0.13
-Nodes (14): SDImageIOCoder, -canDecodeFromData, -canEncodeToFormat, -canIncrementalDecodeFromData, -createBitmapPDFWithDatapageNumbertargetSizepreserveAspectRatio, -dealloc, -decodedImageWithDataoptions, -didReceiveMemoryWarning (+6 more)
+### Community 475 - "Prompt — nova tela: Notas (correção de dissertativas e trabalhos)"
+Cohesion: 0.17
+Nodes (11): Cabeçalho, Estados, Estrutura da tela, Fila de correção (lista), Identificação, Navegação entre entregas, O que NÃO fazer, Painel de correção (ao abrir uma entrega) (+3 more)
 
 ### Community 476 - "openai"
-Cohesion: 0.26
+Cohesion: 0.23
 Nodes (14): _load_migration(), _sql(), test_classe_aluno_detecta_o_dialeto_da_coluna(), test_downgrade_remove_gatilhos_e_funcoes(), test_gatilho_e_recriado_sem_duplicar(), test_gatilho_nas_tres_tabelas_de_item(), test_gatilho_roda_depois_da_escrita(), test_interacoes_de_slide_ficam_fora_do_percurso() (+6 more)
 
-### Community 477 - "react"
-Cohesion: 0.13
-Nodes (14): Self-review desta plan, Slides de Apresentação Temáticos (estilo Slidesgo) Implementation Plan, Task 10: Atualizar `pdfService.test.ts` para o caminho Puppeteer, Task 11: QA visual manual (gerar e inspecionar um PDF real), Task 12: Remover `jspdf` (dependência não usada mais) — **CANCELADA, ver nota**, Task 1: Dependências novas, Task 2: Fonte temática embutida, Task 3: Serviço de imagem OpenAI (cena de fundo) (+6 more)
+### Community 477 - "Slides de Apresentação Temáticos (estilo Slidesgo) Implementation Plan"
+Cohesion: 0.05
+Nodes (40): Slides de Apresentação Temáticos (estilo Slidesgo) Implementation Plan, Task 10: Atualizar `pdfService.test.ts` para o caminho Puppeteer, Task 11: QA visual manual (gerar e inspecionar um PDF real), Task 12: Remover `jspdf` (dependência não usada mais) — **CANCELADA, ver nota**, Task 1: Dependências novas, Task 2: Fonte temática embutida, Task 3: Serviço de imagem OpenAI (cena de fundo), Task 5: Mesma regra nos prompts Python (fallback) (+32 more)
 
 ### Community 478 - "@tailwindcss/vite"
 Cohesion: 0.13
-Nodes (15): frontend/guia-uso-app.md, 1.1 Atualizacoes recentes (2026-04-13), 1. Objetivo, 2. Visão geral (camadas e fluxo), 3. Papel de cada frente, 4. Fluxo principal de personalização, 5.1 Criar turma, tópicos e dependências, 5.2 Criar conteúdos, atividades e questões (+7 more)
+Nodes (15): 1.1 Atualizacoes recentes (2026-04-13), 1. Objetivo, 2. Visão geral (camadas e fluxo), 3. Papel de cada frente, 4. Fluxo principal de personalização, 5.1 Criar turma, tópicos e dependências, 5.2 Criar conteúdos, atividades e questões, 5.3 Disparar personalização (+7 more)
 
-### Community 479 - "jszip"
-Cohesion: 0.13
-Nodes (14): Memória do aluno (estado mental histórico + domínio por tópico) Implementation Plan, Task 10: `checar_evidencia_dominio` usa domínio persistido por tópico, Task 11: `agente_trilha` passa `dominio_por_topico` no contexto do guardrail, Task 12: `agente_ui` força tema de suporte com frustração recorrente, Task 13: Suíte completa e finalização, Task 1: Migração — tabela `aluno_topico_dominio`, Task 2: Schemas de memória, Task 3: `AlunoTopicoDominioRepository` (+6 more)
+### Community 479 - "test_linear_analysis_pipeline.py"
+Cohesion: 0.11
+Nodes (21): build_linear_analysis_orchestrator(), DeepKnowledgeTracingAnalyzer, LinearAnalysisOrchestrator, _summarize_reading_pace(), DummyApp, DummyGraph, DummyRequest, DummyState (+13 more)
 
 ### Community 480 - "node-html-parser"
 Cohesion: 0.13
-Nodes (15): microservice/README.md, Apresentacoes tematicas, Comandos, Documentacao, Documentacao detalhada (arquitetura separada), Documentos novos, Endpoints, Estado atual (2026-07-28) (+7 more)
+Nodes (14): Apresentacoes tematicas, Comandos, Documentacao, Documentacao detalhada (arquitetura separada), Documentos novos, Endpoints, Estado atual (2026-07-28), Estrutura (+6 more)
 
-### Community 481 - "react-dom"
-Cohesion: 0.14
-Nodes (14): devDependencies, eslint, @tailwindcss/typography, @types/react, @types/react-dom, typescript, @vitejs/plugin-react-swc, vitest (+6 more)
+### Community 481 - "devDependencies"
+Cohesion: 0.07
+Nodes (32): devDependencies, autoprefixer@^10.4.21, @electric-sql/pglite@0.5.11, eslint@^9.32.0, @eslint/js@^9.32.0, eslint-plugin-react-hooks@^5.2.0, eslint-plugin-react-refresh@^0.4.20, globals@^15.15.0 (+24 more)
 
-### Community 482 - "react-native-gesture-handler"
-Cohesion: 0.26
-Nodes (9): canNext(), confirm(), calculateAxisScores(), clampScale(), computeBrainHexResult(), isAllAnswered(), mapAxisToProfiles(), normalizeToPercent() (+1 more)
+### Community 482 - "20261030_01_tempo_ativo_fonte_unica.py"
+Cohesion: 0.31
+Nodes (6): _Coletor, downgrade(), _i06(), _load(), rpcs_anteriores(), upgrade()
 
-### Community 483 - "react-native-safe-area-context"
-Cohesion: 0.2
-Nodes (10): extractSlideSemantics(), generateUniqueInteractiveElement(), estimateSlideWeight(), hasNonQuizRichWidget(), paginateSlidesByDensity(), quizWeight(), splitParagraphsByWeight(), splitSlide() (+2 more)
+### Community 483 - "20261101_10_nota_media_da_matricula.py"
+Cohesion: 0.36
+Nodes (9): _distribuicao(), _distribuicao_anterior(), downgrade(), _engajamento(), _engajamento_anterior(), _gancho(), _modulo(), _trocar() (+1 more)
 
-### Community 484 - "react-native-webview"
-Cohesion: 0.23
-Nodes (10): build_graph(), close_checkpointer(), get_checkpointer(), get_persistent_checkpointer(), ainvoke_personalizacao_graph(), _compact_exception_text(), _get_recovery_lock(), _is_checkpointer_connection_error() (+2 more)
+### Community 484 - "XGBoostDecisionEngine"
+Cohesion: 0.20
+Nodes (9): XGBoostDecisionEngine, Avaliação do Jev (TypeSafe) — issue #216, Decisão recomendada, Estado dos critérios da issue #216, O que o Jev oferece, PoC de paridade do motor de decisão, Pontos de decisão encontrados, Referências (+1 more)
 
-### Community 485 - "api/seguranca.md"
+### Community 485 - "test_contato_versionado.py"
+Cohesion: 0.31
+Nodes (9): _modulo(), _render(), test_contato_envios_nasce_com_rls_e_sem_policy(), test_corpo_e_byte_a_byte_o_de_producao(), test_cria_o_nome_novo_e_mantem_o_antigo_como_repassador(), test_downgrade_devolve_a_implementacao_ao_nome_antigo(), test_nem_public_nem_anon_executam(), test_nenhum_segredo_na_migracao() (+1 more)
+
+### Community 486 - "test_migration_periodo_e_progresso_do_rank.py"
+Cohesion: 0.35
+Nodes (9): _sql(), test_chave_de_config_privada_e_idempotente(), test_downgrade_volta_a_view_da_elo(), test_formato_documentado_na_coluna(), test_percentual_some_em_elo_rank_pequeno_e_lider_sem_ponto(), test_periodo_validado_so_quando_gravado_ou_trocado(), test_view_mantem_as_colunas_e_o_resto(), _upgrade() (+1 more)
+
+### Community 487 - "test_migration_pontos_do_evento_no_rank.py"
+Cohesion: 0.40
+Nodes (9): _apurar(), _sql(), test_credito_de_evento_nao_entra_na_soma_da_janela(), test_credito_idempotente_com_indice_parcial_e_predicado_repetido(), test_downgrade_volta_a_apuracao_e_a_lista_de_creditados_de_antes(), test_resto_da_apuracao_continua_igual(), test_so_participante_recebe_e_na_turma_do_evento(), test_tipo_do_credito_e_creditado_e_o_aluno_nao_o_grava() (+1 more)
+
+### Community 488 - "test_migration_ranks_info_com_invoker.py"
+Cohesion: 0.33
+Nodes (8): _downgrade(), _sql(), test_a_migration_nao_cria_policy(), test_downgrade_tira_a_opcao(), test_nao_recria_a_view_nem_mexe_nos_grants(), test_so_a_view_do_rank_info_e_tocada(), test_upgrade_liga_o_security_invoker(), _upgrade()
+
+### Community 489 - "test_worker_finaliza_em_sessao_nova_quando_a_do_job_nao_aceita_escrita"
 Cohesion: 0.22
-Nodes (13): _offline_alembic_config(), A view do detalhe passa a trazer o progresso da atividade.  `vw_aluno_classe_det, O mapeador do app ja lia estes nomes -- a view e que nunca os entregou., `CREATE OR REPLACE VIEW` so' aceita coluna acrescentada no fim.      Se alguem i, Sem `security_invoker` ela roda como dona e ignora o RLS das tabelas base     --, `CREATE OR REPLACE` nao remove coluna: voltar exige `DROP`., _sql(), test_a_view_continua_respeitando_o_rls() (+5 more)
+Nodes (6): test_worker_despacha_missao_diaria_e_finaliza(), claim_next_job(), finalize_job(), test_worker_excecao_vira_failed_com_molde_mantido(), test_worker_finaliza_em_sessao_nova_quando_a_do_job_nao_aceita_escrita(), __aenter__()
 
-### Community 486 - "2. Leitura rapida (mapa geral)"
+### Community 490 - "brainhexpdf/package.json"
+Cohesion: 0.18
+Nodes (10): html2canvas@^1.4.1, lucide-react@^0.546.0, engines, node, html2canvas, lucide-react, name, private (+2 more)
+
+### Community 491 - "CHANGELOG — vault TCC TrailUp"
+Cohesion: 0.18
+Nodes (11): 2026-10-01 (~20:15 America/Sao_Paulo) — enricher 08/09/10, 2026-10-01 (~20:20 America/Sao_Paulo) — Analise de PRs, 2026-10-01 (~20:20 America/Sao_Paulo) — Testes Trail-Up, 2026-10-01 — Issues TrailUp, 2026-10-13 (~13:25 America/Sao_Paulo) — TCC TrailUp sync main, Atualizados, CHANGELOG — vault TCC TrailUp, Criados (+3 more)
+
+### Community 492 - "CHANGELOG — vault TCC TrailUp"
+Cohesion: 0.18
+Nodes (11): 2026-10-01 (~20:19 America/Sao_Paulo) — Sync TrailUp, 2026-10-01 (~20:21 America/Sao_Paulo) — Validação PRs TrailUp, 2026-10-02 (~16:09 America/Sao_Paulo) — TCC TrailUp (delta main), 2026-11-01 — TCC TrailUp (delta main `b5491b02…11aa1c65`, 305 commits), Atualizados, Atualizados, Atualizados, CHANGELOG — vault TCC TrailUp (+3 more)
+
+### Community 493 - "storeModel.ts"
 Cohesion: 0.25
-Nodes (12): _load_migration(), Remove comentarios `--` antes de asseverar sobre o SQL.      Sem isso a analise, _sem_comentarios(), _sql_do_upgrade(), test_block_id_aceita_negativo(), test_block_kind_restrito_aos_dois_tipos_de_bloco(), test_cria_tabela_de_forma_idempotente(), test_downgrade_desfaz_tabela_funcao_e_trigger() (+4 more)
+Nodes (10): Task 2: Serviço mobile tipado, carregarLoja(), MAX_POR_PEDIDO, normalizeStoreItem(), RawStoreItem, StoreItem, StoreItemState, StoreProfileTheme (+2 more)
 
-### Community 487 - "gerar_pdf_slides"
-Cohesion: 0.14
-Nodes (13): ZXResult, -addResultPoints, -description, -initWithTextrawBytesnumBitsresultPointsformat, -initWithTextrawBytesnumBitsresultPointsformattimestamp, -initWithTextrawBytesresultPointsformat, -initWithTextrawBytesresultPointsformattimestamp, -putAllMetadata (+5 more)
+### Community 494 - "O que este desenho acrescenta"
+Cohesion: 0.18
+Nodes (10): 1. Configuração, em três camadas, 2. Compra e uso são passos diferentes, 3. Estorno, 4. Ganho ligado a conclusão, aprovação e meta, 5. Histórico e auditoria, Economia completa — compra, uso na trilha, metas e auditoria, Fora deste corte, O que este desenho acrescenta (+2 more)
 
-### Community 488 - "docs/microservice/README.md"
-Cohesion: 0.14
-Nodes (13): ZXBinaryBitmap, -binaryBitmapWithBinarizer, -blackMatrixWithError, -blackRowrowerror, -cropSupported, -croptopwidthheight, -description, -height (+5 more)
+### Community 495 - "2.1 — ENTREVISTA COM ALUNOS"
+Cohesion: 0.18
+Nodes (11): 1 APRESENTAÇÃO DO INSTRUMENTO, 2.1.1 Dados Demográficos Iniciais, 2.1.2 Bloco 1 — Experiência Atual de Aprendizado, 2.1.3 Bloco 2 — Estilo de Aprendizagem e Preferências (Escala Likert 1–5), 2.1.4 Bloco 3 — Reação ao Conceito TrailUp, 2.1.5 Bloco 4 — Desafios Pessoais, 2.1 — ENTREVISTA COM ALUNOS, 2.3 ENTREVISTA COM MONITORES/TUTORES (+3 more)
 
-### Community 489 - "8. Constraints e indexes crÃ­ticos"
-Cohesion: 0.14
-Nodes (13): ZXVCardResultParser, -decodeQuotedPrintablecharset, -formatNames, -initialize, -isLikeVCardDate, -matchSingleVCardPrefixedFieldrawTexttrimparseFieldDivider, -matchVCardPrefixedFieldrawTexttrimparseFieldDivider, -maybeAppendComponentinewName (+5 more)
+### Community 496 - "10 CONCLUSÃO"
+Cohesion: 0.18
+Nodes (11): 10 CONCLUSÃO, 2.7.1 BrainHex como hipótese de personalização, 4.18 Delimitação operacional do MVP, 4.19 Plano de análise de efetividade, 4.20 Métricas que não devem ser usadas isoladamente, 6.17 Estrutura interna de uma evidência, 6.18 Critérios de inclusão e exclusão, 6.19 PRISMA 2020 como protocolo de transparência (+3 more)
 
-### Community 491 - "media_contract.py"
-Cohesion: 0.26
-Nodes (11): fgy_32x32xn_neon(), film_grain_dsp_init_arm(), bitfn(), fguv_32x32xn_c(), fgy_32x32xn_c(), generate_grain_uv_c(), generate_grain_y_c(), get_random_number() (+3 more)
-
-### Community 492 - "cmdk"
-Cohesion: 0.44
-Nodes (10): color(), facebook(), fontSize(), fromRawValue(), inlineImagePadding(), numberOfLines(), textShadowColor(), textShadowOffset() (+2 more)
-
-### Community 493 - "@config-plugins/react-native-blob-util"
-Cohesion: 0.19
-Nodes (6): data(), get(), operator(), realloc(), release(), reset()
-
-### Community 495 - "mobile/guia-uso-app.md"
-Cohesion: 0.2
-Nodes (8): clear(), makeImageSnapshot(), makeImageSnapshotAsync(), registerSkiaView(), removeViewInfo(), setSkiaView(), unregisterAll(), unregisterSkiaView()
-
-### Community 496 - "20260826_07_push_em_expo_tokens.py"
-Cohesion: 0.25
-Nodes (11): advance(), bidirectional_iter_adaptor_base, decrement(), dereference(), distance_to(), equal(), forward_iter_adaptor_base, increment() (+3 more)
-
-### Community 497 - "20260826_08_rls_sem_anonimo.py"
-Cohesion: 0.22
-Nodes (8): back_move_insert_iterator, back_move_inserter(), front_move_insert_iterator, front_move_inserter(), make_move_iterator(), move_insert_iterator, move_inserter(), move_iterator
-
-### Community 498 - "react-native-markdown-display"
-Cohesion: 0.26
-Nodes (12): trim(), trim_copy(), trim_copy_if(), trim_if(), trim_left(), trim_left_copy(), trim_left_copy_if(), trim_left_if() (+4 more)
-
-### Community 499 - "gerar_pdf_slides"
-Cohesion: 0.37
-Nodes (10): apply_bigskip(), fmodmulM61(), generate(), iterate_raw_vec(), mixmax_engine, modadd(), MULWU(), seed() (+2 more)
-
-### Community 500 - "GUIA_USO.md"
+### Community 497 - "envDoBuild.test.ts"
 Cohesion: 0.29
-Nodes (12): copy(), external_(), folly(), free(), init(), isPrivateAddress(), setFromHostPort(), setFromIpPort() (+4 more)
+Nodes (8): conferencia, mensagem, Conferencia, conferirEnvDoBuild(), FORA_DO_DEV, mensagemDaConferencia(), SEMPRE, COMPLETO
 
-### Community 501 - "createConcurrencyGate"
-Cohesion: 0.26
-Nodes (12): begin(), cend(), clear(), end(), folly(), fullNode(), operator(), padToFullNode() (+4 more)
+### Community 498 - "O que muda no celular"
+Cohesion: 0.18
+Nodes (10): Barra de abas, Estados sem tabuleiro, Fora do escopo desta parte, Guia (mentor), O que fica igual ao v4 (não mude), O que muda no celular, Painel → folha de baixo, Parte 2 — Trilha (celular) (+2 more)
 
-### Community 502 - "20260826_12_conquistas_por_perfil.py"
-Cohesion: 0.24
-Nodes (11): SDWebPCoderFrame, bool(), folly(), lock(), release(), shared_mutex_detail(), std(), swap() (+3 more)
+### Community 499 - "revisao-02-feedback-geis/telas/05-ranking.md"
+Cohesion: 0.18
+Nodes (10): 1. Feedback, 2. Fica como está (ela gostou), 3.1 Ícones (o "ícones errados"), 3.2 Dados coerentes (o "estranho"), 3.3 Proporção da tela, 3.4 O que faltava, 3. O que muda, 4. Estados (seletor flutuante) (+2 more)
 
-### Community 503 - "_professor_em_modo_automatico"
-Cohesion: 0.26
-Nodes (12): find_backward(), find_forward(), find_head_impl(), find_tail_impl(), findit(), first_finderF(), head_finderF(), last_finderF() (+4 more)
+### Community 500 - "2. Regras que valem em todas as telas desta revisão"
+Cohesion: 0.18
+Nodes (10): 1. Feedback, 2.1 Item "Loja" na barra lateral (todas as telas logadas), 2.2 Saldo e dados compartilhados, 2.3 Arte por perfil, 2.4 O que a Loja não é, 2.5 Barras de rolagem no tema (todas as telas), 2.6 Topbar: avatar leva ao Perfil, "Sair" leva à Entrada (todas as telas logadas), 2. Regras que valem em todas as telas desta revisão (+2 more)
 
-### Community 504 - "20260826_13_perfil_ativo_aluno.py"
-Cohesion: 0.26
-Nodes (12): BaseFormatterTuple(), detail(), doFormatArg(), format_value(), formatCheckIndex(), FormatterTag(), getSizeArg(), getSizeArgAt() (+4 more)
+### Community 501 - "revisao-03-loja/telas/12-loja.md"
+Cohesion: 0.18
+Nodes (10): 1. O que a página precisa responder, 2. Grade (1164px úteis), 3. Cabeçalho, 5.1 Na sua Bag, 5.2 Limites da turma, 5.3 Extrato, 5. Coluna lateral, 6. Estados (seletor flutuante) (+2 more)
 
-### Community 505 - "LockBadge.tsx"
-Cohesion: 0.26
-Nodes (12): detail(), folly(), literals(), moveonly_(), to_bool(), to_floating_point(), to_integral(), to_narrow() (+4 more)
+### Community 502 - "v4/assets/social.js"
+Cohesion: 0.33
+Nodes (9): enviar(), guilda(), msgHTML(), perfil(), perfilHTML(), pickerHTML(), privado(), render() (+1 more)
 
-### Community 506 - "Community 506"
-Cohesion: 0.14
-Nodes (13): SDImageAWebPCoder, -canDecodeFromData, -canEncodeToFormat, -canIncrementalDecodeFromData, -defaultLoopCount, -delayTimeProperty, -dictionaryProperty, -imageFormat (+5 more)
+### Community 503 - "Contexto geral — Redesign do console do professor (TrailUp)"
+Cohesion: 0.18
+Nodes (10): Como usar os outros arquivos desta pasta, Contexto geral — Redesign do console do professor (TrailUp), Convenções que o redesign deve respeitar, Estrutura de navegação atual (7 abas, barra superior), Fora do console: o fluxo de autenticação (por último, mas também neste redesign), Identidade visual, O que o redesign precisa resolver (motivação), O que é o TrailUp (+2 more)
 
-### Community 507 - "Community 507"
-Cohesion: 0.14
-Nodes (13): UIImage, -sd_blurredImageWithRadius, -sd_colorAtPoint, -sd_colorsWithRect, -sd_croppedImageWithRect, -sd_drawInRectcontextscaleModeclipsToBounds, -sd_filteredImageWithFilter, -sd_flippedImageWithHorizontalvertical (+5 more)
+### Community 504 - "Paleta de Cores — Fase 2"
+Cohesion: 0.18
+Nodes (10): Acento de navegação (teal/menta), Acento secundário (bronze/cobre), Alerta / estado de falha, Base / superfícies, Conectores do mapa de trilha, Cor de marca, Cores de gráfico, Estados não observados (+2 more)
 
-### Community 508 - "Community 508"
-Cohesion: 0.3
-Nodes (3): PersonalizacaoProgressoRepository, Any, AsyncSession
+### Community 505 - "Prompt Fase 2 — Trilhas, PARTE 1 de 5: mapa/canvas + modais de duplicar/excluir tópico"
+Cohesion: 0.18
+Nodes (10): Assistente "Escriba" (componente global — gere aqui, não precisa repetir nas partes 2–5 desta tela), Barra superior (fora do editor de tópico), Estados da tela (existem os 3 no código — gere pelo menos o 1 e 2 nesta parte; o 3 é o assunto das partes 3–5), Hierarquia de dados a preservar em toda a tela (não é negociável, vale para as 5 partes), Identificação, Mapa da trilha (canvas), Modais de confirmação, O que NÃO fazer (+2 more)
 
-### Community 509 - "Community 509"
-Cohesion: 0.25
-Nodes (12): _load_migration(), Remove comentarios `--` antes de asseverar sobre o SQL.      Sem isso a analise, _sem_comentarios(), _sql_do_upgrade(), test_block_id_aceita_negativo(), test_block_kind_restrito_aos_dois_tipos_de_bloco(), test_cria_tabela_de_forma_idempotente(), test_downgrade_desfaz_tabela_funcao_e_trigger() (+4 more)
+### Community 506 - "Prompt Fase 2 — Trilhas, PARTE 2 de 5: modal "Gerar trilha com IA""
+Cohesion: 0.18
+Nodes (10): Estrutura do modal, Etapa "Ajustar", Etapa "Configurar", Etapa "Processando", Etapa "Resultado", Etapa "Revisar", Identificação, O que NÃO fazer (+2 more)
 
-### Community 510 - "Community 510"
-Cohesion: 0.14
-Nodes (12): Carousel, CarouselApi, CarouselContent, CarouselContext, CarouselContextProps, CarouselItem, CarouselNext, CarouselOptions (+4 more)
+### Community 507 - "Prompt Fase 2 — Rankings"
+Cohesion: 0.18
+Nodes (10): Assistente "Escriba", Cabeçalho, Coluna direita — painel de posições, Coluna esquerda, Estados, Identificação, Layout em 2 colunas, O que NÃO fazer (+2 more)
 
-### Community 511 - "Community 511"
-Cohesion: 0.14
-Nodes (13): Apresentação: entrega direta em HTML (substitui PDF/Puppeteer) Implementation Plan, Retrospectiva (achado durante a execução), Self-review desta plan, Task 10: Verificação final e push, Task 1: Bump das versões de contrato, Task 2: `renderAndUploadPresentation` monta e sobe HTML em vez de PDF, Task 3: `archiveToSupabase` sobe `.html` em vez de `.pdf`, Task 4: Handler `/api/v1/archive` — remove gate de renderer, renomeia campos (+5 more)
-
-### Community 512 - "Community 512"
-Cohesion: 0.14
-Nodes (14): microservice/arquitetura-microservico-detalhada.md, 10. Objetivos operacionais, 1. Objetivo, 2. Escopo, 3. Diagrama de componentes, 4. Endpoints e responsabilidade, 5. Pipeline detalhado, 6. Modelagem de artefatos (+6 more)
-
-### Community 513 - "Community 513"
-Cohesion: 0.14
-Nodes (14): microservice/funcionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado.md, 1. Objetivo, 2. Personalização, 3. Gamificação (contribuição indireta), 4. Recursos pedagógicos aplicados, 5. Fluxo detalhado, 6. Regras de robustez, 7. Indicadores recomendados (+6 more)
-
-### Community 514 - "Community 514"
-Cohesion: 0.14
-Nodes (14): api/arquitetura-microservico-e-app.md, API TrailUp, ApiBrainHex, App Mobile, Decisoes de arquitetura atuais, Escopo, Motivos e objetivos, Objetivo (+6 more)
-
-### Community 515 - "Community 515"
-Cohesion: 0.17
-Nodes (5): double_conversion(), createDedupedTimeoutRunner(), start(), SkBidiIterator(), TextDirection()
-
-### Community 516 - "Community 516"
+### Community 509 - "test_migrations_trilha_checkpoint.py"
 Cohesion: 0.21
-Nodes (7): handleMessage(), expo-speech, expo-speech, parseDeckProgressMessage(), parsePedidoDeFala(), scriptDeConclusao(), fala()
+Nodes (11): _load_migration(), _sem_comentarios(), _sql_do_upgrade(), test_block_id_aceita_negativo(), test_block_kind_restrito_aos_dois_tipos_de_bloco(), test_cria_tabela_de_forma_idempotente(), test_downgrade_desfaz_tabela_funcao_e_trigger(), test_migration_revision_chain() (+3 more)
 
-### Community 517 - "Community 517"
-Cohesion: 0.24
-Nodes (12): _offline_alembic_config(), O corte do ranking: topo visivel mais a propria linha, sempre.  O que estes test, `%` vira `%%` no render do Alembic; num predicado de view isso passa     desperc, Config apagada tem que cair no padrao, e `0` nao pode esconder todo mundo., Mesma forma de `notificacoes_config`: le so o publico, nao escreve nada., _sql_da_migracao(), test_app_config_nao_e_gravavel_pelo_cliente(), test_limite_ausente_ou_zerado_nao_vira_mostra_tudo() (+4 more)
+### Community 510 - "Prompt — nova tela: Rank de batalhas (arena)"
+Cohesion: 0.18
+Nodes (10): Confrontos (quando a modalidade for batalha direta, não só ranking corrido), Dentro de um evento com batalha habilitada, Estados, Estrutura da tela, Identificação, Nota de posicionamento, O que NÃO fazer, O que uma batalha/arena é, de acordo com o que já foi decidido (+2 more)
 
-### Community 518 - "Community 518"
+### Community 511 - "archiveMultiPartToSupabase"
+Cohesion: 0.07
+Nodes (43): Apresentação: entrega direta em HTML (substitui PDF/Puppeteer) Implementation Plan, Retrospectiva (achado durante a execução), Self-review desta plan, Task 10: Verificação final e push, Task 1: Bump das versões de contrato, Task 2: `renderAndUploadPresentation` monta e sobe HTML em vez de PDF, Task 3: `archiveToSupabase` sobe `.html` em vez de `.pdf`, Task 4: Handler `/api/v1/archive` — remove gate de renderer, renomeia campos (+35 more)
+
+### Community 512 - "Arquitetura do Microserviço ApiBrainHex - Versão Detalhada"
+Cohesion: 0.13
+Nodes (14): 10. Objetivos operacionais, 1. Objetivo, 2. Escopo, 3. Diagrama de componentes, 4. Endpoints e responsabilidade, 5. Pipeline detalhado, 6. Modelagem de artefatos, 7. Segurança e governança (+6 more)
+
+### Community 513 - "Funcionamento Detalhado - Personalização, Gamificação e Recursos Pedagógicos (ApiBrainHex)"
+Cohesion: 0.13
+Nodes (14): 1. Objetivo, 2. Personalização, 3. Gamificação (contribuição indireta), 4. Recursos pedagógicos aplicados, 5. Fluxo detalhado, 6. Regras de robustez, 7. Indicadores recomendados, Entrada (+6 more)
+
+### Community 514 - "Arquitetura do Microservico e do App (Contexto API TrailUp)"
+Cohesion: 0.13
+Nodes (14): API TrailUp, ApiBrainHex, App Mobile, Arquitetura do Microservico e do App (Contexto API TrailUp), Decisoes de arquitetura atuais, Escopo, Motivos e objetivos, Objetivo (+6 more)
+
+### Community 515 - "Prompt — nova tela: Dashboard com sínteses e sugestões da IA"
+Cohesion: 0.18
+Nodes (10): Cabeçalho da aba, De onde vêm as ideias abaixo (grounding, não invenção solta), Estados, Estrutura da tela (proposta), Filtro/agrupamento, Identificação, Lista de sínteses/sugestões (cards, mais recentes primeiro), O que NÃO fazer (+2 more)
+
+### Community 516 - "Prompt — nova tela: Aprovações de compras com efeito acadêmico"
+Cohesion: 0.18
+Nodes (10): Aba "Extensões de prazo" (dentro de Aprovações), Ações por pedido, Contexto (o que esta tela não é), Estados, Estrutura da tela, Histórico, Identificação, O que NÃO fazer (+2 more)
+
+### Community 517 - "Contexto geral — Redesign do console do professor (TrailUp)"
+Cohesion: 0.18
+Nodes (10): Como usar os outros arquivos desta pasta, Contexto geral — Redesign do console do professor (TrailUp), Convenções que o redesign deve respeitar, Estrutura de navegação atual (7 abas, barra superior), Fora do console: o fluxo de autenticação (por último, mas também neste redesign), Identidade visual, O que o redesign precisa resolver (motivação), O que é o TrailUp (+2 more)
+
+### Community 518 - "Contexto geral — Redesign do console do professor (TrailUp)"
+Cohesion: 0.18
+Nodes (10): Como usar os outros arquivos desta pasta, Contexto geral — Redesign do console do professor (TrailUp), Convenções que o redesign deve respeitar, Estrutura de navegação atual (7 abas, barra superior), Fora do console: o fluxo de autenticação (por último, mas também neste redesign), Identidade visual, O que o redesign precisa resolver (motivação), O que é o TrailUp (+2 more)
+
+### Community 519 - "Contexto geral — Redesign do console do professor (TrailUp)"
+Cohesion: 0.18
+Nodes (10): Como usar os outros arquivos desta pasta, Contexto geral — Redesign do console do professor (TrailUp), Convenções que o redesign deve respeitar, Estrutura de navegação atual (7 abas, barra superior), Fora do console: o fluxo de autenticação (por último, mas também neste redesign), Identidade visual, O que o redesign precisa resolver (motivação), O que é o TrailUp (+2 more)
+
+### Community 520 - "Contexto geral — Redesign do console do professor (TrailUp)"
+Cohesion: 0.18
+Nodes (10): Como usar os outros arquivos desta pasta, Contexto geral — Redesign do console do professor (TrailUp), Convenções que o redesign deve respeitar, Estrutura de navegação atual (7 abas, barra superior), Fora do console: o fluxo de autenticação (por último, mas também neste redesign), Identidade visual, O que o redesign precisa resolver (motivação), O que é o TrailUp (+2 more)
+
+### Community 521 - "Contexto geral — Redesign do console do professor (TrailUp)"
+Cohesion: 0.18
+Nodes (10): Como usar os outros arquivos desta pasta, Contexto geral — Redesign do console do professor (TrailUp), Convenções que o redesign deve respeitar, Estrutura de navegação atual (7 abas, barra superior), Fora do console: o fluxo de autenticação (por último, mas também neste redesign), Identidade visual, O que o redesign precisa resolver (motivação), O que é o TrailUp (+2 more)
+
+### Community 522 - "Contexto geral — Redesign do console do professor (TrailUp)"
+Cohesion: 0.18
+Nodes (10): Como usar os outros arquivos desta pasta, Contexto geral — Redesign do console do professor (TrailUp), Convenções que o redesign deve respeitar, Estrutura de navegação atual (7 abas, barra superior), Fora do console: o fluxo de autenticação (por último, mas também neste redesign), Identidade visual, O que o redesign precisa resolver (motivação), O que é o TrailUp (+2 more)
+
+### Community 523 - "Paleta de Cores — Fase 2"
+Cohesion: 0.18
+Nodes (10): Acento de navegação (teal/menta), Acento secundário (bronze/cobre), Alerta / estado de falha, Base / superfícies, Conectores do mapa de trilha, Cor de marca, Cores de gráfico, Estados não observados (+2 more)
+
+### Community 524 - "Contexto geral — Redesign do console do professor (TrailUp)"
+Cohesion: 0.18
+Nodes (10): Como usar os outros arquivos desta pasta, Contexto geral — Redesign do console do professor (TrailUp), Convenções que o redesign deve respeitar, Estrutura de navegação atual (7 abas, barra superior), Fora do console: o fluxo de autenticação (por último, mas também neste redesign), Identidade visual, O que o redesign precisa resolver (motivação), O que é o TrailUp (+2 more)
+
+### Community 525 - "Paleta de Cores — Fase 2"
+Cohesion: 0.18
+Nodes (10): Acento de navegação (teal/menta), Acento secundário (bronze/cobre), Alerta / estado de falha, Base / superfícies, Conectores do mapa de trilha, Cor de marca, Cores de gráfico, Estados não observados (+2 more)
+
+### Community 527 - "test_consentimento_provavel.py"
+Cohesion: 0.47
+Nodes (8): _norm(), _render(), test_a_tabela_sobrevive_ao_downgrade(), test_carimbo_do_servidor_e_forcado_por_trigger(), test_guarda_versao_finalidades_e_os_dois_instantes(), test_insert_so_do_proprio_aluno(), test_reenvio_nao_duplica(), test_sem_policy_de_update_nem_de_delete()
+
+### Community 528 - "test_contato_publico_brevo.py"
+Cohesion: 0.36
+Nodes (8): _render(), _sql(), test_contador_guarda_so_hash_e_e_fechado(), test_destino_vem_de_app_config_e_nao_ha_email_literal(), test_downgrade_remove_tudo(), test_grants_da_funcao_publica(), test_protecoes_contra_abuso(), test_reusa_brevo_e_a_chave_do_vault_sem_segredo()
+
+### Community 529 - "test_migration_conquistas_da_turma_funcoes.py"
+Cohesion: 0.47
+Nodes (9): _corpo(), test_desativar_nao_apaga_e_a_lista_conta_quem_ja_ganhou(), test_editar_so_mexe_em_linha_desta_turma_nunca_numa_global(), test_escopo_perfil_e_metrica_sao_conferidos(), test_execute_so_para_autenticado_e_downgrade(), test_nao_reescreve_o_gatilho_de_avaliacao(), test_pontos_e_teto_vem_do_app_config_com_padrao(), test_posse_da_turma_antes_de_qualquer_leitura_ou_escrita() (+1 more)
+
+### Community 530 - "_afrouxa"
 Cohesion: 0.29
-Nodes (12): _dedupe_preserve_order(), extract(), _extract_notes_text(), _extract_with_python_pptx(), _extract_with_xml_fallback(), _join_lines(), _normalize_title(), Extrator de PPTX: python-pptx com fallback XML. (+4 more)
+Nodes (7): _afrouxa(), _dsn_para(), banco(), banco(), banco_anterior(), _instalar(), _seed()
 
-### Community 519 - "Community 519"
-Cohesion: 0.28
-Nodes (12): _load_migration(), _load_trigger_migration(), _sql(), test_apenas_tabelas_de_artefato_ficam_nullable(), test_dedup_de_target_cobre_a_base(), test_migration_revision_chain(), test_professor_enxerga_material_de_nivel_topico(), test_trigger_nao_depende_mais_de_classe_aluno() (+4 more)
+### Community 531 - "test_migration_evento_classe_durante.py"
+Cohesion: 0.49
+Nodes (9): _funcao(), test_execute_so_para_autenticado_e_downgrade(), test_guilda_ativa_usa_a_copia_congelada(), test_janela_e_classe_resolvida_como_na_apuracao(), test_parou_so_com_evento_aberto_e_janela_correndo(), test_posse_da_turma_antes_de_ler_dado_de_aluno_e_rascunho_recusado(), test_sem_dado_pessoal_alem_de_id_e_nome(), test_so_leitura() (+1 more)
 
-### Community 520 - "Community 520"
-Cohesion: 0.15
-Nodes (12): ZXGenericGFPoly, -addOrSubtract, -coefficient, -degree, -description, -divide, -evaluateAt, -initWithFieldcoefficients (+4 more)
+### Community 532 - "test_migration_eventos_classe_apuracao.py"
+Cohesion: 0.36
+Nodes (9): test_aluno_so_ve_evento_encerrado_proprio_e_top_10(), test_apuracao_interna_e_encerrar_a_chama_depois_da_posse(), test_destaque_so_com_medalha_ligada_participacao_e_top_3(), test_downgrade_restaura_o_encerrar_anterior(), test_guilda_usa_a_copia_congelada_e_fica_fora_do_rank_individual(), test_moedas_creditadas_uma_vez_por_participante(), test_pontos_so_da_janela_do_evento_e_nunca_negativos(), test_resultado_persistido_em_duas_tabelas_com_rls_e_policies() (+1 more)
 
-### Community 521 - "Community 521"
-Cohesion: 0.15
-Nodes (12): ZXRSS14Reader, -addOrTallypair, -adjustOddEvenCountsnumModules, -checkChecksumrightPair, -constructResultrightPair, -decodeDataCharacterpatternoutsideChar, -decodePairrightrowNumberhints, -decodeRowrowhintserror (+4 more)
-
-### Community 522 - "Community 522"
-Cohesion: 0.42
-Nodes (12): avifBitsInit(), avifBitsRead(), avifBitsReadPos(), avifBitsReadUleb128(), avifBitsReadVLC(), avifBitsRefill(), avifSequenceHeaderParse(), parseAV1SequenceHeader() (+4 more)
-
-### Community 523 - "Community 523"
-Cohesion: 0.27
-Nodes (12): dav1d_decode_frame_init(), calc_lf_value(), calc_lf_value_chroma(), dav1d_calc_eih(), dav1d_calc_lf_values(), dav1d_create_lf_mask_inter(), dav1d_create_lf_mask_intra(), decomp_tx() (+4 more)
-
-### Community 524 - "Community 524"
-Cohesion: 0.29
-Nodes (12): VariableLevelCost(), VP8CalculateLevelCosts(), VP8GetCostLuma16(), VP8GetCostLuma4(), VP8GetCostUV(), VP8InitResidual(), VP8RecordCoeffs(), CodeResiduals() (+4 more)
-
-### Community 525 - "Community 525"
-Cohesion: 0.22
-Nodes (12): CollectHistogram_MIPSdspR2(), CollectHistogram_MSA(), CollectHistogram_SSE41(), Disto16x16_SSE41(), Disto4x4_SSE41(), DoQuantizeBlock_SSE41(), Quantize2Blocks_SSE41(), QuantizeBlock_SSE41() (+4 more)
-
-### Community 526 - "Community 526"
-Cohesion: 0.35
-Nodes (11): BOOST_OVERRIDE(), BOOST_SYMBOL_VISIBLE, copy_from(), get_throw_location(), rethrow(), throw_exception(), throw_exception_assert_compatibility(), throw_location() (+3 more)
-
-### Community 527 - "Community 527"
+### Community 533 - "test_migration_lote_diz_por_onde_chegou.py"
 Cohesion: 0.31
-Nodes (11): arg(), detail(), exception_ptr_access(), exception_ptr_get_object(), exception_ptr_get_type(), folly(), literal_state(), terminate_with_() (+3 more)
+Nodes (7): _downgrade_sql(), test_checks_aceitam_nulo(), test_colunas_e_checks(), test_downgrade_remove_tudo(), test_funcao_do_gatilho_sem_execute_para_cliente(), test_gatilho_decide_a_via_pelo_papel_e_nao_toca_no_motivo(), _upgrade_sql()
 
-### Community 528 - "Community 528"
+### Community 534 - "test_migration_professor_aluno_acesso.py"
+Cohesion: 0.31
+Nodes (7): _downgrade_sql(), test_downgrade_restaura_o_predicado_frouxo(), test_ligar_has_acesso_exige_aluno_de_turma_do_professor(), test_nao_usa_in_sobre_o_helper(), test_revogar_continua_livre_e_cobre_nulo(), test_update_ainda_exige_ser_dono_da_linha(), _upgrade_sql()
+
+### Community 535 - "test_migrations_reexpoe_resposta_correta.py"
+Cohesion: 0.33
+Nodes (7): _carregar(), _sql(), test_cadeia_de_revisao(), test_downgrade_anula_o_gabarito_de_novo(), test_recarrega_cache_do_postgrest(), test_upgrade_reexpoe_o_gabarito(), test_view_mantem_security_invoker()
+
+### Community 536 - "DeckInteractionContext.tsx"
+Cohesion: 0.27
+Nodes (9): DecisionSlideState, DeckInteractionContext, DeckInteractionContextValue, DeckInteractionData, DeckInteractionProvider(), DeckInteractionProviderProps, getStorageKey(), loadInitialState() (+1 more)
+
+### Community 537 - "Issue #1 — validação integrada local"
+Cohesion: 0.20
+Nodes (8): Distinções necessárias para o aceite, Issue #1 — validação integrada local, O que ainda impede fechar, Reproduzir e inspecionar, Resultado e alcance, Cadastro integrado, somente local, Escopo da evidência, Schema e limites
+
+### Community 538 - "Inventário: o schema que existe em produção e não está no git"
+Cohesion: 0.20
+Nodes (10): A cadeia `port/*`, As 44 funções órfãs, As 4 tabelas e views, Como reproduzir esta medição, Divergência recente (16) — é aqui que dói, Inventário: o schema que existe em produção e não está no git, Legado pré-alembic (28) — risco baixo, O que este documento não decide (+2 more)
+
+### Community 539 - "Políticas de Dados e Privacidade"
+Cohesion: 0.20
+Nodes (10): 1. Objetivo, 2. Tipos de dados tratados, 3. Bases legais e consentimento, 4. Retenção e descarte, 5. Compartilhamento, 6. Direitos do titular, 7. Segurança e confidencialidade, 8. Observações (+2 more)
+
+### Community 540 - "Relatório de inventário — TCC TrailUp"
+Cohesion: 0.20
+Nodes (10): 1. Resumo executivo, 2. O que existe (por bloco), 3. Gaps / riscos, 4. Próximos pedidos à Geisbelly, 5. Entregáveis deste passe, 6. Capítulos monografia (proposta operacional), Código, Relatório de inventário — TCC TrailUp (+2 more)
+
+### Community 541 - "projeto-de-ux.md"
+Cohesion: 0.20
+Nodes (9): 1 APRESENTAÇÃO DO INSTRUMENTO, 2.1 Registro – 17 de outubro de 2025, 2.2 Registro – 24 de outubro de 2025, 2.3 Registro – 21 de novembro de 2025, 2.4 Registro Complementar – 28 de novembro de 2025, 2 REGISTROS DAS ATIVIDADES, 3 CONSIDERAÇÕES FINAIS, DIÁRIO DE CAMPO (+1 more)
+
+### Community 542 - "2.2 Perguntas Abertas"
+Cohesion: 0.20
+Nodes (10): 2.1.1 Definição, 2.1.2 Resultados Individuais do NPS – TrailUp, 2.1.3 Resultado Geral do NPS – TrailUp, 2.1 Net Promoter Score (NPS), 2.2.1 Definição, 2.2.2 Estrutura das Perguntas Aplicadas, 2.2.3 Respostas Individuais dos Participantes, 2.2.4 Síntese Geral das Perguntas Abertas (+2 more)
+
+### Community 543 - "Persona(s) do Usuário – TrailUp"
+Cohesion: 0.20
+Nodes (10): 1. Camada Geral, 🔝 1. Mastermind (estratégia, solução lógica), 2. Personas Específicas, 🔝 2. Seeker (curiosidade, exploração), 🔝 3. Achiever (progresso, maestria), ⚖️ Perfis de apoio, Persona 1: Lucas – Iniciante Explorador, Persona 2: Mariana – Realizadora Avançada (+2 more)
+
+### Community 544 - "missoesDiariasApi.ts"
+Cohesion: 0.33
+Nodes (7): Bruto, mapearMissaoDiaria(), MissaoDiariaResumo, percentualCumprido(), ResumoDasMissoesDiarias, dataCurta(), PainelMissoesDiarias()
+
+### Community 545 - "profileImageFrame.ts"
 Cohesion: 0.44
-Nodes (12): Bytes(), changeSize(), copy(), destroyAll(), initData(), poison(), setData(), setDataFromBytes() (+4 more)
+Nodes (8): buildProfileImageFrame(), clarearParaFundoEscuro(), corComAlpha(), hexParaRgb(), hslParaHex(), luminanciaRelativa(), ProfileImageFrame, rgbParaHsl()
 
-### Community 529 - "Community 529"
-Cohesion: 0.21
-Nodes (6): SkAlign4(), SkAlign8(), SkAlignPtr(), SkIsAlign4(), SkIsAlign8(), SkIsAlignPtr()
+### Community 546 - "scripts"
+Cohesion: 0.11
+Nodes (19): scripts, android, build:aab, build:android, build:apk, conferir-env, eas-build-post-install, ios (+11 more)
 
-### Community 530 - "Community 530"
-Cohesion: 0.29
-Nodes (11): call(), callAsConstructor(), callWithThis(), createFromHostFunction(), facebook(), getPropertyNames(), getValueAtIndex(), lock() (+3 more)
+### Community 547 - "recolor.mjs"
+Cohesion: 0.06
+Nodes (25): sharp, compositeOps, featherWeight(), hueInRange(), hueMax, hueMin, isPng, pipeline (+17 more)
 
-### Community 531 - "Community 531"
-Cohesion: 0.35
-Nodes (11): add(), bigint(), compare(), fast_float(), mul(), pow10(), pow2(), pow5() (+3 more)
+### Community 548 - "TrailUp API"
+Cohesion: 0.14
+Nodes (13): Configuracao, Documentacao, Documentacao detalhada (arquitetura separada), Documentos novos, Endpoints relevantes, Estado atual (2026-04-19), Estrutura principal, Executar localmente (+5 more)
 
-### Community 532 - "Community 532"
+### Community 549 - "telemetriaCliente.core.ts"
+Cohesion: 0.40
+Nodes (7): TelemetriaClienteDoLote, hostDaApi(), montarCliente(), TAMANHO_MAXIMO_CAMPO, TelemetriaCliente, texto(), lerClienteDoApp()
+
+### Community 550 - "renderAndUploadPresentationViaBrainHexPdf"
+Cohesion: 0.06
+Nodes (44): aggregatedApresentacaoFailure(), buildApresentacaoMetadata(), computeAggregatedApresentacaoEntry(), GenerationFence, generationKeyFor(), MaterialPart, PersistApresentacaoParams, persistApresentacaoResult() (+36 more)
+
+### Community 551 - "test_supervisor_roteamento.py"
+Cohesion: 0.09
+Nodes (17): SupervisorDecision, _estado_do_ciclo(), _executor(), grafo(), modelo(), _ModeloFixo, _rodar(), _stub() (+9 more)
+
+### Community 552 - "Controle de geração manual/automática de personalização — Plano de Implementação"
+Cohesion: 0.17
+Nodes (7): ProfessorRepository, Controle de geração manual/automática de personalização — Plano de Implementação, Task 10: Frontend — tolerar a resposta de skip nos disparos automáticos existentes, Task 1: Migration — coluna `geracao_automatica` em `professor`, Task 2: `ProfessorRepository`, Task 9: Controle "Gerar tudo" (turma + perfil), Verificação final
+
+### Community 553 - "_build_design_tokens"
+Cohesion: 0.05
+Nodes (47): _blend(), _build_design_tokens(), _contrast_ratio(), _darken(), _ensure_min_contrast(), _hex_to_rgb(), _lighten(), _normalize_profile_name() (+39 more)
+
+### Community 554 - "telemetriaApi.persistence.test.ts"
+Cohesion: 0.22
+Nodes (9): client, clienteFixo, { enviarLoteTelemetria }, loteErros, loteTentativas, metrics, payloadComMotivo(), payloadDeLote() (+1 more)
+
+### Community 555 - "runPipeline"
+Cohesion: 0.04
+Nodes (57): Decisão, Contexto para quem for executar, Fora de escopo (não fazer neste plano), Slide inteiro como imagem única (gpt-image-1) Implementation Plan, Task 1: `openaiImageService.ts` — override de `quality` por chamada, Task 2: `openaiImageService.ts` — `generateFullSlideImage`, Task 3: novo `src/lib/slideAssetGenerator.ts` — `buildImageStyleSuffix` + `buildFullSlidePrompt`, Task 5: `slideEnricher.ts` — carrega `renderMode` por slide (+49 more)
+
+### Community 556 - "Notificações via banco — desenho"
+Cohesion: 0.05
+Nodes (36): Arquitetura proposta, Como ficou (implementado em 2026-08-25), Decisões validadas (2026-08-25), Design: sugestão de material por aluno (formato + ordem), com revisão e métricas de efetividade, Métrica de efetividade, Não faz parte, O que existe hoje, O que falta (o pedido) (+28 more)
+
+### Community 557 - "01. Visao geral do projeto"
+Cohesion: 0.14
+Nodes (13): 01. Visao geral do projeto, 10. Riscos arquiteturais acompanhados, 11. Indicadores macro de sucesso, 12. Evidencias e origem dos insumos, 1. Proposito do ecossistema TrailUp, 2. Problema que o projeto enfrenta, 3. Objetivos de negocio e produto, 4. Objetivos tecnicos (+5 more)
+
+### Community 558 - "mobile-v1/assets/bag.js"
+Cohesion: 0.36
+Nodes (8): abrir(), avisa(), fechar(), folhaHTML(), itemHTML(), novo(), redesenha(), render()
+
+### Community 559 - "Contexto geral — Prototipação da área web do aluno (TrailUp)"
+Cohesion: 0.20
+Nodes (9): Como usar os outros arquivos desta pasta, Contexto geral — Prototipação da área web do aluno (TrailUp), Convenções que valem tanto quanto no console, Diferença importante em relação ao redesign do console, Estrutura de navegação atual (5 abas, barra inferior), O que este redesign precisa resolver (motivação), O que é o TrailUp, Onde essa área vive no código (+1 more)
+
+### Community 560 - "O que muda no celular"
+Cohesion: 0.20
+Nodes (9): Barra de baixo, Batalha (coluna da direita → chip + folha), Cabeçalho (fixo, 2 linhas), Conteúdo (coluna única, rola), Fora do escopo desta parte, Guia, Bag e conquista, O que fica igual ao v4 (não mude), O que muda no celular (+1 more)
+
+### Community 561 - "2. Regras que valem em TODAS as telas desta revisão (vieram do feedback)"
+Cohesion: 0.20
+Nodes (9): 0. O produto em 4 linhas, 1. O que NÃO muda em nenhuma tela, 2.1 Tirar a etiqueta de estado do topo, 2.2 Nada de área vazia, 2.3 Lista, não mosaico, para coisas lidas em sequência, 2.4 Mestre-detalhe no lugar de navegar para outra página, 2.5 Acessibilidade mínima (o v1 já seguia; não regredir), 2. Regras que valem em TODAS as telas desta revisão (vieram do feedback) (+1 more)
+
+### Community 562 - "ADICIONAR — o que falta, com posição exata"
+Cohesion: 0.20
+Nodes (9): 1. Indicadores da segunda fileira precisam de ícone e de contexto (não só cor), 2. "Quem precisa de atenção" — novo bloco, entre a segunda fileira de indicadores e os gráficos, 3. Bloco de "Conteúdo" — novo, entre os gráficos atuais e a "Lista de Alunos", 4. Evolução da turma ao longo do tempo — no nível da turma, não só do aluno, 5. Aba "Trilha Visual" do modal — nó clicável com painel de detalhe completo, 6. Intervenções do professor — nova funcionalidade, dentro do painel de detalhe do nó (item 5), ADICIONAR — o que falta, com posição exata, MANTER exatamente como está (+1 more)
+
+### Community 563 - "Prompt Fase 2 — Visão geral (Dashboard), PARTE 3 de 3: detalhe do aluno"
+Cohesion: 0.20
+Nodes (9): Aba "Perfil BrainHex", Aba "Personalização" (do aluno), Aba "Trilha visual", Aba "Visão geral" (do aluno), Cabeçalho do detalhe, Identificação, O que NÃO fazer, Prompt Fase 2 — Visão geral (Dashboard), PARTE 3 de 3: detalhe do aluno (+1 more)
+
+### Community 564 - "Prompt Fase 2 — Personalizações, PARTE 1 de 3: cabeçalho, filtros, resumo e aba "Por perfil""
+Cohesion: 0.20
+Nodes (9): Aba "Por perfil", Assistente "Escriba" (componente global — gere aqui, não precisa repetir nas partes 2 e 3), Cabeçalho e filtros (comuns às 3 partes desta tela), Estado "sem seleção" (classe/tópico ainda não escolhidos), Identificação, O que NÃO fazer, Prompt Fase 2 — Personalizações, PARTE 1 de 3: cabeçalho, filtros, resumo e aba "Por perfil", Referências de estilo (+1 more)
+
+### Community 565 - "Prompt — nova tela: História da turma"
+Cohesion: 0.20
+Nodes (9): Aviso ao salvar uma mudança, Botão "Salvar", Editor, Estrutura da tela, Identificação, O que NÃO fazer, Por que esta tela existe, Prompt — nova tela: História da turma (+1 more)
+
+### Community 566 - "20261021_05_missao_diaria_deterministica.py"
+Cohesion: 0.33
+Nodes (5): downgrade(), guarda(), guarda_da_fase_2(), _modulo(), upgrade()
+
+### Community 567 - "20261025_01_pontos_do_evento_no_rank.py"
+Cohesion: 0.39
+Nodes (6): apuracao_anterior(), apuracao_com_pontos(), downgrade(), _load(), _troca(), upgrade()
+
+### Community 568 - "20261025_02_periodo_e_progresso_do_rank.py"
+Cohesion: 0.36
+Nodes (6): downgrade(), _load(), _troca(), upgrade(), view_anterior(), view_nova()
+
+### Community 569 - "20261025_03_guilda_mantem_quem_saiu_da_turma.py"
+Cohesion: 0.36
+Nodes (6): apuracao_anterior(), apuracao_guilda_mantem_quem_saiu(), downgrade(), _load(), _troca(), upgrade()
+
+### Community 570 - "20261025_04_evento_abre_e_encerra_no_horario.py"
 Cohesion: 0.31
-Nodes (9): assign_functor(), assign_functor_a(), assign_to(), assign_to_a(), BOOST_CATCH(), else(), function(), function<BOOST_FUNCTION_PARTIAL_SPEC> (+1 more)
+Nodes (4): anteriores(), downgrade(), _funcao(), _load()
 
-### Community 533 - "Community 533"
-Cohesion: 0.28
-Nodes (11): all(), contains(), ends_with(), equals(), icontains(), iends_with(), iequals(), ilexicographical_compare() (+3 more)
+### Community 571 - "20261101_12_alteracao_do_professor.py"
+Cohesion: 0.33
+Nodes (6): _array(), downgrade(), _lista(), _nota_anterior(), _nota_com_revisao(), upgrade()
 
-### Community 534 - "Community 534"
-Cohesion: 0.18
-Nodes (3): generate_tail(), normal_distribution, param_type
+### Community 572 - "20261101_14_email_pelo_apps_script.py"
+Cohesion: 0.36
+Nodes (4): _contato_da_brevo(), _contato_publico_da_brevo(), downgrade(), _modulo()
 
-### Community 535 - "Community 535"
-Cohesion: 0.28
-Nodes (11): bit_cast(), BOOST_NOEXCEPT(), byteswap_impl(), countl_impl(), countr_impl(), uint16_t byteswap_impl(), uint32_t bit_ceil_impl(), uint32_t byteswap_impl() (+3 more)
+### Community 573 - "20261102_05_trava_da_personalizacao.py"
+Cohesion: 0.36
+Nodes (6): downgrade(), _load(), _policies(), rpc_anterior(), rpc_nova(), upgrade()
 
-### Community 536 - "Community 536"
-Cohesion: 0.23
-Nodes (3): generate(), independent_bits_engine, seed()
+### Community 576 - "XP de slides — demais interações (D1b) Implementation Plan"
+Cohesion: 0.22
+Nodes (8): Encerramento, Task 1: `attackBoss`, Task 2: `toggleChecklistItem`, Task 3: `toggleTakeawayMastery`, Task 4: `saveUniqueInteraction`, Task 5: `selectDecisionPath`, Task 6: `revealSecretLore`, XP de slides — demais interações (D1b) Implementation Plan
 
-### Community 537 - "Community 537"
-Cohesion: 0.18
-Nodes (3): generate_uniform_real(), param_type, uniform_real_distribution
+### Community 577 - "Personalizacao e Multimidia no App"
+Cohesion: 0.22
+Nodes (8): Checklist de troubleshooting, Fontes de dados, Formatos suportados, Objetivo, Persistencia de tempo, Personalizacao e Multimidia no App, Ranking, Regra de renderizacao
 
-### Community 538 - "Community 538"
-Cohesion: 0.18
-Nodes (3): generate(), param_type, uniform_smallint
+### Community 578 - "Global Constraints"
+Cohesion: 0.22
+Nodes (8): Fora desta fatia, Global Constraints, Loja, fatia 1: economia no banco — Implementation Plan, Task 1: A tabela do razão, Task 2: Ler o saldo e o extrato, Task 3: Quanto cada evento paga em moeda, Task 4: O professor sobrepõe o ganho na turma dele, Task 5: O gatilho que paga, uma vez só
 
-### Community 539 - "Community 539"
-Cohesion: 0.23
-Nodes (3): generate(), seed(), shuffle_order_engine
+### Community 579 - "6 EVIDENCE BASE E RAG"
+Cohesion: 0.22
+Nodes (9): 6.1 Objetivo da base de evidências, 6.2 Domínios da Evidence Base, 6.3 Separação entre fonte curricular e evidência científica, 6.4 Metadados da evidência, 6.5 Fluxo de recuperação, 6.6 Apoio à tomada de decisão, 6.7 Controle de extrapolação, 6.8 Aplicação no MVP (+1 more)
 
-### Community 540 - "Community 540"
-Cohesion: 0.18
-Nodes (3): generate_uniform_int(), param_type, uniform_int_distribution
+### Community 580 - "7 AVALIAÇÃO"
+Cohesion: 0.22
+Nodes (9): 7.1 Pesquisa preliminar e limites de inferência, 7.2 Teste preliminar de usabilidade, 7.3 Protocolo de teste em sala, 7.4 Métricas de aprendizagem, 7.5 Métricas de comportamento e engajamento, 7.6 Métricas de personalização, 7.7 Métricas de experiência, 7.8 Análise dos resultados (+1 more)
 
-### Community 541 - "Community 541"
-Cohesion: 0.31
-Nodes (11): ansi_color_escape(), begin(), bg(), color(), fg(), has_emphasis(), noexcept(), string() (+3 more)
+### Community 581 - "run"
+Cohesion: 0.22
+Nodes (9): defaults, if, needs, runs-on, defaults, run, api, defaults (+1 more)
 
-### Community 542 - "Community 542"
+### Community 582 - "ClassSelectionGate.test.tsx"
+Cohesion: 0.25
+Nodes (6): buttons, classes, { ClassSelectionGate }, render(), { renderToString }, StudyScreen()
+
+### Community 583 - "DesbloqueioModal.icone.test.tsx"
+Cohesion: 0.22
+Nodes (3): { renderToString }, semEfeito, ValorAnimado
+
+### Community 584 - "MarkdownIt"
+Cohesion: 0.22
+Nodes (3): markdown-it, MarkdownIt, MarkdownItToken
+
+### Community 585 - "tocadorDeAudioWeb.test.ts"
+Cohesion: 0.36
+Nodes (7): criarTocadorDeAudioWeb(), ElementoDeAudio, EVENTOS, StatusDeReproducao, elementoFalso(), tocadorCom(), TocadorDeAudioMinimo
+
+### Community 586 - "Parte 1 — Entrada, login e recuperar senha (celular)"
+Cohesion: 0.22
+Nodes (8): 00 — Entrada, 01 — Login, 02 — Recuperar senha, De onde vem, Fora do escopo, O que fica igual ao v4 (não mude), O que muda no celular, Parte 1 — Entrada, login e recuperar senha (celular)
+
+### Community 587 - "Parte 4 — Ranking (celular)"
+Cohesion: 0.22
+Nodes (8): De onde vem, Fora do escopo desta parte, O que fica igual ao v4 (não mude), O que muda no celular, Parte 4 — Ranking (celular), "Sua posição" fixa embaixo, Toques, Uma tela, não duas colunas
+
+### Community 588 - "O que muda no celular"
+Cohesion: 0.22
+Nodes (8): Folhas e telas cheias, Fora do escopo desta parte, O que fica igual ao v4 (não mude), O que muda no celular, Para conferir, Parte 5 — Social (celular), Topo e atalhos, Uma coluna, nesta ordem
+
+### Community 589 - "O que muda no celular"
+Cohesion: 0.22
+Nodes (8): Bag (todas as telas logadas), Biblioteca de conquistas (tela empilhada, com voltar), De onde vem, O que fica igual ao v4 (não mude), O que muda no celular, Parte 7 — Perfil, Biblioteca de conquistas, Relatório e a Bag (celular), Perfil (aba Perfil), Relatório dos seus dados (tela empilhada, com voltar)
+
+### Community 590 - "revisao-01-base-v7/telas/01-login.md"
+Cohesion: 0.22
+Nodes (8): 1. Fonte da verdade, 2. Objetivo, 3. Grade, 4. Blocos do painel de ação (de cima para baixo), 5. Estados (seletor: "Vazio" · "Preenchido" · "Entrando..." · "Erro de credenciais" · "Dados inválidos" · "Erro desconhecido"), 6. Interações, 7. Não fazer, 8. Aceite
+
+### Community 591 - "revisao-03-loja/telas/06-social.md"
+Cohesion: 0.22
+Nodes (8): 1. Feedback, 2. De onde vem cada peça (nada inventado), 3. Regras que o V9 do professor já fixou (o aluno precisa enxergar), 4. Grade (1164px úteis), 6. Coluna lateral, 7. Estados (seletor flutuante), 8. Não fazer, 9. Aceite
+
+### Community 592 - "2. O que muda"
+Cohesion: 0.22
+Nodes (8): 1. Feedback, 2.1 Sem painel: a notificação abre no próprio item, 2.2 Item aberto como mensagem, não formulário, 2.3 Hierarquia do topo, 2.4 Grupos por data, 2. O que muda, 3. Estados, 4. Aceite
+
+### Community 593 - "Implementar o protótipo `mobile-v1` no app do aluno"
+Cohesion: 0.22
+Nodes (8): Antes de cada push, Commits e PR, Implementar o protótipo `mobile-v1` no app do aluno, O que ler, nesta ordem, Objetivo, Onde mexer no código, Ordem e tamanho do trabalho, Regras que não se quebram
+
+### Community 594 - "Prompt Fase 2 — Visão geral (Dashboard), PARTE 1 de 3: estados da tela + aba "Visão geral""
+Cohesion: 0.22
+Nodes (8): Aba "Visão geral" (dentro do estado "com dados"), Assistente "Escriba" (componente global — ver prompt mestre), Identificação, O que NÃO fazer, Os 4 estados da tela (existem no código via a prop `estado`) — gere todos os 4 nesta parte, Prompt Fase 2 — Visão geral (Dashboard), PARTE 1 de 3: estados da tela + aba "Visão geral", Referências de estilo, Seletor de turma e janela temporal (topo, comum a todos os estados e às 3 partes)
+
+### Community 595 - "Prompt Fase 2 — Trilhas, PARTE 3 de 5: editor de tópico — estrutura + aba "Conteúdo""
+Cohesion: 0.22
+Nodes (8): Aba "Conteúdo" (ativa por padrão ao selecionar um item), Cabeçalho do editor de tópico, Coluna direita — 3 sub-abas: Conteúdo (esta parte) / Atividades (parte 4) / Cards (parte 5), Coluna esquerda (largura fixa, ~320px, rolável), Identificação, O que NÃO fazer, Prompt Fase 2 — Trilhas, PARTE 3 de 5: editor de tópico — estrutura + aba "Conteúdo", Referências de estilo
+
+### Community 596 - "Prompt Fase 2 — Trilhas, PARTE 5 de 5: editor de tópico — aba "Cards""
+Cohesion: 0.22
+Nodes (8): Aba "Cards", Coluna "Cards existentes" (+ contador badge), Identificação, Lembrete final (vale para toda a tela Trilhas, as 5 partes), O que NÃO fazer, Painel "Novo card" (largura fixa, à direita), Prompt Fase 2 — Trilhas, PARTE 5 de 5: editor de tópico — aba "Cards", Referências de estilo
+
+### Community 597 - "Prompt — adição à Visão geral: sinal de risco de reprovação"
+Cohesion: 0.22
+Nodes (8): Diferença em relação ao bloco "Precisam de atenção" que já existe, Estados, Identificação, O que NÃO fazer, Onde encaixar, Onde NÃO encaixar, Prompt — adição à Visão geral: sinal de risco de reprovação, Referências de estilo
+
+### Community 598 - "appsscript.json"
+Cohesion: 0.22
+Nodes (8): dependencies, exceptionLogging, oauthScopes, runtimeVersion, timeZone, webapp, access, executeAs
+
+### Community 599 - "20261024_02_consentimento_do_responsavel.py"
+Cohesion: 0.39
+Nodes (5): _acl_funcoes(), _carimbos_e_acl(), _policies_de_telemetria(), _tabelas(), upgrade()
+
+### Community 600 - "20261024_03_retencao_e_expurgo.py"
+Cohesion: 0.39
+Nodes (5): _nome_fk(), _politicas_sql(), _q(), _sql_fk(), upgrade()
+
+### Community 601 - "20261029_02_catalogo_de_metricas.py"
+Cohesion: 0.39
+Nodes (5): _arr(), _q(), _semente(), upgrade(), _valores_do_catalogo()
+
+### Community 603 - "test_migration_avaliar_entrega.py"
+Cohesion: 0.46
+Nodes (7): test_evento_creditado_uma_vez_por_aluno_e_atividade_atualizavel(), test_execute_so_para_autenticado_e_downgrade(), test_nao_mexe_em_status_nem_em_progresso(), test_nota_limitada_a_pontuacao_maxima_e_sem_maxima_recusa(), test_posse_e_matricula_conferidas_antes_de_qualquer_escrita(), test_preserva_o_que_a_ia_gravou_e_so_escreve_a_chave_professor(), _upgrade_sql()
+
+### Community 604 - "test_migration_evento_medalhas.py"
+Cohesion: 0.46
+Nodes (7): _sobe(), _sql(), test_apuracao_entrega_medalha_sem_duplicar_e_sem_pontos(), test_colunas_das_medalhas_e_guarda_do_evento(), test_downgrade_restaura_e_apaga_as_medalhas_de_evento(), test_escopo_evento_aceito_sem_perfil_alvo_e_metrica_nova(), test_funcoes_do_professor_ignoram_medalhas_de_evento()
+
+### Community 605 - "test_migration_guilda_mantem_quem_saiu_da_turma.py"
+Cohesion: 0.54
+Nodes (6): _apurar(), _guilda(), _sql(), test_downgrade_volta_a_soma_da_20261025_01(), test_guilda_soma_quem_saiu_ate_a_saida(), test_resultado_individual_e_premios_nao_mudam()
+
+### Community 606 - "Diversidade de exemplos visuais no deck — Design"
+Cohesion: 0.25
+Nodes (7): 1. Prompt (`server.ts`, instrução #7), 2. Reforço determinístico (`src/utils/slideIllustrations.ts`), Causa raiz, Contexto, Diversidade de exemplos visuais no deck — Design, Fix — duas camadas (mesmo padrão já usado nesta sessão pra, Testes
+
+### Community 607 - "scripts"
+Cohesion: 0.25
+Nodes (8): scripts, build, clean, dev, lint, preview, start, test
+
+### Community 608 - "storageReadUrl.ts"
 Cohesion: 0.32
-Nodes (11): allocateNear(), allocationAttempt(), cbegin(), find(), folly(), IndexType(), keyValue(), MutableAtom() (+3 more)
+Nodes (5): BUCKETS_PRIVADOS, ClienteDeStorage, StorageDoBucket, urlDeLeituraDoStorage(), VALIDADE_PADRAO_SEGUNDOS
 
-### Community 543 - "Community 543"
-Cohesion: 0.32
-Nodes (11): AddressStorage(), byteCount(), bytes(), folly(), getNthLSBit(), getNthLSByte(), getNthMSBit(), inSubnet() (+3 more)
-
-### Community 544 - "Community 544"
-Cohesion: 0.15
-Nodes (12): SDImageCodersManager, -addCoder, -canDecodeFromData, -canEncodeToFormat, -coders, -decodedImageWithDataoptions, -encodedDataWithFramesloopCountformatoptions, -encodedDataWithImageformatoptions (+4 more)
-
-### Community 545 - "Community 545"
-Cohesion: 0.15
-Nodes (12): UIImageView, -sd_cancelCurrentImageLoad, -sd_currentImageURL, -sd_setImageWithURL, -sd_setImageWithURLcompleted, -sd_setImageWithURLplaceholderImage, -sd_setImageWithURLplaceholderImagecompleted, -sd_setImageWithURLplaceholderImageoptions (+4 more)
-
-### Community 546 - "Community 546"
-Cohesion: 0.15
-Nodes (13): mobile/package.json, main, name, private, scripts, android, ios, lint (+5 more)
-
-### Community 547 - "Community 547"
+### Community 609 - "compilerOptions"
 Cohesion: 0.17
-Nodes (9): featherWeight(), hueInRange(), hueMax, hueMin, image, isPng, pipeline, satMin (+1 more)
+Nodes (11): compilerOptions, allowJs, baseUrl, noImplicitAny, noUnusedLocals, noUnusedParameters, paths, skipLibCheck (+3 more)
 
-### Community 548 - "Community 548"
-Cohesion: 0.15
-Nodes (13): api/README.md, Configuracao, Documentacao, Documentacao detalhada (arquitetura separada), Documentos novos, Endpoints relevantes, Estado atual (2026-04-19), Estrutura principal (+5 more)
+### Community 610 - "mobile/tsconfig.json"
+Cohesion: 0.25
+Nodes (7): compilerOptions, jsx, paths, strict, extends, include, expo/tsconfig.base
 
-### Community 549 - "Community 549"
-Cohesion: 0.15
-Nodes (13): microservice/funcionamento-personalizacao-gamificacao-recursos-pedagogicos.md, 1. Personalizacao, 2. Gamificacao (suporte indireto), 3. Recursos pedagogicos aplicados, 4. Guardrails, 5. Indicadores recomendados, Entrada, Motivos (+5 more)
+### Community 611 - "TrailUp — Segundo Cérebro (TCC)"
+Cohesion: 0.25
+Nodes (8): Drive root, Espelho Drive (escrita), Navegação, Notas dos parceiros (2026-10-01), Regra de sincronização, Status do vault, Tese em uma frase, TrailUp — Segundo Cérebro (TCC)
 
-### Community 550 - "Community 550"
-Cohesion: 0.15
-Nodes (12): BrainHexPDF Direct DB Write Implementation Plan, Global Constraints, Task 1: BrainHexPDF — bootstrap de teste + `generationKeyFor`, Task 2: BrainHexPDF — `persistApresentacaoResult` (caso single-shot, `totalPartes === 1`), Task 3: BrainHexPDF — agregação de `partes[]` (`totalPartes > 1`), Task 4: BrainHexPDF — integrar `persistApresentacaoResult` no handler multi-parte + `server.ts`, Task 5: microservice — `computeAggregatedApresentacaoEntry` (cópia TS, fallback), Task 6: microservice — `brainHexPdfClient.ts` (novos campos de request/response) (+4 more)
+### Community 612 - "Loop issue ↔ PR — 2026-10-01"
+Cohesion: 0.25
+Nodes (8): Abertas com PR (não fechar ainda), Atraso (14+ dias em 01/10), Condicionadas (ainda abertas), Critério de fechamento, Fechadas hoje (7), Inventário aberto no Lab (antes dos fechamentos), Loop issue ↔ PR — 2026-10-01, PRs abertos sem issue (prontos merge por terceiros)
 
-### Community 551 - "Community 551"
-Cohesion: 0.15
-Nodes (12): Structured Output + Guardrails no grafo LangGraph Implementation Plan, Task 10: Teste de regressão do guardrail "progresso não é alterável pelo LLM", Task 11: Suíte completa e finalização, Task 1: `StructuredOutputError` + `JsonLLMService.ainvoke_structured`, Task 2: Módulo de guardrails — `GuardrailViolation` e os 3 checks síncronos, Task 3: Orquestração `gerar_validado` (retry + fallback + auditoria), Task 4: `checar_grounding_chat` (guardrail assíncrono, juiz LLM), Task 5: Vocabulário controlado em `trilha_config.txt` (+4 more)
-
-### Community 552 - "Community 552"
-Cohesion: 0.15
-Nodes (12): Controle de geração manual/automática de personalização — Plano de Implementação, Task 10: Frontend — tolerar a resposta de skip nos disparos automáticos existentes, Task 1: Migration — coluna `geracao_automatica` em `professor`, Task 2: `ProfessorRepository`, Task 3: Filtro de perfil em `_build_targets`, Task 4: Portão de modo manual + novos kinds em `enqueue_personalizacao_job`, Task 5: Schemas + endpoints `manual-generate` e `manual-generate-all`, Task 6: Frontend — API helpers em `personalizacoesApi.ts` (+4 more)
-
-### Community 553 - "Community 553"
-Cohesion: 0.15
-Nodes (12): 1. Fonte oficial, 2. Espelhos de hex puro (cópia direta do valor oficial), 3. Tons calculados à mão (fórmula existente, recalcular por perfil), 4. Variante "segue a arte" (depende do passo de recoloração da arte, seção abaixo), 5. Testes, Design: nova paleta BrainHex baseada em psicologia das cores, Fora de escopo, Motivação (+4 more)
-
-### Community 554 - "Community 554"
-Cohesion: 0.15
-Nodes (12): 1. `StructuredContentGenerationOptions` ganha `geminiFallbackModels`, 2. Laço de qualidade tenta os modelos fallback antes de exigir OpenAI, 3. Observabilidade, 4. Lista de modelos fallback ampliada (+6), Adendo — relaxar o gate de cobertura mínima em `validateBlockBatchGeneration`, Contexto, Fora de escopo, Fora deste adendo (+4 more)
-
-### Community 555 - "Community 555"
-Cohesion: 0.15
-Nodes (12): Achado extra: orçamento de tokens sendo gasto à toa, `api/app/services/content_enrichment.py`, Arquitetura, Blocos curtos / pouco aprofundados — dois pisos empilhados, Contexto, Decisões fixas (validadas com o usuário), Design: Profundidade e quantidade dos blocos de conteúdo, Fora de escopo (+4 more)
-
-### Community 556 - "Community 556"
-Cohesion: 0.15
-Nodes (12): Arquitetura proposta, Como ficou (implementado em 2026-08-25), Decisões validadas (2026-08-25), Design: sugestão de material por aluno (formato + ordem), com revisão e métricas de efetividade, Métrica de efetividade, Não faz parte, O que existe hoje, O que falta (o pedido) (+4 more)
-
-### Community 557 - "Community 557"
-Cohesion: 0.15
-Nodes (12): 10. Riscos arquiteturais acompanhados, 11. Indicadores macro de sucesso, 12. Evidencias e origem dos insumos, 1. Proposito do ecossistema TrailUp, 2. Problema que o projeto enfrenta, 3. Objetivos de negocio e produto, 4. Objetivos tecnicos, 5. Stakeholders (+4 more)
-
-### Community 558 - "Community 558"
-Cohesion: 0.2
-Nodes (3): handleSubmitRank(), handleSubmitTipo(), loadData()
-
-### Community 559 - "Community 559"
-Cohesion: 0.33
-Nodes (9): buildProfileImageFrame(), clarearParaFundoEscuro(), corComAlpha(), hexParaRgb(), hslParaHex(), luminanciaRelativa(), rgbParaHsl(), luminancia() (+1 more)
-
-### Community 560 - "Community 560"
-Cohesion: 0.27
-Nodes (8): addToRemoveQueue(), dispatch(), genId(), reducer(), toast(), useToast(), handleSubmit(), Toaster()
-
-### Community 561 - "Community 561"
-Cohesion: 0.26
-Nodes (10): handleAddOption(), handleAddSlide(), handleDeleteSlide(), handleRemoveOption(), handleSave(), handleSetCorrectOption(), handleToggleQuiz(), handleUpdateOption() (+2 more)
-
-### Community 562 - "Community 562"
-Cohesion: 0.3
-Nodes (10): blockPriorityScore(), heroMatchesType(), inferModoApresentacao(), isDocumentType(), isIntroBlock(), isTextualType(), modoFromOrdem(), modoFromTexto() (+2 more)
-
-### Community 563 - "Community 563"
-Cohesion: 0.17
-Nodes (11): ZXDecimal, -decimalByAdding, -decimalByMultiplyingBy, -decimalWithDecimalNumber, -decimalWithInt, -decimalWithString, -initWithValue, -intArrayFromString (+3 more)
-
-### Community 564 - "Community 564"
-Cohesion: 0.17
-Nodes (11): ZXPDF417Reader, -decodeerror, -decodehintserror, -decodehintsmultipleerror, -decodeMultipleerror, -decodeMultiplehintserror, -maxCodewordWidth, -maxWidthp2 (+3 more)
-
-### Community 565 - "Community 565"
-Cohesion: 0.17
-Nodes (11): ZXModulusGF, -addb, -buildMonomialcoefficient, -exp, -initWithModulusgenerator, -inverse, -log, -multiplyb (+3 more)
-
-### Community 566 - "Community 566"
-Cohesion: 0.17
-Nodes (11): ZXCalendarParsedResult, -buildDateFormat, -buildDateTimeFormat, -calendarParsedResultWithSummarystartStringendStringdurationStringlocationorganizerattendeesdescriptionlatitudelongitude, -description, -displayResult, -formatdate, -initialize (+3 more)
-
-### Community 568 - "Community 568"
-Cohesion: 0.48
-Nodes (8): RCTFontStyleFromFontStyle(), RCTFontVariantFromFontVariant(), RCTNSLineBreakModeFromLineBreakMode(), RCTNSLineBreakStrategyFromLineBreakStrategy(), RCTNSTextAlignmentFromTextAlignment(), RCTNSUnderlineStyleFromTextDecorationStyle(), RCTNSWritingDirectionFromWritingDirection(), RCTUIColorFromSharedColor()
-
-### Community 569 - "Community 569"
-Cohesion: 0.5
-Nodes (8): attributedStringBox(), attributedStringBoxToMeasure(), BaseTraits(), getAttributedString(), getTextConstraints(), layout(), setTextLayoutManager(), textLayoutContext()
-
-### Community 570 - "Community 570"
-Cohesion: 0.48
-Nodes (8): cursorColor(), getNonDefaultSubmitBehavior(), mostRecentEventCount(), multiline(), placeholderTextColor(), selectionColor(), selectionHandleColor(), underlineColorAndroid()
-
-### Community 571 - "Community 571"
-Cohesion: 0.32
-Nodes (10): bitCount(), folly(), getNthLSBit(), getNthLSByte(), isLoopback(), isNonroutable(), mask(), std() (+2 more)
-
-### Community 573 - "Community 573"
-Cohesion: 0.2
-Nodes (3): SkScalarCosSnapToZero(), SkScalarNearlyZero(), SkScalarSinSnapToZero()
-
-### Community 574 - "Community 574"
-Cohesion: 0.26
-Nodes (8): addAfter(), addBefore(), addToHead(), addToTail(), concat(), isEmpty(), isInList(), remove()
-
-### Community 575 - "Community 575"
-Cohesion: 0.2
-Nodes (4): cross(), CrossProduct(), dot(), DotProduct()
-
-### Community 577 - "Community 577"
-Cohesion: 0.33
-Nodes (10): add_native(), fast_float(), is_truncated(), round(), round_down(), round_nearest_tie_even(), round_up_bigint(), skip_zeros() (+2 more)
-
-### Community 579 - "Community 579"
-Cohesion: 0.3
-Nodes (10): accept(), storage1(), storage2(), storage3(), storage4(), storage5(), storage6(), storage7() (+2 more)
-
-### Community 588 - "Community 588"
-Cohesion: 0.27
-Nodes (4): discard_block, discard_block_engine, generate(), seed()
-
-### Community 596 - "Community 596"
-Cohesion: 0.3
-Nodes (10): A1, A2, A3, A4, A5, A6, A7, A8 (+2 more)
-
-### Community 597 - "Community 597"
-Cohesion: 0.35
-Nodes (10): buffered_file(), close(), descriptor(), detail(), flush(), noexcept(), ostream(), pipe() (+2 more)
-
-### Community 598 - "Community 598"
-Cohesion: 0.33
-Nodes (10): compiled_string(), detail(), format(), format_to(), literals(), on_auto(), on_index(), on_name() (+2 more)
-
-### Community 599 - "Community 599"
-Cohesion: 0.38
-Nodes (10): DiyFpToUint64(), double_conversion(), Infinity(), IsDenormal(), IsNan(), NaN(), NormalizedBoundaries(), SignificandSizeForOrderOfMagnitude() (+2 more)
-
-### Community 600 - "Community 600"
-Cohesion: 0.33
-Nodes (10): at(), contains(), containsEqualValue(), count(), find(), folly(), insert(), operator() (+2 more)
-
-### Community 601 - "Community 601"
-Cohesion: 0.24
-Nodes (8): alphaFromHostPlatformColor(), Color(), colorComponentsFromHostPlatformColor(), getColorComponents(), HostPlatformColor(), hostPlatformColorFromComponents(), hostPlatformColorFromRGBA(), hostPlatformColorIsColorMeaningful()
-
-### Community 602 - "Community 602"
-Cohesion: 0.3
-Nodes (10): find(), find_first(), find_head(), find_last(), find_nth(), find_tail(), find_token(), ifind_first() (+2 more)
-
-### Community 603 - "Community 603"
-Cohesion: 0.3
-Nodes (10): _(), exception_ptr_ref(), exception_wrapper(), folly(), get_exception(), handle(), reset(), swap() (+2 more)
-
-### Community 604 - "Community 604"
-Cohesion: 0.17
-Nodes (11): SDMemoryCache, -commonInit, -dealloc, -didReceiveMemoryWarning, -init, -initWithConfig, -objectForKey, -observeValueForKeyPathofObjectchangecontext (+3 more)
-
-### Community 605 - "Community 605"
-Cohesion: 0.17
-Nodes (11): SDImageLoadersManager, -addLoader, -canRequestImageForURL, -canRequestImageForURLoptionscontext, -init, -loaders, -removeLoader, -requestImageWithURLoptionscontextprogresscompleted (+3 more)
-
-### Community 606 - "Community 606"
-Cohesion: 0.17
-Nodes (11): SDImageCachesManagerOperation, -beginWithTotalCount, -cancel, -completeOne, -done, -init, -pendingCount, -reset (+3 more)
-
-### Community 607 - "Community 607"
-Cohesion: 0.17
-Nodes (11): SDDisplayLink, -addToRunLoopforMode, -dealloc, -displayLinkDidRefresh, -displayLinkWithTargetselector, -duration, -initWithTargetselector, -isRunning (+3 more)
-
-### Community 608 - "Community 608"
-Cohesion: 0.17
-Nodes (11): SDImageSVGCoder, -canDecodeFromData, -canEncodeToFormat, -createBitmapSVGWithDatatargetSizepreserveAspectRatio, -createVectorSVGWithData, -decodedImageWithDataoptions, -encodedDataWithImageformatoptions, -initialize (+3 more)
-
-### Community 609 - "Community 609"
-Cohesion: 0.17
-Nodes (12): frontend/tsconfig.json, compilerOptions, allowJs, baseUrl, noImplicitAny, noUnusedLocals, noUnusedParameters, paths (+4 more)
-
-### Community 610 - "Community 610"
-Cohesion: 0.17
-Nodes (12): mobile/tsconfig.json, compilerOptions, jsx, paths, strict, extends, include, expo-env.d.ts (+4 more)
-
-### Community 611 - "Community 611"
-Cohesion: 0.18
-Nodes (9): compositeOps, featherWeight(), hueInRange(), hueMax, hueMin, isPng, pipeline, satMin (+1 more)
-
-### Community 612 - "Community 612"
-Cohesion: 0.17
-Nodes (11): Contexto para quem for executar, Fora de escopo (não fazer neste plano), Slide inteiro como imagem única (gpt-image-1) Implementation Plan, Task 1: `openaiImageService.ts` — override de `quality` por chamada, Task 2: `openaiImageService.ts` — `generateFullSlideImage`, Task 3: novo `src/lib/slideAssetGenerator.ts` — `buildImageStyleSuffix` + `buildFullSlidePrompt`, Task 4: `slideAssetGenerator.ts` — `generateFullSlideImages` com fallback por slide, Task 5: `slideEnricher.ts` — carrega `renderMode` por slide (+3 more)
-
-### Community 613 - "Community 613"
+### Community 613 - "Suite Robot Framework — Personalização no Console do Professor Implementation Plan"
 Cohesion: 0.17
 Nodes (11): Pré-requisitos externos (fora do controle deste plano), Self-Review, Suite Robot Framework — Personalização no Console do Professor Implementation Plan, Task 1: Estrutura de pastas e dependências, Task 2: Arquivo de variáveis de ambiente + smoke test de configuração, Task 3: Login.resource, Task 4: ApiSetup.resource (setup e teardown via Supabase REST + API Python), Task 5: Topico.resource (cadastro de conteúdo) (+3 more)
 
-### Community 614 - "Community 614"
-Cohesion: 0.17
-Nodes (11): Arquitetura, Contexto, Decisões, Fora de escopo, `openaiImageService.ts`, Puppeteer / PDF (`pdfService.ts`), `server.ts`, Slide inteiro como imagem única (gpt-image-1) (+3 more)
-
-### Community 615 - "Community 615"
-Cohesion: 0.17
-Nodes (11): 1. Detecção do desbloqueio (realtime, não diffing local), 2. Novo componente `ConquistaCelebrationOverlay`, 3. `ConquistaScene3D` — cena 3D, 4. Fallback de acessibilidade e performance, Arquitetura, Cena 3D de desbloqueio de conquista — Design, Dados e contratos, Fora de escopo (nesta entrega) (+3 more)
-
-### Community 616 - "Community 616"
-Cohesion: 0.17
-Nodes (11): 10. Operacao docente, 11. Exemplo de fluxo completo, 1. Pipeline operacional, 2. Planejamento por perfil, 3. Regras de formato, 4. Estados e transicoes, 5. Controle de qualidade, 6. Dedupe e reuso (+3 more)
-
-### Community 617 - "Community 617"
-Cohesion: 0.17
-Nodes (11): 10. Leitura critica de resultado, 11. Gatilhos de revisao arquitetural, 1. Objetivo deste capitulo, 2. Taxonomia de metricas, 3. Metricas de engajamento, 4. Metricas de aprendizagem, 5. Metricas de personalizacao, 6. Metricas de gamificacao e ranking (+3 more)
-
-### Community 618 - "Community 618"
-Cohesion: 0.17
-Nodes (12): mobile/README.md, Comandos, Diagnostico rapido, Documentacao, Documentacao detalhada (arquitetura separada), Documentos novos, Estado atual (2026-04-19), Estrutura (+4 more)
-
-### Community 619 - "Community 619"
-Cohesion: 0.27
-Nodes (6): buildPresentationDesignPlan(), cleanLayouts(), cleanList(), cleanText(), presentationImageDirection(), presentationLayoutForSlide()
-
-### Community 621 - "Community 621"
-Cohesion: 0.36
-Nodes (7): applyProfileRestyle(), buildRestylePrompt(), isRestyleEnabled(), maxRestylesPerMaterial(), pareceCotaEsgotada(), podeReilustrar(), selecionarParaReilustrar()
-
-### Community 622 - "Community 622"
-Cohesion: 0.55
-Nodes (10): _as_text(), _build_fallback_theme(), gerar_classe_mapa_tema(), _normalize_countries(), _normalize_country_entry(), _normalize_palette(), _normalize_theme(), _short_text() (+2 more)
-
-### Community 623 - "Community 623"
-Cohesion: 0.35
-Nodes (6): _build_app_with_state(), _GraphFail, _GraphOK, test_ainvoke_personalizacao_graph_falls_back_to_ephemeral_when_postgres_drops(), test_ainvoke_personalizacao_graph_re_raises_non_checkpointer_errors(), test_ainvoke_personalizacao_graph_uses_ephemeral_when_already_degraded()
-
-### Community 624 - "Community 624"
-Cohesion: 0.18
-Nodes (10): ZXPlanarYUVLuminanceSource, -cropSupported, -croptopwidthheight, -initWithYuvDatayuvDataLendataWidthdataHeightlefttopwidthheightreverseHorizontal, -matrix, -renderThumbnail, -reverseHorizontalheight, -rowAtYrow (+2 more)
-
-### Community 625 - "Community 625"
-Cohesion: 0.18
-Nodes (10): ZXBinarizer, -binarizerWithSource, -blackMatrixWithError, -blackRowrowerror, -createBinarizer, -createImage, -height, -initWithLuminanceSource (+2 more)
-
-### Community 626 - "Community 626"
-Cohesion: 0.18
-Nodes (10): ZXResultPoint, -copyWithZone, -crossProductZpointBpointC, -description, -distancepattern2, -hash, -initWithXy, -isEqual (+2 more)
-
-### Community 627 - "Community 627"
-Cohesion: 0.18
-Nodes (10): ZXInvertedLuminanceSource, -cropSupported, -croptopwidthheight, -initWithDelegate, -invert, -matrix, -rotateCounterClockwise, -rotateCounterClockwise45 (+2 more)
-
-### Community 628 - "Community 628"
-Cohesion: 0.18
-Nodes (10): ZXPDF417, -calculateNumberOfRowsMkc, -determineDimensionserrorCorrectionCodeWordserror, -encodeCharPatternlenlogic, -encodeLowLevelcrerrorCorrectionLevellogic, -generateBarcodeLogicerrorCorrectionLevelerror, -init, -initWithCompact (+2 more)
-
-### Community 629 - "Community 629"
-Cohesion: 0.18
-Nodes (10): ZXCode39Reader, -decodeExtended, -decodeRowrowhintserror, -findAsteriskPatterncounters, -init, -initUsingCheckDigit, -initUsingCheckDigitextendedMode, -load (+2 more)
-
-### Community 630 - "Community 630"
-Cohesion: 0.18
-Nodes (10): ZXOneDimensionalCodeWriter, -appendPatternpospatternpatternLenstartColor, -containsPos, -defaultMargin, -encode, -encodeformatwidthheighterror, -encodeformatwidthheighthintserror, -isLongLinePattern (+2 more)
-
-### Community 631 - "Community 631"
-Cohesion: 0.18
-Nodes (10): ZXITFReader, -decodeDigit, -decodeEnd, -decodeMiddlepayloadStartpayloadEndresultString, -decodeRowrowhintserror, -decodeStart, -findGuardPatternrowOffsetpatternpatternLen, -init (+2 more)
-
-### Community 632 - "Community 632"
-Cohesion: 0.38
-Nodes (10): bytefn(), decode_coefs(), get_dc_sign_ctx(), get_lo_ctx(), get_skip_ctx(), mc(), obmc(), read_coef_tree() (+2 more)
-
-### Community 633 - "Community 633"
+### Community 614 - "Repos & PRs — TrailUp"
 Cohesion: 0.25
-Nodes (8): loop_filter_dsp_init_arm(), bitfn(), loop_filter(), loop_filter_h_sb128uv_c(), loop_filter_h_sb128y_c(), loop_filter_v_sb128uv_c(), loop_filter_v_sb128y_c(), loop_filter_dsp_init_x86()
+Nodes (8): Issues Lab (amostra 2026-10-01), Modelo de sync Lab ↔ espelho, Placeholder PRs (preencher aos poucos), Política, Repos & PRs — TrailUp, Repositórios, Stack real em main (confirmada), Tip atual (confirmado neste baseline)
 
-### Community 634 - "Community 634"
-Cohesion: 0.2
-Nodes (8): VP8InitClipTables(), VP8DspInitMIPS32(), VP8DspInitMIPSdspR2(), VP8DspInitMSA(), VP8DspInitNEON(), VP8DspInitSSE2(), VP8DspInitSSE41(), VP8DspInit()
+### Community 615 - "ranking/[id].tsx"
+Cohesion: 0.03
+Nodes (102): Automático: boss na paleta do perfil, Nome e falas do boss, Visuais de boss por conteúdo, 1. Detecção do desbloqueio (realtime, não diffing local), 2. Novo componente `ConquistaCelebrationOverlay`, 3. `ConquistaScene3D` — cena 3D, 4. Fallback de acessibilidade e performance, Arquitetura (+94 more)
 
-### Community 635 - "Community 635"
-Cohesion: 0.18
-Nodes (10): ConvertBGRAToBGR_NEON(), ConvertBGRAToRGB_NEON(), ConvertBGRAToBGR_SSE2(), ConvertBGRAToRGB_SSE2(), ConvertBGRAToBGR_SSE41(), ConvertBGRAToRGB_SSE41(), TransformColorInverse_SSE41(), VP8LDspInitSSE41() (+2 more)
+### Community 616 - "03. Aplicacao do modelo adaptativo"
+Cohesion: 0.15
+Nodes (12): 03. Aplicacao do modelo adaptativo, 10. Operacao docente, 11. Exemplo de fluxo completo, 1. Pipeline operacional, 2. Planejamento por perfil, 3. Regras de formato, 4. Estados e transicoes, 5. Controle de qualidade (+4 more)
 
-### Community 636 - "Community 636"
-Cohesion: 0.58
-Nodes (7): advanceToBlockParser(), consumeComponentValue(), consumeToken(), CSSSyntaxParser(), terminator_(), visitFunction(), visitSimpleBlock()
-
-### Community 637 - "Community 637"
-Cohesion: 0.62
-Nodes (7): CSSTransformOrigin(), CSSTransformOriginKeyword(), isHorizontalKeyword(), isVerticalKeyword(), result(), xyKeywordValue(), xyLengthPercentageValue()
-
-### Community 638 - "Community 638"
-Cohesion: 0.56
-Nodes (7): call(), callWithArgs(), callWithFunction(), callWithPriority(), fromJs(), operator(), toJs()
-
-### Community 639 - "Community 639"
-Cohesion: 0.53
-Nodes (7): begin(), end(), erase(), erasedAtFront_(), find(), insert(), numErased_()
-
-### Community 640 - "Community 640"
-Cohesion: 0.55
-Nodes (6): RCTAndroidDrawerLayoutHandleCommand(), RCTAndroidSwipeRefreshLayoutHandleCommand(), RCTAndroidSwitchHandleCommand(), RCTDebuggingOverlayHandleCommand(), RCTPullToRefreshViewHandleCommand(), RCTSwitchHandleCommand()
-
-### Community 641 - "Community 641"
-Cohesion: 0.33
-Nodes (9): Compare(), cont_(), data(), folly(), get_container_for_direct_mutation(), m_(), sorted_vector_map(), sorted_vector_set() (+1 more)
-
-### Community 642 - "Community 642"
-Cohesion: 0.33
-Nodes (9): bad_alloc(), BOOST_SYMBOL_VISIBLE, logic_error(), std::exception(), throw_bad_alloc(), throw_length_error(), throw_logic_error(), throw_out_of_range() (+1 more)
-
-### Community 648 - "Community 648"
-Cohesion: 0.35
-Nodes (9): byteswap(), error(), exponent(), has_simd_opt(), is_integer(), mantissa(), minimal_nineteen_digit_integer(), read8_to_u64() (+1 more)
-
-### Community 649 - "Community 649"
-Cohesion: 0.45
-Nodes (9): adaptive_sort(), adaptive_sort_build_blocks(), adaptive_sort_build_params(), adaptive_sort_combine_all_blocks(), adaptive_sort_combine_blocks(), adaptive_sort_final_merge(), adaptive_sort_impl(), move_data_backward() (+1 more)
-
-### Community 650 - "Community 650"
-Cohesion: 0.44
-Nodes (9): log2(), pair(), partial_insertion_sort(), partition_left(), partition_right(), pdqsort(), pdqsort_loop(), sort2() (+1 more)
-
-### Community 651 - "Community 651"
-Cohesion: 0.33
-Nodes (9): _1(), _2(), _3(), _4(), _5(), _6(), _7(), _8() (+1 more)
-
-### Community 652 - "Community 652"
-Cohesion: 0.33
-Nodes (9): iterator_advance(), iterator_arrow_result(), iterator_distance(), iterator_next(), iterator_uadvance(), iterator_udistance(), iterator_unext(), make_iterator_advance() (+1 more)
-
-### Community 653 - "Community 653"
-Cohesion: 0.44
-Nodes (9): BOOST_NOEXCEPT(), deleter(), false_t, get_deleter(), is_noncopyable, is_rvalue_convertible, reset(), swap() (+1 more)
-
-### Community 654 - "Community 654"
-Cohesion: 0.45
-Nodes (9): asNode(), asT(), compare(), contains(), erase(), folly(), merge(), push() (+1 more)
-
-### Community 655 - "Community 655"
-Cohesion: 0.18
-Nodes (10): SDAnimatedImageView, -sd_setImageWithURL, -sd_setImageWithURLcompleted, -sd_setImageWithURLplaceholderImage, -sd_setImageWithURLplaceholderImagecompleted, -sd_setImageWithURLplaceholderImageoptions, -sd_setImageWithURLplaceholderImageoptionscompleted, -sd_setImageWithURLplaceholderImageoptionscontext (+2 more)
-
-### Community 656 - "Community 656"
-Cohesion: 0.18
-Nodes (10): UIImageView, -sd_cancelCurrentHighlightedImageLoad, -sd_currentHighlightedImageURL, -sd_setHighlightedImageWithURL, -sd_setHighlightedImageWithURLcompleted, -sd_setHighlightedImageWithURLoptions, -sd_setHighlightedImageWithURLoptionscompleted, -sd_setHighlightedImageWithURLoptionscontext (+2 more)
-
-### Community 657 - "Community 657"
+### Community 617 - "Incidente — perda de dados do console professor (2026-10-01)"
 Cohesion: 0.25
-Nodes (10): _clean_text(), _detect_language(), _is_noise(), normalize(), Normaliza o resultado bruto dos extratores para um NormalizedDocument. Limpa ruí, Recebe a saída de um extractor e retorna NormalizedDocument., Remove espaços extras e caracteres de controle., Verifica se um bloco é ruído (número de página, rodapé, etc.). (+2 more)
+Nodes (8): Artefato local (box, não no vault), Caminhos de recuperação (ordem), Cuidados TraiUp, Drift de migrations (reportado pela Análise de PRs, 2026-10-13), Incidente — perda de dados do console professor (2026-10-01), Limite Free, Nota Analise (alinhamento Hub), Status
 
-### Community 658 - "Community 658"
-Cohesion: 0.44
-Nodes (10): _add_side_image(), _apply_slide_background(), gerar_pptx(), _hex_to_rgb(), _merge_theme(), _paint_paragraph(), _paint_title(), Any (+2 more)
+### Community 618 - "mobile/README.md"
+Cohesion: 0.15
+Nodes (12): Comandos, Diagnostico rapido, Documentacao, Documentacao detalhada (arquitetura separada), Documentos novos, Estado atual (2026-04-19), Estrutura, Login Google (+4 more)
 
-### Community 659 - "Community 659"
-Cohesion: 0.18
-Nodes (7): ChartConfig, ChartContainer, ChartContext, ChartContextProps, ChartLegendContent, ChartTooltipContent, THEMES
+### Community 619 - "Loja Vitrine Única Implementation Plan"
+Cohesion: 0.25
+Nodes (7): Loja Vitrine Única Implementation Plan, Self-review, Task 1: Define and test purchase response handling, Task 2: Add custom SVG product icons, Task 3: Replace the tabbed modal with one readable showcase, Task 4: Verify the complete mobile store flow, Svg()
 
-### Community 660 - "Community 660"
-Cohesion: 0.33
-Nodes (10): clamp(), clipToHex(), clipToRadius(), hexPoints(), hexVertices(), intersectSegments(), starPath(), straight() (+2 more)
+### Community 620 - "Loja Social — vitrine única"
+Cohesion: 0.25
+Nodes (7): Dados e compra, Experiência, Fora de escopo, Loja Social — vitrine única, Objetivo, Testes, Ícones
 
-### Community 661 - "Community 661"
-Cohesion: 0.18
-Nodes (10): CLAUDE.md — TrailUp, Convenções, graphify, Monorepo (4 serviços), Perfis BrainHex (7), Pontos de entrada (código), Regra de fronteira (a mais importante do repo), Sistema de personalização — decisões de arquitetura (+2 more)
+### Community 621 - "1 INTRODUÇÃO"
+Cohesion: 0.25
+Nodes (8): 1.1 Contextualização, 1.2 Problema de pesquisa, 1.3 Hipótese, 1.4 Objetivo geral, 1.5 Objetivos específicos, 1.6 Justificativa, 1.7 Delimitação, 1 INTRODUÇÃO
 
-### Community 662 - "Community 662"
-Cohesion: 0.18
-Nodes (10): Contexto — o que está quebrado hoje, Decisões (resultado das perguntas de esclarecimento), Fora de escopo, Seção 1: Arquitetura e fluxo, Seção 2: Schema de conteúdo gerado (mudança de contrato), Seção 3: Geração de imagens por slide, Seção 4: Template HTML/CSS e renderização, Seção 5: Tratamento de erros (+2 more)
+### Community 622 - "jobs"
+Cohesion: 0.25
+Nodes (8): runs-on, defaults, if, needs, runs-on, jobs, changes, frontend
 
-### Community 663 - "Community 663"
-Cohesion: 0.18
-Nodes (10): Arquitetura — fluxo de imagens de referência, Arquitetura — paginação dinâmica (fim do scroll), Contexto, Decisões fixas (validadas com o usuário), Design: Qualidade visual dos slides do BrainHexPDF, Fora de escopo, Mudanças no BrainHexPDF, Mudanças no `microservice/` (+2 more)
+### Community 623 - "arvoreCelular.ts"
+Cohesion: 0.39
+Nodes (6): ARVORE_PASSO, ARVORE_TOPO, caminhoLigacao(), LayoutArvore, layoutArvoreCelular(), PosicaoArvore
 
-### Community 664 - "Community 664"
-Cohesion: 0.18
-Nodes (10): 10. Diretrizes para evolucao do modelo, 1. Base conceitual, 2. BrainHex como eixo de personalizacao, 3. Hipoteses de aprendizagem operacionais, 4. Modelo adaptativo aplicado, 5. Relacao teoria -> implementacao, 6. Mapa de decisao adaptativa, 7. Criterios de qualidade pedagogica (+2 more)
+### Community 624 - "gruposNotificacao.ts"
+Cohesion: 0.39
+Nodes (6): agruparPorData(), grupoDaData(), GrupoNotificacao, inicioDoDia(), ORDEM, AGORA
 
-### Community 665 - "Community 665"
-Cohesion: 0.18
-Nodes (10): 10. Riscos e mitigacoes, 1. Papel do banco no ecossistema, 2. Objetivos da camada SQL, 3. Estruturas principais, 4. Automacoes tipicas, 5. Fluxo de atualizacao de ranking, 6. Regras de tempo ativo, 7. Consistencia e idempotencia (+2 more)
+### Community 625 - "markdownDataUri.test.ts"
+Cohesion: 0.39
+Nodes (4): conteudoDeBloco(), liberarImagensEmbutidas(), permiteImagemEmbutida(), PREFIXOS_DE_IMAGEM_EMBUTIDA
 
-### Community 666 - "Community 666"
-Cohesion: 0.18
-Nodes (10): 10. Checklist de release, 1. Stack e padroes adotados, 2. Estrategia de modularizacao, 3. Pipeline de personalizacao implementado, 4. Pipeline de midia implementado, 5. Interfaces entre componentes, 6. Configuracao e ambientes, 7. Qualidade de codigo (+2 more)
+### Community 626 - "rankCorte.test.ts"
+Cohesion: 0.39
+Nodes (6): aplicarCorteDoRank(), CorteDoRank, descreverCorte(), LinhaDoRank, linha(), topo()
 
-### Community 667 - "Community 667"
-Cohesion: 0.18
-Nodes (10): 10. Heuristicas de avaliacao continua, 1. Objetivo de UX, 2. Personas operacionais, 3. Jornada macro do aluno, 4. Principios de interface, 5. Adaptacao visual por BrainHex, 6. Conteudo e leitura multimidia, 7. Acessibilidade e inclusao (+2 more)
+### Community 627 - "utils/ultimaAtividade.ts"
+Cohesion: 0.32
+Nodes (6): dois(), EventoLike, FRASES, LinhaAtividade, quandoCurto(), agora
 
-### Community 668 - "Community 668"
-Cohesion: 0.18
-Nodes (10): 10. Matriz de responsabilidades, 1. Premissas de conformidade, 2. Dados tratados no ecossistema, 3. Bases legais (LGPD), 4. Consentimento e transparencia, 5. Controle de acesso, 6. Seguranca de aplicacao, 7. Seguranca de infraestrutura (+2 more)
+### Community 628 - "Revisão 03 — Loja como página própria, Social como hub e Trilha sem seletor"
+Cohesion: 0.25
+Nodes (7): De onde vem, Decisões para validar com a Geisbelly, O que já existe e a página respeita, Ordem de uso, Por que uma página, e não só o card, Revisão 03 — Loja como página própria, Social como hub e Trilha sem seletor, Índice
 
-### Community 669 - "Community 669"
-Cohesion: 0.18
-Nodes (10): 10. Criterios de aceitacao de impacto, 1. Objetivo metodologico, 2. Natureza das evidencias atuais, 3. Perguntas de pesquisa sugeridas, 4. Desenho de avaliacao recomendado, 5. Instrumentos, 6. Procedimento de coleta, 7. Controle de vieses (+2 more)
+### Community 629 - "Paleta de cores — TrailUp (console do professor)"
+Cohesion: 0.25
+Nodes (7): As 7 cores dos perfis BrainHex, Biblioteca de componentes, Conceito, Efeitos e utilitários já existentes, Paleta de cores — TrailUp (console do professor), Tipografia, Tokens do tema (HSL)
 
-### Community 670 - "Community 670"
-Cohesion: 0.18
-Nodes (10): 10. Encerramento, 1. Contribuicoes tecnicas, 2. Contribuicoes pedagogicas, 3. Contribuicoes metodologicas, 4. Limitacoes atuais, 5. Debitos tecnicos monitorados, 6. Trabalhos futuros (curto prazo), 7. Trabalhos futuros (medio prazo) (+2 more)
+### Community 630 - "Prompt Fase 2 — Personalizações, PARTE 2 de 3: abas "Estrutura e paleta", "Por aluno" e "Turma""
+Cohesion: 0.25
+Nodes (7): Aba "Estrutura e paleta", Aba "Por aluno", Aba "Turma", Identificação, O que NÃO fazer, Prompt Fase 2 — Personalizações, PARTE 2 de 3: abas "Estrutura e paleta", "Por aluno" e "Turma", Referências de estilo
 
-### Community 671 - "Community 671"
+### Community 631 - "Prompt Fase 2 — Personalizações, PARTE 3 de 3: modal "Ver conteúdo gerado""
+Cohesion: 0.25
+Nodes (7): Fluxo de regeneração (compartilhado pelos 3 formatos), em 4 passos, Identificação, Modal "Ver conteúdo gerado", O que NÃO fazer, Prompt Fase 2 — Personalizações, PARTE 3 de 3: modal "Ver conteúdo gerado", Referências de estilo, Verificação final (vale para as 3 partes de Personalizações)
+
+### Community 632 - "Prompt Fase 2 — Aprovações"
+Cohesion: 0.25
+Nodes (7): Cabeçalho, Diferença importante desta tela em relação às outras 6, Estado "nenhum pendente", Estado "pendentes" (com professores aguardando), Identificação, O que NÃO fazer, Prompt Fase 2 — Aprovações
+
+### Community 633 - "boot"
 Cohesion: 0.29
-Nodes (5): blocoInicialSugerido(), formatoSugeridoDoBloco(), motivosDoFormato(), ordenarBlocosPorSugestao(), rankPorFormato()
+Nodes (7): boot(), createStreamTracker(), getReactDOM(), init(), parseDataProps(), parseDcDocument(), parseDcText()
 
-### Community 672 - "Community 672"
-Cohesion: 0.33
-Nodes (5): usePortoes(), avaliarPortoes(), cerimoniasPendentes(), chaveDaCerimonia(), portaoDe()
-
-### Community 673 - "Community 673"
-Cohesion: 0.27
-Nodes (9): _clean_text(), _detect_language(), _is_noise(), normalize(), Normaliza o resultado bruto dos extratores para um NormalizedDocument. Limpa ruí, Recebe a saída de um extractor e retorna NormalizedDocument., Remove espaços extras e caracteres de controle., Verifica se um bloco é ruído (número de página, rodapé, etc.). (+1 more)
-
-### Community 674 - "Community 674"
-Cohesion: 0.24
-Nodes (5): _lote(), Uma entrada de metrica ruim nao pode custar o lote inteiro.  Achado A9 da revisa, O teste que fecha A9: eventos e sinais nao podem ir embora com ela., test_o_lote_inteiro_sobrevive_a_uma_metrica_ruim(), test_o_que_e_estrutural_continua_recusado()
-
-### Community 675 - "Community 675"
-Cohesion: 0.31
-Nodes (9): _base_url(), downgrade(), _guardar_caminhos_seguros(), aponta as URLs de material para o gateway storage-redirect  Ultimo passo da migr, Base do projeto Supabase, do ambiente ou das settings da API.      O `env.py` do, Aborta se algum storage_path tiver caractere que precise de escape na query., Aplica `expressao_url` (SQL que recebe o caminho e devolve a URL nova) nos     t, _reescrever() (+1 more)
-
-### Community 676 - "Community 676"
-Cohesion: 0.2
-Nodes (9): ZXMultiFormatReader, -decodeerror, -decodehintserror, -decodeInternalerror, -decodeWithStateerror, -init, -reader, -reset (+1 more)
-
-### Community 677 - "Community 677"
-Cohesion: 0.2
-Nodes (9): ZXByteMatrix, -clear, -dealloc, -description, -getXy, -initWithWidthheight, -setXyboolValue, -setXybyteValue (+1 more)
-
-### Community 678 - "Community 678"
-Cohesion: 0.2
-Nodes (9): ZXLuminanceSource, -croptopwidthheight, -description, -initWithWidthheight, -invert, -matrix, -rotateCounterClockwise, -rotateCounterClockwise45 (+1 more)
-
-### Community 679 - "Community 679"
-Cohesion: 0.2
-Nodes (9): ZXPerspectiveTransform, -buildAdjoint, -initWithA11a21a31a12a22a32a13a23a33, -quadrilateralToQuadrilateraly0x1y1x2y2x3y3x0py0px1py1px2py2px3py3p, -quadrilateralToSquarey0x1y1x2y2x3y3, -squareToQuadrilateraly0x1y1x2y2x3y3, -times, -transformPointspointsLen (+1 more)
-
-### Community 680 - "Community 680"
-Cohesion: 0.2
-Nodes (9): ZXIntArray, -clear, -copyWithZone, -dealloc, -description, -initWithInts, -initWithLength, -isEqual (+1 more)
-
-### Community 681 - "Community 681"
-Cohesion: 0.2
-Nodes (9): ZXPDF417DecodedBitStreamParser, -byteCompactioncodewordsencodingcodeIndexresult, -decodeBase900toBase10count, -decodeecLevelerror, -decodeMacroBlockcodeIndexresultMetadata, -decodeTextCompactionbyteCompactionDatalengthresult, -initialize, -numericCompactioncodeIndexresult (+1 more)
-
-### Community 682 - "Community 682"
-Cohesion: 0.2
-Nodes (9): ZXPDF417DetectionResultRowIndicatorColumn, -adjustCompleteIndicatorColumnRowNumbers, -adjustIncompleteIndicatorColumnRowNumbers, -barcodeMetadata, -description, -getRowHeights, -initWithBoundingBoxisLeft, -removeIncorrectCodewords (+1 more)
-
-### Community 683 - "Community 683"
-Cohesion: 0.2
-Nodes (9): ZXCode93Reader, -checkChecksumserror, -checkOneChecksumcheckPositionweightMaxerror, -decodeExtended, -decodeRowrowhintserror, -findAsteriskPattern, -init, -patternToChar (+1 more)
-
-### Community 684 - "Community 684"
-Cohesion: 0.2
-Nodes (9): ZXCodaBarReader, -arrayContainslengthkey, -counterAppend, -decodeRowrowhintserror, -findStartPattern, -init, -setCountersWithRow, -toNarrowWidePattern (+1 more)
-
-### Community 685 - "Community 685"
-Cohesion: 0.2
-Nodes (9): ZXOneDReader, -decodeerror, -decodehintserror, -decodeRowrowhintserror, -doDecodehintserror, -patternMatchVariancepatternmaxIndividualVariance, -recordPatternInReversestartcounters, -recordPatternstartcounters (+1 more)
-
-### Community 686 - "Community 686"
-Cohesion: 0.2
-Nodes (9): ZXUPCAReader, -barcodeFormat, -decodeerror, -decodehintserror, -decodeMiddlestartRangeresulterror, -decodeRowrowhintserror, -decodeRowrowstartGuardRangehintserror, -init (+1 more)
-
-### Community 687 - "Community 687"
-Cohesion: 0.2
-Nodes (9): ZXImage, -dealloc, -height, -imageWithMatrix, -imageWithMatrixonColoroffColor, -initWithCGImageRef, -initWithURL, -setColorIntensitiescolor (+1 more)
-
-### Community 688 - "Community 688"
-Cohesion: 0.2
-Nodes (9): ZXVINResultParser, -checkChar, -checkChecksum, -countryCode, -initialize, -modelYear, -parse, -vinCharValue (+1 more)
-
-### Community 689 - "Community 689"
-Cohesion: 0.38
-Nodes (9): ApplyFilter(), CleanupParams(), clip_8b(), CountLevels(), HFilter(), InitCorrectionLUT(), InitParams(), VFilter() (+1 more)
-
-### Community 690 - "Community 690"
-Cohesion: 0.27
-Nodes (9): CreateRawImageDemuxer(), GetBuffer(), InitDemux(), IsValidSimpleFormat(), ReadHeader(), SetFrameInfo(), WebPDemuxInternal(), WebPDemux() (+1 more)
-
-### Community 691 - "Community 691"
-Cohesion: 0.22
-Nodes (9): CollectColorBlueTransforms_SSE2(), CollectColorRedTransforms_SSE2(), CollectColorBlueTransforms_SSE41(), CollectColorRedTransforms_SSE41(), ExtraCost_SSE41(), HorizontalSum_SSE41(), VP8LEncDspInitSSE41(), VP8LCollectColorBlueTransforms_C() (+1 more)
-
-### Community 692 - "Community 692"
-Cohesion: 0.53
-Nodes (6): RCTAndroidDrawerLayoutHandleCommand(), RCTAndroidSwipeRefreshLayoutHandleCommand(), RCTAndroidSwitchHandleCommand(), RCTDebuggingOverlayHandleCommand(), RCTPullToRefreshViewHandleCommand(), RCTSwitchHandleCommand()
-
-### Community 693 - "Community 693"
-Cohesion: 0.53
-Nodes (6): accessibilityLabelledBy(), importantForAccessibility(), onAccessibilityAction(), onAccessibilityEscape(), onAccessibilityMagicTap(), onAccessibilityTap()
-
-### Community 694 - "Community 694"
-Cohesion: 0.53
-Nodes (6): adjustsFontSizeToFit(), android_hyphenationFrequency(), ellipsizeMode(), maximumFontSize(), maximumNumberOfLines(), std()
-
-### Community 695 - "Community 695"
-Cohesion: 0.53
-Nodes (6): blurRadius(), color(), inset(), offsetX(), offsetY(), spreadDistance()
-
-### Community 696 - "Community 696"
-Cohesion: 0.53
-Nodes (6): CSSMatrix(), CSSScale(), CSSTranslate3D(), detail(), translate(), y()
-
-### Community 698 - "Community 698"
-Cohesion: 0.27
-Nodes (6): check_size_bytes_too_big(), sk_collection_check_bounds(), sk_collection_check_length(), sk_print_index_out_of_bounds(), sk_print_length_too_big(), sk_print_size_too_big()
-
-### Community 699 - "Community 699"
-Cohesion: 0.44
-Nodes (8): copysign(), copysign_impl(), fpclassify(), isfinite(), isinf(), isnan(), isnormal(), signbit()
-
-### Community 700 - "Community 700"
-Cohesion: 0.27
-Nodes (4): array, array< T, 0 >, hash_value(), swap()
-
-### Community 701 - "Community 701"
-Cohesion: 0.36
-Nodes (6): equal(), find_iterator, increment(), make_find_iterator(), make_split_iterator(), split_iterator
-
-### Community 702 - "Community 702"
-Cohesion: 0.33
-Nodes (7): forward_as_tuple_impl(), get(), get_impl, get_impl<0, tuple<Head, Values...> >, get_impl<I, tuple<Head, Values...> >, tuple, tuple<Head, Tail...>
-
-### Community 703 - "Community 703"
-Cohesion: 0.38
-Nodes (8): is_utf8_enabled(), namespace(), print(), true_type(), vprint(), wchar_t(), wstring(), wstring_view()
-
-### Community 704 - "Community 704"
-Cohesion: 0.36
-Nodes (8): detail(), fallback(), folly(), FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(), size(), traits_detail(), traits_detail_IsEqualityComparable(), traits_detail_IsLessThanComparable()
-
-### Community 705 - "Community 705"
-Cohesion: 0.36
-Nodes (8): bytes(), folly(), fromBinary(), fromHBO(), fromNBO(), getByte(), packedBytes(), parse()
-
-### Community 706 - "Community 706"
-Cohesion: 0.49
-Nodes (8): accessAllThreads(), Accessor(), folly(), get(), getWrapper(), getWrapperTL(), LocalLifetime(), try_get()
-
-### Community 707 - "Community 707"
-Cohesion: 0.44
-Nodes (8): fastIpv4AppendToString(), fastIpV4ToBufferUnsafe(), fastIpv4ToString(), fastIpv6AppendToString(), fastIpv6ToBufferUnsafe(), fastIpv6ToString(), folly(), writeIntegerString()
-
-### Community 708 - "Community 708"
-Cohesion: 0.4
-Nodes (8): folly(), oneIn(), oneIn64(), rand64(), randBool(), randDouble(), randDouble01(), randomNumberSeed()
-
-### Community 709 - "Community 709"
-Cohesion: 0.36
-Nodes (8): begin(), end(), folly(), rbegin(), rend(), setMaxTotalWeight(), weight(), WeightedEvictingCacheMap()
-
-### Community 710 - "Community 710"
-Cohesion: 0.2
-Nodes (9): SDImageAPNGCoder, -defaultLoopCount, -delayTimeProperty, -dictionaryProperty, -imageFormat, -imageUTType, -loopCountProperty, -sharedCoder (+1 more)
-
-### Community 711 - "Community 711"
-Cohesion: 0.2
-Nodes (9): SDImageGIFCoder, -defaultLoopCount, -delayTimeProperty, -dictionaryProperty, -imageFormat, -imageUTType, -loopCountProperty, -sharedCoder (+1 more)
-
-### Community 712 - "Community 712"
-Cohesion: 0.2
-Nodes (9): SDAsyncBlockOperation, -blockOperationWithBlock, -cancel, -complete, -initWithBlock, -isAsynchronous, -setExecuting, -setFinished (+1 more)
-
-### Community 713 - "Community 713"
-Cohesion: 0.4
-Nodes (9): _build_slide_image(), _clip_with_audio(), _clip_with_duration(), gerar_video_mp4(), _hex_to_rgb(), Any, _wrap_text(), _write_video_file() (+1 more)
-
-### Community 714 - "Community 714"
-Cohesion: 0.2
-Nodes (9): Personalização Longa — Integração ApiBrainHex Implementation Plan, Resumo dos Commits, Task 1: DB Migration, Task 2: Schemas Pydantic, Task 3: Guide Personas em personalizacao.py, Task 4: Atualizar Prompts, Task 5: Atualizar media_pipeline.py, Task 6: Atualizar personalizacao_jobs.py (+1 more)
-
-### Community 715 - "Community 715"
-Cohesion: 0.2
-Nodes (9): Arquivos modificados, Integração Direta ApiTraiUp → ApiBrainHex: Implementation Plan, Task 1: fetch_personalizacao_context + gerar_cards_direto + plano opcional, Task 2: Atualizar disparar_brainhex_async (fontes em vez de conteudo_estudado), Task 3: Substituir _process_target em personalizacao_jobs.py, Task 4: Atualizar rota POST /personalizar em personalizacao.py (API), Task 5: processMediaWithGemini aceita array em geminiService.ts, Task 6: fetchFontesAsFileData + POST /api/personalizar aceita fontes[] (+1 more)
-
-### Community 716 - "Community 716"
-Cohesion: 0.2
-Nodes (10): mobile/arquitetura-microservico-detalhada.md, 1. Objetivo, 2. Separação de responsabilidades, 3. Fluxo de dependência, 4. Contrato efetivo para o app, 5. Estados de artefato, 6. Comportamento esperado no app, 7. Motivos e objetivos (+2 more)
-
-### Community 717 - "Community 717"
-Cohesion: 0.2
-Nodes (9): Checklist Final, Mapa de Arquivos, Progresso, Persistência, Mídias e Atividades — Implementation Plan, Task 1: TrilhaContext — Local-first + debounce RT, Task 2: MarkdownBlock — renderização nativa + paginação, Task 3: QuestionActivity + ActivityRenderer — reviewMode e fluxo de atividades concluídas, Task 4: Cards — ordem + renderização de mídia no verso, Task 5: VideoPlayer — seek bar e controles ±10s (+1 more)
-
-### Community 718 - "Community 718"
-Cohesion: 0.2
-Nodes (9): Apresentação: visual nativo no mobile (substitui bullets de texto): Design, Contexto — a lacuna encontrada, Decisões (resultado das perguntas de esclarecimento), Fora de escopo, Seção 1: Arquitetura e fluxo de dados, Seção 2: Visual por slide (subconjunto mobile-first), Seção 3: Componentes e dados, Seção 4: Degradação (+1 more)
-
-### Community 719 - "Community 719"
-Cohesion: 0.2
-Nodes (9): Escopo deste plano (e o que fica para os próximos), Estrutura de arquivos, Próximo passo depois deste plano, Self-Review desta seção (conferido antes de entregar), Slides Imersivos — Fundação (shell + validação + geração por slide) Implementation Plan, Task 1: Validador estático de HTML de slide, Task 2: Shell de montagem do deck (iframes sandboxed), Task 3: Geração de HTML de slide por IA (por slide, não deck inteiro) (+1 more)
-
-### Community 720 - "Community 720"
-Cohesion: 0.2
-Nodes (9): ⚠️ Achado crítico que já foi corrigido (mas leia com atenção), Achados do code review AINDA NÃO resolvidos (follow-up), BrainHexPDF, Como retomar, Handoff: integração BrainHexPDF — retomar em outra máquina, Nota estranha (leia antes de continuar), O que já foi feito (resumo), Onde as coisas estão (+1 more)
-
-### Community 721 - "Community 721"
-Cohesion: 0.2
-Nodes (9): Ambiente e autenticação, Critério de sucesso, Dependências, Escopo, Estrutura de arquivos, Fluxo do teste, Objetivo, Riscos e limitações conhecidas (+1 more)
-
-### Community 722 - "Community 722"
-Cohesion: 0.2
-Nodes (9): 1. Markdown — 1 imagem por seção, round-robin entre as imagens do professor, 2. Áudio — imagem de capa única, Contexto, Descoberta que definiu o escopo, Design, Fora de escopo (fica pra D3/D4 ou não entra), Peças já existentes que este design reaproveita, Reaproveitamento de imagens entre mídias (D2) — Design (+1 more)
-
-### Community 723 - "Community 723"
-Cohesion: 0.2
-Nodes (9): Configuração, Decisões que são fáceis de errar, Gatilhos de entrega, Limites conhecidos, Notificações via banco — desenho, O que estava quebrado, Onde o motor mora, e por quê, Os três caminhos até o aluno (+1 more)
-
-### Community 724 - "Community 724"
-Cohesion: 0.2
-Nodes (9): 1. Visao de contexto, 2. Modelo de dominio (conceitual), 3. Modelagem por camadas, 4. Modelagem de casos de uso principais, 5. Modelo de estados dos jobs, 6. Modelo de contrato de personalizacao, 7. Modelagem de integracao, 8. Restricoes arquiteturais (+1 more)
-
-### Community 725 - "Community 725"
-Cohesion: 0.22
-Nodes (8): eslint-plugin-react-hooks, eslint-plugin-react-refresh, eslint-plugin-react-hooks, eslint-plugin-react-refresh, globals, typescript-eslint, globals, typescript-eslint
-
-### Community 726 - "Community 726"
-Cohesion: 0.5
-Nodes (7): appendMaterialCacheVersion(), fileExtension(), materialCacheVersion(), materialMetadata(), resolveDocumentPreviewMode(), stringField(), versionedMaterialUrl()
-
-### Community 727 - "Community 727"
-Cohesion: 0.28
-Nodes (4): mulberry32(), sanitizeQuizContent(), shuffleQuizOptions(), shuffleWithSeed()
-
-### Community 728 - "Community 728"
+### Community 634 - "Paleta de cores — TrailUp (console do professor)"
 Cohesion: 0.25
-Nodes (4): createRateLimiter(), RateCheckResult, RateLimiter, RateLimiterOptions
+Nodes (7): As 7 cores dos perfis BrainHex, Biblioteca de componentes, Conceito, Efeitos e utilitários já existentes, Paleta de cores — TrailUp (console do professor), Tipografia, Tokens do tema (HSL)
 
-### Community 729 - "Community 729"
-Cohesion: 0.42
-Nodes (6): buildProfileGuideSteps(), heroMetricSteps(), idDoCartaoDeSessao(), metricStep(), telemetriaSteps(), themeMetricSteps()
+### Community 635 - "boot"
+Cohesion: 0.29
+Nodes (7): boot(), createStreamTracker(), getReactDOM(), init(), parseDataProps(), parseDcDocument(), parseDcText()
 
-### Community 730 - "Community 730"
+### Community 636 - "Paleta de cores — TrailUp (console do professor)"
+Cohesion: 0.25
+Nodes (7): As 7 cores dos perfis BrainHex, Biblioteca de componentes, Conceito, Efeitos e utilitários já existentes, Paleta de cores — TrailUp (console do professor), Tipografia, Tokens do tema (HSL)
+
+### Community 637 - "boot"
+Cohesion: 0.29
+Nodes (7): boot(), createStreamTracker(), getReactDOM(), init(), parseDataProps(), parseDcDocument(), parseDcText()
+
+### Community 638 - "Paleta de cores — TrailUp (console do professor)"
+Cohesion: 0.25
+Nodes (7): As 7 cores dos perfis BrainHex, Biblioteca de componentes, Conceito, Efeitos e utilitários já existentes, Paleta de cores — TrailUp (console do professor), Tipografia, Tokens do tema (HSL)
+
+### Community 639 - "boot"
+Cohesion: 0.29
+Nodes (7): boot(), createStreamTracker(), getReactDOM(), init(), parseDataProps(), parseDcDocument(), parseDcText()
+
+### Community 640 - "Paleta de cores — TrailUp (console do professor)"
+Cohesion: 0.25
+Nodes (7): As 7 cores dos perfis BrainHex, Biblioteca de componentes, Conceito, Efeitos e utilitários já existentes, Paleta de cores — TrailUp (console do professor), Tipografia, Tokens do tema (HSL)
+
+### Community 641 - "boot"
+Cohesion: 0.29
+Nodes (7): boot(), createStreamTracker(), getReactDOM(), init(), parseDataProps(), parseDcDocument(), parseDcText()
+
+### Community 642 - "Paleta de cores — TrailUp (console do professor)"
+Cohesion: 0.25
+Nodes (7): As 7 cores dos perfis BrainHex, Biblioteca de componentes, Conceito, Efeitos e utilitários já existentes, Paleta de cores — TrailUp (console do professor), Tipografia, Tokens do tema (HSL)
+
+### Community 643 - "boot"
+Cohesion: 0.29
+Nodes (7): boot(), createStreamTracker(), getReactDOM(), init(), parseDataProps(), parseDcDocument(), parseDcText()
+
+### Community 644 - "Paleta de cores — TrailUp (console do professor)"
+Cohesion: 0.25
+Nodes (7): As 7 cores dos perfis BrainHex, Biblioteca de componentes, Conceito, Efeitos e utilitários já existentes, Paleta de cores — TrailUp (console do professor), Tipografia, Tokens do tema (HSL)
+
+### Community 645 - "boot"
+Cohesion: 0.29
+Nodes (7): boot(), createStreamTracker(), getReactDOM(), init(), parseDataProps(), parseDcDocument(), parseDcText()
+
+### Community 646 - "Paleta de cores — TrailUp (console do professor)"
+Cohesion: 0.25
+Nodes (7): As 7 cores dos perfis BrainHex, Biblioteca de componentes, Conceito, Efeitos e utilitários já existentes, Paleta de cores — TrailUp (console do professor), Tipografia, Tokens do tema (HSL)
+
+### Community 647 - "boot"
+Cohesion: 0.29
+Nodes (7): boot(), createStreamTracker(), getReactDOM(), init(), parseDataProps(), parseDcDocument(), parseDcText()
+
+### Community 648 - "20261021_08_telas_eixos_e_missoes.py"
+Cohesion: 0.43
+Nodes (4): downgrade(), _load(), upgrade(), _view_com_missoes()
+
+### Community 649 - "20261021_11_formato_do_desafio.py"
+Cohesion: 0.48
+Nodes (4): _criar(), downgrade(), _encerrar(), upgrade()
+
+### Community 651 - "test_migracoes_higiene.py"
+Cohesion: 0.38
+Nodes (3): _migracoes(), test_ha_migracoes_para_conferir(), test_raise_nao_concatena_o_formato()
+
+### Community 652 - "test_migration_matricula_pelo_banco.py"
+Cohesion: 0.52
+Nodes (6): _funcao(), test_downgrade(), test_escopo_deduplicacao_e_falha(), test_mesmo_job_que_a_api_cria_para_o_console(), test_trigger_after_insert_em_classe_aluno(), _upgrade_sql()
+
+### Community 654 - "Issue #1 — verificação da implantação"
+Cohesion: 0.29
+Nodes (6): Evidência observada, Fontes técnicas primárias, Identificação e consulta reproduzível, Issue #1 — verificação da implantação, Migrações: separação entre código e implantação, Validação e limite para fechamento
+
+### Community 655 - "Estrutura do Banco Supabase"
+Cohesion: 0.29
+Nodes (7): Estrutura do Banco Supabase, Midias, Observacao, Ranking, Tabelas de dominio, Tabelas de personalizacao, Tabelas de progresso
+
+### Community 656 - "Mapa da coleta de métricas"
+Cohesion: 0.29
+Nodes (7): 1. O que é coletado, e com que limites, 3. `tempo_gasto_min` é `active_sec`, não `dwell_sec`, 6. A realimentação, no estado medido, 7. Onde cada coisa fica, 8. Como reproduzir as medições, Mapa da coleta de métricas, O que este documento não resolve
+
+### Community 657 - "O que o TrailUp precisaria para falar LTI 1.3"
+Cohesion: 0.29
+Nodes (6): As três peças que importam, O que o TrailUp precisaria para falar LTI 1.3, O que teria de existir, Por que LTI, Riscos e decisões em aberto, Tamanho
+
+### Community 658 - "pptx.py"
 Cohesion: 0.33
-Nodes (8): _empty(), extract(), _from_json(), _from_plaintext(), _from_xml(), Extrator de texto plano (.txt, .csv, .json, .xml) → lista de Block., Trata JSON como estrutura textual., Remove tags XML e extrai texto.
-
-### Community 731 - "Community 731"
-Cohesion: 0.47
 Nodes (8): _add_side_image(), _apply_slide_background(), gerar_pptx(), _hex_to_rgb(), _merge_theme(), _paint_paragraph(), _paint_title(), _resolve_asset_path()
 
-### Community 732 - "Community 732"
-Cohesion: 0.25
-Nodes (8): chunk(), chunks_to_context_text(), chunks_to_plain_text(), _format_ref(), Segmentador semântico: agrupa blocos em chunks coerentes por seção/tópico.  Estr, Converte uma lista de chunks em texto de contexto para o LLM.     Retorna string, Converte chunks em texto corrido sem metadados de fonte.     Evita poluir payloa, Segmenta um NormalizedDocument em chunks semânticos.
+### Community 659 - "Estrutura do Banco Supabase (Consumo Mobile)"
+Cohesion: 0.29
+Nodes (6): Escrita principal, Estrutura do Banco Supabase (Consumo Mobile), Leitura principal, Midias, Personalizacao, Ranking
 
-### Community 733 - "Community 733"
-Cohesion: 0.22
-Nodes (5): A referencia do evento nao pode ser jogada fora.  `_sanitize_reference` normaliz, Era aqui que o evento perdia a identidade., `conteudo:12` num evento de atividade seria resolvido contra a tabela     errada, test_o_prefixo_sai_do_tipo_do_evento(), test_sem_id_numerico_a_referencia_sobrevive()
+### Community 660 - "TrilhaBase.tsx"
+Cohesion: 0.03
+Nodes (166): Encerramento, Task 1 (BrainHexPDF): `reportProgressToHost` no script exportado, Task 3 (TrailUp/mobile): ponte `postMessage` em `WebContentFrame.tsx`, Task 5 (TrailUp/mobile): conectar em `app/(tabs)/trilha/[id].tsx`, Task 6: verificação manual ponta a ponta (obrigatória, não é teste automatizado), XP de slides com checkpoint (D1a) Implementation Plan, Contexto, Descoberta que definiu a arquitetura (+158 more)
 
-### Community 734 - "Community 734"
-Cohesion: 0.22
-Nodes (8): ZXRGBLuminanceSource, -cropSupported, -croptopwidthheight, -initWithPixelsdataWidthdataHeightlefttopwidthheight, -initWithPixelswidthheight, -initWithWidthheightpixelspixelsLen, -matrix, -rowAtYrow
+### Community 661 - "conteudo.ts"
+Cohesion: 0.11
+Nodes (35): Convenções, 4.1 Identidade e Acesso, 2.2 Estrutura do `DashboardSection.tsx` (1216 linhas, um componente só), 11.0 Regras comuns (todos os prompts mandam ler esta seção), AbaConteudo(), alunos(), CardDestaque(), COR_DO_ERRO (+27 more)
 
-### Community 735 - "Community 735"
-Cohesion: 0.22
-Nodes (8): ZXDecodeHints, -addPossibleFormat, -containsFormat, -copyWithZone, -hints, -init, -numberOfPossibleFormats, -removePossibleFormat
+### Community 662 - "slides_pdf.py"
+Cohesion: 0.29
+Nodes (5): _accent_from_tema(), gerar_pdf_slides(), _hex_to_color(), Self-review desta plan, Fora de escopo
 
-### Community 736 - "Community 736"
-Cohesion: 0.22
-Nodes (8): ZXPDF417Detector, -copyToResulttmpResultdestinationIndexeslength, -detectbitMatrixerror, -detecthintsmultipleerror, -findGuardPatterncolumnrowwidthwhiteFirstpatternpatternLencounters, -findRowsWithPatternheightwidthstartRowstartColumnpatternpatternLen, -findVerticesstartRowstartColumn, -patternMatchVariancecountersSizepatternmaxIndividualVariance
+### Community 663 - "slidePagination.ts"
+Cohesion: 0.10
+Nodes (22): Arquitetura, Contexto, Decisões fixas (validadas com o usuário), Design: Imagens visuais reais e fim do scroll nos slides, Fora de escopo, Mudanças por arquivo, `server.ts` — `generateImageWithKeyRotation`, `server.ts` — prompt (`buildPedagogicalSystemPrompt`/`fullPrompt`) (+14 more)
 
-### Community 737 - "Community 737"
-Cohesion: 0.22
-Nodes (8): ZXUPCEANExtension5Support, -decodeMiddlestartRangeresulterror, -decodeRowrowextensionStartRangeerror, -determineCheckDigit, -extensionChecksum, -init, -parseExtension5String, -parseExtensionString
+### Community 664 - "02. Fundamentacao teorica e modelo adaptativo"
+Cohesion: 0.17
+Nodes (11): 02. Fundamentacao teorica e modelo adaptativo, 10. Diretrizes para evolucao do modelo, 1. Base conceitual, 2. BrainHex como eixo de personalizacao, 3. Hipoteses de aprendizagem operacionais, 4. Modelo adaptativo aplicado, 5. Relacao teoria -> implementacao, 6. Mapa de decisao adaptativa (+3 more)
 
-### Community 738 - "Community 738"
-Cohesion: 0.22
-Nodes (8): ZXUPCEReader, -barcodeFormat, -checkStandardUPCEANChecksum, -convertUPCEtoUPCA, -decodeEndendStarterror, -decodeMiddlestartRangeresulterror, -determineNumSysAndCheckDigitlgPatternFound, -init
+### Community 665 - "05. Logica e automacoes do banco"
+Cohesion: 0.17
+Nodes (11): 05. Logica e automacoes do banco, 10. Riscos e mitigacoes, 1. Papel do banco no ecossistema, 2. Objetivos da camada SQL, 3. Estruturas principais, 4. Automacoes tipicas, 5. Fluxo de atualizacao de ranking, 6. Regras de tempo ativo (+3 more)
 
-### Community 739 - "Community 739"
-Cohesion: 0.22
-Nodes (8): ZXAbstractRSSReader, -count, -dealloc, -decrementerrors, -incrementerrors, -init, -isFinderPattern, -parseFinderValuefinderPatternType
+### Community 666 - "06. Implementacao"
+Cohesion: 0.17
+Nodes (11): 06. Implementacao, 10. Checklist de release, 1. Stack e padroes adotados, 2. Estrategia de modularizacao, 3. Pipeline de personalizacao implementado, 4. Pipeline de midia implementado, 5. Interfaces entre componentes, 6. Configuracao e ambientes (+3 more)
 
-### Community 740 - "Community 740"
-Cohesion: 0.22
-Nodes (8): ZXRSSExpandedPair, -description, -hash, -hashNotNil, -initWithLeftCharrightCharfinderPatternmayBeLast, -isEqual, -isEqualOrNiltoObject, -mustBeLast
+### Community 667 - "07. Documento de UX"
+Cohesion: 0.17
+Nodes (11): 07. Documento de UX, 10. Heuristicas de avaliacao continua, 1. Objetivo de UX, 2. Personas operacionais, 3. Jornada macro do aluno, 4. Principios de interface, 5. Adaptacao visual por BrainHex, 6. Conteudo e leitura multimidia (+3 more)
 
-### Community 741 - "Community 741"
-Cohesion: 0.22
-Nodes (8): ZXRSSExpandedCurrentParsingState, -alpha, -init, -isoIec646, -numeric, -setAlpha, -setIsoIec646, -setNumeric
+### Community 668 - "08. Consentimento, privacidade, LGPD e seguranca"
+Cohesion: 0.17
+Nodes (11): 08. Consentimento, privacidade, LGPD e seguranca, 10. Matriz de responsabilidades, 1. Premissas de conformidade, 2. Dados tratados no ecossistema, 3. Bases legais (LGPD), 4. Consentimento e transparencia, 5. Controle de acesso, 6. Seguranca de aplicacao (+3 more)
 
-### Community 742 - "Community 742"
-Cohesion: 0.22
-Nodes (8): ZXURIParsedResult, -displayResult, -initialize, -initWithUrititle, -isColonFollowedByPortNumberprotocolEnd, -massageURI, -possiblyMaliciousURI, -uriParsedResultWithUrititle
+### Community 669 - "09. Metodologia de pesquisa e avaliacao"
+Cohesion: 0.09
+Nodes (20): 1. O que a produção tinha em 01/11, 2. Decisões, 3. O que fica no banco, 4. O que ficou de fora, 5. Ameaças à validade (vêm em `limitacoes`, na própria resposta), 6. A trava da personalização (`20261102_05`), Cohort e baseline para medir efetividade (#13), Indicadores (+12 more)
 
-### Community 743 - "Community 743"
-Cohesion: 0.22
-Nodes (8): ZXExpandedProductParsedResult, -displayResult, -equalsOrNilo2, -expandedProductParsedResultWithRawTextproductIDsscclotNumberproductionDatepackagingDatebestBeforeDateexpirationDateweightweightTypeweightIncrementpricepriceIncrementpriceCurrencyuncommonAIs, -hash, -init, -initWithRawTextproductIDsscclotNumberproductionDatepackagingDatebestBeforeDateexpirationDateweightweightTypeweightIncrementpricepriceIncrementpriceCurrencyuncommonAIs, -isEqual
+### Community 670 - "11. Contribuicoes, limitacoes e trabalhos futuros"
+Cohesion: 0.17
+Nodes (11): 10. Encerramento, 11. Contribuicoes, limitacoes e trabalhos futuros, 1. Contribuicoes tecnicas, 2. Contribuicoes pedagogicas, 3. Contribuicoes metodologicas, 4. Limitacoes atuais, 5. Debitos tecnicos monitorados, 6. Trabalhos futuros (curto prazo) (+3 more)
 
-### Community 744 - "Community 744"
-Cohesion: 0.36
-Nodes (7): avifCalcYUVCoefficients(), avifColorPrimariesFind(), avifColorPrimariesGetValues(), avifTransferCharacteristicsFindByGamma(), calcYUVInfoFromCICP(), matchesTo3RoundedPlaces(), primariesMatch()
+### Community 671 - "PRs Lab com impacto em arquitetura / docs (2026-10-01)"
+Cohesion: 0.29
+Nodes (7): Aberto (Lab) — não na main ainda, Arquitetura / produto (merged), Atualização (Validação, ~20:20 BRT), Docs / ops (merged, citáveis), Escopo Analise, Hipótese incidente console vazio, PRs Lab com impacto em arquitetura / docs (2026-10-01)
 
-### Community 745 - "Community 745"
-Cohesion: 0.39
-Nodes (7): bitfn(), check_fguv_sbrow(), check_fgy_sbrow(), check_gen_grnuv(), check_gen_grny(), bitfn(), generate_scaling()
+### Community 672 - "DESCOBERTA (IMERSÃO E PESQUISA)"
+Cohesion: 0.29
+Nodes (7): Artefatos da Etapa de Descoberta, DESCOBERTA (IMERSÃO E PESQUISA), Mapa de Empatia (Tabela), Métodos Aplicados, Objetivo da Etapa, Persona, Principais Achados da Pesquisa
 
-### Community 746 - "Community 746"
-Cohesion: 0.42
-Nodes (6): ivf_open(), ivf_read(), ivf_read_header(), ivf_seek(), rl32(), rl64()
+### Community 673 - "outputs"
+Cohesion: 0.29
+Nodes (7): outputs, api, brainhexpdf, docs, frontend, microservice, mobile
 
-### Community 747 - "Community 747"
-Cohesion: 0.36
-Nodes (6): md5_body(), md5_close(), md5_finish(), md5_update(), md5_verify(), md5_write()
+### Community 674 - "with"
+Cohesion: 0.29
+Nodes (7): with, bun-version, cache, cache-dependency-path, filters, node-version, python-version
 
-### Community 748 - "Community 748"
-Cohesion: 0.36
-Nodes (8): assemble_field(), assemble_filename(), find_extension(), output_close(), output_open(), output_verify(), output_write(), safe_strncat()
+### Community 675 - "scripts"
+Cohesion: 0.29
+Nodes (7): scripts, build, dev, lint, preview, start, test
 
-### Community 749 - "Community 749"
-Cohesion: 0.22
-Nodes (9): Add4x4_NEON(), ConvertU8ToS16_NEON(), SaturateAndStore4x4_NEON(), TransformAC3_NEON(), TransformDC_NEON(), TransformOne_NEON(), TransformPass_NEON(), TransformTwo_NEON() (+1 more)
+### Community 676 - "resolveRealSlideOrder"
+Cohesion: 0.48
+Nodes (4): parseRelsMap(), parseSlideIdOrder(), resolveRealSlideOrder(), sortByFilenameNumber()
 
-### Community 750 - "Community 750"
-Cohesion: 0.31
-Nodes (4): CheckSlowModel(), GetCPUInfo(), x86CPUInfo(), xgetbv()
+### Community 678 - "supabase.sessaoNaUrl.test.ts"
+Cohesion: 0.29
+Nodes (6): AuthListener, carregar(), Cenario, globals, platform, stubs
 
-### Community 751 - "Community 751"
-Cohesion: 0.28
-Nodes (3): GetCombinedEntropyUnrefined_MIPS32(), GetEntropyUnrefined_MIPS32(), GetEntropyUnrefinedHelper()
+### Community 679 - "services/studyPresence.test.ts"
+Cohesion: 0.29
+Nodes (4): { createStudyPresenceLoader }, missingRpc, Row, validSummary
 
-### Community 752 - "Community 752"
-Cohesion: 0.22
-Nodes (6): VP8LEncDspInitAVX2(), VP8LEncDspInitMIPS32(), VP8LEncDspInitMSA(), VP8LEncDspInitSSE2(), VP8LEncDspInit(), VP8LEncoderNew()
+### Community 680 - "studySessions.ts"
+Cohesion: 0.38
+Nodes (4): saveStudySession(), sessionId(), StudySessionScope, params
 
-### Community 753 - "Community 753"
-Cohesion: 0.36
-Nodes (7): CollectColorBlueTransforms_MIPSdspR2(), CollectColorRedTransforms_MIPSdspR2(), ColorTransformDelta(), TransformColor_MIPSdspR2(), TransformColorBlue(), TransformColorRed(), VP8LEncDspInitMIPSdspR2()
+### Community 681 - "grupoNotificacao.ts"
+Cohesion: 0.48
+Nodes (5): abreGrupo(), grupoDaNotificacao(), GrupoNotificacao, inicioDoDia(), agora
 
-### Community 754 - "Community 754"
-Cohesion: 0.56
-Nodes (5): blurRadius(), CSSInsetShadowKeyword(), inset(), offsetY(), spreadDistance()
+### Community 682 - "matematicaLegivel.ts"
+Cohesion: 0.52
+Nodes (5): corpoDaFormula(), EXPOENTES, matematicaLegivel(), pareceMatematica(), SIMBOLOS
 
-### Community 755 - "Community 755"
-Cohesion: 0.56
-Nodes (5): facebook(), fromCSSShadow(), fromRawValue(), parseUnprocessedBoxShadowList(), parseUnprocessedBoxShadowString()
-
-### Community 756 - "Community 756"
-Cohesion: 0.61
-Nodes (5): NSURLFromImageSource(), NSURLRequestCachePolicyFromImageSource(), NSURLRequestFromImageSource(), RCTContentModeFromImageResizeMode(), toString()
-
-### Community 757 - "Community 757"
-Cohesion: 0.39
-Nodes (7): detail(), DtoaMode(), e(), estimateSpaceNeeded(), folly(), result(), tmp()
-
-### Community 758 - "Community 758"
-Cohesion: 0.42
-Nodes (7): advancePastEmpty(), catch(), equal(), folly(), increment(), nullptr(), offset_()
-
-### Community 759 - "Community 759"
-Cohesion: 0.44
-Nodes (7): data(), decltype(), detail(), inSitu(), operator(), State(), throw_()
-
-### Community 760 - "Community 760"
-Cohesion: 0.56
-Nodes (7): createInstance(), entryInstance(), folly(), get(), instance(), LeakySingleton(), make_mock()
-
-### Community 761 - "Community 761"
-Cohesion: 0.28
-Nodes (3): get(), operator(), set()
-
-### Community 762 - "Community 762"
-Cohesion: 0.31
-Nodes (4): getBounds(), getWidth(), getWidths(), getWidthsBounds()
-
-### Community 764 - "Community 764"
-Cohesion: 0.28
-Nodes (3): dot(), ptr(), SkV4()
-
-### Community 768 - "Community 768"
-Cohesion: 0.53
-Nodes (7): adaptive_merge(), adaptive_merge_combine_blocks(), adaptive_merge_final_merge(), adaptive_merge_impl(), adaptive_merge_n_keys_intbuf(), adaptive_merge_n_keys_with_external_keys(), adaptive_merge_n_keys_without_external_keys()
-
-### Community 769 - "Community 769"
-Cohesion: 0.36
-Nodes (5): algorithm, algorithm_base, entry(), execute(), get_node()
-
-### Community 770 - "Community 770"
-Cohesion: 0.39
-Nodes (7): get(), tuple, tuple_element< I, boost::tuples::cons<H, T> >, tuple_element< I, boost::tuples::tuple<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> >, tuple_size< boost::tuples::cons<H, T> >, tuple_size< boost::tuples::null_type >, tuple_size< boost::tuples::tuple<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> >
-
-### Community 771 - "Community 771"
-Cohesion: 0.42
-Nodes (7): adl_move_iter_swap(), adl_move_swap(), adl_move_swap_ranges(), adl_move_swap_ranges_backward(), has_member_function_named_swap, Helper, swap_proxy()
-
-### Community 772 - "Community 772"
+### Community 683 - "paletaPorPerfil.test.ts"
 Cohesion: 0.33
-Nodes (5): generate(), invert(), param_type, poisson_distribution, read()
+Nodes (5): blocoDeConfig, corAssinatura(), fonte, paletas, PERFIS
 
-### Community 773 - "Community 773"
-Cohesion: 0.39
-Nodes (7): boost::move_detail::enable_if_and
-      < const T &
-      , enable_move_utility_emulation<T>
-      , ::boost::move_detail::is_not_rv<T>
-      >::type
-         forward(), boost::move_detail::enable_if_and
-      < rv<T>&
-      , enable_move_utility_emulation<T>
-      , ::boost::move_detail::is_not_rv<T>
-      , ::boost::move_detail::and_
-         < ::boost::move_detail::not_< ::boost::move_detail::is_lvalue_reference<T> >
-         , has_move_emulation_enabled<T>
-         >
-      >::type
-         move_if_not_lvalue_reference(), boost::move_detail::enable_if_and
-      < rv<T>&
-      , enable_move_utility_emulation<T>
-      , has_move_emulation_enabled<T>
-      >::type
-         move(), boost::move_detail::enable_if_and
-      < T &
-      , enable_move_utility_emulation<T>
-      , ::boost::move_detail::is_rv<T>
-      >::type
-         forward(), boost::move_detail::enable_if_and
-      < T &
-      , enable_move_utility_emulation<T>
-      , ::boost::move_detail::is_rv<T>
-      >::type
-         move_if_not_lvalue_reference(), boost::move_detail::enable_if_and
-      < T &
-      , enable_move_utility_emulation<T>
-      , has_move_emulation_disabled<T>
-      >::type
-         move(), boost::move_detail::enable_if_and
-      < typename ::boost::move_detail::add_lvalue_reference<T>::type
-      , enable_move_utility_emulation<T>
-      , ::boost::move_detail::is_not_rv<T>
-      , ::boost::move_detail::or_
-         < ::boost::move_detail::is_lvalue_reference<T>
-         , has_move_emulation_disabled<T>
-         >
-      >::type
-         move_if_not_lvalue_reference()
+### Community 684 - "models — artefatos treinados"
+Cohesion: 0.29
+Nodes (6): Contrato do pickle, Integridade, Licença — leia antes de usar, M2 — knowledge tracing (EdNet KT3), models — artefatos treinados, Proveniência
 
-### Community 774 - "Community 774"
-Cohesion: 0.56
-Nodes (7): inplace_stable_sort(), merge_sort(), merge_sort_copy(), merge_sort_uninitialized_copy(), merge_sort_with_constructed_buffer(), stable_sort_adaptive_ONlogN2(), stable_sort_ONlogN_recursive()
+### Community 685 - "Inventário das rotas → telas → prompts"
+Cohesion: 0.29
+Nodes (6): Autenticação (`(auth)/`), Como usar isso na prática, Fora do escopo desta rodada, Inventário das rotas → telas → prompts, Perfil — sub-telas, Área autenticada — abas (`(tabs)/`)
 
-### Community 775 - "Community 775"
-Cohesion: 0.42
-Nodes (6): add(), add_track(), get_node(), index_saver, save(), save_node()
+### Community 686 - "Celular v1 — regras gerais (cole inteiro antes de qualquer tela)"
+Cohesion: 0.29
+Nodes (6): 1. O aparelho, 2. Toque, não mouse, 3. Navegação, 4. Visual, 6. Entrega de cada parte, Celular v1 — regras gerais (cole inteiro antes de qualquer tela)
 
-### Community 776 - "Community 776"
-Cohesion: 0.39
-Nodes (7): first_finder(), head_finder(), last_finder(), nth_finder(), range_finder(), tail_finder(), token_finder()
+### Community 687 - "Revisão 01 — área do aluno sobre a base do V7 do professor"
+Cohesion: 0.29
+Nodes (6): Assets a copiar para `v2/assets/` (além dos que já estão em `v1/assets/`), Decisões que precisam de validação (@Geisbelly) antes de implementar, O que mudou em relação ao v1, Ordem de uso, Revisão 01 — área do aluno sobre a base do V7 do professor, Índice
 
-### Community 777 - "Community 777"
-Cohesion: 0.42
-Nodes (6): add(), add_track(), index_loader, load(), load_node(), unchecked_load_node()
+### Community 688 - "02-recuperar-senha.md"
+Cohesion: 0.29
+Nodes (6): 1. Fonte da verdade, 2. Objetivo, 3. Painel de ação (bloco central de 400px), 4. Estados (seletor: "Vazio" · "Enviando..." · "Link enviado" · "E-mail inválido" · "Erro ao enviar"), 5. Não fazer, 6. Aceite
 
-### Community 778 - "Community 778"
+### Community 689 - "Revisão 02 — feedback da Geisbelly sobre o v1 da área do aluno"
+Cohesion: 0.29
+Nodes (6): De onde vem cada decisão, Decisões para validar com a Geisbelly, Ordem de uso, Relação com a revisão 01, Revisão 02 — feedback da Geisbelly sobre o v1 da área do aluno, Índice
+
+### Community 690 - "revisao-02-feedback-geis/telas/03-trilha.md"
+Cohesion: 0.29
+Nodes (6): 1. Feedback, 2. Fica como está (ela gostou), 3.1 O modo Mapa virou um mapa de verdade, 3.2 Seletor de modo: "Ver trilha como", 3. O que mudou, 4. Aceite
+
+### Community 691 - "revisao-02-feedback-geis/telas/08-perfil-hub.md"
+Cohesion: 0.29
+Nodes (6): 1. Feedback, 2. Fica como está (ela gostou ou não criticou), 4. Grade (1164px úteis), 5. Estados (seletor flutuante), 6. Não fazer, 7. Aceite
+
+### Community 692 - "celebracoes.md"
+Cohesion: 0.29
+Nodes (6): 1. O que o app faz (fonte), 2. Na web, 3. Aceite, Conquista desbloqueada (`mobile/src/components/ConquistaModal.tsx`), Desbloqueio de funcionalidade (`DesbloqueioModal.tsx` + `utils/portoes.ts`), Onde aparece no protótipo
+
+### Community 693 - "00-entrada/prompt.md"
+Cohesion: 0.29
+Nodes (6): Identidade visual — não é um tema único, é uma fórmula por perfil, O produto, O que peço, Primeira tela: Entrada, Quem usa esta área, Regras de design que importam pra esse produto especificamente
+
+### Community 694 - "mentor.js"
+Cohesion: 0.52
+Nodes (6): abrir(), perguntar(), render(), reset(), responder(), silenciar()
+
+### Community 695 - "Prompt Fase 2 — Visão geral (Dashboard), PARTE 2 de 3: abas "Evolução" e "Conteúdo""
+Cohesion: 0.29
+Nodes (6): Aba "Conteúdo", Aba "Evolução", Identificação, O que NÃO fazer, Prompt Fase 2 — Visão geral (Dashboard), PARTE 2 de 3: abas "Evolução" e "Conteúdo", Referências de estilo
+
+### Community 696 - "14-eventos-estrutura-modular.md"
+Cohesion: 0.29
+Nodes (6): Contexto, O que muda em relação ao prompt `02-eventos.md`, O que NÃO fazer, O que se mantém do prompt `02-eventos.md`, Seção nova: "O que este evento inclui", Validação
+
+### Community 698 - "20261003_04_realtime_das_tabelas_assinadas.py"
 Cohesion: 0.47
-Nodes (7): array_end(), array_size(), boost_range_silence_warning(), is_same_address(), is_same_object(), str_end(), str_size()
+Nodes (3): _bloco(), downgrade(), upgrade()
 
-### Community 779 - "Community 779"
+### Community 699 - "20261016_03_nota_professor_evento_creditado.py"
+Cohesion: 0.60
+Nodes (4): downgrade(), _funcao(), _indice(), upgrade()
+
+### Community 700 - "20261017_04_progresso_inicial_security_definer.py"
+Cohesion: 0.60
+Nodes (4): downgrade(), _funcao_atividades(), _funcao_conteudos(), upgrade()
+
+### Community 701 - "20261021_06_aposta_e_pontuacao_ranqueada.py"
+Cohesion: 0.60
+Nodes (4): _apuracao(), downgrade(), upgrade(), _view()
+
+### Community 703 - "20261021_10_dificuldade_da_questao.py"
+Cohesion: 0.47
+Nodes (3): _criar(), downgrade(), upgrade()
+
+### Community 704 - "20261021_12_responder_checa_participacao.py"
+Cohesion: 0.47
+Nodes (3): downgrade(), _responder(), upgrade()
+
+### Community 705 - "20261021_14_fechar_so_quando_ninguem_mais_pode.py"
+Cohesion: 0.47
+Nodes (3): downgrade(), _responder(), upgrade()
+
+### Community 707 - "_como_aluno"
 Cohesion: 0.33
-Nodes (5): binomial_distribution, generate(), invert(), param_type, read()
+Nodes (5): _como_aluno(), sessao(), _registro(), test_listagem_do_aluno_tira_a_turma_retida(), test_personalizar_na_turma_retida_responde_409_sem_rodar_o_grafo()
 
-### Community 780 - "Community 780"
+### Community 708 - "XP de slides — demais interações (D1b) — Design"
 Cohesion: 0.33
-Nodes (5): mod_pow_x(), polynomial, polynomial_ops, reference, sparse_mod()
+Nodes (5): Contexto, Mapeamento função → itemKey → XP, Regra de design: só reporta na transição que GANHA XP, Testes, XP de slides — demais interações (D1b) — Design
 
-### Community 781 - "Community 781"
-Cohesion: 0.39
-Nodes (7): detail(), FormatContext(), formatter(), size(), T(), tuple(), underlying()
-
-### Community 782 - "Community 782"
-Cohesion: 0.22
-Nodes (9): computeFlexEndBorder(), computeFlexEndPadding(), computeFlexEndPaddingAndBorder(), computeFlexStartBorder(), computeFlexStartPadding(), computeFlexStartPaddingAndBorder(), computePaddingAndBorderForDimension(), resolvedMaxDimension() (+1 more)
-
-### Community 783 - "Community 783"
-Cohesion: 0.22
-Nodes (8): UIImage, -sd_imageData, -sd_imageDataAsFormat, -sd_imageDataAsFormatcompressionQuality, -sd_imageDataAsFormatcompressionQualityfirstFrameOnly, -sd_imageWithData, -sd_imageWithDatascale, -sd_imageWithDatascalefirstFrameOnly
-
-### Community 784 - "Community 784"
-Cohesion: 0.22
-Nodes (8): SDWebImageDownloaderResponseModifier, -initWithBlock, -initWithHeaders, -initWithStatusCode, -initWithStatusCodeversionheaders, -initWithVersion, -modifiedResponseWithResponse, -responseModifierWithBlock
-
-### Community 785 - "Community 785"
-Cohesion: 0.22
-Nodes (8): SDWebImageDownloaderRequestModifier, -initWithBlock, -initWithBody, -initWithHeaders, -initWithMethod, -initWithMethodheadersbody, -modifiedRequestWithRequest, -requestModifierWithBlock
-
-### Community 786 - "Community 786"
-Cohesion: 0.22
-Nodes (8): SDImageAssetManager, -dealloc, -didReceiveMemoryWarning, -getPathForNamebundlepreferredScale, -imageForName, -init, -sharedAssetManager, -storeImageforName
-
-### Community 787 - "Community 787"
+### Community 709 - "Mobile: arte facetada"
 Cohesion: 0.33
-Nodes (9): services/sugestao_material.py, _afinidades(), _ajuste_por_sinal(), _normalizar_perfil(), Any, Motor determinístico de sugestão de material por aluno.  Decide **quais formatos, Normaliza o vetor de afinidades para (perfil, peso 0..1).      Usa o vetor INTEI, Formato sobre o qual a telemetria disse algo utilizável. (+1 more)
+Nodes (5): Direcao, Mobile: arte facetada, Ranking e telas internas, Reimportacao, Verificacao
 
-### Community 788 - "Community 788"
-Cohesion: 0.22
-Nodes (4): _IncompleteDetails, _IncompleteOpenAIClient, _IncompleteOpenAIResponse, _IncompleteOpenAIResponses
+### Community 710 - "Inventário Google Drive — documentação TrailUp"
+Cohesion: 0.33
+Nodes (6): Espelho segundo cérebro (escrita — parent sincroniza), Inventário Google Drive — documentação TrailUp, Links rápidos — documentos-chave, Notas de inventário, Pastas TCC 2 Design (IDs), Árvore
 
-### Community 789 - "Community 789"
-Cohesion: 0.22
-Nodes (7): exampleDirPath, fs, oldDirs, path, readline, rl, root
+### Community 711 - "Validação espelho — 2026-10-01"
+Cohesion: 0.33
+Nodes (6): Acesso técnico (para outros bots), Diagnóstico Validação — console professor vazio, Gate de merge (padrão + override #124), PR #124 (merged), PR #125 (fechado sem merge), Validação espelho — 2026-10-01
 
-### Community 790 - "Community 790"
-Cohesion: 0.22
-Nodes (8): Apresentação: entrega direta em HTML (substitui PDF/Puppeteer): Design, Contexto — por que essa mudança agora, Decisões (resultado das perguntas de esclarecimento), Fora de escopo, Seção 1: Arquitetura e fluxo, Seção 2: Contrato, versionamento e storage, Seção 3: Tratamento de erros, Seção 4: Testes
+### Community 712 - "Evidências de avaliação — TrailUp (2026-10-01)"
+Cohesion: 0.33
+Nodes (6): 1. O que a monografia pode citar, 2. Suites Reflect (organização alvo), 3. Limitações (honestidade metodológica), 4. Artefatos scratch no box (fora do vault / sem secrets), 5. Critério “pronto pra fechar issue” (coord. Issues), Evidências de avaliação — TrailUp (2026-10-01)
 
-### Community 791 - "Community 791"
-Cohesion: 0.22
-Nodes (9): mobile/arquitetura-microservico-e-app.md, Camadas no app, Integracao com API e microservico, Motivos e objetivos, Objetivo, Objetivos de UX e aprendizagem, Responsabilidades do app, Riscos e mitigacoes (+1 more)
+### Community 713 - "os"
+Cohesion: 0.11
+Nodes (12): _base_url(), upgrade(), healthcheck(), get_build_commit(), ping_database(), _build_slide_image(), _clip_with_audio(), _clip_with_duration() (+4 more)
 
-### Community 792 - "Community 792"
+### Community 714 - "Personalização Longa — Integração ApiBrainHex Implementation Plan"
+Cohesion: 0.13
+Nodes (15): agente_ai_patch(), generate_ai_patch_personalizacao(), Personalização Longa — Integração ApiBrainHex Implementation Plan, Resumo dos Commits, Task 1: DB Migration, Task 2: Schemas Pydantic, Task 3: Guide Personas em personalizacao.py, Task 4: Atualizar Prompts (+7 more)
+
+### Community 715 - "Testes Reflect — regras e escopo local"
+Cohesion: 0.33
+Nodes (6): Ambiente obrigatório, Checklist P0 (resumo — gerado ~13:35 BRT 2026-10-01), CI no monorepo (espelho / Lab), Papel do bot, Proibições, Testes Reflect — regras e escopo local
+
+### Community 716 - "2.2 — ENTREVISTA COM PROFESSORES"
+Cohesion: 0.33
+Nodes (6): 2.2.1 Dados Demográficos, 2.2.2 Bloco 1 — Diversidade e Estilos de Aprendizagem, 2.2.3 Bloco 2 — Reação ao Conceito TrailUp, 2.2.4 Bloco 3 — Gamificação e Engajamento, 2.2.5 Bloco 4 — Integração Pedagógica, 2.2 — ENTREVISTA COM PROFESSORES
+
+### Community 717 - "public.fn_enqueue_classe_mapa_tema_job"
+Cohesion: 0.40
+Nodes (3): public.classe_mapa_tema, public.fn_enqueue_classe_mapa_tema_job(), trg_classe_mapa_tema_job
+
+### Community 718 - "contentBlocks.ts"
+Cohesion: 0.16
+Nodes (30): Seção 2: Contrato, versionamento e storage, Fora de escopo, asObject(), buildBlocksFromArray(), buildPayloadByType(), buildSignature(), cleanUrl(), getMetadataSource() (+22 more)
+
+### Community 719 - "graphNodeAccess.ts"
+Cohesion: 0.40
+Nodes (4): reconcileNodesWithClasse(), GraphNodeAccess, GraphNodeAccessInput, resolveGraphNodeAccess()
+
+### Community 720 - "generateInteractiveHtml"
+Cohesion: 0.07
+Nodes (38): getServiceRoleClient(), PdfExportModal(), PdfExportModalProps, useDeckInteraction(), ThemeConfig, getBrainHexBorderClassName(), getBrainHexBorderCss(), escapeHtmlAttribute() (+30 more)
+
+### Community 721 - "Suite Robot Framework — Personalização de Conteúdo no Console do Professor"
+Cohesion: 0.20
+Nodes (9): Ambiente e autenticação, Critério de sucesso, Dependências, Escopo, Estrutura de arquivos, Fluxo do teste, Objetivo, Riscos e limitações conhecidas (+1 more)
+
+### Community 722 - "encerrarSessao.ts"
+Cohesion: 0.40
+Nodes (4): DependenciasLogout, encerrarSessaoDoAluno(), ResultadoLogout, ResultadoSignOut
+
+### Community 723 - "conquistaProgress.test.ts"
+Cohesion: 0.53
+Nodes (4): calcularProgressoConquista(), ConquistaProgressMetrics, percent(), metrics
+
+### Community 724 - "04. Modelagem do sistema"
+Cohesion: 0.18
+Nodes (10): 04. Modelagem do sistema, 1. Visao de contexto, 2. Modelo de dominio (conceitual), 3. Modelagem por camadas, 4. Modelagem de casos de uso principais, 5. Modelo de estados dos jobs, 6. Modelo de contrato de personalizacao, 7. Modelagem de integracao (+2 more)
+
+### Community 725 - "nativeDocumentParsers.web.ts"
+Cohesion: 0.33
+Nodes (3): NativeDocBlock, NativePptxSlide, NativePptxSlideElement
+
+### Community 726 - "personalizationAvailability.ts"
+Cohesion: 0.73
+Nodes (5): availablePersonalizedFormats(), file(), object(), personalizedAvailabilityScore(), text()
+
+### Community 727 - "referenciaDeEvento.test.ts"
+Cohesion: 0.53
+Nodes (4): ReferenciaDeAtividade, referenciaDeAtividade(), sanitizarChave(), base
+
+### Community 728 - "04-topico-batalha.md"
+Cohesion: 0.33
+Nodes (5): 1. O que o app faz (fonte), 2. Na web, 3. Estados (seletor flutuante, novo nesta tela), 4. Não fazer, 5. Aceite
+
+### Community 729 - "05-ranking/prompt.md"
+Cohesion: 0.33
+Nodes (5): Conteúdo real de hoje — tela 1: categorias, Conteúdo real de hoje — tela 2: categoria aberta, Estados, O que ela faz, O que peço
+
+### Community 730 - "10-relatorio-dados/prompt.md"
+Cohesion: 0.33
+Nodes (5): Atenção — bug conhecido a considerar no design (issue #28), Conteúdo real de hoje, Estados, O que ela faz, O que peço
+
+### Community 731 - "11-configuracoes/prompt.md"
+Cohesion: 0.33
+Nodes (5): Conteúdo real de hoje — as telas de detalhe (todas simples, descreva como painel/seção, não precisa uma tela cheia por item), Conteúdo real de hoje — o hub (`settings.tsx`), Estados, O que ela faz, O que peço
+
+### Community 732 - "celebracoes.js"
+Cohesion: 0.60
+Nodes (5): abrir(), conquista(), cor(), fechar(), portao()
+
+### Community 733 - "Mapeamento dos prints → telas → prompts"
+Cohesion: 0.33
+Nodes (5): Como usar isso na prática, Console do professor (dentro de `telas/`), Fluxo de autenticação (dentro de `telas/`, por último na fila), Fora do escopo, em `referencia-visual-extra/`, Mapeamento dos prints → telas → prompts
+
+### Community 734 - "revisao-03-prompts-finais/04-personalizacoes.md"
+Cohesion: 0.33
+Nodes (5): A CORREÇÃO ESTRUTURAL MAIS IMPORTANTE — um conteúdo gera várias gerações, uma por perfil, ADICIONAR — modal "Ver conteúdo gerado", com pré-visualização real, MANTER, OBSERVAÇÃO — não é sobre esta tela, mas afeta ela, REVISAR — aba "Estrutura e paleta"
+
+### Community 735 - "prompt-geral.md"
+Cohesion: 0.33
+Nodes (5): O que NÃO fazer em nenhuma tela, O que pegar de cada imagem (e o que não pegar), Onde aplicar em cada tela, Princípios gerais a aplicar (síntese das 4 imagens, já traduzidos para o TrailUp), Regra inegociável — paleta e tipografia não mudam
+
+### Community 736 - "00-dashboard/prompt.md"
+Cohesion: 0.33
+Nodes (5): Identidade visual (use exatamente estas cores — não invente uma paleta nova), O produto, Primeira tela: Dashboard, Quem usa esta tela, Regras de design que importam pra esse produto especificamente
+
+### Community 737 - "00-prompt-mestre-fase-2.md"
+Cohesion: 0.33
+Nodes (5): O que eu não quero nesta etapa, O que vai acontecer a partir daqui, Regra mais importante desta fase: mudar o estilo, não o conteúdo, Regras que valem para todas as telas, Situação
+
+### Community 738 - "Prompt Fase 2 — Trilhas, PARTE 4 de 5: editor de tópico — aba "Atividades""
+Cohesion: 0.33
+Nodes (5): Aba "Atividades", Identificação, O que NÃO fazer, Prompt Fase 2 — Trilhas, PARTE 4 de 5: editor de tópico — aba "Atividades", Referências de estilo
+
+### Community 739 - "Novas telas — leia antes dos prompts"
+Cohesion: 0.33
+Nodes (5): Diferença importante em relação ao maturidade de cada recurso, Novas telas — leia antes dos prompts, O que ficou de fora, e por quê, Ordem sugerida de envio ao Claude Design, Referências de estilo (valem para as 5)
+
+### Community 740 - "20260826_18_progresso_professor_opcional.py"
+Cohesion: 0.60
+Nodes (3): downgrade(), _guardas(), upgrade()
+
+### Community 742 - "20260909_04_detalhado_traz_progresso_da_atividade.py"
+Cohesion: 0.60
+Nodes (3): downgrade(), upgrade(), _view()
+
+### Community 748 - "20261003_05_trigger_fns_fora_do_rest.py"
+Cohesion: 0.60
+Nodes (3): downgrade(), _loop(), upgrade()
+
+### Community 749 - "20261018_05_notas_fila_aceita_apelidos_de_dissertativa.py"
+Cohesion: 0.60
+Nodes (3): downgrade(), _sql(), upgrade()
+
+### Community 752 - "20261021_13_arena_desafio_devolve_os_eixos.py"
+Cohesion: 0.60
+Nodes (3): _arena_desafio(), downgrade(), upgrade()
+
+### Community 761 - "Seguranca - API TrailUp"
+Cohesion: 0.40
+Nodes (4): Controles, Mitigacoes, Riscos monitorados, Seguranca - API TrailUp
+
+### Community 762 - "Supabase — projeto TraiUp"
+Cohesion: 0.40
+Nodes (5): Dados críticos do console, Deploys relacionados (não secrets), Limites do Free (fatos operacionais), O que a stack usa, Supabase — projeto TraiUp
+
+### Community 763 - "Frontend Immersive Design"
+Cohesion: 0.40
+Nodes (4): Frontend Immersive Design, Implementation Boundaries, Scope, Verification
+
+### Community 764 - "1. Descoberta (Imersão e Pesquisa)"
+Cohesion: 0.40
+Nodes (5): 1. Descoberta (Imersão e Pesquisa), Métodos aplicados, Objetivo, Persona, Principais achados da pesquisa
+
+### Community 765 - "2. Definição do Problema"
+Cohesion: 0.40
+Nodes (5): 2. Definição do Problema, Estudantes se desmotivam em ambientes de aprendizado digitais que não se ajustam ao seu ritmo e modo de operação, resultando em baixa retenção e engajamento., Insight, Ponto de Vista (POV), Problema Central
+
+### Community 766 - "ENTREGA FINAL"
+Cohesion: 0.40
+Nodes (5): Apresentação Visual do Projeto Final (Slides) - conforme [<u>Anexo P</u>](#anexo-p---apresentação-visual-do-projeto-final-slides), Artefatos Disponibilizados como Anexos, Artefatos Integrados no Corpo do Documento, Considerações Finais, ENTREGA FINAL
+
+### Community 767 - "3 TRABALHOS RELACIONADOS"
+Cohesion: 0.40
+Nodes (5): 3.1 Gamificação personalizada, 3.2 Aplicações do BrainHex, 3.3 Modelagem e adaptação em ambientes educacionais, 3.4 Síntese e lacuna, 3 TRABALHOS RELACIONADOS
+
+### Community 768 - "8 RESULTADOS E DISCUSSÃO"
+Cohesion: 0.40
+Nodes (5): 8.1 Resultados da Evidence Base, 8.2 Resultados do sistema, 8.3 Resultados educacionais, 8.4 Discussão, 8 RESULTADOS E DISCUSSÃO
+
+### Community 769 - "materialBucket.ts"
+Cohesion: 0.90
+Nodes (3): bucketDaUrlSupabase(), resolverBucketDoMaterial(), textoUtil()
+
+### Community 770 - "steps"
+Cohesion: 0.40
+Nodes (5): if, needs, runs-on, steps, docs
+
+### Community 771 - "microservice"
+Cohesion: 0.40
+Nodes (5): microservice, defaults, if, needs, runs-on
+
+### Community 772 - "mobile"
+Cohesion: 0.40
+Nodes (5): mobile, if, needs, runs-on, steps
+
+### Community 773 - "realtimeTabelasAssinadas.test.ts"
+Cohesion: 0.50
+Nodes (4): arquivosFonte(), NA_PUBLICACAO, SRC, tabelasAssinadas()
+
+### Community 774 - "desenhar"
+Cohesion: 0.60
+Nodes (3): desenhar(), ir(), posicionar()
+
+### Community 775 - "Parte 8 — Configurações e subtelas (celular)"
+Cohesion: 0.40
+Nodes (4): De onde vem, O que fica igual ao v4 (não mude), O que muda no celular, Parte 8 — Configurações e subtelas (celular)
+
+### Community 776 - "Parte 10 — Tutorial de primeiro acesso (celular)"
+Cohesion: 0.40
+Nodes (4): De onde vem, O que fica igual ao v4 (não mude), O que muda no celular, Parte 10 — Tutorial de primeiro acesso (celular)
+
+### Community 777 - "revisao-03-loja/telas/03-trilha.md"
+Cohesion: 0.40
+Nodes (4): 1. Feedback, 2. O que muda, 3. Por que isso revoga uma decisão da revisão 02, 4. Aceite
+
+### Community 778 - "revisao-03-loja/telas/08-perfil-hub.md"
+Cohesion: 0.40
+Nodes (4): 1. Feedback, 2. Informações da aluna, embaixo do nome, 3. Conquistas no topo, em destaque, 4. Aceite
+
+### Community 779 - "01-login/prompt.md"
+Cohesion: 0.40
+Nodes (4): Conteúdo real de hoje, Estados, O que ela faz, O que peço
+
+### Community 780 - "02-recuperar-senha/prompt.md"
+Cohesion: 0.40
+Nodes (4): Conteúdo real de hoje, Estados, O que ela faz, O que peço
+
+### Community 781 - "03-trilha/prompt.md"
+Cohesion: 0.40
+Nodes (4): Conteúdo real de hoje, Estados, O que ela faz, O que peço
+
+### Community 782 - "04-topico/prompt.md"
+Cohesion: 0.40
+Nodes (4): Conteúdo real de hoje, Estados, O que ela faz, O que peço
+
+### Community 783 - "06-social-guildas-loja/prompt.md"
+Cohesion: 0.40
+Nodes (4): Conteúdo real de hoje, Estados, O que ela faz, O que peço
+
+### Community 784 - "07-notificacoes/prompt.md"
+Cohesion: 0.40
+Nodes (4): Conteúdo real de hoje, Estados, O que ela faz, O que peço
+
+### Community 785 - "08-perfil-hub/prompt.md"
+Cohesion: 0.40
+Nodes (4): Conteúdo real de hoje, Estados, O que ela faz, O que peço
+
+### Community 786 - "09-biblioteca-conquistas/prompt.md"
+Cohesion: 0.40
+Nodes (4): Conteúdo real de hoje, Estados, O que ela faz, O que peço
+
+### Community 787 - "services/sugestao_material.py"
+Cohesion: 0.08
+Nodes (22): catalogo(), evidencia(), regra(), _afinidades(), _ajuste_por_sinal(), _aplicar_camadas(), _arredondado(), _copia() (+14 more)
+
+### Community 788 - "_incomplete_openai_factory"
+Cohesion: 0.18
+Nodes (6): _incomplete_openai_factory(), factory(), _IncompleteDetails, _IncompleteOpenAIClient, _IncompleteOpenAIResponse, _IncompleteOpenAIResponses
+
+### Community 789 - "reset-project.js"
+Cohesion: 0.09
+Nodes (13): buildRevision(), revisionManifest(), lovable-tagger@^1.1.11, @vitejs/plugin-react-swc@^3.11.0, exampleDirPath, fs, oldDirs, path (+5 more)
+
+### Community 790 - "06-trilha-refazer.md"
+Cohesion: 0.40
+Nodes (4): A estrutura correta (isto substitui o que foi desenhado antes), O problema identificado, O que peço, O que preservar do que você já fez
+
+### Community 791 - "Arquitetura do Microservico e do App (Contexto Mobile)"
+Cohesion: 0.20
+Nodes (9): Arquitetura do Microservico e do App (Contexto Mobile), Camadas no app, Integracao com API e microservico, Motivos e objetivos, Objetivo, Objetivos de UX e aprendizagem, Responsabilidades do app, Riscos e mitigacoes (+1 more)
+
+### Community 792 - "TrailUp — Monorepo"
 Cohesion: 0.22
 Nodes (9): Atalhos por serviço (raiz), Com Docker (desenvolvimento), Configuração de ambiente, Documentação, Estrutura, Instalação, Pré-requisitos, Rodar todos os serviços de uma vez (+1 more)
 
-### Community 793 - "Community 793"
+### Community 793 - "social/index.tsx"
+Cohesion: 0.02
+Nodes (210): Task 3: Injetar `battleState` em `PerfilHome`, Self-review desta plan, Implementacao, Task 2: Serviço social mobile, Componentes, PerfilHome(), styles, Infor() (+202 more)
+
+### Community 794 - "SlideContent"
+Cohesion: 0.13
+Nodes (18): Task 4: Schema — `iconPrompts` por slide (Gemini), Decisões de escopo desta rodada (confirmadas com o usuário), Riscos aceitos, Self-Review, Slides Imersivos — Wiring no Pipeline Implementation Plan, Task 1: `renderImmersiveSlides()` — orquestra a geração concorrente do deck, Task 3: Documentar o flag e a variável de concorrência, Fases de implementação (para o plano) (+10 more)
+
+### Community 795 - "File Structure"
+Cohesion: 0.33
+Nodes (5): File Structure, Profundidade dos Blocos de Conteúdo Implementation Plan, Self-Review, Task 2: Corrige os testes de `content_enrichment.py` para os novos pisos, Task 4: Corrige os testes do microservice
+
+### Community 796 - "Síntese — o que os 3 documentos, juntos, revelam"
+Cohesion: 0.40
+Nodes (4): Achado mais importante: a Trilha regrediu, não avançou, Achados menores, cruzando as 3 fontes, Regra de ouro para os 5 prompts, Síntese — o que os 3 documentos, juntos, revelam
+
+### Community 797 - "03-classes.md"
+Cohesion: 0.40
+Nodes (4): CONFIRMAR — ainda não testado, CORRIGIR — texto, CORRIGIR — visibilidade das ações do card, MANTER
+
+### Community 798 - "01-trilha-remover-id-e-transparencia-dos-cards.md"
+Cohesion: 0.40
+Nodes (4): CORRIGIR, MANTER, O problema, REMOVER
+
+### Community 799 - "08-personalizacoes-proposta-mais-substancial.md"
+Cohesion: 0.40
+Nodes (4): Antes de gerar qualquer mockup: faça um questionário para mim, Fora de escopo deste prompt, Inventário completo do que existe hoje (nada aqui pode ser removido), O que fazer (não fica em aberto — só o que depende das 5 perguntas acima é que eu decido)
+
+### Community 800 - "10-trilha-preview-automatica-de-conteudo-anexado.md"
+Cohesion: 0.40
+Nodes (4): ADICIONAR, CORRIGIR, MANTER, O problema
+
+### Community 801 - "14-global-assistente-de-ia-nome-e-persona.md"
+Cohesion: 0.40
+Nodes (4): Contexto, CORRIGIR / ADICIONAR, MANTER, O problema
+
+### Community 802 - "09-cadastro-conta/prompt.md"
+Cohesion: 0.40
+Nodes (4): Diferenças entre as duas versões, Importante entender antes de desenhar, O que ela faz (fluxo idêntico nas duas versões — aluno e professor), O que peço
+
+### Community 803 - "10-finalizar-cadastro/prompt.md"
+Cohesion: 0.40
+Nodes (4): Antes de mostrar qualquer formulário, Caminho do aluno — o wizard de 6 passos com barra de progresso no topo, Caminho do professor (mais simples), O que peço
+
+### Community 804 - "12-reverter-navegacao-para-itens-separados.md"
+Cohesion: 0.40
+Nodes (4): Contexto, CORRIGIR — voltar a itens de sidebar separados, Nota sobre a sidebar, Não recrie o conteúdo
+
+### Community 805 - "15-historia-da-turma-fora-do-escopo-atual.md"
+Cohesion: 0.40
+Nodes (4): Contexto, CORRIGIR, O que fazer com o prompt `07`, O que NÃO fazer
+
+### Community 806 - "16-campo-de-moedas.md"
+Cohesion: 0.40
+Nodes (4): Contexto, CORRIGIR — adicionar campo "Moedas" (opcional) nestes 4 lugares, O que NÃO fazer, Regra que vale nos 4 lugares
+
+### Community 807 - "17-remover-extensoes-de-prazo-de-aprovacoes.md"
+Cohesion: 0.40
+Nodes (4): Atenção: isso contradiz o texto da issue #144, Contexto, CORRIGIR, O que NÃO fazer
+
+### Community 808 - "01-turmas-falta-presenca.md"
+Cohesion: 0.40
+Nodes (4): ADICIONAR — botão "Presença" no card de turma, ADICIONAR — modal "Registrar presença", Contexto, O que NÃO fazer
+
+### Community 809 - "Envio de e-mail pelo Google Apps Script"
+Cohesion: 0.40
+Nodes (4): Como o banco sabe que o e-mail saiu, Envio de e-mail pelo Google Apps Script, Limites, Publicar (uma vez)
+
+### Community 862 - "Arquitetura do App (Studio/Frontend do ApiBrainHex) - Versão Detalhada"
 Cohesion: 0.22
-Nodes (8): Apresentação: visual nativo no mobile Implementation Plan, Retrospectiva (achados durante a execução), Self-review desta plan, Task 1: Tipos — `ContentBlockType`, payload e `RichPresentationSlide`, Task 2: `normalizeRichPresentationSlides` + emitir 1 bloco em vez de N, Task 3: `ContentRenderer.tsx` roteia `apresentacao-slides`, Task 4: `PresentationSlidesBlock.tsx` — componente novo, Task 5: Verificação manual
+Nodes (8): 1. Objetivo, 2. Escopo do app, 3. Diagrama de alto nível, 4. Fluxo principal do app, 5. Responsabilidades do frontend, 6. Limites do frontend, 7. Objetivos de UX, Arquitetura do App (Studio/Frontend do ApiBrainHex) - Versão Detalhada
 
-### Community 794 - "Community 794"
+### Community 863 - "Arquitetura do RAG do TrailUp"
+Cohesion: 0.04
+Nodes (47): 0001: Vector store do RAG no Postgres com pgvector, Alternatives Considered, Consequences, Context, FAISS/Chroma local em disco/memória, Migration, Negative, Positive (+39 more)
+
+### Community 864 - "Arquitetura do Microservico e do App (Contexto ApiBrainHex)"
 Cohesion: 0.22
-Nodes (8): Decisões de escopo desta rodada (confirmadas com o usuário), Estrutura de arquivos, Riscos aceitos, Self-Review, Slides Imersivos — Wiring no Pipeline Implementation Plan, Task 1: `renderImmersiveSlides()` — orquestra a geração concorrente do deck, Task 2: Feature flag + wiring em `runPipeline`/`archiveMultiPartToSupabase`, Task 3: Documentar o flag e a variável de concorrência
+Nodes (8): Arquitetura do Microservico e do App (Contexto ApiBrainHex), Componentes internos, Fora do escopo, Motivos e objetivos, Objetivo, Objetivos operacionais, Posicionamento no ecossistema, Responsabilidades
 
-### Community 795 - "Community 795"
-Cohesion: 0.22
-Nodes (8): Achado adicional durante o mapeamento de arquivos, File Structure, Profundidade dos Blocos de Conteúdo Implementation Plan, Self-Review, Task 1: Eleva os pisos de expansão e marca blocos escassos (`content_enrichment.py`), Task 2: Corrige os testes de `content_enrichment.py` para os novos pisos, Task 3: Para de gerar `slides` na chamada principal de conteúdo (`geminiService.ts`), Task 4: Corrige os testes do microservice
-
-### Community 796 - "Community 796"
-Cohesion: 0.22
-Nodes (8): Encerramento, Imagem vinculada a minutagem do áudio (D3) Implementation Plan, Task 1 (microservice): `estimateAudioDurationSec` — duração a partir do arquivo já pronto, Task 2 (microservice): `sectionBoundaries` em `splitProcessedContentIntoParts`, Task 3 (microservice): `computeImageCues`, Task 4 (microservice): conectar em `runPipeline` e `archiveMultiPartToSupabase`, Task 5 (mobile): `parseImageCues`, Task 6 (mobile): ler `imageCues` em `personalization.ts` e repassar até o `AudioPlayer`
-
-### Community 797 - "Community 797"
-Cohesion: 0.22
-Nodes (8): Encerramento, Fora de escopo desta PR (nota, não é um task), Reaproveitamento de imagens entre mídias (D2) Implementation Plan, Task 0: baseline de testes do microservice, Task 1: `insertImagesIntoMarkdown` — inserir imagens após cada heading, Task 2: threadear a URL original das imagens do professor, Task 3: conectar `insertImagesIntoMarkdown` e a capa do áudio no `runPipeline`, Task 4: mobile — exibir a capa no `AudioPlayer`
-
-### Community 798 - "Community 798"
-Cohesion: 0.22
-Nodes (8): Encerramento, Task 1 (BrainHexPDF): `reportProgressToHost` no script exportado, Task 2 (TrailUp/mobile): `parseDeckProgressMessage` — parsing puro e testável, Task 3 (TrailUp/mobile): ponte `postMessage` em `WebContentFrame.tsx`, Task 4 (TrailUp/mobile): repassar por `DocumentBlock.tsx` e `ContentRenderer.tsx`, Task 5 (TrailUp/mobile): conectar em `app/(tabs)/trilha/[id].tsx`, Task 6: verificação manual ponta a ponta (obrigatória, não é teste automatizado), XP de slides com checkpoint (D1a) Implementation Plan
-
-### Community 799 - "Community 799"
-Cohesion: 0.22
-Nodes (8): Contexto, Escopo cirúrgico, Fora de escopo, Mudança 1 — Ponto de injeção único em `getClient()`, Mudança 2 — Exportar as funções de arquivamento em `server.ts`, Mudança 3 — Testes novos, Testabilidade do pipeline de upload no microservice, Teste de aceitação
-
-### Community 800 - "Community 800"
-Cohesion: 0.22
-Nodes (8): Abordagem: minutagem estimada por proporção de texto, Contexto, Escopo: só a primeira parte (mesma limitação já aceita pelo D2), Imagem vinculada a minutagem do áudio (D3) — Design, Novos campos (todos aditivos, sem migração de schema), Restrição explícita do usuário — LIDA COM MÁXIMA PRIORIDADE, Testes, Wiring
-
-### Community 802 - "Community 802"
-Cohesion: 0.32
-Nodes (6): _configure_database_url(), run_migrations_offline(), run_migrations_online(), normalize_database_url_for_alembic(), Aplica as migracoes pendentes antes de a API aceitar requisicoes., upgrade_database_to_head()
-
-### Community 803 - "Community 803"
-Cohesion: 0.46
-Nodes (7): _build_slide_image(), _clip_with_audio(), _clip_with_duration(), gerar_video_mp4(), _hex_to_rgb(), _wrap_text(), _write_video_file()
-
-### Community 804 - "Community 804"
-Cohesion: 0.29
-Nodes (7): _afinidades(), _ajuste_por_sinal(), _normalizar_perfil(), Motor determinístico de sugestão de material por aluno.  Decide **quais formatos, Normaliza o vetor de afinidades para (perfil, peso 0..1).      Usa o vetor INTEI, Formato sobre o qual a telemetria disse algo utilizável., _tem_evidencia()
-
-### Community 805 - "Community 805"
-Cohesion: 0.25
-Nodes (7): ZXByteArray, -dealloc, -description, -initWithArraylength, -initWithBytes, -initWithLength, -initWithLengthbytes
-
-### Community 806 - "Community 806"
-Cohesion: 0.25
-Nodes (7): ZXHybridBinarizer, -blackMatrixWithError, -calculateBlackPointssubWidthsubHeightwidthheight, -calculateThresholdForBlocksubWidthsubHeightwidthheightblackPointsmatrix, -capminmax, -createBinarizer, -thresholdBlockxoffsetyoffsetthresholdstridematrix
-
-### Community 807 - "Community 807"
-Cohesion: 0.25
-Nodes (7): ZXGlobalHistogramBinarizer, -blackMatrixWithError, -blackRowrowerror, -createBinarizer, -estimateBlackPoint, -initArrays, -initWithSource
-
-### Community 808 - "Community 808"
-Cohesion: 0.25
-Nodes (7): ZXWhiteRectangleDetector, -blackPointOnSegmentaYbXbY, -centerEdgeszxt, -containsBlackPointbfixedhorizontal, -detectWithError, -initWithImageerror, -initWithImageinitSizexyerror
-
-### Community 809 - "Community 809"
-Cohesion: 0.25
-Nodes (7): ZXPDF417BarcodeMatrix, -currentRow, -initWithHeightwidth, -matrix, -scaledMatrixWithXScaleyScale, -setXyvalue, -startRow
-
-### Community 810 - "Community 810"
-Cohesion: 0.25
-Nodes (7): ZXPDF417BarcodeRow, -addBarwidth, -barcodeRowWithWidth, -initWithWidth, -scaledRow, -setXblack, -setXvalue
-
-### Community 811 - "Community 811"
-Cohesion: 0.25
-Nodes (7): ZXPDF417CodewordDecoder, -bitValue, -closestDecodedValue, -decodedCodewordValue, -decodedValue, -initialize, -sampleBitCounts
-
-### Community 812 - "Community 812"
-Cohesion: 0.25
-Nodes (7): ZXPDF417DetectionResultColumn, -codeword, -codewordNearby, -description, -imageRowToCodewordIndex, -initWithBoundingBox, -setCodewordcodeword
-
-### Community 813 - "Community 813"
-Cohesion: 0.25
-Nodes (7): ZXPDF417Codeword, -description, -hasValidRowNumber, -initWithStartXendXbucketvalue, -isValidRowNumber, -setRowNumberAsRowIndicatorColumn, -width
-
-### Community 814 - "Community 814"
-Cohesion: 0.25
-Nodes (7): ZXCode93Writer, -appendPatternposa, -appendPatternpospatternpatternLen, -computeChecksumIndexFromwithMaxWeight, -convertToExtended, -encode, -encodeformatwidthheighthintserror
-
-### Community 815 - "Community 815"
-Cohesion: 0.25
-Nodes (7): ZXRSSExpandedRow, -description, -hash, -initWithPairsrowNumberwasReversed, -isEqual, -isEquivalent, -isReversed
-
-### Community 816 - "Community 816"
-Cohesion: 0.25
-Nodes (7): ZXCGImageLuminanceSourceInfo, -initWithDecomposingMax, -initWithDecomposingMin, -initWithDigital, -initWithLuma, -initWithNormal, -initWithShades
-
-### Community 817 - "Community 817"
-Cohesion: 0.25
-Nodes (7): ZXParsedResult, -description, -displayResult, -initWithType, -maybeAppendArrayresult, -maybeAppendresult, -parsedResultWithType
-
-### Community 818 - "Community 818"
-Cohesion: 0.25
-Nodes (7): ZXSMSParsedResult, -displayResult, -initWithNumbersviassubjectbody, -initWithNumberviasubjectbody, -smsParsedResultWithNumbersviassubjectbody, -smsParsedResultWithNumberviasubjectbody, -sMSURI
-
-### Community 819 - "Community 819"
-Cohesion: 0.25
-Nodes (3): dav1d_setup_alloc_fail(), __wrap_pthread_create(), pthread_create()
-
-### Community 820 - "Community 820"
-Cohesion: 0.46
-Nodes (7): bitfn(), check_itxfm_add(), copy_subcoefs(), fadst_1d(), fdct_1d(), ftx(), fwht4_1d()
-
-### Community 821 - "Community 821"
-Cohesion: 0.46
-Nodes (6): clip_SSE2(), s16_to_s32(), SharpYuvFilterRow16_SSE2(), SharpYuvFilterRow32_SSE2(), SharpYuvFilterRow_SSE2(), SharpYuvUpdateY_SSE2()
-
-### Community 822 - "Community 822"
-Cohesion: 0.32
-Nodes (6): clip(), SharpYuvFilterRow_C(), SharpYuvInitDsp(), SharpYuvUpdateY_C(), InitSharpYuvNEON(), InitSharpYuvSSE2()
-
-### Community 823 - "Community 823"
-Cohesion: 0.39
-Nodes (7): Sub3(), ExportRowExpand_0(), ExportRowExpand_1(), ExportRowShrink_0(), ExportRowShrink_1(), RescalerExportRowExpand_MIPSdspR2(), RescalerExportRowShrink_MIPSdspR2()
-
-### Community 824 - "Community 824"
-Cohesion: 0.32
-Nodes (7): DoGreenShuffle_NEON(), SubtractGreenFromBlueAndRed_NEON(), TransformColor_NEON(), VP8LEncDspInitNEON(), SubtractGreenFromBlueAndRed_SSE2(), SubtractGreenFromBlueAndRed_SSE41(), VP8LSubtractGreenFromBlueAndRed_C()
-
-### Community 825 - "Community 825"
-Cohesion: 0.57
-Nodes (4): contextContainer(), emptyRawProps(), parserContext(), useRawPropsJsiValue_()
-
-### Community 826 - "Community 826"
-Cohesion: 0.57
-Nodes (4): backgroundColor(), foregroundColor(), lineHeight(), std()
-
-### Community 827 - "Community 827"
-Cohesion: 0.61
-Nodes (4): defaultSharedProps(), facebook(), initialStateData(), setStateData()
-
-### Community 828 - "Community 828"
-Cohesion: 0.57
-Nodes (4): dropShadowParams(), facebook(), fromRawValue(), parseUnprocessedFilterList()
-
-### Community 829 - "Community 829"
-Cohesion: 0.57
-Nodes (4): facebook(), Role(), selected(), toString()
-
-### Community 830 - "Community 830"
-Cohesion: 0.57
-Nodes (4): facebook(), shadowNodeListFromValue(), valueFromShadowNodeList(), weakShadowNodeListFromValue()
-
-### Community 831 - "Community 831"
-Cohesion: 0.57
-Nodes (4): inputAccessoryViewButtonLabel(), inputAccessoryViewID(), onKeyPressSync(), traits()
-
-### Community 832 - "Community 832"
-Cohesion: 0.61
-Nodes (4): BaseShadowNode(), BaseTraits(), facebook(), getTransform()
-
-### Community 837 - "Community 837"
-Cohesion: 0.32
-Nodes (3): bytes(), data(), writable_data()
-
-### Community 840 - "Community 840"
-Cohesion: 0.32
-Nodes (3): sk_sp(), SkSafeRef(), SkSafeUnref()
-
-### Community 841 - "Community 841"
-Cohesion: 0.36
-Nodes (5): call(), callWithArgs(), callWithFunction(), callWithPriority(), operator()
-
-### Community 843 - "Community 843"
-Cohesion: 0.57
-Nodes (6): AdaptableBinaryFunction(), AdaptableUnaryFunction(), BOOST_CONCEPT_USAGE(), ignore_unused_variable_warning(), require_boolean_expr(), test()
-
-### Community 844 - "Community 844"
-Cohesion: 0.36
-Nodes (4): antistable(), inverse, negate, unantistable()
-
-### Community 845 - "Community 845"
-Cohesion: 0.5
-Nodes (6): access, core_version_type(), load_construct_data_adl(), save_construct_data_adl(), split_free(), split_member()
-
-### Community 846 - "Community 846"
-Cohesion: 0.5
-Nodes (6): BOOST_NOEXCEPT(), file_name(), function_name(), to_string(), uint_least32_t column(), uint_least32_t line()
-
-### Community 847 - "Community 847"
-Cohesion: 0.43
-Nodes (6): is_any_ofF(), is_classifiedF(), is_from_rangeF(), pred_andF(), pred_notF(), pred_orF()
-
-### Community 848 - "Community 848"
-Cohesion: 0.32
-Nodes (3): clone(), copy_map, copy_map_entry()
-
-### Community 849 - "Community 849"
-Cohesion: 0.43
-Nodes (6): add(), copy(), invariant(), remove(), rotate_left(), rotate_right()
-
-### Community 850 - "Community 850"
-Cohesion: 0.43
-Nodes (6): add(), addWithPriority(), folly(), joinAndResetKeepAlive(), keepAliveAcquire(), keepAliveRelease()
-
-### Community 851 - "Community 851"
-Cohesion: 0.46
-Nodes (6): folly(), operator(), Overload(), overload_detail(), R(), T()
-
-### Community 852 - "Community 852"
-Cohesion: 0.43
-Nodes (6): begin(), data(), fallback_span(), operator(), rbegin(), size_bytes()
-
-### Community 853 - "Community 853"
-Cohesion: 0.43
-Nodes (6): detail(), EmplaceBack(), EmplaceFront(), folly(), iter(), operator()
-
-### Community 855 - "Community 855"
-Cohesion: 0.39
-Nodes (5): consumeComponentValue(), consumeToken(), CSSSyntaxParser(), visitFunction(), visitSimpleBlock()
-
-### Community 856 - "Community 856"
-Cohesion: 0.46
-Nodes (5): CSSTransformOrigin(), isHorizontalKeyword(), isVerticalKeyword(), xyKeywordValue(), xyLengthPercentageValue()
-
-### Community 857 - "Community 857"
-Cohesion: 0.46
-Nodes (6): folly(), hash(), operator(), std(), string(), string_view()
-
-### Community 858 - "Community 858"
-Cohesion: 0.25
-Nodes (7): NSImage, -CGImage, -CIImage, -initWithCGImagescaleorientation, -initWithCIImagescaleorientation, -initWithDatascale, -scale
-
-### Community 859 - "Community 859"
-Cohesion: 0.25
-Nodes (7): SDCallbackQueue, -async, -currentQueue, -globalQueue, -initWithDispatchQueue, -mainQueue, -sync
-
-### Community 860 - "Community 860"
-Cohesion: 0.32
-Nodes (7): detect(), _detect_from_magic(), _guess_mime(), Any, Detecta o tipo e família de um arquivo por extensão e MIME type., Detecta o formato e a família de um arquivo.      Retorna:       {         "exte, Detecção por magic bytes (assinatura binária).
-
-### Community 861 - "Community 861"
-Cohesion: 0.46
-Nodes (7): formatAbsolute(), formatAbsoluteFrom(), formatSmartTime(), isSameDay(), pad(), TimeInput, toDate()
-
-### Community 862 - "Community 862"
-Cohesion: 0.25
-Nodes (8): microservice/arquitetura-app-detalhada.md, 1. Objetivo, 2. Escopo do app, 3. Diagrama de alto nível, 4. Fluxo principal do app, 5. Responsabilidades do frontend, 6. Limites do frontend, 7. Objetivos de UX
-
-### Community 863 - "Community 863"
-Cohesion: 0.25
-Nodes (8): api/funcionamento-api-arquitetura-fluxos.md, Fluxo de jobs de personalizacao, Integracao com ApiBrainHex, Midia por perfil BrainHex, Observabilidade minima, Ranking, Telemetria, Visao geral
-
-### Community 864 - "Community 864"
-Cohesion: 0.25
-Nodes (8): microservice/arquitetura-microservico-e-app.md, Componentes internos, Fora do escopo, Motivos e objetivos, Objetivo, Objetivos operacionais, Posicionamento no ecossistema, Responsabilidades
-
-### Community 865 - "Community 865"
+### Community 865 - "Índice por projeto"
 Cohesion: 0.25
 Nodes (8): [`api/`](./api/) — Backend (Python · FastAPI), Começando, Documentação — TrailUp, Documentos transversais, [`frontend/`](./frontend/) — Web (Vite · React), [`microservice/`](./microservice/) — Microsserviço (Node · TS), [`mobile/`](./mobile/) — App (Expo · React Native), Índice por projeto
 
-### Community 866 - "Community 866"
-Cohesion: 0.25
-Nodes (7): Arquivo afetado, Design: Chat no Módulo — Remoção de Preview Automático e Botão de Descarte, Design da Correção, Mudanças, O que permanece intacto, Problema, Resultado esperado
-
-### Community 867 - "Community 867"
-Cohesion: 0.25
-Nodes (7): Rotação de Modelos Gemini Free-Tier por Qualidade — Implementation Plan, Task 1: Extrair helper compartilhado `generateAndValidateContent`, Task 2: Adicionar rotação por modelos fallback na falha de qualidade, Task 3: Injetar a lista de modelos fallback no chamador real, Task 4: Ampliar a lista de modelos fallback (+6) e atualizar docs/testes, Task 5: Relaxar o gate de cobertura mínima em `validateBlockBatchGeneration`, Task 6: Revisão final da branch
-
-### Community 868 - "Community 868"
-Cohesion: 0.25
-Nodes (7): Design, Design: status da personalização no console do professor, Fora de escopo, Motivação, O que já existe (sem mudança de backend), Onde aplicar, Testes
-
-### Community 869 - "Community 869"
-Cohesion: 0.25
-Nodes (7): Arquitetura, Componentes, Contexto e problema, Memória do aluno (estado mental histórico + domínio por tópico), Objetivo, Testes manuais, Tratamento de erro
-
-### Community 870 - "Community 870"
-Cohesion: 0.25
-Nodes (7): Arquitetura, Componentes, Contexto e problema, Objetivo, Structured Output + Guardrails no grafo LangGraph, Testes manuais, Tratamento de erro
-
-### Community 871 - "Community 871"
-Cohesion: 0.25
-Nodes (7): Contexto, Descoberta técnica que muda o mecanismo, Mudanças — BrainHexPDF, Mudanças — TrailUp (mobile), Quiz dinâmico por modoOperacao — Design, Testes, Valores reais de `modoOperacao.nome`
-
-### Community 872 - "Community 872"
-Cohesion: 0.25
-Nodes (7): Contexto, Descoberta que definiu a arquitetura, Escopo desta fase (D1a), Persistência e idempotência, Testes, Wiring — bem mais simples do que a investigação inicial temia, XP de slides com checkpoint (D1a) — Design
-
-### Community 873 - "Community 873"
-Cohesion: 0.29
-Nodes (7): scripts, build, build:dev, dev, lint, preview, test
-
-### Community 874 - "Community 874"
-Cohesion: 0.38
-Nodes (3): ContentVisualRepresentation(), TrailUpArchetypeSigil(), TrailUpGemLogo()
-
-### Community 875 - "Community 875"
-Cohesion: 0.43
-Nodes (4): parseRelsMap(), parseSlideIdOrder(), resolveRealSlideOrder(), sortByFilenameNumber()
-
-### Community 879 - "Community 879"
-Cohesion: 0.48
-Nodes (5): buildMarkdownDocument(), escapeHtml(), markdownToHtml(), parseInline(), wrapHtmlDocument()
-
-### Community 880 - "Community 880"
-Cohesion: 0.52
-Nodes (6): asNumber(), asString(), clamp(), normalizeList(), normalizeResult(), validateEssayAnswerWithAi()
-
-### Community 881 - "Community 881"
-Cohesion: 0.38
-Nodes (6): detect(), _detect_from_magic(), _guess_mime(), Detecta o tipo e família de um arquivo por extensão e MIME type., Detecta o formato e a família de um arquivo.      Retorna:       {         "exte, Detecção por magic bytes (assinatura binária).
-
-### Community 882 - "Community 882"
-Cohesion: 0.38
-Nodes (6): _empty(), extract(), Extrator de Markdown: parse estrutural → lista de Block., Extrai blocos estruturados de um arquivo Markdown., Remove markdown inline: bold, italic, code, links., _strip_inline_md()
-
-### Community 883 - "Community 883"
-Cohesion: 0.38
-Nodes (6): _classify_line(), _empty(), extract(), Extrator de PDF: pypdf → lista de Block., Extrai blocos estruturados de um PDF.      Retorna dict com:       - family, tit, Heurística simples para classificar linhas de PDF.
-
-### Community 885 - "Community 885"
-Cohesion: 0.29
-Nodes (6): ZXGenericMultipleBarcodeReader, -decodeMultipleerror, -decodeMultiplehintserror, -doDecodeMultiplehintsresultsxOffsetyOffsetcurrentDeptherror, -initWithDelegate, -translateResultPointsxOffsetyOffset
-
-### Community 886 - "Community 886"
-Cohesion: 0.29
-Nodes (6): ZXByQuadrantReader, -decodeerror, -decodehintserror, -initWithDelegate, -makeAbsoluteleftOffsettopOffset, -reset
-
-### Community 887 - "Community 887"
-Cohesion: 0.29
-Nodes (6): ZXGridSampler, -checkAndNudgePointspointspointsLenerror, -instance, -sampleGriddimensionXdimensionYp1ToXp1ToYp2ToXp2ToYp3ToXp3ToYp4ToXp4ToYp1FromXp1FromYp2FromXp2FromYp3FromXp3FromYp4FromXp4FromYerror, -sampleGriddimensionXdimensionYtransformerror, -setGridSampler
-
-### Community 888 - "Community 888"
-Cohesion: 0.29
-Nodes (6): ZXCharacterSetECI, -addCharacterSetencoding, -characterSetECIByEncoding, -characterSetECIByValue, -initialize, -initWithValueencoding
-
-### Community 889 - "Community 889"
-Cohesion: 0.29
-Nodes (6): ZXReedSolomonDecoder, -decodetwoSerror, -findErrorLocationserror, -findErrorMagnitudeserrorLocations, -initWithField, -runEuclideanAlgorithmbRerror
-
-### Community 890 - "Community 890"
-Cohesion: 0.29
-Nodes (6): ZXPDF417Writer, -bitMatrixFromBitArraymargin, -bitMatrixFromEncodercontentserrorCorrectionLevelwidthheightmarginerror, -encodeformatwidthheighterror, -encodeformatwidthheighthintserror, -rotateArray
-
-### Community 891 - "Community 891"
-Cohesion: 0.29
-Nodes (6): ZXPDF417BoundingBox, -addMissingRowsmissingEndRowsisLeft, -calculateMinMaxValues, -initWithBoundingBox, -initWithImagetopLeftbottomLefttopRightbottomRight, -mergeLeftBoxrightBox
-
-### Community 892 - "Community 892"
-Cohesion: 0.29
-Nodes (6): ZXPDF417ECErrorCorrection, -decodenumECCodewordserasures, -findErrorLocations, -findErrorMagnitudeserrorLocatorerrorLocations, -init, -runEuclideanAlgorithmbR
-
-### Community 893 - "Community 893"
-Cohesion: 0.29
-Nodes (6): ZXAI013x0x1xDecoder, -addWeightCodeweight, -checkWeight, -encodeCompressedDatecurrentPos, -initWithInformationfirstAIdigitsdateCode, -parseInformationWithError
-
-### Community 894 - "Community 894"
-Cohesion: 0.29
-Nodes (6): ZXRSSExpandedDecodedNumeric, -anyFNC1, -firstDigitFNC1, -initWithNewPositionfirstDigitsecondDigit, -secondDigitFNC1, -value
-
-### Community 895 - "Community 895"
-Cohesion: 0.29
-Nodes (6): ZXAddressBookParsedResult, -addressBookParsedResultWithNamesnicknamespronunciationphoneNumbersphoneTypesemailsemailTypesinstantMessengernoteaddressesaddressTypesorgbirthdaytitleurlsgeo, -addressBookParsedResultWithNamesphoneNumbersphoneTypesemailsemailTypesaddressesaddressTypes, -displayResult, -initWithNamesnicknamespronunciationphoneNumbersphoneTypesemailsemailTypesinstantMessengernoteaddressesaddressTypesorgbirthdaytitleurlsgeo, -initWithNamesphoneNumbersphoneTypesemailsemailTypesaddressesaddressTypes
-
-### Community 896 - "Community 896"
-Cohesion: 0.29
-Nodes (6): ZXEmailAddressParsedResult, -displayResult, -emailAddress, -initWithTo, -initWithTosccsbccssubjectbody, -mailtoURI
-
-### Community 897 - "Community 897"
-Cohesion: 0.29
-Nodes (6): ZXProductParsedResult, -displayResult, -initWithProductID, -initWithProductIDnormalizedProductID, -productParsedResultWithProductID, -productParsedResultWithProductIDnormalizedProductID
-
-### Community 898 - "Community 898"
-Cohesion: 0.29
-Nodes (6): ZXWifiParsedResult, -displayResult, -initWithNetworkEncryptionssidpassword, -initWithNetworkEncryptionssidpasswordhidden, -wifiParsedResultWithNetworkEncryptionssidpassword, -wifiParsedResultWithNetworkEncryptionssidpasswordhidden
-
-### Community 899 - "Community 899"
-Cohesion: 0.48
-Nodes (5): dav1d_wiener_filter_vsx(), iclip_vec(), padding(), wiener_filter_h_vsx(), wiener_filter_v_vsx()
-
-### Community 900 - "Community 900"
-Cohesion: 0.43
-Nodes (4): VP8LColorCacheContains(), VP8LColorCacheGetIndex(), VP8LColorCacheInsert(), VP8LHashPix()
-
-### Community 901 - "Community 901"
-Cohesion: 0.57
-Nodes (3): ceil(), floor(), round()
-
-### Community 902 - "Community 902"
-Cohesion: 0.52
-Nodes (5): clip_NEON(), SharpYuvFilterRow16_NEON(), SharpYuvFilterRow32_NEON(), SharpYuvFilterRow_NEON(), SharpYuvUpdateY_NEON()
-
-### Community 903 - "Community 903"
-Cohesion: 0.48
-Nodes (6): DoFilter(), GetILevel(), GetMBSSIM(), VP8AdjustFilterStrength(), VP8FilterStrengthFromDelta(), VP8StoreFilterStats()
-
-### Community 904 - "Community 904"
-Cohesion: 0.57
-Nodes (3): currentTask_(), getShouldYield(), performanceEntryReporter_()
-
-### Community 906 - "Community 906"
-Cohesion: 0.62
-Nodes (3): facebook(), fromJs(), toJs()
-
-### Community 907 - "Community 907"
-Cohesion: 0.57
-Nodes (3): borderWidth(), getPaddingFrame(), overflowInset()
-
-### Community 908 - "Community 908"
-Cohesion: 0.57
-Nodes (3): ConcreteState(), getMapBuffer(), updateState()
-
-### Community 909 - "Community 909"
-Cohesion: 0.57
-Nodes (3): TestComponentDescriptor(), TestProps(), _transform()
-
-### Community 910 - "Community 910"
-Cohesion: 0.57
-Nodes (3): dynamic(), isZero(), TransformOperationType()
-
-### Community 911 - "Community 911"
-Cohesion: 0.57
-Nodes (3): facebook(), filterTypeFromString(), toString()
-
-### Community 912 - "Community 912"
-Cohesion: 0.62
-Nodes (5): decltype(), detail(), maybe_set_debug_format(), namespace(), source_location()
-
-### Community 913 - "Community 913"
-Cohesion: 0.52
-Nodes (5): e_(), emplace(), folly(), operator(), throwIfFailed()
-
-### Community 914 - "Community 914"
-Cohesion: 0.57
-Nodes (3): controller_(), HostTargetController(), LoadNetworkResourceDelegate()
-
-### Community 917 - "Community 917"
-Cohesion: 0.38
-Nodes (3): Sk32_sat_add(), Sk32_sat_sub(), Sk64_pin_to_s32()
-
-### Community 919 - "Community 919"
-Cohesion: 0.43
-Nodes (4): reset(), retain(), SkCFSafeRelease(), SkCFSafeRetain()
-
-### Community 925 - "Community 925"
-Cohesion: 0.48
-Nodes (5): copy(), inplace_set_difference(), inplace_set_unique_difference(), set_difference(), set_unique_difference()
-
-### Community 926 - "Community 926"
-Cohesion: 0.43
-Nodes (4): distance_to(), equal(), iterator_adaptor, iterator_adaptor_assert_traversal()
-
-### Community 927 - "Community 927"
-Cohesion: 0.43
-Nodes (4): core_typeid_(), core_typeid_lib_id(), demangled_name(), typeinfo
-
-### Community 928 - "Community 928"
-Cohesion: 0.43
-Nodes (4): bidir_node_iterator, load(), save(), serialize()
-
-### Community 929 - "Community 929"
-Cohesion: 0.48
-Nodes (5): boost::move_detail::enable_if_c
-            < !::boost::move_detail::is_nothrow_move_constructible_or_uncopyable<T>::value, const T&>::type
-               move_if_noexcept(), boost::move_detail::enable_if_c
-            < ::boost::move_detail::is_nothrow_move_constructible_or_uncopyable<T>::value, T&&>::type
-               move_if_noexcept(), boost::move_detail::enable_if_c
-      < enable_move_utility_emulation<T>::value && has_move_emulation_enabled<T>::value
-            && ::boost::move_detail::is_nothrow_move_constructible_or_uncopyable<T>::value, rv<T>&>::type
-         move_if_noexcept(), boost::move_detail::enable_if_c
-      < enable_move_utility_emulation<T>::value && has_move_emulation_enabled<T>::value
-            && !::boost::move_detail::is_nothrow_move_constructible_or_uncopyable<T>::value
-      , typename ::boost::move_detail::add_const<T>::type &
-      >::type
-         move_if_noexcept(), boost::move_detail::enable_if_c
-      < enable_move_utility_emulation<T>::value && !has_move_emulation_enabled<T>::value
-      , typename ::boost::move_detail::add_const<T>::type &
-      >::type
-         move_if_noexcept()
-
-### Community 930 - "Community 930"
-Cohesion: 0.48
-Nodes (5): boost::move_detail::enable_if_c
-      < !::boost::move_detail::is_lvalue_reference<Ret>::value &&
-         ::boost::has_move_emulation_enabled<T>::value
-      , ::boost::rv<T>&>::type
-         move_return(), boost::move_detail::enable_if_c
-      <  ::boost::move_detail::is_lvalue_reference<Ret>::value ||
-        !::boost::has_move_emulation_enabled<T>::value
-      , T&>::type
-         move_return(), boost::move_detail::enable_if_c
-         < !::boost::move_detail::is_lvalue_reference<Ret>::value
-         , Ret && >::type
-            move_return(), boost::move_detail::enable_if_c
-         <  ::boost::move_detail::is_lvalue_reference<Ret>::value
-         , T&>::type
-            move_return(), boost::move_detail::if_c
-         < ::boost::move_detail::is_class<T>::value
-         , T
-         , ::boost::move_detail::nat
-         >::type()
-
-### Community 931 - "Community 931"
-Cohesion: 0.57
-Nodes (5): insertion_sort(), insertion_sort_copy(), insertion_sort_op(), insertion_sort_swap(), insertion_sort_uninitialized_copy()
-
-### Community 933 - "Community 933"
-Cohesion: 0.52
-Nodes (6): backup_lpf(), bytefn(), filter_plane_cols_uv(), filter_plane_cols_y(), filter_plane_rows_uv(), filter_plane_rows_y()
-
-### Community 934 - "Community 934"
-Cohesion: 0.43
-Nodes (4): iterator_arrow_result(), make_reverse_iterator(), move_detail::enable_if_convertible<OtherIt, It, reverse_iterator &>::type
-         operator=(), reverse_iterator
-
-### Community 935 - "Community 935"
-Cohesion: 0.38
-Nodes (3): backward_compatible_uniform_01, new_uniform_01, uniform_01
-
-### Community 936 - "Community 936"
-Cohesion: 0.38
-Nodes (3): chi_squared_distribution, param_type, read()
-
-### Community 937 - "Community 937"
-Cohesion: 0.38
-Nodes (3): gamma_distribution, param_type, read()
-
-### Community 939 - "Community 939"
-Cohesion: 0.38
-Nodes (3): new_allocator, new_allocator<void>, swap()
-
-### Community 940 - "Community 940"
-Cohesion: 0.48
-Nodes (5): BOOST_NOEXCEPT(), common_slist_algorithms, detach_and_dispose(), stable_partition(), unlink_after_and_dispose()
-
-### Community 941 - "Community 941"
-Cohesion: 0.38
-Nodes (3): negative_binomial_distribution, param_type, read()
-
-### Community 942 - "Community 942"
-Cohesion: 0.52
-Nodes (5): detail(), namespace(), print(), println(), T()
-
-### Community 943 - "Community 943"
-Cohesion: 0.57
-Nodes (5): clear(), data(), dynamic_arg_list(), namespace(), reserve()
-
-### Community 944 - "Community 944"
-Cohesion: 0.57
-Nodes (5): insertHead(), next(), reverse(), spliceAll(), unsafeHead()
-
-### Community 945 - "Community 945"
-Cohesion: 0.52
-Nodes (5): checkAdvanceToNextSubmap(), equal(), folly(), increment(), nullptr()
-
-### Community 946 - "Community 946"
-Cohesion: 0.52
-Nodes (5): check(), folly(), IntermediateType(), max(), min()
-
-### Community 947 - "Community 947"
-Cohesion: 0.48
-Nodes (5): detail(), folly(), get(), operator(), swap()
-
-### Community 948 - "Community 948"
-Cohesion: 0.57
-Nodes (5): bitOffset(), blockCount(), blockIndex(), folly(), ones()
-
-### Community 949 - "Community 949"
-Cohesion: 0.48
-Nodes (5): context(), error_code(), folly(), index(), value()
-
-### Community 954 - "Community 954"
-Cohesion: 0.29
-Nodes (7): computeBorderForAxis(), computeInlineEndBorder(), computeInlineEndPadding(), computeInlineEndPaddingAndBorder(), computeInlineStartBorder(), computeInlineStartPadding(), computeInlineStartPaddingAndBorder()
-
-### Community 955 - "Community 955"
-Cohesion: 0.29
-Nodes (6): UIImage, -sd_decodedAndScaledDownImageWithImage, -sd_decodedAndScaledDownImageWithImagelimitBytes, -sd_decodedImageWithImage, -sd_isDecoded, -setSd_isDecoded
-
-### Community 956 - "Community 956"
-Cohesion: 0.29
-Nodes (6): SDWebImageLoadState, UIView, -sd_imageLoadStateDictionary, -sd_imageLoadStateForKey, -sd_removeImageLoadStateForKey, -sd_setImageLoadStateforKey
-
-### Community 957 - "Community 957"
-Cohesion: 0.29
-Nodes (6): SDAnimatedImageRep, -copyWithZone, -dealloc, -imageRepWithData, -initWithData, -setPropertywithValue
-
-### Community 958 - "Community 958"
-Cohesion: 0.29
-Nodes (6): SDWebImageOptionsProcessor, -initWithBlock, -optionsProcessorWithBlock, -processedResultForURLoptionscontext, SDWebImageOptionsResult, -initWithOptionscontext
-
-### Community 959 - "Community 959"
-Cohesion: 0.29
-Nodes (6): UIView, -sd_cancelImageLoadOperationWithKey, -sd_imageLoadOperationForKey, -sd_operationDictionary, -sd_removeImageLoadOperationWithKey, -sd_setImageLoadOperationforKey
-
-### Community 960 - "Community 960"
-Cohesion: 0.29
-Nodes (6): SDDeviceHelper, -freeMemory, -screenEDR, -screenMaxEDR, -screenScale, -totalMemory
-
-### Community 961 - "Community 961"
-Cohesion: 0.29
-Nodes (6): SDFileAttributeHelper, -extendedAttributeatPathtraverseLinkerror, -extendedAttributeNamesAtPathtraverseLinkerror, -hasExtendedAttributeatPathtraverseLinkerror, -removeExtendedAttributeatPathtraverseLinkerror, -setExtendedAttributevalueatPathtraverseLinkoverwriteerror
-
-### Community 962 - "Community 962"
-Cohesion: 0.52
-Nodes (5): buildMarkdownDocument(), escapeHtml(), markdownToHtml(), parseInline(), wrapHtmlDocument()
-
-### Community 963 - "Community 963"
-Cohesion: 0.29
-Nodes (6): Contexto (confirmado por leitura direta do código), Contexto de como funciona hoje (confirmado por leitura direta do código), Self-Review, Slides Imersivos — Guardas nos Consumidores Implementation Plan, Task A: Mobile não sintetiza o bloco nativo quando o material é imersivo, Task B: API rejeita regeneração de slide individual pra material imersivo
-
-### Community 967 - "Community 967"
-Cohesion: 0.53
-Nodes (4): buildImageSourceContexts(), parseSlideImageRelIds(), parseSlideImageRels(), parseSlideText()
-
-### Community 970 - "Community 970"
+### Community 866 - "modulo"
+Cohesion: 0.11
+Nodes (15): modulo(), test_limite_de_tentativas_nao_e_alteracao_do_professor(), Chat no Módulo — Remoção de Preview Automático e Botão de Descarte, Task 1: Remover previewBubble, actionsRow e estilos mortos, Arquivo afetado, Design: Chat no Módulo — Remoção de Preview Automático e Botão de Descarte, Design da Correção, Mudanças (+7 more)
+
+### Community 868 - "AbaInsights.tsx"
+Cohesion: 0.11
+Nodes (35): Design, Design: status da personalização no console do professor, Fora de escopo, Motivação, O que já existe (sem mudança de backend), Testes, AbaInsights(), CartaoDeInsight() (+27 more)
+
+### Community 873 - "scripts"
+Cohesion: 0.18
+Nodes (11): scripts, build, build:dev, dev, lint, preview, test, test:cadastro (+3 more)
+
+### Community 876 - "createDedupedTimeoutRunner"
+Cohesion: 0.28
+Nodes (4): createDedupedTimeoutRunner(), evictIfCurrent(), run(), DedupedTimeoutRunner
+
+### Community 921 - "PR #124 — sync Lab → espelho"
+Cohesion: 0.50
+Nodes (4): Conflitos resolvidos (prioridade Lab), Modelo Lab ↔ espelho, PR #124 — sync Lab → espelho, Relação com incidente de dados
+
+### Community 922 - "Parceiros / papéis de agentes"
+Cohesion: 0.50
+Nodes (4): Hub (lista canônica de bots), Parceiros / papéis de agentes, Regras cruzadas, Vaults
+
+### Community 923 - "IDEAÇÃO — GERAÇÃO DE SOLUÇÕES"
+Cohesion: 0.50
+Nodes (4): IDEAÇÃO — GERAÇÃO DE SOLUÇÕES, Ideias, Matriz de Priorização (Tabela), Storyboard (Resumo)
+
+### Community 926 - "aplicar-ciclo-de-vida.sh"
+Cohesion: 0.83
+Nodes (3): exigir_confirmacao(), aplicar-ciclo-de-vida.sh script, uso()
+
+### Community 927 - "motion@^12.23.24"
+Cohesion: 0.33
+Nodes (4): motion@^12.23.24, @vitejs/plugin-react@^5.0.4, motion, @vitejs/plugin-react
+
+### Community 928 - "revisao-03-loja/telas/11-configuracoes.md"
+Cohesion: 0.50
+Nodes (3): 1. Feedback, 2. O que muda, 3. Aceite
+
+### Community 929 - "05-ranking-scroll.md"
+Cohesion: 0.50
+Nodes (3): Aceite, O que muda, Pedido
+
+### Community 930 - "00-direcao-e-regras-gerais.md"
+Cohesion: 0.50
+Nodes (3): Correção de direção visual (isto substitui/refina o que foi combinado antes), Critério de aceite desta rodada (o que "pronto" significa), Regras de UX que valem para o console inteiro (aplicar em toda tela, não só nas listadas)
+
+### Community 931 - "revisao-01-apontamentos/01-dashboard.md"
+Cohesion: 0.50
+Nodes (3): O problema identificado, O que peço, O que precisa aparecer (mantendo os KPIs e gráficos já existentes como base)
+
+### Community 932 - "02-jornada-aluno.md"
+Cohesion: 0.50
+Nodes (3): O problema identificado, O que peço, O que precisa mudar
+
+### Community 933 - "revisao-01-apontamentos/04-personalizacoes.md"
+Cohesion: 0.50
+Nodes (3): A exigência central, O que peço, O que precisa existir
+
+### Community 934 - "07-geracao-trilha-ia.md"
+Cohesion: 0.50
+Nodes (3): O que mantém, O que peço, O que precisa mudar
+
+### Community 935 - "08-canvas-trilha.md"
+Cohesion: 0.50
+Nodes (3): O problema identificado, O que peço, O que precisa mudar
+
+### Community 936 - "02-trilha-fluxo-edicao-questoes-e-cards.md"
+Cohesion: 0.50
+Nodes (3): CORRIGIR, MANTER, O problema
+
+### Community 937 - "03-trilha-modal-para-pagina-com-autosave.md"
+Cohesion: 0.50
+Nodes (3): CORRIGIR, MANTER, O problema
+
+### Community 938 - "04-trilha-duplicar-e-excluir-topico.md"
+Cohesion: 0.50
+Nodes (3): ADICIONAR, MANTER, O problema
+
+### Community 939 - "05-dashboard-historico-de-sugestoes-e-intervencoes-da-ia.md"
+Cohesion: 0.50
+Nodes (3): ADICIONAR, MANTER, O problema
+
+### Community 940 - "06-dashboard-tutor-de-ia-para-o-professor.md"
+Cohesion: 0.50
+Nodes (3): A proposta, ADICIONAR (proposta mínima), MANTER
+
+### Community 941 - "07-dashboard-barra-de-rolagem-fora-do-padrao.md"
+Cohesion: 0.50
+Nodes (3): CORRIGIR, MANTER, O problema
+
+### Community 942 - "09-classes-confirmacao-ao-duplicar-turma.md"
+Cohesion: 0.50
+Nodes (3): CORRIGIR, MANTER, O problema
+
+### Community 943 - "11-trilha-edicao-de-atividade-incompleta.md"
+Cohesion: 0.50
+Nodes (3): CORRIGIR, MANTER, O problema
+
+### Community 944 - "12-trilha-cabecalho-duplicado-no-editor-de-topico.md"
+Cohesion: 0.50
+Nodes (3): CORRIGIR, MANTER, O problema
+
+### Community 945 - "13-personalizacoes-modal-nao-abre.md"
+Cohesion: 0.50
+Nodes (3): CORRIGIR, MANTER, O problema
+
+### Community 946 - "01-trilha/prompt.md"
+Cohesion: 0.50
+Nodes (3): Conteúdo e estrutura de hoje, O que ela faz, O que peço
+
+### Community 947 - "02-turmas/prompt.md"
+Cohesion: 0.50
+Nodes (3): Conteúdo de hoje, O que ela faz, O que peço
+
+### Community 948 - "03-personalizacoes/prompt.md"
+Cohesion: 0.50
+Nodes (3): O que ela faz, O que peço, Vocabulário de status (usar de forma consistente e reconhecível visualmente)
+
+### Community 949 - "04-ranks/prompt.md"
+Cohesion: 0.50
+Nodes (3): Conteúdo de hoje, O que ela faz, O que peço
+
+### Community 950 - "06-aprovacoes/prompt.md"
+Cohesion: 0.50
+Nodes (3): Conteúdo de hoje, O que ela faz, O que peço
+
+### Community 951 - "07-login/prompt.md"
+Cohesion: 0.50
+Nodes (3): Conteúdo de hoje, O que ela faz, O que peço
+
+### Community 952 - "08-recuperar-senha/prompt.md"
+Cohesion: 0.50
+Nodes (3): O que peço, Tela 1 — "Esqueci minha senha" (pedir o link), Tela 2 — "Criar nova senha" (a que abre a partir do link do e-mail)
+
+### Community 953 - "10-reorganizar-navegacao-missoes-e-notas.md"
+Cohesion: 0.50
+Nodes (3): Contexto, CORRIGIR — navegação, O que NÃO fazer
+
+### Community 954 - "11-reorganizar-navegacao-eventos-batalhas-conquistas.md"
+Cohesion: 0.50
+Nodes (3): Contexto, CORRIGIR — navegação, O que NÃO fazer
+
+### Community 955 - "13-personalizacoes-multiplos-formatos-por-conteudo.md"
+Cohesion: 0.50
+Nodes (3): Contexto, CORRIGIR — cada aba do modal vira uma lista, não um item único, O que NÃO fazer
+
+### Community 956 - "02-personalizacoes-modal-nao-abre-por-perfil.md"
+Cohesion: 0.50
+Nodes (3): Contexto, CORRIGIR, O que NÃO fazer
+
+### Community 957 - "03-aprovacoes-conteudo-desalinhado.md"
+Cohesion: 0.50
+Nodes (3): Contexto, CORRIGIR, O que NÃO fazer
+
+### Community 963 - "Slides Imersivos — Guardas nos Consumidores Implementation Plan"
+Cohesion: 0.40
+Nodes (4): Self-Review, Slides Imersivos — Guardas nos Consumidores Implementation Plan, Task A: Mobile não sintetiza o bloco nativo quando o material é imersivo, Task B: API rejeita regeneração de slide individual pra material imersivo
+
+### Community 995 - "vite"
 Cohesion: 0.67
-Nodes (4): boxShadowFromRN(), shadowStyle(), textShadowFromRN(), textShadowStyle()
+Nodes (3): vite@^6.2.3, vite@^6.2.3, vite
 
-### Community 971 - "Community 971"
-Cohesion: 0.47
-Nodes (5): _migracoes(), Regras que valem para toda migracao, aprendidas quebrando.  O render offline do, Em PL/pgSQL o formato do RAISE tem que ser literal.      `RAISE EXCEPTION 'x: ', test_ha_migracoes_para_conferir(), test_raise_nao_concatena_o_formato()
+### Community 1003 - "createRegistry"
+Cohesion: 1.00
+Nodes (3): createRegistry(), bump(), get()
 
-### Community 973 - "Community 973"
-Cohesion: 0.4
-Nodes (4): _limpar(), RLS: posse por tabela — aluno ve o que e dele, professor o que e da classe dele, Remove as policies herdadas, que eram `USING (true)`., upgrade()
+### Community 1004 - "createRegistry"
+Cohesion: 1.00
+Nodes (3): createRegistry(), bump(), get()
 
-### Community 975 - "Community 975"
+### Community 1005 - "createRegistry"
+Cohesion: 1.00
+Nodes (3): createRegistry(), bump(), get()
+
+### Community 1006 - "createRegistry"
+Cohesion: 1.00
+Nodes (3): createRegistry(), bump(), get()
+
+### Community 1007 - "createRegistry"
+Cohesion: 1.00
+Nodes (3): createRegistry(), bump(), get()
+
+### Community 1008 - "createRegistry"
+Cohesion: 1.00
+Nodes (3): createRegistry(), bump(), get()
+
+### Community 1009 - "createRegistry"
+Cohesion: 1.00
+Nodes (3): createRegistry(), bump(), get()
+
+### Community 1010 - "createRegistry"
+Cohesion: 1.00
+Nodes (3): createRegistry(), bump(), get()
+
+### Community 1108 - "_run_media_generation_wiring"
+Cohesion: 0.04
+Nodes (20): _run_media_generation_wiring(), test_job_does_not_mark_target_completed_when_record_is_not_pronto(), test_job_fails_target_stuck_too_long_on_microservice_contract_gate(), test_job_keeps_deferred_target_pending_without_consuming_retry(), test_job_keeps_recent_microservice_contract_gate_target_pending(), test_job_media_generation_wiring_calls_orchestrator_and_finalizes_completed(), buscar_por_ciclo_id(), fetch_ctx() (+12 more)
+
+### Community 1109 - "_reset_circuits"
 Cohesion: 0.33
-Nodes (5): ZXDimension, -description, -hash, -initWithWidthheight, -isEqual
+Nodes (5): reset_gemini_enrichment_circuit(), reset_openai_enrichment_circuit(), reset_openai_spend_guard(), _clean_circuits(), _reset_circuits()
 
-### Community 976 - "Community 976"
-Cohesion: 0.33
-Nodes (5): ZXMonochromeRectangleDetector, -blackWhiteRangemaxWhiteRunminDimmaxDimhorizontal, -detectWithError, -findCornerFromCenterdeltaXleftrightcenterYdeltaYtopbottommaxWhiteRun, -initWithImage
-
-### Community 977 - "Community 977"
-Cohesion: 0.33
-Nodes (5): ZXPDF417Common, -binarySearch, -bitCountSum, -codeword, -toIntArray
-
-### Community 978 - "Community 978"
-Cohesion: 0.33
-Nodes (5): ZXPDF417BarcodeValue, -confidence, -init, -setValue, -value
-
-### Community 979 - "Community 979"
-Cohesion: 0.33
-Nodes (5): ZXEANManufacturerOrgSupport, -addidentifier, -init, -initIfNeeded, -lookupCountryIdentifier
-
-### Community 980 - "Community 980"
-Cohesion: 0.33
-Nodes (5): ZXEAN13Reader, -barcodeFormat, -decodeMiddlestartRangeresulterror, -determineFirstDigitlgPatternFound, -init
-
-### Community 981 - "Community 981"
-Cohesion: 0.33
-Nodes (5): ZXCode128Writer, -chooseCodeFrompositionoldCode, -encode, -encodeformatwidthheighthintserror, -findCTypeInstart
-
-### Community 982 - "Community 982"
-Cohesion: 0.33
-Nodes (5): ZXUPCEANExtension2Support, -decodeMiddlestartRangeresulterror, -decodeRowrowextensionStartRangeerror, -init, -parseExtensionString
-
-### Community 983 - "Community 983"
-Cohesion: 0.33
-Nodes (5): ZXCode39Writer, -encode, -encodeformatwidthheighthintserror, -toIntArraytoReturn, -tryToConvertToExtendedMode
-
-### Community 984 - "Community 984"
-Cohesion: 0.33
-Nodes (5): ZXRSSDataCharacter, -description, -hash, -initWithValuechecksumPortion, -isEqual
-
-### Community 985 - "Community 985"
-Cohesion: 0.33
-Nodes (5): ZXRSSExpandedFieldParser, -initialize, -parseFieldsInGeneralPurposeerror, -processFixedAIfieldSizerawInformation, -processVariableAIvariableFieldSizerawInformation
-
-### Community 986 - "Community 986"
-Cohesion: 0.33
-Nodes (5): ZXVEventResultParser, -matchSingleVCardPrefixedFieldrawTexttrim, -matchVCardPrefixedFieldrawTexttrim, -parse, -stripMailto
-
-### Community 987 - "Community 987"
-Cohesion: 0.33
-Nodes (5): ZXGeoParsedResult, -displayResult, -geoParsedResultWithLatitudelongitudealtitudequery, -geoURI, -initWithLatitudelongitudealtitudequery
-
-### Community 989 - "Community 989"
-Cohesion: 0.73
-Nodes (5): bitfn(), check_sgr(), check_wiener(), init_tmp(), to_binary()
-
-### Community 990 - "Community 990"
-Cohesion: 0.67
-Nodes (5): bitfn(), check_cdef_direction(), check_cdef_filter(), init_tmp(), to_binary()
-
-### Community 991 - "Community 991"
-Cohesion: 0.6
-Nodes (5): bitfn(), check_cfl_ac(), check_cfl_pred(), check_intra_pred(), check_pal_pred()
-
-### Community 992 - "Community 992"
-Cohesion: 0.53
-Nodes (5): VP8GetBit(), VP8GetBitAlt(), VP8GetSigned(), VP8LoadNewBytes(), VP8LoadFinalBytes()
-
-### Community 1036 - "Community 1036"
-Cohesion: 0.47
-Nodes (3): folly(), hasSpaceOrCntrlSymbols(), toLowerAscii()
-
-### Community 1037 - "Community 1037"
-Cohesion: 0.6
-Nodes (4): call_(), data_(), detail(), folly()
-
-### Community 1047 - "Community 1047"
-Cohesion: 0.47
-Nodes (3): decltype(), render(), string()
-
-### Community 1048 - "Community 1048"
-Cohesion: 0.47
-Nodes (3): NSURLFromImageSource(), NSURLRequestCachePolicyFromImageSource(), NSURLRequestFromImageSource()
-
-### Community 1049 - "Community 1049"
-Cohesion: 0.6
-Nodes (5): Bold(), BoldItalic(), Italic(), Normal(), SkFontStyle()
-
-### Community 1053 - "Community 1053"
-Cohesion: 0.73
-Nodes (5): find(), insert(), insert_or_update(), remove(), reset()
-
-### Community 1059 - "Community 1059"
-Cohesion: 0.47
-Nodes (3): decltype(), render(), string()
-
-### Community 1063 - "Community 1063"
-Cohesion: 0.53
-Nodes (4): const_formatter(), dissect_formatter(), empty_formatter(), identity_formatter()
-
-### Community 1064 - "Community 1064"
-Cohesion: 0.53
-Nodes (4): find_format(), find_format_all(), find_format_all_copy(), find_format_copy()
-
-### Community 1065 - "Community 1065"
-Cohesion: 0.47
-Nodes (3): distance_to(), make_reverse_iterator(), reverse_iterator
-
-### Community 1066 - "Community 1066"
-Cohesion: 0.53
-Nodes (4): any_container_view, begin_for(), end_for(), vtable_for()
-
-### Community 1067 - "Community 1067"
-Cohesion: 0.53
-Nodes (4): find_format_copy_impl(), find_format_copy_impl2(), find_format_impl(), find_format_impl2()
-
-### Community 1068 - "Community 1068"
-Cohesion: 0.6
-Nodes (4): BOOST_WORKAROUND(), range_end(), range_iterator<C>::type
-        range_end(), range_iterator<const T>::type
-        const_end()
-
-### Community 1070 - "Community 1070"
-Cohesion: 0.53
-Nodes (4): BOOST_NOEXCEPT_OR_NOTHROW(), priv_construct(), select_on_container_copy_construction(), small_vector_allocator
-
-### Community 1072 - "Community 1072"
-Cohesion: 0.53
-Nodes (4): addressof(), addrof_ref, BOOST_NOEXCEPT(), T()
-
-### Community 1073 - "Community 1073"
-Cohesion: 0.53
-Nodes (4): assign_in_place(), construct_in_place(), default_init_construct_iterator, emplace_iterator
-
-### Community 1074 - "Community 1074"
-Cohesion: 0.47
-Nodes (3): generate(), param(), seed_seq
-
-### Community 1075 - "Community 1075"
-Cohesion: 0.53
-Nodes (4): to_lower(), to_lower_copy(), to_upper(), to_upper_copy()
-
-### Community 1076 - "Community 1076"
-Cohesion: 0.53
-Nodes (4): make_pair(), pair_padding(), piecewise_construct_use(), swap()
-
-### Community 1077 - "Community 1077"
-Cohesion: 0.53
-Nodes (4): has_const_time_erase, has_const_time_insert, has_native_replace, has_stable_iterators
-
-### Community 1078 - "Community 1078"
-Cohesion: 0.53
-Nodes (4): make_unique(), make_unique_definit(), make_unique_nothrow(), make_unique_nothrow_definit()
-
-### Community 1079 - "Community 1079"
-Cohesion: 0.67
-Nodes (4): ordered_index_equal_range(), ordered_index_find(), ordered_index_lower_bound(), ordered_index_upper_bound()
-
-### Community 1080 - "Community 1080"
-Cohesion: 0.53
-Nodes (4): to_lowerF(), to_upperF(), transform_range(), transform_range_copy()
-
-### Community 1081 - "Community 1081"
-Cohesion: 0.47
-Nodes (3): base_from_member(), base_from_member<MemberType&, UniqueID>, BOOST_NOEXCEPT_IF()
-
-### Community 1082 - "Community 1082"
-Cohesion: 0.53
-Nodes (4): B, empty_base, T, U
-
-### Community 1083 - "Community 1083"
-Cohesion: 0.6
-Nodes (4): BOOST_WORKAROUND(), range_begin(), range_iterator<C>::type
-    range_begin(), type
-        const_begin()
-
-### Community 1084 - "Community 1084"
-Cohesion: 0.53
-Nodes (4): find_format_all_copy_impl(), find_format_all_copy_impl2(), find_format_all_impl(), find_format_all_impl2()
-
-### Community 1085 - "Community 1085"
-Cohesion: 0.53
-Nodes (4): assign_alloc(), BOOST_NOEXCEPT_OR_NOTHROW(), move_alloc(), swap_alloc()
-
-### Community 1086 - "Community 1086"
-Cohesion: 0.53
-Nodes (4): load(), save(), serialization_version(), serialize()
-
-### Community 1088 - "Community 1088"
-Cohesion: 0.73
-Nodes (4): as_literal(), is_char_ptr(), length(), make_range()
-
-### Community 1089 - "Community 1089"
-Cohesion: 0.53
-Nodes (4): default_and_move_ctor_mixin(), folly(), noexcept(), Replaceable()
-
-### Community 1090 - "Community 1090"
-Cohesion: 0.6
-Nodes (4): decrementToValid(), folly(), incrementToValid(), release()
-
-### Community 1091 - "Community 1091"
-Cohesion: 0.6
-Nodes (4): clear(), folly(), ptr(), set()
-
-### Community 1092 - "Community 1092"
-Cohesion: 0.53
-Nodes (4): detail(), folly(), prepareDelim(), toOrIgnore()
-
-### Community 1093 - "Community 1093"
-Cohesion: 0.6
-Nodes (4): addBenchmarkImpl(), BenchmarkingStateBase(), folly(), high_resolution_clock()
-
-### Community 1094 - "Community 1094"
-Cohesion: 0.53
-Nodes (4): begin(), folly(), idxToRec(), tryLockMap()
-
-### Community 1095 - "Community 1095"
-Cohesion: 0.6
-Nodes (4): detail(), FOLLY_GCC_DISABLE_WARNING(), unrollUntil(), unrollUntilImpl()
-
-### Community 1096 - "Community 1096"
-Cohesion: 0.53
-Nodes (4): cacheline_align_v(), folly(), max_align_v(), operator()
-
-### Community 1097 - "Community 1097"
-Cohesion: 0.53
-Nodes (4): folly(), operator(), operator_delete(), operator_new()
-
-### Community 1098 - "Community 1098"
-Cohesion: 0.53
-Nodes (4): folly(), to_ascii_decimal(), to_ascii_size_decimal(), to_ascii_with()
-
-### Community 1099 - "Community 1099"
-Cohesion: 0.6
-Nodes (4): folly(), operator(), outputStringsFoMmask(), step()
-
-### Community 1100 - "Community 1100"
-Cohesion: 0.53
-Nodes (4): blockingRead(), folly(), read(), tuple()
-
-### Community 1104 - "Community 1104"
-Cohesion: 0.53
-Nodes (4): fingerprint128(), fingerprint64(), fingerprint96(), folly()
-
-### Community 1105 - "Community 1105"
-Cohesion: 0.33
-Nodes (5): SDWebImageDownloaderDecryptor, -base64Decryptor, -decryptedDataWithDataresponse, -decryptorWithBlock, -initWithBlock
-
-### Community 1106 - "Community 1106"
-Cohesion: 0.33
-Nodes (5): SDWebImageDownloaderConfig, -copyWithZone, -defaultDownloaderConfig, -init, -setOperationClass
-
-### Community 1107 - "Community 1107"
-Cohesion: 0.4
-Nodes (4): _limpar(), RLS: posse por tabela — aluno ve o que e dele, professor o que e da classe dele, Remove as policies herdadas, que eram `USING (true)`., upgrade()
-
-### Community 1109 - "Community 1109"
-Cohesion: 0.33
-Nodes (6): reset_gemini_enrichment_circuit(), reset_openai_enrichment_circuit(), reset_openai_spend_guard(), _clean_circuits(), fixture, _reset_circuits()
-
-### Community 1110 - "Community 1110"
-Cohesion: 0.4
+### Community 1110 - "NodeBadge.tsx"
+Cohesion: 0.40
 Nodes (3): NodeBadgeProps, s, Palette
 
-### Community 1111 - "Community 1111"
-Cohesion: 0.33
-Nodes (5): CONSTANTES, CORPOS, fonte, PERFIS, ROSTOS
-
-### Community 1112 - "Community 1112"
-Cohesion: 0.33
-Nodes (6): mobile/guia-uso-app.md, Ambientes comuns, Erros frequentes, Fluxo funcional do aluno, Setup rapido, Validacoes essenciais
-
-### Community 1113 - "Community 1113"
-Cohesion: 0.33
-Nodes (5): Chamada esperada, Fluxo interno, Objetivo, Prefixo de storage, Resultado esperado
-
-### Community 1114 - "Community 1114"
-Cohesion: 0.33
-Nodes (6): api/estrutura-banco-supabase-executivo.md, Blocos principais, Midias, Objetivo, Recomendacao operacional, Regras de ranking (estado atual)
-
-### Community 1115 - "Community 1115"
-Cohesion: 0.33
-Nodes (5): Métricas — Correções de Cálculo + Novas Seções de UI, Task 1: Corrigir `tempoTotalMin` em `classeMetrics.ts`, Task 2: Estender `ProfileMetricsViewModel` e `buildProfileMetricsViewModel`, Task 3: Injetar `battleState` em `PerfilHome`, Task 4: Novas seções de UI e reorganização do layout
-
-### Community 1116 - "Community 1116"
-Cohesion: 0.33
-Nodes (5): Encerramento, Quiz dinâmico por modoOperacao Implementation Plan, Task 1 (BrainHexPDF): esconder `.quiz-widget-container` via `?hideQuiz=1`, Task 2 (TrailUp/mobile): extrair `shouldHideQuiz`/`withHideQuizParam`, Task 3 (TrailUp/mobile): conectar em `DocumentBlock.tsx`
-
-### Community 1117 - "Community 1117"
-Cohesion: 0.33
-Nodes (5): Contexto, Fora de escopo, Hash completo no path do fallback Python (MultiOutputPipeline), Mudança, Teste de aceitação
-
-### Community 1118 - "Community 1118"
-Cohesion: 0.33
-Nodes (6): tcc/README.md, Convencoes, Estrutura dos capitulos, Fontes-base e observacoes, Leitura recomendada, Objetivo
-
-### Community 1119 - "Community 1119"
-Cohesion: 0.4
-Nodes (5): frontend/package.json, name, private, type, version
-
-### Community 1120 - "Community 1120"
-Cohesion: 0.5
-Nodes (3): analyzeAndGenerateVisualDiagram(), buildThematicDiagram(), enrichDeckWithVisualReferences()
-
-### Community 1123 - "Community 1123"
-Cohesion: 0.5
-Nodes (4): _empty(), extract(), Extrator de DOCX: python-docx → lista de Block., Extrai blocos estruturados de um DOCX.      Retorna dict com:       - family, ti
-
-### Community 1126 - "Community 1126"
-Cohesion: 0.6
-Nodes (4): downgrade(), _guardas(), conteudo do professor sai do denominador do progresso: e opcional, vale bonus  F, upgrade()
-
-### Community 1128 - "Community 1128"
-Cohesion: 0.6
-Nodes (4): downgrade(), o detalhe da classe passa a trazer o progresso da atividade  `vw_aluno_classe_de, upgrade(), _view()
-
-### Community 1129 - "Community 1129"
-Cohesion: 0.5
-Nodes (3): _function(), Allow private messages between classmates who are not blocked., upgrade()
-
-### Community 1135 - "Community 1135"
-Cohesion: 0.5
-Nodes (3): Create the Social store schema and secure purchase RPC.  The canonical SQL is sh, _sql_path(), upgrade()
-
-### Community 1136 - "Community 1136"
-Cohesion: 0.4
-Nodes (4): ZXMultiFormatWriter, -encodeformatwidthheighterror, -encodeformatwidthheighthintserror, -writer
-
-### Community 1137 - "Community 1137"
-Cohesion: 0.4
-Nodes (4): ZXBoolArray, -dealloc, -initWithLength, -initWithLengthvalues
-
-### Community 1138 - "Community 1138"
-Cohesion: 0.4
-Nodes (4): ZXDecoderResult, -hasStructuredAppend, -initWithRawBytestextbyteSegmentsecLevel, -initWithRawBytestextbyteSegmentsecLevelsaSequencesaParity
-
-### Community 1139 - "Community 1139"
-Cohesion: 0.4
-Nodes (4): ZXBitSource, -available, -initWithBytes, -readBits
-
-### Community 1140 - "Community 1140"
-Cohesion: 0.4
-Nodes (4): ZXMathUtils, -distanceaYbXbY, -distanceIntaYbXbY, -round
-
-### Community 1141 - "Community 1141"
-Cohesion: 0.4
-Nodes (4): ZXReedSolomonEncoder, -buildGenerator, -encodeecBytes, -initWithField
-
-### Community 1142 - "Community 1142"
-Cohesion: 0.4
-Nodes (4): ZXPDF417ErrorCorrection, -errorCorrectionCodewordCount, -generateErrorCorrectionerrorCorrectionLevel, -recommendedMinimumErrorCorrectionLevelerror
-
-### Community 1143 - "Community 1143"
-Cohesion: 0.4
-Nodes (4): ZXEAN8Reader, -barcodeFormat, -decodeMiddlestartRangeresulterror, -init
-
-### Community 1144 - "Community 1144"
-Cohesion: 0.4
-Nodes (4): ZXMultiFormatUPCEANReader, -decodeRowrowhintserror, -initWithHints, -reset
-
-### Community 1145 - "Community 1145"
-Cohesion: 0.4
-Nodes (4): ZXUPCAWriter, -encodeformatwidthheighterror, -encodeformatwidthheighthintserror, -subWriter
-
-### Community 1146 - "Community 1146"
-Cohesion: 0.4
-Nodes (4): ZXMultiFormatOneDReader, -decodeRowrowhintserror, -initWithHints, -reset
-
-### Community 1147 - "Community 1147"
-Cohesion: 0.4
-Nodes (4): ZXCode128Reader, -decodeCodecountersrowOffset, -decodeRowrowhintserror, -findStartPattern
-
-### Community 1148 - "Community 1148"
-Cohesion: 0.4
-Nodes (4): ZXRSSFinderPattern, -hash, -initWithValuestartEndstartendrowNumber, -isEqual
-
-### Community 1149 - "Community 1149"
-Cohesion: 0.4
-Nodes (4): ZXAI01weightDecoder, -addWeightCodeweight, -checkWeight, -encodeCompressedWeightcurrentPosweightSize
-
-### Community 1150 - "Community 1150"
-Cohesion: 0.4
-Nodes (4): ZXAI01decoder, -appendCheckDigitcurrentPos, -encodeCompressedGtincurrentPos, -encodeCompressedGtinWithoutAIcurrentPosinitialBufferPosition
-
-### Community 1151 - "Community 1151"
-Cohesion: 0.4
-Nodes (4): ZXAbstractExpandedDecoder, -createDecoder, -initWithInformation, -parseInformationWithError
-
-### Community 1152 - "Community 1152"
-Cohesion: 0.4
-Nodes (4): ZXURIResultParser, -initialize, -isBasicallyValidURI, -parse
-
-### Community 1153 - "Community 1153"
-Cohesion: 0.4
-Nodes (4): ZXEmailDoCoMoResultParser, -initialize, -isBasicallyValidEmailAddress, -parse
-
-### Community 1154 - "Community 1154"
-Cohesion: 0.4
-Nodes (4): ZXExpandedProductResultParser, -findAIvaluerawText, -findValuerawText, -parse
-
-### Community 1155 - "Community 1155"
-Cohesion: 0.4
-Nodes (4): ZXTextParsedResult, -displayResult, -initWithTextlanguage, -textParsedResultWithTextlanguage
-
-### Community 1156 - "Community 1156"
-Cohesion: 0.4
-Nodes (4): ZXBizcardResultParser, -buildNamelastName, -buildPhoneNumbersnumber2number3, -parse
-
-### Community 1157 - "Community 1157"
-Cohesion: 0.4
-Nodes (4): ZXTelParsedResult, -displayResult, -initWithNumbertelURItitle, -telParsedResultWithNumbertelURItitle
-
-### Community 1158 - "Community 1158"
-Cohesion: 0.4
-Nodes (4): ZXISBNParsedResult, -displayResult, -initWithIsbn, -isbnParsedResultWithIsbn
-
-### Community 1600 - "Community 1600"
-Cohesion: 0.6
-Nodes (3): _(), detail(), format_value()
-
-### Community 1638 - "Community 1638"
-Cohesion: 0.6
-Nodes (3): fast_float(), float32_t(), float64_t()
-
-### Community 1639 - "Community 1639"
-Cohesion: 0.6
-Nodes (3): false_t, is_convertible, rv
-
-### Community 1640 - "Community 1640"
-Cohesion: 0.6
-Nodes (3): has_const_time_erase< ::std::list<T,AllocT> >, has_const_time_insert< ::std::list<T,AllocT> >, has_stable_iterators< ::std::list<T,AllocT> >
-
-### Community 1641 - "Community 1641"
-Cohesion: 0.6
-Nodes (3): trim_begin(), trim_end(), trim_end_iter_select()
-
-### Community 1642 - "Community 1642"
-Cohesion: 0.6
-Nodes (3): is_iequal(), is_iless(), is_not_igreater()
-
-### Community 1643 - "Community 1643"
-Cohesion: 0.7
-Nodes (4): adjust_strength(), backup2lines(), backup2x8(), bytefn()
-
-### Community 1644 - "Community 1644"
-Cohesion: 0.7
-Nodes (3): BOOST_NOEXCEPT(), destructor_impl(), ~generic_hook()
-
-### Community 1645 - "Community 1645"
-Cohesion: 0.6
-Nodes (3): BOOST_NOEXCEPT_IF(), insert_return_type(), node_handle()
-
-### Community 1648 - "Community 1648"
-Cohesion: 0.6
-Nodes (3): iterator_to_pointer(), movelib::detail::iterator_to_element_ptr<Iterator>::type
-   iterator_to_raw_pointer(), movelib::iterator_traits<Iterator>::pointer
-   iterator_to_pointer()
-
-### Community 1649 - "Community 1649"
-Cohesion: 0.8
-Nodes (3): BOOST_CONCEPT_USAGE(), interop_rand_access_constraints(), interop_single_pass_constraints()
-
-### Community 1651 - "Community 1651"
-Cohesion: 0.8
-Nodes (3): apply(), apply2(), integer_log2()
-
-### Community 1652 - "Community 1652"
-Cohesion: 0.6
-Nodes (3): false_t, is_convertible, rv
-
-### Community 1653 - "Community 1653"
-Cohesion: 0.7
-Nodes (4): backup4xU(), bytefn(), lr_sbrow(), lr_stripe()
-
-### Community 1654 - "Community 1654"
-Cohesion: 0.6
-Nodes (3): erase(), insert(), replace()
-
-### Community 1655 - "Community 1655"
-Cohesion: 0.6
-Nodes (3): alignment_dummy, boost_move_tt_is_assignable, boost_move_tt_is_constructible
-
-### Community 1656 - "Community 1656"
-Cohesion: 0.6
-Nodes (3): copy_to_storage(), move_from_storage(), process_segment()
-
-### Community 1657 - "Community 1657"
-Cohesion: 0.6
-Nodes (3): move(), move_backward(), uninitialized_move()
-
-### Community 1659 - "Community 1659"
-Cohesion: 0.6
-Nodes (3): has_const_time_erase< BOOST_STD_EXTENSION_NAMESPACE::slist<T,AllocT> >, has_const_time_insert< BOOST_STD_EXTENSION_NAMESPACE::slist<T,AllocT> >, has_stable_iterators< BOOST_STD_EXTENSION_NAMESPACE::slist<T,AllocT> >
-
-### Community 1660 - "Community 1660"
-Cohesion: 0.6
-Nodes (3): index_access_sequence(), index_access_sequence_normal(), index_access_sequence_terminal()
-
-### Community 1661 - "Community 1661"
-Cohesion: 0.6
-Nodes (3): load_construct_data(), node_from_value(), serialize()
-
-### Community 1663 - "Community 1663"
-Cohesion: 0.6
-Nodes (3): folly(), FOLLY_GFLAGS_NAMESPACE(), gflags()
-
-### Community 1664 - "Community 1664"
-Cohesion: 0.6
-Nodes (3): BOOST_NOEXCEPT(), get_pointer(), reference_wrapper
-
-### Community 1667 - "Community 1667"
-Cohesion: 0.8
-Nodes (3): muldiv(), muldivmod(), mulmod()
-
-### Community 1669 - "Community 1669"
-Cohesion: 0.6
-Nodes (3): accept(), compare(), eval()
-
-### Community 1670 - "Community 1670"
-Cohesion: 0.6
-Nodes (3): google(), OUTPUT_FOUR_ARG_CONTAINER(), std()
-
-### Community 1671 - "Community 1671"
-Cohesion: 0.6
-Nodes (3): double_conversion(), StringToDoubleConverter(), StringToFloat()
-
-### Community 1672 - "Community 1672"
-Cohesion: 0.6
-Nodes (3): folly(), unit(), void()
-
-### Community 1673 - "Community 1673"
-Cohesion: 0.6
-Nodes (3): folly(), try_detail(), tryEmplace()
-
-### Community 1674 - "Community 1674"
-Cohesion: 0.6
-Nodes (3): _data_(), folly(), refType()
-
-### Community 1675 - "Community 1675"
-Cohesion: 0.6
-Nodes (3): folly(), std(), Uri()
-
-### Community 1676 - "Community 1676"
-Cohesion: 0.7
-Nodes (3): folly(), throwSystemError(), throwSystemErrorExplicit()
-
-### Community 1677 - "Community 1677"
-Cohesion: 0.6
-Nodes (3): folly(), scope_(), std()
-
-### Community 1678 - "Community 1678"
-Cohesion: 0.6
-Nodes (3): detail(), folly(), mallctlCall()
-
-### Community 1679 - "Community 1679"
-Cohesion: 0.6
-Nodes (3): broadcast(), loadu(), unsafeLoadu()
-
-### Community 1680 - "Community 1680"
-Cohesion: 0.7
-Nodes (3): folly(), ignore(), operator()
-
-### Community 1681 - "Community 1681"
-Cohesion: 0.7
-Nodes (3): folly(), get(), noexcept()
-
-### Community 1682 - "Community 1682"
-Cohesion: 0.6
-Nodes (3): begin(), end(), folly()
-
-### Community 1683 - "Community 1683"
-Cohesion: 0.6
-Nodes (3): double_num_digits(), parse_numbers_as_strings(), pretty_formatting_indent_width()
-
-### Community 1684 - "Community 1684"
-Cohesion: 0.6
-Nodes (3): closelog(), openlog(), syslog()
-
-### Community 1685 - "Community 1685"
-Cohesion: 0.6
-Nodes (3): detail(), folly(), match_empty_function_protocol()
-
-### Community 1686 - "Community 1686"
-Cohesion: 0.6
-Nodes (3): detail(), folly(), funcname()
-
-### Community 1690 - "Community 1690"
-Cohesion: 0.6
-Nodes (3): displayTypeFromYGDisplay(), layoutMetricsFromYogaNode(), positionTypeFromYogaPositionType()
-
-### Community 1695 - "Community 1695"
-Cohesion: 0.4
-Nodes (4): SDWebImageCacheSerializer, -cacheDataWithImageoriginalDataimageURL, -cacheSerializerWithBlock, -initWithBlock
-
-### Community 1696 - "Community 1696"
-Cohesion: 0.4
-Nodes (4): NSData, -sd_imageFormatForImageData, -sd_imageFormatFromUTType, -sd_UTTypeFromImageFormat
-
-### Community 1697 - "Community 1697"
-Cohesion: 0.4
-Nodes (4): SDImageCacheConfig, -copyWithZone, -defaultCacheConfig, -init
-
-### Community 1698 - "Community 1698"
-Cohesion: 0.4
-Nodes (4): SDWebImageCacheKeyFilter, -cacheKeyFilterWithBlock, -cacheKeyForURL, -initWithBlock
-
-### Community 1699 - "Community 1699"
-Cohesion: 0.5
+### Community 1111 - "ref_node_fs"
+Cohesion: 0.03
+Nodes (48): texto(), BossVisualPicker(), bossVisuals, normalizeBossVisual(), consoleTsx, raiz, secoes, PERFIS (+40 more)
+
+### Community 1114 - "Estrutura do Banco (Supabase) - Resumo Executivo"
+Cohesion: 0.29
+Nodes (6): Blocos principais, Estrutura do Banco (Supabase) - Resumo Executivo, Midias, Objetivo, Recomendacao operacional, Regras de ranking (estado atual)
+
+### Community 1116 - "shouldHideQuiz"
+Cohesion: 0.13
+Nodes (21): 1. XP estimado/obtido só no header, 2. Remove cartões de Perfil/Rank (capa e final), 3. Reflexão final vira slide próprio, 4. Preferência do aluno em checklist/anotação (mesma regra do quiz), 5. Vocabulário temático por perfil (capa/final), Contexto, Escopo (5 itens), Fora de escopo (+13 more)
+
+### Community 1118 - "fontes-drive/README.md"
+Cohesion: 0.14
+Nodes (10): Copiados para o repositório, Fontes do Drive — TCC TrailUp, Só por link (não copiados), Página1, Convencoes, Estrutura dos capitulos, Fontes-base e observacoes, Leitura recomendada (+2 more)
+
+### Community 1119 - "frontend/package.json"
+Cohesion: 0.06
+Nodes (32): browserslist@^4.28.2, caniuse-lite@^1.0.30001787, clsx@^2.1.1, @hookform/resolvers@^3.10.0, input-otp@^1.4.2, next-themes@^0.3.0, @radix-ui/react-hover-card@^1.1.14, @radix-ui/react-menubar@^1.1.15 (+24 more)
+
+### Community 1699 - "textSanitize.ts"
+Cohesion: 0.50
 Nodes (3): DOUBLE_QUOTE, sanitizeLatin1(), SINGLE_QUOTE
 
-### Community 1700 - "Community 1700"
-Cohesion: 0.4
-Nodes (4): Image, Path, Recorta o rosto de cada guardiao a partir da arte de corpo inteiro.  Uso (rodand, recortar()
+### Community 1700 - "pathlib"
+Cohesion: 0.01
+Nodes (68): _constante(), downgrade(), downgrade(), _modulo(), downgrade(), _modulo(), downgrade(), _modulo() (+60 more)
 
-### Community 1701 - "Community 1701"
-Cohesion: 0.4
-Nodes (5): docs/api/README.md, Como navegar neste diretorio, Criterio de atualizacao, Guias principais, Pacote TCC (versao expandida)
+### Community 1701 - "Documentacao tecnica"
+Cohesion: 0.33
+Nodes (5): Como navegar neste diretorio, Criterio de atualizacao, Documentacao tecnica, Guias principais, Pacote TCC (versao expandida)
 
-### Community 1702 - "Community 1702"
-Cohesion: 0.4
-Nodes (5): docs/microservice/README.md, Como navegar neste diretorio, Criterio de atualizacao, Guias principais, Pacote TCC (versao expandida)
+### Community 1702 - "Documentacao tecnica"
+Cohesion: 0.33
+Nodes (5): Como navegar neste diretorio, Criterio de atualizacao, Documentacao tecnica, Guias principais, Pacote TCC (versao expandida)
 
-### Community 1703 - "Community 1703"
-Cohesion: 0.4
-Nodes (4): Checklist de configuracao, Modo 1: Integrado com ApiTraiUp (principal), Modo 2: Uso direto (frontend), Troubleshooting
+### Community 1705 - "Documentacao tecnica"
+Cohesion: 0.33
+Nodes (5): Como navegar neste diretorio, Criterio de atualizacao, Documentacao tecnica, Guias principais, Pacote TCC (versao expandida)
 
-### Community 1704 - "Community 1704"
-Cohesion: 0.4
-Nodes (4): Boas praticas, Falhas comuns, Logs criticos, Sinais de saude
+### Community 1954 - "json"
+Cohesion: 0.02
+Nodes (68): _configure_database_url(), run_migrations_offline(), run_migrations_online(), upgrade(), upgrade(), upgrade(), upgrade(), upgrade() (+60 more)
 
-### Community 1705 - "Community 1705"
-Cohesion: 0.4
-Nodes (5): docs/mobile/README.md, Como navegar neste diretorio, Criterio de atualizacao, Guias principais, Pacote TCC (versao expandida)
+### Community 1961 - "re"
+Cohesion: 0.04
+Nodes (47): downgrade(), _retencao_da_03(), gerar_pdf(), render_pdf_html(), _resolve_pdf_palette(), _modulo(), _funcao(), _render() (+39 more)
 
-### Community 1706 - "Community 1706"
-Cohesion: 0.4
-Nodes (4): Task 1: Ponto de injeção em `getClient()`, Task 2: Exportar as funções de arquivamento e testar o pipeline real, Task 3: Revisão final da branch, Testabilidade do Pipeline de Upload no Microservice — Implementation Plan
+### Community 2394 - "ref_node_assert"
+Cohesion: 0.03
+Nodes (51): PROFILES, validateRenderAndStoreInput(), capitalizeProfile(), PROFILES, minimalDeck, PROFILES, boundaries, { buildProfileMetricsViewModel: build } (+43 more)
 
-### Community 1709 - "Community 1709"
-Cohesion: 0.5
-Nodes (3): extract(), Factory: escolhe o extrator correto com base na família do arquivo., Roteia para o extrator específico e retorna dict com:       - family, title, blo
+### Community 8154 - "tests/__init__.py"
+Cohesion: 0.07
+Nodes (30): banco(), _trecho(), _banco(), _notas(), _semear(), test_downgrade_remove_a_funcao(), test_nota_progresso_e_avaliadas_so_da_turma(), test_so_o_professor_da_turma_le() (+22 more)
 
-### Community 1712 - "Community 1712"
-Cohesion: 0.83
-Nodes (3): _load_migration(), test_migration_revision_chain(), test_migration_upgrade_and_downgrade_are_idempotent_sql()
-
-### Community 1713 - "Community 1713"
-Cohesion: 0.83
-Nodes (3): _load_migration(), test_migration_revision_chain(), test_migration_upgrade_and_downgrade_are_idempotent_sql()
-
-### Community 1809 - "Community 1809"
-Cohesion: 0.5
-Nodes (3): ZXDefaultGridSampler, -sampleGriddimensionXdimensionYp1ToXp1ToYp2ToXp2ToYp3ToXp3ToYp4ToXp4ToYp1FromXp1FromYp2FromXp2FromYp3FromXp3FromYp4FromXp4FromYerror, -sampleGriddimensionXdimensionYtransformerror
-
-### Community 1810 - "Community 1810"
-Cohesion: 0.5
-Nodes (3): ZXITFWriter, -encode, -encodeformatwidthheighthintserror
-
-### Community 1811 - "Community 1811"
-Cohesion: 0.5
-Nodes (3): ZXUPCEWriter, -encode, -encodeformatwidthheighthintserror
-
-### Community 1812 - "Community 1812"
-Cohesion: 0.5
-Nodes (3): ZXCodaBarWriter, -encode, -initialize
-
-### Community 1813 - "Community 1813"
-Cohesion: 0.5
-Nodes (3): ZXEAN8Writer, -encode, -encodeformatwidthheighthintserror
-
-### Community 1814 - "Community 1814"
-Cohesion: 0.5
-Nodes (3): ZXEAN13Writer, -encode, -encodeformatwidthheighthintserror
-
-### Community 1815 - "Community 1815"
-Cohesion: 0.5
-Nodes (3): ZXUPCEANExtensionSupport, -decodeRowrowrowOffseterror, -init
-
-### Community 1816 - "Community 1816"
-Cohesion: 0.5
-Nodes (3): ZXRSSPair, -incrementCount, -initWithValuechecksumPortionfinderPattern
-
-### Community 1817 - "Community 1817"
-Cohesion: 0.5
-Nodes (3): ZXRSSUtils, -combinsr, -rssValuemaxWidthnoNarrow
-
-### Community 1818 - "Community 1818"
-Cohesion: 0.5
-Nodes (3): ZXRSSExpandedBlockParsedResult, -initWithFinished, -initWithInformationfinished
-
-### Community 1819 - "Community 1819"
-Cohesion: 0.5
-Nodes (3): ZXRSSExpandedDecodedChar, -fnc1, -initWithNewPositionvalue
-
-### Community 1820 - "Community 1820"
-Cohesion: 0.5
-Nodes (3): ZXRSSExpandedDecodedInformation, -initWithNewPositionnewString, -initWithNewPositionnewStringremainingValue
-
-### Community 1821 - "Community 1821"
-Cohesion: 0.5
-Nodes (3): ZXAI013103decoder, -addWeightCodeweight, -checkWeight
-
-### Community 1822 - "Community 1822"
-Cohesion: 0.5
-Nodes (3): ZXAI01320xDecoder, -addWeightCodeweight, -checkWeight
-
-### Community 1823 - "Community 1823"
-Cohesion: 0.5
-Nodes (3): ZXEmailAddressResultParser, -initialize, -parse
-
-### Community 1824 - "Community 1824"
-Cohesion: 0.5
-Nodes (3): ZXAbstractDoCoMoResultParser, -matchDoCoMoPrefixedFieldrawTexttrim, -matchSingleDoCoMoPrefixedFieldrawTexttrim
-
-### Community 1825 - "Community 1825"
-Cohesion: 0.5
-Nodes (3): ZXAddressBookDoCoMoResultParser, -parse, -parseName
-
-### Community 1826 - "Community 1826"
-Cohesion: 0.5
-Nodes (3): ZXGeoResultParser, -initialize, -parse
-
-### Community 1827 - "Community 1827"
-Cohesion: 0.5
-Nodes (3): ZXAddressBookAUResultParser, -matchMultipleValuePrefixmaxrawTexttrim, -parse
-
-### Community 1828 - "Community 1828"
-Cohesion: 0.5
-Nodes (3): ZXSMSMMSResultParser, -addNumberViaviasnumberPart, -parse
-
-### Community 1829 - "Community 1829"
-Cohesion: 0.5
-Nodes (3): ZXVINParsedResult, -displayResult, -initWithVINworldManufacturerIDvehicleDescriptorSectionvehicleIdentifierSectioncountryCodevehicleAttributesmodelYearplantCodesequentialNumber
-
-### Community 1830 - "Community 1830"
-Cohesion: 0.83
-Nodes (3): bitfn(), check_lpf_sb(), init_lpf_border()
-
-### Community 1831 - "Community 1831"
-Cohesion: 0.83
-Nodes (3): dav1d_init_mode_tree(), init_edges(), init_mode_node()
-
-### Community 1853 - "Community 1853"
-Cohesion: 0.83
-Nodes (3): get(), operator(), reset()
-
-### Community 1950 - "Community 1950"
-Cohesion: 0.5
-Nodes (3): UIImage, -sd_extendedObject, -setSd_extendedObject
-
-### Community 1951 - "Community 1951"
-Cohesion: 0.5
-Nodes (3): SDImageCacheToken, -cancel, -initWithDoneBlock
-
-### Community 1952 - "Community 1952"
-Cohesion: 0.5
-Nodes (3): SDImageFrame, -frameWithImageduration, -initWithImageduration
-
-### Community 1953 - "Community 1953"
-Cohesion: 0.5
-Nodes (3): UIImage, -sd_memoryCost, -setSd_memoryCost
-
-### Community 1962 - "Community 1962"
-Cohesion: 0.83
-Nodes (3): _load_migration(), test_migration_revision_chain(), test_migration_upgrade_and_downgrade_are_idempotent_sql()
-
-### Community 1963 - "Community 1963"
-Cohesion: 0.83
-Nodes (3): _load_migration(), test_migration_revision_chain(), test_migration_upgrade_and_downgrade_are_idempotent_sql()
-
-### Community 1965 - "Community 1965"
-Cohesion: 0.5
-Nodes (3): ImagemFilter(), Props, styles
-
-### Community 2341 - "Community 2341"
-Cohesion: 0.67
-Nodes (3): lengthsEqual(), numbersEqual(), operator()
-
-### Community 2342 - "Community 2342"
-Cohesion: 0.67
-Nodes (3): computeInlineEndMargin(), computeInlineStartMargin(), computeMarginForAxis()
-
-### Community 2391 - "Community 2391"
-Cohesion: 0.67
-Nodes (3): mobile/eslint.config.js, { defineConfig }, expoConfig
+### Community 8160 - "tailwind.config.ts"
+Cohesion: 0.33
+Nodes (4): tailwindcss-animate@^1.0.7, @tailwindcss/typography@^0.5.16, tailwindcss-animate, @tailwindcss/typography
 
 ## Knowledge Gaps
-- **5203 isolated node(s):** `Recorta o rosto de cada guardiao a partir da arte de corpo inteiro.  Uso (rodand`, `Normaliza o resultado bruto dos extratores para um NormalizedDocument. Limpa ruí`, `Recebe a saída de um extractor e retorna NormalizedDocument.`, `Remove espaços extras e caracteres de controle.`, `Verifica se um bloco é ruído (número de página, rodapé, etc.).` (+5198 more)
-  These have ≤1 connection - possible missing edges or undocumented components.
-- **1121 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **4 isolated node(s):** `trailup-api`, `RFC-1918`, `RFC-6890`, `expo/tsconfig.base`
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 8930 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **287 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `String()` connect `UserContext` to `ArvoreView.tsx`, `pptx.py`, `getProfileShellPalette`, `Community 516`, `test_graph_invocation.py`, `api/funcionamento-personalizacao-gamificacao-recursos-pedagogicos-detalhado.md`, `HallTheme.tsx`, `trilha/[id].tsx`, `IAContext.tsx`, `20260406_03_telemetria_tables.py`, `Community 671`, `supabase.ts`, `20260410_04_questoes_nota_estabelecida.py`, `react-markdown`, `TrilhaContext.tsx`, `mobile/arquitetura-app-detalhada.md`, `personalization.ts`, `Community 562`, `tela_de_entrada/login.tsx`, `ImagemBlock.tsx`, `ContentFileUpload.tsx`, `personalizacao-multimidia-aluno.md`, `20260728_04_scope_personalization_by_content.py`, `normalizeNonNegativeNumber`, `models.py`, `date-fns`, `CLAUDE.md — TrailUp`, `Personalização Longa — Integração ApiBrainHex Implementation Plan`, `Community 966`, `core/__init__.py`, `settings.tsx`, `mobile/arquitetura-microservico-e-app.md`, `database-schema.ts`, `extractors/__init__.py`, `MateriaisRepository`, `@radix-ui/react-dialog`, `react-dom`, `@radix-ui/react-dropdown-menu`, `@radix-ui/react-separator`, `Settings`, `Community 619`, `Community 621`, `Métricas — Correções de Cálculo + Novas Seções de UI`, `jszip`, `scripts`, `personalizar`?**
-  _High betweenness centrality (0.051) - this node is a cross-community bridge._
-- **Why does `now()` connect `pptx.py` to `main.py`, `trilha/[id].tsx`, `settings.tsx`, `20260826_12_conquistas_por_perfil.py`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
-- **Why does `TrilhaProvider()` connect `main.py` to `devDependencies`, `services/personalizacao.py`, `pptx.py`, `TopicEditDrawer.tsx`, `AccessRepository`, `use-grafo-trilha.ts`, `test_personalizacao_service.py`?**
-  _High betweenness centrality (0.017) - this node is a cross-community bridge._
-- **Are the 272 inferred relationships involving `str` (e.g. with `normalize()` and `ingest_bytes()`) actually correct?**
-  _`str` has 272 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 63 inferred relationships involving `Settings` (e.g. with `GeminiBossImageAdapter` and `AdminContext`) actually correct?**
-  _`Settings` has 63 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 213 inferred relationships involving `String()` (e.g. with `presignR2GetUrl()` and `normalizeActivityType()`) actually correct?**
-  _`String()` has 213 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `Recorta o rosto de cada guardiao a partir da arte de corpo inteiro.  Uso (rodand`, `Normaliza o resultado bruto dos extratores para um NormalizedDocument. Limpa ruí`, `Recebe a saída de um extractor e retorna NormalizedDocument.` to the rest of the system?**
-  _5203 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Why does `_build_targets()` connect `services/personalizacao_jobs.py` to `Base por perfil sem aluno — design`, `Imagem vinculada a minutagem do áudio (D3) — Design`, `Evento`, `failed`, `Controle de geração manual/automática de personalização — Plano de Implementação`, `supabase.ts`, `ConteudoClasseRepository`?**
+  _High betweenness centrality (0.040) - this node is a cross-community bridge._
+- **What connects `trailup-api`, `RFC-1918`, `RFC-6890` to the rest of the system?**
+  _4 weakly-connected nodes found - possible documentation gaps or missing edges._
+- **Should `Button` be split into smaller, more focused modules?**
+  _Cohesion score 0.031967564617363844 - nodes in this community are weakly interconnected._
+- **Why does `Perfil salvo até o material da trilha` connect `supabase.ts` to `ref_react`, `Input`, `services/personalizacao_jobs.py`, `docs/README.md`?**
+  _High betweenness centrality (0.037) - this node is a cross-community bridge._
+- **Should `ref_react` be split into smaller, more focused modules?**
+  _Cohesion score 0.02708535992217899 - nodes in this community are weakly interconnected._
+- **Why does `Tabelas Supabase (personalização)` connect `Tabelas Supabase (personalização)` to `main.py`, `Evento`, `services/personalizacao_jobs.py`, `failed`, `_build_design_tokens`, `AccessRepository`, `test_trava_personalizacao_api.py`, `nomes_colidem`, `DocumentBlock.tsx`, `boss_falas.py`?**
+  _High betweenness centrality (0.033) - this node is a cross-community bridge._
+- **Should `QuestionsManager.tsx` be split into smaller, more focused modules?**
+  _Cohesion score 0.048948046371833406 - nodes in this community are weakly interconnected._
