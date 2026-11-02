@@ -141,9 +141,19 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
 
 3. **Geração por `tópico × perfil`.** O conteúdo cadastrado pelo professor é
    dividido por **tópico**; para **cada tópico** geram-se **texto e áudio** para
-   **cada um dos 7 perfis** e persiste-se no Supabase. O `source_hash` inclui
+   **cada perfil que a turma tem** e persiste-se no Supabase. O `source_hash` inclui
    `_PERSONALIZACAO_PIPELINE_VERSION`; incremente essa versão quando prompts,
    enriquecimento, áudio ou apresentações precisarem ser regenerados.
+
+   **"Perfil que a turma tem"** = principal **ou** secundário de algum aluno
+   matriculado: 1º e 2º de `ORDER BY afinidade DESC NULLS LAST, nome ASC`
+   (`listar_alunos_classe_com_perfil_dominante`); aluno sem `aluno_perfil` conta
+   como `mastermind`. Turma vazia não gera base. Pedido explícito de perfil
+   (`brainhex_profile_keys`) vale como veio. O class-delta do banco ainda emite os
+   7 targets; o worker pula (`skipped`, `perfil_sem_aluno_na_turma`) os que
+   ninguém tem (`_pular_base_de_perfil_ausente`). Matrícula com perfil novo
+   enfileira a base dele (`_garantir_base_dos_perfis_do_aluno`) — a geração
+   continua antecipada, **não** é sob demanda.
 
 4. **Contraste WCAG AAA por ajuste cirúrgico.** Mantém a cor-assinatura de cada
    perfil, mas garante AAA: eleva o accent quando muito escuro, alpha mínimo em
