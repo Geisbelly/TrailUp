@@ -591,11 +591,19 @@ def test_mark_pending_media_failed_updates_only_pending_media() -> None:
 
 
 @pytest.mark.asyncio
-async def test_build_targets_generates_all_seven_profiles_with_one_student(monkeypatch) -> None:
+async def test_build_targets_gera_base_so_dos_perfis_do_aluno(monkeypatch) -> None:
     student_id = "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
     monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante",
-        AsyncMock(return_value=[{"aluno_id": student_id, "perfil_dominante": "seeker"}]),
+        AsyncMock(
+            return_value=[
+                {
+                    "aluno_id": student_id,
+                    "perfil_dominante": "seeker",
+                    "perfil_secundario": "achiever",
+                }
+            ]
+        ),
     )
     monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.mapear_todos_conteudos_por_topicos",
@@ -610,19 +618,11 @@ async def test_build_targets_generates_all_seven_profiles_with_one_student(monke
     )
 
     assert topics == [117]
-    assert len(targets) == 7
-    assert {item["brainhex_profile_key"] for item in targets} == {
-        "seeker",
-        "survivor",
-        "daredevil",
-        "mastermind",
-        "conqueror",
-        "socializer",
-        "achiever",
-    }
-    # A geracao pesada virou base sem dono: mesmo havendo aluno, os 7 perfis
-    # saem como material de (classe x topico x conteudo x perfil). O aluno
-    # ganha linha propria depois, derivada da base pelo job de enrollment.
+    # Principal e secundario do unico aluno; os outros cinco nao tem para quem.
+    assert [item["brainhex_profile_key"] for item in targets] == ["seeker", "achiever"]
+    # A geracao pesada e' base sem dono: material de (classe x topico x
+    # conteudo x perfil). O aluno ganha linha propria depois, derivada da base
+    # pelo job de enrollment.
     assert {item["aluno_id"] for item in targets} == {None}
     assert {item["conteudo_id"] for item in targets} == {125}
     assert all(item["is_profile_template"] for item in targets)
@@ -665,10 +665,17 @@ async def test_build_targets_generates_seven_profiles_for_each_content(
     monkeypatch,
     conteudo_ids,
 ) -> None:
-    student_id = "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
+    # Turma em que os 7 perfis aparecem (entre principal e secundario): a base
+    # sai com os 7, um por conteudo.
+    alunos = [
+        {"aluno_id": "a1", "perfil_dominante": "seeker", "perfil_secundario": "survivor"},
+        {"aluno_id": "a2", "perfil_dominante": "daredevil", "perfil_secundario": "mastermind"},
+        {"aluno_id": "a3", "perfil_dominante": "conqueror", "perfil_secundario": "socializer"},
+        {"aluno_id": "a4", "perfil_dominante": "achiever", "perfil_secundario": None},
+    ]
     monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante",
-        AsyncMock(return_value=[{"aluno_id": student_id, "perfil_dominante": "seeker"}]),
+        AsyncMock(return_value=alunos),
     )
     monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.mapear_conteudos_por_topico",
@@ -3394,9 +3401,10 @@ def test_upsert_target_casa_base_sem_aluno() -> None:
 
 
 @pytest.mark.asyncio
-async def test_build_targets_gera_base_em_turma_sem_aluno(monkeypatch) -> None:
-    """Era o bug: turma vazia devolvia lista vazia, o job nascia 0/0 e fechava
-    `completed` sem erro."""
+async def test_build_targets_turma_sem_aluno_nao_gera_base(monkeypatch) -> None:
+    """Decisao: a base so e' gerada para os perfis que a turma tem. Turma vazia
+    nao tem perfil nenhum -- 0 targets (o motivo vai no payload do job, ver
+    test_enqueue_base_em_turma_vazia_grava_o_motivo)."""
     monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante",
         AsyncMock(return_value=[]),
@@ -3414,17 +3422,7 @@ async def test_build_targets_gera_base_em_turma_sem_aluno(monkeypatch) -> None:
     )
 
     assert topics == [117]
-    assert len(targets) == 7
-    assert {item["aluno_id"] for item in targets} == {None}
-    assert all(item["is_profile_template"] for item in targets)
-    assert {item["brainhex_profile_key"] for item in targets} == {
-        "seeker", "survivor", "daredevil", "mastermind",
-        "conqueror", "socializer", "achiever",
-    }
-    # A base NAO entra no target_profile_map: a chave e (aluno, topico,
-    # conteudo) e o perfil e o valor, entao os 7 perfis colapsariam numa
-    # chave so e o mapa guardaria apenas o ultimo. Para a base o mapa e
-    # desnecessario -- brainhex_profile_key ja vem na linha do target.
+    assert targets == []
     assert _profile_map == {}
 
 
