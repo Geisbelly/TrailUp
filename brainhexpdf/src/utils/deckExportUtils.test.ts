@@ -575,13 +575,15 @@ test('texto do modelo e escapado; apostrofo nao quebra o onclick e so **negrito*
   // Valores vao por data-*, nao colados dentro da string do onclick.
   assert.match(html, /data-choice-id=\\"d&#39;1\\"/);
   assert.match(html, /onclick=\\"selectDecisionPath\(this, this\.dataset\.choiceId, 100, this\.dataset\.outcome\)\\"/);
-  assert.match(html, /data-outcome=\\"Resultado%20com%20&#39;%20e%20%22%20juntos\\"/);
+  assert.match(html, /data-outcome=\\"Resultado com &#39; e &quot; juntos\\"/);
 });
 
 test('teclado: setas trocam de slide, mas nunca dentro de campo de texto ou com dialogo aberto', () => {
   const html = generateInteractiveHtml(minimalDeck);
   assert.match(html, /if \(tag === 'input' \|\| tag === 'textarea' \|\| tag === 'select' \|\| \(t && t\.isContentEditable\)\) return;/);
-  assert.match(html, /if \(document\.querySelector\('\.tu-dialog\[open\]'\)\) return;/);
+  assert.match(html, /const openDlg = document\.querySelector\('\.tu-dialog\[open\]'\);\s*\n\s*if \(openDlg\) \{/);
+  // Num bloco de codigo rolavel, as setas rolam o codigo.
+  assert.match(html, /if \(t && t\.closest && t\.closest\('pre'\)\) return;/);
   assert.match(html, /e\.key === 'Home'/);
   assert.match(html, /e\.key === 'End'/);
 });
@@ -637,4 +639,75 @@ test('cada perfil leva o proprio emblema e guia no cabecalho do deck', () => {
   assert.match(survivor, /Sobrevivente · Manual de Campo/);
   assert.match(seeker, /com <strong>Amara<\\\/strong>/);
   assert.match(survivor, /com <strong>Kenji<\\\/strong>/);
+});
+
+test('fechamento mantem as ideias-chave marcaveis (+25 XP cada), como na versao anterior', () => {
+  const html = generateInteractiveHtml({
+    ...minimalDeck,
+    slides: [
+      {
+        ...minimalDeck.slides[0],
+        type: 'epic_conclusion',
+        title: 'Fim',
+        keyTakeaways: ['Levar isto', 'Levar aquilo'],
+      },
+    ],
+  });
+  // O app soma esse XP (slide:N:takeaway:N-i); uma lista estatica o tiraria do aluno.
+  assert.equal((html.match(/class=\\"takeaway-item-row check-row\\"/g) || []).length, 2);
+  assert.match(html, /onclick=\\"toggleTakeawayMastery\(this, '0-1', 25\)\\"/);
+  assert.match(html, /O que levar deste tópico/);
+});
+
+test('capa mostra o titulo do guia quando o modelo manda', () => {
+  const html = generateInteractiveHtml({
+    ...minimalDeck,
+    slides: [{ ...minimalDeck.slides[0], characterGuide: { name: 'Kenji', title: 'Guardião do Campo', speechText: 'Vamos.' } } as any],
+  });
+  assert.match(html, /Kenji <span class=\\"guide-phase\\">· Guardião do Campo<\\\/span>/);
+});
+
+test('caractere que o modelo corta ao meio (surrogate solitario) nao derruba o render', () => {
+  assert.doesNotThrow(() => generateInteractiveHtml({
+    ...minimalDeck,
+    slides: [
+      {
+        ...minimalDeck.slides[0],
+        type: 'interactive_challenge',
+        quiz: { question: 'Q?', options: [{ id: 'a', text: 'A', isCorrect: true, explanation: 'corte no meio \ud835' }] },
+        decisionChoices: [{ id: 'd', label: 'L', description: 'D', outcome: 'fim \udc65', xpReward: 100 }],
+      } as any,
+    ],
+  }));
+});
+
+test('divisor SVG do estudio so entra se for SVG sem script, handler ou link', () => {
+  // So' a marcacao dos slides importa: o JSON do deck (dado, nao HTML) leva o texto cru.
+  const comDivisor = (svg: string) => generateInteractiveHtml({
+    ...minimalDeck,
+    slides: [{ ...minimalDeck.slides[0], aiDecorations: { customDividerSvg: svg } } as any],
+  }).split('window.__SLIDES__ = [')[1].split('];')[0];
+  assert.match(comDivisor('<svg viewBox="0 0 10 1"><path d="M0 0h10" id="meu-divisor"/></svg>'), /meu-divisor/);
+  assert.doesNotMatch(comDivisor('<svg onload="alert(1)" id="mau"></svg>'), /onload/);
+  assert.doesNotMatch(comDivisor('<svg id="mau2"><script>alert(1)<\/script></svg>'), /mau2/);
+  assert.doesNotMatch(comDivisor('<img src=x onerror=alert(1)>'), /onerror/);
+});
+
+test('checklist guarda o estado por slide e ainda le o estado salvo so pelo id', () => {
+  const html = generateInteractiveHtml(minimalDeck);
+  assert.match(html, /const storeKey = currentIndex \+ ':' \+ realItemId;/);
+  assert.match(html, /savedData\.checklist\[storeKey\] = true;/);
+  assert.match(html, /bySlide === true \|\| \(bySlide === undefined && savedData\.checklist\[id\]\)/);
+});
+
+test('atalho "Ir para o conteudo" nao navega (no iframe srcdoc do console o # tirava o deck da tela)', () => {
+  const html = generateInteractiveHtml(minimalDeck);
+  assert.match(html, /<a class="skip-link" href="#slide-stage" onclick="event\.preventDefault\(\); document\.getElementById\('slide-stage'\)\.focus\(\);">/);
+});
+
+test('sumario fecha sem devolver o foco ao botao (o foco vai para o titulo do slide)', () => {
+  const html = generateInteractiveHtml(minimalDeck);
+  assert.match(html, /closeDialog\('dlg-toc', true\); goToSlide\(i, true\);/);
+  // Navegador sem <dialog>: o CSS esconde o fechado.
+  assert.match(html, /\.tu-deck \.tu-dialog:not\(\[open\]\) \{ display: none; \}/);
 });

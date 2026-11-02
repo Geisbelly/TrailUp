@@ -68,7 +68,9 @@ precisa existir antes de o estudo começar.
   - `alunos_expostos_pct` em cada janela;
   - `baseline_contaminado`;
   - `comparacao_recebeu_personalizacao`, só na turma de comparação.
-- **Viés de plataforma** (#30): `lotes_por_plataforma` em cada janela.
+- **Viés de plataforma** (#30): `lotes_por_plataforma` em cada janela. Abaixo de `n_minimo` ele
+  volta nulo, como as taxas e `ciclos_personalizacao` (`20261102_25`, #17): numa turma de três
+  alunos, "1 lote de ios" diz quem tem iPhone.
 
 ## 4. O que ficou de fora
 
