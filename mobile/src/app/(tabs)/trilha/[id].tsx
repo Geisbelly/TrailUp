@@ -67,9 +67,10 @@ import {
   saveTrilhaCheckpoint,
 } from "@/utils/trilhaCheckpoint";
 import { useCheckpointResume } from "@/hooks/trilha/useCheckpointResume";
-import { useMaterialSuggestion } from "@/hooks/trilha/useMaterialSuggestion";
+import { useMaterialSuggestion, useSugestaoCongelada } from "@/hooks/trilha/useMaterialSuggestion";
 import { useAlteracoesDoProfessor } from "@/hooks/trilha/useAlteracoesDoProfessor";
 import { SeloAlteracaoProfessor } from "@/components/trilhas/SeloAlteracaoProfessor";
+import { SeloComecePorAqui } from "@/components/trilhas/SeloComecePorAqui";
 import { chaveDoItem, type Destaque } from "@/utils/alteracoesDoProfessor";
 import { usePersonalizedFlow } from "@/hooks/trilha/usePersonalizedFlow";
 import { useStudyTimeTracking } from "@/hooks/trilha/useStudyTimeTracking";
@@ -207,6 +208,8 @@ export default function TrilhaConteudoScreen() {
     salvarProgressoItemPersonalizado,
     getProximosTopicos,
     personalizedTopics,
+    sugestoesMaterial,
+    registrarSugestaoMaterial,
     ensureTopicoPersonalizado,
     perfil,
     grafo,
@@ -301,21 +304,6 @@ export default function TrilhaConteudoScreen() {
   const academicAtividades: Atividade[] = useMemo(() => topico?.atividades ?? [], [topico]);
   const personalizedTopic: PersonalizedTopicPayload | null =
     topicoId != null ? personalizedTopics[topicoId] ?? null : null;
-  const personalizedFlow = usePersonalizedFlow({ personalizedTopic, topicoId });
-  const conteudos: Conteudo[] = useMemo(
-    () => {
-      const base = [...academicConteudos, ...personalizedFlow.conteudos];
-      if (!topico || typeof (topico as any)?.ordenarConteudosParaTrilha !== "function") {
-        return base;
-      }
-      return (topico as any).ordenarConteudosParaTrilha(base);
-    },
-    [academicConteudos, personalizedFlow.conteudos, topico]
-  );
-  const atividades: Atividade[] = useMemo(
-    () => [...academicAtividades, ...personalizedFlow.atividades],
-    [academicAtividades, personalizedFlow.atividades]
-  );
   const [personalizacaoCarregando, setPersonalizacaoCarregando] = useState(false);
   // `personalizacaoCarregando` NAO serve para saber se a lista de blocos esta
   // completa: ele nasce `false` e so viraria `true` dentro de um efeito, e
@@ -324,6 +312,40 @@ export default function TrilhaConteudoScreen() {
   // do flag subir. Este estado responde a pergunta certa -- "a tentativa de
   // carregar a personalizacao terminou?" -- e so vira true depois dela.
   const [personalizacaoTentada, setPersonalizacaoTentada] = useState(false);
+  // Pronto = a personalizacao chegou (e seus passos ja estao em `blocks`, no
+  // mesmo render) OU a tentativa terminou sem ela. Cobre tambem o caso em que
+  // `personalizedTopic` ja vinha em cache e o efeito de carga nem roda.
+  const blocosProntos = Boolean(personalizedTopic) || personalizacaoTentada;
+  // Ordem aconselhada de material: a disponivel no contexto (banco/cache) ate os
+  // blocos ficarem prontos, e congelada a partir dai -- a retomada calcula o
+  // indice nesse mesmo render, e reordenar depois moveria o material embaixo do
+  // aluno. O que a API devolver nesta visita vale para a proxima abertura.
+  const sugestaoDaTela = useSugestaoCongelada({
+    topicoId,
+    disponivel: topicoId != null ? sugestoesMaterial[topicoId] ?? null : null,
+    pronta: blocosProntos,
+  });
+  const personalizedFlow = usePersonalizedFlow({
+    personalizedTopic,
+    topicoId,
+    sugestao: sugestaoDaTela,
+  });
+  const conteudos: Conteudo[] = useMemo(
+    () => {
+      const base = [...academicConteudos, ...personalizedFlow.conteudos];
+      if (!topico || typeof (topico as any)?.ordenarConteudosParaTrilha !== "function") {
+        return base;
+      }
+      return (topico as any).ordenarConteudosParaTrilha(base, {
+        respeitarOrdemPersonalizada: personalizedFlow.sugestaoAplicada,
+      });
+    },
+    [academicConteudos, personalizedFlow.conteudos, personalizedFlow.sugestaoAplicada, topico]
+  );
+  const atividades: Atividade[] = useMemo(
+    () => [...academicAtividades, ...personalizedFlow.atividades],
+    [academicAtividades, personalizedFlow.atividades]
+  );
   const concluirTopicoRef = useRef<(() => Promise<void>) | null>(null);
   const lastOpenedSignalRef = useRef<string | null>(null);
   const emitSignalRef = useRef(emitSignal);
@@ -547,10 +569,7 @@ export default function TrilhaConteudoScreen() {
     checkpointParams,
     topicoJaIniciado,
     topicoConcluido,
-    // Pronto = a personalizacao chegou (e seus passos ja estao em `blocks`, no
-    // mesmo render) OU a tentativa terminou sem ela. Cobre tambem o caso em que
-    // `personalizedTopic` ja vinha em cache e o efeito de carga nem roda.
-    blocosProntos: Boolean(personalizedTopic) || personalizacaoTentada,
+    blocosProntos,
     focoAtividadeId,
   });
 
@@ -745,10 +764,21 @@ export default function TrilhaConteudoScreen() {
     [percentualCanonico, progressoPercurso.concluidos, progressoPercurso.total]
   );
 
-  const sugestaoMaterial = useMaterialSuggestion({
+  // Cria/revisa a sugestao no servidor; a resposta so atualiza o mapa do
+  // contexto (proxima abertura), nunca a ordem desta tela.
+  useMaterialSuggestion({
     alunoId: usuario?.id ?? null,
     topicoId,
+    aoReceber: registrarSugestaoMaterial,
   });
+  // "Comece por aqui" no passo personalizado do formato aconselhado.
+  const destaqueSugestao = useMemo(
+    () =>
+      atualBlock?.kind === "conteudo"
+        ? personalizedFlow.destaquesSugestao.get(Number(atualBlock.conteudo.id)) ?? null
+        : null,
+    [atualBlock, personalizedFlow.destaquesSugestao]
+  );
 
   // O que o professor mudou depois que o aluno já tinha visto ou feito (20261101_12): selo
   // "Atualizado" e atividade de volta como revisão pendente. Camada à parte: nunca mexe no
@@ -795,9 +825,10 @@ export default function TrilhaConteudoScreen() {
         ? // A sugestao entra APOS a montagem dos blocos, nao no lugar dela: ela
           // opina sobre a ordem dos formatos do mesmo conteudo, e o que nao e
           // formato sugerivel continua onde o professor deixou.
-          ordenarBlocosPorSugestao(buildContentBlocks(atualBlock.conteudo), sugestaoMaterial)
+          // Usa a sugestao congelada: a mesma que ordenou os passos.
+          ordenarBlocosPorSugestao(buildContentBlocks(atualBlock.conteudo), sugestaoDaTela)
         : [],
-    [atualBlock, sugestaoMaterial]
+    [atualBlock, sugestaoDaTela]
   );
   const currentContentItemKey = useMemo(() => {
     if (!atualBlock || atualBlock.kind !== "conteudo") return null;
@@ -1980,6 +2011,10 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                   : atualBlock.conteudo.titulo
                 : atualBlock.atividade.titulo ?? "Atividade"}
             </Text>
+
+            {destaqueSugestao ? (
+              <SeloComecePorAqui motivo={destaqueSugestao.motivo} palette={profilePalette} />
+            ) : null}
 
             {seloDoBloco && seloDoBloco.chave === chaveDoBlocoAtual ? (
               <SeloAlteracaoProfessor

@@ -1,9 +1,13 @@
 """Orquestração: motor -> banco -> log (persistência da sugestão)."""
 
+from datetime import datetime, timezone
+
 import pytest
 
+from app.services import sugestao_ciclo
 from app.services.sugestao_ciclo import (
     garantir_sugestao,
+    garantir_sugestao_do_aluno,
     revisar_sugestao,
     revisar_sugestoes_do_ciclo,
 )
@@ -23,6 +27,34 @@ class RepoFake:
         self.linhas: dict[tuple, dict] = {}
         self.log: list[dict] = []
         self._proximo_id = 1
+        self.desempenho: dict[int, dict] = {}
+
+    def marcar(self, aluno_id, topico_id, motivo, conteudo_id=None):
+        """O que os gatilhos da `20261102_07` fazem no banco."""
+        linha = self.linhas[self._chave(aluno_id, topico_id, conteudo_id)]
+        linha.update(
+            revisao_pendente=True,
+            revisao_motivo=motivo,
+            revisao_pendente_em=datetime(2026, 11, 2, 12, len(self.log), tzinfo=timezone.utc),
+        )
+
+    async def topicos_com_revisao_pendente(self, *, aluno_id, classe_id=None):
+        return [
+            linha["topico_id"]
+            for linha in self.linhas.values()
+            if linha["aluno_id"] == aluno_id
+            and linha.get("revisao_pendente")
+            and linha["conteudo_id"] is None
+            and (classe_id is None or linha.get("classe_id") == classe_id)
+        ]
+
+    async def limpar_revisao_pendente(self, *, sugestao_id, marcada_em):
+        for linha in self.linhas.values():
+            if linha["id"] == sugestao_id and linha.get("revisao_pendente_em") == marcada_em:
+                linha.update(revisao_pendente=False, revisao_motivo=None, revisao_pendente_em=None)
+
+    async def desempenho_no_topico(self, *, aluno_id, topico_id):
+        return self.desempenho.get(topico_id)
 
     @staticmethod
     def _chave(aluno_id, topico_id, conteudo_id):
@@ -330,8 +362,27 @@ async def test_conteudo_id_distingue_alvos_do_mesmo_topico():
 # banco.
 
 
+@pytest.fixture
+def repo_do_ciclo(monkeypatch):
+    """O ciclo abre o próprio repositório e lê demanda, desempenho e estado mental."""
+    repo = RepoFake()
+    contexto = {"demanda": None, "observacoes": None}
+
+    async def _contexto(_session, repo_, *, aluno_id, topico_id):
+        return {
+            "demanda": contexto["demanda"],
+            "desempenho_topico": await repo_.desempenho_no_topico(aluno_id=aluno_id, topico_id=topico_id),
+            "observacoes": contexto["observacoes"],
+        }
+
+    monkeypatch.setattr(sugestao_ciclo, "SugestaoMaterialRepository", lambda _session: repo)
+    monkeypatch.setattr(sugestao_ciclo, "_contexto_da_decisao", _contexto)
+    repo.contexto = contexto
+    return repo
+
+
 @pytest.mark.asyncio
-async def test_ciclo_sem_topico_nao_tenta_revisar():
+async def test_ciclo_sem_topico_nao_tenta_revisar(repo_do_ciclo):
     # A sugestão é por (aluno, tópico); "a sugestão do aluno em geral" não existe.
     assert (
         await revisar_sugestoes_do_ciclo(
@@ -344,12 +395,17 @@ async def test_ciclo_sem_topico_nao_tenta_revisar():
         )
         is None
     )
+    assert repo_do_ciclo.log == []
 
 
 @pytest.mark.asyncio
-async def test_lote_sem_material_aberto_nao_gera_registro():
+async def test_lote_sem_material_aberto_nao_gera_registro(repo_do_ciclo):
     # Registrar "mantida" aqui encheria o histórico de ciclos que não olharam
     # nada, e o churn passaria a medir navegação em vez de decisão.
+    await garantir_sugestao(
+        repo_do_ciclo, aluno_id="a1", topico_id=10, classe_id=32,
+        perfis=_perfil("mastermind"), formatos_disponiveis=TODOS,
+    )
     assert (
         await revisar_sugestoes_do_ciclo(
             None,
@@ -361,10 +417,11 @@ async def test_lote_sem_material_aberto_nao_gera_registro():
         )
         is None
     )
+    assert [r["acao"] for r in repo_do_ciclo.log] == ["criada"]
 
 
 @pytest.mark.asyncio
-async def test_telemetria_ausente_nao_quebra_o_ciclo():
+async def test_telemetria_ausente_nao_quebra_o_ciclo(repo_do_ciclo):
     assert (
         await revisar_sugestoes_do_ciclo(
             None,
@@ -376,6 +433,181 @@ async def test_telemetria_ausente_nao_quebra_o_ciclo():
         )
         is None
     )
+
+
+# --- revisão marcada pelo banco (20261102_07) ------------------------------
+
+
+@pytest.mark.asyncio
+async def test_atividade_concluida_revisa_mesmo_sem_material_no_lote(repo_do_ciclo):
+    # Antes, o ciclo saía cedo sem material no lote e a atividade concluída não revisava nada.
+    repo = repo_do_ciclo
+    await garantir_sugestao(
+        repo, aluno_id="a1", topico_id=10, classe_id=32,
+        perfis=_perfil("mastermind"), formatos_disponiveis=TODOS,
+    )
+    repo.desempenho[10] = {"media_acertos": 35.0, "itens": 2}
+    repo.marcar("a1", 10, "atividade_concluida")
+
+    decisao = await revisar_sugestoes_do_ciclo(
+        None, aluno_id="a1", classe_id=32, topico_id=10,
+        telemetry_payload={"time_metrics": {"materials": []}}, stage_outputs={},
+    )
+
+    assert decisao["acao"] == "revisada"
+    assert decisao["ordem"][0]["formato"] == "cards"
+    ultimo = repo.log[-1]
+    assert ultimo["acao"] == "revisada"
+    assert ultimo["evidencia"]["gatilho"] == "atividade_concluida"
+    assert any("dificuldade" in motivo for motivo in ultimo["motivos"])
+    # A marca atendida sai.
+    assert repo.linhas[("a1", 10, -1)]["revisao_pendente"] is False
+
+
+@pytest.mark.asyncio
+async def test_pendente_de_outro_topico_tambem_e_revisada(repo_do_ciclo):
+    repo = repo_do_ciclo
+    for topico in (10, 11):
+        await garantir_sugestao(
+            repo, aluno_id="a1", topico_id=topico, classe_id=32,
+            perfis=_perfil("mastermind"), formatos_disponiveis=TODOS,
+        )
+    repo.marcar("a1", 11, "atividade_concluida")
+
+    decisao = await revisar_sugestoes_do_ciclo(
+        None, aluno_id="a1", classe_id=32, topico_id=10,
+        telemetry_payload=None, stage_outputs=None,
+    )
+
+    # O lote era do 10, sem material: nada decidido para ele.
+    assert decisao is None
+    assert [(r["topico_id"], r["acao"]) for r in repo.log[2:]] == [(11, "mantida")]
+    assert repo.log[-1]["evidencia"]["gatilho"] == "atividade_concluida"
+    assert repo.linhas[("a1", 11, -1)]["revisao_pendente"] is False
+
+
+@pytest.mark.asyncio
+async def test_pendente_de_outra_turma_fica_para_o_ciclo_dela(repo_do_ciclo):
+    repo = repo_do_ciclo
+    await garantir_sugestao(
+        repo, aluno_id="a1", topico_id=11, classe_id=99,
+        perfis=_perfil("mastermind"), formatos_disponiveis=TODOS,
+    )
+    repo.marcar("a1", 11, "atividade_concluida")
+    await revisar_sugestoes_do_ciclo(
+        None, aluno_id="a1", classe_id=32, topico_id=10, telemetry_payload=None, stage_outputs=None,
+    )
+    assert [r["acao"] for r in repo.log] == ["criada"]
+    assert repo.linhas[("a1", 11, -1)]["revisao_pendente"] is True
+
+
+@pytest.mark.asyncio
+async def test_marca_nova_durante_a_revisao_nao_e_engolida():
+    repo = RepoFake()
+    await garantir_sugestao(
+        repo, aluno_id="a1", topico_id=10, perfis=_perfil("mastermind"), formatos_disponiveis=TODOS,
+    )
+    repo.marcar("a1", 10, "atividade_concluida")
+    lida = dict(repo.linhas[("a1", 10, -1)])
+    # Outra atividade concluída depois da leitura: o banco marca de novo, com outra hora.
+    repo.linhas[("a1", 10, -1)]["revisao_pendente_em"] = datetime(2026, 11, 2, 13, 0, tzinfo=timezone.utc)
+
+    await revisar_sugestao(repo, aluno_id="a1", topico_id=10, atual=lida)
+
+    assert repo.linhas[("a1", 10, -1)]["revisao_pendente"] is True
+
+
+@pytest.mark.asyncio
+async def test_conteudo_que_passa_a_pedir_formato_revisa_e_explica(repo_do_ciclo):
+    repo = repo_do_ciclo
+    await garantir_sugestao(
+        repo, aluno_id="a1", topico_id=10, classe_id=32,
+        perfis=_perfil("mastermind"), formatos_disponiveis=["markdown", "apresentacao", "audio"],
+    )
+    assert repo.linhas[("a1", 10, -1)]["formato_inicial"] != "apresentacao"
+    repo.contexto["demanda"] = {
+        "origem": "modelo",
+        "versao": "v",
+        "assinatura": "abc",
+        "dimensoes": {"visual": {"nivel": "essencial", "motivo": "o conteúdo é um diagrama", "conteudos": [5]}},
+    }
+    repo.marcar("a1", 10, "demanda_do_conteudo")
+
+    decisao = await revisar_sugestoes_do_ciclo(
+        None, aluno_id="a1", classe_id=32, topico_id=10, telemetry_payload=None, stage_outputs=None,
+    )
+
+    assert decisao["acao"] == "revisada"
+    assert decisao["ordem"][0]["formato"] == "apresentacao"
+    assert repo.log[-1]["evidencia"]["gatilho"] == "demanda_do_conteudo"
+    assert repo.log[-1]["evidencia"]["demanda_do_conteudo"]["dimensoes"]["visual"] == "essencial"
+
+
+@pytest.mark.asyncio
+async def test_estado_mental_recorrente_vai_para_o_log_sem_reordenar(repo_do_ciclo):
+    repo = repo_do_ciclo
+    await garantir_sugestao(
+        repo, aluno_id="a1", topico_id=10, classe_id=32,
+        perfis=_perfil("mastermind"), formatos_disponiveis=TODOS,
+    )
+    ordem_antes = [i["formato"] for i in repo.linhas[("a1", 10, -1)]["ordem"]]
+    repo.contexto["observacoes"] = {"estado_mental_recorrente": {"kind": "anxious", "ocorrencias": 3, "janela": 5}}
+    repo.marcar("a1", 10, "atividade_concluida")
+
+    decisao = await revisar_sugestoes_do_ciclo(
+        None, aluno_id="a1", classe_id=32, topico_id=10, telemetry_payload=None, stage_outputs=None,
+    )
+
+    assert decisao["acao"] == "mantida"
+    assert [i["formato"] for i in repo.linhas[("a1", 10, -1)]["ordem"]] == ordem_antes
+    assert repo.log[-1]["evidencia"]["observacoes"]["estado_mental_recorrente"]["kind"] == "anxious"
+
+
+@pytest.mark.asyncio
+async def test_leitura_da_sugestao_revisa_a_pendente_antes_de_devolver(repo_do_ciclo):
+    repo = repo_do_ciclo
+    await garantir_sugestao(
+        repo, aluno_id="a1", topico_id=10, classe_id=32,
+        perfis=_perfil("mastermind"), formatos_disponiveis=TODOS,
+    )
+    repo.desempenho[10] = {"media_acertos": 30.0, "itens": 3}
+    repo.marcar("a1", 10, "atividade_concluida")
+
+    sugestao = await garantir_sugestao_do_aluno(
+        None, aluno_id="a1", classe_id=32, topico_id=10, formatos_disponiveis=TODOS
+    )
+
+    assert sugestao["versao"] == 2
+    assert sugestao["ordem"][0]["formato"] == "cards"
+    assert sugestao["revisao_pendente"] is False
+
+
+@pytest.mark.asyncio
+async def test_criacao_considera_o_que_o_conteudo_pede(repo_do_ciclo, monkeypatch):
+    class _Contexto:
+        def __init__(self, _session):
+            pass
+
+        async def fetch_aluno_context(self, *, aluno_id, classe_id):
+            return {"aluno": {"modo_operacao": "Conteúdo Primeiro"}, "perfil_brainhex": _perfil("mastermind")}
+
+    monkeypatch.setattr(sugestao_ciclo, "ContextRepository", _Contexto)
+    repo_do_ciclo.contexto["demanda"] = {
+        "origem": "heuristica",
+        "dimensoes": {"sonoro": {"nivel": "essencial", "motivo": "o conteúdo trata de pronúncia", "conteudos": [5]}},
+    }
+
+    sugestao = await garantir_sugestao_do_aluno(
+        None, aluno_id="a1", classe_id=32, topico_id=10,
+        formatos_disponiveis=["markdown", "apresentacao", "audio"],
+    )
+
+    assert sugestao["formato_inicial"] == "audio"
+    assert sugestao["ordem"][0]["motivo_aluno"]
+    criada = repo_do_ciclo.log[-1]
+    assert criada["acao"] == "criada"
+    assert criada["evidencia"]["demanda_do_conteudo"]["origem"] == "heuristica"
+    assert criada["evidencia"]["modo_operacao"] == "Conteúdo Primeiro"
 
 
 # --- evidencia extra ------------------------------------------------------
@@ -555,3 +787,26 @@ def test_resposta_leva_evidencias_e_descarta_as_malformadas():
 
     assert [e.regra for e in itens[0].evidencias] == ["reexposicao_quiz"]
     assert itens[1].evidencias == []
+
+
+def test_resposta_leva_camada_motivo_do_aluno_e_necessidades():
+    from app.api.v1.personalizacao import _resposta_da_sugestao
+
+    resposta = _resposta_da_sugestao(
+        {
+            "formato_inicial": "cards",
+            "versao": 3,
+            "origem": "revisao",
+            "ordem": [
+                {"formato": "cards", "posicao": 1, "camada": 0, "motivo_aluno": " Pratique antes de seguir. "},
+                # Sugestão gravada antes das camadas.
+                {"formato": "markdown", "posicao": 2},
+            ],
+            "evidencia": {"necessidades": [{"tipo": "dificuldade_no_topico"}, "lixo"]},
+        }
+    )
+
+    assert resposta.ordem[0].camada == 0
+    assert resposta.ordem[0].motivo_aluno == "Pratique antes de seguir."
+    assert resposta.ordem[1].camada is None and resposta.ordem[1].motivo_aluno is None
+    assert resposta.necessidades == [{"tipo": "dificuldade_no_topico"}]

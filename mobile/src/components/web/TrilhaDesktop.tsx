@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
+import { RastreadorDeMissoes } from "@/components/missoes/RastreadorDeMissoes";
 import { ProfileEmblem } from "@/components/ProfileEmblem";
 import { TrilhaArvoreSimple } from "@/components/trilhas/ArvoreView";
 import { TrilhaLinearList } from "@/components/trilhas/ListaSimplesView";
@@ -16,6 +17,8 @@ import { useIA } from "@/context/IAContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { useTrailResumeTopic } from "@/hooks/useTrailResume";
+import { perfilDaMissao } from "@/services/missoes/missaoModel";
+import type { TopicoDoRastreador } from "@/services/missoes/rastreadorDeMissoes";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { aoClicarNo, estadoDoTopico, montarPainelTopico, rotaDoTopico, topicoInicial } from "@/utils/painelTopicoTrilha";
@@ -98,6 +101,14 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
       actionLabel: "Conversar",
       abrir: true,
     });
+  // O rastreador precisa do bloqueio (grafo) e das atividades do professor (classe) de cada tópico.
+  const topicosDoRastreador: TopicoDoRastreador[] = nos.map((n) => ({
+    id: Number(n.id),
+    locked: n.locked,
+    completed: n.completed,
+    sequence: n.sequence,
+    atividadeIds: (topicoDe(n.id)?.atividades ?? []).map((a) => Number(a.id)),
+  }));
   // No mapa, cada tópico é um país do tema da turma (sem tema, o próprio título).
   const paises = todos.map((t) => ({
     id: t.id,
@@ -227,6 +238,20 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
           onConversar={guiaDisponivel ? conversar : undefined}
         />
       </View>
+
+      {/* Missões (#793), no canto de baixo do tabuleiro, na linha do guia. Tópico selado no
+          "Ir" é selecionado no painel ao lado, que já diz o que falta para abrir. */}
+      <RastreadorDeMissoes
+        classeId={classeAtual.classe_id}
+        perfilDaMissao={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)}
+        topicos={topicosDoRastreador}
+        atualId={atualId}
+        palette={palette}
+        base={44}
+        perfil={perfil}
+        ancora={{ esquerda: 48, base: 44, largura: 460 }}
+        onVerTopicoBloqueado={(id) => setSelecionado(String(id))}
+      />
     </View>
   );
 }

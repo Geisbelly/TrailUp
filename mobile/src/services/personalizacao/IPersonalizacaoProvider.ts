@@ -3,6 +3,7 @@ import type { RealtimeChannel } from "@supabase/supabase-js";
 import type {
   ListarJobsParams,
   ListarPersonalizacoesPerfilParams,
+  ListarSugestoesMaterialTurmaParams,
   MentorChatPayload,
   MentorChatResponse,
   PersonalizacaoJobRecord,
@@ -39,6 +40,19 @@ export interface IPersonalizacaoProvider {
   obterSugestaoMaterial(
     params: ObterSugestaoMaterialParams
   ): Promise<SugestaoMaterialResponse | null>;
+
+  /**
+   * Sugestões JÁ CRIADAS do aluno na turma, por tópico, lidas direto do
+   * Supabase (`personalizacao_sugestao`, só as do tópico inteiro).
+   *
+   * Leitura sem IA vai ao banco (regra de fronteira): é ela que deixa a ordem
+   * pronta ANTES de o tópico abrir. Criar e revisar continua sendo
+   * `obterSugestaoMaterial`. Sem policy de SELECT para o aluno, a RLS devolve
+   * lista vazia — e o app cai na ordem canônica.
+   */
+  listarSugestoesMaterialTurma(
+    params: ListarSugestoesMaterialTurmaParams
+  ): Promise<Record<number, SugestaoMaterialResponse>>;
 
   /** Lista jobs de personalização em execução/concluídos. */
   listarJobsPersistidosAluno(

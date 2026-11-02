@@ -46,7 +46,20 @@ export class Topico {
     );
   }
 
-  ordenarConteudosParaTrilha(conteudos: any[]): any[] {
+  /**
+   * Ordem dos conteúdos no percurso: personalizados primeiro, depois os do
+   * professor.
+   *
+   * Sem sugestão de material, os cards personalizados vão para o fim do bloco
+   * personalizado (comportamento de sempre). Com `respeitarOrdemPersonalizada`
+   * (a sugestão foi aplicada no fluxo), a ordem que o fluxo já decidiu é mantida:
+   * a sugestão pode pôr os cards antes do texto — é o que ela faz quando o aluno
+   * está com dificuldade no tópico — e empurrá-los para o fim desfaria isso.
+   */
+  ordenarConteudosParaTrilha(
+    conteudos: any[],
+    opcoes: { respeitarOrdemPersonalizada?: boolean } = {}
+  ): any[] {
     if (!Array.isArray(conteudos) || !conteudos.length) return [];
 
     const conteudosPadraoIds = new Set(
@@ -74,7 +87,9 @@ export class Topico {
       );
     });
 
-    const ordered = [...personalizadosPrincipais, ...cardsPersonalizados, ...padrao];
+    const ordered = opcoes.respeitarOrdemPersonalizada
+      ? [...personalizados, ...padrao]
+      : [...personalizadosPrincipais, ...cardsPersonalizados, ...padrao];
     const seen = new Set<string>();
 
     return ordered.filter((conteudo) => {
