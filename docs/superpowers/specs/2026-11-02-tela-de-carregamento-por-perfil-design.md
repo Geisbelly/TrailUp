@@ -221,6 +221,41 @@ marcadores de linguagem do perfil, e um aviso de demora. As regras, conferidas e
 Com perfil, a mensagem genérica do contexto ("Organizando conteúdos e atividades…") dá lugar
 à frase do guia. Na variante neutra, ela continua.
 
+### 2.6 Esqueletos dentro das telas
+
+A tela de carregamento cobre a abertura. Depois dela, cada aba busca o próprio dado, e até
+aqui o que aparecia nesse meio-tempo era buraco ou mentira: "Sem notificações" e "Nenhuma
+conquista" antes da resposta, métricas em "0%" e "Sem rank", "Conquistas (0)" na aba,
+"Perfil não definido" nas linhas do ranking, a página Social inteira trocada por um
+spinner, e a faixa de XP chegando depois e empurrando a tela.
+
+Onde o layout é conhecido (listas e cartões), vale o que a 2.1 já dizia: **skeleton** no
+formato do que vai chegar [3][4]. As medidas copiam as dos componentes reais, para nada
+pular quando o dado entra.
+
+- **Só na primeira carga.** `esperandoPrimeiraCarga` (`utils/esqueleto.ts`) troca o
+  conteúdo pelo esqueleto só quando a tela não tem nada seu: nenhum item, ou itens de outra
+  chave (outra turma). Recarregar a mesma chave mantém o conteúdo. A trilha inteira piscava
+  para o esqueleto a cada foco do Perfil e a cada tema da turma vindo pelo Realtime.
+  "Nenhum item" só aparece depois que a resposta voltou.
+- **Um pulso por grupo.** Todos os blocos de um grupo (ou de uma lista inteira, com
+  `EsqueletoPulso`) pulsam com um laço só: laços desencontrados piscam, e um custa menos.
+  Ciclo de 1,6 s, opacidade entre 0,55 e 1: é espera, não alerta.
+- **Movimento reduzido.** Com a preferência ligada, nada pulsa; o bloco fica parado em 0,8.
+- **Cor.** O bloco é a própria superfície com a luminosidade HSL elevada até contraste
+  ≥ 1,4 contra ela, medido na cor composta com a opacidade parada (o pior caso). Matiz e
+  saturação são os do perfil, e nada é misturado com branco. Não é texto nem controle
+  (WCAG não pede número aqui), mas abaixo disso, em tela escura com brilho baixo, o
+  esqueleto vira o buraco que ele substitui. Testado nas 8 paletas × 3 superfícies.
+- **Leitor de tela.** Um nó só por tela: uma barra de progresso ocupada com rótulo
+  ("Carregando ranking"). Os blocos ficam fora da árvore. Um segundo pedaço da mesma tela
+  usa grupo sem rótulo, para o leitor ouvir "carregando" uma vez.
+
+Onde ficou: Perfil (métricas, faixa de XP, lista de conquistas), Biblioteca de conquistas
+(grade e números do topo), Notificações, Ranking (linhas e o perfil de cada pessoa), Social
+(stories, destaque e cartões) e Trilha (só a regra da primeira carga; o esqueleto dela já
+existia).
+
 ## 3. Limites conhecidos
 
 - O destaque fica **claro** (pastel) em todos os perfis: é o preço de 7:1 contra a
@@ -236,6 +271,12 @@ Com perfil, a mensagem genérica do contexto ("Organizando conteúdos e atividad
   símbolo ainda quase transparente: é o círculo cobrindo tudo antes de o símbolo e o texto
   firmarem. Nos quadros em câmera lenta dos prints (transição esticada para 6 s só para
   capturar) isso aparece como um quadro vazio. Na duração real não foi medido quadro a quadro.
+- Os esqueletos das abas também **não foram vistos** em preview nem em aparelho: o painel
+  do navegador estava oculto na sessão que os fez. Foram verificados por teste de
+  renderização (um nó acessível, blocos ocultos, cor, movimento reduzido), typecheck e lint.
+- Spinners de seção ainda ficam (`MissoesDoDia`, `EventoDaTurma`, `ArenaSection`,
+  `lembrete-diario`), e `trilha/[id]` ainda pode dizer "Sem conteúdos" antes da hora.
+- No Perfil, o alvo do tour das métricas não existe enquanto o esqueleto está na tela.
 - Não conferido em aparelho nativo (Android/iOS): só no preview web. A tela só chega ao
   aluno na **próxima build** do app (hoje 1.0.6).
 

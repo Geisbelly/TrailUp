@@ -172,3 +172,5 @@ src/utils/alteracoesDoProfessor.test.ts
 src/utils/rankEstadoVazio.test.ts
 src/utils/telaCarregamento.test.ts
 src/components/carregamento/TelaCarregamento.tela.test.tsx
+src/utils/esqueleto.test.ts
+src/components/carregamento/Esqueleto.tela.test.tsx

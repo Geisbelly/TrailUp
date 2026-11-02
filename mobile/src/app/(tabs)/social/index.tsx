@@ -1,6 +1,7 @@
 import { HallBackground } from "@/components/HallTheme";
 import { JourneyHeading } from "@/components/JourneyHeading";
 import { JourneySymbol } from "@/components/JourneySymbol";
+import { EsqueletoDasHistorias, EsqueletoDoSocial } from "@/components/social/EsqueletoDoSocial";
 import { SocialInviteCard } from "@/components/social/SocialInviteCard";
 import { SocialPersonCard } from "@/components/social/SocialPersonCard";
 import { SocialProfileModal } from "@/components/social/SocialProfileModal";
@@ -33,7 +34,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 
@@ -279,7 +280,9 @@ export default function SocialScreen() {
       {search ? <Pressable onPress={() => setSearch("")} accessibilityRole="button" accessibilityLabel="Limpar busca" style={styles.clearSearch}><MaterialCommunityIcons name="close" size={20} color={Color.colorWhite} /></Pressable> : null}
     </View>
   );
-  const carregandoOuErro = loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? (
+  // Primeira carga: o esqueleto no formato da aba (destaque e cartões de pessoa), em vez de
+  // um spinner sozinho no lugar da página inteira.
+  const carregandoOuErro = loading && !social ? <EsqueletoDoSocial palette={palette} comDestaque={!desktop && abaAtiva === abaDoDestaque} /> : error ? (
     <View style={styles.empty}>
       <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
       <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>
@@ -314,7 +317,7 @@ export default function SocialScreen() {
             )}
             {desktop ? <Text style={[styles.subtitle, { color: palette.textMuted }]}>Encontre sua turma e avance em companhia.</Text> : null}
             {/* Stories (#789): na tela larga, "Encontrar" leva à pílula de mesmo nome. */}
-            {social && social.friends.length + social.candidates.length > 0 ? <SocialStories amigos={social.friends} colegas={social.candidates} naoLidas={naoLidas.privado} palette={palette} onConversar={abrirConversa} onEncontrar={() => { if (!desktop) return irPara("encontrar"); setSection("discover"); setSearch(""); }} /> : null}
+            {social && social.friends.length + social.candidates.length > 0 ? <SocialStories amigos={social.friends} colegas={social.candidates} naoLidas={naoLidas.privado} palette={palette} onConversar={abrirConversa} onEncontrar={() => { if (!desktop) return irPara("encontrar"); setSection("discover"); setSearch(""); }} /> : loading && !social ? <EsqueletoDasHistorias palette={palette} /> : null}
           </View>
           <View style={[desktop ? styles.tabsSticky : styles.abasSticky, { backgroundColor: palette.background }]}>
             {desktop ? (
@@ -407,7 +410,7 @@ export default function SocialScreen() {
               borderColor={palette.border}
             />
           ) : null}
-          {loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? (
+          {loading && !social ? <EsqueletoDoSocial palette={palette} comDestaque={false} /> : error ? (
             <View style={styles.empty}>
               <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
               <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>

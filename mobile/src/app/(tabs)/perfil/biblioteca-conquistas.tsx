@@ -12,6 +12,8 @@ import {
 } from "react-native";
 
 import CardSemDados from "@/components/CardSemDados";
+import { EsqueletoBloco, EsqueletoGrupo } from "@/components/carregamento/Esqueleto";
+import { EsqueletoDaBiblioteca } from "@/components/perfil/EsqueletoDoPerfil";
 import ConquistaModal from "@/components/ConquistaModal";
 import { BibliotecaDesktop } from "@/components/web/BibliotecaDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
@@ -51,6 +53,9 @@ export default function BibliotecaConquistasScreen() {
   const { usuario } = useUsuario();
   const [itens, setItens] = useState<ConquistaBibliotecaItem[]>([]);
   const [loading, setLoading] = useState(false);
+  // Até a primeira resposta não há o que contar: zeros e "sem conquistas" seriam mentira.
+  // Depois dela, recarregar ao voltar para a tela mantém a grade que já está ali.
+  const [carregado, setCarregado] = useState(false);
   const [selected, setSelected] = useState<Conquista | null>(null);
   const summaryGuideRef = useRef<View | null>(null);
   const desktop = useDesktopWeb();
@@ -67,6 +72,7 @@ export default function BibliotecaConquistasScreen() {
   const loadBiblioteca = useCallback(async () => {
     if (!usuario?.id) {
       setItens([]);
+      setCarregado(true);
       return;
     }
 
@@ -85,6 +91,7 @@ export default function BibliotecaConquistasScreen() {
       setItens([]);
     } finally {
       setLoading(false);
+      setCarregado(true);
     }
   }, [perfisRepresentativos, usuario?.id]);
 
@@ -195,7 +202,7 @@ export default function BibliotecaConquistasScreen() {
       <>
         <BibliotecaDesktop
           itens={itens}
-          carregando={loading}
+          carregando={loading || !carregado}
           palette={shellPalette}
           resumoRef={summaryGuideRef}
           onAbrir={setSelected}
@@ -248,7 +255,14 @@ export default function BibliotecaConquistasScreen() {
             [`${percentualConclusao}%`, "Completo"],
           ].map(([valor, rotulo]) => (
             <View key={rotulo} style={[styles.numero, { backgroundColor: shellPalette.surface, borderColor: shellPalette.border }]}>
-              <Text style={[styles.numeroValor, { color: shellPalette.text }]}>{valor}</Text>
+              {carregado ? (
+                <Text style={[styles.numeroValor, { color: shellPalette.text }]}>{valor}</Text>
+              ) : (
+                // Mesma altura da linha do número, para nada pular quando ele chega.
+                <EsqueletoGrupo superficie={shellPalette.surface} style={styles.numeroEsqueleto}>
+                  <EsqueletoBloco largura={36} altura={22} />
+                </EsqueletoGrupo>
+              )}
               <Text style={[styles.numeroRotulo, { color: shellPalette.textSubtle }]}>{rotulo}</Text>
             </View>
           ))}
@@ -277,10 +291,8 @@ export default function BibliotecaConquistasScreen() {
           })}
         </ScrollView>
 
-        {loading ? (
-          <Text style={[styles.helperText, { color: shellPalette.textMuted }]}>
-            Carregando conquistas...
-          </Text>
+        {!carregado ? (
+          <EsqueletoDaBiblioteca palette={shellPalette} />
         ) : itens.length === 0 ? (
           <CardSemDados
             title="Sem conquistas registradas"
@@ -355,6 +367,7 @@ const styles = StyleSheet.create({
   numeros: { flexDirection: "row", gap: 8 },
   numero: { flex: 1, borderRadius: 12, borderWidth: 1, paddingVertical: 12, paddingHorizontal: 8, alignItems: "center" },
   numeroValor: { fontFamily: FontFamily.inikaBold, fontSize: 24 },
+  numeroEsqueleto: { height: 32, justifyContent: "center" },
   numeroRotulo: { fontFamily: FontFamily.interMedium, fontSize: 12 },
   segm: { flexGrow: 0, marginTop: 14, marginBottom: 12, borderRadius: 12, borderWidth: 1 },
   segmConteudo: { gap: 3, padding: 3 },

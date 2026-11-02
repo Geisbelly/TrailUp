@@ -9,6 +9,7 @@ import { useIA } from "@/context/IAContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { Color } from "@/styles/GlobalStyle";
+import { esperandoPrimeiraCarga } from "@/utils/esqueleto";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -16,8 +17,16 @@ import { StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TrilhasIndex() {
-  const { carregando, erro, classes, classeAtual, perfil, personalizedTopics } =
+  const { carregando, erro, classes, classeAtual, perfil, personalizedTopics, grafo } =
     useTrilha();
+  // O contexto liga `carregando` em toda recarga do grafo (foco do Perfil, tema da turma em
+  // tempo real, reload). Só a primeira carga de cada turma troca a trilha pelo esqueleto;
+  // nas outras, a que já está na tela fica até a nova chegar.
+  const [turmaCarregada, setTurmaCarregada] = useState<number | null>(null);
+  useEffect(() => {
+    if (!carregando && classeAtual) setTurmaCarregada(Number(classeAtual.classe_id));
+  }, [carregando, classeAtual]);
+  const primeiraCarga = esperandoPrimeiraCarga(carregando, grafo.nodes.length, classeAtual?.classe_id, turmaCarregada);
   const { pushMentorCue } = useIA();
   const palette = getProfileShellPalette(perfil);
   const personalizationCueKeyRef = useRef<string | null>(null);
@@ -69,7 +78,7 @@ export default function TrilhasIndex() {
     });
   }, [pushMentorCue, trailMentorCue]);
 
-  if (carregando) {
+  if (primeiraCarga) {
     return (
       <SafeAreaView
         edges={["top", "left", "right"]}
