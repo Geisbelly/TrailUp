@@ -265,6 +265,16 @@ Cada perfil carrega:
   A listagem no console também não passa mais pela API: o professor lê
   `personalizacao_jobs` direto, autorizado por
   `personalizacao_jobs_professor_sel` (via `app_classes_do_professor()`).
+
+  **KPIs da fila** (#14, `20261102_12`): a RPC `personalizacao_kpis_operacionais`
+  (`SECURITY INVOKER`, card "Fila de personalização" no painel da turma) agrega latência,
+  falha, reprocessamento e os gatilhos do cap. 10 §11, com o SLO em
+  `app_config.personalizacao_kpi_slo`. O tempo por formato vem de
+  `processing_started_at`/`_finished_at`/`_runs` em `personalizacao_job_targets`, que
+  **só o gatilho `trg_job_target_relogio` escreve** (ignora o que vier no UPDATE). Ele
+  mede de `processing` até o estado final: caminho novo de worker que leve um target ao
+  fim **sem passar por `processing`** fica sem duração. `processing_runs` não zera na
+  retomada manual (`attempts` zera).
 - `personalizacao_sugestao` + `personalizacao_sugestao_log` — ordem **aconselhada**
   de consumo do material por `(aluno × tópico × conteúdo)` e o histórico
   append-only de cada decisão (`criada`/`revisada`/`mantida`). Motor
