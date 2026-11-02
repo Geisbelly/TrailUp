@@ -27,6 +27,7 @@ import { ProfileArtwork } from "@/components/ProfileArtwork";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
+import { FaixaXpCartao } from "@/components/perfil/FaixaXpCartao";
 import { AcoesBannerPerfil } from "@/components/web/AcoesBannerPerfil";
 import { ConquistasDestaque } from "@/components/web/ConquistasDestaque";
 import { AfinidadesPerfilDesktop } from "@/components/web/AfinidadesPerfilDesktop";
@@ -67,7 +68,7 @@ export default function PerfilHome() {
   const insets = useSafeAreaInsets();
   const { usuario, selecionarPerfilAtivo } = useUsuario();
   const { classeAtual, classes, trocarTurma, perfil, progressoPersonalizado, reload: reloadTrilha } = useTrilha();
-  const { conquistas, carregando, eventos, posicoesDoAluno, presenca, reloadAll } =
+  const { conquistas, carregando, eventos, faixaXp, posicoesDoAluno, presenca, reloadAll } =
     useConquistaRank();
   const { lastAnalysis, cameraOptIn, cameraPermission } = useMetricas();
   const { lastBatchTimeMetrics } = useMetricasBatch();
@@ -407,6 +408,13 @@ export default function PerfilHome() {
         ) : null}
     </>
   );
+
+  // Faixa de XP da turma atual (#143), logo abaixo da identidade. Só a da turma na tela: ao
+  // trocar de turma, a da anterior não aparece enquanto a nova carrega.
+  const faixaDaTurma =
+    faixaXp && faixaXp.classeId === Number(classeAtual?.classe_id) ? (
+      <FaixaXpCartao faixa={faixaXp} palette={shellPalette} style={desktop ? styles.faixaXpLarga : styles.faixaXp} />
+    ) : null;
 
   // Troca de perfil no celular, logo abaixo do nome, em formato compacto: um rótulo e um
   // botão por perfil (emblema, nome, afinidade), o em uso destacado na cor dele. O que a
@@ -768,11 +776,13 @@ export default function PerfilHome() {
             <View style={styles.colunas}>
               <View style={[styles.colunaIdentidade, styles.colunaIdentidadeGrudada]}>
                 {identidade}
+                {faixaDaTurma}
               </View>
               <View style={styles.colunaPrincipal}>{principal}</View>
             </View>
           ) : (
             <>
+              {faixaDaTurma}
               {trocaDePerfil}
               {principal}
             </>
@@ -916,6 +926,8 @@ const styles = StyleSheet.create({
   acaoPerfilIcone: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center" },
   acaoPerfilTexto: { flexShrink: 1, fontFamily: FontFamily.interMedium, fontSize: 14, fontWeight: "600" },
   infoContainer: { alignItems: "center", gap: 2, paddingTop: 10 },
+  faixaXp: { marginTop: 16, marginHorizontal: 14 },
+  faixaXpLarga: { marginTop: 16 },
   trocaPerfil: { marginTop: 16, marginHorizontal: 14 },
   trocaPerfilRotulo: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.1, marginBottom: 8, marginLeft: 2 },
   trocaPerfilLista: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

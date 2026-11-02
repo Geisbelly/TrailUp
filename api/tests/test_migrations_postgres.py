@@ -114,7 +114,7 @@ def test_failed_migration_rolls_back_data_and_revision(migration_project):
         assert connection.execute(text("SELECT to_regclass('must_rollback')")).scalar_one() is None
 
 
-def test_two_processes_wait_on_same_session_lock_and_apply_once(migration_project):
+def test_two_processes_wait_on_same_lock_and_apply_once(migration_project):
     from app.db.migrations import MIGRATION_ADVISORY_LOCK_KEY
 
     engine, versions, run = migration_project
@@ -180,3 +180,25 @@ def test_migra_mesmo_com_sessao_herdada_somente_leitura(migration_project):
     with engine.connect() as connection:
         assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "apesar_do_default"
         assert connection.execute(text("SELECT count(*) FROM criada_apesar_do_default")).scalar_one() == 1
+
+
+def test_a_trava_nao_fica_presa_na_sessao_depois_do_commit(migration_project):
+    """02/11: atras do Supavisor em modo transacao, a sessao (o backend) sobrevive ao cliente. A trava de
+    sessao antiga ficava presa nela -- o `unlock` caia em outro backend -- e o deploy seguinte morria em
+    `statement timeout` no `pg_advisory_lock`. Aqui a sessao do processo que migrou continua VIVA depois
+    do COMMIT, como o backend do pooler, e outro processo tem de conseguir a trava na hora."""
+    from app.db import migrations
+
+    engine, _versions, _run = migration_project
+    with engine.connect() as quem_migrou:
+        with quem_migrou.begin():
+            assert migrations.trava_de_migracao(quem_migrou) is True
+        # COMMIT feito; a sessao segue aberta, como o backend que o pooler guarda.
+        with engine.connect() as proximo_deploy:
+            conseguiu = proximo_deploy.execute(
+                text("SELECT pg_try_advisory_lock(:key)"), {"key": migrations.MIGRATION_ADVISORY_LOCK_KEY}
+            ).scalar_one()
+            assert conseguiu is True
+            proximo_deploy.execute(
+                text("SELECT pg_advisory_unlock(:key)"), {"key": migrations.MIGRATION_ADVISORY_LOCK_KEY}
+            )

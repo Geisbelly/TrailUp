@@ -44,7 +44,7 @@ def test_supervisor_chama_o_cronometro_so_quando_a_regra_dispara() -> None:
 
 
 def test_supervisor_leva_a_decisao_ao_executor() -> None:
-    decisao = decidir_desligar_cronometro(_estado()["desempenho_recente"]["tentativas"], None)
+    decisao = decidir_desligar_cronometro(_estado()["desempenho_recente"]["tentativas"])
     estado = _estado(
         completed_nodes=["agente_perfil", "agente_cronometro"], perfil_update=None,
         cronometro_payload=decisao.model_dump(mode="json"),

@@ -265,6 +265,16 @@ Cada perfil carrega:
   A listagem no console também não passa mais pela API: o professor lê
   `personalizacao_jobs` direto, autorizado por
   `personalizacao_jobs_professor_sel` (via `app_classes_do_professor()`).
+
+  **KPIs da fila** (#14, `20261102_12`): a RPC `personalizacao_kpis_operacionais`
+  (`SECURITY INVOKER`, card "Fila de personalização" no painel da turma) agrega latência,
+  falha, reprocessamento e os gatilhos do cap. 10 §11, com o SLO em
+  `app_config.personalizacao_kpi_slo`. O tempo por formato vem de
+  `processing_started_at`/`_finished_at`/`_runs` em `personalizacao_job_targets`, que
+  **só o gatilho `trg_job_target_relogio` escreve** (ignora o que vier no UPDATE). Ele
+  mede de `processing` até o estado final: caminho novo de worker que leve um target ao
+  fim **sem passar por `processing`** fica sem duração. `processing_runs` não zera na
+  retomada manual (`attempts` zera).
 - `personalizacao_sugestao` + `personalizacao_sugestao_log` — ordem **aconselhada**
   de consumo do material por `(aluno × tópico × conteúdo)` e o histórico
   append-only de cada decisão (`criada`/`revisada`/`mantida`). Motor
@@ -289,7 +299,7 @@ Cada perfil carrega:
     modo declarado e telemetria.
 
   A preferência do aluno não passa por cima do conteúdo que depende de um formato.
-  Estado mental recorrente vai para o log como observação e não reordena.
+  Alerta de estudo recorrente vai para o log como observação e não reordena.
 
   A análise do conteúdo é IA, então é API: o worker faz uma chamada por tópico
   (`demanda_formato.py`, versão própria). Sem modelo, uma regra fixa grava `origem =
@@ -345,8 +355,8 @@ Cada perfil carrega:
   batalha; ela entra no `source_hash`, então mudar a voz de um perfil regera as falas dele.
 - `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
   sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
-  ou por aluno (estes vêm do `agente_intervencao`, quando um estado negativo
-  se repete; uma pendente por aluno × estado a cada 7 dias). **Só a geração passa pela API**
+  ou por aluno (estes vêm do `agente_intervencao`, quando um alerta de estudo
+  se repete; uma pendente por aluno × alerta a cada 7 dias). **Só a geração passa pela API**
   (`POST /api/v1/insights/turma/{classe_id}/gerar`, em segundo plano, com
   intervalo mínimo de 5 min); listar, aceitar e ignorar é Supabase direto. O
   aluno não lê; o professor só atualiza `status`/`motivo_descarte`/`resolved_at`
@@ -380,6 +390,12 @@ Cada perfil carrega:
   mantém o antigo e o INSERT grava NULL. Não há erro. NULL é "sem nota" em
   toda parte (faixa `sem_dado` nas views, fora da média da turma). Não volte a
   tratar "0 sem progresso" como sem nota.
+- **Faixas de XP** (#143, `20261102_10`): `xp_faixa` guarda o piso e o título de cada faixa, e o
+  nível é a posição pelo piso. O app lê `aluno_faixa_xp(p_classe_id)` e mostra o título e a barra no
+  Perfil. Os limites e os títulos não existem no código do app: mudar faixa é mudar a tabela. O XP é
+  o **da matrícula**, a mesma conta do critério `pontuacao` do rank e do CSV do professor, sem janela
+  de período, e o negativo conta como 0. Os títulos são etapas da subida, não pessoas, para não ter
+  gênero. O peso do XP na nota ainda não existe: `"notaMedia"` não usa XP.
 - **Tentativas de atividade pelo relógio do banco** (#136, `20261101_13`):
   - `atividade_iniciar_tentativa` abre a tentativa e devolve a que já está aberta, então reabrir o app não zera o relógio;
   - `atividade_responder_tentativa` fecha a tentativa. Ela recusa prazo vencido e tentativas esgotadas (`atividades.tentativas_max`), decide `no_tempo` e grava `atividade_aluno`;
@@ -533,17 +549,30 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > do LangGraph, e até a #64 foi o que aconteceu — todo nó lia `None`. Quem usa:
 > `agente_ui` (tema de suporte), `agente_intervencao` (grava em `intervencoes`
 > com escopo aluno e, se for o caso, sugere notificação em `notificacoes_ia`) e
-> `agente_cronometro` (#136: desliga o cronômetro das atividades por ansiedade ou
-> sobrecarga recorrente, ou por 3 das últimas 5 tentativas cronometradas fora do
-> tempo, lidas em `desempenho_recente.tentativas`; só desliga, e a escolha do
-> aluno vence — o UPSERT confere `origem <> 'aluno'` na própria escrita).
-> Três detalhes que não são óbvios:
+> `agente_cronometro` (#136: desliga o cronômetro das atividades por 3 das
+> últimas 5 tentativas cronometradas fora do tempo, lidas em
+> `desempenho_recente.tentativas`, e não lê o histórico; só desliga, e a escolha
+> do aluno vence — o UPSERT confere `origem <> 'aluno'` na própria escrita).
+> Fora do grafo, `professor_risco_reprovacao_turma` lê a mesma tabela
+> (`20261102_10`).
 >
+> **O que a tabela guarda é estado de estudo, não emoção** (DAT-45, desde
+> 02/11): `analysis_runner` grava um registro por ciclo, `abandono`,
+> `dificuldade` ou `sem_alerta` (`app/services/estado_de_estudo.py`). Antes ela
+> receberia o `mentalState` do `ai_patch` (`anxious` saído de nota baixa), mas
+> nenhum caminho de produção o gravava, e a tabela estava vazia. Não volte a
+> gravar emoção inferida aqui: a intervenção diria ao professor algo que ninguém
+> mediu. O nome da tabela ficou por compatibilidade.
+>
+> Quatro detalhes que não são óbvios:
+>
+> - **`sem_alerta` também é gravado.** Sem ele, a janela pularia os ciclos sem
+>   problema e juntaria alertas de semanas diferentes.
 > - **A leitura é uma janela, não o histórico.** `listar_por_aluno` vem com
 >   `limit=_JANELA_RECORRENCIA` (5). Recorrência é 3 dos **últimos 5** registros
->   com o mesmo `kind` negativo (`frustrated`, `anxious`, `overwhelmed`,
->   `tired`) — não "3 vezes desde sempre". Aumentar a janela muda o significado
->   do sinal, não só a sensibilidade.
+>   com o mesmo alerta (`dificuldade` ou `abandono`) — não "3 vezes desde
+>   sempre". Aumentar a janela muda o significado do sinal, não só a
+>   sensibilidade.
 > - **`_detectar_recorrencia` é pura e assume ordenação do mais recente para o
 >   mais antigo**, que é o que o repositório devolve. Trocar o `ORDER BY` lá
 >   inverte o sentido da janela sem erro nenhum — os 5 mais **antigos**
@@ -701,6 +730,15 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   que morre com a transação, ou a porta 5432 (modo sessão). As migrações
   declaram `SET TRANSACTION READ WRITE` (`declara_leitura_e_escrita`), mas o
   resto da API não: com o backend envenenado, toda escrita dela falha.
+
+  Pelo mesmo motivo, **nada de lock de sessão pela 6543**
+  (`pg_advisory_lock`/`pg_advisory_unlock`). Cada transação pode cair num
+  backend diferente: o `unlock` roda noutro, devolve `false` sem erro, e a trava
+  fica presa no primeiro até o pooler reciclá-lo. Foi assim que a trava das
+  migrações derrubou duas subidas da API em 02/11 (`statement timeout` em
+  `pg_advisory_lock`, das 04:38 às ~04:43, sem migração nenhuma rodando). Use
+  `pg_advisory_xact_lock` dentro da transação que precisa da trava, como faz
+  `trava_de_migracao`.
 - **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
   colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro

@@ -27,10 +27,6 @@ def _t(atividade=1, numero=1, minuto=0, cronometrada=True, no_tempo=True, acerto
     }
 
 
-def _recorrencia(kind: str, ocorrencias: int = 3) -> dict:
-    return {"mental_state_recorrente": {"recorrente": True, "kind": kind, "ocorrencias": ocorrencias}}
-
-
 def test_resumo_separa_primeira_e_ultima_tentativa_e_conta_esgotadas() -> None:
     r = resumir_tentativas(
         [
@@ -65,7 +61,7 @@ def test_janela_de_cronometradas_e_da_mais_recente_para_a_mais_antiga() -> None:
 
 def test_tres_das_ultimas_cinco_fora_do_tempo_desliga() -> None:
     r = resumir_tentativas([_t(atividade=i, minuto=i, no_tempo=i < 2) for i in range(5)], LIGADO)
-    decisao = decidir_desligar_cronometro(r, None)
+    decisao = decidir_desligar_cronometro(r)
     assert decisao is not None
     assert (decisao.criterio, decisao.ocorrencias) == ("fora_do_tempo", 3)
     assert "3 das últimas 5" in decisao.motivo
@@ -73,26 +69,25 @@ def test_tres_das_ultimas_cinco_fora_do_tempo_desliga() -> None:
 
 def test_duas_fora_do_tempo_nao_bastam() -> None:
     r = resumir_tentativas([_t(atividade=i, minuto=i, no_tempo=i < 3) for i in range(5)], LIGADO)
-    assert decidir_desligar_cronometro(r, None) is None
+    assert decidir_desligar_cronometro(r) is None
 
 
-def test_ansiedade_ou_sobrecarga_recorrente_desliga_frustracao_nao() -> None:
-    r = resumir_tentativas([], LIGADO)
-    assert decidir_desligar_cronometro(r, _recorrencia("anxious")).criterio == "estado_mental"
-    assert "sobrecarga" in decidir_desligar_cronometro(r, _recorrencia("overwhelmed", 4)).motivo
-    assert decidir_desligar_cronometro(r, _recorrencia("frustrated")) is None
+def test_sem_tentativa_fora_do_tempo_nao_desliga() -> None:
+    # DAT-45: "ansiedade" recorrente nao e mais criterio; so a pressao de tempo medida conta.
+    assert decidir_desligar_cronometro(resumir_tentativas([], LIGADO)) is None
 
 
 def test_escolha_do_aluno_vence_e_desligado_fica_como_esta() -> None:
     fora = [_t(atividade=i, minuto=i, no_tempo=False) for i in range(5)]
-    assert decidir_desligar_cronometro(resumir_tentativas(fora, {"ligado": True, "origem": "aluno"}), _recorrencia("anxious")) is None
-    assert decidir_desligar_cronometro(resumir_tentativas(fora, {"ligado": False, "origem": "perfil"}), None) is None
+    assert decidir_desligar_cronometro(resumir_tentativas(fora, {"ligado": True, "origem": "aluno"})) is None
+    assert decidir_desligar_cronometro(resumir_tentativas(fora, {"ligado": False, "origem": "perfil"})) is None
     # Sem saber o estado de agora (tabela ausente, leitura falhou), a IA não mexe.
-    assert decidir_desligar_cronometro(resumir_tentativas(fora), _recorrencia("anxious")) is None
+    assert decidir_desligar_cronometro(resumir_tentativas(fora)) is None
 
 
 def test_texto_ao_professor_cita_o_motivo_e_que_a_nota_nao_muda() -> None:
-    decisao = decidir_desligar_cronometro(resumir_tentativas([], LIGADO), _recorrencia("anxious"))
+    fora = [_t(atividade=i, minuto=i, no_tempo=False) for i in range(5)]
+    decisao = decidir_desligar_cronometro(resumir_tentativas(fora, LIGADO))
     texto = texto_para_o_professor(decisao)
     assert decisao.motivo in texto and "nota não muda" in texto and len(texto) <= 400
 

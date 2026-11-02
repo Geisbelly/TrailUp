@@ -21,10 +21,12 @@ import AbandonoPorPerfil from "./dashboard/AbandonoPorPerfil";
 import InatividadePorPerfil from "./dashboard/InatividadePorPerfil";
 import AbandonoPorEtapa from "./dashboard/AbandonoPorEtapa";
 import GargalosDePersonalizacao from "./dashboard/GargalosDePersonalizacao";
+import FilaDePersonalizacao from "./dashboard/FilaDePersonalizacao";
 import RiscoDeReprovacao from "./dashboard/RiscoDeReprovacao";
 import { useRiscoDeReprovacao } from "./dashboard/useRiscoDeReprovacao";
 import { useGargalosDePersonalizacao } from "./dashboard/useGargalosDePersonalizacao";
 import { useKpisPorTopico } from "./dashboard/useKpisPorTopico";
+import { useKpisOperacionais } from "./dashboard/useKpisOperacionais";
 import { useDisponibilidade } from "./dashboard/useDisponibilidade";
 import DistribuicaoNotas from "./dashboard/DistribuicaoNotas";
 import TabelaAlunos from "./dashboard/TabelaAlunos";
@@ -517,6 +519,7 @@ export default function DashboardSection() {
   const kpisPorTopico = useKpisPorTopico(Number.isFinite(turmaUnica) ? turmaUnica : null, janelaTemporal);
   const riscoDeReprovacao = useRiscoDeReprovacao(Number.isFinite(turmaUnica) ? turmaUnica : null);
   const gargalos = useGargalosDePersonalizacao(classScopeIds);
+  const filaDePersonalizacao = useKpisOperacionais(Number.isFinite(turmaUnica) ? turmaUnica : null, janelaTemporal);
   const rotuloVoltar = `${selectedAluno?.classe_nome ?? "Turma"} · todos os alunos`;
 
   let visaoDoAluno = null;
@@ -609,6 +612,8 @@ export default function DashboardSection() {
               <RiscoDeReprovacao turmaUnica={turmaUnica} estado={riscoDeReprovacao} alunos={alunosDaTurma} onAbrir={abrirAluno} />
 
               <GargalosDePersonalizacao estado={gargalos} />
+
+              <FilaDePersonalizacao turmaUnica={turmaUnica} estado={filaDePersonalizacao} />
 
               <TabelaAlunos
                 alunos={alunosDaTurma}

@@ -325,6 +325,12 @@ class TelemetriaRepository:
         como antes - o comportamento degrada, nao quebra.
 
         Sem R2 configurado, o comportamento e identico ao anterior.
+
+        O ponteiro LEVA o `cliente` junto. "Nada le de volta" deixou de valer:
+        `metricas_estudo_coortes` (20261102_03) le `payload -> 'cliente'`
+        (plataforma e versao do app) e, sem ele, todo lote que passasse pelo R2
+        viraria `sem_cliente` e sumiria da linha do tempo de versoes. E' um
+        objeto pequeno (versao, perfil do build, plataforma, host).
         """
         cfg = ler_config_r2(get_settings())
         if cfg is None:
@@ -342,7 +348,10 @@ class TelemetriaRepository:
             logger.warning("[telemetria] payload nao foi para o R2 (%s): %s", caminho, exc)
             return payload
 
-        return {"_r2": caminho, "_bucket": cfg.bucket}
+        ponteiro: dict[str, Any] = {"_r2": caminho, "_bucket": cfg.bucket}
+        if isinstance(payload.get("cliente"), dict):
+            ponteiro["cliente"] = payload["cliente"]
+        return ponteiro
 
     # A mensagem inteira pode ser um traceback de driver com SQL e parametros
     # dentro. Aqui interessa distinguir UM erro do outro, nao reproduzi-lo: o

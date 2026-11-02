@@ -461,7 +461,7 @@ async def test_agente_ui_forca_tema_de_suporte_com_frustracao_recorrente() -> No
             "perfil_brainhex": [],
             "desempenho_recente": {},
             "memoria_aluno": {
-                "mental_state_recorrente": {"recorrente": True, "kind": "frustrated", "ocorrencias": 3}
+                "mental_state_recorrente": {"recorrente": True, "kind": "dificuldade", "ocorrencias": 3}
             },
         },
         settings=settings,

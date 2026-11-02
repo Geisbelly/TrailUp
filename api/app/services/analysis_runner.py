@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.evento import EventoRepository
 from app.repositories.ia_decision_logs import IADecisionLogRepository
 from app.repositories.mental_state import MentalStateHistoryRepository
+from app.repositories.sugestao_material import SugestaoMaterialRepository
 from app.schemas.api import AnalisarPayload, AnalisarResponse
 from app.schemas.common import Evento
 from app.services import memoria_aluno
+from app.services.estado_de_estudo import estado_do_ciclo
 from app.services.linear_analysis_pipeline import build_linear_analysis_orchestrator
 from app.services.roteamento_ia import rota_ia_para_alunos
 from app.services.state_builder import build_initial_state
@@ -43,19 +45,6 @@ def build_analysis_graph_config(
             "ciclo_id": cycle_id,
         },
     }
-
-
-def extract_mental_state(result: dict) -> dict | None:
-    """Extrai o snapshot de mental-state do aiPatch produzido pelo pipeline/agentes."""
-    if not isinstance(result, dict):
-        return None
-    ai_patch = result.get("ai_patch") or result.get("aiPatch")
-    if not isinstance(ai_patch, dict):
-        return None
-    mental_state = ai_patch.get("mentalState") or ai_patch.get("mental_state")
-    if not isinstance(mental_state, dict) or not mental_state.get("kind"):
-        return None
-    return mental_state
 
 
 async def _revisar_sugestao(state: dict, session: AsyncSession, **kwargs: Any) -> dict | None:
@@ -169,24 +158,30 @@ async def _run_analysis_na_rota(
         eventos_novos=eventos_novos,
     )
     response = build_analysis_response(result)
-    mental_state = extract_mental_state(result)
-    if mental_state is not None:
-        try:
-            await MentalStateHistoryRepository(session).registrar(
-                aluno_id=aluno_id,
-                ciclo_id=response.ciclo_id or state.get("ciclo_id"),
-                kind=str(mental_state.get("kind")),
-                intensity=mental_state.get("intensity"),
-                confidence=mental_state.get("confidence"),
-                reason=mental_state.get("reason"),
+    topico_id_efetivo = topico_id or (result.get("desempenho_recente") or {}).get("topico_recente_id")
+    # Um registro por ciclo, com o estado de estudo observado (DAT-45: não é emoção). É a série
+    # que `memoria_aluno` lê para a recorrência da intervenção e do tema de suporte.
+    try:
+        desempenho_topico = (
+            await SugestaoMaterialRepository(session).desempenho_no_topico(
+                aluno_id=aluno_id, topico_id=int(topico_id_efetivo)
             )
-            await session.commit()
-        except Exception as exc:  # pragma: no cover
-            await session.rollback()
-            logger.warning("Falha ao persistir aluno_mental_state_history: %s", exc)
+            if topico_id_efetivo is not None
+            else None
+        )
+        estado = estado_do_ciclo(eventos_novos=eventos_novos, desempenho_topico=desempenho_topico)
+        await MentalStateHistoryRepository(session).registrar(
+            aluno_id=aluno_id,
+            ciclo_id=response.ciclo_id or state.get("ciclo_id"),
+            kind=estado["kind"],
+            reason=estado["reason"],
+        )
+        await session.commit()
+    except Exception as exc:  # pragma: no cover
+        await session.rollback()
+        logger.warning("Falha ao persistir aluno_mental_state_history: %s", exc)
 
     performance_resumo = (result.get("pipeline_stage_outputs") or {}).get("performance")
-    topico_id_efetivo = topico_id or (result.get("desempenho_recente") or {}).get("topico_recente_id")
     if performance_resumo:
         try:
             await memoria_aluno.atualizar_memoria(

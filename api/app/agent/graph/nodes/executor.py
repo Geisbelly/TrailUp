@@ -20,10 +20,10 @@ from app.services.tentativas_atividade import CronometroDecisao, texto_para_o_pr
 
 
 def _aviso_do_cronometro(decisao: CronometroDecisao) -> IntervencaoPayload:
-    """O professor fica sabendo por `intervencoes`, como na recorrencia de estado mental (#64).
-    `kind` proprio: a deduplicacao de 7 dias e por kind, e nao pode engolir o aviso de frustracao."""
+    """O professor fica sabendo por `intervencoes`, como na recorrencia de alerta de estudo (#64).
+    `kind` proprio: a deduplicacao de 7 dias e por kind, e nao pode engolir o aviso de dificuldade."""
     return IntervencaoPayload(
-        tipo="emocional" if decisao.criterio == "estado_mental" else "engajamento",
+        tipo="engajamento",
         kind="cronometro_desligado",
         ocorrencias=decisao.ocorrencias,
         janela=decisao.janela,

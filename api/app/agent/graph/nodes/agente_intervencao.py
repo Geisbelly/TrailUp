@@ -1,7 +1,10 @@
-"""Intervencao sugerida ao professor quando um estado negativo se repete (#64).
+"""Intervencao sugerida ao professor quando um alerta de estudo se repete (#64).
 
 O padrao de risco e a recorrencia que `memoria_aluno` ja detecta: 3 dos ultimos 5
-registros de `aluno_mental_state_history` com o mesmo `kind` negativo. O no nao
+ciclos em `aluno_mental_state_history` com o mesmo alerta (`dificuldade` ou
+`abandono`, ver `estado_de_estudo.py`). Sao estados de estudo, nao emocao: a
+telemetria nao mede emocao (DAT-45), entao o texto nunca fala em ansiedade ou
+frustracao. O no nao
 recalcula isso; le o resultado do estado, e a evidencia (kind, ocorrencias, tipo)
 vai para a intervencao sem passar pelo modelo. O modelo so redige o texto ao
 professor e, se for o caso, a mensagem de apoio ao aluno.
@@ -24,16 +27,12 @@ from app.services.llm import JsonLLMService, StructuredOutputError
 logger = logging.getLogger(__name__)
 
 _ESTADO_PT = {
-    "frustrated": "frustração",
-    "anxious": "ansiedade",
-    "overwhelmed": "sobrecarga",
-    "tired": "cansaço",
+    "dificuldade": "dificuldade nas atividades do tópico",
+    "abandono": "atividade aberta e deixada sem concluir",
 }
 _TIPO_POR_KIND = {
-    "frustrated": "emocional",
-    "anxious": "emocional",
-    "overwhelmed": "emocional",
-    "tired": "engajamento",
+    "dificuldade": "pedagogica",
+    "abandono": "engajamento",
 }
 # Mesma janela de `memoria_aluno._JANELA_RECORRENCIA`: a base cita "dos ultimos N".
 _JANELA = 5
@@ -47,10 +46,8 @@ _TERMOS_CLINICOS = re.compile(
 )
 
 _ACAO_DA_REGRA = {
-    "frustrated": "Vale conversar com o aluno no início da próxima aula e oferecer o próximo material em outro formato.",
-    "anxious": "Vale olhar com o aluno o que vem a seguir e combinar a próxima entrega com calma.",
-    "overwhelmed": "Vale reduzir o tamanho da próxima entrega ou dividir o tópico em partes menores.",
-    "tired": "Vale propor sessões mais curtas e retomar o ritmo aos poucos.",
+    "dificuldade": "Vale retomar com o aluno o ponto do tópico em que as atividades erram e oferecer o próximo material em outro formato.",
+    "abandono": "Vale reduzir o tamanho da próxima entrega ou dividir a atividade em partes menores.",
 }
 _NOTIFICACAO_DA_REGRA = {
     "titulo": "Um passo de cada vez",
@@ -68,19 +65,27 @@ def _recorrencia(state: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _base(kind: str, ocorrencias: int) -> str:
-    return f"{ocorrencias} dos últimos {_JANELA} registros de estado mental: {_ESTADO_PT[kind]}."
+    return f"{ocorrencias} dos últimos {_JANELA} ciclos de estudo: {_ESTADO_PT[kind]}."
 
 
 def _texto_da_regra(kind: str, ocorrencias: int) -> str:
     return (
-        f"O aluno registrou {_ESTADO_PT[kind]} em {ocorrencias} dos últimos {_JANELA} ciclos de estudo. "
+        f"O sistema observou {_ESTADO_PT[kind]} em {ocorrencias} dos últimos {_JANELA} ciclos de estudo do aluno. "
         f"{_ACAO_DA_REGRA[kind]}"
     )
 
 
+# DAT-45: o sistema nao mede emocao. Texto que a atribua ao aluno cai para o da regra.
+_TERMOS_DE_EMOCAO = re.compile(
+    r"\b(ansios\w*|ansiedade|frustra\w*|sobrecarregad\w*|sobrecarga|estressad\w*|estresse|"
+    r"desmotivad\w*|triste\w*|tristeza)\b",
+    re.IGNORECASE,
+)
+
+
 def _sugestao_valida(sugestao: IntervencaoSugestao) -> bool:
     textos = [sugestao.texto, sugestao.notificacao_titulo or "", sugestao.notificacao_corpo or ""]
-    return not any(_TERMOS_CLINICOS.search(t) for t in textos)
+    return not any(_TERMOS_CLINICOS.search(t) or _TERMOS_DE_EMOCAO.search(t) for t in textos)
 
 
 def montar_intervencao(
@@ -109,8 +114,9 @@ def montar_intervencao(
             notificacao_corpo=sugestao.notificacao_corpo.strip() if notifica else None,
             origem="modelo",
         )
-    # Ansiedade: o professor olha antes; mensagem automatica pode soar como vigilancia.
-    notifica = kind != "anxious"
+    # Dificuldade: o professor olha antes; a resposta e pedagogica, e mensagem automatica
+    # sobre erro pode soar como vigilancia.
+    notifica = kind != "dificuldade"
     return IntervencaoPayload(
         **comum,
         texto=_texto_da_regra(kind, ocorrencias),
@@ -149,7 +155,6 @@ async def agente_intervencao(
     if await _ja_pendente(session_factory, state, kind):
         return {"completed_nodes": ["agente_intervencao"], "messages": ["intervencao ja pendente"]}
 
-    emocao = state.get("emocao_atual") or {}
     desempenho = state.get("desempenho_recente") or {}
     sugestao: IntervencaoSugestao | None = None
     try:
@@ -160,7 +165,6 @@ async def agente_intervencao(
                 "estado": _ESTADO_PT[kind],
                 "ocorrencias": ocorrencias,
                 "janela": _JANELA,
-                "emocao_atual": emocao.get("emocao_primaria"),
                 "desempenho_recente": {
                     k: desempenho.get(k) for k in ("media_acertos", "percentual_concluido") if k in desempenho
                 },

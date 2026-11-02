@@ -52,9 +52,10 @@ async def agente_ui(state: dict[str, Any], settings: Settings) -> dict[str, Any]
     memoria = state.get("memoria_aluno") or {}
     recorrencia = memoria.get("mental_state_recorrente") or {}
     if recorrencia.get("recorrente"):
-        # recorrencia (varios ciclos) pesa mais que o instante do ciclo
-        # atual - forca o mesmo preset de suporte que EMOCAO_TEMA usa pra
-        # 'frustrado', mesmo que a emocao pontual pareca neutra.
+        # alerta de estudo recorrente (dificuldade ou abandono em varios
+        # ciclos) pesa mais que o instante do ciclo atual - forca o preset de
+        # suporte (ritmo mais lento, tom encorajador) que EMOCAO_TEMA guarda
+        # em 'frustrado', mesmo que o ciclo pontual pareca neutro.
         suporte = EMOCAO_TEMA["frustrado"]
         ui_config = ui_config.model_copy(
             update={

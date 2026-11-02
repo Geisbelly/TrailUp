@@ -20,7 +20,7 @@ from app.services.llm import StructuredOutputError
 modulo = import_module("app.agent.graph.nodes.agente_intervencao")
 modulo_executor = import_module("app.agent.graph.nodes.executor")
 
-RECORRENTE = {"mental_state_recorrente": {"recorrente": True, "kind": "frustrated", "ocorrencias": 3}}
+RECORRENTE = {"mental_state_recorrente": {"recorrente": True, "kind": "abandono", "ocorrencias": 3}}
 
 
 class _Sessao:
@@ -89,38 +89,48 @@ def test_supervisor_leva_a_intervencao_ao_executor() -> None:
     estado = _estado(
         completed_nodes=["agente_perfil", "agente_intervencao"],
         perfil_update=None,
-        intervencao_payload={"tipo": "emocional"},
+        intervencao_payload={"tipo": "engajamento"},
     )
     assert compute_supervisor_next(estado) == ["executor"]
 
 
 def test_regra_sem_modelo_tem_evidencia_e_texto_sem_diagnostico() -> None:
-    i = montar_intervencao("frustrated", 3, None)
-    assert (i.tipo, i.acao, i.origem) == ("emocional", "notificacao", "regra")
-    assert i.base == "3 dos últimos 5 registros de estado mental: frustração."
+    i = montar_intervencao("abandono", 3, None)
+    assert (i.tipo, i.acao, i.origem) == ("engajamento", "notificacao", "regra")
+    assert i.base == "3 dos últimos 5 ciclos de estudo: atividade aberta e deixada sem concluir."
     assert i.notificacao_titulo and i.notificacao_corpo
-    # Ansiedade: o professor olha antes de qualquer mensagem automática.
-    assert montar_intervencao("anxious", 4, None).acao == "acompanhar"
-    assert montar_intervencao("tired", 3, None).tipo == "engajamento"
+    # Dificuldade: resposta pedagógica, o professor olha antes de qualquer mensagem automática.
+    dificuldade = montar_intervencao("dificuldade", 4, None)
+    assert (dificuldade.tipo, dificuldade.acao) == ("pedagogica", "acompanhar")
+    assert "dificuldade nas atividades do tópico" in dificuldade.texto
+
+
+def test_texto_que_atribui_emocao_cai_na_regra() -> None:
+    # DAT-45: o sistema não mede emoção; o texto do modelo não pode dizer que mediu.
+    emocao = IntervencaoSugestao(texto="O aluno está ansioso com as atividades. Converse com ele.", acao="acompanhar")
+    assert montar_intervencao("dificuldade", 3, emocao).origem == "regra"
+    for kind in ("dificuldade", "abandono"):
+        regra = montar_intervencao(kind, 3, None)
+        assert not modulo._TERMOS_DE_EMOCAO.search(regra.texto + (regra.notificacao_corpo or ""))
 
 
 def test_texto_clinico_do_modelo_cai_na_regra() -> None:
     clinica = IntervencaoSugestao(
         texto="Pode ser um quadro de depressão; sugira terapia.", acao="acompanhar"
     )
-    assert montar_intervencao("frustrated", 3, clinica).origem == "regra"
+    assert montar_intervencao("abandono", 3, clinica).origem == "regra"
 
 
 def test_notificacao_sem_texto_vira_acompanhar() -> None:
     incompleta = IntervencaoSugestao(texto="Converse com o aluno.", acao="notificacao", notificacao_titulo="Oi")
-    i = montar_intervencao("frustrated", 3, incompleta)
+    i = montar_intervencao("abandono", 3, incompleta)
     assert (i.origem, i.acao, i.notificacao_titulo) == ("modelo", "acompanhar", None)
 
 
 @pytest.mark.asyncio
 async def test_no_usa_o_modelo_e_nao_manda_dado_pessoal(monkeypatch) -> None:
     sugestao = IntervencaoSugestao(
-        texto="Frustração em 3 dos últimos 5 ciclos. Converse no início da aula.",
+        texto="Atividade deixada sem concluir em 3 dos últimos 5 ciclos. Converse no início da aula.",
         acao="notificacao",
         notificacao_titulo="Seu ritmo",
         notificacao_corpo="O próximo passo está mais curto.",
@@ -134,10 +144,11 @@ async def test_no_usa_o_modelo_e_nao_manda_dado_pessoal(monkeypatch) -> None:
     )
 
     assert r["intervencao_payload"]["origem"] == "modelo"
-    assert r["intervencao_payload"]["kind"] == "frustrated"
+    assert r["intervencao_payload"]["kind"] == "abandono"
     payload = chamada.await_args.kwargs["payload"]
     assert "Fulana" not in str(payload) and "f@x" not in str(payload)
-    assert payload["estado"] == "frustração"
+    assert payload["estado"] == "atividade aberta e deixada sem concluir"
+    assert "emocao_atual" not in payload
 
 
 @pytest.mark.asyncio
@@ -179,21 +190,21 @@ def _mock_executor(monkeypatch, registrar_retorno):
 @pytest.mark.asyncio
 async def test_executor_grava_a_intervencao_e_notifica(monkeypatch) -> None:
     registrar, enfileirar = _mock_executor(monkeypatch, "uuid-1")
-    payload = montar_intervencao("frustrated", 3, None).model_dump(mode="json")
+    payload = montar_intervencao("abandono", 3, None).model_dump(mode="json")
     r = await executor({"aluno_id": "a", "classe_id": 7, "ciclo_id": "c", "intervencao_payload": payload}, _Fabrica())
 
     assert registrar.await_args.kwargs["classe_id"] == 7
     assert "intervencao_registrada" in r["acoes_aplicadas"]
     assert "intervencao_notificada" in r["acoes_aplicadas"]
     notificacao = enfileirar.await_args.args[1]
-    assert notificacao.contexto == {"motivo": "intervencao", "intervencao_id": "uuid-1", "kind": "frustrated"}
+    assert notificacao.contexto == {"motivo": "intervencao", "intervencao_id": "uuid-1", "kind": "abandono"}
 
 
 @pytest.mark.asyncio
 async def test_executor_nao_notifica_duas_vezes_no_mesmo_ciclo(monkeypatch) -> None:
     """Valência negativa agora já faz o agente_notificacao mandar a dele."""
     _, enfileirar = _mock_executor(monkeypatch, "uuid-1")
-    payload = montar_intervencao("frustrated", 3, None).model_dump(mode="json")
+    payload = montar_intervencao("abandono", 3, None).model_dump(mode="json")
     notificacao_do_ciclo = {
         "tipo": "suporte", "titulo": "t", "corpo": "c", "horario": "2026-10-31T12:00:00+00:00", "prioridade": 2,
     }
@@ -209,7 +220,7 @@ async def test_executor_nao_notifica_duas_vezes_no_mesmo_ciclo(monkeypatch) -> N
 @pytest.mark.asyncio
 async def test_executor_com_intervencao_ja_pendente_nao_notifica(monkeypatch) -> None:
     _, enfileirar = _mock_executor(monkeypatch, None)
-    payload = montar_intervencao("frustrated", 3, None).model_dump(mode="json")
+    payload = montar_intervencao("abandono", 3, None).model_dump(mode="json")
     r = await executor({"aluno_id": "a", "classe_id": 7, "ciclo_id": "c", "intervencao_payload": payload}, _Fabrica())
     assert "intervencao_ja_pendente" in r["acoes_aplicadas"]
     enfileirar.assert_not_awaited()
