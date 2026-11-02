@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   classifyTtsFailure,
+  isDailyQuotaError,
+  rootCause,
   openAiVoiceFor,
   OPENAI_TTS_MAX_INPUT_CHARS,
   prepareTextForOpenAiTts,
@@ -252,4 +254,55 @@ test("synthesizeOpenAiPcm recusa resposta vazia em vez de gravar áudio mudo", a
     synthesizeOpenAiPcm({ text: "Olá.", voice: "coral", model: "gpt-4o-mini-tts", client }),
     /sem áudio/,
   );
+});
+
+// Cota do DIA, como o Gemini a descreve no 429 (quotaId com "PerDay").
+const ERRO_429_DIA = new Error(
+  '{"error":{"code":429,"message":"You exceeded your current quota. Quota exceeded for metric: '
+  + 'generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 10","details":[{"quotaId":'
+  + '"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}}',
+);
+
+test("isDailyQuotaError separa a cota do dia da cota por minuto", () => {
+  assert.equal(isDailyQuotaError(ERRO_429_DIA), true);
+  assert.equal(isDailyQuotaError(ERRO_429), false);
+  assert.equal(isDailyQuotaError(new TtsNoAudioError("vazio")), false);
+});
+
+test("cota do dia esgotada vai direto para a reserva, sem as esperas de 5/10/15 s (turma 68, 02/11)", async () => {
+  const { esperas, sleep } = semEspera();
+  let gemini = 0;
+  const resultado = await synthesizeSpeechWithRecovery({
+    label: "narração",
+    synthesizeWithGemini: async () => { gemini += 1; throw ERRO_429_DIA; },
+    synthesizeWithOpenAI: async () => "audio-openai",
+    sleep,
+    warn: () => {},
+  });
+  assert.equal(resultado, "audio-openai");
+  assert.equal(gemini, 1);
+  assert.deepEqual(esperas, []);
+});
+
+test("depois de uma resposta sem áudio, a nova tentativa vai sem as tags de tom", async () => {
+  const { sleep } = semEspera();
+  const pedidos: boolean[] = [];
+  await synthesizeSpeechWithRecovery({
+    label: "narração",
+    synthesizeWithGemini: async ({ plain }) => {
+      pedidos.push(plain);
+      if (pedidos.length < 3) throw new TtsNoAudioError("vazio");
+      return "audio";
+    },
+    synthesizeWithOpenAI: null,
+    sleep,
+    warn: () => {},
+  });
+  assert.deepEqual(pedidos, [false, true, true]);
+});
+
+test("rootCause chega ao erro do Gemini embrulhado pela reserva", () => {
+  const embrulhado = new Error("reserva OpenAI falhou (429 no credits) depois do Gemini", { cause: ERRO_429_DIA });
+  assert.equal(rootCause(embrulhado), ERRO_429_DIA);
+  assert.equal(rootCause(ERRO_429), ERRO_429);
 });

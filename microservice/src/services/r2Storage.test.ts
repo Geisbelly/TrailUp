@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  baixarTextoDoR2,
   derivarChaveDeAssinatura,
   lerConfigR2,
   presignR2,
@@ -139,4 +140,20 @@ test("uploadParaR2 LANCA quando o R2 recusa, em vez de cair para o Supabase", as
     () => uploadParaR2(CFG, CAMINHO, Buffer.from("x"), "text/plain", fake),
     /upload falhou.*403.*SignatureDoesNotMatch/s,
   );
+});
+
+test("baixarTextoDoR2 faz GET assinado e devolve o texto; 404 vira null (objeto anterior ao R2)", async () => {
+  const urls: string[] = [];
+  const ok = (async (url: string, init: any) => {
+    urls.push(`${init?.method} ${url}`);
+    return { ok: true, status: 200, text: async () => "## Parte 2" };
+  }) as unknown as typeof fetch;
+  assert.equal(await baixarTextoDoR2(CFG, CAMINHO, ok), "## Parte 2");
+  assert.match(urls[0], /^GET https:\/\/.+\.r2\.cloudflarestorage\.com\/trailup\/brainhex\/seeker/);
+
+  const ausente = (async () => ({ ok: false, status: 404, text: async () => "NoSuchKey" })) as unknown as typeof fetch;
+  assert.equal(await baixarTextoDoR2(CFG, CAMINHO, ausente), null);
+
+  const negado = (async () => ({ ok: false, status: 403, text: async () => "AccessDenied" })) as unknown as typeof fetch;
+  await assert.rejects(() => baixarTextoDoR2(CFG, CAMINHO, negado), /download falhou.*403/s);
 });

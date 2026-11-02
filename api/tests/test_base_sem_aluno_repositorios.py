@@ -242,3 +242,49 @@ def test_job_media_generation_nao_fabrica_a_string_none() -> None:
         'job_aluno_id = str(job["aluno_id"]) if job.get("aluno_id") is not None else None'
         in fonte
     )
+
+
+class _SessaoQueGuardaOSql:
+    def __init__(self) -> None:
+        self.chamadas: list[tuple[str, dict]] = []
+
+    async def execute(self, stmt, params=None):
+        self.chamadas.append((str(stmt), dict(params or {})))
+
+        class _Vazio:
+            def mappings(self):
+                return []
+
+        return _Vazio()
+
+
+async def _sql_de_buscar_por_perfil(monkeypatch, **kwargs) -> tuple[str, dict]:
+    async def _tem_coluna(self, _coluna):
+        return True
+
+    monkeypatch.setattr(ConteudoPersonalizadoRepository, "_table_has_column", _tem_coluna)
+    sessao = _SessaoQueGuardaOSql()
+    repo = ConteudoPersonalizadoRepository(sessao)
+    await repo.buscar_por_perfil(classe_id=68, brainhex_profile_key="mastermind", **kwargs)
+    return sessao.chamadas[-1]
+
+
+@pytest.mark.asyncio
+async def test_buscar_por_perfil_filtra_pelo_dono(monkeypatch):
+    """#652: a base do Mastermind da turma 68 foi gerada na linha de um aluno
+    porque a busca nao olhava o dono."""
+    sql, _ = await _sql_de_buscar_por_perfil(monkeypatch, dono=None)
+    assert "AND aluno_id IS NULL" in sql
+
+    sql, params = await _sql_de_buscar_por_perfil(monkeypatch, dono="b49f2e21-a6f9-4c8d-9533-5a32bb219754")
+    assert "AND aluno_id = CAST(:dono AS UUID)" in sql
+    assert params["dono"] == "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
+
+
+@pytest.mark.asyncio
+async def test_buscar_por_perfil_sem_dono_poe_a_base_na_frente(monkeypatch):
+    """Leitura do console: qualquer linha serve, mas a base vem primeiro."""
+    sql, params = await _sql_de_buscar_por_perfil(monkeypatch)
+    assert "aluno_id IS NULL\n" not in sql and "AND aluno_id =" not in sql
+    assert "ORDER BY (aluno_id IS NULL) DESC, COALESCE(updated_at, gerado_em) DESC" in sql
+    assert "dono" not in params

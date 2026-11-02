@@ -16,7 +16,7 @@
 //   sistêmico, e repetir todas comeria a cota dos outros perfis.
 // As partes rodam uma por vez, para não estourar RPM.
 
-import { classifyTtsFailure, type TtsFailureKind } from "../services/ttsRecovery";
+import { classifyTtsFailure, rootCause, type TtsFailureKind } from "../services/ttsRecovery";
 
 const RETRYABLE_KINDS: ReadonlySet<TtsFailureKind> = new Set([
   "no_audio",
@@ -64,13 +64,7 @@ export function resolveAudioSecondRoundConfig(
  * OpenAI, a resposta sem áudio do Gemini continua sendo a falha que passa.
  */
 export function audioFailureKind(reason: unknown): TtsFailureKind {
-  let current: unknown = reason;
-  for (let depth = 0; depth < 5; depth += 1) {
-    const cause = (current as { cause?: unknown } | null)?.cause;
-    if (cause === undefined || cause === null) break;
-    current = cause;
-  }
-  return classifyTtsFailure(current);
+  return classifyTtsFailure(rootCause(reason));
 }
 
 export type AudioSecondRoundOutcome =

@@ -803,6 +803,27 @@ async def test_perfil_repository_emits_upserts_and_mode_update() -> None:
 
 
 @pytest.mark.asyncio
+async def test_perfil_repository_usa_a_coluna_camel_case_de_producao() -> None:
+    # Produção só tem `"modoOperacao"`, com a coluna `"modoResposta"`; `modoresposta` sem aspas não existe.
+    session = RecordingSession(
+        [
+            [SimpleNamespace(id=1, nome="Achiever")],
+            ScalarResult(None),
+            MappingResult([{"lower_name": None, "camel_name": '"modoOperacao"'}]),
+            ScalarResult(None),
+        ]
+    )
+
+    await PerfilRepository(session).atualizar_afinidades(
+        "aluno-1",
+        PerfilUpdate(perfis=[PerfilScore(perfil="Achiever", afinidade=88)], modo_operacao_sugerido="imediato"),
+    )
+
+    consulta = next(sql for sql, _ in session.calls if 'FROM "modoOperacao"' in sql)
+    assert 'COALESCE("modoResposta"' in consulta
+
+
+@pytest.mark.asyncio
 async def test_trilha_notificacao_ia_and_evento_repositories_persist_expected_targets() -> None:
     session = RecordingSession(
         [
