@@ -8,7 +8,6 @@ from urllib.parse import quote, unquote
 import httpx
 
 from app.core.settings import Settings
-from app.services.r2_storage import ConfigR2, enviar_para_r2, ler_config_r2
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +15,12 @@ BUCKET = "conteudo_aluno"
 CONTEUDOS_BUCKET = "conteudos"
 # Buckets privados cujo `arquivo_url` gravado/devolvido e' a URL do gateway.
 BUCKETS_DO_GATEWAY = frozenset({BUCKET, CONTEUDOS_BUCKET})
+# Edge Function que assina o PUT no R2 e os prefixos que ela aceita (espelho de
+# `PREFIXOS_PERMITIDOS` em `frontend/supabase/functions/storage-upload-url/pedido.ts`;
+# o teste confere os dois).
+FUNCAO_DE_UPLOAD = "storage-upload-url"
+PREFIXOS_DO_R2 = ("brainhex/", "fontes/")
+_FUNCAO_NAO_PUBLICADA = object()
 
 _CONTENT_TYPES: dict[str, str] = {
     "pdf": "application/pdf",
@@ -196,7 +201,6 @@ class SupabaseStorage:
         self._base_url = (settings.supabase_url or "").rstrip("/")
         self._service_key = settings.supabase_service_key
         self._enabled = bool(self._base_url and self._service_key)
-        self._r2: ConfigR2 | None = ler_config_r2(settings)
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -247,31 +251,56 @@ class SupabaseStorage:
         rel = assinada if assinada.startswith("/") else f"/{assinada}"
         return f"{self._base_url}{rel}" if rel.startswith("/storage/v1/") else f"{self._base_url}/storage/v1{rel}"
 
-    def _vai_para_o_r2(self, bucket: str | None) -> bool:
+    def _vai_para_o_r2(self, bucket: str | None, path: str | None) -> bool:
         """Escrita nova do que o gateway serve vai so' para o R2.
 
-        E' a regra do spec 2026-08-29-r2-gateway-design.md, que o microservice
-        (`uploadBuffer`) e o BrainHexPDF ja' seguem no codigo. Este caminho Python (o
-        fallback `MultiOutputPipeline`, a imagem e o markdown dos jobs, a fonte
-        enviada pelo console) continuava subindo no Supabase: medido em
-        02/11, audio e PDF gerados em 31/10 estavam no Storage e nao no R2.
+        E' a regra do spec 2026-08-29-r2-gateway-design.md. Este caminho Python
+        (o fallback `MultiOutputPipeline`, a imagem e o markdown dos jobs, a
+        fonte enviada pelo console) subia no Supabase: medido em 02/11, o PDF e
+        o audio de 31/10 e de 02/11 estavam no Storage, e nao no R2.
 
-        Exige a URL do projeto, porque sem ela nao ha' como montar a URL do
-        gateway que vai para `arquivo_url`. Sem R2 configurado, nada muda.
+        A API nao tem credencial do R2: elas ficam so' nos secrets das Edge
+        Functions. Ela pede a URL assinada a `storage-upload-url` com a chave de
+        servico, entao precisa da URL do projeto e da chave.
         """
-        return self._r2 is not None and bool(self._base_url) and str(bucket or "").strip("/") in BUCKETS_DO_GATEWAY
+        return (
+            self._enabled
+            and str(bucket or "").strip("/") in BUCKETS_DO_GATEWAY
+            and str(path or "").startswith(PREFIXOS_DO_R2)
+        )
 
-    async def _enviar_ao_r2(self, bucket: str, path: str, data: bytes, content_type: str) -> str | None:
-        """Sobe no R2 com a mesma chave que o gateway assina (`storage_path`).
+    async def _enviar_ao_r2(self, bucket: str, path: str, data: bytes, content_type: str) -> object:
+        """Pede ao Supabase uma URL de PUT no R2 e sobe o arquivo direto nela.
 
-        Falha devolve None, como a do Supabase, e NUNCA cai para o Supabase:
+        O arquivo nunca passa pelo Supabase: o egress conta tudo que sai de uma
+        Edge Function. A chave no R2 e' o `storage_path`, a mesma que o gateway
+        assina na leitura.
+
+        Falha devolve None, como a do Supabase, e NAO cai para o Supabase: um
         fallback silencioso na escrita faria a migracao parecer concluida com o
         egress saindo do mesmo lugar. Quem chama ja' trata None como falha de
         upload (`upload_failed:<kind>`, 503 na fonte).
+
+        A unica excecao e' a funcao ainda nao publicada (404 da plataforma; a
+        funcao nunca responde 404): devolve `_FUNCAO_NAO_PUBLICADA` e quem chama
+        segue o caminho antigo, para que publicar a API antes da funcao nao
+        derrube a geracao.
         """
-        assert self._r2 is not None
+        funcao = f"{self._base_url}/functions/v1/{FUNCAO_DE_UPLOAD}"
         try:
-            await enviar_para_r2(self._r2, path, data, content_type, timeout_sec=60.0)
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                pedido = await client.post(funcao, json={"path": path}, headers=self._headers())
+                if pedido.status_code == 404:
+                    logger.warning(
+                        "Edge Function %s nao publicada: %s/%s vai para o Supabase Storage", FUNCAO_DE_UPLOAD, bucket, path
+                    )
+                    return _FUNCAO_NAO_PUBLICADA
+                pedido.raise_for_status()
+                url_de_upload = str((pedido.json() or {}).get("url") or "")
+                if not url_de_upload:
+                    raise RuntimeError("resposta sem url")
+                envio = await client.put(url_de_upload, content=data, headers={"Content-Type": content_type})
+                envio.raise_for_status()
         except Exception as exc:
             logger.warning("R2 upload falhou (%s/%s): %s", bucket, path, exc)
             return None
@@ -291,8 +320,10 @@ class SupabaseStorage:
         (`public_url_for_bucket`: gateway para `conteudo_aluno`), ou None se SUPABASE_SERVICE_KEY nao estiver configurada ou o upload
         falhar."""
         bucket_name, normalized_path = _normalize_bucket_and_path(bucket, path)
-        if self._vai_para_o_r2(bucket_name) and normalized_path:
-            return await self._enviar_ao_r2(bucket_name, normalized_path, data, content_type)
+        if self._vai_para_o_r2(bucket_name, normalized_path):
+            resultado = await self._enviar_ao_r2(bucket_name, normalized_path, data, content_type)
+            if resultado is not _FUNCAO_NAO_PUBLICADA:
+                return resultado  # type: ignore[return-value]
         if not self._base_url or not bucket_name or not normalized_path or not self._enabled:
             return None
 
@@ -478,10 +509,11 @@ class SupabaseStorage:
         *,
         bucket: str = BUCKET,
     ) -> str | None:
-        if self._vai_para_o_r2(bucket):
-            bucket_name, normalized_path = _normalize_bucket_and_path(bucket, path)
-            if bucket_name and normalized_path:
-                return await self._enviar_ao_r2(bucket_name, normalized_path, data, content_type)
+        bucket_name, normalized_path = _normalize_bucket_and_path(bucket, path)
+        if bucket_name and normalized_path and self._vai_para_o_r2(bucket_name, normalized_path):
+            resultado = await self._enviar_ao_r2(bucket_name, normalized_path, data, content_type)
+            if resultado is not _FUNCAO_NAO_PUBLICADA:
+                return resultado  # type: ignore[return-value]
         if not self._enabled:
             return None
         url = f"{self._base_url}/storage/v1/object/{bucket}/{path}"

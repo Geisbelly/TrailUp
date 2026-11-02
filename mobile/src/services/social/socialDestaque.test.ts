@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test } from "node:test";
 import type { BrainHexProfile } from "@/constants/brainHexProfiles";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
-import { AREA_EM_DESTAQUE, abaDaAncora, abasDoSocial, areaEmDestaque, blocosDaArena, cabecaDaDisputa, ordemDasAreas } from "./socialDestaque";
+import { AREA_EM_DESTAQUE, ICONE_DO_SOCIAL, abaDaAncora, abasDoSocial, areaEmDestaque, blocosDaArena, cabecaDaDisputa, iconeDoSocial, ordemDasAreas } from "./socialDestaque";
 
 const BRAIN_HEX_PROFILES = Object.keys(AREA_EM_DESTAQUE) as BrainHexProfile[];
 
@@ -68,4 +70,29 @@ test("cada bloco mora numa aba, bloqueados na Conversa", () => {
   assert.equal(abaDaAncora("guildas"), "conversa");
   assert.equal(abaDaAncora("encontrar"), "descobrir");
   assert.equal(abaDaAncora("bloqueados"), "conversa");
+});
+
+test("o ícone do Social existe, muda por perfil e não repete o da Trilha do mesmo perfil", () => {
+  const glifos = require("@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialCommunityIcons.json") as Record<string, number>;
+  // `profileImages.ts` carrega PNG e não roda no node: os ícones da Trilha saem do texto dele.
+  const fonte = readFileSync(join(__dirname, "../../constants/profileImages.ts"), "utf8");
+  const iconesDaTrilha = (perfil: string) => {
+    const bloco = fonte.match(new RegExp(`\\n  ${perfil}: \\{([\\s\\S]*?)\\n  \\}`))?.[1] ?? "";
+    const icon = bloco.match(/\bicon: "([^"]+)"/)?.[1];
+    const iconFocus = bloco.match(/\bicon_focus: "([^"]+)"/)?.[1];
+    assert.ok(icon && iconFocus, `${perfil}: ícone da Trilha não encontrado`);
+    return [icon, iconFocus];
+  };
+  const vistos = new Set<string>();
+  for (const perfil of BRAIN_HEX_PROFILES) {
+    const { ativo, inativo } = ICONE_DO_SOCIAL[perfil];
+    assert.ok(glifos[ativo] && glifos[inativo], `${perfil}: ícone inexistente`);
+    vistos.add(ativo);
+    const trilha = iconesDaTrilha(perfil);
+    for (const icone of [ativo, inativo]) assert.ok(!trilha.includes(icone), `${perfil}: ${icone} repete a Trilha`);
+  }
+  assert.equal(vistos.size, 7);
+  assert.equal(iconeDoSocial("Socializer", true), "forum");
+  assert.equal(iconeDoSocial("seeker", false), "account-search-outline");
+  assert.equal(iconeDoSocial(null, false), "account-group-outline");
 });

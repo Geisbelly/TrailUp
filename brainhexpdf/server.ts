@@ -48,6 +48,7 @@ import {
 } from './src/utils/slideTextBudget';
 import { persistApresentacaoResult, type SupabaseClientLike } from './src/services/materialsPersistence';
 import { urlDeLeituraDoStorage } from './src/services/storageReadUrl';
+import { FuncaoDeUploadNaoPublicada, uploadPeloSupabase, urlDoGateway } from './src/services/r2Upload';
 
 
 dotenv.config();
@@ -2258,12 +2259,31 @@ app.post('/api/v1/render-and-store', requireSecret, async (req: Request, res: Re
 
     try {
       const supabase = getServiceRoleClient();
-      const { error: uploadError } = await supabase.storage
-        .from(bucket)
-        .upload(storagePath, Buffer.from(html, 'utf-8'), {
-          contentType: 'text/html; charset=utf-8',
-          upsert: true,
-        });
+      // O deck nasce no R2, pela URL que o Supabase assina: as credenciais do
+      // R2 ficam so' no Supabase, e o arquivo nao passa por ele (ver
+      // src/services/r2Upload.ts).
+      const deckBytes = Buffer.from(html, 'utf-8');
+      let uploadError: { message: string } | null = null;
+      let foiProR2 = false;
+      try {
+        await uploadPeloSupabase(storagePath, deckBytes, 'text/html; charset=utf-8');
+        foiProR2 = true;
+      } catch (e) {
+        if (e instanceof FuncaoDeUploadNaoPublicada) {
+          // So' enquanto a Edge Function nao estiver publicada: o caminho
+          // antigo, para que a ordem dos deploys nao derrube a geracao.
+          console.warn(`[render-and-store] ${(e as Error).message}; deck vai para o Supabase Storage (${storagePath})`);
+          ({ error: uploadError } = await supabase.storage.from(bucket).upload(storagePath, deckBytes, {
+            contentType: 'text/html; charset=utf-8',
+            upsert: true,
+          }));
+        } else {
+          // Falha no R2 NAO cai para o Supabase: um fallback silencioso na
+          // escrita faria a migracao parecer concluida enquanto o egress
+          // continuava saindo do mesmo lugar.
+          uploadError = { message: (e as Error).message };
+        }
+      }
       if (uploadError) {
         let dbWritten = false;
         if (hasFence) {
@@ -2291,7 +2311,11 @@ app.post('/api/v1/render-and-store', requireSecret, async (req: Request, res: Re
       // text/html de verdade pra executar o deck interativo. Servimos
       // através do endpoint próprio abaixo (GET /api/v1/decks/:bucket/*),
       // que baixa via service role e devolve o Content-Type certo.
-      const deckUrl = buildAppUrl(req, `/api/v1/decks/${encodeURIComponent(bucket)}/${storagePath}`);
+      // No R2 o deck e' lido pelo gateway, que devolve o Content-Type real:
+      // o proxy abaixo so' serve o que ainda nasce no Storage.
+      const deckUrl =
+        (foiProR2 ? urlDoGateway(storagePath) : null) ??
+        buildAppUrl(req, `/api/v1/decks/${encodeURIComponent(bucket)}/${storagePath}`);
       let dbWritten = false;
       if (hasFence) {
         const persistResult = await persistApresentacaoResult(supabase as unknown as SupabaseClientLike, {

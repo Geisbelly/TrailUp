@@ -121,11 +121,14 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    **gera a mídia base por perfil** (texto/áudio TTS/slides). Não duplicar
    geração pesada no Python — o caminho Python `MultiOutputPipeline` é fallback.
 
-   O `microservice` delega a etapa de **apresentação** (deck + HTML) a um
-   serviço externo, `../BrainHexPDF` (fora do monorepo, repo irmão — não
-   confundir com o app BrainHex/Google AI Studio mencionado acima), via
-   `BRAINHEXPDF_API_URL`/`POST /api/v1/render-and-store`. O BrainHexPDF gera
-   o deck (Gemini) e o HTML completo e sobe o arquivo no Supabase Storage;
+   O `microservice` delega a etapa de **apresentação** (deck + HTML) ao
+   BrainHexPDF (não confundir com o app BrainHex/Google AI Studio mencionado
+   acima), via `BRAINHEXPDF_API_URL`/`POST /api/v1/render-and-store`. **O
+   publicado sai de `brainhexpdf/`, aqui no monorepo** (medido em 02/11: a
+   mensagem de falha gravada no banco só existe nesta cópia). O
+   `Geisbelly/BrainHexPDF` é uma cópia antiga, parada em 29/08: o que se
+   muda só lá não chega ao ar. O BrainHexPDF gera o deck (Gemini) e o HTML
+   completo e sobe o arquivo no R2 (ver o item do R2 em Convenções);
    o microservice continua dono do merge em `conteudo_personalizado.materiais`
    (`mergePersonalizacaoMateriais`). Ver
    `docs/superpowers/specs/2026-08-15-brainhexpdf-integracao-design.md`.
@@ -736,6 +739,16 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   `SELECT ... FROM storage.objects` para validar existência no banco, e nada
   de montar URL pública direta — ela dá 404 para todo material novo. Quem
   sabe se o upload deu certo é quem sobe o arquivo, no momento em que sobe.
+
+  **As credenciais do R2 ficam só nos secrets das Edge Functions** (decisão
+  de 02/11, #76). Quem gera arquivo (BrainHexPDF, API) pede a
+  `storage-upload-url` uma URL assinada de `PUT`, com a chave de serviço, e
+  sobe o arquivo direto no R2. A função só assina `brainhex/` e `fontes/` e
+  nunca recebe o arquivo, porque tudo que sai de uma Edge Function conta como
+  egress. Repassar o byte por ela, ou copiar do Storage para o R2 depois,
+  pagaria a mesma conta que a migração existe para eliminar. O microservice
+  ainda grava com `R2_*` próprias, que é dívida, não precedente.
+
   Essa premissa errada já quebrou o console duas vezes no mesmo dia: o deck
   baixado do Storage (corrigido em `htmlDeckSource.ts`) e uma checagem em SQL
   que marcou 100% das gerações novas como `failed` (revertida em

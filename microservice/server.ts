@@ -24,6 +24,12 @@ import {
 } from "./src/utils/markdownImages";
 import { replaceAsciiDiagramsWithSvg } from "./src/utils/asciiDiagram";
 import { describeError, summarizeAudioFailures, type AudioPartFailure } from "./src/utils/audioFailure";
+import {
+  resolveAudioSecondRoundConfig,
+  retryFailedAudioParts,
+  type AudioSecondRoundConfig,
+  type AudioSecondRoundOutcome,
+} from "./src/utils/audioSecondRound";
 import { applyProfileRestyle } from "./src/utils/profileImageRestyle";
 import { estimateAudioDurationSec } from "./src/utils/audioDuration";
 import { computeImageCues, type ImageCue } from "./src/utils/audioImageCues";
@@ -374,16 +380,33 @@ export async function runAudioAndPresentationInParallel<TAudio>(
     // quantas rodam ao mesmo tempo. A apresentacao continua sem teto - o
     // gargalo de rate limit e so no Gemini TTS.
     audioConcurrency: number;
+    // Segunda rodada so nas partes de audio que falharam (#777) - ver
+    // audioSecondRound.ts. Ausente = sem segunda rodada. Roda dentro da
+    // frente do audio, entao a apresentacao continua em paralelo.
+    audioSecondRound?: AudioSecondRoundConfig;
+    sleep?: (ms: number) => Promise<void>;
   },
 ): Promise<{
   audioSettled: PromiseSettledResult<TAudio>[];
+  audioSecondRound: AudioSecondRoundOutcome;
   presentationResults: RenderAndUploadPresentationResult[];
 }> {
-  const [audioSettled, presentationResults] = await Promise.all([
-    settleWithConcurrency(parts, deps.audioConcurrency, (part) => deps.generateAudio(part.audioScript)),
+  const generatePart = (part: ContentPart) => deps.generateAudio(part.audioScript);
+  const [audio, presentationResults] = await Promise.all([
+    settleWithConcurrency(parts, deps.audioConcurrency, generatePart).then((settled) =>
+      deps.audioSecondRound
+        ? retryFailedAudioParts({
+            parts,
+            settled,
+            generate: generatePart,
+            config: deps.audioSecondRound,
+            sleep: deps.sleep,
+          })
+        : { settled, outcome: { status: "not_needed" } as AudioSecondRoundOutcome },
+    ),
     Promise.all(parts.map((part) => deps.renderPresentation(part))),
   ]);
-  return { audioSettled, presentationResults };
+  return { audioSettled: audio.settled, audioSecondRound: audio.outcome, presentationResults };
 }
 
 /**
@@ -1126,9 +1149,10 @@ async function runPipeline(
   // de uma vez estourava RPM do free tier do Gemini (~10 req/min por conta)
   // mesmo com rotacao de chave correta.
   const multiPart = parts.length > 1;
-  const { audioSettled, presentationResults } = await runAudioAndPresentationInParallel(parts, {
+  const { audioSettled, audioSecondRound, presentationResults } = await runAudioAndPresentationInParallel(parts, {
     generateAudio: generatePartAudio,
     audioConcurrency: resolveAudioPartConcurrency(process.env.CONTENT_GENERATION_AUDIO_PART_CONCURRENCY),
+    audioSecondRound: resolveAudioSecondRoundConfig(),
     renderPresentation: (part) =>
       renderAndUploadPresentationViaBrainHexPdf({
         markdown: part.markdown,
@@ -1164,6 +1188,18 @@ async function runPipeline(
         titulo: part.titulo,
       }),
   });
+
+  if (audioSecondRound.status === "ran") {
+    jobLog.info("segunda rodada de áudio", {
+      partes: audioSecondRound.retriedParts,
+      recuperadas: audioSecondRound.recoveredParts,
+    });
+  } else if (audioSecondRound.status === "skipped") {
+    jobLog.warn("segunda rodada de áudio não feita", {
+      motivo: audioSecondRound.reason,
+      partes: audioSecondRound.failedParts,
+    });
+  }
 
   const audioFailures: AudioPartFailure[] = [];
   const audioByPart = audioSettled.map((result, index) => {
