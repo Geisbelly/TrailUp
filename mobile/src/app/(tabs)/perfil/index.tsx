@@ -310,6 +310,7 @@ export default function PerfilHome() {
               email={usuario?.email}
               classeId={classeAtual?.classe_id}
               palette={shellPalette}
+              onTrocarTurma={classes.length > 1 ? trocarTurma : undefined}
             />
           </View>
         ) : (
