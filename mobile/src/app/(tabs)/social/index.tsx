@@ -21,6 +21,7 @@ import { StoreLauncher } from "@/components/loja/StoreLauncher";
 import { SocialLateralDesktop } from "@/components/web/SocialLateralDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { StoreModal } from "@/components/loja/StoreModal";
+import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Classe } from "@/models/Classe";
@@ -28,11 +29,12 @@ import { aceitarConvite, bloquear, carregarSocial, desbloquear, desfazerAmizade,
 import type { TipoDeConversa } from "@/services/social/chatNaoLidasModel";
 import { naoLidasDoChat, useNaoLidasDoChat } from "@/hooks/useNaoLidasDoChat";
 import { carregarGuildas, carregarJanelaDaFormacao } from "@/services/social/guildService";
-import { peopleForSocialSection, type SocialPeopleSection, type SocialPerson } from "@/services/social/socialModel";
+import { peopleForSocialSection, pessoaDaConversa, type SocialPeopleSection, type SocialPerson } from "@/services/social/socialModel";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -147,7 +149,32 @@ export default function SocialScreen() {
   useFocusEffect(atualizarNaoLidas);
   /** Abrir e fechar a conversa marcam como lida: o que chegou com ela aberta também foi visto. */
   const marcarLida = useCallback((tipo: TipoDeConversa, conversaId: string) => naoLidasDoChat.marcarLida(tipo, conversaId), []);
-  const abrirConversa = (person: SocialPerson) => { marcarLida("privado", person.alunoId); setChatPerson(person); };
+  const abrirConversa = useCallback((person: SocialPerson) => { marcarLida("privado", person.alunoId); setChatPerson(person); }, [marcarLida]);
+
+  // Toque no push de mensagem (`destinoDoToque`): abre a conversa com quem mandou assim que as
+  // listas chegarem. Quem não está nelas (bloqueado, ou de outra turma) deixa o aluno só na aba
+  // Conversa. O aviso também é dado como lido na caixa de entrada, como o detalhe dele faria; isso
+  // espera o aviso estar na lista, porque o push costuma chegar antes da lista ser relida.
+  const router = useRouter();
+  const { conversa, notificacao } = useLocalSearchParams<{ conversa?: string; notificacao?: string }>();
+  const { itens: avisos, marcarLida: marcarAvisoLido } = useNotifications();
+  const avisoDoToque = useRef<number | null>(null);
+  useEffect(() => {
+    if (notificacao && /^\d+$/.test(notificacao)) avisoDoToque.current = Number(notificacao);
+  }, [notificacao]);
+  useEffect(() => {
+    const id = avisoDoToque.current;
+    if (id === null || !avisos.some((aviso) => aviso.id === id)) return;
+    avisoDoToque.current = null;
+    void marcarAvisoLido(id);
+  }, [avisos, marcarAvisoLido, notificacao]);
+  useEffect(() => {
+    if (!conversa || !social) return;
+    const pessoa = pessoaDaConversa(social, conversa);
+    if (pessoa) abrirConversa(pessoa);
+    setAbaEscolhida("conversa");
+    router.setParams({ conversa: undefined, notificacao: undefined });
+  }, [abrirConversa, conversa, router, social]);
   const abrirGuilda = (guilda: Guild) => { marcarLida("guilda", guilda.id); setChatGuilda(guilda); };
 
   const people = useMemo(() => {

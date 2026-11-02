@@ -23,3 +23,11 @@ export function peopleForSocialSection(snapshot: SocialSnapshot, section: Social
   if (section === "discover") return snapshot.candidates;
   return snapshot.blocked;
 }
+
+/**
+ * O colega de uma conversa aberta pelo toque no push (`destinoDoToque`). Bloqueado fica de fora:
+ * a conversa com ele não abre pela lista, e o aviso não pode ser o atalho.
+ */
+export function pessoaDaConversa(snapshot: SocialSnapshot, alunoId: string): SocialPerson | null {
+  return [...snapshot.friends, ...snapshot.incoming, ...snapshot.outgoing, ...snapshot.candidates].find((p) => p.alunoId === alunoId) ?? null;
+}
