@@ -94,8 +94,10 @@ function usePulso(superficie: string, ativo: boolean): ContextoDoEsqueleto {
 export function EsqueletoGrupo({ rotulo, superficie, children, style, testID }: PropsDoGrupo) {
   const valor = usePulso(superficie, true);
 
+  // O estilo fica sempre no nó que contém os blocos. No nó de fora, uma grade (`row` +
+  // `wrap`) ou um `gap` valeriam para um filho só, e a Biblioteca desmontava numa coluna.
   const blocos = (
-    <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={rotulo ? undefined : style}>
+    <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={style}>
       <Contexto.Provider value={valor}>{children}</Contexto.Provider>
     </View>
   );
@@ -103,7 +105,6 @@ export function EsqueletoGrupo({ rotulo, superficie, children, style, testID }: 
   return (
     <View
       testID={testID}
-      style={style}
       accessible
       accessibilityRole="progressbar"
       accessibilityLabel={rotulo}

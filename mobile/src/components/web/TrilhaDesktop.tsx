@@ -149,6 +149,19 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
   const nome = ehMapa ? (mapTheme?.worldName ?? classeAtual.resumo?.materia_nome ?? "Classe") : (classeAtual.resumo?.materia_nome ?? "Classe");
   const { progresso, totalTopicos, concluidos } = calcularProgressoTrilha(classeAtual, progressoPersonalizado);
   const pct = Math.round(progresso);
+  // Abaixo de 1320 px a coluna do mapa fica estreita (menu e painel ocupam o resto) e o
+  // bloco de progresso de 260 px espremia o título até "F…". Aí o cartão fica como o do
+  // celular: a barra embaixo do nome, com "58% · 2 de 5 módulos" ao lado.
+  const hudCompacto = janela.width < 1320;
+  const barra = (
+    <View
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: pct }}
+      style={[s.trilho, hudCompacto && s.trilhoCompacto, { backgroundColor: palette.progressTrack }]}
+    >
+      <View style={[s.preenchido, { width: `${pct}%`, backgroundColor: palette.accent }]} />
+    </View>
+  );
 
   return (
     <View style={[s.tela, { backgroundColor: palette.background }]}>
@@ -165,24 +178,28 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
           <View style={s.hudTitulo}>
             <Text style={[s.eyebrow, { color: palette.accent }]}>{ehMapa ? "MAPA DA JORNADA" : "SUA TRILHA"}</Text>
             <Text style={[s.titulo, { color: palette.text }]} numberOfLines={1}>{nome}</Text>
+            {hudCompacto ? (
+              <View style={s.hudLinhaCompacta}>
+                {barra}
+                <Text style={[s.pequeno, { color: palette.textSubtle }]} numberOfLines={1}>
+                  {pct}% · {concluidos} de {totalTopicos} módulos
+                </Text>
+              </View>
+            ) : null}
           </View>
-          <View style={s.hudProgresso}>
-            <View style={s.hudLinha}>
-              <Text style={[s.pequeno, { color: palette.textSubtle }]}>
-                <Text style={[s.pct, { color: palette.text }]}>{pct}%</Text> concluído
-              </Text>
-              <Text style={[s.pequeno, { color: palette.textSubtle }]}>
-                {concluidos} de {totalTopicos} módulos
-              </Text>
+          {hudCompacto ? null : (
+            <View style={s.hudProgresso}>
+              <View style={s.hudLinha}>
+                <Text style={[s.pequeno, { color: palette.textSubtle }]}>
+                  <Text style={[s.pct, { color: palette.text }]}>{pct}%</Text> concluído
+                </Text>
+                <Text style={[s.pequeno, { color: palette.textSubtle }]}>
+                  {concluidos} de {totalTopicos} módulos
+                </Text>
+              </View>
+              {barra}
             </View>
-            <View
-              accessibilityRole="progressbar"
-              accessibilityValue={{ min: 0, max: 100, now: pct }}
-              style={[s.trilho, { backgroundColor: palette.progressTrack }]}
-            >
-              <View style={[s.preenchido, { width: `${pct}%`, backgroundColor: palette.accent }]} />
-            </View>
-          </View>
+          )}
           <View style={[s.separador, { backgroundColor: palette.border }]} />
           <ModuleHeaderGuideButton
             profile={perfil}
@@ -270,6 +287,8 @@ const s = StyleSheet.create({
   pequeno: { fontFamily: FontFamily.interMedium, fontSize: 12.5 },
   pct: { fontFamily: FontFamily.inikaBold, fontSize: 16 },
   trilho: { height: 8, borderRadius: 4, overflow: "hidden" },
+  trilhoCompacto: { flex: 1, minWidth: 40, height: 6 },
+  hudLinhaCompacta: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 6 },
   preenchido: { height: "100%", borderRadius: 4 },
   separador: { width: 1, height: 40 },
   tabuleiroMapa: { borderWidth: 0, borderRadius: 0, overflow: "visible" },

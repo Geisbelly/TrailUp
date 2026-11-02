@@ -102,3 +102,15 @@ test("com movimento reduzido, a opacidade é fixa; sem ele, vem do pulso", () =>
   assert.doesNotMatch(animada, new RegExp(`&quot;opacity&quot;:${nucleo.OPACIDADE_PARADA}`));
   assert.match(animada, /&quot;opacity&quot;:&quot;animado&quot;/);
 });
+
+test("com rótulo, o estilo de layout fica no nó que contém os blocos", () => {
+  // No nó de fora, `row` + `wrap` valiam para um filho só, e a grade da Biblioteca virava
+  // uma coluna de células espremidas (visto no print).
+  const html = renderToString(
+    <EsqueletoGrupo rotulo="Carregando conquistas" superficie={SUPERFICIE} style={{ flexDirection: "row", flexWrap: "wrap" }}>
+      <EsqueletoTexto linhas={1} />
+    </EsqueletoGrupo>,
+  );
+  assert.match(html, /data-estilo="\{&quot;flexDirection&quot;:&quot;row&quot;,&quot;flexWrap&quot;:&quot;wrap&quot;\}" data-oculto="no-hide-descendants"/);
+  assert.match(html, /data-estilo="null" data-papel="progressbar"/);
+});

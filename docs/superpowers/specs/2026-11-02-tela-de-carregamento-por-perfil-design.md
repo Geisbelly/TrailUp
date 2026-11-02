@@ -253,8 +253,15 @@ pular quando o dado entra.
 
 Onde ficou: Perfil (métricas, faixa de XP, lista de conquistas), Biblioteca de conquistas
 (grade e números do topo), Notificações, Ranking (linhas e o perfil de cada pessoa), Social
-(stories, destaque e cartões) e Trilha (só a regra da primeira carga; o esqueleto dela já
-existia).
+(stories, destaque e cartões), Trilha (só a regra da primeira carga; o esqueleto dela já
+existia) e, no lugar dos spinners de seção, Minhas missões, Arena, Lembrete diário e o
+evento da turma na tela larga. Em `trilha/[id]`, "Sem conteúdos" só aparece depois que o
+percurso está pronto (`blocosProntos`): antes, o material personalizado ainda pode chegar.
+O tour do Perfil espera o painel de métricas montar (até 3 s) quando o passo cai durante a
+primeira carga.
+
+O estilo de um grupo com rótulo vai para o nó que contém os blocos, não para o nó
+acessível de fora: lá, `row` + `wrap` ou `gap` valeriam para um filho só.
 
 ## 3. Limites conhecidos
 
@@ -271,12 +278,13 @@ existia).
   símbolo ainda quase transparente: é o círculo cobrindo tudo antes de o símbolo e o texto
   firmarem. Nos quadros em câmera lenta dos prints (transição esticada para 6 s só para
   capturar) isso aparece como um quadro vazio. Na duração real não foi medido quadro a quadro.
-- Os esqueletos das abas também **não foram vistos** em preview nem em aparelho: o painel
-  do navegador estava oculto na sessão que os fez. Foram verificados por teste de
-  renderização (um nó acessível, blocos ocultos, cor, movimento reduzido), typecheck e lint.
-- Spinners de seção ainda ficam (`MissoesDoDia`, `EventoDaTurma`, `ArenaSection`,
-  `lembrete-diario`), e `trilha/[id]` ainda pode dizer "Sem conteúdos" antes da hora.
-- No Perfil, o alvo do tour das métricas não existe enquanto o esqueleto está na tela.
+- Os esqueletos foram vistos **renderizados pelo react-native-web em HTML estático** (Chrome
+  headless, perfis seeker, conqueror e neutro), não no app rodando nem em aparelho: o pulso
+  não aparece no print, e o encaixe com o conteúdo de verdade não foi conferido lado a lado.
+  Foi esse print que mostrou a grade da Biblioteca desmontada (o estilo do grupo ia para o
+  nó errado), corrigido e coberto por teste.
+- No celular, o cartão do evento da turma não tem esqueleto: ele só existe quando há evento,
+  e um esqueleto que some anunciaria um evento que talvez não exista.
 - Não conferido em aparelho nativo (Android/iOS): só no preview web. A tela só chega ao
   aluno na **próxima build** do app (hoje 1.0.6).
 

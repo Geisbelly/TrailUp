@@ -253,6 +253,11 @@ export default function PerfilHome() {
       const targetRef: React.RefObject<View | null> | undefined = (
         profileGuideTargets as Record<string, React.RefObject<View | null>>
       )[step.target];
+      // Na primeira carga as métricas são esqueleto e os alvos delas ainda não existem:
+      // o passo espera o painel montar (até 3 s) em vez de abrir sem nada destacado.
+      for (let espera = 0; metricStep && targetRef && !targetRef.current && espera < 3_000; espera += 100) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
       if (!targetRef?.current) return;
 
       await new Promise<void>((resolve) => {

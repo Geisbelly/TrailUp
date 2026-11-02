@@ -1,7 +1,9 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { EsqueletoBloco, EsqueletoGrupo, EsqueletoRepetir } from "@/components/carregamento/Esqueleto";
 import { FontFamily } from "@/styles/GlobalStyle";
+import { esperandoPrimeiraCarga } from "@/utils/esqueleto";
 import { carregarMissoesDoAluno } from "@/services/missoes/missoesDoDia";
 import { rotuloDoEscopo, rotuloDoPrazo, type MissaoDoAluno } from "@/services/missoes/missaoModel";
 
@@ -19,6 +21,9 @@ export function MissoesDoDia({ classeId, perfil, accent, textColor, mutedColor, 
   const [missoes, setMissoes] = useState<MissaoDoAluno[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
+  // Turma e perfil das missões que estão na tela: atualizar a mesma lista não a apaga.
+  const chave = `${classeId}:${perfil ?? ""}`;
+  const [chaveCarregada, setChaveCarregada] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!classeId) return;
@@ -26,6 +31,7 @@ export function MissoesDoDia({ classeId, perfil, accent, textColor, mutedColor, 
     setErro(null);
     try {
       setMissoes(await carregarMissoesDoAluno(classeId, perfil));
+      setChaveCarregada(`${classeId}:${perfil ?? ""}`);
     } catch (e) {
       setErro("Não foi possível carregar suas missões.");
       console.warn("[MissoesDoDia]", e);
@@ -40,6 +46,8 @@ export function MissoesDoDia({ classeId, perfil, accent, textColor, mutedColor, 
 
   if (!classeId) return null;
 
+  const primeiraCarga = esperandoPrimeiraCarga(loading, missoes.length, chave, chaveCarregada);
+
   return (
     <View style={[s.card, { backgroundColor: surfaceColor, borderColor }]} accessibilityLabel="Minhas missões">
       <View style={s.header}>
@@ -50,7 +58,21 @@ export function MissoesDoDia({ classeId, perfil, accent, textColor, mutedColor, 
         </Pressable>
       </View>
 
-      {loading ? <ActivityIndicator color={accent} style={{ marginVertical: 16 }} /> : null}
+      {primeiraCarga ? (
+        <EsqueletoGrupo rotulo="Carregando suas missões" superficie={surfaceColor}>
+          <EsqueletoRepetir quantos={2} espaco={10}>
+            {(i) => (
+              <View style={[s.item, s.itemEsqueleto, { borderColor }]}>
+                <View style={[s.itemTop, s.itemTopEsqueleto]}>
+                  <EsqueletoBloco largura={i === 0 ? "62%" : "48%"} altura={14} />
+                  <EsqueletoBloco largura={20} altura={20} raio={10} />
+                </View>
+                <EsqueletoBloco largura="40%" altura={10} />
+              </View>
+            )}
+          </EsqueletoRepetir>
+        </EsqueletoGrupo>
+      ) : null}
 
       {!loading && erro ? (
         <Text style={[s.erro, { color: mutedColor }]}>{erro}</Text>
@@ -62,7 +84,7 @@ export function MissoesDoDia({ classeId, perfil, accent, textColor, mutedColor, 
         </Text>
       ) : null}
 
-      {!loading &&
+      {!primeiraCarga &&
         missoes.map((m) => {
           const done = m.status === "concluida";
           return (
@@ -109,6 +131,8 @@ const s = StyleSheet.create({
   erro: { fontFamily: FontFamily.interMedium, fontSize: 13 },
   vazio: { fontFamily: FontFamily.interMedium, fontSize: 13, lineHeight: 18 },
   item: { borderWidth: 1, borderRadius: 12, padding: 10, gap: 4 },
+  itemEsqueleto: { gap: 8 },
+  itemTopEsqueleto: { justifyContent: "space-between" },
   itemTop: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   itemTitle: { flex: 1, fontFamily: FontFamily.poppinsExtraBold, fontSize: 13 },
   itemDesc: { fontFamily: FontFamily.interMedium, fontSize: 12, lineHeight: 17 },
