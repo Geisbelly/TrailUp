@@ -24,6 +24,8 @@ type Props = {
   perfil: string;
   onSelect: (classeId: number) => void;
   onRetry: () => Promise<void>;
+  /** Tenta de novo só a turma cujo detalhe não carregou. */
+  onRetryTurma: (classeId: number) => Promise<void>;
 };
 
 // A barra lateral é a da barra de abas; antes da escolha não há abas montadas, então
@@ -45,13 +47,14 @@ const porcentagem = (classe: Classe) => {
  * turma" de 03-trilha.html): dentro da moldura (barra superior e lateral), sobre
  * o cenário do perfil, com as turmas em cartões lado a lado.
  */
-export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelect, onRetry }: Props) {
+export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelect, onRetry, onRetryTurma }: Props) {
   useFonteCinzel();
   const insets = useSafeAreaInsets();
   const { usuario } = useUsuario();
   const { aberturas } = usePortoes();
   const palette = getProfileShellPalette(perfil);
   const [saindo, setSaindo] = useState(false);
+  const [tentando, setTentando] = useState<number[]>([]);
   const fotoAssinada = useUrlDeImagem(usuario?.foto_url);
   const foto = fotoAssinada ? { uri: fotoAssinada } : getGuardianFaceImage(perfil);
 
@@ -61,6 +64,15 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
       await supabase.auth.signOut({ scope: "local" });
     } finally {
       setSaindo(false);
+    }
+  };
+
+  const tentarTurma = async (classeId: number) => {
+    setTentando((ids) => [...ids, classeId]);
+    try {
+      await onRetryTurma(classeId);
+    } finally {
+      setTentando((ids) => ids.filter((id) => id !== classeId));
     }
   };
 
@@ -141,6 +153,43 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
                   {classes.map((classe) => {
                     const materia = classe.resumo?.materia_nome || "Turma";
                     const professor = classe.resumo?.professor_nome;
+                    if (classe.detalheErro) {
+                      // Só esta turma não carregou: as outras seguem na grade e esta tem a própria nova tentativa.
+                      const emTentativa = tentando.includes(classe.classe_id);
+                      return (
+                        <View key={classe.classe_id} style={[s.cartao, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                          <View style={[s.chip, { backgroundColor: palette.surfaceElevated }]}>
+                            <Text style={[s.chipTexto, { color: palette.textMuted }]}>{materia.toUpperCase()}</Text>
+                          </View>
+                          <Text style={[s.cartaoTitulo, { color: palette.text }]} numberOfLines={2}>{materia}</Text>
+                          <Text style={[s.meta, { color: palette.textMuted }]}>
+                            Turma {classe.classe_id}
+                            {professor ? ` · Prof. ${professor}` : ""}
+                          </Text>
+                          <View style={s.avisoTurma}>
+                            <MaterialCommunityIcons name="alert-circle-outline" size={16} color={palette.textMuted} />
+                            <Text accessibilityRole="alert" style={[s.meta, s.avisoTurmaTexto, { color: palette.textMuted }]}>
+                              Não conseguimos abrir esta turma agora.
+                            </Text>
+                          </View>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Tentar de novo a turma ${classe.classe_id}`}
+                            disabled={emTentativa}
+                            onPress={() => void tentarTurma(classe.classe_id)}
+                            style={({ hovered }: { hovered?: boolean; pressed: boolean }) => [
+                              s.botao,
+                              s.botaoCartao,
+                              { borderColor: palette.borderStrong, backgroundColor: hovered ? palette.surfaceElevated : "transparent" },
+                            ]}
+                          >
+                            {emTentativa
+                              ? <ActivityIndicator size="small" color={palette.accent} />
+                              : <Text style={[s.botaoTexto, { color: palette.text }]}>Tentar de novo</Text>}
+                          </Pressable>
+                        </View>
+                      );
+                    }
                     const pct = porcentagem(classe);
                     return (
                       <View key={classe.classe_id} style={[s.cartao, { backgroundColor: palette.surface, borderColor: palette.border }]}>
@@ -205,6 +254,8 @@ const s = StyleSheet.create({
   preenchido: { height: "100%", borderRadius: 3 },
   botao: { alignItems: "center", justifyContent: "center", borderRadius: 999, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 18 },
   botaoCartao: { marginTop: 6 },
+  avisoTurma: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
+  avisoTurmaTexto: { flex: 1 },
   botaoSair: { flexDirection: "row", gap: 8 },
   botaoTexto: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "700" },
   atualizar: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 18, padding: 6 },
