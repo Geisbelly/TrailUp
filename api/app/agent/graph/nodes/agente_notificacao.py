@@ -25,6 +25,13 @@ consolidar o próximo bloco otimiza o aprendizado", produção, 01/11). Agora o 
 jeito de falar próprio da notificação (`_JEITO_NA_NOTIFICACAO`), e `problemas_do_texto` recusa
 vocabulário de sistema, placeholder e frase longa. Texto recusado volta ao modelo uma vez, com os
 problemas; se ainda vier errado, vale o texto pronto do perfil.
+
+**O banco só entrega texto que passou por esta guarda** (`20261102_24`). A guarda vale na geração, mas
+a sugestão espera na fila até o horário do aluno: o texto de 01/11, escrito antes dela, saiu em
+02/11 às 14:30. Todo texto que sai daqui leva `contexto.texto_guarda` = `TEXTO_GUARDA_VERSAO`, e
+`notificacoes_entregar` suprime a sugestão da API sem a marca ou com marca abaixo de
+`notificacoes_config.texto_guarda_versao_minima`. Mudou a guarda de um jeito que torna recusável o
+que antes passava? Suba `TEXTO_GUARDA_VERSAO` e, numa migração, o mínimo do banco.
 """
 
 import re
@@ -112,6 +119,8 @@ _TERMOS_DE_SISTEMA = re.compile(
 )
 _PLACEHOLDER = re.compile(r"[\[\]{}<>]|\bMOCK\b|\bAlun[oa]\b|\bEstudante\b")
 _PALAVRAS_POR_FRASE = 18
+# Versão desta guarda, gravada em `contexto.texto_guarda`. O banco não entrega abaixo do mínimo dele.
+TEXTO_GUARDA_VERSAO = 1
 
 
 def _sem_acento(texto: str) -> str:
@@ -357,6 +366,7 @@ async def agente_notificacao(state: dict[str, Any], settings: Settings, agora: d
             contexto=contexto,
         )
 
+    notificacao.contexto["texto_guarda"] = TEXTO_GUARDA_VERSAO
     return {
         "notificacao_payload": notificacao.model_dump(mode="json"),
         "completed_nodes": ["agente_notificacao"],

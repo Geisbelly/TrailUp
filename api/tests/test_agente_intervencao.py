@@ -239,7 +239,31 @@ async def test_executor_grava_a_intervencao_e_notifica(monkeypatch) -> None:
     assert "intervencao_registrada" in r["acoes_aplicadas"]
     assert "intervencao_notificada" in r["acoes_aplicadas"]
     notificacao = enfileirar.await_args.args[1]
-    assert notificacao.contexto == {"motivo": "intervencao", "intervencao_id": "uuid-1", "kind": "abandono"}
+    assert notificacao.contexto == {
+        "motivo": "intervencao",
+        "intervencao_id": "uuid-1",
+        "kind": "abandono",
+        "texto_guarda": modulo_executor.TEXTO_GUARDA_VERSAO,  # sem a marca o banco não entrega (20261102_24)
+    }
+
+
+@pytest.mark.asyncio
+async def test_aviso_da_intervencao_com_jargao_vira_o_texto_pronto(monkeypatch) -> None:
+    _, enfileirar = _mock_executor(monkeypatch, "uuid-1")
+    sugestao = IntervencaoSugestao(
+        texto="Converse com o aluno sobre o ritmo das entregas.",
+        acao="notificacao",
+        notificacao_titulo="Otimize seu modelo de estudo",
+        notificacao_corpo="A hipótese atual requer testes.",
+    )
+    payload = montar_intervencao("abandono", 3, sugestao).model_dump(mode="json")
+    await executor({"aluno_id": "a", "classe_id": 7, "ciclo_id": "c", "intervencao_payload": payload}, _Fabrica())
+
+    notificacao = enfileirar.await_args.args[1]
+    assert (notificacao.titulo, notificacao.corpo) == (
+        modulo._NOTIFICACAO_DA_REGRA["titulo"],
+        modulo._NOTIFICACAO_DA_REGRA["corpo"],
+    )
 
 
 @pytest.mark.asyncio
