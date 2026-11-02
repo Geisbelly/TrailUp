@@ -14,7 +14,9 @@ import {
   pendentesDeDecisao,
   type FiltroDeEscopo,
 } from "./recomendacoes";
+import MissoesSugeridas from "./MissoesSugeridas";
 import { useRecomendacoesDaIA } from "./useRecomendacoesDaIA";
+import { avisarQueRecomendacoesMudaram } from "./eventoRecomendacoes";
 
 const FILTROS: { value: FiltroDeEscopo; label: string }[] = [
   { value: "tudo", label: "Tudo" },
@@ -86,6 +88,10 @@ export default function RecomendacoesSection({ professorId }: { professorId: str
         </p>
       </header>
 
+      <MissoesSugeridas turmas={turmas} />
+
+      <h2 className="text-base font-bold text-foreground">Sugestões da IA sobre a turma e os alunos {contagem.total > 0 && `(${contagem.total})`}</h2>
+
       <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 rounded-2xl border border-[hsl(var(--console-violet)/.3)] bg-[hsl(var(--console-violet)/.08)] px-5 py-4">
         <div className="text-[12.5px] font-semibold text-[hsl(var(--console-violet-text))]">
           {contagem.total === 0
@@ -134,7 +140,10 @@ export default function RecomendacoesSection({ professorId }: { professorId: str
               alvo={alvoDe(i)}
               aluno={null}
               onAbrirAluno={() => undefined}
-              onDecidir={(status, motivo) => decidir(i.id, status, motivo)}
+              onDecidir={async (status, motivo) => {
+                await decidir(i.id, status, motivo);
+                avisarQueRecomendacoesMudaram();
+              }}
             />
           ))}
         </ul>

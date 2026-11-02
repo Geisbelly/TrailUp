@@ -69,7 +69,7 @@ function LinhaDoPerfil({ fala, onAlterar }: { fala: FalaDoBoss; onAlterar: (ativ
 /**
  * O que o boss deste conteúdo diz ao aluno, por perfil. A IA gera em lote quando a turma é gerada e o
  * aluno ouve direto; aqui o professor lê e pode desligar (o aluno volta às falas fixas). Só aparece
- * para conteúdo já salvo e some quando a migration 20261102_18 ainda não foi aplicada.
+ * para conteúdo já salvo e some quando a migration 20261102_19 ainda não foi aplicada.
  */
 export default function FalasDoBoss({ conteudoId }: { conteudoId: number | null }) {
   const { linhas, estado, definirAtiva } = useFalasDoBoss(conteudoId);

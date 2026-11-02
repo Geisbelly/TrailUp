@@ -536,7 +536,21 @@ Cada perfil carrega:
   transação de quem os causa** (`EXCEPTION WHEN OTHERS` → `WARNING`). O cliente só lê e muda `lida_em`
   (GRANT por coluna, sem policy de INSERT). Risco de reprovação **não** notifica: é calculado na hora,
   não há evento de banco para ligar um gatilho.
-- **`boss_falas` — a IA escreve, o professor pode tirar do ar** (`20261102_18`). Nome e falas do boss
+- **Missões sugeridas pela IA (#151, `20261102_20`) — a IA propõe, o banco decide o que entra, o
+  professor aprova.** Reaproveita `missoes` (`origem = 'ia'`, `aprovacao = 'pendente'`); o `CHECK`
+  `missoes_ia_exige_aprovacao` impede uma missão `ia` com `nao_requer`, então nada chega ao aluno sem
+  decisão (a policy `missoes_aluno_sel` só entrega `ativa` + `nao_requer`/`aprovada`). O pedido é do
+  professor, **nunca automático**: `missao_ia_pedir` grava em `missoes_ia_pedidos` e o worker da API
+  (`app/services/missoes_ia.py`, fila no banco como `alteracao_professor`) atende quando puder. Padrão,
+  faixa e teto estão em **`app_config`** (`missao_ia_padrao`/`_min`/`_max`/`_pedidos_por_dia`, privadas),
+  não em constante. A API não escreve em tabela: passa o que o modelo devolveu a `fn_missao_ia_registrar`,
+  que descarta métrica fora do catálogo (`fn_missao_ia_catalogo`, **o único lugar** com a chave de
+  parâmetro de cada métrica; a chave errada não dá erro e a missão fecha na hora para todos), alvo
+  não inteiro ou acima do teto, link/e-mail e título repetido (inclusive recusado). `missoes_ia_log` é só
+  de acréscimo: proposta, aprovação e recusa com o motivo; a taxa de aprovação sai dele e **não realimenta
+  o prompt**. Fora de escopo: editar antes de aprovar (`trg_missoes_guarda` congela o texto da missão que
+  não é do professor, em silêncio), missão de entrega e prazo.
+- **`boss_falas` — a IA escreve, o professor pode tirar do ar** (`20261102_19`). Nome e falas do boss
   são gerados em lote por conteúdo × perfil e o app os mostra ao aluno (inclusive menor) direto. O
   professor lê no editor de conteúdo e liga/desliga (`ativa`; **só** essa coluna tem GRANT de UPDATE: o
   texto é validado pela API e não se edita pelo console). Quem esconde a fala desligada do aluno é a

@@ -1,4 +1,4 @@
-"""`20261102_18`: o professor vê as falas do boss e pode desligá-las; o banco esconde do aluno.
+"""`20261102_19`: o professor vê as falas do boss e pode desligá-las; o banco esconde do aluno.
 
 O comportamento (RLS do aluno e do professor, GRANT por coluna, carimbo de `desativada_em`) foi
 exercitado num Postgres real (PGlite) com o esqueleto das tabelas: ver o PR. Aqui fica o que dá para
@@ -17,20 +17,20 @@ from tests.test_migrations import _offline_alembic_config
 
 def _upgrade_sql() -> str:
     output = StringIO()
-    migrations.command.upgrade(_offline_alembic_config(output), "20261102_17:20261102_18", sql=True)
+    migrations.command.upgrade(_offline_alembic_config(output), "20261102_18:20261102_19", sql=True)
     return output.getvalue().replace("%%", "%")
 
 
 def _downgrade_sql() -> str:
     output = StringIO()
-    migrations.command.downgrade(_offline_alembic_config(output), "20261102_18:20261102_17", sql=True)
+    migrations.command.downgrade(_offline_alembic_config(output), "20261102_19:20261102_18", sql=True)
     return output.getvalue().replace("%%", "%")
 
 
-def test_a_arvore_continua_com_uma_cabeca_e_vem_depois_da_17() -> None:
+def test_a_arvore_continua_com_uma_cabeca_e_vem_depois_da_18() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
     assert len(scripts.get_heads()) == 1
-    assert scripts.get_revision("20261102_18").down_revision == "20261102_17"
+    assert scripts.get_revision("20261102_19").down_revision == "20261102_18"
 
 
 def test_o_banco_esconde_a_fala_desligada_do_aluno_e_nao_do_professor() -> None:

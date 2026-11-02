@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { createRequestGuard } from "@/lib/requestGuard";
 import { eMigracaoPendente, JANELA_DE_ACEITACAO_DIAS, type Insight, type MotivoDescarte } from "../dashboard/insights";
+import { EVENTO_RECOMENDACOES_MUDOU } from "./eventoRecomendacoes";
+import { contarPendentesDeMissao } from "./missoesIaApi";
 
 export type EstadoDasRecomendacoes =
   | { tipo: "carregando" }
@@ -91,17 +93,24 @@ export function useContagemDeRecomendacoes(ativo: boolean) {
     if (!ativo) return;
     let vivo = true;
     const ler = async () => {
-      const { count, error } = await tabela().select("id", { count: "exact", head: true }).eq("natureza", "sugestao").eq("status", "pending");
-      if (vivo) setTotal(error ? 0 : (count ?? 0));
+      // As sugestões sobre a turma e as missões que a IA propôs: as duas esperam o professor. Cada
+      // contagem que falha (inclusive migration pendente) vira zero, e o selo nunca quebra o menu.
+      const [sugestoes, missoes] = await Promise.all([
+        tabela().select("id", { count: "exact", head: true }).eq("natureza", "sugestao").eq("status", "pending"),
+        contarPendentesDeMissao(),
+      ]);
+      if (vivo) setTotal((sugestoes.error ? 0 : (sugestoes.count ?? 0)) + missoes);
     };
     void ler();
     const timer = window.setInterval(() => void ler(), 60_000);
     const aoVoltar = () => void ler();
     window.addEventListener("focus", aoVoltar);
+    window.addEventListener(EVENTO_RECOMENDACOES_MUDOU, aoVoltar);
     return () => {
       vivo = false;
       window.clearInterval(timer);
       window.removeEventListener("focus", aoVoltar);
+      window.removeEventListener(EVENTO_RECOMENDACOES_MUDOU, aoVoltar);
     };
   }, [ativo]);
   return total;

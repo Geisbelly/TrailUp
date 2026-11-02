@@ -1,5 +1,5 @@
 // Falas do boss que a IA gera em lote por conteúdo × perfil (`boss_falas`, migrations 20261101_09 e
-// 20261102_18). O aluno as ouve na batalha do tópico; aqui o professor lê o que ele vai ouvir e pode
+// 20261102_19). O aluno as ouve na batalha do tópico; aqui o professor lê o que ele vai ouvir e pode
 // desligar. Só liga e desliga: nome e falas são texto validado pela API e não se editam pelo console.
 
 import { PROFILE_LABEL_MAP } from "../personalizacoes/personalizacaoFallback";
