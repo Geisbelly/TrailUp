@@ -5,6 +5,7 @@ import {
   persistApresentacaoResult,
   computeAggregatedApresentacaoEntry,
   aggregatedApresentacaoFailure,
+  emFilaPorPersonalizacao,
 } from "./materialsPersistence";
 
 test("generationKeyFor monta cicloId:sourceHash", () => {
@@ -321,4 +322,93 @@ test("aggregatedApresentacaoFailure: a parte que acabou de falhar vem antes das 
   const partes = [{ ordem: 1, arquivo_url: null, storage_path: null, failed: true, failure: anterior }];
   assert.deepEqual(aggregatedApresentacaoFailure("failed", partes, PARTE_1_FALHOU, null), PARTE_1_FALHOU);
   assert.deepEqual(aggregatedApresentacaoFailure("failed", partes, null, null), anterior);
+});
+
+// Banco de mentira com estado: o SELECT devolve o que a RPC gravou por ultimo,
+// e cada operacao cede a vez antes de responder (como a rede faz), para que
+// duas gravacoes concorrentes possam se intercalar.
+function bancoComEstado(materiais: any) {
+  const estado = { materiais };
+  const cede = () => new Promise((r) => setTimeout(r, 1));
+  const client = {
+    rpc: async (_name: string, args: Record<string, unknown>) => {
+      await cede();
+      estado.materiais = { ...estado.materiais, ...(args.p_updates as any) };
+      return { data: { status: "processando_midias" }, error: null };
+    },
+    from: (_table: string) => ({
+      select: (_cols: string) => ({
+        eq: () => ({
+          eq: () => ({
+            eq: () => ({
+              maybeSingle: async () => {
+                await cede();
+                return { data: { aluno_id: "a", conteudo_id: 282, materiais: structuredClone(estado.materiais) }, error: null };
+              },
+            }),
+          }),
+        }),
+      }),
+      upsert: async () => ({ error: null }),
+    }),
+  };
+  return { client: client as any, estado };
+}
+
+const FENCE = { personalizacaoId: 3864, cicloId: "c", sourceHash: "h" };
+const VERSAO = { engine: "e", schema: "s", design_system: "d", media_pipeline_version: "m" };
+
+test("partes gravadas ao mesmo tempo nao se apagam (socializer, turma 68, 02/11)", async () => {
+  const { client, estado } = bancoComEstado({});
+  const COTA = { stage: "generate", error: "cota" };
+  await Promise.all(
+    [1, 2, 3, 4].map((ordem) =>
+      persistApresentacaoResult(client, {
+        fence: FENCE, versionMetadata: VERSAO, bucket: "b", storagePath: `p${ordem}.html`,
+        presentationUrl: ordem === 2 ? "https://storage/p2.html" : null,
+        failure: ordem === 2 ? null : COTA,
+        ordem, totalPartes: 4, titulo: `Parte ${ordem}`,
+      }),
+    ),
+  );
+  const partes = estado.materiais.apresentacao.partes;
+  assert.deepEqual(partes.map((p: any) => p.ordem), [1, 2, 3, 4]);
+  for (const parte of partes) {
+    if (parte.ordem === 2) assert.equal(parte.failure, undefined);
+    else assert.deepEqual(parte.failure, COTA);
+  }
+});
+
+test("parte de geracao anterior com ordem acima do total sai da lista", async () => {
+  const velha = { ordem: 8, titulo: "Banquete", arquivo_url: null, storage_path: null, failed: true };
+  const { client, estado } = bancoComEstado({ apresentacao: { partes: [velha] } });
+  for (const ordem of [1, 2]) {
+    await persistApresentacaoResult(client, {
+      fence: FENCE, versionMetadata: VERSAO, bucket: "b", storagePath: `p${ordem}.html`,
+      presentationUrl: `https://storage/p${ordem}.html`, failure: null, ordem, totalPartes: 2,
+    });
+  }
+  const apresentacao = estado.materiais.apresentacao;
+  assert.deepEqual(apresentacao.partes.map((p: any) => p.ordem), [1, 2]);
+  assert.equal(apresentacao.metadata.status, "completed");
+});
+
+test("computeAggregatedApresentacaoEntry ignora parte com ordem acima do total", () => {
+  const r = computeAggregatedApresentacaoEntry(
+    [{ ordem: 3, arquivo_url: null, storage_path: null, failed: true }],
+    { ordem: 1, arquivo_url: "u", storage_path: "s", failed: false },
+    2,
+    "pending",
+  );
+  assert.deepEqual(r.partes.map((p) => p.ordem), [1]);
+  assert.equal(r.status, "pending");
+});
+
+test("emFilaPorPersonalizacao: falha de uma gravacao nao trava as seguintes", async () => {
+  const ordem: string[] = [];
+  const falha = emFilaPorPersonalizacao(1, async () => { ordem.push("a"); throw new Error("x"); });
+  const depois = emFilaPorPersonalizacao(1, async () => { ordem.push("b"); return 2; });
+  await assert.rejects(falha);
+  assert.equal(await depois, 2);
+  assert.deepEqual(ordem, ["a", "b"]);
 });
