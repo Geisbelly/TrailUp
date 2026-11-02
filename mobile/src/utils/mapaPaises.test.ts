@@ -8,6 +8,7 @@ import {
   layoutMapaCelular,
   MAPA_BASE,
   MAPA_FAIXA_CELULAR,
+  MAPA_FAIXA_MIN,
   MAPA_TOPO,
   ondaMar,
   trechoEstrada,
@@ -20,16 +21,40 @@ test("8 tópicos viram 4 colunas × 2 fileiras, em serpentina", () => {
   assert.deepEqual(L.nos.map((n) => [n.r, n.c]), [[0, 0], [0, 1], [0, 2], [0, 3], [1, 3], [1, 2], [1, 1], [1, 0]]);
 });
 
-test("as fileiras cabem na altura do quadro, entre 140 e 228 px", () => {
+test("as fileiras cabem na altura do quadro, entre MAPA_FAIXA_MIN e 228 px", () => {
   assert.equal(layoutMapa(8, 1000, 500).faixa, (500 - MAPA_TOPO - MAPA_BASE) / 2);
   assert.equal(layoutMapa(8, 1000, 2000).faixa, 228);
-  assert.equal(layoutMapa(16, 1000, 400).faixa, 140);
+  // Abaixo do mínimo a etiqueta "Você parou aqui" cobria o selo da fileira de cima:
+  // a fileira fica no mínimo e o mapa, mais alto que o quadro, rola na vertical.
+  const L = layoutMapa(16, 1000, 400);
+  assert.equal(L.faixa, MAPA_FAIXA_MIN);
+  assert.ok(L.altura > 400);
 });
 
-test("quadro estreito: o mapa ganha largura mínima e rola de lado", () => {
-  const L = layoutMapa(8, 500, 600);
-  assert.ok(L.largura > 500);
+test("1280 × 720 continua cabendo sem rolar: duas fileiras de 188 px", () => {
+  const L = layoutMapa(5, 672, 488);
+  assert.equal(L.rows, 2);
+  assert.equal(L.altura, 488);
+});
+
+test("quadro estreito: caem colunas e o mapa cabe na largura", () => {
+  // 1280 × 720 com o painel do tópico: o quadro do mapa tem 672 px. Com 4 colunas
+  // fixas o mapa tinha 809 px, e o rolar de lado escondia os países da direita.
+  const L = layoutMapa(5, 672, 488);
+  assert.equal(L.cols, 3);
+  assert.equal(L.rows, 2);
+  assert.equal(L.largura, 672, "não rola de lado");
+  for (const n of L.nos) assert.ok(n.x + 85 <= L.largura, "o rótulo (170 px) do país não sai do quadro");
+  // 1024 px: o quadro tem 416 px, e 2 colunas cabem.
+  assert.equal(layoutMapa(5, 416, 536).cols, 2);
+  assert.equal(layoutMapa(5, 416, 536).largura, 416);
   assert.equal(layoutMapa(8, 1400, 600).largura, 1400);
+});
+
+test("quadro estreito demais até para 2 colunas: o mapa ganha largura mínima e rola de lado", () => {
+  const L = layoutMapa(8, 300, 600);
+  assert.equal(L.cols, 2);
+  assert.ok(L.largura > 300);
 });
 
 test("todo nó fica dentro do mapa", () => {
