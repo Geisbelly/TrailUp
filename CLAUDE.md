@@ -165,6 +165,43 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    nem para "puxar para cima" o que veio do banco. Ver
    `20260826_18_progresso_professor_opcional.py`.
 
+6. **Nova tentativa NÃO regera tudo: retoma só o que falhou** (#652). Antes,
+   uma parte de áudio sem voz fazia a nova tentativa refazer o texto, todas as
+   partes de TTS e todos os decks. A RPC descartava o texto refeito, e o que
+   sobrava era cota do free tier queimada: cerca de 30 pipelines completos num
+   dia, na turma 68. O `runPipeline` (`microservice/server.ts`,
+   `src/services/mediaResume.ts`) funciona assim:
+   - **Checkpoint antes do TTS e dos decks.** O texto de cada parte é subido e o
+     **roteiro de cada parte de áudio** vai para `materiais.audio.partes[].roteiro`,
+     com a marca `metadata.roteiro_generation_key`.
+   - **Na nova tentativa**, o texto já subido é reaproveitado e o TTS roda só nas
+     partes de áudio sem arquivo. O deck é refeito só nas partes que faltam.
+     Material antigo, sem roteiro guardado, refaz **só o roteiro**
+     (`generateAudioScriptsWithGemini`), nunca o texto.
+   - **O que prova que um arquivo é desta geração é o caminho dele**
+     (`storagePath` embute a `generation_key`), não `metadata.generation_key`: o
+     `claim_retry_incomplete_generation` da API reescreve essa chave em todo
+     material incompleto.
+   - **Etapa de junção do áudio** (`src/utils/audioJunction.ts`). As partes de
+     áudio não seguem mais as partes do texto. O roteiro de todos os blocos é
+     limpo (sem `##`, sem markdown, tag de tom grudada na fala) e reagrupado em
+     partes de ~3.600 caracteres, nunca acima de 4.500 (uma chamada de TTS cada).
+     O corte é só entre parágrafo ou frase, e quem perde o corte no meio leva o
+     tom adiante.
+   - **Cota do dia ou 402 no TTS não se repete na hora.** O erro final leva
+     `[sem_cota_tts]`, e a API marca o alvo `failed` sem as 3 tentativas
+     (`_status_do_target_apos_falha`). "Reprocessar falhas" depois da virada (à
+     meia-noite do Pacífico) retoma só as partes que faltam. Uma chave com 402
+     sai do rodízio por 6 h; o 429 do dia pausa a chave até a virada.
+   - **A nova tentativa reaproveita `plano.content_enrichment`** em vez de
+     enriquecer de novo.
+   - **O alvo procura a linha do próprio dono.** `buscar_mais_recente_por_perfil(dono=...)`:
+     com `None` busca só a base, e com o aluno, só a linha dele. Sem isso, a base do
+     Mastermind e a do Achiever da turma 68 foram geradas em linhas de alunos.
+
+   Ao mexer nesse fluxo, a pergunta é sempre "**o que já está pronto nesta
+   geração?**", antes de chamar qualquer modelo.
+
 ## Perfis BrainHex (7)
 
 `Seeker`, `Survivor`, `Daredevil`, `Mastermind`, `Conqueror`, `Socializer`,
@@ -188,7 +225,9 @@ Cada perfil carrega:
   de cota, resposta sem áudio), a voz sai pela OpenAI
   (`microservice/src/services/ttsRecovery.ts`, #652): o texto já tinha
   contingência e o áudio não, e foi assim que a turma 68 ficou com texto e sem
-  nenhum áudio. 402 não é repetido — esperar não devolve crédito.
+  nenhum áudio. 402 não é repetido — esperar não devolve crédito. Resposta sem
+  áudio agora diz por quê (`extractTtsAudioData`: `finishReason`, bloqueio,
+  texto devolvido), e a nova tentativa vai sem as tags de tom.
 
 > Backend (`_build_design_tokens` em `api/app/api/v1/personalizacao.py`) e
 > frontend (`frontend/src/lib/personalizacao-theme-guide.ts`,
@@ -606,6 +645,22 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 >   grafo decide como se estivesse tudo bem. Ao investigar recorrência que não
 >   dispara, confira o log de `Falha ao ler memoria do aluno` antes de suspeitar
 >   do limiar.
+
+> **O executor do grafo não grava o perfil do aluno** (02/11). O `agente_perfil`
+> continua inferindo e o `perfil_update` fica no estado (a trilha e o resumo em
+> `iaDescricao` o leem), mas `aluno_perfil` e o modo do aluno
+> (`alunos.modooperacao_id`/`modo_resposta`) só mudam pelo quiz e pelo próprio
+> aluno. A regra de reserva só soma: um Seeker com acerto baixo vira Survivor em
+> 3 ciclos e não volta. E `aluno_perfil` decide a missão do dia, as coortes por
+> perfil do estudo (#13) e os alvos da personalização. O modo `imediato` trocaria
+> a ordem da trilha. Até o #805 o executor nunca rodava em produção; quando passou
+> a rodar, a gravação de perfil (`modoresposta` sem aspas) derrubou todo ciclo.
+>
+> **Cada escrita do executor vai num SAVEPOINT** (`_aplicar`): a que falha volta
+> sozinha, fica no log (`executor.escrita_falhou`, só a primeira linha do erro,
+> sem os parâmetros) e em `acoes_aplicadas` como `falhou:<ação>`, e o ciclo segue.
+> A exceção é `MateriaisRepository.salvar`, que dá `commit()` no fim e por isso
+> roda fora de savepoint. Escrita nova no executor entra por `_aplicar`.
 
 ## Convenções
 

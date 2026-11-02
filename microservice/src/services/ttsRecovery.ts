@@ -9,8 +9,14 @@
 // `400 Model tried to generate text, but it should only be used for TTS`.
 //
 // Aqui fica a política, separada da chamada ao Gemini para ser testável:
-// - resposta sem áudio / texto no lugar de áudio: tenta de novo (é transitório);
-// - 429 de cota: mantém as esperas de antes (5/10/15 s), RPM volta sozinho;
+// - resposta sem áudio / texto no lugar de áudio: tenta de novo, e a partir
+//   da segunda vez SEM as tags de tom ("[Tom: …]"). Na turma 66 a narração solo
+//   (com tags) falhou em 12 de 21 partes e o diálogo (sem tags) em 0 de 5; a
+//   tag não está provada como causa, mas é a diferença entre os dois pedidos,
+//   e repetir o mesmo pedido idêntico logo em seguida pouco muda;
+// - 429 de cota por minuto: mantém as esperas de antes (5/10/15 s), RPM volta
+//   sozinho. 429 de cota DIÁRIA não espera: ela só volta à meia-noite do
+//   Pacífico, e cada espera era mais uma chamada perdida em todas as chaves;
 // - 402 de crédito esgotado: não espera nada, esperar não devolve crédito;
 // - esgotado o Gemini por qualquer um desses motivos: voz de reserva na OpenAI.
 // Erro fora dessa lista (bug, rede) sobe como está: reserva não mascara bug.
@@ -82,6 +88,25 @@ export function classifyTtsFailure(error: unknown): TtsFailureKind {
   return "other";
 }
 
+/**
+ * 429 da cota do DIA (quotaId "…PerDay…"): não volta em segundos. O texto do
+ * erro do Gemini traz o quotaId que estourou.
+ */
+export function isDailyQuotaError(error: unknown): boolean {
+  return classifyTtsFailure(error) === "quota" && /per\s*day/i.test(messageOf(error));
+}
+
+/** Causa original de um erro embrulhado (a reserva OpenAI embrulha o Gemini em `cause`). */
+export function rootCause(error: unknown): unknown {
+  let current: unknown = error;
+  for (let depth = 0; depth < 5; depth += 1) {
+    const cause = (current as { cause?: unknown } | null)?.cause;
+    if (cause === undefined || cause === null) break;
+    current = cause;
+  }
+  return current;
+}
+
 const QUOTA_RETRY_DELAYS_MS = [5_000, 10_000, 15_000];
 const NO_AUDIO_RETRY_DELAYS_MS = [2_000, 4_000];
 const MAX_GEMINI_REASON_IN_FALLBACK_ERROR = 200;
@@ -89,7 +114,8 @@ const MAX_GEMINI_REASON_IN_FALLBACK_ERROR = 200;
 export interface TtsRecoveryOptions<T> {
   /** "narração" ou "diálogo", só para o log. */
   label: string;
-  synthesizeWithGemini: () => Promise<T>;
+  /** `plain`: sintetizar sem as tags de tom (nova tentativa depois de resposta sem áudio). */
+  synthesizeWithGemini: (attempt: { plain: boolean }) => Promise<T>;
   /** null quando a reserva está desligada ou sem OPENAI_API_KEY. */
   synthesizeWithOpenAI: (() => Promise<T>) | null;
   sleep?: (ms: number) => Promise<void>;
@@ -106,11 +132,11 @@ export async function synthesizeSpeechWithRecovery<T>(options: TtsRecoveryOption
 
   for (;;) {
     try {
-      return await options.synthesizeWithGemini();
+      return await options.synthesizeWithGemini({ plain: noAudioRetries > 0 });
     } catch (error) {
       const kind = classifyTtsFailure(error);
 
-      if (kind === "quota" && quotaRetries < QUOTA_RETRY_DELAYS_MS.length) {
+      if (kind === "quota" && !isDailyQuotaError(error) && quotaRetries < QUOTA_RETRY_DELAYS_MS.length) {
         const delay = QUOTA_RETRY_DELAYS_MS[quotaRetries++];
         warn(`[brainhex] TTS ${options.label}: cota do Gemini — nova tentativa em ${delay / 1000}s`);
         await sleep(delay);
@@ -121,7 +147,7 @@ export async function synthesizeSpeechWithRecovery<T>(options: TtsRecoveryOption
         && noAudioRetries < NO_AUDIO_RETRY_DELAYS_MS.length
       ) {
         const delay = NO_AUDIO_RETRY_DELAYS_MS[noAudioRetries++];
-        warn(`[brainhex] TTS ${options.label}: Gemini respondeu sem áudio (${kind}) — nova tentativa em ${delay / 1000}s`);
+        warn(`[brainhex] TTS ${options.label}: Gemini respondeu sem áudio (${kind}) — nova tentativa sem tags de tom em ${delay / 1000}s`);
         await sleep(delay);
         continue;
       }

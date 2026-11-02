@@ -13,8 +13,27 @@ import {
   regenerateDocumentMarkdown,
   resolveAudioPartConcurrency,
   restyleImageWithGemini,
+  generateAudioScriptsWithGemini,
   type ContentPart,
 } from "./src/services/geminiService";
+import {
+  audioSegmentsFromChapters,
+  joinAudioBlocks,
+  resolveAudioJunctionConfig,
+} from "./src/utils/audioJunction";
+import {
+  audioFailedOnlyForQuota,
+  audioPlanFromJunction,
+  buildAudioCheckpointEntry,
+  buildAudioMaterialEntry,
+  buildMarkdownMaterialEntry,
+  imageUrlsFromMarkdown,
+  planMediaResume,
+  reusablePresentationPartes,
+  SEM_COTA_TTS_MARKER,
+  type AudioPartPlan,
+  type PresentationVersions,
+} from "./src/services/mediaResume";
 import { settleWithConcurrency } from "./src/lib/boundedConcurrency";
 import {
   deriveImagesForMedia,
@@ -367,11 +386,19 @@ export async function archiveToSupabase(params: {
  * todas as partes) comecam juntas; renderPresentation nunca rejeita (ver
  * renderAndUploadPresentationViaBrainHexPdf), so retorna failure no result.
  */
-export async function runAudioAndPresentationInParallel<TAudio>(
-  parts: ContentPart[],
+export async function runAudioAndPresentationInParallel<
+  TAudio,
+  TPart extends { ordem: number } = ContentPart,
+>(
+  parts: TPart[],
   deps: {
     generateAudio: (audioScript: string) => Promise<TAudio>;
-    renderPresentation: (part: ContentPart) => Promise<RenderAndUploadPresentationResult>;
+    renderPresentation: (part: TPart) => Promise<RenderAndUploadPresentationResult>;
+    // Partes de audio, quando nao sao as mesmas da apresentacao: a etapa de
+    // juncao (audioJunction.ts) agrupa o roteiro por tamanho de TTS, nao pelo
+    // tamanho do texto, e a retomada sintetiza so as que faltam (#652).
+    // Ausente = o audio de cada parte de `parts`.
+    audioParts?: Array<{ audioScript: string }>;
     // Teto de quantas partes geram audio ao mesmo tempo - disparar todas de
     // uma vez estourava RPM do free tier do Gemini (~10 req/min por conta)
     // mesmo com rotacao de chave correta. settleWithConcurrency preserva a
@@ -391,12 +418,14 @@ export async function runAudioAndPresentationInParallel<TAudio>(
   audioSecondRound: AudioSecondRoundOutcome;
   presentationResults: RenderAndUploadPresentationResult[];
 }> {
-  const generatePart = (part: ContentPart) => deps.generateAudio(part.audioScript);
+  const audioParts = deps.audioParts
+    ?? parts.map((part) => ({ audioScript: String((part as { audioScript?: unknown }).audioScript ?? "") }));
+  const generatePart = (part: { audioScript: string }) => deps.generateAudio(part.audioScript);
   const [audio, presentationResults] = await Promise.all([
-    settleWithConcurrency(parts, deps.audioConcurrency, generatePart).then((settled) =>
+    settleWithConcurrency(audioParts, deps.audioConcurrency, generatePart).then((settled) =>
       deps.audioSecondRound
         ? retryFailedAudioParts({
-            parts,
+            parts: audioParts,
             settled,
             generate: generatePart,
             config: deps.audioSecondRound,
@@ -410,8 +439,10 @@ export async function runAudioAndPresentationInParallel<TAudio>(
 }
 
 /**
- * Versao multi-parte de archiveToSupabase, usada pelo pipeline de
- * personalizacao (runPipeline). A sintese continua sendo UMA so (sem
+ * Versao multi-parte de archiveToSupabase. Desde a #652 o runPipeline NAO usa
+ * mais esta funcao: ele grava texto e roteiro antes do TTS (checkpoint) e
+ * retoma so o que falta (mediaResume.ts). Fica exportada e testada ate alguem
+ * decidir remove-la. A sintese continua sendo UMA so (sem
  * duplicar topicos - ver mergeContentBlocksIntoOne), mas a ENTREGA vira N
  * arquivos sequenciais por midia (splitProcessedContentIntoParts), porque
  * um unico arquivo monolitico ja estourou o limite de upload do Supabase
@@ -817,6 +848,8 @@ export async function reconstructMarkdownPartsFromMaterials(
   return reconstructed;
 }
 
+// Desde a #652 o runPipeline retoma a apresentacao por conta propria (so as
+// partes que faltam, em paralelo com o audio) e nao chama mais esta funcao.
 // Retenta so a apresentacao (BrainHexPDF), reaproveitando markdown ja
 // concluido em vez de regenerar audio+markdown via Gemini de novo - mesmo
 // laco de apresentacao de archiveMultiPartToSupabase, mas o merge so toca
@@ -943,7 +976,106 @@ export async function retryApresentacaoOnly(
   return { presentationUrl, persisted };
 }
 
-async function runPipeline(
+const PRESENTATION_VERSIONS: PresentationVersions = {
+  engine: PRESENTATION_ENGINE_VERSION,
+  media_pipeline_version: MEDIA_PIPELINE_VERSION,
+  design_system: PRESENTATION_DESIGN_VERSION,
+};
+
+function partSuffix(ordem: number, totalPartes: number): string {
+  return totalPartes > 1 ? `-parte-${String(ordem).padStart(2, "0")}` : "";
+}
+
+/** Sobe o texto de cada parte. Falha de upload deixa so aquela parte sem arquivo. */
+async function uploadMarkdownParts(
+  parts: Array<{ ordem: number; titulo: string; markdown: string }>,
+  ctx: { storagePath: string; bucket: string; refId: string; log: Logger },
+): Promise<MaterialPart[]> {
+  const partes: MaterialPart[] = [];
+  for (const part of parts) {
+    const mdPath = `${ctx.storagePath}/markdown/material-${ctx.refId}${partSuffix(part.ordem, parts.length)}.md`;
+    let url: string | null = null;
+    try {
+      url = await uploadBuffer(ctx.bucket, mdPath, Buffer.from(part.markdown, "utf-8"), "text/markdown; charset=utf-8");
+      ctx.log.info("markdown upload", { status: url ? "ok" : "falhou", parte: part.ordem });
+    } catch (e) {
+      ctx.log.error("falha no upload de markdown", { err: e, parte: part.ordem });
+    }
+    partes.push({ ordem: part.ordem, titulo: part.titulo, arquivo_url: url, storage_path: url ? mdPath : null });
+  }
+  return partes;
+}
+
+/**
+ * Entrada da apresentacao para o merge, SO quando alguma parte renderizada
+ * agora nao conseguiu gravar pelo BrainHexPDF (falha de transporte). No caminho
+ * feliz quem grava e o proprio BrainHexPDF, parte a parte - ver
+ * docs/superpowers/specs/2026-08-16-brainhexpdf-direct-db-write-design.md.
+ * As partes ja prontas de uma tentativa anterior entram na agregacao.
+ */
+export function buildPresentationFallbackEntry(params: {
+  keptPartes: MaterialPart[];
+  rendered: Array<{ ordem: number; titulo: string; path: string; result: RenderAndUploadPresentationResult }>;
+  totalPartes: number;
+  presentationTheme: PresentationDesignPlan;
+  generationKey: string;
+  bucket: string;
+}): MaterialEntry | null {
+  if (params.rendered.every((r) => r.result.dbWritten)) return null;
+  let firstFailure: PresentationFailure | null = null;
+  let aggregated: { partes: MaterialPart[]; status: string; headline: { arquivo_url: string | null; storage_path: string | null } } = {
+    partes: params.keptPartes,
+    status: "pending",
+    headline: { arquivo_url: params.keptPartes[0]?.arquivo_url ?? null, storage_path: params.keptPartes[0]?.storage_path ?? null },
+  };
+  for (const { ordem, titulo, path: presentationPath, result } of params.rendered) {
+    if (result.failure) firstFailure = firstFailure ?? result.failure;
+    aggregated = computeAggregatedApresentacaoEntry(
+      aggregated.partes,
+      {
+        ordem,
+        titulo,
+        arquivo_url: result.presentationUrl,
+        storage_path: result.presentationUrl ? presentationPath : null,
+        failed: result.presentationUrl === null,
+        ...(result.presentationUrl === null && result.failure ? { failure: result.failure } : {}),
+      },
+      params.totalPartes,
+      aggregated.status,
+    );
+  }
+  return {
+    // slides fica vazio de proposito - ver comentario equivalente em
+    // archiveToSupabase (o mobile abre o HTML completo do BrainHexPDF).
+    payload: { slides: [] as never[], tema_visual: params.presentationTheme },
+    metadata: buildPresentationMaterialMetadata({
+      generationKey: params.generationKey,
+      presentationUrl: aggregated.headline.arquivo_url,
+      bucket: params.bucket,
+      failure: firstFailure,
+      status: aggregated.status,
+    }),
+    arquivo_url: aggregated.headline.arquivo_url,
+    storage_path: aggregated.headline.storage_path,
+    ...(aggregated.headline.arquivo_url ? { bucket: params.bucket, mime_type: "text/html; charset=utf-8" } : {}),
+    partes: aggregated.partes,
+  };
+}
+
+/**
+ * Pipeline de uma personalizacao (#652): NOVA TENTATIVA NAO REGERA TUDO.
+ *
+ * 0. Le o que ja esta pronto NESTA geracao (mediaResume.ts).
+ * 1. Texto: reaproveita as partes ja subidas; so gera (Gemini) quando nao ha.
+ *    Gerado, o texto e o roteiro de cada parte de audio sao gravados ANTES do
+ *    TTS e dos decks (checkpoint) - a proxima tentativa parte dali.
+ * 2. Audio: a etapa de juncao (audioJunction.ts) agrupa o roteiro dos blocos
+ *    em partes do tamanho de uma chamada de TTS, limpa o que nao e fala e
+ *    corta so em fronteira de frase. Sintetiza so as partes sem arquivo.
+ * 3. Apresentacao: renderiza so as partes que faltam, em paralelo com o audio.
+ * 4. Um merge so no fim com o que mudou.
+ */
+export async function runPipeline(
   personalizacaoId: number,
   profile: BrainHexProfile,
   fontes: FonteItem[],
@@ -966,191 +1098,227 @@ async function runPipeline(
     fallbackSubject,
   );
 
-  // 0. Evita regenerar audio/markdown via Gemini quando ja estao completed
-  // pra esta MESMA generationKey e so a apresentacao falhou (ex.: TLS/rede
-  // no BrainHexPDF) - producao mostrou audio/markdown sendo regenerados do
-  // zero (estourando rate-limit de TTS) so pra tentar de novo uma
-  // apresentacao que falha por um motivo nao relacionado ao conteudo. Se a
-  // reconstrucao do markdown ja persistido falhar por qualquer motivo, cai
-  // pro pipeline completo abaixo (nunca arrisca uma apresentacao
-  // incompleta/fora de ordem).
+  // 0. O que ja esta pronto nesta geracao.
   const existingMateriais = await fetchPersonalizacaoMateriais(personalizacaoId);
-  const audioJaCompleto = isMaterialCompletedForGeneration(existingMateriais?.audio, fence.generationKey);
-  const markdownJaCompleto = isMaterialCompletedForGeneration(existingMateriais?.markdown, fence.generationKey);
-  const apresentacaoJaCompleta = isMaterialCompletedForGeneration(existingMateriais?.apresentacao, fence.generationKey);
-  if (audioJaCompleto && markdownJaCompleto && !apresentacaoJaCompleta) {
-    const reconstructedParts = await reconstructMarkdownPartsFromMaterials(existingMateriais?.markdown);
-    if (reconstructedParts) {
-      jobLog.info("apresentacao-only: reaproveitando audio/markdown ja concluidos", {
-        generationKey: fence.generationKey,
-      });
-      const archived = await retryApresentacaoOnly({
-        profile,
-        storagePath,
-        bucket,
-        refId,
-        parts: reconstructedParts,
-        presentationTheme: presentationPlan,
-        personalizacaoId,
-        fence,
-        log: jobLog,
-      });
-      if (!archived.persisted) {
-        throw new Error("merge persistido ausente para a personalizacao");
-      }
-      const failedFormatsRetry = ["audio", "markdown", "apresentacao"].filter((mediaKind) => {
-        const metadata = archived.persisted?.materiais?.[mediaKind]?.metadata;
-        return (
-          metadata?.status !== "completed"
-          || metadata?.generation_key !== fence.generationKey
-        );
-      });
-      if (failedFormatsRetry.length > 0) {
-        throw new Error(`midias obrigatorias nao geradas: ${failedFormatsRetry.join(", ")}`);
-      }
-      if (archived.persisted.status !== "pronto") {
-        throw new Error(`status persistido inesperado: ${archived.persisted.status}`);
-      }
-      return;
-    }
-    jobLog.warn("apresentacao-only: nao foi possivel reconstruir markdown ja gerado, regenerando tudo", {
-      generationKey: fence.generationKey,
-    });
-  }
-
-  // 1. Download das fontes
-  const filesData = await fetchFontesAsFileData(fontes);
-  if (filesData.length === 0 && contentBlocks.length === 0) {
-    const msg = "todas as fontes falharam no download (verifique as URLs e permissões)";
-    jobLog.warn(msg);
-    throw new Error(msg);
-  }
-
-  // Subconjunto de filesData que o BrainHexPDF pode usar como imagem real
-  // de referencia num slide (ver renderAndUploadPresentationViaBrainHexPdf
-  // mais abaixo) - o restante (pdf, docx, audio, etc.) so serve pra
-  // processMediaWithGemini synthesize texto/audio, nao faz sentido como
-  // imagem de slide.
-  let imageAttachments = filesData
-    .filter((f) => f.mimeType.startsWith("image/"))
-    .map((f) => ({ data: f.data, mimeType: f.mimeType, name: f.name, url: f.url }));
-
-  // 2. Texto + slides via Gemini (multi-arquivo)
-  const resultado = await processMediaWithGemini(
-    filesData,
-    profile,
-    contentBlocks,
-    presentationPlan,
-    guidancePrompt,
-  );
-
-  // Professor as vezes anexa um .pptx/.docx em vez de uma imagem avulsa -
-  // sem isso, as imagens de dentro do arquivo (o "conteudo base" de
-  // verdade) nunca viravam imageAttachments e o pipeline inteiro caia pro
-  // fallback de IA/SVG generico. Anexos avulsos (acima) sempre vem
-  // primeiro na lista - preferencia por eles em qualquer selecao por
-  // indice ja existente rio abaixo.
-  if (resultado.extractedMedia && resultado.extractedMedia.length > 0) {
-    imageAttachments = [
-      ...imageAttachments,
-      ...resultado.extractedMedia.map((m) => ({
-        data: m.data,
-        mimeType: m.mimeType,
-        name: m.name,
-        url: `data:${m.mimeType};base64,${m.data}`,
-        // Contexto de origem: e o que permite colocar cada imagem na secao do
-        // mesmo assunto, em vez de distribuir por rodizio (imageTextGraph.ts).
-        sourceText: m.sourceText,
-        sourceOrder: m.sourceOrder,
-      })),
-    ];
-  }
-
-  // CAMADA 2 da adaptacao da imagem ao perfil: reilustra a imagem do professor
-  // no clima do Guardiao. Desligada por padrao (PROFILE_IMAGE_RESTYLE) e com
-  // teto por material - ver profileImageRestyle.ts pro custo. Como o pipeline
-  // roda uma vez por perfil, o resultado ja e uma versao por perfil. Falha
-  // aqui nunca derruba o material: a imagem original fica, e a camada 1
-  // (moldura na estetica do perfil, no console/mobile) continua valendo.
-  const restyleResult = await applyProfileRestyle(imageAttachments, {
-    profile,
-    assunto: fallbackSubject,
-    restyle: restyleImageWithGemini,
-    onAviso: (mensagem, detalhe) => jobLog.warn(`reilustracao por perfil: ${mensagem}`, { err: detalhe }),
+  const resume = planMediaResume(existingMateriais, {
+    storagePath,
+    generationKey: fence.generationKey,
+    versions: PRESENTATION_VERSIONS,
   });
-  if (restyleResult.reilustradas > 0 || restyleResult.interrompidoPor) {
-    jobLog.info("reilustracao por perfil", {
-      reilustradas: restyleResult.reilustradas,
-      total: imageAttachments.length,
-      ...(restyleResult.interrompidoPor ? { interrompidoPor: restyleResult.interrompidoPor } : {}),
-    });
+  if (resume.audioDone && resume.markdownDone && resume.apresentacaoDone) {
+    jobLog.info("retomada: as tres midias ja estao prontas nesta geracao", { generationKey: fence.generationKey });
+    return;
   }
-  imageAttachments = restyleResult.imagens as typeof imageAttachments;
-
-  // Diagramas em arte ASCII que o Gemini escreve dentro de bloco de codigo
-  // viram SVG de verdade, embutido no markdown como imagem - assim console,
-  // mobile e deck renderizam igual, sem precisar de renderizador em cada
-  // superficie. Dois formatos reconhecidos: cadeia de caixas com setas
-  // (flowDiagram) e quadro emoldurado de duas raias (laneDiagram). Bloco de
-  // codigo de verdade e bloco que nao da pra ler como diagrama ficam intactos.
-  resultado.markdown = replaceAsciiDiagramsWithSvg(resultado.markdown, {
-    accentColor: BRAIN_HEX_CONFIG[profile]?.color,
-  });
-
-  // Distribui as imagens do professor pelo markdown ANTES de dividir em
-  // partes - a divisao por heading (## titulo) ja existente cuida do resto
-  // sem mudanca, cada parte carrega as imagens que caem dentro da sua
-  // fatia. Precisa ser feito aqui (nao depois do BrainHexPDF) porque o
-  // markdown ja foi persistido antes da chamada de apresentacao - ver
-  // docs/superpowers/specs/2026-08-22-reaproveitamento-imagens-midias-design.md,
-  // secao "Descoberta que definiu o escopo".
-  resultado.markdown = insertImagesIntoMarkdown(resultado.markdown, imageAttachments);
-
-  // 3. Divide o resultado JA sintetizado (uma so vez, sem duplicar topicos -
-  // ver mergeContentBlocksIntoOne) em partes entregaveis. Cada parte vira 1
-  // chamada ao BrainHexPDF pra gerar a apresentacao daquele trecho - mesmas
-  // fronteiras de markdown/audioScript/apresentacao, sem particionamento
-  // separado (ver docs/superpowers/specs/2026-08-15-brainhexpdf-integracao-design.md).
-  const parts = splitProcessedContentIntoParts({
-    markdown: resultado.markdown,
-    audioScript: resultado.audioScript,
-    slides: resultado.slides,
-  });
 
   const voiceProfile = GUARDIAN_VOICE_PROFILES[profile];
   const voice = voiceProfile.voice;
   const secondaryGuideName = BRAIN_HEX_CONFIG[profile]?.secondaryGuideName;
   const secondaryVoice = voiceProfile.secondaryVoice;
+  const isDialogue = Boolean(secondaryGuideName && secondaryVoice);
+  const scriptStyle = isDialogue
+    ? { speakers: [BRAIN_HEX_CONFIG[profile].guideName, secondaryGuideName as string] }
+    : {};
+  const junctionConfig = resolveAudioJunctionConfig();
+  const planAudio = (chapters: Array<{ markdown?: string; audioScript: string }>): AudioPartPlan[] =>
+    audioPlanFromJunction(joinAudioBlocks(audioSegmentsFromChapters(chapters), junctionConfig, scriptStyle));
+
+  // 1. Texto.
+  let textParts: Array<{ ordem: number; titulo: string; markdown: string }> | null = null;
+  let markdownPartes: MaterialPart[] = [];
+  let writeMarkdown = false;
+  let audioPlan: AudioPartPlan[] = [];
+  let audioScriptError: unknown = null;
+  let imageAttachments: Array<{ data: string; mimeType: string; name: string; url: string; sourceText?: string; sourceOrder?: number }> = [];
+  let attachmentsFor: (markdown: string) => Array<{ data: string; mimeType: string; name: string; url: string }> =
+    (markdown) => extractAttachmentsFromMarkdown(markdown);
+
+  const reconstructed = resume.markdownPartes
+    ? await reconstructMarkdownPartsFromMaterials(existingMateriais?.markdown)
+    : null;
+  const resumed = Boolean(reconstructed && (resume.audioDone || resume.storedAudio || contentBlocks.length > 0));
+
+  if (resumed && reconstructed && resume.markdownPartes) {
+    textParts = reconstructed;
+    markdownPartes = resume.markdownPartes;
+    // Texto do checkpoint (pending): vira completed no merge final.
+    writeMarkdown = !resume.markdownDone;
+    if (resume.storedAudio && !resume.audioDone) {
+      audioPlan = resume.storedAudio;
+    } else if (!resume.audioDone) {
+      // Material gravado antes do checkpoint: o texto esta pronto, so o
+      // roteiro precisa ser refeito - nunca o texto inteiro.
+      jobLog.info("retomada: sem roteiro guardado, refazendo so o roteiro do áudio");
+      try {
+        audioPlan = planAudio(await generateAudioScriptsWithGemini(profile, contentBlocks, guidancePrompt));
+        await mergePersonalizacaoMateriais(
+          personalizacaoId,
+          { audio: buildAudioCheckpointEntry({ plan: audioPlan, generationKey: fence.generationKey, bucket }) },
+          fence,
+        );
+      } catch (err) {
+        jobLog.error("retomada: roteiro do áudio não foi refeito", { err });
+        audioScriptError = err;
+      }
+    }
+  } else {
+    if (reconstructed) {
+      jobLog.warn("retomada: material antigo sem blocos de conteúdo; gerando o texto de novo");
+    } else if (resume.markdownPartes) {
+      jobLog.warn("retomada: não foi possível baixar o texto já gerado; gerando de novo");
+    }
+
+    // 1a. Download das fontes
+    const filesData = await fetchFontesAsFileData(fontes);
+    if (filesData.length === 0 && contentBlocks.length === 0) {
+      const msg = "todas as fontes falharam no download (verifique as URLs e permissões)";
+      jobLog.warn(msg);
+      throw new Error(msg);
+    }
+
+    // Subconjunto de filesData que o BrainHexPDF pode usar como imagem real
+    // de referencia num slide - o restante (pdf, docx, audio, etc.) so serve
+    // pra processMediaWithGemini sintetizar texto/audio.
+    imageAttachments = filesData
+      .filter((f) => f.mimeType.startsWith("image/"))
+      .map((f) => ({ data: f.data, mimeType: f.mimeType, name: f.name, url: f.url }));
+
+    // 1b. Texto + roteiro via Gemini (multi-arquivo)
+    const resultado = await processMediaWithGemini(
+      filesData,
+      profile,
+      contentBlocks,
+      presentationPlan,
+      guidancePrompt,
+    );
+
+    // Professor as vezes anexa um .pptx/.docx em vez de uma imagem avulsa -
+    // sem isso, as imagens de dentro do arquivo (o "conteudo base" de
+    // verdade) nunca viravam imageAttachments e o pipeline inteiro caia pro
+    // fallback de IA/SVG generico. Anexos avulsos (acima) sempre vem
+    // primeiro na lista.
+    if (resultado.extractedMedia && resultado.extractedMedia.length > 0) {
+      imageAttachments = [
+        ...imageAttachments,
+        ...resultado.extractedMedia.map((m) => ({
+          data: m.data,
+          mimeType: m.mimeType,
+          name: m.name,
+          url: `data:${m.mimeType};base64,${m.data}`,
+          // Contexto de origem: e o que permite colocar cada imagem na secao do
+          // mesmo assunto, em vez de distribuir por rodizio (imageTextGraph.ts).
+          sourceText: m.sourceText,
+          sourceOrder: m.sourceOrder,
+        })),
+      ];
+    }
+
+    // CAMADA 2 da adaptacao da imagem ao perfil: reilustra a imagem do professor
+    // no clima do Guardiao. Desligada por padrao (PROFILE_IMAGE_RESTYLE) e com
+    // teto por material - ver profileImageRestyle.ts pro custo. Falha aqui
+    // nunca derruba o material: a imagem original fica.
+    const restyleResult = await applyProfileRestyle(imageAttachments, {
+      profile,
+      assunto: fallbackSubject,
+      restyle: restyleImageWithGemini,
+      onAviso: (mensagem, detalhe) => jobLog.warn(`reilustracao por perfil: ${mensagem}`, { err: detalhe }),
+    });
+    if (restyleResult.reilustradas > 0 || restyleResult.interrompidoPor) {
+      jobLog.info("reilustracao por perfil", {
+        reilustradas: restyleResult.reilustradas,
+        total: imageAttachments.length,
+        ...(restyleResult.interrompidoPor ? { interrompidoPor: restyleResult.interrompidoPor } : {}),
+      });
+    }
+    imageAttachments = restyleResult.imagens as typeof imageAttachments;
+
+    // Diagramas em arte ASCII viram SVG de verdade, embutido no markdown como
+    // imagem - console, mobile e deck renderizam igual (flowDiagram/laneDiagram).
+    resultado.markdown = replaceAsciiDiagramsWithSvg(resultado.markdown, {
+      accentColor: BRAIN_HEX_CONFIG[profile]?.color,
+    });
+
+    // Distribui as imagens do professor pelo markdown ANTES de dividir em
+    // partes - cada parte carrega as imagens que caem dentro da sua fatia
+    // (ver docs/superpowers/specs/2026-08-22-reaproveitamento-imagens-midias-design.md).
+    resultado.markdown = insertImagesIntoMarkdown(resultado.markdown, imageAttachments);
+
+    // Partes do TEXTO (e de cada deck): por heading de nivel 2, ate ~4.500
+    // caracteres de markdown cada (ver splitProcessedContentIntoParts).
+    textParts = splitProcessedContentIntoParts({
+      markdown: resultado.markdown,
+      audioScript: resultado.audioScript,
+      slides: resultado.slides,
+    });
+    const imagens = imageAttachments;
+    attachmentsFor = (markdown) => selectAttachmentsForMarkdown(markdown, imagens);
+
+    // Partes do AUDIO: etapa de juncao, independente das partes do texto.
+    if (!resume.audioDone) {
+      audioPlan = planAudio(
+        resultado.chapters && resultado.chapters.length > 0
+          ? resultado.chapters
+          : [{ markdown: resultado.markdown, audioScript: resultado.audioScript }],
+      );
+    }
+
+    // Checkpoint: texto e roteiro gravados antes do TTS e dos decks.
+    markdownPartes = await uploadMarkdownParts(textParts, { storagePath, bucket, refId, log: jobLog });
+    writeMarkdown = true;
+    if (markdownPartes.every((parte) => parte.arquivo_url)) {
+      const checkpoint: Record<string, MaterialEntry> = {
+        markdown: buildMarkdownMaterialEntry({
+          partes: markdownPartes,
+          firstMarkdown: textParts[0]?.markdown ?? "",
+          generationKey: fence.generationKey,
+          bucket,
+          checkpoint: true,
+        }),
+      };
+      if (audioPlan.length > 0) {
+        checkpoint.audio = buildAudioCheckpointEntry({ plan: audioPlan, generationKey: fence.generationKey, bucket });
+      }
+      await mergePersonalizacaoMateriais(personalizacaoId, checkpoint, fence);
+      jobLog.info("checkpoint: texto e roteiro gravados", {
+        partesTexto: textParts.length,
+        partesAudio: audioPlan.length,
+      });
+    }
+  }
+
+  if (!textParts) throw new Error("texto do material ausente");
+  const totalPartes = textParts.length;
+
+  // 2 e 3. Audio e apresentacao, so o que falta, em paralelo.
+  const keptPresentation = resume.apresentacaoDone || !resumed
+    ? []
+    : reusablePresentationPartes(existingMateriais?.apresentacao, storagePath, PRESENTATION_VERSIONS, totalPartes);
+  const keptOrdens = new Set(keptPresentation.map((parte) => parte.ordem));
+  const toRender = resume.apresentacaoDone ? [] : textParts.filter((part) => !keptOrdens.has(part.ordem));
+  const toSynthesize = audioPlan.filter((part) => !part.pronta);
+  const presentationPathFor = (ordem: number) =>
+    `${storagePath}/apresentacao/material-${refId}${partSuffix(ordem, totalPartes)}.html`;
+
+  jobLog.info("midias a gerar", {
+    texto: resumed ? "reaproveitado" : "gerado",
+    audio: `${toSynthesize.length}/${audioPlan.length} partes`,
+    apresentacao: `${toRender.length}/${resume.apresentacaoDone ? 0 : totalPartes} partes`,
+  });
+
   const generatePartAudio = (audioScript: string) =>
-    secondaryGuideName && secondaryVoice
+    isDialogue
       ? generateLongConversationalAudio(
           audioScript,
-          {
-            name: BRAIN_HEX_CONFIG[profile].guideName,
-            voice,
-            direction: voiceProfile.direction,
-          },
-          {
-            name: secondaryGuideName,
-            voice: secondaryVoice,
-            direction: voiceProfile.secondaryDirection,
-          },
+          { name: BRAIN_HEX_CONFIG[profile].guideName, voice, direction: voiceProfile.direction },
+          { name: secondaryGuideName as string, voice: secondaryVoice!, direction: voiceProfile.secondaryDirection },
         )
       : generateLongNaturalAudio(audioScript, voice, voiceProfile.direction);
 
-  // A apresentacao (chamada ao BrainHexPDF, uma por parte) roda CONCORRENTE
-  // com o audio - ver runAudioAndPresentationInParallel - em vez de esperar
-  // o audio inteiro pra so entao chamar o BrainHexPDF em serie por parte
-  // (achado do code review: isso inflava bastante a latencia total em decks
-  // com varias partes). Falha na apresentacao de uma parte derruba so
-  // aquela parte, sem fallback (ver design). O audio, por sua vez, usa
-  // settleWithConcurrency (mesma semantica de sucesso parcial do
-  // Promise.allSettled) com um teto de partes simultaneas - disparar todas
-  // de uma vez estourava RPM do free tier do Gemini (~10 req/min por conta)
-  // mesmo com rotacao de chave correta.
-  const multiPart = parts.length > 1;
-  const { audioSettled, audioSecondRound, presentationResults } = await runAudioAndPresentationInParallel(parts, {
+  // O audio usa settleWithConcurrency com teto de partes simultaneas -
+  // disparar todas de uma vez estourava RPM do free tier do Gemini. A
+  // apresentacao (uma chamada ao BrainHexPDF por parte) roda junto.
+  const { audioSettled, audioSecondRound, presentationResults } = await runAudioAndPresentationInParallel(toRender, {
     generateAudio: generatePartAudio,
+    audioParts: toSynthesize.map((part) => ({ audioScript: part.roteiro })),
     audioConcurrency: resolveAudioPartConcurrency(process.env.CONTENT_GENERATION_AUDIO_PART_CONCURRENCY),
     audioSecondRound: resolveAudioSecondRoundConfig(),
     renderPresentation: (part) =>
@@ -1159,22 +1327,12 @@ async function runPipeline(
         topic: part.titulo,
         profile,
         bucket,
-        // So as imagens desta parte, nao a lista inteira: o BrainHexPDF
-        // processa cada parte numa chamada isolada, entao mandar todas pra
-        // todas fazia cada parte reencontrar a mesma imagem "obviamente
-        // relevante" - ela terminava em todo slide do material e as demais
-        // nao apareciam em nenhum. A fronteira e a mesma que o aluno le no
-        // markdown (insertImagesIntoMarkdown roda antes da divisao).
-        attachments: selectAttachmentsForMarkdown(part.markdown, imageAttachments),
-        presentationPath: `${storagePath}/apresentacao/material-${refId}${
-          multiPart ? `-parte-${String(part.ordem).padStart(2, "0")}` : ""
-        }.html`,
-        // Fencing pro BrainHexPDF gravar direto no banco (RPC
-        // merge_personalizacao_materiais_v2) - ver
+        // So as imagens desta parte, nao a lista inteira: com todas, cada
+        // parte reencontrava a mesma imagem e ela terminava em todo slide.
+        attachments: attachmentsFor(part.markdown),
+        presentationPath: presentationPathFor(part.ordem),
+        // Fencing pro BrainHexPDF gravar direto no banco, parte a parte - ver
         // docs/superpowers/specs/2026-08-16-brainhexpdf-direct-db-write-design.md.
-        // personalizacaoId/fence sempre presentes aqui (parametros
-        // obrigatorios de runPipeline, nao o caminho de preview de
-        // /api/v1/archive).
         personalizacaoId,
         fence,
         versionMetadata: {
@@ -1184,102 +1342,198 @@ async function runPipeline(
           media_pipeline_version: MEDIA_PIPELINE_VERSION,
         },
         ordem: part.ordem,
-        totalPartes: parts.length,
+        totalPartes,
         titulo: part.titulo,
       }),
   });
 
+  const ordensDe = (positions: number[]) => positions.map((position) => toSynthesize[position - 1]?.ordem ?? position);
   if (audioSecondRound.status === "ran") {
     jobLog.info("segunda rodada de áudio", {
-      partes: audioSecondRound.retriedParts,
-      recuperadas: audioSecondRound.recoveredParts,
+      partes: ordensDe(audioSecondRound.retriedParts),
+      recuperadas: ordensDe(audioSecondRound.recoveredParts),
     });
   } else if (audioSecondRound.status === "skipped") {
     jobLog.warn("segunda rodada de áudio não feita", {
       motivo: audioSecondRound.reason,
-      partes: audioSecondRound.failedParts,
+      partes: ordensDe(audioSecondRound.failedParts),
     });
   }
 
+  // Sobe cada parte de audio pronta.
+  const synthesized = new Map<number, MaterialPart>();
   const audioFailures: AudioPartFailure[] = [];
-  const audioByPart = audioSettled.map((result, index) => {
-    if (result.status === "fulfilled") {
-      return { mp3Base64: result.value.mp3 ?? null, wavBase64: result.value.wav ?? null };
+  const audioFailureReasons: unknown[] = [];
+  let firstAudio: { wav: string; mp3: string | null } | null = null;
+  for (let index = 0; index < toSynthesize.length; index++) {
+    const plan = toSynthesize[index];
+    const result = audioSettled[index];
+    if (result.status === "rejected") {
+      jobLog.error("falha no áudio de uma parte", { parte: plan.ordem, err: result.reason });
+      // O motivo VAI JUNTO do material (metadata.failure_reason): e o que o
+      // professor le no console em vez de "Falhou" pelado.
+      audioFailures.push({ ordem: plan.ordem, motivo: describeError(result.reason) });
+      audioFailureReasons.push(result.reason);
+      continue;
     }
-    jobLog.error("falha no áudio de uma parte", { parte: index + 1, err: result.reason });
-    // O motivo tambem VAI JUNTO do material (metadata.failure_reason), nao so
-    // pro log: e o que o professor le no console em vez de "Falhou" pelado.
-    audioFailures.push({ ordem: index + 1, motivo: describeError(result.reason) });
-    return { mp3Base64: null, wavBase64: null };
-  });
+    if (plan.ordem === 1) firstAudio = result.value;
+    const isMp3 = Boolean(result.value.mp3);
+    const audioPath = `${storagePath}/audio/material-${refId}${partSuffix(plan.ordem, audioPlan.length)}.${isMp3 ? "mp3" : "wav"}`;
+    try {
+      const url = await uploadBuffer(
+        bucket,
+        audioPath,
+        Buffer.from((result.value.mp3 ?? result.value.wav) as string, "base64"),
+        isMp3 ? "audio/mpeg" : "audio/wav",
+      );
+      jobLog.info("áudio upload", { status: url ? "ok" : "falhou", parte: plan.ordem });
+      if (url) {
+        synthesized.set(plan.ordem, { ordem: plan.ordem, titulo: plan.titulo, arquivo_url: url, storage_path: audioPath });
+      } else {
+        audioFailures.push({ ordem: plan.ordem, motivo: "upload: sem URL" });
+        audioFailureReasons.push(new Error("upload: sem URL"));
+      }
+    } catch (e) {
+      jobLog.error("falha no upload de áudio", { err: e, parte: plan.ordem });
+      audioFailures.push({ ordem: plan.ordem, motivo: `upload: ${describeError(e)}` });
+      audioFailureReasons.push(e);
+    }
+  }
 
-  const partsWithAudio = parts.map((part, index) => ({
-    ...part,
-    mp3Base64: audioByPart[index]?.mp3Base64 ?? null,
-    wavBase64: audioByPart[index]?.wavBase64 ?? null,
-  }));
-
-  // Sem imagem do professor, reusa a MESMA imagem gerada por IA que os
-  // slides do BrainHexPDF usaram (so existe agora, depois da apresentacao
-  // resolver - por isso essa insercao e retroativa, diferente da inserida
-  // no markdown ANTES da apresentacao la em cima). So a 1a parte (mesma
-  // limitacao ja aceita pelo capaUrl/audioImageCues) - ver
-  // docs/superpowers/specs/2026-08-24-imagem-gerada-fallback-markdown-audio-design.md.
-  // Nao mexe em como o audio foi gerado/dividido/sintetizado.
-  const imagesForAudio = deriveImagesForMedia(imageAttachments, presentationResults[0]?.generatedImagesBySubtopic);
-  if (imageAttachments.length === 0 && imagesForAudio.length > 0 && partsWithAudio[0]) {
-    partsWithAudio[0] = {
-      ...partsWithAudio[0],
-      markdown: insertImagesIntoMarkdown(partsWithAudio[0].markdown, imagesForAudio),
+  // Imagem do audio (capa e minutagem por secao) - so na 1a parte, mesma
+  // limitacao ja aceita antes (docs/superpowers/specs/2026-08-22-audio-image-cues-design.md).
+  let firstMarkdown = textParts[0]?.markdown ?? "";
+  const previousAudioPayload = (existingMateriais?.audio?.payload ?? {}) as Record<string, unknown>;
+  let audioPayloadExtras: Record<string, unknown> = {};
+  if (!resumed) {
+    // Sem imagem do professor, reusa a MESMA imagem gerada por IA que os
+    // slides da parte 1 usaram (so existe agora, depois do deck) - ver
+    // docs/superpowers/specs/2026-08-24-imagem-gerada-fallback-markdown-audio-design.md.
+    const firstDeck = presentationResults[toRender.findIndex((part) => part.ordem === 1)];
+    const imagesForAudio = deriveImagesForMedia(imageAttachments, firstDeck?.generatedImagesBySubtopic);
+    if (imageAttachments.length === 0 && imagesForAudio.length > 0 && markdownPartes[0]?.storage_path) {
+      firstMarkdown = insertImagesIntoMarkdown(firstMarkdown, imagesForAudio);
+      try {
+        await uploadBuffer(bucket, markdownPartes[0].storage_path, Buffer.from(firstMarkdown, "utf-8"), "text/markdown; charset=utf-8");
+      } catch (e) {
+        jobLog.warn("imagem gerada não entrou no arquivo do texto da parte 1", { err: e });
+      }
+    }
+    const durationSec = firstAudio ? estimateAudioDurationSec(firstAudio.mp3, firstAudio.wav) : null;
+    const imageCues: ImageCue[] = computeImageCues(audioPlan[0]?.secoes, durationSec, imagesForAudio);
+    audioPayloadExtras = {
+      ...(imagesForAudio[0]?.url ? { capaUrl: imagesForAudio[0].url } : {}),
+      ...(imageCues.length > 0 ? { imageCues } : {}),
+    };
+  } else if (firstAudio) {
+    // Parte 1 refeita agora: as imagens saem do texto ja gravado.
+    const images = imageUrlsFromMarkdown(textParts.map((part) => part.markdown).join("\n\n")).map((url) => ({ url }));
+    const imageCues = computeImageCues(audioPlan[0]?.secoes, estimateAudioDurationSec(firstAudio.mp3, firstAudio.wav), images);
+    const capaUrl = previousAudioPayload.capaUrl ?? images[0]?.url;
+    audioPayloadExtras = {
+      ...(capaUrl ? { capaUrl } : {}),
+      ...(imageCues.length > 0 ? { imageCues } : {}),
+    };
+  } else {
+    audioPayloadExtras = {
+      ...(previousAudioPayload.capaUrl ? { capaUrl: previousAudioPayload.capaUrl } : {}),
+      ...(previousAudioPayload.imageCues ? { imageCues: previousAudioPayload.imageCues } : {}),
     };
   }
 
-  // Minutagem estimada de imagem por secao - so na 1a parte (mesma
-  // limitacao ja aceita pelo capaUrl no D2). Le so o tamanho do arquivo ja
-  // pronto, nao mexe em como o audio foi gerado/dividido/sintetizado - ver
-  // docs/superpowers/specs/2026-08-22-audio-image-cues-design.md.
-  const firstPartWithAudio = partsWithAudio[0];
-  const firstPartDurationSec = firstPartWithAudio
-    ? estimateAudioDurationSec(firstPartWithAudio.mp3Base64, firstPartWithAudio.wavBase64)
-    : null;
-  const audioImageCues = firstPartWithAudio
-    ? computeImageCues(firstPartWithAudio.sectionBoundaries, firstPartDurationSec, imagesForAudio)
-    : [];
-
-  // 4. Persiste tudo no Supabase (apresentacao ja resolvida em paralelo acima)
-  const archived = await archiveMultiPartToSupabase({
-    storagePath,
-    bucket,
-    refId,
-    parts: partsWithAudio,
-    presentationResults,
+  // 4. Merge do que mudou.
+  const updates: Record<string, MaterialEntry> = {};
+  if (writeMarkdown) {
+    updates.markdown = buildMarkdownMaterialEntry({
+      partes: markdownPartes,
+      firstMarkdown,
+      generationKey: fence.generationKey,
+      bucket,
+    });
+  }
+  if (audioPlan.length > 0) {
+    updates.audio = buildAudioMaterialEntry({
+      plan: audioPlan,
+      synthesized,
+      failures: audioFailures,
+      generationKey: fence.generationKey,
+      bucket,
+      payloadExtras: audioPayloadExtras,
+    });
+  } else if (audioScriptError) {
+    const previousAudio = (existingMateriais?.audio ?? {}) as MaterialEntry;
+    updates.audio = {
+      ...previousAudio,
+      arquivo_url: previousAudio.arquivo_url ?? null,
+      storage_path: previousAudio.storage_path ?? null,
+      metadata: {
+        ...(previousAudio.metadata ?? {}),
+        status: "failed",
+        media_kind: "audio",
+        generation_key: fence.generationKey,
+        updated_at: now(),
+        failure_reason: `Roteiro do áudio não foi refeito — ${describeError(audioScriptError)}`.slice(0, 400),
+      } as MaterialEntry["metadata"],
+    };
+    audioFailureReasons.push(audioScriptError);
+  }
+  const presentationFallback = buildPresentationFallbackEntry({
+    keptPartes: keptPresentation,
+    rendered: toRender.map((part, index) => ({
+      ordem: part.ordem,
+      titulo: part.titulo,
+      path: presentationPathFor(part.ordem),
+      result: presentationResults[index],
+    })),
+    totalPartes,
     presentationTheme: presentationPlan,
-    personalizacaoId,
-    fence,
-    // Mesma imagem usada na 1a secao do markdown (imageAttachments[0], ou o
-    // fallback gerado por IA quando nao ha imagem do professor) - mantem
-    // consistencia visual entre as duas midias do mesmo topico, sem
-    // precisar de uma segunda logica de selecao independente.
-    audioCoverImageUrl: imagesForAudio[0]?.url,
-    audioImageCues,
-    audioFailures,
-    log:              jobLog,
+    generationKey: fence.generationKey,
+    bucket,
   });
-  if (!archived.persisted) {
+  for (const [index, result] of presentationResults.entries()) {
+    if (result.failure) {
+      jobLog.error("falha na apresentacao", { stage: result.failure.stage, error: result.failure.error, parte: toRender[index]?.ordem });
+    }
+  }
+  if (presentationFallback) updates.apresentacao = presentationFallback;
+
+  // Mesmo sem nada a gravar (deck gravado pelo BrainHexPDF), o merge devolve
+  // o estado persistido e recalcula o status do registro.
+  const persisted = await mergePersonalizacaoMateriais(personalizacaoId, updates, fence);
+  if (!persisted) {
     throw new Error("merge persistido ausente para a personalizacao");
   }
+  if (Object.keys(updates).length > 0) {
+    const historySaved = await saveMateriaisGerados(personalizacaoId, persisted, fence, Object.keys(updates));
+    if (!historySaved) {
+      jobLog.warn("historico materiais_gerados nao persistido", { generationKey: fence.generationKey });
+    }
+  }
+
   const failedFormats = ["audio", "markdown", "apresentacao"].filter((mediaKind) => {
-    const metadata = archived.persisted?.materiais?.[mediaKind]?.metadata;
+    const metadata = persisted.materiais?.[mediaKind]?.metadata;
     return (
       metadata?.status !== "completed"
       || metadata?.generation_key !== fence.generationKey
     );
   });
   if (failedFormats.length > 0) {
-    throw new Error(`midias obrigatorias nao geradas: ${failedFormats.join(", ")}`);
+    // So o audio faltando, e so por cota do dia ou credito: a API nao repete
+    // o alvo na hora - a proxima tentativa (amanha, ou depois de resolver a
+    // chave) retoma so as partes que faltam.
+    const semCota = failedFormats.length === 1
+      && failedFormats[0] === "audio"
+      && audioFailedOnlyForQuota(audioFailureReasons);
+    throw new Error(
+      `midias obrigatorias nao geradas: ${failedFormats.join(", ")}`
+      + (semCota
+        ? ` ${SEM_COTA_TTS_MARKER} cota do dia ou crédito do TTS esgotado; `
+          + "a nova tentativa retoma só as partes de áudio que faltam, depois da virada da cota (meia-noite do Pacífico)"
+        : ""),
+    );
   }
-  if (archived.persisted.status !== "pronto") {
-    throw new Error(`status persistido inesperado: ${archived.persisted.status}`);
+  if (persisted.status !== "pronto") {
+    throw new Error(`status persistido inesperado: ${persisted.status}`);
   }
 }
 

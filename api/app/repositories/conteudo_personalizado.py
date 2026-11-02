@@ -12,6 +12,10 @@ from app.services.media_contract import (
 )
 from app.services.storage import BUCKET, build_material_url
 
+# Sentinela de ``buscar_por_perfil``: sem filtro de dono (None ja quer dizer
+# "so a base").
+QUALQUER_DONO: Any = object()
+
 
 class ConteudoPersonalizadoRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -581,7 +585,22 @@ class ConteudoPersonalizadoRepository:
         statuses: list[str] | None = None,
         source_hash: str | None = None,
         limit: int = 50,
+        dono: Any = QUALQUER_DONO,
     ) -> list[dict[str, Any]]:
+        """Registros do perfil, do mais recente para o mais antigo.
+
+        ``dono`` decide de quem e' a linha (#652):
+
+        - ``None``: so a base (``aluno_id IS NULL``);
+        - um id de aluno: so a linha DELE;
+        - ``QUALQUER_DONO`` (padrao, leitura do console): qualquer linha, com a
+          base na frente quando existe.
+
+        Quem vai GRAVAR (o worker da fila) tem de passar o dono do alvo. Sem
+        filtro, o alvo da base pegava a linha mais recente do perfil, que podia
+        ser de um aluno: na turma 68 a base do Mastermind foi gerada na linha
+        de um aluno, e a do Achiever na de um aluno barrado pela #195.
+        """
         has_ai_patch = await self._table_has_column("ai_patch")
         has_classe_id = await self._table_has_column("classe_id")
         has_status = await self._table_has_column("status")
@@ -617,6 +636,14 @@ class ConteudoPersonalizadoRepository:
         if has_profile_key:
             filters += " AND brainhex_profile_key = :brainhex_profile_key"
             params["brainhex_profile_key"] = self._normalize_profile_key(brainhex_profile_key)
+        base_primeiro = ""
+        if dono is None:
+            filters += " AND aluno_id IS NULL"
+        elif dono is QUALQUER_DONO:
+            base_primeiro = "(aluno_id IS NULL) DESC, "
+        else:
+            filters += " AND aluno_id = CAST(:dono AS UUID)"
+            params["dono"] = str(dono)
 
         result = await self.session.execute(
             text(
@@ -627,7 +654,7 @@ class ConteudoPersonalizadoRepository:
                        formato_prioritario, formatos_gerados, gerado_em, {updated_at_sql}
                 FROM conteudo_personalizado
                 {filters}
-                ORDER BY COALESCE(updated_at, gerado_em) DESC, gerado_em DESC
+                ORDER BY {base_primeiro}COALESCE(updated_at, gerado_em) DESC, gerado_em DESC
                 LIMIT :limit
                 """
             ),
@@ -649,6 +676,7 @@ class ConteudoPersonalizadoRepository:
         brainhex_profile_key: str,
         conteudo_id: int | None = None,
         source_hash: str | None = None,
+        dono: Any = QUALQUER_DONO,
     ) -> dict[str, Any] | None:
         records = await self.buscar_por_perfil(
             classe_id=classe_id,
@@ -656,6 +684,7 @@ class ConteudoPersonalizadoRepository:
             conteudo_id=conteudo_id,
             brainhex_profile_key=brainhex_profile_key,
             source_hash=source_hash,
+            dono=dono,
             statuses=[
                 "pronto",
                 "processando_midias",

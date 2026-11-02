@@ -9,7 +9,10 @@ import {
   resolveGeminiTtsFallbackModels,
   resolveGeminiImageFallbackModels,
   geminiApiKeys,
+  extractTtsAudioData,
+  msUntilNextPacificMidnight,
 } from "./geminiService";
+import { TtsNoAudioError } from "./ttsRecovery";
 
 const PRIMARY_MODEL = "gemini-3.6-flash";
 const FALLBACK_MODEL = "gemini-2.5-flash-lite";
@@ -213,4 +216,64 @@ test("resolveGeminiTtsFallbackModels/resolveGeminiImageFallbackModels tem defaul
     resolveGeminiImageFallbackModels({ GEMINI_IMAGE_FALLBACK_MODELS: "img-a,img-b" }),
     ["img-a", "img-b"],
   );
+});
+
+const ERRO_402 = new Error('{"error":{"code":402,"message":"Your prepayment credits are depleted.","status":"RESOURCE_EXHAUSTED"}}');
+const ERRO_429_DIA = new Error(
+  '{"error":{"code":429,"message":"Quota exceeded","details":[{"quotaId":"GenerateRequestsPerDayPerProjectPerModel-FreeTier"}]}}',
+);
+
+test("chave que responde 402 sai do rodízio em todos os modelos e gera aviso (sem mostrar a chave)", () => {
+  withGeminiApiKeys("key-1,key-2", () => {
+    const avisos: string[] = [];
+    const warn = console.warn;
+    console.warn = (message: string) => { avisos.push(String(message)); };
+    try {
+      assert.equal(rotateGeminiKeyAfterFailure(ERRO_402, PRIMARY_MODEL, "key-1"), true);
+    } finally {
+      console.warn = warn;
+    }
+    assert.equal(avisos.length, 1);
+    assert.match(avisos[0], /chave Gemini 1 de \d+ respondeu 402/);
+    assert.ok(!avisos[0].includes("key-1"));
+    // Fora do rodízio também no modelo de reserva, não só no que falhou.
+    for (let i = 0; i < 4; i += 1) {
+      assert.equal(pickAvailableGeminiKey(["key-1", "key-2"], FALLBACK_MODEL), "key-2");
+    }
+  });
+});
+
+test("cota do dia deixa a chave em pausa até a virada, não por 5 min", () => {
+  withGeminiApiKeys("key-1,key-2", () => {
+    rotateGeminiKeyAfterFailure(ERRO_429_DIA, PRIMARY_MODEL, "key-1");
+    const realNow = Date.now;
+    try {
+      Date.now = () => realNow() + 10 * 60 * 1_000; // 10 min depois
+      assert.equal(pickAvailableGeminiKey(["key-1", "key-2"], PRIMARY_MODEL), "key-2");
+      assert.equal(pickAvailableGeminiKey(["key-1", "key-2"], PRIMARY_MODEL), "key-2");
+    } finally {
+      Date.now = realNow;
+    }
+  });
+});
+
+test("msUntilNextPacificMidnight conta até a meia-noite de Los Angeles", () => {
+  // 01/11/2026 16:52 UTC = 08:52 em Los Angeles (PST, depois do fim do horário de verão).
+  const ms = msUntilNextPacificMidnight(new Date("2026-11-01T16:52:00Z"));
+  assert.equal(ms, (15 * 60 + 8) * 60 * 1_000);
+});
+
+test("extractTtsAudioData acha o áudio em qualquer parte e, sem áudio, diz o que veio", () => {
+  assert.equal(
+    extractTtsAudioData({ candidates: [{ content: { parts: [{ text: "ok" }, { inlineData: { data: "UENN" } }] } }] }, "falhou"),
+    "UENN",
+  );
+  assert.throws(
+    () => extractTtsAudioData({ candidates: [{ finishReason: "OTHER", content: { parts: [{ text: "Claro! Aqui está a leitura" }] } }] }, "A voz falhou."),
+    (error: unknown) =>
+      error instanceof TtsNoAudioError
+      && /finishReason=OTHER/.test(error.message)
+      && /texto="Claro! Aqui está a leitura"/.test(error.message),
+  );
+  assert.throws(() => extractTtsAudioData({ promptFeedback: { blockReason: "PROHIBITED_CONTENT" } }, "A voz falhou."), /blockReason=PROHIBITED_CONTENT; sem candidato/);
 });

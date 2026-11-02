@@ -1,2 +1,3 @@
 src/utils/classSelection.test.ts
 src/components/ClassSelectionGate.test.tsx
+src/utils/detalheDasTurmas.test.ts

@@ -228,7 +228,15 @@ const _geminiClients = new Map<string, GoogleGenAI>();
 // esgotada num modelo parecer indisponível pra TODOS os modelos, inclusive
 // os com cota livre.
 const _geminiKeyCooldownUntil = new Map<string, number>();
+// Chave fora do rodízio em TODOS os modelos (402: o projeto dela não está no
+// free tier). Separado do cooldown por modelo, que é de cota.
+const _geminiKeyBlockedUntil = new Map<string, number>();
+// Erro que pôs cada chave × modelo em pausa: quando todas estão em pausa, é
+// ele que sobe (com o "PerDay" que diz se a cota é a do dia).
+const _geminiKeyCooldownReason = new Map<string, string>();
+const _geminiKeyBlockedReason = new Map<string, string>();
 let _geminiKeyIndex = 0;
+const GEMINI_KEY_BILLING_BLOCK_MS = 6 * 60 * 60 * 1_000;
 const GEMINI_KEY_QUOTA_COOLDOWN_MS = 5 * 60 * 1_000;
 // Varios desses modelos aparecem com cota diária muito maior (ou ilimitada)
 // que gemini-3.6-flash nas tabelas do AI Studio — tentados em ordem, cada um
@@ -317,7 +325,10 @@ export function pickAvailableGeminiKey(keys: string[], model: string): string | 
   for (let offset = 0; offset < keys.length; offset += 1) {
     const index = (_geminiKeyIndex + offset) % keys.length;
     const key = keys[index];
-    if (now >= (_geminiKeyCooldownUntil.get(cooldownKey(key, model)) ?? 0)) {
+    if (
+      now >= (_geminiKeyCooldownUntil.get(cooldownKey(key, model)) ?? 0)
+      && now >= (_geminiKeyBlockedUntil.get(key) ?? 0)
+    ) {
       _geminiKeyIndex = (index + 1) % keys.length;
       return key;
     }
@@ -329,6 +340,9 @@ export function pickAvailableGeminiKey(keys: string[], model: string): string | 
 export function resetGeminiKeyRotationForTests(): void {
   _geminiKeyIndex = 0;
   _geminiKeyCooldownUntil.clear();
+  _geminiKeyBlockedUntil.clear();
+  _geminiKeyCooldownReason.clear();
+  _geminiKeyBlockedReason.clear();
 }
 
 // Devolve tambem a chave usada (nao so o client) - generateGeminiContent
@@ -393,12 +407,65 @@ function isGeminiTransientUnavailableError(error: unknown): boolean {
  * falha o indice global pode já ter avançado por causa de OUTRA chamada -
  * ler o indice aqui marcaria a chave errada como esgotada.
  */
+/** 402 "prepayment credits are depleted": a chave é de projeto pré-pago. */
+function isGeminiBillingError(error: unknown): boolean {
+  const message = (error instanceof Error ? error.message : String(error ?? "")).toLowerCase();
+  return (error as { status?: unknown } | null)?.status === 402
+    || message.includes("\"code\":402")
+    || message.includes("prepayment credits")
+    || message.includes("credits are depleted");
+}
+
+/** 429 da cota do DIA (quotaId "…PerDay…"), que só volta à meia-noite do Pacífico. */
+function isGeminiDailyQuotaError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return isGeminiQuotaOrRateLimitError(error) && /per\s*day/i.test(message);
+}
+
+/** Quanto falta para a meia-noite em America/Los_Angeles, quando a cota diária do Gemini vira. */
+export function msUntilNextPacificMidnight(now: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  const elapsed = ((value("hour") * 60 + value("minute")) * 60 + value("second")) * 1_000;
+  return Math.max(60_000, 24 * 60 * 60 * 1_000 - elapsed);
+}
+
 export function rotateGeminiKeyAfterFailure(error: unknown, model: string, failedKey: string): boolean {
   if (!isGeminiQuotaOrRateLimitError(error) && !isGeminiTransientUnavailableError(error)) {
     return false;
   }
   const keys = geminiApiKeys();
   if (keys.length === 0) return false;
+  if (isGeminiBillingError(error)) {
+    // As chaves são do free tier: 402 quer dizer que ESTA chave está num
+    // projeto pré-pago sem crédito. Esperar não resolve, e insistir nela a
+    // cada 5 min só gasta tempo das outras. Sai do rodízio e avisa — a
+    // correção é na configuração da chave, não aqui. Nunca loga a chave.
+    if ((_geminiKeyBlockedUntil.get(failedKey) ?? 0) <= Date.now()) {
+      console.warn(
+        `[brainhex] chave Gemini ${keys.indexOf(failedKey) + 1} de ${keys.length} respondeu 402 `
+        + "(crédito pré-pago esgotado): o projeto dela não está no free tier. "
+        + "Fica fora do rodízio por 6 h; confira a configuração dessa chave.",
+      );
+    }
+    _geminiKeyBlockedUntil.set(failedKey, Date.now() + GEMINI_KEY_BILLING_BLOCK_MS);
+    _geminiKeyBlockedReason.set(failedKey, (error instanceof Error ? error.message : String(error ?? "")).slice(0, 600));
+    return keys.length > 1 && pickAvailableGeminiKey(keys, model) !== null;
+  }
+  _geminiKeyCooldownReason.set(
+    cooldownKey(failedKey, model),
+    (error instanceof Error ? error.message : String(error ?? "")).slice(0, 600),
+  );
+  if (isGeminiDailyQuotaError(error)) {
+    _geminiKeyCooldownUntil.set(cooldownKey(failedKey, model), Date.now() + msUntilNextPacificMidnight());
+    return keys.length > 1 && pickAvailableGeminiKey(keys, model) !== null;
+  }
   // Registra o cooldown mesmo com 1 chave so: mesmo sem outra chave pra
   // tentar AGORA, essa marca evita que uma proxima chamada nesse mesmo
   // modelo bata de novo numa cota ja sabidamente esgotada — ela cai direto
@@ -436,6 +503,24 @@ async function generateGeminiContent(
   for (const model of candidateModels) {
     const currentParams = model === primaryModel ? params : { ...params, model };
     for (let attempt = 0; attempt < maxAttemptsPerModel; attempt += 1) {
+      const keys = geminiApiKeys();
+      if (keys.length > 0 && pickAvailableGeminiKey(keys, model) === null) {
+        // Todas as chaves em pausa de cota (ou fora do rodízio) para este
+        // modelo: chamar de novo só traria outro 429. Vai para o próximo
+        // modelo com o motivo que pôs as chaves em pausa.
+        const reason = keys
+          .map((key) => (
+            (_geminiKeyBlockedUntil.get(key) ?? 0) > Date.now()
+              ? _geminiKeyBlockedReason.get(key)
+              : _geminiKeyCooldownReason.get(cooldownKey(key, model))
+          ))
+          .find(Boolean);
+        lastError = new Error(
+          `429 RESOURCE_EXHAUSTED: todas as chaves do Gemini em pausa para ${model}`
+          + (reason ? ` — ${reason}` : ""),
+        );
+        break;
+      }
       const { client, key } = getAi(model);
       try {
         return await client.models.generateContent(currentParams);
@@ -1272,11 +1357,38 @@ function splitAudioByMarkdownTitles(
     cursor = index + marker.length;
   }
 
+  // O que vem antes do primeiro marcador é a abertura (saudação, introdução)
+  // e fica com a primeira seção. Antes era descartado: o áudio do Socializer
+  // da turma 66 começava em "E com essa base…", sem a introdução.
+  const preamble = audioScript.slice(0, positions[0]).trim();
   return titles.map((_, i) => {
     const markerEnd = positions[i] + `## ${titles[i]}`.length;
     const sectionEnd = i + 1 < positions.length ? positions[i + 1] : audioScript.length;
-    return audioScript.slice(markerEnd, sectionEnd).trim();
+    const body = audioScript.slice(markerEnd, sectionEnd).trim();
+    return i === 0 && preamble ? `${preamble}\n\n${body}`.trim() : body;
   });
+}
+
+/**
+ * Leva um corte por proporção para a fronteira natural mais próxima:
+ * parágrafo, depois fim de frase, depois espaço — nunca o meio da palavra.
+ * Medido em produção: o corte cru partia palavras e tags ("…[Tom" | ": Alerta]")
+ * em 7 de 15 materiais.
+ */
+export function snapCutToBoundary(text: string, cut: number, window = 400): number {
+  if (cut <= 0) return 0;
+  if (cut >= text.length) return text.length;
+  const from = Math.max(0, cut - window);
+  const to = Math.min(text.length, cut + window);
+  const nearest = (re: RegExp): number | null => {
+    let best: number | null = null;
+    for (const match of text.slice(from, to).matchAll(re)) {
+      const position = from + (match.index ?? 0) + match[0].length;
+      if (best === null || Math.abs(position - cut) < Math.abs(best - cut)) best = position;
+    }
+    return best;
+  };
+  return nearest(/\n\s*\n/g) ?? nearest(/[.!?…]["')\]]?\s+/g) ?? nearest(/\s+/g) ?? cut;
 }
 
 function stripSectionMarkers(audioScript: string): string {
@@ -1294,14 +1406,16 @@ function splitAudioByCharRatio(
   }
 
   let cursor = 0;
-  const parts = sectionChars.map((chars) => {
-    const share = Math.round((chars / totalChars) * clean.length);
-    const slice = clean.slice(cursor, cursor + share);
-    cursor += share;
+  let consumedChars = 0;
+  return sectionChars.map((chars, index) => {
+    consumedChars += chars;
+    const end = index === sectionChars.length - 1
+      ? clean.length
+      : Math.max(cursor, snapCutToBoundary(clean, Math.round((consumedChars / totalChars) * clean.length)));
+    const slice = clean.slice(cursor, end);
+    cursor = end;
     return slice.trim();
   });
-  parts[parts.length - 1] = (parts[parts.length - 1] + " " + clean.slice(cursor)).trim();
-  return parts;
 }
 
 // Distribui `total` itens em `parts` grupos o mais equilibrado possivel
@@ -1390,115 +1504,19 @@ export function splitProcessedContentIntoParts(
   });
 }
 
-export async function processMediaWithGemini(
-  filesData: { data: string; mimeType: string; name: string }[],
+/**
+ * Instrucao de sistema da geracao de texto + roteiro por perfil. Separada de
+ * processMediaWithGemini porque a retomada (#652) refaz SO o roteiro de audio
+ * de material antigo (generateAudioScriptsWithGemini) e precisa da mesma voz,
+ * da mesma marcacao de secao e das mesmas regras de fidelidade.
+ */
+export function buildContentGenerationInstruction(
   profile: BrainHexProfile,
-  contentBlocks: EnrichedContentBlock[] = [],
-  requestedPresentationPlan?: PresentationDesignPlan,
+  contentBlocks: EnrichedContentBlock[],
   guidancePrompt?: string,
-): Promise<ProcessedContent> {
-  // API continua dividindo o material em blocos (ver content_enrichment.py).
-  // A geracao processa os blocos em lotes de tamanho moderado (ver
-  // DEFAULT_CONTENT_BLOCK_BATCH_SIZE) — cada bloco do lote vira seu proprio
-  // capitulo (ver validateBlockBatchGeneration), nunca mesclando todos os
-  // blocos do topico numa unica chamada (ver mergeContentBlocksIntoOne, que
-  // permanece exportada e testada mas nao e mais chamada aqui: mesclar tudo
-  // fazia o Gemini resumir agressivamente o material em vez de expandi-lo).
-  const originalBlocksCount = contentBlocks.length;
-  const maxOutputTokens = resolveContentGenerationMaxOutputTokens(false);
-
+): string {
   const config = BRAIN_HEX_CONFIG[profile];
-  const presentationPlan = requestedPresentationPlan
-    ?? buildPresentationDesignPlan(
-      profile,
-      {},
-      contentBlocks[0]?.tema
-        || contentBlocks[0]?.topico
-        || "Conteúdo de estudo",
-    );
-
-  if ((!filesData || filesData.length === 0) && contentBlocks.length === 0) {
-    throw new Error("processMediaWithGemini: fontes e contentBlocks vazios.");
-  }
-
-  // Roda SEMPRE, independente de contentBlocks.length - com blocos
-  // enriquecidos (fluxo comum hoje) o loop de extracao de texto/midia mais
-  // abaixo nunca executa, entao sem isso as imagens do arquivo original do
-  // professor (.pptx/.docx) nunca chegavam a lugar nenhum.
-  const extractedMedia = await extractImageMediaFromFiles(filesData);
-
-  // Use first non-empty file to detect family
-  const primary = filesData[0] ?? { data: "", mimeType: "text/plain", name: "empty.txt" };
-  let family: "text" | "presentation" | "paged" | "temporal" | "markdown" | "image" = "text";
-  if (primary.mimeType.includes("presentation")) family = "presentation";
-  else if (primary.mimeType.includes("pdf")) family = "paged";
-  else if (primary.mimeType.startsWith("audio/") || primary.mimeType.startsWith("video/")) family = "temporal";
-  else if (primary.mimeType.includes("markdown") || primary.name.endsWith(".md")) family = "markdown";
-  else if (primary.mimeType.startsWith("image/")) family = "image";
-
-  // Build contentsParts for all files
-  let blocksCount = 0;
-  const contentsParts: any[] = [];
-
-  if (contentBlocks.length > 0) {
-    blocksCount += originalBlocksCount;
-  }
-
-  // Com blocos enriquecidos, eles já são a fonte curricular validada. Arquivos
-  // binários não são reenviados em cada lote; ficam apenas no caminho legado.
-  if (contentBlocks.length === 0) {
-    for (const fileData of filesData) {
-      const isNative = SUPPORTED_NATIVE_MIMES.includes(fileData.mimeType);
-
-      if (isNative) {
-        contentsParts.push({
-          inlineData: {
-            data: fileData.data,
-            mimeType: fileData.mimeType,
-          },
-        });
-        blocksCount += 1;
-      } else {
-        const binaryString = atob(fileData.data);
-        const bytes = new Uint8Array(binaryString.length).map((_, i) => binaryString.charCodeAt(i));
-        let extractionResult: { blocks: InternalBlock[], media: any[] } = { blocks: [], media: [] };
-
-        const fileMime = fileData.mimeType;
-        if (fileMime.includes("presentation")) {
-          extractionResult = await extractRawFromPPTX(bytes.buffer);
-        } else if (fileMime.includes("wordprocessingml")) {
-          extractionResult = await extractRawFromDOCX(bytes.buffer);
-        } else {
-          const text = new TextDecoder().decode(bytes);
-          extractionResult.blocks = text.split("\n").filter(t => t.trim()).map((t, i) => ({
-            id: `txt-${i}`,
-            kind: "paragraph" as const,
-            text: t.trim(),
-            source_ref: { line: i + 1 }
-          }));
-        }
-
-        blocksCount += extractionResult.blocks.length;
-
-        contentsParts.push({
-          text: `### MODELO INTERNO UNIFICADO (DOC: ${fileData.name})\n\n` +
-                JSON.stringify(extractionResult.blocks, null, 2)
-        });
-
-        extractionResult.media.slice(0, 8).forEach((m, i) => {
-          contentsParts.push({ inlineData: { data: m.data, mimeType: m.mimeType } });
-          contentsParts.push({ text: `[IMAGEM DE REFERÊNCIA ${i+1}: ENCONTRADA NO CONTEÚDO ORIGINAL]` });
-        });
-      }
-    }
-  }
-
-  if (contentsParts.length === 0) {
-    contentsParts.push({ text: "Conteúdo não disponível." });
-  }
-
-  // 4. Personalized Semantic Generation
-  const systemInstruction = `
+  return `
     Você é a autoridade máxima em transmutação de conteúdo do sistema TrailUp, operando sob o arquétipo ${config.label} (${config.guideName}).
     
     ARQUITETURA DE RESPOSTA (NARRATIVA POR PERFIL):
@@ -1632,6 +1650,117 @@ export async function processMediaWithGemini(
     "${guidancePrompt}"
     ` : ""}
   `;
+}
+
+export async function processMediaWithGemini(
+  filesData: { data: string; mimeType: string; name: string }[],
+  profile: BrainHexProfile,
+  contentBlocks: EnrichedContentBlock[] = [],
+  requestedPresentationPlan?: PresentationDesignPlan,
+  guidancePrompt?: string,
+): Promise<ProcessedContent> {
+  // API continua dividindo o material em blocos (ver content_enrichment.py).
+  // A geracao processa os blocos em lotes de tamanho moderado (ver
+  // DEFAULT_CONTENT_BLOCK_BATCH_SIZE) — cada bloco do lote vira seu proprio
+  // capitulo (ver validateBlockBatchGeneration), nunca mesclando todos os
+  // blocos do topico numa unica chamada (ver mergeContentBlocksIntoOne, que
+  // permanece exportada e testada mas nao e mais chamada aqui: mesclar tudo
+  // fazia o Gemini resumir agressivamente o material em vez de expandi-lo).
+  const originalBlocksCount = contentBlocks.length;
+  const maxOutputTokens = resolveContentGenerationMaxOutputTokens(false);
+
+  const config = BRAIN_HEX_CONFIG[profile];
+  const presentationPlan = requestedPresentationPlan
+    ?? buildPresentationDesignPlan(
+      profile,
+      {},
+      contentBlocks[0]?.tema
+        || contentBlocks[0]?.topico
+        || "Conteúdo de estudo",
+    );
+
+  if ((!filesData || filesData.length === 0) && contentBlocks.length === 0) {
+    throw new Error("processMediaWithGemini: fontes e contentBlocks vazios.");
+  }
+
+  // Roda SEMPRE, independente de contentBlocks.length - com blocos
+  // enriquecidos (fluxo comum hoje) o loop de extracao de texto/midia mais
+  // abaixo nunca executa, entao sem isso as imagens do arquivo original do
+  // professor (.pptx/.docx) nunca chegavam a lugar nenhum.
+  const extractedMedia = await extractImageMediaFromFiles(filesData);
+
+  // Use first non-empty file to detect family
+  const primary = filesData[0] ?? { data: "", mimeType: "text/plain", name: "empty.txt" };
+  let family: "text" | "presentation" | "paged" | "temporal" | "markdown" | "image" = "text";
+  if (primary.mimeType.includes("presentation")) family = "presentation";
+  else if (primary.mimeType.includes("pdf")) family = "paged";
+  else if (primary.mimeType.startsWith("audio/") || primary.mimeType.startsWith("video/")) family = "temporal";
+  else if (primary.mimeType.includes("markdown") || primary.name.endsWith(".md")) family = "markdown";
+  else if (primary.mimeType.startsWith("image/")) family = "image";
+
+  // Build contentsParts for all files
+  let blocksCount = 0;
+  const contentsParts: any[] = [];
+
+  if (contentBlocks.length > 0) {
+    blocksCount += originalBlocksCount;
+  }
+
+  // Com blocos enriquecidos, eles já são a fonte curricular validada. Arquivos
+  // binários não são reenviados em cada lote; ficam apenas no caminho legado.
+  if (contentBlocks.length === 0) {
+    for (const fileData of filesData) {
+      const isNative = SUPPORTED_NATIVE_MIMES.includes(fileData.mimeType);
+
+      if (isNative) {
+        contentsParts.push({
+          inlineData: {
+            data: fileData.data,
+            mimeType: fileData.mimeType,
+          },
+        });
+        blocksCount += 1;
+      } else {
+        const binaryString = atob(fileData.data);
+        const bytes = new Uint8Array(binaryString.length).map((_, i) => binaryString.charCodeAt(i));
+        let extractionResult: { blocks: InternalBlock[], media: any[] } = { blocks: [], media: [] };
+
+        const fileMime = fileData.mimeType;
+        if (fileMime.includes("presentation")) {
+          extractionResult = await extractRawFromPPTX(bytes.buffer);
+        } else if (fileMime.includes("wordprocessingml")) {
+          extractionResult = await extractRawFromDOCX(bytes.buffer);
+        } else {
+          const text = new TextDecoder().decode(bytes);
+          extractionResult.blocks = text.split("\n").filter(t => t.trim()).map((t, i) => ({
+            id: `txt-${i}`,
+            kind: "paragraph" as const,
+            text: t.trim(),
+            source_ref: { line: i + 1 }
+          }));
+        }
+
+        blocksCount += extractionResult.blocks.length;
+
+        contentsParts.push({
+          text: `### MODELO INTERNO UNIFICADO (DOC: ${fileData.name})\n\n` +
+                JSON.stringify(extractionResult.blocks, null, 2)
+        });
+
+        extractionResult.media.slice(0, 8).forEach((m, i) => {
+          contentsParts.push({ inlineData: { data: m.data, mimeType: m.mimeType } });
+          contentsParts.push({ text: `[IMAGEM DE REFERÊNCIA ${i+1}: ENCONTRADA NO CONTEÚDO ORIGINAL]` });
+        });
+      }
+    }
+  }
+
+  if (contentsParts.length === 0) {
+    contentsParts.push({ text: "Conteúdo não disponível." });
+  }
+
+  // 4. Personalized Semantic Generation
+  const systemInstruction = buildContentGenerationInstruction(profile, contentBlocks, guidancePrompt);
 
   if (contentBlocks.length > 0) {
     const batchSize = resolveContentBlockBatchSize(
@@ -1865,6 +1994,86 @@ export async function processMediaWithGemini(
   } as ProcessedContent;
 }
 
+/**
+ * Refaz SO o roteiro de audio, bloco a bloco, sem tocar no texto ja gravado.
+ * E o caminho da retomada (#652) para material gravado antes do checkpoint de
+ * roteiro: o texto esta pronto e completed, so o audio falhou - refazer tudo
+ * gastaria a cota do texto para a RPC descartar o resultado.
+ *
+ * Usa a mesma instrucao de sistema da geracao completa (voz do perfil,
+ * marcadores "## " de secao, fidelidade) e o mesmo schema do roteiro da
+ * contingencia (GEMINI_AUDIO_SCRIPT_SCHEMA). O roteiro e so Gemini, como
+ * sempre foi: nao ha reserva OpenAI para ele.
+ */
+export async function generateAudioScriptsWithGemini(
+  profile: BrainHexProfile,
+  contentBlocks: EnrichedContentBlock[],
+  guidancePrompt?: string,
+): Promise<Array<{ blockId: string; markdown: string; audioScript: string }>> {
+  if (contentBlocks.length === 0) {
+    throw new Error("generateAudioScriptsWithGemini: sem blocos de conteúdo.");
+  }
+  const systemInstruction = buildContentGenerationInstruction(profile, contentBlocks, guidancePrompt);
+  const batches = partitionContentBlocks(
+    contentBlocks,
+    resolveContentBlockBatchSize(process.env.CONTENT_GENERATION_BLOCK_BATCH_SIZE),
+  );
+  const maxOutputTokens = resolveContentGenerationMaxOutputTokens(false);
+  const model = resolveGeminiContentGenerationModel();
+
+  const results = await mapWithConcurrency(
+    batches,
+    resolveContentBlockConcurrency(process.env.CONTENT_GENERATION_BLOCK_CONCURRENCY),
+    async (batch, index) => {
+      const expectedIds = batch.map((block) => normalizedText(block.id));
+      const input =
+        `IDS OBRIGATORIOS, NESTA ORDEM: ${JSON.stringify(expectedIds)}\n`
+        + "O texto de estudo destes blocos JA EXISTE. Gere SOMENTE o audioScript "
+        + "de cada blockId, cobrindo 100% dos conceitos do bloco, com os "
+        + "marcadores \"## <titulo>\" de secao.\n\n"
+        + JSON.stringify(batch, null, 2);
+      const response = await generateGeminiContent({
+        model,
+        contents: [{ parts: [{ text: input }] }],
+        config: {
+          systemInstruction,
+          maxOutputTokens,
+          responseMimeType: "application/json",
+          responseSchema: GEMINI_AUDIO_SCRIPT_SCHEMA,
+        },
+      });
+      const text = String(response.text ?? "").trim();
+      if (!text) throw new Error(`Gemini retornou roteiro vazio no lote ${index + 1}.`);
+      let raw: unknown;
+      try {
+        raw = JSON.parse(text);
+      } catch (error) {
+        throw new Error(`Gemini retornou JSON inválido no roteiro do lote ${index + 1}.`, { cause: error });
+      }
+      const chapters = (raw as { chapters?: unknown })?.chapters;
+      const byId = new Map<string, string>();
+      if (Array.isArray(chapters)) {
+        for (const chapter of chapters) {
+          const id = normalizedText((chapter as { blockId?: unknown })?.blockId);
+          const audioScript = String((chapter as { audioScript?: unknown })?.audioScript ?? "").trim();
+          if (id && audioScript) byId.set(id, audioScript);
+        }
+      }
+      return batch.map((block, position) => {
+        const audioScript = byId.get(expectedIds[position]) ?? "";
+        if (normalizedText(audioScript).length < 160) {
+          throw new Error(`Roteiro do bloco ${expectedIds[position]} ausente ou curto demais no lote ${index + 1}.`);
+        }
+        // Sem o texto, o titulo do capitulo sai do proprio bloco - e o que
+        // audioSegmentsFromChapters usa quando o roteiro nao traz marcador.
+        const titulo = normalizedText(block.topico) || normalizedText(block.tema);
+        return { blockId: expectedIds[position], markdown: titulo ? `## ${titulo}` : "", audioScript };
+      });
+    },
+  );
+  return results.flat();
+}
+
 export type GeminiTtsVoice =
   | 'Puck'
   | 'Charon'
@@ -1946,6 +2155,36 @@ function encodePcmToWavAndMp3(pcmBuffer: Uint8Array): { wav: string; mp3: string
 }
 
 /**
+ * O áudio pode vir em qualquer parte do candidato, não só na primeira — e
+ * quando não vem, o que o modelo devolveu é o que explica a falha. Antes só
+ * `parts[0].inlineData` era olhado e o erro dizia apenas "falhou em se
+ * materializar": nas turmas 66 e 68 ninguém soube se foi bloqueio, corte ou
+ * o modelo respondendo em texto.
+ */
+export function extractTtsAudioData(
+  response: {
+    candidates?: Array<{
+      finishReason?: unknown;
+      content?: { parts?: Array<{ inlineData?: { data?: string }; text?: string }> };
+    }>;
+    promptFeedback?: { blockReason?: unknown };
+  },
+  fallbackMessage: string,
+): string {
+  const candidate = response.candidates?.[0];
+  const parts = candidate?.content?.parts ?? [];
+  const audio = parts.find((part) => part?.inlineData?.data)?.inlineData?.data;
+  if (audio) return audio;
+  const details: string[] = [];
+  if (candidate?.finishReason) details.push(`finishReason=${String(candidate.finishReason)}`);
+  if (response.promptFeedback?.blockReason) details.push(`blockReason=${String(response.promptFeedback.blockReason)}`);
+  if (!candidate) details.push("sem candidato");
+  const texto = parts.map((part) => part?.text ?? "").join(" ").replace(/\s+/g, " ").trim();
+  if (texto) details.push(`texto="${texto.slice(0, 120)}"`);
+  throw new TtsNoAudioError(details.length > 0 ? `${fallbackMessage} (${details.join("; ")})` : fallbackMessage);
+}
+
+/**
  * Natural Audio Generation using Gemini 3.1 TTS
  */
 export async function generateNaturalAudio(
@@ -1956,7 +2195,10 @@ export async function generateNaturalAudio(
   const fallback = resolveOpenAiTtsFallback();
   return synthesizeSpeechWithRecovery({
     label: "narração",
-    synthesizeWithGemini: async () => {
+    synthesizeWithGemini: async ({ plain }) => {
+      // `plain`: nova tentativa depois de resposta sem áudio vai sem as tags
+      // de tom (ver ttsRecovery.ts).
+      const transcript = plain ? prepareTextForOpenAiTts(text) : text;
       const response = await generateGeminiContent({
         model: "gemini-3.1-flash-tts-preview",
         contents: [{
@@ -1965,7 +2207,7 @@ export async function generateNaturalAudio(
               "Sintetize somente o conteúdo depois de TRANSCRIÇÃO. Não leia estas instruções em voz alta.\n" +
               `DIREÇÃO DE VOZ: ${direction}\n` +
               "CENA: mentoria educacional em uma jornada fantástica, com naturalidade e emoção controlada.\n" +
-              `TRANSCRIÇÃO:\n${text}`,
+              `TRANSCRIÇÃO:\n${transcript}`,
           }],
         }],
         config: {
@@ -1978,8 +2220,7 @@ export async function generateNaturalAudio(
         },
       }, resolveGeminiTtsFallbackModels());
 
-      const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (!data) throw new TtsNoAudioError("A voz mística falhou em se materializar.");
+      const data = extractTtsAudioData(response, "A voz mística falhou em se materializar.");
 
       // Gemini returns raw PCM 24kHz. We need to add a WAV header for the browser to play it in <audio>
       const pcmBinary = atob(data);
@@ -2079,7 +2320,9 @@ export async function generateConversationalAudio(
   const fallback = resolveOpenAiTtsFallback();
   return synthesizeSpeechWithRecovery({
     label: "diálogo",
-    synthesizeWithGemini: async () => {
+    synthesizeWithGemini: async ({ plain }) => {
+      // Diálogo já chega sem tags (audioJunction.ts); `plain` só garante.
+      const transcript = plain ? text.replace(/\[[^\]\n]{1,80}\]/g, " ") : text;
       const response = await generateGeminiContent({
         model: "gemini-3.1-flash-tts-preview",
         contents: [{
@@ -2089,7 +2332,7 @@ export async function generateConversationalAudio(
               `DIREÇÃO DE ${speakerA.name}: ${speakerA.direction ?? "voz natural e expressiva"}\n` +
               `DIREÇÃO DE ${speakerB.name}: ${speakerB.direction ?? "voz natural e expressiva"}\n` +
               "CENA: conversa calorosa entre mentores durante uma jornada educacional fantástica.\n" +
-              `TRANSCRIÇÃO:\n${text}`,
+              `TRANSCRIÇÃO:\n${transcript}`,
           }],
         }],
         config: {
@@ -2105,8 +2348,7 @@ export async function generateConversationalAudio(
         },
       }, resolveGeminiTtsFallbackModels());
 
-      const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (!data) throw new TtsNoAudioError("A conversa mística falhou em se materializar.");
+      const data = extractTtsAudioData(response, "A conversa mística falhou em se materializar.");
 
       const pcmBinary = atob(data);
       const pcmBuffer = new Uint8Array(pcmBinary.length).map((_, i) => pcmBinary.charCodeAt(i));
