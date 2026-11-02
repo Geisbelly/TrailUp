@@ -215,7 +215,7 @@ function Atividade({ p }: { p: PainelTecnico }) {
 
 /**
  * Painel técnico (#21): a fila, o erro e a latência por formato e os quatro gatilhos do §11, só para o dono do projeto.
- * O alerta é visual, nesta versão: quem abre o painel vê. Cada gatilho diz o motivo, e o que não foi medido aparece como "sem dado", nunca
+ * O alerta também vai ao sino do dono (`fn_painel_tecnico_avisar_dono`, 20261102_23), sem ele precisar abrir a aba. Cada gatilho diz o motivo, e o que não foi medido aparece como "sem dado", nunca
  * como "dentro do esperado".
  */
 export default function PainelTecnicoSection() {
@@ -268,7 +268,7 @@ export default function PainelTecnicoSection() {
             Painel técnico
           </h1>
           <p className="mt-1.5 max-w-[680px] text-[13px] leading-relaxed text-muted-foreground">
-            Fila de jobs, erro e latência por formato e os quatro gatilhos de revisão arquitetural. Atualiza sozinho a cada minuto. Só você, dono do projeto, vê esta aba.
+            Fila de jobs, erro e latência por formato e os quatro gatilhos de revisão arquitetural. Atualiza sozinho a cada minuto. Quando um gatilho dispara, o aviso também chega ao sino do console (no máximo um por gatilho por dia). Só você, dono do projeto, vê esta aba.
           </p>
         </div>
         <SegmentedPills ariaLabel="Janela de tempo" opcoes={JANELAS.map((j) => ({ value: String(j.horas), label: j.rotulo }))} valor={String(horas)} onChange={(v) => setHoras(Number(v))} />
