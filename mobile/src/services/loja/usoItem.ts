@@ -67,6 +67,7 @@ const MENSAGEM: Record<string, string> = {
   cooldown_24h: "A nova tentativa só libera 24 horas depois da anterior.",
   revise_o_material: "Revise o material do tópico antes de responder de novo.",
   sem_questao_elegivel: "Não há questão elegível para uma nova tentativa.",
+  tem_tentativa_livre: "Você ainda tem tentativa grátis nesta atividade: termine esta e refaça a questão na próxima.",
   sem_token: "Para responder de novo, compre uma segunda chance na loja.",
   sem_sessao: "Sua sessão expirou. Entre de novo.",
   chave_ausente: "Não foi possível identificar o pedido. Tente de novo.",

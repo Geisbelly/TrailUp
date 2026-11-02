@@ -39,6 +39,16 @@ type Props = {
    * tentativa: sem a resposta antiga, sem trava e sem o desconto de nova tentativa.
    */
   refazendoRevisao?: boolean;
+  /**
+   * Nova tentativa da atividade concluída (#136, decisão de 02/11): só estas questões (ids)
+   * reabrem, as que o aluno não acertou. As outras ficam como estavam e entram na nota.
+   */
+  questoesARefazer?: number[];
+  /**
+   * Tentativas que o aluno ainda nem começou (`atividade_situacao_tentativas`). Com alguma
+   * sobrando, a segunda chance da loja não aparece: refazer na próxima tentativa é de graça.
+   */
+  tentativasLivres?: number | null;
   alunoId?: string | null;
   classeId?: number | null;
   onComplete?: (result?: {
@@ -397,7 +407,7 @@ function parseBooleanFlag(value: unknown, fallback: boolean) {
   return fallback;
 }
 
-function resolveActivityGradingRules(atividade: any): GradingRules {
+export function resolveActivityGradingRules(atividade: any): GradingRules {
   const rawRules =
     atividade?.metadata?.grading_rules ??
     atividade?.metadata?.gradingRules ??
@@ -435,6 +445,8 @@ export default function QuestionActivity({
   reviewMode = false,
   novaTentativa = 0,
   refazendoRevisao = false,
+  questoesARefazer,
+  tentativasLivres = null,
   alunoId = null,
   classeId = null,
 }: Props) {
@@ -458,6 +470,11 @@ export default function QuestionActivity({
     return candidato != null ? Number(candidato) : null;
   }, [atividade, topicoIdProp]);
   const gradingRules = useMemo(() => resolveActivityGradingRules(atividade), [atividade]);
+  const aRefazer = useMemo(() => new Set(questoesARefazer ?? []), [questoesARefazer]);
+  const refazendoEsta = aRefazer.has(Number(questao?.id));
+  // A questão errada refeita vale o que a regra de nova tentativa do professor deixa (50% por padrão).
+  const fatorRefeita = 1 - gradingRules.penalty_retry_pct / 100;
+  const temTentativaLivre = tentativasLivres != null && tentativasLivres > 0;
   const respostaAnterior = getQuestionPreviousAnswer(questao, atividade);
   const perfilNome = perfilVisualDoAluno(usuario) ?? '';
   // Modal de resultado: quem fala com o aluno aqui e o guia do perfil, entao a
@@ -575,13 +592,20 @@ export default function QuestionActivity({
   useEffect(() => {
     onQuestionIndexChange?.(questaoIndex);
   }, [onQuestionIndexChange, questaoIndex]);
+  // A nova tentativa começa na primeira questão a refazer.
+  useEffect(() => {
+    if (!questoesARefazer?.length) return;
+    const primeira = questoes.findIndex((q: any) => questoesARefazer.includes(Number(q?.id)));
+    if (primeira >= 0) setQuestaoIndex(primeira);
+  }, [questoesARefazer, questoes]);
   const atividadeConcluidaPersistida = useMemo(() => {
     const statusConcl = String(atividade?.status ?? '').toLowerCase().includes('concl');
     const percentualConcluido = Number(atividade?.percentual_concluido ?? 0);
     return statusConcl || percentualConcluido >= 100;
   }, [atividade?.status, atividade?.percentual_concluido]);
   // Na revisão pedida pelo professor a resposta antiga não conta: a questão pode ter mudado.
-  const respondidaAntes = !refazendoRevisao && hasQuestionAttempt(questao, respostaAnterior);
+  // Na nova tentativa, a questão errada também abre como nunca respondida.
+  const respondidaAntes = !refazendoRevisao && !refazendoEsta && hasQuestionAttempt(questao, respostaAnterior);
   const scrollRef = useRef<ScrollView | null>(null)
   const questionStartedAtRef = useRef(Date.now());
 
@@ -1157,6 +1181,8 @@ export default function QuestionActivity({
             ? Math.round(acertosPercentBase * 0.2)
             : reResponder
             ? Math.round(acertosPercentBase * 0.5)
+            : refazendoEsta
+            ? Math.round(acertosPercentBase * fatorRefeita)
             : Math.round(acertosPercentBase);
           setStas((prev) => ({ ...prev, [questaoIndex]: acertou ? 'certo' : 'errado' }));
           setConfirmados((prev) => ({ ...prev, [questaoIndex]: true }));
@@ -1200,16 +1226,18 @@ export default function QuestionActivity({
 
             const statusLocal = stas[idx];
             // Refazendo a revisão, só vale o que foi respondido agora: completar a atividade com
-            // a resposta de antes deixaria de fora justamente a questão que mudou.
-            const acertoPersistido = refazendoRevisao
+            // a resposta de antes deixaria de fora justamente a questão que mudou. Na nova
+            // tentativa, o mesmo vale para as questões erradas que ela reabriu.
+            const soValeAgora = refazendoRevisao || aRefazer.has(Number((item as any)?.id));
+            const acertoPersistido = soValeAgora
               ? NaN
               : Number((item as any)?.acertos_percentual ?? NaN);
             return {
-              respondida: refazendoRevisao
+              respondida: soValeAgora
                 ? !!confirmados[idx]
                 : (item as any)?.resposta_aluno != null || !!confirmados[idx],
               correta:
-                (refazendoRevisao ? null : (item as any)?.correta_aluno) ??
+                (soValeAgora ? null : (item as any)?.correta_aluno) ??
                 (statusLocal === 'certo' ? true : statusLocal === 'errado' ? false : null),
               acertosPercentual: Number.isFinite(acertoPersistido)
                 ? acertoPersistido
@@ -1248,6 +1276,8 @@ export default function QuestionActivity({
               ? 0.2
               : reResponder
               ? 0.5
+              : refazendoEsta
+              ? fatorRefeita
               : 1
             : 0;
           const pontosBrutos = Math.max(
@@ -1300,6 +1330,7 @@ export default function QuestionActivity({
             triggers: {
               timed_out: gatilhoTimeout,
               retry_used: gatilhoReTentativa,
+              retry_wrong_only: aRefazer.size > 0,
               answer_revealed: gatilhoRespostaRevelada,
               wrong_answer: gatilhoErro,
               single_option_left: gatilhoEliminacao,
@@ -1510,12 +1541,15 @@ export default function QuestionActivity({
       {jaTemTentativa && isPensante && !respostasVisiveis && (
         <Text style={{ marginTop: 10, color: profilePalette.textSubtle, fontFamily: FontFamily.interMedium }}>
           {restaApenasUmaOpcao
-            ? 'Modo pensante: resta uma única alternativa. Sem ver a resposta, use a segunda chance comprada para responder de novo.'
+            ? temTentativaLivre
+              ? 'Modo pensante: resta uma única alternativa. Termine a atividade e refaça esta questão na próxima tentativa, sem custo.'
+              : 'Modo pensante: resta uma única alternativa. Sem ver a resposta, use a segunda chance comprada para responder de novo.'
             : 'Modo pensante: clique para ver sua resposta e o gabarito ou tente novamente (vale metade da pontuação).'}
         </Text>
       )}
 
-      {podeResponderComCompra({
+      {/* Com tentativa grátis sobrando o banco recusa o item (`tem_tentativa_livre`): nem oferece. */}
+      {!temTentativaLivre && podeResponderComCompra({
         jaTentou: jaTemTentativa,
         viuResposta: viuRespostaAntes,
         respostasVisiveis,

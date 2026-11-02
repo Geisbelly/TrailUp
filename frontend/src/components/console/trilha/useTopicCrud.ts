@@ -13,11 +13,11 @@ import {
   createClassWithMateria,
 } from "./topicsApi";
 import { parseOptionalPositiveScore } from "@/lib/question-score";
-import { tentativasDoFormulario, TENTATIVAS_MAXIMAS } from "./atividades";
+import { tentativasDoFormulario, TENTATIVAS_MAXIMAS, TENTATIVAS_PADRAO } from "./atividades";
 import { deleteTopicCascade } from "./classDeletion";
 import type { Atividade, CardItem, Conteudo, Questao, Topico } from "./types";
 
-const ERRO_TENTATIVAS = `Tentativas por aluno: um número inteiro de 1 a ${TENTATIVAS_MAXIMAS}, ou vazio para ilimitadas.`;
+const ERRO_TENTATIVAS = `Tentativas por aluno: um número inteiro de 1 a ${TENTATIVAS_MAXIMAS}, ou vazio para o padrão (${TENTATIVAS_PADRAO}).`;
 
 type CrudDeps = {
   editingTopic: { id: number } | null;

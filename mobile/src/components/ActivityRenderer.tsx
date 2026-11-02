@@ -8,8 +8,15 @@ import { questionActivityScope } from '@/utils/questionAnswerVisibility'
 import { activityRendererKey, normalizeActivityType } from '@/utils/activityType'
 
 import { UsarItemNaAtividade } from '@/components/loja/UsarItemNaAtividade'
-import { garantirTentativa } from '@/services/tentativasAtividade'
-import QuestionActivity from './QuestionActivity'
+import {
+  MENSAGEM_DA_RECUSA,
+  TentativaRecusada,
+  garantirTentativa,
+  situacaoDasTentativas,
+  type SituacaoTentativas,
+} from '@/services/tentativasAtividade'
+import { questoesParaRefazer, rotuloDasRestantes, tentativasLivres } from '@/services/tentativasAtividade.core'
+import QuestionActivity, { resolveActivityGradingRules } from './QuestionActivity'
 import TextoActivity from './TextoActivity'
 import VideoActivity from './VideoActivity'
 import { perfilVisualDoAluno } from "@/utils/brainHex";
@@ -73,7 +80,35 @@ function ActivityRendererContent({
   const [retryLiberada, setRetryLiberada] = React.useState(false);
   const [novaTentativa, setNovaTentativa] = React.useState(0);
   const [refazendoRevisao, setRefazendoRevisao] = React.useState(false);
+  // Nova tentativa (#136, decisão de 02/11): os ids das questões erradas que ela reabre.
+  const [refazendoErradas, setRefazendoErradas] = React.useState<number[] | null>(null);
+  const [situacao, setSituacao] = React.useState<SituacaoTentativas | null>(null);
+  const [abrindoTentativa, setAbrindoTentativa] = React.useState(false);
+  const [avisoTentativa, setAvisoTentativa] = React.useState<string | null>(null);
   const userChoseReviewRef = React.useRef(false);
+  const atividadeId = Number(atividade?.id);
+  const personalizada = Boolean((atividade as any)?.isPersonalizedLocal);
+  const concluidaAgora =
+    String(atividade?.status ?? '').toLowerCase().includes('concl') ||
+    Number(atividade?.percentual_concluido ?? 0) >= 100;
+  const acertosAgora = atividade?.acertos_percentual;
+
+  // Quantas tentativas sobram. Atividade em andamento: a tentativa é aberta antes (a tela da
+  // trilha já faz isso, e a chamada é a mesma), para a aberta entrar na conta.
+  React.useEffect(() => {
+    if (personalizada || !Number.isFinite(atividadeId)) return;
+    let ativo = true;
+    const abrir = concluidaAgora ? Promise.resolve(null) : garantirTentativa(atividadeId).catch(() => null);
+    abrir
+      .then(() => situacaoDasTentativas(atividadeId))
+      .then((s) => {
+        if (ativo) setSituacao(s);
+      })
+      .catch(() => undefined);
+    return () => {
+      ativo = false;
+    };
+  }, [atividadeId, personalizada, concluidaAgora, acertosAgora, refazendoErradas]);
   const painelDeItens = alunoId && classeId && atividade?.id ? (
     <UsarItemNaAtividade
       alunoId={alunoId}
@@ -116,9 +151,36 @@ function ActivityRendererContent({
   const chave = activityRendererKey(tipo, hasQuestoes);
   const Component = chave ? componentes[chave] : undefined;
 
-  if (atividadeConcluida && !localReviewMode && !retryLiberada && !refazendoRevisao) {
+  if (atividadeConcluida && !localReviewMode && !retryLiberada && !refazendoRevisao && !refazendoErradas) {
     const acertosPct = Number(atividade?.acertos_percentual ?? 0);
     const temAcertos = Number.isFinite(acertosPct) && acertosPct > 0;
+    const erradas = hasQuestoes && !personalizada && !revisaoPedida ? questoesParaRefazer(atividade?.questoes) : [];
+    const podeRefazer = situacao != null && situacao.restantes > 0 && erradas.length > 0;
+    const valorDaRefeita = 100 - resolveActivityGradingRules(atividade).penalty_retry_pct;
+    const refazer = () => {
+      if (abrindoTentativa) return;
+      setAbrindoTentativa(true);
+      setAvisoTentativa(null);
+      // A tentativa é aberta no servidor antes: é o relógio dele que vale, e ele recusa prazo e limite.
+      garantirTentativa(atividadeId)
+        .then((tentativa) => {
+          if (!tentativa) {
+            setAvisoTentativa('Não foi possível abrir uma nova tentativa agora.');
+            return;
+          }
+          userChoseReviewRef.current = false;
+          setLocalReviewMode(false);
+          setRefazendoErradas(erradas);
+        })
+        .catch((err) =>
+          setAvisoTentativa(
+            err instanceof TentativaRecusada
+              ? MENSAGEM_DA_RECUSA[err.motivo].descricao
+              : 'Não foi possível abrir uma nova tentativa agora. Confira a conexão e tente de novo.'
+          )
+        )
+        .finally(() => setAbrindoTentativa(false));
+    };
 
     return (
       <View>
@@ -141,7 +203,35 @@ function ActivityRendererContent({
             {Math.round(acertosPct)}% de acertos
           </Text>
         )}
+        {podeRefazer ? (
+          <Text style={[summaryStyles.revisao, { color: palette.textMuted }]}>
+            {rotuloDasRestantes(situacao?.restantes ?? 0)}. Só as questões que você errou reabrem, e cada uma
+            que acertar agora vale {valorDaRefeita}% dos pontos.
+          </Text>
+        ) : situacao != null && situacao.restantes === 0 && erradas.length > 0 ? (
+          <Text style={[summaryStyles.revisao, { color: palette.textMuted }]}>
+            Você já usou as {situacao.maximo} tentativas desta atividade.
+          </Text>
+        ) : null}
+        {avisoTentativa ? (
+          <Text accessibilityLiveRegion="polite" style={[summaryStyles.revisao, { color: palette.text }]}>
+            {avisoTentativa}
+          </Text>
+        ) : null}
         <View style={summaryStyles.btnRow}>
+          {podeRefazer ? (
+            <Pressable
+              onPress={refazer}
+              disabled={abrindoTentativa}
+              style={[summaryStyles.btn, { backgroundColor: palette.accent, borderColor: palette.accent }]}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: abrindoTentativa, busy: abrindoTentativa }}
+            >
+              <Text style={[summaryStyles.btnPrimaryText, { color: palette.background }]}>
+                {abrindoTentativa ? 'Abrindo a tentativa…' : 'Refazer as questões erradas'}
+              </Text>
+            </Pressable>
+          ) : null}
           {revisaoPedida && hasQuestoes ? (
             <Pressable
               onPress={() => {
@@ -196,6 +286,8 @@ function ActivityRendererContent({
         reviewMode={localReviewMode}
         novaTentativa={novaTentativa}
         refazendoRevisao={refazendoRevisao}
+        questoesARefazer={refazendoErradas ?? undefined}
+        tentativasLivres={situacao ? tentativasLivres(situacao) : null}
         alunoId={alunoId}
         classeId={classeId}
       />

@@ -116,7 +116,7 @@ describe("saveActivity", () => {
     expect(sb.chamadas[0].payload).toMatchObject({ pontuacao_maxima: null });
   });
 
-  it("tentativas_max segue a regra da pontuação: undefined não mexe, null é ilimitado (#136)", async () => {
+  it("tentativas_max segue a regra da pontuação: undefined não mexe, null vai ao banco, que põe o padrão (#136)", async () => {
     await saveActivity({ id: 9, topico_id: 4, titulo: "x", descricao: "" });
     await saveActivity({ id: 9, topico_id: 4, titulo: "x", descricao: "", tentativas_max: 3 });
     await saveActivity({ id: 9, topico_id: 4, titulo: "x", descricao: "", tentativas_max: null });

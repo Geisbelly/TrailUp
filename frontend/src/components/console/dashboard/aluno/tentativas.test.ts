@@ -132,6 +132,7 @@ describe("formatação", () => {
   });
   it("tentativas", () => {
     expect(textoDasTentativas(2, 3)).toBe("2/3");
-    expect(textoDasTentativas(4, null)).toBe("4 (ilimitadas)");
+    // Sem a atividade não se sabe o limite; com ela, nunca é null (#136, 20261102_08).
+    expect(textoDasTentativas(4, null)).toBe("4");
   });
 });

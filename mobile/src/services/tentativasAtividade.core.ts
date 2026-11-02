@@ -183,10 +183,9 @@ export const ACERTO_MINIMO_DO_BONUS = 70;
 /**
  * O que o servidor decidiu sobre a tentativa, em frases para o aluno (#136,
  * "feedback imediato após cada tentativa"). A nota o app já mostra; aqui entram
- * só o que vem do banco: se saiu no tempo, o XP de bônus e se acabaram as
- * tentativas. Sem cronômetro não se fala de tempo. Tentativas que sobram não
- * entram: o app ainda não oferece a próxima sem a segunda chance da loja, e
- * "restam 2" sem botão para usá-las confundiria.
+ * só o que vem do banco: se saiu no tempo, o XP de bônus e quantas tentativas
+ * sobram. Sem cronômetro não se fala de tempo. Tentativa que sobra só é anunciada
+ * quando há o que refazer: o resumo da atividade oferece refazer as erradas.
  */
 export function linhasDoRetorno(retorno: RetornoTentativa): string[] {
   const linhas: string[] = [];
@@ -202,7 +201,11 @@ export function linhasDoRetorno(retorno: RetornoTentativa): string[] {
       linhas.push("Dentro do tempo. O bônus desta faixa já foi pago nesta atividade.");
     }
   }
-  if (retorno.restantes === 0) linhas.push("Esta foi a sua última tentativa nesta atividade.");
+  if (retorno.restantes === 0) {
+    linhas.push("Esta foi a sua última tentativa nesta atividade.");
+  } else if (retorno.restantes != null && retorno.restantes > 0 && retorno.acertosPercentual < 100) {
+    linhas.push(`${rotuloDasRestantes(retorno.restantes)} para refazer as questões que você errou.`);
+  }
   return linhas;
 }
 
@@ -221,4 +224,50 @@ export function retornoDesde(atividadeId: number, desdeMs: number): RetornoTenta
   if (!guardado || guardado.emMs < desdeMs) return null;
   retornosRecentes.delete(atividadeId);
   return guardado.retorno;
+}
+
+/** A resposta de `atividade_situacao_tentativas` (`20261102_08`). */
+export type SituacaoTentativas = {
+  maximo: number;
+  /** Tentativas já respondidas. */
+  feitas: number;
+  /** Há uma tentativa aberta, que ainda pode ser respondida. */
+  aberta: boolean;
+  /** Quantas ainda podem ser respondidas, contando a aberta. */
+  restantes: number;
+};
+
+export function lerSituacao(dado: unknown): SituacaoTentativas | null {
+  const d = objeto(dado);
+  const maximo = numero(d?.maximo);
+  if (!d || maximo == null) return null;
+  return {
+    maximo,
+    feitas: numero(d.feitas) ?? 0,
+    aberta: d.aberta === true,
+    restantes: Math.max(0, numero(d.restantes) ?? 0),
+  };
+}
+
+/**
+ * Tentativas que o aluno nem começou. Enquanto houver uma, a segunda chance da loja
+ * fica de fora (o banco recusa com `tem_tentativa_livre`): terminar esta tentativa e
+ * refazer a questão na próxima é de graça.
+ */
+export function tentativasLivres(s: SituacaoTentativas): number {
+  return Math.max(0, s.restantes - (s.aberta ? 1 : 0));
+}
+
+/** As questões que a próxima tentativa reabre: as que o aluno não acertou (#136, decisão de 02/11). */
+export function questoesParaRefazer(questoes: unknown): number[] {
+  if (!Array.isArray(questoes)) return [];
+  return questoes
+    .filter((q) => q && typeof q === "object" && (q as Record<string, unknown>).correta_aluno !== true)
+    .map((q) => numero((q as Record<string, unknown>).id))
+    .filter((id): id is number => id != null);
+}
+
+/** "Restam 2 tentativas" / "Resta 1 tentativa". */
+export function rotuloDasRestantes(restantes: number): string {
+  return restantes === 1 ? "Resta 1 tentativa" : `Restam ${restantes} tentativas`;
 }

@@ -36,3 +36,21 @@ test('revisão de questão realmente respondida permite consultar gabarito', () 
   const html = renderToString(<QuestionActivity reviewMode atividade={{ id: 5, status: 'concluido', questoes: [{ ...question, resposta_aluno: 'Alpha' }] }} />);
   assert.match(html, /Gabarito:/);
 });
+test('nova tentativa reabre só a questão errada, sem a resposta antiga nem trava', () => {
+  const atividade = {
+    id: 5,
+    status: 'concluido',
+    questoes: [
+      { ...question, id: 1, resposta_aluno: 'Beta', correta_aluno: true },
+      { ...question, id: 2, resposta_aluno: 'Alpha', correta_aluno: false },
+    ],
+  };
+  const errada = renderToString(<QuestionActivity initialQuestionIndex={1} questoesARefazer={[2]} atividade={atividade} />);
+  assert.doesNotMatch(errada, /Sua ultima resposta:|Ver respostas anteriores|Gabarito:/);
+  // Sem a nova tentativa, a mesma questão continua respondida.
+  const antes = renderToString(<QuestionActivity initialQuestionIndex={1} atividade={atividade} />);
+  assert.match(antes, /Ver respostas anteriores/);
+  // A questão certa não reabre.
+  const certa = renderToString(<QuestionActivity initialQuestionIndex={0} questoesARefazer={[2]} atividade={atividade} />);
+  assert.match(certa, /Ver respostas anteriores/);
+});

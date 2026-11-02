@@ -25,12 +25,18 @@ export function prazoDaAtividade(dataEntrega: string | null | undefined): string
 export const TENTATIVAS_MAXIMAS = 99;
 
 /**
- * Campo "Tentativas por aluno" → `atividades.tentativas_max` (#136). Vazio é ilimitado (`null`).
- * Só inteiro de 1 a `TENTATIVAS_MAXIMAS`: "0" não quer dizer ilimitado, quer dizer que ninguém faz.
+ * Limite de quem não escolhe: o `DEFAULT` de `atividades.tentativas_max` (`TENTATIVAS_PADRAO` na
+ * migration `20261102_08`). Toda atividade tem limite desde então (#136, decisão de 02/11).
+ */
+export const TENTATIVAS_PADRAO = 3;
+
+/**
+ * Campo "Tentativas por aluno" → `atividades.tentativas_max` (#136). Vazio é o padrão.
+ * Só inteiro de 1 a `TENTATIVAS_MAXIMAS`: "0" quer dizer que ninguém faz, e não há "ilimitadas".
  */
 export function tentativasDoFormulario(texto: string | null | undefined): { valido: boolean; valor: number | null } {
   const limpo = String(texto ?? "").trim();
-  if (!limpo) return { valido: true, valor: null };
+  if (!limpo) return { valido: true, valor: TENTATIVAS_PADRAO };
   if (!/^\d+$/.test(limpo)) return { valido: false, valor: null };
   const n = Number(limpo);
   if (n < 1 || n > TENTATIVAS_MAXIMAS) return { valido: false, valor: null };
@@ -42,8 +48,8 @@ export function tentativasParaFormulario(max: number | null | undefined): string
   return max == null ? "" : String(max);
 }
 
-/** "1 tentativa", "3 tentativas" ou "tentativas ilimitadas", para a lista ao lado do prazo. */
+/** "1 tentativa" ou "3 tentativas", para a lista ao lado do prazo. Sem valor (banco antes da `20261102_08`) é o padrão. */
 export function rotuloDasTentativas(max: number | null | undefined): string {
-  if (max == null) return "tentativas ilimitadas";
-  return max === 1 ? "1 tentativa" : `${max} tentativas`;
+  const n = max ?? TENTATIVAS_PADRAO;
+  return n === 1 ? "1 tentativa" : `${n} tentativas`;
 }

@@ -7,7 +7,11 @@ import {
   TentativaRecusada,
   guardarRetorno,
   lerRetorno,
+  lerSituacao,
   linhasDoRetorno,
+  questoesParaRefazer,
+  rotuloDasRestantes,
+  tentativasLivres,
   lerTentativa,
   mensagemDaRecusa,
   motivoDoErro,
@@ -103,10 +107,17 @@ test("linhasDoRetorno: no tempo sem bônus distingue acerto baixo de faixa já p
   ]);
 });
 
-test("linhasDoRetorno: sem cronômetro não fala de tempo; só avisa a última tentativa", () => {
+test("linhasDoRetorno: sem cronômetro não fala de tempo; fala das tentativas quando há o que refazer", () => {
   const semCronometro = { ...RETORNO, cronometrada: false, noTempo: false, xpBonus: 0 };
   assert.deepEqual(linhasDoRetorno(semCronometro), []);
-  assert.deepEqual(linhasDoRetorno({ ...semCronometro, restantes: 2 }), []);
+  assert.deepEqual(linhasDoRetorno({ ...semCronometro, restantes: 2 }), [
+    "Restam 2 tentativas para refazer as questões que você errou.",
+  ]);
+  assert.deepEqual(linhasDoRetorno({ ...semCronometro, restantes: 1 }), [
+    "Resta 1 tentativa para refazer as questões que você errou.",
+  ]);
+  // Tudo certo: não há o que refazer.
+  assert.deepEqual(linhasDoRetorno({ ...semCronometro, restantes: 2, acertosPercentual: 100 }), []);
   assert.deepEqual(linhasDoRetorno({ ...semCronometro, restantes: 0 }), [
     "Esta foi a sua última tentativa nesta atividade.",
   ]);
@@ -119,4 +130,39 @@ test("retornoDesde: entrega o retorno desta resposta uma vez, e nunca o de antes
   assert.equal(retornoDesde(41, 2_000)?.numero, 2);
   assert.equal(retornoDesde(41, 2_000), null, "quem lê consome");
   assert.equal(retornoDesde(42, 0), null);
+});
+
+test("lerSituacao: lê a RPC e não inventa máximo", () => {
+  assert.deepEqual(lerSituacao({ maximo: 3, feitas: "1", aberta: true, restantes: 2 }), {
+    maximo: 3, feitas: 1, aberta: true, restantes: 2,
+  });
+  assert.equal(lerSituacao({ feitas: 1 }), null);
+  assert.equal(lerSituacao(null), null);
+});
+
+test("tentativasLivres: a aberta já está em uso; livre é a que nem começou", () => {
+  assert.equal(tentativasLivres({ maximo: 3, feitas: 1, aberta: false, restantes: 2 }), 2);
+  assert.equal(tentativasLivres({ maximo: 3, feitas: 1, aberta: true, restantes: 2 }), 1);
+  // A última tentativa aberta: agora a segunda chance da loja pode valer.
+  assert.equal(tentativasLivres({ maximo: 3, feitas: 2, aberta: true, restantes: 1 }), 0);
+  assert.equal(tentativasLivres({ maximo: 3, feitas: 3, aberta: false, restantes: 0 }), 0);
+});
+
+test("questoesParaRefazer: só as que o aluno não acertou", () => {
+  assert.deepEqual(
+    questoesParaRefazer([
+      { id: 1, correta_aluno: true },
+      { id: 2, correta_aluno: false },
+      { id: "3", correta_aluno: null }, // sem resposta também reabre
+      { id: 4, correta_aluno: true },
+    ]),
+    [2, 3]
+  );
+  assert.deepEqual(questoesParaRefazer([{ id: 1, correta_aluno: true }]), []);
+  assert.deepEqual(questoesParaRefazer(undefined), []);
+});
+
+test("rotuloDasRestantes: singular e plural", () => {
+  assert.equal(rotuloDasRestantes(1), "Resta 1 tentativa");
+  assert.equal(rotuloDasRestantes(3), "Restam 3 tentativas");
 });
