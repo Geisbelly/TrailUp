@@ -16,7 +16,7 @@ import {
 import { ensureCachedNativeContent } from "@/utils/nativeContentCache";
 import { versionedCacheKey } from "@/utils/materialCacheVersion";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import { shouldHideChecklist, shouldHideNotes, shouldHideQuiz, withHideParams } from "@/utils/contentVisibility";
+import { shouldHideChecklist, shouldHideNotes, shouldHideQuiz, withHideParams, withTemaEscuroDoApp } from "@/utils/contentVisibility";
 import type { DeckProgressEvent } from "@/utils/deckProgressMessage";
 import {
   extrairReferenciaDeDeck,
@@ -1081,15 +1081,18 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
       // html + uri juntos: o WebContentFrame monta {html, baseUrl: uri}, e e o
       // baseUrl que faz o deck continuar lendo hideQuiz/hideChecklist/hideNotes
       // de location.search - inline sem baseUrl perderia as flags e mostraria
-      // widget que o modo de operacao do aluno manda esconder.
+      // widget que o modo de operacao do aluno manda esconder. O mesmo vale
+      // para tema=escuro: o deck tem claro e escuro, e o app e' sempre escuro.
       return {
         title,
         html: deckHtml,
-        uri: withHideParams(resolvedUrl, {
-          hideQuiz: shouldHideQuiz(usuario?.modoOperacao_nome),
-          hideChecklist: shouldHideChecklist(usuario?.modoOperacao_nome),
-          hideNotes: shouldHideNotes(usuario?.modoOperacao_nome),
-        }),
+        uri: withTemaEscuroDoApp(
+          withHideParams(resolvedUrl, {
+            hideQuiz: shouldHideQuiz(usuario?.modoOperacao_nome),
+            hideChecklist: shouldHideChecklist(usuario?.modoOperacao_nome),
+            hideNotes: shouldHideNotes(usuario?.modoOperacao_nome),
+          })
+        ),
         height: getViewerHeight(tipo, displayMode, false, windowHeight, windowWidth),
       };
     }

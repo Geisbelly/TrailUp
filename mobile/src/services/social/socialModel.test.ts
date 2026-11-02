@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { groupSocialRows, peopleForSocialSection } from "./socialModel";
+import { groupSocialRows, peopleForSocialSection, pessoaDaConversa } from "./socialModel";
 
 test("agrupa amigos, convites e candidatos", () => {
   const result = groupSocialRows([
@@ -21,4 +21,16 @@ test("mantém bloqueados na seção própria para permitir desbloqueio", () => {
   ]);
 
   assert.deepEqual(peopleForSocialSection(result, "blocked"), result.blocked);
+});
+
+test("acha o colega da conversa do push em qualquer lista, menos a dos bloqueados", () => {
+  const snapshot = groupSocialRows([
+    { aluno_id: "1", nome: "A", status: "friend", relationship_id: "r1" },
+    { aluno_id: "4", nome: "D", status: "candidate", relationship_id: null },
+    { aluno_id: "5", nome: "E", status: "blocked", relationship_id: "r5" },
+  ]);
+  assert.equal(pessoaDaConversa(snapshot, "1")?.nome, "A");
+  assert.equal(pessoaDaConversa(snapshot, "4")?.nome, "D");
+  assert.equal(pessoaDaConversa(snapshot, "5"), null);
+  assert.equal(pessoaDaConversa(snapshot, "9"), null);
 });
