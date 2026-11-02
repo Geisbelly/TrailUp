@@ -11,6 +11,7 @@ import InformacoesPessoais from "@/app/(tabs)/perfil/info";
 import InfoApp from "@/app/(tabs)/perfil/info-app";
 import InfoVersao from "@/app/(tabs)/perfil/info-versao";
 import LembreteDiario from "@/app/(tabs)/perfil/lembrete-diario";
+import ModoFoco from "@/app/(tabs)/perfil/modo-foco";
 import { MetricasEstilo } from "@/app/(tabs)/perfil/metricas-estilo";
 import ResetarSenha from "@/app/(tabs)/perfil/resetar-senha";
 import { HallBackground } from "@/components/HallTheme";
@@ -36,6 +37,7 @@ const ICONES: Partial<Record<IdSubtela, React.ComponentProps<typeof Feather>["na
   termos: "file-text",
   excluir: "trash-2",
   lembrete: "bell",
+  foco: "bell-off",
   aparencia: "sun",
   metricas: "bar-chart-2",
   tutorial: "help-circle",
@@ -50,6 +52,7 @@ const TELAS: Partial<Record<IdSubtela, () => React.ReactElement>> = {
   coleta: () => <ColetaDados />,
   excluir: () => <ExcluirConta />,
   lembrete: () => <LembreteDiario />,
+  foco: () => <ModoFoco />,
   aparencia: () => <Aparencia />,
   metricas: () => <MetricasEstilo embutido />,
   app: () => <InfoApp />,

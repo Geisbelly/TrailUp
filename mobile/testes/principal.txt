@@ -26,6 +26,7 @@ src/services/consentimentoRemoto.test.ts
 src/services/encerrarSessao.test.ts
 src/services/loja/storeTheme.test.ts
 src/services/notificacoesDb.test.ts
+src/services/focoLocal.test.ts
 src/services/personalizacao/TrailupApiProvider.loading.test.ts
 src/services/progressoOutbox.test.ts
 src/utils/visitaDoTopico.test.ts

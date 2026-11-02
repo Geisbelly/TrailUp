@@ -49,3 +49,29 @@ test('does not hide permission errors for an authenticated session', async () =>
   assert.equal(warnings.length, 1);
   assert.equal(warnings[0][1], 'permission denied');
 });
+
+test('focus and mute RPCs send the database parameter names', async () => {
+  const sent: Array<[string, unknown]> = [];
+  const exports = {};
+  runInNewContext(compiled, {
+    exports,
+    console: { warn: () => undefined },
+    require: () => ({ supabase: {
+      auth: { getSession: async () => ({ data: { session: { user: { id: 'aluno' } } }, error: null }) },
+      rpc: async (fn: string, args: unknown) => { sent.push([fn, args]); return { data: null, error: null }; },
+    } }),
+  });
+  const service = exports as typeof import('./notificacoesDb');
+  await service.iniciarFoco(25);
+  await service.encerrarFoco();
+  await service.silenciarTipo({ tipo: 'rank', silenciar: true, notificacaoId: 7 });
+  // Objetos criados dentro do `vm` têm outro protótipo: compara pela forma.
+  assert.deepEqual(JSON.parse(JSON.stringify(sent)), [
+    ['notificacoes_iniciar_foco', { p_minutos: 25 }],
+    ['notificacoes_encerrar_foco', {}],
+    ['notificacoes_silenciar_tipo', { p_tipo: 'rank', p_silenciar: true, p_notificacao_id: 7 }],
+  ]);
+  assert.equal(service.podeSilenciar('rank'), true);
+  assert.equal(service.podeSilenciar('chat'), false);
+  assert.equal(service.podeSilenciar('toString'), false);
+});

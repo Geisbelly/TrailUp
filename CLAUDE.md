@@ -521,6 +521,13 @@ Cada perfil carrega:
   andamento. `hora_origem = 'aluno'` nunca é sobrescrita. A sugestão da IA
   traz `horario_sugerido`, e o gatilho de promoção decide o horário, sempre
   fora do silêncio no fuso do aluno.
+  **Para quem e quando é do banco também** (#149, `20261102_18`): a matriz de
+  Monterrat (`notificacoes_config.perfil_pesos_<tipo>`) barra tipo pelo perfil
+  dominante, o silêncio do aluno barra pelo tipo, e `notificacoes_rank_varrer`
+  (pg_cron) gera `rank`/`amigo_rank`, nomeando amigo só dentro do corte visível do
+  rank. Em modo foco (explícito, `aluno_modo_foco`, ou atenção recente que a API
+  grava em `aluno_estado_atencao`), nada é entregue: a pendente vira
+  `gatilho = 'fim_foco'` e, na saída, colapsa por tipo, sob o teto diário.
 - **Notificações do professor — também no banco** (`20261102_17`). `professor_notificacoes` é a caixa
   do console (sino no cabeçalho), **separada** das quatro tabelas do aluno acima: uma linha por assunto
   (`dedupe_key` única por professor), com `contagem` e `lida_em`, que volta a nulo quando o assunto se

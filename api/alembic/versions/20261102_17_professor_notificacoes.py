@@ -109,6 +109,15 @@ CREATE POLICY professor_notificacoes_del ON public.professor_notificacoes
 REVOKE ALL ON public.professor_notificacoes FROM PUBLIC, anon, authenticated;
 GRANT SELECT, DELETE ON public.professor_notificacoes TO authenticated;
 GRANT UPDATE (lida_em) ON public.professor_notificacoes TO authenticated;
+
+-- Prazo de guarda (LGPD, #195): o mesmo da caixa do aluno (`notificacoes`, 90 dias). Conta de
+-- `atualizado_em`, não de `created_at`: um assunto que voltou a acontecer fica, o esquecido sai.
+INSERT INTO public.retencao_politica
+  (tabela, acao, coluna_aluno, coluna_tempo, dias, ordem, categoria, motivo)
+VALUES
+  ('professor_notificacoes', 'apagar', 'professor_id', 'atualizado_em', 90, 86, 'notificacao',
+   'caixa de notificacoes do professor no console')
+ON CONFLICT (tabela, acao) DO NOTHING;
 """
 
 
@@ -355,6 +364,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    op.execute("DELETE FROM public.retencao_politica WHERE tabela = 'professor_notificacoes'")
     op.execute("DROP TRIGGER IF EXISTS trg_eventos_classe_notifica_professor ON public.eventos_classe")
     op.execute("DROP TRIGGER IF EXISTS trg_personalizacao_jobs_notifica_professor ON public.personalizacao_jobs")
     op.execute("DROP TRIGGER IF EXISTS trg_questao_aluno_notifica_professor ON public.questao_aluno")

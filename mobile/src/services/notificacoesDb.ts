@@ -140,3 +140,78 @@ export function salvarRotina(params: {
     }
   );
 }
+
+/**
+ * Modo foco e silenciar (#149). O banco decide a entrega; aqui só a chamada.
+ *
+ * Em foco, nada é entregue: a fila segura e, ao sair, chega só a mais recente de cada
+ * tipo, dentro do teto diário. `origem = 'estudo'` é o foco que o próprio banco liga
+ * enquanto o aluno estuda concentrado (estado de atenção recente).
+ */
+export type EstadoFoco = {
+  em_foco: boolean;
+  origem: 'aluno' | 'estudo' | null;
+  /** Fim do foco ligado pelo aluno (ISO), ou null. */
+  ate: string | null;
+  /** Notificações esperando o fim do foco. */
+  seguradas: number;
+  /** Só em `encerrarFoco`: quantas saíram ao encerrar. */
+  entregues?: number;
+};
+
+export function meuFoco() {
+  return chamar<EstadoFoco>('notificacoes_meu_foco', {});
+}
+
+export function iniciarFoco(minutos: number) {
+  return chamar<EstadoFoco>('notificacoes_iniciar_foco', { p_minutos: minutos });
+}
+
+export function encerrarFoco() {
+  return chamar<EstadoFoco>('notificacoes_encerrar_foco', {});
+}
+
+/**
+ * Tipos que o aluno pode silenciar: os que passam pela fila do motor. Mesma lista de
+ * `tipos_silenciaveis` em `notificacoes_config` (migração 20261102_18); um tipo fora
+ * dela é recusado pelo banco.
+ */
+export const TIPOS_SILENCIAVEIS: Record<string, string> = {
+  lembrete: 'Lembretes de estudo',
+  suporte: 'Mensagens de apoio',
+  rank: 'Sua posição no ranking',
+  amigo_rank: 'Amizades que sobem no ranking',
+  novo_material: 'Material novo',
+  sequencia: 'Sequência de estudo',
+};
+
+export function podeSilenciar(tipo: string | null | undefined): tipo is string {
+  return !!tipo && Object.prototype.hasOwnProperty.call(TIPOS_SILENCIAVEIS, tipo);
+}
+
+/** Silenciar é também sinal de perfil: o banco guarda o perfil do momento junto. */
+export function silenciarTipo(params: { tipo: string; silenciar: boolean; notificacaoId?: number | null }) {
+  return chamar<{ tipo: string; silenciado: boolean; mudou: boolean }>('notificacoes_silenciar_tipo', {
+    p_tipo: params.tipo,
+    p_silenciar: params.silenciar,
+    p_notificacao_id: params.notificacaoId ?? null,
+  });
+}
+
+/** Tipos silenciados do próprio aluno (RLS `notificacoes_silenciadas_sel`). */
+export async function listarSilenciados(): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('notificacoes_silenciadas')
+      .select('tipo')
+      .order('silenciada_em', { ascending: false });
+    if (error) {
+      console.warn('[notificacoesDb] notificacoes_silenciadas falhou:', error.message);
+      return [];
+    }
+    return (data ?? []).map((linha: { tipo: string }) => linha.tipo);
+  } catch (erro) {
+    console.warn('[notificacoesDb] notificacoes_silenciadas lançou:', erro);
+    return [];
+  }
+}
