@@ -37,6 +37,14 @@ PROMPTS_DIR = Path(__file__).resolve().parents[1] / "agent" / "prompts"
 # unica chave pro ChatGoogleGenerativeAI, gerando 401 UNAUTHENTICATED
 # (ACCESS_TOKEN_TYPE_UNSUPPORTED) mesmo com chaves validas configuradas.
 _GEMINI_KEY_QUOTA_COOLDOWN_SEC = 300
+# Uma tentativa so por (chave, modelo): quem tenta de novo e a rotacao abaixo.
+# O default do ChatGoogleGenerativeAI e 6 tentativas com backoff de 1+2+4+8+16 s
+# para 429/5xx, entao cada chave sem cota custava ~34 s antes de a rotacao ver o
+# erro (medido em 02/11 contra um Gemini falso). Em producao, ciclos de mesma
+# forma saiam em 16, 51, 192 e 238 s, os degraus desses 34 s; com as 4 chaves
+# sem cota nos 3 modelos vivos, uma chamada passava de 6 min e a fila desistia
+# no teto de 300 s. `1`, nao `0`: `0` volta ao default do SDK do Google.
+_GEMINI_MAX_RETRIES = 1
 _gemini_key_unavailable_until: dict[tuple[str, str], float] = {}
 _gemini_key_rotation_index: int = 0
 
@@ -185,7 +193,13 @@ class JsonLLMService:
             return self._clients[cache_key]
         if not self.settings.openai_api_key or ChatOpenAI is None:
             return None
-        client = ChatOpenAI(model=model, temperature=0, api_key=self.settings.openai_api_key, store=False)
+        client = ChatOpenAI(
+            model=model,
+            temperature=0,
+            api_key=self.settings.openai_api_key,
+            store=False,
+            timeout=self._timeout(),
+        )
         self._clients[cache_key] = client
         return client
 
@@ -204,23 +218,37 @@ class JsonLLMService:
         if effective_provider == "openai":
             if not self.settings.openai_api_key or ChatOpenAI is None:
                 return None
-            client = ChatOpenAI(model=model, temperature=0, api_key=self.settings.openai_api_key)
+            client = ChatOpenAI(
+                model=model, temperature=0, api_key=self.settings.openai_api_key, timeout=self._timeout()
+            )
         elif effective_provider == "gemini":
             api_keys = _parse_gemini_keys(str(self.settings.gemini_api_key or ""))
             if not api_keys or ChatGoogleGenerativeAI is None:
                 return None
-            client = ChatGoogleGenerativeAI(model=model, temperature=0, google_api_key=api_keys[0])
+            client = self._new_gemini_client(model, api_keys[0])
         else:
             return None
 
         self._clients[cache_key] = client
         return client
 
+    def _timeout(self) -> float:
+        return float(self.settings.llm_request_timeout_seconds)
+
+    def _new_gemini_client(self, model: str, api_key: str) -> Any:
+        return ChatGoogleGenerativeAI(
+            model=model,
+            temperature=0,
+            google_api_key=api_key,
+            max_retries=_GEMINI_MAX_RETRIES,
+            timeout=self._timeout(),
+        )
+
     def _get_gemini_client(self, model: str, api_key: str) -> Any:
         cache_key = f"gemini:{model}:{api_key}"
         client = self._clients.get(cache_key)
         if client is None:
-            client = ChatGoogleGenerativeAI(model=model, temperature=0, google_api_key=api_key)
+            client = self._new_gemini_client(model, api_key)
             self._clients[cache_key] = client
         return client
 

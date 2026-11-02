@@ -1723,6 +1723,42 @@ def test_telemetria_analise_que_explode_deixa_o_erro_para_a_fila(app, aluno_user
     }
 
 
+def test_telemetria_analise_que_passa_do_teto_responde_e_deixa_para_a_fila(app, aluno_user, settings, monkeypatch) -> None:
+    """O app desiste em 120 s e regrava o lote pelo caminho direto (`fallback_motivo = 'timeout'`, 2 lotes
+    do build `production` em 01/11). Passou do teto, o pedido responde com o lote salvo e a fila analisa."""
+    import asyncio
+
+    settings.telemetria_analise_pedido_timeout_seconds = 0.05
+    cancelada = asyncio.Event()
+
+    async def demora(**_kwargs):
+        try:
+            await asyncio.sleep(5)
+        except asyncio.CancelledError:
+            cancelada.set()
+            raise
+        return AnalisarResponse(ciclo_id="tarde-demais")
+
+    body, gravar, deixar_na_fila = _rota_de_telemetria_com_analise(app, aluno_user, monkeypatch, run_analysis=demora)
+    assert body["persisted"] is True
+    assert body["analysis"]["ciclo_id"] is None
+    assert body["analysis"]["erros"] == [telemetria_module.ANALISE_ADIADA]
+    assert cancelada.is_set(), "a análise do pedido não pode seguir rodando ao lado da fila"
+    assert gravar.await_count == 0
+    assert deixar_na_fila.await_args.kwargs == {
+        "batch_id": "batch-r2",
+        "erro": "TimeoutError: pedido passou de 0.05 s",
+        "respeitar_trava": True,
+        "trava_seg": 600,
+    }
+
+
+def test_telemetria_teto_do_pedido_fica_abaixo_do_app_e_da_folga_da_fila(settings) -> None:
+    """120 s é o `TELEMETRIA_TIMEOUT_MS` do app; 300 s é a folga da P2 (20261029_09), que conta com o
+    pedido terminado antes de o worker poder pegar o lote."""
+    assert settings.telemetria_analise_pedido_timeout_seconds < 120 < 300
+
+
 def test_telemetria_analise_sem_ciclo_com_erro_deixa_para_a_fila(app, aluno_user, monkeypatch) -> None:
     body, gravar, deixar_na_fila = _rota_de_telemetria_com_analise(
         app,

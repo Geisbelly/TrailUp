@@ -17,7 +17,7 @@ from app.schemas.telemetria import TelemetriaLotePayload
 
 
 def _requisicao() -> SimpleNamespace:
-    settings = SimpleNamespace(telemetria_analise_fila_trava_seconds=600)
+    settings = SimpleNamespace(telemetria_analise_fila_trava_seconds=600, telemetria_analise_pedido_timeout_seconds=60)
     return SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(settings=settings)))
 
 
