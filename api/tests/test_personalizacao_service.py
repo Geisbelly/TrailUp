@@ -267,6 +267,10 @@ async def test_fetch_context_keeps_topic_scope_for_sources_and_source_hash(monke
         AsyncMock(return_value=[]),
     )
     monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_arco_narrativo",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_cards_topico",
         AsyncMock(return_value=[]),
     )
@@ -380,6 +384,10 @@ async def test_fetch_context_with_content_scope_excludes_other_topic_contents(
     monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_questoes_topico",
         AsyncMock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_classe.ConteudoClasseRepository.buscar_arco_narrativo",
+        AsyncMock(return_value=None),
     )
     cards_mock = AsyncMock(
         return_value=[

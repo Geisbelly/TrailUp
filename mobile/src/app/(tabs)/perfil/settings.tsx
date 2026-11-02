@@ -135,6 +135,14 @@ function SettingsLista() {
           ),
         },
         {
+          label: "Modo foco e avisos",
+          render: (
+            <LinhaConfig icone="bell-off" onPress={() => router.push("/(tabs)/perfil/modo-foco")} palette={palette}>
+              Modo foco e avisos
+            </LinhaConfig>
+          ),
+        },
+        {
           label: "Coleta e acessos",
           render: (
             <LinhaConfig icone="camera" onPress={() => router.push("/(tabs)/perfil/coleta-dados")} palette={palette}>

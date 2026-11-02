@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { NIVEIS_DA_QUESTAO, SEM_NIVEL, nivelParaOFormulario } from "./dificuldadeDaQuestao";
 import { BossVisualPicker } from './BossVisualPicker';
+import FalasDoBoss from './FalasDoBoss';
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -819,6 +820,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       </div>
       
       <BossVisualPicker value={contentForm.boss_visual} onChange={(boss_visual) => setContentForm({ ...contentForm, boss_visual })} disabled={isSavingContent || isUploadingFile} />
+      <FalasDoBoss conteudoId={selectedContentId} />
 
       {contentForm.tipo === "arquivo" ? (
         <div>

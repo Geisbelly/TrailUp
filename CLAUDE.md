@@ -261,6 +261,19 @@ Cada perfil carrega:
   > de retomada da URL, e versioná-la faria o aluno perder o progresso a cada
   > regeração.
 
+- `classe_arco_narrativo` — a história da turma que o professor escreve (#145, `20261102_16`),
+  uma linha por classe. Só o professor dono lê e escreve (o aluno não lê; o arco chega a ele
+  dentro do material). **Guardar é banco, usar é API**: o console grava direto (aba História
+  de Personalizações) e `fetch_personalizacao_context` põe o arco no contexto, no prompt do
+  microservice (`class_story_arc` → `buildClassStoryArcSection`) e nos prompts Python
+  (`arco_narrativo_turma`). O arco é moldura comum aos 7 perfis; a voz continua a da
+  assinatura editorial do perfil.
+  - **Entra no `source_hash` só quando existe.** Turma sem arco mantém o hash de antes; editar o
+    arco invalida o material da turma (e refaz o enriquecimento uma vez por conteúdo).
+  - **O banco marca para regerar:** `fn_enqueue_arco_narrativo_job` enfileira `class_delta_sync`
+    da turma inteira, com a mesma coalescência e o mesmo portão de geração manual do editor.
+  - Cards não recebem o arco: são reaproveitados entre perfis e gerações, e ficariam com
+    histórias diferentes lado a lado.
 - `cards_personalizados`, `atividades_personalizadas`, `questoes_personalizadas` — artefatos desnormalizados (com `ativo`/`obsoleto_em`).
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona
@@ -508,6 +521,41 @@ Cada perfil carrega:
   andamento. `hora_origem = 'aluno'` nunca é sobrescrita. A sugestão da IA
   traz `horario_sugerido`, e o gatilho de promoção decide o horário, sempre
   fora do silêncio no fuso do aluno.
+  **Para quem e quando é do banco também** (#149, `20261102_18`): a matriz de
+  Monterrat (`notificacoes_config.perfil_pesos_<tipo>`) barra tipo pelo perfil
+  dominante, o silêncio do aluno barra pelo tipo, e `notificacoes_rank_varrer`
+  (pg_cron) gera `rank`/`amigo_rank`, nomeando amigo só dentro do corte visível do
+  rank. Em modo foco (explícito, `aluno_modo_foco`, ou atenção recente que a API
+  grava em `aluno_estado_atencao`), nada é entregue: a pendente vira
+  `gatilho = 'fim_foco'` e, na saída, colapsa por tipo, sob o teto diário.
+- **Notificações do professor — também no banco** (`20261102_17`). `professor_notificacoes` é a caixa
+  do console (sino no cabeçalho), **separada** das quatro tabelas do aluno acima: uma linha por assunto
+  (`dedupe_key` única por professor), com `contagem` e `lida_em`, que volta a nulo quando o assunto se
+  repete. Quem grava são gatilhos `SECURITY DEFINER` (recomendação da IA em `intervencoes`, dissertação
+  em `questao_aluno`, job de geração `failed`/`partial`, evento `encerrado`), e **nunca derrubam a
+  transação de quem os causa** (`EXCEPTION WHEN OTHERS` → `WARNING`). O cliente só lê e muda `lida_em`
+  (GRANT por coluna, sem policy de INSERT). Risco de reprovação **não** notifica: é calculado na hora,
+  não há evento de banco para ligar um gatilho.
+- **Missões sugeridas pela IA (#151, `20261102_20`) — a IA propõe, o banco decide o que entra, o
+  professor aprova.** Reaproveita `missoes` (`origem = 'ia'`, `aprovacao = 'pendente'`); o `CHECK`
+  `missoes_ia_exige_aprovacao` impede uma missão `ia` com `nao_requer`, então nada chega ao aluno sem
+  decisão (a policy `missoes_aluno_sel` só entrega `ativa` + `nao_requer`/`aprovada`). O pedido é do
+  professor, **nunca automático**: `missao_ia_pedir` grava em `missoes_ia_pedidos` e o worker da API
+  (`app/services/missoes_ia.py`, fila no banco como `alteracao_professor`) atende quando puder. Padrão,
+  faixa e teto estão em **`app_config`** (`missao_ia_padrao`/`_min`/`_max`/`_pedidos_por_dia`, privadas),
+  não em constante. A API não escreve em tabela: passa o que o modelo devolveu a `fn_missao_ia_registrar`,
+  que descarta métrica fora do catálogo (`fn_missao_ia_catalogo`, **o único lugar** com a chave de
+  parâmetro de cada métrica; a chave errada não dá erro e a missão fecha na hora para todos), alvo
+  não inteiro ou acima do teto, link/e-mail e título repetido (inclusive recusado). `missoes_ia_log` é só
+  de acréscimo: proposta, aprovação e recusa com o motivo; a taxa de aprovação sai dele e **não realimenta
+  o prompt**. Fora de escopo: editar antes de aprovar (`trg_missoes_guarda` congela o texto da missão que
+  não é do professor, em silêncio), missão de entrega e prazo.
+- **`boss_falas` — a IA escreve, o professor pode tirar do ar** (`20261102_19`). Nome e falas do boss
+  são gerados em lote por conteúdo × perfil e o app os mostra ao aluno (inclusive menor) direto. O
+  professor lê no editor de conteúdo e liga/desliga (`ativa`; **só** essa coluna tem GRANT de UPDATE: o
+  texto é validado pela API e não se edita pelo console). Quem esconde a fala desligada do aluno é a
+  **policy de leitura dele**, não o app, então build antigo também obedece. A API religa ao reescrever a
+  linha: texto novo é texto que ninguém leu.
 - **Eventos de turma abrem e encerram no horário pelo banco (#141).**
   `pg_cron` roda `fn_eventos_classe_varrer()` a cada minuto (job
   `trailup_eventos_classe_varredura`, migração `20261025_04`): encerra e apura

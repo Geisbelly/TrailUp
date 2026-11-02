@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import functools
 import logging
 import socket
 import time
@@ -1406,6 +1407,7 @@ async def _process_media_render_target(
                     ciclo_id=record_cycle_id,
                     source_hash=record_source_hash,
                 )
+                arco_narrativo = await ConteudoClasseRepository(session).buscar_arco_narrativo(classe_id)
                 # Nao manter transacao/conexao PostgreSQL aberta durante uma
                 # geracao que pode levar dezenas de minutos.
                 await session.commit()
@@ -1427,6 +1429,7 @@ async def _process_media_render_target(
                     wait_for_completion=True,
                     contract_prechecked=True,
                     error_sink=error_sink,
+                    arco_narrativo=arco_narrativo,
                 )
                 if not dispatched:
                     recovered = await _mark_failed_unless_generation_completed(
@@ -1790,6 +1793,7 @@ async def _process_media_render_target(
             wait_for_completion=True,
             contract_prechecked=True,
             error_sink=error_sink,
+            arco_narrativo=ctx.get("arco_narrativo"),
         )
         if not dispatched:
             await repo.incrementar_falha_streak(
@@ -2006,6 +2010,7 @@ async def _process_media_render_target(
         wait_for_completion=True,
         contract_prechecked=True,
         error_sink=error_sink,
+        arco_narrativo=ctx.get("arco_narrativo"),
     )
     if not dispatched:
         recovered = await _mark_failed_unless_generation_completed(
@@ -2475,7 +2480,10 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                     max_retries=int(app.state.settings.personalizacao_job_max_retries),
                     total_partes_calculator=lambda _targets: 1,
                     enrich_base_blocks_fn=enrich_base_blocks,
-                    gerar_capitulo_fn=gerar_capitulo_bloco_brainhex,
+                    gerar_capitulo_fn=functools.partial(
+                        gerar_capitulo_bloco_brainhex,
+                        arco_narrativo=ctx.get("arco_narrativo"),
+                    ),
                     gerar_audio_fn=gerar_audio_parte_brainhex,
                     gerar_apresentacao_fn=gerar_apresentacao_parte_brainhex,
                     bucket=BUCKET,

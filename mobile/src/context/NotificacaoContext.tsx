@@ -1,6 +1,8 @@
 // src/contexts/NotificationsContext.tsx
 import { getSessionSafe, supabase } from '@/database/supabase';
 import { Notificacao } from '@/models/Notificacoes';
+import { emFocoNoAparelho, lembrarFoco } from '@/services/focoLocal';
+import { meuFoco } from '@/services/notificacoesDb';
 import { useRouter } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -318,6 +320,8 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
       try {
         const uid = await getAlunoFromSession();
         if (!uid) return;
+        // O foco pode ter sido ligado em outra abertura do app.
+        void meuFoco().then(lembrarFoco);
 
         channel = supabase
           .channel(`notificacoes_changes_${uid}`)
@@ -340,7 +344,10 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
               const tipoDb = n.tipo?.toLowerCase() || '';
               let action = undefined;
 
-              if (['rank', 'ranking', 'subiu'].includes(tipoDb)) {
+              // Modo foco (#149): a notificação fica na lista, sem toast por cima do estudo.
+              if (emFocoNoAparelho()) return;
+
+              if (['rank', 'ranking', 'subiu', 'amigo_rank'].includes(tipoDb)) {
                 visualType = 'rank';
                 // Ação de redirecionamento para Rank
                 action = () => router.push('/ranking'); 

@@ -1,14 +1,18 @@
 import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Award, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
+import { Award, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, Lightbulb, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 import { Shield, Swords } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DESIGN_ART } from "@/lib/design-art";
 import { CONSOLE_SECTIONS, consolePathForView, type ConsoleView } from "@/pages/consoleSections";
 import Escriba from "./escriba/Escriba";
+import SinoDeNotificacoes from "./notificacoes/SinoDeNotificacoes";
+import { useContagemDeRecomendacoes } from "./recomendacoes/useRecomendacoesDaIA";
+import { rotuloDoSelo } from "./recomendacoes/recomendacoes";
 
 const navigation = {
   dashboard: { label: "Visão geral", icon: LayoutDashboard },
+  recomendacoes: { label: "Recomendações", icon: Lightbulb },
   trilha: { label: "Trilhas", icon: Route },
   missoes: { label: "Missões", icon: Flag },
   conquistas: { label: "Conquistas", icon: Award },
@@ -43,6 +47,8 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
   children?: ReactNode;
 }) {
   useConsoleThemeOnDocument();
+  // O selo é só um aviso: a RLS limita a contagem às turmas do professor logado.
+  const selo = rotuloDoSelo(useContagemDeRecomendacoes(true));
   const initials = name.split(" ").filter(Boolean).map(part => part[0]).join("").slice(0, 2).toUpperCase() || "PR";
   return (
     <div className="journey-console console-shell">
@@ -54,6 +60,7 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         <span className="console-topbar-divider" aria-hidden="true" />
         <span className="console-workspace-name">Console do professor</span>
         <div className="console-account">
+          <SinoDeNotificacoes />
           <Avatar className="h-[38px] w-[38px]"><AvatarFallback className="bg-primary text-primary-foreground text-[13px] font-bold">{initials}</AvatarFallback></Avatar>
           <div className="console-account-copy"><strong>{name}</strong>{institution && <span>{institution}</span>}</div>
           <button type="button" className="console-icon-button" onClick={onSignOut} aria-label="Sair da conta" title="Sair da conta"><LogOut size={18} /></button>
@@ -63,7 +70,8 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         {CONSOLE_SECTIONS.filter(section => section.view !== "aprovacoes" || isOwner).map(section => {
           const item = navigation[section.view];
           const Icon = item.icon;
-          return <Link key={section.view} to={consolePathForView(section.view)} aria-current={view === section.view ? "page" : undefined} title={item.label}><Icon size={20} strokeWidth={1.6} /><span>{item.label}</span></Link>;
+          const aviso = section.view === "recomendacoes" ? selo : null;
+          return <Link key={section.view} to={consolePathForView(section.view)} aria-current={view === section.view ? "page" : undefined} aria-label={aviso ? `${item.label}, ${aviso} aguardando decisão` : undefined} title={item.label}><Icon size={20} strokeWidth={1.6} /><span>{item.label}</span>{aviso && <span className="console-nav-badge" aria-hidden="true">{aviso}</span>}</Link>;
         })}
       </nav>
       <main className="console-main" aria-label={navigation[view].label}>{children}</main>

@@ -9,6 +9,7 @@ import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { useLoading } from "@/context/LoadingContext";
 import { Notificacao } from "@/models/Notificacoes";
+import { podeSilenciar, silenciarTipo, TIPOS_SILENCIAVEIS } from "@/services/notificacoesDb";
 import { formatAbsoluteFrom, formatSmartTime } from "@/utils/Formatacoes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
@@ -159,6 +160,25 @@ export default function NotificacaoDetalhe() {
     });
   }, [deletar, item, showConfirm, showDialog]);
 
+  const tipoSilenciavel = podeSilenciar(item?.tipo) ? item?.tipo ?? null : null;
+  const onSilenciar = React.useCallback(() => {
+    if (!item || !tipoSilenciavel) return;
+    showConfirm({
+      title: "Silenciar este tipo de aviso?",
+      description: `Você deixa de receber “${TIPOS_SILENCIAVEIS[tipoSilenciavel]}”. Dá para voltar a receber em Configurações › Modo foco e avisos.`,
+      confirmLabel: "Silenciar",
+      cancelLabel: "Cancelar",
+      onConfirm: async () => {
+        const r = await silenciarTipo({ tipo: tipoSilenciavel, silenciar: true, notificacaoId: item.id });
+        showDialog(
+          r
+            ? { title: "Aviso silenciado", description: "Você não recebe mais avisos deste tipo.", tone: "success" }
+            : { title: "Erro", description: "Não foi possível silenciar.", tone: "error" },
+        );
+      },
+    });
+  }, [item, showConfirm, showDialog, tipoSilenciavel]);
+
   if (loading) {
     return (
       <View style={[s.outer, { backgroundColor: palette.background }]}>
@@ -207,6 +227,7 @@ export default function NotificacaoDetalhe() {
           quandoCompleto={timeFull}
           onMarcarNaoLida={onMarkUnread}
           onExcluir={onDelete}
+          onSilenciar={tipoSilenciavel ? onSilenciar : undefined}
           cabecalhoRef={headerGuideRef}
           corpoRef={bodyGuideRef}
           acoesRef={actionsGuideRef}

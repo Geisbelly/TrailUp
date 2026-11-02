@@ -75,12 +75,14 @@
 .console-account-copy span { color: hsl(var(--muted-foreground)); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console-icon-button { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; flex: none; color: hsl(var(--muted-foreground)); }
 .console-icon-button:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+.console-bell-badge { position: absolute; top: 3px; right: 2px; min-width: 17px; padding: 0 4px; border-radius: 999px; background: hsl(var(--console-violet)); color: #fff; font-size: 10px; font-weight: 700; line-height: 17px; text-align: center; }
 .console-navigation { padding: 20px 16px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid hsl(var(--border)); background: hsl(var(--console-sidebar)); overflow-y: auto; }
 .console-navigation a { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; color: hsl(var(--muted-foreground)); font-size: 14.5px; white-space: nowrap; }
 .console-navigation a svg { flex: none; }
 .console-navigation a:hover { color: hsl(var(--foreground)); background: hsl(var(--muted) / .6); }
 .console-navigation a[aria-current="page"] { color: hsl(var(--accent)); background: hsl(var(--accent) / .08); font-weight: 600; }
 .console-navigation a[aria-current="page"] svg { color: hsl(var(--accent)); }
+.console-nav-badge { margin-left: auto; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: hsl(var(--console-violet) / .22); color: hsl(var(--console-violet-text)); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
 .console-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
 .console-section-content, .console-trail-content { padding: 24px; min-width: 0; }
 .console-trail-content { padding-bottom: 12px; }

@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import { emFocoNoAparelho } from '@/services/focoLocal';
 import type { PlataformaApp, RotinaNotificacao } from '@/services/notificacoesDb';
 
 /**
@@ -58,6 +59,10 @@ async function carregarNotifications(): Promise<NotificationsModule | null> {
  * Mostrar o banner mesmo em foreground é deliberado: sem isso, a notificação
  * que chega durante o estudo sumiria, e o comportamento ficaria diferente do
  * que o aluno vê com o app fechado.
+ *
+ * A exceção é o modo foco (#149): a notificação ainda vai para a lista do
+ * sistema, mas sem banner e sem som. O push o banco já segura; o que chega
+ * aqui em foco é a local agendada (revisão diária).
  */
 export async function configurarHandlerDeNotificacao() {
   if (handlerConfigurado) return;
@@ -66,12 +71,15 @@ export async function configurarHandlerDeNotificacao() {
   handlerConfigurado = true;
 
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowBanner: true,
-      shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-    }),
+    handleNotification: async () => {
+      const foco = emFocoNoAparelho();
+      return {
+        shouldShowBanner: !foco,
+        shouldShowList: true,
+        shouldPlaySound: !foco,
+        shouldSetBadge: false,
+      };
+    },
   });
 }
 

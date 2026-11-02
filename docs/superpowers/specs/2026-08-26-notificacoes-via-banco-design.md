@@ -119,13 +119,51 @@ Expô-las deixaria o app disparar entrega em nome de qualquer aluno.
   a cada ciclo; a rotina é a *verificação* que revisa e promove. Uma chamada de
   LLM por aluno por dia só para reescrever o que já existe seria custo sem ganho.
 
+## Para quem e quando (#149, `20261102_18`)
+
+A IA continua só sugerindo em `notificacoes_ia`, e a redação é do `agente_notificacao`. O que esta
+seção decide é o destino e o momento, e quem decide é o banco.
+
+- **Por perfil (matriz de Monterrat).** `notificacoes_config.perfil_pesos_<tipo>` guarda o peso de
+  cada perfil BrainHex para aquele tipo (rank: Conqueror 1,0, Achiever 0,75, Daredevil e Mastermind
+  0,63, Socializer 0,13; `amigo_rank`: Socializer; `novo_material`: Seeker e Achiever; `sequencia`:
+  Achiever). `notificacoes_destino` lê o perfil dominante e barra o tipo quando o peso fica abaixo de
+  `perfil_peso_minimo_pct`. Tipo sem matriz passa para todos. A sugestão barrada fica `suprimida`, com
+  o motivo `perfil` ou `silenciado`.
+- **Amizade e rank.** `notificacoes_rank_varrer` (pg_cron, a cada 10 min) compara a posição de
+  `vw_rank_posicoes_por_classe_todas` com `rank_posicao_anterior`. Quem subiu, e tem pontos, recebe
+  `rank`. Os amigos com amizade `accepted` e matriculados na turma recebem `amigo_rank`, que nomeia o
+  colega **só dentro do corte visível** (`app_rank_limite_visivel()`): fora dele, o rank não mostra o
+  aluno, e o aviso não pode mostrar. Na primeira passada, o job só registra a base. A descida só gera
+  aviso com `rank_notificar_descida = 1`.
+- **Modo foco.** O foco pode ser explícito (`aluno_modo_foco`, ligado pelo app) ou vir da atenção
+  (`aluno_estado_atencao`, gravado pela API a cada ciclo; vale por `atencao_validade_min`, com a atenção
+  acima de `atencao_limiar_baixa_pct`; desconcentrado não conta como foco). Em foco, `notificacoes_entregar` não entrega nada. A pendente passa a
+  `gatilho = 'fim_foco'`, e o push direto (chat, convite, conquista) não sai. Fora do foco, as
+  seguradas **colapsam por tipo**: fica só a mais prioritária e recente, as outras ficam
+  `colapsada`, e o vencido expira. O teto diário continua valendo.
+- **Silenciar.** `notificacoes_silenciar_tipo` vale só para os tipos de `tipos_silenciaveis`. Ela
+  suprime o que está pendente e grava em `notificacoes_silenciamento_log` o perfil e as afinidades do
+  momento, porque silenciar é sinal de perfil.
+
+RPCs do app: `notificacoes_meu_foco`, `notificacoes_iniciar_foco(minutos)` (de 5 a
+`foco_duracao_max_min`), `notificacoes_encerrar_foco` e `notificacoes_silenciar_tipo`. A tela fica em
+Perfil → Configurações → "Modo foco e avisos". O botão "Não quero avisos assim" fica no detalhe da
+notificação.
+
+Limites: `novo_material` e `sequencia` ainda não têm produtor, e a matriz os roteia quando ele
+existir. A revisão diária é notificação local e dispara com o app fechado mesmo em foco; com o app
+aberto, ela entra na lista sem banner. O foco por atenção não chega ao aparelho: só o foco explícito
+tira o toast no app aberto.
+
 ## Configuração
 
 Em `notificacoes_config`, uma linha por parâmetro — nada de número mágico dentro
 das funções, e o console do professor pode ajustar sem deploy: `max_por_dia`,
 `janela_silencio_inicio`/`_fim`, `expiracao_padrao_horas`,
 `tempo_uso_limiar_min`, `rotina_diaria_hora`/`_minuto`, `sessao_ociosa_min`,
-`push_url`, `push_access_token`, `push_timeout_ms`.
+`push_url`, `push_access_token`, `push_timeout_ms` e, desde a #149, `perfil_pesos_<tipo>`,
+`perfil_peso_minimo_pct`, `tipos_silenciaveis`, `foco_*`, `atencao_*` e `rank_*`.
 
 ## Limites conhecidos
 

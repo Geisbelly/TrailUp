@@ -68,6 +68,9 @@ class TrailUpState(TypedDict, total=False):
     # Turma com a personalização retida pelo estudo (#13, 20261102_05): o grafo mede (emoção,
     # perfil, insight do professor) e não age no aluno. Montado por `build_initial_state`.
     personalizacao_retida: bool
+    # Arco narrativo da turma, escrito pelo professor (#145, 20261102_16). Entra nos prompts de
+    # geração do caminho Python. Montado por `build_initial_state`; mesma razão de estar declarado.
+    arco_narrativo_turma: str | None
     intervencao_payload: dict[str, Any] | None
     # `CronometroDecisao` (#136): o executor desliga o cronometro e avisa o professor.
     cronometro_payload: dict[str, Any] | None

@@ -15,6 +15,7 @@ describe("consolePathForView", () => {
 
   it("mapeia as demais abas pro caminho proprio", () => {
     expect(consolePathForView("trilha")).toBe("/console/trilha");
+    expect(consolePathForView("recomendacoes")).toBe("/console/recomendacoes");
     expect(consolePathForView("classes")).toBe("/console/turmas");
     expect(consolePathForView("personalizacoes")).toBe("/console/personalizacoes");
     expect(consolePathForView("ranks")).toBe("/console/ranks");
@@ -43,6 +44,7 @@ describe("consoleViewFromPathname", () => {
     expect(consoleViewFromPathname("/console/ranks")).toBe("ranks");
     expect(consoleViewFromPathname("/console/rank-de-batalhas")).toBe("batalhas");
     expect(consoleViewFromPathname("/console/guildas")).toBe("guildas");
+    expect(consoleViewFromPathname("/console/recomendacoes")).toBe("recomendacoes");
     expect(consoleViewFromPathname("/console/missoes")).toBe("missoes");
     expect(consoleViewFromPathname("/console/conquistas")).toBe("conquistas");
     expect(consoleViewFromPathname("/console/notas")).toBe("notas");

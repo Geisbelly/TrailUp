@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Layers, Palette, UserSearch, Users, FileText, Music, FileImage, NotebookPen, RefreshCw, Sparkles, AlertTriangle, Check } from "lucide-react";
+import { Loader2, Layers, Palette, UserSearch, Users, FileText, Music, FileImage, NotebookPen, RefreshCw, Sparkles, AlertTriangle, Check, ScrollText } from "lucide-react";
 import { COR_DO_PERFIL, NOME_DO_PERFIL } from "../dashboard/perfilCores";
 import type { BrainHexProfileKey } from "@/features/signup/brainhex";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,7 @@ import {
   isGeracaoStatusAtivo,
 } from "./statusBadge";
 import { SugestaoMaterialCard } from "./SugestaoMaterialCard";
+import { ArcoNarrativoCard } from "./ArcoNarrativoCard";
 import {
   limitarPercentual,
   resolverGeracaoFormato,
@@ -815,6 +816,10 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
             <Users className="h-4 w-4 mr-2" />
             Turma
           </TabsTrigger>
+          <TabsTrigger value="historia" className={ABA}>
+            <ScrollText className="h-4 w-4 mr-2" />
+            História
+          </TabsTrigger>
         </TabsList>
 
         {/* Visao 1: material lado a lado pelos 7 perfis */}
@@ -1037,6 +1042,11 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
           ) : (
             <GrupoResumo resumo={grupoResumo} />
           )}
+        </TabsContent>
+
+        {/* Visao 5: arco narrativo da turma (#145), entrada da geracao de todos os perfis */}
+        <TabsContent value="historia" className="space-y-4">
+          <ArcoNarrativoCard classeId={classeId ? Number(classeId) : null} />
         </TabsContent>
       </Tabs>
     </div>

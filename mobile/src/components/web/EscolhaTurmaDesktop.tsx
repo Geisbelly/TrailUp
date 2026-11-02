@@ -15,6 +15,7 @@ import { supabase } from "@/database/supabase";
 import type { Classe } from "@/models/Classe";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { porcentagemDaTurma } from "@/utils/progressoDaTurma";
 import { useUrlDeImagem } from "@/hooks/useFonteDeImagem";
 
 type Props = {
@@ -36,11 +37,6 @@ const SEM_ABAS = {
   navigation: { emit: () => ({ defaultPrevented: true }), navigate: () => undefined },
   descriptors: {},
 } as unknown as BottomTabBarProps;
-
-const porcentagem = (classe: Classe) => {
-  const p = Math.round(Number(classe.getProgressoGeral?.() ?? 0));
-  return Number.isFinite(p) ? Math.max(0, Math.min(100, p)) : 0;
-};
 
 /**
  * Escolha de turma na web em tela larga (#346, protótipo v4, estado "Escolha de
@@ -190,7 +186,7 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
                         </View>
                       );
                     }
-                    const pct = porcentagem(classe);
+                    const pct = porcentagemDaTurma(classe);
                     return (
                       <View key={classe.classe_id} style={[s.cartao, { backgroundColor: palette.surface, borderColor: palette.border }]}>
                         <View style={[s.chip, { backgroundColor: pct > 0 ? palette.accentMuted : palette.surfaceElevated }]}>

@@ -19,6 +19,7 @@ function loadService(os: string, executionEnvironment: string, appOwnership?: st
     require(name: string) {
       if (name === 'expo-constants') return { executionEnvironment, appOwnership };
       if (name === 'react-native') return { Platform: { OS: os } };
+      if (name === '@/services/focoLocal') return { emFocoNoAparelho: () => false };
       if (name === 'expo-notifications') {
         loads += 1;
         return { setNotificationHandler() { handlers += 1; } };

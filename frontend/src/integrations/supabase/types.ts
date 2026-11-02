@@ -827,6 +827,51 @@ export type Database = {
           },
         ]
       }
+      boss_falas: {
+        Row: {
+          ativa: boolean
+          classe_id: number
+          conteudo_id: number
+          desativada_em: string | null
+          falas: Json
+          gerado_em: string
+          id: number
+          nome: string
+          perfil: string
+          source_hash: string
+          topico_id: number
+          versao: string
+        }
+        Insert: {
+          ativa?: boolean
+          classe_id: number
+          conteudo_id: number
+          desativada_em?: string | null
+          falas: Json
+          gerado_em?: string
+          id?: number
+          nome: string
+          perfil: string
+          source_hash: string
+          topico_id: number
+          versao: string
+        }
+        Update: {
+          ativa?: boolean
+          classe_id?: number
+          conteudo_id?: number
+          desativada_em?: string | null
+          falas?: Json
+          gerado_em?: string
+          id?: number
+          nome?: string
+          perfil?: string
+          source_hash?: string
+          topico_id?: number
+          versao?: string
+        }
+        Relationships: []
+      }
       cards: {
         Row: {
           conteudo_id: number | null
@@ -1316,6 +1361,38 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_aluno_classe_detalhado"
             referencedColumns: ["atividade_id"]
+          },
+        ]
+      }
+      classe_arco_narrativo: {
+        Row: {
+          atualizado_por: string | null
+          classe_id: number
+          created_at: string
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          atualizado_por?: string | null
+          classe_id: number
+          created_at?: string
+          texto: string
+          updated_at?: string
+        }
+        Update: {
+          atualizado_por?: string | null
+          classe_id?: number
+          created_at?: string
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classe_arco_narrativo_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: true
+            referencedRelation: "classe"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -5434,6 +5511,66 @@ export type Database = {
           topico_id?: number | null
         }
         Relationships: []
+      }
+      professor_notificacoes: {
+        Row: {
+          atualizado_em: string
+          classe_id: number | null
+          contagem: number
+          corpo: string
+          created_at: string
+          dedupe_key: string
+          destino: string | null
+          id: number
+          lida_em: string | null
+          professor_id: string
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          atualizado_em?: string
+          classe_id?: number | null
+          contagem?: number
+          corpo?: string
+          created_at?: string
+          dedupe_key: string
+          destino?: string | null
+          id?: number
+          lida_em?: string | null
+          professor_id: string
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          atualizado_em?: string
+          classe_id?: number | null
+          contagem?: number
+          corpo?: string
+          created_at?: string
+          dedupe_key?: string
+          destino?: string | null
+          id?: number
+          lida_em?: string | null
+          professor_id?: string
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professor_notificacoes_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: false
+            referencedRelation: "classe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professor_notificacoes_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professor"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       questao_aluno: {
         Row: {

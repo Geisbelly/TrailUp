@@ -19,6 +19,7 @@ from app.db.session import build_session_factory, execute_with_database_retry
 from app.services.alteracao_professor import alteracao_professor_loop
 from app.services.analise_fila import analise_fila_loop
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
+from app.services.missoes_ia import missoes_ia_loop
 from app.services.personalizacao_jobs import personalizacao_jobs_loop
 from app.services.retencao_externa import retencao_externa_loop
 from app.services.roteamento_ia import MENSAGEM_IA_INDISPONIVEL, IAIndisponivelParaMenor
@@ -100,10 +101,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if app_settings.alteracao_professor_enabled and database_url.startswith("postgres"):
             alteracao_professor_task = asyncio.create_task(alteracao_professor_loop(app))
         app.state.alteracao_professor_task = alteracao_professor_task
+        missoes_ia_task = None
+        if app_settings.missoes_ia_enabled and database_url.startswith("postgres"):
+            missoes_ia_task = asyncio.create_task(missoes_ia_loop(app))
+        app.state.missoes_ia_task = missoes_ia_task
 
         try:
             yield
         finally:
+            if missoes_ia_task is not None:
+                missoes_ia_task.cancel()
+                try:
+                    await missoes_ia_task
+                except asyncio.CancelledError:
+                    pass
             if alteracao_professor_task is not None:
                 alteracao_professor_task.cancel()
                 try:

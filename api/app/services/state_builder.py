@@ -26,6 +26,22 @@ async def _foco_de_estudo(context_repo: Any, **kwargs: Any) -> dict[str, Any] | 
         return None
 
 
+async def _arco_narrativo(context_repo: Any, *, classe_id: int | None) -> str | None:
+    """Arco da turma (#145) para os prompts de geração do grafo. Nunca derruba o ciclo.
+
+    Sem ele o material do caminho Python sai sem a história da turma, como antes. O caminho
+    principal (worker + microservice) lê o arco por conta própria, em `fetch_personalizacao_context`.
+    """
+    buscar = getattr(context_repo, "fetch_arco_narrativo", None)
+    if buscar is None:
+        return None
+    try:
+        return await buscar(classe_id=classe_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Falha ao ler o arco narrativo da turma: %s", exc)
+        return None
+
+
 async def _personalizacao_retida(context_repo: Any, *, classe_id: int | None) -> bool:
     """Turma retida pelo estudo (#13): o grafo só mede. Repositório sem o método (testes) = não retida.
 
@@ -61,6 +77,7 @@ async def build_initial_state(
         topico_id=payload.topico_id or desempenho.get("topico_recente_id"),
     )
     personalizacao_retida = await _personalizacao_retida(context_repo, classe_id=payload.classe_id)
+    arco_narrativo = await _arco_narrativo(context_repo, classe_id=payload.classe_id)
     gerar_materiais = bool(
         payload.modo == "prova"
         or float(desempenho.get("media_acertos", 100)) < 50
@@ -83,6 +100,7 @@ async def build_initial_state(
         "memoria_aluno": memoria.model_dump(mode="json"),
         "foco_estudo": foco_estudo,
         "personalizacao_retida": personalizacao_retida,
+        "arco_narrativo_turma": arco_narrativo,
         "emocao_atual": None,
         "emocao_historico": [],
         "frame_b64": payload.frame_b64,
