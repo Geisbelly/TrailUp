@@ -720,6 +720,15 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   que morre com a transação, ou a porta 5432 (modo sessão). As migrações
   declaram `SET TRANSACTION READ WRITE` (`declara_leitura_e_escrita`), mas o
   resto da API não: com o backend envenenado, toda escrita dela falha.
+
+  Pelo mesmo motivo, **nada de lock de sessão pela 6543**
+  (`pg_advisory_lock`/`pg_advisory_unlock`). Cada transação pode cair num
+  backend diferente: o `unlock` roda noutro, devolve `false` sem erro, e a trava
+  fica presa no primeiro até o pooler reciclá-lo. Foi assim que a trava das
+  migrações derrubou duas subidas da API em 02/11 (`statement timeout` em
+  `pg_advisory_lock`, das 04:38 às ~04:43, sem migração nenhuma rodando). Use
+  `pg_advisory_xact_lock` dentro da transação que precisa da trava, como faz
+  `trava_de_migracao`.
 - **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
   colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro

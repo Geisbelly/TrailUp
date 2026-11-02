@@ -15,8 +15,8 @@ O corpo é o da `20261101_03`, carregado do arquivo e trocado em dois pontos (os
 do fator). Cada troca confere que achou o trecho: se a função mudar depois, esta migration falha em
 vez de gravar o corpo antigo pela metade.
 
-Revision ID: 20261102_10
-Revises: 20261102_09
+Revision ID: 20261102_11
+Revises: 20261102_10
 Create Date: 2026-11-02
 """
 
@@ -25,8 +25,8 @@ from pathlib import Path
 
 from alembic import op
 
-revision = "20261102_10"
-down_revision = "20261102_09"
+revision = "20261102_11"
+down_revision = "20261102_10"
 branch_labels = None
 depends_on = None
 
@@ -38,7 +38,7 @@ TROCAS = (
     (
         "-- 3 dos últimos 5 com o mesmo estado negativo: a mesma regra de `memoria_aluno`.",
         "-- 3 dos últimos 5 ciclos com abandono: a mesma regra de `memoria_aluno`. `dificuldade` fica\n"
-        "    -- de fora porque `acertos_baixos` já conta o acerto baixo (20261102_10).",
+        "    -- de fora porque `acertos_baixos` já conta o acerto baixo (20261102_11).",
     ),
     (
         """                 'fator', 'estado_negativo_recorrente',

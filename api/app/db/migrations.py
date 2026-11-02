@@ -1,6 +1,4 @@
 import logging
-from collections.abc import Iterator
-from contextlib import contextmanager
 from pathlib import Path
 
 from alembic.config import Config
@@ -32,8 +30,7 @@ def normalize_database_url_for_alembic(raw_url: str) -> str:
 MIGRATION_ADVISORY_LOCK_KEY = 724_113_052_609
 
 
-@contextmanager
-def trava_de_migracao(connection) -> Iterator[bool]:
+def trava_de_migracao(connection) -> bool:
     """Serializa `upgrade head` entre processos que sobem ao mesmo tempo.
 
     `DATABASE_MIGRATIONS_ON_STARTUP` e `true` em producao, entao TODA subida da
@@ -47,45 +44,38 @@ def trava_de_migracao(connection) -> Iterator[bool]:
     Com a trava, a segunda instancia espera a primeira terminar e entao
     encontra tudo aplicado — `upgrade head` vira no-op e ela sobe normalmente.
 
-    Lock de SESSAO, nao de transacao (`pg_advisory_xact_lock`): o Alembic pode
-    rodar as migracoes em mais de uma transacao, e um lock de transacao seria
-    solto no meio do caminho. A liberacao tem duas redes: o `finally` e o
-    fechamento da conexao, que o Postgres trata soltando os locks de sessao.
+    Lock de TRANSACAO (`pg_advisory_xact_lock`), chamado DENTRO da transacao
+    das migracoes, depois de `declara_leitura_e_escrita`. Ele se solta sozinho
+    no COMMIT ou no ROLLBACK, e nao ha `unlock` para errar.
+
+    Ate 02/11 era lock de SESSAO (`pg_advisory_lock` + `pg_advisory_unlock`), e
+    isso nao funciona atras do Supavisor em modo transacao (porta 6543, a
+    `DATABASE_URL` de producao): cada transacao pode cair num backend diferente.
+    O lock ficava no backend da primeira, o `unlock` rodava em outro (e
+    devolvia false, sem erro), e a trava ficava PRESA naquele backend ate o
+    pooler recicla-lo. Medido em 02/11: a `_08` terminou as 04:24:06, e o
+    container seguinte esperou a trava das 04:38 as ~04:43 sem migracao
+    nenhuma rodando -- duas subidas mortas por `statement timeout` em
+    `pg_advisory_lock`, API em 502. Dentro de uma transacao so', o pooler
+    garante um backend so', e o lock nasce e morre nele.
+
+    Isso depende de o Alembic rodar TODAS as migracoes numa transacao so', que
+    e o padrao (`transaction_per_migration=False`) e o que o `env.py` usa. Ligar
+    `transaction_per_migration` soltaria a trava depois da primeira migracao.
 
     Fora do Postgres (SQLite nos testes) nao faz nada e devolve False, em vez
     de quebrar.
     """
     from sqlalchemy import text
 
-    aplicavel = connection.dialect.name == "postgresql"
-    if not aplicavel:
-        yield False
-        return
+    if connection.dialect.name != "postgresql":
+        return False
 
     connection.execute(
-        text("SELECT pg_advisory_lock(:chave)"), {"chave": MIGRATION_ADVISORY_LOCK_KEY}
+        text("SELECT pg_advisory_xact_lock(:chave)"), {"chave": MIGRATION_ADVISORY_LOCK_KEY}
     )
-    # O `execute` acima abre a transacao da conexao (autobegin do SQLAlchemy 2).
-    # Deixada aberta, o Alembic ve `in_transaction()` e NAO abre a dele -- entao
-    # ninguem da COMMIT e o fechamento da conexao desfaz todas as migracoes. O
-    # log dizia "Running upgrade ..." e o `alembic_version` nao mudava, tanto no
-    # `alembic upgrade` manual quanto na subida da API. O lock e de SESSAO:
-    # sobrevive ao COMMIT, que so encerra a transacao do SELECT.
-    _encerra_transacao_da_trava(connection)
     logger.info("Migracoes: advisory lock %s adquirido.", MIGRATION_ADVISORY_LOCK_KEY)
-    try:
-        yield True
-    finally:
-        try:
-            connection.execute(
-                text("SELECT pg_advisory_unlock(:chave)"),
-                {"chave": MIGRATION_ADVISORY_LOCK_KEY},
-            )
-            _encerra_transacao_da_trava(connection)
-        except Exception:  # pragma: no cover - conexao ja morta solta o lock sozinha
-            logger.warning(
-                "Migracoes: falha ao soltar o advisory lock; o fim da sessao o solta."
-            )
+    return True
 
 
 def declara_leitura_e_escrita(connection) -> None:
@@ -107,12 +97,6 @@ def declara_leitura_e_escrita(connection) -> None:
 
     if connection.dialect.name == "postgresql":
         connection.execute(text("SET TRANSACTION READ WRITE"))
-
-
-def _encerra_transacao_da_trava(connection) -> None:
-    """COMMIT da transacao que o SELECT da trava abriu, se houver uma."""
-    if connection.in_transaction():
-        connection.commit()
 
 
 def upgrade_database_to_head(database_url: str | None = None) -> None:

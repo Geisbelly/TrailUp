@@ -104,7 +104,7 @@ async def test_ciclo_grava_o_estado_de_estudo_e_ignora_a_emocao_do_ai_patch(monk
 
 
 def test_migration_do_risco_troca_o_fator_e_deixa_dificuldade_de_fora() -> None:
-    m = f5.modulo("20261102_10_risco_le_estado_de_estudo.py")
+    m = f5.modulo("20261102_11_risco_le_estado_de_estudo.py")
     corpo = m.funcao_nova()
     assert "e.kind = 'abandono'" in corpo
     assert "'fator', 'abandono_recorrente'" in corpo

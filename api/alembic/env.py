@@ -50,18 +50,20 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        # A trava fica AQUI, e nao em `upgrade_database_to_head`, para valer
-        # tambem para quem roda `alembic upgrade` na mao — nao so' para a subida
-        # da API. Modo offline (`sql=True`) nao passa por aqui: ele so' imprime
-        # SQL, nao disputa banco com ninguem.
-        with trava_de_migracao(connection):
-            context.configure(
-                connection=connection, target_metadata=target_metadata, compare_type=True
-            )
+        context.configure(
+            connection=connection, target_metadata=target_metadata, compare_type=True
+        )
 
-            with context.begin_transaction():
-                declara_leitura_e_escrita(connection)
-                context.run_migrations()
+        with context.begin_transaction():
+            # Primeiro o modo (`SET TRANSACTION` tem de ser o primeiro comando),
+            # depois a trava, que e de TRANSACAO: o Alembic so le a versao atual
+            # dentro de `run_migrations`, ja com a trava na mao. Fica AQUI, e nao
+            # em `upgrade_database_to_head`, para valer tambem para quem roda
+            # `alembic upgrade` na mao. Modo offline nao passa por aqui: ele so'
+            # imprime SQL, nao disputa banco com ninguem.
+            declara_leitura_e_escrita(connection)
+            trava_de_migracao(connection)
+            context.run_migrations()
 
 
 if context.is_offline_mode():

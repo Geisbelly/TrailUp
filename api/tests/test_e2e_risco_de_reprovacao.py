@@ -1,6 +1,6 @@
 """`20261101_03`: sinal de risco de reprovação por aluno, só para o professor da turma (#135).
 
-A `20261102_10` troca o fator de estado mental por `abandono_recorrente` (DAT-45); os testes
+A `20261102_11` troca o fator de estado mental por `abandono_recorrente` (DAT-45); os testes
 rodam com as duas aplicadas, como em produção."""
 
 from __future__ import annotations
@@ -15,13 +15,13 @@ from tests.test_e2e_abandono_pelo_modelo_do_core import _prazo
 from tests.test_e2e_kpis_por_topico import POSSE, _trecho
 
 M = f5.modulo("20261101_03_risco_de_reprovacao.py")
-M10 = f5.modulo("20261102_10_risco_le_estado_de_estudo.py")
+M11 = f5.modulo("20261102_11_risco_le_estado_de_estudo.py")
 CREDITADO = _trecho("20261025_01_pontos_do_evento_no_rank.py", "CREATE OR REPLACE FUNCTION public.fn_evento_creditado", "$fn$;")
 OUTRO_PROF = uuid.UUID(int=12)
 
 
 def _banco():
-    return f5.banco(POSSE, CREDITADO, _prazo(), *f5.sql_de(M), *f5.sql_de(M10))
+    return f5.banco(POSSE, CREDITADO, _prazo(), *f5.sql_de(M), *f5.sql_de(M11))
 
 
 def _semear(c) -> None:
