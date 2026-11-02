@@ -11,6 +11,7 @@ import {
   resolveContentBlockConcurrency,
   resolveContentGenerationMaxOutputTokens,
   splitProcessedContentIntoParts,
+  snapCutToBoundary,
   validateBlockBatchGeneration,
 } from "./geminiService";
 import type { SlideContent } from "../types";
@@ -692,4 +693,29 @@ test("splitProcessedContentIntoParts nao muda markdown/audioScript retornados (s
 test("sem headings de nivel 2: sectionBoundaries fica vazio", () => {
   const parts = splitProcessedContentIntoParts({ markdown: "Texto solto.", audioScript: "Texto solto.", slides: [] });
   assert.deepEqual(parts[0].sectionBoundaries, []);
+});
+
+test("splitProcessedContentIntoParts mantém a abertura que vem antes do primeiro marcador (Socializer, turma 66)", () => {
+  const markdown = "## Um\n\nConteúdo um.\n\n## Dois\n\nConteúdo dois.";
+  const audioScript = "Mateo: Saudações, viajante!\n## Um\nZuri: Parte um.\n## Dois\nMateo: Parte dois.";
+  const parts = splitProcessedContentIntoParts({ markdown, audioScript, slides: [] }, { targetPartChars: 1 });
+  assert.match(parts[0].audioScript, /^Mateo: Saudações, viajante!/);
+  assert.match(parts[0].audioScript, /Zuri: Parte um\.$/);
+});
+
+test("corte proporcional não parte palavra nem tag (turma 68: '…[Tom' | ': Alerta]')", () => {
+  const markdown = "## Um\n\n" + "a".repeat(500) + "\n\n## Dois\n\n" + "b".repeat(500);
+  const frases = Array.from({ length: 30 }, (_, i) => `[Tom: Alerta] Frase ${i} sobre o denominador da fração.`).join(" ");
+  const parts = splitProcessedContentIntoParts({ markdown, audioScript: frases, slides: [] }, { targetPartChars: 1 });
+  assert.equal(parts.length, 2);
+  assert.match(parts[0].audioScript, /fração\.$/);
+  assert.match(parts[1].audioScript, /^\[Tom: Alerta\] Frase \d+/);
+  assert.equal(parts.map((p) => p.audioScript).join(" "), frases);
+});
+
+test("snapCutToBoundary prefere parágrafo, depois frase, depois espaço", () => {
+  const texto = "Primeira frase. Segunda frase\n\nTerceiro parágrafo aqui";
+  assert.equal(snapCutToBoundary(texto, 20, 50), texto.indexOf("Terceiro"));
+  assert.equal(snapCutToBoundary("Uma frase. Outra frase longa", 14, 20), "Uma frase. ".length);
+  assert.equal(snapCutToBoundary("palavragrande outra", 5, 20), "palavragrande ".length);
 });

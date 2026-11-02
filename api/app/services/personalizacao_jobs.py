@@ -214,6 +214,26 @@ def _microservico_falha_message(error_sink: list[str]) -> str:
     return base
 
 
+# Marcador que o microservice poe no erro quando o audio falhou SO por cota do
+# dia ou credito (402) do TTS (microservice/src/services/mediaResume.ts,
+# SEM_COTA_TTS_MARKER). Repetir o alvo 15 s depois so gastaria a cota dos
+# outros perfis e terminaria igual: a cota do dia volta a meia-noite do
+# Pacifico, e o 402 so quando alguem resolve a chave.
+_SEM_COTA_TTS_MARKER = "[sem_cota_tts]"
+
+
+def _status_do_target_apos_falha(exc: BaseException, *, attempts: int, max_retries: int) -> str:
+    """``pending`` (nova tentativa) ou ``failed`` para um alvo que levantou.
+
+    Sem cota de TTS o alvo vai direto para ``failed``. "Reprocessar falhas" no
+    console continua valendo e, desde a #652, a nova tentativa retoma so as
+    partes de audio que faltam: texto, roteiro e deck ja prontos ficam.
+    """
+    if _SEM_COTA_TTS_MARKER in str(exc):
+        return "failed"
+    return "pending" if attempts < max_retries else "failed"
+
+
 def _effective_stale_processing_min(settings: Any) -> int:
     configured = max(
         1,
@@ -1246,6 +1266,20 @@ async def _process_media_render_target_na_rota_de_ia(
         return await _process_media_render_target(app=app, session=session, job=job, target=target)
 
 
+def _content_enrichment_gravado(record: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Enriquecimento salvo em ``plano.content_enrichment``, se tiver blocos."""
+    plano = (record or {}).get("plano")
+    if not isinstance(plano, dict):
+        return None
+    enrichment = plano.get("content_enrichment")
+    if not isinstance(enrichment, dict):
+        return None
+    blocos = enrichment.get("blocos")
+    if not isinstance(blocos, list) or not blocos:
+        return None
+    return enrichment
+
+
 async def _process_media_render_target(
     *,
     app: FastAPI,
@@ -1580,12 +1614,16 @@ async def _process_media_render_target(
     ctx["perfil_brainhex"] = [{"perfil": target_profile_label, "afinidade": 1.0}]
 
     repo = ConteudoPersonalizadoRepository(session)
+    # A linha certa e' a do DONO do alvo: a base (sem aluno) ou a do aluno.
+    # Sem isto, o alvo da base reaproveitava a linha de um aluno e gravava a
+    # base nela (#652, turma 68).
     existing = await repo.buscar_mais_recente_por_perfil(
         classe_id=classe_id,
         topico_id=topico_id,
         conteudo_id=conteudo_id,
         brainhex_profile_key=target_profile_key,
         source_hash=str(ctx["source_hash"] or ""),
+        dono=aluno_id,
     )
     if existing:
         existing_status = str(existing.get("status") or "").strip().lower()
@@ -1705,7 +1743,15 @@ async def _process_media_render_target(
             source_hash=ctx.get("source_hash"),
         )
 
+        enriquecimento_gravado = _content_enrichment_gravado(existing)
+
         async def _enrich_existing() -> dict[str, Any]:
+            # A nova tentativa e' da MESMA geracao (mesmo source_hash): o
+            # enriquecimento ja gravado no plano vale. Refaze-lo gastava uma
+            # chamada ao modelo por alvo e mudava os blocos entre tentativas
+            # (#652).
+            if enriquecimento_gravado is not None:
+                return enriquecimento_gravado
             return await enrich_content_blocks(
                 context=ctx,
                 settings=app.state.settings,
@@ -2665,7 +2711,9 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                 return 1 if is_error else 0
             except Exception as exc:
                 await target_session.rollback()
-                failed_status = "pending" if attempts < max_retries else "failed"
+                failed_status = _status_do_target_apos_falha(
+                    exc, attempts=attempts, max_retries=max_retries
+                )
                 try:
                     await target_repo.update_target_status(
                         target_id=int(target["id"]),

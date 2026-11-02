@@ -25,18 +25,27 @@ test("a regra diz o que escrever no lugar e preserva o cifrão de reais", () => 
 
 test("a geração e as três regenerações usam a regra", () => {
   // A regra só vale se estiver no prompt de cada chamada que escreve material:
-  // processMediaWithGemini, regenerateChapterContent, regenerateSlideContent e
-  // regenerateDocumentMarkdown.
+  // a instrução da geração (buildContentGenerationInstruction, usada por
+  // processMediaWithGemini e pelo roteiro da retomada, #652),
+  // regenerateChapterContent, regenerateSlideContent e regenerateDocumentMarkdown.
   const source = readFileSync(new URL("./geminiService.ts", import.meta.url), "utf-8");
   const usos = source.split("${FORMULA_AS_PLAIN_TEXT_RULE}").length - 1;
   assert.equal(usos, 4);
+  for (const fn of ["processMediaWithGemini", "generateAudioScriptsWithGemini"]) {
+    const inicio = source.indexOf(`export async function ${fn}(`);
+    const proxima = source.indexOf("\nexport ", inicio + 1);
+    assert.ok(source.slice(inicio, proxima).includes("buildContentGenerationInstruction("), `${fn} sem a instrução`);
+  }
   for (const fn of [
-    "processMediaWithGemini",
+    "buildContentGenerationInstruction",
     "regenerateChapterContent",
     "regenerateSlideContent",
     "regenerateDocumentMarkdown",
   ]) {
-    const inicio = source.indexOf(`export async function ${fn}(`);
+    const inicio = Math.max(
+      source.indexOf(`export async function ${fn}(`),
+      source.indexOf(`export function ${fn}(`),
+    );
     assert.ok(inicio >= 0, fn);
     const proxima = source.indexOf("\nexport ", inicio + 1);
     const corpo = source.slice(inicio, proxima === -1 ? undefined : proxima);

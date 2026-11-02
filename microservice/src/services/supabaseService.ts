@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { lerConfigR2, uploadParaR2, urlDoGateway } from "./r2Storage";
+import { baixarTextoDoR2, lerConfigR2, uploadParaR2, urlDoGateway } from "./r2Storage";
 import { createKeyedQueue } from "../lib/serialQueue";
 import { createLogger } from "../lib/logger";
 import type { MaterialEntryLike } from "../lib/materialsMerge";
@@ -58,14 +58,28 @@ export async function fetchPersonalizacaoMateriais(
 }
 
 /**
- * Baixa um arquivo de texto do Storage (ex.: markdown de uma parte ja
- * persistida) - usado pra reaproveitar conteudo ja gerado sem chamar o
- * Gemini de novo (ver retryApresentacaoOnly).
+ * Baixa um arquivo de texto ja persistido (ex.: markdown de uma parte) - usado
+ * pra reaproveitar conteudo ja gerado sem chamar o Gemini de novo (ver
+ * mediaResume.ts).
+ *
+ * Le do R2 primeiro: depois da migracao, escrita nova vai SO para la, e o
+ * Storage do Supabase guarda apenas o que ja existia. Ler so do Supabase (como
+ * era) devolvia null para todo material novo com mais de uma parte, e a
+ * retomada caia sempre na regeracao completa (#652).
  */
 export async function downloadStorageText(
   bucket: string,
   storagePath: string,
 ): Promise<string | null> {
+  const configR2 = lerConfigR2();
+  if (configR2) {
+    try {
+      const texto = await baixarTextoDoR2(configR2, storagePath);
+      if (texto !== null) return texto;
+    } catch (err) {
+      log.warn("download do R2 falhou; tentando o Storage do Supabase", { storagePath, err });
+    }
+  }
   const client = getClient();
   const { data, error } = await client.storage.from(bucket).download(storagePath);
   if (error || !data) return null;

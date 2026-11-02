@@ -3470,3 +3470,93 @@ async def test_loop_registra_o_traceback_da_excecao_real(monkeypatch, caplog) ->
     assert falhas[0].exc_info is not None
     assert isinstance(falhas[0].exc_info[1], ValueError)
     assert "erro real do worker" in caplog.text
+
+
+async def _rodar_retry_da_base(monkeypatch, *, plano: dict | None) -> tuple[AsyncMock, AsyncMock, AsyncMock]:
+    """Nova tentativa de um alvo da BASE (sem dono), com o microservice ok."""
+    existing = {**_existing_record(status="failed"), "aluno_id": None, "plano": plano}
+    lookup = AsyncMock(return_value=existing)
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_mais_recente_por_perfil",
+        lookup,
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.claim_retry_incomplete_generation",
+        AsyncMock(return_value=existing),
+    )
+    monkeypatch.setattr(
+        "app.repositories.conteudo_personalizado.ConteudoPersonalizadoRepository.buscar_por_id",
+        AsyncMock(return_value=_completed_record(existing)),
+    )
+    monkeypatch.setattr(
+        jobs_module,
+        "fetch_personalizacao_context",
+        AsyncMock(return_value={"source_hash": "hash-249", "fontes": []}),
+    )
+    dispatch = AsyncMock(return_value=True)
+    monkeypatch.setattr(jobs_module, "disparar_brainhex_async", dispatch)
+    enrich = AsyncMock(return_value={"blocos": [{"id": "bloco-novo"}]})
+    monkeypatch.setattr(jobs_module, "enrich_content_blocks", enrich)
+
+    app = SimpleNamespace(
+        state=SimpleNamespace(settings=SimpleNamespace(personalizacao_job_stale_processing_min=15))
+    )
+    job = {"id": "job-652", "classe_id": 32, "kind": "manual_retry", "payload": {}, "media_snapshot": {}}
+    target = {
+        "id": 652,
+        "aluno_id": None,
+        "topico_id": 117,
+        "conteudo_id": None,
+        "brainhex_profile_key": "achiever",
+        "personalizacao_id": existing["id"],
+    }
+    await _process_media_render_target(
+        app=app, session=_FakeSession(is_stuck=False), job=job, target=target
+    )
+    return lookup, enrich, dispatch
+
+
+@pytest.mark.asyncio
+async def test_alvo_da_base_so_procura_a_linha_da_base(monkeypatch) -> None:
+    """#652, turma 68: sem filtro de dono, o alvo da base pegava a linha mais
+    recente do perfil -- a de um aluno -- e gravava a base nela."""
+    lookup, _, _ = await _rodar_retry_da_base(monkeypatch, plano=None)
+
+    assert lookup.await_args.kwargs["dono"] is None
+
+
+@pytest.mark.asyncio
+async def test_nova_tentativa_reaproveita_o_enriquecimento_gravado(monkeypatch) -> None:
+    """A nova tentativa e' da mesma geracao: o enriquecimento do plano vale, e
+    refaze-lo gastava uma chamada ao modelo e trocava os blocos (#652)."""
+    gravado = {"blocos": [{"id": "bloco-gravado"}], "provider": "openai"}
+    _, enrich, dispatch = await _rodar_retry_da_base(
+        monkeypatch, plano={"content_enrichment": gravado}
+    )
+
+    enrich.assert_not_awaited()
+    assert dispatch.await_args.kwargs["content_blocks"] == [{"id": "bloco-gravado"}]
+
+
+@pytest.mark.asyncio
+async def test_sem_enriquecimento_gravado_a_nova_tentativa_enriquece(monkeypatch) -> None:
+    _, enrich, dispatch = await _rodar_retry_da_base(
+        monkeypatch, plano={"content_enrichment": {"blocos": []}}
+    )
+
+    enrich.assert_awaited_once()
+    assert dispatch.await_args.kwargs["content_blocks"] == [{"id": "bloco-novo"}]
+
+
+def test_sem_cota_de_tts_o_alvo_falha_sem_repetir_na_hora() -> None:
+    """Cota do dia / 402 no TTS: repetir 15 s depois so gasta a cota dos outros
+    perfis. O marcador vem do microservice (mediaResume.ts)."""
+    sem_cota = RuntimeError(
+        "Microservico BrainHex nao concluiu a geracao. Motivo: midias obrigatorias "
+        "nao geradas: audio [sem_cota_tts] cota do dia ou crédito do TTS esgotado"
+    )
+    outra = RuntimeError("Microservico BrainHex nao concluiu a geracao. Motivo: timeout")
+
+    assert jobs_module._status_do_target_apos_falha(sem_cota, attempts=1, max_retries=3) == "failed"
+    assert jobs_module._status_do_target_apos_falha(outra, attempts=1, max_retries=3) == "pending"
+    assert jobs_module._status_do_target_apos_falha(outra, attempts=3, max_retries=3) == "failed"

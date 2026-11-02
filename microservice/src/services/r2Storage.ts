@@ -163,3 +163,22 @@ export async function uploadParaR2(
     throw new Error(`[r2] upload falhou (${storagePath}): ${resposta.status} ${detalhe}`);
   }
 }
+
+/**
+ * Baixa um objeto de texto do R2. 404 devolve `null` (o objeto pode ser
+ * anterior a migracao e estar so no Storage do Supabase); outra falha lanca.
+ */
+export async function baixarTextoDoR2(
+  cfg: ConfigR2,
+  storagePath: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string | null> {
+  const url = presignR2({ ...cfg, key: storagePath, metodo: "GET" });
+  const resposta = await fetchImpl(url, { method: "GET" });
+  if (resposta.status === 404) return null;
+  if (!resposta.ok) {
+    const detalhe = (await resposta.text().catch(() => "")).slice(0, 200);
+    throw new Error(`[r2] download falhou (${storagePath}): ${resposta.status} ${detalhe}`);
+  }
+  return await resposta.text();
+}
