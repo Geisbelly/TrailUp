@@ -1275,6 +1275,49 @@ async def derivar_personalizacao_do_base(
     return result.scalar()
 
 
+_MOTIVO_ESPERA_BASE_DO_PERFIL = "aguardando a base do perfil, ja enfileirada"
+
+
+async def _base_do_perfil_na_fila(
+    *,
+    session: AsyncSession,
+    classe_id: int,
+    topico_id: int,
+    conteudo_id: int | None,
+    brainhex_profile_key: str,
+) -> bool:
+    """Ha target de base (sem dono) deste perfil por fazer num job aberto?
+
+    Mesmo criterio de "base enfileirada" de
+    `ConteudoClasseRepository.mapear_topicos_sem_base_por_perfil`.
+    """
+    result = await session.execute(
+        text(
+            """
+            SELECT EXISTS (
+              SELECT 1
+              FROM personalizacao_job_targets tg
+              JOIN personalizacao_jobs j ON j.id = tg.job_id
+              WHERE j.classe_id = :classe_id
+                AND j.status IN ('pending', 'processing', 'partial')
+                AND tg.aluno_id IS NULL
+                AND tg.media_kind IS NULL
+                AND tg.status IN ('pending', 'processing')
+                AND tg.topico_id = :topico_id
+                AND tg.conteudo_id IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)
+                AND tg.brainhex_profile_key = :brainhex_profile_key
+            )
+            """
+        ),
+        {
+            "classe_id": classe_id,
+            "topico_id": topico_id,
+            "conteudo_id": conteudo_id,
+            "brainhex_profile_key": brainhex_profile_key,
+        },
+    )
+    return bool(result.scalar())
+
 
 async def _cleanup_target(
     *,
@@ -1399,6 +1442,20 @@ async def _process_media_render_target(
                 await _seed_progress(session=session, record=record)
                 await session.commit()
                 return {"record": record}
+        # Sem base, mas com a base do perfil ja na fila (o caso do primeiro
+        # aluno de um perfil que a turma nao tinha: `_garantir_base_dos_perfis_do_aluno`
+        # acabou de enfileira-la). Gerar a linha do aluno agora seria gerar o
+        # mesmo material duas vezes. Espera a base e copia. A espera tem fim:
+        # dura enquanto houver target de base aberto; se ele falhar, o
+        # proximo poll nao acha fila e cai na geracao normal abaixo.
+        if await _base_do_perfil_na_fila(
+            session=session,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            brainhex_profile_key=target_profile_key,
+        ):
+            return {"deferred": True, "reason": _MOTIVO_ESPERA_BASE_DO_PERFIL}
 
     # Jobs media_render são legados — BrainHex é responsável por gerar as mídias.
     # Redireciona disparando BrainHex para o personalizacao_id já existente.
@@ -2479,9 +2536,10 @@ async def _garantir_base_dos_perfis_do_aluno(*, app: FastAPI, job: dict[str, Any
     poll do job de matricula custa uma leitura, e duas matriculas seguidas do
     mesmo perfil novo nao viram duas geracoes.
 
-    O alvo do PROPRIO aluno nao espera essa base: segue o caminho de sempre
-    (`derivar_personalizacao_do_base` e, sem base, a geracao normal). Falha
-    aqui so vira log -- nunca derruba a matricula.
+    O alvo do PROPRIO aluno espera essa base e copia dela, em vez de gerar uma
+    linha so dele em paralelo (`_base_do_perfil_na_fila`). Falha aqui so vira
+    log -- nunca derruba a matricula; sem base na fila, o alvo do aluno cai na
+    geracao normal.
     """
     if job.get("kind") != JOB_KIND_ENROLLMENT or job.get("aluno_id") is None:
         return

@@ -153,7 +153,9 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    7 targets; o worker pula (`skipped`, `perfil_sem_aluno_na_turma`) os que
    ninguém tem (`_pular_base_de_perfil_ausente`). Matrícula com perfil novo
    enfileira a base dele (`_garantir_base_dos_perfis_do_aluno`) — a geração
-   continua antecipada, **não** é sob demanda.
+   continua antecipada, **não** é sob demanda — e o alvo desse aluno espera a
+   base e copia dela (`_base_do_perfil_na_fila`) em vez de gerar uma linha só
+   dele: sem isso o primeiro aluno de um perfil novo custava duas gerações.
 
 4. **Contraste WCAG AAA por ajuste cirúrgico.** Mantém a cor-assinatura de cada
    perfil, mas garante AAA: eleva o accent quando muito escuro, alpha mínimo em

@@ -16,11 +16,11 @@ from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.services import boss_falas
 from app.services import personalizacao_jobs as jobs_module
 from app.services.personalizacao_jobs import (
+    _MOTIVO_PERFIL_SEM_ALUNO,
+    _MOTIVO_TURMA_SEM_ALUNO,
     JOB_KIND_CLASS_DELTA,
     JOB_KIND_ENROLLMENT,
     JOB_KIND_FULL_SYNC,
-    _MOTIVO_PERFIL_SEM_ALUNO,
-    _MOTIVO_TURMA_SEM_ALUNO,
     _build_targets,
     _garantir_base_dos_perfis_do_aluno,
     _perfis_presentes_na_turma,
@@ -462,3 +462,79 @@ async def test_falas_do_boss_nao_saem_para_perfil_sem_aluno(monkeypatch) -> None
     )
 
     assert sorted(chamadas) == [(1, "conqueror"), (1, "daredevil")]
+
+
+def _alvo_de_matricula() -> tuple[dict, dict]:
+    aluno = "11111111-1111-1111-1111-111111111111"
+    job = {
+        "id": "job-matricula",
+        "kind": JOB_KIND_ENROLLMENT,
+        "classe_id": 54,
+        "aluno_id": aluno,
+        "payload": {},
+        "media_snapshot": {},
+    }
+    target = {
+        "id": 1,
+        "aluno_id": aluno,
+        "topico_id": 131,
+        "conteudo_id": 192,
+        "brainhex_profile_key": "achiever",
+        "is_profile_template": False,
+        "status": "pending",
+        "attempts": 0,
+        "personalizacao_id": None,
+    }
+    return job, target
+
+
+@pytest.mark.asyncio
+async def test_primeiro_aluno_de_perfil_novo_espera_a_base_enfileirada_em_vez_de_gerar_a_sua(monkeypatch) -> None:
+    """Sem isto o primeiro aluno de um perfil novo custava DUAS geracoes: a
+    linha so dele e a base que a matricula enfileirou em paralelo."""
+    jobs = jobs_module
+
+    job, target = _alvo_de_matricula()
+    monkeypatch.setattr(jobs, "derivar_personalizacao_do_base", AsyncMock(return_value=None))
+    na_fila = AsyncMock(return_value=True)
+    monkeypatch.setattr(jobs, "_base_do_perfil_na_fila", na_fila)
+    contrato = AsyncMock(return_value=True)
+    monkeypatch.setattr(jobs, "brainhex_contract_ready", contrato)
+
+    resultado = await jobs._process_media_render_target(app=object(), session=object(), job=job, target=target)
+
+    assert resultado == {"deferred": True, "reason": jobs._MOTIVO_ESPERA_BASE_DO_PERFIL}
+    assert na_fila.await_args.kwargs["brainhex_profile_key"] == "achiever"
+    assert na_fila.await_args.kwargs["conteudo_id"] == 192
+    contrato.assert_not_awaited()  # nao chegou perto da geracao
+
+
+@pytest.mark.asyncio
+async def test_sem_base_e_sem_fila_a_matricula_segue_para_a_geracao_normal(monkeypatch) -> None:
+    """A espera tem fim: base que falhou nao deixa target aberto, e o aluno nao
+    fica preso -- cai na geracao normal."""
+    jobs = jobs_module
+
+    job, target = _alvo_de_matricula()
+    monkeypatch.setattr(jobs, "derivar_personalizacao_do_base", AsyncMock(return_value=None))
+    monkeypatch.setattr(jobs, "_base_do_perfil_na_fila", AsyncMock(return_value=False))
+    monkeypatch.setattr(jobs, "brainhex_contract_ready", AsyncMock(return_value=False))
+
+    app = SimpleNamespace(state=SimpleNamespace(settings=object()))
+    resultado = await jobs._process_media_render_target(app=app, session=object(), job=job, target=target)
+
+    assert resultado == {"deferred": True, "reason": jobs._MICROSERVICE_CONTRACT_DEFERRED_REASON}
+
+
+def test_base_na_fila_usa_o_mesmo_criterio_da_matricula() -> None:
+    jobs = jobs_module
+
+    fonte = inspect.getsource(jobs._base_do_perfil_na_fila)
+    for trecho in (
+        "j.status IN ('pending', 'processing', 'partial')",
+        "tg.aluno_id IS NULL",
+        "tg.media_kind IS NULL",
+        "tg.status IN ('pending', 'processing')",
+        "CAST(:conteudo_id AS BIGINT)",
+    ):
+        assert trecho in fonte
