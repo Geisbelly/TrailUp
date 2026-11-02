@@ -57,7 +57,13 @@ async def test_com_rag_usa_a_evidencia_e_o_perfil_sem_dado_pessoal(monkeypatch) 
     assert kwargs["payload"]["motivo"] == "emocao_negativa"
     assert "Fulana" not in str(kwargs["payload"]) and "f@x" not in str(kwargs["payload"])
     contexto = r["notificacao_payload"]["contexto"]
-    assert contexto == {"motivo": "emocao_negativa", "perfil": "Survivor", "origem": "rag", "evidencia": _gerada().evidencia}
+    assert contexto == {
+        "motivo": "emocao_negativa",
+        "perfil": "Survivor",
+        "origem": "rag",
+        "evidencia": _gerada().evidencia,
+        "texto_guarda": modulo.TEXTO_GUARDA_VERSAO,
+    }
 
 
 @pytest.mark.asyncio
@@ -302,3 +308,19 @@ async def test_revisao_ainda_errada_vira_o_texto_pronto_do_perfil(monkeypatch) -
     assert n["contexto"]["origem"] == "regra"
     assert n["contexto"]["texto_do_modelo_recusado"]
     assert modulo.problemas_do_texto(n["titulo"], n["corpo"], {"topico": "Frações"}) == []
+
+
+# --- a marca da guarda vai junto (20261102_24) ----------------------------------
+
+
+@pytest.mark.asyncio
+async def test_todo_texto_sai_com_a_versao_da_guarda(monkeypatch) -> None:
+    _rag(monkeypatch, False)
+    monkeypatch.setattr(modulo.JsonLLMService, "ainvoke_structured", AsyncMock(return_value=_gerada(evidencia=None)))
+    do_modelo = (await modulo.agente_notificacao(ESTADO, Settings(openai_api_key=None), agora=AGORA))["notificacao_payload"]
+    monkeypatch.setattr(modulo.JsonLLMService, "ainvoke_structured", AsyncMock(side_effect=StructuredOutputError("x")))
+    da_regra = (await modulo.agente_notificacao(ESTADO, Settings(openai_api_key=None), agora=AGORA))["notificacao_payload"]
+
+    assert do_modelo["contexto"]["origem"] == "modelo" and da_regra["contexto"]["origem"] == "regra"
+    for n in (do_modelo, da_regra):
+        assert n["contexto"]["texto_guarda"] == modulo.TEXTO_GUARDA_VERSAO

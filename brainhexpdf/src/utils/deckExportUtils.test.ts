@@ -88,7 +88,7 @@ test('HTML exportado não renderiza mais o badge "💡 Analogia" (so mostrava a 
   assert.match(html, /Fala do mentor\./);
 });
 
-test('badge "OBJ:" trunca com reticências em vez de cortar a palavra crua', () => {
+test('objetivo pedagogico aparece inteiro, quebrando linha, em vez de truncado num badge', () => {
   const objetivoLongo = 'Compreender o fluxo completo de resolução recursiva de um nome de domínio, do resolvedor local até o servidor autoritativo final';
   const html = generateInteractiveHtml({
     ...minimalDeck,
@@ -101,9 +101,9 @@ test('badge "OBJ:" trunca com reticências em vez de cortar a palavra crua', () 
     ],
   });
 
-  assert.match(html, /class=\\"truncate min-w-0\\"/);
-  assert.match(html, /class=\\"inline-flex items-center gap-1[^"]*min-w-0\\"/);
-  assert.doesNotMatch(html, /class=\\"inline-flex items-center gap-1[^"]*truncate max-w-\[280px\]\\"/);
+  // Texto cortado com reticencias escondia justamente o objetivo do slide.
+  assert.match(html, /class=\\"slide-objective\\"><strong>Objetivo:<\\\/strong> Compreender o fluxo completo de resolução recursiva de um nome de domínio, do resolvedor local até o servidor autoritativo final/);
+  assert.doesNotMatch(html, /class=\\"truncate/);
 });
 
 test('deck-container usa altura FIXA por modo/breakpoint, nao piso+teto guiado por conteudo (evita esticar/encolher entre slides)', () => {
@@ -111,12 +111,11 @@ test('deck-container usa altura FIXA por modo/breakpoint, nao piso+teto guiado p
 
   assert.doesNotMatch(html, /\.deck-container \{[^}]*aspect-ratio/);
   assert.doesNotMatch(html, /\.deck-container \{[^}]*min-height/);
-  assert.match(html, /\.deck-container \{[^}]*height: 94vh;/);
-  assert.doesNotMatch(html, /\.deck-container\.mode-portrait \{[^}]*aspect-ratio/);
-  assert.doesNotMatch(html, /\.deck-container\.mode-portrait \{[^}]*min-height/);
-  assert.match(html, /\.deck-container\.mode-portrait \{[^}]*height: 94vh;/);
-  assert.match(html, /@media \(max-width: 768px\)[\s\S]*?\.deck-container \{[^}]*\n\s*height: calc/);
-  assert.doesNotMatch(html, /@media \(max-width: 768px\)[\s\S]*?\.deck-container \{[^}]*min-height/);
+  // Ocupa a tela do WebView inteira (o app ja tem o proprio cabecalho)...
+  assert.match(html, /\.deck-container \{[^}]*height: 100dvh;/);
+  // ...e, so em tela larga e alta, vira um cartao com respiro.
+  assert.match(html, /@media \(min-width: 900px\) and \(min-height: 560px\)[\s\S]*?\.deck-container \{[^}]*height: calc\(100dvh - 32px\)/);
+  assert.doesNotMatch(html, /mode-portrait/);
 });
 
 test('divisor SVG isola o ornamento num SVG proprio (w-auto), so as linhas esticam (none)', () => {
@@ -126,18 +125,26 @@ test('divisor SVG isola o ornamento num SVG proprio (w-auto), so as linhas estic
   assert.match(html, /class=\\"h-full w-auto shrink-0\\"/);
   // linhas dos lados podem esticar livre - nao tem forma pra distorcer
   assert.match(html, /preserveAspectRatio=\\"none\\"/);
-  // wrapper do divisor no header do slide de capa (deckExportUtils.ts:619)
-  assert.match(html, /class=\\"w-full h-3 sm:h-4 my-1 flex items-center justify-center overflow-hidden opacity-85\\"/);
+  // wrapper do divisor no cabecalho da capa (decorativo, fora do leitor de tela)
+  assert.match(html, /class=\\"slide-divider\\" aria-hidden=\\"true\\"/);
+  // as classes utilitarias do divisor ganham CSS proprio (sem Tailwind no deck)
+  assert.match(html, /\.tu-deck \.slide-divider \.w-auto \{/);
 });
 
 test('mantém controles e navegação utilizáveis em telas móveis', () => {
   const html = generateInteractiveHtml(minimalDeck);
 
   assert.match(html, /height: 100dvh;/);
-  assert.match(html, /\.deck-controls \.deck-viewport-toggle \{\s*display: none !important;/);
-  assert.match(html, /class="slide-dot-hit w-7 h-7/);
+  // Alvos de toque de 44px (WCAG 2.5.5 AAA) nos botoes de icone.
+  assert.match(html, /\.tu-deck \.icon-btn \{[^}]*min-width: 44px; height: 44px;/);
+  // Anterior/Proximo sao botoes de verdade e o contador nao some no celular.
+  assert.match(html, /<button type="button" class="btn btn-secondary" onclick="prevSlide\(\)" id="btn-prev">/);
+  assert.match(html, /<button type="button" class="btn btn-primary" onclick="nextSlide\(\)" id="btn-next">/);
+  assert.match(html, /<p class="slide-count" id="slide-indicator">Slide 1 de 1<\/p>/);
+  // Sem alternador 16:9/9:16: o deck segue a tela que tem.
+  assert.doesNotMatch(html, /deck-viewport-toggle/);
   assert.match(html, /touchSwipeBlocked/);
-  assert.match(html, /target\?\.closest\('#slide-dots, \.overflow-x-auto/);
+  assert.match(html, /target\?\.closest\('\.code-block, pre, code, button, input, textarea/);
 });
 
 test('adapta quizOptions do interactiveElement quando o quiz legado não possui alternativas', () => {
@@ -182,7 +189,8 @@ test('renderiza a imagem de referencia real e forca layout de 2 colunas mesmo se
   });
 
   assert.match(html, /<img src=\\"data:image\/png;base64,AAAA\\"/);
-  assert.match(html, /lg:col-span-7/);
+  assert.match(html, /class=\\"slide-body has-aside\\"/);
+  assert.match(html, /<figure class=\\"figure\\">/);
   // Legenda deixou de ser um rodape generico ("Fonte: material de
   // referencia") e passa a nomear o que a imagem ilustra.
   assert.match(html, /Arquitetura de Filas/);
@@ -208,7 +216,7 @@ test('slide com additionalReferenceImageDataUris: renderiza todas as imagens num
   assert.match(html, /<img src=\\"data:image\/png;base64,AAAA\\"/);
   assert.match(html, /<img src=\\"data:image\/png;base64,BBBB\\"/);
   assert.match(html, /<img src=\\"data:image\/png;base64,CCCC\\"/);
-  assert.match(html, /grid grid-cols-2/);
+  assert.match(html, /class=\\"figure-grid\\"/);
 });
 
 test('slide so com imagem primaria (sem additionalReferenceImageDataUris): nao usa o grid, imagem unica grande como antes', () => {
@@ -224,8 +232,8 @@ test('slide so com imagem primaria (sem additionalReferenceImageDataUris): nao u
     ],
   });
 
-  assert.match(html, /<img src=\\"data:image\/png;base64,AAAA\\" alt=\\"Arquitetura de Filas\\" class=\\"w-full max-h-56 sm:max-h-80 object-contain rounded\\"/);
-  assert.doesNotMatch(html, /grid grid-cols-2/);
+  assert.match(html, /<img src=\\"data:image\/png;base64,AAAA\\" alt=\\"Arquitetura de Filas\\" \/>/);
+  assert.doesNotMatch(html, /class=\\"figure-grid/);
 });
 
 test('layout de 2 colunas (com widget/imagem na direita): paragrafo do lado esquerdo usa fonte legivel, nao mais minuscula', () => {
@@ -241,8 +249,11 @@ test('layout de 2 colunas (com widget/imagem na direita): paragrafo do lado esqu
     ],
   });
 
-  assert.match(html, /class=\\"text-xs sm:text-sm leading-relaxed text-stone-200 font-normal break-words\\"/);
-  assert.doesNotMatch(html, /class=\\"text-\[11px\] sm:text-xs leading-relaxed text-stone-200 font-normal break-words\\"/);
+  // Texto ao lado do widget usa o corpo normal (17-19px), nao o "lead"
+  // nem um tamanho reduzido.
+  assert.match(html, /<div class=\\"prose\\"><p>Par\u00e1grafo curto ao lado de um widget\.<\\\/p>/);
+  // Corpo com piso de 17px (1.0625rem); o antigo era 12px no celular.
+  assert.match(html, /--fs-body: calc\(var\(--scale\) \* clamp\(1\.0625rem,/);
 });
 
 test('slide reflection_checkpoint renderiza as perguntas guia sem os demais componentes ricos', () => {
@@ -359,9 +370,12 @@ test('script exportado le hideQuiz/hideChecklist/hideNotes da query string e esc
   // '.lg\:col-span-7' em si) faria o navegador descartar a barra
   // (escape JS invalido) e quebrar o seletor - bug real ja pego uma vez
   // durante a verificacao visual manual (ver Step 6 do plano).
-  assert.match(html, /closest\('\.lg\\\\:col-span-7'\)/);
-  assert.match(html, /querySelector\('\.lg\\\\:col-span-5'\)/);
-  assert.match(html, /applyContentVisibilityFromQuery\(\);\s*\n\s*renderBackgroundScene\(\);/);
+  // Os slides so entram no DOM ao navegar: a funcao tem de rodar DEPOIS de
+  // cada troca de slide (antes rodava uma vez, com o palco vazio).
+  assert.match(html, /stage\.innerHTML = window\.__SLIDES__\[currentIndex\] \|\| '';\s*\n\s*stage\.scrollTop = 0;\s*\n\s*applyContentVisibilityFromQuery\(stage\);/);
+  // Coluna lateral que ficou vazia sai, e o texto ganha a largura.
+  assert.match(html, /widgetEl\.closest\('\.slide-aside'\)/);
+  assert.match(html, /body\.classList\.remove\('has-aside'\)/);
 });
 
 test('script exportado reporta XP de quiz pro host via postMessage, so na primeira vez que acerta', () => {
@@ -439,9 +453,8 @@ test('slide esparso (1 paragrafo, sem widget/imagem/exemplo) ganha fonte e respi
     ],
   });
 
-  assert.match(html, /class=\\"text-base sm:text-lg md:text-xl leading-relaxed text-stone-200 font-normal break-words\\"/);
-  assert.match(html, /class=\\"space-y-4 sm:space-y-5 pt-2\\"/);
-  assert.doesNotMatch(html, /class=\\"text-xs sm:text-sm leading-relaxed text-stone-200 font-normal break-words\\"/);
+  assert.match(html, /class=\\"slide slide--sparse\\"/);
+  assert.match(html, /<div class=\\"prose prose--lead\\">/);
 });
 
 test('slide com 2+ paragrafos NAO e tratado como esparso (mantem fonte padrao)', () => {
@@ -456,8 +469,9 @@ test('slide com 2+ paragrafos NAO e tratado como esparso (mantem fonte padrao)',
     ],
   });
 
-  assert.match(html, /class=\\"text-xs sm:text-sm leading-relaxed text-stone-200 font-normal break-words\\"/);
-  assert.doesNotMatch(html, /class=\\"text-base sm:text-lg md:text-xl leading-relaxed text-stone-200 font-normal break-words\\"/);
+  assert.match(html, /<div class=\\"prose\\">/);
+  assert.doesNotMatch(html, /class=\\"prose prose--lead/);
+  assert.doesNotMatch(html, /class=\\"slide slide--sparse/);
 });
 
 test('slide com 1 paragrafo mas com writtenExample NAO e tratado como esparso (ja tem conteudo suficiente)', () => {
@@ -473,7 +487,8 @@ test('slide com 1 paragrafo mas com writtenExample NAO e tratado como esparso (j
     ],
   });
 
-  assert.match(html, /class=\\"text-xs sm:text-sm leading-relaxed text-stone-200 font-normal break-words\\"/);
+  assert.match(html, /<div class=\\"prose\\">/);
+  assert.doesNotMatch(html, /class=\\"slide slide--sparse/);
 });
 
 test('capa: sem cartoes de Rank/XP Estimado/Perfil, badge usa texto tematico do perfil', () => {
@@ -485,7 +500,7 @@ test('capa: sem cartoes de Rank/XP Estimado/Perfil, badge usa texto tematico do 
   assert.doesNotMatch(html, /MISSÃO DE APRENDIZADO/);
 });
 
-test('conclusao: sem cartoes de Perfil/Rank/XP Total nem botao Exportar, mantem Revisar Trilha, badge tematico', () => {
+test('conclusao: sem cartoes de Perfil/Rank/XP Total nem botao Exportar, mantem Revisar trilha, badge tematico', () => {
   const html = generateInteractiveHtml({
     ...minimalDeck,
     slides: [
@@ -501,7 +516,7 @@ test('conclusao: sem cartoes de Perfil/Rank/XP Total nem botao Exportar, mantem 
   assert.doesNotMatch(html, /XP Total/);
   assert.doesNotMatch(html, /Exportar \/ Imprimir/);
   assert.doesNotMatch(html, /certificate-xp-display/);
-  assert.match(html, /Revisar Trilha/);
+  assert.match(html, /Revisar trilha/);
   assert.match(html, /FORTALEZA CONSOLIDADA/);
 });
 
@@ -509,4 +524,117 @@ test('header mostra XP obtido/estimado (nao so o obtido) - estimado = slides.len
   const html = generateInteractiveHtml(minimalDeck); // 1 slide -> estimado = 150
 
   assert.match(html, /id="xp-counter">0<\/span>\s*<span[^>]*>\/150<\/span>/);
+});
+
+test('deck nao depende do Tailwind por CDN: o estilo vai embutido e escopado em .tu-deck', () => {
+  const html = generateInteractiveHtml(minimalDeck);
+  assert.doesNotMatch(html, /cdn\.tailwindcss\.com/);
+  assert.match(html, /<body class="tu-deck">/);
+  assert.match(html, /<html lang="pt-BR" translate="no" class="notranslate">/);
+});
+
+test('modo claro e escuro: escolha do aluno > ?tema= do app > preferencia do sistema', () => {
+  const html = generateInteractiveHtml(minimalDeck);
+  assert.match(html, /<meta name="color-scheme" content="dark light" \/>/);
+  assert.match(html, /localStorage\.getItem\('trailup_deck_prefs'\)/);
+  assert.match(html, /get\('tema'\)/);
+  assert.match(html, /prefers-color-scheme: light/);
+  // Os dois conjuntos de tokens do perfil estao no CSS.
+  assert.match(html, /html\[data-theme="light"\] \.tu-deck/);
+  assert.match(html, /html\[data-theme="dark"\] \.tu-deck/);
+  // Ajustes de leitura: tamanho, espacamento (WCAG 1.4.12), animacoes e sons.
+  for (const name of ['pref-tema', 'pref-texto', 'pref-espaco', 'pref-movimento', 'pref-sons']) {
+    assert.match(html, new RegExp(`name="${name}"`));
+  }
+  assert.match(html, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
+test('texto do modelo e escapado; apostrofo nao quebra o onclick e so **negrito**/`codigo` viram marcacao', () => {
+  const html = generateInteractiveHtml({
+    ...minimalDeck,
+    slides: [
+      {
+        ...minimalDeck.slides[0],
+        type: 'concept_breakdown',
+        title: 'Título com <script>alert(1)</script>',
+        contentParagraphs: ['Use **sempre** o `await` e <b>nada</b> mais.'],
+        decisionChoices: [
+          { id: "d'1", label: "Caminho d'água", description: 'Descrição.', outcome: "Resultado com ' e \" juntos", xpReward: 100 },
+        ],
+      } as any,
+    ],
+  });
+
+  // Nenhuma tag do modelo vira tag de verdade (nem fecha o <script> do deck).
+  assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
+  assert.doesNotMatch(html, /<\\\/script>alert/);
+  assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+  assert.match(html, /&lt;b&gt;nada&lt;\/b&gt;/);
+  assert.match(html, /<strong>sempre<\\\/strong>/);
+  assert.match(html, /<code>await<\\\/code>/);
+  // Valores vao por data-*, nao colados dentro da string do onclick.
+  assert.match(html, /data-choice-id=\\"d&#39;1\\"/);
+  assert.match(html, /onclick=\\"selectDecisionPath\(this, this\.dataset\.choiceId, 100, this\.dataset\.outcome\)\\"/);
+  assert.match(html, /data-outcome=\\"Resultado%20com%20&#39;%20e%20%22%20juntos\\"/);
+});
+
+test('teclado: setas trocam de slide, mas nunca dentro de campo de texto ou com dialogo aberto', () => {
+  const html = generateInteractiveHtml(minimalDeck);
+  assert.match(html, /if \(tag === 'input' \|\| tag === 'textarea' \|\| tag === 'select' \|\| \(t && t\.isContentEditable\)\) return;/);
+  assert.match(html, /if \(document\.querySelector\('\.tu-dialog\[open\]'\)\) return;/);
+  assert.match(html, /e\.key === 'Home'/);
+  assert.match(html, /e\.key === 'End'/);
+});
+
+test('leitor de tela: titulo do slide recebe foco e a troca e anunciada', () => {
+  const html = generateInteractiveHtml({
+    ...minimalDeck,
+    slides: [minimalDeck.slides[0], { ...minimalDeck.slides[0], id: 's2', type: 'concept_breakdown', title: 'Segundo' }],
+  });
+  assert.match(html, /<p id="slide-announcer" class="sr-only" aria-live="polite" aria-atomic="true"><\/p>/);
+  assert.match(html, /class=\\"slide-title\\" id=\\"slide-title-1\\" tabindex=\\"-1\\"/);
+  assert.match(html, /announce\('Slide ' \+ \(currentIndex \+ 1\) \+ ' de ' \+ deck\.slides\.length/);
+  // Sumario substitui as bolinhas de navegacao.
+  assert.match(html, /<dialog class="tu-dialog" id="dlg-toc"/);
+  assert.doesNotMatch(html, /slide-dot-hit/);
+});
+
+test('quiz, checklist e decisao sao botoes com aria-pressed; feedback numa regiao viva', () => {
+  const html = generateInteractiveHtml({
+    ...minimalDeck,
+    slides: [
+      {
+        ...minimalDeck.slides[0],
+        type: 'interactive_challenge',
+        quiz: {
+          question: 'Pergunta?',
+          options: [
+            { id: 'a', text: 'Certa', isCorrect: true, explanation: 'Porque sim.' },
+            { id: 'b', text: 'Errada', isCorrect: false, explanation: 'Porque não.' },
+          ],
+        },
+      } as any,
+    ],
+  });
+  assert.match(html, /class=\\"quiz-option-btn option\\"[\s\S]*?aria-pressed=\\"false\\"/);
+  assert.match(html, /class=\\"quiz-feedback-box feedback\\" role=\\"status\\" aria-live=\\"polite\\" hidden/);
+  // Estado do quiz nao depende so de cor: rotulo "Correta"/"Incorreta".
+  assert.match(html, /state === 'correct' \? 'Correta' : state === 'wrong' \? 'Incorreta'/);
+});
+
+test('animacoes respeitam "reduzir movimento": confete, tremida e selo flutuante desligam', () => {
+  const html = generateInteractiveHtml(minimalDeck);
+  assert.match(html, /function triggerConfettiBurst[\s\S]*?prefersReducedMotion\(\)\) return;/);
+  assert.match(html, /function triggerScreenShake\(\) \{\s*\n\s*if \(prefersReducedMotion\(\)\) return;/);
+  // O laco do confete para quando nao ha particula (antes rodava para sempre).
+  assert.match(html, /particleLoopRunning = false;/);
+});
+
+test('cada perfil leva o proprio emblema e guia no cabecalho do deck', () => {
+  const seeker = generateInteractiveHtml({ ...minimalDeck, targetProfile: 'Seeker', themeConfig: BRAIN_HEX_PROFILES.Seeker });
+  const survivor = generateInteractiveHtml(minimalDeck);
+  assert.match(seeker, /Explorador · Atlas das Descobertas/);
+  assert.match(survivor, /Sobrevivente · Manual de Campo/);
+  assert.match(seeker, /com <strong>Amara<\\\/strong>/);
+  assert.match(survivor, /com <strong>Kenji<\\\/strong>/);
 });

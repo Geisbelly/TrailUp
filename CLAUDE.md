@@ -528,6 +528,12 @@ Cada perfil carrega:
   rank. Em modo foco (explícito, `aluno_modo_foco`, ou atenção recente que a API
   grava em `aluno_estado_atencao`), nada é entregue: a pendente vira
   `gatilho = 'fim_foco'` e, na saída, colapsa por tipo, sob o teto diário.
+  **Texto da IA só sai se a guarda de hoje o aprovou** (`20261102_24`). A guarda
+  de `agente_notificacao` (#827) roda na geração, mas a sugestão espera na fila;
+  o texto de 01/11, com "hipótese" e `[MOCK]`, saiu em 02/11. A API grava
+  `contexto.texto_guarda` (`TEXTO_GUARDA_VERSAO`, também no aviso da intervenção),
+  e `notificacoes_entregar` suprime a sugestão `origem = 'ciclo'` abaixo de
+  `texto_guarda_versao_minima`. Endureceu a guarda? Suba as duas.
   **`novo_material` e `sequencia` também saem do banco** (`20261102_21`), por gatilhos que
   entram por `notificacoes_enfileirar_evento`. O de `novo_material` fica em
   `conteudo_personalizado` e avisa quando o tópico termina de gerar para o perfil

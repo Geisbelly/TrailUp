@@ -5,6 +5,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.agent.graph.nodes.agente_intervencao import _NOTIFICACAO_DA_REGRA
+from app.agent.graph.nodes.agente_notificacao import TEXTO_GUARDA_VERSAO, problemas_do_texto
 from app.repositories.evento import EventoRepository
 from app.repositories.ia_descricao import IADescricaoRepository
 from app.repositories.intervencao import IntervencaoRepository
@@ -20,6 +22,19 @@ from app.schemas.trilha_config import TrilhaConfig
 from app.services.tentativas_atividade import CronometroDecisao, texto_para_o_professor
 
 logger = logging.getLogger(__name__)
+
+
+def aviso_da_intervencao(intervencao: IntervencaoPayload) -> tuple[str, str]:
+    """Pura. O texto que a intervenção manda ao aluno passa pela guarda da notificação.
+
+    O banco não entrega sugestão da API sem `texto_guarda` (`20261102_24`); o texto do modelo que
+    não passa vira o texto pronto da intervenção, que é o que a regra já mandaria.
+    """
+    titulo = (intervencao.notificacao_titulo or "").strip()
+    corpo = (intervencao.notificacao_corpo or "").strip()
+    if not titulo or not corpo or problemas_do_texto(titulo, corpo):
+        return _NOTIFICACAO_DA_REGRA["titulo"], _NOTIFICACAO_DA_REGRA["corpo"]
+    return titulo, corpo
 
 
 async def _aplicar(
@@ -149,19 +164,22 @@ async def executor(
                             and not state.get("personalizacao_retida")
                         ):
 
+                            titulo, corpo = aviso_da_intervencao(intervencao)
+
                             async def _aviso_ao_aluno() -> None:
                                 await notificacao_repo.enfileirar(
                                     state["aluno_id"],
                                     NotificacaoPayload(
                                         tipo="suporte",
-                                        titulo=intervencao.notificacao_titulo or "",
-                                        corpo=intervencao.notificacao_corpo or "",
+                                        titulo=titulo,
+                                        corpo=corpo,
                                         horario=datetime.now(UTC) + timedelta(minutes=5),
                                         prioridade=2,
                                         contexto={
                                             "motivo": "intervencao",
                                             "intervencao_id": intervencao_id,
                                             "kind": intervencao.kind,
+                                            "texto_guarda": TEXTO_GUARDA_VERSAO,
                                         },
                                     ),
                                 )
