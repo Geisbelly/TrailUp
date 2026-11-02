@@ -72,7 +72,7 @@ test("cada bloco mora numa aba, bloqueados na Conversa", () => {
   assert.equal(abaDaAncora("bloqueados"), "conversa");
 });
 
-test("o ícone do Social existe, muda ao abrir, não repete entre perfis nem a Trilha do mesmo perfil", () => {
+test("o ícone do Social existe, troca ao abrir, não repete entre perfis nem a Trilha do mesmo perfil", () => {
   const glifos = require("@expo/vector-icons/build/vendor/react-native-vector-icons/glyphmaps/MaterialCommunityIcons.json") as Record<string, number>;
   // `profileImages.ts` carrega PNG e não roda no node: os ícones da Trilha saem do texto dele.
   const fonte = readFileSync(join(__dirname, "../../constants/profileImages.ts"), "utf8");
@@ -87,17 +87,16 @@ test("o ícone do Social existe, muda ao abrir, não repete entre perfis nem a T
   for (const perfil of BRAIN_HEX_PROFILES) {
     const { ativo, inativo } = ICONE_DO_SOCIAL[perfil];
     assert.ok(glifos[ativo] && glifos[inativo], `${perfil}: ícone inexistente`);
-    // `strategy` não tem versão de contorno: o Mastermind muda só de cor.
-    if (perfil !== "mastermind") assert.notEqual(ativo, inativo, `${perfil}: o ícone tem de mudar ao abrir, como o da Trilha`);
-    for (const icone of new Set([ativo, inativo])) {
+    assert.notEqual(ativo, inativo, `${perfil}: o ícone tem de trocar ao abrir, como o da Trilha`);
+    for (const icone of [ativo, inativo]) {
       assert.ok(!vistos.has(icone), `${perfil}: ${icone} já é de outro perfil`);
       vistos.add(icone);
     }
     const trilha = iconesDaTrilha(perfil);
     for (const icone of [ativo, inativo]) assert.ok(!trilha.includes(icone), `${perfil}: ${icone} repete a Trilha`);
   }
-  assert.equal(vistos.size, 13);
-  assert.equal(iconeDoSocial("Socializer", true), "forum");
-  assert.equal(iconeDoSocial("seeker", false), "account-search-outline");
+  assert.equal(vistos.size, 14);
+  assert.equal(iconeDoSocial("Socializer", true), "chat-processing");
+  assert.equal(iconeDoSocial("seeker", false), "shoe-print");
   assert.equal(iconeDoSocial(null, false), "account-group-outline");
 });
