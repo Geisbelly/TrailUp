@@ -380,6 +380,12 @@ Cada perfil carrega:
   mantém o antigo e o INSERT grava NULL. Não há erro. NULL é "sem nota" em
   toda parte (faixa `sem_dado` nas views, fora da média da turma). Não volte a
   tratar "0 sem progresso" como sem nota.
+- **Faixas de XP** (#143, `20261102_10`): `xp_faixa` guarda o piso e o título de cada faixa, e o
+  nível é a posição pelo piso. O app lê `aluno_faixa_xp(p_classe_id)` e mostra o título e a barra no
+  Perfil. Os limites e os títulos não existem no código do app: mudar faixa é mudar a tabela. O XP é
+  o **da matrícula**, a mesma conta do critério `pontuacao` do rank e do CSV do professor, sem janela
+  de período, e o negativo conta como 0. Os títulos são etapas da subida, não pessoas, para não ter
+  gênero. O peso do XP na nota ainda não existe: `"notaMedia"` não usa XP.
 - **Tentativas de atividade pelo relógio do banco** (#136, `20261101_13`):
   - `atividade_iniciar_tentativa` abre a tentativa e devolve a que já está aberta, então reabrir o app não zera o relógio;
   - `atividade_responder_tentativa` fecha a tentativa. Ela recusa prazo vencido e tentativas esgotadas (`atividades.tentativas_max`), decide `no_tempo` e grava `atividade_aluno`;

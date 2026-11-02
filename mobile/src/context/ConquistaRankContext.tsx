@@ -7,6 +7,7 @@ import { ClasseRanking } from '@/models/Rank';
 import { PosicaoDoAluno } from '@/models/RankAlunoPosicao';
 import { supabase } from '@/database/supabase';
 import { loadStudyPresence, type StudyPresence } from '@/services/studyPresence';
+import { carregarFaixaXp, type FaixaXp } from '@/services/faixaXp';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useUsuario } from './SessaoContext';
 import { useTrilha } from './TrilhaContext';
@@ -38,6 +39,8 @@ type ConquistaRankState = {
   eventos: EventoAluno[];
   presenca: StudyPresence | null;
   conquistas: Conquista[];
+  /** Faixa de XP na turma atual (#143). `null` sem turma, sem faixa configurada ou antes de carregar. */
+  faixaXp: FaixaXp | null;
   reloadRanking: () => Promise<void>;
   reloadEventos: (limit?: number) => Promise<void>;
   reloadConquistas: () => Promise<void>;
@@ -53,6 +56,7 @@ const ConquistaRankContext = createContext<ConquistaRankState>({
   eventos: [],
   presenca: null,
   conquistas: [],
+  faixaXp: null,
   reloadRanking: async () => console.warn('ConquistaRankProvider nao montado (reloadRanking)'),
   reloadEventos: async () => console.warn('ConquistaRankProvider nao montado (reloadEventos)'),
   reloadConquistas: async () => console.warn('ConquistaRankProvider nao montado (reloadConquistas)'),
@@ -73,6 +77,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
   const [presenca, setPresenca] = useState<StudyPresence | null>(null);
   const currentUserRef = useRef<string | null>(null);
   const [conquistas, setConquistas] = useState<Conquista[]>([]);
+  const [faixaXp, setFaixaXp] = useState<FaixaXp | null>(null);
 
   const uid = usuario?.id ?? null;
   currentUserRef.current = uid;
@@ -120,6 +125,22 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
     }
   }, [classeAtual?.classe_id, uid]);
 
+  // A faixa sai do mesmo XP que o rank soma, então recarrega junto com ele. Uma falha
+  // transitória mantém a última faixa lida.
+  const reloadFaixaXp = useCallback(async () => {
+    const classeId = normalizeClasseId(classeAtual?.classe_id);
+    if (!classeId || !uid) {
+      setFaixaXp(null);
+      return;
+    }
+    try {
+      const faixa = await carregarFaixaXp(classeId);
+      if (currentUserRef.current === uid) setFaixaXp(faixa);
+    } catch (err) {
+      if (!isInvalidBigintDataError(err)) console.warn('[ConquistaRank] Erro ao carregar faixa de XP:', err);
+    }
+  }, [classeAtual?.classe_id, uid]);
+
   const reloadEventos = useCallback(async (limit = 10000) => {
     if (!uid) {
       setEventos([]);
@@ -145,9 +166,9 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
   const scheduleRankingRefresh = useCallback(() => {
     clearScheduledRankingRefresh();
     rankingRefreshTimerRef.current = setTimeout(() => {
-      void Promise.all([reloadRanking(), reloadEventos()]);
+      void Promise.all([reloadRanking(), reloadEventos(), reloadFaixaXp()]);
     }, 450);
-  }, [clearScheduledRankingRefresh, reloadEventos, reloadRanking]);
+  }, [clearScheduledRankingRefresh, reloadEventos, reloadFaixaXp, reloadRanking]);
 
   const reloadConquistas = useCallback(async () => {
     if (!uid) {
@@ -176,14 +197,15 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
     const tasks: Promise<void>[] = [reloadEventos(), reloadConquistas()];
 
     if (normalizeClasseId(classeAtual?.classe_id)) {
-      tasks.push(reloadRanking());
+      tasks.push(reloadRanking(), reloadFaixaXp());
     } else {
       setRanking(null);
       setPosicoes([]);
+      setFaixaXp(null);
     }
 
     await Promise.all(tasks);
-  }, [classeAtual?.classe_id, reloadConquistas, reloadEventos, reloadRanking, uid]);
+  }, [classeAtual?.classe_id, reloadConquistas, reloadEventos, reloadFaixaXp, reloadRanking, uid]);
 
   const registrarEvento = useCallback(async (
     tipo: string,
@@ -214,6 +236,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
     setEventos([]);
     setPresenca(null);
     setConquistas([]);
+    setFaixaXp(null);
     setCarregando(false);
   }, [autenticado, uid]);
 
@@ -232,6 +255,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
           reloadEventos(),
           reloadConquistas(),
           normalizeClasseId(classeAtual?.classe_id) ? reloadRanking() : Promise.resolve(),
+          reloadFaixaXp(),
         ]);
       } catch (err) {
         console.warn('[ConquistaRank] Erro no carregamento inicial:', err);
@@ -244,7 +268,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
     return () => {
       mounted = false;
     };
-  }, [autenticado, classeAtual?.classe_id, reloadConquistas, reloadEventos, reloadRanking, uid]);
+  }, [autenticado, classeAtual?.classe_id, reloadConquistas, reloadEventos, reloadFaixaXp, reloadRanking, uid]);
 
   useEffect(() => {
     if (!uid) return;
@@ -313,6 +337,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
       eventos,
       presenca,
       conquistas,
+      faixaXp,
       reloadRanking,
       reloadEventos,
       reloadConquistas,
@@ -324,6 +349,7 @@ export function ConquistaRankProvider({ children }: { children: React.ReactNode 
       conquistas,
       erroRanking,
       eventos,
+      faixaXp,
       presenca,
       posicoesDoAluno,
       ranking,
