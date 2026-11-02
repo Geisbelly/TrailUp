@@ -98,9 +98,14 @@ export function computeAggregatedApresentacaoEntry(
   totalPartes: number,
   currentStatus: string,
 ): { partes: MaterialPart[]; status: string; headline: { arquivo_url: string | null; storage_path: string | null } } {
-  const mergedPartes = [...currentPartes.filter((p) => p.ordem !== novaParte.ordem), novaParte].sort(
-    (a, b) => a.ordem - b.ordem,
-  );
+  // Parte com ordem acima do total e' de uma geracao anterior que tinha mais
+  // partes: a regeracao reusa o mesmo fence (source_hash nao muda), e sem este
+  // corte a parte velha ficava para sempre e prendia o status em `failed`
+  // (socializer, turma 68, 02/11: 7 partes geradas, 8 gravadas).
+  const mergedPartes = [
+    ...currentPartes.filter((p) => p.ordem !== novaParte.ordem && p.ordem <= totalPartes),
+    novaParte,
+  ].sort((a, b) => a.ordem - b.ordem);
 
   const anyFailed = mergedPartes.some((p) => p.failed);
   const allArrived = mergedPartes.length === totalPartes;
@@ -150,7 +155,48 @@ export function aggregatedApresentacaoFailure(
   return null;
 }
 
+// Gravacoes multi-parte em andamento, por personalizacao.
+const gravacoesPorPersonalizacao = new Map<number, Promise<unknown>>();
+
+/**
+ * Roda `trabalho` depois de todas as gravacoes ja enfileiradas para a mesma
+ * personalizacao, uma de cada vez. Falha de uma nao trava a fila.
+ */
+export function emFilaPorPersonalizacao<T>(personalizacaoId: number, trabalho: () => Promise<T>): Promise<T> {
+  const anterior = gravacoesPorPersonalizacao.get(personalizacaoId) ?? Promise.resolve();
+  const atual = anterior.then(trabalho);
+  const cauda = atual.catch(() => undefined);
+  gravacoesPorPersonalizacao.set(personalizacaoId, cauda);
+  void cauda.then(() => {
+    if (gravacoesPorPersonalizacao.get(personalizacaoId) === cauda) {
+      gravacoesPorPersonalizacao.delete(personalizacaoId);
+    }
+  });
+  return atual;
+}
+
+/**
+ * Grava a apresentacao (ou uma parte dela) em `conteudo_personalizado.materiais`.
+ *
+ * Multi-parte e' SELECT + merge da chave `apresentacao` inteira (a RPC faz `||`
+ * no primeiro nivel), e o microservice renderiza as partes em paralelo. Duas
+ * partes que liam o mesmo estado gravavam cada uma por cima da outra, e a que
+ * gravava primeiro sumia: a parte velha ficava no lugar, sem o motivo da falha
+ * nova (socializer, turma 68, 02/11: partes 1 e 6 com titulos da geracao
+ * anterior). Por isso as partes da mesma personalizacao passam em fila. A fila
+ * e' do processo: vale enquanto o BrainHexPDF rodar numa instancia so'.
+ */
 export async function persistApresentacaoResult(
+  client: SupabaseClientLike,
+  params: PersistApresentacaoParams,
+): Promise<{ dbWritten: boolean; error?: string }> {
+  if (params.totalPartes > 1) {
+    return emFilaPorPersonalizacao(params.fence.personalizacaoId, () => gravarApresentacao(client, params));
+  }
+  return gravarApresentacao(client, params);
+}
+
+async function gravarApresentacao(
   client: SupabaseClientLike,
   params: PersistApresentacaoParams,
 ): Promise<{ dbWritten: boolean; error?: string }> {
