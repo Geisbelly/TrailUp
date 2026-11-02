@@ -3,16 +3,22 @@
 // celular (mobile-v1, `layoutMapaCelular`). Puro: só números e strings de path
 // SVG, para o componente desenhar.
 //
-// O continente é uma grade (4 colunas × N fileiras) recortada em países que
+// O continente é uma grade (até 4 colunas × N fileiras) recortada em países que
 // DIVIDEM fronteira: cada borda é gerada uma vez, sempre na mesma direção, e
 // usada pelos dois vizinhos — nenhum país invade o outro e não sobra buraco.
-// As fileiras encolhem (140 a 228 px) para caber na altura do quadro; se o
-// quadro for estreito demais, o mapa cresce para o lado e rola na horizontal.
+// As fileiras encolhem (até MAPA_FAIXA_MIN, 188 px) para caber na altura do
+// quadro; abaixo disso o mapa rola na vertical. No quadro estreito caem colunas
+// (até 2) e o mapa cresce para baixo; só se nem 2 couberem ele cresce para o
+// lado e rola na horizontal.
 
 export const MAPA_TOPO = 28;
 export const MAPA_BASE = 84; // folga sob o botão do guia
 const MAPA_LADO = 0.03;
 const MAPA_COL_MIN = 190;
+// O que o país ocupa numa fileira: nome em duas linhas e selo abaixo do hexágono e,
+// no tópico atual, o "Você parou aqui" acima. Medido em 1024 × 768 com fileiras de
+// 141 px: a etiqueta começava 45 px acima do fim do selo da fileira de cima.
+export const MAPA_FAIXA_MIN = 188;
 export const MAPA_COLUNAS = 4;
 
 export type Ponto = [number, number];
@@ -38,10 +44,16 @@ export function layoutMapa(total: number, largura: number, altura: number): Layo
   // Turma com menos de 4 tópicos: uma coluna por tópico. Com 4 fixas, uma turma
   // de 1 tópico virava um país e três "terras sem nome" escuras, e o mapa
   // parecia quebrado (e as terras vazias não respondiam ao clique).
-  const cols = Math.min(MAPA_COLUNAS, Math.max(1, total));
+  // Quadro estreito: só as colunas de 190 px que cabem, com 2 no mínimo, como no
+  // celular. Com 4 fixas, em 1280 px o mapa ficava com 809 px numa coluna de 672,
+  // e o rolar de lado (sem indicador) escondia os países da direita, como se
+  // estivessem sob o painel do tópico.
+  const cabem = Math.max(2, Math.floor((largura * (1 - 2 * MAPA_LADO)) / MAPA_COL_MIN));
+  const cols = Math.min(MAPA_COLUNAS, cabem, Math.max(1, total));
   const rows = Math.max(1, Math.ceil(total / cols));
   // Numa fileira só, o país pode crescer mais (até 320 px) para ocupar o quadro.
-  const faixa = Math.max(140, Math.min(rows === 1 ? 320 : 228, (altura - MAPA_TOPO - MAPA_BASE) / rows));
+  // Com várias, a fileira não encolhe abaixo de MAPA_FAIXA_MIN e o mapa rola na vertical.
+  const faixa = Math.max(rows === 1 ? 140 : MAPA_FAIXA_MIN, Math.min(rows === 1 ? 320 : 228, (altura - MAPA_TOPO - MAPA_BASE) / rows));
   const W = Math.max(largura, Math.ceil((cols * MAPA_COL_MIN) / (1 - 2 * MAPA_LADO)));
   const x0 = W * MAPA_LADO;
   const cw = (W * (1 - 2 * MAPA_LADO)) / cols;
