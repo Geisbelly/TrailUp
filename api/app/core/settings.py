@@ -154,7 +154,7 @@ class Settings(BaseSettings):
     content_enrichment_gemini_quota_cooldown_sec: int = 300
     # RequestsPerDay so reseta amanha (nao em minutos) — cooldown curto faz o
     # worker martelar a mesma chave/modelo esgotado a cada poll pelo resto do
-    # dia. Ver _is_gemini_daily_quota_error em content_enrichment.py.
+    # dia. Ver is_daily_quota_error em gemini_chaves.py (vale para a API toda).
     content_enrichment_gemini_daily_quota_cooldown_sec: int = 6 * 3_600
     # Mesma ideia de content_enrichment_gemini_fallback_models, mas pro
     # caminho generico de LLM (JsonLLMService/llm.py) usado pelo supervisor

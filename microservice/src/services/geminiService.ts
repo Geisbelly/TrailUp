@@ -88,12 +88,14 @@ export function geminiApiKeys(): string[] {
 }
 
 // --- MOTOR DE REGENERACAO COM PROMPT (multi-chave/multi-modelo) ---
-// Portado do protótipo gerado no AI Studio (remix-trailup-brainhex-converter)
-// especificamente para os endpoints de regeneração/expansão com prompt do
-// professor (ver server.ts, /api/v1/regenerate/*). Independente da rotação
-// de chaves com cooldown por (chave,modelo) usada pelo resto do arquivo
-// (_geminiKeyCooldownUntil) — aqui cada chamada tenta sua própria cascata do
-// zero, sem estado compartilhado entre chamadas concorrentes.
+// Endpoints de regeneração/expansão com prompt do professor (ver server.ts,
+// /api/v1/regenerate/*). Com as chaves do servidor, passa pelo mesmo rodízio
+// do resto do arquivo (generateGeminiContent): cooldown por (chave, modelo),
+// cota diária até a meia-noite do Pacífico e 402 fora do rodízio. Antes tinha
+// cascata própria, sem estado: cada clique do professor batia de novo em
+// chave já sem cota e em gemini-1.5-*, aposentado (404), gastando a cota da
+// geração por perfil. Só `keys_config` (chaves próprias da chamada) mantém a
+// cascata isolada, porque essas chaves não pertencem ao pool do servidor.
 export function getActiveKeys(
   customConfig?: ApiKeysConfig,
 ): { geminiKeys: string[]; openAIKey: string } {
@@ -117,13 +119,10 @@ export function getActiveKeys(
   return { geminiKeys: Array.from(geminiSet), openAIKey };
 }
 
-const REGENERATION_GEMINI_MODELS = [
-  "gemini-3.6-flash",
-  "gemini-2.5-flash",
-  "gemini-2.5-pro",
-  "gemini-1.5-flash",
-  "gemini-1.5-pro",
-];
+function regenerationGeminiModels(): string[] {
+  const primary = resolveGeminiContentGenerationModel();
+  return [primary, ...resolveGeminiTextFallbackModels().filter((model) => model !== primary)];
+}
 const REGENERATION_OPENAI_MODELS = ["gpt-4o-mini", "gpt-3.5-turbo"];
 
 /**
@@ -141,27 +140,46 @@ export async function executeWithModelFallback<T>(params: {
   temperature?: number;
   maxOutputTokens?: number;
 }): Promise<T> {
-  const { geminiKeys, openAIKey } = getActiveKeys(params.customKeys);
+  const { openAIKey } = getActiveKeys(params.customKeys);
+  const customGeminiKeys = (params.customKeys?.geminiKeys ?? [])
+    .map((key) => key.trim())
+    .filter(Boolean);
   let lastError: unknown = null;
 
-  const keysToTry = geminiKeys.length > 0 ? geminiKeys : [];
-  for (const apiKey of keysToTry) {
-    const aiInstance = new GoogleGenAI({ apiKey });
-    for (const modelName of REGENERATION_GEMINI_MODELS) {
-      try {
-        const configObj: Record<string, unknown> = {
-          systemInstruction: params.systemInstruction,
-          maxOutputTokens: params.maxOutputTokens || 16_384,
-          temperature: params.temperature ?? 0.5,
-          responseMimeType: "application/json",
-        };
-        if (params.responseSchema) configObj.responseSchema = params.responseSchema;
+  const configObj: Record<string, unknown> = {
+    systemInstruction: params.systemInstruction,
+    maxOutputTokens: params.maxOutputTokens || 16_384,
+    temperature: params.temperature ?? 0.5,
+    responseMimeType: "application/json",
+  };
+  if (params.responseSchema) configObj.responseSchema = params.responseSchema;
+  const [primaryModel] = regenerationGeminiModels();
+  const request = {
+    model: primaryModel,
+    contents: [{ parts: params.contentsParts }],
+    config: configObj,
+  };
 
-        const response = await aiInstance.models.generateContent({
-          model: modelName,
-          contents: [{ parts: params.contentsParts }],
-          config: configObj,
-        });
+  if (customGeminiKeys.length === 0 && geminiApiKeys().length > 0) {
+    try {
+      const response = await generateGeminiContent(request);
+      if (response.text) {
+        return JSON.parse(response.text) as T;
+      }
+    } catch (err) {
+      lastError = err;
+      console.warn(
+        "[regenerate-engine] Gemini falhou em todas as chaves e modelos:",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
+  for (const apiKey of customGeminiKeys) {
+    const aiInstance = new GoogleGenAI({ apiKey });
+    for (const modelName of regenerationGeminiModels()) {
+      try {
+        const response = await aiInstance.models.generateContent({ ...request, model: modelName });
         if (response.text) {
           return JSON.parse(response.text) as T;
         }

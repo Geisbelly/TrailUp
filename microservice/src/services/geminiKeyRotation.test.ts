@@ -11,6 +11,7 @@ import {
   geminiApiKeys,
   extractTtsAudioData,
   msUntilNextPacificMidnight,
+  executeWithModelFallback,
 } from "./geminiService";
 import { TtsNoAudioError } from "./ttsRecovery";
 
@@ -276,4 +277,49 @@ test("extractTtsAudioData acha o áudio em qualquer parte e, sem áudio, diz o q
       && /texto="Claro! Aqui está a leitura"/.test(error.message),
   );
   assert.throws(() => extractTtsAudioData({ promptFeedback: { blockReason: "PROHIBITED_CONTENT" } }, "A voz falhou."), /blockReason=PROHIBITED_CONTENT; sem candidato/);
+});
+
+test("regeneração do professor usa o rodízio compartilhado: chave sem cota fica de fora na chamada seguinte", async () => {
+  // Antes executeWithModelFallback tinha cascata própria, sem estado: cada
+  // clique batia de novo na chave sem cota e em gemini-1.5-* (404).
+  const previousKey = process.env.GEMINI_API_KEY;
+  const previousOpenAi = process.env.OPENAI_API_KEY;
+  const originalFetch = globalThis.fetch;
+  process.env.GEMINI_API_KEY = "key-1,key-2";
+  delete process.env.OPENAI_API_KEY;
+  resetGeminiKeyRotationForTests();
+  const calls: Array<{ key: string; url: string }> = [];
+  globalThis.fetch = (async (input: unknown, init?: { headers?: unknown }) => {
+    const url = String(input instanceof Request ? input.url : input);
+    const headers = new Headers((init?.headers ?? (input instanceof Request ? input.headers : undefined)) as HeadersInit);
+    const key = headers.get("x-goog-api-key") ?? "";
+    calls.push({ key, url });
+    if (key === "key-1") {
+      return new Response(
+        JSON.stringify({ error: { code: 429, status: "RESOURCE_EXHAUSTED", message: "quota exceeded" } }),
+        { status: 429, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    return new Response(
+      JSON.stringify({ candidates: [{ content: { role: "model", parts: [{ text: "{\"ok\":1}" }] } }] }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  }) as typeof fetch;
+  try {
+    const params = { contentsParts: [{ text: "melhore" }], systemInstruction: "json" };
+    for (let i = 0; i < 4; i += 1) {
+      assert.deepEqual(await executeWithModelFallback<{ ok: number }>(params), { ok: 1 });
+    }
+    // O round-robin alternaria as duas; com o cooldown compartilhado, a chave
+    // sem cota é tentada no máximo uma vez. A cascata antiga, sem estado,
+    // começava por ela em toda chamada.
+    assert.ok(calls.filter((call) => call.key === "key-1").length <= 1);
+    assert.ok(calls.every((call) => !call.url.includes("gemini-1.5")));
+  } finally {
+    globalThis.fetch = originalFetch;
+    process.env.GEMINI_API_KEY = previousKey;
+    if (previousOpenAi === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousOpenAi;
+    resetGeminiKeyRotationForTests();
+  }
 });
