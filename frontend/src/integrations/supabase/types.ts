@@ -827,6 +827,51 @@ export type Database = {
           },
         ]
       }
+      boss_falas: {
+        Row: {
+          ativa: boolean
+          classe_id: number
+          conteudo_id: number
+          desativada_em: string | null
+          falas: Json
+          gerado_em: string
+          id: number
+          nome: string
+          perfil: string
+          source_hash: string
+          topico_id: number
+          versao: string
+        }
+        Insert: {
+          ativa?: boolean
+          classe_id: number
+          conteudo_id: number
+          desativada_em?: string | null
+          falas: Json
+          gerado_em?: string
+          id?: number
+          nome: string
+          perfil: string
+          source_hash: string
+          topico_id: number
+          versao: string
+        }
+        Update: {
+          ativa?: boolean
+          classe_id?: number
+          conteudo_id?: number
+          desativada_em?: string | null
+          falas?: Json
+          gerado_em?: string
+          id?: number
+          nome?: string
+          perfil?: string
+          source_hash?: string
+          topico_id?: number
+          versao?: string
+        }
+        Relationships: []
+      }
       cards: {
         Row: {
           conteudo_id: number | null

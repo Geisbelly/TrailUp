@@ -536,6 +536,12 @@ Cada perfil carrega:
   transação de quem os causa** (`EXCEPTION WHEN OTHERS` → `WARNING`). O cliente só lê e muda `lida_em`
   (GRANT por coluna, sem policy de INSERT). Risco de reprovação **não** notifica: é calculado na hora,
   não há evento de banco para ligar um gatilho.
+- **`boss_falas` — a IA escreve, o professor pode tirar do ar** (`20261102_18`). Nome e falas do boss
+  são gerados em lote por conteúdo × perfil e o app os mostra ao aluno (inclusive menor) direto. O
+  professor lê no editor de conteúdo e liga/desliga (`ativa`; **só** essa coluna tem GRANT de UPDATE: o
+  texto é validado pela API e não se edita pelo console). Quem esconde a fala desligada do aluno é a
+  **policy de leitura dele**, não o app, então build antigo também obedece. A API religa ao reescrever a
+  linha: texto novo é texto que ninguém leu.
 - **Eventos de turma abrem e encerram no horário pelo banco (#141).**
   `pg_cron` roda `fn_eventos_classe_varrer()` a cada minuto (job
   `trailup_eventos_classe_varredura`, migração `20261025_04`): encerra e apura
