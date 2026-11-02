@@ -4,7 +4,11 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 from app.core.settings import get_settings
-from app.db.migrations import normalize_database_url_for_alembic, trava_de_migracao
+from app.db.migrations import (
+    declara_leitura_e_escrita,
+    normalize_database_url_for_alembic,
+    trava_de_migracao,
+)
 
 config = context.config
 
@@ -56,6 +60,7 @@ def run_migrations_online() -> None:
             )
 
             with context.begin_transaction():
+                declara_leitura_e_escrita(connection)
                 context.run_migrations()
 
 
