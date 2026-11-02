@@ -38,6 +38,7 @@ src/services/social/publicProfileModel.test.ts
 src/services/social/socialModel.test.ts
 src/services/social/socialDestaque.test.ts
 src/services/social/chatNaoLidasModel.test.ts
+src/services/social/naoLidasStore.test.ts
 src/services/studySessions.test.ts
 src/services/telemetriaApi.persistence.test.ts
 src/services/telemetriaCliente.core.test.ts
@@ -172,3 +173,5 @@ src/utils/alteracoesDoProfessor.test.ts
 src/utils/rankEstadoVazio.test.ts
 src/utils/telaCarregamento.test.ts
 src/components/carregamento/TelaCarregamento.tela.test.tsx
+src/utils/esqueleto.test.ts
+src/components/carregamento/Esqueleto.tela.test.tsx

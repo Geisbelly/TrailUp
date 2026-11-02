@@ -17,8 +17,18 @@ o próximo conteúdo (`foco`), também no texto pronto da regra.
 
 O que vai ao modelo não identifica o aluno (#195); a rota de menor vale pelos dois caminhos (o RAG
 já é OpenAI com `store=False`).
+
+**O texto fala com o aluno, em palavras simples.** O modelo recebia a assinatura editorial do
+perfil, feita para o MATERIAL de estudo, e copiava os marcadores dela para o push: com o Mastermind,
+"hipótese", "evidência", "trade-off" e "modelo" chegavam ao aluno ("A evidência sugere que
+consolidar o próximo bloco otimiza o aprendizado", produção, 01/11). Agora o perfil entra como um
+jeito de falar próprio da notificação (`_JEITO_NA_NOTIFICACAO`), e `problemas_do_texto` recusa
+vocabulário de sistema, placeholder e frase longa. Texto recusado volta ao modelo uma vez, com os
+problemas; se ainda vier errado, vale o texto pronto do perfil.
 """
 
+import re
+import unicodedata
 from datetime import UTC, datetime, timedelta, timezone
 from typing import Any, Literal
 
@@ -51,14 +61,84 @@ def _perfil_dominante(state: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]
     return dominante, perfis
 
 
+# Como cada perfil fala NUMA NOTIFICAÇÃO: em palavras simples, sem os marcadores da assinatura
+# editorial (que são do material de estudo e viravam jargão no push). `exemplo` mostra o tom; o
+# modelo não deve copiá-lo.
+_JEITO_NA_NOTIFICACAO: dict[str, dict[str, str]] = {
+    "Seeker": {
+        "tom_voz": "curioso e animado, convida a descobrir algo novo",
+        "exemplo": "Tem uma coisa nova em Frações esperando por você. Bora descobrir?",
+    },
+    "Survivor": {
+        "tom_voz": "calmo e seguro, propõe um passo pequeno, sem pressa e sem pressão",
+        "exemplo": "Um passo pequeno em Frações hoje já ajuda. Vai no seu ritmo.",
+    },
+    "Daredevil": {
+        "tom_voz": "animado e direto, chama para um desafio rápido",
+        "exemplo": "Desafio rápido em Frações: topa resolver um agora?",
+    },
+    "Mastermind": {
+        "tom_voz": "calmo e claro, mostra como a ideia nova se liga ao que o aluno já sabe",
+        "exemplo": "A próxima parte de Frações se liga ao que você já viu. Que tal entender como?",
+    },
+    "Conqueror": {
+        "tom_voz": "direto e confiante, fala de vencer a próxima etapa",
+        "exemplo": "Falta pouco para fechar Frações. Mais uma etapa e é sua!",
+    },
+    "Socializer": {
+        "tom_voz": "acolhedor, fala da turma e de fazer junto",
+        "exemplo": "Sua turma está avançando em Frações. Vem junto no próximo passo!",
+    },
+    "Achiever": {
+        "tom_voz": "organizado e motivador, fala de meta e de progresso",
+        "exemplo": "Mais um item de Frações e sua meta chega mais perto. Vamos?",
+    },
+}
+
+
 def _contexto_do_perfil(state: dict[str, Any]) -> dict[str, Any]:
     dominante, perfis = _perfil_dominante(state)
     ctx = _build_profile_editorial_context(dominante, perfis)
-    chaves = (
-        "perfil_dominante", "tom_voz", "ritmo", "abertura_estilo", "convencimento_estilo",
-        "fechamento_estilo", "marcadores_linguisticos", "proibicoes_estilo", "guia_nome",
-    )
-    return {k: ctx.get(k) for k in chaves}
+    perfil = ctx.get("perfil_dominante")
+    chave = perfil if perfil in _JEITO_NA_NOTIFICACAO else "Mastermind"
+    return {"perfil_dominante": perfil, "guia_nome": ctx.get("guia_nome"), **_JEITO_NA_NOTIFICACAO[chave]}
+
+
+# Palavras de sistema ou de relatório que não são para o aluno. Casam pelo radical, sem acento.
+_TERMOS_DE_SISTEMA = re.compile(
+    r"\b(evidencias?|hipoteses?|trade-?offs?|otimiz\w*|consolid\w*|valid\w*|progressao|"
+    r"metricas?|algoritmos?|sistemas?|telemetria|engajamento|desempenho|brainhex|perfis|perfil|"
+    r"modulos?|ciclos?|blocos?|modelos?|analis\w*|analise|dados|estrategic\w*|eficiencia)\b"
+)
+_PLACEHOLDER = re.compile(r"[\[\]{}<>]|\bMOCK\b|\bAlun[oa]\b|\bEstudante\b")
+_PALAVRAS_POR_FRASE = 18
+
+
+def _sem_acento(texto: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", texto) if unicodedata.category(c) != "Mn").lower()
+
+
+def problemas_do_texto(titulo: str, corpo: str, foco: dict[str, Any] | None = None) -> list[str]:
+    """Pura. O que impede o texto de ir ao aluno; lista vazia = pode ir.
+
+    O nome do tópico e do próximo conteúdo é do professor ("Ciclo da água", "Modelo atômico") e sai
+    da conta antes da busca por termo de sistema.
+    """
+    texto = f"{titulo}. {corpo}"
+    problemas: list[str] = []
+    if _PLACEHOLDER.search(texto):
+        problemas.append("tem placeholder ou marcação ([...], MOCK, 'Aluno')")
+    livre = _sem_acento(texto)
+    for nome in ((foco or {}).get("topico"), (foco or {}).get("proximo_conteudo")):
+        if nome:
+            livre = livre.replace(_sem_acento(str(nome)), " ")
+    termos = sorted({m.group(0) for m in _TERMOS_DE_SISTEMA.finditer(livre)})
+    if termos:
+        problemas.append("usa palavras de sistema: " + ", ".join(termos))
+    frases = [f for f in re.split(r"[.!?]+", corpo) if f.strip()]
+    if any(len(f.split()) > _PALAVRAS_POR_FRASE for f in frases):
+        problemas.append(f"tem frase com mais de {_PALAVRAS_POR_FRASE} palavras")
+    return problemas
 
 
 def _motivo(state: dict[str, Any]) -> str:
@@ -98,8 +178,8 @@ _TEXTOS_DA_REGRA: dict[str, dict[str, tuple[str, str]]] = {
         "lembrete": ("Desafio esperando", "Tem uma missão rápida na sua trilha. Topa resolver hoje?"),
     },
     "Mastermind": {
-        "suporte": ("Divida o problema", "Quebre o próximo conceito em partes: o primeiro bloco já está pronto para você."),
-        "lembrete": ("O próximo padrão te espera", "Há um conceito novo para encaixar no que você já sabe. Retome quando puder."),
+        "suporte": ("Vamos por partes", "Comece só pela primeira parte do próximo assunto. Ela já está pronta para você."),
+        "lembrete": ("Uma ideia nova te espera", "Tem uma ideia nova que se liga ao que você já sabe. Volte quando puder."),
     },
     "Conqueror": {
         "suporte": ("Recupere o ritmo", "Uma etapa curta agora e você volta ao controle da trilha."),
@@ -133,8 +213,8 @@ _TEXTOS_COM_TOPICO: dict[str, dict[str, str]] = {
         "lembrete": "Tem uma missão rápida em {topico}. Topa resolver hoje?",
     },
     "Mastermind": {
-        "suporte": "Quebre {topico} em partes: o primeiro bloco já está pronto para você.",
-        "lembrete": "Há um conceito de {topico} para encaixar no que você já sabe.",
+        "suporte": "Vamos por partes em {topico}: a primeira já está pronta para você.",
+        "lembrete": "Tem uma ideia de {topico} que se liga ao que você já sabe. Bora ver?",
     },
     "Conqueror": {
         "suporte": "Uma etapa curta em {topico} e você volta ao controle da trilha.",
@@ -152,13 +232,21 @@ _TEXTOS_COM_TOPICO: dict[str, dict[str, str]] = {
 _LIMITE_TOPICO = 60
 
 
+# Marcação no começo do nome ("[MOCK] Aceleração") é do cadastro, não do aluno.
+_MARCACAO_NO_INICIO = re.compile(r"^\s*(\[[^\]]*\]\s*)+")
+
+
+def _nome_limpo(nome: Any) -> str:
+    return _MARCACAO_NO_INICIO.sub("", str(nome or "")).strip()[:_LIMITE_TOPICO]
+
+
 def _foco(state: dict[str, Any]) -> dict[str, Any]:
     """Tópico em andamento, percentual e próximo conteúdo (montado por `build_initial_state`)."""
     foco = state.get("foco_estudo") if isinstance(state.get("foco_estudo"), dict) else {}
-    topico = str(foco.get("topico") or "").strip()[:_LIMITE_TOPICO]
+    topico = _nome_limpo(foco.get("topico"))
     if not topico:
         return {}
-    proximo = str(foco.get("proximo_conteudo") or "").strip()[:_LIMITE_TOPICO] or None
+    proximo = _nome_limpo(foco.get("proximo_conteudo")) or None
     return {
         "topico": topico,
         "percentual_concluido": foco.get("percentual_concluido"),
@@ -215,26 +303,47 @@ async def agente_notificacao(state: dict[str, Any], settings: Settings, agora: d
     payload = _payload_do_modelo(state, perfil, motivo, agora)
     llm = JsonLLMService(settings)
 
-    gerada: NotificacaoGerada | None = None
-    origem = "regra"
-    tentativas = [True, False] if OpenAIRagService(settings).is_configured() else [False]
-    for usar_rag in tentativas:
+    async def gerar(dados: dict[str, Any], usar_rag: bool) -> NotificacaoGerada | None:
         try:
-            gerada = await llm.ainvoke_structured(
+            return await llm.ainvoke_structured(
                 prompt_name="notificacao_personalizada.txt",
-                payload=payload,
+                payload=dados,
                 schema=NotificacaoGerada,
                 use_rag=usar_rag,
             )
-            origem = "rag" if usar_rag else "modelo"
-            break
         except StructuredOutputError:
+            return None
+
+    gerada: NotificacaoGerada | None = None
+    origem = "regra"
+    revisada = False
+    recusa: list[str] = []
+    tentativas = [True, False] if OpenAIRagService(settings).is_configured() else [False]
+    for usar_rag in tentativas:
+        candidata = await gerar(payload, usar_rag)
+        if candidata is None:
             continue
+        recusa = problemas_do_texto(candidata.titulo, candidata.corpo, payload["foco"])
+        if recusa:
+            # Uma revisão só, sem RAG: o modelo vê o próprio texto e o que estava errado.
+            pedido = {"titulo": candidata.titulo, "corpo": candidata.corpo, "problemas": recusa}
+            candidata = await gerar({**payload, "revisar": pedido}, False)
+            if candidata is not None and not problemas_do_texto(candidata.titulo, candidata.corpo, payload["foco"]):
+                recusa, revisada = [], True
+            else:
+                candidata = None
+        if candidata is not None:
+            gerada, origem = candidata, ("rag" if usar_rag else "modelo")
+        break
 
     if gerada is None:
         notificacao = notificacao_da_regra(perfil["perfil_dominante"], motivo, agora, payload["foco"])
+        if recusa:
+            notificacao.contexto["texto_do_modelo_recusado"] = recusa
     else:
         contexto: dict[str, Any] = {"motivo": motivo, "perfil": perfil["perfil_dominante"], "origem": origem}
+        if revisada:
+            contexto["revisado"] = True
         if payload["foco"]:
             contexto["topico"] = payload["foco"]["topico"]
         if gerada.evidencia:

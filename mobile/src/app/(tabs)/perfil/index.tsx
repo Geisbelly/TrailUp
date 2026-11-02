@@ -28,6 +28,11 @@ import { UtilityIcon } from "@/components/UtilityIcon";
 import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
 import { FaixaXpCartao } from "@/components/perfil/FaixaXpCartao";
+import {
+  EsqueletoDaFaixaXp,
+  EsqueletoDaListaDeConquistas,
+  EsqueletoDasMetricas,
+} from "@/components/perfil/EsqueletoDoPerfil";
 import { AcoesBannerPerfil } from "@/components/web/AcoesBannerPerfil";
 import { ConquistasDestaque } from "@/components/web/ConquistasDestaque";
 import { AfinidadesPerfilDesktop } from "@/components/web/AfinidadesPerfilDesktop";
@@ -411,9 +416,13 @@ export default function PerfilHome() {
 
   // Faixa de XP da turma atual (#143), logo abaixo da identidade. Só a da turma na tela: ao
   // trocar de turma, a da anterior não aparece enquanto a nova carrega.
+  // Enquanto a primeira carga não volta, o lugar dela fica reservado: sem isso o cartão
+  // aparecia depois, empurrando a tela inteira para baixo.
   const faixaDaTurma =
     faixaXp && faixaXp.classeId === Number(classeAtual?.classe_id) ? (
       <FaixaXpCartao faixa={faixaXp} palette={shellPalette} style={desktop ? styles.faixaXpLarga : styles.faixaXp} />
+    ) : carregando ? (
+      <EsqueletoDaFaixaXp palette={shellPalette} style={desktop ? styles.faixaXpLarga : styles.faixaXp} />
     ) : null;
 
   // Troca de perfil no celular, logo abaixo do nome, em formato compacto: um rótulo e um
@@ -543,7 +552,8 @@ export default function PerfilHome() {
               },
             ]}
           >
-            Conquistas ({conquistas.length})
+            {/* Sem número até a primeira carga: "(0)" diria que não há nenhuma. */}
+            {carregando ? "Conquistas" : `Conquistas (${conquistas.length})`}
           </Text>
           {aba === "conquistas" ? (
             <View
@@ -561,14 +571,7 @@ export default function PerfilHome() {
         {!desktop && aba === "conquistas" ? (
           <>
             {carregando ? (
-              <Text
-                style={[
-                  styles.helperText,
-                  { color: shellPalette.textMuted },
-                ]}
-              >
-                Carregando conquistas...
-              </Text>
+              <EsqueletoDaListaDeConquistas palette={shellPalette} />
             ) : conquistas.length === 0 ? (
               <View style={styles.emptyWrap}>
                 <CardSemDados
@@ -641,13 +644,19 @@ export default function PerfilHome() {
           </>
         ) : (
           <>
-          <ProfileMetricsViews
-            profile={perfil}
-            theme={resolvedTheme}
-            vm={metricsViewModel}
-            guideRefs={profileGuideTargets}
-            larga={desktop}
-          />
+          {/* Até a primeira carga do ConquistaRank, o painel mostraria "0%", "Sem rank" e
+              barras zeradas como se fossem o resultado do aluno. */}
+          {carregando ? (
+            <EsqueletoDasMetricas palette={shellPalette} />
+          ) : (
+            <ProfileMetricsViews
+              profile={perfil}
+              theme={resolvedTheme}
+              vm={metricsViewModel}
+              guideRefs={profileGuideTargets}
+              larga={desktop}
+            />
+          )}
           {desktop ? <UltimaAtividadeDesktop eventos={eventos} palette={shellPalette} /> : null}
           </>
         )}

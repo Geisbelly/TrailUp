@@ -92,21 +92,22 @@ async def test_upload_bytes_faz_put_autenticado_e_devolve_url_do_gateway(monkeyp
 
     url = await storage.upload_bytes(
         bucket="conteudo_aluno",
-        path="brainhex/mastermind/topico-1/markdown/material-1.md",
+        path="6f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f/topico-1/markdown/material-1.md",
         data=b"## Aula\n\nTexto.",
         content_type="text/markdown; charset=utf-8",
     )
 
-    # conteudo_aluno e' privado (#195): a URL de leitura e' a do gateway.
+    # Fora dos prefixos do R2 (`brainhex/`, `fontes/`) o arquivo segue no
+    # Storage. conteudo_aluno e' privado (#195): a URL de leitura e' a do gateway.
     assert url == (
         "https://xrebtkmdewolzmpsdwgh.supabase.co/functions/v1/storage-redirect"
-        "?path=brainhex/mastermind/topico-1/markdown/material-1.md"
+        "?path=6f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f/topico-1/markdown/material-1.md"
     )
     assert len(calls) == 1
     put_url, content, headers = calls[0]
     assert put_url == (
         "https://xrebtkmdewolzmpsdwgh.supabase.co/storage/v1/object/"
-        "conteudo_aluno/brainhex/mastermind/topico-1/markdown/material-1.md"
+        "conteudo_aluno/6f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f/topico-1/markdown/material-1.md"
     )
     assert content == b"## Aula\n\nTexto."
     assert headers["content-type"] == "text/markdown; charset=utf-8"

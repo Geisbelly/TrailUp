@@ -1,3 +1,5 @@
+import { EsqueletoBloco, EsqueletoPulso } from "@/components/carregamento/Esqueleto";
+import { EsqueletoDasLinhasDoRank } from "@/components/ranking/EsqueletoDoRanking";
 import { FolhaMinhaPosicao } from "@/components/ranking/FolhaMinhaPosicao";
 import { RankEstadoVazio } from "@/components/ranking/RankEstadoVazio";
 import { RankingPodium } from "@/components/ranking/RankingPodium";
@@ -26,7 +28,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Image,
   Platform,
@@ -245,6 +246,9 @@ export function RankDetalhe({
           </ScrollView>
         ) : (
           <>
+            {/* Os perfis e fotos chegam depois do rank: enquanto isso, o campo do perfil
+                pulsa no lugar de "Perfil não definido", que seria falso. */}
+            <EsqueletoPulso superficie={palette.surface} ativo={profilesLoading}>
             <FlatList
               ref={listRef}
               data={profilesLoading && filter !== "geral" ? [] : linhasTabela}
@@ -452,9 +456,13 @@ export function RankDetalhe({
                           {personProfile?.key ? (
                             <View style={[s.pontoPerfil, { backgroundColor: getProfileShellPalette(personProfile.key).accent }]} />
                           ) : null}
-                          <Text numberOfLines={1} style={[s.profile, s.perfilLargo, { color: palette.textSubtle }]}>
-                            {personProfile?.label ?? "Perfil não definido"}
-                          </Text>
+                          {profilesLoading && !personProfile ? (
+                            <EsqueletoBloco largura={92} altura={10} style={s.perfilEsqueleto} />
+                          ) : (
+                            <Text numberOfLines={1} style={[s.profile, s.perfilLargo, { color: palette.textSubtle }]}>
+                              {personProfile?.label ?? "Perfil não definido"}
+                            </Text>
+                          )}
                         </View>
                       )}
                     </View>
@@ -464,12 +472,16 @@ export function RankDetalhe({
                         {personProfile?.key ? (
                           <View style={[s.pontoPerfil, { backgroundColor: getProfileShellPalette(personProfile.key).accent }]} />
                         ) : null}
-                        <Text
-                          numberOfLines={1}
-                          style={[s.profile, s.perfilLargo, { color: palette.textMuted }, !personProfile?.label && s.semPerfil]}
-                        >
-                          {personProfile?.label ?? "Perfil não definido"}
-                        </Text>
+                        {profilesLoading && !personProfile ? (
+                          <EsqueletoBloco largura={92} altura={10} />
+                        ) : (
+                          <Text
+                            numberOfLines={1}
+                            style={[s.profile, s.perfilLargo, { color: palette.textMuted }, !personProfile?.label && s.semPerfil]}
+                          >
+                            {personProfile?.label ?? "Perfil não definido"}
+                          </Text>
+                        )}
                       </View>
                     ) : null}
                     <Text
@@ -486,7 +498,8 @@ export function RankDetalhe({
               ListEmptyComponent={
                 // Todos os alunos já estão no pódio: a tabela fica vazia sem aviso.
                 linhasTabela.length === 0 && filtered.length > 0 ? null : profilesLoading && filter !== "geral" ? (
-                  <ActivityIndicator color={palette.accent} style={s.empty} />
+                  // O recorte depende do perfil de cada aluno: linhas no formato da tabela.
+                  <EsqueletoDasLinhasDoRank palette={palette} embutido={embutido} />
                 ) : (
                   <View style={s.recorteVazio}>
                     <RankEstadoVazio
@@ -507,6 +520,7 @@ export function RankDetalhe({
                 ) : null
               }
             />
+            </EsqueletoPulso>
             {/* Embutido no Ranking de tela larga, a posição fica no card da coluna da esquerda. */}
             {cutoff.minhaLinha && !embutido ? (
               <Pressable
@@ -652,6 +666,8 @@ const s = StyleSheet.create({
   rowLarga: { minHeight: 52, paddingVertical: 8, borderBottomWidth: 1 },
   colunaPerfilLinha: { width: 170, flexDirection: "row", alignItems: "center", gap: 8 },
   pontoPerfil: { width: 8, height: 8, borderRadius: 4 },
+  // Na altura da linha do perfil (s.profile: 18 de altura, 3 de margem).
+  perfilEsqueleto: { marginTop: 7, marginBottom: 4 },
   perfilLargo: { marginTop: 0, flexShrink: 1 },
   semPerfil: { fontStyle: "italic" },
   row: {

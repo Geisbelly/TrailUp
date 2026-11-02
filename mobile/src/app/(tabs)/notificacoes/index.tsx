@@ -1,6 +1,7 @@
 import NotificationItem from "@/components/CardNotificacao";
 import { abreGrupo } from "@/utils/grupoNotificacao";
 import CardSemDados from "@/components/CardSemDados";
+import { EsqueletoDaCaixa } from "@/components/notificacoes/EsqueletoDaCaixa";
 import { HallBackground, OrnamentDivider } from "@/components/HallTheme";
 import {
   SectionGuideButton,
@@ -55,6 +56,14 @@ function NotificacoesLista() {
   const ehLida = (n: any) => Boolean(n.read ?? n.status === "lida");
   const totalNaoLidas = itens.filter((n: any) => !ehLida(n)).length;
   const contadores = { todas: itens.length, nao_lidas: totalNaoLidas, lidas: itens.length - totalNaoLidas };
+  // A caixa começa carregando no provedor: até a primeira resposta, "sem notificações"
+  // e contadores zerados seriam falsos. Depois dela, puxar para atualizar usa o
+  // indicador do próprio RefreshControl, sobre a lista que já está ali.
+  const [jaCarregou, setJaCarregou] = React.useState(!carregando);
+  useEffect(() => {
+    if (!carregando) setJaCarregou(true);
+  }, [carregando]);
+  const esperandoPrimeiraCarga = !jaCarregou && itens.length === 0;
 
   // Entregue ao guia: sem isso ele descreve itens que ficaram fora da tela.
   const listaRef = useRef<FlatList>(null);
@@ -300,21 +309,21 @@ function NotificacoesLista() {
         >
           <FilterPill
             label="Todas"
-            count={contadores.todas}
+            count={esperandoPrimeiraCarga ? undefined : contadores.todas}
             active={tab === "todas"}
             palette={palette}
             onPress={() => setTab("todas")}
           />
           <FilterPill
             label="Não lidas"
-            count={contadores.nao_lidas}
+            count={esperandoPrimeiraCarga ? undefined : contadores.nao_lidas}
             active={tab === "nao_lidas"}
             palette={palette}
             onPress={() => setTab("nao_lidas")}
           />
           <FilterPill
             label="Lidas"
-            count={contadores.lidas}
+            count={esperandoPrimeiraCarga ? undefined : contadores.lidas}
             active={tab === "lidas"}
             palette={palette}
             onPress={() => setTab("lidas")}
@@ -351,16 +360,20 @@ function NotificacoesLista() {
             <RefreshControl
               tintColor={palette.accent}
               colors={[palette.accent]}
-              refreshing={!!carregando}
+              refreshing={!!carregando && !esperandoPrimeiraCarga}
               onRefresh={onRefresh}
             />
           }
           ListEmptyComponent={
-            <CardSemDados
-              title="Sem notificações"
-              description="Você ainda não tem notificações por aqui."
-              accentColor={palette.accent}
-            />
+            esperandoPrimeiraCarga ? (
+              <EsqueletoDaCaixa palette={palette} />
+            ) : (
+              <CardSemDados
+                title="Sem notificações"
+                description="Você ainda não tem notificações por aqui."
+                accentColor={palette.accent}
+              />
+            )
           }
           ListFooterComponent={
             data.length > 0 ? (

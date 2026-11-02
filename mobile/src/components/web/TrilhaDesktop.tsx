@@ -34,7 +34,7 @@ import { FONTE_TITULO_TRILHA, useFonteCinzel } from "@/components/web/fonteCinze
  * A Bag fica na barra superior da moldura, não aqui.
  */
 export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: React.RefObject<View | null> }) {
-  const { classeAtual, carregando, erro, visual, mapTheme, personalizedTopics, progressoPersonalizado, perfil, grafo } =
+  const { classeAtual, erro, visual, mapTheme, personalizedTopics, progressoPersonalizado, perfil, grafo } =
     useTrilha();
   const { usuario } = useUsuario();
   useFonteCinzel();
@@ -118,7 +118,8 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
     personalizado: Boolean(personalizedTopics?.[Number(t.id)]),
   }));
 
-  if (carregando || erro || !classeAtual) return <View style={[s.tela, { backgroundColor: palette.background }]} />;
+  // Primeira carga é da TrilhaScreen (esqueleto); numa recarga, a trilha atual continua.
+  if (erro || !classeAtual) return <View style={[s.tela, { backgroundColor: palette.background }]} />;
 
   const ehMapa = visual === "mapa";
   const cenario = (

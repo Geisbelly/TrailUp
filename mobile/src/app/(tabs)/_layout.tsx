@@ -34,6 +34,9 @@ import { registrarAlvoTour } from "@/utils/tourTargets";
 import type { Funcionalidade } from "@/utils/portoes";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { useUrlDeImagem } from "@/hooks/useFonteDeImagem";
+import { useContagemDeNaoLidas, useNaoLidasDoChat } from "@/hooks/useNaoLidasDoChat";
+import { rotuloDoContador } from "@/services/social/chatNaoLidasModel";
+import { iconeDoSocial } from "@/services/social/socialDestaque";
 
 // Contador de não lidas no ícone da aba (mobile-v1). Lê o contexto, então só pode
 // ser montado dentro do NotificationsProvider — por isso é tabBarIcon e não prop.
@@ -46,6 +49,27 @@ function IconeNotificacoes({ focused, color, fundo }: { focused: boolean; color:
       {naoLidas > 0 ? (
         <View style={{ position: "absolute", top: -4, right: -9, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", backgroundColor: color, borderWidth: 1.5, borderColor: fundo }}>
           <Text style={{ fontSize: 10, lineHeight: 12, fontWeight: "700", color: fundo }}>{naoLidas > 9 ? "9+" : naoLidas}</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+// Ícone do Social: o da área que o perfil vê primeiro (`iconeDoSocial`) e as mensagens não lidas,
+// com o mesmo selo do sino. Bloqueado, fica apagado com o cadeado e sem número.
+function IconeSocial({ focused, color, fundo, perfil, aberto }: { focused: boolean; color: string; fundo: string; perfil: string | null; aberto: boolean }) {
+  const { total } = useNaoLidasDoChat();
+  const naoLidas = aberto ? total : 0;
+  return (
+    <View
+      style={{ opacity: aberto ? 1 : 0.5 }}
+      accessibilityLabel={!aberto ? "Social, bloqueado" : naoLidas > 0 ? `Social, ${naoLidas} ${naoLidas === 1 ? "mensagem não lida" : "mensagens não lidas"}` : "Social"}
+    >
+      <MaterialCommunityIcons size={focused ? 28 : 26} name={iconeDoSocial(perfil, focused) as keyof typeof MaterialCommunityIcons.glyphMap} color={color} />
+      {!aberto ? <MaterialCommunityIcons name="lock" size={12} color={color} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
+      {naoLidas > 0 ? (
+        <View style={{ position: "absolute", top: -4, right: -9, minWidth: 16, height: 16, borderRadius: 8, paddingHorizontal: 4, alignItems: "center", justifyContent: "center", backgroundColor: color, borderWidth: 1.5, borderColor: fundo }}>
+          <Text style={{ fontSize: 10, lineHeight: 12, fontWeight: "700", color: fundo }}>{rotuloDoContador(naoLidas)}</Text>
         </View>
       ) : null}
     </View>
@@ -94,6 +118,8 @@ export default function TabLayout() {
   const perfilConfig = brainProfile ? brainHexConfig[brainProfile] : undefined;
   const palette = getProfileShellPalette(activeProfileName ?? null);
   const { aberturas, cerimoniaAtual, concluirCerimonia } = usePortoes();
+  // Uma leitura das não lidas para a barra e a aba Social; sem o Social aberto, nada a contar.
+  useContagemDeNaoLidas(aberturas.social ? usuario?.id : null);
   const [portaoBloqueado, setPortaoBloqueado] = useState<Funcionalidade | null>(null);
 
   // Foto privada do Storage (#195): URL assinada curta; enquanto isso, o padrao.
@@ -215,14 +241,7 @@ export default function TabLayout() {
                 title: "Social",
                 href: undefined,
                 tabBarIcon: ({ focused, color }) => (
-                  <View style={{ opacity: aberturas.social ? 1 : 0.5 }}>
-                    <MaterialCommunityIcons
-                      size={focused ? 28 : 26}
-                      name={focused ? "account-group" : "account-group-outline"}
-                      color={color}
-                    />
-                    {!aberturas.social ? <MaterialCommunityIcons name="lock" size={12} color={color} style={{ position: "absolute", right: -5, bottom: -2 }} /> : null}
-                  </View>
+                  <IconeSocial focused={focused} color={color} fundo={palette.surface} perfil={activeProfileName ?? null} aberto={aberturas.social} />
                 ),
               }}
             />

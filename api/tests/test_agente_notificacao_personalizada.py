@@ -190,3 +190,115 @@ def test_texto_com_topico_cabe_com_o_maior_nome_possivel() -> None:
 def test_perfil_fora_da_lista_cai_no_mastermind_tambem_com_topico() -> None:
     n = modulo.notificacao_da_regra("Socialiser", "inatividade", AGORA, {"topico": "Frações"})
     assert n.corpo == modulo._TEXTOS_COM_TOPICO["Mastermind"]["lembrete"].format(topico="Frações")
+
+
+# --- o texto fala com o aluno, em palavras simples ------------------------------
+
+# Texto que o modelo mandou a alunos Mastermind em produção (notificacoes_ia, 01/11): ele copiava os
+# marcadores da assinatura editorial ("hipótese", "evidência", "trade-off", "modelo") para o push.
+TEXTOS_DE_PRODUCAO = [
+    ("Próxima etapa no modelo de Aceleração",
+     "A evidência sugere que consolidar o próximo bloco otimiza o aprendizado. Analise Gráficos do MUV para avançar no tópico."),
+    ("Próxima hipótese em [MOCK] Aceleração",
+     "A evidência apoia a progressão do modelo. Analise Gráficos do MUV para avançar no aprendizado."),
+    ("Conclusão de ciclo: análise de eficiência",
+     "O modelo de estudo foi validado com sucesso. A hipótese de domínio do tópico foi confirmada."),
+    ("Otimize seu modelo de estudo",
+     "A hipótese atual requer testes. Abra o TrailUp e analise o próximo trade-off conceitual com Idris."),
+    ("Análise estratégica", "Parabéns pela eficiência, Aluno. Continue focado na sua rota."),
+]
+FOCO_ACELERACAO = {"topico": "Aceleração", "proximo_conteudo": "Gráficos do MUV"}
+
+
+@pytest.mark.parametrize(("titulo", "corpo"), TEXTOS_DE_PRODUCAO)
+def test_texto_de_sistema_que_chegou_ao_aluno_e_recusado(titulo, corpo) -> None:
+    assert modulo.problemas_do_texto(titulo, corpo, FOCO_ACELERACAO)
+
+
+def test_texto_simples_passa() -> None:
+    assert modulo.problemas_do_texto(
+        "Bora ver os gráficos?", "Os Gráficos do MUV mostram a Aceleração na prática. Dá uma olhada quando puder.", FOCO_ACELERACAO
+    ) == []
+
+
+def test_nome_do_topico_com_palavra_de_sistema_pode_ser_citado() -> None:
+    foco = {"topico": "Ciclo da água", "proximo_conteudo": "Modelo atômico de Bohr"}
+    assert modulo.problemas_do_texto("Ciclo da água", "Falta pouco em Ciclo da água. Abra o Modelo atômico de Bohr!", foco) == []
+    # Só o nome inteiro é liberado: "ciclo" solto continua sendo jargão.
+    assert modulo.problemas_do_texto("Novo ciclo", "Comece um ciclo novo hoje.", foco) != []
+
+
+def test_frase_longa_e_recusada() -> None:
+    corpo = "Que tal abrir agora o próximo conteúdo da trilha e resolver com calma as questões que ficaram para depois de ontem?"
+    assert modulo.problemas_do_texto("Volta pra trilha", corpo) == ["tem frase com mais de 18 palavras"]
+
+
+def test_todo_texto_pronto_da_regra_passa_na_guarda() -> None:
+    for perfil, textos in modulo._TEXTOS_DA_REGRA.items():
+        for tipo, (titulo, corpo) in textos.items():
+            assert modulo.problemas_do_texto(titulo, corpo) == [], (perfil, tipo)
+            com_topico = modulo._TEXTOS_COM_TOPICO[perfil][tipo].format(topico="Frações")
+            assert modulo.problemas_do_texto(titulo, com_topico, {"topico": "Frações"}) == [], (perfil, tipo)
+
+
+def test_todo_perfil_tem_jeito_de_falar_na_notificacao_e_o_exemplo_passa_na_guarda() -> None:
+    assert set(modulo._JEITO_NA_NOTIFICACAO) == set(modulo._TEXTOS_DA_REGRA)
+    for perfil, jeito in modulo._JEITO_NA_NOTIFICACAO.items():
+        assert jeito["tom_voz"] and jeito["exemplo"], perfil
+        assert modulo.problemas_do_texto("Exemplo", jeito["exemplo"], {"topico": "Frações"}) == [], perfil
+
+
+@pytest.mark.asyncio
+async def test_modelo_nao_recebe_os_marcadores_da_assinatura_editorial(monkeypatch) -> None:
+    _rag(monkeypatch, False)
+    chamada = AsyncMock(return_value=_gerada(evidencia=None))
+    monkeypatch.setattr(modulo.JsonLLMService, "ainvoke_structured", chamada)
+
+    await modulo.agente_notificacao(
+        {**ESTADO, "perfil_brainhex": [{"perfil": "Mastermind", "afinidade": 90}]}, Settings(openai_api_key=None), agora=AGORA
+    )
+
+    perfil = chamada.await_args.kwargs["payload"]["perfil"]
+    assert perfil["tom_voz"] == modulo._JEITO_NA_NOTIFICACAO["Mastermind"]["tom_voz"]
+    assert perfil["guia_nome"] == "Idris"
+    texto = str(perfil).lower()
+    assert "marcadores" not in texto and "hipótese" not in texto and "evidência" not in texto
+
+
+def test_marcacao_do_cadastro_sai_do_nome_do_topico() -> None:
+    foco = modulo._foco({"foco_estudo": {"topico": "[MOCK] Aceleração", "proximo_conteudo": "[rascunho] Gráficos do MUV"}})
+    assert foco["topico"] == "Aceleração" and foco["proximo_conteudo"] == "Gráficos do MUV"
+
+
+@pytest.mark.asyncio
+async def test_texto_recusado_volta_ao_modelo_uma_vez_com_os_problemas(monkeypatch) -> None:
+    _rag(monkeypatch, True)
+    ruim = _gerada(titulo="Próxima hipótese", corpo="A evidência apoia a progressão do modelo.")
+    bom = _gerada(titulo="Um passo de cada vez", corpo="Faça só um item de Frações hoje. Vai no seu ritmo.")
+    chamada = AsyncMock(side_effect=[ruim, bom])
+    monkeypatch.setattr(modulo.JsonLLMService, "ainvoke_structured", chamada)
+
+    r = await modulo.agente_notificacao({**ESTADO, "foco_estudo": FOCO}, Settings(openai_api_key=None), agora=AGORA)
+
+    assert [c.kwargs["use_rag"] for c in chamada.await_args_list] == [True, False]
+    revisar = chamada.await_args_list[1].kwargs["payload"]["revisar"]
+    assert revisar["corpo"] == ruim.corpo and any("evidencia" in p for p in revisar["problemas"])
+    n = r["notificacao_payload"]
+    assert n["corpo"] == bom.corpo
+    assert n["contexto"]["origem"] == "rag" and n["contexto"]["revisado"] is True
+
+
+@pytest.mark.asyncio
+async def test_revisao_ainda_errada_vira_o_texto_pronto_do_perfil(monkeypatch) -> None:
+    _rag(monkeypatch, False)
+    ruim = _gerada(titulo="Otimize seu modelo", corpo="Consolide o bloco.")
+    chamada = AsyncMock(side_effect=[ruim, ruim])
+    monkeypatch.setattr(modulo.JsonLLMService, "ainvoke_structured", chamada)
+
+    r = await modulo.agente_notificacao({**ESTADO, "foco_estudo": FOCO}, Settings(openai_api_key=None), agora=AGORA)
+
+    assert chamada.await_count == 2  # o texto e uma revisão; não insiste além disso
+    n = r["notificacao_payload"]
+    assert n["contexto"]["origem"] == "regra"
+    assert n["contexto"]["texto_do_modelo_recusado"]
+    assert modulo.problemas_do_texto(n["titulo"], n["corpo"], {"topico": "Frações"}) == []

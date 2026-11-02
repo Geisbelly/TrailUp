@@ -37,7 +37,6 @@ export const TrilhaBase: React.FC<{
 }> = ({ chatGuideTargetRef, onOpenBag }) => {
   const {
     classeAtual,
-    carregando,
     erro,
     visual,
     mapTheme,
@@ -91,7 +90,8 @@ export const TrilhaBase: React.FC<{
     [isFocused],
   );
 
-  if (carregando || !classeAtual) return <View style={st.page} />;
+  // Primeira carga é da TrilhaScreen (esqueleto); numa recarga, a trilha atual continua.
+  if (!classeAtual) return <View style={st.page} />;
   if (erro) return <View style={st.page} />;
 
   const nome =

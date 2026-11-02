@@ -1,6 +1,7 @@
 import { HallBackground } from "@/components/HallTheme";
 import { JourneyHeading } from "@/components/JourneyHeading";
 import { JourneySymbol } from "@/components/JourneySymbol";
+import { EsqueletoDasHistorias, EsqueletoDoSocial } from "@/components/social/EsqueletoDoSocial";
 import { SocialInviteCard } from "@/components/social/SocialInviteCard";
 import { SocialPersonCard } from "@/components/social/SocialPersonCard";
 import { SocialProfileModal } from "@/components/social/SocialProfileModal";
@@ -23,8 +24,9 @@ import { StoreModal } from "@/components/loja/StoreModal";
 import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { Classe } from "@/models/Classe";
-import { aceitarConvite, bloquear, carregarNaoLidas, carregarSocial, desbloquear, desfazerAmizade, enviarConvite, marcarConversaLida, recusarConvite } from "@/services/social/socialService";
-import { SEM_NAO_LIDAS, zerarConversa, type NaoLidas, type TipoDeConversa } from "@/services/social/chatNaoLidasModel";
+import { aceitarConvite, bloquear, carregarSocial, desbloquear, desfazerAmizade, enviarConvite, recusarConvite } from "@/services/social/socialService";
+import type { TipoDeConversa } from "@/services/social/chatNaoLidasModel";
+import { naoLidasDoChat, useNaoLidasDoChat } from "@/hooks/useNaoLidasDoChat";
 import { carregarGuildas, carregarJanelaDaFormacao } from "@/services/social/guildService";
 import { peopleForSocialSection, type SocialPeopleSection, type SocialPerson } from "@/services/social/socialModel";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
@@ -32,7 +34,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 
@@ -97,7 +99,7 @@ export default function SocialScreen() {
   const [chatPerson, setChatPerson] = useState<SocialPerson | null>(null);
   // "Conversa da guilda" no cartão em destaque abre a mesma conversa do bloco Guildas.
   const [chatGuilda, setChatGuilda] = useState<Guild | null>(null);
-  const [naoLidas, setNaoLidas] = useState<NaoLidas>(SEM_NAO_LIDAS);
+  const naoLidas = useNaoLidasDoChat();
   const shareOptions = useMemo<GuildShareOption[]>(() => {
     const topics = (classeAtual as any)?.topicos ?? [];
     const result: GuildShareOption[] = [];
@@ -138,22 +140,13 @@ export default function SocialScreen() {
   }, [activeClasseId, autenticado, usuario?.id]);
   useEffect(() => { void load(); }, [load]);
 
-  const atualizarNaoLidas = useCallback(async () => {
-    if (!autenticado || !usuario?.id) return setNaoLidas(SEM_NAO_LIDAS);
-    setNaoLidas(await carregarNaoLidas());
-  }, [autenticado, usuario?.id]);
-  // Enquanto a aba está à vista, o contador acompanha o que chega. O aviso com a aba fechada é o
-  // push que o próprio banco manda (`20261102_06`), um por leva de mensagens não lidas.
-  useFocusEffect(useCallback(() => {
-    void atualizarNaoLidas();
-    const id = setInterval(() => void atualizarNaoLidas(), 30_000);
-    return () => clearInterval(id);
-  }, [atualizarNaoLidas]));
+  // A contagem é a mesma do ícone da barra de baixo, que a relê a cada 30 s com o app aberto
+  // (`useContagemDeNaoLidas`, no layout das abas). Ao entrar aqui, uma leitura a mais. Com o app
+  // fechado, o aviso é o push que o próprio banco manda (`20261102_06`).
+  const atualizarNaoLidas = useCallback(() => { if (autenticado && usuario?.id) void naoLidasDoChat.atualizar(); }, [autenticado, usuario?.id]);
+  useFocusEffect(atualizarNaoLidas);
   /** Abrir e fechar a conversa marcam como lida: o que chegou com ela aberta também foi visto. */
-  const marcarLida = useCallback((tipo: TipoDeConversa, conversaId: string) => {
-    setNaoLidas((atual) => zerarConversa(atual, tipo, conversaId));
-    void marcarConversaLida(tipo, conversaId);
-  }, []);
+  const marcarLida = useCallback((tipo: TipoDeConversa, conversaId: string) => naoLidasDoChat.marcarLida(tipo, conversaId), []);
   const abrirConversa = (person: SocialPerson) => { marcarLida("privado", person.alunoId); setChatPerson(person); };
   const abrirGuilda = (guilda: Guild) => { marcarLida("guilda", guilda.id); setChatGuilda(guilda); };
 
@@ -287,7 +280,9 @@ export default function SocialScreen() {
       {search ? <Pressable onPress={() => setSearch("")} accessibilityRole="button" accessibilityLabel="Limpar busca" style={styles.clearSearch}><MaterialCommunityIcons name="close" size={20} color={Color.colorWhite} /></Pressable> : null}
     </View>
   );
-  const carregandoOuErro = loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? (
+  // Primeira carga: o esqueleto no formato da aba (destaque e cartões de pessoa), em vez de
+  // um spinner sozinho no lugar da página inteira.
+  const carregandoOuErro = loading && !social ? <EsqueletoDoSocial palette={palette} comDestaque={!desktop && abaAtiva === abaDoDestaque} /> : error ? (
     <View style={styles.empty}>
       <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
       <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>
@@ -301,7 +296,7 @@ export default function SocialScreen() {
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
       <HallBackground palette={palette} />
       <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
-        <ScrollView ref={rolagemRef} onScroll={desktop ? undefined : aoRolar} scrollEventThrottle={64} stickyHeaderIndices={desktop ? undefined : [1]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => { void load(); void atualizarNaoLidas(); }} tintColor={palette.accent} />}>
+        <ScrollView ref={rolagemRef} onScroll={desktop ? undefined : aoRolar} scrollEventThrottle={64} stickyHeaderIndices={desktop ? undefined : [1]} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={loading && social !== null} onRefresh={() => { void load(); atualizarNaoLidas(); }} tintColor={palette.accent} />}>
           <View style={desktop ? styles.header : styles.headerCelular}>
             {desktop ? (
               <View style={styles.cabecalhoLargo}>
@@ -322,7 +317,7 @@ export default function SocialScreen() {
             )}
             {desktop ? <Text style={[styles.subtitle, { color: palette.textMuted }]}>Encontre sua turma e avance em companhia.</Text> : null}
             {/* Stories (#789): na tela larga, "Encontrar" leva à pílula de mesmo nome. */}
-            {social && social.friends.length + social.candidates.length > 0 ? <SocialStories amigos={social.friends} colegas={social.candidates} naoLidas={naoLidas.privado} palette={palette} onConversar={abrirConversa} onEncontrar={() => { if (!desktop) return irPara("encontrar"); setSection("discover"); setSearch(""); }} /> : null}
+            {social && social.friends.length + social.candidates.length > 0 ? <SocialStories amigos={social.friends} colegas={social.candidates} naoLidas={naoLidas.privado} palette={palette} onConversar={abrirConversa} onEncontrar={() => { if (!desktop) return irPara("encontrar"); setSection("discover"); setSearch(""); }} /> : loading && !social ? <EsqueletoDasHistorias palette={palette} /> : null}
           </View>
           <View style={[desktop ? styles.tabsSticky : styles.abasSticky, { backgroundColor: palette.background }]}>
             {desktop ? (
@@ -415,7 +410,7 @@ export default function SocialScreen() {
               borderColor={palette.border}
             />
           ) : null}
-          {loading && !social ? <ActivityIndicator color={palette.accent} style={styles.loader} /> : error ? (
+          {loading && !social ? <EsqueletoDoSocial palette={palette} comDestaque={false} /> : error ? (
             <View style={styles.empty}>
               <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
               <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>

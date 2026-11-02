@@ -1,0 +1,5 @@
+[functions.storage-upload-url]
+# A autorizacao e' feita na propria funcao: so' a SUPABASE_SERVICE_ROLE_KEY
+# passa (ver pedido.ts). Com verify_jwt a plataforma aceitaria tambem o JWT de
+# qualquer aluno logado.
+verify_jwt = false
