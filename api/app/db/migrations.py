@@ -88,6 +88,27 @@ def trava_de_migracao(connection) -> Iterator[bool]:
             )
 
 
+def declara_leitura_e_escrita(connection) -> None:
+    """Primeiro comando da transacao das migracoes: `SET TRANSACTION READ WRITE`.
+
+    A API fala com o banco pelo Supavisor em modo transacao (porta 6543), que
+    reaproveita o mesmo backend entre clientes e NAO limpa o estado de sessao.
+    Um `SET default_transaction_read_only = on` de qualquer outro cliente (um
+    script de medicao "so leitura", por exemplo) fica grudado no backend, e o
+    BEGIN seguinte -- o das migracoes -- nasce somente leitura. Em 02/11 foi
+    assim que a `20261102_07` falhou com `ReadOnlySqlTransaction` e a API nao
+    subiu (502). Declarar o modo na propria transacao vale so para ela: nao
+    muda a sessao de ninguem e ignora o default herdado. Precisa vir antes de
+    qualquer consulta da transacao, por isso fica aqui e nao na migration.
+
+    Fora do Postgres (SQLite nos testes) nao faz nada.
+    """
+    from sqlalchemy import text
+
+    if connection.dialect.name == "postgresql":
+        connection.execute(text("SET TRANSACTION READ WRITE"))
+
+
 def _encerra_transacao_da_trava(connection) -> None:
     """COMMIT da transacao que o SELECT da trava abriu, se houver uma."""
     if connection.in_transaction():

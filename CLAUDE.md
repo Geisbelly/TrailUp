@@ -691,6 +691,16 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   baixado do Storage (corrigido em `htmlDeckSource.ts`) e uma checagem em SQL
   que marcou 100% das gerações novas como `failed` (revertida em
   `20260922_03`).
+- **Nada de `SET` de sessão pela porta 6543 do pooler.** A `DATABASE_URL` passa
+  pelo Supavisor em modo transação: o backend é compartilhado entre clientes e o
+  estado de sessão **não é limpo**. Um `SET default_transaction_read_only = on`
+  (ou o mesmo em `server_settings` do asyncpg) num script de medição "só
+  leitura" deixou o backend somente leitura para todo mundo. A `20261102_07`
+  falhou com `ReadOnlySqlTransaction` e a API ficou em 502 (02/11). Para ler
+  produção com segurança, use `BEGIN READ ONLY` (`transaction(readonly=True)`),
+  que morre com a transação, ou a porta 5432 (modo sessão). As migrações
+  declaram `SET TRANSACTION READ WRITE` (`declara_leitura_e_escrita`), mas o
+  resto da API não: com o backend envenenado, toda escrita dela falha.
 - **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
   colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro
