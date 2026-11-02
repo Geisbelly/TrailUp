@@ -78,9 +78,13 @@ export interface PersonalizarRequest {
   required_presentation_design_version?: string;
   wait_for_completion: boolean;
   guidance_prompt?: string;
+  /** Arco narrativo da turma escrito pelo professor (#145). */
+  class_story_arc?: string;
 }
 
 const MAX_GUIDANCE_PROMPT_CHARS = 4_000;
+// Mesmo teto do CHECK de `classe_arco_narrativo.texto` (api, 20261102_16).
+export const MAX_CLASS_STORY_ARC_CHARS = 3000;
 
 // ── SSRF protection ────────────────────────────────────────────────────────
 //
@@ -439,6 +443,23 @@ export function validatePersonalizarBody(
     if (trimmed.length > 0) guidancePrompt = trimmed;
   }
 
+  let classStoryArc: string | undefined;
+  if (body.class_story_arc !== undefined && body.class_story_arc !== null) {
+    if (typeof body.class_story_arc !== "string") {
+      return { ok: false, error: "class_story_arc deve ser uma string" };
+    }
+    const trimmed = body.class_story_arc.trim();
+    // Por caractere (code point), como o len() da API e o char_length() do banco: com
+    // emoji, o length do JS passaria do teto e recusaria um arco que o banco aceitou.
+    if (Array.from(trimmed).length > MAX_CLASS_STORY_ARC_CHARS) {
+      return {
+        ok: false,
+        error: `class_story_arc excede o limite de ${MAX_CLASS_STORY_ARC_CHARS} caracteres`,
+      };
+    }
+    if (trimmed.length > 0) classStoryArc = trimmed;
+  }
+
   let conteudoId: number | undefined;
   if (body.conteudo_id !== undefined && body.conteudo_id !== null) {
     conteudoId = Number(body.conteudo_id);
@@ -483,6 +504,7 @@ export function validatePersonalizarBody(
           : undefined,
       wait_for_completion: body.wait_for_completion === true,
       guidance_prompt: guidancePrompt,
+      class_story_arc: classStoryArc,
     },
   };
 }

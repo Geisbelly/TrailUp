@@ -82,7 +82,7 @@ import {
   type RenderAndUploadPresentationResult,
   type PresentationRenderStage,
 } from "./src/services/brainHexPdfClient";
-import { validatePersonalizarBody } from "./src/lib/validators";
+import { MAX_CLASS_STORY_ARC_CHARS, validatePersonalizarBody } from "./src/lib/validators";
 import type { ContentBlock } from "./src/lib/validators";
 import { createRateLimiter } from "./src/lib/rateLimit";
 import { createDedupedTimeoutRunner } from "./src/lib/dedupedTimeoutRunner";
@@ -730,6 +730,7 @@ async function runPersonalizacaoJob(params: {
   contentBlocks:    ContentBlock[];
   presentationTheme: PresentationThemeInput;
   guidancePrompt?:  string;
+  classStoryArc?:   string;
   storagePath:      string;
   bucket:           string;
   refId:            string;
@@ -743,6 +744,7 @@ async function runPersonalizacaoJob(params: {
     contentBlocks,
     presentationTheme,
     guidancePrompt,
+    classStoryArc,
     storagePath,
     bucket,
     refId,
@@ -783,6 +785,7 @@ async function runPersonalizacaoJob(params: {
       fence,
       jobLog,
       guidancePrompt,
+      classStoryArc,
     );
   } finally {
     stopHeartbeat();
@@ -1087,6 +1090,7 @@ export async function runPipeline(
   fence: GenerationFence,
   jobLog: Logger,
   guidancePrompt?: string,
+  classStoryArc?: string,
 ): Promise<void> {
   const fallbackSubject =
     contentBlocks.find((block) => block.tema.trim())?.tema
@@ -1149,7 +1153,7 @@ export async function runPipeline(
       // roteiro precisa ser refeito - nunca o texto inteiro.
       jobLog.info("retomada: sem roteiro guardado, refazendo so o roteiro do áudio");
       try {
-        audioPlan = planAudio(await generateAudioScriptsWithGemini(profile, contentBlocks, guidancePrompt));
+        audioPlan = planAudio(await generateAudioScriptsWithGemini(profile, contentBlocks, guidancePrompt, classStoryArc));
         await mergePersonalizacaoMateriais(
           personalizacaoId,
           { audio: buildAudioCheckpointEntry({ plan: audioPlan, generationKey: fence.generationKey, bucket }) },
@@ -1189,6 +1193,7 @@ export async function runPipeline(
       contentBlocks,
       presentationPlan,
       guidancePrompt,
+      classStoryArc,
     );
 
     // Professor as vezes anexa um .pptx/.docx em vez de uma imagem avulsa -
@@ -1825,7 +1830,13 @@ export function buildApp(opts: AppOptions = {}): express.Application {
   // está vazio, sem nenhuma fonte binária (filesData=[]).
   app.post("/api/v1/generate/block", requireSecret, async (req, res) => {
     try {
-      const { contentBlocks, profile, presentation_theme: presentationTheme, guidance_prompt: guidancePrompt } = req.body ?? {};
+      const {
+        contentBlocks,
+        profile,
+        presentation_theme: presentationTheme,
+        guidance_prompt: guidancePrompt,
+        class_story_arc: classStoryArc,
+      } = req.body ?? {};
       if (!Array.isArray(contentBlocks) || contentBlocks.length === 0) {
         return res.status(400).json({ error: "contentBlocks é obrigatório e não pode ser vazio" });
       }
@@ -1843,6 +1854,9 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         contentBlocks,
         presentationPlan,
         typeof guidancePrompt === "string" ? guidancePrompt : undefined,
+        typeof classStoryArc === "string" && classStoryArc.trim()
+          ? Array.from(classStoryArc.trim()).slice(0, MAX_CLASS_STORY_ARC_CHARS).join("")
+          : undefined,
       );
       if (!result.chapters || result.chapters.length === 0) {
         return res.status(502).json({ error: "geração não retornou capítulos por bloco" });
@@ -2059,6 +2073,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       presentation_theme: presentationTheme,
       wait_for_completion: waitForCompletion,
       guidance_prompt: guidancePrompt,
+      class_story_arc: classStoryArc,
     } = v.value;
 
     const incompatibleVersions: Array<{
@@ -2165,6 +2180,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
           contentBlocks,
           presentationTheme,
           guidancePrompt,
+          classStoryArc,
           storagePath,
           bucket,
           refId,

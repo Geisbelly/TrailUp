@@ -4,6 +4,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.estudo import EstudoRepository
 from app.repositories.tentativas import TentativasRepository
 from app.schemas.common import DesempenhoSummary, Evento
@@ -208,6 +209,14 @@ class ContextRepository:
     async def fetch_personalizacao_retida(self, *, classe_id: int | None) -> bool:
         """A turma está com a personalização retida pelo estudo (#13)? Ver `EstudoRepository`."""
         return await EstudoRepository(self.session).personalizacao_retida(classe_id)
+
+    async def fetch_arco_narrativo(self, *, classe_id: int | None) -> str | None:
+        """Arco narrativo da turma escrito pelo professor (#145). Sem turma ou sem arco, None."""
+        if classe_id is None:
+            return None
+        # Savepoint: quem chama segue sem arco se a leitura falhar, sem abortar o ciclo.
+        async with self.session.begin_nested():
+            return await ConteudoClasseRepository(self.session).buscar_arco_narrativo(int(classe_id))
 
     async def fetch_foco_de_estudo(
         self, *, aluno_id: str, classe_id: int, topico_id: int | None

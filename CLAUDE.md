@@ -261,6 +261,19 @@ Cada perfil carrega:
   > de retomada da URL, e versioná-la faria o aluno perder o progresso a cada
   > regeração.
 
+- `classe_arco_narrativo` — a história da turma que o professor escreve (#145, `20261102_16`),
+  uma linha por classe. Só o professor dono lê e escreve (o aluno não lê; o arco chega a ele
+  dentro do material). **Guardar é banco, usar é API**: o console grava direto (aba História
+  de Personalizações) e `fetch_personalizacao_context` põe o arco no contexto, no prompt do
+  microservice (`class_story_arc` → `buildClassStoryArcSection`) e nos prompts Python
+  (`arco_narrativo_turma`). O arco é moldura comum aos 7 perfis; a voz continua a da
+  assinatura editorial do perfil.
+  - **Entra no `source_hash` só quando existe.** Turma sem arco mantém o hash de antes; editar o
+    arco invalida o material da turma (e refaz o enriquecimento uma vez por conteúdo).
+  - **O banco marca para regerar:** `fn_enqueue_arco_narrativo_job` enfileira `class_delta_sync`
+    da turma inteira, com a mesma coalescência e o mesmo portão de geração manual do editor.
+  - Cards não recebem o arco: são reaproveitados entre perfis e gerações, e ficariam com
+    histórias diferentes lado a lado.
 - `cards_personalizados`, `atividades_personalizadas`, `questoes_personalizadas` — artefatos desnormalizados (com `ativo`/`obsoleto_em`).
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona

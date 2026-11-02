@@ -1491,6 +1491,8 @@ async def _invoke_multistage_materiais_por_formato(
         perfil_dominante=perfil_dominante,
         perfil_brainhex=state.get("perfil_brainhex", []) or [],
     )
+    # Arco da turma (#145): moldura narrativa comum aos 7 perfis; a voz continua a do perfil.
+    arco_narrativo_turma = normalizar_arco_narrativo(state.get("arco_narrativo_turma"))
     topico_context = state.get("topico_contexto") if isinstance(state.get("topico_contexto"), dict) else {}
     conteudos = state.get("conteudos_topico") if isinstance(state.get("conteudos_topico"), list) else []
     complexidade = _infer_content_complexity(source_chunks=source_chunks, conteudos=conteudos)
@@ -1523,6 +1525,7 @@ async def _invoke_multistage_materiais_por_formato(
         "metas_tamanho_adaptativas": adaptive_targets,
         "fidelidade_conteudo": "criativa",
         "perfil_editorial": perfil_editorial,
+        "arco_narrativo_turma": arco_narrativo_turma,
         "modelo_editorial_schema_versao": "1.0",
     }
     study_raw = await _invoke_media_stage_llm(
@@ -1624,6 +1627,7 @@ async def _invoke_multistage_materiais_por_formato(
             "conteudo_estudado": conteudo_estudado,
             "modelo_editorial": modelo_editorial,
             "perfil_editorial": perfil_editorial,
+            "arco_narrativo_turma": arco_narrativo_turma,
             "metas_tamanho_adaptativas": conteudo_estudado.get("metas_tamanho"),
             "fidelidade_conteudo": "criativa",
             "cards_referencia": [
@@ -2087,6 +2091,17 @@ def _iter_metadata_files(metadata: dict[str, Any] | None) -> list[dict[str, Any]
     return [item for item in files if isinstance(item, dict)]
 
 
+# Mesmo teto do CHECK de `classe_arco_narrativo.texto` (20261102_16) e de
+# `class_story_arc` no microservice.
+ARCO_NARRATIVO_MAX_CHARS = 3000
+
+
+def normalizar_arco_narrativo(value: Any) -> str | None:
+    """Texto do arco da turma pronto para prompt e hash: sem espaco nas pontas, vazio vira None."""
+    texto = str(value or "").strip()
+    return texto[:ARCO_NARRATIVO_MAX_CHARS] or None
+
+
 def _build_source_hash(
     *,
     classe_id: int,
@@ -2096,8 +2111,9 @@ def _build_source_hash(
     cards_topico: list[dict[str, Any]] | None = None,
     atividades_topico: list[dict[str, Any]] | None = None,
     questoes_topico: list[dict[str, Any]] | None = None,
+    arco_narrativo: str | None = None,
 ) -> str:
-    payload = {
+    payload: dict[str, Any] = {
         "pipeline_version": _PERSONALIZACAO_PIPELINE_VERSION,
         "content_enrichment_schema": _CONTENT_ENRICHMENT_SCHEMA_VERSION,
         "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
@@ -2144,6 +2160,15 @@ def _build_source_hash(
             ],
         },
     }
+    # Arco narrativo da turma (#145). Entra no hash porque o texto, o audio e
+    # os slides sao escritos dentro dele: sem isto o professor editava a
+    # historia e o material antigo continuava valendo. A chave so existe com
+    # arco -- turma sem arco mantem o hash de antes e nada e regerado.
+    # Efeito colateral aceito: o enriquecimento (chaveado pelo hash) e refeito
+    # uma vez por conteudo quando o arco muda.
+    arco = normalizar_arco_narrativo(arco_narrativo)
+    if arco:
+        payload["arco_narrativo"] = arco
     return hashlib.sha256(
         json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
     ).hexdigest()
@@ -4771,6 +4796,7 @@ async def fetch_personalizacao_context(
     else:
         cards_topico = await classe_repo.buscar_cards_topico(topico_id)
 
+    arco_narrativo = normalizar_arco_narrativo(await classe_repo.buscar_arco_narrativo(classe_id))
     source_hash = _build_source_hash(
         classe_id=classe_id,
         topico_id=topico_id,
@@ -4779,6 +4805,7 @@ async def fetch_personalizacao_context(
         cards_topico=cards_topico,
         atividades_topico=atividades,
         questoes_topico=questoes,
+        arco_narrativo=arco_narrativo,
     )
 
     perfil_brainhex = context.get("perfil_brainhex") or []
@@ -4807,6 +4834,8 @@ async def fetch_personalizacao_context(
             "historico_eventos": context.get("historico_eventos") or [],
             "desempenho_recente": context.get("desempenho_recente") or {},
         },
+        # Vai para o microservice como `class_story_arc` (#145).
+        "arco_narrativo": arco_narrativo,
         "source_hash": source_hash,
         "ciclo_id": ciclo_id,
     }
@@ -5273,6 +5302,7 @@ async def _invoke_multimodal_materiais(
         "perfil_dominante": perfil_dominante,
         "perfil_brainhex": state.get("perfil_brainhex", []),
         "perfil_editorial": state.get("perfil_editorial") if isinstance(state.get("perfil_editorial"), dict) else {},
+        "arco_narrativo_turma": normalizar_arco_narrativo(state.get("arco_narrativo_turma")),
         "plano": plano,
         "formatos_solicitados": formatos,
         "topico": {
@@ -5843,6 +5873,7 @@ async def generate_materiais_personalizados(
                 "perfil_dominante": perfil_dominante,
                 "perfil_brainhex": state.get("perfil_brainhex", []),
                 "perfil_editorial": state.get("perfil_editorial") if isinstance(state.get("perfil_editorial"), dict) else {},
+                "arco_narrativo_turma": normalizar_arco_narrativo(state.get("arco_narrativo_turma")),
                 "plano": plano,
                 "formatos_solicitados": requested_formatos,
                 "topico": {

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  MAX_CLASS_STORY_ARC_CHARS,
   isSafeFonteUrl,
   validateContentEnrichmentBody,
   validatePersonalizarBody,
@@ -357,4 +358,33 @@ test("campos opcionais (classe_id/topico_id/ciclo_id/aluno_id) preservados", () 
     assert.equal(r.value.ciclo_id,  "uuid-here");
     assert.equal(r.value.aluno_id,  "aluno-uuid");
   }
+});
+
+// ───────────── class_story_arc (#145) ─────────────
+
+test("class_story_arc: ausente, nulo ou só espaço fica de fora", () => {
+  for (const arco of [undefined, null, "   "]) {
+    const r = validatePersonalizarBody({ ...validBody(), class_story_arc: arco });
+    assert.equal(r.ok, true);
+    if (r.ok) assert.equal(r.value.class_story_arc, undefined);
+  }
+});
+
+test("class_story_arc: chega sem espaço nas pontas", () => {
+  const r = validatePersonalizarBody({ ...validBody(), class_story_arc: "  A turma é a tripulação da Aurora.\n" });
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.value.class_story_arc, "A turma é a tripulação da Aurora.");
+});
+
+test("class_story_arc: não string é recusado", () => {
+  const r = validatePersonalizarBody({ ...validBody(), class_story_arc: 42 });
+  assert.equal(r.ok, false);
+});
+
+test("class_story_arc: o teto conta caractere, como o banco", () => {
+  // 3000 emoji têm length 6000 no JS e passam no CHECK do banco: não podem ser recusados aqui.
+  const cheio = "🚀".repeat(MAX_CLASS_STORY_ARC_CHARS);
+  assert.equal(validatePersonalizarBody({ ...validBody(), class_story_arc: cheio }).ok, true);
+  const longo = validatePersonalizarBody({ ...validBody(), class_story_arc: "x".repeat(MAX_CLASS_STORY_ARC_CHARS + 1) });
+  assert.equal(longo.ok, false);
 });

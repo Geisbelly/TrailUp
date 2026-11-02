@@ -50,6 +50,19 @@ Personalização editorial:
   real (o que o professor ensinou) antes ou junto da moldura narrativa — nunca a
   narrativa isolada sem o conteúdo técnico correspondente.
 
+Arco narrativo da turma (`arco_narrativo_turma`):
+- Quando vier preenchido, é a história da TURMA que o professor escreveu: cenário,
+  personagens e o fio que liga os tópicos. Vale igual para os 7 perfis.
+- Use-o como o mundo onde a narrativa acontece: a abertura situa o tópico nesse arco,
+  os exemplos e mini-cenários se passam nele e o fechamento aponta o próximo passo da
+  história. O guia do perfil continua sendo quem narra, com a voz, o ritmo e as
+  proibições de `perfil_editorial`: o arco diz ONDE e POR QUE, o perfil diz COMO.
+- A história serve ao conteúdo: cada cena precisa carregar um conceito do material,
+  e a regra 10 (substância técnica antes ou junto da moldura) vale igual. Não invente
+  fatos técnicos para encaixar na história nem contradiga o arco.
+- Se o arco conflitar com a ambientação padrão do perfil (medieval/mística), vence o arco.
+- Quando vier vazio ou ausente, ignore esta seção e siga só a assinatura do perfil.
+
 Persona por formato:
 - `markdown`: narrador grimório do guia `{guia_nome}`. Tom narrativo segundo `{framing_narrativo}`.
 - `apresentacao`: especialista em design visual educacional personalizado.

@@ -512,6 +512,7 @@ async def disparar_brainhex_async(
     contract_prechecked: bool = False,
     error_sink: list[str] | None = None,
     guidance_prompt: str = "",
+    arco_narrativo: str | None = None,
 ) -> bool:
     """Dispara BrainHex e, opcionalmente, aguarda o pipeline terminar.
 
@@ -574,6 +575,8 @@ async def disparar_brainhex_async(
                     "required_presentation_engine_version": PRESENTATION_ENGINE_VERSION,
                     "required_presentation_design_version": PRESENTATION_DESIGN_VERSION,
                     "guidance_prompt": guidance_prompt.strip() or None,
+                    # Arco da turma (#145). Microservice antigo ignora o campo.
+                    "class_story_arc": str(arco_narrativo or "").strip() or None,
                 },
                 headers=headers,
             )
@@ -687,6 +690,7 @@ async def gerar_capitulo_bloco_brainhex(
     presentation_theme: dict[str, Any] | None = None,
     guidance_prompt: str | None = None,
     error_sink: list[str] | None = None,
+    arco_narrativo: str | None = None,
 ) -> dict[str, Any] | None:
     """Gera o capitulo (markdown+audioScript+slides) de um subconjunto de
     blocos ja enriquecidos via POST /api/v1/generate/block (Fase A da
@@ -699,6 +703,7 @@ async def gerar_capitulo_bloco_brainhex(
             "profile": str(profile or "").strip().lower(),
             "presentation_theme": presentation_theme,
             "guidance_prompt": guidance_prompt,
+            "class_story_arc": str(arco_narrativo or "").strip() or None,
         },
         error_sink=error_sink,
     )

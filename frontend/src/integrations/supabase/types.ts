@@ -1319,6 +1319,38 @@ export type Database = {
           },
         ]
       }
+      classe_arco_narrativo: {
+        Row: {
+          atualizado_por: string | null
+          classe_id: number
+          created_at: string
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          atualizado_por?: string | null
+          classe_id: number
+          created_at?: string
+          texto: string
+          updated_at?: string
+        }
+        Update: {
+          atualizado_por?: string | null
+          classe_id?: number
+          created_at?: string
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "classe_arco_narrativo_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: true
+            referencedRelation: "classe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classe_mapa_tema: {
         Row: {
           classe_id: number
