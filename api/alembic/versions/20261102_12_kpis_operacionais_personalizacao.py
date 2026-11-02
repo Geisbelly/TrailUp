@@ -82,6 +82,8 @@ Revises: 20261102_11
 Create Date: 2026-11-02
 """
 
+import json
+
 from alembic import op
 
 revision = "20261102_12"
@@ -97,6 +99,11 @@ SLO = (
     '"geracao_p95_seg":{"enriquecimento":300,"capitulo":300,"audio":600,"apresentacao":600,"perfil_inteiro":1800},'
     '"falha_pct_max":20,"dias_persistencia":3}'
 )
+# Online, o Alembic embrulha a string de `op.execute` em `text()`, que lê `:1800` (o `:` do JSON
+# colado num número) como bind param. Sem valor, o `upgrade head` da subida quebra e a API não sobe.
+# Com espaço depois de cada `:` (os separadores padrão de `json.dumps`) não há bind, o JSON é o mesmo
+# e o SQL serve igual cru ou por `text()`. Ver `tests/test_migrations_sem_bind_params.py`.
+_SLO_SQL = json.dumps(json.loads(SLO))
 
 RELOGIO = """
 ALTER TABLE public.personalizacao_job_targets
@@ -153,7 +160,7 @@ CREATE TRIGGER trg_job_target_relogio
 
 CONFIG = f"""
 INSERT INTO public.app_config (chave, valor, descricao, publico)
-VALUES ('personalizacao_kpi_slo', '{SLO}',
+VALUES ('personalizacao_kpi_slo', '{_SLO_SQL}',
         'SLO da fila de personalização (#14): p95 de latência de job e de geração por formato, em segundos, '
         'e o limiar da falha persistente. Lido pela RPC personalizacao_kpis_operacionais.', true)
 ON CONFLICT (chave) DO NOTHING;
