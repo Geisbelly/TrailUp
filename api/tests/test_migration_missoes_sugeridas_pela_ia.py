@@ -110,6 +110,18 @@ def test_o_catalogo_do_banco_bate_com_o_do_console() -> None:
         assert maximos[metrica] == maximo, metrica
 
 
+def test_o_prompt_explica_cada_metrica_do_catalogo() -> None:
+    """Sem a explicação, o modelo lê o nome da métrica e promete escopo que o avaliador não tem
+    ("Estude 120 minutos de genética" conta estudo de qualquer assunto, desde sempre). Medido contra o
+    Gemini na #857: 8 de 11 propostas amarravam a meta a um tópico. Métrica nova no catálogo precisa
+    de uma linha no prompt dizendo o que ela mede."""
+    sql = _upgrade_sql()
+    metricas = re.findall(r"\('(\w+)', '\w+', '[^']+', \d+\)", sql[sql.index("fn_missao_ia_catalogo()") :])
+    prompt = (RAIZ / "api" / "app" / "agent" / "prompts" / "missoes_ia.txt").read_text(encoding="utf-8")
+    explicadas = set(re.findall(r'^- "(\w+)": ', prompt, re.M))
+    assert len(metricas) == 6 and set(metricas) <= explicadas
+
+
 def test_o_catalogo_so_tem_metricas_que_o_banco_sabe_avaliar() -> None:
     sql = _upgrade_sql()
     aceitas = {"eventos_totais", "eventos_do_tipo", "atividades_concluidas", "topicos_concluidos", "topicos_visitados",
