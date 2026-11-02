@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -14,6 +15,7 @@ from app.repositories.ia_decision_logs import IADecisionLogRepository
 from app.schemas.trilha_config import TrilhaConfig
 from app.services.llm import JsonLLMService
 
+logger = logging.getLogger(__name__)
 
 def _fallback_trilha(state: dict[str, Any]) -> dict[str, Any]:
     progresso = state.get("progresso_trilha", {})
@@ -47,15 +49,24 @@ async def agente_trilha(
         )
 
         async def _auditar(violacao, fase) -> None:
-            await IADecisionLogRepository(session).log(
-                aluno_id=state["aluno_id"],
-                classe_id=state["classe_id"],
-                source="graph",
-                stage="agente_trilha",
-                trigger_event=fase,
-                decision_summary=f"{violacao.regra}: {violacao.mensagem}",
-            )
-            await session.commit()
+            # `source` e a origem do ciclo, nao o no: o CHECK de `ia_decision_logs`
+            # so aceita telemetria/personalizacao/chat/manual, e este grafo so roda
+            # pela analise (`analysis_runner`, que grava `telemetria`). O no ja
+            # vai em `stage`. Com `"graph"` o INSERT violava o CHECK e derrubava o
+            # ciclo inteiro (#96, 01/11: 6 lotes sem analise).
+            try:
+                await IADecisionLogRepository(session).log(
+                    aluno_id=state["aluno_id"],
+                    classe_id=state["classe_id"],
+                    source="telemetria",
+                    stage="agente_trilha",
+                    trigger_event=fase,
+                    decision_summary=f"{violacao.regra}: {violacao.mensagem}",
+                )
+                await session.commit()
+            except Exception as exc:  # noqa: BLE001 - auditoria nunca derruba o ciclo
+                await session.rollback()
+                logger.warning("agente_trilha.auditoria_falhou: regra=%s erro=%s", violacao.regra, type(exc).__name__)
 
         trilha_config = await gerar_validado(
             llm,
