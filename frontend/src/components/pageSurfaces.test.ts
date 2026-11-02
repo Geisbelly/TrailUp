@@ -55,6 +55,7 @@ describe("shared page surfaces", () => {
       view: "dashboard", name: "Professor", isOwner: false, onSignOut: () => {},
     }));
     expect(markup).not.toContain('href="/console/aprovacoes"');
+    expect(markup).not.toContain('href="/console/tecnico"');
   });
 
   it("shows the Lumi on the working sections but not on Aprovações", () => {
@@ -65,5 +66,7 @@ describe("shared page surfaces", () => {
     }
     const aprovacoes = render(createElement(ConsoleShell, { view: "aprovacoes", name: "Professor", isOwner: true, onSignOut: () => {} }));
     expect(aprovacoes).not.toMatch(escriba);
+    const tecnico = render(createElement(ConsoleShell, { view: "tecnico", name: "Professor", isOwner: true, onSignOut: () => {} }));
+    expect(tecnico).not.toMatch(escriba);
   });
 });

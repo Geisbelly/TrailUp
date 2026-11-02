@@ -4,8 +4,8 @@
 
 import { consolePathForView, type ConsoleView } from "@/pages/consoleSections";
 
-export type TipoDeNotificacao = "recomendacao_ia" | "entrega_para_avaliar" | "geracao_falhou" | "evento_encerrado";
-export type DestinoDeNotificacao = "recomendacoes" | "notas" | "personalizacoes" | "eventos";
+export type TipoDeNotificacao = "recomendacao_ia" | "entrega_para_avaliar" | "geracao_falhou" | "evento_encerrado" | "gatilho_tecnico";
+export type DestinoDeNotificacao = "recomendacoes" | "notas" | "personalizacoes" | "eventos" | "tecnico";
 
 export type NotificacaoDoProfessor = {
   id: number;
@@ -28,6 +28,8 @@ const VIEW_DO_DESTINO: Record<DestinoDeNotificacao, ConsoleView> = {
   notas: "notas",
   personalizacoes: "personalizacoes",
   eventos: "eventos",
+  // Aviso do painel técnico (20261102_23): só chega ao dono, que é quem vê a aba.
+  tecnico: "tecnico",
 };
 
 export function caminhoDaNotificacao(n: Pick<NotificacaoDoProfessor, "destino">): string {

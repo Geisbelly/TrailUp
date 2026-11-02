@@ -28,6 +28,7 @@ describe("consolePathForView", () => {
     expect(consolePathForView("economia")).toBe("/console/economia");
     expect(consolePathForView("profile")).toBe("/console/meus-dados");
     expect(consolePathForView("aprovacoes")).toBe("/console/aprovacoes");
+    expect(consolePathForView("tecnico")).toBe("/console/tecnico");
   });
 });
 
@@ -52,6 +53,7 @@ describe("consoleViewFromPathname", () => {
     expect(consoleViewFromPathname("/console/economia")).toBe("economia");
     expect(consoleViewFromPathname("/console/meus-dados")).toBe("profile");
     expect(consoleViewFromPathname("/console/aprovacoes")).toBe("aprovacoes");
+    expect(consoleViewFromPathname("/console/tecnico")).toBe("tecnico");
   });
 
   it("mantem a aba da trilha nas subrotas do editor de topico", () => {

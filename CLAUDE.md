@@ -528,6 +528,15 @@ Cada perfil carrega:
   rank. Em modo foco (explícito, `aluno_modo_foco`, ou atenção recente que a API
   grava em `aluno_estado_atencao`), nada é entregue: a pendente vira
   `gatilho = 'fim_foco'` e, na saída, colapsa por tipo, sob o teto diário.
+  **`novo_material` e `sequencia` também saem do banco** (`20261102_21`), por gatilhos que
+  entram por `notificacoes_enfileirar_evento`. O de `novo_material` fica em
+  `conteudo_personalizado` e avisa quando o tópico termina de gerar para o perfil
+  dominante do aluno. O aviso sai **uma vez por aluno × tópico**
+  (`notificacoes_material_pronto`), então regerar não é novidade. Turma retida pelo estudo
+  e matrícula com menos de 24 h ficam sem aviso, e a turma recebe um aviso por dia. O de
+  `sequencia` fica em `aluno_atividade_diaria` e avisa só nos marcos (`sequencia_marcos`),
+  no instante em que o dia passa de `sequencia_minimo_min`. Os dois gatilhos nunca derrubam
+  a geração nem o heartbeat.
 - **Notificações do professor — também no banco** (`20261102_17`). `professor_notificacoes` é a caixa
   do console (sino no cabeçalho), **separada** das quatro tabelas do aluno acima: uma linha por assunto
   (`dedupe_key` única por professor), com `contagem` e `lida_em`, que volta a nulo quando o assunto se
@@ -536,6 +545,18 @@ Cada perfil carrega:
   transação de quem os causa** (`EXCEPTION WHEN OTHERS` → `WARNING`). O cliente só lê e muda `lida_em`
   (GRANT por coluna, sem policy de INSERT). Risco de reprovação **não** notifica: é calculado na hora,
   não há evento de banco para ligar um gatilho.
+- **Painel técnico (#21, `20261102_22`) — só o dono, e a API fica de fora.** `painel_tecnico(horas)` agrega
+  fila, erro e latência por formato e os quatro gatilhos do §11 (`ok`/`alerta`/`sem_dado`), com o **mesmo
+  SLO da #14** (`app_config.personalizacao_kpi_slo`). Confere `app_e_dono()` antes de qualquer leitura e só
+  agrega (nenhum `aluno_id`, nenhum texto de erro). Duas regras de honestidade: **o que o banco não mediu é
+  `sem_dado`, nunca `ok`** (o que a tela não entende também), e o gatilho de custo é um **proxy**
+  (execuções por alvo), porque tokens e custo em dinheiro não são gravados. A divergência de progresso é o
+  resultado das invariantes (`metricas_invariante_resultado`). Disponibilidade = quando cada worker mexeu
+  por último; o banco não enxerga a API. O aviso ao dono sai pelo sino (`20261102_23`): o `pg_cron`
+  chama `painel_tecnico` (**a mesma conta da aba**, com o e-mail do dono posto nas claims só dentro da
+  transação, por uma função sem EXECUTE para cliente) e grava **um aviso por gatilho em `alerta` por dia**
+  em `professor_notificacoes`; `sem_dado` não avisa.
+
 - **Missões sugeridas pela IA (#151, `20261102_20`) — a IA propõe, o banco decide o que entra, o
   professor aprova.** Reaproveita `missoes` (`origem = 'ia'`, `aprovacao = 'pendente'`); o `CHECK`
   `missoes_ia_exige_aprovacao` impede uma missão `ia` com `nao_requer`, então nada chega ao aluno sem
@@ -550,6 +571,7 @@ Cada perfil carrega:
   de acréscimo: proposta, aprovação e recusa com o motivo; a taxa de aprovação sai dele e **não realimenta
   o prompt**. Fora de escopo: editar antes de aprovar (`trg_missoes_guarda` congela o texto da missão que
   não é do professor, em silêncio), missão de entrega e prazo.
+  
 - **`boss_falas` — a IA escreve, o professor pode tirar do ar** (`20261102_19`). Nome e falas do boss
   são gerados em lote por conteúdo × perfil e o app os mostra ao aluno (inclusive menor) direto. O
   professor lê no editor de conteúdo e liga/desliga (`ativa`; **só** essa coluna tem GRANT de UPDATE: o

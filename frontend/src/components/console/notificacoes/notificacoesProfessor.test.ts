@@ -31,6 +31,7 @@ describe("caminhoDaNotificacao", () => {
     expect(caminhoDaNotificacao({ destino: "notas" })).toBe("/console/notas");
     expect(caminhoDaNotificacao({ destino: "personalizacoes" })).toBe("/console/personalizacoes");
     expect(caminhoDaNotificacao({ destino: "eventos" })).toBe("/console/eventos");
+    expect(caminhoDaNotificacao({ destino: "tecnico" })).toBe("/console/tecnico");
   });
   it("sem destino ou com destino de uma versão futura, cai na Visão geral", () => {
     expect(caminhoDaNotificacao({ destino: null })).toBe("/console");

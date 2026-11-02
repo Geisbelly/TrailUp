@@ -1,10 +1,10 @@
 import { useEffect, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Award, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, Lightbulb, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
+import { Activity, Award, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, Lightbulb, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 import { Shield, Swords } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DESIGN_ART } from "@/lib/design-art";
-import { CONSOLE_SECTIONS, consolePathForView, type ConsoleView } from "@/pages/consoleSections";
+import { CONSOLE_SECTIONS, consolePathForView, viewSoDoDono, type ConsoleView } from "@/pages/consoleSections";
 import Escriba from "./escriba/Escriba";
 import SinoDeNotificacoes from "./notificacoes/SinoDeNotificacoes";
 import { useContagemDeRecomendacoes } from "./recomendacoes/useRecomendacoesDaIA";
@@ -26,6 +26,7 @@ const navigation = {
   guildas: { label: "Guildas", icon: Shield },
   profile: { label: "Meus dados", icon: Settings },
   aprovacoes: { label: "Aprovações", icon: ShieldCheck },
+  tecnico: { label: "Painel técnico", icon: Activity },
 };
 
 // Dialog, Select e Popover do Radix renderizam em portal no <body>, fora de
@@ -67,7 +68,7 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         </div>
       </header>
       <nav className="console-navigation" aria-label="Seções do console">
-        {CONSOLE_SECTIONS.filter(section => section.view !== "aprovacoes" || isOwner).map(section => {
+        {CONSOLE_SECTIONS.filter(section => !viewSoDoDono(section.view) || isOwner).map(section => {
           const item = navigation[section.view];
           const Icon = item.icon;
           const aviso = section.view === "recomendacoes" ? selo : null;
@@ -75,8 +76,8 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         })}
       </nav>
       <main className="console-main" aria-label={navigation[view].label}>{children}</main>
-      {/* A Lumi acompanha as 6 telas de trabalho; Aprovações é administração, não turma. */}
-      {view !== "aprovacoes" && <Escriba />}
+      {/* A Lumi acompanha as telas de trabalho; Aprovações e Painel técnico são administração, não turma. */}
+      {!viewSoDoDono(view) && <Escriba />}
     </div>
   );
 }

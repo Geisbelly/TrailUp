@@ -95,8 +95,18 @@ function truncateError(message: string): string {
   return message.replace(/\s+/g, " ").trim().slice(0, 1200) || "brainhexpdf_error";
 }
 
-function resolveTimeoutMs(): number {
-  return Number(process.env.BRAINHEXPDF_TIMEOUT_MS) || 120_000;
+// 10 min. Os 120 s de antes cortavam deck que ainda ia ficar pronto: no job
+// b46c9fa7 (turma 68, 02/11) o microservice desistiu da parte 2 do Mastermind
+// as 17:52:40, e o BrainHexPDF subiu o deck no R2 as 17:55:29, ~4min50s depois
+// de comecar. Abortar daqui nao para o trabalho de la (o BrainHexPDF segue
+// gastando a cota do Gemini), so joga a resposta fora: a parte fica `failed`,
+// o alvo falha e a API repete o pipeline na hora. As partes rodam em
+// paralelo, entao o total e o da parte mais lenta, abaixo do teto do job
+// (MAX_JOB_DURATION_MS, 30 min) e da espera da API (1980 s).
+export const DEFAULT_BRAINHEXPDF_TIMEOUT_MS = 600_000;
+
+export function resolveBrainHexPdfTimeoutMs(): number {
+  return Number(process.env.BRAINHEXPDF_TIMEOUT_MS) || DEFAULT_BRAINHEXPDF_TIMEOUT_MS;
 }
 
 export async function renderAndUploadPresentationViaBrainHexPdf(
@@ -114,8 +124,13 @@ export async function renderAndUploadPresentationViaBrainHexPdf(
   }
 
   const apiSecret = (process.env.BRAINHEXPDF_API_SECRET ?? "").trim();
+  const timeoutMs = resolveBrainHexPdfTimeoutMs();
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), resolveTimeoutMs());
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    ac.abort();
+  }, timeoutMs);
 
   try {
     const response = await fetchImpl(`${apiUrl.replace(/\/+$/, "")}/api/v1/render-and-store`, {
@@ -187,8 +202,12 @@ export async function renderAndUploadPresentationViaBrainHexPdf(
       ...(generatedImagesBySubtopic ? { generatedImagesBySubtopic } : {}),
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    log.error("render-and-store erro de rede/timeout", { err: error });
+    // "This operation was aborted" sozinho nao dizia ao professor que foi o
+    // relogio daqui, nem quanto tempo esperamos.
+    const message = timedOut
+      ? `tempo esgotado: o BrainHexPDF nao respondeu em ${Math.round(timeoutMs / 1000)} s`
+      : error instanceof Error ? error.message : String(error);
+    log.error("render-and-store erro de rede/timeout", { err: error, timedOut, timeoutMs });
     return { presentationUrl: null, failure: { stage: "network", error: truncateError(message) }, dbWritten: false };
   } finally {
     clearTimeout(timer);
