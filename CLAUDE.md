@@ -552,8 +552,10 @@ Cada perfil carrega:
   `sem_dado`, nunca `ok`** (o que a tela não entende também), e o gatilho de custo é um **proxy**
   (execuções por alvo), porque tokens e custo em dinheiro não são gravados. A divergência de progresso é o
   resultado das invariantes (`metricas_invariante_resultado`). Disponibilidade = quando cada worker mexeu
-  por último; o banco não enxerga a API. Alerta só visual; avisar sem o dono abrir seria uma varredura
-  agendada gravando em `professor_notificacoes`.
+  por último; o banco não enxerga a API. O aviso ao dono sai pelo sino (`20261102_23`): o `pg_cron`
+  chama `painel_tecnico` (**a mesma conta da aba**, com o e-mail do dono posto nas claims só dentro da
+  transação, por uma função sem EXECUTE para cliente) e grava **um aviso por gatilho em `alerta` por dia**
+  em `professor_notificacoes`; `sem_dado` não avisa.
 
 - **Missões sugeridas pela IA (#151, `20261102_20`) — a IA propõe, o banco decide o que entra, o
   professor aprova.** Reaproveita `missoes` (`origem = 'ia'`, `aprovacao = 'pendente'`); o `CHECK`
