@@ -1,8 +1,9 @@
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 
 import { useUsuario } from '@/context/SessaoContext';
+import { destinoDoToque } from '@/services/destinoDoToque';
 import {
   desativarDispositivo,
   encerrarSessao,
@@ -162,10 +163,13 @@ export function useMonitorDeSessao() {
     let cancelado = false;
     let remover = () => {};
 
-    void ouvirAberturaDeNotificacao((id) => {
-      // Sem id conhecido (caso das locais), abre a lista: melhor levar o aluno
-      // ao lugar certo do que não reagir ao toque.
-      router.push(id ? `/notificacoes/${id}` : '/notificacoes');
+    void ouvirAberturaDeNotificacao((dados) => {
+      // Mensagem privada abre a conversa; o resto, o detalhe da notificação ou,
+      // sem id conhecido (caso das locais), a lista: melhor levar o aluno ao
+      // lugar certo do que não reagir ao toque.
+      const destino = destinoDoToque(dados);
+      if (destino.modo === 'navigate') router.navigate(destino.rota as Href);
+      else router.push(destino.rota as Href);
     }).then((removerListener) => {
       if (cancelado) {
         removerListener();

@@ -54,3 +54,22 @@ export function withHideParams(url: string, flags: HideParamsFlags): string {
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}${params.join("&")}`;
 }
+
+/**
+ * Anexa tema=escuro na URL do deck HTML do BrainHexPDF. O deck tem claro e
+ * escuro e, sem isto, segue o tema do aparelho; o app e' sempre escuro, e
+ * num aparelho em modo claro o deck aparecia claro dentro dele. O aluno
+ * ainda pode trocar no painel "Leitura" do deck (a escolha dele vence).
+ *
+ * So' para a URL que vira baseUrl do WebView (o deck ja foi baixado e vai
+ * como html): ela nao e' carregada, entao o parametro nao quebra URL
+ * assinada. Nao use em URL que o WebView abre de fato.
+ */
+export function withTemaEscuroDoApp(url: string): string {
+  if (/[?&]tema=/.test(url)) return url;
+  const indiceHash = url.indexOf("#");
+  const base = indiceHash >= 0 ? url.slice(0, indiceHash) : url;
+  const fragmento = indiceHash >= 0 ? url.slice(indiceHash) : "";
+  const separador = base.includes("?") ? "&" : "?";
+  return `${base}${separador}tema=escuro${fragmento}`;
+}

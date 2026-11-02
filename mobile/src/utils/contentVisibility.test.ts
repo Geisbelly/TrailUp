@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { shouldHideChecklist, shouldHideNotes, shouldHideQuiz, withHideParams } from "./contentVisibility";
+import { shouldHideChecklist, shouldHideNotes, shouldHideQuiz, withHideParams, withTemaEscuroDoApp } from "./contentVisibility";
 
 test("shouldHideQuiz: 'Misto' mostra o quiz (nao esconde)", () => {
   assert.equal(shouldHideQuiz("Misto"), false);
@@ -60,4 +60,14 @@ test("withHideParams: usa & quando a URL ja tem query string", () => {
     withHideParams("https://storage.example.com/deck.html?token=abc", { hideQuiz: true, hideChecklist: true, hideNotes: true }),
     "https://storage.example.com/deck.html?token=abc&hideQuiz=1&hideChecklist=1&hideNotes=1",
   );
+});
+
+test("withTemaEscuroDoApp: anexa tema=escuro com ? ou &, antes do fragmento", () => {
+  assert.equal(withTemaEscuroDoApp("https://x/deck.html"), "https://x/deck.html?tema=escuro");
+  assert.equal(withTemaEscuroDoApp("https://x/deck.html?hideQuiz=1"), "https://x/deck.html?hideQuiz=1&tema=escuro");
+  assert.equal(withTemaEscuroDoApp("https://x/deck.html#s2"), "https://x/deck.html?tema=escuro#s2");
+});
+
+test("withTemaEscuroDoApp: nao duplica quando a URL ja traz tema", () => {
+  assert.equal(withTemaEscuroDoApp("https://x/deck.html?tema=claro"), "https://x/deck.html?tema=claro");
 });

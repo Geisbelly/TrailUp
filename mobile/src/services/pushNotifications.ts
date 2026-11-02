@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+import type { DadosDoToque } from '@/services/destinoDoToque';
 import { emFocoNoAparelho } from '@/services/focoLocal';
 import type { PlataformaApp, RotinaNotificacao } from '@/services/notificacoesDb';
 
@@ -255,17 +256,37 @@ export async function cancelarRotinasLocais() {
   }
 }
 
+/** O último toque entregue, para o mesmo não abrir a tela duas vezes (ouvinte e app aberto pelo toque). */
+let ultimoToque: string | null = null;
+
+/**
+ * Avisa a cada toque numa notificação do sistema, com o `data` dela (`destinoDoToque` decide a tela).
+ *
+ * Com o app fechado, o toque que o abre chega antes deste ouvinte existir: ele só aparece em
+ * `getLastNotificationResponse`, que por isso é lido na inscrição. Depois é limpo, e o id do toque
+ * fica guardado, para o layout que remonta (trocar de conta) não reabrir a mesma tela.
+ */
 export async function ouvirAberturaDeNotificacao(
-  onOpen: (notificacaoId?: number | string) => void,
+  onOpen: (dados: DadosDoToque) => void,
 ): Promise<() => void> {
   const Notifications = await carregarNotifications();
   if (!Notifications) return () => {};
 
-  const inscricao = Notifications.addNotificationResponseReceivedListener((resposta) => {
-    const dados = resposta.notification.request.content.data as
-      | { notificacao_id?: number | string }
-      | undefined;
-    onOpen(dados?.notificacao_id);
-  });
+  const entregar = (resposta: import('expo-notifications').NotificationResponse) => {
+    const chave = `${resposta.notification.request.identifier}:${resposta.actionIdentifier}`;
+    if (chave === ultimoToque) return;
+    ultimoToque = chave;
+    onOpen(resposta.notification.request.content.data as DadosDoToque);
+  };
+  const inscricao = Notifications.addNotificationResponseReceivedListener(entregar);
+  try {
+    const abriuOApp = Notifications.getLastNotificationResponse?.();
+    if (abriuOApp) {
+      Notifications.clearLastNotificationResponse?.();
+      entregar(abriuOApp);
+    }
+  } catch (erro) {
+    console.warn('[pushNotifications] falha ao ler o toque que abriu o app:', erro);
+  }
   return () => inscricao.remove();
 }
