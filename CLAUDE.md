@@ -545,6 +545,7 @@ Cada perfil carrega:
   transação de quem os causa** (`EXCEPTION WHEN OTHERS` → `WARNING`). O cliente só lê e muda `lida_em`
   (GRANT por coluna, sem policy de INSERT). Risco de reprovação **não** notifica: é calculado na hora,
   não há evento de banco para ligar um gatilho.
+
 - **Missões sugeridas pela IA (#151, `20261102_20`) — a IA propõe, o banco decide o que entra, o
   professor aprova.** Reaproveita `missoes` (`origem = 'ia'`, `aprovacao = 'pendente'`); o `CHECK`
   `missoes_ia_exige_aprovacao` impede uma missão `ia` com `nao_requer`, então nada chega ao aluno sem
@@ -559,6 +560,7 @@ Cada perfil carrega:
   de acréscimo: proposta, aprovação e recusa com o motivo; a taxa de aprovação sai dele e **não realimenta
   o prompt**. Fora de escopo: editar antes de aprovar (`trg_missoes_guarda` congela o texto da missão que
   não é do professor, em silêncio), missão de entrega e prazo.
+  
 - **`boss_falas` — a IA escreve, o professor pode tirar do ar** (`20261102_19`). Nome e falas do boss
   são gerados em lote por conteúdo × perfil e o app os mostra ao aluno (inclusive menor) direto. O
   professor lê no editor de conteúdo e liga/desliga (`ativa`; **só** essa coluna tem GRANT de UPDATE: o
