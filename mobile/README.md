@@ -61,6 +61,26 @@ e `test:trail-resume` rodam separadamente. A guarda
 `src/utils/testesRegistrados.test.ts` falha quando um teste fica sem grupo,
 aparece em mais de um manifesto ou aponta para arquivo inexistente.
 
+## Print bloqueado nas avaliações (#139)
+Enquanto o aluno responde questões, o app bloqueia print e gravação de tela
+(`useBloqueioDeCaptura`, regra em `src/utils/bloqueioDeCaptura.ts`). Texto,
+vídeo, material personalizado, o resumo da atividade concluída e a revisão das
+respostas continuam capturáveis.
+
+- **Exige build EAS ou dev client novo.** O `expo-screen-capture` é nativo: não
+  existe no Expo Go nem num dev client compilado antes dele. Ali a atividade
+  abre normalmente, só que sem bloqueio (o módulo é carregado sob demanda e a
+  falta dele não quebra a tela).
+- **Android:** `FLAG_SECURE`, e o print sai preto. A tentativa vira o evento
+  `screen_capture_attempt` na telemetria só do Android 14 em diante. No 13 o
+  aviso exigiria `READ_MEDIA_IMAGES`, que o `app.json` bloqueia de propósito
+  (permissão de fotos sem uso real é motivo de recusa na Play Store).
+- **iOS 13+:** o print e a gravação saem sem o conteúdo, e a tentativa também
+  vira `screen_capture_attempt`.
+- **Web:** nada, porque o navegador não deixa a página impedir captura.
+- Nada disso impede um segundo celular de fotografar a tela. A defesa real é o
+  desenho da avaliação (banco de questões, ordem embaralhada); o bloqueio é atrito.
+
 ## Diagnostico rapido
 Erro repetido `TypeError: Network request failed` geralmente indica:
 - `EXPO_PUBLIC_APITRAIUP_URL` invalida para o ambiente atual (emulador x dispositivo fisico).
