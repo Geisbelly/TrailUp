@@ -590,3 +590,262 @@ def test_sem_cards_gerados_dificuldade_nao_inventa_formato():
 
     assert decisao["acao"] == "mantida"
     assert {i["formato"] for i in decisao["ordem"]} == {"markdown", "audio"}
+
+
+# --- Perfil relativo, modo real e camadas (recomendação conteúdo × aluno) ----
+
+from app.services.sugestao_material import (  # noqa: E402
+    CAMADA_CONTEUDO,
+    CAMADA_NECESSIDADE,
+    CAMADA_PREFERENCIA,
+    normalizar_modo,
+)
+
+# Vetor do quiz como ele sai em produção (01/11): quase plano.
+_AVENTUREIRO_PLANO = [
+    {"perfil": "daredevil", "afinidade": 18},
+    {"perfil": "achiever", "afinidade": 16},
+    {"perfil": "mastermind", "afinidade": 14},
+    {"perfil": "survivor", "afinidade": 14},
+    {"perfil": "seeker", "afinidade": 13},
+    {"perfil": "socializer", "afinidade": 13},
+    {"perfil": "conqueror", "afinidade": 12},
+]
+QUATRO = ["markdown", "audio", "apresentacao", "cards"]
+
+
+def _demanda(**dimensoes) -> dict:
+    return {
+        "origem": "modelo",
+        "versao": "t",
+        "assinatura": "x",
+        "dimensoes": {
+            dimensao: {"nivel": nivel, "motivo": f"motivo {dimensao}", "conteudos": [7]}
+            for dimensao, nivel in dimensoes.items()
+        },
+    }
+
+
+def test_vetor_quase_plano_e_decidido_pelo_dominante():
+    # Somando o vetor cru, os seis secundários abafavam o dominante: o
+    # Aventureiro abria por texto. Pesando o que passa da fatia uniforme, abre
+    # pela apresentação, que é o formato dele.
+    resultado = sugerir_ordem_material(perfis=_AVENTUREIRO_PLANO, formatos_disponiveis=QUATRO)
+
+    assert resultado["formato_inicial"] == "apresentacao"
+    ev = next(e for e in resultado["ordem"][0]["evidencias"] if e["regra"] == "perfil_formato")
+    assert ev["dados"]["pesos_relativos"]["daredevil"] == 1.0
+    assert "conqueror" not in ev["dados"]["afinidades"]  # abaixo da fatia uniforme
+
+
+def test_vetor_perfeitamente_plano_cai_na_ordem_canonica():
+    # Os sete iguais: nenhum perfil passa da fatia uniforme. (Três perfis a 14 e
+    # os outros quatro a zero NÃO é plano: os três se destacam.)
+    plano = [{"perfil": item["perfil"], "afinidade": 14} for item in _AVENTUREIRO_PLANO]
+    resultado = sugerir_ordem_material(perfis=plano, formatos_disponiveis=QUATRO)
+
+    assert _ordem(resultado) == ["markdown", "audio", "apresentacao", "cards"]
+    assert all(not item["evidencias"] for item in resultado["ordem"])
+
+
+def test_modo_gravado_no_banco_e_reconhecido():
+    assert normalizar_modo("Conteúdo Primeiro") == "conteudo_primeiro"
+    assert normalizar_modo("Pergunta Primeiro") == "pratica_primeiro"
+    assert normalizar_modo("Misto") == "misto"
+
+    base = sugerir_ordem_material(perfis=_perfil("mastermind"), formatos_disponiveis=QUATRO)
+    pergunta = sugerir_ordem_material(
+        perfis=_perfil("mastermind"), formatos_disponiveis=QUATRO, modo_operacao="Pergunta Primeiro"
+    )
+    misto = sugerir_ordem_material(
+        perfis=_perfil("mastermind"), formatos_disponiveis=QUATRO, modo_operacao="Misto"
+    )
+
+    def score(resultado, formato):
+        return next(i["score"] for i in resultado["ordem"] if i["formato"] == formato)
+
+    assert score(pergunta, "cards") > score(base, "cards")
+    assert _ordem(misto) == _ordem(base)
+    cards = next(i for i in pergunta["ordem"] if i["formato"] == "cards")
+    assert "modo_operacao" in _regras(cards)
+
+
+def test_formato_essencial_do_conteudo_passa_na_frente_da_preferencia():
+    # Socializador prefere áudio, mas o conteúdo depende de diagrama.
+    resultado = sugerir_ordem_material(
+        perfis=_perfil("socializer"),
+        formatos_disponiveis=QUATRO,
+        demanda=_demanda(visual="essencial"),
+    )
+
+    assert _ordem(resultado)[0] == "apresentacao"
+    primeiro = resultado["ordem"][0]
+    assert primeiro["camada"] == CAMADA_CONTEUDO
+    ev = next(e for e in primeiro["evidencias"] if e["regra"] == "demanda_do_conteudo")
+    assert ev["dados"]["nivel"] == "essencial"
+    assert ev["dados"]["conteudos"] == [7]
+    assert primeiro["motivo_aluno"].startswith("Este conteúdo se entende melhor vendo")
+    # Dentro da camada de preferência, o áudio do Socializador continua à frente.
+    assert _ordem(resultado)[1] == "audio"
+
+
+def test_conteudo_escrito_e_visual_abre_com_os_dois_juntos_na_ordem_do_aluno():
+    estrategista = sugerir_ordem_material(
+        perfis=_perfil("mastermind"),
+        formatos_disponiveis=QUATRO,
+        demanda=_demanda(visual="essencial", escrito="essencial"),
+    )
+    aventureiro = sugerir_ordem_material(
+        perfis=_perfil("daredevil"),
+        formatos_disponiveis=QUATRO,
+        demanda=_demanda(visual="essencial", escrito="essencial"),
+    )
+
+    assert _ordem(estrategista)[:2] == ["markdown", "apresentacao"]
+    assert _ordem(aventureiro)[:2] == ["apresentacao", "markdown"]
+
+
+def test_conteudo_que_ajuda_pesa_sem_virar_camada():
+    sem = sugerir_ordem_material(perfis=_perfil("mastermind"), formatos_disponiveis=QUATRO)
+    com = sugerir_ordem_material(
+        perfis=_perfil("mastermind"), formatos_disponiveis=QUATRO, demanda=_demanda(sonoro="ajuda")
+    )
+    audio_sem = next(i for i in sem["ordem"] if i["formato"] == "audio")
+    audio_com = next(i for i in com["ordem"] if i["formato"] == "audio")
+
+    assert audio_com["camada"] == CAMADA_PREFERENCIA
+    assert audio_com["ajuste_conteudo"] > 0
+    assert audio_com["posicao"] < audio_sem["posicao"]
+
+
+def test_indiferente_ou_nivel_desconhecido_nao_mexe():
+    base = sugerir_ordem_material(perfis=_perfil("seeker"), formatos_disponiveis=QUATRO)
+    for nivel in ("indiferente", "talvez", None):
+        resultado = sugerir_ordem_material(
+            perfis=_perfil("seeker"), formatos_disponiveis=QUATRO, demanda=_demanda(visual=nivel)
+        )
+        assert _ordem(resultado) == _ordem(base), nivel
+
+
+def test_essencial_nao_gerado_vira_necessidade_e_nao_inventa_formato():
+    resultado = sugerir_ordem_material(
+        perfis=_perfil("seeker"),
+        formatos_disponiveis=["markdown", "audio"],
+        demanda=_demanda(visual="essencial"),
+    )
+
+    assert set(_ordem(resultado)) == {"markdown", "audio"}
+    faltando = [n for n in resultado["necessidades"] if n["id"] == "formato_essencial_faltando"]
+    assert faltando == [
+        {"id": "formato_essencial_faltando", "dimensao": "visual", "formatos": ["apresentacao"], "motivo": "motivo visual"}
+    ]
+
+
+def test_dificuldade_fica_acima_do_que_o_conteudo_pede():
+    resultado = sugerir_ordem_material(
+        perfis=_perfil("mastermind"),
+        formatos_disponiveis=QUATRO,
+        demanda=_demanda(visual="essencial"),
+        desempenho_topico={"media_acertos": 30, "itens": 3},
+    )
+
+    assert _ordem(resultado)[:2] == ["cards", "apresentacao"]
+    assert resultado["ordem"][0]["camada"] == CAMADA_NECESSIDADE
+    assert resultado["ordem"][0]["motivo_aluno"].startswith("Você teve dificuldade")
+    assert resultado["necessidades"][0]["id"] == "dificuldade_no_topico"
+
+
+def test_demanda_que_chega_depois_revisa_mesmo_sem_telemetria():
+    inicial = sugerir_ordem_material(perfis=_perfil("socializer"), formatos_disponiveis=QUATRO)
+    decisao = revisar_ordem_material(
+        ordem_atual=inicial["ordem"],
+        sinais_por_formato={},
+        demanda=_demanda(visual="essencial"),
+    )
+
+    assert decisao["acao"] == "revisada"
+    assert decisao["ordem"][0]["formato"] == "apresentacao"
+    assert any("apresentacao: o conteúdo pede ver" in m for m in decisao["motivos"])
+    assert decisao["evidencia"]["demanda_do_conteudo"]["dimensoes"] == {"visual": "essencial"}
+
+
+def test_mudar_de_camada_sem_mudar_a_ordem_tambem_e_revisao():
+    # Cards já estavam em primeiro pelo perfil; a dificuldade muda o "por quê".
+    inicial = sugerir_ordem_material(perfis=_perfil("achiever"), formatos_disponiveis=QUATRO)
+    assert _ordem(inicial)[0] == "cards"
+
+    decisao = revisar_ordem_material(
+        ordem_atual=inicial["ordem"],
+        sinais_por_formato={},
+        desempenho_topico={"media_acertos": 20, "itens": 2},
+    )
+
+    assert decisao["acao"] == "revisada"
+    assert decisao["evidencia"]["ordem_mudou"] is False
+    assert decisao["ordem"][0]["motivo_aluno"].startswith("Você teve dificuldade")
+
+
+def test_dificuldade_superada_devolve_os_cards_e_registra_por_que():
+    com_dificuldade = revisar_ordem_material(
+        ordem_atual=_ordem_estrategista(),
+        sinais_por_formato={},
+        desempenho_topico={"media_acertos": 35, "itens": 4},
+    )
+    superada = revisar_ordem_material(
+        ordem_atual=com_dificuldade["ordem"],
+        sinais_por_formato={},
+        desempenho_topico={"media_acertos": 85, "itens": 6},
+    )
+
+    assert superada["acao"] == "revisada"
+    assert superada["ordem"][0]["formato"] == "markdown"
+    assert "cards: dificuldade superada, volta à ordem do aluno" in superada["motivos"]
+    cards = next(i for i in superada["ordem"] if i["formato"] == "cards")
+    assert "reexposicao_quiz" not in _regras(cards)
+
+
+def test_conteudo_que_deixa_de_pedir_o_formato_e_registrado():
+    com = sugerir_ordem_material(
+        perfis=_perfil("socializer"), formatos_disponiveis=QUATRO, demanda=_demanda(visual="essencial")
+    )
+    sem = revisar_ordem_material(
+        ordem_atual=com["ordem"], sinais_por_formato={}, demanda=_demanda(visual="indiferente")
+    )
+
+    assert sem["acao"] == "revisada"
+    assert sem["ordem"][0]["formato"] == "audio"
+    assert "apresentacao: o conteúdo deixou de pedir este formato" in sem["motivos"]
+
+
+def test_observacao_de_estado_mental_fica_no_log_e_nao_reordena():
+    ordem = sugerir_ordem_material(perfis=_perfil("mastermind"), formatos_disponiveis=QUATRO)["ordem"]
+    decisao = revisar_ordem_material(
+        ordem_atual=ordem,
+        sinais_por_formato={},
+        observacoes={"estado_negativo_recorrente": {"kind": "anxious", "ocorrencias": 3}},
+    )
+
+    assert decisao["acao"] == "mantida"
+    assert [i["formato"] for i in decisao["ordem"]] == [i["formato"] for i in ordem]
+    assert decisao["evidencia"]["observacoes"]["estado_negativo_recorrente"]["kind"] == "anxious"
+
+
+def test_revisao_nao_muta_a_ordem_recebida():
+    ordem = sugerir_ordem_material(perfis=_perfil("mastermind"), formatos_disponiveis=QUATRO)["ordem"]
+    import copy
+
+    original = copy.deepcopy(ordem)
+    revisar_ordem_material(
+        ordem_atual=ordem,
+        sinais_por_formato={},
+        desempenho_topico={"media_acertos": 10, "itens": 3},
+        demanda=_demanda(visual="essencial"),
+    )
+
+    assert ordem == original
+
+
+def test_sem_motivo_reconhecivel_motivo_aluno_e_nulo():
+    resultado = sugerir_ordem_material(perfis=[], formatos_disponiveis=QUATRO)
+
+    assert all(item["motivo_aluno"] is None for item in resultado["ordem"])

@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from typing import Any
 
-CATALOGO_VERSAO = "2026-11-01"
+CATALOGO_VERSAO = "2026-11-02"
 
 CONFIANCAS = ("forte", "moderada", "hipotese", "dado_do_aluno")
 
@@ -65,6 +65,20 @@ _REGRAS: dict[str, dict[str, Any]] = {
         "construto": "desempenho",
         "fontes": [],
         "confianca": "dado_do_aluno",
+    },
+    # O formato que o conteúdo pede vem antes da preferência do aluno. É a outra face de
+    # "formatos para todos, não por perfil" (DAT-14, DAT-40): se a preferência não decide o
+    # resultado, o que decide é o conteúdo. Confiança moderada até a curadora confirmar a fonte
+    # direta (não há, no corpus avaliado, estudo que meça o efeito de casar formato e conteúdo).
+    "demanda_do_conteudo": {
+        "enunciado": (
+            "Quando o conteúdo depende de um formato para ser entendido (diagrama, fórmula, "
+            "pronúncia, prática), esse formato abre a sequência antes da preferência do aluno. "
+            "Todos os formatos continuam disponíveis."
+        ),
+        "construto": "adequação do formato ao conteúdo",
+        "fontes": ["DAT-14", "DAT-40"],
+        "confianca": "moderada",
     },
     "reexposicao_quiz": {
         "enunciado": (

@@ -35,7 +35,15 @@ export type PersonalizacaoListResponse = {
  */
 export type SugestaoMaterialResponse = {
   formato_inicial?: string | null;
-  ordem?: { formato: string; posicao?: number | null; score?: number | null; motivos?: string[] | null }[] | null;
+  ordem?: {
+    formato: string;
+    posicao?: number | null;
+    score?: number | null;
+    /** Notas internas do motor; não são mostradas ao aluno. */
+    motivos?: string[] | null;
+    /** Frase curta para o aluno, exibida no destaque "comece por aqui". */
+    motivo_aluno?: string | null;
+  }[] | null;
   versao?: number | null;
   origem?: string | null;
 };
@@ -134,6 +142,13 @@ export type ListarPersonalizacoesPerfilParams = {
 export type ObterSugestaoMaterialParams = {
   alunoId: string;
   topicoId: number;
+};
+
+export type ListarSugestoesMaterialTurmaParams = {
+  alunoId: string;
+  classeId: number;
+  /** Restringe a um tópico; sem ele, vem a turma inteira numa consulta só. */
+  topicoId?: number | null;
 };
 
 export type ListarJobsParams = {

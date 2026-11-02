@@ -23,6 +23,7 @@ import type {
   MentorChatPayload,
   MentorChatResponse,
   ObterSugestaoMaterialParams,
+  ListarSugestoesMaterialTurmaParams,
   PersonalizacaoJobRecord,
   PersonalizacaoListResponse,
   PersonalizacaoProgressDirectPayload,
@@ -37,6 +38,7 @@ import {
   normalizeNullableNonNegativeNumber,
   normalizePositiveInteger,
 } from "@/utils/dataValidation";
+import { sugestoesPorTopico } from "@/utils/materialSuggestion";
 import {
   buildContentScopedPersonalizationItemKey,
   buildPersonalizationContentScopeKey,
@@ -602,6 +604,21 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
       console.warn("[personalizacao] sugestao de material indisponivel", error);
       return null;
     }
+  }
+
+  async listarSugestoesMaterialTurma(
+    params: ListarSugestoesMaterialTurmaParams
+  ): Promise<Record<number, SugestaoMaterialResponse>> {
+    let query = this.deps.supabase
+      .from("personalizacao_sugestao")
+      .select("topico_id, formato_inicial, ordem, versao, origem")
+      .eq("aluno_id", params.alunoId)
+      .eq("classe_id", params.classeId)
+      .is("conteudo_id", null);
+    if (params.topicoId != null) query = query.eq("topico_id", params.topicoId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return sugestoesPorTopico(data ?? []);
   }
 
   async listarJobsPersistidosAluno(params: ListarJobsParams): Promise<PersonalizacaoJobRecord[]> {
