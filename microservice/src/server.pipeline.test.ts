@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { runAudioAndPresentationInParallel } from "../server";
 import type { ContentPart } from "./services/geminiService";
+import { TtsNoAudioError } from "./services/ttsRecovery";
 
 if (!process.env.OPENAI_API_KEY?.trim()) {
   process.env.OPENAI_API_KEY = "test-openai-key";
@@ -70,4 +71,30 @@ test("runAudioAndPresentationInParallel preserva a ordem das partes e nao deixa 
     result.presentationResults.map((p) => p.presentationUrl),
     ["https://fake/Parte 1", "https://fake/Parte 2", "https://fake/Parte 3"],
   );
+});
+
+test("runAudioAndPresentationInParallel faz a segunda rodada só na parte sem voz, sem segurar a apresentação (#777)", async () => {
+  const parts = [fakePart(1), fakePart(2), fakePart(3)];
+  const chamadas: string[] = [];
+  let tentativasParte2 = 0;
+
+  const result = await runAudioAndPresentationInParallel(parts, {
+    generateAudio: async (audioScript) => {
+      chamadas.push(audioScript);
+      if (audioScript === "audio-2" && tentativasParte2++ === 0) {
+        throw new TtsNoAudioError("A voz mística falhou em se materializar.");
+      }
+      return { mp3: audioScript, wav: null };
+    },
+    audioConcurrency: parts.length,
+    audioSecondRound: { maxParts: 3, delayMs: 1 },
+    sleep: async () => {},
+    renderPresentation: (part) =>
+      Promise.resolve({ presentationUrl: `https://fake/${part.titulo}`, failure: null, dbWritten: false }),
+  });
+
+  assert.ok(result.audioSettled.every((r) => r.status === "fulfilled"));
+  assert.deepEqual(result.audioSecondRound, { status: "ran", retriedParts: [2], recoveredParts: [2] });
+  assert.deepEqual([...chamadas].sort(), ["audio-1", "audio-2", "audio-2", "audio-3"]);
+  assert.equal(result.presentationResults.length, 3);
 });
