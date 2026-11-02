@@ -184,6 +184,19 @@ de status, só a visibilidade. A revisão diária é notificação local e dispa
 aberto, ela entra na lista sem banner. O foco por atenção não chega ao aparelho: só o foco explícito
 tira o toast no app aberto.
 
+## O texto da IA passa pela guarda de hoje, não pela da hora em que foi escrito (`20261102_24`)
+
+A guarda de texto de `agente_notificacao` (#827: jargão de sistema, placeholder, frase longa) roda na
+geração, e a sugestão espera na fila até o horário do aluno. Em 02/11 às 14:30 (Fortaleza) saiu um
+texto escrito em 01/11, antes da guarda: "Próxima hipótese em [MOCK] Aceleração".
+
+Toda sugestão que a API grava leva `contexto.texto_guarda`, a versão da guarda que a aprovou
+(`TEXTO_GUARDA_VERSAO`). O aviso da intervenção passa pela mesma guarda e, recusado, vira o texto pronto
+dela. Na entrega, `notificacoes_entregar` suprime a sugestão da API (`notificacoes_ia.origem = 'ciclo'`)
+sem a marca ou abaixo de `texto_guarda_versao_minima` (pendente e sugestão `suprimida`,
+`texto_fora_da_guarda`). O banco não julga texto, para não ter uma segunda lista de palavras: só recusa
+o que uma guarda mais velha aprovou. Endurecer a guarda é subir a versão na API e o mínimo numa migração.
+
 ## Configuração
 
 Em `notificacoes_config`, uma linha por parâmetro — nada de número mágico dentro
@@ -191,7 +204,8 @@ das funções, e o console do professor pode ajustar sem deploy: `max_por_dia`,
 `janela_silencio_inicio`/`_fim`, `expiracao_padrao_horas`,
 `tempo_uso_limiar_min`, `rotina_diaria_hora`/`_minuto`, `sessao_ociosa_min`,
 `push_url`, `push_access_token`, `push_timeout_ms` e, desde a #149, `perfil_pesos_<tipo>`,
-`perfil_peso_minimo_pct`, `tipos_silenciaveis`, `foco_*`, `atencao_*` e `rank_*`.
+`perfil_peso_minimo_pct`, `tipos_silenciaveis`, `foco_*`, `atencao_*` e `rank_*`, e, desde a
+`20261102_24`, `texto_guarda_versao_minima`.
 
 ## Limites conhecidos
 
