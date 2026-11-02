@@ -75,12 +75,13 @@ export function topicoDaVez(
  *
  * Só a missão-entrega (`atividade_especifica`) aponta um lugar exato. As outras medem um
  * acumulado — minutos, tópicos, atividades, acerto, sequência de dias — que se cumpre
- * estudando, então o lugar certo é o próximo passo da trilha. Atividade que não está em
+ * estudando, então o lugar certo é o próximo passo da trilha — e, se ela só se cumpre com
+ * atividade e o passo da vez não tem nenhuma, o primeiro tópico liberado que tenha. Atividade que não está em
  * tópico nenhum da turma (removida, ou de outra turma) cai no mesmo caminho: levar ao
  * próximo passo é melhor que um botão que não vai a lugar algum.
  */
 export function destinoDaMissao(
-  missao: Pick<MissaoDoAluno, "atividadeId">,
+  missao: Pick<MissaoDoAluno, "atividadeId" | "pedeAtividade">,
   topicos: readonly TopicoDoRastreador[],
   atualId: string | number | null | undefined,
 ): DestinoDaMissao | null {
@@ -93,6 +94,14 @@ export function destinoDaMissao(
     }
   }
   const vez = topicoDaVez(topicos, atualId);
+  if (missao.pedeAtividade && vez && !vez.atividadeIds.length) {
+    // Missão de atividade no tópico de leitura levava o aluno a um lugar onde ela não se
+    // cumpre (visto com dado real: "2 atividades hoje" → tópico com 0 atividades).
+    const comAtividade = [...topicos]
+      .sort((a, b) => a.sequence - b.sequence)
+      .find((t) => !t.locked && !t.completed && t.atividadeIds.length > 0);
+    if (comAtividade) return { tipo: "topico", topicoId: comAtividade.id };
+  }
   return vez ? { tipo: "topico", topicoId: vez.id } : null;
 }
 

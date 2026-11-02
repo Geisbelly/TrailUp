@@ -137,7 +137,7 @@ export default function TabLayout() {
               tabBarActiveTintColor: palette.accent,
               tabBarInactiveTintColor: palette.inactive,
               tabBarActiveBackgroundColor: palette.accentMuted,
-              tabBarItemStyle: { borderRadius: 6, marginHorizontal: 2 },
+              tabBarItemStyle: { borderRadius: 6, marginHorizontal: 0 },
               sceneStyle: {
                 backgroundColor: palette.background,
               },
@@ -145,9 +145,11 @@ export default function TabLayout() {
                 backgroundColor: palette.surface,
                 borderTopColor: palette.borderStrong,
                 borderTopWidth: hideTabBarOnModule ? 0 : 1,
-                height: hideTabBarOnModule ? 0 : 64 + insets.bottom,
-                paddingBottom: hideTabBarOnModule ? 0 : Math.max(insets.bottom, 8),
-                paddingTop: hideTabBarOnModule ? 0 : 8,
+                // 72 - 6 - 6 = 60 de miolo. Com 64 - 8 - 8 = 48, o avatar do Perfil
+                // (34) mais o rótulo passava da altura e o rótulo saía cortado embaixo.
+                height: hideTabBarOnModule ? 0 : 72 + insets.bottom,
+                paddingBottom: hideTabBarOnModule ? 0 : Math.max(insets.bottom, 6),
+                paddingTop: hideTabBarOnModule ? 0 : 6,
                 display: hideTabBarOnModule ? "none" : "flex",
               },
               headerStyle: { backgroundColor: palette.background },
@@ -156,12 +158,20 @@ export default function TabLayout() {
               },
               tabBarLabelStyle: {
                 fontFamily: FontFamily.interMedium,
-                fontSize: 11,
+                fontSize: 10.5,
+                lineHeight: 14,
                 fontWeight: "600",
-                letterSpacing: 0,
+                // -0,2 é o que faz "Notificações" caber também em 320 px (64 por aba).
+                letterSpacing: -0.2,
               },
               headerShown: false,
-              tabBarButton: HapticTab,
+              // Na barra de baixo, sem padding lateral no botão: o react-navigation põe 5 px
+              // de cada lado NO BOTÃO (tabBarItemStyle não alcança) e, numa tela de 320, a aba
+              // tem 64 px — "Notificações" (64 px) ficava em 54 e saía "Notifica...".
+              // Na barra lateral do desktop o padding fica, ali há espaço de sobra.
+              tabBarButton: desktop
+                ? HapticTab
+                : (props) => <HapticTab {...props} style={[props.style, { paddingLeft: 0, paddingRight: 0 }]} />,
             }}>
 
             <Tabs.Screen
