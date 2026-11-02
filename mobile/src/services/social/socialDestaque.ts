@@ -107,22 +107,21 @@ export function abaDaAncora(ancora: AncoraDoSocial): AbaDoSocial {
 
 /**
  * Ícone da aba Social na barra de baixo (e na lateral do desktop), por perfil. Como o da Trilha,
- * ele muda ao tocar: `inativo` é o da aba fechada, e `ativo`, o da aberta. Os dois mostram a área
- * que o perfil vê primeiro ao entrar (`AREA_EM_DESTAQUE`), para o aluno reconhecer o próprio Social.
+ * ele TROCA ao tocar: `inativo` é o da aba fechada, e `ativo`, o da aberta, o mesmo assunto um
+ * passo adiante, com outro desenho. Passar só do contorno ao preenchido muda pouco na barra e foi
+ * descartado.
  *
- * Duas formas de mudar. Conqueror, Daredevil e Survivor trocam de objeto, e o aberto é o mesmo
- * assunto um passo adiante (a espada vira o duelo, a luva pega fogo, a barraca acende a fogueira).
- * Os outros quatro ficam no glifo da #828 e passam do contorno ao preenchido. Pares escolhidos por
- * outra lógica (motivação do perfil, objeto que "ganha vida") não lembraram "Social" na barra e
- * foram descartados. O `strategy` do Mastermind não tem versão de contorno: só ele troca apenas
- * de cor.
+ * Os pares foram escolhidos com a usuária, depois de três conjuntos recusados (pela motivação do
+ * perfil, por "primos próximos" e por objetos que "ganham vida"). Antes de trocar um, mostre as
+ * opções desenhadas.
  *
  * Nenhum repete o ícone da Trilha do mesmo perfil, nem fica parecido com ele quando os dois estão
- * fechados lado a lado (a Trilha fechada mostra o `icon_focus` de `brainHexConfig`). Por isso o
- * Conqueror fecha na espada sozinha (a Trilha dele mostra floretes) e o Survivor fecha na barraca
- * (a dele mostra espadas cruzadas, e os troncos da fogueira em X lembram as espadas). O teste
- * confere a repetição. E nenhum tem outro dono no app (um ícone, um significado — CLAUDE.md):
- * espada, espadas cruzadas, balões, lupa e calendário já querem dizer a mesma coisa no Social.
+ * lado a lado. Por isso o Conqueror fecha na espada sozinha (a Trilha dele mostra floretes), o
+ * Survivor fecha na barraca (a dele mostra espadas cruzadas, e os troncos da fogueira em X lembram
+ * as espadas). A exceção aceita é o binóculo do Seeker, que fica ao lado da luneta da Trilha
+ * fechada: a usuária escolheu o par vendo os dois juntos. O teste confere a repetição. E nenhum tem
+ * outro dono no app (um ícone, um significado — CLAUDE.md): espada, espadas cruzadas, balões e
+ * calendário já querem dizer a mesma coisa no Social.
  */
 export const ICONE_DO_SOCIAL: Record<BrainHexProfile, { ativo: string; inativo: string }> = {
   // A espada da Arena; aberta, o duelo.
@@ -131,14 +130,14 @@ export const ICONE_DO_SOCIAL: Record<BrainHexProfile, { ativo: string; inativo: 
   daredevil: { inativo: "boxing-glove", ativo: "fire" },
   // O abrigo; aberto, a turma em volta da fogueira.
   survivor: { inativo: "tent", ativo: "campfire" },
-  // Os balões da Conversa, onde o Social do Socializer abre.
-  socializer: { inativo: "forum-outline", ativo: "forum" },
-  // A lupa de "Encontrar colegas". A bússola já é o mapa revelado e o tutorial.
-  seeker: { inativo: "account-search-outline", ativo: "account-search" },
-  // O evento da turma.
-  achiever: { inativo: "calendar-star-outline", ativo: "calendar-star" },
-  // O plano. Sem versão de contorno no MDI: muda só de cor ao abrir.
-  mastermind: { inativo: "strategy", ativo: "strategy" },
+  // Os balões da Conversa, onde o Social do Socializer abre; aberto, alguém digitando.
+  socializer: { inativo: "forum-outline", ativo: "chat-processing" },
+  // As pegadas do explorador; aberto, ele avista o que procurava.
+  seeker: { inativo: "shoe-print", ativo: "binoculars" },
+  // O evento da turma; aberto, a estrela vira selo.
+  achiever: { inativo: "calendar-star-outline", ativo: "star-circle" },
+  // O plano; aberto, o xeque ao rei.
+  mastermind: { inativo: "strategy", ativo: "chess-king" },
 };
 
 /** Sem perfil conhecido, o ícone de antes: o grupo de pessoas. */
