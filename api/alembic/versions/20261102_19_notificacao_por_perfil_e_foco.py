@@ -95,8 +95,8 @@ efeito (`notificacoes_meu_foco` devolve `origem = 'estudo'`).
 
 Nenhum `%` literal no SQL desta migração: o SQL offline do Alembic o dobra.
 
-Revision ID: 20261102_18
-Revises: 20261102_17
+Revision ID: 20261102_19
+Revises: 20261102_18
 Create Date: 2026-11-02
 """
 
@@ -109,8 +109,8 @@ from pathlib import Path
 
 from alembic import op
 
-revision = "20261102_18"
-down_revision = "20261102_17"
+revision = "20261102_19"
+down_revision = "20261102_18"
 branch_labels = None
 depends_on = None
 
@@ -909,16 +909,16 @@ def _funcao(texto: str, nome: str, origem: str) -> str:
         re.S,
     )
     if m is None:
-        raise RuntimeError(f"{nome} não encontrado em {origem}; revise a 20261102_18")
+        raise RuntimeError(f"{nome} não encontrado em {origem}; revise a 20261102_19")
     fim = texto.find(m.group(1), m.end())
     if fim < 0:
-        raise RuntimeError(f"fim de {nome} não encontrado em {origem}; revise a 20261102_18")
+        raise RuntimeError(f"fim de {nome} não encontrado em {origem}; revise a 20261102_19")
     return texto[m.start() : fim + len(m.group(1))] + ";"
 
 
 def _troca(texto: str, antigo: str, novo: str, onde: str) -> str:
     if texto.count(antigo) != 1:
-        raise RuntimeError(f"o trecho de {onde} mudou de forma; revise a 20261102_18")
+        raise RuntimeError(f"o trecho de {onde} mudou de forma; revise a 20261102_19")
     return texto.replace(antigo, novo, 1)
 
 

@@ -119,7 +119,7 @@ Expô-las deixaria o app disparar entrega em nome de qualquer aluno.
   a cada ciclo; a rotina é a *verificação* que revisa e promove. Uma chamada de
   LLM por aluno por dia só para reescrever o que já existe seria custo sem ganho.
 
-## Para quem e quando (#149, `20261102_18`)
+## Para quem e quando (#149, `20261102_19`)
 
 A IA continua só sugerindo em `notificacoes_ia`, e a redação é do `agente_notificacao`. O que esta
 seção decide é o destino e o momento, e quem decide é o banco.
@@ -151,8 +151,36 @@ RPCs do app: `notificacoes_meu_foco`, `notificacoes_iniciar_foco(minutos)` (de 5
 Perfil → Configurações → "Modo foco e avisos". O botão "Não quero avisos assim" fica no detalhe da
 notificação.
 
-Limites: `novo_material` e `sequencia` ainda não têm produtor, e a matriz os roteia quando ele
-existir. A revisão diária é notificação local e dispara com o app fechado mesmo em foco; com o app
+### Quem produz `novo_material` e `sequencia` (`20261102_20`)
+
+Os dois são gatilhos e entram por `notificacoes_enfileirar_evento`, então o perfil, o silêncio, o
+horário, a expiração e o dedupe do dia valem como para o rank.
+
+- **`novo_material`** (`trg_conteudo_personalizado_novo_material`). Dispara quando uma linha de
+  `conteudo_personalizado` sai de `processando_midias`. O aviso só sai quando o tópico inteiro terminou
+  para o perfil: nada da mesma camada (base ou a do aluno) ainda gerando, ao menos uma linha `pronto`
+  e nenhum alvo de outro conteúdo do tópico num job ativo. Recebe o aluno matriculado cujo perfil
+  dominante é o da linha.
+  - **Uma vez por aluno × tópico**, guardada em `notificacoes_material_pronto`: regerar não é
+    novidade.
+  - **Nada para a turma retida pelo estudo** (#13): o aluno não veria o material.
+  - **Nada para a matrícula recente** (`novo_material_carencia_horas`, 24 h). A matrícula gera a
+    camada do aluno em todos os tópicos, e o tópico fica registrado sem aviso.
+  - **Um aviso por turma por dia** (motivo `classe:<id>`). Enquanto ele espera, o texto passa a contar
+    os tópicos.
+  - Quem entrega é a varredura de 5 min, não o gatilho, que roda na transação do worker.
+- **`sequencia`** (`trg_aluno_atividade_diaria_sequencia`). Dispara quando o dia passa de
+  `sequencia_minimo_min` minutos de uso (10). Nesse instante, conta os dias seguidos que também
+  passaram do limiar e avisa só nos marcos de `sequencia_marcos` (3, 7, 14, 30, 60 e 100). Não há
+  aviso de "sequência em risco": a regra é "no pressure". O heartbeat entrega na hora, e o foco por
+  atenção pode segurar.
+
+Os dois gatilhos engolem a própria falha (`WARNING`), porque não podem derrubar a geração nem o
+heartbeat.
+
+Limites: o aviso de `novo_material` pertence ao tópico, não ao conteúdo. Um conteúdo novo, num tópico
+que já avisou, não avisa de novo. A liberação da trava do estudo no corte também não avisa: nada muda
+de status, só a visibilidade. A revisão diária é notificação local e dispara com o app fechado mesmo em foco; com o app
 aberto, ela entra na lista sem banner. O foco por atenção não chega ao aparelho: só o foco explícito
 tira o toast no app aberto.
 

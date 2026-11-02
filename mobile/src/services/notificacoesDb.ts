@@ -173,7 +173,7 @@ export function encerrarFoco() {
 
 /**
  * Tipos que o aluno pode silenciar: os que passam pela fila do motor. Mesma lista de
- * `tipos_silenciaveis` em `notificacoes_config` (migração 20261102_18); um tipo fora
+ * `tipos_silenciaveis` em `notificacoes_config` (migração 20261102_19); um tipo fora
  * dela é recusado pelo banco.
  */
 export const TIPOS_SILENCIAVEIS: Record<string, string> = {
