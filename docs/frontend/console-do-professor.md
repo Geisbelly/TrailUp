@@ -9,6 +9,7 @@ As abas são rotas (`frontend/src/pages/consoleSections.ts`): a URL é a fonte d
 | Aba | Rota | Seção principal |
 |---|---|---|
 | Visão geral | `/console` | `components/console/DashboardSection.tsx` |
+| Recomendações | `/console/recomendacoes` | `recomendacoes/RecomendacoesSection.tsx` |
 | Trilhas | `/console/trilha` (editor: `/console/trilha/:id/editar`) | `trilha/TopicsManager.tsx` |
 | Turmas | `/console/turmas` | `ClassManagementSection.tsx` |
 | Personalizações | `/console/personalizacoes` | `personalizacoes/PersonalizacoesSection.tsx` |
@@ -23,6 +24,7 @@ A moldura (barra superior, menu lateral, fundo) é `ConsoleShell.tsx`; as cores 
 | Tela | Lê | Escreve / dispara | Passa pela API? |
 |---|---|---|---|
 | **Visão geral** | views `vw_metricas_*` (`security_invoker`), `intervencoes`, presença; hooks `useTurmaKpis`, `useConteudoDaTurma`, `useEvolucaoDaTurma`, `useInsightsDaTurma`, `useSinaisDosAlunos` | aceitar/ignorar insight (`intervencoes`) | Só **gerar** insights (`POST /api/v1/insights/turma/{id}/gerar`, tem IA) |
+| **Recomendações** | `intervencoes` (sugestões `pending` de **qualquer** lote, turma e escopo; as decididas nos últimos 30 dias), `alunos` (nomes); o selo do menu é um `count` das pendentes | aceitar/ignorar (com motivo) por UPDATE em `intervencoes`, só `status`, `motivo_descarte` e `resolved_at` (RLS `intervencoes_professor_upd`). Gerar sínteses novas continua sendo o "Atualizar agora" do Insights | **Não.** Com a API fora do ar a aba mostra o que a IA já gravou |
 | **Trilhas** | `topicos`, `conteudos`, `atividades`, `questoes`, `cards`, `atividade_conteudos`; status das gerações em `personalizacao_jobs` | CRUD direto; **salvar já enfileira a personalização** (trigger `fn_enqueue_class_delta_job`); copiar = `duplicar_topico` / `duplicar_atividade` | Não. A geração de trilha com IA usa a **edge function** `generate-content-ai` (`mode: "trail"`), não a API |
 | **Turmas** | `classe`, `classe_aluno`, `materia`, `professor_aluno` | criar/editar/excluir (`excluir_classe`), **duplicar** (`duplicar_classe`), matricular (o trigger em `classe_aluno` enfileira a personalização), presença (`registrar_presenca_da_turma`) | Não |
 | **Personalizações** | `conteudo_personalizado` (status por aluno), `classe_perfil_summary`, `personalizacao_jobs`; o comparativo por perfil tenta a API e **cai no Supabase** se ela estiver fora | gerar/regerar um perfil e "reprocessar falhas", que regenera só os perfis com falha (`/jobs/manual-generate`, `/jobs/manual-retry`; escopo em [funcionamento-api-arquitetura-fluxos.md §6.6](funcionamento-api-arquitetura-fluxos.md#66-escopo-do-reprocessar-falhas-manual_retry)) | **Sim, só o que gera**: filas de geração, regenerar texto/slide. Leitura tem fallback direto |

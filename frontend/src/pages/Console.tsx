@@ -28,6 +28,7 @@ const NotasSection = lazyWithReload(() => import("@/components/console/notas/Not
 const EventosSection = lazyWithReload(() => import("@/components/console/eventos/EventosSection"));
 const EconomiaSection = lazyWithReload(() => import("@/components/console/economia/EconomiaSection"));
 const ClassManagementSection = lazyWithReload(() => import("@/components/console/ClassManagementSection"));
+const RecomendacoesSection = lazyWithReload(() => import("@/components/console/recomendacoes/RecomendacoesSection"));
 const PersonalizacoesSection = lazyWithReload(() => import("@/components/console/personalizacoes/PersonalizacoesSection"));
 const ProfessorApprovalSection = lazyWithReload(() =>
   import("@/components/console/ProfessorApprovalSection").then((m) => ({ default: m.ProfessorApprovalSection }))
@@ -229,6 +230,8 @@ export default function Console() {
                 <EventosSection professorId={professorData?.id} />
               ) : view === "economia" ? (
                 <EconomiaSection professorId={professorData?.id} />
+              ) : view === "recomendacoes" ? (
+                <RecomendacoesSection professorId={professorData?.id} />
               ) : view === "personalizacoes" ? (
                 <PersonalizacoesSection professorId={professorData?.id} />
               ) : view === "aprovacoes" ? (
