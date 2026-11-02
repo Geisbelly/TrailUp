@@ -83,7 +83,7 @@ export interface Atividade {
   descricao: string | null;
   tipo: string | null;
   data_entrega: string | null;
-  /** Tentativas por aluno; `null` = ilimitadas (#136). */
+  /** Tentativas por aluno (#136). Nunca é `null` depois da `20261102_08`; antes, vale o padrão. */
   tentativas_max?: number | null;
 }
 

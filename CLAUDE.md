@@ -382,8 +382,10 @@ Cada perfil carrega:
   tratar "0 sem progresso" como sem nota.
 - **Tentativas de atividade pelo relógio do banco** (#136, `20261101_13`):
   - `atividade_iniciar_tentativa` abre a tentativa e devolve a que já está aberta, então reabrir o app não zera o relógio;
-  - `atividade_responder_tentativa` fecha a tentativa. Ela recusa prazo vencido e tentativas esgotadas (`atividades.tentativas_max`, NULL = ilimitado), decide `no_tempo` e grava `atividade_aluno`;
-  - vale a **última** tentativa;
+  - `atividade_responder_tentativa` fecha a tentativa. Ela recusa prazo vencido e tentativas esgotadas (`atividades.tentativas_max`), decide `no_tempo` e grava `atividade_aluno`;
+  - **toda atividade tem limite** (`20261102_08`): `tentativas_max` é `NOT NULL`, padrão 3, e um gatilho troca o NULL do console antigo pelo padrão;
+  - vale a **última** tentativa. A nova tentativa reabre **só as questões erradas** (o app pergunta `atividade_situacao_tentativas`), e cada uma acertada vale o que `penalty_retry_pct` do professor deixa;
+  - a segunda chance da loja **espera a tentativa grátis acabar**: `fn_loja_checa_limite` devolve `tem_tentativa_livre` antes de a compra ser consumida;
   - o cronômetro é ligado pelo perfil (`fn_cronometro_ligado`, mesma lista de `TIMER_PROFILES` do mobile), e o aluno ou a IA podem desligá-lo (`aluno_cronometro.origem`, RPC `aluno_definir_cronometro`);
   - **o tempo não mexe na nota, só no XP**: os eventos `atividade_no_tempo_70/80/90` pagam 10 pontos cada, são cumulativos, saem uma vez por atividade e só a RPC os grava (`trg_eventos_aluno_bonus_tempo`);
   - duração e tolerância ficam em `app_config` (`cronometro_atividade_padrao_seg`, `cronometro_tolerancia_seg`).

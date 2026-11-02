@@ -2,13 +2,22 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  ACERTO_MINIMO_DO_BONUS,
   MENSAGEM_DA_RECUSA,
   TentativaRecusada,
+  guardarRetorno,
   lerRetorno,
+  lerSituacao,
+  linhasDoRetorno,
+  questoesParaRefazer,
+  rotuloDasRestantes,
+  tentativasLivres,
   lerTentativa,
   mensagemDaRecusa,
   motivoDoErro,
+  retornoDesde,
   segundosRestantes,
+  type RetornoTentativa,
 } from "./tentativasAtividade.core";
 
 const INICIO = "2026-11-01T12:00:00.000Z";
@@ -72,4 +81,88 @@ test("mensagemDaRecusa: recusa do banco vira a mensagem; o resto, nada", () => {
   assert.equal(mensagemDaRecusa({ message: "Could not find the function", code: "PGRST202" }), null);
   assert.equal(mensagemDaRecusa({ message: "Failed to fetch" }), null);
   assert.equal(mensagemDaRecusa(null), null);
+});
+
+const RETORNO: RetornoTentativa = {
+  tentativaId: 3, numero: 1, cronometrada: true, noTempo: true, acertosPercentual: 85,
+  pontuacaoObtida: 8.5, pontuacaoMaxima: 10, xpBonus: 20, restantes: null,
+};
+
+test("linhasDoRetorno: no tempo com bônus diz quanto XP entrou", () => {
+  assert.deepEqual(linhasDoRetorno(RETORNO), ["Dentro do tempo: +20 XP de bônus."]);
+});
+
+test("linhasDoRetorno: fora do tempo a nota vale e o bônus não", () => {
+  assert.deepEqual(linhasDoRetorno({ ...RETORNO, noTempo: false, xpBonus: 0 }), [
+    "Fora do tempo: a nota vale, mas sem bônus de XP.",
+  ]);
+});
+
+test("linhasDoRetorno: no tempo sem bônus distingue acerto baixo de faixa já paga", () => {
+  assert.deepEqual(linhasDoRetorno({ ...RETORNO, acertosPercentual: ACERTO_MINIMO_DO_BONUS - 1, xpBonus: 0 }), [
+    "Dentro do tempo. O bônus de XP começa em 70% de acerto.",
+  ]);
+  assert.deepEqual(linhasDoRetorno({ ...RETORNO, acertosPercentual: 85, xpBonus: 0 }), [
+    "Dentro do tempo. O bônus desta faixa já foi pago nesta atividade.",
+  ]);
+});
+
+test("linhasDoRetorno: sem cronômetro não fala de tempo; fala das tentativas quando há o que refazer", () => {
+  const semCronometro = { ...RETORNO, cronometrada: false, noTempo: false, xpBonus: 0 };
+  assert.deepEqual(linhasDoRetorno(semCronometro), []);
+  assert.deepEqual(linhasDoRetorno({ ...semCronometro, restantes: 2 }), [
+    "Restam 2 tentativas para refazer as questões que você errou.",
+  ]);
+  assert.deepEqual(linhasDoRetorno({ ...semCronometro, restantes: 1 }), [
+    "Resta 1 tentativa para refazer as questões que você errou.",
+  ]);
+  // Tudo certo: não há o que refazer.
+  assert.deepEqual(linhasDoRetorno({ ...semCronometro, restantes: 2, acertosPercentual: 100 }), []);
+  assert.deepEqual(linhasDoRetorno({ ...semCronometro, restantes: 0 }), [
+    "Esta foi a sua última tentativa nesta atividade.",
+  ]);
+});
+
+test("retornoDesde: entrega o retorno desta resposta uma vez, e nunca o de antes", () => {
+  guardarRetorno(41, RETORNO, 1_000);
+  assert.equal(retornoDesde(41, 2_000), null, "retorno anterior ao pedido não é desta resposta");
+  guardarRetorno(41, { ...RETORNO, numero: 2 }, 3_000);
+  assert.equal(retornoDesde(41, 2_000)?.numero, 2);
+  assert.equal(retornoDesde(41, 2_000), null, "quem lê consome");
+  assert.equal(retornoDesde(42, 0), null);
+});
+
+test("lerSituacao: lê a RPC e não inventa máximo", () => {
+  assert.deepEqual(lerSituacao({ maximo: 3, feitas: "1", aberta: true, restantes: 2 }), {
+    maximo: 3, feitas: 1, aberta: true, restantes: 2,
+  });
+  assert.equal(lerSituacao({ feitas: 1 }), null);
+  assert.equal(lerSituacao(null), null);
+});
+
+test("tentativasLivres: a aberta já está em uso; livre é a que nem começou", () => {
+  assert.equal(tentativasLivres({ maximo: 3, feitas: 1, aberta: false, restantes: 2 }), 2);
+  assert.equal(tentativasLivres({ maximo: 3, feitas: 1, aberta: true, restantes: 2 }), 1);
+  // A última tentativa aberta: agora a segunda chance da loja pode valer.
+  assert.equal(tentativasLivres({ maximo: 3, feitas: 2, aberta: true, restantes: 1 }), 0);
+  assert.equal(tentativasLivres({ maximo: 3, feitas: 3, aberta: false, restantes: 0 }), 0);
+});
+
+test("questoesParaRefazer: só as que o aluno não acertou", () => {
+  assert.deepEqual(
+    questoesParaRefazer([
+      { id: 1, correta_aluno: true },
+      { id: 2, correta_aluno: false },
+      { id: "3", correta_aluno: null }, // sem resposta também reabre
+      { id: 4, correta_aluno: true },
+    ]),
+    [2, 3]
+  );
+  assert.deepEqual(questoesParaRefazer([{ id: 1, correta_aluno: true }]), []);
+  assert.deepEqual(questoesParaRefazer(undefined), []);
+});
+
+test("rotuloDasRestantes: singular e plural", () => {
+  assert.equal(rotuloDasRestantes(1), "Resta 1 tentativa");
+  assert.equal(rotuloDasRestantes(3), "Restam 3 tentativas");
 });

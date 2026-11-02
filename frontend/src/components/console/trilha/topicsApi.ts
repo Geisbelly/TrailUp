@@ -187,7 +187,7 @@ export async function saveActivity(params: {
   data_entrega?: string | null;
   /** Só é gravada quando informada: `undefined` NÃO apaga a pontuação que a atividade já tem. */
   pontuacao_maxima?: number | null;
-  /** Tentativas por aluno (#136). `null` = ilimitadas; `undefined` não mexe na coluna, como a pontuação. */
+  /** Tentativas por aluno (#136). `null` vira o padrão no banco; `undefined` não mexe na coluna, como a pontuação. */
   tentativas_max?: number | null;
 }) {
   // Atividade sem pontuação informada não mexe na coluna (editar o título não pode zerá-la).

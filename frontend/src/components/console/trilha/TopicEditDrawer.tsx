@@ -35,7 +35,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatFileSize } from "@/lib/utils";
 import { fonteDoTopico } from "./fonteDoTopico";
 import { formatoDaQuestao } from "./formatoDaQuestao";
-import { prazoDaAtividade, rotuloDasTentativas, rotuloDoTipoDeAtividade, tentativasParaFormulario, TENTATIVAS_MAXIMAS } from "./atividades";
+import { prazoDaAtividade, rotuloDasTentativas, rotuloDoTipoDeAtividade, tentativasParaFormulario, TENTATIVAS_MAXIMAS, TENTATIVAS_PADRAO } from "./atividades";
 import { prazoBancoParaLocal } from "@/lib/prazoDaAtividade";
 import { duplicateActivity, duplicateCard } from "./topicsApi";
 import { useUrlDoConteudo } from "./useUrlDoConteudo";
@@ -1239,7 +1239,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                   className={`${darkInputClass} w-32`}
                                   value={newActivityForm.tentativas_max ?? ""}
                                   onChange={(e) => setNewActivityForm({ ...newActivityForm, tentativas_max: e.target.value })}
-                                  placeholder="Ilimitadas"
+                                  placeholder={`Padrão: ${TENTATIVAS_PADRAO}`}
                                 />
                             </div>
                             <Button onClick={handleCreateActivityWithQuestionWithSync} className="bg-white text-primary-foreground hover:bg-secondary w-full mt-2"><Plus size={16} className="mr-2"/> Criar</Button>
@@ -1298,10 +1298,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                   className={darkInputClass}
                                   value={activityForm.tentativas_max ?? ""}
                                   onChange={(e) => setActivityForm({ ...activityForm, tentativas_max: e.target.value })}
-                                  placeholder="Ilimitadas"
+                                  placeholder={`Padrão: ${TENTATIVAS_PADRAO}`}
                                 />
                                 <p className="text-[11px] text-muted-foreground">
-                                  Deixe vazio para ilimitadas. A nota é a da última tentativa; mudar o limite não regera a personalização.
+                                  Vazio é o padrão ({TENTATIVAS_PADRAO}). A nova tentativa reabre só as questões erradas, e a nota é a da última. Mudar o limite não regera a personalização.
                                 </p>
                               </div>
                             </div>
