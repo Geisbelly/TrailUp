@@ -80,7 +80,7 @@ def test_ainvoke_json_gemini_parses_multiple_keys_instead_of_passing_the_raw_str
     (ACCESS_TOKEN_TYPE_UNSUPPORTED) mesmo com chaves validas configuradas."""
     captured: dict[str, list[str]] = {"keys_used": []}
 
-    def factory(*, model: str, temperature: float, google_api_key: str):
+    def factory(*, model: str, temperature: float, google_api_key: str, **_opcoes):
         captured["keys_used"].append(google_api_key)
         return _FakeGeminiClient(lambda: '{"cards": [1]}')
 
@@ -103,7 +103,7 @@ def test_ainvoke_json_gemini_rotates_to_next_key_when_one_exhausts_quota(
 ) -> None:
     captured: dict[str, list[str]] = {"keys_used": []}
 
-    def factory(*, model: str, temperature: float, google_api_key: str):
+    def factory(*, model: str, temperature: float, google_api_key: str, **_opcoes):
         captured["keys_used"].append(google_api_key)
         if google_api_key == "key-1":
             return _FakeGeminiClient(
@@ -133,7 +133,7 @@ def test_ainvoke_json_gemini_falls_back_to_next_model_when_current_is_retired(
     cadeia (gemini_text_fallback_models), nao abortar a chamada inteira."""
     captured: dict[str, list[str]] = {"models_used": []}
 
-    def factory(*, model: str, temperature: float, google_api_key: str):
+    def factory(*, model: str, temperature: float, google_api_key: str, **_opcoes):
         captured["models_used"].append(model)
         if model == "gemini-3.6-flash":
             return _FakeGeminiClient(
@@ -169,7 +169,7 @@ def test_ainvoke_json_gemini_rotates_key_when_server_returns_503_overloaded(
     chave/conta — deve tentar a proxima chave, nao abortar a chamada."""
     captured: dict[str, list[str]] = {"keys_used": []}
 
-    def factory(*, model: str, temperature: float, google_api_key: str):
+    def factory(*, model: str, temperature: float, google_api_key: str, **_opcoes):
         captured["keys_used"].append(google_api_key)
         if google_api_key == "key-1":
             return _FakeGeminiClient(
@@ -208,7 +208,7 @@ def test_extract_json_handles_content_as_list_of_parts() -> None:
 def test_ainvoke_json_gemini_handles_response_content_as_list_of_parts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def factory(*, model: str, temperature: float, google_api_key: str):
+    def factory(*, model: str, temperature: float, google_api_key: str, **_opcoes):
         return _FakeGeminiClient(lambda: [{"text": '{"cards": [1]}'}])
 
     monkeypatch.setattr(llm_module, "ChatGoogleGenerativeAI", factory)
@@ -243,7 +243,7 @@ def test_ainvoke_structured_gemini_returns_validated_model(
             captured["schema"] = schema
             return _FakeStructuredClient()
 
-    def factory(*, model: str, temperature: float, google_api_key: str):
+    def factory(*, model: str, temperature: float, google_api_key: str, **_opcoes):
         return _FakeGeminiClientWithSchema()
 
     monkeypatch.setattr(llm_module, "ChatGoogleGenerativeAI", factory)
@@ -278,7 +278,7 @@ def test_ainvoke_structured_raises_typed_error_when_shape_is_wrong(
     monkeypatch.setattr(
         llm_module,
         "ChatGoogleGenerativeAI",
-        lambda *, model, temperature, google_api_key: _FakeGeminiClientWithSchema(),
+        lambda *, model, temperature, google_api_key, **_opcoes: _FakeGeminiClientWithSchema(),
     )
     monkeypatch.setattr(llm_module, "load_prompt", lambda _name: "instrucoes")
 
@@ -307,3 +307,46 @@ def test_ainvoke_structured_raises_typed_error_when_no_provider_available() -> N
                 schema=_FakeSchema,
             )
         )
+
+
+def test_gemini_client_tenta_uma_vez_e_tem_teto(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Quem tenta de novo é a rotação de chave e modelo, não o SDK.
+
+    O default do ChatGoogleGenerativeAI são 6 tentativas com backoff de 1+2+4+8+16 s para 429/5xx:
+    medido em 02/11 contra um Gemini falso, cada chave sem cota custava 33,7 s antes de a rotação ver o
+    erro, e com as 4 chaves sem cota nos 3 modelos vivos uma chamada passava de 6 min. Com uma
+    tentativa, a mesma chamada sai em 0,4 s. `max_retries=0` voltaria ao default do SDK do Google.
+    """
+    criados: list[dict] = []
+
+    def factory(**kwargs):
+        criados.append(kwargs)
+        return _FakeGeminiClient(lambda: '{"ok": 1}')
+
+    monkeypatch.setattr(llm_module, "ChatGoogleGenerativeAI", factory)
+    monkeypatch.setattr(llm_module, "load_prompt", lambda _name: "instrucoes")
+    service = JsonLLMService(_settings(gemini_api_key="key-1", openai_api_key="", llm_request_timeout_seconds=12))
+
+    assert asyncio.run(service.ainvoke_json(prompt_name="supervisor.txt", payload={})) == {"ok": 1}
+    service._get_client("gemini-3.6-flash", provider="gemini")
+
+    assert len(criados) == 2
+    for kwargs in criados:
+        assert kwargs["max_retries"] == 1
+        assert kwargs["timeout"] == 12
+
+
+def test_openai_client_tem_teto(monkeypatch: pytest.MonkeyPatch) -> None:
+    criados: list[dict] = []
+
+    def factory(**kwargs):
+        criados.append(kwargs)
+        return object()
+
+    monkeypatch.setattr(llm_module, "ChatOpenAI", factory)
+    service = JsonLLMService(_settings(openai_api_key="sk-teste", llm_request_timeout_seconds=12))
+
+    service._get_client("gpt-4o-mini", provider="openai")
+    service._get_openai_client_para_menor("gpt-4o-mini")
+
+    assert [kwargs["timeout"] for kwargs in criados] == [12, 12]

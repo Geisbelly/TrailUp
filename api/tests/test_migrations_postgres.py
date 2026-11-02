@@ -157,3 +157,26 @@ def test_two_processes_wait_on_same_session_lock_and_apply_once(migration_projec
     with engine.connect() as connection:
         assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "concurrent"
         assert connection.execute(text("SELECT count(*) FROM only_once")).scalar_one() == 1
+
+
+def test_migra_mesmo_com_sessao_herdada_somente_leitura(migration_project):
+    """#96, 02/11: pelo Supavisor em modo transação, um `SET default_transaction_read_only = on` de outro
+    cliente gruda no backend compartilhado e o BEGIN das migrações nasce somente leitura
+    (`ReadOnlySqlTransaction`, API em 502). O `ALTER DATABASE` reproduz o mesmo default herdado em toda
+    conexão nova."""
+    engine, versions, run = migration_project
+    with engine.connect() as connection:
+        connection.execute(text("ALTER DATABASE postgres SET default_transaction_read_only = on"))
+        connection.commit()
+    write_revision(versions, "apesar_do_default", None,
+                   '    op.execute("CREATE TABLE criada_apesar_do_default (id integer)")\n'
+                   '    op.execute("INSERT INTO criada_apesar_do_default VALUES (1)")')
+    engine.dispose()
+    with engine.connect() as connection:
+        assert connection.execute(text("SHOW default_transaction_read_only")).scalar_one() == "on"
+
+    wait_success(run())
+
+    with engine.connect() as connection:
+        assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "apesar_do_default"
+        assert connection.execute(text("SELECT count(*) FROM criada_apesar_do_default")).scalar_one() == 1

@@ -165,6 +165,11 @@ class Settings(BaseSettings):
         "gemini-3.1-flash-lite,gemini-3.5-flash-lite,"
         "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite"
     )
+    # Teto de UMA requisicao ao modelo no JsonLLMService (grafo, supervisor...).
+    # Sem ele o cliente espera para sempre. Medido em 02/11: ciclo inteiro com
+    # 8 chamadas sai em 16 s quando a cota responde, entao 30 s por chamada
+    # so corta o que ja estava pendurado.
+    llm_request_timeout_seconds: float = 30.0
 
     brainhex_api_url: str | None = None
     # Precisa bater com API_SHARED_SECRET no microservice (api-brainhex) quando
@@ -236,6 +241,10 @@ class Settings(BaseSettings):
     telemetria_analise_fila_interval_seconds: int = 30
     telemetria_analise_fila_lote: int = 5
     telemetria_analise_fila_trava_seconds: int = 600
+    # Teto da analise feita DENTRO de `POST /telemetria/lotes`. O app desiste em
+    # 120 s (`TELEMETRIA_TIMEOUT_MS`) e regrava o lote pelo caminho direto; passou
+    # do teto, o pedido responde com o lote salvo e a analise segue pela fila.
+    telemetria_analise_pedido_timeout_seconds: float = 60.0
     # Consumidores simultaneos (cada um reivindica 1 item por vez; SKIP LOCKED os separa).
     # Capacidade ~ concorrencia * 60 / A lotes/min, A = segundos por analise.
     telemetria_analise_fila_concorrencia: int = 2

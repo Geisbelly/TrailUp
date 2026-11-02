@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 
@@ -91,6 +92,16 @@ def _analysis_from_result(result: Any) -> TelemetriaAnalysisResponse:
 
 
 FUNCAO_INEXISTENTE = "42883"  # undefined_function
+ANALISE_ADIADA = "analise_adiada: segue pela fila"
+
+
+async def _rollback_sem_levantar(session: AsyncSession) -> None:
+    """A analise cancelada pelo teto pode deixar a sessao no meio de uma consulta. Se o rollback falhar,
+    `_deixa_para_a_fila` tambem falha, registra o aviso e o lote fica na fila com a folga da P2."""
+    try:
+        await session.rollback()
+    except Exception as exc:  # noqa: BLE001 - o lote ja esta salvo; a resposta nao pode quebrar
+        logger.warning("telemetria.rollback_falhou: %s", type(exc).__name__)
 
 
 def _fila_ausente(exc: BaseException) -> bool:
@@ -309,35 +320,46 @@ async def registrar_lote_telemetria(
             normalized_events=[evento.tipo for evento in normalized_events],
             analysis=analysis,
         )
+    teto_seg = float(request.app.state.settings.telemetria_analise_pedido_timeout_seconds)
     try:
-        analysis_result = await run_analysis(
-            request=request,
-            session=session,
-            aluno_id=aluno_id,
-            classe_id=payload.classe_id,
-            topico_id=payload.topico_id,
-            atividade_id=payload.atividade_id,
-            frame_b64=frames_b64[0] if payload.camera.enabled and frames_b64 else None,
-            frames_b64=frames_b64,
-            eventos_novos=normalized_events,
-            modo="telemetria",
-            # `persisted_payload`, nao `payload.model_dump()`: o sanitizado, sem
-            # os `frame_b64`. Este payload e gravado inteiro em
-            # `ia_decision_logs.input_summary` (analysis_runner), e com o bruto
-            # iam para la ate 30 fotos do rosto do aluno por lote -- exatamente
-            # o que `_sanitize_lote_payload` existe para evitar em
-            # `telemetria_lotes`, e o que a mudanca para o R2 (c7fd436) buscava
-            # aliviar. Os frames continuam chegando ao pipeline por
-            # `frames_b64`, que e o parametro feito para isso: nenhum no le a
-            # camera pelo telemetry_payload.
-            telemetry_payload=persisted_payload,
-            batch_id=str(lote["id"]),
-            sessao_id=payload.sessao_id,
+        analysis_result = await asyncio.wait_for(
+            run_analysis(
+                request=request,
+                session=session,
+                aluno_id=aluno_id,
+                classe_id=payload.classe_id,
+                topico_id=payload.topico_id,
+                atividade_id=payload.atividade_id,
+                frame_b64=frames_b64[0] if payload.camera.enabled and frames_b64 else None,
+                frames_b64=frames_b64,
+                eventos_novos=normalized_events,
+                modo="telemetria",
+                # `persisted_payload`, nao `payload.model_dump()`: o sanitizado, sem
+                # os `frame_b64`. Este payload e gravado inteiro em
+                # `ia_decision_logs.input_summary` (analysis_runner), e com o bruto
+                # iam para la ate 30 fotos do rosto do aluno por lote -- exatamente
+                # o que `_sanitize_lote_payload` existe para evitar em
+                # `telemetria_lotes`, e o que a mudanca para o R2 (c7fd436) buscava
+                # aliviar. Os frames continuam chegando ao pipeline por
+                # `frames_b64`, que e o parametro feito para isso: nenhum no le a
+                # camera pelo telemetry_payload.
+                telemetry_payload=persisted_payload,
+                batch_id=str(lote["id"]),
+                sessao_id=payload.sessao_id,
+            ),
+            timeout=teto_seg,
         )
         analysis = _analysis_from_result(analysis_result)
         erro_para_a_fila = analysis.erros[0] if analysis.erros else "analise sem ciclo"
+    except TimeoutError:
+        # O lote ja esta salvo. Esperar mais so faz o app desistir e regravar o
+        # lote pelo caminho direto; a fila analisa com os mesmos dados.
+        await _rollback_sem_levantar(session)
+        analysis = TelemetriaAnalysisResponse(erros=[ANALISE_ADIADA])
+        erro_para_a_fila = f"TimeoutError: pedido passou de {teto_seg:g} s"
+        logger.warning("telemetria.analise_adiada: batch_id=%s teto_seg=%s", lote["id"], teto_seg)
     except Exception as exc:
-        await session.rollback()
+        await _rollback_sem_levantar(session)
         analysis = TelemetriaAnalysisResponse(erros=[str(exc)])
         erro_para_a_fila = f"{type(exc).__name__}: {exc}"
         logger.warning(
