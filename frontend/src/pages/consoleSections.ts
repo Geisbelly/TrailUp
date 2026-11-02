@@ -22,9 +22,21 @@ export const CONSOLE_SECTIONS = [
   { view: "guildas", slug: "guildas" },
   { view: "profile", slug: "meus-dados" },
   { view: "aprovacoes", slug: "aprovacoes" },
+  { view: "tecnico", slug: "tecnico" },
 ] as const;
 
 export type ConsoleView = (typeof CONSOLE_SECTIONS)[number]["view"];
+
+/**
+ * Abas de administração do projeto, só para o dono: não são de turma, não aparecem no menu dos outros
+ * professores e a Lumi não as acompanha. A rota em si não protege nada (qualquer um digita a URL); quem
+ * protege é o banco (`app_e_dono()` nas funções de cada aba), e a tela só evita mostrar um beco sem saída.
+ */
+export const VIEWS_SO_DO_DONO: readonly ConsoleView[] = ["aprovacoes", "tecnico"];
+
+export function viewSoDoDono(view: ConsoleView): boolean {
+  return VIEWS_SO_DO_DONO.includes(view);
+}
 
 export const CONSOLE_BASE_PATH = "/console";
 export const DEFAULT_CONSOLE_VIEW: ConsoleView = "dashboard";
