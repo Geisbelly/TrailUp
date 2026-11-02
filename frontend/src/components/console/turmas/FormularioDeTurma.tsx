@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MAX_NOME, validarFormulario, type CamposDaTurma, type DadosDaTurma, type ErrosDoFormulario, type ModoDoFormulario } from "./formulario";
+import { MAX_NOME, PESO_XP_MAXIMO, notaComMetaCumprida, validarFormulario, type CamposDaTurma, type DadosDaTurma, type ErrosDoFormulario, type ModoDoFormulario } from "./formulario";
 
 type Materia = { id: number; nome: string | null };
 
@@ -34,6 +34,10 @@ export function FormularioDeTurma({
   const primeiro = useRef<HTMLInputElement>(null);
   const id = useId();
   const titulo = modo === "criar" ? "Nova turma" : "Editar turma";
+  // Sem valor inicial = o banco ainda não tem as colunas do peso (20261102_13): o campo não aparece.
+  const comPesoDoXp = modo === "editar" && inicial.xpPeso !== "";
+  const pesoDigitado = Number(campos.xpPeso.trim().replace(",", "."));
+  const exemplo = Number.isFinite(pesoDigitado) && pesoDigitado > 0 && pesoDigitado <= PESO_XP_MAXIMO ? notaComMetaCumprida(7, pesoDigitado) : null;
 
   useEffect(() => {
     primeiro.current?.focus();
@@ -41,7 +45,7 @@ export function FormularioDeTurma({
 
   const mudar = (campo: keyof CamposDaTurma, valor: string) => {
     setCampos((c) => ({ ...c, [campo]: valor }));
-    if (campo === "nome") setErros((e) => ({ ...e, nome: undefined }));
+    if (campo === "nome" || campo === "xpPeso" || campo === "xpMeta") setErros((e) => ({ ...e, [campo]: undefined }));
     else setErros((e) => ({ ...e, materia: undefined }));
   };
 
@@ -172,6 +176,59 @@ export function FormularioDeTurma({
         <p id={`${id}-erro-materia`} role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">
           {erros.materia}
         </p>
+      )}
+
+      {comPesoDoXp && (
+        <fieldset className="mt-4 rounded-[14px] border border-border px-4 pb-4 pt-2">
+          <legend className="console-label-sm px-1">XP na nota final</legend>
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr))]">
+            <div>
+              <label htmlFor={`${id}-xp-peso`} className="text-[12.5px] font-semibold text-foreground">
+                Peso do XP (%)
+              </label>
+              <input
+                id={`${id}-xp-peso`}
+                inputMode="decimal"
+                value={campos.xpPeso}
+                onChange={(e) => mudar("xpPeso", e.target.value)}
+                placeholder="0"
+                aria-invalid={!!erros.xpPeso}
+                aria-describedby={`${id}-xp-ajuda${erros.xpPeso ? ` ${id}-erro-xp-peso` : ""}`}
+                className={CAMPO}
+              />
+              {erros.xpPeso && (
+                <p id={`${id}-erro-xp-peso`} className="mt-1.5 text-xs text-[hsl(var(--destructive))]">
+                  {erros.xpPeso}
+                </p>
+              )}
+            </div>
+            <div>
+              <label htmlFor={`${id}-xp-meta`} className="text-[12.5px] font-semibold text-foreground">
+                Meta de XP
+              </label>
+              <input
+                id={`${id}-xp-meta`}
+                inputMode="numeric"
+                value={campos.xpMeta}
+                onChange={(e) => mudar("xpMeta", e.target.value)}
+                placeholder="1000"
+                aria-invalid={!!erros.xpMeta}
+                aria-describedby={`${id}-xp-ajuda${erros.xpMeta ? ` ${id}-erro-xp-meta` : ""}`}
+                className={CAMPO}
+              />
+              {erros.xpMeta && (
+                <p id={`${id}-erro-xp-meta`} className="mt-1.5 text-xs text-[hsl(var(--destructive))]">
+                  {erros.xpMeta}
+                </p>
+              )}
+            </div>
+          </div>
+          <p id={`${id}-xp-ajuda`} className="mt-2 text-xs leading-normal text-muted-foreground">
+            A nota final mistura a nota das atividades com o XP do aluno, até a meta. O XP só soma: quem tem pouco XP fica
+            com a nota das atividades. Com 0%, a nota final é a nota média.
+            {exemplo !== null && ` Exemplo: nota 7 com a meta cumprida vira ${exemplo.toLocaleString("pt-BR")}.`}
+          </p>
+        </fieldset>
       )}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">

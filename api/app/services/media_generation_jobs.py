@@ -314,6 +314,9 @@ async def processar_job_media_generation_once(
         # #195: rota de IA pela idade do dono do target (menor/desconhecido -> so OpenAI).
         async with rota_ia_para_alunos(getattr(jobs_repo, "session", None), [target.get("aluno_id")]):
             try:
+                # O relógio por formato (#14, `trg_job_target_relogio`) mede de `processing` até o
+                # estado final; sem esta marca o target granular iria de `pending` direto ao fim, sem duração.
+                await jobs_repo.update_target_status(target_id=int(target["id"]), status="processing")
                 if target["media_kind"] == "enriquecimento":
                     await processar_target_enriquecimento(
                         blocos_repo=blocos_repo,

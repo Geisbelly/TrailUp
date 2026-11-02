@@ -22,6 +22,8 @@ export type NotaDoAluno = {
   email: string | null;
   xp: number;
   nota_media: number | null;
+  /** Com o peso do XP da turma (#143). Igual à nota média quando o peso é 0. */
+  nota_final: number | null;
   progresso_pct: number | null;
   atividades_avaliadas: number;
   pontos_obtidos: number | null;
@@ -33,12 +35,13 @@ const arredondar = (n: number | null) => (n === null || !Number.isFinite(n) ? nu
 /** Uma linha por aluno, com as colunas do arquivo de notas. */
 export function csvDasNotas(linhas: NotaDoAluno[]): string {
   return gerarCsv(
-    ["Aluno", "E-mail", "XP", "Nota média", "Progresso (%)", "Atividades avaliadas", "Pontos obtidos", "Pontos possíveis"],
+    ["Aluno", "E-mail", "XP", "Nota média", "Nota final", "Progresso (%)", "Atividades avaliadas", "Pontos obtidos", "Pontos possíveis"],
     linhas.map((l) => [
       l.nome,
       l.email,
       arredondar(l.xp),
       arredondar(l.nota_media),
+      arredondar(l.nota_final),
       arredondar(l.progresso_pct),
       l.atividades_avaliadas,
       arredondar(l.pontos_obtidos),
@@ -57,6 +60,8 @@ export function lerNotas(dados: unknown): NotaDoAluno[] | null {
       email: typeof d.email === "string" ? d.email : null,
       xp: num(d.xp) ?? 0,
       nota_media: num(d.nota_media),
+      // Antes da migration 20261102_13 a função não devolve a coluna: a nota final é a nota média.
+      nota_final: "nota_final" in d ? num(d.nota_final) : num(d.nota_media),
       progresso_pct: num(d.progresso_pct),
       atividades_avaliadas: num(d.atividades_avaliadas) ?? 0,
       pontos_obtidos: num(d.pontos_obtidos),

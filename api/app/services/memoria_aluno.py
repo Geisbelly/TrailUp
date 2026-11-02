@@ -8,10 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories.aluno_topico_dominio import AlunoTopicoDominioRepository
 from app.repositories.mental_state import MentalStateHistoryRepository
 from app.schemas.memoria_aluno import DominioTopico, MemoriaAluno, MentalStateRecorrente
+from app.services.estado_de_estudo import KINDS_DE_ALERTA
 
 logger = logging.getLogger(__name__)
 
-_KINDS_NEGATIVOS = {"frustrated", "anxious", "overwhelmed", "tired"}
+# Estado de estudo, não emoção (DAT-45): ver `estado_de_estudo.py`.
+_KINDS_NEGATIVOS = KINDS_DE_ALERTA
 _JANELA_RECORRENCIA = 5
 _LIMIAR_RECORRENCIA = 3
 
@@ -66,7 +68,7 @@ async def atualizar_memoria(
     topico_id: int | None,
     performance_resumo: dict[str, Any] | None,
 ) -> None:
-    """So cuida do dominio por topico (novo). O estado mental ja e gravado
+    """So cuida do dominio por topico (novo). O estado de estudo ja e gravado
     por MentalStateHistoryRepository.registrar() em analysis_runner.py - nao
     duplica essa escrita. Nunca levanta - mesmo padrao do bloco de
     mental-state ja existente em analysis_runner.py (log + segue)."""

@@ -15,8 +15,9 @@ perfil e da telemetria (``_contexto_da_decisao``):
 
 * o que o conteúdo pede (``conteudo_demanda_formato``, ``demanda_formato.py``);
 * a dificuldade do aluno no tópico (acerto médio das atividades concluídas);
-* o estado mental negativo recorrente, que só vai para o log (DAT-45: emoção não
-  reordena material).
+* o alerta de estudo recorrente (``dificuldade`` ou ``abandono``, ver
+  ``estado_de_estudo.py``), que só vai para o log; a dificuldade já entra na ordem
+  pela camada 0, com o dado do tópico, e a recorrência não soma de novo.
 
 O banco marca a sugestão para revisão quando o aluno conclui uma atividade ou a
 análise do conteúdo muda (``revisao_pendente``, ``20261102_07``). A marca é
@@ -83,7 +84,7 @@ async def _ler_demanda(session: AsyncSession, topico_id: int) -> dict[str, Any] 
 
 
 async def _estado_mental_recorrente(session: AsyncSession, aluno_id: str) -> dict[str, Any] | None:
-    """Mesma regra de ``memoria_aluno`` (3 dos últimos 5 com o mesmo estado negativo)."""
+    """Mesma regra de ``memoria_aluno`` (3 dos últimos 5 ciclos com o mesmo alerta de estudo)."""
     try:
         async with session.begin_nested():
             registros = await MentalStateHistoryRepository(session).listar_por_aluno(

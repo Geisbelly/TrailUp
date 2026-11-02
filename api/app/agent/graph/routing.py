@@ -78,7 +78,7 @@ def _needs_notification(state: dict[str, Any], completed: set[str]) -> bool:
 
 
 def _needs_intervencao(state: dict[str, Any], completed: set[str]) -> bool:
-    """Padrao de risco = recorrencia de estado negativo em `memoria_aluno` (#64).
+    """Padrao de risco = recorrencia de alerta de estudo em `memoria_aluno` (#64).
     Sem turma nao ha onde gravar: a RLS do professor em `intervencoes` e por turma."""
     if "agente_intervencao" in completed or state.get("intervencao_payload"):
         return False
@@ -96,7 +96,7 @@ def _needs_cronometro(state: dict[str, Any], completed: set[str]) -> bool:
     if not state.get("classe_id"):
         return False
     tentativas = (state.get("desempenho_recente") or {}).get("tentativas")
-    return decidir_desligar_cronometro(tentativas, state.get("memoria_aluno")) is not None
+    return decidir_desligar_cronometro(tentativas) is not None
 
 
 def _needs_texto(state: dict[str, Any], completed: set[str]) -> bool:

@@ -26,14 +26,14 @@ ALTER TABLE public.intervencoes ADD CONSTRAINT intervencoes_status_check
 M_INSIGHTS = f5.modulo("20260929_01_intervencoes_insights_turma.py")
 
 
-def _intervencao(kind: str = "frustrated", tipo: str = "emocional") -> IntervencaoPayload:
+def _intervencao(kind: str = "abandono", tipo: str = "engajamento") -> IntervencaoPayload:
     return IntervencaoPayload(
         tipo=tipo,
         kind=kind,
         ocorrencias=3,
         janela=5,
-        texto="O aluno registrou frustração em 3 dos últimos 5 ciclos.",
-        base="3 dos últimos 5 registros de estado mental: frustração.",
+        texto="O sistema observou atividade aberta e deixada sem concluir em 3 dos últimos 5 ciclos.",
+        base="3 dos últimos 5 ciclos de estudo: atividade aberta e deixada sem concluir.",
         acao="notificacao",
         notificacao_titulo="Um passo de cada vez",
         notificacao_corpo="Seu próximo passo está mais curto.",
@@ -53,7 +53,7 @@ async def test_grava_deduplica_e_so_o_professor_da_turma_le() -> None:
             fabrica = async_sessionmaker(engine, expire_on_commit=False)
             async with fabrica() as s:
                 repo = IntervencaoRepository(s)
-                assert await repo.existe_pendente(aluno_id=str(f5.A), classe_id=f5.TURMA, kind="frustrated") is False
+                assert await repo.existe_pendente(aluno_id=str(f5.A), classe_id=f5.TURMA, kind="abandono") is False
                 primeira = await repo.registrar_do_aluno(
                     aluno_id=str(f5.A), classe_id=f5.TURMA, intervencao=_intervencao(), ciclo_id="c1"
                 )
@@ -63,10 +63,10 @@ async def test_grava_deduplica_e_so_o_professor_da_turma_le() -> None:
                 outro_estado = await repo.registrar_do_aluno(
                     aluno_id=str(f5.A),
                     classe_id=f5.TURMA,
-                    intervencao=_intervencao("tired", "engajamento"),
+                    intervencao=_intervencao("dificuldade", "pedagogica"),
                     ciclo_id="c2",
                 )
-                assert await repo.existe_pendente(aluno_id=str(f5.A), classe_id=f5.TURMA, kind="frustrated") is True
+                assert await repo.existe_pendente(aluno_id=str(f5.A), classe_id=f5.TURMA, kind="abandono") is True
                 await s.commit()
         finally:
             await engine.dispose()
@@ -80,12 +80,12 @@ async def test_grava_deduplica_e_so_o_professor_da_turma_le() -> None:
             "FROM public.intervencoes WHERE id = %s",
             (primeira,),
         ).fetchone()
-        assert linha == ("aluno", "sugestao", "emocional", "frustrated", "notificacao", "pending", f5.TURMA, "c1")
+        assert linha == ("aluno", "sugestao", "engajamento", "abandono", "notificacao", "pending", f5.TURMA, "c1")
 
         # Dispensada pelo professor, deixa de bloquear: a próxima recorrência gera outra.
         c.execute("UPDATE public.intervencoes SET status = 'dismissed' WHERE id = %s", (primeira,))
         assert c.execute(
-            "SELECT count(*) FROM public.intervencoes WHERE status = 'pending' AND motivo = 'frustrated'"
+            "SELECT count(*) FROM public.intervencoes WHERE status = 'pending' AND motivo = 'abandono'"
         ).fetchone()[0] == 0
 
         def contar_como(quem) -> int:

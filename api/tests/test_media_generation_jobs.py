@@ -325,6 +325,8 @@ async def test_processar_job_media_generation_once_completa_fase_a_e_cria_fase_b
     assert any(t["media_kind"] == "apresentacao" for t in repo.targets)
     assert targets[0]["status"] == "completed"
     assert targets[1]["status"] == "completed"
+    # #14: cada target passa por processing antes do fim, senão o relógio do banco não mede a duração.
+    assert repo.status_updates == [(1, "processing"), (1, "completed"), (2, "processing"), (2, "completed")]
 
 
 @pytest.mark.asyncio

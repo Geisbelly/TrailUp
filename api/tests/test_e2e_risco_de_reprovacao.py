@@ -1,4 +1,7 @@
-"""`20261101_03`: sinal de risco de reprovação por aluno, só para o professor da turma (#135)."""
+"""`20261101_03`: sinal de risco de reprovação por aluno, só para o professor da turma (#135).
+
+A `20261102_11` troca o fator de estado mental por `abandono_recorrente` (DAT-45); os testes
+rodam com as duas aplicadas, como em produção."""
 
 from __future__ import annotations
 
@@ -12,12 +15,13 @@ from tests.test_e2e_abandono_pelo_modelo_do_core import _prazo
 from tests.test_e2e_kpis_por_topico import POSSE, _trecho
 
 M = f5.modulo("20261101_03_risco_de_reprovacao.py")
+M11 = f5.modulo("20261102_11_risco_le_estado_de_estudo.py")
 CREDITADO = _trecho("20261025_01_pontos_do_evento_no_rank.py", "CREATE OR REPLACE FUNCTION public.fn_evento_creditado", "$fn$;")
 OUTRO_PROF = uuid.UUID(int=12)
 
 
 def _banco():
-    return f5.banco(POSSE, CREDITADO, _prazo(), *f5.sql_de(M))
+    return f5.banco(POSSE, CREDITADO, _prazo(), *f5.sql_de(M), *f5.sql_de(M11))
 
 
 def _semear(c) -> None:
@@ -123,10 +127,14 @@ def test_dois_fatores_sinalizam_e_o_limiar_vem_da_config() -> None:
     with _banco() as c:
         _semear(c)
         _prazos_vencidos(c, 2)  # vale para os três alunos: ninguém entregou
-        _estado(c, f5.A, ["frustrated", "frustrated", "neutral", "frustrated", "tired"])
+        _estado(c, f5.A, ["abandono", "abandono", "sem_alerta", "abandono", "dificuldade"])
+        # `dificuldade` recorrente não é fator: `acertos_baixos` já conta o acerto baixo.
+        _estado(c, f5.B, ["dificuldade", "dificuldade", "dificuldade", "sem_alerta", "sem_alerta"])
         r = _risco(c)
-        assert set(r[f5.A]["fatores"]) == {"prazos_perdidos", "estado_negativo_recorrente"}
-        assert r[f5.A]["fatores"]["estado_negativo_recorrente"]["estado"] == "frustrated"
+        assert set(r[f5.A]["fatores"]) == {"prazos_perdidos", "abandono_recorrente"}
+        assert r[f5.A]["fatores"]["abandono_recorrente"]["texto"] == (
+            "Atividade aberta e deixada sem concluir em 3 dos últimos 5 ciclos de estudo"
+        )
         assert r[f5.A]["sinalizado"] is True and r[f5.A]["n"] == 2
         assert r[f5.B]["sinalizado"] is False and set(r[f5.B]["fatores"]) == {"prazos_perdidos"}
         # O time ajusta o corte sem migration.
