@@ -1,7 +1,8 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { EsqueletoBloco, EsqueletoGrupo } from "@/components/carregamento/Esqueleto";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { alunoAtual } from "@/services/social/guildService";
@@ -45,6 +46,8 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
   const [evento, setEvento] = useState<Evento | null>(null);
   const [meuId, setMeuId] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
+  // Turma cujo evento já está na tela: atualizar a mesma turma não tira o cartão.
+  const [turmaCarregada, setTurmaCarregada] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
   const desktop = useDesktopWeb();
@@ -57,6 +60,7 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
       const [eventos, id] = await Promise.all([carregarEventosDaTurma(classeId), alunoAtual()]);
       setMeuId(id);
       setEvento(eventoEmDestaque(eventos));
+      setTurmaCarregada(classeId);
     } catch (e) {
       console.warn("[Evento] Falha ao carregar:", e);
       setErro("Não foi possível carregar o evento da turma.");
@@ -69,7 +73,28 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
     void carregar();
   }, [carregar]);
 
-  if (carregando) return <ActivityIndicator color={accent} style={s.loader} />;
+  if (carregando && turmaCarregada !== classeId) {
+    // No celular o cartão só existe quando há evento: um esqueleto (ou um spinner) que some
+    // em seguida anunciaria um evento que talvez não exista e empurraria a tela duas vezes.
+    // Na tela larga o lugar é sempre reservado, com evento ou com o aviso, então ele espera
+    // no formato do aviso.
+    if (!desktop) return null;
+    return (
+      <EsqueletoGrupo
+        rotulo="Carregando o evento da turma"
+        superficie={surfaceColor}
+        style={[s.caixa, s.vazioLargo, { backgroundColor: surfaceColor, borderColor }]}
+      >
+        <View style={s.esqueletoLargo}>
+          <EsqueletoBloco largura={22} altura={22} raio={11} />
+          <View style={s.cabecalhoInfo}>
+            <EsqueletoBloco largura="46%" altura={14} />
+            <EsqueletoBloco largura="78%" altura={12} style={s.esqueletoLinha} />
+          </View>
+        </View>
+      </EsqueletoGrupo>
+    );
+  }
   // Sem evento visível, o cartão não existe — ver o aviso do componente. Na tela larga o
   // protótipo v4 (06-social) reserva o lugar com um aviso, que não anuncia evento nenhum.
   if (!evento && !erro) {
@@ -281,7 +306,8 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
 }
 
 const s = StyleSheet.create({
-  loader: { marginVertical: 16 },
+  esqueletoLargo: { flex: 1, flexDirection: "row", alignItems: "center", gap: 14 },
+  esqueletoLinha: { marginTop: 6 },
   caixa: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 10 },
   cabecalho: { flexDirection: "row", alignItems: "center", gap: 10 },
   cabecalhoInfo: { flex: 1, gap: 2 },

@@ -1,4 +1,5 @@
 import { HallBackground } from "@/components/HallTheme";
+import { EsqueletoBloco, EsqueletoGrupo } from "@/components/carregamento/Esqueleto";
 import { Interruptor } from "@/components/perfil/Interruptor";
 import { useDialog } from "@/context/DialogContext";
 import { useUsuario } from "@/context/SessaoContext";
@@ -13,7 +14,6 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   Platform,
   ScrollView,
   StyleSheet,
@@ -128,7 +128,27 @@ export default function LembreteDiarioScreen() {
   const controles = (
     <>
         {carregando ? (
-          <ActivityIndicator color={palette.accent} style={{ marginTop: 24 }} />
+          // No formato do que vem: o interruptor e os horários (o lembrete nasce ligado).
+          <EsqueletoGrupo rotulo="Carregando seu lembrete" superficie={palette.surfaceElevated} style={styles.esqueleto}>
+            <View style={[styles.toggleRow, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
+              <View style={styles.toggleLeft}>
+                <EsqueletoBloco largura={38} altura={38} raio={10} />
+                <View style={[styles.toggleTextWrap, styles.esqueletoTexto]}>
+                  <EsqueletoBloco largura="52%" altura={15} />
+                  <EsqueletoBloco largura="70%" altura={11} />
+                </View>
+              </View>
+              <EsqueletoBloco largura={46} altura={26} raio={13} />
+            </View>
+            <View style={styles.horariosWrap}>
+              <EsqueletoBloco largura={64} altura={12} />
+              <View style={styles.horariosGrid}>
+                {HORARIOS_SUGERIDOS.map((hora) => (
+                  <EsqueletoBloco key={hora} largura={62} altura={40} raio={999} />
+                ))}
+              </View>
+            </View>
+          </EsqueletoGrupo>
         ) : (
           <>
             <TouchableOpacity
@@ -329,6 +349,8 @@ const styles = StyleSheet.create({
   horariosWrap: {
     gap: 10,
   },
+  esqueleto: { gap: 16 },
+  esqueletoTexto: { gap: 8 },
   sectionLabel: {
     fontSize: 13,
     fontFamily: FontFamily.inikaBold,

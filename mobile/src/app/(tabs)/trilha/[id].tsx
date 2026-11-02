@@ -35,6 +35,7 @@ import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { useFalasDoBoss } from "@/hooks/useFalasDoBoss";
 import { getBrainHexConfig } from "@/constants/profileImages";
 import { LoadingState } from "@/components/LoadingState";
+import { EsqueletoDoConteudo } from "@/components/trilhas/EsqueletoDoConteudo";
 import { TopicoIntroSummary } from "@/components/TopicoIntroSummary";
 import {
   GuideTargetRefs,
@@ -1926,7 +1927,12 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
           </>
         )}
 
-        {!mostrarResumo && (total === 0 || !atualBlock) ? (
+        {/* "Sem conteúdos" só depois que o percurso está pronto: antes, o material
+            personalizado ainda pode chegar. Com blocos e sem bloco atual, a retomada ainda
+            não escolheu onde parar. */}
+        {!mostrarResumo && (total === 0 || !atualBlock) && (!blocosProntos || total > 0) ? (
+          <EsqueletoDoConteudo palette={profilePalette} />
+        ) : !mostrarResumo && (total === 0 || !atualBlock) ? (
           <CardSemDados
             title="Sem conteúdos"
             description="Esta trilha ainda não possui conteúdos cadastrados."

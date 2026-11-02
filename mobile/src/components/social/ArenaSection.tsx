@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { EsqueletoBloco, EsqueletoGrupo, EsqueletoRepetir } from "@/components/carregamento/Esqueleto";
 import { ArenaLobby, type InicioDoLobby } from "@/components/social/ArenaLobby";
 import { DesafioModal } from "@/components/social/DesafioModal";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -147,7 +148,16 @@ export function ArenaSection({ classeId, meuId, people, guilds, accent, profile,
       {aviso ? <Text style={[s.aviso, { color: palette.text }]}>{aviso}</Text> : null}
 
       {carregando && !lista.length ? (
-        <ActivityIndicator color={accent} />
+        <EsqueletoGrupo rotulo="Carregando suas partidas" superficie={palette.surface}>
+          <EsqueletoRepetir quantos={2} espaco={12}>
+            {(i) => (
+              <View style={[s.caixa, s.caixaEsqueleto, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                <EsqueletoBloco largura={i === 0 ? "58%" : "46%"} altura={16} />
+                <EsqueletoBloco largura="40%" altura={11} />
+              </View>
+            )}
+          </EsqueletoRepetir>
+        </EsqueletoGrupo>
       ) : !lista.length ? (
         <Text style={[s.dica, { color: palette.textMuted }]}>Nenhuma partida ainda. Desafie um colega!</Text>
       ) : (
@@ -220,6 +230,7 @@ export function ArenaSection({ classeId, meuId, people, guilds, accent, profile,
 const s = StyleSheet.create({
   raiz: { gap: 12 },
   caixa: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 8 },
+  caixaEsqueleto: { gap: 10 },
   entrar: { flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1.5, minHeight: 72 },
   entrarIcone: { width: 46, height: 46, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   entrarTexto: { flex: 1, gap: 2 },
