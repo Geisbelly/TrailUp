@@ -172,3 +172,53 @@ export function segundosRestantes(t: TentativaAberta, agoraLocalMs: number): num
   const decorrido = (agoraLocalMs + t.desvioMs - inicio) / 1000;
   return Math.max(0, Math.ceil(t.limiteSeg - decorrido));
 }
+
+/**
+ * Acerto a partir do qual a tentativa no tempo paga bônus: a primeira faixa de
+ * `atividade_responder_tentativa` (`FAIXAS` em `20261101_13`, 70/80/90, como no
+ * estudo UCT). Mudou lá, muda aqui.
+ */
+export const ACERTO_MINIMO_DO_BONUS = 70;
+
+/**
+ * O que o servidor decidiu sobre a tentativa, em frases para o aluno (#136,
+ * "feedback imediato após cada tentativa"). A nota o app já mostra; aqui entram
+ * só o que vem do banco: se saiu no tempo, o XP de bônus e se acabaram as
+ * tentativas. Sem cronômetro não se fala de tempo. Tentativas que sobram não
+ * entram: o app ainda não oferece a próxima sem a segunda chance da loja, e
+ * "restam 2" sem botão para usá-las confundiria.
+ */
+export function linhasDoRetorno(retorno: RetornoTentativa): string[] {
+  const linhas: string[] = [];
+  if (retorno.cronometrada) {
+    if (!retorno.noTempo) {
+      linhas.push("Fora do tempo: a nota vale, mas sem bônus de XP.");
+    } else if (retorno.xpBonus > 0) {
+      linhas.push(`Dentro do tempo: +${retorno.xpBonus} XP de bônus.`);
+    } else if (retorno.acertosPercentual < ACERTO_MINIMO_DO_BONUS) {
+      linhas.push(`Dentro do tempo. O bônus de XP começa em ${ACERTO_MINIMO_DO_BONUS}% de acerto.`);
+    } else {
+      // A faixa paga uma vez por atividade: uma tentativa anterior já levou este bônus.
+      linhas.push("Dentro do tempo. O bônus desta faixa já foi pago nesta atividade.");
+    }
+  }
+  if (retorno.restantes === 0) linhas.push("Esta foi a sua última tentativa nesta atividade.");
+  return linhas;
+}
+
+// O retorno sai em `Atividade.registrarConclusao`, longe da tela que respondeu. A
+// tela anota a hora antes de pedir a conclusão e lê daqui depois: assim não pega
+// o retorno de uma tentativa anterior da mesma atividade.
+const retornosRecentes = new Map<number, { retorno: RetornoTentativa; emMs: number }>();
+
+export function guardarRetorno(atividadeId: number, retorno: RetornoTentativa, agoraMs: number): void {
+  retornosRecentes.set(atividadeId, { retorno, emMs: agoraMs });
+}
+
+/** O retorno guardado a partir de `desdeMs`, uma vez só: quem lê consome. */
+export function retornoDesde(atividadeId: number, desdeMs: number): RetornoTentativa | null {
+  const guardado = retornosRecentes.get(atividadeId);
+  if (!guardado || guardado.emMs < desdeMs) return null;
+  retornosRecentes.delete(atividadeId);
+  return guardado.retorno;
+}

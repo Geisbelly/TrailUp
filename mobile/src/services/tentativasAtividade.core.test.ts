@@ -2,13 +2,18 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  ACERTO_MINIMO_DO_BONUS,
   MENSAGEM_DA_RECUSA,
   TentativaRecusada,
+  guardarRetorno,
   lerRetorno,
+  linhasDoRetorno,
   lerTentativa,
   mensagemDaRecusa,
   motivoDoErro,
+  retornoDesde,
   segundosRestantes,
+  type RetornoTentativa,
 } from "./tentativasAtividade.core";
 
 const INICIO = "2026-11-01T12:00:00.000Z";
@@ -72,4 +77,46 @@ test("mensagemDaRecusa: recusa do banco vira a mensagem; o resto, nada", () => {
   assert.equal(mensagemDaRecusa({ message: "Could not find the function", code: "PGRST202" }), null);
   assert.equal(mensagemDaRecusa({ message: "Failed to fetch" }), null);
   assert.equal(mensagemDaRecusa(null), null);
+});
+
+const RETORNO: RetornoTentativa = {
+  tentativaId: 3, numero: 1, cronometrada: true, noTempo: true, acertosPercentual: 85,
+  pontuacaoObtida: 8.5, pontuacaoMaxima: 10, xpBonus: 20, restantes: null,
+};
+
+test("linhasDoRetorno: no tempo com bônus diz quanto XP entrou", () => {
+  assert.deepEqual(linhasDoRetorno(RETORNO), ["Dentro do tempo: +20 XP de bônus."]);
+});
+
+test("linhasDoRetorno: fora do tempo a nota vale e o bônus não", () => {
+  assert.deepEqual(linhasDoRetorno({ ...RETORNO, noTempo: false, xpBonus: 0 }), [
+    "Fora do tempo: a nota vale, mas sem bônus de XP.",
+  ]);
+});
+
+test("linhasDoRetorno: no tempo sem bônus distingue acerto baixo de faixa já paga", () => {
+  assert.deepEqual(linhasDoRetorno({ ...RETORNO, acertosPercentual: ACERTO_MINIMO_DO_BONUS - 1, xpBonus: 0 }), [
+    "Dentro do tempo. O bônus de XP começa em 70% de acerto.",
+  ]);
+  assert.deepEqual(linhasDoRetorno({ ...RETORNO, acertosPercentual: 85, xpBonus: 0 }), [
+    "Dentro do tempo. O bônus desta faixa já foi pago nesta atividade.",
+  ]);
+});
+
+test("linhasDoRetorno: sem cronômetro não fala de tempo; só avisa a última tentativa", () => {
+  const semCronometro = { ...RETORNO, cronometrada: false, noTempo: false, xpBonus: 0 };
+  assert.deepEqual(linhasDoRetorno(semCronometro), []);
+  assert.deepEqual(linhasDoRetorno({ ...semCronometro, restantes: 2 }), []);
+  assert.deepEqual(linhasDoRetorno({ ...semCronometro, restantes: 0 }), [
+    "Esta foi a sua última tentativa nesta atividade.",
+  ]);
+});
+
+test("retornoDesde: entrega o retorno desta resposta uma vez, e nunca o de antes", () => {
+  guardarRetorno(41, RETORNO, 1_000);
+  assert.equal(retornoDesde(41, 2_000), null, "retorno anterior ao pedido não é desta resposta");
+  guardarRetorno(41, { ...RETORNO, numero: 2 }, 3_000);
+  assert.equal(retornoDesde(41, 2_000)?.numero, 2);
+  assert.equal(retornoDesde(41, 2_000), null, "quem lê consome");
+  assert.equal(retornoDesde(42, 0), null);
 });

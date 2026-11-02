@@ -16,6 +16,7 @@ import { supabase } from "@/database/supabase";
 
 import {
   TentativaRecusada,
+  guardarRetorno,
   lerRetorno,
   lerTentativa,
   motivoDoErro,
@@ -85,7 +86,10 @@ export async function responderTentativa(
     return falha(error);
   }
   abertas.delete(atividadeId);
-  return lerRetorno(data);
+  const retorno = lerRetorno(data);
+  // A tela que respondeu mostra o veredito do servidor (no tempo, bônus) ao aluno.
+  if (retorno) guardarRetorno(atividadeId, retorno, Date.now());
+  return retorno;
 }
 
 /** O interruptor do aluno (`aluno_definir_cronometro`). Devolve o que ficou gravado. */

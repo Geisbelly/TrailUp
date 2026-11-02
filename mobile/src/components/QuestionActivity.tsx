@@ -15,7 +15,7 @@ import { QuestaoAluno } from '@/models/QuestaoAluno';
 import { gastarSegundaChance } from '@/services/loja/lojaService';
 import { mensagemDeUso, podeResponderComCompra } from '@/services/loja/usoItem';
 // Do .core: o tentativasAtividade.ts carrega o cliente do Supabase.
-import { mensagemDaRecusa } from '@/services/tentativasAtividade.core';
+import { linhasDoRetorno, mensagemDaRecusa, retornoDesde } from '@/services/tentativasAtividade.core';
 import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayValidation';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -1323,7 +1323,8 @@ export default function QuestionActivity({
               : viuRespostaAntes
               ? `Você já tinha visto o gabarito. Pontuação reduzida para ${pontosGanhos || 0} pontos (20%).`
               : timedOut
-              ? `Você concluiu a atividade, mas o tempo expirou antes. Pontuação final: ${pontosGanhos || 0} pontos com penalidade de 20%.`
+              ? // O tempo não tira nota desde a fase 2 da #136: só o bônus de XP fica de fora.
+                `Você concluiu a atividade depois do tempo. A nota vale: ${pontosGanhos || 0} pontos.`
               : `Você ganhou ${pontosGanhos || 0} pontos. Continue assim!`;
             setModalInfo({
               titulo: atividadeCompleta ? 'Parabéns!' : 'Questão registrada',
@@ -1414,6 +1415,7 @@ export default function QuestionActivity({
               return;
             }
           }
+          const pedidoEm = Date.now();
           await onComplete?.({
             correto: atividadeCorreta,
             acertosPercentual: atividadeCompleta ? acertoMedioAtividade : acertosPercent,
@@ -1429,6 +1431,16 @@ export default function QuestionActivity({
             completed: atividadeCompleta,
             questionIndex: questaoIndex,
           })
+          // O veredito do servidor (#136): no tempo, bônus de XP, última tentativa. Chega
+          // depois que o modal já abriu, então entra no fim do texto dele.
+          const retorno = atividade?.id ? retornoDesde(Number(atividade.id), pedidoEm) : null;
+          const linhasDoServidor = retorno ? linhasDoRetorno(retorno) : [];
+          if (linhasDoServidor.length) {
+            setModalInfo((atual) => ({
+              ...atual,
+              descricao: [atual.descricao, linhasDoServidor.join('\n')].filter(Boolean).join('\n\n'),
+            }));
+          }
 
         }}
         style={{
@@ -1459,7 +1471,7 @@ export default function QuestionActivity({
 
       {timedOut ? (
         <Text style={{ marginTop: 8, color: '#fcd34d', fontFamily: FontFamily.interMedium }}>
-          Tempo encerrado para esta atividade. Se concluir agora, a pontuação desta atividade recebe penalidade de 20%.
+          Tempo encerrado para esta atividade. Se concluir agora, a nota vale; só o bônus de XP por tempo fica de fora.
         </Text>
       ) : null}
 
