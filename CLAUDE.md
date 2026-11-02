@@ -607,6 +607,22 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 >   dispara, confira o log de `Falha ao ler memoria do aluno` antes de suspeitar
 >   do limiar.
 
+> **O executor do grafo não grava o perfil do aluno** (02/11). O `agente_perfil`
+> continua inferindo e o `perfil_update` fica no estado (a trilha e o resumo em
+> `iaDescricao` o leem), mas `aluno_perfil` e o modo do aluno
+> (`alunos.modooperacao_id`/`modo_resposta`) só mudam pelo quiz e pelo próprio
+> aluno. A regra de reserva só soma: um Seeker com acerto baixo vira Survivor em
+> 3 ciclos e não volta. E `aluno_perfil` decide a missão do dia, as coortes por
+> perfil do estudo (#13) e os alvos da personalização. O modo `imediato` trocaria
+> a ordem da trilha. Até o #805 o executor nunca rodava em produção; quando passou
+> a rodar, a gravação de perfil (`modoresposta` sem aspas) derrubou todo ciclo.
+>
+> **Cada escrita do executor vai num SAVEPOINT** (`_aplicar`): a que falha volta
+> sozinha, fica no log (`executor.escrita_falhou`, só a primeira linha do erro,
+> sem os parâmetros) e em `acoes_aplicadas` como `falhou:<ação>`, e o ciclo segue.
+> A exceção é `MateriaisRepository.salvar`, que dá `commit()` no fim e por isso
+> roda fora de savepoint. Escrita nova no executor entra por `_aplicar`.
+
 ## Convenções
 
 - **Encoding: UTF-8 sem BOM, sempre.** Já houve mojibake (UTF-8 salvo como

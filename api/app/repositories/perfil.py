@@ -64,13 +64,16 @@ class PerfilRepository:
         if perfil_update.modo_operacao_sugerido:
             modo_operacao_relation = await self._resolve_modo_operacao_relation()
             if modo_operacao_relation is not None:
+                # Em produção a tabela é `"modoOperacao"` e a coluna, `"modoResposta"`: sem aspas o
+                # Postgres procura `modoresposta`, que não existe (era o erro de todo ciclo depois do #805).
+                modo_resposta_coluna = '"modoResposta"' if modo_operacao_relation == '"modoOperacao"' else "modoresposta"
                 modo_result = await self.session.execute(
                     text(
                         f"""
                         SELECT id
                         FROM {modo_operacao_relation}
                         WHERE LOWER(nome) = LOWER(:modo)
-                           OR LOWER(COALESCE(modoresposta, '')) = LOWER(:modo)
+                           OR LOWER(COALESCE({modo_resposta_coluna}, '')) = LOWER(:modo)
                         ORDER BY id
                         LIMIT 1
                         """
