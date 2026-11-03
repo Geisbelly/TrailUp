@@ -1123,9 +1123,23 @@ export async function runPipeline(
   const scriptStyle = isDialogue
     ? { speakers: [BRAIN_HEX_CONFIG[profile].guideName, secondaryGuideName as string] }
     : {};
-  const junctionConfig = resolveAudioJunctionConfig();
-  const planAudio = (chapters: Array<{ markdown?: string; audioScript: string }>): AudioPartPlan[] =>
-    audioPlanFromJunction(joinAudioBlocks(audioSegmentsFromChapters(chapters), junctionConfig, scriptStyle));
+  const junctionConfig = resolveAudioJunctionConfig(process.env, profile);
+  // Tópico e tema de cada bloco: é o que diz à junção se um bloco curto
+  // continua o vizinho (ver audioJunction.ts).
+  const blocoPorId = new Map(contentBlocks.map((block) => [String(block.id ?? "").trim(), block]));
+  const planAudio = (chapters: Array<{ blockId?: string; markdown?: string; audioScript: string }>): AudioPartPlan[] =>
+    audioPlanFromJunction(
+      joinAudioBlocks(
+        audioSegmentsFromChapters(
+          chapters.map((chapter) => {
+            const bloco = blocoPorId.get(String(chapter.blockId ?? "").trim());
+            return bloco ? { ...chapter, topico: bloco.topico, tema: bloco.tema } : chapter;
+          }),
+        ),
+        junctionConfig,
+        scriptStyle,
+      ),
+    );
 
   // 1. Texto.
   let textParts: Array<{ ordem: number; titulo: string; markdown: string }> | null = null;
