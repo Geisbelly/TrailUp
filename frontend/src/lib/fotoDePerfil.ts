@@ -1,5 +1,5 @@
 /**
- * Foto de perfil no bucket privado `perfil_fotos` (20261024_09, professor em 20261103_12).
+ * Foto de perfil no bucket privado `perfil_fotos` (20261024_09, professor em 20261103_13).
  *
  * A coluna (`professor.foto_url`, `alunos.foto_url`) guarda a REFERENCIA
  * `perfil_fotos/<uid>/<arquivo>`; quem mostra assina na hora. O objeto mora na

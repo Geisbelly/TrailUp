@@ -14,15 +14,15 @@ professor: sem ele, `foto_url` poderia apontar para a foto de outra conta.
 Sem policy nova: o professor já atualiza a própria linha de `professor` (nome, instituição, ...) e o
 GRANT de UPDATE é da tabela, então a coluna nova entra nele.
 
-Revision ID: 20261103_12
-Revises: 20261103_11
+Revision ID: 20261103_13
+Revises: 20261103_12
 Create Date: 2026-11-03
 """
 
 from alembic import op
 
-revision = "20261103_12"
-down_revision = "20261103_11"
+revision = "20261103_13"
+down_revision = "20261103_12"
 branch_labels = None
 depends_on = None
 
