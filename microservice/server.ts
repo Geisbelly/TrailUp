@@ -98,6 +98,7 @@ import {
   getBuildCommit,
 } from "./src/constants/pipelineVersions";
 import { versionStoragePath } from "./src/constants/generationStorage";
+import { medirUso, novoUso } from "./src/lib/usoDoModelo";
 
 export {
   CONTENT_ENRICHMENT_PROVIDER,
@@ -2157,8 +2158,12 @@ export function buildApp(opts: AppOptions = {}): express.Application {
     // No modo confiavel a conexao fica aberta ate a persistencia terminar.
     // Isso evita que a hospedagem suspenda o processo no meio do background.
     const jobLog = req.log.child({ personalizacaoId, profile });
+    // Tokens desta geração (#21): voltam para a API na resposta, inclusive na falha (a tentativa
+    // que falha também foi paga). A medição começa dentro do job, e não aqui: o gate pode iniciar o
+    // job a partir do contexto de outro pedido que liberou a vaga.
+    const usoModelo = novoUso();
 
-    const executeJob = async () => {
+    const executeJob = () => medirUso(usoModelo, async () => {
       const startedAt = Date.now();
       try {
         jobLog.info("personalizar start", {
@@ -2197,7 +2202,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
         );
         throw err;
       }
-    };
+    });
 
     if (waitForCompletion) {
       try {
@@ -2209,12 +2214,14 @@ export function buildApp(opts: AppOptions = {}): express.Application {
           presentation_engine_version: PRESENTATION_ENGINE_VERSION,
           presentation_design_version: PRESENTATION_DESIGN_VERSION,
           content_enrichment_provider: CONTENT_ENRICHMENT_PROVIDER,
+          uso_modelo: usoModelo,
         });
       } catch (err: any) {
         return res.status(500).json({
           status: "failed",
           personalizacao_id: personalizacaoId,
           error: err?.message ?? String(err),
+          uso_modelo: usoModelo,
         });
       }
     }

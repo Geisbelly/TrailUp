@@ -22,6 +22,7 @@
 // Erro fora dessa lista (bug, rede) sobe como está: reserva não mascara bug.
 
 import OpenAI from "openai";
+import { registrarUso } from "../lib/usoDoModelo";
 
 export type TtsFailureKind =
   | "billing"
@@ -307,6 +308,8 @@ export async function synthesizeOpenAiPcm(params: {
       ...(instructions ? { instructions } : {}),
       response_format: "pcm",
     });
+    // A voz da OpenAI cobra por caractere e não devolve tokens.
+    registrarUso(model, { caracteres: input.length });
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (bytes.length === 0) {
       throw new Error("OpenAI TTS respondeu sem áudio");

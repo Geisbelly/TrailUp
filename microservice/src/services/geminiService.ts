@@ -40,6 +40,7 @@ import {
   SlideContent,
   SourceRef
 } from "../types";
+import { registrarUsoGemini, registrarUsoOpenAI } from "../lib/usoDoModelo";
 
 /**
  * Fórmula em texto corrido, nunca LaTeX (#652). O mobile converte LaTeX na
@@ -180,6 +181,7 @@ export async function executeWithModelFallback<T>(params: {
     for (const modelName of regenerationGeminiModels()) {
       try {
         const response = await aiInstance.models.generateContent({ ...request, model: modelName });
+        registrarUsoGemini(modelName, response.usageMetadata);
         if (response.text) {
           return JSON.parse(response.text) as T;
         }
@@ -221,6 +223,7 @@ export async function executeWithModelFallback<T>(params: {
         });
         if (openAiRes.ok) {
           const data = await openAiRes.json();
+          registrarUsoOpenAI(openAiModel, data.usage);
           const contentStr = data.choices?.[0]?.message?.content || "";
           if (contentStr) return JSON.parse(contentStr) as T;
         } else {
@@ -541,7 +544,9 @@ async function generateGeminiContent(
       }
       const { client, key } = getAi(model);
       try {
-        return await client.models.generateContent(currentParams);
+        const response = await client.models.generateContent(currentParams);
+        registrarUsoGemini(model, response.usageMetadata);
+        return response;
       } catch (error) {
         lastError = error;
         if (rotateGeminiKeyAfterFailure(error, model, key)) {
