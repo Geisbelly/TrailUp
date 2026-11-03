@@ -99,7 +99,7 @@ describe("METRICAS_DE_GUILDA", () => {
     }
   });
 
-  it("percentual, sequência e acumulado de vida inteira não somam", () => {
+  it("percentual, sequência, minutos e tópicos não somam na guilda", () => {
     for (const m of ["acertos_percentual", "trilha_percentual", "dias_seguidos", "minutos_totais", "topicos_concluidos"]) {
       expect(metricaSomaEmGuilda(m)).toBe(false);
     }

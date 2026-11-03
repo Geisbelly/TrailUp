@@ -1,5 +1,13 @@
 """Roteamento de IA por idade do aluno (#195).
 
+**Desligado por padrao** (`IA_ROTA_DE_MENOR_ATIVA=false`): toda IA usa o
+provedor atual (Gemini). A conta da OpenAI esta sem credito de proposito
+(ver `llm_provider` em settings), e com a rota ligada o chat do aluno, a
+Lumi do professor e toda IA de turma com menor caiam em 429
+`credit_balance_exhausted` -- quase todo aluno e menor ou nao tem data de
+nascimento. Ligar a variavel devolve a regra abaixo inteira; so ligue com
+credito na OpenAI.
+
 Regra de produto: **menor de 18 usa o app normalmente, mas toda a IA dele vai
 para a OpenAI, nunca para o Gemini.** Os termos da API do Gemini/Vertex nao
 aceitam app usado por menor de 18; a OpenAI tem diretriz para isso.
@@ -104,9 +112,19 @@ def _ids_validos(aluno_ids: Iterable[Any]) -> tuple[list[str], bool]:
     return ids, algum_vazio
 
 
+def rota_de_menor_ligada() -> bool:
+    """`IA_ROTA_DE_MENOR_ATIVA`. Desligada, ninguem entra na rota de menor."""
+    from app.core.settings import get_settings
+
+    return bool(get_settings().ia_rota_de_menor_ativa)
+
+
 async def decidir_rota(session: AsyncSession | None, aluno_ids: Iterable[Any]) -> Rota:
     """Adulto confirmado para TODOS os ids -> 'padrao'; qualquer outra coisa
-    (menor, sem data, id vazio, sessao ausente, erro no banco) -> 'menor'."""
+    (menor, sem data, id vazio, sessao ausente, erro no banco) -> 'menor'.
+    Com a rota desligada (padrao), sempre 'padrao'."""
+    if not rota_de_menor_ligada():
+        return ROTA_PADRAO
     ids, algum_vazio = _ids_validos(aluno_ids)
     if algum_vazio or not ids or session is None:
         return ROTA_MENOR
