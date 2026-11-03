@@ -902,10 +902,13 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   pagaria a mesma conta que a migração existe para eliminar. O microservice
   faz o mesmo desde 03/11 (`microservice/src/services/r2Upload.ts`) e lê o
   markdown da retomada pelo gateway; antes ele assinava com `R2_*` próprias.
-  Dívida que sobra: a API ainda lê `R2_*` (`app/services/r2_storage.py`) para
-  a telemetria (`repositories/telemetria.py`) e a retenção externa
-  (`retencao_externa.py`), caminhos fora de `brainhex/` e `fontes/`. Não use
-  como precedente.
+  A API também não tem mais `R2_*` (03/11): o payload bruto da telemetria
+  (`telemetria/`, só `PUT`) e a retenção externa (`DELETE`) pedem a URL à mesma
+  função, por `app/services/r2_storage.py`. `DELETE` também alcança
+  `<uuid do professor>/...`, a fonte do professor que o script de cópia pôs no
+  R2; `PUT` ali continua recusado. Quem pede `DELETE` confere o `metodo` da
+  resposta: a versão da função anterior a isso ignorava o campo e devolvia URL
+  de `PUT`, e um `PUT` vazio no lugar do `DELETE` zeraria o objeto.
 
   Essa premissa errada já quebrou o console duas vezes no mesmo dia: o deck
   baixado do Storage (corrigido em `htmlDeckSource.ts`) e uma checagem em SQL

@@ -1,127 +1,89 @@
-"""Escrita de objetos no Cloudflare R2, assinada com SigV4.
+"""Escrita e remocao de objetos no Cloudflare R2 SEM credencial do R2 na API (#76).
 
 Existe para tirar do Postgres o que nao precisa estar la. O primeiro uso e o
 payload bruto de telemetria: ele e ~96% do tamanho da linha (5,67 kB de 5,9 kB
 medidos) e **nada le esse campo de volta** - o unico SELECT sobre
 `telemetria_lotes` pega `id, sessao_id, analysis_ciclo_id`, e nao ha view nem
 funcao que use a tabela. As outras 20 colunas ja carregam o que as consultas
-precisam.
+precisam. O segundo e a retencao (`retencao_externa.py`), que apaga o que
+expirou.
 
-Terceira copia da assinatura SigV4 no monorepo (as outras estao na Edge
-Function e no microservice). Nao e preguica: cada servico e' empacotado
-sozinho - o Dockerfile de cada um so enxerga a propria pasta - e nao ha pacote
-compartilhado entre Python e TypeScript. As tres tem teste contra o vetor de
-assinatura publicado pela AWS, que e o que impede qualquer uma de se degradar em
-silencio: assinatura errada so apareceria como 403 do R2, em producao.
+As credenciais do R2 ficam SO nos secrets das Edge Functions (decisao de 02/11).
+A API pede a `storage-upload-url` uma URL assinada - de PUT para gravar, de
+DELETE para apagar - com a chave de servico que ja usa, e fala direto com o R2:
+o Supabase so ve o pedido, nunca o arquivo. E' o que `storage.py` faz para o
+material e o microservice e o BrainHexPDF para os deles. Ate 03/11 este modulo
+assinava sozinho com `R2_*` proprias (terceira copia do SigV4 no monorepo).
 """
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from urllib.parse import quote
 
 import httpx
 
-_ALGORITMO = "AWS4-HMAC-SHA256"
-_REGIAO = "auto"  # R2 usa sempre "auto"
-_SERVICO = "s3"
+from app.services.storage import FUNCAO_DE_UPLOAD
 
 
 @dataclass(frozen=True)
 class ConfigR2:
-    account_id: str
-    access_key_id: str
-    secret_access_key: str
+    """O que a API precisa para pedir URL assinada: o projeto e a chave de servico."""
+
+    supabase_url: str
+    service_key: str
+
+
+@dataclass(frozen=True)
+class UrlAssinada:
+    url: str
     bucket: str
 
 
+class FuncaoDeUploadNaoPublicada(RuntimeError):
+    """A plataforma respondeu 404: a funcao ainda nao foi publicada (ela nunca responde 404)."""
+
+
 def ler_config_r2(settings: object) -> ConfigR2 | None:
-    """Config do R2, ou None se estiver incompleta.
+    """Config para chegar ao R2, ou None sem URL do projeto ou chave de servico.
 
-    Exige as quatro: configuracao pela metade nao pode virar escrita pela
-    metade. Sem R2, quem chama mantem o comportamento antigo.
+    Sem ela, quem chama mantem o comportamento antigo (payload no Postgres).
     """
-    valores = [
-        (getattr(settings, "r2_account_id", None) or "").strip(),
-        (getattr(settings, "r2_access_key_id", None) or "").strip(),
-        (getattr(settings, "r2_secret_access_key", None) or "").strip(),
-        (getattr(settings, "r2_bucket", None) or "").strip(),
-    ]
-    if not all(valores):
+    url = (getattr(settings, "supabase_url", None) or "").strip().rstrip("/")
+    chave = (getattr(settings, "supabase_service_key", None) or "").strip()
+    if not url or not chave:
         return None
-    return ConfigR2(*valores)
+    return ConfigR2(url, chave)
 
 
-def _hmac(chave: bytes, mensagem: str) -> bytes:
-    return hmac.new(chave, mensagem.encode("utf-8"), hashlib.sha256).digest()
+async def pedir_url_assinada(
+    cfg: ConfigR2, key: str, metodo: str, *, client: httpx.AsyncClient
+) -> UrlAssinada:
+    """Pede a URL a `storage-upload-url`. Lanca em qualquer falha.
 
-
-def derivar_chave_de_assinatura(
-    secret_access_key: str, data_curta: str, regiao: str, servico: str
-) -> bytes:
-    """Cadeia de derivacao do SigV4.
-
-    Exportada porque e a parte que erra em silencio; o teste a confere contra o
-    vetor publicado pela AWS.
+    Confere o `metodo` devolvido: a versao da funcao anterior ao DELETE ignora
+    o campo e devolve uma URL de PUT - e um PUT sem corpo no lugar de um DELETE
+    sobrescreveria o objeto com um arquivo vazio. Tambem exige o `bucket`, que
+    vai para o ponteiro (`_bucket`) e que a retencao confere antes de apagar.
     """
-    k_data = _hmac(f"AWS4{secret_access_key}".encode(), data_curta)
-    k_region = _hmac(k_data, regiao)
-    k_service = _hmac(k_region, servico)
-    return _hmac(k_service, "aws4_request")
-
-
-def _codificar_key(key: str) -> str:
-    """Percent-encode por segmento, preservando as barras (igual ao S3)."""
-    return "/".join(quote(seg, safe="") for seg in key.split("/"))
-
-
-def presign_r2(
-    cfg: ConfigR2,
-    key: str,
-    metodo: str = "GET",
-    *,
-    agora: datetime | None = None,
-    validade_segundos: int = 900,
-) -> str:
-    """URL assinada para o objeto. O metodo entra na requisicao canonica."""
-    momento = agora or datetime.now(UTC)
-    amz_date = momento.strftime("%Y%m%dT%H%M%SZ")
-    data_curta = amz_date[:8]
-
-    host = f"{cfg.account_id}.r2.cloudflarestorage.com"
-    caminho = f"/{cfg.bucket}/{_codificar_key(key)}"
-    escopo = f"{data_curta}/{_REGIAO}/{_SERVICO}/aws4_request"
-
-    query = sorted(
-        [
-            ("X-Amz-Algorithm", _ALGORITMO),
-            ("X-Amz-Credential", f"{cfg.access_key_id}/{escopo}"),
-            ("X-Amz-Date", amz_date),
-            ("X-Amz-Expires", str(validade_segundos)),
-            ("X-Amz-SignedHeaders", "host"),
-        ]
+    chave = cfg.service_key
+    pedido = await client.post(
+        f"{cfg.supabase_url}/functions/v1/{FUNCAO_DE_UPLOAD}",
+        json={"path": key, "metodo": metodo},
+        headers={"Authorization": f"Bearer {chave}", "apikey": chave},
     )
-    query_canonica = "&".join(f"{quote(k, safe='')}={quote(v, safe='')}" for k, v in query)
-
-    requisicao_canonica = "\n".join(
-        [metodo, caminho, query_canonica, f"host:{host}", "", "host", "UNSIGNED-PAYLOAD"]
-    )
-    string_to_sign = "\n".join(
-        [
-            _ALGORITMO,
-            amz_date,
-            escopo,
-            hashlib.sha256(requisicao_canonica.encode("utf-8")).hexdigest(),
-        ]
-    )
-
-    chave = derivar_chave_de_assinatura(cfg.secret_access_key, data_curta, _REGIAO, _SERVICO)
-    assinatura = hmac.new(chave, string_to_sign.encode("utf-8"), hashlib.sha256).hexdigest()
-
-    return f"https://{host}{caminho}?{query_canonica}&X-Amz-Signature={assinatura}"
+    if pedido.status_code == 404:
+        raise FuncaoDeUploadNaoPublicada(f"[r2] Edge Function {FUNCAO_DE_UPLOAD} nao publicada")
+    if pedido.status_code >= 400:
+        raise RuntimeError(f"[r2] URL recusada ({key}): {pedido.status_code} {pedido.text[:200]}")
+    corpo = pedido.json() or {}
+    url, bucket = str(corpo.get("url") or ""), str(corpo.get("bucket") or "")
+    if corpo.get("metodo") != metodo:
+        raise RuntimeError(
+            f"[r2] {FUNCAO_DE_UPLOAD} publicada nao assina {metodo} (devolveu {corpo.get('metodo')})"
+        )
+    if not url or not bucket:
+        raise RuntimeError(f"[r2] resposta sem url ou bucket ({key})")
+    return UrlAssinada(url, bucket)
 
 
 async def enviar_para_r2(
@@ -132,21 +94,21 @@ async def enviar_para_r2(
     *,
     client: httpx.AsyncClient | None = None,
     timeout_sec: float = 10.0,
-) -> None:
-    """Sobe o objeto. Lanca em falha - quem chama decide se tolera.
+) -> str:
+    """Sobe o objeto e devolve o bucket. Lanca em falha - quem chama decide se tolera.
 
     Para telemetria, quem chama TOLERA: perder o arquivo bruto e melhor que
     recusar o lote e perder tambem as metricas estruturadas, que sao o que as
     consultas usam.
     """
-    url = presign_r2(cfg, key, "PUT")
-    if client is not None:
-        resposta = await client.put(url, content=corpo, headers={"Content-Type": content_type})
-    else:
+    if client is None:
         async with httpx.AsyncClient(timeout=timeout_sec) as http:
-            resposta = await http.put(url, content=corpo, headers={"Content-Type": content_type})
+            return await enviar_para_r2(cfg, key, corpo, content_type, client=http)
 
+    assinada = await pedir_url_assinada(cfg, key, "PUT", client=client)
+    resposta = await client.put(assinada.url, content=corpo, headers={"Content-Type": content_type})
     if resposta.status_code >= 400:
         raise RuntimeError(
             f"[r2] upload falhou ({key}): {resposta.status_code} {resposta.text[:200]}"
         )
+    return assinada.bucket

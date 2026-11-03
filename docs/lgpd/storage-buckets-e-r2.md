@@ -85,4 +85,4 @@ Também abortam uploads incompletos de telemetria em 2 dias. O teste `api/tests/
 
 Sem wrangler, use a API REST: exporte `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_API_TOKEN` no seu terminal e rode `... api <bucket> --confirmo-modo-aplicar`. O script não grava nem imprime esses valores.
 
-O `<bucket>` é o valor de `R2_BUCKET` da API.
+O `<bucket>` é o valor de `R2_BUCKET` nos secrets das Edge Functions (a API não tem mais as `R2_*`, #76). Também é o `_bucket` gravado no ponteiro da telemetria.

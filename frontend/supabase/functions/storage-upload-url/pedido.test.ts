@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { chamadorAutorizado, lerPedido, mesmaChave, urlDeLeitura } from "./pedido";
+import { describe, expect, it, vi } from "vitest";
+import {
+  bearerDe,
+  chamadorAutorizado,
+  chaveDeServicoDoProjeto,
+  lerPedido,
+  mesmaChave,
+  urlDeLeitura,
+} from "./pedido";
 
 const CHAVE = "eyJ.servico.assinatura";
 const DECK = "brainhex/seeker/classe-54/topico-131/conteudo-7/generation-abc/apresentacao/material-1-parte-1.html";
@@ -31,12 +38,67 @@ describe("chamadorAutorizado", () => {
   });
 });
 
+describe("chaveDeServicoDoProjeto", () => {
+  const URL = "https://projeto.supabase.co/";
+
+  it("pergunta ao Auth admin do projeto com o proprio token", async () => {
+    const fetchImpl = vi.fn(async () => new Response("[]", { status: 200 }));
+    expect(await chaveDeServicoDoProjeto("outra-chave-de-servico", URL, fetchImpl as unknown as typeof fetch)).toBe(true);
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://projeto.supabase.co/auth/v1/admin/users?per_page=1");
+    expect(init.headers).toEqual({ apikey: "outra-chave-de-servico", Authorization: "Bearer outra-chave-de-servico" });
+  });
+
+  it.each([401, 403, 500])("recusa quando o Auth responde %s (anon, JWT de aluno, falha)", async (status) => {
+    const fetchImpl = vi.fn(async () => new Response("{}", { status }));
+    expect(await chaveDeServicoDoProjeto("eyJ.aluno.x", URL, fetchImpl as unknown as typeof fetch)).toBe(false);
+  });
+
+  it("recusa sem URL, sem token ou com a rede fora", async () => {
+    const quebra = vi.fn(async () => {
+      throw new Error("rede");
+    });
+    expect(await chaveDeServicoDoProjeto("k", "", quebra as unknown as typeof fetch)).toBe(false);
+    expect(await chaveDeServicoDoProjeto("", URL, quebra as unknown as typeof fetch)).toBe(false);
+    expect(await chaveDeServicoDoProjeto("k", URL, quebra as unknown as typeof fetch)).toBe(false);
+  });
+
+  it("bearerDe tira o token do header", () => {
+    expect(bearerDe("Bearer  abc ")).toBe("abc");
+    expect(bearerDe("abc")).toBeNull();
+    expect(bearerDe("Bearer ")).toBeNull();
+    expect(bearerDe(null)).toBeNull();
+  });
+});
+
 describe("lerPedido", () => {
   it("aceita material e fonte", () => {
-    expect(lerPedido({ path: DECK })).toEqual({ caminho: DECK });
+    expect(lerPedido({ path: DECK })).toEqual({ caminho: DECK, metodo: "PUT" });
     expect(lerPedido({ path: "fontes/classe-1/topico-2/conteudo-3/u-a.pdf" })).toEqual({
       caminho: "fontes/classe-1/topico-2/conteudo-3/u-a.pdf",
+      metodo: "PUT",
     });
+  });
+
+  it("aceita o payload de telemetria da API (#76)", () => {
+    expect(lerPedido({ path: "telemetria/lotes/2026/11/02/x.json" })).toEqual({
+      caminho: "telemetria/lotes/2026/11/02/x.json",
+      metodo: "PUT",
+    });
+  });
+
+  it("aceita DELETE para a retencao, e so' PUT e DELETE", () => {
+    expect(lerPedido({ path: DECK, metodo: "DELETE" })).toEqual({ caminho: DECK, metodo: "DELETE" });
+    for (const metodo of ["GET", "HEAD", "delete", 1]) {
+      expect(lerPedido({ path: DECK, metodo })).toHaveProperty("erro");
+    }
+  });
+
+  it("DELETE alcanca a fonte do professor copiada para o R2; PUT nao", () => {
+    const fonte = "6f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f/aula.pdf";
+    expect(lerPedido({ path: fonte, metodo: "DELETE" })).toEqual({ caminho: fonte, metodo: "DELETE" });
+    expect(lerPedido({ path: fonte })).toHaveProperty("erro");
+    expect(lerPedido({ path: "outra/coisa.pdf", metodo: "DELETE" })).toHaveProperty("erro");
   });
 
   it.each([
@@ -45,7 +107,7 @@ describe("lerPedido", () => {
     ["path nao texto", { path: 1 }],
     ["subida de diretorio", { path: "brainhex/../telemetria/x.json" }],
     ["barra inicial", { path: `/${DECK}` }],
-    ["telemetria (ciclo de vida proprio)", { path: "telemetria/lotes/2026/11/02/x.json" }],
+    ["prefixo parecido com telemetria", { path: "telemetriax/lotes/x.json" }],
     ["pasta de aluno", { path: "6f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f/boss/x.png" }],
     ["prefixo parecido", { path: "brainhexx/a.html" }],
   ])("recusa %s", (_nome, corpo) => {
