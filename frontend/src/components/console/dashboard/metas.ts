@@ -2,7 +2,6 @@
 // sem caçar número pelo código (docs/frontend/redesign-fase-2/01-analise-dashboard.md,
 // seção 9, decisão 2). Configuração por turma fica para depois.
 export const META_ACERTOS_PCT = 70;
-export const META_ABANDONO_PCT = 15;
 
 export type TomMetrica = "bom" | "atencao" | "informativo" | "neutro";
 

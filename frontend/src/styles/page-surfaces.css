@@ -75,6 +75,10 @@
 .console-account-copy span { color: hsl(var(--muted-foreground)); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console-icon-button { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; flex: none; color: hsl(var(--muted-foreground)); }
 .console-icon-button:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+.console-icon-button[aria-current="page"] { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+.console-account-link { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 4px 10px 4px 4px; border-radius: 999px; color: inherit; }
+.console-account-link:hover, .console-account-link[aria-current="page"] { background: hsl(var(--muted)); }
+.console-navigation [data-so-na-gaveta] { display: none; }
 .console-mobile-menu-toggle { display: none; flex: none; width: 40px; height: 40px; place-items: center; border: 1px solid hsl(var(--border)); border-radius: 12px; color: hsl(var(--foreground)); background: hsl(var(--card) / .75); }
 .escriba-panel-floating { right: 16px; bottom: calc(max(20px, env(safe-area-inset-bottom)) + 70px); }
 .console-bell-badge { position: absolute; top: 3px; right: 2px; min-width: 17px; padding: 0 4px; border-radius: 999px; background: hsl(var(--console-violet)); color: #fff; font-size: 10px; font-weight: 700; line-height: 17px; text-align: center; }
@@ -120,6 +124,8 @@
   .console-navigation,
   .console-navigation[data-open="true"] { position: absolute; z-index: 30; top: 72px; left: 12px; display: none; width: min(340px, calc(100vw - 24px)); max-height: calc(100dvh - 88px); flex-direction: column; gap: 4px; overflow-x: hidden; overflow-y: auto; padding: 10px; border: 1px solid hsl(var(--border)); border-radius: 18px; background: hsl(var(--card)); box-shadow: 0 18px 48px hsl(260 30% 8% / .3); }
   .console-navigation[data-open="true"] { display: flex; }
+  .console-navigation a[data-so-na-gaveta] { display: flex; }
+  .console-account [data-icone-no-topo] { display: none; }
   .console-navigation a { width: 100%; flex: none; flex-direction: row; justify-content: flex-start; padding: 12px; gap: 12px; font-size: 14px; }
   .console-editor-layout { overflow-y: auto; flex-direction: column; }
   .console-editor-layout > aside { width: 100%; height: auto; overflow: visible; border-right: 0; border-bottom: 1px solid hsl(var(--border)); }
@@ -145,6 +151,8 @@
   .contact-channels { border-left: 0; padding-left: 0; border-top: 1px solid hsl(var(--border)); padding-top: 28px; }
   .download-option { align-items: flex-start; flex-direction: column; gap: 18px; }
   .console-account-copy { display: none; }
+  .console-account-link { padding: 0; }
+  .console-topbar .journey-brand span { display: none; }
   .console-navigation a { flex-direction: row; min-width: 0; padding: 12px; font-size: 14px; }
   .console-section-content, .console-trail-content { padding: 16px; }
   .console-editor-header { padding: 16px; }

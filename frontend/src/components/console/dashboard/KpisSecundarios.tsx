@@ -2,7 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import { AlertCircle, Check, Clock, MessageSquare, Repeat, Timer } from "lucide-react";
 import type { TurmaResumo } from "@/lib/turmaResumo";
 import { CHAVE, estadoDoCard, TEXTO_DO_ESTADO, type ChaveDoCatalogo, type Disponibilidade, type EstadoDoCard } from "./disponibilidade";
-import { fraseDoTom, META_ABANDONO_PCT, META_ACERTOS_PCT, tomDaMetrica, type TomMetrica } from "./metas";
+import { fraseDoTom, META_ACERTOS_PCT, tomDaMetrica, type TomMetrica } from "./metas";
 
 const COR_DO_TOM: Record<TomMetrica, string> = {
   bom: "hsl(var(--success))",
@@ -84,7 +84,6 @@ export default function KpisSecundarios({
   );
   const chat = daTurma(turmaResumo.uso_chat_apos_erro_pct);
   const abandono = daTurma(turmaResumo.taxa_risco_abandono_pct, CHAVE.riscoAbandono);
-  const tomAbandono = tomDaMetrica(abandono.valor ?? 0, META_ABANDONO_PCT, "menor_melhor");
   const tempoUso = daTurma(turmaResumo.tempo_medio_uso_seg === null ? null : turmaResumo.tempo_medio_uso_seg / 60);
 
   const kpis: KpiSecundario[] = [
@@ -106,8 +105,10 @@ export default function KpisSecundarios({
       valor: abandono.valor,
       casas: 1,
       unidade: "%",
-      tom: tomAbandono,
-      nota: fraseDoTom(tomAbandono, META_ABANDONO_PCT, "menor_melhor"),
+      // Sem meta: o número é a faixa alta de um modelo, não abandono medido, e ninguém definiu
+      // um alvo para ele. O "Bom · meta 15%" de antes era provisório da Fase 2.
+      tom: "informativo",
+      nota: "dos alunos com dado estão em risco alto no modelo de evasão",
       barra: true,
       estado: abandono.estado,
     },

@@ -56,7 +56,7 @@ describe("rotuloCriterio", () => {
   it("as acumuladas que o professor usa, com a chave certa de cada uma", () => {
     // A chave vem de `CHAVE_DO_ALVO` no console: errar a chave é alvo zero, e aí a missão
     // nasce cumprida. O rótulo tem de ler a mesma chave que foi gravada.
-    assert.equal(rotuloCriterio({ metrica: "minutos_totais", minutos: 120 }), "120 min no total");
+    assert.equal(rotuloCriterio({ metrica: "minutos_totais", minutos: 120 }), "120 min de estudo");
     assert.equal(rotuloCriterio({ metrica: "dias_seguidos", dias_seguidos: 3 }), "3 dia(s) seguidos");
     assert.equal(rotuloCriterio({ metrica: "topicos_concluidos", minimo: 2 }), "2 tópico(s)");
     assert.equal(rotuloCriterio({ metrica: "acertos_percentual", percentual: 80 }), "80% de acerto");

@@ -5004,7 +5004,6 @@ async def generate_plano_personalizacao(state: dict[str, Any], settings: Setting
             ),
         },
         fallback_factory=lambda: dict(fallback_plan),
-        provider="openai",
     )
     formatos = [f for f in result.get("formatos", fallback_plan["formatos"]) if f in _ALL_FORMATOS]
     if not formatos:

@@ -50,6 +50,22 @@ describe("shared page surfaces", () => {
     expect(markup).toContain("Conteúdo");
   });
 
+  it("keeps account and admin in the top bar, out of the side menu", () => {
+    const markup = render(createElement(ConsoleShell, {
+      view: "aprovacoes", name: "Professor", isOwner: true, onSignOut: () => {},
+    }));
+    const [topo, lateral] = markup.split('id="console-sections-navigation"');
+    for (const view of ["profile", "recomendacoes", "aprovacoes", "tecnico"] as const) {
+      expect(topo, view).toContain(`href="${consolePathForView(view)}"`);
+    }
+    expect(topo).toContain('aria-current="page"');
+    // Meus dados é o avatar. Os ícones do topo só aparecem na gaveta da tela estreita (CSS).
+    expect(lateral).not.toContain(`href="${consolePathForView("profile")}"`);
+    for (const view of ["recomendacoes", "aprovacoes", "tecnico"] as const) {
+      expect(lateral, view).toMatch(new RegExp(`<a data-so-na-gaveta="true"[^>]*href="${consolePathForView(view)}"`));
+    }
+  });
+
   it("does not expose the owner-only section to other professors", () => {
     const markup = render(createElement(ConsoleShell, {
       view: "dashboard", name: "Professor", isOwner: false, onSignOut: () => {},

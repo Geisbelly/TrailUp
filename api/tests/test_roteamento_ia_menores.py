@@ -28,6 +28,14 @@ from app.services.roteamento_ia import (
     usar_rota,
 )
 
+
+@pytest.fixture(autouse=True)
+def _rota_de_menor_ligada(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Estes testes descrevem a regra da #195, que hoje so vale com
+    IA_ROTA_DE_MENOR_ATIVA ligada (o padrao e desligada, ver o ultimo teste)."""
+    monkeypatch.setattr(roteamento_ia, "rota_de_menor_ligada", lambda: True)
+
+
 ADULTO = "11111111-1111-4111-8111-111111111111"
 MENOR = "22222222-2222-4222-8222-222222222222"
 
@@ -541,3 +549,18 @@ async def test_escriba_combina_nome_fora_do_prompt_e_rota_de_menor(monkeypatch) 
         assert proibido not in capturado["payload"]
     # A ref volta como nome (primeiro nome, regra do #618) so na resposta ao professor.
     assert resposta.resposta.startswith("Ana") and "A1" not in resposta.resposta
+
+
+@pytest.mark.asyncio
+async def test_rota_de_menor_desligada_por_padrao_usa_o_provedor_atual(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sem credito na OpenAI, a rota de menor derrubava o chat do aluno e a
+    Lumi. Desligada (padrao), menor, sem data e erro de banco seguem o Gemini,
+    e o banco nem e consultado."""
+    monkeypatch.undo()
+    assert Settings(supabase_jwt_secret="x").ia_rota_de_menor_ativa is False
+    monkeypatch.setattr(roteamento_ia, "rota_de_menor_ligada", lambda: False)
+    session = _IdadeSession(menores={MENOR})
+    assert await decidir_rota(session, [MENOR]) == "padrao"
+    assert await decidir_rota(session, [None]) == "padrao"
+    assert await decidir_rota(None, [MENOR]) == "padrao"
+    assert session.executed == []
