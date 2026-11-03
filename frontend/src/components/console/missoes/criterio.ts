@@ -48,42 +48,42 @@ export const METRICAS: ReadonlyArray<{ chave: MetricaDeMissao } & Definicao> = [
     rotulo: "Minutos de estudo",
     unidade: "minutos",
     max: 100000,
-    ajuda: "Soma do tempo em atividades e conteúdos, desde sempre.",
+    ajuda: "Tempo em atividades e conteúdos desde que a missão começou.",
   },
   {
     chave: "dias_seguidos",
     rotulo: "Dias seguidos",
     unidade: "dias",
     max: 365,
-    ajuda: "Maior sequência de dias com atividade no app.",
+    ajuda: "Maior sequência de dias com atividade, desde que a missão começou.",
   },
   {
     chave: "topicos_concluidos",
     rotulo: "Tópicos concluídos",
     unidade: "tópicos",
     max: 1000,
-    ajuda: "Quantos tópicos o aluno fechou.",
+    ajuda: "Quantos tópicos o aluno fechou desde que a missão começou.",
   },
   {
     chave: "atividades_concluidas",
     rotulo: "Atividades concluídas",
     unidade: "atividades",
     max: 1000,
-    ajuda: "Quantas atividades o aluno concluiu.",
+    ajuda: "Quantas atividades o aluno concluiu desde que a missão começou.",
   },
   {
     chave: "acertos_percentual",
     rotulo: "Percentual de acertos",
     unidade: "%",
     max: 100,
-    ajuda: "Melhor percentual de acertos numa atividade.",
+    ajuda: "Melhor percentual de acertos numa atividade feita desde que a missão começou.",
   },
   {
     chave: "trilha_percentual",
     rotulo: "Percentual da trilha",
     unidade: "%",
     max: 100,
-    ajuda: "Maior percentual concluído de um tópico.",
+    ajuda: "Maior percentual de um tópico em que o aluno avançou desde que a missão começou.",
   },
 ] as const;
 
@@ -91,7 +91,7 @@ export const METRICAS: ReadonlyArray<{ chave: MetricaDeMissao } & Definicao> = [
  * As que a missão de GUILDA aceita: o progresso da guilda é a soma dos membros
  * (`20261021_15`), e só contagem soma — percentual somado passa de 100 e sequência somada não é
  * de ninguém. O banco aceita mais cinco (`fn_missoes_guarda`); desta tela, só esta cabe.
- * Na guilda ela conta **no período da missão**, não desde sempre.
+ * Como na missão individual e na de turma (`20261103_07`), conta só da criação da missão em diante.
  */
 export const METRICAS_DE_GUILDA: ReadonlyArray<MetricaDeMissao> = ["atividades_concluidas"];
 

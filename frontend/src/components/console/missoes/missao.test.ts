@@ -44,7 +44,7 @@ describe("validarMissao", () => {
   it("guilda soma os membros: só meta, e só com métrica que soma", () => {
     // Entrega não é número — o banco recusaria com 22023.
     expect(validarMissao(base({ escopo: "guilda" })).erros!.caminho).toBeTruthy();
-    // Percentual somado passaria de 100; minutos_totais é de vida inteira.
+    // Percentual somado passaria de 100; minutos_totais não é contagem de guilda.
     for (const metrica of ["acertos_percentual", "trilha_percentual", "dias_seguidos", "minutos_totais", "topicos_concluidos"]) {
       expect(validarMissao(meta({ escopo: "guilda", metrica })).erros!.metrica).toBeTruthy();
     }

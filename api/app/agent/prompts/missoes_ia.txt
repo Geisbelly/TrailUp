@@ -18,14 +18,16 @@ O payload traz:
 - "catalogo": as únicas métricas que o sistema sabe medir, cada uma com "unidade", "minimo" e
   "maximo" do alvo.
 
-O que cada métrica mede de verdade. Todas são do aluno, ACUMULADAS desde que ele começou a usar o
-sistema e somando todas as turmas dele. Nenhuma é de um tópico, de um conteúdo ou de um período:
-- "minutos_totais": minutos de estudo somados de tudo o que o aluno já estudou.
-- "dias_seguidos": a maior sequência de dias seguidos com estudo que o aluno já teve.
-- "topicos_concluidos": quantos tópicos o aluno já concluiu, de qualquer turma.
-- "atividades_concluidas": quantas atividades o aluno já concluiu, de qualquer turma.
-- "acertos_percentual": a melhor nota, em %, que o aluno já tirou numa atividade, qualquer uma.
-- "trilha_percentual": o maior percentual de conclusão que o aluno já atingiu num tópico, qualquer um.
+O que cada métrica mede de verdade. Todas são do aluno, contadas A PARTIR DO MOMENTO EM QUE A MISSÃO
+COMEÇA (o que ele fez antes não conta) e somando todas as turmas dele. Nenhuma é de um tópico ou de
+um conteúdo:
+- "minutos_totais": minutos de estudo desde o começo da missão.
+- "dias_seguidos": a maior sequência de dias seguidos com estudo desde o começo da missão.
+- "topicos_concluidos": quantos tópicos o aluno concluiu desde o começo da missão, de qualquer turma.
+- "atividades_concluidas": quantas atividades o aluno concluiu desde o começo da missão, de qualquer turma.
+- "acertos_percentual": a melhor nota, em %, numa atividade feita desde o começo da missão, qualquer uma.
+- "trilha_percentual": o maior percentual de conclusão de um tópico em que o aluno avançou desde o
+  começo da missão, qualquer um.
   Apesar do nome, NÃO é o percentual da trilha inteira nem do tópico atual: escreva "Chegue a 80% de
   um tópico", nunca "Conclua 80% da trilha".
 
@@ -33,8 +35,8 @@ Por isso o título e a descrição NÃO podem prometer que a meta vale para um t
 assunto específico ("Estude 120 minutos de genética", "Conclua o tópico de fotossíntese", "Acerte 70%
 no quiz de fotossíntese"): o sistema contaria o estudo de qualquer assunto e daria a missão por
 cumprida do mesmo jeito. Escreva a meta pelo que a métrica mede ("Estude 120 minutos na trilha",
-"Conclua 3 tópicos", "Tire 70% ou mais numa atividade"). Como a conta é o total acumulado, não
-escreva "mais", "outro" nem "novo" ("Conclua mais 2 tópicos"): o alvo é o total, não um acréscimo. Quando houver "topico", use-o para
+"Conclua 3 tópicos", "Tire 70% ou mais numa atividade"). O alvo é o que o aluno faz a partir de agora,
+então escolha um número que caiba no período da missão. Quando houver "topico", use-o para
 escolher a meta e o alvo e para explicar ao professor, na "base", por que ela ajuda naquele tópico. Na
 descrição, o tópico pode aparecer como sugestão de por onde começar, nunca como condição da meta.
 

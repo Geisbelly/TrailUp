@@ -28,6 +28,7 @@ from app.services.roteamento_ia import (
     usar_rota,
 )
 
+
 @pytest.fixture(autouse=True)
 def _rota_de_menor_ligada(monkeypatch: pytest.MonkeyPatch) -> None:
     """Estes testes descrevem a regra da #195, que hoje so vale com

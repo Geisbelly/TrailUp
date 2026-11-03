@@ -86,8 +86,9 @@ export function rotuloCriterio(criterio: unknown): string {
     if (ev.includes("conteudo")) return `${n} conteúdo(s)`;
     return `${n} ação(ões) na trilha`;
   }
-  // As métricas acumuladas do professor. O rótulo sai da chave que `criterioDeMeta` grava.
-  if (metrica === "minutos_totais") return `${Number(c?.minutos) || "?"} min no total`;
+  // As métricas do professor, contadas da criação da missão (20261103_07). O rótulo sai da chave
+  // que `criterioDeMeta` grava.
+  if (metrica === "minutos_totais") return `${Number(c?.minutos) || "?"} min de estudo`;
   if (metrica === "dias_seguidos") return `${Number(c?.dias_seguidos) || "?"} dia(s) seguidos`;
   if (metrica === "topicos_concluidos") return `${Number(c?.minimo) || "?"} tópico(s)`;
   if (metrica === "atividades_concluidas") return `${Number(c?.minimo) || "?"} atividade(s)`;
