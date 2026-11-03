@@ -135,7 +135,10 @@ def problemas_do_texto(titulo: str, corpo: str, foco: dict[str, Any] | None = No
     """
     texto = f"{titulo}. {corpo}"
     problemas: list[str] = []
-    if _PLACEHOLDER.search(texto):
+    # `{nome}` é o único marcador aceito: o banco o troca pelo nome do aluno na entrega (20261103_12).
+    if (titulo.count("{nome}") + corpo.count("{nome}")) > 1:
+        problemas.append("usa {nome} mais de uma vez")
+    if _PLACEHOLDER.search(texto.replace("{nome}", "")):
         problemas.append("tem placeholder ou marcação ([...], MOCK, 'Aluno')")
     livre = _sem_acento(texto)
     for nome in ((foco or {}).get("topico"), (foco or {}).get("proximo_conteudo")):
