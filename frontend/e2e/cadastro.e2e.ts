@@ -16,6 +16,8 @@ async function ambiente(page: Page, opts: { turmas?: number[]; marker?: boolean;
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
     if (url.origin === 'http://127.0.0.1:4187') return route.continue();
+    // O app do aluno (`VITE_ALUNO_APP_URL` do playwright.config) é outro site: aqui basta uma página vazia.
+    if (url.origin === 'https://app.example.test') return route.fulfill({ status:200, contentType:'text/html', body:'<title>App do aluno</title>' });
     if (url.origin !== 'https://cadastro-test.supabase.co') return route.abort();
     const path = url.pathname, method = route.request().method();
     const reply = (body: unknown, status=200) => route.fulfill({ status, contentType:'application/json', body:JSON.stringify(body) });
@@ -91,14 +93,15 @@ test('introdução exige resposta correta, trata falha e recupera progresso ao r
   expect(state.unexpected).toEqual([]);
 });
 
-test('login de aluno leva à área de estudos sem novo signup', async ({page}) => {
+// Desde a #896, conta de aluno que entra por /login vai ao app do aluno (página inteira), e não à
+// introdução do console em /aluno.
+test('login de aluno leva ao app do aluno sem novo signup', async ({page}) => {
   const state = await ambiente(page,{complete:true,session:false});
   await page.goto('/login');
   await page.getByLabel('Email', {exact:true}).fill(user.email);
   await page.getByLabel('Senha', {exact:true}).fill('SenhaTeste123!');
   await page.getByRole('button',{name:'Entrar',exact:true}).click();
-  await expect(page).toHaveURL(/\/aluno$/);
-  await expect(page.getByRole('heading',{name:'Trilha introdutória'})).toBeVisible();
+  await expect(page).toHaveURL('https://app.example.test/');
   expect(state.signups).toBe(0);
   expect(state.unexpected).toEqual([]);
 });

@@ -98,6 +98,11 @@ CREATE TABLE public.retencao_politica (
   tabela text, acao text, coluna_aluno text, categoria text, motivo text, PRIMARY KEY (tabela, acao));
 ALTER TABLE public.moedas_ledger ADD CONSTRAINT moedas_ledger_motivo_check
   CHECK (motivo IN ('evento','dotacao','compra','estorno','concessao'));
+-- O índice como está em produção (não como o Alembic o cria): uma conquista do sistema por `tipo`.
+-- Sem ele, a semente que gravava as dez com `tipo = 'moldura'` passou aqui e derrubou a API (03/11).
+DROP INDEX IF EXISTS public.conquistas_tipo_comum_uq;
+CREATE UNIQUE INDEX conquistas_tipo_comum_uq
+  ON public.conquistas (COALESCE(classe_id, -1), tipo) WHERE escopo = 'comum';
 """
 
 A, B = uuid.UUID(int=31), uuid.UUID(int=32)
@@ -136,7 +141,8 @@ def test_semente(c):
     linhas = dict(c.execute("SELECT origem, count(*) FROM public.molduras GROUP BY origem").fetchall())
     assert linhas == {"loja": 20, "conquista": 10, "acao": 10}
     conq = c.execute(
-        "SELECT count(*) FROM public.conquistas WHERE tipo='moldura' AND classe_id IS NULL AND escopo='comum'"
+        "SELECT count(DISTINCT tipo) FROM public.conquistas"
+        " WHERE tipo LIKE 'moldura\\_%' AND classe_id IS NULL AND escopo='comum'"
     ).fetchone()[0]
     assert conq == 10
     assert (
@@ -289,4 +295,4 @@ def test_downgrade_limpa(c):
     for sql in sql_de(mod, "downgrade"):
         c.execute(sql)
     assert c.execute("SELECT to_regclass('public.molduras')").fetchone()[0] is None
-    assert c.execute("SELECT count(*) FROM public.conquistas WHERE tipo='moldura'").fetchone()[0] == 0
+    assert c.execute("SELECT count(*) FROM public.conquistas WHERE tipo LIKE 'moldura\\_%'").fetchone()[0] == 0
