@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
-import { Maximize2, Minimize2, Send, Sparkles, X } from "lucide-react";
+import { Maximize2, Minimize2, Send, X } from "lucide-react";
+import fotoDaLumi from "@/assets/design/lumi.webp";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/apiTraiupClient";
@@ -167,9 +168,7 @@ export default function Escriba() {
         >
           {/* Bronze claro com texto escuro: o branco sobre o degradê do protótipo fica em ~2,6:1. */}
           <div className="flex items-center gap-3 bg-[hsl(var(--console-bronze-light))] px-[18px] py-4 text-[hsl(var(--background))]">
-            <span aria-hidden="true" className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-black/15">
-              <Sparkles size={17} strokeWidth={1.8} />
-            </span>
+            <img src={fotoDaLumi} alt="" aria-hidden="true" className="h-[38px] w-[38px] flex-none rounded-full bg-[hsl(var(--card))] object-cover ring-2 ring-black/15" />
             <div className="min-w-0 flex-1">
               <h2 id={idTitulo} className="font-['Cinzel',serif] text-sm font-bold leading-tight">
                 Lumi <span className="font-sans text-[11px] font-semibold">· A guia do professor</span>
@@ -222,7 +221,8 @@ export default function Escriba() {
           </div>
 
           <div role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversa com a Lumi" className="flex min-h-[140px] flex-1 flex-col gap-3 overflow-y-auto px-[18px] py-4">
-            {mensagens.map((m) => (
+            {mensagens.map((m) => {
+              const fala = (
               <p
                 key={m.id}
                 className={cn(
@@ -237,7 +237,15 @@ export default function Escriba() {
                 <span className="sr-only">{m.papel === "professor" ? "Você: " : "Lumi: "}</span>
                 {m.texto}
               </p>
-            ))}
+              );
+              if (m.papel === "professor") return fala;
+              return (
+                <div key={m.id} className="flex items-start gap-2">
+                  <img src={fotoDaLumi} alt="" aria-hidden="true" className="mt-0.5 h-6 w-6 flex-none rounded-full bg-muted object-cover" />
+                  <div className="min-w-0 flex-1">{fala}</div>
+                </div>
+              );
+            })}
             {pensando && (
               <p role="status" className="flex items-center gap-2 text-[13px] text-muted-foreground">
                 <span aria-hidden="true" className="flex gap-1">
@@ -326,9 +334,13 @@ export default function Escriba() {
           tabIndex={telaCheia ? -1 : 0}
           aria-label={aberto ? "Fechar a Lumi" : "Pergunte à Lumi, a guia do professor"}
           title="Pergunte à Lumi"
-          className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,hsl(var(--console-bronze-light)),hsl(var(--console-bronze)))] text-[hsl(var(--background))] shadow-[0_12px_30px_rgba(0,0,0,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background", telaCheia && "pointer-events-none opacity-0")}
+          className={cn("flex h-14 w-14 items-center justify-center overflow-hidden rounded-full p-[3px] bg-[linear-gradient(135deg,hsl(var(--console-bronze-light)),hsl(var(--console-bronze)))] text-[hsl(var(--background))] shadow-[0_12px_30px_rgba(0,0,0,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background", telaCheia && "pointer-events-none opacity-0")}
         >
-          {aberto ? <X size={22} /> : <Sparkles size={24} strokeWidth={1.7} />}
+          {aberto ? (
+            <X size={22} />
+          ) : (
+            <img src={fotoDaLumi} alt="" aria-hidden="true" className="h-full w-full rounded-full bg-[hsl(var(--card))] object-cover" />
+          )}
         </button>
       </div>
     </>
