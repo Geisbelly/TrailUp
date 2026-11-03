@@ -27,6 +27,15 @@ const ESCOPOS = [
   { chave: "guilda" as const, titulo: "A guilda, junta", ajuda: "Soma o que os membros fazem no período." },
 ];
 
+const alvoInicialDaMetrica: Record<string, string> = {
+  minutos_totais: "10",
+  dias_seguidos: "3",
+  topicos_concluidos: "1",
+  atividades_concluidas: "1",
+  acertos_percentual: "50",
+  trilha_percentual: "25",
+};
+
 /** "Nova missão" / "Editar missão". Quem monta usa `key` para remontar a cada abertura (o estado inicia de `inicial`). */
 export function FormularioDaMissao({
   inicial,
@@ -184,7 +193,9 @@ export function FormularioDaMissao({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <span className={rotulo}>O que ela mede *</span>
-                  <Select value={form.metrica} onValueChange={(v) => alterar({ metrica: v })}>
+                  <Select value={form.metrica} onValueChange={(v) => {
+                    alterar({ metrica: v, alvo: alvoInicialDaMetrica[v] ?? "1" });
+                  }}>
                     <SelectTrigger className={campo} aria-label="O que ela mede"><SelectValue placeholder="Escolha a medida" /></SelectTrigger>
                     <SelectContent>
                       {metricasOferecidas.map((m) => <SelectItem key={m.chave} value={m.chave}>{m.rotulo}</SelectItem>)}

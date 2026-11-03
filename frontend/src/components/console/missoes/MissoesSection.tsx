@@ -23,7 +23,7 @@ import { FORMULARIO_DE_MISSAO_VAZIO, prazoParaCampo, type FormularioDeMissao, ty
 import { CHAVE_DO_ALVO, definicaoDaMetrica } from "./criterio";
 import { MOTIVO_MAX, separarPorDecisao, validarMotivoDeRecusa } from "./aprovacao";
 import { decidirMissao, duplicarMissao, excluirMissao, listarMissoes, salvarMissao, type Missao } from "./missoesApi";
-import { lerMissoesDiarias, type ResumoDasMissoesDiarias } from "./missoesDiariasApi";
+import { atualizarTextoMissaoDiaria, excluirMissaoDiaria, lerMissoesDiarias, type ResumoDasMissoesDiarias } from "./missoesDiariasApi";
 import { PainelMissoesDiarias } from "./PainelMissoesDiarias";
 
 type FormAberto = { inicial: FormularioDeMissao; editando: Missao | null; chave: number };
@@ -190,6 +190,20 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     }
   };
 
+  const salvarTextoMissaoDiaria = async (id: number, titulo: string, descricao: string, criterio: Record<string, unknown>) => {
+    if (!turmaId) throw new Error("Selecione uma turma para editar a missão.");
+    await atualizarTextoMissaoDiaria({ classeId: turmaId, missaoId: id, titulo, descricao, criterio });
+    toast.success("Missão diária atualizada.");
+    await carregar(turmaId);
+  };
+
+  const excluirMissaoDiariaDaTurma = async (id: number) => {
+    if (!turmaId) throw new Error("Selecione uma turma para excluir a missão.");
+    await excluirMissaoDiaria({ classeId: turmaId, missaoId: id });
+    toast.success("Missão diária excluída.");
+    await carregar(turmaId);
+  };
+
   const cartao = (m: Missao) => (
     <CartaoDaMissao
       key={m.id}
@@ -240,6 +254,8 @@ export default function MissoesSection({ professorId }: { professorId?: string }
             carregando={estadoDiario === "carregando"}
             erro={estadoDiario === "erro" ? erroDiario : null}
             onTentar={() => turmaId && void carregar(turmaId)}
+            onSalvarTexto={salvarTextoMissaoDiaria}
+            onExcluir={excluirMissaoDiariaDaTurma}
           />
 
           {estado === "carregando" && <div role="status" aria-label="Carregando missões" className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}

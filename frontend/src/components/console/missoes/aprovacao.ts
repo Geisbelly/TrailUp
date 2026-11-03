@@ -54,9 +54,9 @@ export function rotuloDaOrigem(origem: OrigemDaMissao): string {
   return "Sua";
 }
 
-/** O gatilho só deixa o professor mudar o texto de missão que é dele. */
+/** Missões do sistema são geradas pelo banco; missões do professor e propostas da IA são editáveis. */
 export function podeEditar(m: { origem: string }): boolean {
-  return m.origem === "professor";
+  return m.origem !== "sistema";
 }
 
 /** Aprovar e recusar só fazem sentido enquanto a missão espera. */
