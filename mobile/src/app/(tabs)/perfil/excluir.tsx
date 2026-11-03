@@ -34,7 +34,8 @@ export default function ExcluirContaScreen() {
 
       try {
         const { error: rpcError } = await supabase.rpc("fn_enviar_contato", {
-          p_nome: email || alunoId || "Usuário",
+          // O nome da conta, não o e-mail (o banco também corrige isso: 20261103_08).
+          p_nome: usuario?.nome?.trim() || email || alunoId || "Usuário",
           p_email: email,
           p_assunto: "Solicitação de exclusão de conta",
           p_mensagem: `Pedido de exclusão da conta${email ? ` (${email})` : ""}. Motivo: ${

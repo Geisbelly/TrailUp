@@ -122,6 +122,14 @@ function limitar_(valor, maximo) {
  * inativa), usa o miolo que o banco mandou e só aplica o estilo nas tags; sem
  * ele (os contatos), monta o miolo do texto, escapado. Tudo com estilo inline e
  * tabela: cliente de e-mail ignora boa parte do CSS.
+ *
+ * O Gmail do iPhone e do Android, com o aparelho em modo escuro, INVERTE as
+ * cores de todo e-mail e ignora `color-scheme: dark`: o fundo roxo-escuro
+ * chegava lilás-claro e o texto claro, preto (03/11). Dois remédios, que só
+ * valem lá (o seletor `u + .body` só casa com o HTML que o Gmail reescreve):
+ * - fundo também como `background-image` (`fundo_`): o Gmail não inverte imagem;
+ * - texto dentro de `.gs` > `.gd` (`texto_`): `screen` e `difference` sobre
+ *   preto desfazem a inversão da cor do texto.
  */
 function montarHtml_(assunto, texto, html) {
   var miolo = html ? estilizarMiolo_(html) : textoParaHtml_(texto);
@@ -129,31 +137,65 @@ function montarHtml_(assunto, texto, html) {
   return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">'
     + '<meta name="viewport" content="width=device-width,initial-scale=1">'
     + '<meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark">'
+    + '<style>'
+    + 'u + .body .gs{background:#000;mix-blend-mode:screen;}'
+    + 'u + .body .gd{background:#000;mix-blend-mode:difference;}'
+    + '</style>'
     + '<title>' + escapar_(assunto) + '</title></head>'
-    + '<body style="margin:0;padding:0;background:' + TEMA.fundo + ';">'
+    + '<body class="body" style="margin:0;padding:0;' + fundo_(TEMA.fundo) + '">'
+    + '<u></u>'
     + '<div style="display:none;max-height:0;overflow:hidden;opacity:0;">' + previa + '</div>'
-    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:' + TEMA.fundo + ';">'
-    + '<tr><td align="center" style="padding:32px 16px;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="' + fundo_(TEMA.fundo) + '">'
+    + '<tr><td align="center" style="padding:32px 16px;' + fundo_(TEMA.fundo) + '">'
     + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">'
     // Cabeçalho: logo + nome.
     + '<tr><td align="center" style="padding:0 0 20px;">'
     + '<img src="' + TEMA.logo + '" width="64" height="64" alt="TrailUp" style="display:block;border:0;margin:0 auto 10px;">'
-    + '<div style="font-family:' + FONTE_TITULO + ';font-size:22px;letter-spacing:2px;color:' + TEMA.texto + ';">TrailUp</div>'
+    + texto_('<div style="font-family:' + FONTE_TITULO + ';font-size:22px;letter-spacing:2px;color:' + TEMA.texto + ';">TrailUp</div>')
     + '</td></tr>'
     // Cartão.
-    + '<tr><td style="background:' + TEMA.cartao + ';border:1px solid ' + TEMA.borda + ';border-radius:12px;">'
+    + '<tr><td style="' + fundo_(TEMA.cartao) + 'border:1px solid ' + TEMA.borda + ';border-radius:12px;">'
     + '<div style="height:4px;line-height:4px;font-size:0;border-radius:12px 12px 0 0;'
     + 'background:' + TEMA.primaria + ';background-image:linear-gradient(90deg,' + TEMA.primaria + ',' + TEMA.destaque + ');">&nbsp;</div>'
     + '<div style="padding:28px 28px 8px;">'
-    + '<h1 style="margin:0 0 20px;font-family:' + FONTE_TITULO + ';font-size:20px;line-height:1.35;font-weight:700;color:' + TEMA.primaria + ';">'
-    + escapar_(assunto) + '</h1>'
-    + '<div style="font-family:' + FONTE_TEXTO + ';font-size:15px;line-height:1.6;color:' + TEMA.texto + ';">' + miolo + '</div>'
+    + texto_('<h1 style="margin:0 0 20px;font-family:' + FONTE_TITULO + ';font-size:20px;line-height:1.35;font-weight:700;color:' + TEMA.primaria + ';">'
+      + escapar_(assunto) + '</h1>')
+    + texto_('<div style="font-family:' + FONTE_TEXTO + ';font-size:15px;line-height:1.6;color:' + TEMA.texto + ';">' + miolo + '</div>')
     + '</div></td></tr>'
     // Rodapé.
-    + '<tr><td align="center" style="padding:20px 8px 0;font-family:' + FONTE_TEXTO + ';font-size:12px;line-height:1.5;color:' + TEMA.textoSuave + ';">'
-    + 'Mensagem enviada pelo TrailUp.'
+    + '<tr><td align="center" style="padding:20px 8px 0;">'
+    + texto_('<div style="font-family:' + FONTE_TEXTO + ';font-size:12px;line-height:1.5;color:' + TEMA.textoSuave + ';">'
+      + 'Mensagem enviada pelo TrailUp.</div>')
     + '</td></tr>'
     + '</table></td></tr></table></body></html>';
+}
+
+// Fundo que o Gmail em modo escuro não inverte: a cor e a mesma cor como imagem.
+function fundo_(cor) {
+  return 'background-color:' + cor + ';background-image:linear-gradient(' + cor + ',' + cor + ');';
+}
+
+// Texto que o Gmail em modo escuro devolve à cor original (ver `montarHtml_`).
+function texto_(html) {
+  return '<div class="gs"><div class="gd">' + html + '</div></div>';
+}
+
+/**
+ * Manda para a própria conta um e-mail de amostra, igual ao da exclusão de
+ * conta. Rodar pelo editor (Executar → enviarTeste) depois de mexer no visual,
+ * e abrir no Gmail do celular com o modo escuro ligado e desligado.
+ */
+function enviarTeste() {
+  var texto = 'Nome: Ana Clara Souza\nEmail: ana@exemplo.com\n\nMensagem:\n'
+    + 'Pedido de exclusão da conta (ana@exemplo.com). Motivo: Não informado.';
+  var assunto = 'Solicitação de exclusão de conta';
+  MailApp.sendEmail({
+    to: Session.getEffectiveUser().getEmail(),
+    subject: '[teste] ' + assunto,
+    body: texto,
+    htmlBody: montarHtml_(assunto, texto, null),
+    name: 'TrailUp Contato'
+  });
 }
 
 function textoParaHtml_(texto) {
