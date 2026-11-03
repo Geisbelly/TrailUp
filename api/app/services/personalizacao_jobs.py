@@ -2887,12 +2887,27 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
             target_repo = PersonalizacaoJobsRepository(target_session)
             attempts = int(target.get("attempts") or 0) + 1
             try:
-                await target_repo.update_target_status(
-                    target_id=int(target["id"]),
-                    status="processing",
+                tomado = await target_repo.tomar_target_para_processar(
+                    target=target,
+                    classe_id=int(job["classe_id"]),
                     attempts=attempts,
-                    last_error=None,
+                    stale_processing_min=stale_min,
                 )
+                if not tomado:
+                    # Outro job (ou outro poller deste) ja esta gerando a mesma
+                    # base. Gerar junto so duplicaria o gasto de modelo e um
+                    # invalidaria o outro. Fica como estava, sem gastar
+                    # tentativa; o job volta a ser pego no proximo poll.
+                    logger.info(
+                        "base ja em geracao por outro target; este espera: job_id=%s "
+                        "target_id=%s topico_id=%s conteudo_id=%s perfil=%s",
+                        job.get("id"),
+                        target.get("id"),
+                        target.get("topico_id"),
+                        target.get("conteudo_id"),
+                        target.get("brainhex_profile_key"),
+                    )
+                    return 0
             except Exception:
                 logger.exception(
                     "Falha ao marcar target como processing",

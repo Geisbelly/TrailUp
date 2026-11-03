@@ -333,6 +333,16 @@ Cada perfil carrega:
   `personalizacao_jobs` direto, autorizado por
   `personalizacao_jobs_professor_sel` (via `app_classes_do_professor()`).
 
+  **Uma base por vez, entre jobs.** Coalescer no enfileiramento não basta:
+  pedido manual, retry e class-delta criam jobs distintos com o mesmo alvo. O
+  worker só marca um target `processing` se nenhum outro da mesma base
+  (turma × tópico × conteúdo × perfil × aluno × `media_kind`) estiver
+  `processing` recente (`tomar_target_para_processar`, com
+  `pg_advisory_xact_lock` — de transação, vale pelo pooler). Quem acha a base
+  ocupada fica `pending` sem gastar tentativa. Sem isso, em 02/11, a base do
+  achiever da turma 68 foi gerada 5 vezes do zero e um job invalidava o outro
+  (`stale_generation`). Prova da corrida: `test_e2e_base_um_job_por_vez.py`.
+
   **KPIs da fila** (#14, `20261102_12`): a RPC `personalizacao_kpis_operacionais`
   (`SECURITY INVOKER`, card "Fila de personalização" no painel da turma) agrega latência,
   falha, reprocessamento e os gatilhos do cap. 10 §11, com o SLO em

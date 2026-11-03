@@ -31,6 +31,25 @@ from app.services.personalizacao_jobs import (
 )
 
 
+async def _tomar_como_marcacao_antiga(self, *, target, classe_id, attempts, stale_processing_min):
+    """Nestes testes a base nunca esta ocupada: a trava se comporta como a
+    marcacao `processing` de antes, pelo `update_target_status` (que os testes
+    simulam e inspecionam). A trava em si e' testada em
+    test_base_um_job_por_vez.py."""
+    await self.update_target_status(
+        target_id=int(target["id"]), status="processing", attempts=attempts, last_error=None
+    )
+    return True
+
+
+@pytest.fixture(autouse=True)
+def _base_nunca_ocupada(monkeypatch):
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.tomar_target_para_processar",
+        _tomar_como_marcacao_antiga,
+    )
+
+
 @pytest.fixture(autouse=True)
 def _brainhex_contract_is_ready(monkeypatch):
     monkeypatch.setattr(
@@ -2601,6 +2620,91 @@ async def test_job_processes_targets_with_bounded_concurrency_and_distinct_sessi
     assert len(target_session_ids) == 7
     assert all(target["status"] == "completed" for target in by_id.values())
     assert finalized == ["completed"]
+
+
+@pytest.mark.asyncio
+async def test_target_com_base_ocupada_por_outro_job_espera_sem_gerar(monkeypatch) -> None:
+    """Base ja em geracao noutro job: o target fica pending, sem gastar
+    tentativa e sem chamar a geracao; o job fica partial e volta depois."""
+    job = {"id": "job-espera", "classe_id": 32, "kind": "manual_retry", "payload": {}}
+    by_id = {
+        index: {
+            "id": index,
+            "aluno_id": None,
+            "topico_id": 121,
+            "conteudo_id": 125,
+            "brainhex_profile_key": perfil,
+            "status": "pending",
+            "attempts": 0,
+        }
+        for index, perfil in ((1, "achiever"), (2, "seeker"))
+    }
+    claimed = False
+    gerados: list[int] = []
+    tomadas: list[tuple[int, int]] = []
+    finalized: list[str] = []
+
+    async def claim_next_job(_self, **_kwargs):
+        nonlocal claimed
+        if claimed:
+            return None
+        claimed = True
+        return job
+
+    async def get_targets(_self, _job_id):
+        return [dict(target) for target in by_id.values()]
+
+    async def tomar(_self, *, target, classe_id, attempts, stale_processing_min):
+        tomadas.append((target["id"], classe_id))
+        assert stale_processing_min >= 53
+        if target["id"] == 1:
+            return False  # outro job esta gerando a base do achiever
+        by_id[target["id"]].update({"status": "processing", "attempts": attempts})
+        return True
+
+    async def update_target_status(_self, *, target_id, status, attempts, last_error, personalizacao_id=None):
+        by_id[target_id].update({"status": status, "attempts": attempts, "last_error": last_error})
+
+    async def process_target(*, app, session, job, target):
+        gerados.append(target["id"])
+        return {"record": {"id": target["id"], "status": "pronto"}}
+
+    async def refresh_job_counters(_self, _job_id):
+        completed = sum(1 for target in by_id.values() if target["status"] == "completed")
+        return {"processed_targets": completed, "error_count": 0}
+
+    async def finalize_job(_self, *, job_id, status, last_error):
+        finalized.append(status)
+
+    repo = "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository"
+    monkeypatch.setattr(f"{repo}.claim_next_job", claim_next_job)
+    monkeypatch.setattr(f"{repo}.get_targets", get_targets)
+    monkeypatch.setattr(f"{repo}.tomar_target_para_processar", tomar)
+    monkeypatch.setattr(f"{repo}.update_target_status", update_target_status)
+    monkeypatch.setattr(f"{repo}.refresh_job_counters", refresh_job_counters)
+    monkeypatch.setattr(f"{repo}.finalize_job", finalize_job)
+    monkeypatch.setattr(jobs_module, "_process_media_render_target", process_target)
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=_WorkerSessionFactory(),
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=40,
+                brainhex_api_wait_timeout_sec=1980,
+                personalizacao_job_max_retries=3,
+                personalizacao_media_render_concurrency=2,
+                personalizacao_media_render_profile_pace_sec=0,
+            ),
+        )
+    )
+
+    assert await process_personalizacao_job_once(app) is True
+
+    assert sorted(tomadas) == [(1, 32), (2, 32)]
+    assert gerados == [2]
+    assert by_id[1]["status"] == "pending"
+    assert by_id[1]["attempts"] == 0
+    assert by_id[2]["status"] == "completed"
+    assert finalized == ["partial"]
 
 
 @pytest.mark.asyncio
