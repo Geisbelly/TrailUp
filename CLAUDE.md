@@ -979,6 +979,14 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
   cópias em texto dos originais do Drive (proposta, UX, TCC 1, monografia,
   relatório técnico) em [`docs/tcc/fontes-drive/`](docs/tcc/fontes-drive/README.md).
   O Drive é a fonte de verdade desses textos.
+
+  > **O projeto desistiu do PRISMA** (02/11). Não descreva a revisão da
+  > literatura como "registrada segundo o PRISMA 2020" nem cite fluxograma ou
+  > contagem PRISMA em texto novo (resumo, artigo, monografia). A monografia e
+  > `docs/rag/avaliacao-documentos.md` ainda falam em PRISMA: é texto anterior à
+  > decisão, não precedente. A planilha de 47 documentos continua sendo a base
+  > de leitura (24 aprovados entre os 28 já decididos; 19 pendentes) — chame de
+  > análise crítica da literatura.
 - **Google Drive:**
   [documentação TrailUp (raiz: TCC 1, TCC 2)](https://drive.google.com/drive/folders/1-hMe8qKLGvPTtDZ-b0HlvbSRwQhtZtug) ·
   [Segundo Cérebro](https://drive.google.com/drive/folders/1RiqTibVR9MTl9aYKAWs6g7dM1gSUcNqc) ·
