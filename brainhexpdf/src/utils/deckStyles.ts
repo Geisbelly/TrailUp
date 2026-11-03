@@ -426,8 +426,18 @@ export function getDeckShellCss(): string {
          nele. Slide curto continua centralizado pela margem automatica. */
       justify-content: flex-start;
       padding: clamp(18px, 3vw, 40px) max(clamp(16px, 4vw, 56px), env(safe-area-inset-right)) clamp(24px, 3vw, 40px) max(clamp(16px, 4vw, 56px), env(safe-area-inset-left));
-      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
     }
+    /* Barra do palco: fina, na cor de borda do deck (a do perfil), trilho
+       transparente, sem setas. As propriedades padrão só para quem não tem os
+       pseudo-elementos: no Chrome 121+ elas os desligam e a barra volta a 11px,
+       com trilho cinza e setas no Windows. */
+    @supports not selector(::-webkit-scrollbar) {
+      #slide-stage { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+    }
+    #slide-stage::-webkit-scrollbar { width: 8px; height: 8px; }
+    #slide-stage::-webkit-scrollbar-track { background: transparent; }
+    #slide-stage::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+    #slide-stage::-webkit-scrollbar-button { display: none; }
     #slide-stage > * {
       flex-shrink: 0;
     }
