@@ -2,16 +2,16 @@
 
 **Issue:** [#218](https://github.com/BitStudioLabs/trail-up/issues/218) (parte 1) · ligada a [#70](https://github.com/BitStudioLabs/trail-up/issues/70), [#71](https://github.com/BitStudioLabs/trail-up/issues/71), [#74](https://github.com/BitStudioLabs/trail-up/issues/74), [#75](https://github.com/BitStudioLabs/trail-up/issues/75)
 
-**Status:** avaliação documento a documento concluída. As decisões de aprovação são da curadora; o parecer da IA fica registrado ao lado, sem substituí-las. **Nenhum documento entra no índice do RAG por esta página.**
+**Status:** avaliação documento a documento e revisão da curadoria concluídas. As decisões finais são da curadora; a coluna de vereditos sugeridos preserva o registro da análise e não substitui a planilha revisada. **Nenhum documento integral entra no índice do RAG por esta página.**
 
-**Atualizado em:** 2026-10-30
+**Atualizado em:** 2026-11-02
 
 ## Escopo
 
 Os 47 artigos e guias da planilha de leituras do TCC ("Literaturas Analise PRISMA 2020", no Drive), que fundamentam a Evidence Base descrita na monografia. Não são os conjuntos de dados do [inventário](./inventario-fontes.md): aqui é literatura, lá é dado.
 
 - **28 documentos** já tinham decisão da curadora (Aprovado ou Reprovado). A decisão dela vale; a IA só registra se concorda.
-- **19 documentos** estavam sem decisão (DAT-08 e DAT-30 a DAT-47). Para estes há veredito sugerido, a confirmar.
+- **19 documentos** estavam sem decisão original (DAT-08 e DAT-30 a DAT-47) e foram revisados pela curadora após a análise inicial. A tabela preserva os vereditos sugeridos na análise; a planilha revisada é a fonte dos vereditos finais ainda não sincronizados para esta cópia.
 
 Cada PDF foi lido no Drive (método, resultados, limitações, financiamento) e os metadados foram conferidos no próprio PDF e por DOI. A análise completa — vieses, nível de evidência, amostra, três lentes e comparações — está na cópia de revisão da planilha (colunas N a AF); esta página guarda o critério e o resultado.
 
@@ -48,11 +48,11 @@ Cada documento foi lido por três lentes, separadas de propósito, porque um est
 | --- | --- |
 | Decididos pela curadora | 28 (24 aprovados, 4 reprovados) |
 | Parecer da IA sobre essas decisões | concorda 14 · concorda em parte 8 · discorda 6 |
-| Pendentes com veredito sugerido | 19 (1 aprovado, 10 aprovados com ressalvas, 8 reprovados) |
+| Revisados pela curadora após a análise inicial (sem decisão original) | 19 |
 | Destino **corpus do RAG** | 0 |
 | Destino **texto derivado** | 12 |
 
-As seis discordâncias (DAT-10, 12, 13, 18, 23 e 24) seguem um padrão: DAT-10, 12 e 13 têm as mesmas falhas que levaram a curadora a reprovar DAT-02, 26, 27 e 28 (correlacional autorrelatado com respostas repetidas tratadas como independentes, busca que confirma a teoria por construção, heterogeneidade de 98,84%). Em DAT-18, 23 e 24 o resumo antigo da planilha descrevia conteúdo que não está no PDF. A decisão continua dela; a coluna Destino marca esses seis como "a decidir".
+As seis discordâncias (DAT-10, 12, 13, 18, 23 e 24) seguem um padrão: DAT-10, 12 e 13 têm as mesmas falhas que levaram a curadora a reprovar DAT-02, 26, 27 e 28 (correlacional autorrelatado com respostas repetidas tratadas como independentes, busca que confirma a teoria por construção, heterogeneidade de 98,84%). Em DAT-18, 23 e 24 o resumo antigo da planilha descrevia conteúdo que não está no PDF. A revisão da curadora foi concluída; esta página preserva as ressalvas da análise inicial, e a planilha revisada contém as decisões finais ainda não sincronizadas.
 
 Nenhum documento foi para o corpus: os que têm licença aberta servem ao motor ou ao professor, não ao aluno, e os guias que serviriam ao aluno (EEF) não têm licença que permita indexar. Os PDFs dos documentos aprovados não ficam neste repositório.
 
@@ -114,24 +114,15 @@ Duplicatas que não contam como fontes independentes no fluxograma PRISMA: DAT-0
 
 ## Texto derivado e golden set (#75)
 
-Os doze documentos com destino **texto derivado** viram regras escritas por nós, cada uma com fonte e população. São também a base dos casos do golden set: cada pergunta abaixo tem documentos que sustentam a resposta, e algumas têm de propósito uma resposta negativa, para medir se o mentor admite o limite em vez de inventar.
+As 12 fontes cujo destino é **texto derivado** foram transformadas em regras com população, construto, tipo de estudo, confiança, proveniência e limites em [regras derivadas](./regras-derivadas.md). O mapeamento BrainHex fica vazio: as fontes não demonstram que um perfil aprende melhor com uma estratégia ou formato específico.
 
-| Pergunta (como o professor ou o aluno faria) | Resposta esperada | Documentos |
-| --- | --- | --- |
-| Quando devo revisar um card que já estudei? | Reexpor o mesmo conteúdo em sessões separadas, com intervalos de dias; espalhar conteúdos diferentes não conta | DAT-36, DAT-21 |
-| Um quiz no meio do tópico ajuda a lembrar? | Sim: quizzes que reexpõem o conteúdo central têm evidência forte | DAT-21 |
-| Que tipo de feedback ajuda o aluno a melhorar? | Feedback sobre a tarefa e o próximo passo; elogio genérico à pessoa ajuda pouco | DAT-34, DAT-35 |
-| Lembrete de estudo funciona? | Funciona ligado ao progresso e a prazos intermediários; lembrete genérico e frequente pode gerar ansiedade | DAT-33, DAT-45, DAT-32 |
-| O perfil Mastermind aprende melhor lendo? | **Não há evidência.** Formatos ficam disponíveis a todos; casar formato com perfil é a hipótese dos estilos de aprendizagem | DAT-14, DAT-35, DAT-40 |
-| Dá para saber se o aluno está ansioso pelo tempo parado no app? | **Não.** Telemetria mede engajamento comportamental; emoção exige outra medida | DAT-45, DAT-04 |
-| Mostrar o ranking motiva a turma? | Motiva quem está no topo e pode desmotivar quem está embaixo; limitar a visibilidade e não premiar o topo | DAT-33, DAT-32 (mais DAT-01 e DAT-15, só citação) |
-| Personalizar a gamificação pelo BrainHex melhora a aprendizagem? | **Não está demonstrado.** Há um resultado a favor de tempo de uso e outros sem efeito | DAT-03, DAT-41 (mais DAT-37, só citação) |
+O golden set foi ampliado dos 8 casos iniciais para 30 perguntas, incluindo casos sem resposta sustentada pelas fontes. Cada caso registra resposta esperada, fontes aceitáveis e se o RAG deve responder ou admitir ausência de evidência: [golden set da Evidence Base — v1](./golden-set-documentos-v1.md).
 
-O golden set completo (30 a 50 perguntas) continua dependendo do corpus indexado e da [#67](https://github.com/BitStudioLabs/trail-up/issues/67), como diz o [pipeline](./pipeline-corpus.md#75--golden-set). Esta tabela é o começo dele, amarrado aos documentos aprovados.
+A avaliação automatizada contra o corpus indexado e o histórico quantitativo de retrieval seguem o contrato da [#75](./pipeline-corpus.md#75--golden-set), fora do escopo documental concluído aqui.
 
 ## Pendências
 
-- A curadora revisa os 19 vereditos sugeridos e decide se reabre os seis em que a IA discorda.
 - Os metadados das linhas já decididas continuam como estavam na planilha. As correções sugeridas (autores, ano e revista conferidos no PDF) estão na cópia de revisão.
 - Ao entrar no fluxograma PRISMA, contar cada duplicata uma vez só.
-- Escrever as regras derivadas dos doze documentos no formato da [#73](./pipeline-corpus.md#73--curadoria-pedagógica) (`construto`, `populacao`, `tipo_estudo`, `confianca`, `tipo=derivado`).
+- Atualizar esta cópia com os vereditos finais da planilha revisada quando ela for sincronizada ao repositório.
+- Indexar os textos derivados somente após validar metadados e elegibilidade do corpus; executar a avaliação automatizada conforme a #75.
