@@ -324,3 +324,11 @@ async def test_todo_texto_sai_com_a_versao_da_guarda(monkeypatch) -> None:
     assert do_modelo["contexto"]["origem"] == "modelo" and da_regra["contexto"]["origem"] == "regra"
     for n in (do_modelo, da_regra):
         assert n["contexto"]["texto_guarda"] == modulo.TEXTO_GUARDA_VERSAO
+
+
+def test_guarda_aceita_um_nome_e_recusa_outros_marcadores():
+    from app.agent.graph.nodes.agente_notificacao import problemas_do_texto
+
+    assert problemas_do_texto("Bora ver, {nome}?", "Os gráficos estão prontos.") == []
+    assert problemas_do_texto("Oi, {nome}", "Vamos, {nome}?")
+    assert problemas_do_texto("Oi", "Veja {topico} hoje.")

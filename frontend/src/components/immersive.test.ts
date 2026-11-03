@@ -1,9 +1,13 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { readFileSync } from "node:fs";
 import { parse, type AtRule, type Declaration, type Node, type Rule } from "postcss";
+// Header e Hero leem a sessão; aqui só importa o HTML de quem não está logado.
+vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null }) }));
 import Hero from "./Hero";
 import BrainHexShowcase from "./BrainHexShowcase";
 import Header from "./Header";
@@ -172,7 +176,7 @@ describe("immersive public homepage", () => {
 
   it("provides a named mobile menu trigger", () => {
     const markup = renderToStaticMarkup(
-      createElement(StaticRouter, { location: "/" }, createElement(Header)),
+      createElement(QueryClientProvider, { client: new QueryClient() }, createElement(StaticRouter, { location: "/" }, createElement(Header))),
     );
     expect(markup).toContain('aria-label="Abrir menu"');
     expect(markup).toContain('aria-haspopup="dialog"');
@@ -232,7 +236,7 @@ describe("immersive public homepage", () => {
 
   it("connects the opening and feature sections in one composition", () => {
     const markup = renderToStaticMarkup(
-      createElement(StaticRouter, { location: "/" }, createElement(Index)),
+      createElement(QueryClientProvider, { client: new QueryClient() }, createElement(StaticRouter, { location: "/" }, createElement(Index))),
     );
     expect(markup).toContain('class="journey-opening"');
     expect(markup).toContain('id="experiencia"');
