@@ -24,6 +24,7 @@ import {
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 import { ApoioConfig, DuasColunasConfig, TextoApoio } from "@/components/web/SecaoConfigDesktop";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { useAcaoDeMoldura } from "@/hooks/useMolduras";
 
 // Mesmo `tipo` que o login cria automaticamente para todo aluno (ver
 // `notificacoes_registrar_login` / migracao 20260826_04) — salvar com esse
@@ -55,6 +56,7 @@ export default function LembreteDiarioScreen() {
   const [carregando, setCarregando] = useState(true);
   const [rotina, setRotina] = useState<RotinaNotificacao | null>(null);
   const [salvando, setSalvando] = useState(false);
+  const acaoDeMoldura = useAcaoDeMoldura();
 
   useEffect(() => {
     let ativo = true;
@@ -100,6 +102,7 @@ export default function LembreteDiarioScreen() {
         });
         return;
       }
+      if (proximoAtivo) acaoDeMoldura("definir_lembrete");
 
       setRotina((prev) =>
         prev

@@ -2,9 +2,11 @@ import type { BrainHexProfile } from '../constants/brainHexProfiles';
 
 export const FRAME_CANVAS_SIZE = 256;
 
+export type FrameOpening = { x: number; y: number; radius: number };
+
 // A abertura dos PNGs não coincide com o centro da tela de 256 × 256.
 // Medidas da borda interna, sem incluir os adornos que avançam sobre a foto.
-const openings: Record<BrainHexProfile, { x: number; y: number; radius: number }> = {
+const openings: Record<BrainHexProfile, FrameOpening> = {
   achiever: { x: 130, y: 123, radius: 92 },
   conqueror: { x: 130, y: 133, radius: 94 },
   daredevil: { x: 129, y: 122, radius: 92 },
@@ -15,7 +17,11 @@ const openings: Record<BrainHexProfile, { x: number; y: number; radius: number }
 };
 
 export function getProfileFrameLayout(profile: BrainHexProfile, size: number) {
-  const opening = openings[profile];
+  return getFrameLayout(openings[profile], size);
+}
+
+/** O mesmo cálculo para qualquer moldura de 256 × 256, a partir da abertura dela. */
+export function getFrameLayout(opening: FrameOpening, size: number) {
   const scale = size / FRAME_CANVAS_SIZE;
   // Sobreposição mínima sob o aro evita frestas nas bordas antisserrilhadas.
   const photoRadius = opening.radius + 1;

@@ -70,6 +70,9 @@ export function AcoesBannerPerfil({
       <Pressable accessibilityRole="button" accessibilityLabel="Abrir minha Bag" onPress={onAbrirBag} style={estilo(s.icone)}>
         <UtilityIcon kind="bag" size={22} />
       </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Molduras" onPress={() => router.push("/(tabs)/perfil/molduras")} style={estilo(s.icone)}>
+        <MaterialCommunityIcons name="circle-double" size={20} color={palette.accent} />
+      </Pressable>
     </View>
   );
 }

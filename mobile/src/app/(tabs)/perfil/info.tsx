@@ -13,6 +13,7 @@ import {
 
 
 import { FramedProfileImage } from "@/components/FramedProfileImage";
+import { useMolduraEquipada } from "@/hooks/useMolduras";
 import { InfoPessoaisDesktop } from "@/components/web/InfoPessoaisDesktop";
 import { useInfoPessoais } from "@/hooks/useInfoPessoais";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
@@ -29,6 +30,7 @@ const IS_WEB = Platform.OS === "web";
 export default function Infor() {
   const embutido = useEmbutidoConfiguracoes();
   const { avisar } = useAviso();
+  const moldura = useMolduraEquipada();
   // A lógica mora em useInfoPessoais; na web em tela larga (#346) a mesma lógica ganha o layout do v4.
   // O recado vai pelo diálogo do app em TODA a web: o `Alert` do react-native é
   // um no-op lá, e decidir por largura deixava a janela estreita sem aviso (#28).
@@ -136,7 +138,7 @@ export default function Infor() {
 
         {/* Avatar fora do container do banner para não ser cortado */}
         <View style={styles.avatarWrapper}>
-          <FramedProfileImage profile={palette.profile} source={fotoUri ? { uri: fotoUri } : undefined} size={104} label={`Foto de ${nome || 'Aluno'}`} />
+          <FramedProfileImage profile={palette.profile} moldura={moldura} source={fotoUri ? { uri: fotoUri } : undefined} size={104} label={`Foto de ${nome || 'Aluno'}`} />
         </View>
 
         {editando && (

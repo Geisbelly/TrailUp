@@ -21,6 +21,7 @@ import {
   resolverTimezone,
   resolverVersaoApp,
 } from '@/services/pushNotifications';
+import { registrarAcaoDeMoldura } from "@/services/molduras";
 
 /**
  * Monitora o login e o tempo de uso, e liga as notificações do SO.
@@ -103,6 +104,8 @@ export function useMonitorDeSessao() {
       await configurarHandlerDeNotificacao();
       const registro = await registrarParaPush();
       if (cancelado) return;
+      // Sem aviso: pipocar um diálogo no login seria ruído. A moldura aparece na coleção.
+      if (registro.permissaoConcedida) void registrarAcaoDeMoldura("ativar_notificacoes");
       pushTokenRef.current = registro.token;
 
       const resultado = await registrarLogin({

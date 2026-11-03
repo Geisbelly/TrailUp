@@ -10,6 +10,7 @@ import { CONSEQUENCIAS, DIFICULDADES, FORMATOS, REGRAS, pedeParceiro, type Conse
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { useAcaoDeMoldura } from "@/hooks/useMolduras";
 
 export type GuildShareOption = { kind: GuildShareKind; id: number; title: string };
 type Props = { visible: boolean; guild: Guild | null; accent: string; profile?: string | null; options: GuildShareOption[]; onClose: () => void };
@@ -21,6 +22,7 @@ function isBinary(type?: string | null) {
 }
 
 export function GuildChatModal({ visible, guild, accent, profile, options, onClose }: Props) {
+  const acaoDeMoldura = useAcaoDeMoldura();
   const [messages, setMessages] = useState<GuildMessage[]>([]);
   const [text, setText] = useState("");
   const [shareKind, setShareKind] = useState<GuildShareKind | null>(null);
@@ -43,7 +45,7 @@ export function GuildChatModal({ visible, guild, accent, profile, options, onClo
   const load = useCallback(async () => { if (!guild) return; try { setMessages(await carregarMensagensGuilda(guild.id)); } catch (error) { console.warn("[GuildChat] Falha ao carregar mensagens:", error); } }, [guild]);
   useEffect(() => { if (!visible || !guild) return; setLoading(true); setShareKind(null); setAnswerMessage(null); void alunoAtual().then(setMeuId).catch(() => setMeuId(null)); void load().finally(() => setLoading(false)); const timer = setInterval(() => void load(), 5000); return () => clearInterval(timer); }, [visible, guild, load]);
   async function send() { if (!guild || !text.trim() || sending) return; setSending(true); try { await enviarMensagemGuilda(guild.id, text); setText(""); await load(); } catch (error) { console.warn("[GuildChat] Falha ao enviar:", error); } finally { setSending(false); } }
-  async function share(option: GuildShareOption) { if (!guild || sending) return; setSending(true); try { if (option.kind === "desafio") await criarDesafioGuilda(guild.id, challengeMode, 3, challengeDificuldade, challengeConsequencia, challengeFormato, challengeAliado); else await compartilharNaGuilda(guild.id, option.kind, option.id, option.title); setShareKind(null); await load(); } catch (error) { console.warn("[GuildChat] Falha ao compartilhar:", error); } finally { setSending(false); } }
+  async function share(option: GuildShareOption) { if (!guild || sending) return; setSending(true); try { if (option.kind === "desafio") await criarDesafioGuilda(guild.id, challengeMode, 3, challengeDificuldade, challengeConsequencia, challengeFormato, challengeAliado); else { await compartilharNaGuilda(guild.id, option.kind, option.id, option.title); acaoDeMoldura("compartilhar_guilda"); } setShareKind(null); await load(); } catch (error) { console.warn("[GuildChat] Falha ao compartilhar:", error); } finally { setSending(false); } }
   async function submitAnswer(value = answer) { if (!answerMessage || !value.trim() || sending) return; setSending(true); try { const result = await responderQuestaoGuilda(answerMessage.id, value.trim()); setAnswerResult((result as { correta?: boolean })?.correta ? "Resposta correta!" : "Resposta incorreta."); await load(); } catch (error) { console.warn("[GuildChat] Falha ao responder questão:", error); setAnswerResult("Não foi possível registrar sua resposta."); } finally { setSending(false); } }
   const selectedOptions = shareKind ? options.filter((option) => option.kind === shareKind) : [];
   // Sem o próprio aluno: `guilda_desafio_criar` recusa `p_aliado = auth.uid()`.
