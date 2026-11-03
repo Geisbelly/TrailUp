@@ -1,5 +1,5 @@
 import { HallBackground } from "@/components/HallTheme";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useUsuario } from "@/context/SessaoContext";
@@ -7,6 +7,7 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { useAcaoDeMoldura } from "@/hooks/useMolduras";
 
 const pkg = require("../../../../package.json");
 const appJson = require("../../../../app.json");
@@ -18,6 +19,10 @@ export default function InfoVersaoScreen() {
     () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
     [usuario]
   );
+  const acaoDeMoldura = useAcaoDeMoldura();
+  useEffect(() => {
+    acaoDeMoldura("ver_novidades");
+  }, [acaoDeMoldura]);
 
   return (
     <View style={[styles.outer, { backgroundColor: palette.background }]}>

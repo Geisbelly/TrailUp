@@ -135,6 +135,7 @@ src/services/loja/ganhoMoedasModel.test.ts
 src/utils/compraLoja.test.ts
 src/services/loja/fundoTurmaModel.test.ts
 src/services/loja/extratoModel.test.ts
+src/services/moldurasModel.test.ts
 src/services/loja/usoItem.test.ts
 src/utils/tourTelaLarga.test.ts
 src/utils/rolagemTematica.test.ts

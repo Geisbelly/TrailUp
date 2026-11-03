@@ -159,6 +159,14 @@ function SettingsLista() {
           ),
         },
         {
+          label: "Molduras",
+          render: (
+            <LinhaConfig icone="circle" onPress={() => router.push("/(tabs)/perfil/molduras")} palette={palette}>
+              Molduras
+            </LinhaConfig>
+          ),
+        },
+        {
           label: "Biblioteca de conquistas",
           render: (
             <LinhaConfig icone="award" onPress={() => router.push("/(tabs)/perfil/biblioteca-conquistas")} palette={palette}>
@@ -213,6 +221,22 @@ function SettingsLista() {
           render: (
             <LinhaConfig icone="compass" onPress={reverTutorial} palette={palette}>
               Rever tutorial inicial
+            </LinhaConfig>
+          ),
+        },
+        {
+          label: "Avaliar o app",
+          render: (
+            <LinhaConfig icone="star" onPress={() => router.push("/(tabs)/perfil/feedback?tipo=avaliar")} palette={palette}>
+              Avaliar o app
+            </LinhaConfig>
+          ),
+        },
+        {
+          label: "Reportar um erro",
+          render: (
+            <LinhaConfig icone="alert-circle" onPress={() => router.push("/(tabs)/perfil/feedback?tipo=erro")} palette={palette}>
+              Reportar um erro
             </LinhaConfig>
           ),
         },

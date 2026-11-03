@@ -1,8 +1,9 @@
 import { profileFrames } from '@/constants/designAssets';
+import { molduraConhecida, molduras } from '@/constants/molduras';
 import { ProfileArtwork } from '@/components/ProfileArtwork';
 import { getGuardianFaceImage, normalizeBrainHexProfile } from '@/constants/profileImages';
 import { getProfileShellPalette } from '@/utils/profileShellTheme';
-import { FRAME_CANVAS_SIZE, getProfileFrameLayout } from '@/utils/profileFrameLayout';
+import { FRAME_CANVAS_SIZE, getFrameLayout, getProfileFrameLayout } from '@/utils/profileFrameLayout';
 import { useFonteDeImagem } from '@/hooks/useFonteDeImagem';
 import React, { useId } from 'react';
 import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
@@ -15,15 +16,18 @@ type Props = {
   fit?: 'cover' | 'contain';
   label?: string;
   artworkTone?: boolean;
+  /** Moldura equipada (`alunos.moldura_equipada`). Sem ela, ou com código que este build não tem, vale a do perfil. */
+  moldura?: string | null;
 };
 
-export function FramedProfileImage({ profile, source: sourceBruta, size = 112, fit = 'cover', label, artworkTone = false }: Props) {
+export function FramedProfileImage({ profile, source: sourceBruta, size = 112, fit = 'cover', label, artworkTone = false, moldura }: Props) {
   // Foto privada do Storage (#195) vira URL assinada; enquanto isso, o rosto padrao.
   const source = useFonteDeImagem(sourceBruta);
   const rimId = `profile-rim-${useId().replace(/:/g, '')}`;
   const key = normalizeBrainHexProfile(profile) ?? 'mastermind';
   const palette = getProfileShellPalette(key);
-  const { opening, photoSize: innerSize, photoLeft, photoTop } = getProfileFrameLayout(key, size);
+  const extra = molduraConhecida(moldura) ? molduras[moldura] : null;
+  const { opening, photoSize: innerSize, photoLeft, photoTop } = extra ? getFrameLayout(extra.opening, size) : getProfileFrameLayout(key, size);
   return (
     <View accessible={Boolean(label)} accessibilityLabel={label} style={[styles.root, { width: size, height: size }, { pointerEvents: "none" }]}>
       <View style={{ position: 'absolute', left: photoLeft, top: photoTop, width: innerSize, height: innerSize, borderRadius: innerSize / 2, overflow: 'hidden', backgroundColor: palette.surface }}>
@@ -42,7 +46,7 @@ export function FramedProfileImage({ profile, source: sourceBruta, size = 112, f
         <Circle cx={opening.x} cy={opening.y} r={opening.radius + 3} fill="none" stroke={`url(#${rimId})`} strokeWidth="6" />
         <Circle cx={opening.x} cy={opening.y} r={opening.radius} fill="none" stroke="#ffe7ae" strokeWidth="1" opacity="0.85" />
       </Svg>
-      <Image source={profileFrames[key]} resizeMode="contain" style={[styles.frame, { width: size, height: size }]} accessible={false} />
+      <Image source={extra?.source ?? profileFrames[key]} resizeMode="contain" style={[styles.frame, { width: size, height: size }]} accessible={false} />
     </View>
   );
 }

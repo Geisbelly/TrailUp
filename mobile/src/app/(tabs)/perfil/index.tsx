@@ -25,6 +25,7 @@ import { getAchievementArtwork } from "@/constants/achievementImages";
 import { ProfileArtwork } from "@/components/ProfileArtwork";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { FramedProfileImage } from "@/components/FramedProfileImage";
+import { useMolduraEquipada } from "@/hooks/useMolduras";
 import { ProfileMetricsViews } from "@/components/perfil/ProfileMetricsViews";
 import { FaixaXpCartao } from "@/components/perfil/FaixaXpCartao";
 import {
@@ -71,6 +72,7 @@ import { ImagemDoStorage } from "@/components/ImagemDoStorage";
 export default function PerfilHome() {
   const insets = useSafeAreaInsets();
   const { usuario, selecionarPerfilAtivo } = useUsuario();
+  const moldura = useMolduraEquipada();
   const { classeAtual, classes, trocarTurma, perfil, progressoPersonalizado, reload: reloadTrilha } = useTrilha();
   const { conquistas, carregando, eventos, faixaXp, posicoesDoAluno, presenca, reloadAll } =
     useConquistaRank();
@@ -340,7 +342,7 @@ export default function PerfilHome() {
             accessibilityLabel="Editar foto e banner"
             style={({ pressed }) => [styles.avatarContainer, { opacity: pressed ? 0.85 : 1 }]}
           >
-            <FramedProfileImage profile={perfil} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={104} label={`Foto de ${usuario?.nome ?? 'Aluno'}`} />
+            <FramedProfileImage profile={perfil} moldura={moldura} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={104} label={`Foto de ${usuario?.nome ?? 'Aluno'}`} />
             <View style={[styles.seloEditarFoto, { backgroundColor: shellPalette.accent, borderColor: shellPalette.background }]}>
               <MaterialCommunityIcons name="camera" size={15} color={shellPalette.background} />
             </View>
@@ -732,7 +734,7 @@ export default function PerfilHome() {
             </View>
             {desktop ? (
               <View style={styles.retrato}>
-                <FramedProfileImage profile={perfil} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={160} label={`Foto de ${usuario?.nome ?? "Aluno"}`} />
+                <FramedProfileImage profile={perfil} moldura={moldura} source={usuario?.foto_url ? { uri: usuario.foto_url } : avatar} size={160} label={`Foto de ${usuario?.nome ?? "Aluno"}`} />
               </View>
             ) : null}
 
@@ -758,6 +760,14 @@ export default function PerfilHome() {
                 accessibilityLabel="Abrir minha Bag"
               >
                 <UtilityIcon kind="bag" size={34} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.btnTopo}
+                onPress={() => router.push("/(tabs)/perfil/molduras")}
+                accessibilityRole="button"
+                accessibilityLabel="Molduras"
+              >
+                <MaterialCommunityIcons name="circle-double" size={30} color={shellPalette.accent} />
               </TouchableOpacity>
               <View ref={profileLibraryGuideRef} collapsable={false}>
                 <TouchableOpacity

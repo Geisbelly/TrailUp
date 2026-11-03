@@ -20,6 +20,7 @@ import { ApoioConfig, DuasColunasConfig, TextoApoio } from "@/components/web/Sec
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useAcaoDeMoldura } from "@/hooks/useMolduras";
 
 // Blocos de estudo comuns, em vez de um seletor livre (mesma ideia dos horários do lembrete).
 const DURACOES_MIN = [25, 50, 90];
@@ -50,6 +51,7 @@ export default function ModoFocoScreen() {
   const [foco, setFoco] = useState<EstadoFoco | null>(null);
   const [silenciados, setSilenciados] = useState<string[]>([]);
   const [salvando, setSalvando] = useState(false);
+  const acaoDeMoldura = useAcaoDeMoldura();
 
   const aplicarFoco = useCallback((estado: EstadoFoco | null) => {
     setFoco(estado);
@@ -79,6 +81,7 @@ export default function ModoFocoScreen() {
       const estado = await iniciarFoco(minutos);
       if (!estado) return falhou();
       aplicarFoco(estado);
+      acaoDeMoldura("usar_modo_foco");
     } finally {
       setSalvando(false);
     }
