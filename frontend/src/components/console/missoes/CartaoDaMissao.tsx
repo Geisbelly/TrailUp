@@ -12,9 +12,8 @@ import type { Missao } from "./missoesApi";
  * a correção; `meta` mostra o critério e nada disso — ela não tem atividade atrás, então
  * `topicoId` é nulo e um link para `/console/trilha/null/editar` levaria a lugar nenhum.
  *
- * Missão que não é do professor (IA, sistema) não tem "Editar": `trg_missoes_guarda` descarta
- * a mudança sem erro, e o botão seria uma escrita fantasma. Para mudar, duplica — a cópia nasce
- * do professor. Pendente ganha Aprovar e Recusar quando quem monta passa os dois callbacks.
+ * Propostas da IA e missões do professor podem ser editadas; as missões do sistema têm painel
+ * próprio. Pendente ganha Aprovar e Recusar quando quem monta passa os dois callbacks.
  */
 export function CartaoDaMissao({
   missao,

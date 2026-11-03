@@ -7,7 +7,7 @@ export function CabecalhoDePagina({ titulo, subtitulo, acao }: { titulo: string;
   return (
     <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
-        <h2 className="text-[32px] font-bold leading-tight">{titulo}</h2>
+        <h2 className="text-[clamp(1.5rem,2.4vw,2rem)] font-bold leading-tight">{titulo}</h2>
         {subtitulo && <p className="mt-2 text-[14.5px] text-muted-foreground">{subtitulo}</p>}
       </div>
       {acao}

@@ -1,6 +1,6 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Activity, Award, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, Lightbulb, LogOut, Route, Settings, ShieldCheck, Sparkles, Trophy } from "lucide-react";
+import { Activity, Award, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, Lightbulb, LogOut, Menu, Route, Settings, ShieldCheck, Sparkles, Trophy, X } from "lucide-react";
 import { Shield, Swords } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DESIGN_ART } from "@/lib/design-art";
@@ -48,6 +48,15 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
   children?: ReactNode;
 }) {
   useConsoleThemeOnDocument();
+  const [menuAberto, setMenuAberto] = useState(false);
+  useEffect(() => {
+    if (!menuAberto) return;
+    const fecharComEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuAberto(false);
+    };
+    window.addEventListener("keydown", fecharComEscape);
+    return () => window.removeEventListener("keydown", fecharComEscape);
+  }, [menuAberto]);
   // O selo é só um aviso: a RLS limita a contagem às turmas do professor logado.
   const selo = rotuloDoSelo(useContagemDeRecomendacoes(true));
   const initials = name.split(" ").filter(Boolean).map(part => part[0]).join("").slice(0, 2).toUpperCase() || "PR";
@@ -55,6 +64,16 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
     <div className="journey-console console-shell">
       <img className="console-scenery" data-page-background src={DESIGN_ART.consoleScenery} alt="" width="1200" height="675" aria-hidden="true" />
       <header className="console-topbar">
+        <button
+          type="button"
+          className="console-mobile-menu-toggle"
+          aria-label={menuAberto ? "Fechar menu de navegação" : "Abrir menu de navegação"}
+          aria-expanded={menuAberto}
+          aria-controls="console-sections-navigation"
+          onClick={() => setMenuAberto((aberto) => !aberto)}
+        >
+          {menuAberto ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+        </button>
         <Link to="/" className="journey-brand" aria-label="TrailUp, início">
           <img src={DESIGN_ART.star} alt="" width="30" height="30" /><span>TrailUp</span>
         </Link>
@@ -67,12 +86,12 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
           <button type="button" className="console-icon-button" onClick={onSignOut} aria-label="Sair da conta" title="Sair da conta"><LogOut size={18} /></button>
         </div>
       </header>
-      <nav className="console-navigation" aria-label="Seções do console">
+      <nav id="console-sections-navigation" className="console-navigation" data-open={menuAberto} aria-label="Seções do console">
         {CONSOLE_SECTIONS.filter(section => !viewSoDoDono(section.view) || isOwner).map(section => {
           const item = navigation[section.view];
           const Icon = item.icon;
           const aviso = section.view === "recomendacoes" ? selo : null;
-          return <Link key={section.view} to={consolePathForView(section.view)} aria-current={view === section.view ? "page" : undefined} aria-label={aviso ? `${item.label}, ${aviso} aguardando decisão` : undefined} title={item.label}><Icon size={20} strokeWidth={1.6} /><span>{item.label}</span>{aviso && <span className="console-nav-badge" aria-hidden="true">{aviso}</span>}</Link>;
+          return <Link key={section.view} to={consolePathForView(section.view)} onClick={() => setMenuAberto(false)} aria-current={view === section.view ? "page" : undefined} aria-label={aviso ? `${item.label}, ${aviso} aguardando decisão` : undefined} title={item.label}><Icon size={20} strokeWidth={1.6} /><span>{item.label}</span>{aviso && <span className="console-nav-badge" aria-hidden="true">{aviso}</span>}</Link>;
         })}
       </nav>
       <main className="console-main" aria-label={navigation[view].label}>{children}</main>

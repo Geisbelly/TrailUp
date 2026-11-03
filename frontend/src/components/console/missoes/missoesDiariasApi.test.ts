@@ -16,6 +16,9 @@ describe("missoesDiariasApi", () => {
         slot: 2,
         cumpriram: "3",
         alunos_do_perfil: "10",
+        criterio: { metrica: "minutos_no_dia", minutos: 10 },
+        atividades_disponiveis: "2",
+        conteudos_disponiveis: "3",
       }),
     ).toEqual({
       id: 12,
@@ -25,6 +28,9 @@ describe("missoesDiariasApi", () => {
       slot: 2,
       cumpriram: 3,
       alunosDoPerfil: 10,
+      criterio: { metrica: "minutos_no_dia", minutos: 10 },
+      atividadesDisponiveis: 2,
+      conteudosDisponiveis: 3,
     });
   });
 
