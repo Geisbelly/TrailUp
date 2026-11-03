@@ -19,6 +19,7 @@ from app.services.media_contract import (
     PRESENTATION_ENGINE_VERSION,
 )
 from app.services.roteamento_ia import rota_de_menor_ativa
+from app.services.uso_do_modelo import extrair_uso
 
 logger = logging.getLogger(__name__)
 
@@ -511,8 +512,13 @@ async def disparar_brainhex_async(
     error_sink: list[str] | None = None,
     guidance_prompt: str = "",
     arco_narrativo: str | None = None,
+    uso_sink: list[dict[str, Any]] | None = None,
 ) -> bool:
     """Dispara BrainHex e, opcionalmente, aguarda o pipeline terminar.
+
+    ``uso_sink``, quando informado, recebe os tokens que o microservice gastou
+    (``uso_modelo`` da resposta, com sucesso ou falha), para o custo por
+    artefato do painel tecnico (#21).
 
     ``error_sink``, quando informado, recebe o motivo real da falha (a mesma
     informacao ja logada via logger.warning/logger.exception aqui dentro) —
@@ -583,6 +589,10 @@ async def disparar_brainhex_async(
                 response_payload = response.json()
             except Exception:
                 response_payload = None
+            if uso_sink is not None:
+                uso = extrair_uso(response_payload)
+                if uso is not None:
+                    uso_sink.append(uso)
             if response.status_code != expected_status:
                 detail = _extract_brainhex_error_detail(response_payload) or response.text[:500]
                 logger.warning(

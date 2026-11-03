@@ -49,6 +49,7 @@ import {
 import { persistApresentacaoResult, type SupabaseClientLike } from './src/services/materialsPersistence';
 import { urlDeLeituraDoStorage } from './src/services/storageReadUrl';
 import { FuncaoDeUploadNaoPublicada, uploadPeloSupabase, urlDoGateway } from './src/services/r2Upload';
+import { medirUsoDaRota, registrarUsoGemini } from './src/utils/usoDoModelo';
 
 
 dotenv.config();
@@ -316,6 +317,8 @@ async function generateWithKeyRotation(
           maxOutputTokens: options.maxOutputTokens ?? 8192,
         },
       });
+      // Conta antes de checar o texto: resposta vazia ou cortada também é cobrada (#21).
+      registrarUsoGemini(currentModel, response.usageMetadata);
 
       const text = response.text;
       if (!text) {
@@ -2042,7 +2045,7 @@ app.post('/api/v1/generate', async (req: Request, res: Response) => {
 // chamador. Não escreve em nenhuma tabela — quem persiste em
 // conteudo_personalizado é o microservice do trailup (ver
 // docs/superpowers/specs/2026-08-15-brainhexpdf-integracao-design.md).
-app.post('/api/v1/render-and-store', requireSecret, async (req: Request, res: Response) => {
+app.post('/api/v1/render-and-store', requireSecret, medirUsoDaRota, async (req: Request, res: Response) => {
   try {
     const {
       targetProfile,
@@ -2762,6 +2765,7 @@ async function generateImageWithKeyRotation(
         },
       });
 
+      registrarUsoGemini(currentModel, response.usageMetadata);
       const parts = response.candidates?.[0]?.content?.parts || [];
       for (const part of parts) {
         if (part.inlineData && part.inlineData.data) {

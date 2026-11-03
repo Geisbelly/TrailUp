@@ -36,6 +36,20 @@ export type Formato = {
   execucoes_medias_anterior: number | null;
 };
 
+export type GastoDoModelo = { modelo: string; chamadas: number; tokens_entrada: number; tokens_saida: number; caracteres: number };
+
+/**
+ * Custo em tokens da geração (20261103_14). `null` em tokens por alvo quando a janela não tem alvo com
+ * uso gravado (os anteriores à medição vêm sem): não é zero.
+ */
+export type Custo = {
+  tokens_por_alvo: number | null;
+  tokens_por_alvo_anterior: number | null;
+  alvos_medidos: number;
+  alvos_medidos_anterior: number;
+  por_modelo: GastoDoModelo[];
+};
+
 export type Invariante = { invariante: string; ok: boolean; linhas: number; erro: string | null; rodado_em: string };
 
 export type PainelTecnico = {
@@ -52,6 +66,8 @@ export type PainelTecnico = {
   jobs: { total: number; por_tipo: TipoDeJob[] };
   formatos: Formato[];
   gatilhos: Gatilho[];
+  /** Banco ainda sem a 20261103_14: `null`, e a tela não mostra a seção. */
+  custo: Custo | null;
   invariantes: Invariante[];
   atividade: {
     ultimo_job_iniciado_em: string | null;
@@ -86,6 +102,7 @@ export function lerPainel(bruto: unknown): PainelTecnico | null {
   const fila = obj(b.fila);
   const jobs = obj(b.jobs);
   const ativ = obj(b.atividade);
+  const custo = b.custo && typeof b.custo === "object" && !Array.isArray(b.custo) ? obj(b.custo) : null;
   return {
     gerado_em: texto(b.gerado_em),
     janela_horas: num(b.janela_horas),
@@ -133,6 +150,24 @@ export function lerPainel(bruto: unknown): PainelTecnico | null {
       estado: ESTADOS.includes(g.estado as EstadoDoGatilho) ? (g.estado as EstadoDoGatilho) : "sem_dado",
       detalhe: texto(g.detalhe),
     })),
+    custo: custo && {
+      tokens_por_alvo: numOuNulo(custo.tokens_por_alvo),
+      tokens_por_alvo_anterior: numOuNulo(custo.tokens_por_alvo_anterior),
+      alvos_medidos: num(custo.alvos_medidos),
+      alvos_medidos_anterior: num(custo.alvos_medidos_anterior),
+      por_modelo: Object.entries(obj(custo.por_modelo))
+        .map(([modelo, g]) => {
+          const gasto = obj(g);
+          return {
+            modelo,
+            chamadas: num(gasto.chamadas),
+            tokens_entrada: num(gasto.tokens_entrada),
+            tokens_saida: num(gasto.tokens_saida),
+            caracteres: num(gasto.caracteres),
+          };
+        })
+        .sort((a, b) => b.tokens_entrada + b.tokens_saida - (a.tokens_entrada + a.tokens_saida) || a.modelo.localeCompare(b.modelo)),
+    },
     invariantes: lista(b.invariantes).map((i) => ({
       invariante: texto(i.invariante, "?"),
       ok: i.ok === true,
@@ -175,6 +210,14 @@ export function formatarDuracao(segundos: number | null): string {
 
 export function formatarMinutos(min: number | null): string {
   return min === null ? "—" : formatarDuracao(min * 60);
+}
+
+/** "12,3 mil", "1,2 mi": tokens em ordem de grandeza legível. Nulo é traço, não zero. */
+export function formatarTokens(n: number | null): string {
+  if (n === null || !Number.isFinite(n)) return "—";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mi`;
+  if (n >= 1_000) return `${(n / 1_000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil`;
+  return Math.round(n).toLocaleString("pt-BR");
 }
 
 export function formatarPercentual(pct: number | null): string {
