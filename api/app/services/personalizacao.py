@@ -28,8 +28,8 @@ from app.services.gemini_http import gemini_generate
 from app.services.llm import JsonLLMService, load_prompt
 from app.services.media_contract import (
     MEDIA_PIPELINE_VERSION,
-    PRESENTATION_DESIGN_VERSION,
-    PRESENTATION_ENGINE_VERSION,
+    SOURCE_HASH_PRESENTATION_DESIGN_VERSION,
+    SOURCE_HASH_PRESENTATION_ENGINE_VERSION,
 )
 from app.services.media_pipeline import MultiOutputPipeline
 from app.services.roteamento_ia import rota_de_menor_ativa
@@ -2115,8 +2115,9 @@ def _build_source_hash(
     payload: dict[str, Any] = {
         "pipeline_version": _PERSONALIZACAO_PIPELINE_VERSION,
         "content_enrichment_schema": _CONTENT_ENRICHMENT_SCHEMA_VERSION,
-        "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
-        "presentation_design_version": PRESENTATION_DESIGN_VERSION,
+        # Congeladas: ver SOURCE_HASH_PRESENTATION_* em media_contract.py.
+        "presentation_engine_version": SOURCE_HASH_PRESENTATION_ENGINE_VERSION,
+        "presentation_design_version": SOURCE_HASH_PRESENTATION_DESIGN_VERSION,
         "classe_id": classe_id,
         "topico_id": topico_id,
         "conteudo_id": conteudo_id,
