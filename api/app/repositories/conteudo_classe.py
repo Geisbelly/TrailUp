@@ -53,6 +53,16 @@ class ConteudoClasseRepository:
         return [str(row._mapping["aluno_id"]) for row in result if row._mapping.get("aluno_id") is not None]
 
     async def listar_alunos_classe_com_perfil_dominante(self, classe_id: int) -> list[dict[str, Any]]:
+        """Alunos da turma com o perfil principal e o secundario.
+
+        Principal e secundario sao o 1o e o 2o da MESMA ordenacao
+        (`afinidade DESC NULLS LAST, nome ASC`), entao os dois nunca empatam no
+        mesmo perfil e o principal continua identico ao que sempre foi -- o
+        console porta esta ordenacao 1:1 (`contarAlunosPorPerfilDominante`).
+        Aluno sem linha em `aluno_perfil` conta como `mastermind` e nao tem
+        secundario (`perfil_secundario` = None); aluno com uma linha so tambem
+        fica sem secundario.
+        """
         result = await self.session.execute(
             text(
                 """
@@ -77,11 +87,15 @@ class ConteudoClasseRepository:
                 SELECT
                   at.aluno_id,
                   po.perfil_nome,
-                  po.afinidade
+                  po.afinidade,
+                  ps.perfil_nome AS perfil_secundario_nome
                 FROM alunos_turma at
                 LEFT JOIN perfis_ordenados po
                   ON po.aluno_id = at.aluno_id
                  AND po.rn = 1
+                LEFT JOIN perfis_ordenados ps
+                  ON ps.aluno_id = at.aluno_id
+                 AND ps.rn = 2
                 ORDER BY at.aluno_id
                 """
             ),
@@ -93,14 +107,90 @@ class ConteudoClasseRepository:
             if aluno_id is None:
                 continue
             perfil_key = self._normalize_profile_key(str(row.get("perfil_nome") or "mastermind"))
+            secundario_nome = row.get("perfil_secundario_nome")
             alunos.append(
                 {
                     "aluno_id": str(aluno_id),
                     "perfil_dominante": perfil_key,
+                    "perfil_secundario": (
+                        self._normalize_profile_key(str(secundario_nome))
+                        if secundario_nome
+                        else None
+                    ),
                     "afinidade": float(row.get("afinidade") or 0),
                 }
             )
         return alunos
+
+    async def mapear_topicos_sem_base_por_perfil(
+        self,
+        *,
+        classe_id: int,
+        perfis: list[str],
+    ) -> dict[str, list[int]]:
+        """Por perfil pedido, os topicos da turma em que falta base desse perfil.
+
+        "Falta" e' algum (topico, conteudo) -- ou o topico sem conteudo, que e'
+        como `_build_targets` monta o escopo -- sem linha de base
+        (`conteudo_personalizado` com `aluno_id IS NULL`) e sem target de base
+        ainda por fazer num job aberto. O segundo filtro e' o que impede duas
+        matriculas seguidas do mesmo perfil novo de enfileirarem duas geracoes.
+        Base existente com status de falha nao conta como falta: quem refaz
+        falha e' o retry/class-delta, nao a matricula.
+        """
+        normalizados = sorted({self._normalize_profile_key(p) for p in perfis if p})
+        if not normalizados:
+            return {}
+        result = await self.session.execute(
+            text(
+                """
+                WITH escopo AS (
+                  SELECT t.id AS topico_id, c.id AS conteudo_id
+                  FROM topicos t
+                  LEFT JOIN conteudos c ON c.topico_id = t.id
+                  WHERE t.classe_id = :classe_id
+                ),
+                perfis AS (
+                  SELECT unnest(CAST(:perfis AS text[])) AS chave
+                )
+                SELECT DISTINCT p.chave, e.topico_id
+                FROM perfis p
+                CROSS JOIN escopo e
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM conteudo_personalizado base
+                    WHERE base.aluno_id IS NULL
+                      AND base.classe_id = :classe_id
+                      AND base.topico_id = e.topico_id
+                      AND base.conteudo_id IS NOT DISTINCT FROM e.conteudo_id
+                      AND base.brainhex_profile_key = p.chave
+                  )
+                  AND NOT EXISTS (
+                    SELECT 1
+                    FROM personalizacao_job_targets tg
+                    JOIN personalizacao_jobs j ON j.id = tg.job_id
+                    WHERE j.classe_id = :classe_id
+                      AND j.status IN ('pending', 'processing', 'partial')
+                      AND tg.aluno_id IS NULL
+                      AND tg.media_kind IS NULL
+                      AND tg.status IN ('pending', 'processing')
+                      AND tg.topico_id = e.topico_id
+                      AND tg.conteudo_id IS NOT DISTINCT FROM e.conteudo_id
+                      AND tg.brainhex_profile_key = p.chave
+                  )
+                ORDER BY p.chave, e.topico_id
+                """
+            ),
+            {"classe_id": classe_id, "perfis": normalizados},
+        )
+        faltando: dict[str, list[int]] = {}
+        for row in result.mappings():
+            chave = row.get("chave")
+            topico_id = row.get("topico_id")
+            if chave is None or topico_id is None:
+                continue
+            faltando.setdefault(str(chave), []).append(int(topico_id))
+        return faltando
 
     async def resolve_topico_ids_por_conteudos(self, conteudo_ids: list[int]) -> list[int]:
         if not conteudo_ids:

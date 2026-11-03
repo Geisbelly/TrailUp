@@ -10,7 +10,7 @@ import httpx
 
 from app.core.settings import Settings
 from app.services.audio import gerar_mp3_gtts, gerar_mp3_openai_tts
-from app.services.gemini_http import gemini_generate_url, gemini_headers
+from app.services.gemini_http import gemini_generate
 from app.services.llm import JsonLLMService
 from app.services.media_contract import (
     CONTENT_ENRICHMENT_PROVIDER,
@@ -169,7 +169,6 @@ async def gerar_audio_gemini_tts(
 
     if settings.gemini_api_key:
         model_name = str(getattr(settings, "gemini_model_tts", "") or "").strip() or "gemini-2.5-flash-preview-tts"
-        url = gemini_generate_url(model_name)
         if speaker_secundario and nome_speaker_principal:
             nome_secundario, voz_secundaria = speaker_secundario
             speech_config = {
@@ -197,10 +196,9 @@ async def gerar_audio_gemini_tts(
         }
 
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(url, json=body, headers=gemini_headers(settings.gemini_api_key))
-                response.raise_for_status()
-                payload = response.json()
+            payload = await gemini_generate(
+                settings=settings, model=model_name, body=body, timeout=60.0, origem="tts_guardiao"
+            )
             for mime, audio_bytes in _extract_inline_audio_parts(payload):
                 if mime in {"audio/mpeg", "audio/mp3", "audio/x-mp3"}:
                     return audio_bytes
@@ -883,7 +881,6 @@ async def gerar_imagem_slide(
         return None
 
     model_name = str(getattr(settings, "gemini_model_image", "") or "").strip() or "gemini-2.0-flash-preview-image-generation"
-    url = gemini_generate_url(model_name)
     body = {
         "contents": [
             {
@@ -900,43 +897,31 @@ async def gerar_imagem_slide(
         "generationConfig": {"responseModalities": ["TEXT", "IMAGE"]},
     }
 
-    delays = [5, 10, 15]
-
+    # O 429 era tratado aqui com sleep de 5/10/15 s na MESMA chave; agora quem
+    # trata e o rodizio de `gemini_generate` (outra chave na hora, a esgotada
+    # fica em cooldown). `retries` fica na assinatura por compatibilidade.
+    del retries
     try:
-        for attempt in range(retries):
-            try:
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    response = await client.post(url, json=body, headers=gemini_headers(settings.gemini_api_key))
-
-                if response.status_code == 429:
-                    delay = delays[attempt] if attempt < len(delays) else delays[-1]
-                    await asyncio.sleep(delay)
-                    continue
-
-                response.raise_for_status()
-                payload = response.json()
-
-                candidates = payload.get("candidates") or []
-                for candidate in candidates:
-                    if not isinstance(candidate, dict):
-                        continue
-                    content = candidate.get("content") if isinstance(candidate.get("content"), dict) else {}
-                    parts = content.get("parts") if isinstance(content.get("parts"), list) else []
-                    for part in parts:
-                        if not isinstance(part, dict):
-                            continue
-                        inline = part.get("inlineData") if isinstance(part.get("inlineData"), dict) else {}
-                        if not inline:
-                            inline = part.get("inline_data") if isinstance(part.get("inline_data"), dict) else {}
-                        if inline and inline.get("data"):
-                            return str(inline["data"])
-
-                return None
-            except httpx.HTTPStatusError:
-                raise
-            except Exception:
-                return None
+        payload = await gemini_generate(
+            settings=settings, model=model_name, body=body, timeout=60.0, origem="imagem_slide"
+        )
     except Exception:
         return None
+
+    candidates = payload.get("candidates") or []
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        content = candidate.get("content") if isinstance(candidate.get("content"), dict) else {}
+        parts = content.get("parts") if isinstance(content.get("parts"), list) else []
+        for part in parts:
+            if not isinstance(part, dict):
+                continue
+            inline = part.get("inlineData") if isinstance(part.get("inlineData"), dict) else {}
+            if not inline:
+                inline = part.get("inline_data") if isinstance(part.get("inline_data"), dict) else {}
+            if inline and inline.get("data"):
+                return str(inline["data"])
+    return None
 
     return None

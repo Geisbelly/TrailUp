@@ -1,13 +1,12 @@
 import json
 import logging
-import re
-import time
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
 from pydantic import BaseModel
 
 from app.core.settings import Settings
+from app.services import gemini_chaves
 from app.services.roteamento_ia import (
     MENSAGEM_IA_INDISPONIVEL,
     IAIndisponivelParaMenor,
@@ -31,12 +30,6 @@ except ImportError:  # pragma: no cover
 logger = logging.getLogger(__name__)
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "agent" / "prompts"
 
-# Cota do free tier do Gemini e por (chave, modelo) — reproduzido em producao:
-# GEMINI_API_KEY com varias chaves (separadas por virgula/ponto-e-virgula,
-# mesmo formato de content_enrichment.py) sendo passada INTEIRA como uma
-# unica chave pro ChatGoogleGenerativeAI, gerando 401 UNAUTHENTICATED
-# (ACCESS_TOKEN_TYPE_UNSUPPORTED) mesmo com chaves validas configuradas.
-_GEMINI_KEY_QUOTA_COOLDOWN_SEC = 300
 # Uma tentativa so por (chave, modelo): quem tenta de novo e a rotacao abaixo.
 # O default do ChatGoogleGenerativeAI e 6 tentativas com backoff de 1+2+4+8+16 s
 # para 429/5xx, entao cada chave sem cota custava ~34 s antes de a rotacao ver o
@@ -45,77 +38,16 @@ _GEMINI_KEY_QUOTA_COOLDOWN_SEC = 300
 # sem cota nos 3 modelos vivos, uma chamada passava de 6 min e a fila desistia
 # no teto de 300 s. `1`, nao `0`: `0` volta ao default do SDK do Google.
 _GEMINI_MAX_RETRIES = 1
-_gemini_key_unavailable_until: dict[tuple[str, str], float] = {}
-_gemini_key_rotation_index: int = 0
 
-
-def _parse_gemini_keys(raw: str) -> list[str]:
-    seen: set[str] = set()
-    keys: list[str] = []
-    for part in re.split(r"[,;]", raw or ""):
-        key = part.strip()
-        if key and key not in seen:
-            seen.add(key)
-            keys.append(key)
-    return keys
-
-
-def _is_gemini_quota_error(exc: BaseException) -> bool:
-    status = str(getattr(exc, "status_code", "") or getattr(exc, "code", "") or "").strip()
-    text = str(exc).lower()
-    if status in {"429", "RESOURCE_EXHAUSTED"}:
-        return True
-    return "resource_exhausted" in text or "quota" in text
-
-
-def _is_gemini_model_unavailable_error(exc: BaseException) -> bool:
-    """404/401 de modelo aposentado ou indisponivel pra novos usuarios — ver
-    mesma checagem em content_enrichment.py e no microservice."""
-    status = str(getattr(exc, "status_code", "") or getattr(exc, "code", "") or "").strip()
-    text = str(exc).lower()
-    if status in {"404", "401", "NOT_FOUND", "UNAUTHENTICATED"}:
-        return True
-    return (
-        "not_found" in text
-        or "unauthenticated" in text
-        or "no longer available" in text
-    )
-
-
-def _is_gemini_transient_error(exc: BaseException) -> bool:
-    """503 UNAVAILABLE ('high demand') e 5xx em geral sao sobrecarga
-    transitoria do servidor do Gemini, nao um problema da conta/chave — ver
-    mesma checagem em content_enrichment.py e no microservice."""
-    status = str(getattr(exc, "status_code", "") or getattr(exc, "code", "") or "").strip()
-    text = str(exc).lower()
-    if status in {"500", "502", "503", "504", "UNAVAILABLE"}:
-        return True
-    return (
-        "unavailable" in text
-        or "overloaded" in text
-        or "high demand" in text
-        or "try again later" in text
-    )
-
-
-def _pick_available_gemini_key(api_keys: list[str], model: str) -> str | None:
-    """Round-robin entre as chaves que nao estao em cooldown de cota PARA ESSE
-    MODELO; None se todas estiverem indisponiveis no momento."""
-    global _gemini_key_rotation_index
-    now = time.time()
-    for offset in range(len(api_keys)):
-        index = (_gemini_key_rotation_index + offset) % len(api_keys)
-        key = api_keys[index]
-        if now >= _gemini_key_unavailable_until.get((key, model), 0.0):
-            _gemini_key_rotation_index = index
-            return key
-    return None
+# Chaves, cooldown e classificacao de erro moram em `gemini_chaves`, um pool so
+# para a API inteira (ver o docstring de la). GEMINI_API_KEY com varias chaves
+# separadas por virgula/ponto-e-virgula: passada INTEIRA como uma chave so, o
+# Gemini responde 401 UNAUTHENTICATED (ACCESS_TOKEN_TYPE_UNSUPPORTED).
+_parse_gemini_keys = gemini_chaves.parse_lista
 
 
 def reset_gemini_llm_circuit() -> None:
-    global _gemini_key_unavailable_until, _gemini_key_rotation_index
-    _gemini_key_unavailable_until = {}
-    _gemini_key_rotation_index = 0
+    gemini_chaves.reset()
 
 
 def load_prompt(filename: str) -> str:
@@ -270,10 +202,11 @@ class JsonLLMService:
         candidate_models = [primary_model] + [
             item for item in self._gemini_fallback_models() if item != primary_model
         ]
+        cooldown_sec, cooldown_diario_sec = gemini_chaves.cooldowns_de(self.settings)
         last_exc: Exception | None = None
         for model in candidate_models:
             for _ in range(len(api_keys)):
-                key = _pick_available_gemini_key(api_keys, model)
+                key = gemini_chaves.escolher_chave(api_keys, model)
                 if key is None:
                     break
                 client = self._get_gemini_client(model, key)
@@ -283,12 +216,13 @@ class JsonLLMService:
                     return await client.ainvoke(messages)
                 except Exception as exc:
                     last_exc = exc
-                    if (
-                        _is_gemini_quota_error(exc)
-                        or _is_gemini_model_unavailable_error(exc)
-                        or _is_gemini_transient_error(exc)
+                    if gemini_chaves.marcar_falha(
+                        key,
+                        model,
+                        exc,
+                        cooldown_sec=cooldown_sec,
+                        cooldown_diario_sec=cooldown_diario_sec,
                     ):
-                        _gemini_key_unavailable_until[(key, model)] = time.time() + _GEMINI_KEY_QUOTA_COOLDOWN_SEC
                         continue
                     raise
         if last_exc is not None:

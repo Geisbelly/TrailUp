@@ -141,9 +141,21 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
 
 3. **Geração por `tópico × perfil`.** O conteúdo cadastrado pelo professor é
    dividido por **tópico**; para **cada tópico** geram-se **texto e áudio** para
-   **cada um dos 7 perfis** e persiste-se no Supabase. O `source_hash` inclui
+   **cada perfil que a turma tem** e persiste-se no Supabase. O `source_hash` inclui
    `_PERSONALIZACAO_PIPELINE_VERSION`; incremente essa versão quando prompts,
    enriquecimento, áudio ou apresentações precisarem ser regenerados.
+
+   **"Perfil que a turma tem"** = principal **ou** secundário de algum aluno
+   matriculado: 1º e 2º de `ORDER BY afinidade DESC NULLS LAST, nome ASC`
+   (`listar_alunos_classe_com_perfil_dominante`); aluno sem `aluno_perfil` conta
+   como `mastermind`. Turma vazia não gera base. Pedido explícito de perfil
+   (`brainhex_profile_keys`) vale como veio. O class-delta do banco ainda emite os
+   7 targets; o worker pula (`skipped`, `perfil_sem_aluno_na_turma`) os que
+   ninguém tem (`_pular_base_de_perfil_ausente`). Matrícula com perfil novo
+   enfileira a base dele (`_garantir_base_dos_perfis_do_aluno`) — a geração
+   continua antecipada, **não** é sob demanda — e o alvo desse aluno espera a
+   base e copia dela (`_base_do_perfil_na_fila`) em vez de gerar uma linha só
+   dele: sem isso o primeiro aluno de um perfil novo custava duas gerações.
 
 4. **Contraste WCAG AAA por ajuste cirúrgico.** Mantém a cor-assinatura de cada
    perfil, mas garante AAA: eleva o accent quando muito escuro, alpha mínimo em
@@ -320,6 +332,16 @@ Cada perfil carrega:
   A listagem no console também não passa mais pela API: o professor lê
   `personalizacao_jobs` direto, autorizado por
   `personalizacao_jobs_professor_sel` (via `app_classes_do_professor()`).
+
+  **Uma base por vez, entre jobs.** Coalescer no enfileiramento não basta:
+  pedido manual, retry e class-delta criam jobs distintos com o mesmo alvo. O
+  worker só marca um target `processing` se nenhum outro da mesma base
+  (turma × tópico × conteúdo × perfil × aluno × `media_kind`) estiver
+  `processing` recente (`tomar_target_para_processar`, com
+  `pg_advisory_xact_lock` — de transação, vale pelo pooler). Quem acha a base
+  ocupada fica `pending` sem gastar tentativa. Sem isso, em 02/11, a base do
+  achiever da turma 68 foi gerada 5 vezes do zero e um job invalidava o outro
+  (`stale_generation`). Prova da corrida: `test_e2e_base_um_job_por_vez.py`.
 
   **KPIs da fila** (#14, `20261102_12`): a RPC `personalizacao_kpis_operacionais`
   (`SECURITY INVOKER`, card "Fila de personalização" no painel da turma) agrega latência,

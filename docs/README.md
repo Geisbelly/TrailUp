@@ -52,6 +52,8 @@ Documentação que não pertence a um único serviço:
   licença e elegibilidade das fontes candidatas à indexação.
 - **[Triagem corpus × pesquisa](./rag/triagem-corpus.md)** — o que vai ao índice, o que fica fora e a reconciliação #63 × #165.
 - **[Avaliação dos documentos da Evidence Base](./rag/avaliacao-documentos.md)** — os 47 artigos da planilha de leituras, um a um: decisão, destino (corpus, texto derivado, citação) e licença (#218).
+- **[Regras derivadas da Evidence Base](./rag/regras-derivadas.md)** — 12 sínteses com metadados pedagógicos, proveniência e limites de aplicação (#218).
+- **[Golden set da Evidence Base](./rag/golden-set-documentos-v1.md)** — 30 perguntas, respostas esperadas e fontes aceitáveis para validar as respostas do RAG (#218, #75).
 
 
 ## Índice por projeto
