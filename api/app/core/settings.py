@@ -69,6 +69,14 @@ class Settings(BaseSettings):
     # caminhos falhavam sempre (fallback_factory), sem nem tentar o Gemini.
     llm_provider: str = "gemini"  # "openai" | "gemini"
 
+    # #195: menor de 18 (ou sem data de nascimento) so na OpenAI. Desligado:
+    # a conta da OpenAI esta sem credito e a rota derrubava todo chat de aluno
+    # e a Lumi. Ver `app/services/roteamento_ia.py`.
+    ia_rota_de_menor_ativa: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("ia_rota_de_menor_ativa", "IA_ROTA_DE_MENOR_ATIVA"),
+    )
+
     openai_api_key: str | None = None
     # Vector Store gerenciado pela OpenAI para o corpus público do RAG. A
     # aplicação usa o ID apenas no backend; nunca o expõe ao cliente.

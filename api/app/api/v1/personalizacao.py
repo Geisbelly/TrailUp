@@ -101,7 +101,7 @@ from app.services.pseudonimizacao import (
     restaurar_nome,
 )
 from app.services.rag_observabilidade import gravar_buscas_rag, iniciar_coleta_rag
-from app.services.roteamento_ia import rota_ia_para_alunos, rota_ia_se_tiver_aluno
+from app.services.roteamento_ia import provedor_efetivo, rota_ia_para_alunos, rota_ia_se_tiver_aluno
 from app.services.storage import BUCKET, SupabaseStorage, build_material_url
 from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
 from app.services.sugestao_metrica import montar_registros_do_log, resumo_efetividade
@@ -1563,11 +1563,18 @@ async def conversar_com_mentor_personalizacao(
     def _sem_nome(texto: object) -> object:
         return pseudonimizar_nome_proprio(texto, *nomes_do_aluno) if isinstance(texto, str) else texto
 
-    # #195: menor (ou sem data de nascimento) -> so OpenAI, inclusive o juiz de
-    # grounding; sem Gemini. OpenAI fora -> fallback local do guia.
+    # Provedor atual (Gemini). So com IA_ROTA_DE_MENOR_ATIVA ligada (#195) o
+    # menor vai a OpenAI, inclusive o juiz de grounding; OpenAI fora -> fallback
+    # local do guia.
     # #67: as buscas do RAG desta requisição vão para `ia_decision_logs`, sem texto.
     buscas_rag = iniciar_coleta_rag()
+    settings = request.app.state.settings
     async with rota_ia_para_alunos(session, [aluno_id]):
+        # Lido aqui dentro: fora do bloco a rota ja foi desfeita.
+        provedor_do_chat = provedor_efetivo(None, settings.llm_provider)
+        modelo_do_chat = (
+            settings.openai_model_default if provedor_do_chat == "openai" else settings.active_model_default
+        )
         mentor_result = await gerar_validado(
             llm,
             prompt_name="mentor_personalizacao_chat.txt",
@@ -1637,7 +1644,6 @@ async def conversar_com_mentor_personalizacao(
                 "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
             },
             on_violation=_auditar_chat,
-            provider="openai",
             use_rag=bool(request.app.state.settings.openai_rag_enabled),
         )
 
@@ -1665,8 +1671,8 @@ async def conversar_com_mentor_personalizacao(
             conteudo_id=payload.conteudo_id,
             source="chat",
             stage="mentor_personalizacao_chat",
-            provider="openai",
-            model_name=request.app.state.settings.openai_model_default,
+            provider=provedor_do_chat,
+            model_name=modelo_do_chat,
             trigger_event=payload.escopo,
             input_summary={
                 "mensagem": payload.mensagem,
