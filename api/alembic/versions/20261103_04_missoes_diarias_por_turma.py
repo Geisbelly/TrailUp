@@ -11,7 +11,11 @@ depends_on = None
 
 
 GERADOR = r"""
-CREATE OR REPLACE FUNCTION public.fn_missao_diaria_gerar(p_dia date DEFAULT NULL)
+-- A assinatura e' (date, uuid) desde 20261102_14. Recriar so' (date) deixaria as duas e toda
+-- chamada com uma data ficaria ambigua (derrubou a subida da API em 03/11). Uma (date) que
+-- tenha sobrado sai antes.
+DROP FUNCTION IF EXISTS public.fn_missao_diaria_gerar(date);
+CREATE OR REPLACE FUNCTION public.fn_missao_diaria_gerar(p_dia date DEFAULT NULL, p_aluno uuid DEFAULT NULL)
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -40,6 +44,7 @@ BEGIN
     SELECT DISTINCT ca.classe_id, NULL::text AS perfil
       FROM public.classe_aluno ca
      WHERE ca.classe_id IS NOT NULL AND ca.aluno_id IS NOT NULL
+       AND (p_aluno IS NULL OR ca.aluno_id = p_aluno)  -- troca de perfil (20261102_14)
   LOOP
     SELECT count(*)::int INTO v_ativ
       FROM public.atividades a
@@ -105,7 +110,7 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.fn_missao_diaria_gerar(date) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fn_missao_diaria_gerar(date, uuid) FROM PUBLIC, anon, authenticated;
 
 -- 10 pontos e 2 moedas por meta diária concluída: prêmio modesto, mas visível.
 UPDATE public.eventos_pontuacao
