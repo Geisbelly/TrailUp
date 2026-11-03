@@ -175,10 +175,17 @@ describe("resolveMaterialUrl (porte de build_material_url)", () => {
     );
   });
 
-  it("outro bucket (fonte do professor) fica na URL publica direta", () => {
-    // O gateway so' conhece caminhos de `vw_material_storage_paths`.
-    expect(resolveMaterialUrl("https://xyz.supabase.co", "conteudos", "prof/slide.pptx")).toBe(
-      "https://xyz.supabase.co/storage/v1/object/public/conteudos/prof/slide.pptx"
+  it("fonte do professor (bucket conteudos, privado) tambem vai pro gateway, como no Python", () => {
+    // A URL publica de `conteudos` da' 400 desde a 20261024_10.
+    const uid = "b49f2e21-a6f9-4c8d-9533-5a32bb219754";
+    expect(resolveMaterialUrl("https://xyz.supabase.co", "conteudos", `${uid}/114/slide.pptx`)).toBe(
+      `https://xyz.supabase.co/functions/v1/storage-redirect?path=${uid}/114/slide.pptx`
+    );
+  });
+
+  it("bucket publico fica na URL publica direta", () => {
+    expect(resolveMaterialUrl("https://xyz.supabase.co", "publico", "a/b.png")).toBe(
+      "https://xyz.supabase.co/storage/v1/object/public/publico/a/b.png"
     );
   });
 
@@ -201,7 +208,8 @@ describe("URL publica antiga de conteudo_aluno (bucket privado, #195)", () => {
         "https://xyz.supabase.co/storage/v1/object/public/conteudo_aluno/brainhex/m/classe-1/a%20b.md?t=1#x"
       )
     ).toBe("brainhex/m/classe-1/a b.md");
-    expect(materialPathDaUrlPublica("https://xyz.supabase.co/storage/v1/object/public/conteudos/a.md")).toBeNull();
+    expect(materialPathDaUrlPublica("https://xyz.supabase.co/storage/v1/object/public/conteudos/u/a.md")).toBe("u/a.md");
+    expect(materialPathDaUrlPublica("https://xyz.supabase.co/storage/v1/object/public/publico/a.md")).toBeNull();
     expect(materialPathDaUrlPublica("brainhex/a.md")).toBeNull();
     expect(materialPathDaUrlPublica(null)).toBeNull();
   });
