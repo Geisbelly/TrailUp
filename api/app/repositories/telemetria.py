@@ -324,7 +324,8 @@ class TelemetriaRepository:
         que alimenta o pipeline de analise. Nesse caso grava o payload inteiro,
         como antes - o comportamento degrada, nao quebra.
 
-        Sem R2 configurado, o comportamento e identico ao anterior.
+        Sem Supabase configurado (a URL de PUT vem da `storage-upload-url`), o
+        comportamento e identico ao anterior.
 
         O ponteiro LEVA o `cliente` junto. "Nada le de volta" deixou de valer:
         `metricas_estudo_coortes` (20261102_03) le `payload -> 'cliente'`
@@ -338,7 +339,7 @@ class TelemetriaRepository:
 
         caminho = f"telemetria/lotes/{datetime.now(UTC):%Y/%m/%d}/{batch_id}.json"
         try:
-            await enviar_para_r2(
+            bucket = await enviar_para_r2(
                 cfg,
                 caminho,
                 json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8"),
@@ -348,7 +349,7 @@ class TelemetriaRepository:
             logger.warning("[telemetria] payload nao foi para o R2 (%s): %s", caminho, exc)
             return payload
 
-        ponteiro: dict[str, Any] = {"_r2": caminho, "_bucket": cfg.bucket}
+        ponteiro: dict[str, Any] = {"_r2": caminho, "_bucket": bucket}
         if isinstance(payload.get("cliente"), dict):
             ponteiro["cliente"] = payload["cliente"]
         return ponteiro
@@ -448,7 +449,7 @@ class TelemetriaRepository:
             f"telemetria/eventos/{datetime.now(UTC):%Y/%m/%d}/{uuid4()}.json"
         )
         try:
-            await enviar_para_r2(
+            bucket = await enviar_para_r2(
                 cfg,
                 caminho,
                 json.dumps(originais, ensure_ascii=False, default=str).encode("utf-8"),
@@ -459,7 +460,7 @@ class TelemetriaRepository:
             return originais
 
         return [
-            {"_r2": caminho, "_bucket": cfg.bucket, "_i": indice}
+            {"_r2": caminho, "_bucket": bucket, "_i": indice}
             for indice in range(len(originais))
         ]
 

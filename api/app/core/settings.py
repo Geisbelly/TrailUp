@@ -40,22 +40,9 @@ class Settings(BaseSettings):
             "SUPABASE_SERVICE_ROLE_KEY",
         ),
     )
-    # R2: destino do que nao precisa estar no Postgres nem no Supabase Storage.
-    # As quatro sao exigidas juntas (ver ler_config_r2) - configuracao pela
-    # metade nao pode virar escrita pela metade.
-    r2_account_id: str | None = Field(
-        default=None, validation_alias=AliasChoices("r2_account_id", "R2_ACCOUNT_ID")
-    )
-    r2_access_key_id: str | None = Field(
-        default=None, validation_alias=AliasChoices("r2_access_key_id", "R2_ACCESS_KEY_ID")
-    )
-    r2_secret_access_key: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("r2_secret_access_key", "R2_SECRET_ACCESS_KEY"),
-    )
-    r2_bucket: str | None = Field(
-        default=None, validation_alias=AliasChoices("r2_bucket", "R2_BUCKET")
-    )
+    # R2: a API nao tem credencial propria (#76). URL de PUT/DELETE vem da Edge
+    # Function `storage-upload-url`, com `supabase_url` + `supabase_service_key`;
+    # `R2_*` no ambiente sao ignoradas (`extra="ignore"`).
 
     supabase_jwt_secret: str
     supabase_jwt_audience: str | None = "authenticated"

@@ -1,4 +1,4 @@
-// URL assinada de UPLOAD no R2, para os servicos que geram arquivo.
+// URL assinada de UPLOAD (ou de remocao) no R2, para os servicos que geram arquivo.
 //
 // As credenciais do R2 ficam so' aqui (secrets das Edge Functions). Quem gera
 // arquivo (BrainHexPDF, API, microservice) chama esta funcao com a chave de
@@ -9,13 +9,18 @@
 //
 //   POST /functions/v1/storage-upload-url
 //   Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>
-//   { "path": "brainhex/<perfil>/classe-N/.../material-1.html" }
-//   -> 200 { url, metodo: "PUT", expira_em_segundos, url_de_leitura }
+//   { "path": "brainhex/<perfil>/classe-N/.../material-1.html", "metodo"?: "PUT" | "DELETE" }
+//   -> 200 { url, metodo, bucket, expira_em_segundos, url_de_leitura }
+//
+// `metodo` volta na resposta para quem pediu DELETE conferir que a funcao
+// publicada ja' sabe assinar DELETE: a versao anterior ignorava o campo e
+// devolvia uma URL de PUT. `bucket` vai para o ponteiro da telemetria
+// (`_bucket`), que a retencao confere antes de apagar.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 import { presignR2GetUrl } from "../storage-redirect/r2Presign.ts";
-import { chamadorAutorizado, lerPedido, urlDeLeitura } from "./pedido.ts";
+import { bearerDe, chamadorAutorizado, chaveDeServicoDoProjeto, lerPedido, urlDeLeitura } from "./pedido.ts";
 
 // Janela curta: a URL so' precisa viver o tempo de um upload. Dentro da janela
 // a assinatura e' a mesma para o mesmo caminho; a validade e' o dobro, senao a
@@ -30,10 +35,26 @@ function json(status: number, corpo: Record<string, unknown>): Response {
   });
 }
 
+// Chave que o projeto ja' confirmou como de servico, para nao perguntar ao Auth
+// a cada lote de telemetria. Curto: chave revogada para de passar em minutos.
+const CONFIRMADA_POR_MS = 5 * 60 * 1000;
+const confirmadas = new Map<string, number>();
+
+async function autorizado(authorization: string | null): Promise<boolean> {
+  if (chamadorAutorizado(authorization, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))) return true;
+  const token = bearerDe(authorization);
+  if (!token) return false;
+  const agora = Date.now();
+  if ((confirmadas.get(token) ?? 0) > agora) return true;
+  if (!(await chaveDeServicoDoProjeto(token, Deno.env.get("SUPABASE_URL") ?? ""))) return false;
+  confirmadas.set(token, agora + CONFIRMADA_POR_MS);
+  return true;
+}
+
 serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "Use POST." });
 
-  if (!chamadorAutorizado(req.headers.get("authorization"), Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))) {
+  if (!(await autorizado(req.headers.get("authorization")))) {
     return json(401, { error: "So' a chave de servico pede URL de upload." });
   }
 
@@ -67,12 +88,13 @@ serve(async (req: Request) => {
     agoraMs: Date.now(),
     janelaSegundos: JANELA_SEGUNDOS,
     validadeSegundos: VALIDADE_SEGUNDOS,
-    metodo: "PUT",
+    metodo: pedido.metodo,
   });
 
   return json(200, {
     url,
-    metodo: "PUT",
+    metodo: pedido.metodo,
+    bucket: bucketR2,
     expira_em_segundos: VALIDADE_SEGUNDOS,
     url_de_leitura: urlDeLeitura(supabaseUrl, pedido.caminho),
   });

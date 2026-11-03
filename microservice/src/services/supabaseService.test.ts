@@ -79,7 +79,7 @@ test("uploadBuffer usa o client injetado via setSupabaseClientForTesting, sem to
   }
 });
 
-test("uploadBuffer sem R2 no bucket conteudo_aluno (privado, #195) devolve a URL do gateway", async () => {
+test("uploadBuffer sem chave de servico no bucket conteudo_aluno (privado, #195) devolve a URL do gateway", async () => {
   const { client, calls } = createFakeSupabaseClient();
   setSupabaseClientForTesting(client);
   const antes = process.env.SUPABASE_URL;
@@ -98,6 +98,118 @@ test("uploadBuffer sem R2 no bucket conteudo_aluno (privado, #195) devolve a URL
     assert.equal(calls.length, 1);
   } finally {
     process.env.SUPABASE_URL = antes ?? "";
+    setSupabaseClientForTesting(null);
+  }
+});
+
+async function comGatewayFalso<T>(
+  responder: (url: string, init?: RequestInit) => Response,
+  fn: (chamadas: string[]) => Promise<T>,
+): Promise<T> {
+  const fetchAntes = globalThis.fetch;
+  const url = process.env.SUPABASE_URL;
+  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const chamadas: string[] = [];
+  process.env.SUPABASE_URL = "https://proj.supabase.co";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "chave-de-servico";
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const alvo = String(input);
+    chamadas.push(`${init?.method ?? "GET"} ${alvo}`);
+    return responder(alvo, init);
+  }) as typeof fetch;
+  try {
+    return await fn(chamadas);
+  } finally {
+    globalThis.fetch = fetchAntes;
+    process.env.SUPABASE_URL = url ?? "";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = chave ?? "";
+  }
+}
+
+const MD = "brainhex/seeker/classe-1/markdown/material-1.md";
+const GATEWAY_MD = `https://proj.supabase.co/functions/v1/storage-redirect?path=${MD}`;
+
+test("uploadBuffer com chave de servico sobe pelo storage-upload-url e nao toca o Storage (#76)", async () => {
+  const { client, calls } = createFakeSupabaseClient();
+  setSupabaseClientForTesting(client);
+  try {
+    await comGatewayFalso(
+      (url) =>
+        url.endsWith("/storage-upload-url")
+          ? new Response(JSON.stringify({ url: "https://r2.test/assinada" }), { status: 200 })
+          : new Response("", { status: 200 }),
+      async (chamadas) => {
+        const url = await uploadBuffer("conteudo_aluno", MD, Buffer.from("# a"), "text/markdown");
+        assert.equal(url, GATEWAY_MD);
+        assert.deepEqual(chamadas, [
+          "POST https://proj.supabase.co/functions/v1/storage-upload-url",
+          "PUT https://r2.test/assinada",
+        ]);
+      },
+    );
+    assert.equal(calls.length, 0);
+  } finally {
+    setSupabaseClientForTesting(null);
+  }
+});
+
+test("uploadBuffer com a funcao nao publicada (404) cai no Storage do Supabase", async () => {
+  const { client, calls } = createFakeSupabaseClient();
+  setSupabaseClientForTesting(client);
+  try {
+    await comGatewayFalso(
+      () => new Response("", { status: 404 }),
+      async () => {
+        assert.equal(await uploadBuffer("conteudo_aluno", MD, Buffer.from("# a"), "text/markdown"), GATEWAY_MD);
+      },
+    );
+    assert.equal(calls.length, 1);
+  } finally {
+    setSupabaseClientForTesting(null);
+  }
+});
+
+test("uploadBuffer com o R2 recusando lanca e nao grava em silencio no Supabase", async () => {
+  const { client, calls } = createFakeSupabaseClient();
+  setSupabaseClientForTesting(client);
+  try {
+    await comGatewayFalso(
+      () => new Response("nao configurado", { status: 500 }),
+      async () => {
+        await assert.rejects(uploadBuffer("conteudo_aluno", MD, Buffer.from("# a"), "text/markdown"));
+      },
+    );
+    assert.equal(calls.length, 0);
+  } finally {
+    setSupabaseClientForTesting(null);
+  }
+});
+
+test("downloadStorageText le pelo gateway antes do Storage, e cai no Storage com 404", async () => {
+  let storageLido = 0;
+  const client = {
+    storage: {
+      from: () => ({
+        download: async () => {
+          storageLido += 1;
+          return { data: { text: async () => "do storage" }, error: null };
+        },
+      }),
+    },
+  } as unknown as SupabaseClient;
+  setSupabaseClientForTesting(client);
+  try {
+    await comGatewayFalso(
+      () => new Response("do gateway", { status: 200 }),
+      async () => assert.equal(await downloadStorageText("conteudo_aluno", MD), "do gateway"),
+    );
+    assert.equal(storageLido, 0);
+    await comGatewayFalso(
+      () => new Response("", { status: 404 }),
+      async () => assert.equal(await downloadStorageText("conteudo_aluno", MD), "do storage"),
+    );
+    assert.equal(storageLido, 1);
+  } finally {
     setSupabaseClientForTesting(null);
   }
 });
