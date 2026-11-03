@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { validarMotivoDeRecusa } from "../missoes/aprovacao";
 import { rotuloDoCriterio } from "../missoes/criterio";
 import {
   contarPendentesDaTurma,
+  JANELA_DE_APROVACAO_DIAS,
   opcoesDeQuantidade,
   pedidoMaisRecente,
   podePedir,
@@ -21,6 +23,7 @@ type Turma = { id: number; descricao: string | null };
 
 const botao = "rounded-full px-[15px] py-2 text-xs font-semibold transition-colors disabled:opacity-60";
 const campo = "rounded-full border border-border bg-card px-3 py-1.5 text-[13px] text-foreground";
+const formatarData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
 function CartaoDaSugestao({ missao, alvo, onDecidir }: { missao: MissaoSugerida; alvo: string | null; onDecidir: (aprovar: boolean, motivo?: string) => Promise<void> }) {
   const [recusando, setRecusando] = useState(false);
@@ -114,7 +117,7 @@ function CartaoDaSugestao({ missao, alvo, onDecidir }: { missao: MissaoSugerida;
  */
 export default function MissoesSugeridas({ turmas }: { turmas: Turma[] }) {
   const classIds = useMemo(() => turmas.map((t) => t.id), [turmas]);
-  const { limites, pendentes, decididas, pedidos, estado, pedir, decidir } = useMissoesSugeridas(classIds);
+  const { limites, pendentes, decididas, historico: itensDoHistorico, pedidos, estado, pedir, decidir } = useMissoesSugeridas(classIds);
   const [classeId, setClasseId] = useState<number | null>(null);
   const [topicoId, setTopicoId] = useState<number | null>(null);
   const [quantidade, setQuantidade] = useState<number | null>(null);
@@ -148,7 +151,10 @@ export default function MissoesSugeridas({ turmas }: { turmas: Turma[] }) {
   const liberado = podePedir(limites, pendentesDaTurma);
   const ultimo = turmaAtual === null ? null : pedidoMaisRecente(pedidos, turmaAtual);
   const situacao = ultimo ? situacaoDoPedido(ultimo) : null;
-  const taxa = taxaDeAprovacao(decididas);
+  const desdeTaxa = Date.now() - JANELA_DE_APROVACAO_DIAS * 86_400_000;
+  const decididasRecentes = decididas.filter((m) => new Date(m.atualizado_em).getTime() >= desdeTaxa);
+  const taxa = taxaDeAprovacao(decididasRecentes);
+  const historico = itensDoHistorico.filter((item) => turmaAtual === null || item.classe_id === turmaAtual);
 
   const fazerPedido = async () => {
     if (turmaAtual === null) return;
@@ -248,18 +254,72 @@ export default function MissoesSugeridas({ turmas }: { turmas: Turma[] }) {
 
       <p className="text-[11.5px] text-muted-foreground">{textoDaTaxa(taxa)}</p>
 
-      {pendentes.length > 0 && (
-        <ul className="flex flex-col gap-3" aria-label="Missões sugeridas aguardando decisão">
-          {pendentes.map((m) => (
-            <CartaoDaSugestao
-              key={m.id}
-              missao={m}
-              alvo={turmas.length > 1 ? nomeDaTurma(m.classe_id) : null}
-              onDecidir={(aprovar, motivo) => decidir(m.id, aprovar, motivo)}
-            />
-          ))}
-        </ul>
-      )}
+      <Tabs defaultValue="pendentes" className="w-full">
+        <TabsList className="h-auto w-fit max-w-full flex-wrap justify-start rounded-full border bg-card p-1.5">
+          <TabsTrigger value="pendentes" className="rounded-full">
+            Pendentes {pendentes.length > 0 && `(${pendentes.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="historico" className="rounded-full">
+            Histórico {historico.length > 0 && `(${historico.length})`}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pendentes" className="mt-3">
+          {pendentes.length > 0 ? (
+            <ul className="flex flex-col gap-3" aria-label="Missões sugeridas aguardando decisão">
+              {pendentes.map((m) => (
+                  <CartaoDaSugestao
+                    key={m.id}
+                    missao={m}
+                    alvo={turmas.length > 1 ? nomeDaTurma(m.classe_id) : null}
+                    onDecidir={(aprovar, motivo) => decidir(m.id, aprovar, motivo)}
+                  />
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-[14px] border border-border px-4 py-3 text-[12.5px] text-muted-foreground">
+              Não há sugestões aguardando decisão.
+            </p>
+          )}
+        </TabsContent>
+
+        <TabsContent value="historico" className="mt-3">
+          {historico.length > 0 ? (
+            <ul className="flex flex-col gap-3" aria-label="Histórico das missões sugeridas pela IA">
+              {historico.map((item) => (
+                <li key={item.id} className="rounded-[18px] border border-border bg-card px-[22px] py-[18px]">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span
+                      className={cn(
+                        "rounded-full px-2.5 py-[3px] text-[10px] font-bold uppercase tracking-[0.04em]",
+                        item.evento === "aprovada"
+                          ? "bg-[hsl(var(--success)/.16)] text-foreground"
+                          : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {item.evento === "aprovada" ? "Aprovada" : "Recusada"}
+                    </span>
+                    {item.missao && <span className="text-[11px] text-muted-foreground">{rotuloDoCriterio(item.missao.criterio)}</span>}
+                    {turmas.length > 1 && <span className="ml-auto text-[11px] text-muted-foreground">{nomeDaTurma(item.classe_id)}</span>}
+                  </div>
+                  <h3 className="mt-2.5 text-[14.5px] font-semibold leading-normal text-foreground">{item.missao?.titulo ?? "Missão removida"}</h3>
+                  {item.missao?.descricao && <p className="mt-1 text-[13px] leading-normal text-foreground/90">{item.missao.descricao}</p>}
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    Decidida em {formatarData.format(new Date(item.created_at))}
+                  </p>
+                  {item.evento === "recusada" && item.motivo && (
+                    <p className="mt-2 text-[12px] text-muted-foreground">Motivo da recusa: {item.motivo}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-[14px] border border-border px-4 py-3 text-[12.5px] text-muted-foreground">
+              Ainda não há sugestões aprovadas ou recusadas nesta turma.
+            </p>
+          )}
+        </TabsContent>
+      </Tabs>
     </section>
   );
 }

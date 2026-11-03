@@ -75,6 +75,8 @@
 .console-account-copy span { color: hsl(var(--muted-foreground)); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .console-icon-button { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; flex: none; color: hsl(var(--muted-foreground)); }
 .console-icon-button:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)); }
+.console-mobile-menu-toggle { display: none; flex: none; width: 40px; height: 40px; place-items: center; border: 1px solid hsl(var(--border)); border-radius: 12px; color: hsl(var(--foreground)); background: hsl(var(--card) / .75); }
+.escriba-panel-floating { right: 16px; bottom: calc(max(20px, env(safe-area-inset-bottom)) + 70px); }
 .console-bell-badge { position: absolute; top: 3px; right: 2px; min-width: 17px; padding: 0 4px; border-radius: 999px; background: hsl(var(--console-violet)); color: #fff; font-size: 10px; font-weight: 700; line-height: 17px; text-align: center; }
 .console-navigation { padding: 20px 16px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid hsl(var(--border)); background: hsl(var(--console-sidebar)); overflow-y: auto; }
 .console-navigation a { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; color: hsl(var(--muted-foreground)); font-size: 14.5px; white-space: nowrap; }
@@ -84,7 +86,8 @@
 .console-navigation a[aria-current="page"] svg { color: hsl(var(--accent)); }
 .console-nav-badge { margin-left: auto; min-width: 20px; padding: 1px 6px; border-radius: 999px; background: hsl(var(--console-violet) / .22); color: hsl(var(--console-violet-text)); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
 .console-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
-.console-section-content, .console-trail-content { padding: 24px; min-width: 0; }
+.console-section-content, .console-trail-content { box-sizing: border-box; width: 100%; padding: 24px; min-width: 0; }
+.console-section-content > * { width: 100%; max-width: 1760px; margin-inline: auto; }
 .console-trail-content { padding-bottom: 12px; }
 .console-filters > div, .console-filters [role="combobox"] { max-width: 100%; }
 .console-shell :is(button, a):focus-visible { outline: 2px solid hsl(var(--accent)); outline-offset: 3px; }
@@ -95,13 +98,29 @@
 .console-editor-layout { min-height: 0; }
 .console-editor [data-radix-scroll-area-viewport] > div { display: block !important; }
 
+@media (max-width: 1200px) and (min-width: 901px) {
+  .console-shell { grid-template-columns: 224px minmax(0, 1fr); }
+  .console-topbar { padding-inline: 22px; gap: 10px; }
+  .console-account { gap: 10px; }
+  .console-account-copy { max-width: 190px; }
+  .console-navigation { padding-inline: 12px; }
+  .console-navigation a { gap: 10px; padding-inline: 12px; font-size: 13px; }
+  .console-section-content, .console-trail-content { padding: 20px; }
+}
+@media (min-width: 640px) {
+  .escriba-panel-floating { right: 32px; bottom: 98px; }
+}
+
 @media (max-width: 900px) {
   .public-posts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .console-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: 64px auto minmax(0, 1fr); }
+  .console-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: 64px minmax(0, 1fr); }
   .console-topbar { padding: 10px 16px; gap: 16px; }
   .console-workspace-name, .console-topbar-divider { display: none; }
-  .console-navigation { flex-direction: row; gap: 4px; padding: 8px 12px; overflow-x: auto; border-right: 0; border-bottom: 1px solid hsl(var(--border)); }
-  .console-navigation a { flex: none; padding: 11px 12px; gap: 8px; font-size: 12px; }
+  .console-mobile-menu-toggle { display: grid; }
+  .console-navigation,
+  .console-navigation[data-open="true"] { position: absolute; z-index: 30; top: 72px; left: 12px; display: none; width: min(340px, calc(100vw - 24px)); max-height: calc(100dvh - 88px); flex-direction: column; gap: 4px; overflow-x: hidden; overflow-y: auto; padding: 10px; border: 1px solid hsl(var(--border)); border-radius: 18px; background: hsl(var(--card)); box-shadow: 0 18px 48px hsl(260 30% 8% / .3); }
+  .console-navigation[data-open="true"] { display: flex; }
+  .console-navigation a { width: 100%; flex: none; flex-direction: row; justify-content: flex-start; padding: 12px; gap: 12px; font-size: 14px; }
   .console-editor-layout { overflow-y: auto; flex-direction: column; }
   .console-editor-layout > aside { width: 100%; height: auto; overflow: visible; border-right: 0; border-bottom: 1px solid hsl(var(--border)); }
   .console-editor-layout > aside > div { height: auto; }
@@ -126,7 +145,7 @@
   .contact-channels { border-left: 0; padding-left: 0; border-top: 1px solid hsl(var(--border)); padding-top: 28px; }
   .download-option { align-items: flex-start; flex-direction: column; gap: 18px; }
   .console-account-copy { display: none; }
-  .console-navigation a { flex-direction: column; gap: 5px; min-width: 78px; padding: 8px; font-size: 10px; }
+  .console-navigation a { flex-direction: row; min-width: 0; padding: 12px; font-size: 14px; }
   .console-section-content, .console-trail-content { padding: 16px; }
   .console-editor-header { padding: 16px; }
   .console-editor-header h1 { font-size: 17px; }

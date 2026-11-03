@@ -33,6 +33,17 @@ export type MissaoSugerida = {
   aprovacao: string;
   motivo_recusa: string | null;
   criado_em: string;
+  atualizado_em: string;
+};
+
+export type HistoricoDeMissaoIa = {
+  id: number;
+  classe_id: number;
+  missao_id: number | null;
+  evento: "aprovada" | "recusada";
+  motivo: string | null;
+  created_at: string;
+  missao: MissaoSugerida | null;
 };
 
 /** O banco para de tentar na 5ª (`MAX_TENTATIVAS` da migration). */

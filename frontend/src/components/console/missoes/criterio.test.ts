@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CHAVE_DO_ALVO,
   METRICAS,
+  alvoSugerido,
   METRICAS_DE_GUILDA,
   metricaSomaEmGuilda,
   criterioDeEntrega,
@@ -103,5 +104,34 @@ describe("METRICAS_DE_GUILDA", () => {
       expect(metricaSomaEmGuilda(m)).toBe(false);
     }
     expect(metricaSomaEmGuilda("atividades_concluidas")).toBe(true);
+  });
+});
+
+describe("alvoSugerido", () => {
+  const turma = { topicos: 4, atividades: 12 };
+
+  it("contagem sai do que a turma tem", () => {
+    expect(alvoSugerido("topicos_concluidos", turma)).toBe(4);
+    expect(alvoSugerido("atividades_concluidas", turma)).toBe(12);
+  });
+
+  it("percentual de trilha é a trilha inteira", () => {
+    expect(alvoSugerido("trilha_percentual", turma)).toBe(100);
+  });
+
+  it("turma vazia ainda dá um alvo válido (o banco trata 0 como cumprido)", () => {
+    expect(alvoSugerido("topicos_concluidos", { topicos: 0, atividades: 0 })).toBe(1);
+  });
+
+  it("toda medida oferecida tem sugestão dentro do limite", () => {
+    for (const m of METRICAS) {
+      const v = alvoSugerido(m.chave, turma)!;
+      expect(v).toBeGreaterThanOrEqual(1);
+      expect(v).toBeLessThanOrEqual(m.max);
+    }
+  });
+
+  it("medida desconhecida não sugere", () => {
+    expect(alvoSugerido("eventos_totais", turma)).toBeNull();
   });
 });

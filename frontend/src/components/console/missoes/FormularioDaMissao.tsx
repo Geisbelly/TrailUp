@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { METRICAS, definicaoDaMetrica, metricaSomaEmGuilda } from "./criterio";
-import { OBJETIVO_MAX, TITULO_MAX, validarMissao, type ErrosDaMissao, type FormularioDeMissao, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
+import { METRICAS, alvoSugerido, definicaoDaMetrica, metricaSomaEmGuilda, type ContextoDaTurma } from "./criterio";
+import { OBJETIVO_MAX, PERFIS_DA_MISSAO, TITULO_MAX, validarMissao, type ErrosDaMissao, type FormularioDeMissao, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
 
 const rotulo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
 const campo = "mt-2 rounded-[14px] bg-background";
@@ -27,11 +27,17 @@ const ESCOPOS = [
   { chave: "guilda" as const, titulo: "A guilda, junta", ajuda: "Soma o que os membros fazem no período." },
 ];
 
+/** Tópicos da turma e o que ela tem, para o select de tópico e o alvo sugerido. */
+export type DadosDaTurma = { topicos: { id: number; nome: string | null }[]; contexto: ContextoDaTurma };
+
+const TODOS_OS_PERFIS = "__todos__";
+
 /** "Nova missão" / "Editar missão". Quem monta usa `key` para remontar a cada abertura (o estado inicia de `inicial`). */
 export function FormularioDaMissao({
   inicial,
   editando,
-  topicos,
+  turmas,
+  carregarTurma,
   salvando,
   erroDoServidor,
   onSalvar,
@@ -39,7 +45,9 @@ export function FormularioDaMissao({
 }: {
   inicial: FormularioDeMissao;
   editando: boolean;
-  topicos: { id: number; nome: string | null }[];
+  /** As turmas do professor: a missão pertence a uma delas, e dá para trocar ao editar. */
+  turmas: { id: number; nome: string }[];
+  carregarTurma: (turmaId: number) => Promise<DadosDaTurma>;
   salvando: boolean;
   erroDoServidor: string | null;
   onSalvar: (missao: PayloadDaMissao, atividade: PayloadDaAtividade | null) => void;
@@ -49,13 +57,49 @@ export function FormularioDaMissao({
   const [erros, setErros] = useState<ErrosDaMissao>({});
   const alterar = (parcial: Partial<FormularioDeMissao>) => setForm((f) => ({ ...f, ...parcial }));
   const guilda = (form.escopo ?? "turma") === "guilda";
+
+  // Tópicos e contexto vêm da turma ESCOLHIDA no formulário, não da que está aberta na página.
+  const [dados, setDados] = useState<DadosDaTurma>({ topicos: [], contexto: { topicos: 0, atividades: 0 } });
+  const [carregandoTurma, setCarregandoTurma] = useState(false);
+  const [erroDaTurma, setErroDaTurma] = useState<string | null>(null);
+  useEffect(() => {
+    const id = Number(form.turmaId);
+    if (!Number.isInteger(id) || id <= 0) return;
+    let vivo = true;
+    setCarregandoTurma(true);
+    setErroDaTurma(null);
+    carregarTurma(id)
+      .then((d) => {
+        if (!vivo) return;
+        setDados(d);
+        // Tópico de outra turma não serve: a atividade da entrega tem de ser desta.
+        setForm((f) => (f.topicoId && !d.topicos.some((t) => String(t.id) === f.topicoId) ? { ...f, topicoId: "" } : f));
+      })
+      .catch((e) => vivo && setErroDaTurma((e as { message?: string })?.message ?? "Não foi possível carregar a turma."))
+      .finally(() => vivo && setCarregandoTurma(false));
+    return () => {
+      vivo = false;
+    };
+  }, [form.turmaId, carregarTurma]);
+  const topicos = dados.topicos;
+  const turma = dados.contexto;
+
   const metricasOferecidas = guilda ? METRICAS.filter((m) => metricaSomaEmGuilda(m.chave)) : METRICAS;
   const escolherEscopo = (escopo: "turma" | "guilda") =>
     alterar(
       escopo === "guilda"
-        ? { escopo, caminho: "meta", metrica: metricaSomaEmGuilda(form.metrica) ? form.metrica : "" }
+        ? { escopo, caminho: "meta", perfil: "", metrica: metricaSomaEmGuilda(form.metrica) ? form.metrica : "" }
         : { escopo },
     );
+
+  // O alvo acompanha a medida até o professor digitar um: trocar de "tópicos" para
+  // "percentual" com o alvo antigo deixaria 4% no campo. Vale também na edição — o alvo salvo
+  // era da medida antiga.
+  const [alvoDigitado, setAlvoDigitado] = useState(false);
+  const escolherMetrica = (metrica: string) => {
+    const sugerido = alvoSugerido(metrica, turma);
+    alterar(alvoDigitado || sugerido == null ? { metrica } : { metrica, alvo: String(sugerido) });
+  };
 
   const salvar = () => {
     const r = validarMissao(form);
@@ -72,6 +116,41 @@ export function FormularioDaMissao({
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <span className={rotulo}>Turma *</span>
+              <Select value={form.turmaId} onValueChange={(v) => alterar({ turmaId: v })}>
+                <SelectTrigger className={campo} aria-label="Turma"><SelectValue placeholder="Escolha a turma" /></SelectTrigger>
+                <SelectContent>
+                  {turmas.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {editando && form.turmaId !== inicial.turmaId && (
+                <p className="mt-1 text-[11.5px] text-muted-foreground">A missão sai desta turma. O progresso de quem já começou fica para trás.</p>
+              )}
+              {erroDaTurma && <p className="mt-1 text-xs text-destructive">{erroDaTurma}</p>}
+              {erros.turmaId && <p className="mt-1 text-xs text-destructive">{erros.turmaId}</p>}
+            </div>
+            <div>
+              <span className={rotulo}>Perfil</span>
+              <Select
+                value={form.perfil || TODOS_OS_PERFIS}
+                onValueChange={(v) => alterar({ perfil: v === TODOS_OS_PERFIS ? "" : v })}
+                disabled={guilda}
+              >
+                <SelectTrigger className={campo} aria-label="Perfil"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TODOS_OS_PERFIS}>Todos os perfis</SelectItem>
+                  {PERFIS_DA_MISSAO.map((p) => <SelectItem key={p.chave} value={p.chave}>{p.rotulo}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-[11.5px] text-muted-foreground">
+                {guilda ? "Missão de guilda vale para a guilda inteira." : "Só alunos com esse perfil veem e cumprem a missão."}
+              </p>
+              {erros.perfil && <p className="mt-1 text-xs text-destructive">{erros.perfil}</p>}
+            </div>
+          </div>
+
           <div>
             <Label htmlFor="mis-titulo" className={rotulo}>Título *</Label>
             <Input id="mis-titulo" className={campo} value={form.titulo} maxLength={TITULO_MAX} onChange={(e) => alterar({ titulo: e.target.value })} aria-invalid={!!erros.titulo} />
@@ -95,11 +174,10 @@ export function FormularioDaMissao({
                     type="button"
                     role="radio"
                     aria-checked={ativo}
-                    disabled={editando}
                     onClick={() => escolherEscopo(chave)}
                     className={`flex-1 min-w-[180px] rounded-[14px] border px-4 py-3 text-left ${
                       ativo ? "border-primary bg-primary/15" : "border-border hover:border-primary/50"
-                    } ${editando ? "opacity-60" : ""}`}
+                    }`}
                   >
                     <span className="block text-[13px] font-bold">{titulo}</span>
                     <span className="mt-0.5 block text-[11.5px] text-muted-foreground">{ajuda}</span>
@@ -121,11 +199,11 @@ export function FormularioDaMissao({
                     type="button"
                     role="radio"
                     aria-checked={ativo}
-                    disabled={editando || (guilda && chave === "entrega")}
+                    disabled={guilda && chave === "entrega"}
                     onClick={() => alterar({ caminho: chave })}
                     className={`flex-1 min-w-[180px] rounded-[14px] border px-4 py-3 text-left ${
                       ativo ? "border-primary bg-primary/15" : "border-border hover:border-primary/50"
-                    } ${editando || (guilda && chave === "entrega") ? "opacity-60" : ""}`}
+                    } ${guilda && chave === "entrega" ? "opacity-60" : ""}`}
                   >
                     <span className="block text-[13px] font-bold">{titulo}</span>
                     <span className="mt-0.5 block text-[11.5px] text-muted-foreground">{ajuda}</span>
@@ -133,13 +211,13 @@ export function FormularioDaMissao({
                 );
               })}
             </div>
-            {guilda && !editando && (
+            {guilda && (
               <p className="mt-1 text-[11.5px] text-muted-foreground">Na guilda a missão é uma meta: o progresso é a soma dos membros.</p>
             )}
             {erros.caminho && <p className="mt-1 text-xs text-destructive">{erros.caminho}</p>}
-            {editando && (
+            {editando && inicial.caminho === "entrega" && form.caminho === "meta" && (
               <p className="mt-1 text-[11.5px] text-muted-foreground">
-                Isso não muda depois de criada — a de entrega tem uma atividade atrás dela. Para trocar, crie outra.
+                Ao salvar como meta, a atividade da entrega sai do tópico. Se algum aluno já entregou, ela fica e você é avisado.
               </p>
             )}
           </div>
@@ -148,13 +226,17 @@ export function FormularioDaMissao({
             <>
               <div>
                 <span className={rotulo}>Tópico *</span>
-                <Select value={form.topicoId} onValueChange={(v) => alterar({ topicoId: v })} disabled={editando}>
-                  <SelectTrigger className={campo} aria-label="Tópico"><SelectValue placeholder="Escolha o tópico" /></SelectTrigger>
+                <Select value={form.topicoId} onValueChange={(v) => alterar({ topicoId: v })}>
+                  <SelectTrigger className={campo} aria-label="Tópico" disabled={carregandoTurma || topicos.length === 0}>
+                    <SelectValue placeholder={carregandoTurma ? "Carregando…" : topicos.length === 0 ? "Esta turma não tem tópicos" : "Escolha o tópico"} />
+                  </SelectTrigger>
                   <SelectContent>
                     {topicos.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.nome || `Tópico ${t.id}`}</SelectItem>)}
                   </SelectContent>
                 </Select>
-                {editando && <p className="mt-1 text-[11.5px] text-muted-foreground">O tópico não muda depois de criada. Para mover, duplique a missão.</p>}
+                {editando && inicial.caminho === "entrega" && form.topicoId !== inicial.topicoId && (
+                  <p className="mt-1 text-[11.5px] text-muted-foreground">A atividade vai para o novo tópico; os conteúdos ligados a ela você liga de novo no editor do tópico.</p>
+                )}
                 {erros.topicoId && <p className="mt-1 text-xs text-destructive">{erros.topicoId}</p>}
               </div>
 
@@ -184,7 +266,7 @@ export function FormularioDaMissao({
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <span className={rotulo}>O que ela mede *</span>
-                  <Select value={form.metrica} onValueChange={(v) => alterar({ metrica: v })}>
+                  <Select value={form.metrica} onValueChange={escolherMetrica}>
                     <SelectTrigger className={campo} aria-label="O que ela mede"><SelectValue placeholder="Escolha a medida" /></SelectTrigger>
                     <SelectContent>
                       {metricasOferecidas.map((m) => <SelectItem key={m.chave} value={m.chave}>{m.rotulo}</SelectItem>)}
@@ -201,7 +283,14 @@ export function FormularioDaMissao({
                   <Label htmlFor="mis-alvo" className={rotulo}>
                     Alvo *{definicaoDaMetrica(form.metrica) ? ` (${definicaoDaMetrica(form.metrica)!.unidade})` : ""}
                   </Label>
-                  <Input id="mis-alvo" inputMode="numeric" className={campo} value={form.alvo} onChange={(e) => alterar({ alvo: e.target.value })} aria-invalid={!!erros.alvo} />
+                  <Input id="mis-alvo" inputMode="numeric" className={campo} value={form.alvo} onChange={(e) => { setAlvoDigitado(true); alterar({ alvo: e.target.value }); }} aria-invalid={!!erros.alvo} />
+                  {(form.metrica === "topicos_concluidos" || form.metrica === "atividades_concluidas") && (
+                    <p className="mt-1 text-[11.5px] text-muted-foreground">
+                      {form.metrica === "topicos_concluidos"
+                        ? `A turma tem ${turma.topicos} tópico(s).`
+                        : `A turma tem ${turma.atividades} atividade(s).`}
+                    </p>
+                  )}
                   {erros.alvo && <p className="mt-1 text-xs text-destructive">{erros.alvo}</p>}
                 </div>
               </div>

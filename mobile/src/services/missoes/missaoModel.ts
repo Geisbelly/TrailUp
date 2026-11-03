@@ -51,11 +51,18 @@ export function statusDe(s: string | null | undefined): StatusDaMissao {
   return "pendente";
 }
 
-/** A atividade que a missão-entrega aponta. Só `atividade_especifica` tem uma. */
+/**
+ * A atividade que a missão aponta: a da missão-entrega (`atividade_especifica`) e a da diária que
+ * sai da trilha (`item_no_dia` de atividade, `20261103_05`). É o destino do "Ir".
+ */
 export function atividadeDoCriterio(criterio: unknown): number | null {
   const c = criterio && typeof criterio === "object" ? (criterio as Record<string, unknown>) : null;
-  if (String(c?.metrica ?? "") !== "atividade_especifica") return null;
-  const id = Number(c?.atividade_id);
+  const metrica = String(c?.metrica ?? "");
+  const bruto =
+    metrica === "atividade_especifica" ? c?.atividade_id
+      : metrica === "item_no_dia" && c?.item === "atividade" ? c?.item_id
+        : null;
+  const id = Number(bruto);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
@@ -64,6 +71,7 @@ export function pedeAtividade(criterio: unknown): boolean {
   const c = criterio && typeof criterio === "object" ? (criterio as Record<string, unknown>) : null;
   const metrica = String(c?.metrica ?? "");
   if (metrica === "atividades_concluidas" || metrica === "acertos_percentual") return true;
+  if (metrica === "item_no_dia") return c?.item === "atividade";
   return metrica === "eventos_no_dia" && String(c?.evento ?? "").includes("atividade");
 }
 
@@ -86,6 +94,7 @@ export function rotuloCriterio(criterio: unknown): string {
   if (metrica === "acertos_percentual") return `${Number(c?.percentual) || "?"}% de acerto`;
   if (metrica === "trilha_percentual") return `${Number(c?.percentual) || "?"}% da trilha`;
   if (metrica === "atividade_especifica") return "entregar a atividade";
+  if (metrica === "item_no_dia") return c?.item === "atividade" ? "fazer a atividade" : "concluir o conteúdo";
   return metrica || "missão";
 }
 
