@@ -66,7 +66,11 @@ def _gerador(moldes_pt_br: bool) -> str:
   );"""
 
     return f"""
-CREATE OR REPLACE FUNCTION public.fn_missao_diaria_gerar(p_dia date DEFAULT NULL)
+-- A assinatura e' (date, uuid) desde 20261102_14. Recriar so' (date) deixaria as duas e toda
+-- chamada com uma data ficaria ambigua (derrubou a subida da API em 03/11). Uma (date) que
+-- tenha sobrado sai antes.
+DROP FUNCTION IF EXISTS public.fn_missao_diaria_gerar(date);
+CREATE OR REPLACE FUNCTION public.fn_missao_diaria_gerar(p_dia date DEFAULT NULL, p_aluno uuid DEFAULT NULL)
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -100,6 +104,7 @@ BEGIN
       JOIN public.aluno_perfil ap ON ap.aluno_id = ca.aluno_id
       JOIN public.perfil p ON p.id = ap.perfil_id
      WHERE ca.classe_id IS NOT NULL AND ca.aluno_id IS NOT NULL
+       AND (p_aluno IS NULL OR ca.aluno_id = p_aluno)  -- troca de perfil (20261102_14)
      GROUP BY ca.classe_id, lower(p.nome)
   LOOP
     v_quantos := v_min + (abs(hashtext(v_coorte.classe_id::text || ':' || v_coorte.perfil || ':' || v_dia::text))
@@ -132,7 +137,7 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.fn_missao_diaria_gerar(date) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fn_missao_diaria_gerar(date, uuid) FROM PUBLIC, anon, authenticated;
 """
 
 

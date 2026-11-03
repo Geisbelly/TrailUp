@@ -272,7 +272,11 @@ REVOKE ALL ON FUNCTION public.fn_missoes_guarda() FROM PUBLIC, anon, authenticat
 
 
 GERADOR = r"""
-CREATE OR REPLACE FUNCTION public.fn_missao_diaria_gerar(p_dia date DEFAULT NULL)
+-- A assinatura e' (date, uuid) desde 20261102_14. Recriar so' (date) deixaria as duas e toda
+-- chamada com uma data ficaria ambigua (derrubou a subida da API em 03/11). Uma (date) que
+-- tenha sobrado sai antes.
+DROP FUNCTION IF EXISTS public.fn_missao_diaria_gerar(date);
+CREATE OR REPLACE FUNCTION public.fn_missao_diaria_gerar(p_dia date DEFAULT NULL, p_aluno uuid DEFAULT NULL)
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -297,6 +301,7 @@ BEGIN
     SELECT DISTINCT ca.classe_id
       FROM public.classe_aluno ca
      WHERE ca.classe_id IS NOT NULL AND ca.aluno_id IS NOT NULL
+       AND (p_aluno IS NULL OR ca.aluno_id = p_aluno)  -- troca de perfil (20261102_14)
   LOOP
     SELECT count(DISTINCT ca.aluno_id)::int INTO v_alunos
       FROM public.classe_aluno ca WHERE ca.classe_id = v_classe;
@@ -385,7 +390,7 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.fn_missao_diaria_gerar(date) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.fn_missao_diaria_gerar(date, uuid) FROM PUBLIC, anon, authenticated;
 """
 
 
