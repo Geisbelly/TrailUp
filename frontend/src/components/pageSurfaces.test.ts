@@ -34,7 +34,8 @@ describe("shared page surfaces", () => {
     expect(markup.match(/data-page-background/g)).toHaveLength(1);
     expect(markup.match(/<main/g)).toHaveLength(1);
     expect(markup).toContain("Sobre o TrailUp");
-    expect(markup).toContain('href="/login"');
+    // "Entrar" abre a escolha entre aluno (app) e professor (/login); o menu só monta aberto.
+    expect(markup).toMatch(/aria-haspopup="menu"[^>]*>Entrar/);
     expect(markup).not.toContain("animate-pulse");
   });
 

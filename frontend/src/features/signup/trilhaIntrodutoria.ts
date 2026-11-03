@@ -27,3 +27,14 @@ export function urlAppAluno(config: string | undefined): string | null {
     return url.href;
   } catch { return null; }
 }
+
+/**
+ * Onde o aluno que já tem conta entra: o app do aluno, que tem o próprio login.
+ * Sem `VITE_ALUNO_APP_URL`, é `/aluno/` deste site, onde a produção serve o app
+ * (build Expo web). A página `/aluno` do console é só a introdução de quem acabou
+ * de se cadastrar. A navegação tem que ser de página inteira (`<a href>` ou
+ * `window.location`): pelo roteador, `/aluno` cai na página do console.
+ */
+export function entradaDoAppAluno(config: string | undefined): string {
+  return urlAppAluno(config) ?? '/aluno/';
+}
