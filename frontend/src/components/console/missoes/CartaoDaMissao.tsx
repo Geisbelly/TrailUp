@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Check, ClipboardCheck, Copy, ListChecks, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { aguardaDecisao, origemDe, podeEditar, rotuloDaOrigem, rotuloDoEscopo } from "./aprovacao";
-import { percentualDeEntrega, resumoDeEntregas, rotuloDoPrazo } from "./missao";
+import { percentualDeEntrega, resumoDeEntregas, rotuloDoPerfil, rotuloDoPrazo } from "./missao";
 import type { Missao } from "./missoesApi";
 
 /**
@@ -50,6 +50,11 @@ export function CartaoDaMissao({
             {!editavel && (
               <span className="rounded-full bg-sky-500/15 px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-400">
                 {rotuloDaOrigem(origemDe(missao.origem))}
+              </span>
+            )}
+            {missao.perfilAlvo && (
+              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-primary">
+                {rotuloDoPerfil(missao.perfilAlvo)}
               </span>
             )}
             {missao.aprovacao === "recusada" && (

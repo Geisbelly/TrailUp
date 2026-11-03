@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina } from "../comum/PaginaDoConsole";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
 import { CartaoDaMissao } from "./CartaoDaMissao";
-import { FormularioDaMissao } from "./FormularioDaMissao";
+import { FormularioDaMissao, type DadosDaTurma } from "./FormularioDaMissao";
 import { FORMULARIO_DE_MISSAO_VAZIO, prazoParaCampo, type FormularioDeMissao, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
 import { CHAVE_DO_ALVO, definicaoDaMetrica } from "./criterio";
 import { MOTIVO_MAX, separarPorDecisao, validarMotivoDeRecusa } from "./aprovacao";
@@ -29,7 +29,9 @@ import { PainelMissoesDiarias } from "./PainelMissoesDiarias";
 type FormAberto = { inicial: FormularioDeMissao; editando: Missao | null; chave: number };
 type Acao = { tipo: "duplicar" | "excluir"; missao: Missao };
 
-const formularioDe = (m: Missao): FormularioDeMissao => ({
+const formularioDe = (m: Missao, turmaAberta: number): FormularioDeMissao => ({
+  turmaId: String(m.classeId || turmaAberta),
+  perfil: m.perfilAlvo ?? "",
   caminho: m.caminho,
   titulo: m.titulo,
   objetivo: m.objetivo,
@@ -63,7 +65,6 @@ export default function MissoesSection({ professorId }: { professorId?: string }
   const { turmas, turmaId, setTurmaId, carregando: carregandoTurmas, erro: erroTurmas, recarregar } = useTurmasDoProfessor(professorId);
   const [missoes, setMissoes] = useState<Missao[]>([]);
   const [topicos, setTopicos] = useState<{ id: number; nome: string | null }[]>([]);
-  const [atividadesDaTurma, setAtividadesDaTurma] = useState(0);
   const [estado, setEstado] = useState<"carregando" | "ok" | "erro">("carregando");
   const [detalhe, setDetalhe] = useState("");
   const [form, setForm] = useState<FormAberto | null>(null);
@@ -87,16 +88,8 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     try {
       const [lista, t] = await Promise.all([listarMissoes(id), supabase.from("topicos").select("id, nome").eq("classe_id", id).order("ordem")]);
       if (t.error) throw t.error;
-      const doTopico = (t.data ?? []) as { id: number; nome: string | null }[];
-      // O alvo sugerido de "atividades concluídas" sai daqui. Turma sem tópico não tem atividade,
-      // e `in` com lista vazia não deve ir ao banco.
-      const atividades = doTopico.length
-        ? await supabase.from("atividades").select("id", { count: "exact", head: true }).in("topico_id", doTopico.map((x) => x.id))
-        : { count: 0, error: null };
-      if (atividades.error) throw atividades.error;
       setMissoes(lista);
-      setTopicos(doTopico);
-      setAtividadesDaTurma(atividades.count ?? 0);
+      setTopicos((t.data ?? []) as { id: number; nome: string | null }[]);
       setEstado("ok");
     } catch (e) {
       setDetalhe(mensagem(e, "erro desconhecido"));
@@ -118,18 +111,35 @@ export default function MissoesSection({ professorId }: { professorId?: string }
 
   const abrirNova = () => {
     setErroDoServidor(null);
-    setForm({ inicial: FORMULARIO_DE_MISSAO_VAZIO, editando: null, chave: Date.now() });
+    setForm({ inicial: { ...FORMULARIO_DE_MISSAO_VAZIO, turmaId: turmaId ? String(turmaId) : "" }, editando: null, chave: Date.now() });
   };
+
+  // O formulário escolhe a turma; os tópicos e o que ela tem vêm daqui, para a turma escolhida.
+  // Turma sem tópico não tem atividade, e `in` com lista vazia não deve ir ao banco.
+  const carregarTurma = useCallback(async (id: number): Promise<DadosDaTurma> => {
+    const t = await supabase.from("topicos").select("id, nome").eq("classe_id", id).order("ordem");
+    if (t.error) throw t.error;
+    const doTopico = (t.data ?? []) as { id: number; nome: string | null }[];
+    const atividades = doTopico.length
+      ? await supabase.from("atividades").select("id", { count: "exact", head: true }).in("topico_id", doTopico.map((x) => x.id))
+      : { count: 0, error: null };
+    if (atividades.error) throw atividades.error;
+    return { topicos: doTopico, contexto: { topicos: doTopico.length, atividades: atividades.count ?? 0 } };
+  }, []);
+  const turmasDoFormulario = turmas.map((t) => ({ id: t.id, nome: t.descricao || `Turma ${t.id}` }));
 
   const salvar = async (missao: PayloadDaMissao, atividade: PayloadDaAtividade | null) => {
     if (!turmaId) return;
     setSalvando(true);
     setErroDoServidor(null);
     try {
-      await salvarMissao(turmaId, missao, atividade, form?.editando?.id, form?.editando?.atividadeId, form?.editando?.topicoId);
+      await salvarMissao(missao, atividade, form?.editando?.id, form?.editando?.atividadeId, form?.editando?.topicoId);
       setForm(null);
+      const outraTurma = turmasDoFormulario.find((t) => t.id === missao.classe_id && t.id !== turmaId);
       toast.success(
-        form?.editando
+        outraTurma
+          ? `Missão salva na turma ${outraTurma.nome}.`
+          : form?.editando
           ? "Missão atualizada."
           : atividade
             ? "Missão criada. Monte os itens no editor do tópico."
@@ -218,7 +228,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     <CartaoDaMissao
       key={m.id}
       missao={m}
-      onEditar={() => { setErroDoServidor(null); setForm({ inicial: formularioDe(m), editando: m, chave: Date.now() }); }}
+      onEditar={() => { setErroDoServidor(null); setForm({ inicial: formularioDe(m, turmaId ?? 0), editando: m, chave: Date.now() }); }}
       onDuplicar={() => setAcao({ tipo: "duplicar", missao: m })}
       onExcluir={() => setAcao({ tipo: "excluir", missao: m })}
       onAprovar={() => void aprovar(m)}
@@ -234,7 +244,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
         subtitulo="Entregas que você corrige, ou metas que o app fecha sozinho."
         acao={
           estado === "ok" && turmaId ? (
-            <Button className="rounded-full font-bold" onClick={abrirNova} disabled={topicos.length === 0}>
+            <Button className="rounded-full font-bold" onClick={abrirNova}>
               <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               Nova missão
             </Button>
@@ -291,7 +301,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
       )}
 
       {form && (
-        <FormularioDaMissao key={form.chave} inicial={form.inicial} editando={form.editando !== null} topicos={topicos} turma={{ topicos: topicos.length, atividades: atividadesDaTurma }} salvando={salvando} erroDoServidor={erroDoServidor} onSalvar={(m, a) => void salvar(m, a)} onCancelar={() => setForm(null)} />
+        <FormularioDaMissao key={form.chave} inicial={form.inicial} editando={form.editando !== null} turmas={turmasDoFormulario} carregarTurma={carregarTurma} salvando={salvando} erroDoServidor={erroDoServidor} onSalvar={(m, a) => void salvar(m, a)} onCancelar={() => setForm(null)} />
       )}
 
       <AlertDialog open={recusando !== null} onOpenChange={(v) => !v && decidindo === null && setRecusando(null)}>

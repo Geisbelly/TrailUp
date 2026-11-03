@@ -74,6 +74,8 @@ const atividade = (id: number, extra: Record<string, unknown> = {}) => ({
 
 const missaoDeEntrega: Missao = {
   id: 1,
+  classeId: 0,
+  perfilAlvo: null,
   titulo: "M1",
   objetivo: "obj",
   prazo: null,
@@ -228,8 +230,7 @@ describe("salvarMissao", () => {
     sb.respostas = { atividades: { data: { metadata: {} }, error: null }, missoes: { data: { id: 5 }, error: null } };
 
     const id = await salvarMissao(
-      7,
-      { escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
+      { classe_id: 7, perfil_alvo: null, escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
       { topico_id: 4, titulo: "M", descricao: "o", tipo: "missao", data_entrega: null, pontuacao_maxima: 50, moedas: 0 },
     );
 
@@ -245,7 +246,7 @@ describe("salvarMissao", () => {
 
   it("meta: não chama saveActivity e grava o critério como veio", async () => {
     sb.respostas = { missoes: { data: { id: 6 }, error: null } };
-    const id = await salvarMissao(7, {
+    const id = await salvarMissao({ classe_id: 7, perfil_alvo: null,
       escopo: "turma",
       origem: "professor",
       titulo: "Meta",
@@ -263,7 +264,7 @@ describe("salvarMissao", () => {
 
   it("editar manda tudo o que o professor pode mudar — o resto é congelado pelo trigger", async () => {
     sb.respostas = { missoes: { data: { id: 9 }, error: null } };
-    const id = await salvarMissao(7, {
+    const id = await salvarMissao({ classe_id: 7, perfil_alvo: null,
       escopo: "turma", origem: "professor", titulo: "M", descricao: "o",
       recompensa_tipo: "missao_concluida", janela_fim: null, criterio: { metrica: "dias_seguidos", dias_seguidos: 3 },
     }, null, 9);
@@ -271,14 +272,14 @@ describe("salvarMissao", () => {
     expect(id).toBe(9);
     const update = sb.chamadas.find((c) => c[0] === "missoes" && c[1] === "update");
     expect(Object.keys(update![2] as object).sort()).toEqual(
-      ["atividade_origem_id", "criterio", "descricao", "escopo", "janela_fim", "recompensa_tipo", "titulo"],
+      ["atividade_origem_id", "classe_id", "criterio", "descricao", "escopo", "janela_fim", "perfil_alvo", "recompensa_tipo", "titulo"],
     );
     expect(sb.chamadas.some((c) => c[0] === "atividades" && c[1] === "delete")).toBe(false);
   });
 
   it("entrega → meta: grava a missão sem atividade ANTES de apagar a atividade antiga", async () => {
     sb.respostas = { missoes: { data: { id: 9 }, error: null } };
-    await salvarMissao(7, {
+    await salvarMissao({ classe_id: 7, perfil_alvo: null,
       escopo: "turma", origem: "professor", titulo: "M", descricao: "o",
       recompensa_tipo: "missao_concluida", janela_fim: null, criterio: { metrica: "topicos_concluidos", minimo: 3 },
     }, null, 9, 41, 4);
@@ -293,7 +294,7 @@ describe("salvarMissao", () => {
   it("entrega → meta: se a atividade não sai, avisa que a missão já foi salva", async () => {
     sb.respostas = { missoes: { data: { id: 9 }, error: null }, atividade_conteudos: { data: null, error: { message: "fk" } } };
     await expect(
-      salvarMissao(7, {
+      salvarMissao({ classe_id: 7, perfil_alvo: null,
         escopo: "turma", origem: "professor", titulo: "M", descricao: "o",
         recompensa_tipo: "missao_concluida", janela_fim: null, criterio: { metrica: "topicos_concluidos", minimo: 3 },
       }, null, 9, 41, 4),
@@ -304,8 +305,7 @@ describe("salvarMissao", () => {
     sb.saveActivity.mockResolvedValue(88);
     sb.respostas = { atividades: { data: { metadata: {} }, error: null }, missoes: { data: { id: 9 }, error: null } };
     await salvarMissao(
-      7,
-      { escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
+      { classe_id: 7, perfil_alvo: null, escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
       { topico_id: 4, titulo: "M", descricao: "o", tipo: "missao", data_entrega: null, pontuacao_maxima: 10, moedas: 0 },
       9, null, null,
     );
@@ -318,8 +318,7 @@ describe("salvarMissao", () => {
     sb.saveActivity.mockResolvedValue(41);
     sb.respostas = { atividades: { data: { metadata: {} }, error: null }, missoes: { data: { id: 9 }, error: null } };
     await salvarMissao(
-      7,
-      { escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
+      { classe_id: 7, perfil_alvo: null, escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
       { topico_id: 5, titulo: "M", descricao: "o", tipo: "missao", data_entrega: null, pontuacao_maxima: 10, moedas: 0 },
       9, 41, 4,
     );
@@ -330,8 +329,7 @@ describe("salvarMissao", () => {
     sb.saveActivity.mockResolvedValue(41);
     sb.respostas = { atividades: { data: { metadata: {} }, error: null }, missoes: { data: { id: 9 }, error: null } };
     await salvarMissao(
-      7,
-      { escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
+      { classe_id: 7, perfil_alvo: null, escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
       { topico_id: 4, titulo: "M", descricao: "o", tipo: "missao", data_entrega: null, pontuacao_maxima: 10, moedas: 0 },
       9, 41, 4,
     );
@@ -341,7 +339,7 @@ describe("salvarMissao", () => {
   it("propaga erro do insert", async () => {
     sb.respostas = { missoes: { data: null, error: { message: "rls" } } };
     await expect(
-      salvarMissao(7, { escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: {} }, null),
+      salvarMissao({ classe_id: 7, perfil_alvo: null, escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: {} }, null),
     ).rejects.toThrow("rls");
   });
 });
@@ -465,10 +463,36 @@ describe("moedas da missão", () => {
     sb.saveActivity.mockResolvedValue(9);
     sb.respostas = { atividades: { data: { metadata: {} }, error: null }, missoes: { data: { id: 5 }, error: null } };
     await salvarMissao(
-      7,
-      { escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
+      { classe_id: 7, perfil_alvo: null, escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
       { topico_id: 4, titulo: "M", descricao: "o", tipo: "missao", data_entrega: null, pontuacao_maxima: 50, moedas: 12 },
     );
     expect(sb.chamadas.find((c) => c[0] === "atividades" && c[1] === "update")![2]).toEqual({ metadata: { moedas: 12 } });
+  });
+});
+
+describe("turma e perfil da missão", () => {
+  it("criar grava a turma e o perfil escolhidos", async () => {
+    sb.respostas = { missoes: { data: { id: 6 }, error: null } };
+    await salvarMissao({
+      classe_id: 9, perfil_alvo: "achiever", escopo: "turma", origem: "professor", titulo: "Meta", descricao: "o",
+      recompensa_tipo: "missao_concluida", janela_fim: null, criterio: { metrica: "minutos_totais", minutos: 30 },
+    }, null);
+    const insert = sb.chamadas.find((c) => c[0] === "missoes" && c[1] === "insert");
+    expect(insert![2]).toMatchObject({ classe_id: 9, perfil_alvo: "achiever" });
+  });
+
+  it("editar para outra turma move a atividade ANTES de gravar a missão", async () => {
+    sb.saveActivity.mockResolvedValue(41);
+    sb.respostas = { atividades: { data: { metadata: {} }, error: null }, missoes: { data: { id: 9 }, error: null } };
+    await salvarMissao(
+      { classe_id: 8, perfil_alvo: null, escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
+      { topico_id: 80, titulo: "M", descricao: "o", tipo: "missao", data_entrega: null, pontuacao_maxima: 10, moedas: 0 },
+      9, 41, 4,
+    );
+    const iMove = sb.chamadas.findIndex((c) => c[0] === "atividades" && c[1] === "update" && (c[2] as { topico_id?: number }).topico_id === 80);
+    const iMissao = sb.chamadas.findIndex((c) => c[0] === "missoes" && c[1] === "update");
+    expect(iMove).toBeGreaterThanOrEqual(0);
+    expect(iMissao).toBeGreaterThan(iMove);
+    expect(sb.chamadas[iMissao][2]).toMatchObject({ classe_id: 8, perfil_alvo: null });
   });
 });

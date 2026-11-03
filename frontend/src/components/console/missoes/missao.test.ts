@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { FORMULARIO_DE_MISSAO_VAZIO, comCriterioDaAtividade, percentualDeEntrega, prazoParaCampo, resumoDeEntregas, rotuloDoPrazo, validarMissao, type FormularioDeMissao } from "./missao";
 
 const base = (extra: Partial<FormularioDeMissao> = {}): FormularioDeMissao => ({
+  turmaId: "3",
+  perfil: "",
   caminho: "entrega",
   titulo: "Cinemática em movimento",
   objetivo: "Prever e comparar tempos de queda.",
@@ -25,6 +27,7 @@ describe("validarMissao", () => {
     expect(r.atividade).toEqual({ topico_id: 12, titulo: "Missão  Um", descricao: "alvo", tipo: "missao", data_entrega: null, pontuacao_maxima: 50, moedas: 0 });
     // O critério de `entrega` só pode ser montado depois do INSERT da atividade.
     expect(r.missao).toEqual({
+      classe_id: 3, perfil_alvo: null,
       escopo: "turma", origem: "professor", titulo: "Missão  Um", descricao: "alvo",
       recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null,
     });
@@ -61,7 +64,17 @@ describe("validarMissao", () => {
     expect(r.ok).toBe(false);
     expect(r.missao).toBeNull();
     expect(r.atividade).toBeNull();
-    expect(Object.keys(r.erros!).sort()).toEqual(["objetivo", "pontos", "titulo", "topicoId"]);
+    expect(Object.keys(r.erros!).sort()).toEqual(["objetivo", "pontos", "titulo", "topicoId", "turmaId"]);
+  });
+
+  it("turma e perfil vão para a missão; vazio é todos os perfis", () => {
+    expect(validarMissao(meta({ turmaId: "8", perfil: "achiever" })).missao).toMatchObject({ classe_id: 8, perfil_alvo: "achiever" });
+    expect(validarMissao(meta({ turmaId: "8" })).missao!.perfil_alvo).toBeNull();
+  });
+
+  it("perfil fora da lista e perfil em guilda são recusados", () => {
+    expect(validarMissao(meta({ perfil: "ninja" })).erros!.perfil).toBeTruthy();
+    expect(validarMissao(meta({ escopo: "guilda", metrica: "atividades_concluidas", perfil: "seeker" })).erros!.perfil).toBeTruthy();
   });
 
   it("limites de tamanho", () => {

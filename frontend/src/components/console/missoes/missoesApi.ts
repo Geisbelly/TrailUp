@@ -18,6 +18,9 @@ import { comCriterioDaAtividade, type PayloadDaAtividade, type PayloadDaMissao }
 
 export type Missao = {
   id: number;
+  classeId: number;
+  /** `null` = vale para todos os perfis. */
+  perfilAlvo: string | null;
   titulo: string;
   objetivo: string;
   prazo: string | null;
@@ -45,6 +48,8 @@ export type Missao = {
 
 type LinhaDeMissao = {
   id: number;
+  classe_id?: number | null;
+  perfil_alvo?: string | null;
   titulo: string;
   descricao: string | null;
   janela_fim: string | null;
@@ -100,6 +105,8 @@ export function mapearMissao(
   const topico = Array.isArray(atividade?.topicos) ? atividade?.topicos[0] : atividade?.topicos;
   return {
     id: m.id,
+    classeId: Number(m.classe_id ?? 0),
+    perfilAlvo: m.perfil_alvo ?? null,
     titulo: m.titulo,
     objetivo: m.descricao ?? "",
     prazo: m.janela_fim,
@@ -124,7 +131,7 @@ export function mapearMissao(
 export async function listarMissoes(classeId: number): Promise<Missao[]> {
   const { data, error } = await supabase
     .from("missoes" as never)
-    .select("id, titulo, descricao, janela_fim, criterio, origem, aprovacao, motivo_recusa, escopo, ativa, atividade_origem_id")
+    .select("id, classe_id, perfil_alvo, titulo, descricao, janela_fim, criterio, origem, aprovacao, motivo_recusa, escopo, ativa, atividade_origem_id")
     .eq("classe_id", classeId)
     // A diária do sistema (com `dia`) tem painel próprio, `missoes_diarias_resumo`. Sem este
     // filtro, cada coorte de cada dia viraria um cartão aqui — com um "Editar" que o gatilho
@@ -180,10 +187,11 @@ export async function listarMissoes(classeId: number): Promise<Missao[]> {
  * - `meta → entrega` cria a atividade (não há `atividadeIdExistente`) e aponta a missão para ela;
  * - `entrega → meta` grava a missão sem atividade **antes** de apagar a atividade antiga, pela
  *   mesma razão de `excluirMissao` (`atividade_origem_id` é `ON DELETE SET NULL`);
- * - trocar o tópico de uma entrega move a atividade (`saveActivity` não mexe em `topico_id`).
+ * - trocar o tópico de uma entrega move a atividade (`saveActivity` não mexe em `topico_id`);
+ * - trocar a turma é trocar o tópico para um da turma nova: a atividade vai junto, e vai ANTES da
+ *   missão, porque a guarda recusa entrega apontando atividade de outra turma (`20261103_06`).
  */
 export async function salvarMissao(
-  classeId: number,
   missao: PayloadDaMissao,
   atividade: PayloadDaAtividade | null,
   id?: number,
@@ -210,7 +218,8 @@ export async function salvarMissao(
   }
 
   const linha = {
-    classe_id: classeId,
+    classe_id: pronta.classe_id,
+    perfil_alvo: pronta.perfil_alvo,
     escopo: pronta.escopo,
     origem: pronta.origem,
     titulo: pronta.titulo,
@@ -227,6 +236,8 @@ export async function salvarMissao(
     const { error } = await supabase
       .from("missoes" as never)
       .update({
+        classe_id: linha.classe_id,
+        perfil_alvo: linha.perfil_alvo,
         escopo: linha.escopo,
         titulo: linha.titulo,
         descricao: linha.descricao,
@@ -306,10 +317,11 @@ export async function duplicarMissao(m: Missao): Promise<number> {
   const { data, error } = await supabase
     .from("missoes" as never)
     .insert({
-      classe_id: await classeDaMissao(m.id),
-      // A cópia mantém quem cumpre: duplicar uma proposta de guilda não a transforma em
-      // missão da turma inteira.
+      classe_id: m.classeId || (await classeDaMissao(m.id)),
+      // A cópia mantém quem cumpre e para qual perfil: duplicar uma proposta de guilda não a
+      // transforma em missão da turma inteira.
       escopo: m.escopo,
+      perfil_alvo: m.perfilAlvo,
       origem: "professor",
       titulo: `${m.titulo} (cópia)`.slice(0, 120),
       descricao: m.objetivo,
