@@ -29,6 +29,11 @@ const navigation = {
   tecnico: { label: "Painel técnico", icon: Activity },
 };
 
+// Recomendações, conta e administração ficam no topo, ao lado do sino; o menu lateral fica com as
+// telas de trabalho. "Meus dados" é o avatar com o nome. Na tela estreita, onde o menu vira gaveta,
+// os ícones não cabem no topo e voltam para a gaveta (CSS).
+const ICONES_NO_TOPO: ConsoleView[] = ["recomendacoes", "aprovacoes", "tecnico"];
+
 // Dialog, Select e Popover do Radix renderizam em portal no <body>, fora de
 // .console-shell — sem isto eles ficariam com as cores da área pública.
 function useConsoleThemeOnDocument() {
@@ -80,18 +85,32 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         <span className="console-topbar-divider" aria-hidden="true" />
         <span className="console-workspace-name">Console do professor</span>
         <div className="console-account">
+          {ICONES_NO_TOPO.filter((secao) => !viewSoDoDono(secao) || isOwner).map((secao) => {
+            const Icon = navigation[secao].icon;
+            const aviso = secao === "recomendacoes" ? selo : null;
+            const rotulo = aviso ? `${navigation[secao].label}, ${aviso} aguardando decisão` : navigation[secao].label;
+            return (
+              <Link key={secao} to={consolePathForView(secao)} className="console-icon-button relative" data-icone-no-topo aria-current={view === secao ? "page" : undefined} aria-label={rotulo} title={navigation[secao].label}>
+                <Icon size={18} />
+                {aviso && <span className="console-bell-badge" aria-hidden="true">{aviso}</span>}
+              </Link>
+            );
+          })}
           <SinoDeNotificacoes />
-          <Avatar className="h-[38px] w-[38px]"><AvatarFallback className="bg-primary text-primary-foreground text-[13px] font-bold">{initials}</AvatarFallback></Avatar>
-          <div className="console-account-copy"><strong>{name}</strong>{institution && <span>{institution}</span>}</div>
+          <Link to={consolePathForView("profile")} className="console-account-link" aria-current={view === "profile" ? "page" : undefined} aria-label={`${navigation.profile.label}: ${name}`} title={navigation.profile.label}>
+            <Avatar className="h-[38px] w-[38px] shrink-0"><AvatarFallback className="bg-primary text-primary-foreground text-[13px] font-bold">{initials}</AvatarFallback></Avatar>
+            <div className="console-account-copy"><strong>{name}</strong>{institution && <span>{institution}</span>}</div>
+          </Link>
           <button type="button" className="console-icon-button" onClick={onSignOut} aria-label="Sair da conta" title="Sair da conta"><LogOut size={18} /></button>
         </div>
       </header>
       <nav id="console-sections-navigation" className="console-navigation" data-open={menuAberto} aria-label="Seções do console">
-        {CONSOLE_SECTIONS.filter(section => !viewSoDoDono(section.view) || isOwner).map(section => {
+        {CONSOLE_SECTIONS.filter(section => section.view !== "profile" && (!viewSoDoDono(section.view) || isOwner)).map(section => {
           const item = navigation[section.view];
+          const soNaGaveta = ICONES_NO_TOPO.includes(section.view);
           const Icon = item.icon;
           const aviso = section.view === "recomendacoes" ? selo : null;
-          return <Link key={section.view} to={consolePathForView(section.view)} onClick={() => setMenuAberto(false)} aria-current={view === section.view ? "page" : undefined} aria-label={aviso ? `${item.label}, ${aviso} aguardando decisão` : undefined} title={item.label}><Icon size={20} strokeWidth={1.6} /><span>{item.label}</span>{aviso && <span className="console-nav-badge" aria-hidden="true">{aviso}</span>}</Link>;
+          return <Link key={section.view} to={consolePathForView(section.view)} data-so-na-gaveta={soNaGaveta || undefined} onClick={() => setMenuAberto(false)} aria-current={view === section.view ? "page" : undefined} aria-label={aviso ? `${item.label}, ${aviso} aguardando decisão` : undefined} title={item.label}><Icon size={20} strokeWidth={1.6} /><span>{item.label}</span>{aviso && <span className="console-nav-badge" aria-hidden="true">{aviso}</span>}</Link>;
         })}
       </nav>
       <main className="console-main" aria-label={navigation[view].label}>{children}</main>
