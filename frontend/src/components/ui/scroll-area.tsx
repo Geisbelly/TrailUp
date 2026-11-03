@@ -30,7 +30,10 @@ const ScrollBar = React.forwardRef<
     )}
     {...props}
   >
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
+    {/* Alça na cor de borda de campo e --primary no hover, como as barras nativas da superfície em
+        que o diálogo abre: no console, os tokens do console. Com bg-border ela sumia no console,
+        onde --border fica quase na cor do fundo. */}
+    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-input transition-colors hover:bg-primary" />
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
 ));
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName;

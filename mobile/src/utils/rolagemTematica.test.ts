@@ -15,3 +15,10 @@ test("a cor não consegue fechar a regra nem abrir tag", () => {
   assert.doesNotMatch(css, /display:none \}/);
   assert.doesNotMatch(css, /[<>]/);
 });
+
+test("o padrão só vale sem pseudo-elementos: no Chrome 121+ ele desligaria o resto", () => {
+  const css = cssRolagemTematica("#28428a");
+  assert.match(css, /^@supports not selector\(::-webkit-scrollbar\) \{ \* \{ scrollbar-width: thin;/m);
+  assert.doesNotMatch(css, /^\* \{ scrollbar-width/m);
+  assert.match(css, /::-webkit-scrollbar-button \{ display: none; \}/);
+});

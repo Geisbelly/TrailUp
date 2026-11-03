@@ -40,7 +40,54 @@ All colors MUST be HSL.
     --glow-secondary: 162 54% 73%;
     --badge-bg: 268 23% 20%;
     --badge-border: 270 57% 73%;
+    /* Alça da barra de rolagem do site público: 4:1 contra --background e 3:1
+       contra --card. O --input daqui (29%) fica em 1,8:1 e some no fundo. */
+    --rolagem-alca: 268 22% 52%;
   }
+}
+
+/* Barras de rolagem do site público e de /aluno: finas, trilho transparente,
+   alça na paleta do site (--rolagem-alca) e o --primary dele no hover. Sem
+   isto o navegador desenha a barra clara padrão (15px, trilho branco) sobre o
+   fundo escuro. O console tem a barra dele (console-theme.css, na paleta do
+   console) e o app do aluno a dele (cor do perfil, mobile/src/utils/
+   rolagemTematica.ts): cada superfície mantém a sua, por isso o
+   `:not([data-console-theme])` — enquanto o console está montado, nada daqui vale.
+   Só o Firefox usa as propriedades padrão: no Chrome 121+ elas desligam os
+   pseudo-elementos abaixo (medido no Chrome 152: 11px, trilho cinza, setas no
+   Windows). */
+@supports not selector(::-webkit-scrollbar) {
+  :root:not([data-console-theme]),
+  :root:not([data-console-theme]) * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--rolagem-alca)) transparent;
+  }
+}
+:root:not([data-console-theme])::-webkit-scrollbar,
+:root:not([data-console-theme]) ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+:root:not([data-console-theme])::-webkit-scrollbar-track,
+:root:not([data-console-theme]) ::-webkit-scrollbar-track {
+  background: transparent;
+}
+:root:not([data-console-theme])::-webkit-scrollbar-thumb,
+:root:not([data-console-theme]) ::-webkit-scrollbar-thumb {
+  background: hsl(var(--rolagem-alca));
+  border-radius: 8px;
+}
+:root:not([data-console-theme])::-webkit-scrollbar-thumb:hover,
+:root:not([data-console-theme]) ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+:root:not([data-console-theme])::-webkit-scrollbar-button,
+:root:not([data-console-theme]) ::-webkit-scrollbar-button {
+  display: none;
+}
+:root:not([data-console-theme])::-webkit-scrollbar-corner,
+:root:not([data-console-theme]) ::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 @layer base {
