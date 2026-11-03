@@ -411,12 +411,12 @@ async def test_microservice_e_imagem_gemini_bloqueados_para_menor(monkeypatch) -
 
 @pytest.mark.asyncio
 async def test_tts_de_menor_vai_para_openai(monkeypatch) -> None:
-    from app.services import audio, media_agents
+    from app.services import gemini_http, media_agents
 
     openai_tts = AsyncMock(return_value=b"mp3")
     monkeypatch.setattr(media_agents, "gerar_mp3_openai_tts", openai_tts)
     monkeypatch.setattr(media_agents.httpx, "AsyncClient", _HttpProibido)
-    monkeypatch.setattr(audio.httpx, "AsyncClient", _HttpProibido)
+    monkeypatch.setattr(gemini_http.httpx, "AsyncClient", _HttpProibido)
     settings = _settings(gemini_api_key="g-key", openai_api_key="o-key")
     with usar_rota("menor"):
         assert await media_agents.gerar_audio_gemini_tts(settings=settings, texto="ola", voz="Kore") == b"mp3"
@@ -425,7 +425,7 @@ async def test_tts_de_menor_vai_para_openai(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_gerar_mp3_openai_tts_e_gemini_tts_na_rota_de_menor(monkeypatch) -> None:
-    from app.services import audio
+    from app.services import audio, gemini_http
 
     chamadas: list[dict[str, Any]] = []
 
@@ -448,7 +448,7 @@ async def test_gerar_mp3_openai_tts_e_gemini_tts_na_rota_de_menor(monkeypatch) -
 
     delegado = AsyncMock(return_value=b"x")
     monkeypatch.setattr(audio, "gerar_mp3_openai_tts", delegado)
-    monkeypatch.setattr(audio.httpx, "AsyncClient", _HttpProibido)
+    monkeypatch.setattr(gemini_http.httpx, "AsyncClient", _HttpProibido)
     with usar_rota("menor"):
         assert await audio.gerar_mp3_gemini_tts(settings=settings, texto="ola") == b"x"
 

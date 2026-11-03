@@ -191,6 +191,33 @@ def _target_profile_map_key(
     return f"{aluno_id}:{int(topico_id)}:{int(conteudo_id) if conteudo_id is not None else 0}"
 
 
+# Motivo gravado no target de base pulado porque nenhum aluno da turma tem o
+# perfil como principal nem como secundario. E' `skipped`, nao `failed`: nada
+# deu errado, so nao ha para quem gerar.
+_MOTIVO_PERFIL_SEM_ALUNO = "perfil_sem_aluno_na_turma"
+# Motivo do job de base que nasce sem target porque a turma nao tem aluno.
+_MOTIVO_TURMA_SEM_ALUNO = "turma_sem_alunos_matriculados"
+
+
+def _perfis_presentes_na_turma(alunos_da_classe: list[dict[str, Any]]) -> list[str]:
+    """Perfis que algum aluno da turma tem como principal OU secundario.
+
+    Principal e secundario vem de `listar_alunos_classe_com_perfil_dominante`
+    (1o e 2o de `afinidade DESC NULLS LAST, nome ASC`). Aluno sem
+    `aluno_perfil` chega com principal `mastermind` e sem secundario -- e por
+    isso `mastermind` entra no conjunto, como sempre contou na turma.
+    Devolve na ordem canonica de `_BRAINHEX_PROFILE_KEYS`; chave desconhecida
+    nao entra (nao ha base para perfil que nao existe).
+    """
+    presentes: set[str] = set()
+    for aluno in alunos_da_classe or []:
+        presentes.add(_normalize_profile_key(aluno.get("perfil_dominante")))
+        secundario = aluno.get("perfil_secundario")
+        if secundario:
+            presentes.add(_normalize_profile_key(secundario))
+    return [key for key in _BRAINHEX_PROFILE_KEYS if key in presentes]
+
+
 def _profile_key_to_label(profile_key: str) -> str:
     key = _normalize_profile_key(profile_key)
     labels = {
@@ -914,15 +941,27 @@ async def _build_targets(
 
     if kind in KINDS_BASE_POR_PERFIL:
         # A base nao tem dono: ela e material de (classe x topico x conteudo x
-        # perfil), e existe com ou sem aluno matriculado. Antes, cada perfil era
-        # pendurado num aluno representante -- e turma sem aluno nao gerava nada
-        # (job 0/0, fechando `completed` sem erro).
+        # perfil), compartilhado por todo aluno daquele perfil.
+        #
+        # Mas so se gera a base dos perfis que a turma TEM: os que algum aluno
+        # matriculado tem como principal ou secundario. Gerar os 7 sempre
+        # gastava texto, TTS, apresentacao e falas do boss de perfis que
+        # ninguem na turma ia abrir -- e a cota de modelo e' finita. A geracao
+        # continua antecipada (nao e' sob demanda): quando entra aluno com
+        # perfil que a turma ainda nao tinha, o job de matricula enfileira a
+        # base desse perfil (`_garantir_base_dos_perfis_do_aluno`).
+        #
+        # Pedido explicito de perfil (professor no console, "Reprocessar
+        # falhas") continua valendo como veio, tenha a turma aluno ou nao.
+        # Turma sem aluno sai com 0 targets, e `enqueue_personalizacao_job`
+        # grava o motivo no payload.
+        perfis_da_base = brainhex_profile_keys or _perfis_presentes_na_turma(alunos_da_classe)
         for current_topico_id in resolved_topicos:
             scoped_conteudo_ids: list[int | None] = list(
                 conteudos_por_topico.get(current_topico_id) or [None]
             )
             for current_conteudo_id in scoped_conteudo_ids:
-                for profile_key in (brainhex_profile_keys or _BRAINHEX_PROFILE_KEYS):
+                for profile_key in perfis_da_base:
                     _append_target(
                         owner_aluno_id=None,
                         topico_id=current_topico_id,
@@ -1081,6 +1120,24 @@ async def enqueue_personalizacao_job(
         "target_profile_map": target_profile_map,
         "brainhex_profile_keys": requested_profiles,
     }
+    # Job de base sem target, com escopo e sem perfil pedido, so acontece
+    # quando a turma nao tem aluno (sem aluno nao ha perfil presente). Ele
+    # fecha `completed` com 0/0 como qualquer job vazio -- o motivo fica no
+    # payload e no log para ninguem ler isso como "gerou tudo".
+    if (
+        kind in KINDS_BASE_POR_PERFIL
+        and not targets
+        and resolved_topicos
+        and not requested_profiles
+    ):
+        job_payload["sem_targets_motivo"] = _MOTIVO_TURMA_SEM_ALUNO
+        logger.info(
+            "job de base sem targets: turma sem alunos matriculados, nenhum perfil "
+            "para gerar: kind=%s classe_id=%s topicos=%s",
+            kind,
+            classe_id,
+            resolved_topicos,
+        )
     # conteudo_id e so um hint informativo (coluna com FK pra conteudos) — tem
     # que vir de um conteudo que _build_targets confirmou existir (via
     # targets), nao do conteudo_ids bruto da requisicao. Uma remocao de
@@ -1218,6 +1275,49 @@ async def derivar_personalizacao_do_base(
     return result.scalar()
 
 
+_MOTIVO_ESPERA_BASE_DO_PERFIL = "aguardando a base do perfil, ja enfileirada"
+
+
+async def _base_do_perfil_na_fila(
+    *,
+    session: AsyncSession,
+    classe_id: int,
+    topico_id: int,
+    conteudo_id: int | None,
+    brainhex_profile_key: str,
+) -> bool:
+    """Ha target de base (sem dono) deste perfil por fazer num job aberto?
+
+    Mesmo criterio de "base enfileirada" de
+    `ConteudoClasseRepository.mapear_topicos_sem_base_por_perfil`.
+    """
+    result = await session.execute(
+        text(
+            """
+            SELECT EXISTS (
+              SELECT 1
+              FROM personalizacao_job_targets tg
+              JOIN personalizacao_jobs j ON j.id = tg.job_id
+              WHERE j.classe_id = :classe_id
+                AND j.status IN ('pending', 'processing', 'partial')
+                AND tg.aluno_id IS NULL
+                AND tg.media_kind IS NULL
+                AND tg.status IN ('pending', 'processing')
+                AND tg.topico_id = :topico_id
+                AND tg.conteudo_id IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT)
+                AND tg.brainhex_profile_key = :brainhex_profile_key
+            )
+            """
+        ),
+        {
+            "classe_id": classe_id,
+            "topico_id": topico_id,
+            "conteudo_id": conteudo_id,
+            "brainhex_profile_key": brainhex_profile_key,
+        },
+    )
+    return bool(result.scalar())
+
 
 async def _cleanup_target(
     *,
@@ -1342,6 +1442,20 @@ async def _process_media_render_target(
                 await _seed_progress(session=session, record=record)
                 await session.commit()
                 return {"record": record}
+        # Sem base, mas com a base do perfil ja na fila (o caso do primeiro
+        # aluno de um perfil que a turma nao tinha: `_garantir_base_dos_perfis_do_aluno`
+        # acabou de enfileira-la). Gerar a linha do aluno agora seria gerar o
+        # mesmo material duas vezes. Espera a base e copia. A espera tem fim:
+        # dura enquanto houver target de base aberto; se ele falhar, o
+        # proximo poll nao acha fila e cai na geracao normal abaixo.
+        if await _base_do_perfil_na_fila(
+            session=session,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            brainhex_profile_key=target_profile_key,
+        ):
+            return {"deferred": True, "reason": _MOTIVO_ESPERA_BASE_DO_PERFIL}
 
     # Jobs media_render são legados — BrainHex é responsável por gerar as mídias.
     # Redireciona disparando BrainHex para o personalizacao_id já existente.
@@ -2077,6 +2191,11 @@ async def _gerar_falas_boss_do_job(
         # Sem perfil na linha nao ha base por perfil (e o normalizador cairia em "mastermind").
         if not target.get("brainhex_profile_key") or target.get("topico_id") is None or target.get("aluno_id") is not None:
             continue
+        # Perfil que ninguem na turma tem nao ganha base, e nem fala de boss
+        # (`_pular_base_de_perfil_ausente`). Os outros `skipped`/`completed`
+        # continuam entrando: a base pronta ainda pode estar sem fala.
+        if target.get("status") == "skipped" and target.get("last_error") == _MOTIVO_PERFIL_SEM_ALUNO:
+            continue
         perfil = _normalize_profile_key(target.get("brainhex_profile_key"))
         if perfil not in PERFIS_COM_BATALHA:
             continue
@@ -2323,6 +2442,160 @@ async def _prewarm_shared_content_enrichments(
                 target.get("conteudo_id"),
                 _compact_exception_text(result),
             )
+
+
+async def _pular_base_de_perfil_ausente(
+    *,
+    app: FastAPI,
+    job: dict[str, Any],
+    targets: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Marca `skipped` os targets de base de perfil que a turma nao tem.
+
+    `_build_targets` ja monta so os perfis presentes, mas o class-delta nasce no
+    BANCO (`fn_enqueue_class_delta_job`, 20260827_05) e o trigger ainda emite os
+    7. Filtrar aqui, na hora de processar, cobre os dois caminhos sem mexer no
+    trigger -- e decide com a turma de AGORA, nao com a do enfileiramento.
+
+    Pedido explicito de perfil (payload `brainhex_profile_keys`) nunca e'
+    filtrado. Falha ao ler a turma nao pula nada: gerar a mais e' melhor do que
+    deixar um perfil presente sem base.
+    """
+    if job.get("kind") not in KINDS_BASE_POR_PERFIL:
+        return targets
+    payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
+    if payload.get("brainhex_profile_keys"):
+        return targets
+    candidatos = [
+        target
+        for target in targets
+        if target.get("aluno_id") is None
+        and target.get("media_kind") is None
+        and target.get("brainhex_profile_key")
+        and target.get("status") not in TARGET_DONE_STATES
+    ]
+    if not candidatos:
+        return targets
+
+    session_factory = app.state.session_factory
+    try:
+        async with session_factory() as session:
+            alunos = await ConteudoClasseRepository(
+                session
+            ).listar_alunos_classe_com_perfil_dominante(int(job["classe_id"]))
+            presentes = set(_perfis_presentes_na_turma(alunos))
+            pular = [
+                target
+                for target in candidatos
+                if _normalize_profile_key(target.get("brainhex_profile_key")) not in presentes
+            ]
+            if not pular:
+                return targets
+            repo = PersonalizacaoJobsRepository(session)
+            for target in pular:
+                await repo.update_target_status(
+                    target_id=int(target["id"]),
+                    status="skipped",
+                    attempts=int(target.get("attempts") or 0),
+                    last_error=_MOTIVO_PERFIL_SEM_ALUNO,
+                )
+    except Exception as exc:
+        logger.warning(
+            "Falha ao filtrar perfis ausentes da turma; o job segue com todos os "
+            "perfis: job_id=%s erro=%s",
+            job.get("id"),
+            _compact_exception_text(exc),
+        )
+        return targets
+
+    logger.info(
+        "base de perfil sem aluno na turma pulada: job_id=%s classe_id=%s "
+        "perfis_presentes=%s targets_pulados=%s",
+        job.get("id"),
+        job.get("classe_id"),
+        sorted(presentes),
+        len(pular),
+    )
+    ids_pulados = {target.get("id") for target in pular}
+    return [
+        {**target, "status": "skipped", "last_error": _MOTIVO_PERFIL_SEM_ALUNO}
+        if target.get("id") in ids_pulados
+        else target
+        for target in targets
+    ]
+
+
+async def _garantir_base_dos_perfis_do_aluno(*, app: FastAPI, job: dict[str, Any]) -> None:
+    """Matricula com perfil que a turma nao tinha enfileira a base desse perfil.
+
+    Como a base so e' gerada para os perfis presentes, o aluno que chega com um
+    principal ou secundario novo encontraria a base vazia -- e os proximos
+    alunos do mesmo perfil tambem. Aqui a matricula pede a base (sem dono) dos
+    dois perfis dele, so nos topicos em que ela falta e so se nenhum job aberto
+    ja for gera-la (`mapear_topicos_sem_base_por_perfil`). Entao rodar a cada
+    poll do job de matricula custa uma leitura, e duas matriculas seguidas do
+    mesmo perfil novo nao viram duas geracoes.
+
+    O alvo do PROPRIO aluno espera essa base e copia dela, em vez de gerar uma
+    linha so dele em paralelo (`_base_do_perfil_na_fila`). Falha aqui so vira
+    log -- nunca derruba a matricula; sem base na fila, o alvo do aluno cai na
+    geracao normal.
+    """
+    if job.get("kind") != JOB_KIND_ENROLLMENT or job.get("aluno_id") is None:
+        return
+    classe_id = int(job["classe_id"])
+    aluno_id = str(job["aluno_id"])
+    session_factory = app.state.session_factory
+    try:
+        async with session_factory() as session:
+            classe_repo = ConteudoClasseRepository(session)
+            alunos = await classe_repo.listar_alunos_classe_com_perfil_dominante(classe_id)
+            aluno = next(
+                (item for item in alunos if str(item.get("aluno_id")) == aluno_id), None
+            )
+            if aluno is None:
+                return
+            faltando = await classe_repo.mapear_topicos_sem_base_por_perfil(
+                classe_id=classe_id,
+                perfis=_perfis_presentes_na_turma([aluno]),
+            )
+            await session.commit()
+            # Perfis que faltam nos mesmos topicos vao num job so.
+            por_escopo: dict[tuple[int, ...], list[str]] = {}
+            for perfil, topicos in faltando.items():
+                if perfil not in _BRAINHEX_PROFILE_KEYS or not topicos:
+                    continue
+                por_escopo.setdefault(tuple(sorted(set(topicos))), []).append(perfil)
+            for topicos, perfis in por_escopo.items():
+                detail = await enqueue_personalizacao_job(
+                    session=session,
+                    kind=JOB_KIND_FULL_SYNC,
+                    classe_id=classe_id,
+                    trigger_source="matricula_perfil_novo",
+                    topico_ids=list(topicos),
+                    brainhex_profile_keys=sorted(perfis),
+                    reason="base_do_perfil_ausente_na_turma",
+                    payload={"aluno_id_origem": aluno_id},
+                )
+                novo_job = detail.get("job") if isinstance(detail, dict) else None
+                logger.info(
+                    "matricula com perfil novo na turma enfileirou a base: "
+                    "classe_id=%s aluno_id=%s perfis=%s topicos=%s job_id=%s",
+                    classe_id,
+                    aluno_id,
+                    sorted(perfis),
+                    list(topicos),
+                    (novo_job or {}).get("id"),
+                )
+    except Exception as exc:
+        logger.warning(
+            "Falha ao enfileirar a base dos perfis do aluno matriculado: "
+            "job_id=%s classe_id=%s aluno_id=%s erro=%s",
+            job.get("id"),
+            classe_id,
+            aluno_id,
+            _compact_exception_text(exc),
+        )
 
 
 async def process_personalizacao_job_once(app: FastAPI) -> bool:
@@ -2573,6 +2846,9 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
             )
             return True
 
+    targets = await _pular_base_de_perfil_ausente(app=app, job=job, targets=targets)
+    await _garantir_base_dos_perfis_do_aluno(app=app, job=job)
+
     max_retries = int(app.state.settings.personalizacao_job_max_retries)
     profile_pace_sec = int(
         getattr(app.state.settings, "personalizacao_media_render_profile_pace_sec", 300) or 0
@@ -2611,12 +2887,27 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
             target_repo = PersonalizacaoJobsRepository(target_session)
             attempts = int(target.get("attempts") or 0) + 1
             try:
-                await target_repo.update_target_status(
-                    target_id=int(target["id"]),
-                    status="processing",
+                tomado = await target_repo.tomar_target_para_processar(
+                    target=target,
+                    classe_id=int(job["classe_id"]),
                     attempts=attempts,
-                    last_error=None,
+                    stale_processing_min=stale_min,
                 )
+                if not tomado:
+                    # Outro job (ou outro poller deste) ja esta gerando a mesma
+                    # base. Gerar junto so duplicaria o gasto de modelo e um
+                    # invalidaria o outro. Fica como estava, sem gastar
+                    # tentativa; o job volta a ser pego no proximo poll.
+                    logger.info(
+                        "base ja em geracao por outro target; este espera: job_id=%s "
+                        "target_id=%s topico_id=%s conteudo_id=%s perfil=%s",
+                        job.get("id"),
+                        target.get("id"),
+                        target.get("topico_id"),
+                        target.get("conteudo_id"),
+                        target.get("brainhex_profile_key"),
+                    )
+                    return 0
             except Exception:
                 logger.exception(
                     "Falha ao marcar target como processing",

@@ -31,6 +31,25 @@ from app.services.personalizacao_jobs import (
 )
 
 
+async def _tomar_como_marcacao_antiga(self, *, target, classe_id, attempts, stale_processing_min):
+    """Nestes testes a base nunca esta ocupada: a trava se comporta como a
+    marcacao `processing` de antes, pelo `update_target_status` (que os testes
+    simulam e inspecionam). A trava em si e' testada em
+    test_base_um_job_por_vez.py."""
+    await self.update_target_status(
+        target_id=int(target["id"]), status="processing", attempts=attempts, last_error=None
+    )
+    return True
+
+
+@pytest.fixture(autouse=True)
+def _base_nunca_ocupada(monkeypatch):
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.tomar_target_para_processar",
+        _tomar_como_marcacao_antiga,
+    )
+
+
 @pytest.fixture(autouse=True)
 def _brainhex_contract_is_ready(monkeypatch):
     monkeypatch.setattr(
@@ -591,11 +610,19 @@ def test_mark_pending_media_failed_updates_only_pending_media() -> None:
 
 
 @pytest.mark.asyncio
-async def test_build_targets_generates_all_seven_profiles_with_one_student(monkeypatch) -> None:
+async def test_build_targets_gera_base_so_dos_perfis_do_aluno(monkeypatch) -> None:
     student_id = "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
     monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante",
-        AsyncMock(return_value=[{"aluno_id": student_id, "perfil_dominante": "seeker"}]),
+        AsyncMock(
+            return_value=[
+                {
+                    "aluno_id": student_id,
+                    "perfil_dominante": "seeker",
+                    "perfil_secundario": "achiever",
+                }
+            ]
+        ),
     )
     monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.mapear_todos_conteudos_por_topicos",
@@ -610,19 +637,11 @@ async def test_build_targets_generates_all_seven_profiles_with_one_student(monke
     )
 
     assert topics == [117]
-    assert len(targets) == 7
-    assert {item["brainhex_profile_key"] for item in targets} == {
-        "seeker",
-        "survivor",
-        "daredevil",
-        "mastermind",
-        "conqueror",
-        "socializer",
-        "achiever",
-    }
-    # A geracao pesada virou base sem dono: mesmo havendo aluno, os 7 perfis
-    # saem como material de (classe x topico x conteudo x perfil). O aluno
-    # ganha linha propria depois, derivada da base pelo job de enrollment.
+    # Principal e secundario do unico aluno; os outros cinco nao tem para quem.
+    assert [item["brainhex_profile_key"] for item in targets] == ["seeker", "achiever"]
+    # A geracao pesada e' base sem dono: material de (classe x topico x
+    # conteudo x perfil). O aluno ganha linha propria depois, derivada da base
+    # pelo job de enrollment.
     assert {item["aluno_id"] for item in targets} == {None}
     assert {item["conteudo_id"] for item in targets} == {125}
     assert all(item["is_profile_template"] for item in targets)
@@ -665,10 +684,17 @@ async def test_build_targets_generates_seven_profiles_for_each_content(
     monkeypatch,
     conteudo_ids,
 ) -> None:
-    student_id = "b49f2e21-a6f9-4c8d-9533-5a32bb219754"
+    # Turma em que os 7 perfis aparecem (entre principal e secundario): a base
+    # sai com os 7, um por conteudo.
+    alunos = [
+        {"aluno_id": "a1", "perfil_dominante": "seeker", "perfil_secundario": "survivor"},
+        {"aluno_id": "a2", "perfil_dominante": "daredevil", "perfil_secundario": "mastermind"},
+        {"aluno_id": "a3", "perfil_dominante": "conqueror", "perfil_secundario": "socializer"},
+        {"aluno_id": "a4", "perfil_dominante": "achiever", "perfil_secundario": None},
+    ]
     monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante",
-        AsyncMock(return_value=[{"aluno_id": student_id, "perfil_dominante": "seeker"}]),
+        AsyncMock(return_value=alunos),
     )
     monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.mapear_conteudos_por_topico",
@@ -2597,6 +2623,91 @@ async def test_job_processes_targets_with_bounded_concurrency_and_distinct_sessi
 
 
 @pytest.mark.asyncio
+async def test_target_com_base_ocupada_por_outro_job_espera_sem_gerar(monkeypatch) -> None:
+    """Base ja em geracao noutro job: o target fica pending, sem gastar
+    tentativa e sem chamar a geracao; o job fica partial e volta depois."""
+    job = {"id": "job-espera", "classe_id": 32, "kind": "manual_retry", "payload": {}}
+    by_id = {
+        index: {
+            "id": index,
+            "aluno_id": None,
+            "topico_id": 121,
+            "conteudo_id": 125,
+            "brainhex_profile_key": perfil,
+            "status": "pending",
+            "attempts": 0,
+        }
+        for index, perfil in ((1, "achiever"), (2, "seeker"))
+    }
+    claimed = False
+    gerados: list[int] = []
+    tomadas: list[tuple[int, int]] = []
+    finalized: list[str] = []
+
+    async def claim_next_job(_self, **_kwargs):
+        nonlocal claimed
+        if claimed:
+            return None
+        claimed = True
+        return job
+
+    async def get_targets(_self, _job_id):
+        return [dict(target) for target in by_id.values()]
+
+    async def tomar(_self, *, target, classe_id, attempts, stale_processing_min):
+        tomadas.append((target["id"], classe_id))
+        assert stale_processing_min >= 53
+        if target["id"] == 1:
+            return False  # outro job esta gerando a base do achiever
+        by_id[target["id"]].update({"status": "processing", "attempts": attempts})
+        return True
+
+    async def update_target_status(_self, *, target_id, status, attempts, last_error, personalizacao_id=None):
+        by_id[target_id].update({"status": status, "attempts": attempts, "last_error": last_error})
+
+    async def process_target(*, app, session, job, target):
+        gerados.append(target["id"])
+        return {"record": {"id": target["id"], "status": "pronto"}}
+
+    async def refresh_job_counters(_self, _job_id):
+        completed = sum(1 for target in by_id.values() if target["status"] == "completed")
+        return {"processed_targets": completed, "error_count": 0}
+
+    async def finalize_job(_self, *, job_id, status, last_error):
+        finalized.append(status)
+
+    repo = "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository"
+    monkeypatch.setattr(f"{repo}.claim_next_job", claim_next_job)
+    monkeypatch.setattr(f"{repo}.get_targets", get_targets)
+    monkeypatch.setattr(f"{repo}.tomar_target_para_processar", tomar)
+    monkeypatch.setattr(f"{repo}.update_target_status", update_target_status)
+    monkeypatch.setattr(f"{repo}.refresh_job_counters", refresh_job_counters)
+    monkeypatch.setattr(f"{repo}.finalize_job", finalize_job)
+    monkeypatch.setattr(jobs_module, "_process_media_render_target", process_target)
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            session_factory=_WorkerSessionFactory(),
+            settings=SimpleNamespace(
+                personalizacao_job_stale_processing_min=40,
+                brainhex_api_wait_timeout_sec=1980,
+                personalizacao_job_max_retries=3,
+                personalizacao_media_render_concurrency=2,
+                personalizacao_media_render_profile_pace_sec=0,
+            ),
+        )
+    )
+
+    assert await process_personalizacao_job_once(app) is True
+
+    assert sorted(tomadas) == [(1, 32), (2, 32)]
+    assert gerados == [2]
+    assert by_id[1]["status"] == "pending"
+    assert by_id[1]["attempts"] == 0
+    assert by_id[2]["status"] == "completed"
+    assert finalized == ["partial"]
+
+
+@pytest.mark.asyncio
 async def test_job_processes_one_profile_per_tick_by_default(monkeypatch) -> None:
     """Sem pace_sec explicito (default 300s), uma rodada fresca so libera 1
     dos N perfis pendentes — os outros ficam pendentes pro proximo poll."""
@@ -3394,9 +3505,10 @@ def test_upsert_target_casa_base_sem_aluno() -> None:
 
 
 @pytest.mark.asyncio
-async def test_build_targets_gera_base_em_turma_sem_aluno(monkeypatch) -> None:
-    """Era o bug: turma vazia devolvia lista vazia, o job nascia 0/0 e fechava
-    `completed` sem erro."""
+async def test_build_targets_turma_sem_aluno_nao_gera_base(monkeypatch) -> None:
+    """Decisao: a base so e' gerada para os perfis que a turma tem. Turma vazia
+    nao tem perfil nenhum -- 0 targets (o motivo vai no payload do job, ver
+    test_enqueue_base_em_turma_vazia_grava_o_motivo)."""
     monkeypatch.setattr(
         "app.repositories.conteudo_classe.ConteudoClasseRepository.listar_alunos_classe_com_perfil_dominante",
         AsyncMock(return_value=[]),
@@ -3414,17 +3526,7 @@ async def test_build_targets_gera_base_em_turma_sem_aluno(monkeypatch) -> None:
     )
 
     assert topics == [117]
-    assert len(targets) == 7
-    assert {item["aluno_id"] for item in targets} == {None}
-    assert all(item["is_profile_template"] for item in targets)
-    assert {item["brainhex_profile_key"] for item in targets} == {
-        "seeker", "survivor", "daredevil", "mastermind",
-        "conqueror", "socializer", "achiever",
-    }
-    # A base NAO entra no target_profile_map: a chave e (aluno, topico,
-    # conteudo) e o perfil e o valor, entao os 7 perfis colapsariam numa
-    # chave so e o mapa guardaria apenas o ultimo. Para a base o mapa e
-    # desnecessario -- brainhex_profile_key ja vem na linha do target.
+    assert targets == []
     assert _profile_map == {}
 
 

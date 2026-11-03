@@ -1077,6 +1077,94 @@ class PersonalizacaoJobsRepository:
         await self.session.commit()
         return self._hydrate_job(dict(row))
 
+    async def tomar_target_para_processar(
+        self,
+        *,
+        target: dict[str, Any],
+        classe_id: int,
+        attempts: int,
+        stale_processing_min: int,
+    ) -> bool:
+        """Marca o target `processing` so se ninguem ja estiver gerando a MESMA base.
+
+        "Mesma base" e' (turma, topico, conteudo, perfil, aluno, media_kind) --
+        o que identifica a linha de `conteudo_personalizado`, nao o job. Dois
+        jobs com o mesmo alvo (o professor clicou "gerar" e "reprocessar falhas",
+        ou um class-delta caiu em cima de um pedido manual) gerariam a mesma
+        linha ao mesmo tempo, e um invalidava o outro (`stale_generation`): em
+        02/11 a base do achiever da turma 68 foi gerada 5 vezes do zero.
+
+        `pg_advisory_xact_lock` na chave da base serializa a checagem e a
+        marcacao entre workers. E' de transacao (solta no commit), entao vale
+        pelo pooler em modo transacao. Inclui o proprio target: se outro poller
+        do mesmo job ja o pegou, este nao refaz.
+
+        "Ja gerando" e' `processing` atualizado ha menos de
+        `stale_processing_min` -- o mesmo prazo de
+        `claim_retry_incomplete_generation`. Worker que morreu no meio libera a
+        base no mesmo tempo de hoje.
+
+        Devolve False sem tocar no target quando a base esta ocupada: ele fica
+        como estava e o job volta a ser pego depois.
+        """
+        if not await self._targets_exists():
+            return False
+        chave_base = ":".join(
+            str(parte)
+            for parte in (
+                classe_id,
+                target.get("topico_id"),
+                target.get("conteudo_id"),
+                target.get("brainhex_profile_key"),
+                target.get("aluno_id"),
+                target.get("media_kind"),
+            )
+        )
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:chave, 0))"),
+            {"chave": f"personalizacao_base:{chave_base}"},
+        )
+        result = await self.session.execute(
+            text(
+                """
+                UPDATE personalizacao_job_targets alvo
+                SET status = 'processing',
+                    attempts = :attempts,
+                    last_error = NULL,
+                    updated_at = NOW()
+                WHERE alvo.id = :target_id
+                  AND NOT EXISTS (
+                    SELECT 1
+                    FROM personalizacao_job_targets outro
+                    JOIN personalizacao_jobs outro_job ON outro_job.id = outro.job_id
+                    WHERE outro_job.classe_id = :classe_id
+                      AND outro.status = 'processing'
+                      AND outro.updated_at > NOW() - make_interval(mins => :stale_processing_min)
+                      AND outro.topico_id IS NOT DISTINCT FROM alvo.topico_id
+                      AND outro.conteudo_id IS NOT DISTINCT FROM alvo.conteudo_id
+                      AND outro.brainhex_profile_key IS NOT DISTINCT FROM alvo.brainhex_profile_key
+                      AND outro.aluno_id IS NOT DISTINCT FROM alvo.aluno_id
+                      AND outro.media_kind IS NOT DISTINCT FROM alvo.media_kind
+                  )
+                RETURNING alvo.job_id
+                """
+            ),
+            {
+                "target_id": int(target["id"]),
+                "attempts": attempts,
+                "classe_id": classe_id,
+                "stale_processing_min": stale_processing_min,
+            },
+        )
+        job_id = result.scalar()
+        if job_id is not None:
+            await self.session.execute(
+                text("UPDATE personalizacao_jobs SET updated_at = NOW() WHERE id = :job_id"),
+                {"job_id": job_id},
+            )
+        await self.session.commit()
+        return job_id is not None
+
     async def update_target_status(
         self,
         *,

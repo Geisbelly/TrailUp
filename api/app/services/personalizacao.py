@@ -10,7 +10,6 @@ import unicodedata
 from pathlib import Path
 from typing import Any
 
-import httpx
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -25,7 +24,7 @@ from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepositor
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.services.behavioral_personalization import build_behavioral_personalization
-from app.services.gemini_http import gemini_generate_url, gemini_headers
+from app.services.gemini_http import gemini_generate
 from app.services.llm import JsonLLMService, load_prompt
 from app.services.media_contract import (
     MEDIA_PIPELINE_VERSION,
@@ -2653,7 +2652,6 @@ async def _summarize_multimodal_source_with_gemini(
         if not model_name or model_name in tried_models:
             continue
         tried_models.append(model_name)
-        url = gemini_generate_url(model_name)
         body = {
             "contents": [
                 {
@@ -2682,10 +2680,9 @@ async def _summarize_multimodal_source_with_gemini(
             },
         }
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(url, json=body, headers=gemini_headers(settings.gemini_api_key))
-                response.raise_for_status()
-                payload = response.json()
+            payload = await gemini_generate(
+                settings=settings, model=model_name, body=body, timeout=60.0, origem="resumo_multimodal"
+            )
         except Exception:
             continue
 
@@ -3092,6 +3089,8 @@ def _coerce_dict_list(value: Any) -> list[dict[str, Any]]:
 # _PESOS_POR_PERFIL em sugestao_material.py; nenhuma das duas e calibrada ainda.
 # Reutilizado para recomendar formatos e para reordenar o plano gerado pelo LLM,
 # de modo que o material mais interessante para o perfil apareca primeiro.
+# Para calibrar: `metricas_perfil_formato` (PR3) e o caminho em
+# docs/superpowers/specs/2026-11-02-perfil-formato-pr3-design.md, secao 5.
 _PROFILE_FORMAT_PREFERENCES: dict[str, list[str]] = {
     "Achiever": ["markdown", "apresentacao", "cards", "audio"],
     "Conqueror": ["apresentacao", "cards", "markdown", "audio"],
@@ -4609,7 +4608,6 @@ async def _generate_personalized_image_png(
         # #195: rota de menor sem imagem gerada pelo Gemini.
         return None
 
-    url = gemini_generate_url(settings.gemini_model_image)
     body = {
         "contents": [
             {
@@ -4627,10 +4625,14 @@ async def _generate_personalized_image_png(
     }
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(url, json=body, headers=gemini_headers(settings.gemini_api_key))
-            response.raise_for_status()
-        return _extract_png_from_gemini(response.json())
+        payload = await gemini_generate(
+            settings=settings,
+            model=settings.gemini_model_image,
+            body=body,
+            timeout=60.0,
+            origem="imagem_personalizada",
+        )
+        return _extract_png_from_gemini(payload)
     except Exception as exc:  # pragma: no cover
         logger.warning("Falha ao gerar imagem personalizada: %s", exc)
         return None
@@ -5361,7 +5363,6 @@ async def _invoke_multimodal_materiais(
         if not normalized_model or normalized_model in tried_models:
             continue
         tried_models.append(normalized_model)
-        url = gemini_generate_url(normalized_model)
         body = {
             "contents": [{"role": "user", "parts": parts}],
             "generationConfig": {
@@ -5378,10 +5379,13 @@ async def _invoke_multimodal_materiais(
         }
 
         try:
-            async with httpx.AsyncClient(timeout=90.0) as client:
-                response = await client.post(url, json=body, headers=gemini_headers(settings.gemini_api_key))
-                response.raise_for_status()
-                payload = response.json()
+            payload = await gemini_generate(
+                settings=settings,
+                model=normalized_model,
+                body=body,
+                timeout=90.0,
+                origem="materiais_multimodal",
+            )
             raw_text = _extract_text_from_gemini_payload(payload)
             parsed = _parse_json_candidate(raw_text)
             if isinstance(parsed, dict) and parsed:

@@ -9,6 +9,7 @@ from typing import Any
 from openai import AsyncOpenAI
 
 from app.core.settings import Settings
+from app.services import gemini_chaves
 from app.services.media_contract import CONTENT_ENRICHMENT_PROVIDER
 from app.services.roteamento_ia import rota_de_menor_ativa
 
@@ -95,16 +96,11 @@ _OPENAI_PRICE_PER_OUTPUT_TOKEN_USD = 0.60 / 1_000_000
 # billing hard-limit do microservice (openaiImageService.ts).
 _openai_enrichment_unavailable_until: float = 0.0
 
-# Gemini e o provedor PRINCIPAL de enriquecimento (gratuito, sem cobranca —
-# ver enrich_content_blocks). Este circuito protege contra rate-limit do
-# proprio Gemini, nao contra falha da OpenAI. Uma entrada por (chave, modelo)
-# — a cota do free tier e rastreada por modelo tambem (ex.: gemini-3.6-flash
-# tem teto diario baixo, gemini-2.5-flash-lite nao), entao uma chave esgotada
-# num modelo nao pode bloquear as outras chaves NEM o modelo alternativo
-# (ver content_enrichment_gemini_fallback_model) na mesma chave.
-_gemini_enrichment_unavailable_until: dict[tuple[str, str], float] = {}
-# Indice do round-robin entre chaves Gemini disponiveis (ver _pick_available_gemini_key).
-_gemini_key_rotation_index: int = 0
+# Gemini e o provedor PRINCIPAL de enriquecimento (gratuito, sem cobranca --
+# ver enrich_content_blocks). O cooldown por (chave, modelo) contra rate-limit
+# do proprio Gemini mora em `gemini_chaves`: a cota do free tier e por modelo
+# tambem, entao uma chave esgotada num modelo nao bloqueia as outras chaves NEM
+# o modelo alternativo na mesma chave.
 
 # Gasto estimado acumulado da OpenAI (reserva secundaria) neste processo, em
 # USD. Best-effort: baseado nos tokens que a propria OpenAI reporta em cada
@@ -231,93 +227,20 @@ def _gemini_client(api_key: str, model: str) -> Any:
     return ChatGoogleGenerativeAI(model=model, temperature=0, google_api_key=api_key)
 
 
-def _is_gemini_quota_error(exc: BaseException) -> bool:
-    status = str(getattr(exc, "status_code", "") or getattr(exc, "code", "") or "").strip()
-    text = str(exc).lower()
-    if status in {"429", "RESOURCE_EXHAUSTED"}:
-        return True
-    return "resource_exhausted" in text or "quota" in text
-
-
-def _is_gemini_daily_quota_error(exc: BaseException) -> bool:
-    """Distingue RequestsPerDay (so reseta amanha) de RequestsPerMinute (reseta
-    em segundos) dentro dos erros de cota — a mensagem do Google inclui o
-    quotaId, ex. 'GenerateRequestsPerDayPerProjectPerModel-FreeTier'. Chamar
-    so depois de confirmar _is_gemini_quota_error(exc); usada pra escolher um
-    cooldown compativel em vez do fixo de minutos (ver
-    _DEFAULT_GEMINI_DAILY_QUOTA_COOLDOWN_SEC)."""
-    text = str(exc).lower()
-    return "perday" in text.replace(" ", "")
-
-
-def _is_gemini_model_unavailable_error(exc: BaseException) -> bool:
-    """404/401 de modelo aposentado ou indisponivel pra novos usuarios — nao e
-    erro de cota (rotacionar chave nao ajuda, todas falhariam igual), mas
-    ainda justifica pular pro proximo modelo candidato em vez de abortar a
-    cadeia inteira (reproduzido em producao: gemini-2.5-flash-lite retornou
-    404 'no longer available to new users')."""
-    status = str(getattr(exc, "status_code", "") or getattr(exc, "code", "") or "").strip()
-    text = str(exc).lower()
-    if status in {"404", "401", "NOT_FOUND", "UNAUTHENTICATED"}:
-        return True
-    return (
-        "not_found" in text
-        or "unauthenticated" in text
-        or "no longer available" in text
-    )
-
-
-def _is_gemini_transient_error(exc: BaseException) -> bool:
-    """503 UNAVAILABLE ('high demand') e 5xx em geral sao sobrecarga
-    transitoria do servidor do Gemini, nao um problema da conta/chave — vale
-    tentar a proxima chave ou modelo em vez de abortar a cadeia inteira
-    (reproduzido em producao: 'This model is currently experiencing high
-    demand. Spikes in demand are usually temporary.')."""
-    status = str(getattr(exc, "status_code", "") or getattr(exc, "code", "") or "").strip()
-    text = str(exc).lower()
-    if status in {"500", "502", "503", "504", "UNAVAILABLE"}:
-        return True
-    return (
-        "unavailable" in text
-        or "overloaded" in text
-        or "high demand" in text
-        or "try again later" in text
-    )
-
-
-def _parse_gemini_keys(raw: str) -> list[str]:
-    """Suporta múltiplas chaves Gemini separadas por vírgula/ponto-e-vírgula na
-    mesma variável GEMINI_API_KEY. Cada chave tem sua própria cota diária
-    gratuita — alternar entre elas multiplica o limite efetivo (ex.: 3 chaves
-    x 20 req/dia = 60 req/dia), sem custo adicional."""
-    seen: set[str] = set()
-    keys: list[str] = []
-    for part in re.split(r"[,;]", raw or ""):
-        key = part.strip()
-        if key and key not in seen:
-            seen.add(key)
-            keys.append(key)
-    return keys
-
-
-def _pick_available_gemini_key(api_keys: list[str], model: str) -> str | None:
-    """Round-robin entre as chaves que não estão em cooldown de cota PARA ESSE
-    MODELO; None se todas estiverem indisponíveis no momento."""
-    global _gemini_key_rotation_index
-    now = time.time()
-    for offset in range(len(api_keys)):
-        index = (_gemini_key_rotation_index + offset) % len(api_keys)
-        key = api_keys[index]
-        if now >= _gemini_enrichment_unavailable_until.get((key, model), 0.0):
-            _gemini_key_rotation_index = index
-            return key
-    return None
+# Chaves, cooldown e classificacao de erro: pool unico em `gemini_chaves`,
+# compartilhado com o JsonLLMService e as chamadas HTTP diretas. Cada chave tem
+# a sua cota gratuita -- alternar entre elas multiplica o limite efetivo (ex.: 3
+# chaves x 20 req/dia = 60 req/dia), e uma chave que estourou a cota diaria aqui
+# deixa de ser tentada tambem pelo resto da API.
+_is_gemini_quota_error = gemini_chaves.is_quota_error
+_is_gemini_daily_quota_error = gemini_chaves.is_daily_quota_error
+_is_gemini_model_unavailable_error = gemini_chaves.is_model_unavailable_error
+_is_gemini_transient_error = gemini_chaves.is_transient_error
+_parse_gemini_keys = gemini_chaves.parse_lista
 
 
 def reset_gemini_enrichment_circuit() -> None:
-    global _gemini_enrichment_unavailable_until, _gemini_key_rotation_index
-    _gemini_enrichment_unavailable_until = {}
-    _gemini_key_rotation_index = 0
+    gemini_chaves.reset()
 
 
 class ContentEnrichmentError(RuntimeError):
@@ -1030,7 +953,7 @@ async def _generate_gemini_batch(
     tried_any_key = False
     for model in candidate_models:
         for _ in range(len(api_keys)):
-            key = _pick_available_gemini_key(api_keys, model)
+            key = gemini_chaves.escolher_chave(api_keys, model)
             if key is None:
                 break
             tried_any_key = True
@@ -1048,16 +971,13 @@ async def _generate_gemini_batch(
                 )
             except Exception as exc:
                 last_exc = exc
-                if _is_gemini_quota_error(exc):
-                    cooldown = (
-                        daily_quota_cooldown_sec
-                        if _is_gemini_daily_quota_error(exc)
-                        else quota_cooldown_sec
-                    )
-                    _gemini_enrichment_unavailable_until[(key, model)] = time.time() + cooldown
-                    continue
-                if _is_gemini_model_unavailable_error(exc) or _is_gemini_transient_error(exc):
-                    _gemini_enrichment_unavailable_until[(key, model)] = time.time() + quota_cooldown_sec
+                if gemini_chaves.marcar_falha(
+                    key,
+                    model,
+                    exc,
+                    cooldown_sec=quota_cooldown_sec,
+                    cooldown_diario_sec=daily_quota_cooldown_sec,
+                ):
                     continue
                 raise ContentEnrichmentError(
                     f"Gemini falhou ao aprofundar o lote na tentativa {attempt}: {exc}"
