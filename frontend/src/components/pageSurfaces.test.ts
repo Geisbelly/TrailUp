@@ -1,11 +1,13 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { StaticRouter } from "react-router-dom/server";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
 // O ConsoleShell monta a Lumi, que fala com o Supabase; aqui só importa o HTML.
 vi.mock("@/integrations/supabase/client", () => ({ supabase: {} }));
-vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: null }) }));
+const sessao = vi.hoisted(() => ({ atual: { user: null } as Record<string, unknown> }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => sessao.atual }));
 import { PublicLayout, PublicPageTitle } from "./PublicLayout";
 import ConsoleShell from "./console/ConsoleShell";
 import { CONSOLE_SECTIONS, consolePathForView } from "@/pages/consoleSections";
@@ -18,7 +20,8 @@ import Termos from "@/pages/Termos";
 import NotFound from "@/pages/NotFound";
 
 const render = (element: ReturnType<typeof createElement>) => renderToStaticMarkup(
-  createElement(StaticRouter, { location: "/" }, element),
+  createElement(QueryClientProvider, { client: new QueryClient() },
+    createElement(StaticRouter, { location: "/" }, element)),
 );
 
 describe("shared page surfaces", () => {
@@ -37,6 +40,18 @@ describe("shared page surfaces", () => {
     // "Entrar" abre a escolha entre aluno (app) e professor (/login); o menu só monta aberto.
     expect(markup).toMatch(/aria-haspopup="menu"[^>]*>Entrar/);
     expect(markup).not.toContain("animate-pulse");
+  });
+
+  it("shows the signed-in account instead of Entrar", () => {
+    sessao.atual = { user: { id: "u1", email: "ana@escola.br", user_metadata: { nome: "Ana Souza" } }, userRole: "professor", isLoading: false, signOut: async () => {} };
+    try {
+      const markup = render(createElement(PublicLayout, {}, "Sobre"));
+      expect(markup).not.toMatch(/>Entrar/);
+      expect(markup).toContain('aria-label="Conta de Ana Souza"');
+      expect(markup).toContain(`href="${consolePathForView("dashboard")}"`);
+    } finally {
+      sessao.atual = { user: null };
+    }
   });
 
   it("keeps all professor navigation routes and the active section", () => {

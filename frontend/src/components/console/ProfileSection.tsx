@@ -8,11 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import type { ProfessorUpdateData } from "@/pages/Console";
 import AlterarSenhaCard from "./AlterarSenhaCard";
-import { DESCRICAO_MAX, desdeQuando, iniciais, plural } from "./meusdados/conta";
+import { DESCRICAO_MAX, desdeQuando, plural } from "./meusdados/conta";
 import { ExcluirContaDialog } from "./meusdados/ExcluirContaDialog";
 import { useContaEmNumeros } from "./meusdados/useContaEmNumeros";
 import { excluirMinhaContaProfessor } from "./meusdados/exclusaoConta";
 import { useAuth } from "@/hooks/useAuth";
+import { FotoDoPerfil } from "./meusdados/FotoDoPerfil";
 
 interface ProfileSectionProps {
   professorData: {
@@ -79,9 +80,6 @@ export default function ProfileSection({ professorData, onUpdate, isLoading }: P
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-[18px]">
-        <div aria-hidden="true" className="flex h-[50px] w-[50px] flex-none items-center justify-center rounded-full bg-primary text-base font-extrabold text-primary-foreground">
-          {iniciais(nomeExibido)}
-        </div>
         <div className="min-w-0">
           <h2 className="text-[28px] font-bold leading-tight">Meus dados</h2>
           <p className="mt-1.5 text-[13.5px] text-muted-foreground">
@@ -106,6 +104,13 @@ export default function ProfileSection({ professorData, onUpdate, isLoading }: P
         <section className="rounded-[20px] border border-primary bg-card p-6">
           <h3 className="text-[19px] font-bold">Informações pessoais</h3>
           <p className="mt-1 text-[12.5px] text-muted-foreground">Aparecem para os alunos junto do material da sua turma</p>
+
+          <div className="mt-5">
+            <span className={rotulo}>Foto de perfil</span>
+            <div className="mt-2">
+              <FotoDoPerfil uid={professorData?.id} nome={nomeExibido} desabilitado={isLoading || !professorData} />
+            </div>
+          </div>
 
           <div className="mt-5">
             <Label htmlFor="nome" className={rotulo}>Nome completo *</Label>
