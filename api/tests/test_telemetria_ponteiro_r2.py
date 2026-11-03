@@ -11,9 +11,7 @@ import pytest
 
 from app.repositories.telemetria import TelemetriaRepository
 
-R2 = SimpleNamespace(
-    r2_account_id="conta", r2_access_key_id="chave", r2_secret_access_key="segredo", r2_bucket="trailup"
-)
+R2 = SimpleNamespace(supabase_url="https://projeto.supabase.co", supabase_service_key="chave")
 CLIENTE = {"app_version": "1.0.6", "build_profile": "production", "plataforma": "android"}
 
 
@@ -23,6 +21,7 @@ def no_r2(monkeypatch):
 
     async def _enviar(cfg, key, corpo, content_type, **kwargs):
         enviados.append(key)
+        return "trailup"  # o bucket vem da resposta da storage-upload-url (#76)
 
     monkeypatch.setattr("app.repositories.telemetria.get_settings", lambda: R2)
     monkeypatch.setattr("app.repositories.telemetria.enviar_para_r2", _enviar)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import uuid
 from types import SimpleNamespace
@@ -11,16 +12,14 @@ import pytest
 
 from app.services import retencao_externa as rx
 
+URL_R2 = "https://conta.r2.cloudflarestorage.com/bucket-r2/k?X-Amz-Signature=abc"
+
 
 def _settings(**extra):
     base = dict(
         supabase_url="https://exemplo.invalid",
         supabase_service_key="chave-falsa",
         openai_api_key="sk-falsa",
-        r2_account_id="conta",
-        r2_access_key_id="id",
-        r2_secret_access_key="segredo",
-        r2_bucket="bucket-r2",
         retencao_externa_idade_minima_segundos=0,
         retencao_externa_lote=50,
         retencao_externa_interval_seconds=300,
@@ -36,7 +35,13 @@ def capturadas(monkeypatch):
 
     def responder(request: httpx.Request) -> httpx.Response:
         pedidos.append(request)
-        return httpx.Response(respostas.get(request.url.path, 200), json={})
+        status = respostas.get(request.url.path, 200)
+        if request.url.path == "/functions/v1/storage-upload-url" and status == 200:
+            pedido = json.loads(request.content)
+            return httpx.Response(
+                200, json={"url": URL_R2, "metodo": pedido.get("metodo", "PUT"), "bucket": "bucket-r2"}
+            )
+        return httpx.Response(status, json={})
 
     original = httpx.AsyncClient
 
@@ -84,11 +89,31 @@ async def test_openai_apaga_do_vector_store_e_o_arquivo(capturadas) -> None:
 
 
 async def test_r2_recusa_bucket_alheio(capturadas) -> None:
+    pedidos, _ = capturadas
     with pytest.raises(ValueError):
         await rx.ApagadorHttp(_settings()).r2("outro-bucket", "k")
-    pedidos, _ = capturadas
+    assert all(p.method != "DELETE" for p in pedidos)
+    assert await rx.ApagadorHttp(_settings()).r2("bucket-r2", "telemetria/x.json") == "apagado"
     assert await rx.ApagadorHttp(_settings()).r2("", "telemetria/x.json") == "apagado"
     assert pedidos[-1].method == "DELETE" and pedidos[-1].url.host.endswith("r2.cloudflarestorage.com")
+
+
+async def test_r2_pede_a_url_de_delete_ao_supabase(capturadas) -> None:
+    """A API nao tem credencial do R2 (#76): a URL de DELETE vem da storage-upload-url."""
+    pedidos, _ = capturadas
+    await rx.ApagadorHttp(_settings()).r2("", "telemetria/x.json")
+    pedido, apagar = pedidos
+    assert pedido.method == "POST" and pedido.url.path == "/functions/v1/storage-upload-url"
+    assert json.loads(pedido.content) == {"path": "telemetria/x.json", "metodo": "DELETE"}
+    assert apagar.method == "DELETE" and str(apagar.url) == URL_R2
+
+
+async def test_r2_funcao_nao_publicada_fica_na_fila(capturadas) -> None:
+    pedidos, respostas = capturadas
+    respostas["/functions/v1/storage-upload-url"] = 404
+    with pytest.raises(rx.ConfiguracaoAusente):
+        await rx.ApagadorHttp(_settings()).r2("", "telemetria/x.json")
+    assert [p.method for p in pedidos] == ["POST"]
 
 
 async def test_sem_credencial_nao_chama_ninguem(capturadas) -> None:
@@ -96,7 +121,7 @@ async def test_sem_credencial_nao_chama_ninguem(capturadas) -> None:
     with pytest.raises(rx.ConfiguracaoAusente):
         await rx.ApagadorHttp(_settings(supabase_service_key=None)).auth_user("x")
     with pytest.raises(rx.ConfiguracaoAusente):
-        await rx.ApagadorHttp(_settings(r2_bucket=None)).r2("", "k")
+        await rx.ApagadorHttp(_settings(supabase_service_key=None)).r2("", "k")
     assert pedidos == []
 
 

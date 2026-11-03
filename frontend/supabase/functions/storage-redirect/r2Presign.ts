@@ -42,9 +42,10 @@ export interface PresignParams {
    * copia do Storage para o R2 (scripts/copiar-storage-para-r2.ts). O metodo
    * entra na requisicao canonica, entao uma URL assinada para GET nao vale para
    * PUT - o que e' desejavel: a chave de leitura do gateway nao consegue
-   * escrever.
+   * escrever. DELETE serve a retencao da API (`retencao_externa.py`), pela
+   * `storage-upload-url`.
    */
-  metodo?: 'GET' | 'PUT' | 'HEAD';
+  metodo?: 'GET' | 'PUT' | 'HEAD' | 'DELETE';
 }
 
 /** Inicio da janela corrente, em segundos desde a epoca. */

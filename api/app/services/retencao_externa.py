@@ -29,7 +29,12 @@ from typing import Any, Protocol
 import httpx
 from sqlalchemy import text
 
-from app.services.r2_storage import ConfigR2, ler_config_r2, presign_r2
+from app.services.r2_storage import (
+    ConfigR2,
+    FuncaoDeUploadNaoPublicada,
+    ler_config_r2,
+    pedir_url_assinada,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +68,7 @@ class ApagadorHttp:
     def _r2(self) -> ConfigR2:
         cfg = ler_config_r2(self.settings)
         if cfg is None:
-            raise ConfiguracaoAusente("R2 nao configurado")
+            raise ConfiguracaoAusente("Supabase service key nao configurada (URL de DELETE do R2)")
         return cfg
 
     def _supabase(self) -> tuple[str, dict[str, str]]:
@@ -74,13 +79,21 @@ class ApagadorHttp:
         return url, {"apikey": chave, "Authorization": f"Bearer {chave}"}
 
     async def r2(self, bucket: str, chave: str) -> str:
+        """Apaga pelo R2 com a URL de DELETE da `storage-upload-url` (#76).
+
+        A API nao tem credencial do R2: o bucket vem na resposta da funcao.
+        """
         cfg = self._r2()
-        # So apaga no bucket que a API usa: ponteiro para outro bucket e dado
-        # que nao e nosso (ou erro), e fica para alguem olhar.
-        if bucket and bucket != cfg.bucket:
-            raise ValueError(f"bucket do R2 inesperado: {bucket}")
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            return _ok(await client.delete(presign_r2(cfg, chave, "DELETE")))
+            try:
+                assinada = await pedir_url_assinada(cfg, chave, "DELETE", client=client)
+            except FuncaoDeUploadNaoPublicada as exc:
+                raise ConfiguracaoAusente(str(exc)) from exc
+            # So apaga no bucket que a funcao assina: ponteiro para outro bucket
+            # e dado que nao e nosso (ou erro), e fica para alguem olhar.
+            if bucket and bucket != assinada.bucket:
+                raise ValueError(f"bucket do R2 inesperado: {bucket}")
+            return _ok(await client.delete(assinada.url))
 
     async def storage(self, bucket: str, caminho: str) -> str:
         base, headers = self._supabase()
