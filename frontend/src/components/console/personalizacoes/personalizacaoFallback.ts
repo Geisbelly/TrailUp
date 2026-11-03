@@ -170,6 +170,9 @@ export function buildDesignTokensForProfile(profileName: string | null | undefin
 // Port de `build_public_storage_url`/`_hydrate_materiais_public_urls`. Mesma
 // convencao de bucket que a API usa: `conteudo_aluno`.
 const FALLBACK_BUCKET = "conteudo_aluno";
+// Espelho de `BUCKETS_DO_GATEWAY` (api/app/services/storage.py): os dois sao
+// privados (20261024_09, 20261024_10) e a URL publica deles da' 400.
+const BUCKETS_DO_GATEWAY: ReadonlySet<string> = new Set([FALLBACK_BUCKET, "conteudos"]);
 
 function pickString(...values: unknown[]): string | null {
   for (const value of values) {
@@ -213,8 +216,12 @@ export function resolvePublicStorageUrl(
  * material existe"). O gateway serve do R2 e cai no Supabase quando o objeto
  * ainda nao foi copiado, entao vale para material antigo e novo.
  *
- * Outros buckets (fonte do professor) ficam com a URL publica direta — o
- * gateway so' conhece caminhos de `vw_material_storage_paths`.
+ * A fonte do professor (bucket `conteudos`) tambem vai pelo gateway desde a
+ * 20261024_10, como no Python: o caminho dela esta' em `fontes_personalizacao`,
+ * que a `vw_material_storage_paths` cobre, e o gateway assina no bucket certo
+ * (`bucketDoCaminho`: `<uuid>/...` -> `conteudos`). Este porte tinha ficado
+ * na URL publica, que da' 400 com o bucket privado. Outros buckets ficam com a
+ * URL publica direta.
  */
 export function resolveMaterialUrl(
   baseUrl: string | null | undefined,
@@ -225,7 +232,7 @@ export function resolveMaterialUrl(
   const [bucketName, rawPath] = normalizeBucketAndPath(bucket ?? null, path ?? null);
   if (!base || !bucketName || !rawPath) return null;
   if (rawPath.startsWith("http://") || rawPath.startsWith("https://")) return rawPath;
-  if (bucketName !== FALLBACK_BUCKET) return resolvePublicStorageUrl(base, bucketName, rawPath);
+  if (!BUCKETS_DO_GATEWAY.has(bucketName)) return resolvePublicStorageUrl(base, bucketName, rawPath);
   // Os caminhos gerados usam so' [A-Za-z0-9/_.-], que `encodeURIComponent`
   // preserva; a URL sai identica a do Python, a do microservice e a da
   // migracao 20260829_02.
@@ -239,17 +246,20 @@ export function resolveMaterialUrl(
 }
 
 /**
- * Caminho dentro de `conteudo_aluno` de uma URL PUBLICA antiga do Storage, ou
- * null. Desde a #195 o bucket e' privado e essa URL da' 400: a leitura troca
+ * Caminho dentro de `conteudo_aluno` ou `conteudos` de uma URL PUBLICA antiga
+ * do Storage, ou null. Os dois sao privados e essa URL da' 400: a leitura troca
  * pelo gateway `storage-redirect` (mesma conversao de `material_url_de_leitura`
- * na API). Query string e fragmento sao descartados.
+ * na API). A URL do gateway so' depende do caminho - ele acha o bucket por
+ * `bucketDoCaminho` -, entao o bucket nao precisa voltar junto. Query string e
+ * fragmento sao descartados.
  */
 export function materialPathDaUrlPublica(url: unknown): string | null {
-  if (typeof url !== "string") return null;
-  const marcador = `/storage/v1/object/public/${FALLBACK_BUCKET}/`;
-  const i = url.indexOf(marcador);
-  if (i < 0 || !/^https?:\/\//.test(url)) return null;
-  const resto = url.slice(i + marcador.length).split(/[?#]/)[0];
+  if (typeof url !== "string" || !/^https?:\/\//.test(url)) return null;
+  const marcador = [...BUCKETS_DO_GATEWAY]
+    .map((bucket) => `/storage/v1/object/public/${bucket}/`)
+    .find((m) => url.includes(m));
+  if (!marcador) return null;
+  const resto = url.slice(url.indexOf(marcador) + marcador.length).split(/[?#]/)[0];
   try {
     const caminho = decodeURIComponent(resto).replace(/^\/+/, "");
     return caminho || null;
