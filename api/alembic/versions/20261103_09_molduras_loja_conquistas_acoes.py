@@ -24,9 +24,13 @@ Três molduras do Drive ficaram de fora (folhas 44, 46 e 47 da folha de contato)
 - `molduras_acoes`: as 10 ações e qual moldura cada uma libera. É o que o dev edita.
 - `moldura_acao_aluno`: o registro de quem fez cada ação (uma vez por aluno × ação). Fica mesmo com
   a ação desligada: serve de métrica (quantos avaliaram o app) e não credita nada por si.
-- Dez conquistas novas do sistema (`classe_id IS NULL`, `tipo = 'moldura'`), avaliadas pelo gatilho
+- Dez conquistas novas do sistema (`classe_id IS NULL`, `tipo = 'moldura_<codigo>'`), avaliadas pelo gatilho
   de sempre (`trg_eventos_aluno_after_iud`). Quando uma é concluída, `trg_conquista_libera_moldura`
   entrega a moldura. `pontos_recompensa = 0`: o prêmio é a moldura, e pontos mexeriam no ranking.
+  O `tipo` é um por moldura, e não `'moldura'` para as dez: em produção, `conquistas_tipo_comum_uq`
+  é `(COALESCE(classe_id, -1), tipo)` e só aceita UMA conquista do sistema por tipo. A primeira
+  versão desta semente gravou as dez com o mesmo tipo e a API não subiu (03/11). O índice de
+  produção não é o do Alembic (`20260826_12` cria só `(tipo)`); o teste e2e cria a versão real.
 
 ## RPCs (todas `SECURITY DEFINER`, todas conferem `auth.uid()`)
 
@@ -666,7 +670,7 @@ WITH c AS (
   INSERT INTO public.conquistas
     (nome, descricao, categoria, tipo, escopo, criterio, pontos_recompensa, classe_id, criado_por, ativa)
   VALUES ({_q(conquista)}, {_q(descricao + " Libera a moldura " + nome + ".")}, {_q(categoria)},
-          'moldura', 'comum', {_json(criterio_com_aparencia)}, 0, NULL, NULL, true)
+          {_q('moldura_' + codigo)}, 'comum', {_json(criterio_com_aparencia)}, 0, NULL, NULL, true)
   RETURNING id
 )
 INSERT INTO public.molduras (codigo, nome, origem, conquista_id, ordem)
