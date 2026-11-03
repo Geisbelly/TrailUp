@@ -13,7 +13,6 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-teste";
 process.env.BRAINHEXPDF_API_URL = "http://brainhexpdf.test";
 process.env.CONTENT_GENERATION_AUDIO_SECOND_ROUND_DELAY_MS = "0";
 delete process.env.TTS_ENABLE_OPENAI_FALLBACK;
-for (const name of ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET"]) delete process.env[name];
 
 type Evento = { tipo: "tts" | "texto" | "deck" | "openai" | "merge"; detalhe: string };
 const eventos: Evento[] = [];
@@ -69,6 +68,19 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       status: 200,
       headers: { "content-type": "application/json" },
     });
+  }
+  // R2 pelo Supabase (#76): a funcao devolve a URL de PUT, o PUT grava em
+  // `arquivos`, e o gateway serve dali - 404 quando o caminho nao existe.
+  if (url === "https://fake.supabase.co/functions/v1/storage-upload-url") {
+    return new Response(JSON.stringify({ url: `https://r2.test/${body?.path}` }), { status: 200 });
+  }
+  if (url.startsWith("https://r2.test/") && init?.method === "PUT") {
+    arquivos.set(url.slice("https://r2.test/".length), Buffer.from(init.body as Uint8Array).toString("utf-8"));
+    return new Response("", { status: 200 });
+  }
+  if (url.startsWith("https://fake.supabase.co/functions/v1/storage-redirect?path=")) {
+    const caminho = url.slice(url.indexOf("?path=") + "?path=".length);
+    return arquivos.has(caminho) ? new Response(arquivos.get(caminho)) : new Response("nao encontrado", { status: 404 });
   }
   return new Response("rota inesperada no teste", { status: 500 });
 }) as typeof fetch;

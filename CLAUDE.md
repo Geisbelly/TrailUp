@@ -900,7 +900,12 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   nunca recebe o arquivo, porque tudo que sai de uma Edge Function conta como
   egress. Repassar o byte por ela, ou copiar do Storage para o R2 depois,
   pagaria a mesma conta que a migração existe para eliminar. O microservice
-  ainda grava com `R2_*` próprias, que é dívida, não precedente.
+  faz o mesmo desde 03/11 (`microservice/src/services/r2Upload.ts`) e lê o
+  markdown da retomada pelo gateway; antes ele assinava com `R2_*` próprias.
+  Dívida que sobra: a API ainda lê `R2_*` (`app/services/r2_storage.py`) para
+  a telemetria (`repositories/telemetria.py`) e a retenção externa
+  (`retencao_externa.py`), caminhos fora de `brainhex/` e `fontes/`. Não use
+  como precedente.
 
   Essa premissa errada já quebrou o console duas vezes no mesmo dia: o deck
   baixado do Storage (corrigido em `htmlDeckSource.ts`) e uma checagem em SQL

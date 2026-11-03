@@ -1,5 +1,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { baixarTextoDoR2, lerConfigR2, uploadParaR2, urlDoGateway } from "./r2Storage";
+import {
+  baixarTextoPeloGateway,
+  FuncaoDeUploadNaoPublicada,
+  gatewayConfigurado,
+  uploadPeloSupabase,
+  urlDoGateway,
+} from "./r2Upload";
 import { createKeyedQueue } from "../lib/serialQueue";
 import { createLogger } from "../lib/logger";
 import type { MaterialEntryLike } from "../lib/materialsMerge";
@@ -62,22 +68,22 @@ export async function fetchPersonalizacaoMateriais(
  * pra reaproveitar conteudo ja gerado sem chamar o Gemini de novo (ver
  * mediaResume.ts).
  *
- * Le do R2 primeiro: depois da migracao, escrita nova vai SO para la, e o
- * Storage do Supabase guarda apenas o que ja existia. Ler so do Supabase (como
- * era) devolvia null para todo material novo com mais de uma parte, e a
- * retomada caia sempre na regeracao completa (#652).
+ * Le pelo gateway primeiro: depois da migracao, escrita nova vai SO para o
+ * R2, e o Storage do Supabase guarda apenas o que ja existia. Ler so do
+ * Supabase (como era) devolvia null para todo material novo com mais de uma
+ * parte, e a retomada caia sempre na regeracao completa (#652). O gateway
+ * assina a leitura com as credenciais que ficam no Supabase (#76).
  */
 export async function downloadStorageText(
   bucket: string,
   storagePath: string,
 ): Promise<string | null> {
-  const configR2 = lerConfigR2();
-  if (configR2) {
+  if (gatewayConfigurado()) {
     try {
-      const texto = await baixarTextoDoR2(configR2, storagePath);
+      const texto = await baixarTextoPeloGateway(storagePath);
       if (texto !== null) return texto;
     } catch (err) {
-      log.warn("download do R2 falhou; tentando o Storage do Supabase", { storagePath, err });
+      log.warn("leitura pelo gateway falhou; tentando o Storage do Supabase", { storagePath, err });
     }
   }
   const client = getClient();
@@ -89,15 +95,16 @@ export async function downloadStorageText(
 /**
  * Sobe o material e devolve a URL que vai para `arquivo_url`.
  *
- * Com o R2 configurado, escreve LA e devolve a URL do GATEWAY - nunca a do R2
- * direto, e nunca nos dois lugares. Gravar em dois dobraria escrita e
+ * Com SUPABASE_URL e a chave de servico, pede a `storage-upload-url` uma URL
+ * assinada, escreve no R2 e devolve a URL do GATEWAY - nunca a do R2 direto, e
+ * nunca nos dois lugares. As credenciais do R2 nao ficam aqui (#76). Gravar em dois dobraria escrita e
  * armazenamento sem resolver nada: quem protege a leitura do material antigo e'
  * o fallback do gateway, nao uma segunda copia.
  *
- * Sem R2 configurado, sobe no Supabase Storage e devolve a URL do gateway
- * (bucket privado, ver `urlDeLeituraDoStorage`). E' o
- * que permite subir este codigo antes de os segredos existirem, e o que faz
- * ambiente de desenvolvimento continuar funcionando sem conta na Cloudflare.
+ * Sem essas variaveis (desenvolvimento), ou com a funcao ainda nao publicada
+ * (404), sobe no Supabase Storage e devolve a URL do gateway (bucket privado,
+ * ver `urlDeLeituraDoStorage`): publicar este servico antes da funcao nao
+ * derruba a geracao.
  *
  * Falha no R2 LANCA, nao cai para o Supabase. Um fallback silencioso faria a
  * migracao parecer concluida enquanto o egress continuava saindo do mesmo
@@ -109,14 +116,15 @@ export async function uploadBuffer(
   data: Buffer,
   contentType: string
 ): Promise<string | null> {
-  const configR2 = lerConfigR2();
-  if (configR2) {
-    await uploadParaR2(configR2, storagePath, data, contentType);
-    const url = urlDoGateway(storagePath);
-    if (url) return url;
-    console.warn(
-      `[r2] objeto subiu mas SUPABASE_URL esta ausente; sem ela nao da para montar a URL do gateway (${storagePath})`
-    );
+  if (gatewayConfigurado()) {
+    try {
+      await uploadPeloSupabase(storagePath, data, contentType);
+      const url = urlDoGateway(storagePath);
+      if (url) return url;
+    } catch (err) {
+      if (!(err instanceof FuncaoDeUploadNaoPublicada)) throw err;
+      log.warn("storage-upload-url nao publicada; material vai para o Supabase Storage", { storagePath });
+    }
   }
 
   const client = getClient();
