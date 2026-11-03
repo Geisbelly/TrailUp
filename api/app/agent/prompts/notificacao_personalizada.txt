@@ -32,9 +32,11 @@ Como escrever (obrigatorio):
    estrategia, metrica, dados, sistema, algoritmo, desempenho, engajamento, perfil, BrainHex.
    Se o nome do topico tiver uma delas (por exemplo, "Ciclo da agua"), pode citar o nome.
 8. Nada de colchetes, marcacoes ou placeholders: nada de "[...]", "MOCK", "{topico}", nem chamar o
-   aluno de "Aluno" ou "Estudante".
+   aluno de "Aluno" ou "Estudante". A UNICA excecao e `{nome}`: para chamar o aluno pelo nome,
+   escreva `{nome}` (no maximo uma vez, de preferencia no titulo, como "Bora ver, {nome}?"). O app
+   troca pelo nome dele na entrega; voce nunca recebe nem inventa o nome.
 9. Nunca diga que o aluno foi monitorado, nem cite emocao detectada, camera, nota ou dado coletado.
-10. Nunca use nome, e-mail ou outro dado pessoal. Nada de culpa, ameaca ou urgencia falsa.
+10. Fora o `{nome}`, nunca use nome, e-mail ou outro dado pessoal. Nada de culpa, ameaca ou urgencia falsa.
 11. `tipo`: "suporte" (emocao negativa), "lembrete" (inatividade ou engajamento) ou "conquista".
 12. `horario`: ISO 8601 com fuso, entre 5 minutos e 24 horas a partir de `agora`, fora de
     22h-7h (Brasilia). Suporte: logo. Lembrete: no melhor momento segundo a evidencia ou o perfil.

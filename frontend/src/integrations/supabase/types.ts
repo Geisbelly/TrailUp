@@ -5387,6 +5387,7 @@ export type Database = {
           created_at: string
           descricao: string | null
           disciplina: string | null
+          foto_url: string | null
           geracao_automatica: boolean
           id: string
           instituicao: string | null
@@ -5397,6 +5398,7 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           disciplina?: string | null
+          foto_url?: string | null
           geracao_automatica?: boolean
           id: string
           instituicao?: string | null
@@ -5407,6 +5409,7 @@ export type Database = {
           created_at?: string
           descricao?: string | null
           disciplina?: string | null
+          foto_url?: string | null
           geracao_automatica?: boolean
           id?: string
           instituicao?: string | null

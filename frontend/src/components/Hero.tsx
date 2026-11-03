@@ -2,6 +2,8 @@ import { ArrowDown, ArrowUpRight, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { DESIGN_ART } from "@/lib/design-art";
 import { useSceneMotion } from "@/hooks/useSceneMotion";
+import { useAuth } from "@/hooks/useAuth";
+import { consolePathForView } from "@/pages/consoleSections";
 import SceneNature from "./SceneNature";
 
 const destinations = [
@@ -13,6 +15,7 @@ const destinations = [
 
 export default function Hero() {
   const { ref, active } = useSceneMotion<HTMLElement>();
+  const { userRole } = useAuth();
   return (
     <section ref={ref} className="journey-hero" aria-labelledby="journey-title" data-motion-active={active}>
       <div className="scene-camera hero-camera" aria-hidden="true">
@@ -27,7 +30,9 @@ export default function Hero() {
         <p className="hero-description">Descubra seu jeito de aprender e transforme cada novo conhecimento em uma conquista.</p>
         <div className="journey-actions">
           <Link to="/cadastro-aluno" className="journey-button journey-button-coral">Começar minha jornada <ArrowRight size={18} /></Link>
-          <Link to="/login" className="journey-link">Sou professor <ArrowUpRight size={17} /></Link>
+          {userRole === "professor"
+            ? <Link to={consolePathForView("dashboard")} className="journey-link">Ir para o console <ArrowUpRight size={17} /></Link>
+            : <Link to="/login" className="journey-link">Sou professor <ArrowUpRight size={17} /></Link>}
         </div>
       </div>
       <div className="hero-bottom journey-width">

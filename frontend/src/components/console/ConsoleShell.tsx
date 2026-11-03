@@ -2,7 +2,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Activity, Award, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, Lightbulb, LogOut, Menu, Route, Settings, ShieldCheck, Sparkles, Trophy, X } from "lucide-react";
 import { Shield, Swords } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useMinhaConta } from "@/hooks/useMinhaConta";
 import { DESIGN_ART } from "@/lib/design-art";
 import { CONSOLE_SECTIONS, consolePathForView, viewSoDoDono, type ConsoleView } from "@/pages/consoleSections";
 import Escriba from "./escriba/Escriba";
@@ -64,6 +65,7 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
   }, [menuAberto]);
   // O selo é só um aviso: a RLS limita a contagem às turmas do professor logado.
   const selo = rotuloDoSelo(useContagemDeRecomendacoes(true));
+  const fotoUrl = useMinhaConta().data?.fotoUrl ?? null;
   const initials = name.split(" ").filter(Boolean).map(part => part[0]).join("").slice(0, 2).toUpperCase() || "PR";
   return (
     <div className="journey-console console-shell">
@@ -98,7 +100,7 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
           })}
           <SinoDeNotificacoes />
           <Link to={consolePathForView("profile")} className="console-account-link" aria-current={view === "profile" ? "page" : undefined} aria-label={`${navigation.profile.label}: ${name}`} title={navigation.profile.label}>
-            <Avatar className="h-[38px] w-[38px] shrink-0"><AvatarFallback className="bg-primary text-primary-foreground text-[13px] font-bold">{initials}</AvatarFallback></Avatar>
+            <Avatar className="h-[38px] w-[38px] shrink-0">{fotoUrl && <AvatarImage src={fotoUrl} alt="" className="object-cover" />}<AvatarFallback className="bg-primary text-primary-foreground text-[13px] font-bold">{initials}</AvatarFallback></Avatar>
             <div className="console-account-copy"><strong>{name}</strong>{institution && <span>{institution}</span>}</div>
           </Link>
           <button type="button" className="console-icon-button" onClick={onSignOut} aria-label="Sair da conta" title="Sair da conta"><LogOut size={18} /></button>

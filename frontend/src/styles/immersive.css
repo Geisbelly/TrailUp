@@ -33,6 +33,11 @@
 .journey-desktop-nav a, .header-login { color: #e1d5ef; font-size: 13px; padding-block: 14px; }
 .journey-desktop-nav a:hover, .header-login:hover { color: #ffa98f; }
 .journey-header-actions { display: flex; align-items: center; gap: 24px; }
+.header-account { display: inline-flex; align-items: center; gap: 8px; max-width: 220px; padding: 4px 10px 4px 4px; border: 1px solid #d0b5ff33; border-radius: 999px; color: #e1d5ef; font-size: 13px; }
+.header-account:hover, .header-account[data-state="open"] { color: #ffa98f; border-color: #ffa98f66; }
+.header-account-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-account-placeholder { display: inline-block; width: 32px; height: 32px; }
+.journey-mobile-account { display: flex; align-items: center; gap: 12px; margin-top: 24px; font-size: 15px; }
 .journey-menu-button { display: none; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid #9275b25c; border-radius: 6px; }
 .journey-mobile-menu { background: #201331; color: #f9f2ff; width: min(88%, 360px); overflow-y: auto; }
 .journey-mobile-menu nav { margin: 32px 0; display: grid; }
@@ -175,6 +180,7 @@
   .journey-brand img { width: 36px; height: 36px; }
   .journey-header-actions .journey-button { display: none; }
   .header-login { font-size: 13px; }
+  .header-account-name { display: none; }
   .journey-menu-button { width: 40px; height: 40px; }
   .journey-opening { --hero-scene-tail: 180px; }
   .journey-hero { padding-top: 96px; min-height: 570px; height: calc(100svh - 110px); max-height: 820px; }
