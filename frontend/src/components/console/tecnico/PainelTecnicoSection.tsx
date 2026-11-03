@@ -8,6 +8,7 @@ import {
   formatarDuracao,
   formatarMinutos,
   formatarPercentual,
+  formatarTokens,
   haQuanto,
   ordenarFormatos,
   rotuloDoEstado,
@@ -120,8 +121,69 @@ function Formatos({ p }: { p: PainelTecnico }) {
         </div>
       )}
       <p className="text-[11.5px] text-muted-foreground">
-        Taxa de erro = falharam ÷ (concluídos + falharam). &ldquo;Execuções por alvo&rdquo; é o proxy de custo: o banco não grava tokens, só quantas vezes cada alvo foi
-        executado.
+        Taxa de erro = falharam ÷ (concluídos + falharam). &ldquo;Execuções por alvo&rdquo; conta quantas vezes cada alvo foi executado: reprocessar é pagar de
+        novo. O custo em tokens está na seção abaixo.
+      </p>
+    </section>
+  );
+}
+
+function CustoEmTokens({ p }: { p: PainelTecnico }) {
+  const c = p.custo;
+  if (!c) return null;
+  return (
+    <section aria-labelledby="tec-custo" className="flex flex-col gap-3">
+      <h2 id="tec-custo" className="text-base font-bold text-foreground">
+        Custo em tokens
+      </h2>
+      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-border bg-card px-4 py-3">
+          <dt className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">Tokens por alvo</dt>
+          <dd className="text-xl font-bold text-foreground">
+            {formatarTokens(c.tokens_por_alvo)}
+            {c.tokens_por_alvo_anterior !== null && (
+              <span className="ml-1 text-[12px] font-normal text-muted-foreground">(antes: {formatarTokens(c.tokens_por_alvo_anterior)})</span>
+            )}
+          </dd>
+        </div>
+        <div className="rounded-2xl border border-border bg-card px-4 py-3">
+          <dt className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">Alvos com tokens gravados</dt>
+          <dd className="text-xl font-bold text-foreground">
+            {c.alvos_medidos}
+            <span className="ml-1 text-[12px] font-normal text-muted-foreground">(antes: {c.alvos_medidos_anterior})</span>
+          </dd>
+        </div>
+      </dl>
+      {c.por_modelo.length > 0 && (
+        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+          <table className="w-full min-w-[560px] text-left text-[12.5px]">
+            <caption className="sr-only">Uso de cada modelo na janela escolhida</caption>
+            <thead className="text-[11px] uppercase tracking-[0.04em] text-muted-foreground">
+              <tr>
+                <th scope="col" className="px-4 py-2.5">Modelo</th>
+                <th scope="col" className="px-3 py-2.5">Chamadas</th>
+                <th scope="col" className="px-3 py-2.5">Tokens de entrada</th>
+                <th scope="col" className="px-3 py-2.5">Tokens de saída</th>
+                <th scope="col" className="px-3 py-2.5">Caracteres de voz</th>
+              </tr>
+            </thead>
+            <tbody>
+              {c.por_modelo.map((m) => (
+                <tr key={m.modelo} className="border-t border-border">
+                  <th scope="row" className="px-4 py-2.5 font-semibold text-foreground">{m.modelo}</th>
+                  <td className="px-3 py-2.5">{m.chamadas.toLocaleString("pt-BR")}</td>
+                  <td className="px-3 py-2.5">{formatarTokens(m.tokens_entrada)}</td>
+                  <td className="px-3 py-2.5">{formatarTokens(m.tokens_saida)}</td>
+                  <td className="px-3 py-2.5">{m.caracteres > 0 ? formatarTokens(m.caracteres) : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="text-[11.5px] text-muted-foreground">
+        Somado entre tentativas: o que falhou também foi pago. Conta a geração de texto, áudio e apresentação; o enriquecimento do conteúdo, feito uma vez
+        por job, fica de fora. Alvos anteriores à medição não têm tokens, e enquanto houver poucos alvos medidos o gatilho de custo usa execuções por alvo.
       </p>
     </section>
   );
@@ -296,6 +358,7 @@ export default function PainelTecnicoSection() {
 
       <Fila p={painel} />
       <Formatos p={painel} />
+      <CustoEmTokens p={painel} />
       <Jobs p={painel} />
       <Invariantes p={painel} />
       <Atividade p={painel} />

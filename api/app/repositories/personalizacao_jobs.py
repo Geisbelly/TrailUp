@@ -1165,6 +1165,20 @@ class PersonalizacaoJobsRepository:
         await self.session.commit()
         return job_id is not None
 
+
+    async def somar_uso_modelo(self, *, target_id: int, uso: dict[str, Any]) -> None:
+        """Soma o uso do modelo de uma tentativa no alvo (`20261103_14`); a soma é do banco."""
+        await self.session.execute(
+            text(
+                """
+                UPDATE personalizacao_job_targets
+                   SET uso_modelo = fn_personalizacao_uso_somar(uso_modelo, CAST(:uso AS JSONB))
+                 WHERE id = :target_id
+                """
+            ),
+            {"target_id": target_id, "uso": json.dumps(uso)},
+        )
+
     async def update_target_status(
         self,
         *,

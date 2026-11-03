@@ -6,6 +6,7 @@ import {
   formatarDuracao,
   formatarMinutos,
   formatarPercentual,
+  formatarTokens,
   haQuanto,
   lerPainel,
   ordenarFormatos,
@@ -127,5 +128,37 @@ describe("erros da RPC", () => {
     expect(eMigracaoPendente({ message: "Could not find the function public.painel_tecnico in the schema cache" })).toBe(true);
     expect(eMigracaoPendente({ code: "42501", message: "Só o dono" })).toBe(false);
     expect(eMigracaoPendente(null)).toBe(false);
+  });
+});
+
+describe("custo em tokens (20261103_14)", () => {
+  const base = { fila: {}, jobs: {}, formatos: [], gatilhos: [], invariantes: [], atividade: {} };
+
+  it("lê o custo e ordena os modelos pelo que mais gastou", () => {
+    const p = lerPainel({
+      ...base,
+      custo: {
+        tokens_por_alvo: 1200, tokens_por_alvo_anterior: 900, alvos_medidos: 8, alvos_medidos_anterior: 6,
+        por_modelo: {
+          "gpt-4o-mini-tts": { chamadas: 2, tokens_entrada: 0, tokens_saida: 0, caracteres: 900 },
+          "gemini-flash": { chamadas: 10, tokens_entrada: 8000, tokens_saida: 2000, caracteres: 0 },
+        },
+      },
+    });
+    expect(p?.custo?.tokens_por_alvo).toBe(1200);
+    expect(p?.custo?.por_modelo.map((m) => m.modelo)).toEqual(["gemini-flash", "gpt-4o-mini-tts"]);
+  });
+
+  it("janela sem alvo medido fica nula, não zero; banco antigo não tem a seção", () => {
+    const p = lerPainel({ ...base, custo: { tokens_por_alvo: null, alvos_medidos: 0, por_modelo: {} } });
+    expect(p?.custo?.tokens_por_alvo).toBeNull();
+    expect(lerPainel(base)?.custo).toBeNull();
+  });
+
+  it("formata tokens por ordem de grandeza", () => {
+    expect(formatarTokens(null)).toBe("—");
+    expect(formatarTokens(950)).toBe("950");
+    expect(formatarTokens(12_340)).toBe("12,3 mil");
+    expect(formatarTokens(2_500_000)).toBe("2,5 mi");
   });
 });

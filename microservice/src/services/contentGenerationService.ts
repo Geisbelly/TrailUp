@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { registrarUsoOpenAI } from "../lib/usoDoModelo";
 
 export const DEFAULT_GEMINI_CONTENT_GENERATION_MODEL =
   "gemini-3.6-flash" as const;
@@ -363,6 +364,8 @@ async function callOpenAIStructured(
     },
   });
 
+  // Resposta incompleta também é cobrada: registra antes de decidir.
+  registrarUsoOpenAI(call.openaiModel, response.usage);
   if (response.status === "incomplete") {
     const reason = response.incomplete_details?.reason ?? "motivo desconhecido";
     // gpt-4o-mini tem teto rigido de 16384 tokens de saida na API da OpenAI —

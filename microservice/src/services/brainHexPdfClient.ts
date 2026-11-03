@@ -10,6 +10,7 @@
 import { createLogger } from "../lib/logger";
 import type { BrainHexProfile } from "../constants/brainHex";
 import type { GenerationFence } from "./supabaseService";
+import { somarUso } from "../lib/usoDoModelo";
 
 const log = createLogger({ ctx: "brainhexpdf-client" });
 
@@ -170,6 +171,8 @@ export async function renderAndUploadPresentationViaBrainHexPdf(
     });
 
     const body: any = await response.json().catch(() => null);
+    // O BrainHexPDF devolve o que gastou, com sucesso ou falha: entra no uso deste pedido.
+    somarUso(body?.uso_modelo);
 
     if (!response.ok || !body || body.success !== true) {
       const stage = normalizeRemoteStage(body?.stage);

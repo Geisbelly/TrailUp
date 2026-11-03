@@ -1381,6 +1381,25 @@ def _content_enrichment_gravado(record: dict[str, Any] | None) -> dict[str, Any]
     return enrichment
 
 
+
+async def _gravar_uso_do_modelo(app: FastAPI, target: dict[str, Any], usos: list[dict[str, Any]]) -> None:
+    """Soma no alvo os tokens que esta tentativa gastou (#21, `20261103_14`).
+
+    Numa sessão própria e já confirmada: o chamador pode desfazer a transação dele quando a geração
+    falha, e a tentativa que falhou também foi paga. Nunca levanta: custo não gravado não pode
+    derrubar a geração. Banco sem a coluna (antes da migração) cai aqui e só loga.
+    """
+    if not usos or target.get("id") is None:
+        return
+    try:
+        async with app.state.session_factory() as sessao:
+            for uso in usos:
+                await PersonalizacaoJobsRepository(sessao).somar_uso_modelo(target_id=int(target["id"]), uso=uso)
+            await sessao.commit()
+    except Exception:
+        logger.warning("nao foi possivel gravar o uso do modelo do alvo %s", target.get("id"), exc_info=True)
+
+
 async def _process_media_render_target(
     *,
     app: FastAPI,
@@ -1526,6 +1545,7 @@ async def _process_media_render_target(
                 # geracao que pode levar dezenas de minutos.
                 await session.commit()
                 error_sink: list[str] = []
+                uso_sink: list[dict[str, Any]] = []
                 dispatched = await disparar_brainhex_async(
                     settings=app.state.settings,
                     perfil=perfil,
@@ -1543,8 +1563,10 @@ async def _process_media_render_target(
                     wait_for_completion=True,
                     contract_prechecked=True,
                     error_sink=error_sink,
+                    uso_sink=uso_sink,
                     arco_narrativo=arco_narrativo,
                 )
+                await _gravar_uso_do_modelo(app, target, uso_sink)
                 if not dispatched:
                     recovered = await _mark_failed_unless_generation_completed(
                         repo=repo_cp,
@@ -1890,6 +1912,7 @@ async def _process_media_render_target(
             existing_status,
         )
         error_sink: list[str] = []
+        uso_sink: list[dict[str, Any]] = []
         dispatched = await disparar_brainhex_async(
             settings=app.state.settings,
             perfil=ctx["perfil_dominante"],
@@ -1907,8 +1930,10 @@ async def _process_media_render_target(
             wait_for_completion=True,
             contract_prechecked=True,
             error_sink=error_sink,
+            uso_sink=uso_sink,
             arco_narrativo=ctx.get("arco_narrativo"),
         )
+        await _gravar_uso_do_modelo(app, target, uso_sink)
         if not dispatched:
             await repo.incrementar_falha_streak(
                 record_id=int(existing["id"]),
@@ -2107,6 +2132,7 @@ async def _process_media_render_target(
     )
     await session.commit()
     error_sink: list[str] = []
+    uso_sink: list[dict[str, Any]] = []
     dispatched = await disparar_brainhex_async(
         settings=app.state.settings,
         perfil=ctx["perfil_dominante"],
@@ -2124,8 +2150,10 @@ async def _process_media_render_target(
         wait_for_completion=True,
         contract_prechecked=True,
         error_sink=error_sink,
+        uso_sink=uso_sink,
         arco_narrativo=ctx.get("arco_narrativo"),
     )
+    await _gravar_uso_do_modelo(app, target, uso_sink)
     if not dispatched:
         recovered = await _mark_failed_unless_generation_completed(
             repo=repo,
