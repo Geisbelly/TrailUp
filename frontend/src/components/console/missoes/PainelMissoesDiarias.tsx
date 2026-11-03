@@ -43,6 +43,9 @@ export function PainelMissoesDiarias({
   const [excluindo, setExcluindo] = useState<ResumoDasMissoesDiarias["missoes"][number] | null>(null);
   const [excluindoAgora, setExcluindoAgora] = useState(false);
   const [erroAoExcluir, setErroAoExcluir] = useState<string | null>(null);
+  // `item` é a diária que aponta um conteúdo ou atividade da trilha (`20261103_05`): a meta é o
+  // próprio item, então não há número a escolher, e trocar a medida a transforma em contagem.
+  const doItem = medida === "item";
   const capacidade = medida === "atividade_concluida"
     ? editando?.atividadesDisponiveis ?? 0
     : medida === "conteudo_concluido"
@@ -58,7 +61,11 @@ export function PainelMissoesDiarias({
     setDescricao(missao.descricao);
     const metricaAtual = String(missao.criterio.metrica ?? "");
     const eventoAtual = String(missao.criterio.evento ?? "");
-    setMedida(metricaAtual === "minutos_no_dia" ? "minutos_no_dia" : eventoAtual || "atividade_concluida");
+    setMedida(
+      metricaAtual === "item_no_dia" ? "item"
+        : metricaAtual === "minutos_no_dia" ? "minutos_no_dia"
+          : eventoAtual || "atividade_concluida",
+    );
     setAlvo(String(missao.criterio.minutos ?? missao.criterio.minimo ?? "1"));
     setErroDoServidor(null);
   };
@@ -83,6 +90,11 @@ export function PainelMissoesDiarias({
     setSalvando(true);
     setErroDoServidor(null);
     try {
+      if (doItem) {
+        await onSalvarTexto(editando.id, tituloLimpo, descricao.trim(), editando.criterio);
+        setEditando(null);
+        return;
+      }
       const numeroAlvo = Number(alvo);
       if (!medida || !Number.isInteger(numeroAlvo) || numeroAlvo < 1) {
         setErroDoServidor("Escolha uma medida e informe um alvo inteiro maior que zero.");
@@ -178,7 +190,7 @@ export function PainelMissoesDiarias({
         <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto rounded-[20px] bg-card">
           <DialogHeader>
             <DialogTitle>Editar missão diária</DialogTitle>
-            <DialogDescription>Você pode ajustar o texto. O critério que mede o progresso da turma não será alterado.</DialogDescription>
+            <DialogDescription>Ajuste o texto, o que a missão mede e a meta do dia.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -195,12 +207,18 @@ export function PainelMissoesDiarias({
                 <Select value={medida} onValueChange={(v) => { setMedida(v); setAlvo(v === "minutos_no_dia" ? "10" : "1"); }}>
                   <SelectTrigger><SelectValue placeholder="Escolha uma medida" /></SelectTrigger>
                   <SelectContent>
+                    {editando?.criterio.metrica === "item_no_dia" && (
+                      <SelectItem value="item">{editando.criterio.item === "atividade" ? "A atividade da trilha" : "O conteúdo da trilha"}</SelectItem>
+                    )}
                     <SelectItem value="minutos_no_dia">Minutos de estudo</SelectItem>
                     {(editando?.atividadesDisponiveis ?? 0) > 0 && <SelectItem value="atividade_concluida">Atividades concluídas</SelectItem>}
                     {(editando?.conteudosDisponiveis ?? 0) > 0 && <SelectItem value="conteudo_concluido">Conteúdos concluídos</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
+              {doItem ? (
+                <p className="self-end text-xs text-muted-foreground">A meta é concluir esse item hoje (ou outro do mesmo tipo, para quem já o concluiu).</p>
+              ) : (
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Meta {medida === "minutos_no_dia" ? "de estudo" : "de conclusão"}</label>
                 <Select value={alvo} onValueChange={setAlvo}>
@@ -216,6 +234,7 @@ export function PainelMissoesDiarias({
                 </Select>
                 {Number.isFinite(capacidade) && <p className="mt-1 text-xs text-muted-foreground">Máximo disponível nesta turma: {capacidade}.</p>}
               </div>
+              )}
             </div>
             {erroDoServidor && <p role="alert" className="text-sm text-destructive">{erroDoServidor}</p>}
           </div>

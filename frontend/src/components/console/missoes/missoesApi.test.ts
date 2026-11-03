@@ -261,7 +261,7 @@ describe("salvarMissao", () => {
     expect(insert![2]).toMatchObject({ atividade_origem_id: null, criterio: { metrica: "minutos_totais", minutos: 30 } });
   });
 
-  it("editar manda só o que muda — o resto é congelado pelo trigger", async () => {
+  it("editar manda tudo o que o professor pode mudar — o resto é congelado pelo trigger", async () => {
     sb.respostas = { missoes: { data: { id: 9 }, error: null } };
     const id = await salvarMissao(7, {
       escopo: "turma", origem: "professor", titulo: "M", descricao: "o",
@@ -270,7 +270,72 @@ describe("salvarMissao", () => {
 
     expect(id).toBe(9);
     const update = sb.chamadas.find((c) => c[0] === "missoes" && c[1] === "update");
-    expect(Object.keys(update![2] as object).sort()).toEqual(["criterio", "descricao", "janela_fim", "recompensa_tipo", "titulo"]);
+    expect(Object.keys(update![2] as object).sort()).toEqual(
+      ["atividade_origem_id", "criterio", "descricao", "escopo", "janela_fim", "recompensa_tipo", "titulo"],
+    );
+    expect(sb.chamadas.some((c) => c[0] === "atividades" && c[1] === "delete")).toBe(false);
+  });
+
+  it("entrega → meta: grava a missão sem atividade ANTES de apagar a atividade antiga", async () => {
+    sb.respostas = { missoes: { data: { id: 9 }, error: null } };
+    await salvarMissao(7, {
+      escopo: "turma", origem: "professor", titulo: "M", descricao: "o",
+      recompensa_tipo: "missao_concluida", janela_fim: null, criterio: { metrica: "topicos_concluidos", minimo: 3 },
+    }, null, 9, 41, 4);
+
+    const iUpdate = sb.chamadas.findIndex((c) => c[0] === "missoes" && c[1] === "update");
+    const iDelete = sb.chamadas.findIndex((c) => c[0] === "atividades" && c[1] === "delete");
+    expect(sb.chamadas[iUpdate][2]).toMatchObject({ atividade_origem_id: null });
+    expect(iDelete).toBeGreaterThan(iUpdate);
+    expect(sb.chamadas.some((c) => c[0] === "atividade_conteudos" && c[1] === "delete")).toBe(true);
+  });
+
+  it("entrega → meta: se a atividade não sai, avisa que a missão já foi salva", async () => {
+    sb.respostas = { missoes: { data: { id: 9 }, error: null }, atividade_conteudos: { data: null, error: { message: "fk" } } };
+    await expect(
+      salvarMissao(7, {
+        escopo: "turma", origem: "professor", titulo: "M", descricao: "o",
+        recompensa_tipo: "missao_concluida", janela_fim: null, criterio: { metrica: "topicos_concluidos", minimo: 3 },
+      }, null, 9, 41, 4),
+    ).rejects.toThrow(/salva como meta/);
+  });
+
+  it("meta → entrega: cria a atividade e aponta a missão para ela", async () => {
+    sb.saveActivity.mockResolvedValue(88);
+    sb.respostas = { atividades: { data: { metadata: {} }, error: null }, missoes: { data: { id: 9 }, error: null } };
+    await salvarMissao(
+      7,
+      { escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
+      { topico_id: 4, titulo: "M", descricao: "o", tipo: "missao", data_entrega: null, pontuacao_maxima: 10, moedas: 0 },
+      9, null, null,
+    );
+    expect(sb.saveActivity).toHaveBeenCalledWith(expect.objectContaining({ id: undefined, topico_id: 4 }));
+    const update = sb.chamadas.find((c) => c[0] === "missoes" && c[1] === "update");
+    expect(update![2]).toMatchObject({ atividade_origem_id: 88, criterio: { metrica: "atividade_especifica", atividade_id: 88 } });
+  });
+
+  it("trocar o tópico da entrega move a atividade", async () => {
+    sb.saveActivity.mockResolvedValue(41);
+    sb.respostas = { atividades: { data: { metadata: {} }, error: null }, missoes: { data: { id: 9 }, error: null } };
+    await salvarMissao(
+      7,
+      { escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
+      { topico_id: 5, titulo: "M", descricao: "o", tipo: "missao", data_entrega: null, pontuacao_maxima: 10, moedas: 0 },
+      9, 41, 4,
+    );
+    expect(sb.chamadas.some((c) => c[0] === "atividades" && c[1] === "update" && (c[2] as { topico_id?: number }).topico_id === 5)).toBe(true);
+  });
+
+  it("mesmo tópico não mexe em topico_id", async () => {
+    sb.saveActivity.mockResolvedValue(41);
+    sb.respostas = { atividades: { data: { metadata: {} }, error: null }, missoes: { data: { id: 9 }, error: null } };
+    await salvarMissao(
+      7,
+      { escopo: "turma", origem: "professor", titulo: "M", descricao: "o", recompensa_tipo: "missao_concluida", janela_fim: null, criterio: null },
+      { topico_id: 4, titulo: "M", descricao: "o", tipo: "missao", data_entrega: null, pontuacao_maxima: 10, moedas: 0 },
+      9, 41, 4,
+    );
+    expect(sb.chamadas.some((c) => c[0] === "atividades" && c[1] === "update" && "topico_id" in (c[2] as object))).toBe(false);
   });
 
   it("propaga erro do insert", async () => {

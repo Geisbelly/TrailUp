@@ -213,6 +213,9 @@ async def _missoes_da_coorte(session: AsyncSession, *, classe_id: int, perfil: s
                AND m.origem = 'sistema'
                AND m.ativa
                AND m.texto_enriquecido_em IS NULL
+               -- A de item (20261103_05) já nasce com o conteúdo e o tópico no texto, e o
+               -- validador daqui conta unidades numéricas, não nomes: fica no molde.
+               AND COALESCE(m.criterio ->> 'metrica', '') <> 'item_no_dia'
                AND (m.janela_fim IS NULL OR m.janela_fim > now())
              ORDER BY m.slot
             """

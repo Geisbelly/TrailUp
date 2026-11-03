@@ -63,6 +63,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
   const { turmas, turmaId, setTurmaId, carregando: carregandoTurmas, erro: erroTurmas, recarregar } = useTurmasDoProfessor(professorId);
   const [missoes, setMissoes] = useState<Missao[]>([]);
   const [topicos, setTopicos] = useState<{ id: number; nome: string | null }[]>([]);
+  const [atividadesDaTurma, setAtividadesDaTurma] = useState(0);
   const [estado, setEstado] = useState<"carregando" | "ok" | "erro">("carregando");
   const [detalhe, setDetalhe] = useState("");
   const [form, setForm] = useState<FormAberto | null>(null);
@@ -85,8 +86,17 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     setEstadoDiario("carregando");
     try {
       const [lista, t] = await Promise.all([listarMissoes(id), supabase.from("topicos").select("id, nome").eq("classe_id", id).order("ordem")]);
+      if (t.error) throw t.error;
+      const doTopico = (t.data ?? []) as { id: number; nome: string | null }[];
+      // O alvo sugerido de "atividades concluídas" sai daqui. Turma sem tópico não tem atividade,
+      // e `in` com lista vazia não deve ir ao banco.
+      const atividades = doTopico.length
+        ? await supabase.from("atividades").select("id", { count: "exact", head: true }).in("topico_id", doTopico.map((x) => x.id))
+        : { count: 0, error: null };
+      if (atividades.error) throw atividades.error;
       setMissoes(lista);
-      setTopicos((t.data ?? []) as { id: number; nome: string | null }[]);
+      setTopicos(doTopico);
+      setAtividadesDaTurma(atividades.count ?? 0);
       setEstado("ok");
     } catch (e) {
       setDetalhe(mensagem(e, "erro desconhecido"));
@@ -116,7 +126,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     setSalvando(true);
     setErroDoServidor(null);
     try {
-      await salvarMissao(turmaId, missao, atividade, form?.editando?.id, form?.editando?.atividadeId);
+      await salvarMissao(turmaId, missao, atividade, form?.editando?.id, form?.editando?.atividadeId, form?.editando?.topicoId);
       setForm(null);
       toast.success(
         form?.editando
@@ -281,7 +291,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
       )}
 
       {form && (
-        <FormularioDaMissao key={form.chave} inicial={form.inicial} editando={form.editando !== null} topicos={topicos} salvando={salvando} erroDoServidor={erroDoServidor} onSalvar={(m, a) => void salvar(m, a)} onCancelar={() => setForm(null)} />
+        <FormularioDaMissao key={form.chave} inicial={form.inicial} editando={form.editando !== null} topicos={topicos} turma={{ topicos: topicos.length, atividades: atividadesDaTurma }} salvando={salvando} erroDoServidor={erroDoServidor} onSalvar={(m, a) => void salvar(m, a)} onCancelar={() => setForm(null)} />
       )}
 
       <AlertDialog open={recusando !== null} onOpenChange={(v) => !v && decidindo === null && setRecusando(null)}>
