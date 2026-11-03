@@ -166,7 +166,7 @@ export function ProfessorApprovalSection() {
                       {iniciais(prof.nome)}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <h3 className="truncate text-[16.5px] font-bold">{prof.nome}</h3>
+                      <h3 className="max-w-full break-words sm:truncate text-[16.5px] font-bold">{prof.nome}</h3>
                       <p className="mt-1.5 text-[12.5px] text-muted-foreground">{resumoProfessor(prof.instituicao, prof.disciplina)}</p>
                       <p className="mt-1 text-[11.5px] text-muted-foreground">
                         {prof.email ? `${prof.email} · ` : ""}cadastro em {dataCurta(prof.created_at)}

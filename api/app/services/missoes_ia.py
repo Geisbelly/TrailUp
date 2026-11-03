@@ -7,9 +7,10 @@ acordar: se ela estiver fora, o pedido espera na tabela.
 
 Regra de fronteira: pedir, espaçar tentativas, decidir o que entra e guardar o histórico é
 encanamento e mora no banco; propor é IA e mora aqui. A API não escreve em tabela nenhuma: passa o que o
-modelo devolveu a `fn_missao_ia_registrar`, que aplica as regras que não são do modelo (métrica do
-catálogo, alvo inteiro dentro do teto, sem link nem e-mail, sem repetir título, no máximo a quantidade
-pedida). Tudo nasce `pendente`: o banco recusa uma missão `ia` sem aprovação.
+modelo devolveu e a contagem da saída a `fn_missao_ia_registrar_diagnostico`. O banco aplica as regras
+que não são do modelo (métrica do catálogo, alvo inteiro dentro do teto, sem link nem e-mail, sem
+repetir título, no máximo a quantidade pedida) e guarda só contagens e motivos agregados, sem o texto.
+Tudo nasce `pendente`: o banco recusa uma missão `ia` sem aprovação.
 
 Sem modelo, nada é inventado: a falha vai para `fn_missao_ia_falhou`, que espaça a próxima tentativa e,
 na quinta, para o pedido como `falhou` para o professor ver no console.
@@ -40,7 +41,10 @@ _REIVINDICAR = text(
     "CAST(:limite AS integer), CAST(:trava AS integer), CAST(:classes AS bigint[]))"
 )
 _CONTEXTO = text("SELECT public.fn_missao_ia_contexto(CAST(:id AS uuid))")
-_REGISTRAR = text("SELECT public.fn_missao_ia_registrar(CAST(:id AS uuid), CAST(:propostas AS jsonb))")
+_REGISTRAR = text(
+    "SELECT public.fn_missao_ia_registrar_diagnostico("
+    "CAST(:id AS uuid), CAST(:propostas AS jsonb), CAST(:propostas_modelo AS integer))"
+)
 _FALHOU = text("SELECT public.fn_missao_ia_falhou(CAST(:id AS uuid), CAST(:erro AS text))")
 
 
@@ -76,10 +80,21 @@ async def propor_para_pedido(session: Any, llm: JsonLLMService, pedido_id: str) 
     # Sem dado de aluno no payload (só o assunto e os títulos da turma), não há o que a rota de menor
     # protegeria; por isso este worker não usa `rota_ia_para_turma`, ao contrário dos que leem aluno.
     saida = await llm.ainvoke_structured(prompt_name=PROMPT, payload=montar_payload(contexto), schema=MissoesIaSaida)
-    await session.execute(
-        _REGISTRAR, {"id": pedido_id, "propostas": json.dumps(propostas_para_o_banco(saida, quantidade))}
+    enviadas = propostas_para_o_banco(saida, quantidade)
+    gerados = await session.execute(
+        _REGISTRAR,
+        {
+            "id": pedido_id,
+            "propostas": json.dumps(enviadas),
+            "propostas_modelo": len(saida.propostas),
+        },
     )
+    quantidade_registrada = gerados.scalar()
     await session.commit()
+    if quantidade_registrada is None or int(quantidade_registrada) < 0:
+        return "sumiu"
+    if int(quantidade_registrada) == 0:
+        raise RuntimeError("o modelo não trouxe nenhuma proposta válida")
     return "registrada"
 
 

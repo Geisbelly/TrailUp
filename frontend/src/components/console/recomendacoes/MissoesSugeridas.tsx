@@ -22,7 +22,7 @@ import { useMissoesSugeridas } from "./useMissoesSugeridas";
 type Turma = { id: number; descricao: string | null };
 
 const botao = "rounded-full px-[15px] py-2 text-xs font-semibold transition-colors disabled:opacity-60";
-const campo = "rounded-full border border-border bg-card px-3 py-1.5 text-[13px] text-foreground";
+const campo = "max-w-full rounded-full border border-border bg-card px-3 py-1.5 text-[13px] text-foreground";
 const formatarData = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" });
 
 function CartaoDaSugestao({ missao, alvo, onDecidir }: { missao: MissaoSugerida; alvo: string | null; onDecidir: (aprovar: boolean, motivo?: string) => Promise<void> }) {
@@ -191,7 +191,7 @@ export default function MissoesSugeridas({ turmas }: { turmas: Turma[] }) {
 
       <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-card px-5 py-4">
         {turmas.length > 1 && (
-          <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+          <label className="flex min-w-0 max-w-full flex-col gap-1 text-[11.5px] text-muted-foreground">
             Turma
             <select value={turmaAtual ?? ""} onChange={(e) => setClasseId(Number(e.target.value))} className={campo}>
               {turmas.map((t) => (
@@ -202,7 +202,7 @@ export default function MissoesSugeridas({ turmas }: { turmas: Turma[] }) {
             </select>
           </label>
         )}
-        <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+        <label className="flex min-w-0 max-w-full flex-col gap-1 text-[11.5px] text-muted-foreground">
           Assunto
           <select value={topicoId ?? ""} onChange={(e) => setTopicoId(e.target.value === "" ? null : Number(e.target.value))} className={cn(campo, "max-w-[240px]")}>
             <option value="">A turma toda</option>
@@ -213,7 +213,7 @@ export default function MissoesSugeridas({ turmas }: { turmas: Turma[] }) {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-[11.5px] text-muted-foreground">
+        <label className="flex min-w-0 max-w-full flex-col gap-1 text-[11.5px] text-muted-foreground">
           Quantas
           <select value={qtd} onChange={(e) => setQuantidade(Number(e.target.value))} disabled={!limites} className={campo}>
             {(limites ? opcoesDeQuantidade(limites) : [qtd]).map((n) => (

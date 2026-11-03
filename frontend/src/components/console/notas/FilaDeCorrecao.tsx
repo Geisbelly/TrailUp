@@ -27,7 +27,8 @@ export function FilaDeCorrecao({ linhas, onAbrir }: { linhas: LinhaDaFila[]; onA
               <span aria-hidden="true" className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-muted text-[13px] font-extrabold">
                 {iniciais(l.alunoNome)}
               </span>
-              <span className="min-w-0 flex-1">
+              {/* min-w: na tela estreita o prazo e o selo descem para a linha de baixo em vez de espremer o nome. */}
+              <span className="min-w-[12rem] flex-1">
                 <span className="block truncate text-[14.5px] font-bold">{l.alunoNome}</span>
                 <span className="mt-0.5 block truncate text-[12.5px] text-muted-foreground">{l.titulo} · Dissertativa</span>
               </span>

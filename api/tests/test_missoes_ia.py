@@ -52,18 +52,22 @@ class _Sessao:
     async def execute(self, sql: Any, params: dict[str, Any] | None = None) -> _Resultado:
         texto = str(sql)
         self.banco.setdefault("chamadas", []).append((texto, params))
+        self.banco.setdefault("sequencia", []).append(("execute", texto))
         if "fn_missao_ia_reivindicar" in texto:
             fila = self.banco.setdefault("fila", [])
             return _Resultado(linhas=[fila.pop(0)] if fila else [])
         if "fn_missao_ia_contexto" in texto:
             # Como o asyncpg sem codec: jsonb chega como texto.
             return _Resultado(json.dumps(self.banco.get("contexto")))
-        if "fn_missao_ia_registrar" in texto and self.banco.get("registrar_falha"):
-            raise RuntimeError(self.banco["registrar_falha"])
+        if "fn_missao_ia_registrar_diagnostico" in texto:
+            if self.banco.get("registrar_falha"):
+                raise RuntimeError(self.banco["registrar_falha"])
+            return _Resultado(valor=self.banco.get("registrar_gerados", 1))
         return _Resultado()
 
     async def commit(self) -> None:
-        return None
+        self.banco["commits"] = self.banco.get("commits", 0) + 1
+        self.banco.setdefault("sequencia", []).append(("commit", ""))
 
 
 class _Llm:
@@ -134,6 +138,7 @@ async def test_passada_registra_pelo_banco_com_a_guarda_de_turmas() -> None:
     (registro,) = _chamadas(banco, "fn_missao_ia_registrar")
     assert registro["id"] == PEDIDO
     assert [p["titulo"] for p in json.loads(registro["propostas"])] == ["Missão 1", "Missão 2"]
+    assert registro["propostas_modelo"] == 2
     assert _chamadas(banco, "fn_missao_ia_falhou") == []
     assert llm.payloads[0]["quantidade"] == 3
 
@@ -148,12 +153,28 @@ async def test_sem_modelo_registra_a_falha_e_nao_inventa_missao() -> None:
 
 
 async def test_modelo_que_so_manda_proposta_invalida_vira_falha_e_nao_conclusao() -> None:
-    # O banco levanta quando nada passa; o pedido tem de ser tentado de novo, não fechado com zero.
-    banco: dict[str, Any] = {"fila": [PEDIDO], "contexto": CONTEXTO, "registrar_falha": "o modelo não trouxe nenhuma proposta válida"}
+    # A chamada do banco confirma o diagnóstico antes de o worker pedir retry.
+    banco: dict[str, Any] = {"fila": [PEDIDO], "contexto": CONTEXTO, "registrar_gerados": 0}
     llm = _Llm(MissoesIaSaida(propostas=[_proposta(alvo="xyz")]))
     assert await worker.processar_pedidos_uma_vez(_app(banco), llm) == {"registrada": 0, "sumiu": 0, "falhou": 1}
+    (registro,) = _chamadas(banco, "fn_missao_ia_registrar")
+    assert registro["propostas_modelo"] == 1
+    sequencia = banco["sequencia"]
+    diagnostico = next(i for i, (op, sql) in enumerate(sequencia) if op == "execute" and "fn_missao_ia_registrar_diagnostico" in sql)
+    commit_diagnostico = next(i for i in range(diagnostico + 1, len(sequencia)) if sequencia[i][0] == "commit")
+    registrar_falha = next(i for i, (op, sql) in enumerate(sequencia) if op == "execute" and "fn_missao_ia_falhou" in sql)
+    assert diagnostico < commit_diagnostico < registrar_falha
     (falha,) = _chamadas(banco, "fn_missao_ia_falhou")
     assert "nenhuma proposta válida" in falha["erro"]
+
+
+async def test_conta_toda_a_saida_do_modelo_mesmo_quando_a_api_corta_o_envio() -> None:
+    banco: dict[str, Any] = {"fila": [PEDIDO], "contexto": CONTEXTO}
+    llm = _Llm(MissoesIaSaida(propostas=[_proposta(i) for i in range(1, 11)]))
+    assert await worker.processar_pedidos_uma_vez(_app(banco), llm) == {"registrada": 1, "sumiu": 0, "falhou": 0}
+    (registro,) = _chamadas(banco, "fn_missao_ia_registrar")
+    assert registro["propostas_modelo"] == 10
+    assert len(json.loads(registro["propostas"])) == 6
 
 
 async def test_pedido_que_sumiu_nao_chama_o_modelo() -> None:

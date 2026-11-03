@@ -104,12 +104,12 @@ export default function RecomendacoesSection({ professorId }: { professorId: str
       <div className="flex flex-wrap items-center gap-3">
         <SegmentedPills ariaLabel="Filtrar recomendações" opcoes={FILTROS} valor={filtro} onChange={(f) => setFiltro(f)} className="w-fit" />
         {mostrarTurma && (
-          <label className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+          <label className="flex min-w-0 max-w-full items-center gap-2 text-[12.5px] text-muted-foreground">
             Turma
             <select
               value={turmaId ?? ""}
               onChange={(e) => setTurmaId(e.target.value === "" ? null : Number(e.target.value))}
-              className="rounded-full border border-border bg-card px-3 py-1.5 text-[13px] text-foreground"
+              className="min-w-0 max-w-full rounded-full border border-border bg-card px-3 py-1.5 text-[13px] text-foreground"
             >
               <option value="">Todas</option>
               {turmas.map((t) => (
