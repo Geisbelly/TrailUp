@@ -55,5 +55,10 @@ aceito. Os dois contatos enfileiram e seguem, como faziam com a Brevo.
   (`trailup.vercel.app/trailup-app-icon.png`). As cores em `TEMA` são os tokens de
   `frontend/src/index.css` em hex; mudou lá, muda aqui (e publica nova versão). O texto puro vai
   junto, para cliente que não mostra HTML.
+- **Gmail em modo escuro (iPhone e Android):** inverte as cores de todo e-mail e ignora
+  `color-scheme: dark` (o fundo roxo chegava lilás-claro, 03/11). Os fundos vão também como
+  `background-image` e os textos dentro de `.gs`/`.gd` (`mix-blend-mode`), que só valem no Gmail.
+  Depois de mexer no visual: **Executar → `enviarTeste`** manda uma amostra para a conta do script;
+  conferir no Gmail do celular com o modo escuro ligado e desligado.
 - **LGPD:** cópia de cada envio fica na pasta Enviados dessa conta. Conta pessoal não tem DPA; ver a
   linha 8 de `docs/lgpd/transferencias-internacionais.md`.
