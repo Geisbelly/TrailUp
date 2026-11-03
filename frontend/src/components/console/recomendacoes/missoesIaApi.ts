@@ -3,6 +3,7 @@ import { decidirMissao } from "../missoes/missoesApi";
 import {
   JANELA_DE_APROVACAO_DIAS,
   lerLimites,
+  type HistoricoDeMissaoIa,
   type LimitesDeMissoesIa,
   type MissaoSugerida,
   type PedidoDeMissoesIa,
@@ -12,7 +13,7 @@ import {
 // e `missoesApi`. Tudo aqui é direto no Supabase (RLS e funções do banco); nada passa pela API, então
 // pedir, ler e decidir funcionam com ela fora do ar. Só propor é da API.
 
-const COLUNAS_DA_MISSAO = "id, classe_id, titulo, descricao, criterio, base_ia, aprovacao, motivo_recusa, criado_em";
+const COLUNAS_DA_MISSAO = "id, classe_id, titulo, descricao, criterio, base_ia, aprovacao, motivo_recusa, criado_em, atualizado_em";
 const COLUNAS_DO_PEDIDO = "id, classe_id, topico_id, quantidade, status, tentativas, gerados, ultimo_erro, created_at, finalizado_em";
 
 type ErroDoBanco = { code?: string; message?: string };
@@ -59,7 +60,7 @@ export async function listarPendentes(classIds: number[]): Promise<{ missoes: Mi
   return { missoes: error ? [] : ((data ?? []) as unknown as MissaoSugerida[]), erro: error };
 }
 
-/** As decididas nos últimos 30 dias, pela data da decisão (`atualizado_em`), para a taxa de aprovação. */
+/** Todas as missões decididas, ordenadas pela data da decisão, para o histórico e a taxa. */
 export async function listarDecididas(classIds: number[]): Promise<{ missoes: MissaoSugerida[]; erro: ErroDoBanco | null }> {
   if (classIds.length === 0) return { missoes: [], erro: null };
   const desde = new Date(Date.now() - JANELA_DE_APROVACAO_DIAS * 86_400_000).toISOString();
@@ -70,8 +71,29 @@ export async function listarDecididas(classIds: number[]): Promise<{ missoes: Mi
     .eq("origem", "ia")
     .in("aprovacao", ["aprovada", "recusada"])
     .gte("atualizado_em", desde)
-    .limit(500);
+    .order("atualizado_em", { ascending: false });
   return { missoes: error ? [] : ((data ?? []) as unknown as MissaoSugerida[]), erro: error };
+}
+
+/** Decisões registradas no histórico append-only das sugestões de IA. */
+export async function listarHistorico(classIds: number[]): Promise<{ itens: HistoricoDeMissaoIa[]; erro: ErroDoBanco | null }> {
+  if (classIds.length === 0) return { itens: [], erro: null };
+  const { data, error } = await supabase
+    .from("missoes_ia_log" as never)
+    .select("id, missao_id, classe_id, evento, motivo, created_at")
+    .in("classe_id", classIds)
+    .in("evento", ["aprovada", "recusada"])
+    .order("created_at", { ascending: false });
+  if (error) return { itens: [], erro: error };
+
+  const linhas = (data ?? []) as unknown as Omit<HistoricoDeMissaoIa, "missao">[];
+  const missaoIds = [...new Set(linhas.map((l) => l.missao_id).filter((id): id is number => id !== null))];
+  const { data: missoes, error: erroMissoes } = missaoIds.length
+    ? await supabase.from("missoes" as never).select(COLUNAS_DA_MISSAO).in("id", missaoIds)
+    : { data: [], error: null };
+  if (erroMissoes) return { itens: [], erro: erroMissoes };
+  const porId = new Map(((missoes ?? []) as unknown as MissaoSugerida[]).map((m) => [m.id, m]));
+  return { itens: linhas.map((l) => ({ ...l, missao: l.missao_id === null ? null : (porId.get(l.missao_id) ?? null) })), erro: null };
 }
 
 /** Aprovar e recusar são UPDATE direto: não dependem da API estar acordada. */

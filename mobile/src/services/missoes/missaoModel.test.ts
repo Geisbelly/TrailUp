@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  atividadeDoCriterio,
   montarMissoes,
   ordenarMissoes,
+  pedeAtividade,
   perfilDaMissao,
   perfisRepresentativos,
   rotuloCriterio,
@@ -274,5 +276,25 @@ describe("perfilDaMissao", () => {
     ];
     const lista = montarMissoes(linhas as never, [], { perfilAtivo: perfilDaMissao(perfis, "survivor"), agora: AGORA });
     assert.deepEqual(lista.map((m) => m.id), [1]);
+  });
+});
+
+describe("item_no_dia (diária que sai da trilha)", () => {
+  const conteudo = { metrica: "item_no_dia", item: "conteudo", item_id: 111, topico_id: 11, dia: "2026-11-03" };
+  const atividade = { metrica: "item_no_dia", item: "atividade", item_id: 121, topico_id: 11, dia: "2026-11-03" };
+
+  it("o Ir da de atividade leva à atividade apontada", () => {
+    assert.equal(atividadeDoCriterio(atividade), 121);
+    assert.equal(pedeAtividade(atividade), true);
+  });
+
+  it("a de conteúdo não aponta atividade nem exige uma", () => {
+    assert.equal(atividadeDoCriterio(conteudo), null);
+    assert.equal(pedeAtividade(conteudo), false);
+  });
+
+  it("rótulo diz o que fazer", () => {
+    assert.equal(rotuloCriterio(atividade), "fazer a atividade");
+    assert.equal(rotuloCriterio(conteudo), "concluir o conteúdo");
   });
 });

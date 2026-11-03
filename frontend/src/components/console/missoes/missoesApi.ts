@@ -18,6 +18,9 @@ import { comCriterioDaAtividade, type PayloadDaAtividade, type PayloadDaMissao }
 
 export type Missao = {
   id: number;
+  classeId: number;
+  /** `null` = vale para todos os perfis. */
+  perfilAlvo: string | null;
   titulo: string;
   objetivo: string;
   prazo: string | null;
@@ -45,6 +48,8 @@ export type Missao = {
 
 type LinhaDeMissao = {
   id: number;
+  classe_id?: number | null;
+  perfil_alvo?: string | null;
   titulo: string;
   descricao: string | null;
   janela_fim: string | null;
@@ -100,6 +105,8 @@ export function mapearMissao(
   const topico = Array.isArray(atividade?.topicos) ? atividade?.topicos[0] : atividade?.topicos;
   return {
     id: m.id,
+    classeId: Number(m.classe_id ?? 0),
+    perfilAlvo: m.perfil_alvo ?? null,
     titulo: m.titulo,
     objetivo: m.descricao ?? "",
     prazo: m.janela_fim,
@@ -124,7 +131,7 @@ export function mapearMissao(
 export async function listarMissoes(classeId: number): Promise<Missao[]> {
   const { data, error } = await supabase
     .from("missoes" as never)
-    .select("id, titulo, descricao, janela_fim, criterio, origem, aprovacao, motivo_recusa, escopo, ativa, atividade_origem_id")
+    .select("id, classe_id, perfil_alvo, titulo, descricao, janela_fim, criterio, origem, aprovacao, motivo_recusa, escopo, ativa, atividade_origem_id")
     .eq("classe_id", classeId)
     // A diária do sistema (com `dia`) tem painel próprio, `missoes_diarias_resumo`. Sem este
     // filtro, cada coorte de cada dia viraria um cartão aqui — com um "Editar" que o gatilho
@@ -175,13 +182,21 @@ export async function listarMissoes(classeId: number): Promise<Missao[]> {
  * da `missoes` falhar depois, a atividade fica órfã — e isso é melhor que o contrário: a
  * atividade órfã aparece na trilha e o professor a vê, enquanto uma `missoes` apontando um id
  * que não existe seria invisível e o critério nunca fecharia.
+ *
+ * Na edição tudo muda, inclusive o caminho, quem cumpre e o tópico:
+ * - `meta → entrega` cria a atividade (não há `atividadeIdExistente`) e aponta a missão para ela;
+ * - `entrega → meta` grava a missão sem atividade **antes** de apagar a atividade antiga, pela
+ *   mesma razão de `excluirMissao` (`atividade_origem_id` é `ON DELETE SET NULL`);
+ * - trocar o tópico de uma entrega move a atividade (`saveActivity` não mexe em `topico_id`);
+ * - trocar a turma é trocar o tópico para um da turma nova: a atividade vai junto, e vai ANTES da
+ *   missão, porque a guarda recusa entrega apontando atividade de outra turma (`20261103_06`).
  */
 export async function salvarMissao(
-  classeId: number,
   missao: PayloadDaMissao,
   atividade: PayloadDaAtividade | null,
   id?: number,
   atividadeIdExistente?: number | null,
+  topicoIdAnterior?: number | null,
 ): Promise<number> {
   let pronta = missao;
 
@@ -195,12 +210,16 @@ export async function salvarMissao(
       data_entrega: atividade.data_entrega,
       pontuacao_maxima: atividade.pontuacao_maxima,
     });
+    if (atividadeIdExistente != null && topicoIdAnterior != null && topicoIdAnterior !== atividade.topico_id) {
+      await moverAtividade(atividadeId, atividade.topico_id);
+    }
     await gravarMoedas(atividadeId, atividade.moedas);
     pronta = comCriterioDaAtividade(missao, atividadeId);
   }
 
   const linha = {
-    classe_id: classeId,
+    classe_id: pronta.classe_id,
+    perfil_alvo: pronta.perfil_alvo,
     escopo: pronta.escopo,
     origem: pronta.origem,
     titulo: pronta.titulo,
@@ -217,14 +236,32 @@ export async function salvarMissao(
     const { error } = await supabase
       .from("missoes" as never)
       .update({
+        classe_id: linha.classe_id,
+        perfil_alvo: linha.perfil_alvo,
+        escopo: linha.escopo,
         titulo: linha.titulo,
         descricao: linha.descricao,
         criterio: linha.criterio,
         recompensa_tipo: linha.recompensa_tipo,
         janela_fim: linha.janela_fim,
+        atividade_origem_id: linha.atividade_origem_id,
       } as never)
       .eq("id", id);
     if (error) throw error;
+
+    // Virou meta: a atividade da entrega deixa de ter missão atrás dela e sairia da trilha
+    // como um item solto. Se o banco recusar (ex.: já há entregas), a missão já está salva —
+    // o erro diz o que ficou para trás em vez de fingir que limpou.
+    if (!atividade && atividadeIdExistente != null) {
+      try {
+        await apagarAtividade(atividadeIdExistente);
+      } catch (e) {
+        const detalhe = (e as { message?: string })?.message ?? "";
+        throw new Error(
+          `A missão foi salva como meta, mas a atividade da entrega antiga não pôde ser apagada${detalhe ? ` (${detalhe})` : ""}. Ela continua no editor do tópico.`,
+        );
+      }
+    }
     return id;
   }
 
@@ -280,10 +317,11 @@ export async function duplicarMissao(m: Missao): Promise<number> {
   const { data, error } = await supabase
     .from("missoes" as never)
     .insert({
-      classe_id: await classeDaMissao(m.id),
-      // A cópia mantém quem cumpre: duplicar uma proposta de guilda não a transforma em
-      // missão da turma inteira.
+      classe_id: m.classeId || (await classeDaMissao(m.id)),
+      // A cópia mantém quem cumpre e para qual perfil: duplicar uma proposta de guilda não a
+      // transforma em missão da turma inteira.
       escopo: m.escopo,
+      perfil_alvo: m.perfilAlvo,
       origem: "professor",
       titulo: `${m.titulo} (cópia)`.slice(0, 120),
       descricao: m.objetivo,
@@ -338,9 +376,24 @@ export async function excluirMissao(id: number, atividadeId: number | null): Pro
   const { error } = await supabase.from("missoes" as never).delete().eq("id", id);
   if (error) throw error;
   if (atividadeId == null) return;
+  await apagarAtividade(atividadeId);
+}
 
+/** Os vínculos com conteúdo saem antes: a FK `atividade_conteudos` é NO ACTION. */
+async function apagarAtividade(atividadeId: number): Promise<void> {
   const vinculos = await supabase.from("atividade_conteudos").delete().eq("atividade_id", atividadeId);
   if (vinculos.error) throw vinculos.error;
   const apagada = await supabase.from("atividades").delete().eq("id", atividadeId);
   if (apagada.error) throw apagada.error;
+}
+
+/**
+ * Move a atividade da missão para outro tópico. Os vínculos com conteúdo saem junto: apontam
+ * conteúdos do tópico antigo, e o professor monta os do novo no editor do tópico.
+ */
+async function moverAtividade(atividadeId: number, topicoId: number): Promise<void> {
+  const vinculos = await supabase.from("atividade_conteudos").delete().eq("atividade_id", atividadeId);
+  if (vinculos.error) throw vinculos.error;
+  const { error } = await supabase.from("atividades").update({ topico_id: topicoId }).eq("id", atividadeId);
+  if (error) throw error;
 }

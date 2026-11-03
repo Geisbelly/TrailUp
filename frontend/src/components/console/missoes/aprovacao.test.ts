@@ -39,9 +39,9 @@ describe("escopo, origem e aprovação vindos do banco", () => {
 });
 
 describe("o que o professor pode fazer", () => {
-  it("só edita a missão que é dele", () => {
+  it("edita as missões do professor e propostas da IA, mas não as do sistema", () => {
     expect(podeEditar({ origem: "professor" })).toBe(true);
-    expect(podeEditar({ origem: "ia" })).toBe(false);
+    expect(podeEditar({ origem: "ia" })).toBe(true);
     expect(podeEditar({ origem: "sistema" })).toBe(false);
   });
 

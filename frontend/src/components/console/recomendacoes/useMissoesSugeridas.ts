@@ -5,6 +5,7 @@ import {
   buscarLimites,
   decidirSugestao,
   listarDecididas,
+  listarHistorico,
   listarPedidos,
   listarPendentes,
   pedirMissoes,
@@ -13,6 +14,7 @@ import {
   eMigracaoPendente,
   mensagemDoPedido,
   type LimitesDeMissoesIa,
+  type HistoricoDeMissaoIa,
   type MissaoSugerida,
   type PedidoDeMissoesIa,
 } from "./missoesIa";
@@ -30,6 +32,7 @@ export function useMissoesSugeridas(classIds: number[]) {
   const [limites, setLimites] = useState<LimitesDeMissoesIa | null>(null);
   const [pendentes, setPendentes] = useState<MissaoSugerida[]>([]);
   const [decididas, setDecididas] = useState<MissaoSugerida[]>([]);
+  const [historico, setHistorico] = useState<HistoricoDeMissaoIa[]>([]);
   const [pedidos, setPedidos] = useState<PedidoDeMissoesIa[]>([]);
   const [estado, setEstado] = useState<EstadoDasMissoesIa>({ tipo: "carregando" });
   const guarda = useRef(createRequestGuard());
@@ -39,13 +42,16 @@ export function useMissoesSugeridas(classIds: number[]) {
     if (classIds.length === 0) {
       setPendentes([]);
       setDecididas([]);
+      setHistorico([]);
       setPedidos([]);
       setEstado({ tipo: "pronto" });
       return;
     }
-    const [lim, pend, dec, ped] = await Promise.all([buscarLimites(), listarPendentes(classIds), listarDecididas(classIds), listarPedidos(classIds)]);
+    const [lim, pend, dec, hist, ped] = await Promise.all([
+      buscarLimites(), listarPendentes(classIds), listarDecididas(classIds), listarHistorico(classIds), listarPedidos(classIds),
+    ]);
     if (!request.isCurrent()) return;
-    const erro = lim.erro ?? pend.erro ?? dec.erro ?? ped.erro;
+    const erro = lim.erro ?? pend.erro ?? dec.erro ?? hist.erro ?? ped.erro;
     if (erro) {
       setEstado(eMigracaoPendente(erro) ? { tipo: "indisponivel" } : { tipo: "erro", detalhe: erro.message ?? "erro desconhecido" });
       return;
@@ -53,6 +59,7 @@ export function useMissoesSugeridas(classIds: number[]) {
     setLimites(lim.limites);
     setPendentes(pend.missoes);
     setDecididas(dec.missoes);
+    setHistorico(hist.itens);
     setPedidos(ped.pedidos);
     setEstado({ tipo: "pronto" });
   }, [classIds]);
@@ -84,7 +91,12 @@ export function useMissoesSugeridas(classIds: number[]) {
     async (id: number, aprovar: boolean, motivo?: string) => {
       const anterior = pendentes.find((m) => m.id === id);
       if (!anterior) return;
-      const decidida: MissaoSugerida = { ...anterior, aprovacao: aprovar ? "aprovada" : "recusada", motivo_recusa: aprovar ? null : (motivo ?? null) };
+      const decidida: MissaoSugerida = {
+        ...anterior,
+        aprovacao: aprovar ? "aprovada" : "recusada",
+        motivo_recusa: aprovar ? null : (motivo ?? null),
+        atualizado_em: new Date().toISOString(),
+      };
       setPendentes((atual) => atual.filter((m) => m.id !== id));
       setDecididas((atual) => [decidida, ...atual]);
       try {
@@ -94,10 +106,11 @@ export function useMissoesSugeridas(classIds: number[]) {
         setDecididas((atual) => atual.filter((m) => m.id !== id));
         throw e instanceof Error ? e : new Error("Não foi possível salvar a decisão.");
       }
+      await carregar();
       avisarQueRecomendacoesMudaram();
     },
-    [pendentes],
+    [carregar, pendentes],
   );
 
-  return { limites, pendentes, decididas, pedidos, estado, pedir, decidir };
+  return { limites, pendentes, decididas, historico, pedidos, estado, pedir, decidir };
 }

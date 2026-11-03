@@ -18,6 +18,7 @@
 // caminho `meta` não pede tópico — era a limitação que o comentário antigo registrava.
 
 import type { EscopoDaMissao } from "./aprovacao";
+import { PROFILE_LABEL, type BrainHexProfileKey } from "@/features/signup/brainhex";
 import { criterioDeEntrega, criterioDeMeta, definicaoDaMetrica, metricaSomaEmGuilda, type MetricaDeMissao } from "./criterio";
 
 export const TIPO_DA_MISSAO = "missao";
@@ -31,7 +32,26 @@ export const RECOMPENSA_PADRAO = "missao_concluida";
 
 export type CaminhoDaMissao = "entrega" | "meta";
 
+/**
+ * Para quem é a missão. Vazio = todos os perfis. Os valores são os de `missoes.perfil_alvo` (CHECK
+ * com os 7 nomes em minúsculas); o avaliador e o app só entregam a missão a quem tem esse perfil
+ * como perfil da missão (`fn_perfil_da_missao`).
+ */
+export const PERFIS_DA_MISSAO = Object.entries(PROFILE_LABEL).map(([chave, rotulo]) => ({
+  chave: chave as BrainHexProfileKey,
+  rotulo,
+}));
+
+export function rotuloDoPerfil(perfil: string | null | undefined): string {
+  if (!perfil) return "Todos os perfis";
+  return PROFILE_LABEL[perfil.toLowerCase() as BrainHexProfileKey] ?? perfil;
+}
+
 export type FormularioDeMissao = {
+  /** Id da turma em texto (vem de um select). A missão é dela, e o tópico também. */
+  turmaId: string;
+  /** Chave do perfil BrainHex, ou vazio para todos. */
+  perfil: string;
   caminho: CaminhoDaMissao;
   titulo: string;
   objetivo: string;
@@ -55,6 +75,8 @@ export type FormularioDeMissao = {
 };
 
 export const FORMULARIO_DE_MISSAO_VAZIO: FormularioDeMissao = {
+  turmaId: "",
+  perfil: "",
   caminho: "entrega",
   titulo: "",
   objetivo: "",
@@ -79,6 +101,9 @@ export type PayloadDaAtividade = {
 
 /** O que vai para `missoes`. `criterio` fica para depois em `entrega`: depende do id da atividade. */
 export type PayloadDaMissao = {
+  classe_id: number;
+  /** `null` = todos os perfis. */
+  perfil_alvo: string | null;
   escopo: EscopoDaMissao;
   origem: "professor";
   titulo: string;
@@ -89,7 +114,7 @@ export type PayloadDaMissao = {
 };
 
 export type ErrosDaMissao = Partial<
-  Record<"escopo" | "caminho" | "titulo" | "objetivo" | "topicoId" | "prazo" | "pontos" | "moedas" | "metrica" | "alvo", string>
+  Record<"turmaId" | "perfil" | "escopo" | "caminho" | "titulo" | "objetivo" | "topicoId" | "prazo" | "pontos" | "moedas" | "metrica" | "alvo", string>
 >;
 
 export type ResultadoDaMissao = {
@@ -109,10 +134,18 @@ export function validarMissao(form: FormularioDeMissao): ResultadoDaMissao {
 
   if (form.caminho !== "entrega" && form.caminho !== "meta") erros.caminho = "Escolha entrega ou meta.";
 
+  const turma = inteiro(form.turmaId);
+  if (!form.turmaId.trim() || !Number.isInteger(turma) || turma <= 0) erros.turmaId = "Escolha a turma da missão.";
+
+  const perfil = form.perfil.trim().toLowerCase();
+  if (perfil && !PERFIS_DA_MISSAO.some((p) => p.chave === perfil)) erros.perfil = "Escolha um perfil da lista.";
+
   const escopo = form.escopo ?? "turma";
   if (escopo !== "turma" && escopo !== "guilda" && escopo !== "aluno") erros.escopo = "Escolha quem cumpre.";
   // Guilda soma o progresso dos membros: entrega não é número, e o banco recusaria (22023).
   if (escopo === "guilda" && entrega) erros.caminho = "Missão de guilda é uma meta: a guilda soma o que os membros fazem.";
+  // O laço da guilda soma todos os membros e ignora o perfil; o banco recusa (22023).
+  if (escopo === "guilda" && perfil) erros.perfil = "Missão de guilda vale para a guilda inteira, sem perfil.";
 
   const titulo = form.titulo.trim();
   if (titulo.length < 3) erros.titulo = "Dê um título de pelo menos 3 letras.";
@@ -170,6 +203,8 @@ export function validarMissao(form: FormularioDeMissao): ResultadoDaMissao {
   if (Object.keys(erros).length > 0) return { ok: false, missao: null, atividade: null, erros };
 
   const missao: PayloadDaMissao = {
+    classe_id: turma,
+    perfil_alvo: perfil || null,
     escopo,
     origem: "professor",
     titulo,

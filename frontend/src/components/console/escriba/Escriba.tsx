@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
-import { Send, Sparkles, X } from "lucide-react";
+import { Maximize2, Minimize2, Send, Sparkles, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/apiTraiupClient";
@@ -37,6 +38,7 @@ export default function Escriba() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [aberto, setAberto] = useState(false);
+  const [telaCheia, setTelaCheia] = useState(false);
   const [turmas, setTurmas] = useState<TurmaDoProfessor[] | null>(null);
   const [turma, setTurma] = useState<string>(TODAS);
   const [mensagens, setMensagens] = useState<Mensagem[]>([{ id: 0, papel: "escriba", texto: MENSAGEM_INICIAL }]);
@@ -83,6 +85,7 @@ export default function Escriba() {
 
   const fechar = useCallback(() => {
     setAberto(false);
+    setTelaCheia(false);
     botao.current?.focus();
   }, []);
 
@@ -124,7 +127,8 @@ export default function Escriba() {
   const noTeclado = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape") {
       e.preventDefault();
-      fechar();
+      if (telaCheia) setTelaCheia(false);
+      else fechar();
       return;
     }
     if (e.key !== "Tab" || !painel.current) return;
@@ -145,8 +149,8 @@ export default function Escriba() {
   const conversou = mensagens.length > 1;
 
   return (
-    <div className="escriba fixed bottom-[max(20px,env(safe-area-inset-bottom))] right-4 z-50 sm:bottom-7 sm:right-8">
-      {aberto && (
+    <>
+      {aberto && createPortal(
         <div
           ref={painel}
           id={idPainel}
@@ -154,7 +158,12 @@ export default function Escriba() {
           aria-modal="true"
           aria-labelledby={idTitulo}
           onKeyDown={noTeclado}
-          className="absolute bottom-[70px] right-0 flex max-h-[min(560px,calc(100dvh-120px))] w-[min(360px,calc(100vw-32px))] flex-col overflow-hidden rounded-[20px] border border-border bg-card shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+          className={cn(
+            "fixed z-[100] flex flex-col overflow-hidden bg-card",
+            telaCheia
+              ? "inset-0 h-[100dvh] w-screen rounded-none border-0 shadow-none"
+              : "escriba-panel-floating max-h-[min(560px,calc(100dvh-120px))] w-[min(360px,calc(100vw-32px))] rounded-[20px] border border-border shadow-[0_20px_50px_rgba(0,0,0,0.5)]",
+          )}
         >
           {/* Bronze claro com texto escuro: o branco sobre o degradê do protótipo fica em ~2,6:1. */}
           <div className="flex items-center gap-3 bg-[hsl(var(--console-bronze-light))] px-[18px] py-4 text-[hsl(var(--background))]">
@@ -167,6 +176,15 @@ export default function Escriba() {
               </h2>
               <p className="text-[11px] font-medium">Lê os dados das suas turmas</p>
             </div>
+            <button
+              type="button"
+              onClick={() => setTelaCheia((expandida) => !expandida)}
+              aria-label={telaCheia ? "Reduzir conversa" : "Expandir conversa em tela cheia"}
+              title={telaCheia ? "Reduzir conversa" : "Tela cheia"}
+              className="flex h-8 w-8 flex-none items-center justify-center rounded-full hover:bg-black/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--background))]"
+            >
+              {telaCheia ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
             <button
               type="button"
               onClick={fechar}
@@ -295,20 +313,24 @@ export default function Escriba() {
             </button>
           </form>
         </div>
-      )}
+      , document.body)}
 
-      <button
-        ref={botao}
-        type="button"
-        onClick={() => (aberto ? fechar() : setAberto(true))}
-        aria-expanded={aberto}
-        aria-controls={aberto ? idPainel : undefined}
-        aria-label={aberto ? "Fechar a Lumi" : "Pergunte à Lumi, a guia do professor"}
-        title="Pergunte à Lumi"
-        className="flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,hsl(var(--console-bronze-light)),hsl(var(--console-bronze)))] text-[hsl(var(--background))] shadow-[0_12px_30px_rgba(0,0,0,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        {aberto ? <X size={22} /> : <Sparkles size={24} strokeWidth={1.7} />}
-      </button>
-    </div>
+      <div className="escriba fixed bottom-[max(20px,env(safe-area-inset-bottom))] right-4 z-50 sm:bottom-7 sm:right-8">
+        <button
+          ref={botao}
+          type="button"
+          onClick={() => (aberto ? fechar() : setAberto(true))}
+          aria-expanded={aberto}
+          aria-controls={aberto ? idPainel : undefined}
+          aria-hidden={telaCheia}
+          tabIndex={telaCheia ? -1 : 0}
+          aria-label={aberto ? "Fechar a Lumi" : "Pergunte à Lumi, a guia do professor"}
+          title="Pergunte à Lumi"
+          className={cn("flex h-14 w-14 items-center justify-center rounded-full bg-[linear-gradient(135deg,hsl(var(--console-bronze-light)),hsl(var(--console-bronze)))] text-[hsl(var(--background))] shadow-[0_12px_30px_rgba(0,0,0,0.45)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background", telaCheia && "pointer-events-none opacity-0")}
+        >
+          {aberto ? <X size={22} /> : <Sparkles size={24} strokeWidth={1.7} />}
+        </button>
+      </div>
+    </>
   );
 }

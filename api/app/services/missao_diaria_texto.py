@@ -40,23 +40,35 @@ DESCRICAO_MIN, DESCRICAO_MAX = 10, 200
 
 # Tom por perfil BrainHex. O vocabulário vem do mesmo recorte que o material base usa.
 TOM_DO_PERFIL: dict[str, str] = {
-    "seeker": "curiosidade e descoberta: explorar, encontrar algo novo",
+    "seeker": "curiosidade e descoberta: explorar e encontrar algo novo",
     "survivor": "superar a tensão: encarar o que parece difícil e seguir em frente",
-    "daredevil": "energia e ritmo: ir rápido, aceitar o desafio do dia",
+    "daredevil": "energia e ritmo: agir com rapidez e aceitar o desafio do dia",
     "mastermind": "estratégia: planejar o estudo e resolver com método",
-    "conqueror": "superação: vencer um obstáculo e provar a si mesmo",
-    "socializer": "pertencimento: fazer parte do ritmo da turma (a missão continua sendo individual)",
-    "achiever": "completar e colecionar: fechar a meta do dia e ver o progresso",
+    "conqueror": "superação: vencer um obstáculo e provar seu próprio avanço",
+    "socializer": "pertencimento: fazer parte do ritmo da turma; a missão continua individual",
+    "achiever": "concluir a meta do dia e acompanhar o próprio progresso",
 }
 
 # Unidade que a descrição TEM de citar, por (métrica, filtro de evento). Sem ela, um texto
 # bonito pode pedir "10 exercícios" numa missão que conta minutos.
-_UNIDADES: dict[tuple[str, str | None], tuple[str, tuple[str, ...]]] = {
-    ("minutos_no_dia", None): ("minutos de estudo hoje", ("minuto",)),
-    ("eventos_no_dia", "atividade_concluida"): ("atividades concluidas hoje", ("atividade",)),
-    ("eventos_no_dia", "conteudo_concluido"): ("conteudos concluidos hoje", ("conteudo",)),
-    ("eventos_no_dia", None): ("acoes na trilha hoje", ("acao", "acoes", "trilha")),
+_UNIDADES: dict[tuple[str, str | None], tuple[str, str, tuple[str, ...]]] = {
+    ("minutos_no_dia", None): ("minuto de estudo hoje", "minutos de estudo hoje", ("minuto",)),
+    ("eventos_no_dia", "atividade_concluida"): ("atividade concluída hoje", "atividades concluídas hoje", ("atividade",)),
+    ("eventos_no_dia", "conteudo_concluido"): ("conteúdo concluído hoje", "conteúdos concluídos hoje", ("conteudo",)),
+    ("eventos_no_dia", None): ("ação na trilha hoje", "ações na trilha hoje", ("acao", "acoes", "trilha")),
 }
+
+# Erros ortográficos frequentes que o validador consegue detectar sem confundir palavras
+# que também são válidas sem acento em outros contextos.
+_PALAVRAS_SEM_ACENTO = frozenset(
+    {
+        "acao", "acoes", "ate", "conteudo", "conteudos", "concluida", "concluidas",
+        "concluido", "concluidos", "dificil", "facil", "faca", "ja", "materia",
+        "materias", "nao", "numero", "numeros", "possivel", "proxima", "proximas",
+        "proximo", "proximos", "rapida", "rapidas", "rapido", "rapidos", "tambem",
+        "topico", "topicos", "voce", "voces",
+    }
+)
 
 # Número por extenso que contradiria o alvo em algarismos. "um/uma" ficam de fora: são artigo.
 _NUMEROS_POR_EXTENSO = re.compile(
@@ -118,7 +130,7 @@ def alvo_e_unidade(criterio: dict[str, Any]) -> tuple[int, str, tuple[str, ...]]
         return None
     if alvo <= 0:
         return None
-    return alvo, unidade[0], unidade[1]
+    return alvo, unidade[0] if alvo == 1 else unidade[1], unidade[2]
 
 
 def validar_texto(titulo: Any, descricao: Any, criterio: dict[str, Any]) -> tuple[str, str] | str:
@@ -137,10 +149,15 @@ def validar_texto(titulo: Any, descricao: Any, criterio: dict[str, Any]) -> tupl
 
     junto = f"{titulo_limpo} {descricao_limpa}"
     plano = _sem_acento(junto)
+    palavras = re.findall(r"[^\W\d_]+", junto.casefold(), flags=re.UNICODE)
+    if any(palavra in _PALAVRAS_SEM_ACENTO for palavra in palavras):
+        return "acentuacao_pt_br"
     if _PROIBIDO.search(junto):
         return "marcacao_ou_link"
     if _RECOMPENSA.search(plano):
         return "fala_de_recompensa"
+    if re.search(r"\b(?:atividade|conteudo|acao)\(s\)", plano):
+        return "plural_sem_concordancia"
 
     numeros = re.findall(r"\d+(?:[.,]\d+)?", junto)
     if any(numero != str(alvo) for numero in numeros):
@@ -149,6 +166,11 @@ def validar_texto(titulo: Any, descricao: Any, criterio: dict[str, Any]) -> tupl
         return "descricao_sem_o_alvo"
     if _NUMEROS_POR_EXTENSO.search(plano):
         return "numero_por_extenso"
+    unidades_numericas = r"(minuto|atividade|conteudo|acao)"
+    if alvo == 1 and re.search(rf"\b1\s+{unidades_numericas}s\b", plano):
+        return "concordancia_da_unidade"
+    if alvo != 1 and re.search(rf"\b{alvo}\s+{unidades_numericas}\b(?!s)", plano):
+        return "concordancia_da_unidade"
     if not any(radical in _sem_acento(descricao_limpa) for radical in radicais):
         return "descricao_sem_a_unidade"
 
@@ -191,6 +213,9 @@ async def _missoes_da_coorte(session: AsyncSession, *, classe_id: int, perfil: s
                AND m.origem = 'sistema'
                AND m.ativa
                AND m.texto_enriquecido_em IS NULL
+               -- A de item (20261103_05) já nasce com o conteúdo e o tópico no texto, e o
+               -- validador daqui conta unidades numéricas, não nomes: fica no molde.
+               AND COALESCE(m.criterio ->> 'metrica', '') <> 'item_no_dia'
                AND (m.janela_fim IS NULL OR m.janela_fim > now())
              ORDER BY m.slot
             """

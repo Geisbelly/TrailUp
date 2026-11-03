@@ -5,10 +5,8 @@
 //
 // - **`escopo` é `aluno | turma | guilda`** (`missoes_escopo_check`). O console só gravava o
 //   literal `turma`; a diária do sistema nasce `aluno`; a de guilda é a que a IA propõe.
-// - **`trg_missoes_guarda` congela o texto, o critério, a janela e o escopo de missão que não
-//   é do professor** — e congela EM SILÊNCIO (reatribui `NEW := OLD`, sem erro). Um botão
-//   "Editar" numa missão da IA mostraria "Missão atualizada." sem ter mudado nada: a mesma
-//   escrita fantasma que o #540 tirou dos tipos de ranking. Por isso `podeEditar`.
+// - **`trg_missoes_guarda` protege as missões do sistema**; propostas da IA podem ser editadas
+//   pelo professor da turma antes ou depois da decisão. `podeEditar` acompanha essa regra.
 // - **A aprovação é o único estado que o professor muda numa missão alheia.** `pendente` não
 //   chega ao aluno (policy `missoes_aluno_sel`) e não é avaliada (gatilho da fase 5a); recusar
 //   exige motivo (`missoes_recusa_tem_motivo`, até 500 caracteres).
@@ -30,9 +28,8 @@ export function escopoDe(v: unknown): EscopoDaMissao {
 }
 
 /**
- * Valor desconhecido cai em `ia`, não em `professor`: tratar como do professor liberaria o
- * "Editar" numa linha que o gatilho congela — o erro silencioso que este arquivo existe para
- * evitar. O contrário (esconder o editar de uma missão que seria editável) é só incômodo.
+ * Valor desconhecido cai em `ia`, nunca em `professor`. O professor pode editar propostas da
+ * IA da própria turma; a RLS restringe as alterações às turmas autorizadas.
  */
 export function origemDe(v: unknown): OrigemDaMissao {
   return ORIGENS.includes(v as OrigemDaMissao) ? (v as OrigemDaMissao) : "ia";
@@ -54,9 +51,9 @@ export function rotuloDaOrigem(origem: OrigemDaMissao): string {
   return "Sua";
 }
 
-/** O gatilho só deixa o professor mudar o texto de missão que é dele. */
+/** Missões do sistema são geradas pelo banco; missões do professor e propostas da IA são editáveis. */
 export function podeEditar(m: { origem: string }): boolean {
-  return m.origem === "professor";
+  return m.origem !== "sistema";
 }
 
 /** Aprovar e recusar só fazem sentido enquanto a missão espera. */

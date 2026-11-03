@@ -103,6 +103,28 @@ export function definicaoDaMetrica(chave: string): ({ chave: MetricaDeMissao } &
   return METRICAS.find((m) => m.chave === chave) ?? null;
 }
 
+/** O que a turma tem, para o alvo sugerido sair dela e não de um número fixo. */
+export type ContextoDaTurma = { topicos: number; atividades: number };
+
+/**
+ * Alvo que o formulário preenche ao escolher a medida. Contagem sai do que a turma tem — pedir
+ * 10 tópicos numa trilha de 4 é missão que ninguém fecha —; tempo, sequência e percentual não
+ * dependem da trilha e ficam num valor de partida. Sempre dentro de `1..max` da métrica.
+ */
+export function alvoSugerido(chave: string, turma: ContextoDaTurma): number | null {
+  const def = definicaoDaMetrica(chave);
+  if (!def) return null;
+  const porMetrica: Record<MetricaDeMissao, number> = {
+    minutos_totais: 60,
+    dias_seguidos: 5,
+    topicos_concluidos: turma.topicos,
+    atividades_concluidas: turma.atividades,
+    acertos_percentual: 70,
+    trilha_percentual: 100,
+  };
+  return Math.min(def.max, Math.max(1, Math.round(porMetrica[def.chave])));
+}
+
 /** `criterio` de missão-meta. Usa a chave de parâmetro que o avaliador espera. */
 export function criterioDeMeta(metrica: MetricaDeMissao, alvo: number): Record<string, unknown> {
   return { metrica, [CHAVE_DO_ALVO[metrica]]: alvo };
@@ -125,6 +147,8 @@ export function rotuloDoCriterio(criterio: unknown): string {
   const c = criterio as Record<string, unknown>;
   const metrica = String(c.metrica ?? "");
   if (metrica === "atividade_especifica") return "Concluir a atividade";
+  // A diária que sai da trilha (`20261103_05`): o nome do item está no texto da missão.
+  if (metrica === "item_no_dia") return c.item === "atividade" ? "Atividade da trilha, hoje" : "Conteúdo da trilha, hoje";
   // Métricas de delta da fase 5b — o formulário do professor não as oferece, mas a diária usa.
   if (metrica === "minutos_no_dia") {
     const n = c.minutos;
