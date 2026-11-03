@@ -20,6 +20,7 @@ import {
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { useAcaoDeMoldura } from "@/hooks/useMolduras";
 
 export default function PerfilMetricasEstilo() {
   return <MetricasEstilo />;
@@ -68,6 +69,11 @@ export function MetricasEstilo({ embutido = false }: { embutido?: boolean }) {
     () => registrarAlvoTour("config_metricas_visual", optionsGuideRef),
     [],
   );
+
+  const acaoDeMoldura = useAcaoDeMoldura();
+  useEffect(() => {
+    acaoDeMoldura("ver_estilo");
+  }, [acaoDeMoldura]);
 
   useEffect(() => {
     let mounted = true;

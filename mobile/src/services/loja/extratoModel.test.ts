@@ -19,6 +19,7 @@ test("cada motivo do razão vira uma descrição", () => {
     { id: 3, delta: -4, motivo: "compra", evento_tipo: null, compra_id: 10, criado_em: AGORA.toISOString() },
     { id: 4, delta: 2, motivo: "dotacao", evento_tipo: null, compra_id: null, criado_em: AGORA.toISOString() },
     { id: 5, delta: 1, motivo: "novo_motivo", evento_tipo: null, compra_id: null, criado_em: AGORA.toISOString() },
+    { id: 6, delta: -30, motivo: "compra", evento_tipo: "moldura", compra_id: null, criado_em: AGORA.toISOString() },
   ];
   const r = montarExtrato(linhas, new Map([[9, "Dica"]]), AGORA);
   assert.deepEqual(r.map((m) => [m.valor, m.descricao]), [
@@ -27,6 +28,7 @@ test("cada motivo do razão vira uma descrição", () => {
     [-4, "Compra"],
     [2, "Dotação da turma"],
     [1, "novo_motivo"],
+    [-30, "Compra · Moldura"],
   ]);
 });
 

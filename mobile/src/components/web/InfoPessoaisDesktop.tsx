@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import tinycolor from "tinycolor2";
 
 import { FramedProfileImage } from "@/components/FramedProfileImage";
+import { useMolduraEquipada } from "@/hooks/useMolduras";
 import { getProfileArtwork } from "@/constants/designAssets";
 import type { useInfoPessoais } from "@/hooks/useInfoPessoais";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -28,6 +29,7 @@ const MODOS: { id: string; rotulo: string }[] = [
  */
 export function InfoPessoaisDesktop({ form, palette }: { form: Form; palette: ProfileShellPalette }) {
   const { usuario, salvando, nome, setNome, apelido, setApelido, descricao, setDescricao, modoNome, modoResposta, setModoResposta, fotoUri, bannerUri, handlePickImage, salvar } = form;
+  const moldura = useMolduraEquipada();
   const vidro = { backgroundColor: tinycolor(palette.background).setAlpha(0.7).toRgbString(), borderColor: palette.borderStrong };
   const campo = [s.campo, { backgroundColor: palette.background, borderColor: palette.border, color: palette.text }];
 
@@ -45,7 +47,7 @@ export function InfoPessoaisDesktop({ form, palette }: { form: Form; palette: Pr
               </Pressable>
             </View>
             <View style={s.fotoLinha}>
-              <FramedProfileImage profile={palette.profile} source={fotoUri ? { uri: fotoUri } : undefined} size={84} label={`Foto de ${nome || "Aluno"}`} />
+              <FramedProfileImage profile={palette.profile} moldura={moldura} source={fotoUri ? { uri: fotoUri } : undefined} size={84} label={`Foto de ${nome || "Aluno"}`} />
               <Pressable accessibilityRole="button" onPress={() => void handlePickImage("foto")} style={[s.botaoVidro, vidro]}>
                 <Text style={[s.botaoVidroTexto, { color: palette.text }]}>Trocar foto</Text>
               </Pressable>

@@ -58,7 +58,8 @@ export function montarExtrato(linhas: readonly LinhaRazao[], itemDaCompra: Reado
     if (l.motivo === "evento") descricao = EVENTO[l.evento_tipo ?? ""] ?? "Estudo";
     else if (l.motivo === "compra") {
       const item = l.compra_id != null ? itemDaCompra.get(l.compra_id) : undefined;
-      descricao = item ? `Compra · ${item}` : "Compra";
+      // Moldura não passa por `loja_compras`: a compra é a própria posse (20261103_09).
+      descricao = item ? `Compra · ${item}` : l.evento_tipo === "moldura" ? "Compra · Moldura" : "Compra";
     } else descricao = MOTIVO[l.motivo] ?? l.motivo;
     return { id: l.id, valor: Number(l.delta) || 0, descricao, quando: formatarQuando(l.criado_em, agora), motivo: l.motivo };
   });

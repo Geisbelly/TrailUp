@@ -6,6 +6,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
 import { Aluno } from "@/models/Aluno";
 import { nomeDoArquivoDeFoto, textoDaRef } from "@/utils/fotoPerfil";
+import { useAcaoDeMoldura } from "@/hooks/useMolduras";
 
 export type AvisoInfo = (titulo: string, descricao: string) => void;
 
@@ -19,6 +20,7 @@ export type AvisoInfo = (titulo: string, descricao: string) => void;
 export function useInfoPessoais(avisar: AvisoInfo) {
   const { usuario, atualizarUsuario } = useUsuario();
   const { addToast } = useNotifications();
+  const acaoDeMoldura = useAcaoDeMoldura();
 
   const [editando, setEditando] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -142,6 +144,7 @@ export function useInfoPessoais(avisar: AvisoInfo) {
       });
       await atualizarUsuario();
       setEditando(false);
+      acaoDeMoldura("editar_perfil");
       addToast({
         type: "achievement",
         title: "Perfil atualizado",

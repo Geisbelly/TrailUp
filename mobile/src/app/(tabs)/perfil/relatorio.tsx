@@ -33,6 +33,7 @@ import { registrarAlvoTour } from "@/utils/tourTargets";
 import { RelatorioDesktop } from "@/components/web/RelatorioDesktop";
 import { imprimirHtmlNaWeb } from "@/utils/imprimirHtmlWeb";
 import { useAviso } from "@/hooks/useAviso";
+import { useAcaoDeMoldura } from "@/hooks/useMolduras";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 
@@ -60,6 +61,7 @@ export default function RelatorioDadosScreen() {
   const { eventos, conquistas, ranking, posicoesDoAluno } = useConquistaRank();
   const desktop = useDesktopWeb();
   const { avisar } = useAviso();
+  const acaoDeMoldura = useAcaoDeMoldura();
   
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -424,6 +426,7 @@ export default function RelatorioDadosScreen() {
     if (Platform.OS === "web") {
       try {
         await imprimirHtmlNaWeb(htmlRelatorio, `Relatório TrailUp — ${usuario?.nome ?? "Aluno"}`);
+        acaoDeMoldura("gerar_relatorio");
       } catch (err) {
         console.warn("[Relatorio] Falha ao abrir a impressão na web:", err);
         avisar(
@@ -459,6 +462,7 @@ export default function RelatorioDadosScreen() {
         UTI: ".pdf",
         dialogTitle: `Relatório de ${usuario?.nome}`
       });
+      acaoDeMoldura("gerar_relatorio");
 
     } catch (err) {
       avisar("Erro", "Não foi possível gerar o PDF.", "error");
