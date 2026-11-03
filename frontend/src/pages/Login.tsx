@@ -19,7 +19,11 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { FORGOT_PASSWORD_PATH } from "@/features/auth/resetPasswordRoute";
 
-import { AREA_ALUNO } from "@/features/signup/cadastroAluno";
+import { entradaDoAppAluno } from "@/features/signup/trilhaIntrodutoria";
+
+// Conta de aluno que entra por aqui vai ao app (página inteira: pelo roteador,
+// `/aluno` cai na introdução do console, não no app).
+const ENTRADA_ALUNO = entradaDoAppAluno(import.meta.env.VITE_ALUNO_APP_URL);
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -60,7 +64,7 @@ export default function Login() {
       if (userRole === "professor" && isProfessorLiberado) {
         navigate("/console");
       } else if (userRole === "aluno") {
-        navigate(AREA_ALUNO, { replace: true });
+        window.location.replace(ENTRADA_ALUNO);
       }
     }
   }, [user, userRole, isProfessorLiberado, authLoading, navigate]);
@@ -157,9 +161,7 @@ export default function Login() {
       }
     }
 
-    toast.success("Login realizado com sucesso!");
-    navigate(AREA_ALUNO, { replace: true });
-    setIsLoading(false);
+    window.location.replace(ENTRADA_ALUNO);
   };
 
   const handleGoogleLogin = async () => {
@@ -315,11 +317,15 @@ export default function Login() {
 
           <div className="mt-4 pt-4 border-t border-border text-center text-sm">
             <span className="text-muted-foreground">É aluno? </span>
+            <a href={ENTRADA_ALUNO} className="text-primary hover:underline font-medium">
+              Entre pelo app do aluno
+            </a>
+            <span className="text-muted-foreground"> ou </span>
             <Link
               to="/cadastro-aluno"
               className="text-primary hover:underline font-medium"
             >
-              Cadastre-se aqui
+              cadastre-se aqui
             </Link>
             <span className="text-muted-foreground"> ou </span>
             {/* <a> e nao <Link>: /aluno e o app do aluno (Expo web), fora do router do site. */}
