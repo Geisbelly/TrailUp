@@ -32,7 +32,7 @@ export function CartaoDoEvento({
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-[16.5px] font-bold">{evento.titulo}</h3>
+            <h3 className="max-w-full break-words sm:truncate text-[16.5px] font-bold">{evento.titulo}</h3>
             <SeloDeStatus tom={TOM[evento.status]}>{rotuloDoStatus(evento.status)}</SeloDeStatus>
           </div>
           <p className="mt-1 text-[12.5px] text-muted-foreground">{situacaoDoEvento(evento)}</p>
