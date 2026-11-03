@@ -370,7 +370,7 @@ export default function RanksSection() {
         <p className="mt-2 text-[14.5px] text-muted-foreground">Configure os critérios de classificação e acompanhe as posições dos alunos.</p>
       </div>
 
-      <div className="grid items-start gap-5 [grid-template-columns:repeat(auto-fit,minmax(360px,1fr))]">
+      <div className="grid items-start gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(360px,100%),1fr))]">
         <div className="flex flex-col gap-5">
           <section className={card}>
             {cabecalho(

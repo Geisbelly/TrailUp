@@ -102,7 +102,7 @@ export default function ProfileSection({ professorData, onUpdate, isLoading }: P
         </div>
       )}
 
-      <div className="grid items-start gap-5 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
+      <div className="grid items-start gap-5 [grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr))]">
         <section className="rounded-[20px] border border-primary bg-card p-6">
           <h3 className="text-[19px] font-bold">Informações pessoais</h3>
           <p className="mt-1 text-[12.5px] text-muted-foreground">Aparecem para os alunos junto do material da sua turma</p>

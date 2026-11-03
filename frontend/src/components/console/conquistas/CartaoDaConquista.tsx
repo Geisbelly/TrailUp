@@ -47,7 +47,7 @@ export function CartaoDaConquista({
       <IconeDaConquista icone={conquista.criterio.aparencia?.icone} cor={cor} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="truncate text-base font-bold">{conquista.nome}</h3>
+          <h3 className="max-w-full break-words sm:truncate text-base font-bold">{conquista.nome}</h3>
           <SeloDeStatus tom={conquista.ativa ? "ativo" : "neutro"}>{conquista.ativa ? "Ativa" : "Desativada"}</SeloDeStatus>
         </div>
         {conquista.descricao && <p className="mt-1 text-[13px] text-muted-foreground">{conquista.descricao}</p>}

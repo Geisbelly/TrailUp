@@ -41,7 +41,7 @@ export function CartaoDaMissao({
       <div className="flex flex-wrap items-start gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-[16.5px] font-bold">{missao.titulo}</h3>
+            <h3 className="max-w-full break-words sm:truncate text-[16.5px] font-bold">{missao.titulo}</h3>
             {missao.aprovacao === "pendente" && (
               <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
                 Aguarda você

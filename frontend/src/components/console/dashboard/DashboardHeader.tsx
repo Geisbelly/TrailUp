@@ -75,7 +75,7 @@ export default function DashboardHeader({
         </Select>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
         {/* A janela filtra o painel "Abandono por etapa" (RPC metricas_engajamento_turma, F5).
             Os cards agregados vem de views de estado atual (sinais) ou das ultimas 8 semanas
             completas (retorno semanal), e dizem isso no proprio texto. */}

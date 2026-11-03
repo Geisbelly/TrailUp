@@ -973,7 +973,7 @@ export default function TopicsManager() {
   return (
     <div className="h-full flex flex-col gap-4">
       <div className="flex flex-wrap items-end gap-3">
-        <div>
+        <div className="min-w-0 max-w-full">
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Editor de trilha</p>
           <div className="mt-2">
             <Select
@@ -986,10 +986,10 @@ export default function TopicsManager() {
                 setSelectedClassFilter(v);
               }}
             >
-              <SelectTrigger className="h-auto min-w-[280px] gap-3 rounded-2xl bg-card px-4 py-2.5" aria-label="Turma">
+              <SelectTrigger className="h-auto w-full max-w-full gap-3 rounded-2xl bg-card px-4 py-2.5 sm:w-auto sm:min-w-[280px]" aria-label="Turma">
                 <SelectValue placeholder="Selecione a turma">
                   {turmaSelecionada && (
-                    <span className="flex items-center gap-3 text-left">
+                    <span className="flex min-w-0 items-center gap-3 text-left">
                       <span aria-hidden="true" className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-primary text-xs font-extrabold text-primary-foreground">
                         {nomeDaTurma.trim().slice(0, 2).toUpperCase()}
                       </span>
@@ -1112,28 +1112,28 @@ export default function TopicsManager() {
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={abrirNovoTopico}
-            className="absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-full border-2 border-dashed border-border bg-card/90 px-4 py-2 text-xs font-semibold text-muted-foreground backdrop-blur-sm hover:border-primary hover:text-primary"
+            className="absolute bottom-[60px] left-3 z-10 sm:bottom-3 flex items-center gap-2 rounded-full border-2 border-dashed border-border bg-card/90 px-4 py-2 text-xs font-semibold text-muted-foreground backdrop-blur-sm hover:border-primary hover:text-primary"
           >
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
             Adicionar tópico ao final
           </button>
 
-          {/* Zoom controls */}
+          {/* Zoom controls. Na tela estreita não cabem ao lado do "Adicionar tópico", que sobe; os botões crescem para o dedo. */}
           <div className="pointer-events-auto absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-full border bg-card/95 px-2 py-1 shadow-xl backdrop-blur-sm" onPointerDown={(e) => e.stopPropagation()}>
-            <button className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Diminuir zoom" aria-label="Diminuir zoom" onClick={zoomOut}>
+            <button className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-7 sm:w-7" title="Diminuir zoom" aria-label="Diminuir zoom" onClick={zoomOut}>
               <ZoomOut className="h-3.5 w-3.5" />
             </button>
             <span className="w-11 select-none text-center font-mono text-[11px] text-muted-foreground" aria-live="polite">
               {Math.round(zoom * 100)}%
             </span>
-            <button className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Aumentar zoom" aria-label="Aumentar zoom" onClick={zoomIn}>
+            <button className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-7 sm:w-7" title="Aumentar zoom" aria-label="Aumentar zoom" onClick={zoomIn}>
               <ZoomIn className="h-3.5 w-3.5" />
             </button>
             <div className="mx-0.5 h-4 w-px bg-border" />
-            <button className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Ajustar à tela" aria-label="Ajustar à tela" onClick={() => fitToScreen(idsDoMapa)}>
+            <button className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-7 sm:w-7" title="Ajustar à tela" aria-label="Ajustar à tela" onClick={() => fitToScreen(idsDoMapa)}>
               <Maximize2 className="h-3.5 w-3.5" />
             </button>
-            <button className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Centralizar" aria-label="Centralizar" onClick={() => centerCanvas(idsDoMapa)}>
+            <button className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:h-7 sm:w-7" title="Centralizar" aria-label="Centralizar" onClick={() => centerCanvas(idsDoMapa)}>
               <Crosshair className="h-3.5 w-3.5" />
             </button>
           </div>
