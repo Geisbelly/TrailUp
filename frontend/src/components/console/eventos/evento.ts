@@ -15,13 +15,14 @@ export const PECAS_DO_EVENTO = [
 ] as const;
 
 /**
- * Critérios do rank do evento (`eventos_classe.arena_criterios`, migration 20261104_01). Só os que
- * respeitam a janela do evento: o banco recusa os outros (CHECK). Sem escolha, vale `ranqueada`.
+ * Critérios do rank do evento (`eventos_classe.arena_criterios`, migrations 20261104_01 e _07). Só os
+ * que respeitam a janela do evento: o banco recusa os outros (CHECK). Sem escolha, vale `ranqueada`.
  */
 export const CRITERIOS_DO_RANK = [
   { chave: "ranqueada", rotulo: "Pontos de batalha", ajuda: "Ganhos e perdidos nos desafios ranqueados." },
   { chave: "pontuacao", rotulo: "Pontuação", ajuda: "Todos os pontos do evento, inclusive de duelo." },
   { chave: "missoes", rotulo: "Missões cumpridas", ajuda: "Quantas missões cada um concluiu na janela." },
+  { chave: "tempo", rotulo: "Tempo de estudo", ajuda: "Minutos de estudo ativo na janela, sem contar o tempo parado." },
 ] as const;
 
 export type CriterioDoRank = (typeof CRITERIOS_DO_RANK)[number]["chave"];

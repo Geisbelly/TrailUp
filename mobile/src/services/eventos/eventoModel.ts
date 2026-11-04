@@ -1,4 +1,5 @@
 import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brainHexProfiles";
+import { formatRankScore } from "@/utils/rankingPodium";
 
 /**
  * O evento da turma como o aluno o vê.
@@ -241,12 +242,13 @@ export function podeMexerNaInscricao(evento: EventoDaTurma, agora: Date = new Da
   return !Number.isFinite(fim) || agora.getTime() < fim;
 }
 
-const ORDEM_DOS_CRITERIOS = ["ranqueada", "pontuacao", "missoes"];
+const ORDEM_DOS_CRITERIOS = ["ranqueada", "pontuacao", "missoes", "tempo"];
 
 const NOME_DO_CRITERIO: Record<string, string> = {
   ranqueada: "Pontos de batalha",
   pontuacao: "Pontuação",
   missoes: "Missões cumpridas",
+  tempo: "Tempo de estudo",
 };
 
 /**
@@ -347,11 +349,13 @@ const DESCRICAO_DO_CRITERIO: Record<string, string> = {
   ranqueada: "pontos de batalha",
   pontuacao: "pontos",
   missoes: "missões cumpridas",
+  tempo: "minutos de estudo ativo",
 };
 
 function quantidade(valor: number, criterio: string): string {
   const n = Math.round(valor);
   if (criterio === "missoes") return `${n} ${n === 1 ? "missão" : "missões"}`;
+  if (criterio === "tempo") return formatRankScore(valor, "tempo"); // "12min", "1h 05min": como no pódio
   return `${n} ${n === 1 ? "pt" : "pts"}`;
 }
 

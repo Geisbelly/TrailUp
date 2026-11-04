@@ -236,6 +236,7 @@ describe("rank do evento (#155)", () => {
       { id: 2, tipo: { nome: "Missões", criterio: "missoes" } },
       { id: 1, tipo: { nome: "Ranqueada", criterio: "ranqueada" } },
       { id: 3, tipo: null },
+      { id: 4, tipo: { nome: "Tempo de Estudo", criterio: "tempo" } },
       null,
     ];
     const posicoes = [
@@ -245,7 +246,7 @@ describe("rank do evento (#155)", () => {
       { rank_id: 9, posicao: 1, id_aluno: "c" },
     ];
     const r = montarRanksDoEvento(ranks, posicoes, "eu");
-    assert.deepEqual(r.map((x) => [x.rankId, x.nome]), [[1, "Pontos de batalha"], [2, "Missões cumpridas"], [3, "Rank do evento"]]);
+    assert.deepEqual(r.map((x) => [x.rankId, x.nome]), [[1, "Pontos de batalha"], [2, "Missões cumpridas"], [4, "Tempo de estudo"], [3, "Rank do evento"]]);
     assert.deepEqual(r[0].linhas.map((l) => [l.posicao, l.nome, l.pontos, l.eu]), [[1, "Bia", 30, false], [2, "Eu", 12, true]]);
     assert.deepEqual(r[1].linhas, []);
     assert.deepEqual(montarRanksDoEvento(null, posicoes, "eu"), []);
@@ -321,6 +322,10 @@ describe("rank do evento (#155)", () => {
     assert.equal(fraseDoRank("conqueror", ev, rank(null, 0), false).titulo, "Ninguém entrou ainda.");
     const missoes = { ...rank(null, 11, "missoes"), linhas: rank(null, 11).linhas.map((l) => ({ ...l, pontos: 1 })) };
     assert.equal(fraseDoRank("conqueror", ev, missoes, false).titulo, "Bia P. lidera com 1 missão.");
+    // Tempo (#932): minutos de estudo ativo, no mesmo formato do pódio.
+    const tempo = { ...rank(null, 11, "tempo"), linhas: rank(null, 11).linhas.map((l) => ({ ...l, pontos: 75.4 })) };
+    assert.equal(fraseDoRank("conqueror", ev, tempo, false).titulo, "Bia P. lidera com 1h 15min.");
+    assert.match(fraseDoRank("mastermind", ev, tempo, false).titulo, /^Conta minutos de estudo ativo /);
   });
 
   it("traduz o erro das RPCs sem inventar motivo", () => {

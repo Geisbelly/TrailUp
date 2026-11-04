@@ -102,11 +102,23 @@ const Privacidade = () => {
                   restrito.
                 </li>
                 <li>
-                  A inteligência artificial do TrailUp é só para maiores de 18 anos. Para menores, ou
-                  para quem não informou a data de nascimento, nenhum dado vai a provedor de
-                  inteligência artificial: ficam desligados o mentor, a correção automática de respostas,
-                  a personalização por aluno, a geração de imagens e a leitura em voz alta, mesmo com a
-                  autorização do responsável.
+                  A inteligência artificial do TrailUp é só para maiores de 18 anos. Para o aluno menor,
+                  ou que não informou a data de nascimento, ficam desligados o mentor, a correção
+                  automática de respostas, a personalização por aluno, a geração de imagens e a leitura em
+                  voz alta, mesmo com a autorização do responsável: nada do que ele faz no app é enviado a
+                  provedor de inteligência artificial.
+                </li>
+                <li>
+                  Há uma exceção: a Lumi, a assistente do professor no console. Quando o professor
+                  pergunta sobre a turma, a Lumi envia ao provedor de inteligência artificial (seção 6) os
+                  indicadores da turma e de cada aluno, inclusive dos menores: perfil de aprendizagem,
+                  progresso, respostas e acertos dos últimos 30 dias, dias sem estudar, tópico em que está
+                  parado e faixa de risco de abandono. Cada aluno vai identificado só por um código (A1,
+                  A2…), sem nome, e-mail ou identificador da conta, e o estado emocional não vai. O motivo:
+                  a regra de idade trata do aluno usar a inteligência artificial, e a Lumi é usada pelo
+                  professor, adulto, para acompanhar a própria turma. Sem esses indicadores ela não
+                  conseguiria responder sobre nenhuma turma em que haja um aluno menor ou sem data de
+                  nascimento. Perguntas do professor sobre como usar o TrailUp não enviam dado de aluno.
                 </li>
               </Lista>
             </Secao>
@@ -136,11 +148,11 @@ const Privacidade = () => {
                 <li>Hetzner (servidor da API e análise de imagem da câmera): Estados Unidos</li>
                 <li>Vercel (hospedagem deste site): Estados Unidos e rede global</li>
                 <li>
-                  Google Gemini (inteligência artificial, só para maiores de 18 anos confirmados): Estados Unidos e
+                  Google Gemini (inteligência artificial, só para maiores de 18 anos confirmados, exceto a Lumi do professor; ver seção 4): Estados Unidos e
                   outros países. Usamos o plano gratuito, em que o Google pode usar o que é enviado para melhorar
                   os produtos dele, inclusive com revisão humana
                 </li>
-                <li>OpenAI (inteligência artificial de reserva, só para maiores de 18 anos confirmados): Estados Unidos</li>
+                <li>OpenAI (inteligência artificial de reserva, só para maiores de 18 anos confirmados, exceto a Lumi do professor; ver seção 4): Estados Unidos</li>
                 <li>Cloudflare R2 (armazenamento de arquivos): Estados Unidos (leste da América do Norte)</li>
                 <li>Expo, Google (FCM) e Apple (APNs) (notificações): Estados Unidos</li>
                 <li>Google (envio dos e-mails de contato e de aviso de conta inativa, pelo Gmail): Estados Unidos e outros países</li>
