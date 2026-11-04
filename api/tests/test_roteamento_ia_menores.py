@@ -1,5 +1,6 @@
-"""#195: menor de 18 (ou sem data de nascimento) -> toda IA vai para a OpenAI
-(store=False), nunca para o Gemini. Adulto confirmado -> provedor atual."""
+"""#195: a IA do TrailUp e so para maiores de 18. Menor (ou sem data de
+nascimento) -> nenhuma chamada sai, nem Gemini nem OpenAI. Adulto confirmado ->
+provedor atual."""
 
 from __future__ import annotations
 
@@ -28,13 +29,7 @@ from app.services.roteamento_ia import (
     usar_rota,
 )
 
-
-@pytest.fixture(autouse=True)
-def _rota_de_menor_ligada(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Estes testes descrevem a regra da #195, que hoje so vale com
-    IA_ROTA_DE_MENOR_ATIVA ligada (o padrao e desligada, ver o ultimo teste)."""
-    monkeypatch.setattr(roteamento_ia, "rota_de_menor_ligada", lambda: True)
-
+pytestmark = pytest.mark.idade_real
 
 ADULTO = "11111111-1111-4111-8111-111111111111"
 MENOR = "22222222-2222-4222-8222-222222222222"
@@ -162,7 +157,7 @@ async def test_contagem_divergente_ou_linha_ausente_e_menor() -> None:
 
 
 @pytest.mark.asyncio
-async def test_turma_com_um_menor_vai_inteira_para_openai() -> None:
+async def test_turma_com_um_menor_fica_inteira_sem_ia() -> None:
     session = _IdadeSession(menores={MENOR})
     async with rota_ia_para_turma(session, [ADULTO, MENOR]) as rota:
         assert rota == "menor" and rota_de_menor_ativa()
@@ -207,8 +202,12 @@ def test_bloqueio_direto_do_gemini_na_rota_de_menor() -> None:
         with pytest.raises(IAIndisponivelParaMenor) as exc:
             roteamento_ia.bloquear_gemini_na_rota_de_menor("teste")
         assert exc.value.mensagem == MENSAGEM_IA_INDISPONIVEL
-        assert roteamento_ia.provedor_efetivo("gemini", "gemini") == "openai"
-    assert roteamento_ia.provedor_efetivo("gemini", "openai") == "gemini"
+    assert not hasattr(roteamento_ia, "provedor_efetivo")
+
+
+def test_mensagem_diz_que_a_ia_e_so_para_maiores() -> None:
+    assert "maiores de 18" in MENSAGEM_IA_INDISPONIVEL
+    assert "data de nascimento" in MENSAGEM_IA_INDISPONIVEL
 
 
 # ---------------------------------------------------------------- JsonLLMService
@@ -218,97 +217,73 @@ class _Saida(BaseModel):
     ok: bool
 
 
-class _FakeOpenAI:
-    instancias: list["_FakeOpenAI"] = []
+class _ClienteProibido:
+    """Nenhum cliente de modelo pode nascer na rota de menor."""
 
-    def __init__(self, **kwargs: Any) -> None:
-        self.kwargs = kwargs
-        self.falhar = False
-        _FakeOpenAI.instancias.append(self)
+    instancias = 0
 
-    async def ainvoke(self, _messages):
-        if self.falhar:
-            raise RuntimeError("openai fora")
-        return SimpleNamespace(content='{"ok": true}')
-
-    def with_structured_output(self, _schema):
-        cliente = self
-
-        class _S:
-            async def ainvoke(self, _messages):
-                if cliente.falhar:
-                    raise RuntimeError("openai fora")
-                return {"ok": True}
-
-        return _S()
-
-
-class _GeminiProibido:
     def __init__(self, **_kwargs: Any) -> None:
-        raise AssertionError("Gemini nao pode ser usado na rota de menor")
+        _ClienteProibido.instancias += 1
+        raise AssertionError("cliente de modelo criado na rota de menor")
 
 
 @pytest.fixture
 def fakes_llm(monkeypatch):
-    _FakeOpenAI.instancias = []
-    monkeypatch.setattr(llm_module, "ChatOpenAI", _FakeOpenAI)
-    monkeypatch.setattr(llm_module, "ChatGoogleGenerativeAI", _GeminiProibido)
+    _ClienteProibido.instancias = 0
+    monkeypatch.setattr(llm_module, "ChatOpenAI", _ClienteProibido)
+    monkeypatch.setattr(llm_module, "ChatGoogleGenerativeAI", _ClienteProibido)
     llm_module.reset_gemini_llm_circuit()
     yield
     llm_module.reset_gemini_llm_circuit()
 
 
 @pytest.mark.asyncio
-async def test_menor_structured_usa_openai_store_false_e_nunca_gemini(fakes_llm) -> None:
+async def test_menor_structured_nao_chama_modelo_nenhum(fakes_llm, monkeypatch) -> None:
+    """Com as duas chaves configuradas, nada sai: nem Gemini, nem OpenAI."""
     service = JsonLLMService(_settings(gemini_api_key="g-key", openai_api_key="o-key", llm_provider="gemini"))
-    with usar_rota("menor"):
-        saida = await service.ainvoke_structured(
-            prompt_name="insights_turma.txt", payload={}, schema=_Saida, provider="gemini", model="gemini-3.6-flash"
-        )
-    assert saida.ok is True
-    assert len(_FakeOpenAI.instancias) == 1
-    kwargs = _FakeOpenAI.instancias[0].kwargs
-    assert kwargs["store"] is False
-    assert not str(kwargs["model"]).startswith("gemini")
-
-
-@pytest.mark.asyncio
-async def test_menor_json_usa_openai_store_false(fakes_llm) -> None:
-    service = JsonLLMService(_settings(gemini_api_key="g-key", openai_api_key="o-key"))
-    with usar_rota("menor"):
-        out = await service.ainvoke_json(prompt_name="insights_turma.txt", payload={}, fallback_factory=lambda: {"fb": 1})
-    assert out == {"ok": True}
-    assert _FakeOpenAI.instancias[0].kwargs["store"] is False
-
-
-@pytest.mark.asyncio
-async def test_menor_sem_chave_openai_nao_cai_no_gemini(fakes_llm) -> None:
-    service = JsonLLMService(_settings(gemini_api_key="g-key", openai_api_key=""))
+    gemini = AsyncMock(side_effect=AssertionError("gemini chamado"))
+    monkeypatch.setattr(service, "_ainvoke_gemini_with_rotation", gemini)
     with usar_rota("menor"):
         with pytest.raises(MenorSemOpenAIError) as exc:
-            await service.ainvoke_structured(prompt_name="insights_turma.txt", payload={}, schema=_Saida)
-        out = await service.ainvoke_json(prompt_name="insights_turma.txt", payload={}, fallback_factory=lambda: {"fb": 1})
+            await service.ainvoke_structured(
+                prompt_name="insights_turma.txt", payload={}, schema=_Saida, provider="openai"
+            )
     # Quem ja trata StructuredOutputError cai no fallback local; quem nao trata vira 503 amigavel.
     assert isinstance(exc.value, StructuredOutputError)
     assert isinstance(exc.value, IAIndisponivelParaMenor)
     assert exc.value.mensagem == MENSAGEM_IA_INDISPONIVEL
-    assert out == {"fb": 1}
+    gemini.assert_not_awaited()
+    assert _ClienteProibido.instancias == 0
 
 
 @pytest.mark.asyncio
-async def test_menor_com_openai_falhando_nao_cai_no_gemini(fakes_llm, monkeypatch) -> None:
+async def test_menor_json_cai_no_fallback_local_sem_chamar_modelo(fakes_llm, monkeypatch) -> None:
     service = JsonLLMService(_settings(gemini_api_key="g-key", openai_api_key="o-key"))
     gemini = AsyncMock(side_effect=AssertionError("gemini chamado"))
     monkeypatch.setattr(service, "_ainvoke_gemini_with_rotation", gemini)
-    cliente = service._get_openai_client_para_menor(service._modelo_openai_para_menor(None))
-    cliente.falhar = True
+    with usar_rota("menor"):
+        out = await service.ainvoke_json(
+            prompt_name="insights_turma.txt", payload={}, fallback_factory=lambda: {"fb": 1}, provider="openai"
+        )
+    assert out == {"fb": 1}
+    gemini.assert_not_awaited()
+    assert _ClienteProibido.instancias == 0
+
+
+@pytest.mark.asyncio
+async def test_menor_com_rag_nao_faz_a_busca(fakes_llm, monkeypatch) -> None:
+    """A busca do RAG tambem e chamada a modelo e leva a pergunta do aluno."""
+    from app.services import openai_rag
+
+    rag = AsyncMock(side_effect=AssertionError("RAG chamado na rota de menor"))
+    monkeypatch.setattr(openai_rag.OpenAIRagService, "invoke_structured", rag)
+    service = JsonLLMService(_settings(gemini_api_key="g-key", openai_api_key="o-key"))
     with usar_rota("menor"):
         with pytest.raises(MenorSemOpenAIError):
-            await service.ainvoke_structured(prompt_name="insights_turma.txt", payload={}, schema=_Saida)
-        assert await service.ainvoke_json(
-            prompt_name="insights_turma.txt", payload={}, fallback_factory=lambda: {"fb": 1}
-        ) == {"fb": 1}
-    gemini.assert_not_awaited()
+            await service.ainvoke_structured(
+                prompt_name="mentor_personalizacao_chat.txt", payload={}, schema=_Saida, use_rag=True
+            )
+    rag.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -320,7 +295,7 @@ async def test_adulto_continua_no_gemini(fakes_llm, monkeypatch) -> None:
         saida = await service.ainvoke_structured(prompt_name="insights_turma.txt", payload={}, schema=_Saida)
     assert saida.ok is True
     gemini.assert_awaited_once()
-    assert _FakeOpenAI.instancias == []
+    assert _ClienteProibido.instancias == 0
 
 
 # ---------------------------------------------------------------- fluxos
@@ -344,7 +319,7 @@ async def test_run_analysis_abre_a_rota_pela_idade_do_aluno(monkeypatch) -> None
 
 
 @pytest.mark.asyncio
-async def test_insights_turma_com_menor_vai_para_openai(monkeypatch) -> None:
+async def test_insights_turma_com_menor_abre_a_rota_sem_ia(monkeypatch) -> None:
     from app.services.insights_turma import InsightsTurmaService
 
     vistas: list[bool] = []
@@ -365,7 +340,7 @@ async def test_insights_turma_com_menor_vai_para_openai(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_escriba_com_menor_vai_para_openai_e_ids_nao_vao_no_prompt(monkeypatch) -> None:
+async def test_escriba_com_menor_abre_a_rota_sem_ia_e_ids_nao_vao_no_prompt(monkeypatch) -> None:
     from app.schemas.escriba import PerguntaEscriba
     from app.services.escriba import EscribaService
 
@@ -418,64 +393,41 @@ async def test_microservice_e_imagem_gemini_bloqueados_para_menor(monkeypatch) -
 
 
 @pytest.mark.asyncio
-async def test_tts_de_menor_vai_para_openai(monkeypatch) -> None:
-    from app.services import gemini_http, media_agents
+async def test_tts_de_menor_fica_sem_audio_e_sem_chamada(monkeypatch) -> None:
+    """Nem Gemini TTS, nem gTTS, nem OpenAI: menor fica sem audio gerado."""
+    from app.services import audio, gemini_http, media_agents
 
-    openai_tts = AsyncMock(return_value=b"mp3")
-    monkeypatch.setattr(media_agents, "gerar_mp3_openai_tts", openai_tts)
+    def _gtts_proibido(**_kwargs: Any) -> bytes:
+        raise AssertionError("gTTS chamado")
+
+    monkeypatch.setattr(media_agents, "gerar_mp3_gtts", _gtts_proibido)
     monkeypatch.setattr(media_agents.httpx, "AsyncClient", _HttpProibido)
     monkeypatch.setattr(gemini_http.httpx, "AsyncClient", _HttpProibido)
     settings = _settings(gemini_api_key="g-key", openai_api_key="o-key")
     with usar_rota("menor"):
-        assert await media_agents.gerar_audio_gemini_tts(settings=settings, texto="ola", voz="Kore") == b"mp3"
-    openai_tts.assert_awaited_once()
+        assert await media_agents.gerar_audio_gemini_tts(settings=settings, texto="ola", voz="Kore") is None
+        assert await audio.gerar_mp3_gemini_tts(settings=settings, texto="ola") is None
+    assert not hasattr(audio, "gerar_mp3_openai_tts")
 
 
 @pytest.mark.asyncio
-async def test_gerar_mp3_openai_tts_e_gemini_tts_na_rota_de_menor(monkeypatch) -> None:
-    from app.services import audio, gemini_http
-
-    chamadas: list[dict[str, Any]] = []
-
-    class _Speech:
-        async def create(self, **kwargs):
-            chamadas.append(kwargs)
-            return SimpleNamespace(content=b"ID3mp3")
-
-    cliente = SimpleNamespace(audio=SimpleNamespace(speech=_Speech()))
-    settings = _settings(openai_api_key="o-key", gemini_api_key="g-key")
-    assert await audio.gerar_mp3_openai_tts(settings=settings, texto="ola", client=cliente) == b"ID3mp3"
-    assert chamadas[0]["model"] == audio.OPENAI_TTS_MODEL and chamadas[0]["response_format"] == "mp3"
-
-    class _Quebrado:
-        async def create(self, **kwargs):
-            raise RuntimeError("fora")
-
-    falho = SimpleNamespace(audio=SimpleNamespace(speech=_Quebrado()))
-    assert await audio.gerar_mp3_openai_tts(settings=settings, texto="ola", client=falho) is None
-
-    delegado = AsyncMock(return_value=b"x")
-    monkeypatch.setattr(audio, "gerar_mp3_openai_tts", delegado)
-    monkeypatch.setattr(gemini_http.httpx, "AsyncClient", _HttpProibido)
-    with usar_rota("menor"):
-        assert await audio.gerar_mp3_gemini_tts(settings=settings, texto="ola") == b"x"
-
-
-@pytest.mark.asyncio
-async def test_enriquecimento_de_menor_pula_o_gemini(monkeypatch) -> None:
+async def test_enriquecimento_de_menor_nao_chama_modelo_nenhum(monkeypatch) -> None:
     from app.services import content_enrichment
 
     gemini = AsyncMock(side_effect=AssertionError("gemini chamado"))
+    openai = AsyncMock(side_effect=AssertionError("openai chamada"))
     monkeypatch.setattr(content_enrichment, "_enrich_base_blocks_with_gemini", gemini)
+    monkeypatch.setattr(content_enrichment, "_enrich_base_blocks_with_openai", openai)
     with usar_rota("menor"):
-        with pytest.raises(content_enrichment.ContentEnrichmentError):
+        with pytest.raises(content_enrichment.ContentEnrichmentError, match="maiores de 18"):
             await content_enrichment.enrich_base_blocks(
                 base_blocks=[{"texto": "x"}],
                 topic={},
                 source_hash="h",
-                settings=_settings(gemini_api_key="g-key", openai_api_key=""),
+                settings=_settings(gemini_api_key="g-key", openai_api_key="o-key"),
             )
     gemini.assert_not_awaited()
+    openai.assert_not_awaited()
 
 
 # ---------------------------------------------------------------- wiring
@@ -490,7 +442,7 @@ def test_erro_de_ia_para_menor_vira_503_amigavel() -> None:
 
     @app.get("/__teste_menor")
     async def _boom():
-        raise MenorSemOpenAIError("openai fora")
+        raise MenorSemOpenAIError("ia so para maiores")
 
     resposta = TestClient(app).get("/__teste_menor")
     assert resposta.status_code == 503
@@ -514,7 +466,7 @@ def test_fluxos_de_aluno_abrem_a_rota() -> None:
 
 @pytest.mark.asyncio
 async def test_escriba_combina_nome_fora_do_prompt_e_rota_de_menor(monkeypatch) -> None:
-    """#618 + #619 juntos: o nome nao vai ao modelo e a turma com menor vai a OpenAI."""
+    """#618 + #195 juntos: o nome nao vai ao modelo e a turma com menor abre a rota sem IA."""
     import json
 
     from app.schemas.escriba import PerguntaEscriba
@@ -552,15 +504,16 @@ async def test_escriba_combina_nome_fora_do_prompt_e_rota_de_menor(monkeypatch) 
 
 
 @pytest.mark.asyncio
-async def test_rota_de_menor_desligada_por_padrao_usa_o_provedor_atual(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Sem credito na OpenAI, a rota de menor derrubava o chat do aluno e a
-    Lumi. Desligada (padrao), menor, sem data e erro de banco seguem o Gemini,
-    e o banco nem e consultado."""
-    monkeypatch.undo()
-    assert Settings(supabase_jwt_secret="x").ia_rota_de_menor_ativa is False
-    monkeypatch.setattr(roteamento_ia, "rota_de_menor_ligada", lambda: False)
+async def test_regra_vale_sempre_sem_variavel_de_ambiente(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A #886 tinha desligado a rota por padrao (`IA_ROTA_DE_MENOR_ATIVA`), o que
+    levava menor ao Gemini. A variavel saiu: mesmo definida como false no
+    ambiente, ela e ignorada e menor continua na rota de menor."""
+    monkeypatch.setenv("IA_ROTA_DE_MENOR_ATIVA", "false")
+    settings = Settings(supabase_jwt_secret="x")
+    assert not hasattr(settings, "ia_rota_de_menor_ativa")
+    assert not hasattr(roteamento_ia, "rota_de_menor_ligada")
     session = _IdadeSession(menores={MENOR})
-    assert await decidir_rota(session, [MENOR]) == "padrao"
-    assert await decidir_rota(session, [None]) == "padrao"
-    assert await decidir_rota(None, [MENOR]) == "padrao"
-    assert session.executed == []
+    assert await decidir_rota(session, [MENOR]) == "menor"
+    assert await decidir_rota(session, [None]) == "menor"
+    assert await decidir_rota(None, [MENOR]) == "menor"
+    assert await decidir_rota(session, [ADULTO]) == "padrao"

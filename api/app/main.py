@@ -164,7 +164,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.exception_handler(IAIndisponivelParaMenor)
     async def _ia_indisponivel_para_menor(_request: Request, exc: IAIndisponivelParaMenor) -> JSONResponse:
-        # #195: rota de menor so usa OpenAI; se ela falhar, erro amigavel (nunca Gemini).
+        # #195: IA so para adulto confirmado; chamada na rota de menor vira erro amigavel.
         return JSONResponse(
             status_code=503,
             content={"detail": {"codigo": "ia_indisponivel", "mensagem": MENSAGEM_IA_INDISPONIVEL}},

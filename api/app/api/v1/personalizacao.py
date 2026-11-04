@@ -101,7 +101,13 @@ from app.services.pseudonimizacao import (
     restaurar_nome,
 )
 from app.services.rag_observabilidade import gravar_buscas_rag, iniciar_coleta_rag
-from app.services.roteamento_ia import provedor_efetivo, rota_ia_para_alunos, rota_ia_se_tiver_aluno
+from app.services.roteamento_ia import (
+    MENSAGEM_IA_INDISPONIVEL,
+    ROTA_MENOR,
+    decidir_rota,
+    rota_ia_para_alunos,
+    rota_ia_se_tiver_aluno,
+)
 from app.services.storage import BUCKET, SupabaseStorage, build_material_url
 from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
 from app.services.sugestao_metrica import montar_registros_do_log, resumo_efetividade
@@ -1491,6 +1497,15 @@ async def conversar_com_mentor_personalizacao(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=modo_restrito.detalhe(modo_restrito.MENSAGEM_MENTOR),
         )
+    # #195: a IA e so para adulto confirmado. A autorizacao do responsavel libera
+    # o mentor no modo restrito, mas nao a IA: menor recebe 403 com o motivo.
+    # Codigo `modo_restrito` de proposito: o app ja instalado reconhece esse
+    # codigo e mostra a mensagem (`erroDeModoRestrito`), sem build novo.
+    if await decidir_rota(session, [aluno_id]) == ROTA_MENOR:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=modo_restrito.detalhe(MENSAGEM_IA_INDISPONIVEL),
+        )
     access_repo = AccessRepository(session)
     if not await access_repo.aluno_belongs_to_classe(aluno_id=str(aluno_id), classe_id=int(payload.classe_id)):
         raise HTTPException(
@@ -1563,15 +1578,13 @@ async def conversar_com_mentor_personalizacao(
     def _sem_nome(texto: object) -> object:
         return pseudonimizar_nome_proprio(texto, *nomes_do_aluno) if isinstance(texto, str) else texto
 
-    # Provedor atual (Gemini). So com IA_ROTA_DE_MENOR_ATIVA ligada (#195) o
-    # menor vai a OpenAI, inclusive o juiz de grounding; OpenAI fora -> fallback
-    # local do guia.
+    # Provedor atual (Gemini): menor ja saiu com 403 acima (#195). A rota fica
+    # aberta como defesa: dentro dela nenhuma chamada sai para menor.
     # #67: as buscas do RAG desta requisição vão para `ia_decision_logs`, sem texto.
     buscas_rag = iniciar_coleta_rag()
     settings = request.app.state.settings
     async with rota_ia_para_alunos(session, [aluno_id]):
-        # Lido aqui dentro: fora do bloco a rota ja foi desfeita.
-        provedor_do_chat = provedor_efetivo(None, settings.llm_provider)
+        provedor_do_chat = settings.llm_provider
         modelo_do_chat = (
             settings.openai_model_default if provedor_do_chat == "openai" else settings.active_model_default
         )

@@ -228,8 +228,10 @@ export function TelemetryConsentGate() {
             </Text>
             <Text style={[styles.sectionTitle, { color: palette.accent }]}>Menores de 18 anos</Text>
             <Text style={[styles.body, { color: palette.textMuted }]}>
-              Se você tem menos de 18 anos, câmera, análise de emoções, telemetria,
-              mentor de IA e pesquisa só ligam depois que seu responsável autorizar,
+              A inteligência artificial do TrailUp é só para maiores de 18 anos:
+              com menos de 18, o mentor de IA fica desligado mesmo com autorização.
+              Câmera, análise de emoções, telemetria e pesquisa só ligam depois que
+              seu responsável autorizar,
               numa tela separada no app ou pelo termo em papel entregue ao
               professor. Até lá o app fica no modo restrito: trilhas, questões e
               progresso funcionam normalmente.

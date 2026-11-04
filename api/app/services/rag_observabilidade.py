@@ -21,8 +21,8 @@ O que é persistido no resumo, e por quê:
 - **Intervenção:** quem grava informa se o guardrail interveio (retry ou fallback) na resposta
   que usou a busca; a taxa de intervenção sai da proporção dessas linhas.
 
-Menor de idade (#195): a busca já vai só para a OpenAI, com `store=False`. Este módulo não manda
-nada para fora: grava no nosso banco, sem texto.
+Menor de idade (#195): a IA é só para maiores de 18, e a busca nem acontece na rota de menor. Este
+módulo não manda nada para fora: grava no nosso banco, sem texto.
 """
 
 from __future__ import annotations

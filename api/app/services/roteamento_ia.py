@@ -1,27 +1,25 @@
-"""Roteamento de IA por idade do aluno (#195).
+"""IA do TrailUp so para adultos confirmados (#195).
 
-**Desligado por padrao** (`IA_ROTA_DE_MENOR_ATIVA=false`): toda IA usa o
-provedor atual (Gemini). A conta da OpenAI esta sem credito de proposito
-(ver `llm_provider` em settings), e com a rota ligada o chat do aluno, a
-Lumi do professor e toda IA de turma com menor caiam em 429
-`credit_balance_exhausted` -- quase todo aluno e menor ou nao tem data de
-nascimento. Ligar a variavel devolve a regra abaixo inteira; so ligue com
-credito na OpenAI.
-
-Regra de produto: **menor de 18 usa o app normalmente, mas toda a IA dele vai
-para a OpenAI, nunca para o Gemini.** Os termos da API do Gemini/Vertex nao
-aceitam app usado por menor de 18; a OpenAI tem diretriz para isso.
+Regra de produto: **a IA do TrailUp e so para maiores de 18 anos.** Os termos da
+API do Gemini exigem 18 anos e vedam o uso em servico "likely to be accessed by
+individuals under the age of 18"; a conta da OpenAI nao e mais rota de reserva
+para menor. Entao quem nao e adulto confirmado nao entra em fluxo nenhum com IA:
+nem Gemini, nem OpenAI, nem TTS, nem microservice. Trilha, questoes e progresso
+continuam funcionando, com o texto local de reserva onde ele existe.
 
 - Adulto confirmado (`public.aluno_eh_menor(...) IS FALSE`, data de nascimento
   da #613 em `aluno_nascimento`) -> provedor atual (`settings.llm_provider`).
-- Menor, data desconhecida, aluno sem id ou consulta que falhou -> OpenAI.
-  Fail-closed: na duvida, trata como menor.
-- Fluxo de turma (insights, escriba): basta UM aluno nao confirmado adulto para
-  a chamada inteira ir para a OpenAI.
-- Na rota de menor nao existe fallback para o Gemini. Se a OpenAI falhar (ou
-  nao estiver configurada), sobe `IAIndisponivelParaMenor`, com mensagem
-  amigavel; os fallbacks locais (texto fixo, sem IA) continuam valendo.
-- Na OpenAI vai `store=False` (nada guardado para distill/evals/logs da conta).
+- Menor, data desconhecida, aluno sem id ou consulta que falhou -> **sem IA**.
+  Fail-closed: na duvida, trata como menor. A autorizacao do responsavel (#613)
+  nao libera a IA: ela continua valendo para camera, telemetria e pesquisa.
+- Fluxo de turma (insights, escriba, alteracao do professor): basta UM aluno
+  nao confirmado adulto para a chamada inteira nao sair.
+- Quem chama IA dentro da rota recebe `IAIndisponivelParaMenor` (ou o fallback
+  local, no `ainvoke_json`); nunca uma chamada a provedor.
+
+Ate 03/11 a rota de menor mandava a IA para a OpenAI (#619) e, desde a #886,
+estava desligada por padrao (`IA_ROTA_DE_MENOR_ATIVA`), o que levava menor ao
+Gemini. A variavel deixou de existir: a regra vale sempre.
 
 A rota vive num `ContextVar`: quem entra num fluxo com dado de aluno abre
 `async with rota_ia_para_alunos(session, [aluno_id])` e tudo que for chamado
@@ -48,8 +46,9 @@ ROTA_PADRAO: Rota = "padrao"
 ROTA_MENOR: Rota = "menor"
 
 MENSAGEM_IA_INDISPONIVEL = (
-    "A IA está indisponível agora. Tente de novo em alguns minutos — "
-    "suas trilhas, questões e progresso continuam funcionando normalmente."
+    "A IA do TrailUp é só para maiores de 18 anos. Se você já tem 18, informe sua data "
+    "de nascimento no app (Perfil › Coleta e acessos). Trilhas, questões e progresso "
+    "continuam funcionando normalmente."
 )
 
 _rota: ContextVar[Rota | None] = ContextVar("trailup_rota_ia", default=None)
@@ -64,11 +63,11 @@ _SQL_NAO_ADULTOS = text(
 
 
 class IAIndisponivelParaMenor(RuntimeError):
-    """A rota de menor so aceita OpenAI e a OpenAI nao respondeu (ou nao esta
-    configurada). Nunca cair no Gemini por causa disto."""
+    """Chamada de IA dentro da rota de menor: a IA e so para adulto confirmado.
+    Nunca cair em provedor nenhum por causa disto."""
 
     def __init__(self, motivo: str = "") -> None:
-        super().__init__(motivo or "openai indisponivel na rota de menor")
+        super().__init__(motivo or "ia so para maiores de 18")
         self.motivo = motivo
         self.mensagem = MENSAGEM_IA_INDISPONIVEL
 
@@ -112,19 +111,9 @@ def _ids_validos(aluno_ids: Iterable[Any]) -> tuple[list[str], bool]:
     return ids, algum_vazio
 
 
-def rota_de_menor_ligada() -> bool:
-    """`IA_ROTA_DE_MENOR_ATIVA`. Desligada, ninguem entra na rota de menor."""
-    from app.core.settings import get_settings
-
-    return bool(get_settings().ia_rota_de_menor_ativa)
-
-
 async def decidir_rota(session: AsyncSession | None, aluno_ids: Iterable[Any]) -> Rota:
     """Adulto confirmado para TODOS os ids -> 'padrao'; qualquer outra coisa
-    (menor, sem data, id vazio, sessao ausente, erro no banco) -> 'menor'.
-    Com a rota desligada (padrao), sempre 'padrao'."""
-    if not rota_de_menor_ligada():
-        return ROTA_PADRAO
+    (menor, sem data, id vazio, sessao ausente, erro no banco) -> 'menor'."""
     ids, algum_vazio = _ids_validos(aluno_ids)
     if algum_vazio or not ids or session is None:
         return ROTA_MENOR
@@ -168,8 +157,8 @@ async def rota_ia_para_alunos(session: AsyncSession | None, aluno_ids: Iterable[
 
 @asynccontextmanager
 async def rota_ia_para_turma(session: AsyncSession | None, aluno_ids: Iterable[Any]) -> AsyncIterator[Rota]:
-    """Turma: um menor (ou desconhecido) basta para tudo ir a OpenAI. Turma
-    sem aluno nenhum nao manda dado de aluno -> provedor atual."""
+    """Turma: um menor (ou desconhecido) basta para a chamada inteira nao sair.
+    Turma sem aluno nenhum nao manda dado de aluno -> provedor atual."""
     ids = list(aluno_ids)
     rota = ROTA_PADRAO if not ids else await decidir_rota(session, ids)
     with usar_rota(rota) as efetiva:
@@ -183,13 +172,6 @@ def bloquear_gemini_na_rota_de_menor(onde: str) -> None:
     if rota_de_menor_ativa():
         logger.info("roteamento_ia.gemini_bloqueado_para_menor: %s", onde)
         raise IAIndisponivelParaMenor(f"gemini bloqueado para menor em {onde}")
-
-
-def provedor_efetivo(solicitado: str | None, padrao: str) -> str:
-    """Provedor que de fato sera usado: na rota de menor, sempre openai."""
-    if rota_de_menor_ativa():
-        return "openai"
-    return solicitado or padrao
 
 
 @asynccontextmanager

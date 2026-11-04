@@ -15,8 +15,8 @@ o banco (`notificacoes_ia_promover`, 20261102_01): suporte sai logo, lembrete va
 habitual do aluno quando há, e o silêncio vale no fuso dele. O texto recebe o tópico em andamento e
 o próximo conteúdo (`foco`), também no texto pronto da regra.
 
-O que vai ao modelo não identifica o aluno (#195); a rota de menor vale pelos dois caminhos (o RAG
-já é OpenAI com `store=False`).
+O que vai ao modelo não identifica o aluno (#195); na rota de menor nada vai ao modelo, pelos dois
+caminhos (o RAG também é barrado antes da busca).
 
 **O texto fala com o aluno, em palavras simples.** O modelo recebia a assinatura editorial do
 perfil, feita para o MATERIAL de estudo, e copiava os marcadores dela para o push: com o Mastermind,
