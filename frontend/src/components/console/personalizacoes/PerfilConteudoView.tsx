@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { markdownUrlTransform } from "./markdownUrlTransform";
 import { supabase } from "@/integrations/supabase/client";
+import { useLinkDoGateway } from "@/hooks/useLinkDoGateway";
 import { assinarUrlsDoStorageNoTexto, objetosPrivadosNoTexto } from "@/lib/urlsDoStorageNoTexto";
 import { buildProfileImageFrame } from "@/lib/profileImageFrame";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -76,6 +77,14 @@ function useTextoComUrlsAssinadas(text: string): string | null {
   return assinado?.de === text ? assinado.texto : null;
 }
 
+// Imagem citada no texto que aponta para o gateway: precisa do link curto por sessao (#632),
+// como o proprio material.
+function ImagemDoMaterial({ src, alt }: { src: string | undefined; alt: string }) {
+  const { url } = useLinkDoGateway(src ?? null);
+  if (!url) return null;
+  return <img src={url} alt={alt} className="mx-auto max-w-full rounded-lg" />;
+}
+
 function MarkdownView({ text: textoBruto, corDoPerfil }: { text: string; corDoPerfil?: string }) {
   const moldura = buildProfileImageFrame(corDoPerfil);
   const text = useTextoComUrlsAssinadas(textoBruto);
@@ -108,7 +117,7 @@ function MarkdownView({ text: textoBruto, corDoPerfil }: { text: string; corDoPe
                 boxShadow: `0 0 0 1px ${moldura.glow}, 0 8px 24px -12px ${moldura.glow}`,
               }}
             >
-              <img src={typeof src === "string" ? src : undefined} alt={alt ?? ""} className="mx-auto max-w-full rounded-lg" />
+              <ImagemDoMaterial src={typeof src === "string" ? src : undefined} alt={alt ?? ""} />
               {alt && (
                 <figcaption className="mt-2 text-center text-xs" style={{ color: moldura.accentTexto }}>
                   {alt}
@@ -493,9 +502,10 @@ function MaterialTabContent({
   const safeIndex = Math.min(activeIndex, partes.length - 1);
   const activeParte = partes[safeIndex];
   const rawUrl = activeParte?.arquivo_url ?? null;
-  const url = rawUrl
-    ? versionedMaterialUrl(rawUrl, material, fallbackUpdatedAt)
-    : null;
+  // Link curto por sessao (#632): o gateway so' vai abrir link assinado depois da versao minima.
+  const { url, carregando: assinandoUrl } = useLinkDoGateway(
+    rawUrl ? versionedMaterialUrl(rawUrl, material, fallbackUpdatedAt) : null,
+  );
   const previewMode = resolveDocumentPreviewMode(material, tipo === "pdf" ? "pdf" : "apresentacao");
 
   const payload = material && typeof material.payload === "object" ? (material.payload as Record<string, unknown>) : null;
@@ -539,7 +549,9 @@ function MaterialTabContent({
           ))}
         </div>
       )}
-      {!url ? (
+      {assinandoUrl ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">Carregando o material…</p>
+      ) : !url ? (
         <p className="text-sm text-muted-foreground py-8 text-center">Esta parte ainda não está disponível.</p>
       ) : tipo === "markdown" ? (
         <div>
