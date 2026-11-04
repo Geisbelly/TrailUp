@@ -146,6 +146,9 @@ CLAIM_SQL = text(
 # Ainda referenciado? Entao nao apaga. Cada consulta usa indice
 # (sessao_id, storage_path via view, openai_file_id).
 AINDA_USADO_SQL = {
+    # Arquivo da pesquisa (20261104_02): o objeto e' de um registro so', mas confere pelo caminho -
+    # se a linha ainda existe (o gatilho rodou e a exclusao foi desfeita), o objeto fica.
+    "r2_pesquisa": text("SELECT EXISTS (SELECT 1 FROM public.pesquisa_arquivo WHERE caminho = :caminho)"),
     "r2_telemetria": text(
         """
         SELECT EXISTS (SELECT 1 FROM public.telemetria_lotes
@@ -217,6 +220,8 @@ def _ref(item: dict[str, Any]) -> dict[str, Any]:
 def _chave_de_uso(item: dict[str, Any]) -> str | None:
     destino = item["destino"]
     ref = _ref(item)
+    if destino == "r2" and ref.get("tabela") == "pesquisa_arquivo":
+        return "r2_pesquisa"
     if destino == "r2" and ref.get("sessao_id"):
         return "r2_telemetria"
     if destino in ("r2", "storage"):

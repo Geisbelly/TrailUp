@@ -61,6 +61,9 @@ def test_espera_exponencial_com_teto() -> None:
 
 def test_chave_de_uso() -> None:
     assert rx._chave_de_uso({"destino": "r2", "ref": '{"sessao_id": "x"}'}) == "r2_telemetria"
+    # Arquivo da pesquisa (20261104_02): confere pela propria tabela, nao pela de material.
+    assert rx._chave_de_uso({"destino": "r2", "ref": {"tabela": "pesquisa_arquivo", "origem": "telemetria_lotes"}}) == "r2_pesquisa"
+    assert "r2_pesquisa" in rx.AINDA_USADO_SQL
     assert rx._chave_de_uso({"destino": "r2", "ref": {}}) == "material"
     assert rx._chave_de_uso({"destino": "storage", "ref": {}}) == "material"
     assert rx._chave_de_uso({"destino": "openai", "ref": {}}) == "openai"
