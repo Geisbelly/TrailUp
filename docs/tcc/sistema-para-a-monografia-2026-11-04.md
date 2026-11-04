@@ -6,6 +6,8 @@ Varredura completa do sistema, para os capítulos de desenvolvimento (5), Eviden
 - **[banco]**: consultado em produção (projeto `xrebtkmdewolzmpsdwgh`) em 04/11/2026, só leitura.
 - **[doc]**: tirado de um documento do repositório, citado no item.
 
+O catálogo peça por peça (cada módulo, tela, aba, tabela, função, rotina e prompt) está no [inventário completo](./inventario-completo-2026-11-04.md), que também lista o que a segunda varredura acrescentou: desenho experimental, análise BrainHex v3, guardrails e mais formatos de saída.
+
 Os capítulos `01` a `11` desta pasta são de abril de 2026 e estão desatualizados em vários pontos (ver a seção 15). Onde este documento e eles divergirem, vale este, até os capítulos serem revistos.
 
 ---
