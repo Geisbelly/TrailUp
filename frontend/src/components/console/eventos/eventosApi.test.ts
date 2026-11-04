@@ -48,7 +48,7 @@ const linha = (extra: Record<string, unknown> = {}) => ({
 const payload = {
   topico_id: null, titulo: "S", descricao: "", inicio: "a", fim: "b", pecas: ["arena" as const], modalidade_guilda: false,
   guilda_tamanho_max: null, pontos: 0, moedas: 0, medalha_participacao: true, medalha_destaque: false, recompensa: null,
-  abrir_no_inicio: true,
+  abrir_no_inicio: true, arena_criterios: [],
 };
 
 beforeEach(() => {
@@ -65,6 +65,9 @@ describe("mapearEvento", () => {
     expect(mapearEvento(linha()).abrirNoInicio).toBe(false);
     expect(mapearEvento(linha({ abrir_no_inicio: true })).abrirNoInicio).toBe(true);
     expect(mapearEvento(linha({ pecas: null })).pecas).toEqual([]);
+    // antes da 20261104_01 a coluna não vem; valor estranho é descartado
+    expect(mapearEvento(linha()).arenaCriterios).toEqual([]);
+    expect(mapearEvento(linha({ arena_criterios: ["missoes", "tempo", 1, "ranqueada"] })).arenaCriterios).toEqual(["ranqueada", "missoes"]);
   });
 });
 
@@ -198,6 +201,15 @@ describe("painel Durante", () => {
     expect(sb.rpc).toHaveBeenCalledWith("evento_classe_durante", { p_evento_id: "e1" });
     sb.rpc.mockResolvedValue({ data: null, error: new Error("O evento ainda não foi aberto.") });
     await expect(lerDurante("e1")).rejects.toThrow("não foi aberto");
+  });
+
+  it("lerInscritos lê evento_inscricoes do evento e propaga erro", async () => {
+    const { lerInscritos } = await import("./eventosApi");
+    sb.porTabela.evento_inscricoes = { data: [{ aluno_id: "a", inscrito_em: "2026-11-04T10:00:00Z" }], error: null };
+    await expect(lerInscritos("e1")).resolves.toEqual([{ alunoId: "a", inscritoEm: "2026-11-04T10:00:00Z" }]);
+    expect(sb.chamadas).toContainEqual(["evento_inscricoes", "eq", "evento_id", "e1"]);
+    sb.porTabela.evento_inscricoes = { data: null, error: new Error("permission denied") };
+    await expect(lerInscritos("e1")).rejects.toThrow("permission denied");
   });
 });
 

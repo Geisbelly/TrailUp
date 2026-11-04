@@ -9,8 +9,23 @@ export const PECAS_DO_EVENTO = [
   { chave: "metas", rotulo: "Metas coletivas", ajuda: "Objetivo que a turma cumpre junto." },
   { chave: "conquistas", rotulo: "Conquistas do evento", ajuda: "Medalhas exclusivas do período." },
   { chave: "desafios", rotulo: "Desafios", ajuda: "Desafios de turma ou de guilda." },
-  { chave: "arena", rotulo: "Arena", ajuda: "Rank de batalhas, só enquanto o evento está aberto." },
+  // A chave continua `arena` (é o que o banco grava em `pecas`), mas "Arena" agora é o duelo do Social:
+  // isto é o rank do evento (#155, D3).
+  { chave: "arena", rotulo: "Rank do evento", ajuda: "Ranking só de quem quiser entrar, na janela do evento." },
 ] as const;
+
+/**
+ * Critérios do rank do evento (`eventos_classe.arena_criterios`, migration 20261104_01). Só os que
+ * respeitam a janela do evento: o banco recusa os outros (CHECK). Sem escolha, vale `ranqueada`.
+ */
+export const CRITERIOS_DO_RANK = [
+  { chave: "ranqueada", rotulo: "Pontos de batalha", ajuda: "Ganhos e perdidos nos desafios ranqueados." },
+  { chave: "pontuacao", rotulo: "Pontuação", ajuda: "Todos os pontos do evento, inclusive de duelo." },
+  { chave: "missoes", rotulo: "Missões cumpridas", ajuda: "Quantas missões cada um concluiu na janela." },
+] as const;
+
+export type CriterioDoRank = (typeof CRITERIOS_DO_RANK)[number]["chave"];
+export const CRITERIO_PADRAO_DO_RANK: CriterioDoRank = "ranqueada";
 
 export type ChaveDePeca = (typeof PECAS_DO_EVENTO)[number]["chave"];
 export type StatusDoEvento = "rascunho" | "aberto" | "encerrado";
@@ -35,6 +50,8 @@ export type FormularioDeEvento = {
   pecas: ChaveDePeca[];
   /** Ids das missões ligadas ao evento (peça "Missões"). */
   missoesIds: number[];
+  /** Critérios do rank do evento (peça "arena"). Vazio = `ranqueada`. */
+  arenaCriterios: CriterioDoRank[];
   modalidadeGuilda: boolean;
   guildaTamanhoMax: string;
   pontos: string;
@@ -54,6 +71,7 @@ export const FORMULARIO_DE_EVENTO_VAZIO: FormularioDeEvento = {
   topicoId: "",
   pecas: [],
   missoesIds: [],
+  arenaCriterios: [],
   modalidadeGuilda: false,
   guildaTamanhoMax: "",
   pontos: "0",
@@ -72,6 +90,8 @@ export type PayloadDoEvento = {
   inicio: string;
   fim: string;
   pecas: ChaveDePeca[];
+  /** Vazio sem a peça arena; o banco congela ao abrir. */
+  arena_criterios: CriterioDoRank[];
   modalidade_guilda: boolean;
   guilda_tamanho_max: number | null;
   pontos: number;
@@ -147,6 +167,7 @@ export function validarEvento(form: FormularioDeEvento): ResultadoDoEvento {
       inicio: inicio.toISOString(),
       fim: fim.toISOString(),
       pecas,
+      arena_criterios: pecas.includes("arena") ? criteriosDoRank(form.arenaCriterios) : [],
       modalidade_guilda: form.modalidadeGuilda,
       guilda_tamanho_max: guildaTamanhoMax,
       pontos,
@@ -158,6 +179,18 @@ export function validarEvento(form: FormularioDeEvento): ResultadoDoEvento {
       abrir_no_inicio: form.abrirNoInicio,
     },
   };
+}
+
+/** Na ordem da lista e sem repetir nem valor desconhecido: o banco compara o array ao travar a edição. */
+export function criteriosDoRank(escolhidos: readonly string[]): CriterioDoRank[] {
+  return CRITERIOS_DO_RANK.map((c) => c.chave).filter((c) => escolhidos.includes(c));
+}
+
+/** "Pontos de batalha · Missões cumpridas"; sem escolha, o padrão que o banco usa ao abrir. */
+export function rotuloDosCriterios(escolhidos: readonly string[]): string {
+  const validos = criteriosDoRank(escolhidos);
+  const lista = validos.length > 0 ? validos : [CRITERIO_PADRAO_DO_RANK];
+  return CRITERIOS_DO_RANK.filter((c) => lista.includes(c.chave)).map((c) => c.rotulo).join(" · ");
 }
 
 const dois = (n: number) => String(n).padStart(2, "0");
@@ -213,8 +246,20 @@ export function rotuloDasPecas(pecas: string[]): string {
 }
 
 /** O que a abertura vai fazer — texto do diálogo de confirmação ("guildas congeladas", janela, peças). */
-export function resumoDeAbertura(e: { titulo: string; modalidadeGuilda: boolean; pecas: string[]; inicio: string; fim: string }): string[] {
+export function resumoDeAbertura(e: {
+  titulo: string;
+  modalidadeGuilda: boolean;
+  pecas: string[];
+  inicio: string;
+  fim: string;
+  arenaCriterios?: readonly string[];
+}): string[] {
   const linhas = [`Janela: ${rotuloDaJanela(e.inicio, e.fim)}.`, `Peças: ${rotuloDasPecas(e.pecas)}.`];
+  if (e.pecas.includes("arena")) {
+    linhas.push(
+      `Rank do evento por: ${rotuloDosCriterios(e.arenaCriterios ?? [])}. Só aparece quem entrar, e entrar não muda nota nem XP.`,
+    );
+  }
   if (e.modalidadeGuilda) linhas.push("As guildas são congeladas agora: quem entrar ou sair depois não muda a apuração deste evento.");
   linhas.push("Depois de aberto, só título e descrição podem mudar.");
   return linhas;

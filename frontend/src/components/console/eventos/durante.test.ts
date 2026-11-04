@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { percentual, quemPrecisaDeEmpurrao, resumoEmFrase, rotuloDasGuildas, type AlunoNoEvento, type PainelDurante } from "./durante";
+import {
+  inscritosComNome,
+  percentual,
+  quemPrecisaDeEmpurrao,
+  resumoDosInscritos,
+  resumoEmFrase,
+  rotuloDasGuildas,
+  type AlunoNoEvento,
+  type PainelDurante,
+} from "./durante";
 
 const painel = (extra: Partial<PainelDurante> = {}): PainelDurante => ({
   total: 10,
@@ -51,5 +60,28 @@ describe("rotuloDasGuildas", () => {
   it("sem guilda e com guilda", () => {
     expect(rotuloDasGuildas({ guildasAtivas: 0, guildasTotal: 0 })).toBe("Sem guildas neste evento");
     expect(rotuloDasGuildas({ guildasAtivas: 2, guildasTotal: 3 })).toBe("2 de 3 ativas");
+  });
+});
+
+describe("inscritos no rank do evento", () => {
+  it("põe o nome, ordena e deixa de fora quem já não está na turma", () => {
+    const alunos = [a("Zé", "comecou"), a("Ana", "nao_comecou")];
+    const r = inscritosComNome(
+      [
+        { alunoId: "Zé", inscritoEm: "t1" },
+        { alunoId: "Ana", inscritoEm: "t2" },
+        { alunoId: "saiu", inscritoEm: "t3" },
+      ],
+      alunos,
+    );
+    expect(r.map((x) => x.nome)).toEqual(["Ana", "Zé"]);
+  });
+
+  it("o resumo diz quantos entraram e que é opcional", () => {
+    expect(resumoDosInscritos(0, 10)).toMatch(/Ninguém entrou/);
+    expect(resumoDosInscritos(1, 10)).toMatch(/^1 aluno entrou no rank \(10% da turma\)/);
+    expect(resumoDosInscritos(3, 10)).toMatch(/^3 alunos entraram/);
+    expect(resumoDosInscritos(3, 10)).toMatch(/não muda nota nem XP/);
+    expect(resumoDosInscritos(0, 0)).toMatch(/Nenhum aluno matriculado/);
   });
 });

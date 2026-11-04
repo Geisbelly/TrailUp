@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   FORMULARIO_DE_EVENTO_VAZIO,
+  criteriosDoRank,
+  rotuloDosCriterios,
   dataParaCampo,
   resumoDeAbertura,
   rotuloDaJanela,
@@ -84,7 +86,7 @@ describe("rótulos", () => {
     expect(rotuloDaJanela("2026-10-20T12:00:00Z", "2026-10-27T12:00:00Z")).toBe("20/10 a 27/10");
     expect(rotuloDoStatus("aberto")).toBe("Aberto");
     expect(rotuloDoStatus("rascunho")).toBe("Rascunho");
-    expect(rotuloDasPecas(["arena", "missoes"])).toBe("Missões · Arena");
+    expect(rotuloDasPecas(["arena", "missoes"])).toBe("Missões · Rank do evento");
     expect(rotuloDasPecas([])).toBe("Nenhuma peça");
     expect(dataParaCampo(null)).toBe("");
     expect(dataParaCampo("lixo")).toBe("");
@@ -136,5 +138,34 @@ describe("missões do evento", () => {
   it("no máximo 20 missões", () => {
     const muitas = Array.from({ length: 21 }, (_, i) => i + 1);
     expect(validarEvento({ ...valido, pecas: ["missoes"], missoesIds: muitas }).erros.missoes).toMatch(/No máximo 20/);
+  });
+});
+
+describe("critérios do rank do evento (#155)", () => {
+  it("vão no payload na ordem da lista, sem repetir, só com a peça marcada", () => {
+    const com = validarEvento({ ...valido, arenaCriterios: ["missoes", "ranqueada", "missoes"] });
+    expect(com.payload.arena_criterios).toEqual(["ranqueada", "missoes"]);
+    const semPeca = validarEvento({ ...valido, pecas: ["missoes"], arenaCriterios: ["pontuacao"] });
+    expect(semPeca.payload.arena_criterios).toEqual([]);
+    // sem escolha vai vazio: o banco usa `ranqueada` ao abrir
+    expect(validarEvento(valido).payload.arena_criterios).toEqual([]);
+  });
+
+  it("criteriosDoRank descarta o que o banco recusaria", () => {
+    expect(criteriosDoRank(["tempo", "pontuacao", "percentual"])).toEqual(["pontuacao"]);
+  });
+
+  it("rotuloDosCriterios mostra o padrão quando nada foi escolhido", () => {
+    expect(rotuloDosCriterios([])).toBe("Pontos de batalha");
+    expect(rotuloDosCriterios(["missoes", "pontuacao"])).toBe("Pontuação · Missões cumpridas");
+  });
+
+  it("o resumo de abertura diz os critérios e que entrar é opcional; sem a peça, não fala de rank", () => {
+    const base = { titulo: "E", modalidadeGuilda: false, pecas: ["arena"], inicio: "2026-10-20T12:00:00Z", fim: "2026-10-27T12:00:00Z" };
+    const texto = resumoDeAbertura({ ...base, arenaCriterios: ["pontuacao"] }).join(" ");
+    expect(texto).toMatch(/Rank do evento por: Pontuação\./);
+    expect(texto).toMatch(/entrar não muda nota nem XP/);
+    expect(resumoDeAbertura(base).join(" ")).toMatch(/Pontos de batalha/);
+    expect(resumoDeAbertura({ ...base, pecas: ["missoes"] }).join(" ")).not.toMatch(/Rank do evento por/);
   });
 });
