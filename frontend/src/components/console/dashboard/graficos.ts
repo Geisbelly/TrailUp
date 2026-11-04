@@ -30,14 +30,22 @@ export function abandonoPorPerfil(linhas: TurmaPerfilMetricas[], segmento: Segme
 
 export type InatividadeDoPerfil = { perfil: BrainHexProfileKey; nome: string; valor: number | null; alunos: number };
 
-/** Segmento com menos alunos que isto fica oculto (spec de métricas §4.2: `n_minimo`, padrão 5). */
-export const N_MINIMO_SEGMENTO = 5;
+/**
+ * Segmento com menos alunos que isto fica oculto (spec de métricas §4.2). O valor de verdade é
+ * `metricas_catalogo.n_minimo` (`useNMinimo`); este é só o padrão enquanto ele não chega ou se a
+ * leitura falhar, o mesmo do `COALESCE(max(n_minimo), 5)` das RPCs.
+ */
+export const N_MINIMO_PADRAO = 5;
 
 // Percentual de alunos INATIVOS (7 dias ou mais sem estudar) por perfil — substitui a "taxa de
 // abandono" por perfil, que media "ainda não terminou" (F5). A view traz uma linha por (turma,
 // perfil); com várias turmas no escopo, soma inativos e alunos de cada perfil antes de dividir,
 // que é a média ponderada pelos alunos do segmento.
-export function inatividadePorPerfil(linhas: TurmaPerfilMetricas[], segmento: SegmentoPerfil): InatividadeDoPerfil[] {
+export function inatividadePorPerfil(
+  linhas: TurmaPerfilMetricas[],
+  segmento: SegmentoPerfil,
+  nMinimo: number = N_MINIMO_PADRAO,
+): InatividadeDoPerfil[] {
   const acumulado = new Map<BrainHexProfileKey, { inativos: number; alunos: number }>();
   for (const linha of linhas) {
     if (linha.segmento !== segmento) continue;
@@ -51,7 +59,7 @@ export function inatividadePorPerfil(linhas: TurmaPerfilMetricas[], segmento: Se
   return PERFIS_EM_ORDEM.map((perfil) => {
     const a = acumulado.get(perfil);
     const alunos = a?.alunos ?? 0;
-    const valor = !a || alunos < N_MINIMO_SEGMENTO ? null : (100 * a.inativos) / alunos;
+    const valor = !a || alunos < nMinimo ? null : (100 * a.inativos) / alunos;
     return { perfil, nome: NOME_DO_PERFIL[perfil], valor, alunos };
   });
 }

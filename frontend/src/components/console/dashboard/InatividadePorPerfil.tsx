@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Bar, BarChart, Cell, LabelList, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import type { TurmaPerfilMetricas } from "../useTurmaKpis";
-import { inatividadePorPerfil, N_MINIMO_SEGMENTO, type SegmentoPerfil } from "./graficos";
+import { inatividadePorPerfil, type SegmentoPerfil } from "./graficos";
 import { COR_DO_PERFIL } from "./perfilCores";
 import SegmentedPills from "./SegmentedPills";
 
@@ -33,15 +33,17 @@ export default function InatividadePorPerfil({
   segmento,
   onSegmentoChange,
   media,
+  nMinimo,
 }: {
   linhas: TurmaPerfilMetricas[];
   segmento: SegmentoPerfil;
   onSegmentoChange: (s: SegmentoPerfil) => void;
   media: number | null;
+  nMinimo: number;
 }) {
   const pontos: Ponto[] = useMemo(
-    () => inatividadePorPerfil(linhas, segmento).map((p) => ({ ...p, altura: p.valor ?? 0 })),
-    [linhas, segmento],
+    () => inatividadePorPerfil(linhas, segmento, nMinimo).map((p) => ({ ...p, altura: p.valor ?? 0 })),
+    [linhas, segmento, nMinimo],
   );
   const temDados = pontos.some((p) => p.valor !== null);
   const teto = Math.max(...pontos.map((p) => p.altura), media ?? 0, 1) * 1.2;
@@ -53,7 +55,7 @@ export default function InatividadePorPerfil({
         <div className="min-w-0">
           <h3 className="text-lg text-foreground">Inatividade por perfil</h3>
           <p className="mt-1 text-[12.5px] text-muted-foreground">
-            Alunos há 7 dias ou mais sem estudar, por perfil BrainHex. Perfil com menos de {N_MINIMO_SEGMENTO} alunos fica oculto.
+            Alunos há 7 dias ou mais sem estudar, por perfil BrainHex. Perfil com menos de {nMinimo} alunos fica oculto.
           </p>
           {media !== null && temDados && (
             <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">

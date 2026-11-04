@@ -19,7 +19,9 @@ export const PRESENTATION_SCHEMA_VERSION = "presentation-material-v3" as const;
 // A #863 mudou o deck sem subir esta versao, e todo deck anterior continuou
 // valendo como pronto (15 de 16 materiais em producao no formato antigo, 03/11).
 // Mudou o HTML do deck? Suba aqui E em api/app/services/media_contract.py.
-export const PRESENTATION_DESIGN_VERSION = "trailup-deck-v4" as const;
+// v5 = exemplo visual didatico na cor do perfil, deck sem XP (interacoes
+// chegam ao sistema como acerto) e divisao em partes em vez de scroll (04/11).
+export const PRESENTATION_DESIGN_VERSION = "trailup-deck-v5" as const;
 export const CONTENT_ENRICHMENT_PROVIDER = "openai" as const;
 
 /** Revisão declarada pelo deploy; não confundir com versão do contrato de mídia. */

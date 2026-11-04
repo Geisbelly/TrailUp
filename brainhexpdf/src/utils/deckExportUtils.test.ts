@@ -378,67 +378,65 @@ test('script exportado le hideQuiz/hideChecklist/hideNotes da query string e esc
   assert.match(html, /body\.classList\.remove\('has-aside'\)/);
 });
 
-test('script exportado reporta XP de quiz pro host via postMessage, so na primeira vez que acerta', () => {
+test('quiz reporta acerto pro host via postMessage: 1 de 1 na primeira vez que acerta', () => {
   const html = generateInteractiveHtml(minimalDeck);
 
   assert.match(html, /function reportProgressToHost/);
   assert.match(html, /window\.ReactNativeWebView && typeof window\.ReactNativeWebView\.postMessage === 'function'/);
   assert.match(html, /window\.parent\.postMessage\(message, '\*'\)/);
   assert.match(html, /'trailup:progress'/);
-  // a chamada tem que estar DENTRO do bloco !wasAlreadyRewarded (so reporta
-  // na primeira vez que ganha o XP, nao em toda re-renderizacao)
-  assert.match(html, /if \(!wasAlreadyRewarded\) \{[\s\S]*?reportProgressToHost\('slide:' \+ currentIndex \+ ':quiz', 150, 150\);[\s\S]*?\}/);
+  assert.match(html, /if \(!wasAlreadyRewarded\) \{[\s\S]*?reportProgressToHost\('slide:' \+ currentIndex \+ ':quiz', 1, 1\);[\s\S]*?\}/);
 });
 
-test('handleQuizAnswer nao apaga o XP ja premiado quando o aluno erra depois de ter acertado (acerto->erro->acerto nao premia 2x)', () => {
+test('erro no quiz tambem chega ao sistema (0 de 1), mas nunca depois de um acerto', () => {
   const html = generateInteractiveHtml(minimalDeck);
+  assert.match(html, /if \(!wasAlreadyRewarded\) reportProgressToHost\('slide:' \+ currentIndex \+ ':quiz', 0, 1\);/);
+});
 
-  // O gate le xpAwarded (nao isCorrect) - isCorrect pode virar false de novo
-  // num erro subsequente, mas xpAwarded tem que ser sticky.
+test('handleQuizAnswer guarda o acerto ja registrado quando o aluno erra depois de ter acertado', () => {
+  const html = generateInteractiveHtml(minimalDeck);
   assert.match(html, /const wasAlreadyRewarded = !!savedData\.quizAnswers\[currentIndex\]\?\.xpAwarded;/);
-  // acerto grava xpAwarded: true
   assert.match(html, /savedData\.quizAnswers\[currentIndex\] = \{ optId, isCorrect: true, explanation, xpAwarded: true \};/);
-  // erro faz spread do registro anterior (preserva xpAwarded), nao substitui o objeto inteiro
   assert.match(html, /savedData\.quizAnswers\[currentIndex\] = \{\s*\n\s*\.\.\.\(savedData\.quizAnswers\[currentIndex\] \|\| \{\}\),\s*\n\s*optId,\s*\n\s*isCorrect: false,/);
 });
 
-test('attackBoss reporta XP pro host so no golpe final (bossHp chega a 0)', () => {
+test('as demais interacoes reportam conclusao (1 de 1), nao XP', () => {
   const html = generateInteractiveHtml(minimalDeck);
-  assert.match(html, /if \(currentBossHp === 0\) \{[\s\S]*?reportProgressToHost\('slide:' \+ currentIndex \+ ':boss', 500, 500\);[\s\S]*?\}/);
-});
-
-test('toggleChecklistItem reporta XP pro host so ao marcar, nunca ao desmarcar', () => {
-  const html = generateInteractiveHtml(minimalDeck);
-  // "marcar" (ganha XP): totalXp += ... e imediatamente seguido do report
-  assert.match(html, /totalXp \+= \(xp \|\| 50\);\s*\n\s*reportProgressToHost\('slide:' \+ currentIndex \+ ':checklist:' \+ realItemId, xp \|\| 50, xp \|\| 50\);/);
-  // "desmarcar" (perde XP): a linha que subtrai NUNCA e seguida do report
-  assert.doesNotMatch(html, /totalXp = Math\.max\(0, totalXp - \(xp \|\| 50\)\);\s*\n\s*reportProgressToHost/);
-});
-
-test('toggleTakeawayMastery reporta XP pro host so ao dominar, nunca ao desfazer', () => {
-  const html = generateInteractiveHtml(minimalDeck);
-  assert.match(html, /reportProgressToHost\('slide:' \+ currentIndex \+ ':takeaway:' \+ realKeyId, xp \|\| 75, xp \|\| 75\);/);
-});
-
-test('saveUniqueInteraction reporta XP pro host so na primeira conclusao', () => {
-  const html = generateInteractiveHtml(minimalDeck);
-  assert.match(html, /if \(firstCompletion\) \{[\s\S]*?reportProgressToHost\('slide:' \+ slideIndex \+ ':unique', earnedXp, earnedXp\);[\s\S]*?\}/);
-});
-
-test('selectDecisionPath trava o XP na primeira decisao do slide - trocar de opcao depois nao premia de novo', () => {
-  const html = generateInteractiveHtml(minimalDeck);
-  // wasAlreadyChosen tem que ser "ja existe alguma decisao neste slide",
-  // NAO "a escolha atual e igual a anterior" - comparar por choiceId permite
-  // XP infinito alternando entre as opcoes (bug real reportado: 3250 XP
-  // depois de alternar Estrategia A/B repetidas vezes).
+  for (const chave of [
+    "':boss', 1, 1",
+    "':checklist:' + realItemId, 1, 1",
+    "':takeaway:' + realKeyId, 1, 1",
+    "':unique', 1, 1",
+    "':decision:' + choiceId, 1, 1",
+    "':secret', 1, 1",
+  ]) {
+    assert.ok(html.includes(chave), chave);
+  }
+  // Desmarcar nunca reporta, e trocar de decisao nao reporta de novo.
   assert.match(html, /const wasAlreadyChosen = !!savedData\.decisions\[currentIndex\];/);
   assert.doesNotMatch(html, /savedData\.decisions\[currentIndex\]\?\.choiceId === choiceId/);
-  assert.match(html, /if \(!wasAlreadyChosen\) \{\s*\n\s*totalXp \+= \(xpReward \|\| 100\);\s*\n\s*reportProgressToHost\('slide:' \+ currentIndex \+ ':decision:' \+ choiceId, xpReward \|\| 100, xpReward \|\| 100\);/);
+  assert.match(html, /if \(!wasAlreadyChosen\) \{\s*\n\s*reportProgressToHost\('slide:' \+ currentIndex \+ ':decision:'/);
+  assert.match(html, /if \(!wasRevealed\) \{\s*\n\s*updateXpDisplay\(\);\s*\n\s*reportProgressToHost\('slide:' \+ currentIndex \+ ':secret', 1, 1\);/);
 });
 
-test('revealSecretLore reporta XP pro host so na primeira revelacao', () => {
-  const html = generateInteractiveHtml(minimalDeck);
-  assert.match(html, /if \(!wasRevealed\) \{\s*\n\s*totalXp \+= 100;\s*\n\s*updateXpDisplay\(\);\s*\n\s*reportProgressToHost\('slide:' \+ currentIndex \+ ':secret', 100, 100\);/);
+test('o deck nao mostra XP em lugar nenhum (o XP dele nunca virava ponto do aluno)', () => {
+  const html = generateInteractiveHtml({
+    ...minimalDeck,
+    slides: [
+      {
+        id: 's1', type: 'concept_breakdown', title: 'Quiz', contentParagraphs: ['p'], layout: 'split-character',
+        quiz: { question: 'Q?', options: [{ id: 'a', text: 'A', isCorrect: true }, { id: 'b', text: 'B', isCorrect: false }] },
+        checklist: [{ id: 'c1', text: 'Item', xp: 50 }],
+        keyTakeaways: ['Ideia'],
+        secretLore: { hint: 'Segredo', content: 'x' },
+      } as any,
+    ],
+  });
+  // O texto visivel (fora do <script> e dos dados embutidos) nao fala de XP.
+  const visivel = html.replace(/<script[\s\S]*?<\/script>/g, '');
+  assert.doesNotMatch(visivel, /\bXP\b/);
+  assert.doesNotMatch(html, /id="xp-counter"/);
+  assert.doesNotMatch(html, /\+\d+ XP/);
 });
 
 test('slide esparso (1 paragrafo, sem widget/imagem/exemplo) ganha fonte e respiro maiores', () => {
@@ -518,12 +516,6 @@ test('conclusao: sem cartoes de Perfil/Rank/XP Total nem botao Exportar, mantem 
   assert.doesNotMatch(html, /certificate-xp-display/);
   assert.match(html, /Revisar trilha/);
   assert.match(html, /FORTALEZA CONSOLIDADA/);
-});
-
-test('header mostra XP obtido/estimado (nao so o obtido) - estimado = slides.length * 150', () => {
-  const html = generateInteractiveHtml(minimalDeck); // 1 slide -> estimado = 150
-
-  assert.match(html, /id="xp-counter">0<\/span>\s*<span[^>]*>\/150<\/span>/);
 });
 
 test('deck nao depende do Tailwind por CDN: o estilo vai embutido e escopado em .tu-deck', () => {
@@ -710,4 +702,22 @@ test('sumario fecha sem devolver o foco ao botao (o foco vai para o titulo do sl
   assert.match(html, /closeDialog\('dlg-toc', true\); goToSlide\(i, true\);/);
   // Navegador sem <dialog>: o CSS esconde o fechado.
   assert.match(html, /\.tu-deck \.tu-dialog:not\(\[open\]\) \{ display: none; \}/);
+});
+
+test('paginas no aparelho: o script gerado compila e a conta de colunas nao depende de regex', () => {
+  // O runtime do deck mora numa template string do TS: um `\s` vira `s` no
+  // HTML, sem erro nenhum. Foi assim que a conta de colunas sempre dava
+  // "empilhado" e a imagem sumia da primeira pagina no desktop (03/11).
+  const html = generateInteractiveHtml(minimalDeck);
+  const scripts = Array.from(html.matchAll(/<script(?: [^>]*)?>([\s\S]*?)<\/script>/g))
+    .map((m) => m[1])
+    .filter((code) => code.includes('function paginateCurrentSlide'));
+  assert.equal(scripts.length, 1);
+  assert.doesNotThrow(() => new Function(scripts[0]));
+  const fn = scripts[0].slice(scripts[0].indexOf('function isTwoColumnLayout'), scripts[0].indexOf('function applyPage'));
+  assert.ok(fn.length > 0);
+  assert.doesNotMatch(fn, /\/[^/\n]*\b(s|d|w)\+\//, 'regex com barra perdida na conta de colunas');
+  // Indice do slide e chaves de progresso nao mudam com as paginas.
+  assert.match(scripts[0], /'slide:' \+ currentIndex/);
+  assert.match(scripts[0], /\(currentPage \+ 1\) \+ '\/' \+ pageCount/);
 });
