@@ -2287,6 +2287,7 @@ async def regenerar_documento_personalizacao(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Falha ao persistir o documento regenerado.",
         )
+    await personalizacao_repo.marcar_material_editado(record_id=int(record["id"]))
     return _to_response(updated_record)
 
 
@@ -2381,6 +2382,7 @@ async def regenerar_slide_personalizacao(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Falha ao persistir o slide regenerado.",
         )
+    await personalizacao_repo.marcar_material_editado(record_id=int(record["id"]))
 
     return RegenerarSlideResponse(
         personalizacao=_to_response(updated_record),

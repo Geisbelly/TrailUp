@@ -10,6 +10,7 @@ from app.services.media_contract import (
     PRESENTATION_DESIGN_VERSION,
     PRESENTATION_ENGINE_VERSION,
 )
+from app.services.reuso_personalizacao import IMPRESSAO_EDITADO
 from app.services.storage import BUCKET, build_material_url
 
 # Sentinela de ``buscar_por_perfil``: sem filtro de dono (None ja quer dizer
@@ -407,6 +408,7 @@ class ConteudoPersonalizadoRepository:
         brainhex_profile_key: str | None,
         ciclo_id: str,
         source_hash: str,
+        impressao_conteudo: str | None = None,
     ) -> bool | None:
         """Reserva atomicamente a primeira geracao de um alvo ainda inexistente.
 
@@ -453,7 +455,7 @@ class ConteudoPersonalizadoRepository:
             INSERT INTO conteudo_personalizado (
               aluno_id, classe_id, conteudo_id, topico_id, ciclo_id,
               brainhex_profile_key, plano, materiais, ai_patch, status,
-              source_hash, formato_prioritario, formatos_gerados, updated_at
+              source_hash, formato_prioritario, formatos_gerados, impressao_conteudo, updated_at
             )
             VALUES (
               :aluno_id,
@@ -469,7 +471,8 @@ class ConteudoPersonalizadoRepository:
               ),
               :conteudo_id, :topico_id, :ciclo_id, :brainhex_profile_key,
               CAST(:plano AS JSONB), CAST(:materiais AS JSONB), NULL,
-              'processando_midias', :source_hash, '', :formatos_gerados, NOW()
+              'processando_midias', :source_hash, '', :formatos_gerados,
+              CAST(:impressao_conteudo AS TEXT), NOW()
             )
             {conflict_clause}
             DO UPDATE SET
@@ -482,6 +485,8 @@ class ConteudoPersonalizadoRepository:
               source_hash = EXCLUDED.source_hash,
               formato_prioritario = EXCLUDED.formato_prioritario,
               formatos_gerados = EXCLUDED.formatos_gerados,
+              -- Na reserva e nao depois: a turma com o mesmo conteudo precisa ve-la para esperar.
+              impressao_conteudo = EXCLUDED.impressao_conteudo,
               updated_at = NOW()
             -- So reclama a linha existente quando o source_hash mudou de
             -- verdade (geracao anterior obsoleta, ex.: professor editou o
@@ -505,6 +510,7 @@ class ConteudoPersonalizadoRepository:
                 "materiais": json.dumps({}, ensure_ascii=False),
                 "source_hash": source_hash,
                 "formatos_gerados": [],
+                "impressao_conteudo": impressao_conteudo,
             },
         )
         claimed_id = result.mappings().first()
@@ -667,6 +673,151 @@ class ConteudoPersonalizadoRepository:
             for item in hydrated
             if self._normalize_profile_key(item.get("brainhex_profile_key")) == normalized_target
         ]
+
+    # ── Reuso entre turmas (20261104_08) ───────────────────────────────────────
+
+    async def travar_impressao(self, *, impressao: str, perfil: str) -> None:
+        """Serializa a decisão de gerar ou vincular até o fim da transação.
+
+        Sem isto, duas turmas com o mesmo conteúdo olhariam ao mesmo tempo, não achariam
+        ninguém e gerariam as duas. Por transação: nada de sessão, por causa do pooler.
+        """
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:chave, 0))"),
+            {"chave": f"reuso:{impressao}:{perfil}"},
+        )
+
+    async def listar_bases_por_impressao(
+        self,
+        *,
+        impressao: str,
+        perfil: str,
+        classe_id: int,
+        topico_id: int,
+        conteudo_id: int,
+        stale_processing_min: int,
+    ) -> list[dict[str, Any]]:
+        """Outras linhas de base com este material, sem a linha do próprio alvo.
+
+        `recente` diz se uma linha em `processando_midias` ainda está mesmo gerando.
+        """
+        result = await self.session.execute(
+            text(
+                """
+                SELECT id, classe_id, topico_id, conteudo_id, ciclo_id, source_hash, status,
+                       materiais,
+                       updated_at >= NOW() - make_interval(mins => :stale_min) AS recente
+                  FROM conteudo_personalizado
+                 WHERE aluno_id IS NULL
+                   AND impressao_conteudo = :impressao
+                   AND brainhex_profile_key = :perfil
+                   AND NOT (classe_id = :classe_id AND topico_id = :topico_id
+                            AND conteudo_id IS NOT DISTINCT FROM CAST(:conteudo_id AS BIGINT))
+                 ORDER BY (status = 'pronto') DESC, gerado_em DESC, id DESC
+                 LIMIT 25
+                """
+            ),
+            {
+                "impressao": impressao,
+                "perfil": perfil,
+                "classe_id": classe_id,
+                "topico_id": topico_id,
+                "conteudo_id": conteudo_id,
+                "stale_min": int(stale_processing_min),
+            },
+        )
+        linhas = [dict(row) for row in result.mappings()]
+        for linha in linhas:
+            linha["materiais"] = self._normalize_json_field(linha.get("materiais"))
+        return linhas
+
+    async def buscar_enriquecimento_por_impressao(self, *, impressao: str) -> dict[str, Any] | None:
+        """Expansão já feita para este conteúdo, de qualquer perfil: ela é neutra de perfil."""
+        result = await self.session.execute(
+            text(
+                """
+                SELECT plano -> 'content_enrichment' AS enriquecimento
+                  FROM conteudo_personalizado
+                 WHERE aluno_id IS NULL
+                   AND impressao_conteudo = :impressao
+                   AND jsonb_array_length(
+                         CASE WHEN jsonb_typeof(plano #> '{content_enrichment,blocos}') = 'array'
+                              THEN plano #> '{content_enrichment,blocos}' ELSE '[]'::jsonb END
+                       ) > 0
+                 ORDER BY gerado_em DESC, id DESC
+                 LIMIT 1
+                """
+            ),
+            {"impressao": impressao},
+        )
+        enriquecimento = self._normalize_json_field(result.scalar())
+        return enriquecimento if isinstance(enriquecimento, dict) else None
+
+    async def gravar_impressao(self, *, record_id: int, impressao: str) -> None:
+        """Só preenche o que está vazio: `editado` nunca volta a servir de origem."""
+        await self.session.execute(
+            text(
+                """
+                UPDATE conteudo_personalizado
+                   SET impressao_conteudo = :impressao
+                 WHERE id = :record_id AND impressao_conteudo IS NULL
+                """
+            ),
+            {"impressao": impressao, "record_id": int(record_id)},
+        )
+
+    async def vincular_a_origem(
+        self,
+        *,
+        origem_id: int,
+        classe_id: int,
+        topico_id: int,
+        conteudo_id: int,
+        perfil: str,
+        ciclo_id: str,
+        source_hash: str,
+        impressao: str,
+    ) -> int | None:
+        """Cria a linha da turma citando o material da origem. `None` se a origem mudou."""
+        result = await self.session.execute(
+            text(
+                """
+                SELECT public.trailup_vincular_personalizacao(
+                  :origem_id, :classe_id, :topico_id, :conteudo_id,
+                  :perfil, :ciclo_id, :source_hash, :impressao
+                )
+                """
+            ),
+            {
+                "origem_id": int(origem_id),
+                "classe_id": int(classe_id),
+                "topico_id": int(topico_id),
+                "conteudo_id": int(conteudo_id),
+                "perfil": perfil,
+                "ciclo_id": ciclo_id,
+                "source_hash": source_hash,
+                "impressao": impressao,
+            },
+        )
+        vinculado = result.scalar()
+        return int(vinculado) if vinculado is not None else None
+
+    async def marcar_material_editado(self, *, record_id: int) -> None:
+        """Material ajustado à mão deixa de ser origem e deixa de ser vínculo.
+
+        A mudança fica só nesta linha: as outras turmas têm o próprio `materiais`.
+        """
+        await self.session.execute(
+            text(
+                """
+                UPDATE conteudo_personalizado
+                   SET impressao_conteudo = :editado, vinculado_de_id = NULL
+                 WHERE id = :record_id
+                """
+            ),
+            {"editado": IMPRESSAO_EDITADO, "record_id": int(record_id)},
+        )
+        await self.session.commit()
 
     async def buscar_mais_recente_por_perfil(
         self,

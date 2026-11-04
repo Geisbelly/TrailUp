@@ -1320,6 +1320,139 @@ async def _base_do_perfil_na_fila(
     return bool(result.scalar())
 
 
+_MOTIVO_ESPERA_IRMA = "aguardando material identico, ja em geracao em outra turma"
+
+
+async def _enriquecimento_reaproveitado(app: FastAPI, ctx: dict[str, Any]) -> dict[str, Any] | None:
+    """Expansao ja feita para este mesmo conteudo, em qualquer turma e perfil.
+
+    A expansao e neutra de perfil. Quando a turma nova tem um perfil que a outra nao gerou, so a
+    midia desse perfil e nova.
+    """
+    impressao = ctx.get("impressao_conteudo")
+    if not impressao:
+        return None
+    async with app.state.session_factory() as session:
+        enriquecimento = await ConteudoPersonalizadoRepository(session).buscar_enriquecimento_por_impressao(
+            impressao=str(impressao)
+        )
+    if enriquecimento is None:
+        return None
+    return {**enriquecimento, "source_hash": ctx.get("source_hash")}
+
+
+async def _decidir_reuso(
+    *,
+    repo: ConteudoPersonalizadoRepository,
+    impressao: str,
+    perfil: str,
+    classe_id: int,
+    topico_id: int,
+    conteudo_id: int,
+    stale_processing_min: int,
+) -> tuple[dict[str, Any] | None, bool]:
+    """Devolve (origem pronta para vincular, esperar quem ja esta gerando).
+
+    A trava vale ate o proximo commit: quem nao vincula nem espera sai daqui segurando-a, e a
+    solta depois de reservar a geracao. Assim a segunda turma ja encontra a reserva da primeira.
+    """
+    await repo.travar_impressao(impressao=impressao, perfil=perfil)
+    candidatas = await repo.listar_bases_por_impressao(
+        impressao=impressao,
+        perfil=perfil,
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=conteudo_id,
+        stale_processing_min=stale_processing_min,
+    )
+    for candidata in candidatas:
+        if str(candidata.get("status") or "") != "pronto":
+            continue
+        chave = _build_generation_key(
+            ciclo_id=candidata.get("ciclo_id"),
+            source_hash=candidata.get("source_hash"),
+        )
+        # Inclui a versao do deck, que nao entra na impressao (`SOURCE_HASH_PRESENTATION_*`).
+        if not _motivos_de_midia_incompleta(candidata, generation_key=chave):
+            return candidata, False
+    aguardar = any(
+        str(candidata.get("status") or "") == "processando_midias" and candidata.get("recente")
+        for candidata in candidatas
+    )
+    return None, aguardar
+
+
+async def _reusar_material_identico(
+    *,
+    session: AsyncSession,
+    repo: ConteudoPersonalizadoRepository,
+    ctx: dict[str, Any],
+    existing: dict[str, Any] | None,
+    classe_id: int,
+    topico_id: int,
+    conteudo_id: int,
+    perfil: str,
+    stale_processing_min: int,
+) -> dict[str, Any] | None:
+    """A camada antes da expansao: conteudo identico se vincula, nao gera.
+
+    Devolve o desfecho do target, ou None para seguir o fluxo normal. Fica antes do retry de
+    proposito: alvo com falha na propria linha tambem vincula, se ja houver material pronto.
+    """
+    impressao = str(ctx["impressao_conteudo"])
+    if existing and not _motivos_de_midia_incompleta(
+        existing,
+        generation_key=_build_generation_key(
+            ciclo_id=existing.get("ciclo_id"),
+            source_hash=existing.get("source_hash"),
+        ),
+    ):
+        # Linha anterior a esta camada: passa a servir de origem.
+        await repo.gravar_impressao(record_id=int(existing["id"]), impressao=impressao)
+        await session.commit()
+        return None
+
+    origem, aguardar = await _decidir_reuso(
+        repo=repo,
+        impressao=impressao,
+        perfil=perfil,
+        classe_id=classe_id,
+        topico_id=topico_id,
+        conteudo_id=conteudo_id,
+        stale_processing_min=stale_processing_min,
+    )
+    if origem is not None:
+        vinculado_id = await repo.vincular_a_origem(
+            origem_id=int(origem["id"]),
+            classe_id=classe_id,
+            topico_id=topico_id,
+            conteudo_id=conteudo_id,
+            perfil=perfil,
+            ciclo_id=str(ctx["ciclo_id"]),
+            source_hash=str(ctx.get("source_hash") or ""),
+            impressao=impressao,
+        )
+        await session.commit()
+        if vinculado_id is not None:
+            logger.info(
+                "personalizacao vinculada sem gerar: personalizacao_id=%s origem=%s "
+                "topico=%s conteudo=%s perfil=%s",
+                vinculado_id,
+                origem["id"],
+                topico_id,
+                conteudo_id,
+                perfil,
+            )
+            record = await repo.buscar_por_id(int(vinculado_id))
+            if record:
+                return {"record": record, "vinculado_de": int(origem["id"])}
+        return None
+    if aguardar:
+        await session.commit()
+        return {"deferred": True, "record": existing, "reason": _MOTIVO_ESPERA_IRMA}
+    return None
+
+
 async def _cleanup_target(
     *,
     session: AsyncSession,
@@ -1765,6 +1898,21 @@ async def _process_media_render_target(
         source_hash=str(ctx["source_hash"] or ""),
         dono=aluno_id,
     )
+    impressao = ctx.get("impressao_conteudo") if aluno_id is None and conteudo_id is not None else None
+    if impressao:
+        desfecho_reuso = await _reusar_material_identico(
+            session=session,
+            repo=repo,
+            ctx=ctx,
+            existing=existing,
+            classe_id=classe_id,
+            topico_id=topico_id,
+            conteudo_id=int(conteudo_id),
+            perfil=target_profile_key,
+            stale_processing_min=_effective_stale_processing_min(app.state.settings),
+        )
+        if desfecho_reuso is not None:
+            return desfecho_reuso
     if existing:
         existing_status = str(existing.get("status") or "").strip().lower()
         retry_failed = existing_status in {"failed", "falha"}
@@ -1856,6 +2004,8 @@ async def _process_media_render_target(
                 "reason": "geracao_atual_em_processamento",
             }
         existing = claimed
+        if impressao:
+            await repo.gravar_impressao(record_id=int(existing["id"]), impressao=str(impressao))
         completed_claimed = await _normalize_completed_generation_status(
             repo=repo,
             record=existing,
@@ -1892,6 +2042,9 @@ async def _process_media_render_target(
             # (#652).
             if enriquecimento_gravado is not None:
                 return enriquecimento_gravado
+            reaproveitado = await _enriquecimento_reaproveitado(app, ctx)
+            if reaproveitado is not None:
+                return reaproveitado
             return await enrich_content_blocks(
                 context=ctx,
                 settings=app.state.settings,
@@ -2001,6 +2154,7 @@ async def _process_media_render_target(
         brainhex_profile_key=target_profile_key,
         ciclo_id=str(ctx["ciclo_id"]),
         source_hash=str(ctx.get("source_hash") or ""),
+        impressao_conteudo=str(impressao) if impressao else None,
     )
     if claimed_new is False:
         return {
@@ -2020,6 +2174,9 @@ async def _process_media_render_target(
     )
 
     async def _enrich_fresh() -> dict[str, Any]:
+        reaproveitado = await _enriquecimento_reaproveitado(app, ctx)
+        if reaproveitado is not None:
+            return reaproveitado
         return await enrich_content_blocks(
             context=ctx,
             settings=app.state.settings,
@@ -2445,6 +2602,10 @@ async def _prewarm_shared_content_enrichments(
         )
 
         async def _enrich() -> dict[str, Any]:
+            # Tem de vir antes do modelo: o prewarm roda antes de cada alvo decidir se vincula.
+            reaproveitado = await _enriquecimento_reaproveitado(app, context)
+            if reaproveitado is not None:
+                return reaproveitado
             return await enrich_content_blocks(
                 context=copy.deepcopy(context),
                 settings=app.state.settings,

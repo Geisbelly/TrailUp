@@ -286,6 +286,28 @@ Cada perfil carrega:
     da turma inteira, com a mesma coalescência e o mesmo portão de geração manual do editor.
   - Cards não recebem o arco: são reaproveitados entre perfis e gerações, e ficariam com
     histórias diferentes lado a lado.
+  > **Conteúdo idêntico se vincula, não gera** (`20261104_08`, spec
+  > `2026-11-04-reuso-de-personalizacao-design.md`). Antes da expansão, o worker
+  > compara `impressao_conteudo` (`reuso_personalizacao.py`): SHA-256 do que entra
+  > na geração, **sem nenhum id, URL ou caminho**, com o hash dos bytes de cada
+  > arquivo. `source_hash` não serve para isso porque inclui os ids. Nome,
+  > descrição e objetivo do tópico ficam de fora por decisão: só o conteúdo importa.
+  > Bateu, `trailup_vincular_personalizacao` cria a linha da turma citando os
+  > **mesmos arquivos** da origem, sem modelo, microservice nem TTS.
+  >
+  > **A linha da turma é o vínculo**: uma linha por turma, de propósito. RLS,
+  > gateway, retenção, trava do estudo, progresso e telemetria continuam por linha
+  > da turma, e o app instalado funciona sem mudança. Um caminho
+  > `brainhex/<perfil>/classe-N/...` **não prova mais** que o material é da turma N.
+  >
+  > Editar desvincula só a linha editada: o gatilho `trg_conteudo_personalizado_reuso`
+  > zera as duas colunas quando `source_hash` muda. O material da outra turma não
+  > muda, e o arquivo fica enquanto alguém o citar (`_ainda_usado`). O gatilho também
+  > impede a forja: cliente não muda essas colunas, e mudar `materiais` por ele marca
+  > `editado`. Sem isso, com o reuso entre professores, uma linha adulterada serviria
+  > material a outra turma. Refinar à mão (`regenerar/documento`, `regenerar/slide`)
+  > marca `editado` também: não serve de origem.
+
 - `cards_personalizados`, `atividades_personalizadas`, `questoes_personalizadas` — artefatos desnormalizados (com `ativo`/`obsoleto_em`).
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona
