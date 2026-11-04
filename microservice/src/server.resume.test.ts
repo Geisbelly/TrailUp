@@ -305,11 +305,12 @@ test("retomada de material antigo sem roteiro guardado: refaz SÓ o roteiro, nã
   const texto = eventos.filter((e) => e.tipo === "texto");
   assert.equal(texto.length, 1, "uma chamada, só de roteiro");
   assert.doesNotMatch(texto[0].detalhe, /markdown/, "o schema pedido é só o do roteiro");
-  // Junção: os dois blocos curtos viram UMA parte de áudio, uma chamada de TTS.
-  assert.equal(eventos.filter((e) => e.tipo === "tts").length, 1);
+  // Junção por bloco: tópicos diferentes, um não continua o outro — cada
+  // bloco é o seu áudio, mesmo curto (a junção não empacota só por tamanho).
+  assert.equal(eventos.filter((e) => e.tipo === "tts").length, 2);
   assert.equal(materiais.audio.metadata.status, "completed");
-  assert.equal(materiais.audio.partes.length, 1);
-  assert.doesNotMatch(materiais.audio.partes[0].roteiro, /##/);
+  assert.equal(materiais.audio.partes.length, 2);
+  for (const parte of materiais.audio.partes) assert.doesNotMatch(parte.roteiro, /##/);
   assert.deepEqual(eventos.filter((e) => e.tipo === "deck"), []);
 });
 

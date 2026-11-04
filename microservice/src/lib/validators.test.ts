@@ -103,7 +103,7 @@ const validBody = () => ({
   aluno_id:  "aluno-uuid",
   content_blocks: [validContentBlock()],
   presentation_theme: {
-    version: "slidesgo-editorial-v3",
+    version: "trailup-deck-v4",
     subject: "Redes de computadores",
     style_name: "Blueprint Estratégico",
     art_direction: "grade editorial e diagramas conectados",

@@ -1,3 +1,5 @@
+import type { BrainHexProfile } from "../constants/brainHex";
+
 // Junção de blocos do áudio (#652): o que vai para o TTS sai daqui, não da
 // divisão do markdown.
 //
@@ -19,11 +21,38 @@
 // frases, nunca no meio de palavra. O app e o console tratam as partes de
 // áudio como lista própria (título e "Parte X de N"), sem amarrar à parte de
 // markdown, então elas não precisam ter a mesma contagem.
+//
+// Junção por BLOCO, não por tamanho (03/11). A versão acima empacotava as
+// seções em ordem até ~3.600 caracteres, sem saber de que bloco cada uma
+// vinha: o número de áudios era só o comprimento do roteiro dividido pelo
+// alvo. Medido no conteúdo 282 (turma 68): socializer e survivor com 8 blocos
+// de texto e 2 áudios; daredevil 7 e 7, por acaso. Os títulos "## …" que o
+// modelo escreve também não servem para agrupar — o survivor repetiu "O que é
+// uma fração" nas 12 seções.
+//
+// Agora o ponto de partida é uma parte por bloco pedagógico do perfil. Bloco
+// só se junta ao vizinho quando é curto demais para ficar sozinho E é
+// continuação dele (mesmo bloco ou mesmo tópico do enriquecimento), sem passar
+// do teto. Bloco longo nunca absorve o seguinte só porque cabe. O tamanho
+// muda por perfil (AUDIO_JUNCTION_CONFIG_POR_PERFIL).
+//
+// Custo: o TTS cobra por caractere, e juntar não muda a soma de caracteres.
+// Juntar economiza CHAMADAS, que é o limite do free tier (pedidos por dia).
+// Por isso a junção só junta o que é curto, e não tudo o que cabe.
 
 export interface AudioJunctionSegment {
-  /** Título da seção, para o "Parte X de N: título" do app. */
+  /** Título da seção (o "## …" do roteiro). Vai para a minutagem de imagem. */
   titulo: string;
   audioScript: string;
+  /** Bloco pedagógico de onde a seção veio. Seções do mesmo bloco são uma
+   * unidade só; sem ele, cada seção é um bloco. */
+  blockId?: string;
+  /** Título do bloco (o do texto), para o "Parte X de N: título" do app. */
+  blockTitulo?: string;
+  /** Tópico e tema do bloco no enriquecimento: dizem se um bloco é
+   * continuação do anterior. */
+  topico?: string;
+  tema?: string;
 }
 
 export interface AudioJunctionPart {
@@ -36,11 +65,12 @@ export interface AudioJunctionPart {
 }
 
 export interface AudioJunctionConfig {
-  /** Tamanho que a junção procura atingir por parte. */
+  /** Tamanho de cada pedaço quando um bloco maior que o teto é dividido. */
   targetChars: number;
   /** Teto duro de uma parte (uma chamada de TTS). */
   maxChars: number;
-  /** Parte final menor que isto é juntada à anterior, se couber no teto. */
+  /** Bloco menor que isto é curto demais para ser um áudio sozinho: junta-se
+   * ao vizinho, se for continuação dele e couber no teto. */
   minChars: number;
 }
 
@@ -61,23 +91,40 @@ function boundedInteger(value: unknown, fallback: number, min: number, max: numb
   return parsed;
 }
 
+// Tamanho por perfil, pelo ritmo de cada assinatura editorial: Daredevil e
+// Achiever são diretos e de ritmo rápido — áudio curto, um objetivo por vez;
+// Mastermind e Seeker aceitam explicação mais longa e encadeada. Socializer é
+// diálogo de duas vozes e fica no padrão. O teto nunca passa de 4.500 (limite
+// de saída do TTS com a voz mais pausada, ver acima).
+export const AUDIO_JUNCTION_CONFIG_POR_PERFIL: Record<BrainHexProfile, AudioJunctionConfig> = {
+  daredevil: { targetChars: 2_600, maxChars: 3_600, minChars: 800 },
+  achiever: { targetChars: 2_800, maxChars: 3_800, minChars: 900 },
+  conqueror: { targetChars: 3_200, maxChars: 4_200, minChars: 1_000 },
+  survivor: { targetChars: 3_200, maxChars: 4_200, minChars: 1_000 },
+  socializer: { targetChars: 3_600, maxChars: 4_500, minChars: 1_200 },
+  seeker: { targetChars: 3_800, maxChars: 4_500, minChars: 1_400 },
+  mastermind: { targetChars: 4_000, maxChars: 4_500, minChars: 1_400 },
+};
+
+/**
+ * Config da junção para um perfil. `AUDIO_JUNCTION_MAX_CHARS` e
+ * `AUDIO_JUNCTION_TARGET_CHARS` continuam valendo como override global, por
+ * cima do valor do perfil.
+ */
 export function resolveAudioJunctionConfig(
   environment: Record<string, string | undefined> = process.env,
+  profile?: BrainHexProfile,
 ): AudioJunctionConfig {
-  const maxChars = boundedInteger(
-    environment.AUDIO_JUNCTION_MAX_CHARS,
-    DEFAULT_AUDIO_JUNCTION_CONFIG.maxChars,
-    1_000,
-    6_000,
-  );
+  const base = (profile && AUDIO_JUNCTION_CONFIG_POR_PERFIL[profile]) || DEFAULT_AUDIO_JUNCTION_CONFIG;
+  const maxChars = boundedInteger(environment.AUDIO_JUNCTION_MAX_CHARS, base.maxChars, 1_000, 6_000);
   const targetChars = Math.min(
     maxChars,
-    boundedInteger(environment.AUDIO_JUNCTION_TARGET_CHARS, DEFAULT_AUDIO_JUNCTION_CONFIG.targetChars, 500, 6_000),
+    boundedInteger(environment.AUDIO_JUNCTION_TARGET_CHARS, base.targetChars, 500, 6_000),
   );
   return {
     targetChars,
     maxChars,
-    minChars: Math.min(targetChars, DEFAULT_AUDIO_JUNCTION_CONFIG.minChars),
+    minChars: Math.min(targetChars, base.minChars),
   };
 }
 
@@ -214,9 +261,69 @@ interface Piece {
   text: string;
 }
 
+/** Um bloco pedagógico (ou um pedaço dele, quando passa do teto). */
+interface Unit {
+  key: string;
+  titulo: string;
+  topico: string;
+  tema: string;
+  pieces: Piece[];
+  chars: number;
+}
+
+function normalizedKey(value: unknown): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function piecesChars(pieces: Piece[], separator: string): number {
+  if (pieces.length === 0) return 0;
+  return pieces.reduce((sum, piece) => sum + piece.text.length, 0) + separator.length * (pieces.length - 1);
+}
+
+/**
+ * Divide um bloco maior que o teto em pedaços de tamanho parecido (perto de
+ * `targetChars`), sem cortar seção a não ser que ela sozinha passe do teto.
+ */
+function splitUnit(unit: Unit, config: AudioJunctionConfig, separator: string): Unit[] {
+  if (unit.chars <= config.maxChars) return [unit];
+  const count = Math.max(2, Math.ceil(unit.chars / config.targetChars));
+  const goal = unit.chars / count;
+  const chunks: Piece[][] = [];
+  let current: Piece[] = [];
+  let currentChars = 0;
+  for (const piece of unit.pieces) {
+    const added = current.length === 0 ? piece.text.length : currentChars + separator.length + piece.text.length;
+    if (current.length > 0 && (added > config.maxChars || currentChars >= goal)) {
+      chunks.push(current);
+      current = [];
+    }
+    currentChars = current.length === 0 ? piece.text.length : currentChars + separator.length + piece.text.length;
+    current.push(piece);
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks.map((pieces) => ({ ...unit, pieces, chars: piecesChars(pieces, separator) }));
+}
+
+/**
+ * B continua A quando é o mesmo bloco (pedaço de um bloco dividido) ou o
+ * mesmo tópico do enriquecimento. O tema só decide quando nenhum dos dois tem
+ * tópico. Sem nada disso, não é continuação: na dúvida, cada bloco é um áudio.
+ */
+function isContinuation(a: Unit, b: Unit): boolean {
+  if (a.key === b.key) return true;
+  if (a.topico || b.topico) return Boolean(a.topico) && a.topico === b.topico;
+  return Boolean(a.tema) && a.tema === b.tema;
+}
+
 /**
  * Junta as seções em partes de áudio. Recebe as seções já na ordem
  * pedagógica; devolve partes com no máximo `maxChars` caracteres cada.
+ *
+ * Uma parte por bloco. Um bloco junta-se ao vizinho só quando um dos dois é
+ * curto demais (`minChars`), um continua o outro e a soma cabe no teto:
+ * - o grupo ainda curto absorve o bloco seguinte;
+ * - um bloco curto prefere ir com o PRÓXIMO; só volta para o anterior quando
+ *   não tem com quem ir adiante (é o último, ou o seguinte não o continua).
  */
 export function joinAudioBlocks(
   segments: AudioJunctionSegment[],
@@ -226,53 +333,65 @@ export function joinAudioBlocks(
   const dialogue = Boolean(style.speakers && style.speakers.length > 0);
   const separator = dialogue ? "\n" : "\n\n";
 
-  const pieces: Piece[] = [];
+  const blocks: Unit[] = [];
   segments.forEach((segment, segmentIndex) => {
     const cleaned = cleanAudioScript(segment.audioScript, style);
     if (!cleaned) return;
+    const key = String(segment.blockId ?? "").trim() || `#secao-${segmentIndex}`;
+    let block = blocks[blocks.length - 1];
+    if (!block || block.key !== key) {
+      block = {
+        key,
+        titulo: String(segment.blockTitulo ?? "").trim() || segment.titulo,
+        topico: normalizedKey(segment.topico),
+        tema: normalizedKey(segment.tema),
+        pieces: [],
+        chars: 0,
+      };
+      blocks.push(block);
+    }
     let activeTag: string | null = null;
     for (const chunk of splitOversized(cleaned, config.maxChars, dialogue)) {
       // Pedaço que começa no meio da seção herda o tom que estava valendo.
       const text = !dialogue && activeTag && !/^\s*\[/.test(chunk) && `${activeTag} ${chunk}`.length <= config.maxChars
         ? `${activeTag} ${chunk}`
         : chunk;
-      pieces.push({ segmentIndex, titulo: segment.titulo, text });
+      block.pieces.push({ segmentIndex, titulo: segment.titulo, text });
       activeTag = lastTag(chunk) ?? activeTag;
+    }
+    block.chars = piecesChars(block.pieces, separator);
+  });
+
+  const units = blocks.flatMap((block) => splitUnit(block, config, separator));
+
+  const groups: Unit[][] = [];
+  const groupChars = (group: Unit[]) => piecesChars(group.flatMap((unit) => unit.pieces), separator);
+  units.forEach((unit, index) => {
+    const group = groups[groups.length - 1];
+    if (group && shouldJoin(group, unit, units[index + 1])) {
+      group.push(unit);
+    } else {
+      groups.push([unit]);
     }
   });
 
-  const groups: Piece[][] = [];
-  let current: Piece[] = [];
-  let currentChars = 0;
-  for (const piece of pieces) {
-    const added = current.length === 0 ? piece.text.length : currentChars + separator.length + piece.text.length;
-    if (current.length > 0 && added > config.targetChars) {
-      groups.push(current);
-      current = [];
-      currentChars = 0;
-    }
-    currentChars = current.length === 0 ? piece.text.length : currentChars + separator.length + piece.text.length;
-    current.push(piece);
-  }
-  if (current.length > 0) groups.push(current);
-
-  // Parte final curta demais vira o fim da anterior, se couber no teto: um
-  // arquivo de 20 s no fim do tópico é um ponto de falha a mais sem ganho.
-  if (groups.length > 1) {
-    const last = groups[groups.length - 1];
-    const lastChars = last.reduce((sum, piece) => sum + piece.text.length, 0) + separator.length * (last.length - 1);
-    const previous = groups[groups.length - 2];
-    const previousChars = previous.reduce((sum, piece) => sum + piece.text.length, 0)
-      + separator.length * (previous.length - 1);
-    if (lastChars < config.minChars && previousChars + separator.length + lastChars <= config.maxChars) {
-      groups.splice(groups.length - 2, 2, [...previous, ...last]);
-    }
+  function shouldJoin(group: Unit[], next: Unit, afterNext: Unit | undefined): boolean {
+    const last = group[group.length - 1];
+    if (!isContinuation(last, next)) return false;
+    const chars = groupChars(group);
+    if (chars + separator.length + next.chars > config.maxChars) return false;
+    if (chars < config.minChars) return true;
+    if (next.chars >= config.minChars) return false;
+    const pairsForward = Boolean(afterNext)
+      && isContinuation(next, afterNext as Unit)
+      && next.chars + separator.length + (afterNext as Unit).chars <= config.maxChars;
+    return !pairsForward;
   }
 
   return groups.map((group, index) => {
     const boundaries: AudioJunctionPart["sectionBoundaries"] = [];
     let audioScript = "";
-    for (const piece of group) {
+    for (const piece of group.flatMap((unit) => unit.pieces)) {
       const start = audioScript ? audioScript.length + separator.length : 0;
       audioScript = audioScript ? `${audioScript}${separator}${piece.text}` : piece.text;
       const previous = boundaries[boundaries.length - 1];
@@ -298,18 +417,29 @@ export function joinAudioBlocks(
  * era jogada fora (o áudio do Socializer da turma 66 começava em "E com essa
  * base…", sem a introdução). Capítulo sem marcador vira uma seção só, com o
  * primeiro título do markdown do capítulo.
+ *
+ * Toda seção sai marcada com o bloco de origem (`blockId`, ou o índice do
+ * capítulo quando ele não vem), o título do bloco e o tópico/tema dele: é o
+ * que a junção usa para agrupar.
  */
 export function audioSegmentsFromChapters(
-  chapters: Array<{ markdown?: string; audioScript: string }>,
+  chapters: Array<{ blockId?: string; markdown?: string; audioScript: string; topico?: string; tema?: string }>,
 ): AudioJunctionSegment[] {
   const segments: AudioJunctionSegment[] = [];
-  for (const chapter of chapters) {
+  chapters.forEach((chapter, chapterIndex) => {
     const script = String(chapter.audioScript ?? "").replace(/\r\n?/g, "\n");
-    const fallbackTitle = firstHeading(chapter.markdown ?? "") ?? "Conteúdo";
+    const blockTitulo = firstHeading(chapter.markdown ?? "") ?? undefined;
+    const fallbackTitle = blockTitulo ?? "Conteúdo";
+    const origem = {
+      blockId: String(chapter.blockId ?? "").trim() || `capitulo-${chapterIndex}`,
+      ...(blockTitulo ? { blockTitulo } : {}),
+      ...(chapter.topico ? { topico: chapter.topico } : {}),
+      ...(chapter.tema ? { tema: chapter.tema } : {}),
+    };
     const markers = [...script.matchAll(/^##[ \t]+(.+?)[ \t#]*$/gm)];
     if (markers.length === 0) {
-      if (script.trim()) segments.push({ titulo: fallbackTitle, audioScript: script });
-      continue;
+      if (script.trim()) segments.push({ titulo: fallbackTitle, audioScript: script, ...origem });
+      return;
     }
     const preamble = script.slice(0, markers[0].index ?? 0);
     markers.forEach((marker, i) => {
@@ -317,9 +447,9 @@ export function audioSegmentsFromChapters(
       const end = i + 1 < markers.length ? (markers[i + 1].index ?? script.length) : script.length;
       const body = script.slice(start, end);
       const text = i === 0 && preamble.trim() ? `${preamble.trim()}\n\n${body}` : body;
-      if (text.trim()) segments.push({ titulo: marker[1].replace(/\s+/g, " ").trim(), audioScript: text });
+      if (text.trim()) segments.push({ titulo: marker[1].replace(/\s+/g, " ").trim(), audioScript: text, ...origem });
     });
-  }
+  });
   return segments;
 }
 
