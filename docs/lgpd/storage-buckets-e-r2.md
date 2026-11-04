@@ -65,6 +65,24 @@ O alembic roda no startup da API, então a migration só cria as funções e as 
 
 **Depois do passo 4, o app nativo antigo** perde as fotos e banners: a referência não é URL. Por isso o passo 3 obriga a atualização antes. Uma falha ao ler `app_config` não bloqueia o app.
 
+## Arquivo apagado junto com o conteúdo (20261104_05, #632)
+
+Decisão de 04/11: arquivo sem uso não fica guardado. Conteúdo apagado pelo console **ou direto no banco** leva os arquivos dele no Storage e no R2.
+
+Um gatilho por comando em cada tabela que guarda caminho de arquivo põe o caminho na `retencao_fila_externa`, nos dois destinos (Storage e R2, mesma chave):
+
+| Tabela | Caminho | Bucket no Storage |
+|---|---|---|
+| `conteudos` | `conteudo` (caminho, URL ou imagem citada no texto), `metadata.files[].path`, `metadata.media_storage_path` | `conteudos` |
+| `midias` / `questoes` / `cards` | `url` / `midia_url` / `imagem_url` | `conteudos` |
+| `conteudo_personalizado` | `materiais.<tipo>.storage_path` e `partes[].storage_path` | `conteudo_aluno` |
+
+- **Apagar** enfileira todo caminho da linha, inclusive na cascata (turma → tópico → conteúdo → mídia/card).
+- **Editar** enfileira só o caminho que deixou de ser citado (trocar a imagem do card, regerar a apresentação com outras partes).
+- **Quem decide é o worker** (`api/app/services/retencao_externa.py`): antes de apagar, confere se outra linha ainda aponta para o arquivo. É isso que protege turma, tópico e atividade duplicados, que apontam para os mesmos caminhos.
+- **Item já processado é reaberto.** Se o arquivo já tinha sido marcado `ainda_referenciado` (a turma original saiu antes da cópia), apagar a cópia reabre o item em vez de ser ignorado pelo `ON CONFLICT`.
+- O worker só roda com `RETENCAO_EXTERNA_ENABLED=true` na API. Desligado, a fila cresce e nada sai do Storage nem do R2.
+
 ## Ciclo de vida do R2
 
 **Regra:** só a telemetria bruta expira sozinha. Nada que o banco referencia tem expiração automática. O arquivo da pesquisa (`pesquisa/`) não expira nunca: é a base da pesquisa, e só sai quando o aluno pede exclusão — a conta apagada leva as linhas de `pesquisa_arquivo` e o gatilho põe os objetos na fila (`api/tests/test_r2_ciclo_de_vida.py` garante que nenhuma regra o alcança). Esses arquivos saem pelo expurgo (`retencao_fila_externa`), que confere se outra linha ainda usa o arquivo.
