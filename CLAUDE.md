@@ -439,6 +439,13 @@ Cada perfil carrega:
   aluno não lê; o professor só atualiza `status`/`motivo_descarte`/`resolved_at`
   (GRANT por coluna) — nunca o texto que a IA gravou. Sem modelo disponível,
   nada é gravado: não existe insight "de reserva".
+- **XP é `eventos_aluno.valor` sem `fora_do_xp`** (`20261103_15`, #154). Duelo contra adversário
+  (existe equipe 2) não entra em XP: vale no critério `ranqueada`, no Elo e nas moedas, e recusar
+  batalha não custa rank, faixa nem nota. A marca é carimbada por gatilho na escrita e o cliente não a
+  escolhe. Desafio cooperativo continua no XP. **Conta nova de XP tem de filtrar `NOT fora_do_xp`**:
+  hoje são cinco (`pontuacao` do rank, apuração do evento, `aluno_faixa_xp`, `fn_xp_da_matricula` e
+  `professor_notas_da_turma`). Não troque a coluna por função dentro da view do ranking: ela pediria
+  EXECUTE para o cliente, e foi assim que o ranking deu `42501` em 29/10.
 - `alteracao_professor` + `alteracao_aluno` — o professor mudou um conteúdo ou
   uma atividade que algum aluno já viu ou fez (`20261101_12`). **O banco
   registra** (gatilho nas quatro tabelas do editor e em `questao_gabarito`, só
