@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { EsqueletoBloco, EsqueletoGrupo } from "@/components/carregamento/Esqueleto";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
+import type { ProfileShellPalette } from "@/utils/profileShellPalette";
 import { alunoAtual } from "@/services/social/guildService";
 import { carregarEventosDaTurma } from "@/services/eventos/eventosDaTurma";
 import { RankDoEvento } from "./RankDoEvento";
@@ -19,6 +20,8 @@ import {
 
 type Props = {
   classeId: number;
+  /** Paleta do perfil: o rank do evento usa a arena e o destaque de cada perfil. */
+  palette: ProfileShellPalette;
   accent: string;
   textColor: string;
   mutedColor: string;
@@ -43,7 +46,7 @@ function dataCurta(iso: string | null): string {
  * O cartão não aparece quando não há evento visível — e "não há" inclui o evento em rascunho,
  * que a RLS esconde. Mostrar uma caixa vazia anunciaria algo que o aluno não pode ver.
  */
-export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surfaceColor, borderColor }: Props) {
+export function EventoDaTurma({ classeId, palette, accent, textColor, mutedColor, surfaceColor, borderColor }: Props) {
   const [evento, setEvento] = useState<Evento | null>(null);
   const [meuId, setMeuId] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -129,6 +132,17 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
   const minha = minhaPosicao(e, meuId);
   const podio = podioDoEvento(e);
   const janela = [dataCurta(e.inicio), dataCurta(e.fim)].filter(Boolean).join(" a ");
+  // O rank do evento é um cartão próprio, logo abaixo do evento, e não some na sanfona:
+  // entrar e sair precisam estar à vista para valer o "é opcional" (#155).
+  const comRank = (cartao: React.ReactNode) =>
+    e.temRank ? (
+      <View style={s.pilha}>
+        {cartao}
+        <RankDoEvento evento={e} classeId={classeId} meuId={meuId} palette={palette} />
+      </View>
+    ) : (
+      cartao
+    );
 
   // Web em tela larga (#508, protótipo v4 06-social): o evento aberto, sem sanfona, com a
   // modalidade, os números em grade e o atalho para as missões na trilha.
@@ -140,7 +154,7 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
       e.moedas > 0 ? `+${e.moedas} moedas` : null,
       e.recompensa,
     ].filter(Boolean);
-    return (
+    return comRank(
       <View style={[s.caixa, s.caixaLarga, { backgroundColor: surfaceColor, borderColor: andamento ? accent : borderColor }]}>
         <View style={s.topoLargo}>
           <View style={[s.chip, { backgroundColor: andamento ? "rgba(98,219,155,0.16)" : "rgba(144,148,157,0.16)" }]}>
@@ -204,10 +218,6 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
           </View>
         ) : null}
 
-        {e.temRank ? (
-          <RankDoEvento evento={e} meuId={meuId} accent={accent} textColor={textColor} mutedColor={mutedColor} borderColor={borderColor} largo />
-        ) : null}
-
         {recompensas.length || (andamento && e.missoes.length) ? (
           <View style={[s.pe, { borderTopColor: borderColor }]}>
             <Text style={[s.detalheLargo, s.flex, { color: mutedColor }]}>{recompensas.join(" · ")}</Text>
@@ -227,7 +237,7 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
     );
   }
 
-  return (
+  return comRank(
     <View style={[s.caixa, { backgroundColor: surfaceColor, borderColor }]}>
       <Pressable style={s.cabecalho} onPress={() => setAberto((v) => !v)}>
         <MaterialCommunityIcons name="trophy-outline" size={20} color={accent} />
@@ -304,10 +314,6 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
               A classificação sai quando o professor encerrar o evento.
             </Text>
           )}
-
-          {e.temRank ? (
-            <RankDoEvento evento={e} meuId={meuId} accent={accent} textColor={textColor} mutedColor={mutedColor} borderColor={borderColor} />
-          ) : null}
         </View>
       ) : null}
     </View>
@@ -315,6 +321,7 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
 }
 
 const s = StyleSheet.create({
+  pilha: { gap: 12 },
   esqueletoLargo: { flex: 1, flexDirection: "row", alignItems: "center", gap: 14 },
   esqueletoLinha: { marginTop: 6 },
   caixa: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 10 },

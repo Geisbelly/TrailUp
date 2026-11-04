@@ -1,3 +1,5 @@
+import { normalizeBrainHexProfile, type BrainHexProfile } from "@/constants/brainHexProfiles";
+
 /**
  * O evento da turma como o aluno o vê.
  *
@@ -220,7 +222,15 @@ export function rankingDasGuildas(
 // (`evento_classe_inscrever` / `_sair`); só valem com o evento aberto e antes do fim. Entrar não
 // muda nota nem XP: o duelo saiu do XP na fase 1 (`20261103_15`).
 
-export type LinhaDoRank = { posicao: number; alunoId: string; nome: string; pontos: number; eu: boolean };
+export type LinhaDoRank = {
+  posicao: number;
+  alunoId: string;
+  nome: string;
+  pontos: number;
+  eu: boolean;
+  /** `percentual_do_lider` da view: nulo abaixo de 8 no rank, com líder sem ponto e no Elo (#155). */
+  percentualDoLider: number | null;
+};
 
 export type RankDoEvento = { rankId: number; nome: string; criterio: string; linhas: LinhaDoRank[] };
 
@@ -259,6 +269,7 @@ export function montarRanksDoEvento(ranks: unknown, posicoes: unknown, meuId: st
       nome: textoOuNulo(row.nome_aluno) ?? "Colega",
       pontos: numero(row.pontuacao),
       eu: alunoId === meuId,
+      percentualDoLider: row.percentual_do_lider == null || !Number.isFinite(Number(row.percentual_do_lider)) ? null : Number(row.percentual_do_lider),
     };
     linhasPorRank.set(rankId, [...(linhasPorRank.get(rankId) ?? []), linha]);
   }
@@ -285,11 +296,160 @@ export function montarRanksDoEvento(ranks: unknown, posicoes: unknown, meuId: st
     });
 }
 
-/** As primeiras posições e, se eu fiquei de fora delas, a minha linha. */
-export function linhasVisiveis(rank: RankDoEvento, quantas = 5): LinhaDoRank[] {
-  const topo = rank.linhas.slice(0, quantas);
-  const eu = rank.linhas.find((l) => l.eu);
-  return eu && !topo.includes(eu) ? [...topo, eu] : topo;
+// --- Desenho do rank no app (docs/superpowers/specs/2026-11-04-rank-do-evento-no-app-desenho.md) ---
+
+/** O que vem entre o pódio e o fim: um acima, eu, um abaixo, e onde a lista pula. */
+export type ItemDaVizinhanca = { tipo: "linha"; linha: LinhaDoRank } | { tipo: "salto"; chave: string };
+
+/**
+ * Rank relativo: quem está logo acima e logo abaixo de mim, fora do pódio (o pódio já mostra os três
+ * primeiros). Rank absoluto desanima quem está embaixo e o relativo não (Li et al., 2024). Vazio se
+ * eu não estou no rank ou se já estou no pódio.
+ */
+export function vizinhanca(rank: RankDoEvento): ItemDaVizinhanca[] {
+  const i = rank.linhas.findIndex((l) => l.eu);
+  const podio = rank.linhas.filter((l) => l.posicao <= 3).length;
+  if (i < 0 || i < podio) return [];
+  const ini = Math.max(podio, i - 1);
+  const fim = Math.min(rank.linhas.length, i + 2);
+  const itens: ItemDaVizinhanca[] = rank.linhas.slice(ini, fim).map((linha) => ({ tipo: "linha", linha }));
+  if (ini > podio) itens.unshift({ tipo: "salto", chave: "antes" });
+  if (fim < rank.linhas.length) itens.push({ tipo: "salto", chave: "depois" });
+  return itens;
+}
+
+/**
+ * A ênfase de cada perfil no rank do evento. A cor, a arena, a moldura e a medalha vêm do tema, como
+ * no app inteiro; aqui fica o que aparece primeiro e o que a frase destaca. Mesmas fontes e mesmo
+ * aviso de `socialDestaque.ts`: Nacke, Bateman e Mandryk (2014) para a motivação de cada arquétipo,
+ * Orji, Vassileva e Mandryk (2014) para "a mesma estratégia ajuda um perfil e atrapalha outro".
+ * Ponto de partida, para medir — não verdade.
+ */
+export type FocoDoRank = "rival" | "meta" | "regra" | "gente" | "seguro" | "explorar";
+export type BlocoDoRank = "foco" | "podio" | "vizinhanca";
+
+const ENFASE_DO_RANK: Record<BrainHexProfile, { foco: FocoDoRank; ordem: readonly BlocoDoRank[] }> = {
+  conqueror: { foco: "rival", ordem: ["foco", "podio", "vizinhanca"] }, // vencer quem está acima
+  daredevil: { foco: "rival", ordem: ["foco", "podio", "vizinhanca"] }, // a disputa agora
+  achiever: { foco: "meta", ordem: ["foco", "podio", "vizinhanca"] }, // quanto falta para o pódio
+  mastermind: { foco: "regra", ordem: ["foco", "podio", "vizinhanca"] }, // como o número é contado
+  socializer: { foco: "gente", ordem: ["podio", "foco", "vizinhanca"] }, // quem está junto
+  seeker: { foco: "explorar", ordem: ["foco", "podio", "vizinhanca"] }, // os outros critérios
+  // Quem está embaixo sente mais pressão (Li et al., 2024): primeiro quem está perto, depois o topo.
+  survivor: { foco: "seguro", ordem: ["foco", "vizinhanca", "podio"] },
+};
+
+export function enfaseDoRank(perfil: string | null | undefined): { foco: FocoDoRank; ordem: readonly BlocoDoRank[] } {
+  return ENFASE_DO_RANK[normalizeBrainHexProfile(perfil) ?? "mastermind"];
+}
+
+const DESCRICAO_DO_CRITERIO: Record<string, string> = {
+  ranqueada: "pontos de batalha",
+  pontuacao: "pontos",
+  missoes: "missões cumpridas",
+};
+
+function quantidade(valor: number, criterio: string): string {
+  const n = Math.round(valor);
+  if (criterio === "missoes") return `${n} ${n === 1 ? "missão" : "missões"}`;
+  return `${n} ${n === 1 ? "pt" : "pts"}`;
+}
+
+function comPonto(nome: string): string {
+  return /[.!?]$/.test(nome) ? nome : `${nome}.`;
+}
+
+function dia(iso: string | null): string | null {
+  const t = iso ? Date.parse(iso) : NaN;
+  if (!Number.isFinite(t)) return null;
+  const d = new Date(t);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function janelaDoEvento(evento: EventoDaTurma): string {
+  const [ini, fim] = [dia(evento.inicio), dia(evento.fim)];
+  return ini && fim ? `de ${ini} a ${fim}` : fim ? `até ${fim}` : "durante o evento";
+}
+
+export type FraseDoRank = { titulo: string; detalhe: string };
+
+/**
+ * A frase do bloco de foco, pela ênfase do perfil. Só usa o que a view já entrega (posição, pontos,
+ * nomes, quantos entraram e `percentual_do_lider`): nenhum número inventado. `outros` são os demais
+ * ranks do evento, para o Seeker comparar critérios.
+ */
+export function fraseDoRank(
+  perfil: string | null | undefined,
+  evento: EventoDaTurma,
+  rank: RankDoEvento,
+  inscrito: boolean,
+  outros: readonly RankDoEvento[] = [],
+): FraseDoRank {
+  const { foco } = enfaseDoRank(perfil);
+  const L = rank.linhas;
+  const c = rank.criterio;
+  const eu = L.find((l) => l.eu) ?? null;
+  const colegas = L.filter((l) => !l.eu).length;
+  const deColegas = (n: number) => `${n} ${n === 1 ? "colega" : "colegas"}`;
+
+  if (!inscrito || !eu) {
+    if (inscrito) return { titulo: "Você está no rank.", detalhe: "Sua posição aparece assim que a lista atualizar." };
+    const lider = L[0];
+    if (!lider) return { titulo: "Ninguém entrou ainda.", detalhe: "Quem entrar primeiro abre a disputa." };
+    if (foco === "rival") return { titulo: `${lider.nome} lidera com ${quantidade(lider.pontos, c)}.`, detalhe: `${deColegas(L.length)} na disputa agora.` };
+    if (foco === "meta") {
+      const terceiro = L.filter((l) => l.posicao <= 3).at(-1);
+      return L.length < 3 || !terceiro
+        ? { titulo: "O pódio ainda tem lugar.", detalhe: "Entre e veja onde você fica." }
+        : { titulo: `Pódio a partir de ${quantidade(terceiro.pontos, c)}.`, detalhe: "Entre e veja quanto falta para chegar lá." };
+    }
+    if (foco === "regra") return { titulo: `Conta ${DESCRICAO_DO_CRITERIO[c] ?? "pontos"} ${janelaDoEvento(evento)}.`, detalhe: "Só quem entrou aparece, e nada disso vai para a nota." };
+    if (foco === "gente") {
+      const nomes = L.slice(0, 2).map((l) => l.nome);
+      const resto = L.length - nomes.length;
+      const quem = resto > 0 ? `${nomes.join(", ")} e mais ${deColegas(resto)}` : nomes.join(" e ");
+      return { titulo: quem, detalhe: L.length === 1 ? "já entrou no rank." : "já entraram no rank." };
+    }
+    if (foco === "seguro") return { titulo: "É opcional e reversível.", detalhe: "Entrar ou sair não muda sua nota nem seu XP." };
+    const total = outros.length + 1;
+    return total > 1
+      ? { titulo: `${total} jeitos de disputar neste evento.`, detalhe: "Descubra em qual você se sai melhor." }
+      : { titulo: "Um rank novo para explorar.", detalhe: "Entre e veja onde você fica." };
+  }
+
+  if (eu.posicao === 1) {
+    const segundo = L.find((l) => !l.eu && l.posicao > 1);
+    return {
+      titulo: "Você lidera.",
+      detalhe: segundo ? `${segundo.nome} vem ${quantidade(eu.pontos - segundo.pontos, c)} atrás.` : colegas ? "Empatado no topo." : "Ninguém mais entrou ainda.",
+    };
+  }
+  if (foco === "rival") {
+    const acima = [...L].reverse().find((l) => l.posicao < eu.posicao);
+    if (acima) return { titulo: `Faltam ${quantidade(acima.pontos - eu.pontos + 1, c)} para passar ${comPonto(acima.nome)}`, detalhe: `${acima.nome} está em ${acima.posicao}º, com ${quantidade(acima.pontos, c)}.` };
+  }
+  if (foco === "meta") {
+    if (eu.posicao <= 3) return { titulo: "Você está no pódio.", detalhe: dia(evento.fim) ? `Segure o ${eu.posicao}º até ${dia(evento.fim)}.` : `Segure o ${eu.posicao}º até o fim.` };
+    const terceiro = L.filter((l) => l.posicao <= 3).at(-1);
+    if (terceiro) return { titulo: `${quantidade(terceiro.pontos - eu.pontos + 1, c)} para o pódio.`, detalhe: `O ${terceiro.posicao}º lugar tem ${quantidade(terceiro.pontos, c)}.` };
+  }
+  if (foco === "regra")
+    return {
+      titulo: `${quantidade(eu.pontos, c)} ${janelaDoEvento(evento)}.`,
+      detalhe: eu.percentualDoLider != null ? `${Math.round(eu.percentualDoLider)}% do que o líder tem.` : "Com poucos no rank, o percentual do líder não aparece.",
+    };
+  if (foco === "gente")
+    return colegas
+      ? { titulo: `Você e mais ${deColegas(colegas)}.`, detalhe: "Quem entrou aparece aqui, só para a turma." }
+      : { titulo: "Só você por enquanto.", detalhe: "Quem entrar aparece aqui, só para a turma." };
+  if (foco === "explorar") {
+    const melhor = outros
+      .map((r) => ({ r, pos: r.linhas.find((l) => l.eu)?.posicao }))
+      .filter((x): x is { r: RankDoEvento; pos: number } => x.pos != null)
+      .sort((a, b) => a.pos - b.pos)[0];
+    if (melhor) return { titulo: "Veja os outros critérios.", detalhe: `Em ${melhor.r.nome.toLowerCase()} você está em ${melhor.pos}º.` };
+  }
+  return { titulo: "Você está no rank.", detalhe: "Sair é a qualquer hora e não muda nota nem XP." };
 }
 
 /** O que dizer de um erro das RPCs de inscrição. O texto do banco já é para gente (22023). */

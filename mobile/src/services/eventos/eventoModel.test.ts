@@ -3,7 +3,8 @@ import { describe, it } from "node:test";
 import {
   eventoEmDestaque,
   faseDoEvento,
-  linhasVisiveis,
+  enfaseDoRank,
+  fraseDoRank,
   mensagemDaInscricao,
   minhaPosicao,
   montarRanksDoEvento,
@@ -12,7 +13,9 @@ import {
   podioDoEvento,
   rankingDasGuildas,
   rotuloDaFase,
+  vizinhanca,
   type EventoDaTurma,
+  type RankDoEvento,
 } from "./eventoModel";
 
 const AGORA = new Date("2026-10-19T15:00:00Z");
@@ -248,11 +251,76 @@ describe("rank do evento (#155)", () => {
     assert.deepEqual(montarRanksDoEvento(null, posicoes, "eu"), []);
   });
 
-  it("mostra o topo e a minha linha quando fiquei de fora dele", () => {
-    const linhas = Array.from({ length: 8 }, (_, i) => ({ posicao: i + 1, alunoId: `a${i}`, nome: `A${i}`, pontos: 10 - i, eu: i === 6 }));
-    const rank = { rankId: 1, nome: "R", criterio: "ranqueada", linhas };
-    assert.deepEqual(linhasVisiveis(rank, 3).map((l) => l.posicao), [1, 2, 3, 7]);
-    assert.deepEqual(linhasVisiveis({ ...rank, linhas: linhas.slice(0, 2) }, 3).map((l) => l.posicao), [1, 2]);
+  // 12 no rank, eu em 7º: o caso do meio da tabela no protótipo 06b-rank-do-evento.html.
+  const linhasDoRank = (minha: number | null, total = 12, criterio = "ranqueada") =>
+    Array.from({ length: total }, (_, i) => ({
+      posicao: i + 1,
+      alunoId: i + 1 === minha ? "eu" : `a${i + 1}`,
+      nome: i + 1 === minha ? "Eu" : ["Bia P.", "Caio R.", "Duda L.", "Enzo M.", "Flor D.", "Gui N.", "Hana K."][i] ?? `A${i + 1}`,
+      pontos: 60 - i * 7,
+      eu: i + 1 === minha,
+      percentualDoLider: total >= 8 ? Math.round(((60 - i * 7) / 60) * 100) : null,
+    })).map((l) => ({ ...l, criterio }));
+  const rank = (minha: number | null, total = 12, criterio = "ranqueada"): RankDoEvento => ({
+    rankId: 1,
+    nome: "Pontos de batalha",
+    criterio,
+    linhas: linhasDoRank(minha, total, criterio).map(({ criterio: _c, ...l }) => l),
+  });
+  const ev = evento({ pecas: ["arena"], inicio: "2026-11-03T12:00:00Z", fim: "2026-11-10T12:00:00Z" });
+
+  it("vizinhança: um acima, eu e um abaixo, fora do pódio, com os saltos marcados", () => {
+    const itens = vizinhanca(rank(7));
+    assert.deepEqual(itens.map((x) => (x.tipo === "linha" ? x.linha.posicao : x.chave)), ["antes", 6, 7, 8, "depois"]);
+    // Logo abaixo do pódio não há salto antes; no fim da lista não há salto depois.
+    assert.deepEqual(vizinhanca(rank(4)).map((x) => (x.tipo === "linha" ? x.linha.posicao : x.chave)), [4, 5, "depois"]);
+    assert.deepEqual(vizinhanca(rank(12)).map((x) => (x.tipo === "linha" ? x.linha.posicao : x.chave)), ["antes", 11, 12]);
+    // No pódio ou fora do rank, a vizinhança some: o pódio já mostra.
+    assert.deepEqual(vizinhanca(rank(2)), []);
+    assert.deepEqual(vizinhanca(rank(null)), []);
+  });
+
+  it("cada perfil tem ênfase e ordem própria; sem perfil vale a do Mastermind", () => {
+    assert.equal(enfaseDoRank("Conqueror").foco, "rival");
+    assert.equal(enfaseDoRank("achiever").foco, "meta");
+    assert.deepEqual(enfaseDoRank("socializer").ordem, ["podio", "foco", "vizinhanca"]);
+    assert.deepEqual(enfaseDoRank("survivor").ordem, ["foco", "vizinhanca", "podio"]);
+    assert.deepEqual(enfaseDoRank(null), enfaseDoRank("mastermind"));
+    for (const p of ["seeker", "survivor", "daredevil", "mastermind", "conqueror", "socializer", "achiever"])
+      assert.deepEqual([...enfaseDoRank(p).ordem].sort(), ["foco", "podio", "vizinhanca"], p);
+  });
+
+  it("dentro do rank, a frase usa só posição, pontos e nomes da view", () => {
+    assert.deepEqual(fraseDoRank("conqueror", ev, rank(7), true), { titulo: "Faltam 8 pts para passar Gui N.", detalhe: "Gui N. está em 6º, com 25 pts." });
+    assert.deepEqual(fraseDoRank("achiever", ev, rank(7), true), { titulo: "29 pts para o pódio.", detalhe: "O 3º lugar tem 46 pts." });
+    assert.equal(fraseDoRank("achiever", ev, rank(2), true).titulo, "Você está no pódio.");
+    assert.equal(fraseDoRank("mastermind", ev, rank(7), true).titulo, "18 pts de 03/11 a 10/11.");
+    assert.equal(fraseDoRank("mastermind", ev, rank(7), true).detalhe, "30% do que o líder tem.");
+    // Abaixo de 8 a view manda o percentual nulo: a frase não inventa um.
+    assert.match(fraseDoRank("mastermind", ev, rank(4, 5), true).detalhe, /não aparece/);
+    assert.equal(fraseDoRank("socializer", ev, rank(7), true).titulo, "Você e mais 11 colegas.");
+    assert.equal(fraseDoRank("socializer", ev, rank(1, 1), true).titulo, "Você lidera.");
+    assert.deepEqual(fraseDoRank("daredevil", ev, rank(1), true), { titulo: "Você lidera.", detalhe: "Caio R. vem 7 pts atrás." });
+    const missoes: RankDoEvento = { ...rank(3, 12, "missoes"), rankId: 2, nome: "Missões cumpridas" };
+    assert.equal(fraseDoRank("seeker", ev, rank(7), true, [missoes]).detalhe, "Em missões cumpridas você está em 3º.");
+    assert.equal(fraseDoRank("survivor", ev, rank(7), true).titulo, "Você está no rank.");
+    // Inscrito, mas a linha ainda não veio: não finge posição.
+    assert.match(fraseDoRank("conqueror", ev, rank(null), true).detalhe, /assim que a lista atualizar/);
+  });
+
+  it("fora do rank, o convite muda de assunto por perfil", () => {
+    const fora = rank(null, 11);
+    assert.deepEqual(fraseDoRank("conqueror", ev, fora, false), { titulo: "Bia P. lidera com 60 pts.", detalhe: "11 colegas na disputa agora." });
+    assert.equal(fraseDoRank("achiever", ev, fora, false).titulo, "Pódio a partir de 46 pts.");
+    assert.equal(fraseDoRank("achiever", ev, rank(null, 2), false).titulo, "O pódio ainda tem lugar.");
+    assert.equal(fraseDoRank("mastermind", ev, fora, false).titulo, "Conta pontos de batalha de 03/11 a 10/11.");
+    assert.deepEqual(fraseDoRank("socializer", ev, fora, false), { titulo: "Bia P., Caio R. e mais 9 colegas", detalhe: "já entraram no rank." });
+    assert.deepEqual(fraseDoRank("socializer", ev, rank(null, 1), false), { titulo: "Bia P.", detalhe: "já entrou no rank." });
+    assert.equal(fraseDoRank("seeker", ev, fora, false, [rank(null), rank(null)]).titulo, "3 jeitos de disputar neste evento.");
+    assert.equal(fraseDoRank("survivor", ev, fora, false).titulo, "É opcional e reversível.");
+    assert.equal(fraseDoRank("conqueror", ev, rank(null, 0), false).titulo, "Ninguém entrou ainda.");
+    const missoes = { ...rank(null, 11, "missoes"), linhas: rank(null, 11).linhas.map((l) => ({ ...l, pontos: 1 })) };
+    assert.equal(fraseDoRank("conqueror", ev, missoes, false).titulo, "Bia P. lidera com 1 missão.");
   });
 
   it("traduz o erro das RPCs sem inventar motivo", () => {
