@@ -642,8 +642,13 @@ Cada perfil carrega:
   - **prazo nunca apaga o arquivo.** A retenção só tira do Postgres a telemetria de quem consentiu
     depois que a cópia existe (`pesquisa_arquivo_pode_sair`, no `filtro` das políticas), e nada de
     `pesquisa/` entra na fila de exclusão por prazo nem no ciclo de vida do R2;
-  - **pedido do aluno apaga.** A conta apagada leva as linhas em cascata, e o gatilho põe os objetos
-    na `retencao_fila_externa`.
+  - **pedido do aluno apaga — e a pesquisa fica com a cópia anônima** (`20261104_03`). O
+    `BEFORE DELETE` em `alunos` transforma cada objeto de quem consentia num pedido em
+    `pesquisa_anonimizacao` (sal aleatório por exclusão + perfil dominante); o identificável só vai
+    para a `retencao_fila_externa` **depois** que a Edge Function grava a cópia em
+    `pesquisa/anonimo/`, ou quando o pedido passa de 7 dias. Não tente segurar a exclusão pela
+    fila externa: item "ainda referenciado" é marcado como processado e nunca mais volta.
+    Revogar o consentimento de pesquisa apaga o identificável **sem** cópia anônima.
 
   `telemetria/` (o payload que a API tira do Postgres) **não** é o arquivo: é armazenamento primário
   e segue o prazo. Sem FK para turma de propósito — apagar a turma apaga a telemetria em cascata, e o
