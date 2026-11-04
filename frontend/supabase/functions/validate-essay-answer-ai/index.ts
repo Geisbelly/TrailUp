@@ -7,10 +7,10 @@ const CORS = {
 };
 
 const GEMINI_MODEL = "gemini-3.6-flash";
-// #195: menor de 18 (ou sem data de nascimento) nunca vai ao Gemini; so OpenAI.
-const OPENAI_MODEL_DEFAULT = "gpt-4o-mini";
+// #195: a IA do TrailUp e so para maiores de 18. Menor ou sem data de
+// nascimento nao manda a redacao a provedor nenhum (nem Gemini, nem OpenAI).
 const MENSAGEM_IA_INDISPONIVEL =
-  "A IA está indisponível agora. Tente de novo em alguns minutos — suas trilhas, questões e progresso continuam funcionando normalmente.";
+  "A IA do TrailUp é só para maiores de 18 anos. Se você já tem 18, informe sua data de nascimento no app (Perfil › Coleta e acessos). Trilhas, questões e progresso continuam funcionando normalmente.";
 const MAX_CONTENT_CHARS = 12000;
 const MAX_TEXT_CHARS = 5000;
 
@@ -79,7 +79,7 @@ async function requireAuthenticatedUser(req: Request): Promise<AuthClient | null
 }
 
 // #195: adulto confirmado (menor === false) segue no Gemini. Menor, data de
-// nascimento desconhecida (null) ou erro na consulta -> rota de menor (OpenAI).
+// nascimento desconhecida (null) ou erro na consulta -> sem IA.
 // Fail-closed: na duvida, trata como menor.
 async function alunoEhAdultoConfirmado(authClient: AuthClient): Promise<boolean> {
   try {
@@ -269,37 +269,6 @@ async function callGemini(params: {
   return { text, finishReason };
 }
 
-// Rota de menor (#195): OpenAI com store:false (nada guardado na conta para
-// distill/evals). Sem fallback para o Gemini.
-async function callOpenAI(params: {
-  key: string;
-  prompt: string;
-  maxOutputTokens: number;
-  temperature: number;
-}) {
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${params.key}` },
-    body: JSON.stringify({
-      model: Deno.env.get("OPENAI_MODEL_DEFAULT") || OPENAI_MODEL_DEFAULT,
-      store: false,
-      temperature: params.temperature,
-      max_tokens: params.maxOutputTokens,
-      response_format: { type: "json_object" },
-      messages: [{ role: "user", content: params.prompt }],
-    }),
-  });
-  const apiData = (await response.json().catch(() => ({}))) as JsonObject;
-  if (!response.ok) throw new Error(`openai_http_error:${response.status}`);
-  const choice = Array.isArray((apiData as { choices?: unknown }).choices)
-    ? ((apiData as { choices: Array<Record<string, unknown>> }).choices[0] ?? null)
-    : null;
-  const message = choice?.message as { content?: unknown } | undefined;
-  const text = typeof message?.content === "string" ? message.content.trim() : "";
-  const finishReason = typeof choice?.finish_reason === "string" ? choice.finish_reason : null;
-  return { text, finishReason };
-}
-
 function iaIndisponivel(): Response {
   return jsonResponse({ error: "ia_indisponivel", mensagem: MENSAGEM_IA_INDISPONIVEL }, 503);
 }
@@ -324,12 +293,9 @@ serve(async (req) => {
     if (!enunciado) return jsonResponse({ error: "missing_enunciado" }, 400);
     if (!respostaAluno) return jsonResponse({ error: "missing_resposta_aluno" }, 400);
 
-    const rotaDeMenor = !(await alunoEhAdultoConfirmado(authClient));
-    const key = rotaDeMenor ? Deno.env.get("OPENAI_API_KEY") : Deno.env.get("GEMINI_API_KEY");
-    if (!key) {
-      if (rotaDeMenor) return iaIndisponivel();
-      return jsonResponse({ error: "GEMINI_API_KEY not set" }, 500);
-    }
+    if (!(await alunoEhAdultoConfirmado(authClient))) return iaIndisponivel();
+    const key = Deno.env.get("GEMINI_API_KEY");
+    if (!key) return jsonResponse({ error: "GEMINI_API_KEY not set" }, 500);
 
     const contextBlock = buildContextBlock({
       materiaNome: asString(body.materiaNome),
@@ -364,26 +330,16 @@ Regras obrigatorias:
 - pontos_fortes e pontos_melhoria com 1 a 5 itens cada.
 - Retorne SOMENTE JSON valido (sem markdown).`;
 
-    let call: { text: string; finishReason: string | null };
-    if (rotaDeMenor) {
-      try {
-        call = await callOpenAI({ key, prompt, maxOutputTokens: 1800, temperature: 0.2 });
-      } catch {
-        return iaIndisponivel();
-      }
-    } else {
-      call = await callGemini({
-        key,
-        prompt,
-        maxOutputTokens: 1800,
-        temperature: 0.2,
-        responseSchema: ESSAY_EVAL_SCHEMA as unknown as Record<string, unknown>,
-      });
-    }
+    const call = await callGemini({
+      key,
+      prompt,
+      maxOutputTokens: 1800,
+      temperature: 0.2,
+      responseSchema: ESSAY_EVAL_SCHEMA as unknown as Record<string, unknown>,
+    });
 
     const parsed = parseAiJson(call.text);
     if (!parsed) {
-      if (rotaDeMenor) return iaIndisponivel();
       return jsonResponse(
         {
           error: "invalid_ai_response",

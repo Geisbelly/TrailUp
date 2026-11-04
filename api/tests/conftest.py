@@ -110,6 +110,10 @@ def pytest_configure(config) -> None:
         "markers",
         "modo_restrito_real: nao libera o modo restrito (#195); o teste decide o que o banco responde",
     )
+    config.addinivalue_line(
+        "markers",
+        "idade_real: nao trata todo aluno de teste como adulto (#195); usa o decidir_rota de verdade",
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -126,4 +130,24 @@ def _modo_restrito_liberado(request, monkeypatch):
         return {f: True for f in modo_restrito.FINALIDADES}
 
     monkeypatch.setattr(modo_restrito, "finalidades_permitidas", _tudo_permitido)
+    yield
+
+
+@pytest.fixture(autouse=True)
+def _alunos_de_teste_adultos(request, monkeypatch):
+    """A IA e so para adulto confirmado (#195) e a checagem e fail-closed: com o
+    `FakeSession`, que nao responde nada, todo aluno de teste cairia na rota de
+    menor e nenhum fluxo de IA rodaria. Quem testa a regra marca
+    `@pytest.mark.idade_real`."""
+    if request.node.get_closest_marker("idade_real"):
+        yield
+        return
+    from app.api.v1 import personalizacao as personalizacao_api
+    from app.services import roteamento_ia
+
+    async def _adulto(session, aluno_ids):
+        return roteamento_ia.ROTA_PADRAO
+
+    monkeypatch.setattr(roteamento_ia, "decidir_rota", _adulto)
+    monkeypatch.setattr(personalizacao_api, "decidir_rota", _adulto)
     yield

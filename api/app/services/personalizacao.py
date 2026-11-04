@@ -5265,8 +5265,8 @@ async def _invoke_multimodal_materiais(
     if not settings.gemini_api_key:
         return None, {"reason": "missing_gemini_api_key"}
     if rota_de_menor_ativa():
-        # #195: menor -> nada ao Gemini; o chamador segue pelo JsonLLMService (OpenAI).
-        return None, {"reason": "rota_de_menor_somente_openai"}
+        # #195: IA so para adulto confirmado; o chamador cai no fallback local.
+        return None, {"reason": "rota_de_menor_sem_ia"}
 
     materiais_origem = state.get("materiais_origem", []) or []
     topico_context = state.get("topico_contexto") if isinstance(state.get("topico_contexto"), dict) else {}

@@ -149,7 +149,7 @@ export function mensagemDoModo(estado: EstadoConsentimento): string | null {
     return "Informe sua data de nascimento em Perfil › Coleta e acessos para liberar câmera, mentor de IA e telemetria.";
   }
   if (estado.menor) {
-    return "Como você tem menos de 18 anos, câmera, análise de emoções, telemetria, mentor de IA e pesquisa ficam desligados até seu responsável autorizar (no app ou pelo termo em papel entregue ao professor).";
+    return "Como você tem menos de 18 anos, o mentor de IA fica desligado (a IA do TrailUp é só para maiores de 18), e câmera, análise de emoções, telemetria e pesquisa ficam desligados até seu responsável autorizar (no app ou pelo termo em papel entregue ao professor).";
   }
   return MENSAGEM_MODO_RESTRITO;
 }

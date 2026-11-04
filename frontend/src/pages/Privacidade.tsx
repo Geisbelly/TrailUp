@@ -102,10 +102,11 @@ const Privacidade = () => {
                   restrito.
                 </li>
                 <li>
-                  O conteúdo gerado por inteligência artificial para menores, ou para quem não informou a
-                  data de nascimento, usa só a OpenAI, com a opção de não armazenar as conversas ativada.
-                  Para eles ficam desligadas a geração de imagens e a leitura em voz alta por serviços do
-                  Google.
+                  A inteligência artificial do TrailUp é só para maiores de 18 anos. Para menores, ou
+                  para quem não informou a data de nascimento, nenhum dado vai a provedor de
+                  inteligência artificial: ficam desligados o mentor, a correção automática de respostas,
+                  a personalização por aluno, a geração de imagens e a leitura em voz alta, mesmo com a
+                  autorização do responsável.
                 </li>
               </Lista>
             </Secao>
@@ -135,7 +136,7 @@ const Privacidade = () => {
                 <li>Hetzner (servidor da API e análise de imagem da câmera): Estados Unidos</li>
                 <li>Vercel (hospedagem deste site): Estados Unidos e rede global</li>
                 <li>Google Gemini (inteligência artificial, só para maiores de 18 anos confirmados): Estados Unidos e outros países</li>
-                <li>OpenAI (inteligência artificial; única opção para menores): Estados Unidos</li>
+                <li>OpenAI (inteligência artificial de reserva, só para maiores de 18 anos confirmados): Estados Unidos</li>
                 <li>Cloudflare R2 (armazenamento de arquivos): local em confirmação</li>
                 <li>Expo, Google (FCM) e Apple (APNs) (notificações): Estados Unidos</li>
                 <li>Google (envio dos e-mails de contato e de aviso de conta inativa, pelo Gmail): Estados Unidos e outros países</li>

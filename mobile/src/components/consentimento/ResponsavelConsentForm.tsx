@@ -41,7 +41,7 @@ const ITENS: { chave: Finalidade; titulo: string; descricao: string }[] = [
     chave: "mentor",
     titulo: "Mentor de IA",
     descricao:
-      "Conversa com o mentor de IA sobre o estudo. As mensagens são enviadas a um provedor de IA contratado para gerar a resposta.",
+      "Conversa com o mentor de IA sobre o estudo. A IA do TrailUp é só para maiores de 18 anos: mesmo autorizado, o mentor só liga quando o aluno completar 18.",
   },
   {
     chave: "pesquisa",

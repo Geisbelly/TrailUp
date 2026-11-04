@@ -247,9 +247,10 @@ async def test_sem_coletor_aberto_a_busca_nao_quebra():
 
 
 @pytest.mark.asyncio
-async def test_rota_de_menor_com_rag_vai_so_para_a_openai_sem_guardar(monkeypatch):
-    """#195: com RAG, menor continua só na OpenAI, `store=False`, e nunca no Gemini."""
-    from app.services.llm import JsonLLMService
+async def test_rota_de_menor_com_rag_nao_faz_a_busca(monkeypatch):
+    """#195: a IA e so para maiores de 18. Com RAG, menor nao faz a busca nem
+    chama modelo nenhum."""
+    from app.services.llm import JsonLLMService, MenorSemOpenAIError
     from app.services.roteamento_ia import ROTA_MENOR, usar_rota
 
     client = _FakeClient(_resposta_com_busca())
@@ -263,13 +264,13 @@ async def test_rota_de_menor_com_rag_vai_so_para_a_openai_sem_guardar(monkeypatc
 
     llm = JsonLLMService(_settings(llm_provider="gemini"))
     with usar_rota(ROTA_MENOR), coletar_buscas_rag() as buscas:
-        resultado = await llm.ainvoke_structured(
-            prompt_name="mentor_personalizacao_chat.txt",
-            payload={"mensagem": "pergunta"},
-            schema=_Answer,
-            use_rag=True,
-        )
+        with pytest.raises(MenorSemOpenAIError):
+            await llm.ainvoke_structured(
+                prompt_name="mentor_personalizacao_chat.txt",
+                payload={"mensagem": "pergunta"},
+                schema=_Answer,
+                use_rag=True,
+            )
 
-    assert resultado.reply == "confirmado"
-    assert client.responses.calls[0]["store"] is False
-    assert buscas[0]["provider"] == "openai"
+    assert client.responses.calls == []
+    assert buscas == []
