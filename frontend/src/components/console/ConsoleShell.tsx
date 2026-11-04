@@ -5,29 +5,29 @@ import { Shield, Swords } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMinhaConta } from "@/hooks/useMinhaConta";
 import { DESIGN_ART } from "@/lib/design-art";
-import { CONSOLE_SECTIONS, consolePathForView, viewSoDoDono, type ConsoleView } from "@/pages/consoleSections";
+import { CONSOLE_SECTIONS, ROTULO_DA_VIEW, consolePathForView, viewSoDoDono, type ConsoleView } from "@/pages/consoleSections";
 import Escriba from "./escriba/Escriba";
 import SinoDeNotificacoes from "./notificacoes/SinoDeNotificacoes";
 import { useContagemDeRecomendacoes } from "./recomendacoes/useRecomendacoesDaIA";
 import { rotuloDoSelo } from "./recomendacoes/recomendacoes";
 
 const navigation = {
-  dashboard: { label: "Visão geral", icon: LayoutDashboard },
-  recomendacoes: { label: "Recomendações", icon: Lightbulb },
-  trilha: { label: "Trilhas", icon: Route },
-  missoes: { label: "Missões", icon: Flag },
-  conquistas: { label: "Conquistas", icon: Award },
-  notas: { label: "Notas", icon: ClipboardCheck },
-  eventos: { label: "Eventos", icon: CalendarDays },
-  economia: { label: "Economia", icon: Coins },
-  classes: { label: "Turmas", icon: GraduationCap },
-  personalizacoes: { label: "Personalizações", icon: Sparkles },
-  ranks: { label: "Rankings", icon: Trophy },
-  batalhas: { label: "Rank de batalhas", icon: Swords },
-  guildas: { label: "Guildas", icon: Shield },
-  profile: { label: "Meus dados", icon: Settings },
-  aprovacoes: { label: "Aprovações", icon: ShieldCheck },
-  tecnico: { label: "Painel técnico", icon: Activity },
+  dashboard: { label: ROTULO_DA_VIEW.dashboard, icon: LayoutDashboard },
+  recomendacoes: { label: ROTULO_DA_VIEW.recomendacoes, icon: Lightbulb },
+  trilha: { label: ROTULO_DA_VIEW.trilha, icon: Route },
+  missoes: { label: ROTULO_DA_VIEW.missoes, icon: Flag },
+  conquistas: { label: ROTULO_DA_VIEW.conquistas, icon: Award },
+  notas: { label: ROTULO_DA_VIEW.notas, icon: ClipboardCheck },
+  eventos: { label: ROTULO_DA_VIEW.eventos, icon: CalendarDays },
+  economia: { label: ROTULO_DA_VIEW.economia, icon: Coins },
+  classes: { label: ROTULO_DA_VIEW.classes, icon: GraduationCap },
+  personalizacoes: { label: ROTULO_DA_VIEW.personalizacoes, icon: Sparkles },
+  ranks: { label: ROTULO_DA_VIEW.ranks, icon: Trophy },
+  batalhas: { label: ROTULO_DA_VIEW.batalhas, icon: Swords },
+  guildas: { label: ROTULO_DA_VIEW.guildas, icon: Shield },
+  profile: { label: ROTULO_DA_VIEW.profile, icon: Settings },
+  aprovacoes: { label: ROTULO_DA_VIEW.aprovacoes, icon: ShieldCheck },
+  tecnico: { label: ROTULO_DA_VIEW.tecnico, icon: Activity },
 };
 
 // Recomendações, conta e administração ficam no topo, ao lado do sino; o menu lateral fica com as

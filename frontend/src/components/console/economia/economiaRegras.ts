@@ -1,5 +1,22 @@
 /** Regras da economia que a tela precisa decidir antes de chamar o banco. */
 
+export type AbaDaEconomia = "valores" | "alunos" | "prazos" | "loja" | "fundo" | "metas" | "historico";
+
+/** As partes da tela Economia. A Lumi leva o professor a uma delas por `?aba=`. */
+export const ABAS_DA_ECONOMIA: { id: AbaDaEconomia; rotulo: string }[] = [
+  { id: "valores", rotulo: "Valores" },
+  { id: "alunos", rotulo: "Moedas por aluno" },
+  { id: "prazos", rotulo: "Prazos e tempo" },
+  { id: "loja", rotulo: "Loja" },
+  { id: "fundo", rotulo: "Fundo da turma" },
+  { id: "metas", rotulo: "Metas" },
+  { id: "historico", rotulo: "Histórico" },
+];
+
+export function abaDaEconomiaNaUrl(valor: string | null): AbaDaEconomia | null {
+  return ABAS_DA_ECONOMIA.find((a) => a.id === valor)?.id ?? null;
+}
+
 export type Faixa = { min: number; max: number; teto: number; tetoGeral?: number };
 
 export type ResultadoDoUso =
