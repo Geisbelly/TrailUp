@@ -416,7 +416,7 @@ export default function RanksSection() {
             {cabecalho(
               "Rankings ativos",
               "Clique para ver as posições",
-              <Button variant="outline" className="rounded-full font-semibold" onClick={() => abrirRank()} disabled={tipos.length === 0}>
+              <Button data-tutorial="ranking-novo" variant="outline" className="rounded-full font-semibold" onClick={() => abrirRank()} disabled={tipos.length === 0}>
                 <Plus className="mr-2 h-3.5 w-3.5 text-primary" aria-hidden="true" />
                 Novo ranking
               </Button>,

@@ -82,6 +82,7 @@ export function CardDaTurma({
       <div className="flex flex-wrap items-center gap-[9px] border-t border-border pt-4">
         <button
           type="button"
+          data-tutorial="turma-matriculas"
           onClick={onMatriculas}
           className="rounded-full border border-[hsl(var(--console-violet))] bg-[hsl(var(--console-violet)/.16)] px-4 py-[9px] text-[12.5px] font-semibold text-[hsl(var(--console-violet-text))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -89,6 +90,7 @@ export function CardDaTurma({
         </button>
         <button
           type="button"
+          data-tutorial="turma-presenca"
           onClick={onPresenca}
           className="flex items-center gap-1.5 rounded-full border border-border px-4 py-[9px] text-[12.5px] font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >

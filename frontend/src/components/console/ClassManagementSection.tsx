@@ -308,7 +308,7 @@ export default function ClassManagementSection({ professorId }: Props) {
           <h2 className="text-[32px] leading-tight text-foreground">Turmas</h2>
           <p className="mt-2 text-[14.5px] text-muted-foreground">Crie turmas, matricule alunos e abra a trilha de cada uma.</p>
         </div>
-        <Button onClick={() => abrirCriar()} className="ml-auto h-auto rounded-full px-[22px] py-[13px] text-sm font-bold">
+        <Button data-tutorial="turma-nova" onClick={() => abrirCriar()} className="ml-auto h-auto rounded-full px-[22px] py-[13px] text-sm font-bold">
           <Plus className="mr-2 h-4 w-4" aria-hidden="true" /> Nova turma
         </Button>
       </div>

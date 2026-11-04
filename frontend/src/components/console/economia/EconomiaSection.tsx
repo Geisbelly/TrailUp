@@ -114,7 +114,7 @@ export default function EconomiaSection({ professorId }: { professorId?: string 
           )}
           <div role="tablist" aria-label="Partes da economia" className="flex flex-wrap gap-2">
             {ABAS.map((item) => (
-              <Button key={item.id} type="button" role="tab" aria-selected={aba === item.id} variant={aba === item.id ? "default" : "outline"} className="rounded-full" onClick={() => setAba(item.id)}>
+              <Button key={item.id} type="button" role="tab" data-tutorial={`economia-${item.id}`} aria-selected={aba === item.id} variant={aba === item.id ? "default" : "outline"} className="rounded-full" onClick={() => setAba(item.id)}>
                 {item.rotulo}
               </Button>
             ))}

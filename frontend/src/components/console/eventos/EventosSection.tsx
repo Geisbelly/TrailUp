@@ -144,7 +144,7 @@ export default function EventosSection({ professorId }: { professorId?: string }
         subtitulo="Janelas de tempo com missões, desafios e arena, em modalidade individual ou de guilda."
         acao={
           estado === "ok" && turmaId ? (
-            <Button className="rounded-full font-bold" onClick={abrirNovo}>
+            <Button data-tutorial="evento-novo" className="rounded-full font-bold" onClick={abrirNovo}>
               <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               Novo evento
             </Button>

@@ -25,7 +25,8 @@ escolher a turma no topo e, sem turma, manda criar a primeira em Turmas.
 - Rank de batalhas (/console/rank-de-batalhas): duelos entre guildas.
 - Guildas (/console/guildas): formação e acompanhamento das guildas.
 - Meus dados (/console/meus-dados): perfil e conta; abre pelo avatar com o seu nome.
-- A Lumi é o botão flutuante no canto da tela, em todas as abas de trabalho.
+- A Lumi é o botão flutuante no canto da tela, em todas as abas de trabalho. Ela
+  responde com botões que levam à aba certa e abre tutoriais guiados pela tela.
 
 ### Primeiros passos (uma vez por disciplina)
 

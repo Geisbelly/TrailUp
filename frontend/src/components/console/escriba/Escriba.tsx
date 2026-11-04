@@ -1,24 +1,27 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, Maximize2, Minimize2, Send, X } from "lucide-react";
+import { ArrowRight, Maximize2, Minimize2, PlayCircle, Send, X } from "lucide-react";
 import fotoDaLumi from "@/assets/design/lumi.webp";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/apiTraiupClient";
 import { cn } from "@/lib/utils";
 import {
-  destinosParaLinks,
   historicoParaEnvio,
   MENSAGEM_INICIAL,
+  mensagemDaResposta,
   mensagemDeErro,
   nomeDaTurma,
   SUGESTOES,
   TODAS,
   turmaInicial,
+  type Destino,
   type Mensagem,
   type TurmaDoProfessor,
 } from "./conversa";
+import TutorialGuiado from "./TutorialGuiado";
+import { tutorialPorId, type Tutorial } from "./tutoriais";
 
 // Cabe o acordar da API no plano gratuito (a primeira chamada depois de um
 // tempo parado leva dezenas de segundos) mais a resposta do modelo.
@@ -28,7 +31,7 @@ const AVISO_DE_DEMORA_MS = 8_000;
 
 const FOCAVEIS = 'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
-type Resposta = { resposta: string; turmas: number[]; destinos?: string[] };
+type Resposta = Parameters<typeof mensagemDaResposta>[1];
 
 /**
  * Lumi (antes Escriba): botão flutuante bronze + painel de conversa, em todas as telas do
@@ -47,11 +50,13 @@ export default function Escriba() {
   const [pergunta, setPergunta] = useState("");
   const [pensando, setPensando] = useState(false);
   const [demorando, setDemorando] = useState(false);
+  const [tutorial, setTutorial] = useState<Tutorial | null>(null);
   const proximoId = useRef(1);
   const painel = useRef<HTMLDivElement>(null);
   const botao = useRef<HTMLButtonElement>(null);
   const campo = useRef<HTMLTextAreaElement>(null);
   const fim = useRef<HTMLDivElement>(null);
+  const inicioDaResposta = useRef<HTMLDivElement>(null);
   const idPainel = useId();
   const idTitulo = useId();
   const turmaNaUrl = searchParams.get("turma");
@@ -75,8 +80,11 @@ export default function Escriba() {
     if (aberto) campo.current?.focus();
   }, [aberto]);
 
+  // Resposta nova abre pelo começo: em resposta longa, rolar até o fim esconderia as primeiras seções.
   useEffect(() => {
-    fim.current?.scrollIntoView({ block: "end" });
+    const respondeu = !pensando && mensagens.length > 1 && mensagens[mensagens.length - 1].papel === "escriba";
+    if (respondeu) inicioDaResposta.current?.scrollIntoView({ block: "start" });
+    else fim.current?.scrollIntoView({ block: "end" });
   }, [mensagens, pensando]);
 
   useEffect(() => {
@@ -109,11 +117,7 @@ export default function Escriba() {
           },
           TEMPO_LIMITE_MS,
         );
-        const destinos = destinosParaLinks(r?.destinos, turma);
-        setMensagens((m) => [
-          ...m,
-          { id: proximoId.current++, papel: "escriba", texto: r?.resposta?.trim() || "Não consegui formular uma resposta.", destinos },
-        ]);
+        setMensagens((m) => [...m, mensagemDaResposta(proximoId.current++, r, turma)]);
       } catch (e) {
         setMensagens((m) => [...m, { id: proximoId.current++, papel: "escriba", texto: mensagemDeErro(e), erro: true }]);
       } finally {
@@ -121,6 +125,26 @@ export default function Escriba() {
       }
     },
     [mensagens, pensando, turma],
+  );
+
+  // O painel sai da frente da tela que o professor pediu para ver; a conversa fica.
+  const iniciarTutorial = (escolhido: Tutorial | null) => {
+    if (!escolhido) return;
+    setAberto(false);
+    setTelaCheia(false);
+    setTutorial(escolhido);
+  };
+
+  const botaoDeDestino = (d: Destino) => (
+    <Link
+      key={d.caminho}
+      to={d.caminho}
+      onClick={fechar}
+      className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--console-bronze-text))] px-3 py-1.5 text-xs font-semibold text-[hsl(var(--console-bronze-text))] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {d.rotulo}
+      <ArrowRight size={13} aria-hidden="true" />
+    </Link>
   );
 
   const trocarTurma = (valor: string) => {
@@ -227,41 +251,54 @@ export default function Escriba() {
 
           <div role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversa com a Lumi" className="flex min-h-[140px] flex-1 flex-col gap-3 overflow-y-auto px-[18px] py-4">
             {mensagens.map((m) => {
-              const fala = (
-              <p
-                key={m.id}
-                className={cn(
-                  "whitespace-pre-wrap text-[13px] leading-normal",
-                  m.papel === "professor"
-                    ? "ml-8 self-end rounded-[14px] rounded-br-sm bg-muted px-3 py-2 text-foreground"
-                    : m.erro
-                      ? "rounded-[14px] border border-destructive/50 px-3 py-2 text-foreground"
-                      : "text-foreground",
-                )}
-              >
-                <span className="sr-only">{m.papel === "professor" ? "Você: " : "Lumi: "}</span>
-                {m.texto}
-              </p>
-              );
+              const comSecoes = Boolean(m.secoes?.length);
+              const fala = (comSecoes ? m.introducao : m.texto) ? (
+                <p
+                  key={m.id}
+                  className={cn(
+                    "whitespace-pre-wrap text-[13px] leading-normal",
+                    m.papel === "professor"
+                      ? "ml-8 self-end rounded-[14px] rounded-br-sm bg-muted px-3 py-2 text-foreground"
+                      : m.erro
+                        ? "rounded-[14px] border border-destructive/50 px-3 py-2 text-foreground"
+                        : "text-foreground",
+                  )}
+                >
+                  <span className="sr-only">{m.papel === "professor" ? "Você: " : "Lumi: "}</span>
+                  {comSecoes ? m.introducao : m.texto}
+                </p>
+              ) : null;
               if (m.papel === "professor") return fala;
               return (
-                <div key={m.id} className="flex items-start gap-2">
+                <div key={m.id} ref={m === mensagens[mensagens.length - 1] ? inicioDaResposta : undefined} className="flex scroll-mt-1 items-start gap-2">
                   <img src={fotoDaLumi} alt="" aria-hidden="true" className="mt-0.5 h-6 w-6 flex-none rounded-full bg-muted object-cover" />
                   <div className="min-w-0 flex-1">
                     {fala}
+                    {comSecoes && (
+                      <ul className="mt-2 flex list-none flex-col gap-2">
+                        {m.secoes?.map((s) => (
+                          <li key={s.titulo} className="rounded-[14px] border border-border bg-muted/40 px-3 py-2.5">
+                            <h3 className="text-[13px] font-semibold text-[hsl(var(--console-bronze-text))]">{s.titulo}</h3>
+                            <p className="mt-0.5 whitespace-pre-wrap text-[12.5px] leading-normal text-foreground">{s.texto}</p>
+                            {s.destino && <div className="mt-2">{botaoDeDestino(s.destino)}</div>}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     {m.destinos && m.destinos.length > 0 && (
                       <nav aria-label="Ir para o console" className="mt-2 flex flex-wrap gap-2">
-                        {m.destinos.map((d) => (
-                          <Link
-                            key={d.caminho}
-                            to={d.caminho}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--console-bronze-text))] px-3 py-1.5 text-xs font-semibold text-[hsl(var(--console-bronze-text))] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          >
-                            {d.rotulo}
-                            <ArrowRight size={13} aria-hidden="true" />
-                          </Link>
-                        ))}
+                        {m.destinos.map(botaoDeDestino)}
                       </nav>
+                    )}
+                    {m.tutorial && (
+                      <button
+                        type="button"
+                        onClick={() => iniciarTutorial(m.tutorial ?? null)}
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[hsl(var(--console-bronze-light))] px-3 py-1.5 text-xs font-bold text-[hsl(var(--background))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <PlayCircle size={14} aria-hidden="true" />
+                        Me mostre: {m.tutorial.titulo}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -279,6 +316,14 @@ export default function Escriba() {
             )}
             {!conversou && (
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => iniciarTutorial(tutorialPorId("conhecer_console"))}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[hsl(var(--console-bronze-light))] px-3 py-[7px] text-xs font-bold text-[hsl(var(--background))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <PlayCircle size={14} aria-hidden="true" />
+                  Conhecer o console
+                </button>
                 {SUGESTOES.map((s) => (
                   <button
                     key={s}
@@ -343,6 +388,8 @@ export default function Escriba() {
           </form>
         </div>
       , document.body)}
+
+      {tutorial && <TutorialGuiado tutorial={tutorial} turma={turma} onFechar={() => setTutorial(null)} />}
 
       <div className="escriba fixed bottom-[max(20px,env(safe-area-inset-bottom))] right-4 z-50 sm:bottom-7 sm:right-8">
         <button
