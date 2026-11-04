@@ -7,6 +7,7 @@ import {
   dataDoFechamento,
   detalheDaExclusao,
   mensagemDaExclusao,
+  ehRankDaTurma,
   estaAberto,
   mensagemDoNovoPeriodo,
   periodosDoMesmoRanking,
@@ -234,5 +235,16 @@ describe("excluir ranking com histórico", () => {
     expect(detalheDaExclusao(aberto, [aberto, fechado])).toMatch(/continuam no histórico/);
     expect(detalheDaExclusao(aberto, [aberto, { ...fechado, classe_id: 66 }])).not.toMatch(/histórico/);
     expect(detalheDaExclusao(aberto, [aberto])).not.toMatch(/histórico/);
+  });
+});
+
+describe("ehRankDaTurma", () => {
+  it("tira o rank do evento da tela de rankings e mantém o resto", () => {
+    const ranks = [
+      { id: 1, evento_id: null },
+      { id: 2, evento_id: "a3c1f0de-0000-4000-8000-000000000001" },
+      { id: 3 }, // antes da 20261104_01 a coluna não vem
+    ];
+    expect(ranks.filter(ehRankDaTurma).map((r) => r.id)).toEqual([1, 3]);
   });
 });

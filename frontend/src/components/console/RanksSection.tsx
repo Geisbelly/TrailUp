@@ -19,6 +19,7 @@ import {
   dataDoFechamento,
   detalheDaExclusao,
   mensagemDaExclusao,
+  ehRankDaTurma,
   estaAberto,
   mensagemDoNovoPeriodo,
   periodosDoMesmoRanking,
@@ -52,6 +53,8 @@ interface Rank {
   /** `20261021_16`: janela do período. `fim` nulo = período atual; preenchido = histórico. */
   inicio?: string | null;
   fim?: string | null;
+  /** `20261104_01`: rank do evento. Fica fora desta tela (`ehRankDaTurma`). */
+  evento_id?: string | null;
 }
 
 interface Classe {
@@ -131,7 +134,8 @@ export default function RanksSection() {
 
       setTipos((tiposData as RankTipo[]) ?? []);
       setClasses((classesData as Classe[]) ?? []);
-      const lista = (ranksData as Rank[]) ?? [];
+      // Filtro no cliente, e não `.is("evento_id", null)`: antes da `20261104_01` a coluna não existe.
+      const lista = ((ranksData as Rank[]) ?? []).filter(ehRankDaTurma);
       setRanks(lista);
       // Mantém o ranking aberto depois de salvar/excluir outro; só cai no primeiro se o atual sumiu.
       setSelectedRank((atual) => lista.find((r) => r.id === atual?.id) ?? lista.find(estaAberto) ?? lista[0] ?? null);

@@ -99,6 +99,25 @@ function buildApresentacaoMetadata(params: {
   };
 }
 
+/**
+ * A apresentacao gravada e' desta geracao e desta versao do deck? So' entao
+ * as partes dela entram na agregacao. Os campos sao os que a RPC
+ * `merge_personalizacao_materiais_v2` compara para preservar um `completed`.
+ */
+export function apresentacaoDaMesmaVersao(
+  metadata: Record<string, unknown> | null | undefined,
+  versao: PresentationVersionMetadata,
+  generationKey: string,
+): boolean {
+  if (!metadata) return false;
+  return (
+    metadata.generation_key === generationKey &&
+    metadata.engine === versao.engine &&
+    metadata.design_system === versao.design_system &&
+    metadata.media_pipeline_version === versao.media_pipeline_version
+  );
+}
+
 export function computeAggregatedApresentacaoEntry(
   currentPartes: MaterialPart[],
   novaParte: MaterialPart,
@@ -250,8 +269,15 @@ async function gravarApresentacao(
 
   let apresentacao: Record<string, unknown>;
   if (params.totalPartes > 1) {
-    const currentPartes: MaterialPart[] = currentRow?.materiais?.apresentacao?.partes ?? [];
-    const currentStatus: string = currentRow?.materiais?.apresentacao?.metadata?.status ?? "pending";
+    const atual = currentRow?.materiais?.apresentacao;
+    // Partes de outra versao do deck (ou de outra geracao) nao contam: sem
+    // isto, a primeira parte nova se somava as antigas, o deck ficava
+    // `completed` com o carimbo da versao nova, e a RPC passava a recusar em
+    // silencio as partes seguintes (ela preserva o `completed` da mesma
+    // geracao e versao) - turma 66, 04/11: 1 parte nova e 2 velhas.
+    const mesmaVersao = apresentacaoDaMesmaVersao(atual?.metadata, params.versionMetadata, generationKey);
+    const currentPartes: MaterialPart[] = mesmaVersao ? atual?.partes ?? [] : [];
+    const currentStatus: string = mesmaVersao ? atual?.metadata?.status ?? "pending" : "pending";
     const aggregated = computeAggregatedApresentacaoEntry(currentPartes, novaParte, params.totalPartes, currentStatus);
     apresentacao = {
       payload: { slides: [] as never[], tema_visual: null },
