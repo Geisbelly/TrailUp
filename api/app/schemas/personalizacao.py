@@ -127,6 +127,8 @@ class MentorChatResponse(BaseModel):
     scope: Literal["modulo", "trilha_home"]
     should_close: bool = False
     hinted_actions: list[str] = Field(default_factory=list)
+    # Telas do app para onde o guia aponta. App antigo ignora o campo.
+    destinos: list[str] = Field(default_factory=list)
 
 
 # ── Sub-schemas de artefatos ──────────────────────────────────────────────────

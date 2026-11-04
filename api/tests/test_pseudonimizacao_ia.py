@@ -253,7 +253,11 @@ def test_mentor_nao_manda_nome_nem_apelido_e_restaura_na_resposta(app, aluno_use
     assert r.status_code == 200, r.text
     assert r.json()["reply"] == "Boa pergunta, Ana! Revise o conteudo 2."
     assert payloads, "o mentor nao chamou o provedor"
+    from app.services.guia_do_app import guia_do_app
+
     for payload in payloads:
+        # Texto estatico do produto; "semana" e afins dariam falso positivo com "ana".
+        assert payload.pop("guia_do_app") == guia_do_app()
         _sem_identificador(payload)
     principal = payloads[0]
     assert principal["metricas_aluno"]["apelido"] == PLACEHOLDER_NOME

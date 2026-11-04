@@ -22,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba
+from app.services.guia_do_app import guia_do_app
 from app.services.insights_turma import InsightsTurmaService
 from app.services.llm import JsonLLMService, StructuredOutputError, load_prompt
 from app.services.pseudonimizacao import pseudonimizar_texto, restaurar_refs
@@ -142,7 +143,8 @@ def pergunta_de_produto(texto: str) -> bool:
 
 @lru_cache(maxsize=1)
 def guia_do_produto() -> str:
-    return load_prompt("lumi_conhecimento.md")
+    # O lado do aluno e a privacidade são a mesma base dos Guardiões.
+    return f"{load_prompt('lumi_conhecimento.md')}\n\n{guia_do_app()}"
 
 
 class TurmaNaoPermitida(Exception):

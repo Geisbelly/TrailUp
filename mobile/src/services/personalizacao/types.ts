@@ -113,6 +113,8 @@ export type MentorChatResponse = {
   scope: "modulo" | "trilha_home";
   should_close?: boolean;
   hinted_actions?: string[];
+  /** Códigos de tela; `destinosDoGuia.ts` os traduz em botões. */
+  destinos?: string[];
 };
 
 export type PersonalizacaoJobRecord = {

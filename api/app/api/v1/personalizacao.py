@@ -70,6 +70,7 @@ from app.services import modo_restrito
 from app.services.auth import UserContext
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
 from app.services.group_analysis import GroupAnalysisService
+from app.services.guia_do_app import destinos_do_app_validos, guia_do_app
 from app.services.llm import JsonLLMService, load_prompt
 from app.services.material_revisao import incrementar_revisao
 from app.services.media_agents import (
@@ -1645,6 +1646,8 @@ async def conversar_com_mentor_personalizacao(
                         if isinstance(q, dict)
                     ],
                 },
+                # Texto estatico sobre as telas do app; nenhum dado do aluno.
+                "guia_do_app": guia_do_app(),
                 "guardrails": {
                     "sem_gabarito": True,
                     "sem_resposta_direta_atividade": True,
@@ -1656,6 +1659,7 @@ async def conversar_com_mentor_personalizacao(
             contexto={
                 "llm": llm,
                 "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
+                "guia_do_app": guia_do_app(),
             },
             on_violation=_auditar_chat,
             use_rag=bool(request.app.state.settings.openai_rag_enabled),
@@ -1670,11 +1674,14 @@ async def conversar_com_mentor_personalizacao(
         }
     )
     result = mentor_result.model_dump(mode="json")
+    destinos = destinos_do_app_validos(mentor_result.destinos)
     response = MentorChatResponse(
         reply=mentor_result.reply.strip(),
         scope=payload.escopo,
-        should_close=mentor_result.should_close,
+        # Fechar o painel sumiria com os botoes que acabaram de chegar.
+        should_close=mentor_result.should_close and not destinos,
         hinted_actions=[item.strip() for item in mentor_result.hinted_actions if item.strip()],
+        destinos=destinos,
     )
 
     try:
