@@ -90,6 +90,7 @@ O `storage-redirect` assinava sem login qualquer caminho vivo de `vw_material_st
 - **Pedir links:** `POST /functions/v1/storage-redirect` com `Authorization: Bearer <jwt>` e `{ "paths": [...] }` (até 200). O gateway confere a sessão e consulta a view **com o JWT de quem pede**, então a RLS decide. Volta `{ expira_em, links: { <caminho>: <url> } }`. Caminho que a pessoa não pode ler não volta, e a resposta não diz se ele existe.
 - **Usar o link:** a URL é a de sempre (`?path=`) mais `u`, `exp` e `sig` (HMAC-SHA256 com `GATEWAY_LINK_SEGREDO`). O `path` não muda, então a identidade da mídia no app (`mediaUrlPath`) também não. O prazo é o fim da janela seguinte: o link vale entre 1 e 2 horas e sai igual dentro da mesma hora, o que mantém o cache.
 - **Transição:** link com assinatura errada, adulterada ou vencida é recusado já. Link antigo, só com `path`, continua aceito até `GATEWAY_EXIGE_LINK_ASSINADO=true`.
+- **Console:** `useLinkDoGateway` (`frontend/src/hooks/`) assina o material e as imagens do texto antes de usar; junta os pedidos num POST e guarda o link até faltar 5 min. Sem link, usa a URL original.
 - **Ordem para fechar:** (1) secret `GATEWAY_LINK_SEGREDO` e deploy da função; (2) o console passa a pedir links; (3) app novo nas lojas, pedindo links; (4) versão mínima ligada; (5) `GATEWAY_EXIGE_LINK_ASSINADO=true`. Ligar o passo 5 antes do 4 tira a mídia dos apps antigos.
 
 ## Ciclo de vida do R2
