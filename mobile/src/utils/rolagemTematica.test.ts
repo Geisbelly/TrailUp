@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -21,4 +23,12 @@ test("o padrão só vale sem pseudo-elementos: no Chrome 121+ ele desligaria o r
   assert.match(css, /^@supports not selector\(::-webkit-scrollbar\) \{ \* \{ scrollbar-width: thin;/m);
   assert.doesNotMatch(css, /^\* \{ scrollbar-width/m);
   assert.match(css, /::-webkit-scrollbar-button \{ display: none; \}/);
+});
+
+test("a barra do perfil vale fora das abas: portões e login abrem na raiz", () => {
+  const raiz = readFileSync(join(__dirname, "../app/_layout.tsx"), "utf-8");
+  const abas = readFileSync(join(__dirname, "../app/(tabs)/_layout.tsx"), "utf-8");
+  assert.match(raiz, /<RolagemDoPerfil \/>/);
+  // A folha de estilo é uma só: a limpeza de um segundo uso a tiraria do primeiro.
+  assert.doesNotMatch(abas, /useRolagemTematica/);
 });

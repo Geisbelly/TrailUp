@@ -2,7 +2,6 @@ import { HapticTab } from "@/components/haptic-tab";
 import { DesktopSidebar } from "@/components/web/DesktopSidebar";
 import { DesktopTopBar } from "@/components/web/DesktopTopBar";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
-import { useRolagemTematica } from "@/hooks/useRolagemTematica";
 import { BossVictoryModal } from '@/components/ia/BossVictoryModal';
 import { ClassSelectionGate } from "@/components/ClassSelectionGate";
 import { bannerImages, brainHexConfig, brainHexImageMap, getProfileImageByString, normalizeBrainHexProfile } from "@/constants/profileImages";
@@ -133,7 +132,6 @@ export default function TabLayout() {
   // superior acima das telas. No iOS/Android e na web estreita, nada muda.
   // No modo de estudo a moldura some, como a barra de abas.
   const desktop = useDesktopWeb();
-  useRolagemTematica(desktop, palette.borderStrong);
   const molduraDesktop = desktop && !hideTabBarOnModule;
 
   return (

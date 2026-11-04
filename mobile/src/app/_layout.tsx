@@ -1,5 +1,6 @@
 import { AtualizacaoObrigatoriaGate } from "@/components/AtualizacaoObrigatoriaGate";
 import { LoadingState } from "@/components/LoadingState";
+import { RolagemDoPerfil } from "@/components/RolagemDoPerfil";
 import { TelemetryConsentGate } from "@/components/TelemetryConsentGate";
 import LoadingScreen from "@/components/funcionais/Loading";
 import { DialogProvider, useDialog } from "@/context/DialogContext";
@@ -148,6 +149,7 @@ export default function RootLayout() {
             <DialogProvider>
               <LoadingOverlay />
               <VerificacaoDeRota />
+              <RolagemDoPerfil />
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(auth)" />
