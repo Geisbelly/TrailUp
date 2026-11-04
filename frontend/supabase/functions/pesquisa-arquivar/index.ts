@@ -1,9 +1,14 @@
 // Edge Function `pesquisa-arquivar` (#17): copia para o R2 a telemetria de quem consentiu pesquisa.
 //
 // Quem chama e' o pg_cron (`pesquisa_arquivo_disparar`, a cada 10 min), com o header
-// `x-trailup-segredo`. A funcao pergunta ao banco o que falta (`pesquisa_arquivo_pendentes`), sobe
-// cada registro em `pesquisa/...` e registra o caminho (`pesquisa_arquivo_registrar`). O que falhar
-// fica pendente e volta na proxima rodada: nada e' registrado sem o upload ter dado certo.
+// `x-trailup-segredo`. Duas fases por rodada:
+//
+// 1. arquivo: pergunta ao banco o que falta (`pesquisa_arquivo_pendentes`), sobe cada registro em
+//    `pesquisa/...` e registra o caminho (`pesquisa_arquivo_registrar`). O que falhar fica pendente
+//    e volta na proxima rodada: nada e' registrado sem o upload ter dado certo.
+// 2. copia anonima (`20261104_03`): para cada objeto de quem pediu exclusao, grava a copia em
+//    `pesquisa/anonimo/...` e so' entao conclui o pedido - o banco apaga o sal e poe o identificavel
+//    na fila de exclusao.
 //
 // Fica fora da API pela regra de fronteira: arquivar nao tem modelo de linguagem no meio. As
 // credenciais do R2 ja' moram nos secrets das Edge Functions (ver `storage-upload-url`).
@@ -11,8 +16,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 import { presignR2GetUrl } from "../storage-redirect/r2Presign.ts";
+import { anonimizarObjetoDoArquivo } from "./anonimizar.ts";
 import {
   type Arquivado,
+  type Origem,
+  ORIGENS,
   caminhoDoArquivo,
   lerPendente,
   limiteDoPedido,
@@ -25,6 +33,7 @@ const JANELA_SEGUNDOS = 300;
 const VALIDADE_SEGUNDOS = 600;
 const PARALELO = 4;
 const REGISTRO_POR_CHAMADA = 200;
+const ANONIMIZACOES_POR_RODADA = 100;
 
 function json(status: number, corpo: Record<string, unknown>): Response {
   return new Response(JSON.stringify(corpo), {
@@ -125,15 +134,92 @@ serve(async (req: Request) => {
   }
 
   const registros: unknown[] = [];
-  for (let i = 0; i < arquivados.length; i += REGISTRO_POR_CHAMADA) {
+  let erroAoRegistrar = false;
+  for (let i = 0; i < arquivados.length && !erroAoRegistrar; i += REGISTRO_POR_CHAMADA) {
     try {
       registros.push(await rpc("pesquisa_arquivo_registrar", { p_itens: arquivados.slice(i, i + REGISTRO_POR_CHAMADA) }));
     } catch (err) {
       // O objeto ja' esta no R2 e o caminho e' deterministico: a proxima rodada sobrescreve e registra.
       console.error("[pesquisa-arquivar] registrar:", err);
-      return json(502, { error: "Subi, mas nao consegui registrar.", subidos: arquivados.length, falhas });
+      erroAoRegistrar = true;
     }
   }
 
-  return json(200, { pendentes: pendentes.length, arquivados: arquivados.length, falhas, registros });
+  const anonimizacao = await anonimizarPedidos();
+
+  return json(erroAoRegistrar ? 502 : 200, {
+    pendentes: pendentes.length,
+    arquivados: arquivados.length,
+    falhas,
+    registros,
+    erro_ao_registrar: erroAoRegistrar,
+    anonimizacao,
+  });
+
+  // Fase 2. A ordem e' o que protege o aluno: o identificavel so' vai para a fila depois que a
+  // copia anonima existe - ou que o banco desistiu dela (`pesquisa_anonimizacao_vencidas`, 7 dias).
+  async function anonimizarPedidos(): Promise<Record<string, unknown>> {
+    let linhas: unknown;
+    try {
+      linhas = await rpc("pesquisa_anonimizacao_pendentes", { p_limite: ANONIMIZACOES_POR_RODADA });
+    } catch (err) {
+      console.error("[pesquisa-arquivar] anonimizacao_pendentes:", err);
+      return { erro: "pendentes" };
+    }
+    const pedidos = (Array.isArray(linhas) ? linhas : []).filter(
+      (l): l is { id: number; origem: Origem; bucket: string; caminho: string; sal: string; perfil: string | null } =>
+        !!l && typeof l === "object" && typeof (l as { id?: unknown }).id === "number" &&
+        ORIGENS.includes((l as { origem?: Origem }).origem as Origem) &&
+        typeof (l as { caminho?: unknown }).caminho === "string" && typeof (l as { sal?: unknown }).sal === "string",
+    );
+
+    const concluidos: number[] = [];
+    const falhos: { id: number; erro: string }[] = [];
+    let copias = 0;
+    let ausentes = 0;
+
+    const um = async (p: (typeof pedidos)[number]) => {
+      try {
+        if (p.bucket !== bucketR2) throw new Error(`bucket ${p.bucket} diferente do ambiente`);
+        const lido = await fetch(await assinar(p.caminho, "GET"));
+        if (lido.status === 404) {
+          // Nada a copiar: o identificavel ja' nao existe. Concluir so' tira o pedido (e o sal).
+          ausentes += 1;
+          concluidos.push(p.id);
+          return;
+        }
+        if (!lido.ok) throw new Error(`GET: HTTP ${lido.status}`);
+        const anonimo = await anonimizarObjetoDoArquivo(await lido.json(), {
+          origem: p.origem,
+          sal: p.sal,
+          perfil: p.perfil,
+        });
+        const gravado = await fetch(await assinar(anonimo.caminho, "PUT"), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+          body: anonimo.corpo,
+        });
+        if (!gravado.ok) throw new Error(`PUT: HTTP ${gravado.status}`);
+        copias += 1;
+        concluidos.push(p.id);
+      } catch (err) {
+        // Sem caminho nem sal no log: os dois juntos ligam a copia anonima ao aluno.
+        falhos.push({ id: p.id, erro: err instanceof Error ? err.message : String(err) });
+      }
+    };
+
+    for (let i = 0; i < pedidos.length; i += PARALELO) {
+      await Promise.all(pedidos.slice(i, i + PARALELO).map(um));
+    }
+
+    try {
+      if (concluidos.length > 0) await rpc("pesquisa_anonimizacao_concluir", { p_ids: concluidos });
+      if (falhos.length > 0) await rpc("pesquisa_anonimizacao_falhou", { p_itens: falhos });
+    } catch (err) {
+      // A copia anonima ja' existe e o caminho dela e' deterministico: a proxima rodada refaz e conclui.
+      console.error("[pesquisa-arquivar] anonimizacao_concluir:", err);
+      return { pedidos: pedidos.length, copias, ausentes, falhas: falhos.length, erro: "concluir" };
+    }
+    return { pedidos: pedidos.length, copias, ausentes, falhas: falhos.length };
+  }
 });
