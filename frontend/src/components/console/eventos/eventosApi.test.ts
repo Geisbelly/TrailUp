@@ -67,7 +67,7 @@ describe("mapearEvento", () => {
     expect(mapearEvento(linha({ pecas: null })).pecas).toEqual([]);
     // antes da 20261104_01 a coluna não vem; valor estranho é descartado
     expect(mapearEvento(linha()).arenaCriterios).toEqual([]);
-    expect(mapearEvento(linha({ arena_criterios: ["missoes", "tempo", 1, "ranqueada"] })).arenaCriterios).toEqual(["ranqueada", "missoes"]);
+    expect(mapearEvento(linha({ arena_criterios: ["missoes", "elo", 1, "tempo", "ranqueada"] })).arenaCriterios).toEqual(["ranqueada", "missoes", "tempo"]);
   });
 });
 
