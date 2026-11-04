@@ -3,8 +3,18 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type TurmaDoProfessor = { id: number; descricao: string | null };
 
+/** `?turma=` da URL, se houver: é por onde a Lumi e outros links levam a uma turma. */
+function turmaDaUrl(): number | null {
+  try {
+    const n = Number(new URLSearchParams(window.location.search).get("turma"));
+    return Number.isInteger(n) && n > 0 ? n : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * As turmas do professor e a escolhida. As telas novas do console (Conquistas, Notas,
+ * As turmas do professor e a escolhida (a da URL, se for dele; senão a primeira). As telas novas do console (Conquistas, Notas,
  * Missões…) são todas "por turma"; este hook evita cada uma reescrever a mesma leitura.
  * Erro de leitura NÃO vira lista vazia: `erro` fica preenchido e a tela mostra o erro.
  */
@@ -24,7 +34,12 @@ export function useTurmasDoProfessor(professorId: string | undefined) {
     } else {
       const lista = (data ?? []) as TurmaDoProfessor[];
       setTurmas(lista);
-      setTurmaId((atual) => (lista.some((t) => t.id === atual) ? atual : (lista[0]?.id ?? null)));
+      const daUrl = turmaDaUrl();
+      setTurmaId((atual) => {
+        if (lista.some((t) => t.id === atual)) return atual;
+        if (daUrl !== null && lista.some((t) => t.id === daUrl)) return daUrl;
+        return lista[0]?.id ?? null;
+      });
     }
     setCarregando(false);
   }, [professorId]);

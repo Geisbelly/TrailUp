@@ -193,6 +193,11 @@ async def test_escriba_pseudonimiza_payload_pergunta_e_historico_e_restaura(monk
     )
 
     payload = llm.ainvoke_structured.await_args.kwargs["payload"]
+    # O guia do produto é texto fixo (sem dado de aluno) e tem palavras como
+    # "semana", que a busca por pedaço de nome acusaria.
+    from app.services.escriba import guia_do_produto
+
+    assert payload.pop("guia_do_produto") == guia_do_produto()
     _sem_identificador(payload)
     assert "Carla" not in json.dumps(payload)
     # refs unicas entre turmas (A1..A4) e citadas na pergunta/historico

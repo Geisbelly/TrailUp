@@ -19,9 +19,13 @@ class PerguntaEscriba(BaseModel):
 
 class EscribaSaida(BaseModel):
     resposta: str
+    # Partes do console que a resposta manda o professor abrir (ver DESTINOS_DO_CONSOLE).
+    destinos: list[str] = Field(default_factory=list)
 
 
 class RespostaEscriba(BaseModel):
     resposta: str
     turmas: list[int]
     gerado_em: datetime
+    # Já filtrados pela lista fechada; o console desenha um botão por destino.
+    destinos: list[str] = Field(default_factory=list)

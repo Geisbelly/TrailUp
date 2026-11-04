@@ -5,7 +5,15 @@ import pytest
 
 from app.api.deps import get_session, require_professor
 from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba
-from app.services.escriba import EscribaIndisponivel, EscribaService, TurmaNaoPermitida, _linha
+from app.services.escriba import (
+    DESTINOS_DO_CONSOLE,
+    EscribaIndisponivel,
+    EscribaService,
+    TurmaNaoPermitida,
+    _linha,
+    guia_do_produto,
+    pergunta_de_produto,
+)
 from app.services.llm import StructuredOutputError
 from tests.conftest import FakeSession
 
@@ -183,7 +191,7 @@ async def test_turma_com_aluno_sem_idade_confirmada_responde_ao_professor(monkey
         AsyncMock(side_effect=lambda turma, agora: {"turma": turma["descricao"], "alunos": [{"ref": "A1"}], "_nomes_por_ref": {}}),
     )
 
-    r = await service.perguntar("prof-1", PerguntaEscriba(pergunta="como usar a aba de economia?", classe_id=classe_id))
+    r = await service.perguntar("prof-1", PerguntaEscriba(pergunta="Quem precisa de atenção?", classe_id=classe_id))
 
     assert r.resposta == "A turma vai bem."
     assert rotas and not any(rotas)
@@ -208,3 +216,130 @@ def test_nota_zero_das_views_vira_sem_dado() -> None:
     linha = _linha({"perfil_nome": "seeker", "media_nota": 0, "taxa_acertos_pct": "12.3188", "total_alunos_segmento": 1})
     assert linha == {"perfil_nome": "seeker", "media_nota": None, "taxa_acertos_pct": 12.3, "total_alunos_segmento": 1.0}
     assert _linha({"media_nota_turma": "7.25"})["media_nota_turma"] == 7.2
+
+
+# ---------------------------------------------------------------- guia do produto
+
+
+@pytest.mark.parametrize(
+    ("pergunta", "produto"),
+    [
+        ("como usar a aba de economia?", True),
+        ("Como faço para registrar presença?", True),
+        ("onde fica a loja?", True),
+        ("o que o aluno vê no app?", True),
+        ("Como funciona a privacidade dos dados?", True),
+        ("Quem precisa de atenção?", False),
+        ("Onde a turma mais erra?", False),
+        ("como está a Ana na economia?", False),
+        ("o que o A3 precisa?", False),
+        ("Qual a média de acertos?", False),
+        ("Como funciona o ranking? A Ana Souza reclamou", False),
+        ("Oi", False),
+        ("Ana faltou, como registro presença?", False),
+        ("Explique a aba Economia", True),
+    ],
+)
+def test_pergunta_de_produto_e_conservadora(pergunta, produto) -> None:
+    assert pergunta_de_produto(pergunta) is produto
+
+
+@pytest.mark.asyncio
+async def test_pergunta_de_produto_nao_le_turma_nem_manda_dado_de_aluno(monkeypatch) -> None:
+    # O caso medido: "como usar a aba de economia?" na turma 68 (um aluno sem
+    # data de nascimento). Não precisa de dado de aluno nenhum.
+    from app.schemas.escriba import MensagemEscriba
+
+    llm = AsyncMock()
+    llm.ainvoke_structured.return_value = EscribaSaida(resposta="Em Economia > Valores...")
+    service, contexto = _servico(monkeypatch, llm)
+
+    r = await service.perguntar(
+        "prof-1",
+        PerguntaEscriba(
+            pergunta="como usar a aba de economia?",
+            classe_id=54,
+            historico=[
+                MensagemEscriba(papel="escriba", texto="Ana precisa de apoio no tópico 2."),
+                MensagemEscriba(papel="professor", texto="e a loja, como funciona?"),
+            ],
+        ),
+    )
+
+    contexto.assert_not_awaited()
+    payload = llm.ainvoke_structured.await_args.kwargs["payload"]
+    assert payload["turmas"] == []
+    assert "Economia" in payload["guia_do_produto"]
+    assert [m["texto"] for m in payload["historico"]] == ["e a loja, como funciona?"]
+    assert r.resposta.startswith("Em Economia") and r.turmas == []
+
+
+@pytest.mark.asyncio
+async def test_pergunta_de_produto_em_turma_alheia_continua_recusada(monkeypatch) -> None:
+    service, contexto = _servico(monkeypatch)
+
+    with pytest.raises(TurmaNaoPermitida):
+        await service.perguntar("prof-1", PerguntaEscriba(pergunta="como usar a aba de economia?", classe_id=999))
+
+    service.llm.ainvoke_structured.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_pergunta_sobre_a_turma_tambem_leva_o_guia(monkeypatch) -> None:
+    llm = AsyncMock()
+    llm.ainvoke_structured.return_value = EscribaSaida(resposta="ok")
+    service, contexto = _servico(monkeypatch, llm)
+
+    await service.perguntar("prof-1", PerguntaEscriba(pergunta="Quem precisa de atenção?", classe_id=54))
+
+    contexto.assert_awaited_once()
+    assert llm.ainvoke_structured.await_args.kwargs["payload"]["guia_do_produto"] == guia_do_produto()
+
+
+def test_guia_cobre_toda_aba_de_turma_do_console() -> None:
+    """Aba nova no console sem trecho no guia = Lumi que não sabe explicá-la."""
+    import re
+    from pathlib import Path
+
+    fonte = (Path(__file__).resolve().parents[2] / "frontend/src/pages/consoleSections.ts").read_text(encoding="utf-8")
+    so_do_dono = set(re.findall(r'"(\w+)"', fonte.split("VIEWS_SO_DO_DONO")[1].split(";")[0]))
+    secoes = re.findall(r'\{ view: "(\w+)", slug: "([\w-]*)" \}', fonte)
+    assert secoes, "formato de CONSOLE_SECTIONS mudou"
+    guia = guia_do_produto()
+    faltando = [view for view, slug in secoes if view not in so_do_dono and f"(/console{'/' + slug if slug else ''})" not in guia]
+    assert faltando == []
+
+
+# ---------------------------------------------------------------- destinos
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("pergunta", ["como usar a aba de economia?", "Quem precisa de atenção?"])
+async def test_destinos_saem_filtrados_pela_lista_fechada(monkeypatch, pergunta) -> None:
+    llm = AsyncMock()
+    llm.ainvoke_structured.return_value = EscribaSaida(
+        resposta="Abra Economia > Valores.",
+        destinos=["economia.valores", "ECONOMIA.VALORES", "/console/admin", "aprovacoes", "trilha", "notas", "eventos"],
+    )
+    service, _ = _servico(monkeypatch, llm)
+
+    r = await service.perguntar("prof-1", PerguntaEscriba(pergunta=pergunta, classe_id=54))
+
+    # Sem repetidos, sem o que não é do console (ou é só do dono), no máximo 3.
+    assert r.destinos == ["economia.valores", "trilha", "notas"]
+
+
+def test_destinos_batem_com_as_abas_do_console() -> None:
+    """A lista do Python é a do console: views de turma de CONSOLE_SECTIONS e as
+    sub-abas de ABAS_DA_ECONOMIA (economiaRegras.ts). Aba nova sem destino = Lumi sem botão para ela."""
+    import re
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parents[2] / "frontend/src"
+    secoes = (raiz / "pages/consoleSections.ts").read_text(encoding="utf-8")
+    so_do_dono = set(re.findall(r'"(\w+)"', secoes.split("VIEWS_SO_DO_DONO")[1].split(";")[0]))
+    views = {v for v in re.findall(r'\{ view: "(\w+)"', secoes) if v not in so_do_dono}
+    economia = (raiz / "components/console/economia/economiaRegras.ts").read_text(encoding="utf-8")
+    abas = set(re.findall(r'\{ id: "(\w+)", rotulo:', economia.split("const ABAS_DA_ECONOMIA")[1].split("];")[0]))
+    assert views and abas
+    assert DESTINOS_DO_CONSOLE == views | {f"economia.{a}" for a in abas}

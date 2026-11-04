@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { useSearchParams } from "react-router-dom";
-import { Maximize2, Minimize2, Send, X } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { ArrowRight, Maximize2, Minimize2, Send, X } from "lucide-react";
 import fotoDaLumi from "@/assets/design/lumi.webp";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/apiTraiupClient";
 import { cn } from "@/lib/utils";
 import {
+  destinosParaLinks,
   historicoParaEnvio,
   MENSAGEM_INICIAL,
   mensagemDeErro,
@@ -27,7 +28,7 @@ const AVISO_DE_DEMORA_MS = 8_000;
 
 const FOCAVEIS = 'button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
-type Resposta = { resposta: string; turmas: number[] };
+type Resposta = { resposta: string; turmas: number[]; destinos?: string[] };
 
 /**
  * Lumi (antes Escriba): botão flutuante bronze + painel de conversa, em todas as telas do
@@ -108,7 +109,11 @@ export default function Escriba() {
           },
           TEMPO_LIMITE_MS,
         );
-        setMensagens((m) => [...m, { id: proximoId.current++, papel: "escriba", texto: r?.resposta?.trim() || "Não consegui formular uma resposta." }]);
+        const destinos = destinosParaLinks(r?.destinos, turma);
+        setMensagens((m) => [
+          ...m,
+          { id: proximoId.current++, papel: "escriba", texto: r?.resposta?.trim() || "Não consegui formular uma resposta.", destinos },
+        ]);
       } catch (e) {
         setMensagens((m) => [...m, { id: proximoId.current++, papel: "escriba", texto: mensagemDeErro(e), erro: true }]);
       } finally {
@@ -242,7 +247,23 @@ export default function Escriba() {
               return (
                 <div key={m.id} className="flex items-start gap-2">
                   <img src={fotoDaLumi} alt="" aria-hidden="true" className="mt-0.5 h-6 w-6 flex-none rounded-full bg-muted object-cover" />
-                  <div className="min-w-0 flex-1">{fala}</div>
+                  <div className="min-w-0 flex-1">
+                    {fala}
+                    {m.destinos && m.destinos.length > 0 && (
+                      <nav aria-label="Ir para o console" className="mt-2 flex flex-wrap gap-2">
+                        {m.destinos.map((d) => (
+                          <Link
+                            key={d.caminho}
+                            to={d.caminho}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--console-bronze-text))] px-3 py-1.5 text-xs font-semibold text-[hsl(var(--console-bronze-text))] hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            {d.rotulo}
+                            <ArrowRight size={13} aria-hidden="true" />
+                          </Link>
+                        ))}
+                      </nav>
+                    )}
+                  </div>
                 </div>
               );
             })}

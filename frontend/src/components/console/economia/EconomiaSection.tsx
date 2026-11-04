@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Coins, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,9 @@ import {
   type ValorDeEvento,
 } from "./economiaApi";
 import {
+  ABAS_DA_ECONOMIA,
   SITUACOES_DE_USO,
+  abaDaEconomiaNaUrl,
   descreverPadrao,
   faixaValida,
   filtrarExtrato,
@@ -45,22 +48,15 @@ import {
   numeroOuNulo,
   textoDoLimite,
   textoDoPadrao,
+  type AbaDaEconomia,
   type CampoDeLimite,
   type CarteiraDoAluno,
   type LimitesDeUso,
 } from "./economiaRegras";
 
-type Aba = "valores" | "alunos" | "prazos" | "loja" | "fundo" | "metas" | "historico";
+type Aba = AbaDaEconomia;
 
-const ABAS: { id: Aba; rotulo: string }[] = [
-  { id: "valores", rotulo: "Valores" },
-  { id: "alunos", rotulo: "Moedas por aluno" },
-  { id: "prazos", rotulo: "Prazos e tempo" },
-  { id: "loja", rotulo: "Loja" },
-  { id: "fundo", rotulo: "Fundo da turma" },
-  { id: "metas", rotulo: "Metas" },
-  { id: "historico", rotulo: "Histórico" },
-];
+const ABAS = ABAS_DA_ECONOMIA;
 
 const FILTROS = [
   { id: "todos", rotulo: "Tudo" },
@@ -76,7 +72,14 @@ function inteiro(texto: string, padrao: number): number {
 
 export default function EconomiaSection({ professorId }: { professorId?: string }) {
   const { turmas, turmaId, setTurmaId, carregando, erro, recarregar } = useTurmasDoProfessor(professorId);
-  const [aba, setAba] = useState<Aba>("valores");
+  // `?aba=` abre direto numa parte (é por onde a Lumi leva o professor); muda
+  // também quando a Lumi leva a outra parte com a tela já aberta.
+  const [searchParams] = useSearchParams();
+  const abaNaUrl = abaDaEconomiaNaUrl(searchParams.get("aba"));
+  const [aba, setAba] = useState<Aba>(abaNaUrl ?? "valores");
+  useEffect(() => {
+    if (abaNaUrl) setAba(abaNaUrl);
+  }, [abaNaUrl]);
 
   return (
     <div>
