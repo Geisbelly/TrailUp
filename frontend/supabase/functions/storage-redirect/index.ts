@@ -39,6 +39,13 @@
 // Endurecer isso depois (Opcao B: JWT + RLS via security_invoker, que a view
 // 20260829_01 ja suporta) exige mudar o download do mobile para mandar header,
 // e confirmar que o Authorization nao vaza para o R2 no 302.
+//
+// LINK CURTO POR SESSAO (#632, ver link.ts). Em vez do JWT no GET, o cliente
+// logado pede os links por POST (com Authorization) e o gateway so' assina o
+// caminho que a RLS deixa ele ler. O GET confere `u`/`exp`/`sig` sem cabecalho.
+// Transicao: link sem assinatura continua aceito ate' GATEWAY_EXIGE_LINK_ASSINADO
+// = "true" (depois da versao minima do app). Link com assinatura errada ou
+// vencida e' recusado desde ja'.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
@@ -46,13 +53,74 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 import { normalizarStoragePath } from "./caminho.ts";
 import { inicioDaJanela, presignR2GetUrl } from "./r2Presign.ts";
 import { bucketDoCaminho, urlAssinadaDoSupabase, validadeDaAssinatura } from "./destino.ts";
+import { caminhosDoPedido, conferirLink, expiracaoDoLink, montarLink } from "./link.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
 };
 
 const JANELA_SEGUNDOS = 3600;
+const MAX_CAMINHOS_POR_PEDIDO = 200;
+
+function json(status: number, corpo: unknown): Response {
+  return new Response(JSON.stringify(corpo), {
+    status,
+    headers: { ...CORS, "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
+}
+
+/**
+ * POST: links curtos para os caminhos que QUEM PEDE pode ler. A permissao e' da
+ * RLS: a consulta a view (security_invoker) vai com o JWT do chamador. Caminho
+ * que ele nao pode ler simplesmente nao volta - sem dizer se existe.
+ */
+async function emitirLinks(req: Request, segredo: string | undefined): Promise<Response> {
+  if (!segredo) {
+    console.error("[storage-redirect] GATEWAY_LINK_SEGREDO ausente: nao ha como assinar link");
+    return erro(503, "Links do gateway indisponiveis.");
+  }
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return erro(401, "Sessao obrigatoria.");
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const servico = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
+    auth: { persistSession: false },
+  });
+  const { data: sessao, error: erroSessao } = await servico.auth.getUser(token);
+  if (erroSessao || !sessao?.user) return erro(401, "Sessao invalida.");
+
+  let corpo: unknown;
+  try {
+    corpo = await req.json();
+  } catch {
+    return erro(400, "Corpo JSON invalido.");
+  }
+  const pedidos = caminhosDoPedido(corpo, MAX_CAMINHOS_POR_PEDIDO);
+  if (!pedidos) return erro(400, `Envie { paths: [...] } com 1 a ${MAX_CAMINHOS_POR_PEDIDO} caminhos.`);
+  const caminhos = pedidos.map(normalizarStoragePath).filter((c): c is string => c !== null);
+
+  const comoQuemPede = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+    auth: { persistSession: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const { data, error } = caminhos.length
+    ? await comoQuemPede.from("vw_material_storage_paths").select("storage_path").in("storage_path", caminhos)
+    : { data: [], error: null };
+  if (error) {
+    console.error("[storage-redirect] consulta dos links falhou", error.message);
+    return erro(500, "Falha ao resolver os materiais.");
+  }
+
+  const expira = expiracaoDoLink(Math.floor(Date.now() / 1000), JANELA_SEGUNDOS);
+  const links: Record<string, string> = {};
+  for (const linha of data ?? []) {
+    const caminho = (linha as { storage_path: string }).storage_path;
+    links[caminho] = await montarLink({ base: supabaseUrl, segredo, caminho, usuario: sessao.user.id, expira });
+  }
+  return json(200, { expira_em: expira, links });
+}
 
 function erro(status: number, mensagem: string): Response {
   return new Response(JSON.stringify({ error: mensagem }), {
@@ -63,11 +131,31 @@ function erro(status: number, mensagem: string): Response {
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  const segredoDoLink = Deno.env.get("GATEWAY_LINK_SEGREDO") || undefined;
+  if (req.method === "POST") return emitirLinks(req, segredoDoLink);
   if (req.method !== "GET" && req.method !== "HEAD") return erro(405, "Use GET.");
 
   const parametros = new URL(req.url).searchParams;
   const caminho = normalizarStoragePath(parametros.get("path"));
   if (!caminho) return erro(400, "Parametro 'path' ausente ou invalido.");
+
+  // Link curto (#632). Sem segredo configurado, so' o link antigo funciona:
+  // assinatura que nao da' para conferir e' recusada, nunca aceita no escuro.
+  const temAssinatura = parametros.has("u") || parametros.has("exp") || parametros.has("sig");
+  const link = segredoDoLink
+    ? await conferirLink({
+      segredo: segredoDoLink,
+      caminho,
+      busca: parametros,
+      agoraS: Math.floor(Date.now() / 1000),
+      janelaS: JANELA_SEGUNDOS,
+    })
+    : temAssinatura ? "invalido" : "sem_assinatura";
+  if (link === "invalido") return erro(403, "Link invalido.");
+  if (link === "vencido") return erro(403, "Link vencido: peca um novo.");
+  if (link === "sem_assinatura" && Deno.env.get("GATEWAY_EXIGE_LINK_ASSINADO") === "true") {
+    return erro(401, "Link sem assinatura: peca um link com sessao.");
+  }
   const proxy = parametros.get("proxy") === "1";
 
   const contaR2 = Deno.env.get("R2_ACCOUNT_ID");

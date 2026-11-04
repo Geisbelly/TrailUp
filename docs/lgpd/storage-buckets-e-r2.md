@@ -83,6 +83,15 @@ Um gatilho por comando em cada tabela que guarda caminho de arquivo põe o camin
 - **Item já processado é reaberto.** Se o arquivo já tinha sido marcado `ainda_referenciado` (a turma original saiu antes da cópia), apagar a cópia reabre o item em vez de ser ignorado pelo `ON CONFLICT`.
 - O worker só roda com `RETENCAO_EXTERNA_ENABLED=true` na API. Desligado, a fila cresce e nada sai do Storage nem do R2.
 
+## Gateway: link curto por sessão (#632)
+
+O `storage-redirect` assinava sem login qualquer caminho vivo de `vw_material_storage_paths`: quem tinha um link vazado conseguia uma URL nova enquanto o material existisse. Exigir o JWT no cabeçalho não serve, porque `<img src>`, áudio, iframe e `FileSystem.downloadAsync` carregam a URL pura.
+
+- **Pedir links:** `POST /functions/v1/storage-redirect` com `Authorization: Bearer <jwt>` e `{ "paths": [...] }` (até 200). O gateway confere a sessão e consulta a view **com o JWT de quem pede**, então a RLS decide. Volta `{ expira_em, links: { <caminho>: <url> } }`. Caminho que a pessoa não pode ler não volta, e a resposta não diz se ele existe.
+- **Usar o link:** a URL é a de sempre (`?path=`) mais `u`, `exp` e `sig` (HMAC-SHA256 com `GATEWAY_LINK_SEGREDO`). O `path` não muda, então a identidade da mídia no app (`mediaUrlPath`) também não. O prazo é o fim da janela seguinte: o link vale entre 1 e 2 horas e sai igual dentro da mesma hora, o que mantém o cache.
+- **Transição:** link com assinatura errada, adulterada ou vencida é recusado já. Link antigo, só com `path`, continua aceito até `GATEWAY_EXIGE_LINK_ASSINADO=true`.
+- **Ordem para fechar:** (1) secret `GATEWAY_LINK_SEGREDO` e deploy da função; (2) o console passa a pedir links; (3) app novo nas lojas, pedindo links; (4) versão mínima ligada; (5) `GATEWAY_EXIGE_LINK_ASSINADO=true`. Ligar o passo 5 antes do 4 tira a mídia dos apps antigos.
+
 ## Ciclo de vida do R2
 
 **Regra:** só a telemetria bruta expira sozinha. Nada que o banco referencia tem expiração automática. O arquivo da pesquisa (`pesquisa/`) não expira nunca: é a base da pesquisa, e só sai quando o aluno pede exclusão — a conta apagada leva as linhas de `pesquisa_arquivo` e o gatilho põe os objetos na fila (`api/tests/test_r2_ciclo_de_vida.py` garante que nenhuma regra o alcança). Esses arquivos saem pelo expurgo (`retencao_fila_externa`), que confere se outra linha ainda usa o arquivo.
