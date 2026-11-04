@@ -1,3 +1,5 @@
+import type { ChamadaDoDeck } from "../utils/slideBatchPlanner";
+
 export interface GenerationFence {
   personalizacaoId: number;
   cicloId: string;
@@ -30,6 +32,8 @@ export interface PersistApresentacaoParams {
   ordem: number;
   totalPartes: number;
   titulo?: string;
+  /** Chamadas ao modelo que geraram (ou tentaram gerar) esta parte (#775). */
+  chamadas?: ChamadaDoDeck[];
 }
 
 export interface MaterialPart {
@@ -41,6 +45,9 @@ export interface MaterialPart {
   // Motivo da falha DESTA parte (#776). Sem ele, o motivo so vivia na
   // metadata agregada, e a parte seguinte que dava certo o apagava.
   failure?: PresentationFailure;
+  // finishReason, modelo e tokens de cada chamada ao modelo (#775), inclusive
+  // as que deram certo. Antes so o log do BrainHexPDF tinha isso.
+  chamadas?: ChamadaDoDeck[];
 }
 
 interface SupabaseRpcResult {
@@ -208,6 +215,7 @@ async function gravarApresentacao(
     storage_path: params.presentationUrl ? params.storagePath : null,
     failed: params.presentationUrl === null,
     ...(params.presentationUrl === null && params.failure ? { failure: params.failure } : {}),
+    ...(params.chamadas && params.chamadas.length > 0 ? { chamadas: params.chamadas } : {}),
   };
 
   // Multi-parte precisa do estado atual (partes ja gravadas por chamadas
@@ -278,6 +286,7 @@ async function gravarApresentacao(
       arquivo_url: params.presentationUrl,
       storage_path: params.presentationUrl ? params.storagePath : null,
       ...(params.presentationUrl ? { bucket: params.bucket, mime_type: "text/html; charset=utf-8" } : {}),
+      ...(params.chamadas && params.chamadas.length > 0 ? { chamadas: params.chamadas } : {}),
     };
   }
 

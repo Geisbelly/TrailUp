@@ -204,3 +204,97 @@ function mensagemPrincipal(params: {
   }
   return "Falha na geração dos slides com IA. Verifique a configuração das chaves e tente novamente.";
 }
+
+/**
+ * Uma chamada ao modelo durante a geracao dos slides, deu certo ou nao (#775).
+ *
+ * O resumo de falhas acima so existe quando o deck inteiro falha. Quando ele
+ * sai, o `finishReason` de cada chamada - inclusive a que truncou com 32.753
+ * tokens para 4 slides e passou na segunda tentativa (socializer, turma 68,
+ * 03/11) - so ficava no log do BrainHexPDF. Gravada na parte, esta lista deixa
+ * comparar truncamento entre perfis lendo o banco.
+ */
+export interface ChamadaDoDeck {
+  /** "unica" = o deck inteiro numa chamada; "bloco" = um bloco da divisao. */
+  etapa: "unica" | "bloco";
+  /** Slides pedidos nesta chamada. */
+  slides: number;
+  /**
+   * ok: slides aproveitados; incompleto: JSON valido mas com slides de menos;
+   * truncado/cota/erro: mesma classificacao de `ContagemDeFalhas`.
+   */
+  resultado: "ok" | "incompleto" | "truncado" | "cota" | "erro";
+  modelo?: string;
+  finishReason?: string;
+  /** usageMetadata.candidatesTokenCount, quando o SDK devolveu. */
+  tokensSaida?: number;
+  /** Slides que a chamada entregou (ou que foram recuperados do texto cortado). */
+  slidesRecebidos?: number;
+}
+
+/**
+ * Teto da lista. Cada truncamento divide o bloco e enfileira mais chamadas;
+ * sem teto, um deck patologico incharia o JSONB de `materiais`.
+ */
+export const MAX_CHAMADAS_NO_DIAGNOSTICO = 24;
+
+function inteiroOuNada(valor: unknown): number | undefined {
+  const n = Number(valor);
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : undefined;
+}
+
+/** Acrescenta a chamada a `lista`, sem campos vazios, ate o teto. */
+export function registrarChamada(
+  lista: ChamadaDoDeck[],
+  chamada: {
+    etapa: ChamadaDoDeck["etapa"];
+    slides: number;
+    resultado: ChamadaDoDeck["resultado"];
+    modelo?: unknown;
+    finishReason?: unknown;
+    tokensSaida?: unknown;
+    slidesRecebidos?: unknown;
+  },
+): void {
+  if (lista.length >= MAX_CHAMADAS_NO_DIAGNOSTICO) return;
+  const registro: ChamadaDoDeck = {
+    etapa: chamada.etapa,
+    slides: chamada.slides,
+    resultado: chamada.resultado,
+  };
+  if (typeof chamada.modelo === "string" && chamada.modelo) registro.modelo = chamada.modelo.slice(0, 80);
+  if (typeof chamada.finishReason === "string" && chamada.finishReason) {
+    registro.finishReason = chamada.finishReason.slice(0, 40);
+  }
+  const tokens = inteiroOuNada(chamada.tokensSaida);
+  if (tokens !== undefined) registro.tokensSaida = tokens;
+  const recebidos = inteiroOuNada(chamada.slidesRecebidos);
+  if (recebidos !== undefined) registro.slidesRecebidos = recebidos;
+  lista.push(registro);
+}
+
+/** Classifica uma chamada que falhou, com a mesma regra da contagem de falhas. */
+export function resultadoDaFalha(params: {
+  finishReason?: string | null;
+  errorMessage?: string | null;
+}): "truncado" | "cota" | "erro" {
+  if (isTruncationFailure(params)) return "truncado";
+  if (/429|quota|RESOURCE_EXHAUSTED/i.test(String(params.errorMessage ?? ""))) return "cota";
+  return "erro";
+}
+
+/** Falha do deck inteiro que leva junto as chamadas feitas ate ali. */
+export class FalhaNaGeracaoDoDeck extends Error {
+  readonly chamadas: ChamadaDoDeck[];
+
+  constructor(mensagem: string, chamadas: ChamadaDoDeck[]) {
+    super(mensagem);
+    this.name = "FalhaNaGeracaoDoDeck";
+    this.chamadas = chamadas;
+  }
+}
+
+/** As chamadas carregadas por um erro, se ele for `FalhaNaGeracaoDoDeck`. */
+export function chamadasDoErro(err: unknown): ChamadaDoDeck[] | undefined {
+  return err instanceof FalhaNaGeracaoDoDeck && err.chamadas.length > 0 ? err.chamadas : undefined;
+}

@@ -27,11 +27,16 @@ import { extractFinalReflectionIntoOwnSlide } from './src/utils/finalReflectionS
 import { paginateSlidesByDensity } from './src/utils/slidePagination';
 import {
   DEFAULT_SLIDES_PER_BATCH,
+  FalhaNaGeracaoDoDeck,
+  chamadasDoErro,
   contagemVazia,
   describeGenerationFailure,
   isTruncationFailure,
   planejarRetomada,
   planSlideBatches,
+  registrarChamada,
+  resultadoDaFalha,
+  type ChamadaDoDeck,
   type SlideBatch,
 } from './src/utils/slideBatchPlanner';
 import { salvarSlidesCompletos } from './src/utils/slidesSalvage';
@@ -1406,7 +1411,13 @@ async function generateDeckSlidesInBatches(params: {
   personaBlueprintPreset?: string;
   personaSpecificPrompt?: string;
   customDirectives?: string;
-}): Promise<{ deckMeta: any; slides: any[]; modelUsed?: string; keyIndexUsed?: number }> {
+}): Promise<{
+  deckMeta: any;
+  slides: any[];
+  modelUsed?: string;
+  keyIndexUsed?: number;
+  chamadas: ChamadaDoDeck[];
+}> {
   const {
     targetProfile,
     guideInfo,
@@ -1472,6 +1483,9 @@ INSTRUÇÕES CRÍTICAS DE EXECUÇÃO:
 9. Retorne EXCLUSIVAMENTE o JSON estruturado conforme o schema. Sem texto antes ou depois.
 `;
 
+  // Toda chamada ao modelo, deu certo ou nao, vai para a parte gravada (#775).
+  const chamadas: ChamadaDoDeck[] = [];
+
   // Tentativa 1: Geração unificada completa
   let singlePassResult: Awaited<ReturnType<typeof generateWithKeyRotation>> | undefined;
   try {
@@ -1485,15 +1499,38 @@ INSTRUÇÕES CRÍTICAS DE EXECUÇÃO:
     });
 
     const parsed = JSON.parse(singlePassResult.text);
-    if (parsed && Array.isArray(parsed.slides) && parsed.slides.length >= 6) {
+    const recebidos = parsed && Array.isArray(parsed.slides) ? parsed.slides.length : 0;
+    const completo = recebidos >= 6;
+    registrarChamada(chamadas, {
+      etapa: 'unica',
+      slides: effectiveTotalSlides,
+      resultado: completo ? 'ok' : 'incompleto',
+      modelo: singlePassResult.modelUsed,
+      finishReason: singlePassResult.finishReason,
+      tokensSaida: singlePassResult.usageMetadata?.candidatesTokenCount,
+      slidesRecebidos: recebidos,
+    });
+    if (completo) {
       return {
         deckMeta: parsed,
         slides: parsed.slides,
         modelUsed: singlePassResult.modelUsed,
         keyIndexUsed: singlePassResult.keyIndexUsed,
+        chamadas,
       };
     }
   } catch (singleErr: any) {
+    registrarChamada(chamadas, {
+      etapa: 'unica',
+      slides: effectiveTotalSlides,
+      resultado: resultadoDaFalha({
+        finishReason: singlePassResult?.finishReason as string | undefined,
+        errorMessage: singleErr?.message,
+      }),
+      modelo: singlePassResult?.modelUsed,
+      finishReason: singlePassResult?.finishReason,
+      tokensSaida: singlePassResult?.usageMetadata?.candidatesTokenCount,
+    });
     console.warn(
       `[Gemini Single-Pass] Falhou ou retornou incompleto (${singleErr.message}). Tentando em 2 blocos coordenados com persistência total de anexos...`,
       { finishReason: singlePassResult?.finishReason, usageMetadata: singlePassResult?.usageMetadata }
@@ -1556,6 +1593,15 @@ ${isLast ? `Este é o bloco final: inclua o clímax da aula e o desfecho dinâmi
           primeiroBlocoPendente = false;
         }
         slides.push(...batchSlides);
+        registrarChamada(chamadas, {
+          etapa: 'bloco',
+          slides: b.count,
+          resultado: 'ok',
+          modelo: genResult.modelUsed,
+          finishReason: genResult.finishReason,
+          tokensSaida: genResult.usageMetadata?.candidatesTokenCount,
+          slidesRecebidos: batchSlides.length,
+        });
         lastModelUsed = genResult.modelUsed;
         lastKeyIndexUsed = genResult.keyIndexUsed;
         continue;
@@ -1597,6 +1643,15 @@ ${isLast ? `Este é o bloco final: inclua o clímax da aula e o desfecho dinâmi
         truncou,
       });
       const aproveitados = salvos.slice(0, aproveitar);
+      registrarChamada(chamadas, {
+        etapa: 'bloco',
+        slides: b.count,
+        resultado: truncou ? 'truncado' : cota ? 'cota' : 'erro',
+        modelo: genResult?.modelUsed,
+        finishReason: genResult?.finishReason,
+        tokensSaida: genResult?.usageMetadata?.candidatesTokenCount,
+        slidesRecebidos: aproveitados.length,
+      });
       if (aproveitados.length > 0) {
         // deckMeta (titulo, guia, conclusao) fica FORA do array de slides e nao
         // sobreviveu ao corte, entao `primeiroBlocoPendente` continua de pe: o
@@ -1625,15 +1680,16 @@ ${isLast ? `Este é o bloco final: inclua o clímax da aula e o desfecho dinâmi
   }
 
   if (slides.length >= 4) {
-    return { deckMeta, slides, modelUsed: lastModelUsed, keyIndexUsed: lastKeyIndexUsed };
+    return { deckMeta, slides, modelUsed: lastModelUsed, keyIndexUsed: lastKeyIndexUsed, chamadas };
   }
 
-  throw new Error(
+  throw new FalhaNaGeracaoDoDeck(
     describeGenerationFailure({
       truncou: houveTruncamento,
       cotaEsgotada: houveCotaEsgotada,
       contagem: falhasPorBloco,
     }),
+    chamadas,
   );
 }
 
@@ -2119,6 +2175,8 @@ app.post('/api/v1/render-and-store', requireSecret, medirUsoDaRota, async (req: 
     let deckMeta: any;
     let generatedSlides: any[];
     let modelUsed: string | undefined;
+    // finishReason/modelo/tokens de cada chamada ao modelo, gravados na parte (#775).
+    let chamadas: ChamadaDoDeck[] | undefined;
     // So preenchido quando nao ha attachment do professor - o TrailUp
     // (microservice) usa isso como fallback de imagem no markdown/audio do
     // topico, reaproveitando a MESMA imagem gerada por IA que os slides
@@ -2145,8 +2203,10 @@ app.post('/api/v1/render-and-store', requireSecret, medirUsoDaRota, async (req: 
         { targetProfile, topic }
       );
       modelUsed = batched.modelUsed;
+      chamadas = batched.chamadas;
       generatedImagesBySubtopic = extractGeneratedImagesBySubtopic(generatedSlides);
     } catch (err: any) {
+      chamadas = chamadasDoErro(err);
       let dbWritten = false;
       if (hasFence) {
         const persistResult = await persistApresentacaoResult(getServiceRoleClient() as unknown as SupabaseClientLike, {
@@ -2159,6 +2219,7 @@ app.post('/api/v1/render-and-store', requireSecret, medirUsoDaRota, async (req: 
           ordem,
           totalPartes,
           titulo: topic,
+          chamadas,
         });
         dbWritten = persistResult.dbWritten;
       }
@@ -2254,6 +2315,7 @@ app.post('/api/v1/render-and-store', requireSecret, medirUsoDaRota, async (req: 
           ordem,
           totalPartes,
           titulo: topic,
+          chamadas,
         });
         dbWritten = persistResult.dbWritten;
       }
@@ -2300,6 +2362,7 @@ app.post('/api/v1/render-and-store', requireSecret, medirUsoDaRota, async (req: 
             ordem,
             totalPartes,
             titulo: topic,
+            chamadas,
           });
           dbWritten = persistResult.dbWritten;
         }
@@ -2331,6 +2394,7 @@ app.post('/api/v1/render-and-store', requireSecret, medirUsoDaRota, async (req: 
           ordem,
           totalPartes,
           titulo: topic,
+          chamadas,
         });
         dbWritten = persistResult.dbWritten;
       }
@@ -2357,6 +2421,7 @@ app.post('/api/v1/render-and-store', requireSecret, medirUsoDaRota, async (req: 
           ordem,
           totalPartes,
           titulo: topic,
+          chamadas,
         });
         dbWritten = persistResult.dbWritten;
       }

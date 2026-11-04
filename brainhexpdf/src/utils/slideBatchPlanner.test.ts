@@ -3,7 +3,13 @@ import test from 'node:test';
 
 import {
   DEFAULT_SLIDES_PER_BATCH,
+  FalhaNaGeracaoDoDeck,
+  MAX_CHAMADAS_NO_DIAGNOSTICO,
+  chamadasDoErro,
   contagemVazia,
+  registrarChamada,
+  resultadoDaFalha,
+  type ChamadaDoDeck,
   describeGenerationFailure,
   isTruncationFailure,
   resumirFalhas,
@@ -209,4 +215,65 @@ test('so erros que nao sao tamanho nem cota: mensagem generica com a contagem', 
   });
   assert.match(mensagem, /^Falha na geração dos slides com IA/);
   assert.match(mensagem, /Blocos que falharam: 3 por outro erro\.$/);
+});
+
+test('#775: chamada que deu certo guarda finishReason, modelo e tokens', () => {
+  const lista: ChamadaDoDeck[] = [];
+  registrarChamada(lista, {
+    etapa: 'bloco',
+    slides: 4,
+    resultado: 'ok',
+    modelo: 'gemini-3.1-flash-lite',
+    finishReason: 'STOP',
+    tokensSaida: 9120,
+    slidesRecebidos: 4,
+  });
+  assert.deepEqual(lista, [
+    {
+      etapa: 'bloco',
+      slides: 4,
+      resultado: 'ok',
+      modelo: 'gemini-3.1-flash-lite',
+      finishReason: 'STOP',
+      tokensSaida: 9120,
+      slidesRecebidos: 4,
+    },
+  ]);
+});
+
+test('#775: campo que o SDK nao devolveu nao vira chave vazia', () => {
+  const lista: ChamadaDoDeck[] = [];
+  registrarChamada(lista, {
+    etapa: 'unica',
+    slides: 12,
+    resultado: 'cota',
+    modelo: undefined,
+    finishReason: null,
+    tokensSaida: 'nao-numero',
+  });
+  assert.deepEqual(lista, [{ etapa: 'unica', slides: 12, resultado: 'cota' }]);
+});
+
+test('#775: a lista para no teto, mesmo com divisao em cascata', () => {
+  const lista: ChamadaDoDeck[] = [];
+  for (let i = 0; i < MAX_CHAMADAS_NO_DIAGNOSTICO + 10; i += 1) {
+    registrarChamada(lista, { etapa: 'bloco', slides: 1, resultado: 'truncado' });
+  }
+  assert.equal(lista.length, MAX_CHAMADAS_NO_DIAGNOSTICO);
+});
+
+test('#775: resultadoDaFalha usa a mesma regra da contagem de falhas', () => {
+  assert.equal(resultadoDaFalha({ finishReason: 'MAX_TOKENS' }), 'truncado');
+  assert.equal(resultadoDaFalha({ errorMessage: 'Unterminated string in JSON at position 9' }), 'truncado');
+  assert.equal(resultadoDaFalha({ errorMessage: '429 RESOURCE_EXHAUSTED' }), 'cota');
+  assert.equal(resultadoDaFalha({ errorMessage: 'bloco sem slides' }), 'erro');
+});
+
+test('#775: a falha do deck leva as chamadas ate a rota', () => {
+  const chamadas: ChamadaDoDeck[] = [{ etapa: 'bloco', slides: 4, resultado: 'cota' }];
+  const err = new FalhaNaGeracaoDoDeck('Blocos que falharam: 1 por cota.', chamadas);
+  assert.equal(err.message, 'Blocos que falharam: 1 por cota.');
+  assert.deepEqual(chamadasDoErro(err), chamadas);
+  assert.equal(chamadasDoErro(new Error('outro')), undefined);
+  assert.equal(chamadasDoErro(new FalhaNaGeracaoDoDeck('x', [])), undefined);
 });
