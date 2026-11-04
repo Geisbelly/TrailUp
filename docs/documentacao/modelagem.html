@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Sobre a modelagem · TrailUp</title><meta name="description" content="Como os 44 diagramas foram feitos, conferidos no código e no banco, e o que eles não afirmam."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 transform=%22rotate(45 8 8)%22 fill=%22%23a08df5%22/%3E%3C/svg%3E"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><span class="diamond"></span>TrailUp · documentação</a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html" aria-current="page">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Sobre a modelagem</h1><p class="lede">Como os 44 diagramas foram feitos, conferidos no código e no banco, e o que eles não afirmam.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/README.md" target="_blank" rel="noopener">docs/tcc/modelagem/README.md</a><span class="chip ok">atualizado 04/11/2026</span></div></header><p>Modelagem completa do sistema para a monografia, em 44 diagramas. Substitui o capítulo <a href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/04-modelagem-do-sistema.md"><code>04-modelagem-do-sistema.md</code></a>, que é de abril de 2026.</p>
+<p><strong>Procedência</strong> (04/11/2026):</p>
+<ul>
+<li><strong>Código:</strong> lido na <code>main</code> do Lab, commit <code>3edd2561</code>.</li>
+<li><strong>Banco:</strong> consultado em produção, só leitura:
+<ul>
+<li>chaves estrangeiras (<code>pg_constraint</code>);</li>
+<li>restrições <code>CHECK</code> de status;</li>
+<li>enums;</li>
+<li>rotinas <code>pg_cron</code>;</li>
+<li>contagens por status.</li>
+</ul>
+</li>
+<li><strong>Correções:</strong> onde o código e o banco divergiam do que os documentos anteriores diziam, valeu o código e o banco. As correções feitas aparecem ao fim desta página.</li>
+</ul>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Capítulo</th>
+<th>Diagramas</th>
+<th>Para a monografia</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="arquitetura.html">1. Arquitetura</a></td>
+<td>contexto (C4-1), contêineres (C4-2), regra de fronteira, implantação, camadas da API</td>
+<td>arquitetura e implantação</td>
+</tr>
+<tr>
+<td><a href="casos-de-uso.html">2. Casos de uso</a></td>
+<td>aluno; professor e dona; especificação resumida</td>
+<td>requisitos e casos de uso</td>
+</tr>
+<tr>
+<td><a href="pipeline.html">3. Pipeline de ponta a ponta</a></td>
+<td>visão do ciclo + 13 fluxos (P0–P13) em diagramas de sequência</td>
+<td>funcionamento do sistema</td>
+</tr>
+<tr>
+<td><a href="ia.html">4. IA: grafo e análise</a></td>
+<td>grafo LangGraph (16 nós), regras de roteamento, pipeline de 6 estágios, escolha do provedor</td>
+<td>modelo adaptativo</td>
+</tr>
+<tr>
+<td><a href="dados.html">5. Dados</a></td>
+<td>ER por domínio: acadêmico, progresso, personalização, telemetria, gamificação, notificações, privacidade/RAG</td>
+<td>modelo de dados</td>
+</tr>
+<tr>
+<td><a href="estados.html">6. Estados</a></td>
+<td>jobs, alvos, material, progresso, eventos, notificações, intervenções, gamificação, RAG</td>
+<td>comportamento</td>
+</tr>
+<tr>
+<td><a href="classes.html">7. Classes</a></td>
+<td>Strategy do pipeline, serviços de LLM, camadas do backend, provedor do app</td>
+<td>projeto orientado a objetos</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="imagens">Imagens</h2>
+<p><code>img/</code> traz cada diagrama em SVG, com fundo branco, pronto para inserir no Word ou no LaTeX. O nome do arquivo é <code>&lt;capítulo&gt;-&lt;ordem no capítulo&gt;.svg</code>: <code>03-02.svg</code> é o segundo diagrama do capítulo 3.</p>
+<p>Para regerar depois de editar um <code>.md</code>, a partir da raiz do repositório:</p>
+<pre><code class="language-bash">python3 docs/tcc/modelagem/exportar_diagramas.py
+</code></pre>
+<p>O script extrai os blocos <code>mermaid</code> dos capítulos e chama <code>npx @mermaid-js/mermaid-cli</code>. Se algum diagrama não compilar, ele para e mostra o erro, então também serve de validação. Dois cuidados ao editar:</p>
+<ul>
+<li>em diagrama de sequência, <code>;</code> dentro de mensagem quebra a linha;</li>
+<li>nota de diagrama de estado não aceita aspas.</li>
+</ul>
+<h2 id="o-que-estes-diagramas-não-afirmam">O que estes diagramas não afirmam</h2>
+<ul>
+<li>O pipeline de análise tem <strong>nomes</strong> de algoritmos de ML, mas os estágios são regras. As exceções são a emoção por imagem e o M2. O diagrama 4.2 e o 7.1 marcam o que é regra.</li>
+<li>O RAG está <strong>implementado e não indexado</strong>. Ele aparece tracejado nos diagramas.</li>
+<li><code>agente_emocao</code>, dentro do grafo, usa <code>MockEmocaoAdapter</code>. A emoção que vale é a do estágio 1 do pipeline.</li>
+<li>As transições de missão, desafio de guilda e relação social (6.8) seguem os rótulos dos <code>CHECK</code>. Elas não foram auditadas função por função.</li>
+</ul>
+<h2 id="correções-em-relação-aos-documentos-anteriores">Correções em relação aos documentos anteriores</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Antes</th>
+<th>Medido agora</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>conteudo_personalizado.status</code> = <code>falha</code></td>
+<td>produção grava <code>failed</code> (4 <code>pronto</code>, 13 <code>failed</code>); <code>falha</code> é legado</td>
+</tr>
+<tr>
+<td>escopos da telemetria: <code>topic</code>, <code>content</code>, <code>material</code></td>
+<td>também <code>activity</code> (11 linhas)</td>
+</tr>
+<tr>
+<td>job termina <code>failed</code> &quot;se falhou&quot;</td>
+<td><code>failed</code> só quando <strong>todo</strong> alvo processado falhou; com alvo pendente ou falha parcial, <code>partial</code></td>
+</tr>
+<tr>
+<td>sugestão de material lida no Supabase</td>
+<td>a do tópico vem da API (<code>GET /personalizar/sugestao/{aluno}/{tópico}</code>), e só a da turma vem do Supabase</td>
+</tr>
+<tr>
+<td>supervisor do grafo &quot;decide por LLM&quot;</td>
+<td>decide por regra. O modelo só é consultado quando há mais de um candidato, e mesmo assim é filtrado contra a regra. No fluxo de personalização, o modelo nunca é consultado</td>
+</tr>
+</tbody>
+</table></div>
+<nav class="nav-paginas"><a href="inventario.html"><span class="k">← anterior</span><span class="t">Inventário completo</span></a><a class="prox" href="arquitetura.html"><span class="k">próxima →</span><span class="t">Arquitetura</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#imagens">Imagens</a></li><li><a href="#o-que-estes-diagramas-não-afirmam">O que estes diagramas não afirmam</a></li><li><a href="#correções-em-relação-aos-documentos-anteriores">Correções em relação aos documentos anteriores</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>ea19135a</code> em 04/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>

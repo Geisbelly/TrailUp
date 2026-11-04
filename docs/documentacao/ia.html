@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>IA: grafo e análise · TrailUp</title><meta name="description" content="O grafo LangGraph e suas regras de roteamento, o pipeline de seis estágios e a escolha do modelo."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 transform=%22rotate(45 8 8)%22 fill=%22%23a08df5%22/%3E%3C/svg%3E"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><span class="diamond"></span>TrailUp · documentação</a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html" aria-current="page">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>IA: grafo e análise</h1><p class="lede">O grafo LangGraph e suas regras de roteamento, o pipeline de seis estágios e a escolha do modelo.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/04-ia-grafo-e-analise.md" target="_blank" rel="noopener">docs/tcc/modelagem/04-ia-grafo-e-analise.md</a><span class="chip ok">atualizado 04/11/2026</span><span class="chip warn">4 diagramas</span></div></header><h2 id="41-o-grafo-langgraph">4.1 O grafo LangGraph</h2>
+<p>O grafo tem 16 nós (<code>api/app/agent/graph/builder.py</code>): o supervisor, 13 especialistas e 2 terminais. Todo especialista devolve o controle ao supervisor, e os dois terminais vão direto para o fim.</p>
+<p>O mesmo grafo é compilado duas vezes, e as duas instâncias têm todos os nós; a diferença está no checkpointer:</p>
+<ul>
+<li><code>graph_personalizacao</code>: checkpoint persistente no Postgres;</li>
+<li><code>graph_ephemeral</code>: usado pela análise de telemetria.</li>
+</ul>
+<p>Qual workflow roda depende de <code>workflow_kind</code> no estado, não da instância.</p>
+<figure class="diagrama" id="diagrama-1"><div class="area"><pre class="mermaid">flowchart LR
+  S((START)) --&gt; SUP{supervisor}
+  ANALISE[&quot;&lt;b&gt;Workflow de análise&lt;/b&gt;&lt;br/&gt;10 especialistas&lt;br/&gt;──────────&lt;br/&gt;agente_emocao (MockEmocaoAdapter)&lt;br/&gt;agente_perfil · agente_ui&lt;br/&gt;agente_conteudo · agente_geracao_midia&lt;br/&gt;agente_trilha · agente_notificacao&lt;br/&gt;agente_intervencao · agente_cronometro&lt;br/&gt;agente_texto&quot;]
+  PERS[&quot;&lt;b&gt;Workflow de personalização&lt;/b&gt;&lt;br/&gt;workflow_kind = personalizar&lt;br/&gt;──────────&lt;br/&gt;agente_plano_personalizacao&lt;br/&gt;agente_ai_patch&lt;br/&gt;agente_midias_personalizadas&quot;]
+  SUP -- &quot;candidatos por regra&lt;br/&gt;(modelo só desempata)&quot; --&gt; ANALISE
+  ANALISE -- &quot;cada especialista&lt;br/&gt;volta ao supervisor&quot; --&gt; SUP
+  SUP -- &quot;regra fixa&quot; --&gt; PERS
+  PERS -- volta --&gt; SUP
+  SUP --&gt; EXE[executor] --&gt; E((END))
+  SUP --&gt; PP[persist_personalizacao] --&gt; E
+  SUP -- finish --&gt; E
+</pre></div><figcaption><span>Diagrama 1</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h3 id="regras-de-roteamento-da-análise-compute_supervisor_next">Regras de roteamento da análise (<code>compute_supervisor_next</code>)</h3>
+<p>O supervisor primeiro calcula os <strong>candidatos</strong> por regra. O modelo só é consultado (<code>supervisor.txt</code>) quando há mais de um candidato não terminal, e a resposta dele é filtrada contra os candidatos. Se o modelo falhar, os candidatos seguem como estão.</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Especialista</th>
+<th>Entra quando</th>
+<th>Também na turma retida?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>agente_emocao</code></td>
+<td>há frame de câmera ou eventos novos, e ainda não há emoção</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><code>agente_perfil</code></td>
+<td>histórico vazio, múltiplo de 10 eventos, ou eventos novos</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><code>agente_ui</code></td>
+<td>há emoção e ainda não há <code>ui_config</code></td>
+<td>não</td>
+</tr>
+<tr>
+<td><code>agente_conteudo</code></td>
+<td>há tópico no pedido, tópico concluído, ou média de acertos &lt; 50</td>
+<td>não</td>
+</tr>
+<tr>
+<td><code>agente_geracao_midia</code></td>
+<td>há conteúdo adaptado e <code>gerar_materiais</code></td>
+<td>não</td>
+</tr>
+<tr>
+<td><code>agente_trilha</code></td>
+<td>o perfil foi atualizado</td>
+<td>não</td>
+</tr>
+<tr>
+<td><code>agente_notificacao</code></td>
+<td>valência ≤ −0,4 ou evento <code>inatividade</code></td>
+<td>não</td>
+</tr>
+<tr>
+<td><code>agente_intervencao</code></td>
+<td>há turma e recorrência em <code>memoria_aluno</code> (3 dos 5 últimos estados com o mesmo negativo)</td>
+<td>sim</td>
+</tr>
+<tr>
+<td><code>agente_cronometro</code></td>
+<td>há turma e <code>decidir_desligar_cronometro(tentativas)</code> decide desligar</td>
+<td>não</td>
+</tr>
+<tr>
+<td><code>agente_texto</code></td>
+<td><code>ui_config.precisa_texto</code> ou há notificação a redigir</td>
+<td>não</td>
+</tr>
+</tbody>
+</table></div>
+<p>Sem candidato, o supervisor vai para o <code>executor</code> se algum especialista produziu saída, e para <code>finish</code> se nenhum produziu. O <code>executor</code> grava as saídas pelos repositórios: trilha, notificação, <code>iaDescricao</code>, materiais, eventos, intervenção e cronômetro.</p>
+<h3 id="regras-da-personalização-compute_personalizacao_next">Regras da personalização (<code>compute_personalizacao_next</code>)</h3>
+<figure class="diagrama" id="diagrama-2"><div class="area"><pre class="mermaid">stateDiagram-v2
+  [*] --&gt; plano: sem plano
+  plano --&gt; paralelo: plano pronto
+  state paralelo {
+    [*] --&gt; ai_patch
+    [*] --&gt; midias
+  }
+  paralelo --&gt; persist: plano, patch ou mídias prontos
+  persist --&gt; [*]
+</pre></div><figcaption><span>Diagrama 2</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>Nesse workflow o supervisor não consulta modelo.</p>
+<h2 id="42-pipeline-de-análise-da-telemetria">4.2 Pipeline de análise da telemetria</h2>
+<figure class="diagrama" id="diagrama-3"><div class="area"><pre class="mermaid">flowchart LR
+  L[lote] --&gt; E1[&quot;1 Emoção&lt;br/&gt;YuNet + FER+ (ONNX) com frame&lt;br/&gt;regra sem frame&quot;]
+  E1 --&gt; E2[&quot;2 Leitura&lt;br/&gt;WPM = palavras / active_sec&lt;br/&gt;&amp;lt;120 lenta · &amp;gt;400 por cima&quot;]
+  E2 --&gt; E3[&quot;3 Interação&lt;br/&gt;regra&quot;]
+  E3 --&gt; E4[&quot;4 Desempenho&lt;br/&gt;regra + M2 (HistGradientBoosting,&lt;br/&gt;EdNet KT3, não calibrado)&quot;]
+  E4 --&gt; E5[&quot;5 Atenção&lt;br/&gt;regra&quot;]
+  E5 --&gt; E6[&quot;6 Decisão&lt;br/&gt;regra → ações + modo sugerido&quot;]
+  E6 --&gt; G[graph_ephemeral]
+</pre></div><figcaption><span>Diagrama 3</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>Os estágios têm nomes de algoritmos de ML (<code>DeepFace</code>, <code>IsolationForest</code>, <code>HiddenMarkov</code>, <code>DeepKnowledgeTracing</code>, <code>RandomForest</code>, <code>XGBoost</code>), mas, exceto onde o diagrama indica, <strong>são regras heurísticas</strong>. Ver o <a href="visao-geral.html#53-pipeline-de-an%C3%A1lise-da-telemetria-linear_analysis_pipelinepy">dossiê, seção 5.3</a>.</p>
+<p>Ações possíveis da decisão: <code>reduzir_ruido_visual</code>, <code>sugerir_pausa_curta</code>, <code>aumentar_dificuldade</code>, <code>manter_fluxo_atual</code>, além das ações de reforço. Modos sugeridos: <code>reforco</code>, <code>desafio</code> e <code>imediato</code>.</p>
+<h2 id="43-escolha-do-provedor-numa-chamada-de-ia">4.3 Escolha do provedor numa chamada de IA</h2>
+<figure class="diagrama" id="diagrama-4"><div class="area"><pre class="mermaid">flowchart TD
+  C[ainvoke_structured] --&gt; M{rota de menor?&lt;br/&gt;sem data ou &amp;lt; 18}
+  M --&gt;|sim| X[MenorSemOpenAIError&lt;br/&gt;nenhuma chamada sai]
+  M --&gt;|não| R{use_rag?}
+  R --&gt;|sim| O[&quot;OpenAIRagService&lt;br/&gt;Responses API + file_search&lt;br/&gt;gpt-4o-mini · filtro scope=publico&quot;]
+  R --&gt;|não| P{provedor}
+  P --&gt;|gemini| G[&quot;Gemini com rodízio de 4 chaves&lt;br/&gt;(tier free)&quot;]
+  P --&gt;|outro| L[LangChain client]
+  O --&gt; V[valida schema Pydantic]
+  G --&gt; V
+  L --&gt; V
+  V --&gt;|falha| F[StructuredOutputError → fallback do chamador]
+</pre></div><figcaption><span>Diagrama 4</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<ul>
+<li><strong>Quem pode usar o RAG</strong> (<code>use_rag</code>): chat do Guardião, <code>agente_intervencao</code> e <code>agente_notificacao</code>. O corpus v1, com as 12 regras derivadas, está na PR #948 e ainda não foi indexado.</li>
+<li><strong>Guardrails:</strong> o chat passa por <code>checar_grounding_chat</code>. Quando a guarda reprova, o chamador usa <code>fallback_factory</code> e a violação é auditada.</li>
+</ul>
+<nav class="nav-paginas"><a href="pipeline.html"><span class="k">← anterior</span><span class="t">Pipeline de ponta a ponta</span></a><a class="prox" href="dados.html"><span class="k">próxima →</span><span class="t">Modelo de dados</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#41-o-grafo-langgraph">4.1 O grafo LangGraph</a></li><li><a href="#42-pipeline-de-análise-da-telemetria">4.2 Pipeline de análise da telemetria</a></li><li><a href="#43-escolha-do-provedor-numa-chamada-de-ia">4.3 Escolha do provedor numa chamada de IA</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>ea19135a</code> em 04/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>

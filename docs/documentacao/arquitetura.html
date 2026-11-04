@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Arquitetura · TrailUp</title><meta name="description" content="Contexto, contêineres, a regra de fronteira entre banco e API, implantação e camadas."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 transform=%22rotate(45 8 8)%22 fill=%22%23a08df5%22/%3E%3C/svg%3E"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><span class="diamond"></span>TrailUp · documentação</a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html" aria-current="page">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Arquitetura</h1><p class="lede">Contexto, contêineres, a regra de fronteira entre banco e API, implantação e camadas.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/01-arquitetura.md" target="_blank" rel="noopener">docs/tcc/modelagem/01-arquitetura.md</a><span class="chip ok">atualizado 04/11/2026</span><span class="chip warn">5 diagramas</span></div></header><p>Procedência: código da <code>main</code> do Lab em <code>3edd2561</code> e banco de produção consultado só para leitura, ambos em 04/11/2026. Os números de tabelas, funções e rotinas estão no <a href="visao-geral.html#1-o-sistema-em-n%C3%BAmeros">dossiê do sistema</a>.</p>
+<h2 id="11-contexto-c4-nível-1">1.1 Contexto (C4, nível 1)</h2>
+<p>Quem usa o sistema e com que serviços externos ele conversa.</p>
+<figure class="diagrama" id="diagrama-1"><div class="area"><pre class="mermaid">flowchart LR
+  ALUNO([Aluno&lt;br/&gt;universitário])
+  PROF([Professor])
+  DONA([Dona do projeto])
+  TRAIL[[TrailUp]]
+  GEM[Google Gemini API&lt;br/&gt;texto, TTS, imagem]
+  OAI[OpenAI&lt;br/&gt;Vector Store do RAG]
+  EXPO[Expo Push]
+  GOO[Google OAuth]
+  MAIL[Google Apps Script&lt;br/&gt;e-mail]
+
+  ALUNO -- estuda, joga, conversa com o Guardião --&gt; TRAIL
+  PROF -- monta trilhas, acompanha a turma --&gt; TRAIL
+  DONA -- aprova professores, painel técnico --&gt; TRAIL
+  TRAIL --&gt; GEM
+  TRAIL -. RAG implementado, não indexado .-&gt; OAI
+  TRAIL --&gt; EXPO
+  TRAIL --&gt; GOO
+  TRAIL --&gt; MAIL
+</pre></div><figcaption><span>Diagrama 1</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="12-contêineres-c4-nível-2">1.2 Contêineres (C4, nível 2)</h2>
+<figure class="diagrama" id="diagrama-2"><div class="area"><pre class="mermaid">flowchart TB
+  subgraph Clientes
+    APP[&quot;App do aluno&lt;br/&gt;Expo SDK 54 · React Native&lt;br/&gt;(Play Store)&quot;]
+    WEB[&quot;Site + console do professor&lt;br/&gt;Vite · React · TS&lt;br/&gt;(Vercel, a partir do espelho)&quot;]
+  end
+
+  subgraph SUPA[&quot;Supabase (us-west-2)&quot;]
+    AUTH[Auth&lt;br/&gt;e-mail e Google]
+    DB[(&quot;Postgres&lt;br/&gt;171 tabelas · RLS&lt;br/&gt;gatilhos · pg_cron · pg_net&quot;)]
+    RT[Realtime]
+    EF[&quot;Edge Functions&lt;br/&gt;storage-redirect · storage-upload-url&lt;br/&gt;pesquisa-arquivar · generate-content-ai&lt;br/&gt;validate-essay-answer-ai · personalize_path&quot;]
+    STL[Storage&lt;br/&gt;só legado]
+  end
+
+  subgraph VPS[&quot;VPS Hetzner · Dokploy&quot;]
+    API[&quot;API&lt;br/&gt;FastAPI · LangGraph&lt;br/&gt;+ 6 workers em laço&quot;]
+    MS[&quot;microservice (api-brainhex)&lt;br/&gt;Node · TS&lt;br/&gt;texto, áudio, cards&quot;]
+    PDF[&quot;BrainHexPDF&lt;br/&gt;deck e HTML da apresentação&quot;]
+  end
+
+  R2[(&quot;Cloudflare R2&lt;br/&gt;arquivos e pesquisa/&quot;)]
+  GEM[Gemini API]
+  OAI[OpenAI]
+  EXPO[Expo Push]
+
+  APP -- &quot;leitura/escrita com RLS, RPC&quot; --&gt; DB
+  APP -- Realtime --&gt; RT
+  WEB -- &quot;leitura/escrita com RLS, RPC&quot; --&gt; DB
+  APP -- &quot;telemetria, chat do Guardião,&lt;br/&gt;pedido de ciclo&quot; --&gt; API
+  WEB -- &quot;geração manual, insights, Lumi&quot; --&gt; API
+  APP -- &quot;mídia por link assinado&quot; --&gt; EF
+  WEB -- &quot;upload assinado&quot; --&gt; EF
+  EF --&gt; R2
+  EF -. fallback .-&gt; STL
+  API --&gt; DB
+  API -- &quot;POST /api/personalizar,&lt;br/&gt;/api/v1/generate/*&quot; --&gt; MS
+  MS -- &quot;POST /api/v1/render-and-store&quot; --&gt; PDF
+  API --&gt; GEM
+  MS --&gt; GEM
+  PDF --&gt; GEM
+  API -. RAG .-&gt; OAI
+  MS --&gt; R2
+  PDF --&gt; R2
+  API -- &quot;retenção: apaga arquivo&quot; --&gt; R2
+  DB -- &quot;pg_net: push&quot; --&gt; EXPO
+  DB -- &quot;pg_net: arquivar pesquisa&quot; --&gt; EF
+</pre></div><figcaption><span>Diagrama 2</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="13-regra-de-fronteira">1.3 Regra de fronteira</h2>
+<p>A API faz só o que envolve modelo de linguagem: LangGraph, RAG, geração e decisão adaptativa. O resto, que o <code>CLAUDE.md</code> chama de encanamento, fica no Postgres.</p>
+<figure class="diagrama" id="diagrama-3"><div class="area"><pre class="mermaid">flowchart LR
+  subgraph BANCO[&quot;Postgres: encanamento&quot;]
+    direction TB
+    B1[enfileirar jobs&lt;br/&gt;gatilhos]
+    B2[progresso e notas&lt;br/&gt;gatilhos]
+    B3[notificações e push&lt;br/&gt;gatilhos + pg_cron + pg_net]
+    B4[eventos, missão diária,&lt;br/&gt;retenção, auditoria&lt;br/&gt;pg_cron]
+    B5[cópia de turma/tópico/atividade&lt;br/&gt;RPC em transação]
+    B6[autorização&lt;br/&gt;RLS + helpers SECURITY DEFINER]
+  end
+  subgraph IA[&quot;API: só IA&quot;]
+    direction TB
+    A1[processar fila de geração]
+    A2[analisar telemetria]
+    A3[grafo adaptativo]
+    A4[chat do Guardião, Lumi, insights]
+    A5[classificar alteração do professor]
+    A6[texto da missão, falas do boss]
+  end
+  BANCO -- &quot;fila (tabela)&quot; --&gt; IA
+  IA -- &quot;resultado (tabela)&quot; --&gt; BANCO
+</pre></div><figcaption><span>Diagrama 3</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>A comunicação entre os dois lados é sempre por <strong>tabela de fila</strong>: o banco grava o pedido e o worker da API reivindica, processa e grava o resultado. Por isso, se a API cair, nada que dependa de relógio para; o pedido só espera na fila.</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Fila (tabela)</th>
+<th>Quem enfileira</th>
+<th>Worker da API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>personalizacao_jobs</code> + <code>_job_targets</code></td>
+<td>gatilhos <code>fn_enqueue_class_delta_job</code>, <code>fn_enqueue_student_enrollment_job</code>, <code>fn_enqueue_classe_mapa_tema_job</code>; console (manual)</td>
+<td><code>personalizacao_jobs_loop</code></td>
+</tr>
+<tr>
+<td><code>telemetria_analise_fila</code></td>
+<td>gatilho <code>trg_telemetria_lotes_enfileira_analise</code></td>
+<td><code>analise_fila_loop</code></td>
+</tr>
+<tr>
+<td><code>alteracao_professor</code></td>
+<td>gatilho nas tabelas do editor e em <code>questao_gabarito</code></td>
+<td><code>alteracao_professor_loop</code></td>
+</tr>
+<tr>
+<td><code>missoes_ia_pedidos</code></td>
+<td><code>pg_cron</code> 03:05 (<code>fn_missao_diaria_enfileirar_texto</code>) e console</td>
+<td><code>missoes_ia_loop</code></td>
+</tr>
+<tr>
+<td><code>retencao_externa</code></td>
+<td>gatilhos de exclusão (fontes, <code>rag_openai_files</code>, arquivos)</td>
+<td><code>retencao_externa_loop</code></td>
+</tr>
+<tr>
+<td>checkpoints do LangGraph</td>
+<td>o próprio grafo</td>
+<td><code>checkpoint_retention_loop</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="14-implantação">1.4 Implantação</h2>
+<figure class="diagrama" id="diagrama-4"><div class="area"><pre class="mermaid">flowchart TB
+  subgraph CEL[&quot;Celular do aluno&quot;]
+    APK[&quot;TrailUp 1.0.x&lt;br/&gt;Expo / Hermes&quot;]
+    LOCAL[(&quot;armazenamento local&lt;br/&gt;outbox 7 dias, cache de mídia&quot;)]
+    NOTIF[Notificação local&lt;br/&gt;lembrete diário]
+  end
+  subgraph NAV[&quot;Navegador do professor&quot;]
+    SPA[SPA React]
+  end
+  subgraph VERCEL[&quot;Vercel&quot;]
+    STATIC[trailup.vercel.app&lt;br/&gt;build do espelho Geisbelly/TrailUp]
+  end
+  subgraph HETZ[&quot;VPS Hetzner (Ashburn, EUA) · Dokploy + Traefik&quot;]
+    C1[&quot;contêiner api&lt;br/&gt;python run_api.py (uvicorn)&lt;br/&gt;alembic upgrade head no lifespan&quot;]
+    C2[contêiner microservice]
+    C3[contêiner brainhexpdf]
+  end
+  subgraph SB[&quot;Supabase · projeto de produção&quot;]
+    PG[(Postgres)]
+    EDGE[Edge Functions · Deno]
+  end
+  CF[(&quot;Cloudflare R2 · ENAM&quot;)]
+
+  APK --&gt; PG
+  APK --&gt; C1
+  APK --&gt; EDGE
+  APK --- LOCAL
+  APK --- NOTIF
+  SPA --&gt; STATIC
+  SPA --&gt; PG
+  SPA --&gt; C1
+  C1 --&gt; PG
+  C1 --&gt; C2 --&gt; C3
+  C2 --&gt; CF
+  C3 --&gt; CF
+  EDGE --&gt; CF
+</pre></div><figcaption><span>Diagrama 4</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<ul>
+<li><strong>Repositórios:</strong> o código vive em <code>BitStudioLabs/trail-up</code>, o canônico. O site no ar, a API e os serviços publicam do espelho <code>Geisbelly/TrailUp</code>.</li>
+<li><strong>Migrations:</strong> a API roda <code>alembic upgrade head</code> ao subir. Se o banco estiver à frente do código publicado, a API não sobe.</li>
+<li><strong>Ambiente local:</strong> <code>npm run docker:up</code> sobe console <code>:8080</code>, API <code>:8000</code> e microservice <code>:3000</code>.</li>
+</ul>
+<h2 id="15-camadas-da-api">1.5 Camadas da API</h2>
+<figure class="diagrama" id="diagrama-5"><div class="area"><pre class="mermaid">flowchart TB
+  R[&quot;Rotas FastAPI&lt;br/&gt;app/api/v1/*&quot;]
+  S[&quot;Serviços&lt;br/&gt;app/services/*&quot;]
+  G[&quot;Grafo LangGraph&lt;br/&gt;app/agent/graph/*&quot;]
+  RP[&quot;Repositórios&lt;br/&gt;app/repositories/* (SQL explícito)&quot;]
+  W[&quot;Workers em laço&lt;br/&gt;(lifespan de app/main.py)&quot;]
+  LLM[&quot;LLMService / JsonLLMService&lt;br/&gt;Gemini com rodízio de chaves&lt;br/&gt;OpenAIRagService&quot;]
+  DB[(Postgres)]
+  R --&gt; S
+  W --&gt; S
+  S --&gt; G
+  G --&gt; S
+  S --&gt; LLM
+  S --&gt; RP --&gt; DB
+  G --&gt; RP
+</pre></div><figcaption><span>Diagrama 5</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<ul>
+<li><strong>Repositórios:</strong> usam SQL com <code>text()</code> do SQLAlchemy async. Não há ORM de entidades.</li>
+<li><strong>Grafo LangGraph:</strong> são duas instâncias compiladas.
+<ul>
+<li><code>graph_personalizacao</code>: checkpoint persistente no Postgres.</li>
+<li><code>graph_ephemeral</code>: usado pela análise de telemetria.</li>
+</ul>
+</li>
+<li><strong>Portão de idade:</strong> fica em <code>llm.ainvoke_structured</code>, antes de qualquer chamada a modelo, inclusive a busca do RAG.</li>
+</ul>
+<nav class="nav-paginas"><a href="modelagem.html"><span class="k">← anterior</span><span class="t">Sobre a modelagem</span></a><a class="prox" href="casos-de-uso.html"><span class="k">próxima →</span><span class="t">Casos de uso</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#11-contexto-c4-nível-1">1.1 Contexto (C4, nível 1)</a></li><li><a href="#12-contêineres-c4-nível-2">1.2 Contêineres (C4, nível 2)</a></li><li><a href="#13-regra-de-fronteira">1.3 Regra de fronteira</a></li><li><a href="#14-implantação">1.4 Implantação</a></li><li><a href="#15-camadas-da-api">1.5 Camadas da API</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>ea19135a</code> em 04/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>

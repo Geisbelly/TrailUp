@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Inventário completo · TrailUp</title><meta name="description" content="Catálogo peça por peça: cada módulo da API, do microservice, do app e do console, e cada tabela, função e rotina do banco."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 transform=%22rotate(45 8 8)%22 fill=%22%23a08df5%22/%3E%3C/svg%3E"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><span class="diamond"></span>TrailUp · documentação</a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html" aria-current="page">Inventário completo</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Sistema</div><h1>Inventário completo</h1><p class="lede">Catálogo peça por peça: cada módulo da API, do microservice, do app e do console, e cada tabela, função e rotina do banco.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/inventario-completo-2026-11-04.md" target="_blank" rel="noopener">docs/tcc/inventario-completo-2026-11-04.md</a><span class="chip ok">atualizado 04/11/2026</span></div></header><p>Complemento do <a href="visao-geral.html">dossiê do sistema</a>. Lá estão a síntese e o que pode ser afirmado. Aqui está <strong>cada peça</strong> do sistema, extraída de forma automática da fonte: docstrings e nomes do código, listagem de arquivos e contagens do banco de produção (só leitura). A escolha do que entra não foi manual, então nada ficou de fora por julgamento.</p>
+<p>Base: <code>main</code> do Lab em <code>58331902</code> e banco de produção, ambos em 04/11/2026. Na descrição de cada módulo, o texto vem da docstring do arquivo. Quando não há docstring, aparecem os nomes públicos que o arquivo define.</p>
+<h2 id="o-que-esta-varredura-acrescentou-ao-dossiê">O que esta varredura acrescentou ao dossiê</h2>
+<ol>
+<li><strong>Desenho experimental pronto no banco</strong> (<code>docs/superpowers/specs/2026-11-01-cohort-e-baseline-design.md</code>, migrations <code>20261102_02/03/05</code>):
+<ul>
+<li>a coorte é a <strong>turma</strong>, com uma data de corte;</li>
+<li>o baseline tem pelo menos 7 dias antes do corte;</li>
+<li>há turma de comparação, o que permite <strong>diferença-em-diferenças</strong>;</li>
+<li>o registro é <strong>prospectivo e travado</strong> por gatilho: escolher a janela depois de ver o dado fica impossível;</li>
+<li>a análise é por <strong>intenção de tratar</strong>: aluno pareado sem uso conta como zero;</li>
+<li>durante o estudo, a personalização fica <strong>retida</strong> na turma de comparação, e o grafo só mede.</li>
+<li>Em produção, <code>estudo_coorte</code> tem 0 linhas: nenhuma coorte foi registrada.</li>
+</ul>
+</li>
+<li><strong>Perguntas de pesquisa já operacionalizadas</strong> (<code>docs/tcc/09</code>):
+<ul>
+<li>PR1: tempo ativo por tópico;</li>
+<li>PR2: conclusão e acerto;</li>
+<li>PR3: perfil × formato, por RPC com <strong>intervalo de Wilson a 95%</strong>, supressão abaixo de n mínimo e duas leituras de perfil (dominante e por afinidade, com n efetivo de Kish);</li>
+<li>PR4: UX e retenção.</li>
+</ul>
+</li>
+<li><strong>Análise BrainHex v3</strong> (<code>docs/analises/issue-1-adaptacao-evidencias.md</code>):
+<ul>
+<li>a confiança do perfil <strong>não é estimada</strong> (<code>null</code>);</li>
+<li>o Spearman foi corrigido;</li>
+<li>houve releitura de Tondello (2018), Oliveira (2022), van Sonderen (2013), Santos (2022) e das diretrizes ITC (2017);</li>
+<li>o desenho &quot;perfil probabilístico&quot; (prior do quiz mais evidência do uso) foi revisto, porque os pesos não estão calibrados.</li>
+</ul>
+</li>
+<li><strong>O conteúdo também decide o formato</strong> (<code>demanda_formato.py</code>):
+<ul>
+<li>cada conteúdo é classificado em visual, escrito, sonoro e prático, como essencial, ajuda ou indiferente;</li>
+<li>o que é essencial vem antes da preferência do perfil.</li>
+</ul>
+</li>
+<li><strong>Métrica de efetividade da própria sugestão</strong> (<code>sugestao_metrica.py</code>):
+<ul>
+<li>mede se a sugestão foi seguida e se o desempenho foi melhor quando seguida;</li>
+<li>mede se as revisões melhoraram o resultado;</li>
+<li>mede o <em>churn</em>, quanto o sistema muda de opinião.</li>
+</ul>
+</li>
+<li><strong>Auditoria das métricas</strong> (<code>2026-10-28-metricas-ponta-a-ponta-design.md</code>):
+<ul>
+<li>em 28/10, nenhum KPI do console media o que o rótulo dizia (exemplo: tempo de uso inflado em até 81×);</li>
+<li>a correção trocou &quot;funcionar&quot; por <strong>invariantes que passam ou falham</strong>: 40 amostras e 120 resultados em <code>metricas_invariante_*</code>, conferidos todo dia por <code>pg_cron</code>;</li>
+<li>número sabidamente errado não aparece no console.</li>
+</ul>
+</li>
+<li><strong>Duas implementações de RAG</strong>:
+<ul>
+<li>ADR-0001: pgvector no Postgres. A tabela <code>rag_chunks</code> com <code>vector(1536)</code> existe e a extensão <code>vector 0.8.0</code> está instalada;</li>
+<li>ADR-0002, a vigente: Vector Store da OpenAI;</li>
+<li>há também um pipeline de ingestão local (<code>app/ingestion/</code>: extratores PDF/DOCX/PPTX/MD/TXT e um <em>semantic chunker</em>) usado nas fontes do professor;</li>
+<li>todas as tabelas de RAG estão vazias.</li>
+</ul>
+</li>
+<li><strong>Guardrails das saídas do modelo</strong> (<code>guardrails.py</code>):
+<ul>
+<li>ordem sequencial da trilha;</li>
+<li>tópicos existentes;</li>
+<li>evidência de domínio;</li>
+<li><em>grounding</em> do chat do mentor, com uma segunda chamada que julga se a resposta se apoia no contexto (<code>mentor_grounding_check.txt</code>);</li>
+<li><code>gerar_validado</code>, que repete a chamada quando a saída falha nessas checagens.</li>
+</ul>
+</li>
+<li><strong>Formatos de saída além dos três principais</strong>:
+<ul>
+<li>vídeo MP4 (<code>video.py</code>, moviepy), PPTX, DOCX e PDF de slides;</li>
+<li>imagem do professor <strong>reilustrada por perfil</strong> (<code>profileImageRestyle.ts</code>);</li>
+<li>diagramas ASCII do modelo convertidos em fluxograma (<code>flowDiagram.ts</code>, <code>laneDiagram.ts</code>);</li>
+<li>deck HTML com quiz interativo, grafo de conhecimento e sintetizador de áudio temático (BrainHexPDF).</li>
+</ul>
+</li>
+<li><strong>O app também roda na web, em tela larga</strong> (<code>mobile/src/components/web/</code>, cerca de 30 componentes de desktop).</li>
+<li><strong>Recursos de integridade acadêmica:</strong>
+<ul>
+<li>print bloqueado enquanto o aluno responde (<code>useBloqueioDeCaptura</code>, #139);</li>
+<li>vigia de presença;</li>
+<li>atualização obrigatória por versão mínima;</li>
+<li>tentativas de atividade registradas no servidor.</li>
+</ul>
+</li>
+<li><strong>Missões sugeridas por IA ao professor</strong> (<code>missoes_ia.py</code>, #151):
+<ul>
+<li>o banco aplica as regras: teto por dia, métrica do catálogo, sem link nem e-mail;</li>
+<li>guarda só contagens, nunca o texto.</li>
+</ul>
+</li>
+<li><strong>Integração LTI 1.3:</strong> só levantamento (<code>docs/architecture/lti-1.3.md</code>, #146), <strong>nada implementado</strong>.</li>
+</ol>
+<hr />
+<h2 id="1-api-apiapp-todos-os-módulos">1. API (<code>api/app</code>): todos os módulos</h2>
+<p>Colunas: arquivo, linhas, descrição.</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Arquivo</th>
+<th>Linhas</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app/adapters/base_emocao.py</code></td>
+<td>14</td>
+<td>define: <code>EmocaoAdapter</code></td>
+</tr>
+<tr>
+<td><code>app/adapters/mock_emocao.py</code></td>
+<td>46</td>
+<td>define: <code>MockEmocaoAdapter</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/builder.py</code></td>
+<td>80</td>
+<td>define: <code>build_graph</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/checkpointer.py</code></td>
+<td>53</td>
+<td>define: <code>get_checkpointer</code>, <code>get_persistent_checkpointer</code>, <code>get_ephemeral_checkpointer</code>, <code>close_checkpointer</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/guardrails.py</code></td>
+<td>202</td>
+<td>define: <code>GuardrailViolation</code>, <code>checar_ordem_sequencial</code>, <code>checar_topicos_existem</code>, <code>checar_evidencia_dominio</code>, <code>gerar_validado</code>, <code>checar_grounding_chat</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_ai_patch.py</code></td>
+<td>11</td>
+<td>define: <code>agente_ai_patch</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_conteudo.py</code></td>
+<td>46</td>
+<td>define: <code>agente_conteudo</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_cronometro.py</code></td>
+<td>26</td>
+<td>A IA desliga o cronometro das atividades de um aluno (#136, fase 4).</td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_emocao.py</code></td>
+<td>33</td>
+<td>define: <code>agente_emocao</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_geracao_midia.py</code></td>
+<td>45</td>
+<td>define: <code>agente_geracao_midia</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_intervencao.py</code></td>
+<td>207</td>
+<td>Intervencao sugerida ao professor quando um alerta de estudo se repete (#64).</td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_midias_personalizadas.py</code></td>
+<td>34</td>
+<td>define: <code>agente_midias_personalizadas</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_notificacao.py</code></td>
+<td>377</td>
+<td>Notificação push personalizada por aluno e por perfil BrainHex, com RAG (#66).</td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_perfil.py</code></td>
+<td>72</td>
+<td>define: <code>agente_perfil</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_plano_personalizacao.py</code></td>
+<td>11</td>
+<td>define: <code>agente_plano_personalizacao</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_texto.py</code></td>
+<td>53</td>
+<td>define: <code>agente_texto</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_trilha.py</code></td>
+<td>96</td>
+<td>define: <code>agente_trilha</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/agente_ui.py</code></td>
+<td>73</td>
+<td>define: <code>agente_ui</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/executor.py</code></td>
+<td>260</td>
+<td>define: <code>aviso_da_intervencao</code>, <code>executor</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/persist_personalizacao.py</code></td>
+<td>18</td>
+<td>define: <code>persist_personalizacao</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/nodes/supervisor.py</code></td>
+<td>64</td>
+<td>define: <code>escolha_do_modelo</code>, <code>supervisor</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/routing.py</code></td>
+<td>225</td>
+<td>define: <code>compute_supervisor_next</code>, <code>compute_personalizacao_next</code>, <code>build_state_summary</code>, <code>route_from_state</code></td>
+</tr>
+<tr>
+<td><code>app/agent/graph/state.py</code></td>
+<td>85</td>
+<td>define: <code>TrailUpState</code></td>
+</tr>
+<tr>
+<td><code>app/api/admin.py</code></td>
+<td>594</td>
+<td>define: <code>admin_professores_page</code></td>
+</tr>
+<tr>
+<td><code>app/api/deps.py</code></td>
+<td>116</td>
+<td>define: <code>AdminContext</code>, <code>get_settings</code>, <code>get_session</code>, <code>get_current_user</code>, <code>require_admin</code>, <code>require_aluno</code>, <code>require_professor</code>, <code>ensure_professor_access</code></td>
+</tr>
+<tr>
+<td><code>app/api/economia_admin.py</code></td>
+<td>141</td>
+<td>Auditoria da economia no painel admin da API.</td>
+</tr>
+<tr>
+<td><code>app/api/health.py</code></td>
+<td>50</td>
+<td>define: <code>healthcheck</code></td>
+</tr>
+<tr>
+<td><code>app/api/molduras_admin.py</code></td>
+<td>273</td>
+<td>Molduras no painel admin da API: o dev liga, desliga e reprecifica, e escolhe o que cada ação dá.</td>
+</tr>
+<tr>
+<td><code>app/api/router.py</code></td>
+<td>30</td>
+<td>(sem docstring)</td>
+</tr>
+<tr>
+<td><code>app/api/v1/admin.py</code></td>
+<td>119</td>
+<td>define: <code>atualizar_liberacao_professor</code>, <code>atualizar_acesso_aluno_professor</code>, <code>backfill_media_render_admin</code></td>
+</tr>
+<tr>
+<td><code>app/api/v1/emocoes.py</code></td>
+<td>94</td>
+<td>define: <code>analisar</code>, <code>analisar_stream</code></td>
+</tr>
+<tr>
+<td><code>app/api/v1/escriba.py</code></td>
+<td>42</td>
+<td>Escriba: conversa do professor com a IA sobre as turmas dele.</td>
+</tr>
+<tr>
+<td><code>app/api/v1/insights.py</code></td>
+<td>112</td>
+<td>Insights da turma (aba Insights do console do professor).</td>
+</tr>
+<tr>
+<td><code>app/api/v1/materiais.py</code></td>
+<td>51</td>
+<td>define: <code>listar_materiais</code></td>
+</tr>
+<tr>
+<td><code>app/api/v1/personalizacao.py</code></td>
+<td>3191</td>
+<td>define: <code>personalizar</code>, <code>conversar_com_mentor_personalizacao</code>, <code>upload_fontes_personalizacao</code>, <code>upsert_progresso_personalizado</code>, <code>listar_personalizacoes_por_perfil</code>, <code>regenerar_documento_personalizacao</code>, <code>regenerar_slide_personalizacao</code>, <code>obter_adequacao_grupo</code></td>
+</tr>
+<tr>
+<td><code>app/api/v1/telemetria.py</code></td>
+<td>408</td>
+<td>define: <code>registrar_lote_telemetria</code></td>
+</tr>
+<tr>
+<td><code>app/core/build_info.py</code></td>
+<td>9</td>
+<td>Revisão informada pelo deploy, sem inferir pelo checkout ou versão do pipeline.</td>
+</tr>
+<tr>
+<td><code>app/core/settings.py</code></td>
+<td>338</td>
+<td>define: <code>Settings</code>, <code>get_settings</code></td>
+</tr>
+<tr>
+<td><code>app/core/tracing.py</code></td>
+<td>65</td>
+<td>Trava do tracing LangSmith (#195).</td>
+</tr>
+<tr>
+<td><code>app/db/migrations.py</code></td>
+<td>116</td>
+<td>define: <code>normalize_database_url_for_alembic</code>, <code>trava_de_migracao</code>, <code>declara_leitura_e_escrita</code>, <code>upgrade_database_to_head</code></td>
+</tr>
+<tr>
+<td><code>app/db/session.py</code></td>
+<td>98</td>
+<td>define: <code>DatabaseUnavailableError</code>, <code>execute_with_database_retry</code>, <code>build_engine</code>, <code>build_session_factory</code>, <code>ping_database</code>, <code>session_dependency</code></td>
+</tr>
+<tr>
+<td><code>app/ingestion/document_normalizer.py</code></td>
+<td>103</td>
+<td>Normaliza o resultado bruto dos extratores para um NormalizedDocument. Limpa ruído, preserva hierarquia e atribui IDs únicos.</td>
+</tr>
+<tr>
+<td><code>app/ingestion/extractor_factory.py</code></td>
+<td>68</td>
+<td>Factory: escolhe o extrator correto com base na família do arquivo.</td>
+</tr>
+<tr>
+<td><code>app/ingestion/extractors/docx_extractor.py</code></td>
+<td>149</td>
+<td>Extrator de DOCX: python-docx → lista de Block.</td>
+</tr>
+<tr>
+<td><code>app/ingestion/extractors/markdown_extractor.py</code></td>
+<td>214</td>
+<td>Extrator de Markdown: parse estrutural → lista de Block.</td>
+</tr>
+<tr>
+<td><code>app/ingestion/extractors/pdf_extractor.py</code></td>
+<td>94</td>
+<td>Extrator de PDF: pypdf → lista de Block.</td>
+</tr>
+<tr>
+<td><code>app/ingestion/extractors/pptx_extractor.py</code></td>
+<td>303</td>
+<td>Extrator de PPTX: python-pptx com fallback XML.</td>
+</tr>
+<tr>
+<td><code>app/ingestion/extractors/text_extractor.py</code></td>
+<td>117</td>
+<td>Extrator de texto plano (.txt, .csv, .json, .xml) → lista de Block.</td>
+</tr>
+<tr>
+<td><code>app/ingestion/format_detector.py</code></td>
+<td>186</td>
+<td>Detecta o tipo e família de um arquivo por extensão e MIME type.</td>
+</tr>
+<tr>
+<td><code>app/ingestion/models.py</code></td>
+<td>100</td>
+<td>Modelos internos unificados do pipeline de ingestão.</td>
+</tr>
+<tr>
+<td><code>app/ingestion/pipeline.py</code></td>
+<td>198</td>
+<td>Ponto de entrada do pipeline de ingestão.</td>
+</tr>
+<tr>
+<td><code>app/ingestion/semantic_chunker.py</code></td>
+<td>152</td>
+<td>Segmentador semântico: agrupa blocos em chunks coerentes por seção/tópico.</td>
+</tr>
+<tr>
+<td><code>app/main.py</code></td>
+<td>177</td>
+<td>define: <code>create_app</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/access.py</code></td>
+<td>316</td>
+<td>define: <code>AccessRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/aluno_topico_dominio.py</code></td>
+<td>67</td>
+<td>define: <code>AlunoTopicoDominioRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/artefatos_personalizados.py</code></td>
+<td>546</td>
+<td>define: <code>ArtefatosPersonalizadosRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/classe_mapa_tema.py</code></td>
+<td>192</td>
+<td>define: <code>ClasseMapaTemaRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/conteudo_classe.py</code></td>
+<td>455</td>
+<td>define: <code>ConteudoClasseRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/conteudo_personalizado.py</code></td>
+<td>1195</td>
+<td>define: <code>ConteudoPersonalizadoRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/context.py</code></td>
+<td>478</td>
+<td>define: <code>ContextRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/estado_atencao.py</code></td>
+<td>65</td>
+<td>define: <code>EstadoAtencaoRepository</code>, <code>estado_da_atencao</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/estudo.py</code></td>
+<td>48</td>
+<td>define: <code>EstudoRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/evento.py</code></td>
+<td>86</td>
+<td>define: <code>EventoRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/fontes_personalizacao.py</code></td>
+<td>798</td>
+<td>define: <code>FontesContextLimitExceeded</code>, <code>FontesPersonalizacaoRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/ia_decision_logs.py</code></td>
+<td>103</td>
+<td>define: <code>IADecisionLogRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/ia_descricao.py</code></td>
+<td>144</td>
+<td>define: <code>IADescricaoRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/intervencao.py</code></td>
+<td>89</td>
+<td>define: <code>IntervencaoRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/materiais.py</code></td>
+<td>628</td>
+<td>define: <code>MateriaisRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/mental_state.py</code></td>
+<td>86</td>
+<td>define: <code>MentalStateHistoryRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/notificacao.py</code></td>
+<td>77</td>
+<td>define: <code>NotificacaoRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/perfil.py</code></td>
+<td>106</td>
+<td>define: <code>PerfilRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/personalizacao_blocos.py</code></td>
+<td>112</td>
+<td>define: <code>PersonalizacaoBlocosRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/personalizacao_jobs.py</code></td>
+<td>1407</td>
+<td>define: <code>PersonalizacaoJobsRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/personalizacao_progresso.py</code></td>
+<td>449</td>
+<td>define: <code>PersonalizacaoProgressoRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/professor.py</code></td>
+<td>25</td>
+<td>define: <code>ProfessorRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/rag_openai_files.py</code></td>
+<td>82</td>
+<td>Catalogo local do que esta no Vector Store da OpenAI (<code>rag_openai_files</code>).</td>
+</tr>
+<tr>
+<td><code>app/repositories/sugestao_material.py</code></td>
+<td>431</td>
+<td>Persistência da sugestão de material por aluno + log append-only.</td>
+</tr>
+<tr>
+<td><code>app/repositories/telemetria.py</code></td>
+<td>680</td>
+<td>define: <code>TelemetriaRepository</code></td>
+</tr>
+<tr>
+<td><code>app/repositories/tentativas.py</code></td>
+<td>97</td>
+<td>Leitura das tentativas e escrita do cronometro pela IA (#136, fase 4).</td>
+</tr>
+<tr>
+<td><code>app/repositories/trilha.py</code></td>
+<td>58</td>
+<td>define: <code>TrilhaRepository</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/alteracao_professor.py</code></td>
+<td>19</td>
+<td>define: <code>DecisaoDoAluno</code>, <code>AlteracaoProfessorSaida</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/api.py</code></td>
+<td>118</td>
+<td>define: <code>AnalisarPayload</code>, <code>AnalisarResponse</code>, <code>MaterialGeradoResponse</code>, <code>MateriaisAlunoResponse</code>, <code>AdminAlunoResumo</code>, <code>AdminProfessorResumo</code>, <code>AdminDashboardData</code>, <code>AdminProfessorLiberacaoRequest</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/common.py</code></td>
+<td>31</td>
+<td>define: <code>Evento</code>, <code>DesempenhoSummary</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/conteudo_adaptado.py</code></td>
+<td>10</td>
+<td>define: <code>ConteudoAdaptado</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/emocao_result.py</code></td>
+<td>9</td>
+<td>define: <code>EmocaoResult</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/escriba.py</code></td>
+<td>31</td>
+<td>define: <code>MensagemEscriba</code>, <code>PerguntaEscriba</code>, <code>EscribaSaida</code>, <code>RespostaEscriba</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/ia_patch.py</code></td>
+<td>203</td>
+<td>define: <code>IACamelModel</code>, <code>IAMentalStateSnapshot</code>, <code>IAFeatureDescriptor</code>, <code>IATimerConfig</code>, <code>IABattleTiming</code>, <code>IAEnemyPalette</code>, <code>IAEnemyVisualSpec</code>, <code>IAEnemySpec</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/insights.py</code></td>
+<td>40</td>
+<td>define: <code>InsightGerado</code>, <code>InsightsTurmaSaida</code>, <code>InsightsGeracaoResponse</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/intervencao.py</code></td>
+<td>28</td>
+<td>define: <code>IntervencaoSugestao</code>, <code>IntervencaoPayload</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/memoria_aluno.py</code></td>
+<td>21</td>
+<td>define: <code>DominioTopico</code>, <code>MentalStateRecorrente</code>, <code>MemoriaAluno</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/mentor_chat.py</code></td>
+<td>13</td>
+<td>define: <code>MentorChatLLMResult</code>, <code>GroundingJudgment</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/missoes_ia.py</code></td>
+<td>18</td>
+<td>define: <code>PropostaDeMissao</code>, <code>MissoesIaSaida</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/notificacao.py</code></td>
+<td>13</td>
+<td>define: <code>NotificacaoPayload</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/perfil.py</code></td>
+<td>14</td>
+<td>define: <code>PerfilScore</code>, <code>PerfilUpdate</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/personalizacao.py</code></td>
+<td>534</td>
+<td>define: <code>DesignTokensCores</code>, <code>DesignTokensTipografia</code>, <code>DesignTokens</code>, <code>PerfilBrainHexPayload</code>, <code>PersonalizarPayload</code>, <code>PersonalizacaoStep</code>, <code>PersonalizacaoItemProgressoPayload</code>, <code>PersonalizacaoItemProgressoResponse</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/supervisor_decision.py</code></td>
+<td>6</td>
+<td>define: <code>SupervisorDecision</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/telemetria.py</code></td>
+<td>246</td>
+<td>define: <code>TelemetriaSignalPayload</code>, <code>TelemetriaTouchSamplePayload</code>, <code>TelemetriaTimeMetricEntryPayload</code>, <code>TelemetriaTimeMetricsPayload</code>, <code>TelemetriaCameraFramePayload</code>, <code>TelemetriaCameraPayload</code>, <code>TelemetriaAppEventPayload</code>, <code>TelemetriaClientePayload</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/texto_gerado.py</code></td>
+<td>8</td>
+<td>define: <code>TextoGerado</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/trilha_config.py</code></td>
+<td>10</td>
+<td>define: <code>TrilhaConfig</code></td>
+</tr>
+<tr>
+<td><code>app/schemas/ui_config.py</code></td>
+<td>15</td>
+<td>define: <code>UIConfig</code></td>
+</tr>
+<tr>
+<td><code>app/services/alteracao_professor.py</code></td>
+<td>208</td>
+<td>Worker da análise de alteração do professor (<code>20261101_12</code>).</td>
+</tr>
+<tr>
+<td><code>app/services/analise_fila.py</code></td>
+<td>308</td>
+<td>Worker da fila de análise de lote de telemetria (F3, Task 2).</td>
+</tr>
+<tr>
+<td><code>app/services/analysis_runner.py</code></td>
+<td>285</td>
+<td>define: <code>build_analysis_graph_config</code>, <code>build_analysis_response</code>, <code>run_analysis</code></td>
+</tr>
+<tr>
+<td><code>app/services/audio.py</code></td>
+<td>103</td>
+<td>define: <code>gerar_mp3_gtts</code>, <code>gerar_mp3_gemini_tts</code></td>
+</tr>
+<tr>
+<td><code>app/services/auth.py</code></td>
+<td>239</td>
+<td>define: <code>UserContext</code>, <code>AuthService</code></td>
+</tr>
+<tr>
+<td><code>app/services/behavioral_personalization.py</code></td>
+<td>798</td>
+<td>define: <code>build_behavioral_personalization</code></td>
+</tr>
+<tr>
+<td><code>app/services/boss_falas.py</code></td>
+<td>495</td>
+<td>Falas do boss geradas em lote: uma chamada ao modelo por tópico × perfil BrainHex.</td>
+</tr>
+<tr>
+<td><code>app/services/checkpoint_retention.py</code></td>
+<td>138</td>
+<td>define: <code>CheckpointCleanupResult</code>, <code>cleanup_persisted_checkpoints</code>, <code>run_checkpoint_retention_once</code>, <code>checkpoint_retention_loop</code></td>
+</tr>
+<tr>
+<td><code>app/services/classe_mapa_tema.py</code></td>
+<td>285</td>
+<td>define: <code>gerar_classe_mapa_tema</code></td>
+</tr>
+<tr>
+<td><code>app/services/content_enrichment.py</code></td>
+<td>1322</td>
+<td>define: <code>reset_openai_enrichment_circuit</code>, <code>openai_estimated_spend_usd</code>, <code>reset_openai_spend_guard</code>, <code>reset_gemini_enrichment_circuit</code>, <code>ContentEnrichmentError</code>, <code>derive_base_blocks_and_topic</code>, <code>enrich_base_blocks</code>, <code>enrich_content_blocks</code></td>
+</tr>
+<tr>
+<td><code>app/services/demanda_formato.py</code></td>
+<td>458</td>
+<td>O formato que cada conteúdo pede para ser entendido: uma análise por tópico, no worker.</td>
+</tr>
+<tr>
+<td><code>app/services/docx.py</code></td>
+<td>21</td>
+<td>define: <code>gerar_docx</code></td>
+</tr>
+<tr>
+<td><code>app/services/emotion_vision.py</code></td>
+<td>313</td>
+<td>Analise de emocao a partir do frame da camera, com modelo LOCAL.</td>
+</tr>
+<tr>
+<td><code>app/services/escriba.py</code></td>
+<td>333</td>
+<td>Escriba: o assistente de IA do professor no console.</td>
+</tr>
+<tr>
+<td><code>app/services/estado_de_estudo.py</code></td>
+<td>54</td>
+<td>Estado de estudo do ciclo: o que entra em <code>aluno_mental_state_history</code> (DAT-45).</td>
+</tr>
+<tr>
+<td><code>app/services/evidencias_pedagogicas.py</code></td>
+<td>122</td>
+<td>Catálogo das regras que o motor de sugestão usa, com a evidência de cada uma (#66).</td>
+</tr>
+<tr>
+<td><code>app/services/gemini_chaves.py</code></td>
+<td>200</td>
+<td>Pool unico de chaves do Gemini para a API inteira.</td>
+</tr>
+<tr>
+<td><code>app/services/gemini_http.py</code></td>
+<td>109</td>
+<td>Chamadas HTTP diretas ao Gemini (generativelanguage.googleapis.com).</td>
+</tr>
+<tr>
+<td><code>app/services/graph_invocation.py</code></td>
+<td>155</td>
+<td>define: <code>ainvoke_personalizacao_graph</code></td>
+</tr>
+<tr>
+<td><code>app/services/group_analysis.py</code></td>
+<td>254</td>
+<td>Adequacao de grupo: analisa a distribuicao de perfis BrainHex por classe.</td>
+</tr>
+<tr>
+<td><code>app/services/guia_do_app.py</code></td>
+<td>48</td>
+<td>O que os Guardiões sabem sobre o app do aluno, e para onde podem levá-lo.</td>
+</tr>
+<tr>
+<td><code>app/services/insights_turma.py</code></td>
+<td>412</td>
+<td>Insights da turma: sinteses que a IA escreve para o professor (aba Insights).</td>
+</tr>
+<tr>
+<td><code>app/services/linear_analysis_pipeline.py</code></td>
+<td>963</td>
+<td>Pipeline linear de analise adaptativa.</td>
+</tr>
+<tr>
+<td><code>app/services/llm.py</code></td>
+<td>328</td>
+<td>define: <code>reset_gemini_llm_circuit</code>, <code>load_prompt</code>, <code>extract_json</code>, <code>StructuredOutputError</code>, <code>MenorSemOpenAIError</code>, <code>JsonLLMService</code></td>
+</tr>
+<tr>
+<td><code>app/services/m2_features.py</code></td>
+<td>148</td>
+<td>Monta os overrides das features M2 a partir do banco (issue #215).</td>
+</tr>
+<tr>
+<td><code>app/services/m2_inference.py</code></td>
+<td>199</td>
+<td>Gate M2: inferência local dos modelos de knowledge tracing (issue #215).</td>
+</tr>
+<tr>
+<td><code>app/services/material_revisao.py</code></td>
+<td>40</td>
+<td>Contador de revisao por material.</td>
+</tr>
+<tr>
+<td><code>app/services/media_agents.py</code></td>
+<td>937</td>
+<td>define: <code>gerar_audio_gemini_tts</code>, <code>gerar_roteiro_video_llm</code>, <code>brainhex_contract_ready</code>, <code>disparar_brainhex_async</code>, <code>gerar_capitulo_bloco_brainhex</code>, <code>gerar_audio_parte_brainhex</code>, <code>gerar_apresentacao_parte_brainhex</code>, <code>regenerar_capitulo_brainhex</code></td>
+</tr>
+<tr>
+<td><code>app/services/media_contract.py</code></td>
+<td>24</td>
+<td>Contrato de versão entre a API orquestradora e o gerador de mídias.</td>
+</tr>
+<tr>
+<td><code>app/services/media_generation_jobs.py</code></td>
+<td>481</td>
+<td>define: <code>criar_ciclo_media_generation</code>, <code>MediaGenerationTargetError</code>, <code>processar_target_enriquecimento</code>, <code>processar_target_capitulo</code>, <code>fase_a_completa</code>, <code>criar_targets_fase_b</code>, <code>processar_target_audio</code>, <code>processar_target_apresentacao</code></td>
+</tr>
+<tr>
+<td><code>app/services/media_pipeline.py</code></td>
+<td>502</td>
+<td>define: <code>MediaPipelineContext</code>, <code>MediaPipeline</code>, <code>MarkdownPipeline</code>, <code>SlidesPipeline</code>, <code>AudioPipeline</code>, <code>MultiOutputPipeline</code></td>
+</tr>
+<tr>
+<td><code>app/services/memoria_aluno.py</code></td>
+<td>91</td>
+<td>define: <code>ler_memoria</code>, <code>atualizar_memoria</code></td>
+</tr>
+<tr>
+<td><code>app/services/missao_diaria_texto.py</code></td>
+<td>342</td>
+<td>Fase 6: reescreve o texto da missão diária por coorte, com Gemini, sem tocar no que ela mede.</td>
+</tr>
+<tr>
+<td><code>app/services/missoes_ia.py</code></td>
+<td>181</td>
+<td>Worker das missões sugeridas pela IA (<code>20261102_20</code>, #151).</td>
+</tr>
+<tr>
+<td><code>app/services/modo_restrito.py</code></td>
+<td>76</td>
+<td>Modo restrito do aluno (#195): o que a API deixa fazer sem consentimento.</td>
+</tr>
+<tr>
+<td><code>app/services/openai_rag.py</code></td>
+<td>277</td>
+<td>Integração do TrailUp com o OpenAI Vector Store.</td>
+</tr>
+<tr>
+<td><code>app/services/pdf.py</code></td>
+<td>252</td>
+<td>define: <code>render_pdf_html</code>, <code>gerar_pdf</code></td>
+</tr>
+<tr>
+<td><code>app/services/personalizacao.py</code></td>
+<td>6968</td>
+<td>define: <code>normalizar_arco_narrativo</code>, <code>build_personalizacao_steps</code>, <code>fetch_personalizacao_context</code>, <code>gerar_cards_direto</code>, <code>generate_plano_personalizacao</code>, <code>generate_ai_patch_personalizacao</code>, <code>generate_materiais_personalizados</code>, <code>reconcile_material_links_for_record</code></td>
+</tr>
+<tr>
+<td><code>app/services/personalizacao_jobs.py</code></td>
+<td>3207</td>
+<td>define: <code>inicio_do_adiamento</code>, <code>marcar_adiamento</code>, <code>enqueue_personalizacao_job</code>, <code>get_job_detail</code>, <code>derivar_personalizacao_do_base</code>, <code>process_personalizacao_job_once</code>, <code>personalizacao_jobs_loop</code></td>
+</tr>
+<tr>
+<td><code>app/services/pptx.py</code></td>
+<td>165</td>
+<td>define: <code>gerar_pptx</code></td>
+</tr>
+<tr>
+<td><code>app/services/pseudonimizacao.py</code></td>
+<td>146</td>
+<td>Pseudonimizacao do que vai aos provedores de IA (#195, LGPD art. 46).</td>
+</tr>
+<tr>
+<td><code>app/services/r2_storage.py</code></td>
+<td>114</td>
+<td>Escrita e remocao de objetos no Cloudflare R2 SEM credencial do R2 na API (#76).</td>
+</tr>
+<tr>
+<td><code>app/services/rag_observabilidade.py</code></td>
+<td>193</td>
+<td>Observabilidade do RAG (#67): o que a busca no Vector Store fez, sem texto do aluno.</td>
+</tr>
+<tr>
+<td><code>app/services/retencao_externa.py</code></td>
+<td>346</td>
+<td>Worker da fila externa de retencao (#195, <code>20261024_03</code>).</td>
+</tr>
+<tr>
+<td><code>app/services/roteamento_ia.py</code></td>
+<td>189</td>
+<td>IA do TrailUp so para adultos confirmados (#195).</td>
+</tr>
+<tr>
+<td><code>app/services/slides_pdf.py</code></td>
+<td>165</td>
+<td>define: <code>gerar_pdf_slides</code></td>
+</tr>
+<tr>
+<td><code>app/services/state_builder.py</code></td>
+<td>129</td>
+<td>define: <code>build_initial_state</code></td>
+</tr>
+<tr>
+<td><code>app/services/storage.py</code></td>
+<td>669</td>
+<td>define: <code>build_public_storage_url</code>, <code>build_material_url</code>, <code>material_url_de_leitura</code>, <code>objeto_do_storage</code>, <code>SupabaseStorage</code></td>
+</tr>
+<tr>
+<td><code>app/services/sugestao_ciclo.py</code></td>
+<td>432</td>
+<td>Amarra o motor de sugestão ao banco: cria, revisa e registra cada decisão.</td>
+</tr>
+<tr>
+<td><code>app/services/sugestao_material.py</code></td>
+<td>819</td>
+<td>Motor determinístico de sugestão de material por aluno.</td>
+</tr>
+<tr>
+<td><code>app/services/sugestao_metrica.py</code></td>
+<td>330</td>
+<td>Efetividade das sugestões de material (fase 3).</td>
+</tr>
+<tr>
+<td><code>app/services/sugestao_sinais.py</code></td>
+<td>255</td>
+<td>Traduz telemetria em sinais por formato, no formato que o motor espera.</td>
+</tr>
+<tr>
+<td><code>app/services/telemetria_eventos_legados.py</code></td>
+<td>116</td>
+<td>Eventos legados (<code>eventos_aluno</code>) derivados dos sinais de um lote de telemetria.</td>
+</tr>
+<tr>
+<td><code>app/services/tentativas_atividade.py</code></td>
+<td>157</td>
+<td>Tentativas de atividade e cronometro, do lado da IA (#136, fase 4).</td>
+</tr>
+<tr>
+<td><code>app/services/text_cleanup.py</code></td>
+<td>346</td>
+<td>define: <code>repair_mojibake</code>, <code>strip_source_markers</code>, <code>clean_extracted_text</code>, <code>merge_fragmented_sections</code>, <code>expand_sections</code>, <code>normalize_points</code>, <code>normalize_script</code>, <code>split_text_chunks</code></td>
+</tr>
+<tr>
+<td><code>app/services/uso_do_modelo.py</code></td>
+<td>40</td>
+<td>Uso do modelo devolvido pelo microservice, para o custo por artefato do painel técnico (#21).</td>
+</tr>
+<tr>
+<td><code>app/services/video.py</code></td>
+<td>206</td>
+<td>define: <code>gerar_video_mp4</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Prompts</strong> (27, em <code>api/app/agent/prompts/</code>):
+<code>alteracao_professor</code>, <code>boss_falas</code>, <code>classe_mapa_tema</code>, <code>conteudo_adaptado</code>, <code>demanda_formato</code>, <code>enriquecedor_blocos_conteudo</code>, <code>escriba</code>, <code>gerador_conteudo</code>, <code>guia_do_app_aluno</code>, <code>insights_turma</code>, <code>intervencao</code>, <code>lumi_conhecimento</code>, <code>materiais_personalizados</code>, <code>mentor_grounding_check</code>, <code>mentor_personalizacao_chat</code>, <code>missao_diaria_texto</code>, <code>missoes_ia</code>, <code>notificacao_personalizada</code>, <code>notificacao</code>, <code>perfil_brainhex</code>, <code>personalizacao_comportamental</code>, <code>pipeline_midia_etapas</code>, <code>planejador_conteudo</code>, <code>supervisor</code>, <code>texto_personalizado</code>, <code>trilha_config</code>, <code>ui_adaptativa</code>.</p>
+<p><strong>Workers em laço no processo da API</strong> (<code>app/main.py</code>), 6:</p>
+<ul>
+<li>limpeza de checkpoints do LangGraph;</li>
+<li>fila de personalização;</li>
+<li>remoção de arquivos externos (retenção);</li>
+<li>fila de análise de telemetria;</li>
+<li>análise de alteração do professor;</li>
+<li>missões sugeridas pela IA.</li>
+</ul>
+<hr />
+<h2 id="2-microservice-e-brainhexpdf-arquivos-de-código">2. Microservice e BrainHexPDF: arquivos de código</h2>
+<p><strong>Endpoints do microservice:</strong></p>
+<ul>
+<li><code>POST /api/personalizar</code></li>
+<li><code>POST /api/v1/archive</code></li>
+<li><code>POST /api/v1/generate/block</code>, <code>/generate/part-audio</code>, <code>/generate/part-presentation</code></li>
+<li><code>POST /api/v1/regenerate/chapter</code>, <code>/regenerate/slide</code>, <code>/regenerate/document</code></li>
+<li><code>GET /api/health</code></li>
+</ul>
+<p>O BrainHexPDF expõe <code>POST /api/v1/render-and-store</code>.</p>
+<p>Colunas: arquivo, linhas, primeiro comentário do arquivo.</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Arquivo</th>
+<th>Linhas</th>
+<th>Primeiro comentário</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>brainhexpdf/server.ts</code></td>
+<td>3338</td>
+<td>Default 3002 - NAO usar 3000 (porta do microservice/api-brainhex no mesmo</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/App.tsx</code></td>
+<td>258</td>
+<td>* TrailUp BrainHex - Gerador de Slides e PDFs Temáticos Personalizados</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/BrainHexAvatars.tsx</code></td>
+<td>509</td>
+<td></td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/BrainHexGuideModal.tsx</code></td>
+<td>237</td>
+<td></td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/ContentVisualRepresentation.tsx</code></td>
+<td>434</td>
+<td>// Derive visual concept pillars from slide content or title</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/DeckEditorModal.tsx</code></td>
+<td>725</td>
+<td>// Ensure at least one option remains correct</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/GeneratorModal.tsx</code></td>
+<td>1493</td>
+<td>// Tabs: 'batch-all' | 'single' | 'keys-config'</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/InteractiveQuiz.tsx</code></td>
+<td>456</td>
+<td>// Sync state when slideId or initialState changes</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/InteractiveVisualRenderer.tsx</code></td>
+<td>471</td>
+<td></td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/KnowledgeGraphModal.tsx</code></td>
+<td>54</td>
+<td></td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/MagicalParticleCanvas.tsx</code></td>
+<td>501</td>
+<td>// Resolve active theme palette</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/MicroserviceDocsModal.tsx</code></td>
+<td>731</td>
+<td>// Live Tester State</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/Navbar.tsx</code></td>
+<td>285</td>
+<td></td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/PdfExportModal.tsx</code></td>
+<td>341</td>
+<td>// Generate High-Res PDF using jsPDF + html2canvas</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/PresenterModal.tsx</code></td>
+<td>308</td>
+<td></td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/SlideViewer.tsx</code></td>
+<td>2391</td>
+<td>// Visual archetype defined strictly by the deck's content and BrainHex profile</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/SmartConceptVisualizer.tsx</code></td>
+<td>141</td>
+<td>// Extract key concept phrases from paragraphs</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/SupabaseModal.tsx</code></td>
+<td>475</td>
+<td>// ignore</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/ThematicDecorations.tsx</code></td>
+<td>1238</td>
+<td>* Full-bleed atmospheric vector backdrop scenes matching the rich Slidesgo reference images:</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/TrailUpThematicGraphics.tsx</code></td>
+<td>408</td>
+<td>* The official TrailUp 3D multifaceted astral crystal gem</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/UniqueInteractiveCard.tsx</code></td>
+<td>930</td>
+<td>// Local interaction state</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/components/VisualKnowledgeGraph.tsx</code></td>
+<td>846</td>
+<td>// Graph Data</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/context/DeckInteractionContext.tsx</code></td>
+<td>519</td>
+<td>// Actions</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/data/brainHexProfiles.ts</code></td>
+<td>385</td>
+<td></td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/data/personaBlueprintConfigs.ts</code></td>
+<td>396</td>
+<td></td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/data/presetDecks.ts</code></td>
+<td>773</td>
+<td>Excelente: Autoexplicativo e sem margem para erro</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/main.tsx</code></td>
+<td>10</td>
+<td></td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/security/checkSupabaseSecretGuard.ts</code></td>
+<td>21</td>
+<td>SUPABASE_SERVICE_ROLE_KEY ignora RLS e o endpoint /api/v1/render-and-store</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/services/materialsPersistence.ts</code></td>
+<td>380</td>
+<td>/** Chamadas ao modelo que geraram (ou tentaram gerar) esta parte (#775). */</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/services/r2Upload.ts</code></td>
+<td>80</td>
+<td>Upload do deck para o Cloudflare R2, pela URL que o Supabase assina (#76).</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/services/renderAndStoreValidation.ts</code></td>
+<td>40</td>
+<td>Nao usa union discriminada por &quot;ok&quot; de proposito: este tsconfig nao ativa</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/services/storageReadUrl.ts</code></td>
+<td>40</td>
+<td>URL de leitura de um objeto recem-enviado ao Supabase Storage.</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/types.ts</code></td>
+<td>571</td>
+<td>// AI-Generated Unique Thematic Visual Elements</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/audioSynth.ts</code></td>
+<td>402</td>
+<td>* Real-time Web Audio Synthesizer for TrailUp Medieval BrainHex Themes</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/brainHexBorderStyles.ts</code></td>
+<td>113</td>
+<td>* Returns the CSS class name for the active BrainHex profile's decorative border</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/capitalizeProfile.ts</code></td>
+<td>8</td>
+<td>O microservice do trailup manda targetProfile em minusculo</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/deckExportUtils.ts</code></td>
+<td>1967</td>
+<td>Deck HTML do aluno (o arquivo que o /api/v1/render-and-store sobe para o</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/deckProfileIdentity.ts</code></td>
+<td>166</td>
+<td>Identidade visual de cada perfil BrainHex no deck HTML: emblema, guia,</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/deckStyles.ts</code></td>
+<td>545</td>
+<td>Folha de estilo do deck HTML do aluno. Sem Tailwind em tempo de execucao:</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/deckTheme.ts</code></td>
+<td>235</td>
+<td>Tokens de cor do deck HTML, por perfil BrainHex e por modo (claro/escuro).</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/fallbackDeckGenerator.ts</code></td>
+<td>599</td>
+<td>* Intelligent content extractor to pull real paragraphs, keywords, concepts and code</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/finalReflectionSlide.ts</code></td>
+<td>33</td>
+<td>* Runs after pagination, before generateInteractiveHtml. The final slide's</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/geminiInlineImageMimes.ts</code></td>
+<td>27</td>
+<td>Mimes de IMAGEM que a API do Gemini aceita como inlineData multimodal.</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/imageGenerationErrors.ts</code></td>
+<td>23</td>
+<td>Sinaliza uma falha de geracao de imagem que NAO vai se resolver tentando</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/interactiveElementGenerator.ts</code></td>
+<td>464</td>
+<td>* Extracts key sentences, terms and actionable items from slide text</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/knowledgeGraphBuilder.ts</code></td>
+<td>281</td>
+<td>* Extracts and synthesizes a high-fidelity Knowledge Graph from a DeckData structure,</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/profileCoverCopy.ts</code></td>
+<td>50</td>
+<td>Vocabulario tematico por perfil BrainHex pro badge da capa e do slide</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/quizSanitize.ts</code></td>
+<td>140</td>
+<td>Rede de seguranca pos-geracao: mesmo com maxLength no schema Gemini e</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/reflectionCheckpoints.ts</code></td>
+<td>65</td>
+<td>* Inserts a 'reflection_checkpoint' slide after every <code>intervalSlides</code></td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/slideBatchPlanner.ts</code></td>
+<td>300</td>
+<td>Como dividir a geracao do deck em chamadas que CABEM na resposta do modelo.</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/slideIllustrations.ts</code></td>
+<td>468</td>
+<td>generateInteractiveHtml (deckExportUtils.ts) nunca inclui referenceImageHtml</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/slidePagination.ts</code></td>
+<td>308</td>
+<td>Orcamento GROSSEIRO por slide. Quem garante que o slide cabe na tela e' o</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/slideTextBudget.ts</code></td>
+<td>95</td>
+<td>Orcamento de texto dos campos livres do slide.</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/slidesSalvage.ts</code></td>
+<td>144</td>
+<td>Recupera os slides COMPLETOS de uma resposta que veio cortada.</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/usoDoModelo.ts</code></td>
+<td>115</td>
+<td>Tokens gastos por uma geração, para o custo por artefato do painel técnico (#21).</td>
+</tr>
+<tr>
+<td><code>brainhexpdf/src/utils/visualReferenceAnalyzer.ts</code></td>
+<td>490</td>
+<td>* Intelligent Visual Reference Analyzer &amp; Customizer</td>
+</tr>
+<tr>
+<td><code>microservice/src/App.tsx</code></td>
+<td>1009</td>
+<td>// Salvar estado original</td>
+</tr>
+<tr>
+<td><code>microservice/src/constants/brainHex.ts</code></td>
+<td>107</td>
+<td>/** Segundo guardião — só o Socializador tem hoje. Presença deste campo é o gatilho</td>
+</tr>
+<tr>
+<td><code>microservice/src/constants/generationStorage.ts</code></td>
+<td>26</td>
+<td>* Caminho de Storage versionado pela generation_key.</td>
+</tr>
+<tr>
+<td><code>microservice/src/constants/guardianVoices.ts</code></td>
+<td>56</td>
+<td>* Direção canônica das vozes dos Guardiões.</td>
+</tr>
+<tr>
+<td><code>microservice/src/constants/pipelineVersions.ts</code></td>
+<td>50</td>
+<td>* Contrato público entre a ApiTraiUp e este microserviço.</td>
+</tr>
+<tr>
+<td><code>microservice/src/constants/presentationThemes.ts</code></td>
+<td>270</td>
+<td></td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/boundedConcurrency.ts</code></td>
+<td>65</td>
+<td>* Executa itens com concorrência limitada e devolve os resultados na mesma</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/concurrencyGate.ts</code></td>
+<td>45</td>
+<td>Semáforo in-process: garante que no máximo <code>limit</code> tarefas registradas via</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/dedupedTimeoutRunner.ts</code></td>
+<td>63</td>
+<td>Deduplica execucoes concorrentes por chave e aplica um timeout duro por</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/logger.ts</code></td>
+<td>132</td>
+<td>Structured logger zero-dep. Pretty em dev, JSON em prod.</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/materialsMerge.ts</code></td>
+<td>107</td>
+<td>Lógica pura de merge de conteudo_personalizado.materiais.</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/pptxImageContext.ts</code></td>
+<td>90</td>
+<td>De qual slide veio cada imagem do .pptx - e, portanto, qual texto e o</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/pptxSlideOrder.ts</code></td>
+<td>72</td>
+<td>PowerPoint nao renomeia slideN.xml ao reordenar slides na interface — a</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/rateLimit.ts</code></td>
+<td>66</td>
+<td>Rate limiter sliding-window in-process. Por chave (tipicamente IP).</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/serialQueue.ts</code></td>
+<td>39</td>
+<td>Fila serial por chave (in-process). Garante que callbacks enfileirados</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/textSanitize.ts</code></td>
+<td>23</td>
+<td>Sanitiza texto para o subconjunto Latin-1 (U+0000-U+00FF) suportado pelas</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/usoDoModelo.ts</code></td>
+<td>101</td>
+<td>Tokens gastos por uma geração, para o custo por artefato do painel técnico (#21).</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/utils.ts</code></td>
+<td>6</td>
+<td></td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/validators.ts</code></td>
+<td>510</td>
+<td>Validação de payloads de entrada da API.</td>
+</tr>
+<tr>
+<td><code>microservice/src/lib/wav.ts</code></td>
+<td>53</td>
+<td>Adiciona header RIFF/WAVE de 44 bytes em frente a um buffer PCM cru.</td>
+</tr>
+<tr>
+<td><code>microservice/src/main.tsx</code></td>
+<td>10</td>
+<td></td>
+</tr>
+<tr>
+<td><code>microservice/src/services/brainHexPdfClient.ts</code></td>
+<td>218</td>
+<td>Cliente HTTP do motor de apresentacao (BrainHexPDF, servico externo). Gera</td>
+</tr>
+<tr>
+<td><code>microservice/src/services/contentGenerationService.ts</code></td>
+<td>723</td>
+<td>gpt-5.4-mini tem tier de 10 RPM / 50 RPD — inviável como contingência real.</td>
+</tr>
+<tr>
+<td><code>microservice/src/services/geminiService.ts</code></td>
+<td>2704</td>
+<td>* Fórmula em texto corrido, nunca LaTeX (#652). O mobile converte LaTeX na</td>
+</tr>
+<tr>
+<td><code>microservice/src/services/mediaResume.ts</code></td>
+<td>328</td>
+<td>Retomada da geracao de midias (#652): nova tentativa NAO regera tudo.</td>
+</tr>
+<tr>
+<td><code>microservice/src/services/r2Upload.ts</code></td>
+<td>116</td>
+<td>Escrita e leitura de material no Cloudflare R2 SEM credencial do R2 aqui (#76).</td>
+</tr>
+<tr>
+<td><code>microservice/src/services/supabaseService.ts</code></td>
+<td>589</td>
+<td>* Escape hatch só para testes: injeta um client fake, ignorando process.env.</td>
+</tr>
+<tr>
+<td><code>microservice/src/services/ttsRecovery.ts</code></td>
+<td>327</td>
+<td>Recuperação do TTS do Guardião (#652).</td>
+</tr>
+<tr>
+<td><code>microservice/src/types/index.ts</code></td>
+<td>129</td>
+<td>* Representação atômica de qualquer dado de entrada (texto, slide, transcrição).</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/asciiDiagram.ts</code></td>
+<td>81</td>
+<td>Ponto de entrada dos diagramas: varre os blocos de codigo do markdown e troca</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/audioDuration.ts</code></td>
+<td>27</td>
+<td>Formatos fixos do pipeline de audio (Mp3Encoder(1, 24000, 128) e</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/audioFailure.ts</code></td>
+<td>66</td>
+<td>Por que o audio de um material nao saiu.</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/audioImageCues.ts</code></td>
+<td>37</td>
+<td>* Estima a minutagem de inicio de cada secao proporcionalmente ao tamanho</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/audioJunction.ts</code></td>
+<td>459</td>
+<td>Junção de blocos do áudio (#652): o que vai para o TTS sai daqui, não da</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/audioSecondRound.ts</code></td>
+<td>132</td>
+<td>Segunda rodada só nas partes de áudio que falharam (#777, opção 1).</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/diagramTheme.ts</code></td>
+<td>134</td>
+<td>Base compartilhada pelos desenhadores de diagrama (flowDiagram, laneDiagram):</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/flowDiagram.ts</code></td>
+<td>284</td>
+<td>Converte os &quot;diagramas&quot; em arte ASCII que o Gemini escreve dentro de blocos</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/imageTextGraph.ts</code></td>
+<td>233</td>
+<td>Grafo de relacionamento entre IMAGEM, TEXTO e TEMA.</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/laneDiagram.ts</code></td>
+<td>275</td>
+<td>Segundo formato de &quot;diagrama&quot; que o Gemini escreve em arte ASCII: um quadro</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/markdownImages.ts</code></td>
+<td>171</td>
+<td>/** Nome do arquivo de origem - sinal fraco de assunto, mas util. */</td>
+</tr>
+<tr>
+<td><code>microservice/src/utils/profileImageRestyle.ts</code></td>
+<td>194</td>
+<td>Camada 2 da adaptacao da imagem ao perfil: reilustrar a imagem do professor</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="3-app-do-aluno-mobilesrc">3. App do aluno (<code>mobile/src</code>)</h2>
+<p><strong>Tamanho por área:</strong></p>
+<ul>
+<li><code>app</code> 42;</li>
+<li><code>components</code> 172;</li>
+<li><code>utils</code> 136;</li>
+<li><code>services</code> 67;</li>
+<li><code>hooks</code> 34;</li>
+<li><code>models</code> 19;</li>
+<li><code>context</code> 14;</li>
+<li><code>interfaces</code> 13;</li>
+<li><code>constants</code> 10;</li>
+<li><code>assets</code> 299.</li>
+</ul>
+<p><strong>Telas (<code>expo-router</code>):</strong></p>
+<ul>
+<li>Entrada: login, recuperação de senha.</li>
+<li>Abas: Trilha (mapa e tópico), Ranking (lista e detalhe), Social, Notificações (caixa e detalhe), Perfil.</li>
+<li>Telas do Perfil (20):
+<ul>
+<li>aparência, biblioteca de conquistas, coleta de dados, excluir conta, feedback;</li>
+<li>informações do app e da versão, lembrete diário, loja, métricas de estilo;</li>
+<li>modo foco, molduras, notificações, relatório dos dados, resetar senha;</li>
+<li>configurações, estudo.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Componentes por grupo:</strong></p>
+<ul>
+<li><strong>IA:</strong> fala do boss, vitória sobre o boss, painel e cabeçalho da batalha, painel do mentor, sobreposição flutuante, cronômetro.</li>
+<li><strong>Trilha:</strong> árvore, mapa em mosaico, lista simples, selos de alteração do professor e de &quot;comece por aqui&quot;, nó bloqueado, partes do tópico.</li>
+<li><strong>Social:</strong> arena (ranqueada), desafio, guilda e chat da guilda, chat privado, perfil público, convites.</li>
+<li><strong>Loja:</strong> vitrine, fundo da turma, usar item na atividade.</li>
+<li><strong>Mochila:</strong> itens pessoais.</li>
+<li><strong>Missões:</strong> missões do dia e rastreador.</li>
+<li><strong>Eventos:</strong> evento da turma e rank do evento.</li>
+<li><strong>Ranking:</strong> pódio e &quot;minha posição&quot;.</li>
+<li><strong>Consentimento:</strong> data de nascimento, autorização do responsável.</li>
+<li><strong>Leitores nativos:</strong> PDF, DOCX, PPTX.</li>
+<li><strong>Funcionais:</strong> áudio, vídeo, barras de progresso, meta de XP.</li>
+<li><strong>Web em tela larga:</strong> cerca de 30 componentes de desktop.</li>
+</ul>
+<p><strong>Telemetria no aparelho</strong> (<code>context/metricas/</code>): acumulador do lote, rotação do lote, ciclo e fim de sessão. A fila local fica em <code>services/telemetriaOutbox.ts</code>, com envio direto ao Supabase quando a API falha (<code>telemetriaFallback.ts</code>).</p>
+<p><strong>Permissões</strong> (<code>app.json</code>):</p>
+<ul>
+<li>Android: câmera, notificações, reinício.</li>
+<li>iOS: câmera.</li>
+<li>Plugins: câmera, notificações, áudio, vídeo, PDF, navegador.</li>
+</ul>
+<hr />
+<h2 id="4-console-do-professor-frontendsrccomponentsconsole">4. Console do professor (<code>frontend/src/components/console</code>)</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Aba</th>
+<th>Componentes e regras</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Visão geral (<code>dashboard</code>)</td>
+<td>KPIs principais e secundários, evolução, insights (cartões gerados por IA), abandono por etapa e por perfil, inatividade por perfil, risco de reprovação, &quot;precisam de atenção&quot;, distribuição de notas, fila e gargalos da personalização</td>
+</tr>
+<tr>
+<td>Recomendações</td>
+<td>recomendações da IA, missões sugeridas</td>
+</tr>
+<tr>
+<td>Trilhas</td>
+<td>gerenciador de tópicos, formulário e gaveta do tópico, upload e prévia de arquivo, gerar trilha com IA, escolha do visual do boss, falas do boss, dificuldade e formato da questão, gerenciador de turma</td>
+</tr>
+<tr>
+<td>Missões</td>
+<td>formulário, critério, aprovação, painel de missões diárias</td>
+</tr>
+<tr>
+<td>Conquistas</td>
+<td>formulário, critério, aparência</td>
+</tr>
+<tr>
+<td>Notas</td>
+<td>fila de correção, painel de correção</td>
+</tr>
+<tr>
+<td>Eventos</td>
+<td>formulário, durante o evento, resultado</td>
+</tr>
+<tr>
+<td>Economia</td>
+<td>regras da economia, fundo da turma</td>
+</tr>
+<tr>
+<td>Turmas</td>
+<td>formulário, matrículas, <strong>importar lista CSV</strong>, duplicar, excluir, <strong>termos do responsável</strong></td>
+</tr>
+<tr>
+<td>Personalizações</td>
+<td>visão por perfil e conteúdo, arco narrativo, sugestão de material, status de geração, <em>fallback</em> direto ao Supabase</td>
+</tr>
+<tr>
+<td>Rankings · Rank de batalhas · Guildas</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Meus dados</td>
+<td>foto, conta em números, exclusão da conta</td>
+</tr>
+<tr>
+<td>Aprovações · Painel técnico</td>
+<td>só para a dona; o painel técnico mostra custo por artefato e avisa a dona</td>
+</tr>
+<tr>
+<td>(todas)</td>
+<td>Lumi (escriba), sino de notificações do professor</td>
+</tr>
+</tbody>
+</table></div>
+<p>Bibliotecas do console (<code>frontend/src/lib</code>): cliente da API, cadastro em uma etapa, data de nascimento, link assinado do gateway, prazo de atividade, presença da turma, nota de questão, política de upload, entre outras.</p>
+<hr />
+<h2 id="5-banco-de-dados-produção">5. Banco de dados (produção)</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Quantidade</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tabelas</td>
+<td>171</td>
+</tr>
+<tr>
+<td>Views</td>
+<td>27</td>
+</tr>
+<tr>
+<td>Funções</td>
+<td>612 (105 de gatilho)</td>
+</tr>
+<tr>
+<td>Gatilhos</td>
+<td>144</td>
+</tr>
+<tr>
+<td>Políticas de RLS</td>
+<td>286</td>
+</tr>
+<tr>
+<td>Rotinas <code>pg_cron</code></td>
+<td>16</td>
+</tr>
+</tbody>
+</table></div>
+<p>Extensões: <code>pg_cron 1.6.4</code>, <code>pg_net 0.20.0</code>, <code>vector 0.8.0</code>, <code>supabase_vault</code>, <code>pgcrypto</code>, <code>http</code>, <code>pg_stat_statements</code>, <code>uuid-ossp</code>.</p>
+<p><strong>Tabelas por domínio</strong>, com o número de linhas em 04/11:</p>
+<ul>
+<li><strong>Usuários, turmas e cadastro</strong> (21): <code>alembic_version</code> 1, <code>aluno_cadastro_concluido</code> 4, <code>aluno_introducao</code> 0, <code>aluno_nascimento</code> 1, <code>alunos</code> 7, <code>app_config</code> 61, <code>classe</code> 4, <code>classe_aluno</code> 6, <code>classe_aluno_saidas</code> 0, <code>classe_arco_narrativo</code> 0, <code>classe_mapa_tema</code> 4, <code>classe_perfil_summary</code> 3, <code>marco_produto</code> 46, <code>materia</code> 5, <code>materiais_gerados</code> 92, <code>modoOperacao</code> 4, <code>plataforma_dev</code> 0, <code>professor</code> 6, <code>professor_aluno</code> 31, <code>professor_intervencoes_passo</code> 0, <code>professor_notificacoes</code> 12</li>
+<li><strong>Trilha, conteúdo e avaliação</strong> (27): <code>atividade_aluno</code> 1, <code>atividade_aprovacao</code> 0, <code>atividade_conteudos</code> 1, <code>atividade_prazo_aluno</code> 0, <code>atividade_tempo_aluno</code> 0, <code>atividade_tentativa</code> 0, <code>atividade_tentativas</code> 0, <code>atividades</code> 1, <code>cards</code> 0, <code>cards_personalizados</code> 46, <code>conteudo_aluno</code> 28, <code>conteudo_demanda_formato</code> 2, <code>conteudo_personalizado</code> 17, <code>conteudos</code> 15, <code>iaDescricao</code> 6, <code>midias</code> 0, <code>questao_aluno</code> 2, <code>questao_gabarito</code> 1, <code>questao_gabarito_revelado</code> 0, <code>topico_aluno</code> 14, <code>topico_aluno_conclusao</code> 5, <code>topico_edges</code> 0, <code>topicos</code> 8, <code>trilha_aluno</code> 3, <code>trilha_checkpoint_navegacao</code> 1, <code>trilha_modelo</code> 0, <code>questoes</code> 1</li>
+<li><strong>Personalização e IA</strong> (26): <code>alteracao_aluno</code> 0, <code>alteracao_professor</code> 0, <code>aluno_estado_atencao</code> 1, <code>aluno_mental_state_history</code> 2, <code>aluno_topico_dominio</code> 3, <code>boss_falas</code> 4, <code>checkpoint_blobs</code> 1684, <code>checkpoint_migrations</code> 10, <code>checkpoint_writes</code> 2000, <code>checkpoints</code> 399, <code>fontes_personalizacao</code> 2, <code>ia_decision_logs</code> 35, <code>intervencoes</code> 1, <code>missoes_ia_execucoes</code> 0, <code>missoes_ia_log</code> 12, <code>missoes_ia_pedidos</code> 3, <code>personalizacao_blocos_gerados</code> 24, <code>personalizacao_item_progresso</code> 71, <code>personalizacao_job_targets</code> 91, <code>personalizacao_jobs</code> 99, <code>personalizacao_percurso</code> 6, <code>personalizacao_sugestao</code> 1, <code>personalizacao_sugestao_log</code> 2, <code>rag_chunks</code> 0, <code>rag_openai_files</code> 0, <code>rag_relacoes</code> 0</li>
+<li><strong>BrainHex</strong> (3): <code>aluno_perfil</code> 31, <code>aluno_perfil_medida</code> 0, <code>perfil</code> 7</li>
+<li><strong>Telemetria, tempo e métricas</strong> (15): <code>aluno_atividade_diaria</code> 315, <code>aluno_cronometro</code> 0, <code>aluno_sessoes_app</code> 844, <code>estudo_coorte</code> 0, <code>estudo_intervalos</code> 56, <code>estudo_sessoes</code> 414, <code>metricas_catalogo</code> 29, <code>metricas_invariante_amostra</code> 40, <code>metricas_invariante_resultado</code> 120, <code>telemetria_agregado_turma_dia</code> 0, <code>telemetria_analise_fila</code> 0, <code>telemetria_eventos_app</code> 1013, <code>telemetria_lotes</code> 184, <code>telemetria_sessoes</code> 113, <code>telemetria_time_metric_entries</code> 584</li>
+<li><strong>Gamificação e economia</strong> (50): <code>bag_itens</code> 6, <code>conquistas</code> 38, <code>conquistas_aluno</code> 12, <code>conquistas_criterio_log</code> 0, <code>desafio_participantes</code> 0, <code>economia_auditoria</code> 0, <code>economia_config_escopo</code> 0, <code>economia_meta</code> 0, <code>evento_inscricoes</code> 0, <code>eventos_aluno</code> 685, <code>eventos_classe</code> 0, <code>eventos_classe_missoes</code> 0, <code>eventos_classe_resultado</code> 0, <code>eventos_classe_resultado_guilda</code> 0, <code>eventos_pontuacao</code> 24, <code>eventos_pontuacao_classe</code> 0, <code>fundos_turma</code> 0, <code>fundos_turma_contribuicao</code> 0, <code>guilda_config_turma</code> 0, <code>guilda_convites</code> 0, <code>guilda_desafio_questoes</code> 0, <code>guilda_desafio_respostas</code> 0, <code>guilda_desafios</code> 0, <code>guilda_evento_snapshot</code> 0, <code>guilda_membros</code> 0, <code>guilda_mensagens</code> 0, <code>guildas</code> 0, <code>loja_compras</code> 1, <code>loja_config_classe</code> 0, <code>loja_dica_liberada</code> 0, <code>loja_dotacao</code> 0, <code>loja_formato_escolhido</code> 0, <code>loja_itens</code> 5, <code>loja_limite_uso</code> 0, <code>loja_preco_classe</code> 0, <code>loja_uso_log</code> 0, <code>missao_aluno</code> 20, <code>missoes</code> 201, <code>moedas_ledger</code> 11, <code>moldura_acao_aluno</code> 0, <code>moldura_aluno</code> 0, <code>molduras</code> 40, <code>molduras_acoes</code> 10, <code>rank_podio_congelado</code> 0, <code>rank_posicao_anterior</code> 1, <code>rank_tipo</code> 6, <code>ranks</code> 1, <code>ranqueada_elo</code> 0, <code>ranqueada_elo_partida</code> 0, <code>xp_faixa</code> 10</li>
+<li><strong>Social</strong> (3): <code>chat_leitura</code> 2, <code>social_mensagens</code> 2, <code>social_relacionamentos</code> 3</li>
+<li><strong>Notificações</strong> (13): <code>aluno_modo_foco</code> 0, <code>expo_tokens</code> 3, <code>notificacoes</code> 431, <code>notificacoes_agendamentos</code> 15, <code>notificacoes_config</code> 36, <code>notificacoes_ia</code> 7, <code>notificacoes_material_pronto</code> 1, <code>notificacoes_modelos_texto</code> 14, <code>notificacoes_pendentes</code> 384, <code>notificacoes_push_envios</code> 38, <code>notificacoes_silenciadas</code> 0, <code>notificacoes_silenciamento_log</code> 0, <code>notificacoes_textos_perfil</code> 28</li>
+<li><strong>Privacidade, consentimento e retenção</strong> (13): <code>consentimento_pesquisa</code> 1, <code>consentimento_responsavel</code> 0, <code>consentimento_telemetria</code> 24, <code>contato_envios</code> 1, <code>contato_publico_envios</code> 0, <code>exclusao_conta_professor</code> 0, <code>pesquisa_anonimizacao</code> 0, <code>pesquisa_arquivo</code> 1310, <code>retencao_avisos_inatividade</code> 0, <code>retencao_execucoes</code> 8, <code>retencao_fila_externa</code> 0, <code>retencao_politica</code> 113, <code>solicitacoes_exclusao</code> 1</li>
+</ul>
+<p><strong>Views (27):</strong> <code>vw_aluno_classe_detalhado</code>, <code>vw_aluno_classe_resumo</code>, <code>vw_aluno_perfil_segmentos</code>, <code>vw_aluno_usuario</code>, <code>vw_alunos_pesquisa_elegiveis</code>, <code>vw_creditos_concedidos</code>, <code>vw_estudo_participantes</code>, <code>vw_ia_decision_logs_resumo</code>, <code>vw_material_storage_paths</code>, <code>vw_metricas_chat_aluno_classe</code>, <code>vw_metricas_comportamento_aluno_classe</code>, <code>vw_metricas_desempenho_aluno_classe</code>, <code>vw_metricas_disponibilidade</code>, <code>vw_metricas_distribuicao_turma_classe</code>, <code>vw_metricas_engajamento_aluno_classe</code>, <code>vw_metricas_evolucao_desempenho_aluno_dia</code>, <code>vw_metricas_sessoes_aluno_dia</code>, <code>vw_metricas_turma_geral_classe</code>, <code>vw_metricas_turma_perfil_classe</code>, <code>vw_portoes_do_aluno</code>, <code>vw_rank_posicoes_por_classe</code>, <code>vw_rank_posicoes_por_classe_todas</code>, <code>vw_ranks_info_por_classe</code>, <code>vw_sequencia_navegacao_aluno</code>, <code>vw_telemetria_tempo_atividade_aluno</code>, <code>vw_telemetria_tempo_conteudo_aluno</code>, <code>vw_telemetria_tempo_topico_aluno</code>.</p>
+<p><strong>Funções que os clientes chamam (RPC), por domínio</strong> (sem as do pgvector):</p>
+<ul>
+<li><strong>Autorização (helpers):</strong>
+<ul>
+<li><code>app_alunos_do_professor</code>, <code>app_classes_do_aluno</code>, <code>app_classes_do_professor</code>, <code>app_classes_retidas_do_aluno</code>, <code>app_colegas_de_turma</code>, <code>app_minhas_classes</code>, <code>app_pode_ver_aluno</code>;</li>
+<li><code>app_classe_da_atividade</code> / <code>_da_questao</code> / <code>_do_conteudo</code> / <code>_do_topico</code>;</li>
+<li><code>app_e_dono</code>, <code>app_e_dev</code>, <code>trailup_e_professor</code>, <code>trailup_pode_ler_arquivo</code>, <code>trailup_pode_ler_conteudo_professor</code>.</li>
+</ul>
+</li>
+<li><strong>Cadastro e consentimento:</strong>
+<ul>
+<li><code>fn_cadastrar_aluno_com_perfis</code>, <code>concluir_cadastro_aluno</code>, <code>registrar_conclusao_cadastro</code>, <code>meu_cadastro_concluido</code>, <code>cadastro_perfis_integros</code>, <code>fn_atualizar_aluno_perfil</code>;</li>
+<li><code>aluno_registrar_data_nascimento</code>, <code>aluno_meu_consentimento</code>, <code>aluno_minha_finalidade_permitida</code>, <code>aluno_registrar_consentimento_pesquisa</code>;</li>
+<li><code>consentimento_pesquisa_versao_vigente</code>, <code>consentimento_responsavel_versao_vigente</code>, <code>responsavel_registrar_no_aparelho</code>;</li>
+<li><code>professor_registrar_termo_papel</code>, <code>professor_termos_da_turma</code>.</li>
+</ul>
+</li>
+<li><strong>Trilha, atividades e questões:</strong>
+<ul>
+<li><code>atividade_iniciar_tentativa</code>, <code>atividade_responder_tentativa</code>, <code>atividade_situacao_tentativas</code>, <code>avaliar_entrega</code>, <code>questao_responder</code>, <code>questao_gabarito_do_aluno</code>;</li>
+<li><code>fn_questao_*</code> (14 funções de correção);</li>
+<li><code>aluno_definir_cronometro</code>;</li>
+<li><code>duplicar_classe</code>, <code>duplicar_topico</code>, <code>duplicar_atividade</code>, <code>excluir_classe</code>, <code>inscrever_aluno_em_classe</code>.</li>
+</ul>
+</li>
+<li><strong>Progresso e tempo:</strong>
+<ul>
+<li><code>trailup_recalcular_topico_aluno</code>, <code>trailup_recalcular_classe_aluno</code>, <code>trailup_recalcular_nota_classe_aluno</code>, <code>trailup_progresso_percurso</code>;</li>
+<li><code>trailup_registrar_sessao_estudo</code>, <code>trailup_registrar_intervalo_estudo</code>, <code>trailup_registrar_tempo_estudo</code>;</li>
+<li><code>trailup_tempo_telemetria_min</code> (v1, v2), <code>trailup_tempo_presenca_min</code>, <code>trailup_tempo_sessao_min</code>, <code>trailup_resumo_presenca</code>;</li>
+<li><code>registrar_presenca_da_turma</code>, <code>registrar_credito_da_turma</code>.</li>
+</ul>
+</li>
+<li><strong>Métricas e pesquisa:</strong>
+<ul>
+<li><code>metricas_engajamento_turma</code>, <code>metricas_engajamento_coortes_turma</code>, <code>metricas_estudo_coortes</code>, <code>metricas_perfil_formato</code>;</li>
+<li><code>estudo_coorte_registrar</code>, <code>estudo_coorte_remover</code>, <code>marco_produto_registrar</code>;</li>
+<li><code>professor_risco_reprovacao_turma</code>, <code>trailup_risco_evasao</code>, <code>trailup_faixa_risco</code>;</li>
+<li><code>professor_notas_da_turma</code>, <code>notas_fila</code>, <code>personalizacao_kpis_operacionais</code>, <code>painel_tecnico</code>.</li>
+</ul>
+</li>
+<li><strong>Gamificação:</strong>
+<ul>
+<li>XP: <code>aluno_faixa_xp</code>, <code>fn_faixa_xp</code>.</li>
+<li>Conquistas: <code>conquistas_da_turma</code>, <code>conquista_da_turma_salvar</code>/<code>_alternar</code>.</li>
+<li>Molduras: <code>moldura_comprar</code>, <code>moldura_equipar</code>, <code>moldura_registrar_acao</code>, <code>molduras_catalogo</code>.</li>
+<li>Loja: <code>loja_*</code> (10), <code>bag_*</code> (5).</li>
+<li>Economia: <code>economia_*</code> (11).</li>
+<li>Fundo da turma: <code>fundo_turma_*</code> (3).</li>
+<li>Missões: <code>missoes_diarias_resumo</code>, <code>missao_ia_pedir</code>, <code>missao_ia_limites</code>.</li>
+<li>Eventos: <code>evento_classe_*</code> (6).</li>
+<li>Arena: <code>arena_*</code> (6), <code>desafio_responder</code>.</li>
+<li>Guildas: <code>guilda_*</code> (20).</li>
+<li>Ranking: <code>fn_rank_*</code>, <code>app_rank_*</code>, <code>app_elo_inicial</code>, <code>app_ranqueada_piso_pontos</code>.</li>
+</ul>
+</li>
+<li><strong>Social:</strong> <code>social_*</code> (14), <code>chat_marcar_lido</code>, <code>chat_nao_lidas</code>.</li>
+<li><strong>Notificações:</strong> <code>notificacoes_*</code> (19). Entre elas: login, heartbeat, rotinas, modo foco, silenciar tipo e guia.</li>
+<li><strong>Alterações do professor:</strong> <code>alteracao_decidir</code>, <code>alteracao_marcar_vista</code>.</li>
+<li><strong>Contato:</strong> <code>fn_enviar_contato</code>, <code>fn_enviar_contato_publico</code>, mais <code>fn_enviar_contato_sendgrid</code> (resto de um provedor antigo).</li>
+</ul>
+<p><strong>Rotinas <code>pg_cron</code> (16):</strong></p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Rotina</th>
+<th>Agenda (UTC)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>trailup_auditoria_metricas</code></td>
+<td>06:30</td>
+</tr>
+<tr>
+<td><code>trailup_desafio_varredura</code></td>
+<td>a cada 5 min</td>
+</tr>
+<tr>
+<td><code>trailup_eventos_classe_varredura</code></td>
+<td>a cada minuto</td>
+</tr>
+<tr>
+<td><code>trailup_expurgo_medidas_perfil</code></td>
+<td>03:17</td>
+</tr>
+<tr>
+<td><code>trailup_missao_diaria</code></td>
+<td>03:00</td>
+</tr>
+<tr>
+<td><code>trailup_missao_diaria_texto</code></td>
+<td>03:05</td>
+</tr>
+<tr>
+<td><code>trailup_notas_com_prazo</code></td>
+<td>de hora em hora</td>
+</tr>
+<tr>
+<td><code>trailup_notificacoes_rank</code></td>
+<td>a cada 10 min</td>
+</tr>
+<tr>
+<td><code>trailup_notificacoes_recalcular_rotinas</code></td>
+<td>09:00</td>
+</tr>
+<tr>
+<td><code>trailup_painel_tecnico_avisar_dono</code></td>
+<td>a cada 30 min</td>
+</tr>
+<tr>
+<td><code>trailup_pesquisa_arquivo</code></td>
+<td>a cada 10 min</td>
+</tr>
+<tr>
+<td><code>trailup_retencao</code></td>
+<td>03:23</td>
+</tr>
+<tr>
+<td><code>trailup_retencao_avisos</code></td>
+<td>a cada 30 min</td>
+</tr>
+<tr>
+<td><code>trailup_retencao_ia_decision_logs</code></td>
+<td>03:41</td>
+</tr>
+<tr>
+<td><code>trailup-notificacoes-conciliar-push</code></td>
+<td>a cada 5 min</td>
+</tr>
+<tr>
+<td><code>trailup-notificacoes-varrer</code></td>
+<td>a cada 5 min</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Edge Functions (6):</strong></p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Função</th>
+<th>Papel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>generate-content-ai</code></td>
+<td>gera a trilha e o conteúdo pelo console, com <code>gemini-3.6-flash</code></td>
+</tr>
+<tr>
+<td><code>validate-essay-answer-ai</code></td>
+<td>corrige a redação; só maiores de 18</td>
+</tr>
+<tr>
+<td><code>storage-redirect</code></td>
+<td>gateway de leitura com link assinado</td>
+</tr>
+<tr>
+<td><code>storage-upload-url</code></td>
+<td>URL de envio para o R2</td>
+</tr>
+<tr>
+<td><code>pesquisa-arquivar</code></td>
+<td>copia o dado de pesquisa para o R2</td>
+</tr>
+<tr>
+<td><code>personalize_path</code></td>
+<td>chamada pelo app, mas <strong>o código dela não está no repositório</strong> (schema não versionado)</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="6-documentação-processo-e-infraestrutura">6. Documentação, processo e infraestrutura</h2>
+<p><strong>Documentos:</strong> 287 arquivos em <code>docs/</code>.</p>
+<ul>
+<li>Especificações de design (<code>superpowers/</code>): 84.</li>
+<li>Mobile: 47.</li>
+<li>Segundo cérebro: 25.</li>
+<li>API: 24.</li>
+<li>TCC: 22.</li>
+<li>Sprint: 17.</li>
+<li>Análises: 16.</li>
+<li>Frontend: 15.</li>
+<li>Microservice: 10.</li>
+<li>RAG: 8.</li>
+<li>Ecossistema: 7.</li>
+<li>Arquitetura: 5.</li>
+<li>LGPD: 3.</li>
+<li>ADR: 2.</li>
+</ul>
+<p>As 46 especificações de design (<code>docs/superpowers/specs/</code>) registram cada funcionalidade antes de ela ser feita, de 26/07 a 04/11/2026. Para a metodologia, elas mostram um desenvolvimento orientado por especificação, com decisão e justificativa escritas. As que interessam à monografia:</p>
+<ul>
+<li>paleta BrainHex e psicologia das cores;</li>
+<li>base por perfil sem dado de aluno;</li>
+<li>memória do aluno;</li>
+<li>guardrails de saída estruturada;</li>
+<li>sugestão de material por aluno;</li>
+<li>notificações pelo banco;</li>
+<li>gateway R2;</li>
+<li>perfil BrainHex probabilístico (revisto);</li>
+<li>métricas de ponta a ponta;</li>
+<li>coorte e baseline;</li>
+<li>sugestão com evidência;</li>
+<li>perfil × formato (PR3).</li>
+</ul>
+<p><strong>ADRs:</strong> 0001, pgvector (substituída), e 0002, OpenAI Vector Store (aceita).</p>
+<p><strong>Scripts:</strong></p>
+<ul>
+<li>e-mail pelo Apps Script;</li>
+<li>cópia do Storage para o R2;</li>
+<li>testes ponta a ponta do cadastro e da economia;</li>
+<li>memória de cálculo de custos;</li>
+<li>recoloração dos guardiões;</li>
+<li>auditoria de funções <code>SECURITY DEFINER</code>;</li>
+<li>verificação de implantação;</li>
+<li>checagem de encoding.</li>
+</ul>
+<p><strong>Infraestrutura no repositório:</strong> ciclo de vida do R2 (<code>infra/r2/</code>), <code>docker-compose.yml</code> (API, microservice e frontend) e um Dockerfile por serviço.</p>
+<p><strong>Issues por rótulo (todas):</strong></p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Grupo</th>
+<th>Contagens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tipo</td>
+<td>enhancement 68, bug 26, épico 4, documentation 4</td>
+</tr>
+<tr>
+<td>Área</td>
+<td>api 61, mobile 37, frontend 19, gamificação 17, banco 13, métricas 13, tcc 13, segurança 10, web 10, rag 7, infra 7, auth 6, lgpd 2</td>
+</tr>
+<tr>
+<td>Prioridade</td>
+<td>P0 2, P1 23, P2 37, P3 14</td>
+</tr>
+</tbody>
+</table></div>
+<nav class="nav-paginas"><a href="visao-geral.html"><span class="k">← anterior</span><span class="t">Visão geral do sistema</span></a><a class="prox" href="modelagem.html"><span class="k">próxima →</span><span class="t">Sobre a modelagem</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#o-que-esta-varredura-acrescentou-ao-dossiê">O que esta varredura acrescentou ao dossiê</a></li><li><a href="#1-api-apiapp-todos-os-módulos">1. API (api/app): todos os módulos</a></li><li><a href="#2-microservice-e-brainhexpdf-arquivos-de-código">2. Microservice e BrainHexPDF: arquivos de código</a></li><li><a href="#3-app-do-aluno-mobilesrc">3. App do aluno (mobile/src)</a></li><li><a href="#4-console-do-professor-frontendsrccomponentsconsole">4. Console do professor (frontend/src/components/console)</a></li><li><a href="#5-banco-de-dados-produção">5. Banco de dados (produção)</a></li><li><a href="#6-documentação-processo-e-infraestrutura">6. Documentação, processo e infraestrutura</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>ea19135a</code> em 04/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>

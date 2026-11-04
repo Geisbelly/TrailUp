@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Decisões de arquitetura · TrailUp</title><meta name="description" content="Os registros de decisão (ADR) do armazenamento vetorial do RAG."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 transform=%22rotate(45 8 8)%22 fill=%22%23a08df5%22/%3E%3C/svg%3E"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><span class="diamond"></span>TrailUp · documentação</a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html" aria-current="page">Decisões de arquitetura</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Evidência e RAG</div><h1>Decisões de arquitetura</h1><p class="lede">Os registros de decisão (ADR) do armazenamento vetorial do RAG.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/adr/0001-rag-vector-store.md" target="_blank" rel="noopener">docs/adr/0001-rag-vector-store.md</a><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/adr/0002-rag-openai-vector-store.md" target="_blank" rel="noopener">docs/adr/0002-rag-openai-vector-store.md</a><span class="chip ok">atualizado 24/10/2026</span></div></header><h2 id="0001-vector-store-do-rag-no-postgres-com-pgvector">0001: Vector store do RAG no Postgres com pgvector</h2>
+<ul>
+<li>Status: Superseded by <a href="adr.html">ADR-0002: OpenAI Vector Store para o RAG</a></li>
+<li>Date: 2026-08-29</li>
+</ul>
+<h2 id="context">Context</h2>
+<p>O TrailUp precisa de uma base de evidências para alimentar o RAG usado pelo mentor virtual, sugestões de personalização, intervenções psicopedagógicas e notificações. Essa base requer um vector store para retrieval semântico de chunks enriquecidos.</p>
+<p>Restrições do projeto:</p>
+<ul>
+<li>A API roda no free tier e hiberna; o Postgres não.</li>
+<li>A API deve permanecer como camada de IA; infraestrutura de filas, cron e entrega fica no banco.</li>
+<li>A ingestão e chunking de documentos já existem na API (<code>app/ingestion/</code>).</li>
+<li>O ecossistema já usa Supabase (Postgres + Storage + Auth) como plataforma principal.</li>
+</ul>
+<h2 id="previous-decision">Previous Decision</h2>
+<p>Usar o Postgres do Supabase com a extensão <code>pgvector</code> como vector store do RAG.</p>
+<p>Modelo de embedding: <code>text-embedding-3-small</code> (1536 dimensões) da OpenAI, com fallback para embedding equivalente do Google (<code>text-embedding-004</code>) caso necessário.</p>
+<h2 id="alternatives-considered">Alternatives Considered</h2>
+<h3 id="vector-store-dedicado-externo-qdrant-pinecone-weaviate">Vector store dedicado externo (Qdrant, Pinecone, Weaviate)</h3>
+<ul>
+<li><strong>Pros:</strong> melhor escalabilidade de retrieval, índices otimizados, suporte a híbrido sparse/dense.</li>
+<li><strong>Cons:</strong> adiciona novo componente de infraestrutura, novo vendor/custo, sincronização de dados e duplicação de regras de acesso.</li>
+<li><strong>Rejected because:</strong> o volume inicial de chunks não justifica a complexidade; manter tudo no Postgres simplifica transações, RLS e operação no free tier.</li>
+</ul>
+<h3 id="faisschroma-local-em-discomemória">FAISS/Chroma local em disco/memória</h3>
+<ul>
+<li><strong>Pros:</strong> simples de rodar localmente, sem custo de serviço.</li>
+<li><strong>Cons:</strong> não é compartilhável entre instâncias da API, perde estado quando o container reinicia, exige sincronização manual com o banco.</li>
+<li><strong>Rejected because:</strong> a API é stateless e hiberna; o vector store precisa persistir no banco.</li>
+</ul>
+<h2 id="consequences">Consequences</h2>
+<h3 id="positive">Positive</h3>
+<ul>
+<li>Mesmo banco de dados, mesmas transações e mesmas políticas RLS.</li>
+<li>Retrieval disponível mesmo quando a API está hibernando.</li>
+<li>Caminho de implementação curto: reaproveita a ingestão e chunking existentes.</li>
+<li>Sem custo adicional de infraestrutura além do embedding.</li>
+</ul>
+<h3 id="negative">Negative</h3>
+<ul>
+<li>Carga extra no Postgres; embeddings ocupam espaço em disco.</li>
+<li>Retrieval muito grande pode exigir upgrade do banco ou migração futura para vector store dedicado.</li>
+<li>Índices vetoriais consomem recursos durante inserts/updates.</li>
+</ul>
+<h3 id="migration">Migration</h3>
+<ul>
+<li>Habilitar extensão <code>vector</code> no Supabase.</li>
+<li>Criar tabela <code>rag_chunks</code> com coluna <code>embedding vector(1536)</code>.</li>
+<li>Criar índice HNSW ou IVFFlat para busca por similaridade.</li>
+<li>Implementar invalidação por <code>source_hash</code> para regenerar embeddings quando fontes mudarem.</li>
+</ul>
+<h2 id="traceability">Traceability</h2>
+<ul>
+<li>Arquitetura: <a href="https://github.com/Geisbelly/TrailUp/blob/main/docs/architecture/rag.md">docs/architecture/rag.md</a></li>
+<li>Requisito alinhado: base de evidências para RAG no TrailUp.</li>
+<li>Issues de implementação: a serem criadas no tracker.</li>
+</ul>
+<p>Esta decisão foi mantida no histórico porque a migração <code>20260829_03</code> já criou o
+schema local. Novas fontes devem seguir o ADR-0002; o schema <code>rag_chunks</code> pode
+ser removido em uma migração posterior depois que não houver consumidores do
+retrieval local.</p>
+<h2 id="0002-openai-vector-store-para-o-rag">0002: OpenAI Vector Store para o RAG</h2>
+<ul>
+<li>Status: Accepted</li>
+<li>Date: 2026-09-09</li>
+<li>Supersedes: <a href="adr.html">ADR-0001</a></li>
+</ul>
+<h2 id="context-1">Context</h2>
+<p>O TrailUp já possui extração e normalização de documentos, mas o desenho
+anterior exigia operar <code>pgvector</code>, gerar embeddings e implementar chunking e
+retrieval próprios. O projeto agora possui um Vector Store gerenciado pela
+OpenAI para o corpus público do RAG. O id vigente fica só em
+<code>OPENAI_RAG_VECTOR_STORE_ID</code>, no ambiente do backend (trocado em 04/11/2026).</p>
+<h2 id="decision">Decision</h2>
+<p>Usar o OpenAI Vector Store com a ferramenta <code>file_search</code> da Responses API como
+camada de indexação e retrieval para documentos públicos.</p>
+<ul>
+<li>A OpenAI recebe o arquivo original e gerencia parsing, chunking, embeddings e
+índice vetorial.</li>
+<li>A API mantém a chave somente no backend e consulta o store por <code>file_search</code>.</li>
+<li>O Postgres mantém <code>rag_openai_files</code>, um catálogo operacional com a fonte
+local, IDs remotos, hash, escopo, atributos e status de indexação.</li>
+<li>O ID fornecido é reservado para <code>scope = publico</code>. Documentos de turma ou de
+aluno exigem vector store separado por fronteira de confiança ou uma decisão
+explícita de isolamento; não serão enviados ao corpus público.</li>
+<li>O pipeline local de extração continua útil para validação, metadados e fluxos
+legados, mas não gera embeddings nem é o caminho principal de chunking do RAG.</li>
+</ul>
+<h2 id="authorization-and-data-flow">Authorization and data flow</h2>
+<ol>
+<li>O backend valida formato, tamanho, MIME type, escopo e autorização da fonte.</li>
+<li>O backend envia o arquivo à OpenAI Files e o associa ao Vector Store correto.</li>
+<li>O backend aguarda <code>status = completed</code> e registra os IDs/status sem salvar a
+chave ou conteúdo bruto em logs.</li>
+<li>No chat, o backend escolhe somente vector stores permitidos para a sessão e
+monta filtros de atributos quando aplicável.</li>
+<li>A resposta é gerada com <code>file_search</code>; as citações retornadas pela OpenAI
+permanecem associadas à resposta para auditoria.</li>
+</ol>
+<p>O store configurado é só público, então toda busca filtra <code>scope = publico</code>
+(<code>OpenAIRagService.invoke_structured</code>) e <code>upload_public_file</code> carimba esse
+atributo e recusa outro escopo. Arquivo no store <strong>sem</strong> esse atributo não é
+recuperado: um arquivo subido à mão precisa recebê-lo.</p>
+<p><code>upload_public_file</code> registra em <code>rag_openai_files</code> depois de anexar, não reenvia
+conteúdo com o mesmo <code>source_hash</code> já concluído no store, e desfaz o envio se não
+conseguir registrar: a exclusão de dados só conhece o que está no catálogo.</p>
+<p>Filtros remotos são defesa em profundidade, não substituto da autorização local.
+O servidor nunca aceita <code>vector_store_id</code>, <code>scope</code>, <code>classe_id</code> ou <code>aluno_id</code>
+diretamente do cliente sem derivá-los da sessão e das permissões verificadas.</p>
+<h2 id="consequences-1">Consequences</h2>
+<h3 id="positive-1">Positive</h3>
+<ul>
+<li>Menos infraestrutura e código operacional no Postgres.</li>
+<li>Sem custo e manutenção de embeddings próprios.</li>
+<li>Chunking e busca são fornecidos pelo serviço gerenciado.</li>
+<li>O catálogo local preserva deduplicação, auditoria e vínculo com o domínio.</li>
+</ul>
+<h3 id="negative-1">Negative</h3>
+<ul>
+<li>Dependência operacional da OpenAI e dos limites do Vector Store.</li>
+<li>Custos e retenção passam a depender da plataforma OpenAI.</li>
+<li>O banco não consegue fazer joins SQL diretamente com chunks remotos.</li>
+<li>Isolamento de documentos privados precisa de múltiplos stores ou de uma
+política rigorosa de atributos e filtros.</li>
+</ul>
+<h2 id="migration-1">Migration</h2>
+<ul>
+<li>Configurar <code>OPENAI_RAG_API_KEY</code> apenas no ambiente do backend. É a chave da conta
+dona do store, usada na busca, no envio e na exclusão de arquivos. Não recai em
+<code>OPENAI_API_KEY</code> (uso comum), nem o contrário: são contas e créditos diferentes.</li>
+<li>Configurar <code>OPENAI_RAG_VECTOR_STORE_ID</code> com o store público já criado.</li>
+<li>Aplicar a migration <code>20261024_01_openai_vector_store_registry</code> (revisão <code>20261024_01</code>, reencadeada sobre <code>20261022_05</code> ao trazer o #166 para a main).</li>
+<li>Não migrar automaticamente os registros de <code>rag_chunks</code> para o store remoto;
+cada fonte deve ser reenviada com hash e registro idempotente.</li>
+<li>Manter <code>rag_chunks</code> temporariamente para compatibilidade e removê-lo somente
+após confirmar que não há consumidores do retrieval pgvector.</li>
+</ul>
+<nav class="nav-paginas"><a href="rag-teste.html"><span class="k">← anterior</span><span class="t">Teste com e sem RAG</span></a><a class="prox" href="historico.html"><span class="k">próxima →</span><span class="t">Histórico e números</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#0001-vector-store-do-rag-no-postgres-com-pgvector">0001: Vector store do RAG no Postgres com pgvector</a></li><li><a href="#context">Context</a></li><li><a href="#previous-decision">Previous Decision</a></li><li><a href="#alternatives-considered">Alternatives Considered</a></li><li><a href="#consequences">Consequences</a></li><li><a href="#traceability">Traceability</a></li><li><a href="#0002-openai-vector-store-para-o-rag">0002: OpenAI Vector Store para o RAG</a></li><li><a href="#context-1">Context</a></li><li><a href="#decision">Decision</a></li><li><a href="#authorization-and-data-flow">Authorization and data flow</a></li><li><a href="#consequences-1">Consequences</a></li><li><a href="#migration-1">Migration</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>ea19135a</code> em 04/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>

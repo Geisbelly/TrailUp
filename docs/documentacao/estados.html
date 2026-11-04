@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Diagramas de estado · TrailUp</title><meta name="description" content="O ciclo de vida de jobs, materiais, progresso, eventos, notificações e intervenções."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 transform=%22rotate(45 8 8)%22 fill=%22%23a08df5%22/%3E%3C/svg%3E"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><span class="diamond"></span>TrailUp · documentação</a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html" aria-current="page">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Diagramas de estado</h1><p class="lede">O ciclo de vida de jobs, materiais, progresso, eventos, notificações e intervenções.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/06-estados.md" target="_blank" rel="noopener">docs/tcc/modelagem/06-estados.md</a><span class="chip ok">atualizado 04/11/2026</span><span class="chip warn">9 diagramas</span></div></header><p>Os estados vêm de duas fontes:</p>
+<ul>
+<li>das restrições <code>CHECK</code> e do enum <code>status_atividade</code>, lidos no banco de produção em 04/11/2026;</li>
+<li>do código, onde o status é texto livre: filas de geração e <code>conteudo_personalizado</code>.</li>
+</ul>
+<p>As contagens entre parênteses são de produção, em 04/11/2026.</p>
+<h2 id="61-job-de-geração-personalizacao_jobs">6.1 Job de geração (<code>personalizacao_jobs</code>)</h2>
+<figure class="diagrama" id="diagrama-1"><div class="area"><pre class="mermaid">stateDiagram-v2
+  [*] --&gt; pending: gatilho do banco ou pedido manual
+  pending --&gt; pending: nova edição da turma funde no mesmo job
+  pending --&gt; processing: worker reivindica
+  processing --&gt; processing: parado além do limite → reivindicado de novo
+  processing --&gt; completed: nenhum alvo falhou nem ficou pendente
+  processing --&gt; partial: alvo pendente, ou parte falhou
+  processing --&gt; failed: todo alvo processado falhou
+  partial --&gt; processing: após partial_retry_delay_sec
+  completed --&gt; [*]
+  failed --&gt; [*]
+  note right of failed
+    Um pedido manual (manual_retry) cria job novo
+    e retoma só o que falhou.
+  end note
+</pre></div><figcaption><span>Diagrama 1</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>Produção: 79 <code>completed</code>, 16 <code>failed</code>, 4 <code>partial</code>. Regra do fim em <code>personalizacao_jobs.py</code> (<code>final_status</code>).</p>
+<p>Só job <code>pending</code> aceita fusão. Job em <code>processing</code> nunca é reaproveitado, porque o worker já leu o <code>total_targets</code> dele.</p>
+<h2 id="62-alvo-do-job-personalizacao_job_targets">6.2 Alvo do job (<code>personalizacao_job_targets</code>)</h2>
+<figure class="diagrama" id="diagrama-2"><div class="area"><pre class="mermaid">stateDiagram-v2
+  [*] --&gt; pending
+  pending --&gt; processing: worker
+  processing --&gt; completed
+  processing --&gt; skipped: source_hash igual / nada a gerar
+  processing --&gt; pending: erro e attempts &lt; max_retries
+  processing --&gt; failed: erro e attempts = max_retries
+  processing --&gt; failed: sem cota de TTS
+  completed --&gt; [*]
+  skipped --&gt; [*]
+  failed --&gt; [*]
+</pre></div><figcaption><span>Diagrama 2</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>Produção: 52 <code>completed</code>, 31 <code>failed</code>, 8 <code>skipped</code>.</p>
+<h2 id="63-material-personalizado-conteudo_personalizadostatus">6.3 Material personalizado (<code>conteudo_personalizado.status</code>)</h2>
+<figure class="diagrama" id="diagrama-3"><div class="area"><pre class="mermaid">stateDiagram-v2
+  [*] --&gt; processando_midias
+  processando_midias --&gt; pronto: mídias concluídas
+  processando_midias --&gt; failed: falha na geração
+  processando_midias --&gt; processando_midias: travado → nova tentativa (CAS)
+  failed --&gt; processando_midias: reprocessar (preserva o que já ficou pronto)
+  pronto --&gt; pronto: regeração in place (sobe materiais.*.revisao)
+</pre></div><figcaption><span>Diagrama 3</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>Produção: 4 <code>pronto</code>, 13 <code>failed</code>.</p>
+<p>O gatilho <code>trg_conteudo_personalizado_novo_material</code> avisa o aluno quando o tópico termina para o perfil dele, inclusive se o último conteúdo falhou.</p>
+<h2 id="64-progresso-status_atividade-enum">6.4 Progresso (<code>status_atividade</code>, enum)</h2>
+<figure class="diagrama" id="diagrama-4"><div class="area"><pre class="mermaid">stateDiagram-v2
+  direction LR
+  [*] --&gt; nao_iniciado
+  nao_iniciado --&gt; em_andamento: primeiro progresso
+  em_andamento --&gt; concluido: percurso completo (gatilho)
+  note right of nao_iniciado
+    rótulo real no enum: não iniciado, com acento e espaço
+  end note
+</pre></div><figcaption><span>Diagrama 4</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>O status vale para <code>topico_aluno</code>, <code>conteudo_aluno</code> e <code>atividade_aluno</code>. Em <code>topico_aluno</code> só o gatilho <code>trailup_recalcular_topico_aluno</code> escreve. A revisão pedida pelo professor não muda <code>atividade_aluno.status</code>.</p>
+<h2 id="65-evento-de-turma-eventos_classe">6.5 Evento de turma (<code>eventos_classe</code>)</h2>
+<figure class="diagrama" id="diagrama-5"><div class="area"><pre class="mermaid">stateDiagram-v2
+  [*] --&gt; rascunho
+  rascunho --&gt; aberto: professor abre&lt;br/&gt;ou pg_cron no início (abrir_no_inicio, com peças)
+  aberto --&gt; encerrado: pg_cron quando fim vence&lt;br/&gt;ou professor encerra → apuração
+  encerrado --&gt; [*]
+</pre></div><figcaption><span>Diagrama 5</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p><code>fn_evento_classe_abrir_agora</code> e <code>_encerrar_agora</code> travam a linha. Um clique e o cron ao mesmo tempo não creditam o resultado duas vezes.</p>
+<h2 id="66-notificações">6.6 Notificações</h2>
+<figure class="diagrama" id="diagrama-6"><div class="area"><pre class="mermaid">stateDiagram-v2
+  state &quot;notificacoes_ia&quot; as IA {
+    [*] --&gt; sugerida
+    sugerida --&gt; promovida: gatilho promove para a fila
+    sugerida --&gt; suprimida
+  }
+  state &quot;notificacoes_pendentes&quot; as FILA {
+    [*] --&gt; pendente
+    pendente --&gt; entregue: horario | login | tempo_uso | fim_foco
+    pendente --&gt; expirada: expira_em
+    pendente --&gt; cancelada
+    pendente --&gt; suprimida: silêncio / limite
+    pendente --&gt; colapsada: junta com outra igual
+  }
+  IA --&gt; FILA
+  FILA --&gt; notificacoes: entregue → caixa de entrada + push
+</pre></div><figcaption><span>Diagrama 6</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="67-intervenção-e-alteração-do-professor">6.7 Intervenção e alteração do professor</h2>
+<figure class="diagrama" id="diagrama-7"><div class="area"><pre class="mermaid">stateDiagram-v2
+  state &quot;intervencoes&quot; as I {
+    [*] --&gt; pending: IA grava
+    pending --&gt; applied: professor aceita
+    pending --&gt; dismissed: professor ignora (motivo_descarte)
+  }
+  state &quot;alteracao_professor&quot; as A {
+    [*] --&gt; pendente_analise: gatilho do editor
+    pendente_analise --&gt; analisada: IA classifica
+    pendente_analise --&gt; pendente_analise: falhou → sai da fila e espera decisão do professor
+  }
+</pre></div><figcaption><span>Diagrama 7</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="68-gamificação-e-social">6.8 Gamificação e social</h2>
+<figure class="diagrama" id="diagrama-8"><div class="area"><pre class="mermaid">stateDiagram-v2
+  state &quot;missao_aluno&quot; as M {
+    [*] --&gt; pendente
+    pendente --&gt; em_andamento
+    em_andamento --&gt; concluida
+    pendente --&gt; expirada
+    em_andamento --&gt; expirada
+  }
+  state &quot;guilda_desafios&quot; as D {
+    [*] --&gt; aberto
+    aberto --&gt; encerrado: resultado = vitoria | empate | sem_adversario
+  }
+  state &quot;social_relacionamentos&quot; as S {
+    [*] --&gt; pending
+    pending --&gt; accepted
+    pending --&gt; declined
+    pending --&gt; blocked
+    accepted --&gt; blocked
+  }
+</pre></div><figcaption><span>Diagrama 8</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>Em 6.8, os estados são os do <code>CHECK</code>. As transições desenhadas são as que os nomes indicam; elas não foram auditadas função por função.</p>
+<h2 id="69-arquivo-do-rag-rag_openai_files">6.9 Arquivo do RAG (<code>rag_openai_files</code>)</h2>
+<figure class="diagrama" id="diagrama-9"><div class="area"><pre class="mermaid">stateDiagram-v2
+  [*] --&gt; in_progress: upload_public_file
+  in_progress --&gt; completed
+  in_progress --&gt; failed
+  in_progress --&gt; cancelled
+  completed --&gt; [*]: DELETE da linha → retencao_externa apaga na OpenAI
+</pre></div><figcaption><span>Diagrama 9</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>Produção: nenhuma linha. O corpus ainda não foi indexado.</p>
+<nav class="nav-paginas"><a href="dados.html"><span class="k">← anterior</span><span class="t">Modelo de dados</span></a><a class="prox" href="classes.html"><span class="k">próxima →</span><span class="t">Diagramas de classes</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#61-job-de-geração-personalizacao_jobs">6.1 Job de geração (personalizacao_jobs)</a></li><li><a href="#62-alvo-do-job-personalizacao_job_targets">6.2 Alvo do job (personalizacao_job_targets)</a></li><li><a href="#63-material-personalizado-conteudo_personalizadostatus">6.3 Material personalizado (conteudo_personalizado.status)</a></li><li><a href="#64-progresso-status_atividade-enum">6.4 Progresso (status_atividade, enum)</a></li><li><a href="#65-evento-de-turma-eventos_classe">6.5 Evento de turma (eventos_classe)</a></li><li><a href="#66-notificações">6.6 Notificações</a></li><li><a href="#67-intervenção-e-alteração-do-professor">6.7 Intervenção e alteração do professor</a></li><li><a href="#68-gamificação-e-social">6.8 Gamificação e social</a></li><li><a href="#69-arquivo-do-rag-rag_openai_files">6.9 Arquivo do RAG (rag_openai_files)</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>ea19135a</code> em 04/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
