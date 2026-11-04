@@ -5,7 +5,7 @@ Documentos e decisões de proteção de dados do projeto. A issue de acompanhame
 | Tema | Onde está |
 |---|---|
 | Transferência internacional e fornecedores (dados, finalidade, país, treino, retenção, mecanismo, pendências) | [`transferencias-internacionais.md`](./transferencias-internacionais.md) |
-| Prazos de retenção e expurgo (#616) | Tabela `public.retencao_politica` (migration `api/alembic/versions/20261024_03_retencao_e_expurgo.py`); começa em modo `simular` |
+| Prazos de retenção e expurgo (#616) | Tabela `public.retencao_politica` (migration `api/alembic/versions/20261024_03_retencao_e_expurgo.py`); começou em `simular`; ligada (`aplicar`) em produção desde 2026-11-04 |
 | Exclusão da conta de professor e aviso de conta inativa por e-mail | Seções abaixo · migration `api/alembic/versions/20261024_07_exclusao_professor_e_aviso_inatividade.py` |
 | Decisão sobre inferência emocional (finalidade, revisão, o professor vê só a faixa) | [Comentário na #195](https://github.com/BitStudioLabs/trail-up/issues/195#issuecomment-6379616985) |
 | Consentimento por finalidade, responsável legal e modo restrito (#613) | [PR/issue #613](https://github.com/BitStudioLabs/trail-up/issues/613) · migration `api/alembic/versions/20261024_02_consentimento_do_responsavel.py` |
