@@ -152,7 +152,12 @@ describe("critérios do rank do evento (#155)", () => {
   });
 
   it("criteriosDoRank descarta o que o banco recusaria", () => {
-    expect(criteriosDoRank(["tempo", "pontuacao", "percentual"])).toEqual(["pontuacao"]);
+    expect(criteriosDoRank(["acertos", "pontuacao", "percentual", "elo"])).toEqual(["pontuacao"]);
+  });
+
+  it("aceita tempo, que a view conta na janela do evento (#932)", () => {
+    expect(criteriosDoRank(["tempo", "ranqueada"])).toEqual(["ranqueada", "tempo"]);
+    expect(rotuloDosCriterios(["tempo"])).toBe("Tempo de estudo");
   });
 
   it("rotuloDosCriterios mostra o padrão quando nada foi escolhido", () => {

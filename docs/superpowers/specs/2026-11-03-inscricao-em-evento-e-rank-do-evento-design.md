@@ -100,6 +100,10 @@ para o que esta spec cria, atualizando a #155. O texto da peça no console muda 
 - **Recomendo:** começar com `pontuacao`, `missoes` e `ranqueada`, que já respeitam a janela.
 - **Depois:** `tempo` na janela, somando `active_sec` por período. Pesa numa view lida a cada abertura
   do ranking, então entra em fase própria, com medição.
+  - **Feito na `20261104_07` (#932):** no rank do evento, `tempo` passa a ser a soma de `active_sec`
+    do escopo `topic`, só dentro da janela.
+  - O rank de turma por `tempo` continua lendo a matrícula.
+  - O custo medido está no PR.
 - **Fora:** `percentual` e `acertos`, que precisariam de foto no início do evento, e `elo`, que não
   tem janela.
 

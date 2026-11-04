@@ -32,7 +32,7 @@ type Props = {
   palette: ProfileShellPalette;
 };
 
-const ROTULO_CURTO: Record<string, string> = { ranqueada: "Batalha", pontuacao: "Pontuação", missoes: "Missões" };
+const ROTULO_CURTO: Record<string, string> = { ranqueada: "Batalha", pontuacao: "Pontuação", missoes: "Missões", tempo: "Tempo" };
 const ICONE_DO_FOCO: Record<Exclude<FocoDoRank, "gente">, UtilityIconKind> = {
   rival: "medal",
   meta: "medal",
