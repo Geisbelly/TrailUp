@@ -12,8 +12,11 @@ continuam funcionando, com o texto local de reserva onde ele existe.
 - Menor, data desconhecida, aluno sem id ou consulta que falhou -> **sem IA**.
   Fail-closed: na duvida, trata como menor. A autorizacao do responsavel (#613)
   nao libera a IA: ela continua valendo para camera, telemetria e pesquisa.
-- Fluxo de turma (insights, escriba, alteracao do professor): basta UM aluno
+- Fluxo de turma (insights, alteracao do professor): basta UM aluno
   nao confirmado adulto para a chamada inteira nao sair.
+- Escriba/Lumi do professor NAO passa por aqui (decisao de 04/11/2026: a
+  regra vale para o aluno usar a IA, nao para o professor perguntar sobre as
+  proprias turmas). Aluno menor vai a esse prompt so pela ref A1...
 - Quem chama IA dentro da rota recebe `IAIndisponivelParaMenor` (ou o fallback
   local, no `ainvoke_json`); nunca uma chamada a provedor.
 

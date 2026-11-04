@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as FileSystem from "expo-file-system/legacy";
+import { assinarUrlDoGateway } from './assinadorDoGateway';
 import { mediaUrlPath } from './mediaUrlPath';
 
 export type CachedNativeContentFile = {
@@ -159,7 +160,9 @@ export async function ensureCachedNativeContent(
     }
 
     await FileSystem.deleteAsync(localUri, { idempotent: true });
-    await FileSystem.downloadAsync(downloadUrl, localUri);
+    // O prefetch da trilha manda a URL do gateway como veio do banco: assina aqui, na hora de
+    // baixar (#632). A chave do cache (`cacheKey`) continua a de antes, entao nada e' rebaixado.
+    await FileSystem.downloadAsync(await assinarUrlDoGateway(downloadUrl), localUri);
 
     const nextRecord: CacheRecord = {
       cacheKey,

@@ -91,6 +91,7 @@ O `storage-redirect` assinava sem login qualquer caminho vivo de `vw_material_st
 - **Usar o link:** a URL é a de sempre (`?path=`) mais `u`, `exp` e `sig` (HMAC-SHA256 com `GATEWAY_LINK_SEGREDO`). O `path` não muda, então a identidade da mídia no app (`mediaUrlPath`) também não. O prazo é o fim da janela seguinte: o link vale entre 1 e 2 horas e sai igual dentro da mesma hora, o que mantém o cache.
 - **Transição:** link com assinatura errada, adulterada ou vencida é recusado já. Link antigo, só com `path`, continua aceito até `GATEWAY_EXIGE_LINK_ASSINADO=true`.
 - **Console:** `useLinkDoGateway` (`frontend/src/hooks/`) assina o material e as imagens do texto antes de usar; junta os pedidos num POST e guarda o link até faltar 5 min. Sem link, usa a URL original.
+- **App:** `resolveSupabaseStorageUrl` (o resolvedor de toda mídia) e `ensureCachedNativeContent` (o download do cache e do prefetch) assinam no fim, com `assinarUrlDoGateway`. A chave do cache e a retomada continuam derivadas da URL sem assinatura, então nada é rebaixado nem perde posição. `mobile/src/utils/linkDoGateway.ts` é cópia do módulo do console.
 - **Ordem para fechar:** (1) secret `GATEWAY_LINK_SEGREDO` e deploy da função; (2) o console passa a pedir links; (3) app novo nas lojas, pedindo links; (4) versão mínima ligada; (5) `GATEWAY_EXIGE_LINK_ASSINADO=true`. Ligar o passo 5 antes do 4 tira a mídia dos apps antigos.
 
 ## Ciclo de vida do R2

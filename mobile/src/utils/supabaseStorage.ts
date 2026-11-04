@@ -1,4 +1,5 @@
 import { supabase } from "@/database/supabase";
+import { assinarUrlDoGateway } from "./assinadorDoGateway";
 import { origemDeStorageConfiavel, reancorarNaOrigemDoApp } from "./storageOrigin";
 import {
   buildSupabasePublicStorageUrl,
@@ -21,7 +22,19 @@ export {
   parseSupabaseStorageUrl,
 };
 
+/**
+ * A URL que o app usa para baixar ou tocar o material. Quando ela cai no gateway, sai com o link
+ * curto por sessao (#632): depois da versao minima, o gateway so' abre link assinado. A assinatura
+ * entra so' aqui, no fim - quem guarda a URL como identidade (cache, retomada) guarda a de antes.
+ */
 export async function resolveSupabaseStorageUrl(
+  rawUrl: string,
+  options: ResolveStorageUrlOptions = {}
+) {
+  return assinarUrlDoGateway(await resolverSemAssinatura(rawUrl, options));
+}
+
+async function resolverSemAssinatura(
   rawUrl: string,
   options: ResolveStorageUrlOptions = {}
 ) {

@@ -1598,8 +1598,9 @@ async def conversar_com_mentor_personalizacao(
                     {k: _sem_nome(v) for k, v in item.model_dump(mode="json").items()}
                     for item in payload.historico[-6:]
                 ],
+                # Sem o UUID do aluno: nenhum prompt usa, e dado pseudonimizado
+                # continua sendo dado pessoal (LGPD, minimizacao).
                 "aluno": {
-                    "id": aluno_id,
                     "modo_operacao": (context.get("aluno") or {}).get("modo_operacao") if isinstance(context.get("aluno"), dict) else None,
                     "modo_resposta": (context.get("aluno") or {}).get("modo_resposta") if isinstance(context.get("aluno"), dict) else None,
                 },
