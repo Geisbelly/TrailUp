@@ -122,3 +122,20 @@ describe("urlDeLeitura", () => {
     );
   });
 });
+
+describe("lerPedido: arquivo da pesquisa (#17)", () => {
+  const ARQUIVO = "pesquisa/lotes/0b6c1d7e-2f3a-4b5c-8d9e-0f1a2b3c4d5e/2026/10/14/9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d.json";
+
+  it("aceita DELETE: a exclusao a pedido do aluno apaga a copia identificavel", () => {
+    expect(lerPedido({ path: ARQUIVO, metodo: "DELETE" })).toEqual({ caminho: ARQUIVO, metodo: "DELETE" });
+  });
+
+  it("recusa PUT: so' a Edge Function do arquivo grava ali", () => {
+    expect(lerPedido({ path: ARQUIVO })).toHaveProperty("erro");
+    expect(lerPedido({ path: ARQUIVO, metodo: "PUT" })).toHaveProperty("erro");
+  });
+
+  it("o gateway nao serve o arquivo da pesquisa", () => {
+    expect(urlDeLeitura("https://x.supabase.co", ARQUIVO)).toBeNull();
+  });
+});

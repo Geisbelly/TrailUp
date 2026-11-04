@@ -48,3 +48,27 @@ export function resumoEmFrase(p: PainelDurante): string {
 export function rotuloDasGuildas(p: Pick<PainelDurante, "guildasAtivas" | "guildasTotal">): string {
   return p.guildasTotal === 0 ? "Sem guildas neste evento" : `${p.guildasAtivas} de ${p.guildasTotal} ativas`;
 }
+
+/** Uma linha de `evento_inscricoes` (migration 20261104_01): quem entrou no rank do evento. */
+export type Inscricao = { alunoId: string; inscritoEm: string };
+
+export type Inscrito = { alunoId: string; nome: string; inscritoEm: string };
+
+/**
+ * Nome de cada inscrito, a partir dos alunos do painel; em ordem de nome. Inscrito fora da lista (saiu
+ * da turma depois de entrar) não aparece: a view do rank também não o conta, porque lê a matrícula.
+ */
+export function inscritosComNome(inscricoes: Inscricao[], alunos: AlunoNoEvento[]): Inscrito[] {
+  const nomes = new Map(alunos.map((a) => [a.alunoId, a.nome]));
+  return inscricoes
+    .filter((i) => nomes.has(i.alunoId))
+    .map((i) => ({ alunoId: i.alunoId, nome: nomes.get(i.alunoId), inscritoEm: i.inscritoEm }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
+export function resumoDosInscritos(inscritos: number, total: number): string {
+  if (total === 0) return "Nenhum aluno matriculado nesta turma.";
+  if (inscritos === 0) return "Ninguém entrou no rank ainda. Entrar é opcional e não muda nota nem XP.";
+  const quem = inscritos === 1 ? "1 aluno entrou" : `${inscritos} alunos entraram`;
+  return `${quem} no rank (${percentual(inscritos, total)}% da turma). Entrar é opcional e não muda nota nem XP.`;
+}

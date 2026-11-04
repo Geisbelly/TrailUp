@@ -3,8 +3,19 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ErroDaPagina, SeloDeStatus } from "../comum/PaginaDoConsole";
-import { percentual, quemPrecisaDeEmpurrao, resumoEmFrase, ROTULO_DA_SITUACAO, rotuloDasGuildas, type PainelDurante } from "./durante";
-import { lerDurante, traduzirErroDeEvento, type Evento } from "./eventosApi";
+import {
+  inscritosComNome,
+  percentual,
+  quemPrecisaDeEmpurrao,
+  resumoDosInscritos,
+  resumoEmFrase,
+  ROTULO_DA_SITUACAO,
+  rotuloDasGuildas,
+  type Inscricao,
+  type PainelDurante,
+} from "./durante";
+import { rotuloDosCriterios } from "./evento";
+import { lerDurante, lerInscritos, traduzirErroDeEvento, type Evento } from "./eventosApi";
 
 const rotulo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
 
@@ -23,6 +34,10 @@ export function DuranteDoEventoDialog({ evento, onFechar }: { evento: Evento; on
   const [painel, setPainel] = useState<PainelDurante | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [tentativa, setTentativa] = useState(0);
+  const temRank = evento.pecas.includes("arena");
+  // `null` = ainda lendo; falha nos inscritos não derruba o painel, só esta seção.
+  const [inscricoes, setInscricoes] = useState<Inscricao[] | null>(null);
+  const [erroDosInscritos, setErroDosInscritos] = useState(false);
 
   useEffect(() => {
     let ativo = true;
@@ -31,12 +46,20 @@ export function DuranteDoEventoDialog({ evento, onFechar }: { evento: Evento; on
     lerDurante(evento.id)
       .then((p) => ativo && setPainel(p))
       .catch((e) => ativo && setErro(traduzirErroDeEvento(e, "erro desconhecido")));
+    setInscricoes(null);
+    setErroDosInscritos(false);
+    if (temRank) {
+      lerInscritos(evento.id)
+        .then((l) => ativo && setInscricoes(l))
+        .catch(() => ativo && setErroDosInscritos(true));
+    }
     return () => {
       ativo = false;
     };
-  }, [evento.id, tentativa]);
+  }, [evento.id, tentativa, temRank]);
 
   const empurrar = painel ? quemPrecisaDeEmpurrao(painel.alunos) : [];
+  const inscritos = painel && inscricoes ? inscritosComNome(inscricoes, painel.alunos) : null;
 
   return (
     <Dialog open onOpenChange={(v) => !v && onFechar()}>
@@ -67,6 +90,28 @@ export function DuranteDoEventoDialog({ evento, onFechar }: { evento: Evento; on
                 {evento.modalidadeGuilda && <li>Guilda: {painel.porModalidade.guilda} alunos participaram em guilda</li>}
               </ul>
             </section>
+
+            {temRank && (
+              <section aria-label="Rank do evento">
+                <h3 className={rotulo}>Rank do evento · {rotuloDosCriterios(evento.arenaCriterios)}</h3>
+                {erroDosInscritos ? (
+                  <p className="mt-2 text-sm text-muted-foreground">Não foi possível ler quem entrou no rank. Feche e abra o painel de novo.</p>
+                ) : !inscritos ? (
+                  <p className="mt-2 text-sm text-muted-foreground">Carregando quem entrou…</p>
+                ) : (
+                  <>
+                    <p className="mt-2 text-sm">{resumoDosInscritos(inscritos.length, painel.total)}</p>
+                    {inscritos.length > 0 && (
+                      <ul className="mt-2 flex flex-wrap gap-1.5">
+                        {inscritos.map((a) => (
+                          <li key={a.alunoId} className="rounded-full border bg-background px-3 py-1 text-sm">{a.nome}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
 
             <section aria-label="Quem precisa de um empurrão">
               <h3 className={rotulo}>Quem precisa de um empurrão</h3>

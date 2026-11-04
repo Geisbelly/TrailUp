@@ -31,6 +31,14 @@ export const PREFIXOS_PERMITIDOS = ["brainhex/", "fontes/"] as const;
  */
 export const PREFIXOS_DE_TELEMETRIA = ["telemetria/"] as const;
 
+/**
+ * Arquivo da pesquisa (#17, `pesquisa-arquivar`). So' DELETE: quem grava ali e' a propria Edge
+ * Function do arquivo, com as credenciais do ambiente, e nunca um servico por esta URL. O DELETE
+ * existe para a exclusao a pedido do aluno - a conta apagada poe os objetos dele na fila da
+ * retencao, e o worker da API pede aqui a URL para apaga-los.
+ */
+export const PREFIXOS_DA_PESQUISA = ["pesquisa/"] as const;
+
 /** PUT para gravar; DELETE para a retencao apagar o que expirou. */
 export const METODOS = ["PUT", "DELETE"] as const;
 export type Metodo = (typeof METODOS)[number];
@@ -115,7 +123,8 @@ export function lerPedido(corpo: unknown): Pedido | { erro: string } {
   // caminhos na fila da retencao; sem isto eles nunca sairiam do R2. PUT ali
   // continua recusado: ninguem grava fonte nova nessa pasta pelo R2.
   const fonteDoProfessor = metodo === "DELETE" && bucketDoCaminho(caminho, "") === "conteudos";
-  if (!fonteDoProfessor && !prefixos.some((p) => caminho.startsWith(p))) {
+  const arquivoDaPesquisa = metodo === "DELETE" && PREFIXOS_DA_PESQUISA.some((p) => caminho.startsWith(p));
+  if (!fonteDoProfessor && !arquivoDaPesquisa && !prefixos.some((p) => caminho.startsWith(p))) {
     return { erro: `Caminho fora dos prefixos permitidos (${prefixos.join(", ")}).` };
   }
   return { caminho, metodo: metodo as Metodo };
