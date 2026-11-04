@@ -154,6 +154,41 @@ def test_endpoint_modelo_indisponivel_vira_503(client, api_professor, monkeypatc
     assert resposta.json()["detail"]["code"] == "escriba_indisponivel"
 
 
+@pytest.mark.asyncio
+@pytest.mark.idade_real
+@pytest.mark.parametrize("classe_id", [54, None])
+async def test_turma_com_aluno_sem_idade_confirmada_responde_ao_professor(monkeypatch, classe_id) -> None:
+    # Medido na turma 68 (2 alunos, um sem data de nascimento): a rota de menor
+    # (#195) barrava a Lumi. Decisão de 04/11/2026: a regra vale para o aluno
+    # usar a IA, não para o professor. Aqui toda turma "teria" menor, e a
+    # chamada tem de sair fora da rota de menor.
+    from app.services import roteamento_ia
+
+    async def _menor(session, aluno_ids):
+        return roteamento_ia.ROTA_MENOR
+
+    monkeypatch.setattr(roteamento_ia, "decidir_rota", _menor)
+    rotas: list[bool] = []
+
+    async def _modelo(**_kwargs):
+        rotas.append(roteamento_ia.rota_de_menor_ativa())
+        return EscribaSaida(resposta="A turma vai bem.")
+
+    llm = AsyncMock()
+    llm.ainvoke_structured.side_effect = _modelo
+    service, _ = _servico(monkeypatch, llm)
+    monkeypatch.setattr(
+        service,
+        "contexto_da_turma",
+        AsyncMock(side_effect=lambda turma, agora: {"turma": turma["descricao"], "alunos": [{"ref": "A1"}], "_nomes_por_ref": {}}),
+    )
+
+    r = await service.perguntar("prof-1", PerguntaEscriba(pergunta="como usar a aba de economia?", classe_id=classe_id))
+
+    assert r.resposta == "A turma vai bem."
+    assert rotas and not any(rotas)
+
+
 def test_endpoint_valida_a_pergunta(client, api_professor) -> None:
     assert client.post("/api/v1/escriba/perguntar", json={"pergunta": ""}).status_code == 422
     assert client.post("/api/v1/escriba/perguntar", json={"pergunta": "x" * 501}).status_code == 422

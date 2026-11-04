@@ -340,7 +340,9 @@ async def test_insights_turma_com_menor_abre_a_rota_sem_ia(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_escriba_com_menor_abre_a_rota_sem_ia_e_ids_nao_vao_no_prompt(monkeypatch) -> None:
+async def test_escriba_com_menor_responde_ao_professor_e_ids_nao_vao_no_prompt(monkeypatch) -> None:
+    """Decisao de 04/11/2026: a regra da #195 vale para o aluno usar a IA, nao
+    para a Lumi do professor. Turma com menor nao abre a rota sem IA."""
     from app.schemas.escriba import PerguntaEscriba
     from app.services.escriba import EscribaService
 
@@ -362,7 +364,7 @@ async def test_escriba_com_menor_abre_a_rota_sem_ia_e_ids_nao_vao_no_prompt(monk
     )
     resposta = await service.perguntar("prof", PerguntaEscriba(pergunta="como vai a turma?"))
     assert resposta.resposta == "ok"
-    assert capturado["menor"] is True
+    assert capturado["menor"] is False
     assert "_aluno_ids" not in capturado["payload"]["turmas"][0]
 
 
@@ -465,8 +467,9 @@ def test_fluxos_de_aluno_abrem_a_rota() -> None:
 
 
 @pytest.mark.asyncio
-async def test_escriba_combina_nome_fora_do_prompt_e_rota_de_menor(monkeypatch) -> None:
-    """#618 + #195 juntos: o nome nao vai ao modelo e a turma com menor abre a rota sem IA."""
+async def test_escriba_com_menor_mantem_nome_fora_do_prompt(monkeypatch) -> None:
+    """#618 continua valendo com menor na turma: o nome nao vai ao modelo. A rota
+    sem IA da #195 nao se aplica a Lumi do professor (decisao de 04/11/2026)."""
     import json
 
     from app.schemas.escriba import PerguntaEscriba
@@ -496,7 +499,7 @@ async def test_escriba_combina_nome_fora_do_prompt_e_rota_de_menor(monkeypatch) 
         ),
     )
     resposta = await service.perguntar("prof", PerguntaEscriba(pergunta="Como está a Ana Souza?"))
-    assert capturado["menor"] is True
+    assert capturado["menor"] is False
     for proibido in ("Ana", "Souza", "ana@x.invalid", MENOR, "_aluno_ids", "_nomes_por_ref"):
         assert proibido not in capturado["payload"]
     # A ref volta como nome (primeiro nome, regra do #618) so na resposta ao professor.
