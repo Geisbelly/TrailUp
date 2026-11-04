@@ -15,7 +15,11 @@
 export const MEDIA_PIPELINE_VERSION = "2026-09-27.1" as const;
 export const PRESENTATION_ENGINE_VERSION = "brainhexpdf-v1" as const;
 export const PRESENTATION_SCHEMA_VERSION = "presentation-material-v3" as const;
-export const PRESENTATION_DESIGN_VERSION = "slidesgo-editorial-v3" as const;
+// v4 = deck HTML da #863 (cor do perfil, claro/escuro, ajustes de leitura).
+// A #863 mudou o deck sem subir esta versao, e todo deck anterior continuou
+// valendo como pronto (15 de 16 materiais em producao no formato antigo, 03/11).
+// Mudou o HTML do deck? Suba aqui E em api/app/services/media_contract.py.
+export const PRESENTATION_DESIGN_VERSION = "trailup-deck-v4" as const;
 export const CONTENT_ENRICHMENT_PROVIDER = "openai" as const;
 
 /** Revisão declarada pelo deploy; não confundir com versão do contrato de mídia. */

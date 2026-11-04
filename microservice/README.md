@@ -34,7 +34,7 @@ Microservico de geracao de materiais personalizados por perfil BrainHex.
 - O deck alterna capa, divisao editorial, cards, destaque, linha do tempo e
   encerramento; nao usa mais um unico molde de dois paineis.
 - A API envia `presentation_theme` e exige
-  `required_presentation_design_version=slidesgo-editorial-v3`.
+  `required_presentation_design_version=trailup-deck-v4`.
 - `GET /api/health` informa `presentation_engine_version` e
   `presentation_design_version`, impedindo que um deploy antigo gere slides legados.
 - Os metadados do PDF registram `design_system`; arquivos sem essa assinatura sao
