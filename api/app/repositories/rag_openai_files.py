@@ -80,3 +80,35 @@ class RagOpenAIFilesRepository:
             },
         )
         await self.session.commit()
+
+    async def listar_do_corpus(self, *, vector_store_id: str, corpus: str) -> list[dict[str, Any]]:
+        """Linhas de um corpus nomeado em `attributes.corpus`, mais recentes primeiro."""
+        result = await self.session.execute(
+            text(
+                """
+                SELECT id, openai_file_id, source_hash, status, attributes
+                  FROM rag_openai_files
+                 WHERE vector_store_id = :vector_store_id
+                   AND attributes->>'corpus' = :corpus
+                 ORDER BY created_at DESC
+                """
+            ),
+            {"vector_store_id": vector_store_id, "corpus": corpus},
+        )
+        return [dict(row) for row in result.mappings().all()]
+
+    async def remover(self, ids: list[str]) -> int:
+        """Apaga do catálogo; o gatilho `trg_retencao_fila_openai` tira o arquivo da OpenAI.
+
+        Não chame a OpenAI direto daqui: a fila de `retencao_externa` é quem
+        tenta de novo quando a remoção falha, e o registro de que o arquivo
+        precisa sair só existe se a linha for apagada por este caminho.
+        """
+        if not ids:
+            return 0
+        result = await self.session.execute(
+            text("DELETE FROM rag_openai_files WHERE id = ANY(CAST(:ids AS uuid[]))"),
+            {"ids": [str(i) for i in ids]},
+        )
+        await self.session.commit()
+        return int(result.rowcount or 0)
