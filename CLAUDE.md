@@ -413,6 +413,14 @@ Cada perfil carrega:
     `EstudoRepository`.** A RLS não o cobre. A contaminação na RPC é a exposição medida (tempo
     ativo no escopo `material` dentro da janela retida). Ver
     `docs/superpowers/specs/2026-11-01-cohort-e-baseline-design.md` §6.
+- **Rank do evento** (`20261104_01`, #155): `evento_inscricoes` + `ranks.evento_id`. Abrir o evento
+  cria um rank por critério de `eventos_classe.arena_criterios` (só `pontuacao`, `missoes` e
+  `ranqueada`, os que respeitam a janela) com `inicio`/`fim` do evento, e a `_todas` conta **só os
+  inscritos** nele — e conta duelo ali, a única exceção ao `fora_do_xp` fora do `ranqueada`.
+  Inscrever e sair são RPCs (`evento_classe_inscrever`/`_sair`); o cliente só lê a tabela. Ninguém
+  escreve rank com `evento_id` por fora (`fn_ranks_guarda`), e como ele nasce com `fim`, nem
+  `vw_ranks_info_por_classe` nem o "Novo período" o tratam como período da turma. Ao mexer na view,
+  o filtro de inscritos é um `EXISTS` de propósito: função ali pede EXECUTE para o cliente.
 - `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_11`):
   entrada, derrota, provocação de dano, marcos de metade/um quarto da vida, alerta de tempo,
   contra-ataque e a mensagem de vitória. **Gerar é IA, então é API**: o worker da fila faz uma

@@ -144,6 +144,13 @@ export type RankExistente = { id: number; tipo_id: number; classe_id: number | n
 /** Aberto = período atual (`fim` NULL). Antes da `20261021_16` a coluna não existe: tudo está aberto. */
 export const estaAberto = (r: { fim?: string | null }) => !r.fim;
 
+/**
+ * Rank de turma = sem `evento_id`. O rank do evento (`20261104_01`, #155) também mora em `ranks`, com a
+ * janela do evento, mas não é período desta tela: nasce e acaba com o evento, e o banco recusa editar.
+ * Antes da migration a coluna não existe: tudo é rank de turma.
+ */
+export const ehRankDaTurma = (r: { evento_id?: string | null }) => !r.evento_id;
+
 const mesmoPeriodo = (a: string | null | undefined, b: string) => (a ?? "").trim().toLowerCase() === b.trim().toLowerCase();
 
 /**
