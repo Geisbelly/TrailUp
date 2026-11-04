@@ -9,7 +9,8 @@
 O TrailUp já possui extração e normalização de documentos, mas o desenho
 anterior exigia operar `pgvector`, gerar embeddings e implementar chunking e
 retrieval próprios. O projeto agora possui um Vector Store gerenciado pela
-OpenAI (`vs_6aa1e1f21fec8191be34139c235a849e`) para o corpus público do RAG.
+OpenAI para o corpus público do RAG. O id vigente fica só em
+`OPENAI_RAG_VECTOR_STORE_ID`, no ambiente do backend (trocado em 04/11/2026).
 
 ## Decision
 
@@ -38,6 +39,15 @@ camada de indexação e retrieval para documentos públicos.
 5. A resposta é gerada com `file_search`; as citações retornadas pela OpenAI
    permanecem associadas à resposta para auditoria.
 
+O store configurado é só público, então toda busca filtra `scope = publico`
+(`OpenAIRagService.invoke_structured`) e `upload_public_file` carimba esse
+atributo e recusa outro escopo. Arquivo no store **sem** esse atributo não é
+recuperado: um arquivo subido à mão precisa recebê-lo.
+
+`upload_public_file` registra em `rag_openai_files` depois de anexar, não reenvia
+conteúdo com o mesmo `source_hash` já concluído no store, e desfaz o envio se não
+conseguir registrar: a exclusão de dados só conhece o que está no catálogo.
+
 Filtros remotos são defesa em profundidade, não substituto da autorização local.
 O servidor nunca aceita `vector_store_id`, `scope`, `classe_id` ou `aluno_id`
 diretamente do cliente sem derivá-los da sessão e das permissões verificadas.
@@ -61,7 +71,9 @@ diretamente do cliente sem derivá-los da sessão e das permissões verificadas.
 
 ## Migration
 
-- Configurar `OPENAI_API_KEY` apenas no ambiente do backend.
+- Configurar `OPENAI_RAG_API_KEY` apenas no ambiente do backend. É a chave da conta
+  dona do store, usada na busca, no envio e na exclusão de arquivos. Não recai em
+  `OPENAI_API_KEY` (uso comum), nem o contrário: são contas e créditos diferentes.
 - Configurar `OPENAI_RAG_VECTOR_STORE_ID` com o store público já criado.
 - Aplicar a migration `20261024_01_openai_vector_store_registry` (revisão `20261024_01`, reencadeada sobre `20261022_05` ao trazer o #166 para a main).
 - Não migrar automaticamente os registros de `rag_chunks` para o store remoto;

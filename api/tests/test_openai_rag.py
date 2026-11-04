@@ -4,8 +4,9 @@ from types import SimpleNamespace
 import pytest
 
 from app.core.settings import Settings
-from app.services.llm import StructuredOutputError
-from app.services.openai_rag import OpenAIRagService, _strict_json_schema
+from app.services.llm import JsonLLMService, StructuredOutputError
+from app.services.openai_rag import OpenAIRagError, OpenAIRagService, _strict_json_schema
+from tests.conftest import FakeSession
 
 
 class _FakeResponses:
@@ -43,7 +44,7 @@ def _settings(**kwargs) -> Settings:
         "app_env": "test",
         "supabase_jwt_secret": "test-secret",
         "admin_panel_password": "secret-admin",
-        "openai_api_key": "test-key",
+        "openai_rag_api_key": "test-key",
         "openai_rag_enabled": True,
         "openai_rag_vector_store_id": "vs_test",
     }
@@ -66,7 +67,13 @@ async def test_invoke_structured_uses_file_search_without_response_storage():
     assert result.reply == "confirmado"
     call = client.responses.calls[0]
     assert call["store"] is False
-    assert call["tools"] == [{"type": "file_search", "vector_store_ids": ["vs_test"]}]
+    assert call["tools"] == [
+        {
+            "type": "file_search",
+            "vector_store_ids": ["vs_test"],
+            "filters": {"type": "eq", "key": "scope", "value": "publico"},
+        }
+    ]
     assert call["include"] == ["file_search_call.results"]
 
 
@@ -191,7 +198,12 @@ async def test_top_k_configurado_vai_para_a_ferramenta_e_para_o_log():
         await _invocar(service)
 
     assert client.responses.calls[0]["tools"] == [
-        {"type": "file_search", "vector_store_ids": ["vs_test"], "max_num_results": 4}
+        {
+            "type": "file_search",
+            "vector_store_ids": ["vs_test"],
+            "filters": {"type": "eq", "key": "scope", "value": "publico"},
+            "max_num_results": 4,
+        }
     ]
     assert buscas[0]["top_k"] == 4
 
@@ -274,3 +286,146 @@ async def test_rota_de_menor_com_rag_nao_faz_a_busca(monkeypatch):
 
     assert client.responses.calls == []
     assert buscas == []
+
+
+class _FakeArquivos:
+    def __init__(self, *, falha_ao_anexar: bool = False, status: str = "completed") -> None:
+        self.falha_ao_anexar = falha_ao_anexar
+        self.status = status
+        self.enviados: list[str] = []
+        self.anexados: list[dict] = []
+        self.removidos: list[str] = []
+        self.files = self
+        self.vector_stores = SimpleNamespace(
+            files=SimpleNamespace(create_and_poll=self._anexar, delete=self._desanexar)
+        )
+
+    async def create(self, *, file, purpose):
+        self.enviados.append(file[0])
+        return SimpleNamespace(id="file_1")
+
+    async def delete(self, file_id):
+        self.removidos.append(f"arquivo:{file_id}")
+
+    async def _anexar(self, **kwargs):
+        if self.falha_ao_anexar:
+            raise RuntimeError("sem credito")
+        self.anexados.append(kwargs)
+        return SimpleNamespace(id="vsf_1", status=self.status, last_error=None)
+
+    async def _desanexar(self, file_id, *, vector_store_id):
+        self.removidos.append(f"store:{vector_store_id}:{file_id}")
+
+
+class _FakeCatalogo:
+    existente: dict | None = None
+    falha: bool = False
+    registros: list[dict] = []
+
+    def __init__(self, session) -> None:
+        self.session = session
+
+    async def buscar_concluido(self, *, vector_store_id, source_hash):
+        return type(self).existente
+
+    async def registrar(self, **kwargs):
+        if type(self).falha:
+            raise RuntimeError("banco fora")
+        type(self).registros.append(kwargs)
+
+
+@pytest.fixture
+def catalogo(monkeypatch):
+    class Catalogo(_FakeCatalogo):
+        existente = None
+        falha = False
+        registros: list[dict] = []
+
+    monkeypatch.setattr("app.services.openai_rag.RagOpenAIFilesRepository", Catalogo)
+    return Catalogo
+
+
+async def _enviar(service, **kwargs):
+    return await service.upload_public_file(
+        session=FakeSession(),
+        filename="artigo.pdf",
+        content=b"conteudo",
+        mime_type="application/pdf",
+        **kwargs,
+    )
+
+
+@pytest.mark.asyncio
+async def test_envio_marca_o_arquivo_como_publico_e_registra_no_catalogo(catalogo):
+    remoto = _FakeArquivos()
+    resultado = await _enviar(OpenAIRagService(_settings(), client=remoto), fonte_id=7, attributes={"ano": 2024})
+
+    assert remoto.anexados[0]["attributes"] == {"ano": 2024, "scope": "publico"}
+    registro = catalogo.registros[0]
+    assert registro["vector_store_id"] == "vs_test"
+    assert registro["openai_file_id"] == "file_1"
+    assert registro["scope"] == "publico"
+    assert registro["fonte_id"] == 7
+    assert registro["status"] == "completed"
+    assert registro["source_hash"] == resultado["source_hash"]
+    assert resultado["reaproveitado"] is False
+
+
+@pytest.mark.asyncio
+async def test_envio_recusa_escopo_que_nao_seja_publico(catalogo):
+    remoto = _FakeArquivos()
+    with pytest.raises(OpenAIRagError):
+        await _enviar(OpenAIRagService(_settings(), client=remoto), attributes={"scope": "turma"})
+    assert remoto.enviados == []
+    assert catalogo.registros == []
+
+
+@pytest.mark.asyncio
+async def test_conteudo_ja_indexado_nao_e_reenviado(catalogo):
+    catalogo.existente = {
+        "openai_file_id": "file_antigo",
+        "openai_vector_store_file_id": "vsf_antigo",
+        "status": "completed",
+    }
+    remoto = _FakeArquivos()
+    resultado = await _enviar(OpenAIRagService(_settings(), client=remoto))
+
+    assert resultado["openai_file_id"] == "file_antigo"
+    assert resultado["reaproveitado"] is True
+    assert remoto.enviados == []
+    assert catalogo.registros == []
+
+
+@pytest.mark.asyncio
+async def test_falha_ao_registrar_desfaz_o_envio(catalogo):
+    catalogo.falha = True
+    remoto = _FakeArquivos()
+    with pytest.raises(OpenAIRagError):
+        await _enviar(OpenAIRagService(_settings(), client=remoto))
+    assert remoto.removidos == ["store:vs_test:file_1", "arquivo:file_1"]
+
+
+@pytest.mark.asyncio
+async def test_status_de_indexacao_com_falha_fica_no_catalogo(catalogo):
+    remoto = _FakeArquivos(status="failed")
+    resultado = await _enviar(OpenAIRagService(_settings(), client=remoto))
+    assert resultado["status"] == "failed"
+    assert catalogo.registros[0]["status"] == "failed"
+
+
+def test_rag_usa_so_a_propria_chave():
+    service = OpenAIRagService(_settings(openai_rag_api_key="chave-rag", openai_api_key="chave-comum"))
+    assert service._get_client().api_key == "chave-rag"
+
+
+def test_chave_comum_nao_liga_o_rag():
+    service = OpenAIRagService(_settings(openai_rag_api_key="", openai_api_key="chave-comum"))
+    assert service.is_configured() is False
+    with pytest.raises(OpenAIRagError):
+        service._get_client()
+
+
+def test_chave_do_rag_nao_vira_a_chave_do_uso_comum():
+    settings = _settings(openai_rag_api_key="chave-rag", openai_api_key="")
+    assert not settings.openai_api_key
+    assert JsonLLMService(settings)._get_client("modelo", provider="openai") is None
