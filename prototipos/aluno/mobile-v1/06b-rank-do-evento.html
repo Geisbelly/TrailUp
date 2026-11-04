@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no" class="notranslate">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>TrailUp — Rank do evento (celular)</title>
+<link rel="stylesheet" href="assets/aparelho.css" />
+<link rel="stylesheet" href="assets/app.css" />
+<style>
+  /* Rank do evento (#155, fase 4). Proposta: docs/superpowers/specs/2026-11-04-rank-do-evento-no-app-desenho.md */
+  .topo{position:absolute;left:0;right:0;top:0;z-index:10;padding:calc(var(--topo) + 6px) 12px 0 18px;background:var(--bg)}
+  .topo-linha{display:flex;align-items:center;gap:8px;height:52px}
+  .topo-linha h1{flex:1;font-family:Georgia,serif;font-size:24px;margin:0}
+  .rolagem{position:absolute;left:0;right:0;top:calc(var(--topo) + 58px);bottom:calc(var(--abas) + var(--base));overflow-y:auto;scrollbar-width:none;padding:4px 14px 32px}
+  .rolagem::-webkit-scrollbar{display:none}
+
+  /* O cartão do evento continua como é no app; aqui só para dar contexto. */
+  .ev{border-radius:8px;border:1px solid var(--accent);background:linear-gradient(160deg,var(--elev),var(--surface));padding:16px}
+  .ev-topo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--text-subtle)}
+  .chip-ok{background:var(--success-bg);color:var(--success)}
+  .ev h2{font-family:Georgia,serif;font-size:21px;margin:10px 0 4px}
+  .ev p{font-size:14px;line-height:1.5;color:var(--text-muted);margin:0}
+
+  /* O rank do evento: cartão próprio, com a arena do perfil atrás (rankingArenas), como a Arena do 06-social. */
+  .rk{position:relative;overflow:hidden;margin-top:14px;border-radius:8px;border:1px solid var(--line);background:var(--surface);padding:16px}
+  .rk > .fundo{position:absolute;left:0;right:0;top:0;width:100%;height:230px;object-fit:cover;object-position:center 35%;opacity:.55;pointer-events:none}
+  .rk > .veu-arte{position:absolute;left:0;right:0;top:0;height:232px;background:linear-gradient(180deg,var(--bg-a55) 0%,var(--surface-a88) 62%,var(--surface) 100%);pointer-events:none}
+  .rk > *:not(.fundo):not(.veu-arte){position:relative}
+  .rk.dentro{border-color:var(--accent)}
+  .rk-cab{display:flex;gap:12px;align-items:flex-start}
+  .rk-cab .med{width:44px;height:44px;object-fit:contain;flex:none;filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
+  .rk-cab h2{font-family:Georgia,serif;font-size:20px;line-height:1.2;margin:3px 0 0}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 0}
+  .chips .chip img{width:14px;height:14px;object-fit:contain}
+
+  /* Os critérios do evento, quando há mais de um rank: segmentado, não abas soltas. */
+  .crit{display:flex;gap:4px;margin:14px 0 0;padding:4px;border-radius:8px;background:var(--bg-a55);border:1px solid var(--line)}
+  .crit button{flex:1;min-height:40px;border:0;border-radius:6px;background:none;font-size:13px;font-weight:700;color:var(--text-muted);cursor:pointer}
+  .crit button[aria-pressed="true"]{background:var(--elev);color:var(--text);box-shadow:inset 0 0 0 1px var(--accent-soft)}
+
+  /* O bloco que muda por perfil: uma frase com dado real, nunca um número inventado. */
+  .foco{margin:14px 0 0;display:flex;gap:12px;align-items:center;padding:12px;border-radius:8px;background:var(--bg-a55);border:1px solid var(--line)}
+  .foco .ic{width:40px;height:40px;object-fit:contain;flex:none}
+  .foco p{margin:0;font-size:13.5px;line-height:1.45;color:var(--text-muted)}
+  .foco p b{color:var(--text)}
+  .foco .barra{margin-top:8px}
+  .rostos{display:flex;flex:none}
+  .rostos img{width:30px;height:30px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--surface);margin-left:-8px}
+  .rostos img:first-child{margin-left:0}
+
+  /* Minha posição: o número grande é o que o aluno procura primeiro. */
+  .eu-box{margin:14px 0 0;display:flex;align-items:center;gap:14px;padding:12px 14px;border-radius:8px;border:1px solid var(--accent-soft);background:var(--accent-muted)}
+  .eu-box .pos{font-family:Georgia,serif;font-size:34px;font-weight:700;color:var(--accent);line-height:1}
+  .eu-box .pos small{font-size:16px}
+  .eu-box div{flex:1;font-size:13px;line-height:1.45;color:var(--text-muted)}
+  .eu-box div b{display:block;color:var(--text);font-size:14.5px}
+
+  /* Pódio: o mesmo do Ranking (RankingPodium), em miniatura — moldura do perfil de cada aluno, pilares retos. */
+  .podio{display:flex;align-items:flex-end;justify-content:center;gap:8px;margin:18px 0 0}
+  .lugar{flex:1;max-width:104px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+  .moldura{position:relative;display:grid;place-items:center}
+  .moldura .rosto{border-radius:50%;object-fit:cover}
+  .moldura .aro{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
+  .moldura .medalha{position:absolute;right:-6px;bottom:-4px;width:24px;height:24px;object-fit:contain}
+  .lugar strong{font-size:12.5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lugar.eu strong{color:var(--accent)}
+  .lugar span{font-size:11.5px;color:var(--text-subtle);font-variant-numeric:tabular-nums}
+  .pilar{width:100%;border-radius:6px 6px 0 0;border:1px solid var(--border-strong);border-bottom:0;background:var(--surface);display:grid;place-items:start center;padding-top:4px;font-family:Georgia,serif;font-weight:700;color:var(--text-muted)}
+  .lugar.p1 .pilar{border-color:var(--accent);background:var(--elev);color:var(--text)}
+
+  /* Vizinhança: quem está logo acima e logo abaixo (rank relativo). */
+  .viz{list-style:none;margin:14px 0 0;padding:0;border-top:1px solid var(--line)}
+  .viz li{display:flex;align-items:center;gap:10px;min-height:48px;border-bottom:1px solid var(--line);font-size:14px}
+  .viz li b{width:30px;font-family:Georgia,serif;color:var(--text-subtle)}
+  .viz li img{width:30px;height:30px;border-radius:50%;object-fit:cover}
+  .viz li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .viz li em{font-style:normal;font-weight:700;font-variant-numeric:tabular-nums}
+  .viz li.eu{color:var(--accent);font-weight:700}
+  .viz li.eu b{color:var(--accent)}
+  .viz li.salto{min-height:24px;justify-content:center;color:var(--text-subtle);font-size:12px;border-bottom-style:dashed}
+
+  .opcional{margin:14px 0 0;font-size:12.5px;line-height:1.5;color:var(--text-subtle)}
+  .acoes{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+  .acoes .btn{flex:1}
+  .link-v{min-height:44px;display:inline-flex;align-items:center;font-size:13.5px;font-weight:700;color:var(--accent);background:none;border:0;padding:0;cursor:pointer}
+  details.regras{margin-top:6px;font-size:13px;color:var(--text-muted);line-height:1.5;border-top:1px solid var(--line)}
+  details.regras summary{min-height:44px;display:flex;align-items:center;font-weight:700;color:var(--accent);cursor:pointer}
+  details.regras p{margin:0 0 10px}
+  .vazio-rk{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;margin:16px 0 4px}
+  .vazio-rk img{width:64px;height:64px;object-fit:contain;opacity:.9}
+  .vazio-rk strong{font-family:Georgia,serif;font-size:16px}
+  .vazio-rk span{font-size:13px;color:var(--text-subtle);line-height:1.45}
+  .erro-rk{display:flex;gap:10px;align-items:center;margin-top:14px;font-size:13.5px;color:var(--text-muted)}
+  .erro-rk svg{width:20px;height:20px;color:var(--warning);flex:none}
+  .torrada{position:absolute;left:50%;bottom:calc(var(--abas) + var(--base) + 14px);transform:translateX(-50%);z-index:70;background:var(--text);color:var(--bg);font-size:13px;font-weight:600;padding:10px 14px;border-radius:999px;white-space:nowrap}
+  @media (prefers-reduced-motion:no-preference){.rk.entrou .eu-box{animation:sobe .35s ease-out}@keyframes sobe{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}}
+</style>
+</head>
+<body class="mesa">
+
+<div class="preview" id="preview"></div>
+<div class="aparelho"><div class="tela" id="tela"></div></div>
+
+<script src="assets/aparelho.js"></script>
+<script src="assets/tema.js"></script>
+<script>
+// Artes do app (as do v4 só têm a arena do Conqueror): mobile/src/assets/design.
+const DESIGN = '../../../mobile/src/assets/design/';
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const barra = (v, m) => `<div class="barra"><i style="width:${Math.max(0, Math.min(100, v / m * 100))}%"></i></div>`;
+const ALERTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.5"/></svg>';
+
+const ESTADOS = [['fora', 'Fora do rank'], ['dentro', 'No rank (meio da tabela)'], ['podio', 'No rank (no pódio)'], ['poucos', 'Poucos inscritos'], ['vazio', 'Ninguém entrou'], ['encerrado', 'Evento encerrado'], ['carregando', 'Carregando'], ['erro', 'Erro ao carregar']];
+
+// Os três critérios que o professor pode ligar (`arena_criterios`), na ordem do app.
+const CRITERIOS = [['ranqueada', 'Batalha', 'pontos de batalha', 'pts'], ['pontuacao', 'Pontuação', 'pontos', 'pts'], ['missoes', 'Missões', 'missões cumpridas', '']];
+// Linhas de `vw_rank_posicoes_por_classe`, que já só tem inscritos. [nome, perfil do aluno, valor].
+const BASE = {
+  ranqueada: [['Bia P.', 'achiever', 60], ['Caio R.', 'conqueror', 53], ['Duda L.', 'socializer', 46], ['Enzo M.', 'daredevil', 39], ['Flor D.', 'seeker', 32], ['Gui N.', 'mastermind', 25], ['EU', null, 18], ['Hana K.', 'survivor', 14], ['Ian T.', 'seeker', 11], ['Jade S.', 'achiever', 9], ['Lia V.', 'socializer', 6], ['Mel C.', 'conqueror', 4]],
+  pontuacao: [['Caio R.', 'conqueror', 210], ['EU', null, 188], ['Bia P.', 'achiever', 176], ['Flor D.', 'seeker', 150], ['Duda L.', 'socializer', 141], ['Gui N.', 'mastermind', 120], ['Enzo M.', 'daredevil', 96], ['Hana K.', 'survivor', 80], ['Ian T.', 'seeker', 64], ['Jade S.', 'achiever', 40], ['Lia V.', 'socializer', 22], ['Mel C.', 'conqueror', 10]],
+  missoes: [['Jade S.', 'achiever', 6], ['Bia P.', 'achiever', 5], ['EU', null, 5], ['Duda L.', 'socializer', 4], ['Hana K.', 'survivor', 4], ['Caio R.', 'conqueror', 3], ['Flor D.', 'seeker', 3], ['Gui N.', 'mastermind', 2], ['Enzo M.', 'daredevil', 2], ['Ian T.', 'seeker', 1], ['Lia V.', 'socializer', 1], ['Mel C.', 'conqueror', 0]],
+};
+
+/*
+ * O que muda por perfil. A cor, o cenário, a moldura e a medalha vêm do tema (como no app inteiro);
+ * aqui é a ÊNFASE: o título, a frase do bloco "foco" e a ordem do que aparece primeiro.
+ * Mesma fonte e mesmo aviso de `socialDestaque.ts` e `profileSectionGuide.ts`: Nacke, Bateman e
+ * Mandryk (2014) para a motivação de cada arquétipo; Orji et al. (2014) para "uma estratégia que
+ * ajuda um perfil pode atrapalhar outro". Ponto de partida, para medir — não verdade.
+ */
+const ENFASE = {
+  conqueror: { titulo: 'Rank do evento', foco: 'rival', primeiro: 'eu' },     // posição, domínio, quem está logo acima
+  daredevil: { titulo: 'Rank do evento', foco: 'rival', primeiro: 'eu' },     // disputa no momento, próximo alvo
+  survivor:  { titulo: 'Rank do evento', foco: 'seguro', primeiro: 'viz' },   // sem exposição: começa pela vizinhança, não pelo pódio
+  achiever:  { titulo: 'Rank do evento', foco: 'meta', primeiro: 'eu' },      // meta concreta: quanto falta para o pódio
+  mastermind:{ titulo: 'Rank do evento', foco: 'regra', primeiro: 'eu' },     // critério, janela e origem do número
+  socializer:{ titulo: 'Rank do evento', foco: 'gente', primeiro: 'podio' },  // quem está junto
+  seeker:    { titulo: 'Rank do evento', foco: 'explorar', primeiro: 'eu' },  // os outros critérios, onde você se sai melhor
+};
+
+let estado, crit = 'ranqueada', inscrito, torradaTxt = null;
+const qtdInscritos = () => estado === 'poucos' ? 5 : estado === 'vazio' ? 0 : 12;
+function linhas(c) {
+  let L = BASE[c].slice(0, qtdInscritos());
+  if (estado === 'podio' && c === 'ranqueada') L = [L[0], L[6], ...L.slice(1, 6), ...L.slice(7)];
+  if (!inscrito) L = L.filter(l => l[0] !== 'EU');
+  return L.map(([n, p, v], i) => ({ n: n === 'EU' ? 'Amina T.' : n, p: n === 'EU' ? perfil : p, v, pos: i + 1, eu: n === 'EU' }));
+}
+const unidade = c => CRITERIOS.find(x => x[0] === c)[3];
+const fmt = (v, c) => `${v}${unidade(c) ? ' ' + unidade(c) : ''}`;
+const ponto = s => s.endsWith('.') ? s : s + '.';
+const rosto = p => `${ARTE}rosto-${p}.png`;
+
+function molduraHTML(l, tam) {
+  return `<span class="moldura" style="width:${tam}px;height:${tam}px"><img class="rosto" src="${rosto(l.p)}" alt="" style="width:${tam * .74}px;height:${tam * .74}px" /><img class="aro" src="${DESIGN}frame-${l.p}.png" alt="" /><img class="medalha" src="${ARTE}medal-${perfil}.png" alt="" /></span>`;
+}
+function podioHTML(L) {
+  const top = L.slice(0, 3); if (top.length < 3) return '';
+  const alt = { 1: 52, 2: 38, 3: 28 }, tam = { 1: 62, 2: 50, 3: 46 };
+  return `<div class="podio" aria-label="Pódio do rank">${[top[1], top[0], top[2]].map(l => `<div class="lugar p${l.pos}${l.eu ? ' eu' : ''}" aria-label="${l.pos}º lugar, ${esc(l.n)}, ${fmt(l.v, crit)}${l.eu ? ', você' : ''}">
+    ${molduraHTML(l, tam[l.pos])}<strong>${l.eu ? 'Você' : esc(l.n)}</strong><span>${fmt(l.v, crit)}</span><div class="pilar" style="height:${alt[l.pos]}px">${l.pos}º</div></div>`).join('')}</div>`;
+}
+// Rank relativo: só os vizinhos de quem consulta (um acima, eu, um abaixo), com o salto marcado.
+function vizinhancaHTML(L) {
+  const i = L.findIndex(l => l.eu); if (i < 0) return '';
+  const ini = Math.max(3, i - 1), fim = Math.min(L.length, i + 2); if (i < 3) return '';
+  const linha = l => `<li class="${l.eu ? 'eu' : ''}"><b>${l.pos}º</b><img src="${rosto(l.p)}" alt="" /><span>${l.eu ? 'Você' : esc(l.n)}</span><em>${fmt(l.v, crit)}</em></li>`;
+  return `<ol class="viz" aria-label="Sua vizinhança no rank">${ini > 3 ? '<li class="salto" aria-hidden="true">· · ·</li>' : ''}${L.slice(ini, fim).map(linha).join('')}${fim < L.length ? '<li class="salto" aria-hidden="true">· · ·</li>' : ''}</ol>`;
+}
+function euHTML(L) {
+  const eu = L.find(l => l.eu); if (!eu) return '';
+  const acima = L[eu.pos - 2], f = ENFASE[perfil].foco;
+  let linha;
+  if (eu.pos === 1) linha = `<b>Você lidera.</b>${L[1] ? `${esc(L[1].n)} vem ${L[0].v - L[1].v} ${unidade(crit) || 'missões'} atrás.` : ''}`;
+  else if (f === 'rival') linha = `<b>Faltam ${acima.v - eu.v + 1} ${unidade(crit) || 'missões'} para passar ${ponto(esc(acima.n))}</b>${esc(acima.n)} está em ${acima.pos}º, com ${fmt(acima.v, crit)}.`;
+  else if (f === 'meta') linha = eu.pos <= 3 ? `<b>Você está no pódio.</b>Segure o ${eu.pos}º até ${'10/11'}.` : `<b>${L[2].v - eu.v + 1} ${unidade(crit) || 'missões'} para o pódio.</b>O 3º lugar tem ${fmt(L[2].v, crit)}.`;
+  else if (f === 'regra') linha = `<b>${fmt(eu.v, crit)} de 03/11 a 10/11.</b>${L.length >= 8 && L[0].v > 0 ? `${Math.round(eu.v / L[0].v * 100)}% do que o líder tem.` : 'Com menos de 8 no rank, não mostramos o percentual do líder.'}`;
+  else if (f === 'gente') linha = `<b>Você e mais ${L.length - 1} colegas.</b>Quem entrou aparece aqui, só para a turma.`;
+  else if (f === 'seguro') linha = `<b>Você está no rank.</b>Sair é a qualquer hora e não muda nota nem XP.`;
+  else linha = `<b>Veja os outros critérios.</b>Em missões você está em ${linhasDe('missoes').find(l => l.eu)?.pos}º.`;
+  return `<div class="eu-box" aria-label="Sua posição: ${eu.pos}º de ${L.length}"><span class="pos">${eu.pos}<small>º</small></span><div>${linha}</div></div>`;
+}
+const linhasDe = c => { const a = crit; crit = c; const L = linhas(c); crit = a; return L; };
+
+// O bloco "foco" de quem ainda não entrou: o convite muda de assunto por perfil, o botão não.
+function focoForaHTML(L) {
+  const f = ENFASE[perfil].foco, n = L.length;
+  const ic = (k) => `<img class="ic" src="${ARTE}${k}-${perfil}.png" alt="" />`;
+  const M = {
+    rival: [ic('medal'), `<p><b>${esc(L[0].n)} lidera com ${fmt(L[0].v, crit)}.</b> ${n} colegas disputando agora.</p>`],
+    meta: [ic('medal'), `<p><b>Pódio a partir de ${fmt(L[2].v, crit)}.</b> Entre e veja quanto falta para chegar lá.</p>`],
+    regra: [ic('hint'), `<p><b>Conta ${CRITERIOS.find(x => x[0] === crit)[2]} de 03/11 a 10/11.</b> Só quem entrou aparece, e nada disso vai para a nota.</p>`],
+    gente: [`<span class="rostos">${L.slice(0, 4).map(l => `<img src="${rosto(l.p)}" alt="" />`).join('')}</span>`, `<p><b>${esc(L[0].n)}, ${esc(L[1].n)} e mais ${n - 2} colegas</b> já entraram no rank.</p>`],
+    seguro: [ic('hint'), `<p><b>É opcional e reversível.</b> Entrar ou sair não muda sua nota nem seu XP.</p>`],
+    explorar: [ic('book'), `<p><b>${CRITERIOS.length} jeitos de disputar</b> neste evento: batalha, pontuação e missões. Descubra onde você se sai melhor.</p>`],
+  }[f];
+  return `<div class="foco">${M[0]}${M[1]}</div>`;
+}
+
+function rankHTML() {
+  const E = ENFASE[perfil];
+  const L = linhas(crit);
+  const aberto = estado !== 'encerrado';
+  const cab = `<img class="fundo" src="${DESIGN}arena-${perfil}.webp" alt="" /><div class="veu-arte"></div>
+    <div class="rk-cab"><img class="med" src="${ARTE}medal-${perfil}.png" alt="" /><div><div class="eyebrow">Maratona de novembro</div><h2>${E.titulo}</h2></div></div>
+    <div class="chips"><span class="chip chip-neutral">${L.length || 'Ninguém'} ${L.length === 1 ? 'inscrito' : 'inscritos'}</span><span class="chip chip-neutral">${aberto ? 'até 10/11' : 'Encerrado em 10/11'}</span>${inscrito ? '<span class="chip chip-accent">Você está no rank</span>' : ''}</div>
+    <div class="crit" role="group" aria-label="Critério do rank">${CRITERIOS.map(([k, l]) => `<button aria-pressed="${crit === k}" data-crit="${k}">${l}</button>`).join('')}</div>`;
+
+  if (estado === 'carregando') return `<section class="rk" aria-busy="true">${cab}<div class="skel" style="height:64px;margin-top:14px;border-radius:8px"></div><div class="skel" style="height:120px;margin-top:14px;border-radius:8px"></div></section>`;
+  if (estado === 'erro') return `<section class="rk">${cab}<div class="erro-rk" role="alert">${ALERTA}<span>Não foi possível carregar o rank. O resto do evento continua aqui.</span></div><div class="acoes"><button class="btn btn-secundario" data-estado="fora">Tentar de novo</button></div></section>`;
+  if (!L.length) return `<section class="rk">${cab}<div class="vazio-rk"><img src="${DESIGN}object-trophy.png" alt="" /><strong>Ninguém entrou ainda</strong><span>O rank do evento é opcional. Quem entrar primeiro abre a disputa.</span></div>
+    <div class="acoes"><button class="btn btn-primario" data-entrar>Entrar no rank</button></div><p class="opcional">Entrar ou ficar de fora não muda sua nota nem seu XP.</p></section>`;
+
+  const blocos = inscrito
+    ? { eu: euHTML(L), podio: podioHTML(L), viz: vizinhancaHTML(L) }
+    : { eu: focoForaHTML(L), podio: podioHTML(L), viz: '' };
+  const ordem = { eu: ['eu', 'podio', 'viz'], podio: ['podio', 'eu', 'viz'], viz: ['eu', 'viz', 'podio'] }[E.primeiro];
+  const regras = `<details class="regras"${E.foco === 'regra' ? ' open' : ''}><summary>Como funciona</summary>
+    <p>Só aparece quem escolheu entrar. A posição conta ${CRITERIOS.find(x => x[0] === crit)[2]} de 03/11 a 10/11, os mesmos números do ranking da turma, só que dentro do evento.</p>
+    <p>Entrar ou sair não muda nota, XP nem o ranking da turma. Dá para sair enquanto o evento estiver aberto.</p></details>`;
+  const acoes = !aberto ? '' : inscrito
+    ? `<div class="acoes"><button class="link-v" data-completo>Ver rank completo</button><span style="flex:1"></span><button class="btn btn-secundario" data-sair style="flex:none">Sair do rank</button></div>`
+    : `<div class="acoes"><button class="btn btn-primario" data-entrar>Entrar no rank</button></div><p class="opcional">Opcional: entrar ou ficar de fora não muda sua nota nem seu XP. Dá para sair quando quiser enquanto o evento estiver aberto.</p>`;
+  return `<section class="rk${inscrito ? ' dentro' : ''}" aria-label="Rank do evento">${cab}${ordem.map(k => blocos[k]).join('')}${acoes}${regras}</section>`;
+}
+
+function render() {
+  aplicarTema();
+  $('preview').innerHTML = previewHTML(ESTADOS, estado);
+  const st = $('rolagem')?.scrollTop || 0;
+  let h = `<header class="topo"><div class="topo-linha"><h1>Social</h1></div></header>
+    <div class="rolagem" id="rolagem">
+      <div class="ev"><div class="ev-topo"><span class="chip chip-ok">${estado === 'encerrado' ? 'Encerrado' : 'Aberto'}</span><span>6º ano B · 03/11 a 10/11</span></div>
+        <h2>Maratona de novembro</h2><p>Missões da semana, meta da turma e, para quem quiser, um rank do evento.</p></div>
+      ${rankHTML()}
+    </div>`;
+  h += abasHTML('social');
+  if (torradaTxt) h += `<div class="torrada" role="status">${torradaTxt}</div>`;
+  $('tela').innerHTML = h;
+  if ($('rolagem')) $('rolagem').scrollTop = st;
+}
+function torrada(t) { torradaTxt = t; render(); setTimeout(() => { torradaTxt = null; render(); }, 1700); }
+function define(st) { estado = st; inscrito = ['dentro', 'podio', 'poucos', 'encerrado'].includes(st); crit = 'ranqueada'; render(); }
+
+document.addEventListener('click', e => {
+  const q = s => e.target.closest(s);
+  if (q('[data-perfil]')) { perfil = q('[data-perfil]').dataset.perfil; history.replaceState(null, '', `${location.pathname}?estado=${estado}&perfil=${perfil}`); render(); return; }
+  if (q('[data-crit]')) { crit = q('[data-crit]').dataset.crit; render(); return; }
+  if (q('[data-entrar]')) { inscrito = true; if (estado === 'fora' || estado === 'vazio') estado = estado === 'vazio' ? 'poucos' : 'dentro'; torrada('Você entrou no rank do evento'); $('tela').querySelector('.rk')?.classList.add('entrou'); return; }
+  if (q('[data-sair]')) { inscrito = false; estado = 'fora'; torrada('Você saiu do rank. Nada mudou na sua nota.'); return; }
+  if (q('[data-completo]')) { torrada('Abre a folha com o rank completo'); return; }
+  if (q('[data-estado]')) { define(q('[data-estado]').dataset.estado); return; }
+});
+document.addEventListener('change', e => { if (e.target.id !== 'estado') return; history.replaceState(null, '', `${location.pathname}?estado=${e.target.value}&perfil=${perfil}`); define(e.target.value); });
+define(ESTADOS.some(([k]) => k === qs.get('estado')) ? qs.get('estado') : 'fora');
+// ?rolar=150: abre já rolado (para capturar o cartão inteiro).
+if (qs.get('rolar') && $('rolagem')) $('rolagem').scrollTop = +qs.get('rolar');
+</script>
+</body>
+</html>

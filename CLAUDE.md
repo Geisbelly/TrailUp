@@ -318,6 +318,10 @@ Cada perfil carrega:
   `app_classes_do_professor()`, nunca `NOT IN`). **Não copiam** matrícula, progresso,
   telemetria, personalização, nem as ligações `next`/`depende` do tópico. Os arquivos
   no Storage também não são copiados: a cópia aponta para os mesmos caminhos.
+  Por isso apagar NUNCA remove arquivo direto: os gatilhos de `20261104_05`
+  (`conteudos`, `midias`, `questoes`, `cards`, `conteudo_personalizado`) põem o
+  caminho na `retencao_fila_externa`, e o worker só apaga se nenhuma outra linha
+  ainda apontar para ele. Ver `docs/lgpd/storage-buckets-e-r2.md`.
   Ao criar uma função de cópia nova, copie o molde de `duplicar_classe` e acrescente
   o teste de estrutura (`api/tests/test_migration_duplicar_*.py`).
 

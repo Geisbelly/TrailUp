@@ -387,7 +387,7 @@ export default function SocialScreen() {
                   return bloco === "evento" ? (
                     <View key="evento" {...ancora("evento")} style={styles.blocoCelular}>
                       <TituloDoBloco ancora="evento" titulo="Evento e missões" palette={palette} atalho={atalho} />
-                      <EventoDaTurma classeId={activeClasseId} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
+                      <EventoDaTurma classeId={activeClasseId} palette={palette} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
                       <MissoesDoDia classeId={activeClasseId} perfil={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
                     </View>
                   ) : (
@@ -419,6 +419,7 @@ export default function SocialScreen() {
           {activeClasseId > 0 ? (
             <EventoDaTurma
               classeId={activeClasseId}
+              palette={palette}
               accent={palette.accent}
               textColor={palette.text}
               mutedColor={palette.textMuted}

@@ -4,4 +4,6 @@
 # exigir JWT daria 401 em toda midia. Desde a #195 o bucket conteudo_aluno e'
 # privado: o gateway so' assina caminho vivo de vw_material_storage_paths, com
 # URL que expira em <= 1 h (R2 ou Storage). Endurecer com JWT e' a Opcao B.
+# Desde a #632 o POST (com Authorization, conferido na funcao) emite links
+# curtos por sessao; o GET confere a assinatura sem cabecalho (ver link.ts).
 verify_jwt = false

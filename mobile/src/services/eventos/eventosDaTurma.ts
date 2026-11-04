@@ -85,7 +85,7 @@ export async function carregarRanksDoEvento(eventoId: string, meuId: string | nu
   if (!ids.length) return [];
   const { data: posicoes, error: erroPosicoes } = await supabase
     .from("vw_rank_posicoes_por_classe")
-    .select("rank_id, posicao, id_aluno, nome_aluno, pontuacao")
+    .select("rank_id, posicao, id_aluno, nome_aluno, pontuacao, percentual_do_lider")
     .in("rank_id", ids)
     .order("posicao", { ascending: true });
   if (erroPosicoes) throw erroPosicoes;
