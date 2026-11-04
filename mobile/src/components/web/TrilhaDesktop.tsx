@@ -82,7 +82,7 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
   // Detalhes do painel como no protótipo: o número, "País · Capital" no mapa e o
   // bloco do módulo personalizado, que abre a conversa com o guia.
   const { pushMentorCue, resolveFeature } = useIA();
-  // Nem todo perfil tem o guia (mentor_character); sem ele, o link não aparece.
+  // O aluno pode silenciar o guia (mentor_character); sem ele, o link não aparece.
   const guiaDisponivel = resolveFeature({ scope: "session" }, "mentor_character").enabled;
   const itemPainel = todos.find((t) => t.id === idPainel);
   const paisPainel = idPainel ? mapTheme?.countries?.[idPainel] : undefined;

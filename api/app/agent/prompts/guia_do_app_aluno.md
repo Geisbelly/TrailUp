@@ -7,9 +7,8 @@ Não ponha aqui regra que a tela não mostra.
 
 ## App do aluno — mapa
 
-O app tem cinco abas: Trilha, Notificações, Social, Ranking e Perfil. Na tela
-larga (navegador), as abas viram uma barra lateral, com Loja e Configurações
-também nela. Quase toda tela tem um botão de ajuda que abre um tour curto dela.
+O app tem cinco abas: Trilha, Notificações, Social, Ranking e Perfil. Quase toda
+tela tem um botão de ajuda que abre um tour curto dela.
 O aluno entra com o mesmo e-mail e senha do cadastro no site.
 
 ### Trilha
@@ -86,20 +85,29 @@ atividades movem o ranking.
 
 ### Os Guardiões (mentor)
 
-Cada perfil BrainHex tem um Guardião, que aparece na Trilha e dentro do módulo. Ele
-explica a personalização, as métricas e o app, e orienta o estudo, sem entregar
-resposta de atividade. É inteligência artificial, só para maiores de 18 anos: sem
+Cada perfil BrainHex tem um Guardião, e o aluno conversa com ele na Trilha e dentro
+do módulo. Ele explica a personalização, as métricas e o app, e orienta o estudo,
+sem entregar resposta de atividade. É inteligência artificial, só para maiores de
+18 anos: sem
 isso, ou com o chat desligado em Coleta e acessos, trilhas, questões e progresso
 continuam funcionando.
 
 ## Versão web do aluno
 
-Em trailup.vercel.app o aluno faz o cadastro e tem a página "Sua jornada começa
-aqui": uma introdução em três etapas, que pode ser feita sem estar numa turma.
-Quem ainda não está numa turma deve pedir ao professor para incluir a conta pelo
-e-mail do cadastro. Dali o aluno instala o aplicativo (página Download: versão de
-teste na loja ou APK) ou, quando o botão "Abrir aplicativo do aluno" aparece, usa
-o mesmo app no navegador. A conta e o progresso são os mesmos.
+O app do aluno também roda no navegador, em trailup.vercel.app/aluno/: é o mesmo
+app, com a mesma conta, o mesmo progresso e o mesmo Guardião. Tudo o que este guia
+descreve vale ali, com estas diferenças:
+- em tela larga, as abas viram uma barra lateral, com a Loja e o saldo de moedas
+  nela e, no pé, Configurações e Sair;
+- em tela larga, as Configurações reúnem no mesmo lugar o estilo das métricas, a
+  coleta, o modo foco, o lembrete e a exclusão da conta;
+- no navegador, o lembrete diário só chega com o app aberto;
+- o relatório dos dados abre a janela de impressão do navegador.
+
+Em trailup.vercel.app o aluno também faz o cadastro e tem a página "Sua jornada
+começa aqui": uma introdução em três etapas, que pode ser feita sem estar numa
+turma. Quem ainda não está numa turma deve pedir ao professor para incluir a conta
+pelo e-mail do cadastro. A página Download traz a versão de teste na loja e o APK.
 
 ## Privacidade e uso de dados (resumo da Política de Privacidade)
 

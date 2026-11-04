@@ -21,8 +21,6 @@ const BATTLE_PROFILES = new Set<BrainHexProfile>([
   "daredevil",
   "conqueror",
 ]);
-const CHAT_PROFILES = new Set<BrainHexProfile>(["socializer", "seeker"]);
-
 export function getBrainHexProfileCapabilities(
   profileName?: string | null,
 ): BrainHexProfileCapabilities {
@@ -31,6 +29,7 @@ export function getBrainHexProfileCapabilities(
   return {
     hasTimer: TIMER_PROFILES.has(profile),
     hasBattle: BATTLE_PROFILES.has(profile),
-    hasChat: CHAT_PROFILES.has(profile),
+    // Todo perfil conversa com o seu Guardião. Quem barra a IA é a idade (`mentorLiberado`).
+    hasChat: true,
   };
 }
