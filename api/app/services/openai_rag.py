@@ -7,17 +7,29 @@ valida a resposta estruturada e encapsula uploads.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
+import logging
 import time
 from typing import Any
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import Settings
+from app.repositories.rag_openai_files import RagOpenAIFilesRepository
 from app.services.llm import StructuredOutputError, extract_json, load_prompt
 from app.services.rag_observabilidade import registrar_busca, resumo_da_busca
+
+logger = logging.getLogger(__name__)
+
+ESCOPO_PUBLICO = "publico"
+# O store configurado e compartilhado por todas as turmas (ADR-0002). A busca so
+# enxerga o que foi marcado como publico: um arquivo de turma ou de aluno que
+# parasse aqui por engano nao seria recuperado para outro aluno.
+_FILTRO_CORPUS_PUBLICO = {"type": "eq", "key": "scope", "value": ESCOPO_PUBLICO}
 
 
 class OpenAIRagService:
@@ -32,16 +44,16 @@ class OpenAIRagService:
 
     def _get_client(self) -> AsyncOpenAI:
         if self._client is None:
-            api_key = str(self.settings.openai_api_key or "").strip()
+            api_key = str(self.settings.openai_rag_api_key or "").strip()
             if not api_key:
-                raise OpenAIRagError("OPENAI_API_KEY nao configurada")
+                raise OpenAIRagError("OPENAI_RAG_API_KEY nao configurada")
             self._client = AsyncOpenAI(api_key=api_key)
         return self._client
 
     def is_configured(self) -> bool:
         return bool(
             self.settings.openai_rag_enabled
-            and str(self.settings.openai_api_key or "").strip()
+            and str(self.settings.openai_rag_api_key or "").strip()
             and self.vector_store_id
         )
 
@@ -69,6 +81,7 @@ class OpenAIRagService:
         tool: dict[str, Any] = {
             "type": "file_search",
             "vector_store_ids": [self.vector_store_id],
+            "filters": dict(_FILTRO_CORPUS_PUBLICO),
         }
         if self.top_k is not None:
             tool["max_num_results"] = self.top_k
@@ -129,21 +142,44 @@ class OpenAIRagService:
     async def upload_public_file(
         self,
         *,
+        session: AsyncSession,
         filename: str,
         content: bytes,
         mime_type: str,
         attributes: dict[str, str | int | float | bool] | None = None,
+        fonte_id: int | None = None,
     ) -> dict[str, Any]:
-        """Envia um arquivo ao corpus público configurado.
+        """Envia um arquivo ao corpus público configurado e o registra no catálogo.
 
         A chamada é deliberadamente explícita: fontes de classe/aluno não
         devem usar este método, pois o Vector Store configurado é compartilhado.
+
+        Sem linha em `rag_openai_files` o arquivo fica fora da auditoria e da
+        exclusão de dados, então um envio que não consegue registrar é desfeito.
+        O mesmo conteúdo já indexado neste store não é reenviado.
         """
         if not self.is_configured():
             raise OpenAIRagError("OpenAI RAG nao esta configurado")
-        _validate_attributes(attributes or {})
+        informado = dict(attributes or {})
+        if informado.get("scope", ESCOPO_PUBLICO) != ESCOPO_PUBLICO:
+            raise OpenAIRagError("Este Vector Store so aceita arquivos de escopo publico")
+        atributos = {**informado, "scope": ESCOPO_PUBLICO}
+        _validate_attributes(atributos)
         if not content:
             raise OpenAIRagError("Arquivo vazio nao pode ser indexado")
+
+        vector_store_id = str(self.vector_store_id)
+        source_hash = hashlib.sha256(content).hexdigest()
+        catalogo = RagOpenAIFilesRepository(session)
+        existente = await catalogo.buscar_concluido(vector_store_id=vector_store_id, source_hash=source_hash)
+        if existente:
+            return {
+                "openai_file_id": existente["openai_file_id"],
+                "openai_vector_store_file_id": existente["openai_vector_store_file_id"],
+                "status": existente["status"],
+                "source_hash": source_hash,
+                "reaproveitado": True,
+            }
 
         try:
             client = self._get_client()
@@ -152,19 +188,52 @@ class OpenAIRagService:
                 purpose="assistants",
             )
             attached = await client.vector_stores.files.create_and_poll(
-                vector_store_id=self.vector_store_id,
+                vector_store_id=vector_store_id,
                 file_id=uploaded.id,
-                attributes=attributes or {},
+                attributes=atributos,
             )
-            return {
-                "openai_file_id": uploaded.id,
-                "openai_vector_store_file_id": attached.id,
-                "status": attached.status,
-            }
         except Exception as exc:
             raise OpenAIRagError(
                 f"Falha ao enviar arquivo para o OpenAI Vector Store: {type(exc).__name__}"
             ) from exc
+
+        try:
+            await catalogo.registrar(
+                vector_store_id=vector_store_id,
+                openai_file_id=uploaded.id,
+                openai_vector_store_file_id=attached.id,
+                scope=ESCOPO_PUBLICO,
+                source_hash=source_hash,
+                attributes=atributos,
+                status=attached.status,
+                fonte_id=fonte_id,
+                last_error=getattr(getattr(attached, "last_error", None), "code", None),
+            )
+        except Exception as exc:
+            await session.rollback()
+            await self._desfazer_envio(vector_store_id, uploaded.id)
+            raise OpenAIRagError(
+                f"Falha ao registrar arquivo no catalogo do RAG: {type(exc).__name__}"
+            ) from exc
+
+        return {
+            "openai_file_id": uploaded.id,
+            "openai_vector_store_file_id": attached.id,
+            "status": attached.status,
+            "source_hash": source_hash,
+            "reaproveitado": False,
+        }
+
+    async def _desfazer_envio(self, vector_store_id: str, file_id: str) -> None:
+        client = self._get_client()
+        try:
+            await client.vector_stores.files.delete(file_id, vector_store_id=vector_store_id)
+            await client.files.delete(file_id)
+        except Exception as exc:
+            # Sem catalogo e sem remocao, so este log diz que o arquivo ficou la.
+            logger.error(
+                "rag.arquivo_orfao vector_store=%s file=%s erro=%s", vector_store_id, file_id, type(exc).__name__
+            )
 
 
 class OpenAIRagError(RuntimeError):

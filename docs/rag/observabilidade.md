@@ -34,7 +34,7 @@ gera um resumo (`app/services/rag_observabilidade.py`). O chat do mentor
 
 O nó `agente_intervencao` (#64) também usa `OpenAIRagService.invoke_structured`
 para gerar a sugestão ao professor: tenta `file_search` primeiro quando
-`OPENAI_RAG_ENABLED`, `OPENAI_RAG_VECTOR_STORE_ID` e `OPENAI_API_KEY` estão
+`OPENAI_RAG_ENABLED`, `OPENAI_RAG_VECTOR_STORE_ID` e `OPENAI_RAG_API_KEY` estão
 configurados; se a chamada RAG falhar, tenta o modelo sem busca e, se esse
 também falhar, mantém a intervenção determinística por regra. O campo
 `origem` do payload distingue `rag`, `modelo` e `regra`. A coleta para

@@ -21,7 +21,8 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba
+from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba, SecaoDaResposta
+from app.services.guia_do_app import guia_do_app
 from app.services.insights_turma import InsightsTurmaService
 from app.services.llm import JsonLLMService, StructuredOutputError, load_prompt
 from app.services.pseudonimizacao import pseudonimizar_texto, restaurar_refs
@@ -32,7 +33,9 @@ logger = logging.getLogger(__name__)
 MAX_TURMAS = 5
 MAX_RESPOSTA = 1500
 MAX_HISTORICO = 8
-MAX_DESTINOS = 3
+MAX_DESTINOS = 6
+MAX_SECOES = 6
+MAX_TEXTO_DA_SECAO = 500
 
 # Para onde a Lumi pode mandar o professor: as views de turma de
 # `frontend/src/pages/consoleSections.ts` (sem Aprovações e Painel técnico, que
@@ -47,6 +50,76 @@ _ABAS_DA_ECONOMIA = ("valores", "alunos", "prazos", "loja", "fundo", "metas", "h
 DESTINOS_DO_CONSOLE = frozenset(_VIEWS_DO_CONSOLE) | {f"economia.{aba}" for aba in _ABAS_DA_ECONOMIA}
 
 
+# Tutoriais guiados que a Lumi pode abrir: os ids de
+# `frontend/src/components/console/escriba/tutoriais.ts`. Paridade testada em
+# test_escriba.py. Como nos destinos, id fora daqui é descartado.
+TUTORIAIS_DO_CONSOLE = frozenset(
+    {
+        "conhecer_console",
+        "criar_turma",
+        "matricular_alunos",
+        "registrar_presenca",
+        "montar_trilha",
+        "criar_missao",
+        "criar_evento",
+        "criar_conquista",
+        "criar_ranking",
+        "configurar_economia",
+    }
+)
+
+_NOMES_DAS_VIEWS = {
+    "Visão geral": "dashboard",
+    "Recomendações": "recomendacoes",
+    "Trilhas": "trilha",
+    "Missões": "missoes",
+    "Conquistas": "conquistas",
+    "Notas": "notas",
+    "Eventos": "eventos",
+    "Economia": "economia",
+    "Turmas": "classes",
+    "Personalizações": "personalizacoes",
+    "Rankings": "ranks",
+    "Rank de batalhas": "batalhas",
+    "Guildas": "guildas",
+    "Meus dados": "profile",
+}
+_NOMES_DA_ECONOMIA = {
+    "Valores": "economia.valores",
+    "Moedas por aluno": "economia.alunos",
+    "Prazos e tempo": "economia.prazos",
+    "Loja": "economia.loja",
+    "Fundo da turma": "economia.fundo",
+    "Metas": "economia.metas",
+    "Histórico": "economia.historico",
+}
+_NOME_EXATO = {nome.casefold(): codigo for nome, codigo in (_NOMES_DAS_VIEWS | _NOMES_DA_ECONOMIA).items()}
+
+
+def _alternativas(nomes: dict[str, str]) -> str:
+    return "|".join(re.escape(nome) for nome in sorted(nomes, key=len, reverse=True))
+
+
+# "Economia > Valores". Sem o prefixo, "Valores" e "Metas" são palavras comuns.
+_ABA_DA_ECONOMIA = re.compile(rf"\bEconomia\s*[>›]\s*({_alternativas(_NOMES_DA_ECONOMIA)})")
+# "em Turmas", "a aba Notas", "Trilhas > ...": maiúscula de propósito, é o nome no menu.
+_ABA_DO_MENU = re.compile(
+    rf"(?:\b(?:[Ee]m|[Aa]ba|[Mm]enu|[Aa]bra|[Nn]a|[Nn]o)\s+({_alternativas(_NOMES_DAS_VIEWS)})\b)"
+    rf"|\b({_alternativas(_NOMES_DAS_VIEWS)})\s*[>›]"
+)
+
+
+def _destinos_citados(texto: str) -> list[str]:
+    """As partes do console que o texto cita, na ordem em que aparecem. O botão não
+    depende só de o modelo preencher `destinos`."""
+    achados = [(m.start(), _NOMES_DA_ECONOMIA[m.group(1)]) for m in _ABA_DA_ECONOMIA.finditer(texto)]
+    achados += [(m.start(), _NOMES_DAS_VIEWS[m.group(1) or m.group(2)]) for m in _ABA_DO_MENU.finditer(texto)]
+    codigos = [codigo for _, codigo in sorted(achados, key=lambda item: item[0])]
+    if any(c.startswith("economia.") for c in codigos):
+        codigos = [c for c in codigos if c != "economia"]
+    return list(dict.fromkeys(codigos))
+
+
 def _destinos_validos(destinos: list[str] | None) -> list[str]:
     vistos: list[str] = []
     for destino in destinos or []:
@@ -54,6 +127,53 @@ def _destinos_validos(destinos: list[str] | None) -> list[str]:
         if d in DESTINOS_DO_CONSOLE and d not in vistos:
             vistos.append(d)
     return vistos[:MAX_DESTINOS]
+
+
+def _destino_da_secao(secao: Any) -> str | None:
+    """O que o modelo disse; senão o título, se for nome de aba; senão a parte citada."""
+    validos = _destinos_validos([secao.destino])
+    if validos:
+        return validos[0]
+    pelo_titulo = _NOME_EXATO.get(secao.titulo.strip().casefold())
+    if pelo_titulo:
+        return pelo_titulo
+    citados = _destinos_citados(f"{secao.titulo}: {secao.texto}")
+    return citados[0] if citados else None
+
+
+def _montar_resposta(saida: EscribaSaida, turmas: list[int], agora: datetime, nomes_por_ref: dict[str, Any] | None = None) -> RespostaEscriba:
+    """Do que o modelo devolveu ao que o console desenha. Refs viram nomes em CADA
+    texto: a seção não pode ser o lugar por onde "A3" chega à tela."""
+
+    def limpo(texto: str, limite: int) -> str:
+        restaurado = restaurar_refs(texto, nomes_por_ref) if nomes_por_ref else texto
+        return (restaurado or "").strip()[:limite]
+
+    introducao = limpo(saida.resposta, MAX_RESPOSTA)
+    secoes: list[SecaoDaResposta] = []
+    for secao in getattr(saida, "secoes", None) or []:
+        titulo, texto = limpo(secao.titulo, 120), limpo(secao.texto, MAX_TEXTO_DA_SECAO)
+        if titulo and texto and len(secoes) < MAX_SECOES:
+            secoes.append(SecaoDaResposta(titulo=titulo, texto=texto, destino=_destino_da_secao(secao)))
+
+    corrido = "\n\n".join([introducao, *(f"{s.titulo}: {s.texto}" for s in secoes)]).strip()[:MAX_RESPOSTA]
+    if not corrido:
+        raise EscribaIndisponivel("resposta vazia")
+
+    destinos = _destinos_validos(
+        [*(s.destino for s in secoes if s.destino), *(getattr(saida, "destinos", None) or []), *_destinos_citados(saida.resposta or "")]
+    )
+    tutorial = str(getattr(saida, "tutorial", None) or "").strip().lower()
+    return RespostaEscriba(
+        resposta=corrido,
+        introducao=introducao if secoes else "",
+        secoes=secoes,
+        turmas=turmas,
+        gerado_em=agora,
+        destinos=destinos,
+        tutorial=tutorial if tutorial in TUTORIAIS_DO_CONSOLE else None,
+    )
+
 
 # F5: a taxa de abandono vem do modelo de evasao do core (`20261031_08`, % dos alunos com dado em
 # risco alto); o retorno semanal e as contagens dos tres sinais vem da `20261031_05`.
@@ -142,7 +262,8 @@ def pergunta_de_produto(texto: str) -> bool:
 
 @lru_cache(maxsize=1)
 def guia_do_produto() -> str:
-    return load_prompt("lumi_conhecimento.md")
+    # O lado do aluno e a privacidade são a mesma base dos Guardiões.
+    return f"{load_prompt('lumi_conhecimento.md')}\n\n{guia_do_app()}"
 
 
 class TurmaNaoPermitida(Exception):
@@ -293,15 +414,7 @@ class EscribaService:
             logger.warning("Escriba: modelo falhou: %s", exc)
             raise EscribaIndisponivel(str(exc)) from exc
 
-        resposta = (restaurar_refs(saida.resposta, nomes_por_ref) or "").strip()[:MAX_RESPOSTA]
-        if not resposta:
-            raise EscribaIndisponivel("resposta vazia")
-        return RespostaEscriba(
-            resposta=resposta,
-            turmas=[int(t["id"]) for t in escopo],
-            gerado_em=agora,
-            destinos=_destinos_validos(getattr(saida, "destinos", None)),
-        )
+        return _montar_resposta(saida, [int(t["id"]) for t in escopo], agora, nomes_por_ref)
 
     async def _responder_sobre_o_produto(
         self, pedido: PerguntaEscriba, escopo: list[dict[str, Any]], agora: datetime
@@ -325,7 +438,4 @@ class EscribaService:
         except StructuredOutputError as exc:
             logger.warning("Escriba: modelo falhou (produto): %s", exc)
             raise EscribaIndisponivel(str(exc)) from exc
-        resposta = (saida.resposta or "").strip()[:MAX_RESPOSTA]
-        if not resposta:
-            raise EscribaIndisponivel("resposta vazia")
-        return RespostaEscriba(resposta=resposta, turmas=[], gerado_em=agora, destinos=_destinos_validos(getattr(saida, "destinos", None)))
+        return _montar_resposta(saida, [], agora)

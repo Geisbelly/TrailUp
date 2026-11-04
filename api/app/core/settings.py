@@ -57,6 +57,13 @@ class Settings(BaseSettings):
     llm_provider: str = "gemini"  # "openai" | "gemini"
 
     openai_api_key: str | None = None
+    # Chave so do RAG (busca, envio e exclusao de arquivos no Vector Store). E de
+    # outra conta, paga por outra pessoa: nao ha recaida entre as duas chaves em
+    # nenhum sentido, para o uso comum nunca gastar o credito dela.
+    openai_rag_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("openai_rag_api_key", "OPENAI_RAG_API_KEY"),
+    )
     # Vector Store gerenciado pela OpenAI para o corpus público do RAG. A
     # aplicação usa o ID apenas no backend; nunca o expõe ao cliente.
     openai_rag_vector_store_id: str | None = Field(

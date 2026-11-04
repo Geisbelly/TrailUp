@@ -21,7 +21,10 @@ import {
   Platform,
 } from "react-native";
 import tinycolor from "tinycolor2";
+import { usePortoes } from "@/context/PortoesContext";
 import { useEstadoConsentimento } from "@/hooks/useEstadoConsentimento";
+import { BotaoDeDestino, destinosParaBotoes } from "@/utils/destinosDoGuia";
+import { type Href, router } from "expo-router";
 import { ModoRestritoError } from "@/utils/consentimentoResponsavel";
 import { shadowStyle } from "@/utils/webShadow";
 
@@ -43,6 +46,7 @@ type ChatMessage = {
   id: string;
   role: "assistant" | "user";
   content: string;
+  botoes?: BotaoDeDestino[];
 };
 
 type TutorialTip = {
@@ -60,7 +64,7 @@ function buildDefaultGuideMessage(
     if (socialSignalStrong) {
       return "Posso conversar sobre por que sua trilha foi organizada desse jeito, resumir suas métricas recentes e sugerir por onde começar. Aqui, a conversa fica pronta no ícone e só abre quando você tocar nele.";
     }
-    return "Posso explicar por que sua trilha foi personalizada, resumir métricas da sua jornada e sugerir por onde começar, sem entrar no gabarito das atividades.";
+    return "Posso explicar por que sua trilha foi personalizada, resumir métricas da sua jornada, mostrar como o app funciona e sugerir por onde começar, sem entrar no gabarito das atividades.";
   }
 
   if (socialSignalStrong) {
@@ -185,6 +189,7 @@ export function IAMentorPanel({
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const posicao = ancora ? { right: ancora.direita, bottom: ancora.base } : { bottom: bottomOffset };
   const { usuario } = useUsuario();
+  const { aberturas } = usePortoes();
   const {
     pendingCharacterCues,
     dismissCharacterCue,
@@ -416,7 +421,7 @@ export function IAMentorPanel({
     setIsOpen(false);
   };
 
-  const appendAssistantMessage = (content: string) => {
+  const appendAssistantMessage = (content: string, botoes?: BotaoDeDestino[]) => {
     const normalized = String(content ?? "").trim();
     if (!normalized) return;
     setMessages((prev) => {
@@ -435,6 +440,7 @@ export function IAMentorPanel({
           id: `${Date.now()}:${Math.random().toString(36).slice(2, 8)}:assistant`,
           role: "assistant",
           content: normalized,
+          botoes,
         },
       ];
     });
@@ -502,7 +508,7 @@ export function IAMentorPanel({
       if (!response || !reply) {
         throw new Error("mentor_reply_empty");
       }
-      appendAssistantMessage(reply);
+      appendAssistantMessage(reply, destinosParaBotoes(response.destinos, aberturas));
       recordAppEvent({
         eventGroup: "chat",
         eventName: "chat_message",
@@ -537,6 +543,29 @@ export function IAMentorPanel({
 
 
 
+  const abrirDestino = (botao: BotaoDeDestino) => {
+    setIsOpen(false);
+    router.push(botao.rota as Href);
+  };
+
+  const renderBotoes = (message: ChatMessage) =>
+    message.botoes?.length ? (
+      <View style={styles.destinos}>
+        {message.botoes.map((botao) => (
+          <Pressable
+            key={botao.rota}
+            onPress={() => abrirDestino(botao)}
+            accessibilityRole="link"
+            accessibilityLabel={`Abrir ${botao.rotulo}`}
+            style={[styles.destino, { borderColor: palette.borderStrong }]}
+          >
+            <Text style={[styles.destinoTexto, { color: palette.accent }]}>{botao.rotulo}</Text>
+            <MaterialCommunityIcons name="arrow-right" size={14} color={palette.accent} />
+          </Pressable>
+        ))}
+      </View>
+    ) : null;
+
   const renderMessage = (message: ChatMessage) => {
     const isAssistant = message.role === "assistant";
     const bubbleStyle = isAssistant
@@ -562,6 +591,7 @@ export function IAMentorPanel({
           >
             {message.content}
           </Text>
+          {renderBotoes(message)}
         </View>
       );
     }
@@ -584,6 +614,7 @@ export function IAMentorPanel({
             {speakerName}
           </Text>
           <Text style={[styles.message, { color: palette.textMuted }]}>{message.content}</Text>
+          {renderBotoes(message)}
         </View>
       </View>
     );
@@ -806,7 +837,7 @@ export function IAMentorPanel({
                 !mentorLiberado
                   ? "Mentor de IA desligado (só para maiores de 18)"
                   : scope === "trilha_home"
-                  ? "Pergunte sobre a trilha, métricas ou personalização"
+                  ? "Pergunte sobre a trilha, suas métricas ou como usar o app"
                   : "Responda ao guia ou pergunte sobre este módulo"
               }
               placeholderTextColor={palette.textSubtle}
@@ -1067,6 +1098,26 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.inikaBold,
     fontSize: 12,
     marginBottom: 4,
+  },
+  destinos: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 8,
+  },
+  destino: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    minHeight: 36,
+  },
+  destinoTexto: {
+    fontSize: 13,
+    fontFamily: FontFamily.interMedium,
   },
   messageBubble: {
     maxWidth: "92%",

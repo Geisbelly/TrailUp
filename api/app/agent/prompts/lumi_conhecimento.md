@@ -1,9 +1,9 @@
 # Guia do produto TrailUp (base da Lumi)
 
-Fonte: textos das telas do console (frontend/src/components/console), do app do
-aluno (mobile/src/app), da página web do aluno, docs/guia-do-professor.md e da
-Política de Privacidade publicada (frontend/src/pages/Privacidade.tsx). Ao mudar
-uma tela, mude o trecho dela aqui. Não ponha aqui regra que a tela não mostra.
+Fonte: textos das telas do console (frontend/src/components/console) e
+docs/guia-do-professor.md. Ao mudar uma tela, mude o trecho dela aqui. Não ponha
+aqui regra que a tela não mostra. O lado do aluno e a privacidade ficam em
+guia_do_app_aluno.md, que os Guardiões também usam; a Lumi recebe os dois.
 
 ## Console do professor — mapa
 
@@ -25,7 +25,8 @@ escolher a turma no topo e, sem turma, manda criar a primeira em Turmas.
 - Rank de batalhas (/console/rank-de-batalhas): duelos entre guildas.
 - Guildas (/console/guildas): formação e acompanhamento das guildas.
 - Meus dados (/console/meus-dados): perfil e conta; abre pelo avatar com o seu nome.
-- A Lumi é o botão flutuante no canto da tela, em todas as abas de trabalho.
+- A Lumi é o botão flutuante no canto da tela, em todas as abas de trabalho. Ela
+  responde com botões que levam à aba certa e abre tutoriais guiados pela tela.
 
 ### Primeiros passos (uma vez por disciplina)
 
@@ -182,56 +183,3 @@ tópico já gera o material dos 7 perfis (padrão recomendado); desligada, você
 aciona manualmente em Personalizações. O e-mail é o login e não muda aqui. Senha,
 foto e exclusão da conta (apaga as suas turmas para sempre, com trilhas,
 matrículas e notas).
-
-## App do aluno (Android)
-
-Abas: Trilha (os tópicos da turma, o material no formato do perfil, atividades e
-batalhas), Notificações, Social e Ranking (essas duas aparecem com cadeado até
-serem liberadas) e Perfil. No Perfil: Loja (gasta as moedas ganhas estudando),
-biblioteca de conquistas, molduras, estilo das métricas, modo foco e avisos,
-lembrete diário, "Coleta e acessos" (o aluno liga e desliga câmera, uso,
-desempenho e chat do mentor), "Gerar relatório dos dados" (PDF), privacidade e
-termos, rever tutorial, reportar um erro, redefinir senha e solicitar exclusão
-da conta. O aluno entra com o mesmo e-mail e senha do cadastro no site.
-
-## Versão web do aluno
-
-Em trailup.vercel.app o aluno faz o cadastro e tem a página "Sua jornada começa
-aqui": uma introdução em três etapas, que pode ser feita sem estar numa turma.
-Quem ainda não está numa turma deve pedir ao professor para incluir a conta pelo
-e-mail do cadastro. Dali o aluno instala ou abre o aplicativo (página Download:
-versão de teste na loja ou APK). O estudo da turma acontece no aplicativo.
-
-## Privacidade e uso de dados (resumo da Política de Privacidade)
-
-- O TrailUp é parte de uma pesquisa acadêmica (Ciência da Computação, Ulbra
-  Palmas). Os dados servem ao funcionamento do app, ao ensino e à pesquisa
-  (publicada de forma agregada ou pseudonimizada). Nenhum dado é vendido.
-- Coletados: nome, e-mail, data de nascimento, respostas (BrainHex, quizzes,
-  redações, atividades), mensagens ao mentor, preferências e consentimentos;
-  ritmo de estudo, acertos, tempo, progresso, moedas e ranking; perfil de
-  aprendizagem e, se o aluno permitir, estado emocional estimado.
-- Câmera: opcional e desligada por padrão. As imagens não são gravadas nem
-  enviadas a terceiros; fica só a emoção estimada.
-- O professor vê da emoção só uma faixa ("precisa de apoio" ou "ok"), nunca
-  pontuação, histórico ou imagem. A estimativa não é diagnóstico e não entra em
-  nota, ranking ou punição; o professor pode desconsiderar um alerta.
-- Menores: cada finalidade opcional (câmera, personalização emocional, pesquisa,
-  notificações) depende da autorização do responsável, no app ou no termo em
-  papel entregue ao professor; sem ela, o app funciona em modo restrito. A IA do
-  app do aluno é só para maiores de 18 confirmados pela data de nascimento.
-- Nome e e-mail não vão nas instruções aos provedores de IA; o aluno é
-  identificado por um código interno.
-- Fornecedores (a maioria nos EUA): Supabase, Hetzner, Vercel, Google Gemini,
-  OpenAI, Cloudflare R2, Expo/FCM/APNs, Google (e-mails, login, YouTube) e
-  Microsoft (visualização de documentos).
-- Retenção: telemetria bruta 90 dias (180 para pesquisa), indicadores 13 meses
-  (24 para pesquisa), emoção estimada 30 dias, conta de aluno inativa apagada
-  após 24 meses sem acesso (com aviso e 30 dias de prazo). Ao sair de uma turma, o
-  conteúdo gerado para o aluno é apagado em 90 dias; notas, moedas e ranking, em
-  365 dias.
-- Direitos do aluno (ou do responsável): acessar os dados ("Gerar relatório dos
-  dados"), corrigir, pedir exclusão, revogar consentimentos (Perfil › Coleta e
-  acessos), contestar a estimativa emocional e pedir revisão humana. Dúvidas e
-  pedidos: página de contato do site. Texto completo: trailup.vercel.app/privacidade
-  e /termos.
