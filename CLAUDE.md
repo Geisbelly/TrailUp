@@ -653,6 +653,12 @@ Cada perfil carrega:
   `telemetria/` (o payload que a API tira do Postgres) **não** é o arquivo: é armazenamento primário
   e segue o prazo. Sem FK para turma de propósito — apagar a turma apaga a telemetria em cascata, e o
   arquivo tem de sobreviver a isso.
+
+  **Agregado de pesquisa só conta quem consentiu** (`20261104_04`): `estudo_indicadores_janela`
+  (logo `metricas_estudo_coortes`) e `metricas_perfil_formato` filtram a população por
+  `vw_alunos_pesquisa_elegiveis`. Os painéis de engajamento do professor
+  (`metricas_engajamento_turma`, `_coortes_turma`) **não** filtram, de propósito: são a turma dele, e
+  o número tem de bater com a lista. Agregado de pesquisa novo usa a view; a ingestão não muda.
 - `personalizacao_item_progresso` — progresso por item (merge: percentual/acertos = máx, tempo = soma).
 - `aluno_perfil`, `perfil` — perfis BrainHex e afinidades.
 
