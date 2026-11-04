@@ -181,13 +181,15 @@ def compute_personalizacao_next(state: dict[str, Any]) -> list[str]:
 
 
 def build_state_summary(state: dict[str, Any]) -> dict[str, Any]:
+    """Resumo do estado que vai ao modelo do supervisor. Sem o UUID do aluno:
+    o supervisor so escolhe o proximo no, e dado pseudonimizado continua sendo
+    dado pessoal (LGPD, minimizacao)."""
     perfil = state.get("perfil_brainhex", [])
     desempenho = state.get("desempenho_recente", {})
     emocao = state.get("emocao_atual")
     if state.get("workflow_kind") == "personalizar":
         return {
             "workflow_kind": "personalizar",
-            "aluno_id": state.get("aluno_id"),
             "classe_id": state.get("classe_id"),
             "topico_id": state.get("payload_topico_id"),
             "conteudo_foco_id": state.get("conteudo_boss_foco_id"),
@@ -198,7 +200,6 @@ def build_state_summary(state: dict[str, Any]) -> dict[str, Any]:
             "materiais_prontos": bool(state.get("materiais_personalizados")),
         }
     return {
-        "aluno_id": state.get("aluno_id"),
         "classe_id": state.get("classe_id"),
         "gerar_materiais": state.get("gerar_materiais", False),
         "perfil_dominante": perfil[0] if perfil else None,
