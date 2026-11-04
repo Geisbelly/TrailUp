@@ -1206,6 +1206,11 @@ async def enrich_base_blocks(
     retentativa) de blocos-base. Gemini e o provedor PRINCIPAL, com fallback
     automatico pra OpenAI so quando o Gemini falhar. Retorna
     (blocks_aprofundados, provider_metadata_com_enrichment_llm_provider)."""
+    if rota_de_menor_ativa():
+        # #195: IA so para adulto confirmado. Nada vai a provedor nenhum.
+        raise ContentEnrichmentError(
+            "Aluno menor ou sem data de nascimento: a IA do TrailUp é só para maiores de 18."
+        )
     openai_key = str(getattr(settings, "openai_api_key", "") or "").strip()
     gemini_key = str(getattr(settings, "gemini_api_key", "") or "").strip()
     if not openai_key and not gemini_key:
@@ -1218,14 +1223,7 @@ async def enrich_base_blocks(
     blocks: list[dict[str, Any]] | None = None
     provider_metadata: dict[str, Any] = {}
 
-    if gemini_key and rota_de_menor_ativa():
-        # #195: dentro de um fluxo de menor, nada vai ao Gemini; so OpenAI.
-        if not openai_key:
-            raise ContentEnrichmentError(
-                "OPENAI_API_KEY ausente: conteúdo de aluno menor só pode ser gerado pela OpenAI."
-            )
-        gemini_error = ContentEnrichmentError("rota de menor: Gemini não é usado")
-    elif gemini_key:
+    if gemini_key:
         try:
             blocks, provider_metadata = await _enrich_base_blocks_with_gemini(
                 base_blocks=base_blocks,

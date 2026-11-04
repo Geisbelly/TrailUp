@@ -56,6 +56,7 @@ export function DataNascimentoForm({
       <Text style={[styles.body, { color: palette.textMuted }]}>
         Enquanto você não informar, o app fica no modo restrito: trilhas, questões e progresso
         funcionam; câmera, análise de emoções, telemetria, mentor de IA e pesquisa ficam desligados.
+        A inteligência artificial do TrailUp é só para maiores de 18 anos.
       </Text>
       <TextInput
         value={texto}

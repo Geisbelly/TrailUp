@@ -9,7 +9,7 @@ from typing import Any
 import httpx
 
 from app.core.settings import Settings
-from app.services.audio import gerar_mp3_gtts, gerar_mp3_openai_tts
+from app.services.audio import gerar_mp3_gtts
 from app.services.gemini_http import gemini_generate
 from app.services.llm import JsonLLMService
 from app.services.media_contract import (
@@ -157,8 +157,8 @@ async def gerar_audio_gemini_tts(
     if not cleaned:
         return None
     if rota_de_menor_ativa():
-        # #195: menor -> so OpenAI (sem Gemini e sem gTTS). Dialogo vira uma voz.
-        return await gerar_mp3_openai_tts(settings=settings, texto=cleaned, instrucoes=direcao_voz)
+        # #195: IA so para adulto confirmado; menor fica sem audio (nem Gemini, nem gTTS).
+        return None
 
     tts_prompt = _build_guardian_tts_prompt(
         texto=cleaned,
@@ -390,8 +390,8 @@ def _brainhex_contract_matches(payload: Any) -> bool:
 
 
 MENSAGEM_MICROSERVICE_MENOR = (
-    "geracao de midia personalizada pelo microservice indisponivel para aluno menor ou "
-    "sem data de nascimento: o microservice ainda usa o Gemini (#195)"
+    "geracao de midia personalizada indisponivel para aluno menor ou sem data de "
+    "nascimento: a IA do TrailUp e so para maiores de 18 (#195)"
 )
 
 

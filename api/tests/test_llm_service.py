@@ -347,6 +347,5 @@ def test_openai_client_tem_teto(monkeypatch: pytest.MonkeyPatch) -> None:
     service = JsonLLMService(_settings(openai_api_key="sk-teste", llm_request_timeout_seconds=12))
 
     service._get_client("gpt-4o-mini", provider="openai")
-    service._get_openai_client_para_menor("gpt-4o-mini")
 
-    assert [kwargs["timeout"] for kwargs in criados] == [12, 12]
+    assert [kwargs["timeout"] for kwargs in criados] == [12]

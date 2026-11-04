@@ -222,7 +222,7 @@ const CadastroAluno = () => {
         <p className="text-xs text-muted-foreground">
           Só para criar conta. Fica visível apenas para você.
           {dataNascimento && !validarDataNascimento(dataNascimento) && ehMenorDeIdade(dataNascimento)
-            ? " Como você tem menos de 18 anos, câmera, análise de emoções, telemetria, mentor de IA e pesquisa só ligam depois que seu responsável autorizar, no app ou pelo termo em papel entregue ao professor. Trilhas, questões e progresso funcionam desde já."
+            ? " Como você tem menos de 18 anos, a IA do TrailUp (mentor, correção e personalização por aluno) fica desligada: ela é só para maiores de 18. Câmera, análise de emoções, telemetria e pesquisa só ligam depois que seu responsável autorizar, no app ou pelo termo em papel entregue ao professor. Trilhas, questões e progresso funcionam desde já."
             : ""}
         </p>
       </div>

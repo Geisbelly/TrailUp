@@ -170,9 +170,9 @@ function buildTutorialTips(
 }
 
 const MENSAGEM_MENTOR_BLOQUEADO =
-  "O mentor de IA está desligado no modo restrito. Trilhas, questões e progresso continuam funcionando. " +
-  "Para liberar, informe sua data de nascimento em Perfil › Coleta e acessos e, se você tiver menos de 18 anos, " +
-  "peça ao seu responsável para autorizar o mentor.";
+  "O mentor de IA está desligado. Trilhas, questões e progresso continuam funcionando. " +
+  "A IA do TrailUp é só para maiores de 18 anos: se você já tem 18, informe sua data de nascimento " +
+  "em Perfil › Coleta e acessos.";
 
 export function IAMentorPanel({
   topicoId,
@@ -440,7 +440,9 @@ export function IAMentorPanel({
     });
   };
 
-  const mentorLiberado = estadoConsentimento.finalidades.mentor;
+  // #195: a IA e so para maiores de 18. A autorizacao do responsavel liga a
+  // finalidade `mentor`, mas o menor continua sem IA (o servidor tambem recusa).
+  const mentorLiberado = estadoConsentimento.finalidades.mentor && estadoConsentimento.menor === false;
 
   const handleTutorialAction = (tip: TutorialTip) => {
     if (scope === "trilha_home") {
@@ -802,7 +804,7 @@ export function IAMentorPanel({
               onChangeText={setDraft}
               placeholder={
                 !mentorLiberado
-                  ? "Mentor de IA desligado no modo restrito"
+                  ? "Mentor de IA desligado (só para maiores de 18)"
                   : scope === "trilha_home"
                   ? "Pergunte sobre a trilha, métricas ou personalização"
                   : "Responda ao guia ou pergunte sobre este módulo"

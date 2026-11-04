@@ -35,8 +35,11 @@ const Termos = () => {
                 <p className="font-semibold">3.1. Requisitos:</p>
                 <ul className="list-disc ml-6 space-y-1">
                   <li>
-                    Informar sua data de nascimento. Se você tiver menos de 18 anos, câmera,
-                    análise de emoções, telemetria de uso, mentor de IA e pesquisa só são ligados
+                    Informar sua data de nascimento. A inteligência artificial do TrailUp (mentor,
+                    correção de respostas e personalização por aluno) é só para maiores de 18 anos:
+                    quem tem menos de 18, ou não informou a data, usa o app sem ela, mesmo com a
+                    autorização do responsável. Se você tiver menos de 18 anos, câmera,
+                    análise de emoções, telemetria de uso e pesquisa só são ligados
                     depois que um dos pais ou o responsável legal autorizar, item por item, numa
                     tela própria do aplicativo ou pelo termo em papel entregue ao professor
                     (LGPD, art. 14). Até lá, trilhas, questões e progresso funcionam normalmente,

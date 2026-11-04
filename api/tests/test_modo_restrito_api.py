@@ -119,10 +119,39 @@ def test_mentor_bloqueado_no_modo_restrito_com_mensagem_clara(app, monkeypatch) 
     acesso.assert_not_awaited()  # nem chega a ler contexto do aluno
 
 
+def _idade(monkeypatch, rota: str) -> AsyncMock:
+    from app.api.v1 import personalizacao as personalizacao_module
+
+    decidir = AsyncMock(return_value=rota)
+    monkeypatch.setattr(personalizacao_module, "decidir_rota", decidir)
+    return decidir
+
+
+def test_mentor_de_menor_autorizado_pelo_responsavel_continua_bloqueado(app, monkeypatch) -> None:
+    """#195: a autorizacao do responsavel libera as finalidades, mas a IA e so
+    para maiores de 18. Codigo `modo_restrito`, que o app instalado ja entende."""
+    app.dependency_overrides[get_current_user] = lambda: ALUNO
+    _sessao(app)
+    _responde(monkeypatch, TUDO)
+    decidir = _idade(monkeypatch, "menor")
+    acesso = AsyncMock(return_value=True)
+    monkeypatch.setattr(AccessRepository, "aluno_belongs_to_classe", acesso)
+
+    with TestClient(app) as client:
+        r = client.post("/api/v1/personalizar/chat", json=CHAT)
+
+    assert r.status_code == 403
+    assert r.json()["detail"]["codigo"] == "modo_restrito"
+    assert "maiores de 18" in r.json()["detail"]["mensagem"]
+    assert decidir.await_args.args[1] == ["aluno-1"]
+    acesso.assert_not_awaited()  # nem chega a ler contexto do aluno
+
+
 def test_mentor_fora_do_modo_restrito_segue_o_caminho_de_sempre(app, monkeypatch) -> None:
     app.dependency_overrides[get_current_user] = lambda: ALUNO
     _sessao(app)
     _responde(monkeypatch, TUDO)
+    _idade(monkeypatch, "padrao")
     acesso = AsyncMock(return_value=False)
     monkeypatch.setattr(AccessRepository, "aluno_belongs_to_classe", acesso)
 
