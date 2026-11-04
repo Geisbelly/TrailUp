@@ -18,6 +18,8 @@ Este diretorio consolida os capitulos tecnicos e metodologicos usados para forma
 10. `10-metricas-e-analise-de-resultados.md`
 11. `11-contribuicoes-limitacoes-e-trabalhos-futuros.md`
 
+**Estado atual do sistema (04/11/2026):** [`sistema-para-a-monografia-2026-11-04.md`](./sistema-para-a-monografia-2026-11-04.md). Varredura verificada no código e no banco; os capítulos acima são de abril e devem ser revistos a partir dela.
+
 ## Leitura recomendada
 - trilha completa (1 -> 11) para entendimento de ponta a ponta;
 - trilha executiva (1, 3, 4, 10, 11) para decisao gerencial;
