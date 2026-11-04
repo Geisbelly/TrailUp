@@ -27,6 +27,26 @@ export const CONSOLE_SECTIONS = [
 
 export type ConsoleView = (typeof CONSOLE_SECTIONS)[number]["view"];
 
+/** Nome de cada aba, como aparece no menu (e nos botões da Lumi). */
+export const ROTULO_DA_VIEW: Record<ConsoleView, string> = {
+  dashboard: "Visão geral",
+  recomendacoes: "Recomendações",
+  trilha: "Trilhas",
+  missoes: "Missões",
+  conquistas: "Conquistas",
+  notas: "Notas",
+  eventos: "Eventos",
+  economia: "Economia",
+  classes: "Turmas",
+  personalizacoes: "Personalizações",
+  ranks: "Rankings",
+  batalhas: "Rank de batalhas",
+  guildas: "Guildas",
+  profile: "Meus dados",
+  aprovacoes: "Aprovações",
+  tecnico: "Painel técnico",
+};
+
 /**
  * Abas de administração do projeto, só para o dono: não são de turma, não aparecem no menu dos outros
  * professores e a Lumi não as acompanha. A rota em si não protege nada (qualquer um digita a URL); quem

@@ -1,8 +1,12 @@
 // Lumi (antes Escriba) — a guia do professor (docs/frontend/redesign-fase-2/01-analise-dashboard.md, 4.10).
 // Lógica pura do painel: o que mandar para a API e como traduzir as falhas.
 
+import { CONSOLE_SECTIONS, ROTULO_DA_VIEW, consolePathForView, viewSoDoDono, type ConsoleView } from "@/pages/consoleSections";
+import { ABAS_DA_ECONOMIA } from "../economia/economiaRegras";
+
 export type Papel = "professor" | "escriba";
-export type Mensagem = { id: number; papel: Papel; texto: string; erro?: boolean };
+export type Destino = { rotulo: string; caminho: string };
+export type Mensagem = { id: number; papel: Papel; texto: string; erro?: boolean; destinos?: Destino[] };
 export type TurmaDoProfessor = { id: number; descricao: string | null };
 
 export const MENSAGEM_INICIAL = "Olá! Posso te ajudar a entender o desempenho da turma. O que você quer saber?";
@@ -46,4 +50,41 @@ export function mensagemDeErro(erro: unknown): string {
     return "Não consegui falar com o servidor da Lumi (sem resposta ou fora do ar). Tente de novo em alguns segundos; o resto do console continua funcionando.";
   if (/VITE_APITRAIUP_URL/.test(texto)) return "A Lumi não está configurada neste ambiente.";
   return "Algo deu errado ao falar com a Lumi. Tente de novo em instantes.";
+}
+
+const MAX_DESTINOS = 3;
+
+/**
+ * Converte o destino que a API devolve ("economia", "economia.valores") no
+ * botão que leva até lá. A API já filtra pela lista fechada; aqui confere de
+ * novo contra as abas de verdade, porque um botão para tela que não existe
+ * cairia no NotFound. A turma escolhida no painel vai junto (`?turma=`), e as
+ * telas por turma abrem nela.
+ */
+export function destinoParaLink(destino: string, turma: string): Destino | null {
+  const [view, parte, ...resto] = String(destino ?? "").trim().split(".");
+  if (resto.length > 0) return null;
+  const secao = CONSOLE_SECTIONS.find((s) => s.view === view);
+  if (!secao || viewSoDoDono(secao.view)) return null;
+  const params = new URLSearchParams();
+  if (turma !== TODAS && /^\d+$/.test(turma)) params.set("turma", turma);
+  let rotulo = ROTULO_DA_VIEW[secao.view as ConsoleView];
+  if (parte !== undefined) {
+    const aba = secao.view === "economia" ? ABAS_DA_ECONOMIA.find((a) => a.id === parte) : undefined;
+    if (!aba) return null;
+    params.set("aba", aba.id);
+    rotulo = `${rotulo} › ${aba.rotulo}`;
+  }
+  const busca = params.toString();
+  return { rotulo, caminho: `${consolePathForView(secao.view)}${busca ? `?${busca}` : ""}` };
+}
+
+export function destinosParaLinks(destinos: unknown, turma: string): Destino[] {
+  if (!Array.isArray(destinos)) return [];
+  const links: Destino[] = [];
+  for (const d of destinos) {
+    const link = typeof d === "string" ? destinoParaLink(d, turma) : null;
+    if (link && !links.some((l) => l.caminho === link.caminho)) links.push(link);
+  }
+  return links.slice(0, MAX_DESTINOS);
 }

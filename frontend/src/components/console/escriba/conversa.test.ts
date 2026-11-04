@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { historicoParaEnvio, mensagemDeErro, TODAS, turmaInicial, type Mensagem } from "./conversa";
+import { destinoParaLink, destinosParaLinks, historicoParaEnvio, mensagemDeErro, TODAS, turmaInicial, type Mensagem } from "./conversa";
 
 describe("turmaInicial", () => {
   const turmas = [
@@ -43,5 +43,32 @@ describe("mensagemDeErro", () => {
     expect(mensagemDeErro(new Error("A Lumi só lê as turmas do professor autenticado."))).toMatch(/suas turmas/);
     expect(mensagemDeErro(new Error("A Lumi não conseguiu responder agora."))).toMatch(/modelo de IA não respondeu/);
     expect(mensagemDeErro(new Error("algo estranho"))).toMatch(/Algo deu errado/);
+  });
+});
+
+describe("destinoParaLink", () => {
+  it("aba do console vira botão com o nome do menu e a turma do painel", () => {
+    expect(destinoParaLink("economia", "68")).toEqual({ rotulo: "Economia", caminho: "/console/economia?turma=68" });
+    expect(destinoParaLink("dashboard", TODAS)).toEqual({ rotulo: "Visão geral", caminho: "/console" });
+    expect(destinoParaLink("classes", TODAS)).toEqual({ rotulo: "Turmas", caminho: "/console/turmas" });
+  });
+
+  it("parte da Economia vai por ?aba=", () => {
+    expect(destinoParaLink("economia.valores", "68")).toEqual({
+      rotulo: "Economia › Valores",
+      caminho: "/console/economia?turma=68&aba=valores",
+    });
+  });
+
+  it("recusa o que não é aba de turma do console", () => {
+    for (const d of ["aprovacoes", "tecnico", "admin", "economia.inexistente", "trilha.valores", "economia.valores.x", ""]) {
+      expect(destinoParaLink(d, "68")).toBeNull();
+    }
+  });
+
+  it("lista: sem repetidos, sem lixo, no máximo 3", () => {
+    const links = destinosParaLinks(["trilha", "trilha", 7, "notas", "x", "eventos", "economia"], TODAS);
+    expect(links.map((l) => l.rotulo)).toEqual(["Trilhas", "Notas", "Eventos"]);
+    expect(destinosParaLinks(undefined, TODAS)).toEqual([]);
   });
 });

@@ -13,7 +13,9 @@ tem como responder sobre ela mesmo que a pergunta insista.
 from __future__ import annotations
 
 import logging
+import re
 from datetime import UTC, datetime
+from functools import lru_cache
 from typing import Any
 
 from sqlalchemy import text
@@ -21,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba
 from app.services.insights_turma import InsightsTurmaService
-from app.services.llm import JsonLLMService, StructuredOutputError
+from app.services.llm import JsonLLMService, StructuredOutputError, load_prompt
 from app.services.pseudonimizacao import pseudonimizar_texto, restaurar_refs
 
 logger = logging.getLogger(__name__)
@@ -30,6 +32,28 @@ logger = logging.getLogger(__name__)
 MAX_TURMAS = 5
 MAX_RESPOSTA = 1500
 MAX_HISTORICO = 8
+MAX_DESTINOS = 3
+
+# Para onde a Lumi pode mandar o professor: as views de turma de
+# `frontend/src/pages/consoleSections.ts` (sem Aprovações e Painel técnico, que
+# são só do dono) e as sub-abas da Economia (`ABAS_DA_ECONOMIA` em economiaRegras.ts).
+# Paridade testada em test_escriba.py. Destino fora daqui é descartado: o
+# modelo não inventa link.
+_VIEWS_DO_CONSOLE = (
+    "dashboard", "recomendacoes", "trilha", "missoes", "conquistas", "notas", "eventos", "economia",
+    "classes", "personalizacoes", "ranks", "batalhas", "guildas", "profile",
+)
+_ABAS_DA_ECONOMIA = ("valores", "alunos", "prazos", "loja", "fundo", "metas", "historico")
+DESTINOS_DO_CONSOLE = frozenset(_VIEWS_DO_CONSOLE) | {f"economia.{aba}" for aba in _ABAS_DA_ECONOMIA}
+
+
+def _destinos_validos(destinos: list[str] | None) -> list[str]:
+    vistos: list[str] = []
+    for destino in destinos or []:
+        d = str(destino).strip().lower()
+        if d in DESTINOS_DO_CONSOLE and d not in vistos:
+            vistos.append(d)
+    return vistos[:MAX_DESTINOS]
 
 # F5: a taxa de abandono vem do modelo de evasao do core (`20261031_08`, % dos alunos com dado em
 # risco alto); o retorno semanal e as contagens dos tres sinais vem da `20261031_05`.
@@ -44,6 +68,81 @@ _POR_PERFIL = (
     "perfil_nome, total_alunos_segmento, taxa_conclusao_topicos_pct, media_nota, taxa_acertos_pct, "
     "taxa_risco_abandono_pct, alunos_inativos, alunos_estagnados"
 )
+
+
+# Pergunta sobre o produto (como usar o console, o app, privacidade) não
+# precisa de dado de aluno: vai ao modelo só com o guia do produto, sem ler
+# turma nenhuma. A classificação é conservadora — na dúvida, é pergunta sobre a
+# turma e segue o caminho com dados, que também leva o guia. Errar para esse
+# lado só deixa de economizar dado; nunca deixa a pergunta sem resposta.
+_PRODUTO = re.compile(
+    r"\b(como\s+(eu\s+)?(uso|usar|fa[cç]o|fazer|configur\w*|cri[oa]r?|cadastr\w*|matricul\w*|registr\w*|abr[eio]r?|"
+    r"duplic\w*|export\w*|ativ\w*|lig[ao]r?|deslig\w*|funciona\w*|edit\w*|gero|gerar|apag\w*|exclu\w*)|"
+    r"onde\s+(fica|ficam|vejo|encontro|configuro|est[aá]|mudo|altero)|para\s+que\s+serve|o\s+que\s+(é|e|significa|faz)\b|"
+    r"aba|abas|tela|bot[aã]o|console|menu|app|aplicativo|vers[aã]o\s+web|privacidade|lgpd|consentimento|termos|"
+    r"dados\s+pessoais|reten[cç][aã]o|passo\s+a\s+passo)\b",
+    re.IGNORECASE,
+)
+# Sinais de que a pergunta é sobre os dados da turma (ou de um aluno).
+_DADO_DA_TURMA = re.compile(
+    r"\b(alun[oa]s?|quem|minha\s+turma|da\s+turma|nesta\s+turma|desempenho|m[eé]dia|risco|abandon\w*|evas\w*|"
+    r"parad[oa]s?|inativ\w*|acert\w*|err(a|am|ando|ou)|dificuldade|atrasad\w*|engajad\w*|melhor(es)?|pior(es)?|A\d+)\b",
+    re.IGNORECASE,
+)
+# "o aluno vê", "app do aluno": falam do produto, não de um aluno.
+_ALUNO_DO_PRODUTO = re.compile(
+    r"\b((app|aplicativo|vers[aã]o\s+web|tela|perfil|loja|carteira)\s+do\s+aluno|o\s+aluno\s+(v[eê]|recebe|ganha|faz|consegue|pode)|"
+    r"os\s+alunos\s+(v[eê]em|recebem|ganham|fazem|conseguem|podem))\b",
+    re.IGNORECASE,
+)
+# Palavras com maiúscula que são do produto; qualquer outra no meio da frase
+# pode ser nome de aluno e tira a pergunta do caminho sem dados.
+_VOCABULARIO = {
+    "lumi", "trailup", "brainhex", "economia", "visão", "geral", "recomendações", "trilha", "trilhas", "missões",
+    "missão", "conquistas", "notas", "eventos", "evento", "turmas", "turma", "personalizações", "rankings", "ranking",
+    "rank", "batalhas", "guildas", "guilda", "meus", "dados", "aprovações", "valores", "moedas", "loja", "fundo",
+    "metas", "histórico", "prazos", "tempo", "perfil", "social", "notificações", "android", "google", "gemini",
+    "lgpd", "coleta", "acessos", "web", "app", "csv", "pdf", "ia", "console", "privacidade", "termos", "presença",
+    "matrículas", "seeker", "survivor", "daredevil", "mastermind", "conqueror", "socializer", "achiever",
+}
+# Começo de frase também tem maiúscula; só estas palavras passam ali. Outra
+# palavra no começo pode ser nome ("Ana faltou?") e conta como citação.
+_INICIO_DE_FRASE = {
+    "como", "onde", "qual", "quais", "o", "a", "os", "as", "e", "em", "para", "pra", "por", "que", "quando", "quanto",
+    "quantos", "quantas", "me", "eu", "tem", "há", "pode", "posso", "preciso", "quero", "queria", "gostaria",
+    "obrigado", "obrigada", "oi", "olá", "ok", "certo", "sim", "não", "nao", "bom", "boa", "legal", "mas", "então",
+    "isso", "esse", "essa", "este", "esta", "um", "uma", "no", "na", "do", "da", "se", "já", "agora", "também",
+    "ainda", "explique", "explica", "mostre", "mostra", "diga", "ajuda", "ajude", "é", "existe", "dá", "da",
+    "consigo", "devo", "vale", "depois", "antes", "aí", "ali", "lá", "cadê", "qualquer", "todo", "toda", "cada",
+}
+_PALAVRA_MAIUSCULA = re.compile(r"(?<![\w@])([A-ZÀ-Ý][\wÀ-ÿ]*)")
+
+
+def _parece_citar_aluno(texto: str) -> bool:
+    """Nome próprio fora do vocabulário do produto, ref A1... ou e-mail."""
+    if re.search(r"\bA\d+\b|@", texto):
+        return True
+    for m in _PALAVRA_MAIUSCULA.finditer(texto):
+        palavra = m.group(1).lower()
+        if palavra in _VOCABULARIO:
+            continue
+        antes = texto[: m.start()].rstrip()
+        if (not antes or antes[-1] in ".!?:;\n-•(\"“>*") and palavra in _INICIO_DE_FRASE:
+            continue
+        return True
+    return False
+
+
+def pergunta_de_produto(texto: str) -> bool:
+    texto = texto.strip()
+    if not _PRODUTO.search(texto) or _parece_citar_aluno(texto):
+        return False
+    return not _DADO_DA_TURMA.search(_ALUNO_DO_PRODUTO.sub(" ", texto))
+
+
+@lru_cache(maxsize=1)
+def guia_do_produto() -> str:
+    return load_prompt("lumi_conhecimento.md")
 
 
 class TurmaNaoPermitida(Exception):
@@ -159,6 +258,9 @@ class EscribaService:
         else:
             escopo = turmas[:MAX_TURMAS]
 
+        if pergunta_de_produto(pedido.pergunta):
+            return await self._responder_sobre_o_produto(pedido, escopo, agora)
+
         if not escopo:
             return RespostaEscriba(
                 resposta="Você ainda não tem turmas no TrailUp. Quando criar uma e os alunos começarem a estudar, eu consigo ler os dados dela.",
@@ -177,6 +279,7 @@ class EscribaService:
                 for m in pedido.historico[-MAX_HISTORICO:]
             ],
             # Chave com "_" é do servidor (ids, mapa de nomes): nunca vai ao modelo.
+            "guia_do_produto": guia_do_produto(),
             "turmas": [{k: v for k, v in t.items() if not k.startswith("_")} for t in turmas_payload],
         }
         try:
@@ -193,4 +296,36 @@ class EscribaService:
         resposta = (restaurar_refs(saida.resposta, nomes_por_ref) or "").strip()[:MAX_RESPOSTA]
         if not resposta:
             raise EscribaIndisponivel("resposta vazia")
-        return RespostaEscriba(resposta=resposta, turmas=[int(t["id"]) for t in escopo], gerado_em=agora)
+        return RespostaEscriba(
+            resposta=resposta,
+            turmas=[int(t["id"]) for t in escopo],
+            gerado_em=agora,
+            destinos=_destinos_validos(getattr(saida, "destinos", None)),
+        )
+
+    async def _responder_sobre_o_produto(
+        self, pedido: PerguntaEscriba, escopo: list[dict[str, Any]], agora: datetime
+    ) -> RespostaEscriba:
+        """Pergunta sobre o produto: nenhuma turma é lida e nenhum dado de aluno
+        vai ao modelo. Do histórico só seguem as perguntas do professor que não
+        citam aluno; as respostas da Lumi ficam de fora, porque as que falaram
+        da turma voltaram com o nome do aluno restaurado."""
+        payload = {
+            "pergunta": pedido.pergunta.strip(),
+            "historico": [
+                m.model_dump()
+                for m in pedido.historico[-MAX_HISTORICO:]
+                if m.papel == "professor" and not _parece_citar_aluno(m.texto)
+            ],
+            "guia_do_produto": guia_do_produto(),
+            "turmas": [],
+        }
+        try:
+            saida = await self.llm.ainvoke_structured(prompt_name="escriba.txt", payload=payload, schema=EscribaSaida)
+        except StructuredOutputError as exc:
+            logger.warning("Escriba: modelo falhou (produto): %s", exc)
+            raise EscribaIndisponivel(str(exc)) from exc
+        resposta = (saida.resposta or "").strip()[:MAX_RESPOSTA]
+        if not resposta:
+            raise EscribaIndisponivel("resposta vazia")
+        return RespostaEscriba(resposta=resposta, turmas=[], gerado_em=agora, destinos=_destinos_validos(getattr(saida, "destinos", None)))
