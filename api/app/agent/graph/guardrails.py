@@ -187,7 +187,10 @@ async def checar_grounding_chat(
         julgamento = await llm.ainvoke_structured(
             prompt_name="mentor_grounding_check.txt",
             payload={
-                "resposta": resposta.reply,
+                # As seções também vão ao aluno: um gabarito ali passaria sem o juiz ver.
+                "resposta": "\n\n".join(
+                    [resposta.reply, *(f"{secao.titulo}: {secao.texto}" for secao in resposta.secoes)]
+                ),
                 "conteudo_materia": contexto.get("conteudo_materia", {}),
                 # Sem o guia, explicar a Loja viraria "fora da base do tópico".
                 "guia_do_app": contexto.get("guia_do_app", ""),

@@ -25,6 +25,7 @@ export function BalaoTourDesktop({
   descricao,
   indice,
   total,
+  rotuloFinal = "Começar",
   alvo,
   tela,
   cor,
@@ -42,6 +43,7 @@ export function BalaoTourDesktop({
   descricao: string;
   indice: number;
   total: number;
+  rotuloFinal?: string;
   alvo: Retangulo | null;
   tela: { width: number; height: number };
   cor: string;
@@ -80,7 +82,7 @@ export function BalaoTourDesktop({
         <Text style={[s.botaoTexto, { color: palette.text }]}>Voltar</Text>
       </Pressable>
       <Pressable accessibilityRole="button" onPress={onProximo} style={[s.botao, s.primario, { backgroundColor: cor, borderColor: cor }]}>
-        <Text style={[s.botaoTexto, { color: "#0b1328" }]}>{ultimo ? "Começar" : "Próximo"}</Text>
+        <Text style={[s.botaoTexto, { color: "#0b1328" }]}>{ultimo ? rotuloFinal : "Próximo"}</Text>
       </Pressable>
     </View>
   );

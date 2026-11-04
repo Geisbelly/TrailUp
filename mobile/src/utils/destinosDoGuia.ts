@@ -1,4 +1,5 @@
 import type { Aberturas, Funcionalidade } from "./portoes";
+import { tutorialDisponivel, type TutorialDoGuia } from "./tutoriaisDoGuia";
 
 /**
  * Para onde o Guardião pode levar o aluno. Os códigos vêm da API e têm paridade testada
@@ -37,4 +38,39 @@ export function destinosParaBotoes(destinos: string[] | undefined, aberturas: Ab
     if (alvo && (!portao || aberturas[portao])) botoes.push(alvo);
   }
   return botoes;
+}
+
+export type SecaoDoGuia = { titulo: string; texto: string; destino?: string | null };
+
+export type RespostaDoGuia = {
+  /** O que aparece no balão. Sem seções, a resposta inteira. */
+  texto: string;
+  secoes: { titulo: string; texto: string; botao: BotaoDeDestino | null }[];
+  /** Destinos que não ficaram numa seção. */
+  botoes: BotaoDeDestino[];
+  tutorial: TutorialDoGuia | null;
+};
+
+type Bruta = {
+  reply: string;
+  introducao?: string | null;
+  secoes?: SecaoDoGuia[] | null;
+  destinos?: string[] | null;
+  tutorial?: string | null;
+};
+
+/** API velha manda só `reply` e `destinos`; aqui as duas viram o mesmo desenho. */
+export function montarRespostaDoGuia(resposta: Bruta, aberturas: Aberturas): RespostaDoGuia {
+  const secoes = (resposta.secoes ?? []).map(({ titulo, texto, destino }) => ({
+    titulo,
+    texto,
+    botao: destinosParaBotoes(destino ? [destino] : [], aberturas)[0] ?? null,
+  }));
+  const jaNaSecao = new Set(secoes.map((s) => s.botao?.rota));
+  return {
+    texto: secoes.length ? (resposta.introducao ?? "") : resposta.reply,
+    secoes,
+    botoes: destinosParaBotoes(resposta.destinos ?? undefined, aberturas).filter((b) => !jaNaSecao.has(b.rota)),
+    tutorial: tutorialDisponivel(resposta.tutorial, aberturas),
+  };
 }

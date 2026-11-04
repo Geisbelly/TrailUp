@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
@@ -63,7 +63,7 @@ import {
   resolveMetricsTheme,
 } from "@/utils/profileMetricThemes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import { registrarAlvoTour } from "@/utils/tourTargets";
+import { registrarAlvoTour, useAlvoTour } from "@/utils/tourTargets";
 import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
 import { buildProfileGuideSteps } from "@/utils/profileSectionGuide";
 import { selectClassBattles } from '@/utils/battleRuntime';
@@ -85,6 +85,14 @@ export default function PerfilHome() {
   const { avisar } = useAviso();
   const [bagOpen, setBagOpen] = useState(false);
   const [lojaAberta, setLojaAberta] = useState(false);
+  const alvoLoja = useAlvoTour("perfil_loja");
+  // No celular a Loja é um modal: é assim que o botão do Guardião chega nela.
+  const { abrir } = useLocalSearchParams<{ abrir?: string }>();
+  useEffect(() => {
+    if (abrir !== "loja") return;
+    setLojaAberta(true);
+    router.setParams({ abrir: undefined });
+  }, [abrir, router]);
 
   const [aba, setAba] = useState<"metricas" | "conquistas">("metricas");
   const [conquistaSelecionada, setConquistaSelecionada] =
@@ -744,14 +752,16 @@ export default function PerfilHome() {
             {desktop ? null : (
             <View style={styles.acoesTopo}>
               {usuario?.id && (classeAtual?.classe_id ?? 0) > 0 ? (
-                <TouchableOpacity
-                  style={styles.btnTopo}
-                  onPress={() => setLojaAberta(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Abrir loja"
-                >
-                  <UtilityIcon kind="store" size={34} />
-                </TouchableOpacity>
+                <View ref={alvoLoja} collapsable={false}>
+                  <TouchableOpacity
+                    style={styles.btnTopo}
+                    onPress={() => setLojaAberta(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Abrir loja"
+                  >
+                    <UtilityIcon kind="store" size={34} />
+                  </TouchableOpacity>
+                </View>
               ) : null}
               <TouchableOpacity
                 style={styles.btnTopo}
