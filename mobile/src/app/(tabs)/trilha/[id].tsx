@@ -2259,6 +2259,8 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
           scope="modulo"
           bottomOffset={148}
           guideTargetRef={chatGuideTargetRef}
+          // Na altura padrão, o botão cobriria o texto da coluna do confronto.
+          ancora={lateralBatalha ? { direita: 16, base: 16, largura: 380 } : undefined}
         />
       ) : null}
 
