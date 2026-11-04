@@ -621,6 +621,33 @@ class PersonalizacaoJobsRepository:
         row = result.mappings().first()
         return self._hydrate_job(dict(row)) if row else None
 
+    async def travar_enfileiramento(
+        self,
+        *,
+        kind: str,
+        classe_id: int,
+        aluno_id: str | None = None,
+    ) -> None:
+        """Serializa, por tipo de job e turma, a checagem de duplicata e o INSERT.
+
+        O dedupe de `enqueue_personalizacao_job` le os jobs abertos e depois
+        insere. Sem esta trava, pedidos simultaneos passam todos pela leitura
+        antes de qualquer INSERT e nenhum ve os outros: em 03/11 um "Regerar" do
+        socializer da turma 68 abriu 3 jobs no mesmo segundo, que disputaram a
+        mesma linha (#775).
+
+        Tem de vir ANTES da leitura e valer ate o commit do INSERT. E' de
+        transacao, entao vale pelo pooler em modo transacao, e quem esperou le
+        depois do commit do outro: em READ COMMITTED cada comando tem foto nova.
+        A chave cobre so tipo, turma e aluno, nao o escopo do pedido: a espera
+        dura o tempo de um INSERT, e o escopo continua decidido pela comparacao
+        de payload.
+        """
+        await self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended(:chave, 0))"),
+            {"chave": f"personalizacao_enfileirar:{kind}:{classe_id}:{aluno_id}"},
+        )
+
     async def list_open_jobs_by_payload(
         self,
         *,

@@ -43,6 +43,16 @@ async def _tomar_como_marcacao_antiga(self, *, target, classe_id, attempts, stal
 
 
 @pytest.fixture(autouse=True)
+def _enfileirar_sem_trava(monkeypatch):
+    """A trava so existe num Postgres de verdade: aqui a sessao e' um `object()`.
+    A corrida e' medida em `test_e2e_job_manual_um_por_pedido.py`."""
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.travar_enfileiramento",
+        AsyncMock(return_value=None),
+    )
+
+
+@pytest.fixture(autouse=True)
 def _base_nunca_ocupada(monkeypatch):
     monkeypatch.setattr(
         "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.tomar_target_para_processar",
