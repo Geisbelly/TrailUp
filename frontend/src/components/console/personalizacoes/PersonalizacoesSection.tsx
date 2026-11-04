@@ -49,6 +49,7 @@ import { enqueueManualRetryJob } from "../trilha/personalizacaoJobsApi";
 import { formatarAtualizadoHa } from "../dashboard/atualizadoHa";
 import { iniciais } from "../meusdados/conta";
 import { fetchRegistrosPorAluno } from "./statusPorAlunoApi";
+import { criarUmPedidoPorVez } from "./umPedidoPorVez";
 import {
   filtrarPorNome,
   montarStatusPorAluno,
@@ -194,6 +195,8 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
   const [gerarTudoJob, setGerarTudoJob] = useState<PersonalizacaoJobResumo | null>(null);
   const [gerarTudoError, setGerarTudoError] = useState<string | null>(null);
   const gerarTudoAtivo = Boolean(gerarTudoJob && ACTIVE_JOB_STATUSES.has(gerarTudoJob.status));
+  const [gerarTudoEnfileirando, setGerarTudoEnfileirando] = useState(false);
+  const [umGerarTudoPorVez] = useState(() => criarUmPedidoPorVez(setGerarTudoEnfileirando));
 
   // Carrega classes do professor
   useEffect(() => {
@@ -492,20 +495,21 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     };
   }, [gerarTudoJob, resolveToken, loadPorPerfil]);
 
-  const handleGerarTudo = async () => {
-    if (!classeId) return;
-    setGerarTudoError(null);
-    try {
-      const token = await resolveToken();
-      const job = await enqueueManualGenerateAllJob(token, {
-        classeId: Number(classeId),
-        perfil: perfilParaGerarTudo,
-      });
-      setGerarTudoJob(job);
-    } catch (error) {
-      setGerarTudoError(error instanceof Error ? error.message : "Falha ao enfileirar geração.");
-    }
-  };
+  const handleGerarTudo = () =>
+    umGerarTudoPorVez(async () => {
+      if (!classeId) return;
+      setGerarTudoError(null);
+      try {
+        const token = await resolveToken();
+        const job = await enqueueManualGenerateAllJob(token, {
+          classeId: Number(classeId),
+          perfil: perfilParaGerarTudo,
+        });
+        setGerarTudoJob(job);
+      } catch (error) {
+        setGerarTudoError(error instanceof Error ? error.message : "Falha ao enfileirar geração.");
+      }
+    });
 
   // Busca contexto do aluno (visao 3)
   const loadContexto = useCallback(async () => {
@@ -785,7 +789,7 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
             <Button
               className="rounded-full font-bold"
               onClick={() => void handleGerarTudo()}
-              disabled={!classeId || gerarTudoAtivo}
+              disabled={!classeId || gerarTudoAtivo || gerarTudoEnfileirando}
             >
               {gerarTudoAtivo
                 ? `Gerando ${gerarTudoJob!.processed_targets}/${gerarTudoJob!.total_targets}${
@@ -1331,7 +1335,7 @@ function PerfilLinha({
   onRegenerated: () => void;
 }) {
   const navigate = useNavigate();
-  const { manualJob, manualJobError, manualJobAtivo, handleGerar } = useGerarPerfil({
+  const { manualJob, manualJobError, manualJobAtivo, enfileirando, handleGerar } = useGerarPerfil({
     item,
     classeId,
     topicoId,
@@ -1424,7 +1428,7 @@ function PerfilLinha({
               Ver
             </Button>
           )}
-          <Button variant="outline" size="sm" className="rounded-full" onClick={() => void handleGerar()} disabled={manualJobAtivo}>
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => void handleGerar()} disabled={manualJobAtivo || enfileirando}>
             {manualJobAtivo ? `Gerando ${manualJob!.processed_targets}/${manualJob!.total_targets}` : temAlgumMaterial ? "Regerar" : "Gerar"}
           </Button>
         </div>
@@ -1452,6 +1456,8 @@ function useGerarPerfil({
   const [manualJob, setManualJob] = useState<PersonalizacaoJobResumo | null>(null);
   const [manualJobError, setManualJobError] = useState<string | null>(null);
   const manualJobAtivo = Boolean(manualJob && ACTIVE_JOB_STATUSES.has(manualJob.status));
+  const [enfileirando, setEnfileirando] = useState(false);
+  const [umPedidoPorVez] = useState(() => criarUmPedidoPorVez(setEnfileirando));
 
   useEffect(() => {
     if (!manualJob || !ACTIVE_JOB_STATUSES.has(manualJob.status)) return;
@@ -1477,23 +1483,24 @@ function useGerarPerfil({
     };
   }, [manualJob, resolveToken, onRegenerated]);
 
-  const handleGerar = async () => {
-    setManualJobError(null);
-    try {
-      const token = await resolveToken();
-      const job = await enqueueManualGenerateJob(token, {
-        classeId,
-        topicoId,
-        conteudoId,
-        perfil: item.perfil,
-      });
-      setManualJob(job);
-    } catch (error) {
-      setManualJobError(error instanceof Error ? error.message : "Falha ao enfileirar geração.");
-    }
-  };
+  const handleGerar = () =>
+    umPedidoPorVez(async () => {
+      setManualJobError(null);
+      try {
+        const token = await resolveToken();
+        const job = await enqueueManualGenerateJob(token, {
+          classeId,
+          topicoId,
+          conteudoId,
+          perfil: item.perfil,
+        });
+        setManualJob(job);
+      } catch (error) {
+        setManualJobError(error instanceof Error ? error.message : "Falha ao enfileirar geração.");
+      }
+    });
 
-  return { manualJob, manualJobError, manualJobAtivo, handleGerar };
+  return { manualJob, manualJobError, manualJobAtivo, enfileirando, handleGerar };
 }
 
 function PerfilMaterialCard({
@@ -1524,7 +1531,7 @@ function PerfilMaterialCard({
         aba,
       })
     );
-  const { manualJob, manualJobError, manualJobAtivo, handleGerar } = useGerarPerfil({
+  const { manualJob, manualJobError, manualJobAtivo, enfileirando, handleGerar } = useGerarPerfil({
     item,
     classeId,
     topicoId,
@@ -1577,7 +1584,7 @@ function PerfilMaterialCard({
           <span className="capitalize">{item.perfil}</span> · {item.total_alunos} aluno(s) com este perfil
         </CardDescription>
         <div className="flex items-center gap-2 pt-1">
-          <Button variant="outline" size="sm" onClick={() => void handleGerar()} disabled={manualJobAtivo}>
+          <Button variant="outline" size="sm" onClick={() => void handleGerar()} disabled={manualJobAtivo || enfileirando}>
             {manualJobAtivo
               ? `Gerando ${manualJob!.processed_targets}/${manualJob!.total_targets}${
                   manualJob!.error_count > 0 ? ` (${manualJob!.error_count} erro(s))` : ""
