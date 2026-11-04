@@ -1,6 +1,7 @@
 import type { SlideData } from '../types';
 import { ImageGenerationUnavailableError } from './imageGenerationErrors';
 import { canSendAsGeminiInlineData } from './geminiInlineImageMimes';
+import { PROFILE_SIGNATURES, buildDeckColorTokens, profileKeyOf } from './deckTheme';
 
 // generateInteractiveHtml (deckExportUtils.ts) nunca inclui referenceImageHtml
 // no bodyHtml desses tipos (layout centralizado, sem coluna de imagem) -
@@ -36,119 +37,183 @@ function escapeXml(unsafe: string): string {
     .replace(/'/g, '&apos;');
 }
 
-const PROFILE_PALETTES: Record<string, { bg: string; stroke: string; accent: string; node: string; name: string; env: string }> = {
-  achiever: { bg: '#1c1508', stroke: '#d97706', accent: '#f59e0b', node: '#fbbf24', name: 'Alvorada Dourada', env: 'Câmara Real & Tronos de Ouro' },
-  seeker: { bg: '#081c15', stroke: '#059669', accent: '#10b981', node: '#34d399', name: 'Observatório Místico', env: 'Santuário Cósmico & Astrolábio' },
-  mastermind: { bg: '#150824', stroke: '#7c3aed', accent: '#8b5cf6', node: '#a78bfa', name: 'Torre Arcana', env: 'Laboratório Alquímico & Runas Celestiais' },
-  conqueror: { bg: '#08132a', stroke: '#1e40af', accent: '#1e4fd6', node: '#60a5fa', name: 'Fortaleza Imperial', env: 'Sala de Guerra & Estandartes de Aço' },
-  socializer: { bg: '#081c24', stroke: '#0284c7', accent: '#0ea5e9', node: '#38bdf8', name: 'Guilda da Távola', env: 'Távola Redonda & Salão dos Bardos' },
-  daredevil: { bg: '#241008', stroke: '#ea580c', accent: '#f97316', node: '#fb923c', name: 'Forja do Dragão', env: 'Fornalha Vulcânica & Lâminas Flamejantes' },
-  survivor: { bg: '#18181b', stroke: '#71717a', accent: '#a1a1aa', node: '#e4e4e7', name: 'Baluarte de Ferro', env: 'Bastilha Inexpugnável & Escudos de Pedra' },
+// So o nome e o ambiente do arquetipo. A cor NAO mora aqui: vem de
+// deckTheme.ts (PROFILE_SIGNATURES, espelho de microservice/src/constants/brainHex.ts).
+// Esta tabela tinha cores proprias, e o Socializer era pedido "em tons de
+// #0ea5e9" (azul) num deck coral.
+const PROFILE_PALETTES: Record<string, { name: string; env: string }> = {
+  achiever: { name: 'Alvorada Dourada', env: 'Câmara Real & Tronos de Ouro' },
+  seeker: { name: 'Observatório Místico', env: 'Santuário Cósmico & Astrolábio' },
+  mastermind: { name: 'Torre Arcana', env: 'Laboratório Alquímico & Runas Celestiais' },
+  conqueror: { name: 'Fortaleza Imperial', env: 'Sala de Guerra & Estandartes de Aço' },
+  socializer: { name: 'Guilda da Távola', env: 'Távola Redonda & Salão dos Bardos' },
+  daredevil: { name: 'Forja do Dragão', env: 'Fornalha Vulcânica & Lâminas Flamejantes' },
+  survivor: { name: 'Baluarte de Ferro', env: 'Bastilha Inexpugnável & Escudos de Pedra' },
 };
 
-function createFallbackIllustrationSvg(slide: SlideData, profile?: string): string {
-  const pKey = (profile || 'mastermind').toLowerCase();
-  const c = PROFILE_PALETTES[pKey] || PROFILE_PALETTES.mastermind;
-  const title = escapeXml(slide.subtopic || slide.title || 'Exemplo Visual Didático');
-  const objective = escapeXml(slide.pedagogicalObjective || slide.writtenExample?.title || 'Estudo Aplicado & Conceito');
+/** Marca do SVG de reserva: o export do deck o reconhece e desenha inline. */
+export const FALLBACK_ILLUSTRATION_MARKER = 'data-trailup-exemplo-didatico';
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="100%" height="100%">
+/**
+ * Quebra o texto em ate `maxLines` linhas de ate `maxChars` caracteres, sem
+ * cortar palavra; a ultima linha ganha reticencias se sobrar texto. Antes o
+ * titulo era `slice(0, 16)` - "A Essência da Di".
+ */
+export function wrapSvgText(text: string, maxChars: number, maxLines: number): string[] {
+  const words = String(text || '').replace(/\s+/g, ' ').trim().split(' ').filter(Boolean);
+  const lines: string[] = [];
+  let current = '';
+  let i = 0;
+  for (; i < words.length; i += 1) {
+    const word = words[i];
+    const next = current ? `${current} ${word}` : word;
+    if (next.length <= maxChars) {
+      current = next;
+      continue;
+    }
+    if (current) lines.push(current);
+    if (lines.length === maxLines) break;
+    current = word.length > maxChars ? `${word.slice(0, maxChars - 1)}…` : word;
+  }
+  if (lines.length < maxLines && current) {
+    lines.push(current);
+    i = words.length;
+  }
+  if (i < words.length && lines.length > 0) {
+    const last = lines[lines.length - 1];
+    lines[lines.length - 1] = last.length >= maxChars ? `${last.slice(0, maxChars - 1)}…` : `${last}…`;
+  }
+  return lines;
+}
+
+function tspans(lines: string[], x: number, lineHeight: number): string {
+  return lines
+    .map((line, i) => `<tspan x="${x}" dy="${i === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`)
+    .join('');
+}
+
+/**
+ * SVG de reserva do "Exemplo visual didático" (quando nao ha imagem do
+ * professor nem ilustracao gerada).
+ *
+ * As cores sao as do deck (deckTheme.ts), nao uma paleta propria: esta funcao
+ * tinha a sua, e o Socializer saia azul-ceu (#0ea5e9) num deck coral
+ * (#f4623a), com caixas escuras fixas mesmo no modo claro. Cada cor e'
+ * `var(--token, <valor do modo escuro>)`: inline no deck, as variaveis do
+ * tema valem e o desenho segue o perfil e o claro/escuro; como <img> (editor,
+ * PDF), o valor de reserva e' o token do modo escuro do mesmo perfil.
+ */
+export function buildFallbackIllustrationSvgMarkup(slide: SlideData, profile?: string, idSuffix = '0'): string {
+  const key = profileKeyOf(profile);
+  const t = buildDeckColorTokens(key, 'dark');
+  const v = (name: string, fallback: string) => `var(--${name}, ${fallback})`;
+  const accent = v('accent', t.accent);
+  const ink = v('ink', t.ink);
+  const muted = v('ink-muted', t.inkMuted);
+  const surface = v('surface', t.surface);
+  const surface2 = v('surface-2', t.surface2);
+  const surfaceAccent = v('surface-accent', t.surfaceAccent);
+  const border = v('border', t.border);
+  const borderStrong = v('border-strong', t.borderStrong);
+  const id = String(idSuffix).replace(/[^a-zA-Z0-9_-]/g, '');
+  const titleText = slide.subtopic || slide.title || 'Exemplo Visual Didático';
+  const objectiveText = slide.pedagogicalObjective || slide.writtenExample?.title || 'Estudo Aplicado & Conceito';
+  const profileLabel = (profile || key).toUpperCase();
+  const font = 'font-family="system-ui, -apple-system, Segoe UI, sans-serif"';
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" ${FALLBACK_ILLUSTRATION_MARKER}="1" viewBox="0 0 600 400" width="100%" height="100%" role="img" aria-label="${escapeXml(titleText)}">
     <defs>
-      <radialGradient id="cardGlow" cx="50%" cy="35%" r="70%">
-        <stop offset="0%" stop-color="${c.stroke}" stop-opacity="0.35" />
-        <stop offset="65%" stop-color="${c.bg}" stop-opacity="0.95" />
-        <stop offset="100%" stop-color="#050508" stop-opacity="1" />
-      </radialGradient>
-      <linearGradient id="gradLine" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="${c.stroke}" stop-opacity="0.2" />
-        <stop offset="50%" stop-color="${c.accent}" stop-opacity="0.9" />
-        <stop offset="100%" stop-color="${c.stroke}" stop-opacity="0.2" />
+      <linearGradient id="exemplo-linha-${id}" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" style="stop-color:${accent};stop-opacity:0.15" />
+        <stop offset="50%" style="stop-color:${accent};stop-opacity:0.9" />
+        <stop offset="100%" style="stop-color:${accent};stop-opacity:0.15" />
       </linearGradient>
     </defs>
-    <rect width="600" height="400" rx="16" fill="url(#cardGlow)" stroke="${c.stroke}" stroke-width="1.8" />
-    
-    <!-- Subtle architectural background lines -->
-    <g opacity="0.12">
-      <line x1="40" y1="80" x2="560" y2="80" stroke="${c.accent}" stroke-width="1" stroke-dasharray="4 4" />
-      <line x1="40" y1="180" x2="560" y2="180" stroke="${c.accent}" stroke-width="1" stroke-dasharray="4 4" />
-      <line x1="40" y1="280" x2="560" y2="280" stroke="${c.accent}" stroke-width="1" stroke-dasharray="4 4" />
-      <line x1="160" y1="40" x2="160" y2="340" stroke="${c.accent}" stroke-width="1" stroke-dasharray="4 4" />
-      <line x1="300" y1="40" x2="300" y2="340" stroke="${c.accent}" stroke-width="1" stroke-dasharray="4 4" />
-      <line x1="440" y1="40" x2="440" y2="340" stroke="${c.accent}" stroke-width="1" stroke-dasharray="4 4" />
+    <rect width="600" height="400" rx="16" style="fill:${surface};stroke:${borderStrong};stroke-width:1.8" />
+    <g style="opacity:0.18">
+      <line x1="40" y1="80" x2="560" y2="80" style="stroke:${accent}" stroke-dasharray="4 4" />
+      <line x1="40" y1="180" x2="560" y2="180" style="stroke:${accent}" stroke-dasharray="4 4" />
+      <line x1="160" y1="40" x2="160" y2="230" style="stroke:${accent}" stroke-dasharray="4 4" />
+      <line x1="440" y1="40" x2="440" y2="230" style="stroke:${accent}" stroke-dasharray="4 4" />
     </g>
 
-    <!-- Top Badge -->
-    <rect x="30" y="24" width="190" height="24" rx="6" fill="${c.stroke}" fill-opacity="0.25" stroke="${c.stroke}" stroke-width="1" />
-    <text x="40" y="40" fill="${c.node}" font-family="sans-serif" font-size="10" font-weight="bold">✦ EXEMPLO VISUAL DIDÁTICO</text>
+    <rect x="30" y="24" width="200" height="24" rx="6" style="fill:${surfaceAccent};stroke:${border}" />
+    <text x="40" y="40" ${font} font-size="10" font-weight="bold" style="fill:${accent}">✦ EXEMPLO VISUAL DIDÁTICO</text>
 
-    <!-- Central Conceptual Flow Diagram -->
     <g transform="translate(30, 75)">
-      <!-- Box 1: Entrada / Conceito -->
-      <rect x="10" y="30" width="135" height="75" rx="10" fill="#0d0d12" stroke="${c.stroke}" stroke-width="1.5" />
-      <rect x="10" y="30" width="135" height="20" rx="10" fill="${c.stroke}" fill-opacity="0.2" />
-      <text x="22" y="44" fill="${c.node}" font-family="sans-serif" font-size="10" font-weight="bold">1. FUNDAMENTO</text>
-      <text x="22" y="70" fill="#ffffff" font-family="sans-serif" font-size="11" font-weight="bold">Premissa</text>
-      <text x="22" y="88" fill="#a1a1aa" font-family="sans-serif" font-size="9">Dados de Entrada</text>
+      <rect x="10" y="30" width="135" height="75" rx="10" style="fill:${surface2};stroke:${border};stroke-width:1.5" />
+      <text x="22" y="46" ${font} font-size="10" font-weight="bold" style="fill:${accent}">1. FUNDAMENTO</text>
+      <text x="22" y="70" ${font} font-size="11" font-weight="bold" style="fill:${ink}">Premissa</text>
+      <text x="22" y="88" ${font} font-size="9.5" style="fill:${muted}">Dados de Entrada</text>
 
-      <!-- Connector 1 -->
-      <path d="M 150 67 L 185 67 M 180 62 L 188 67 L 180 72" stroke="${c.accent}" stroke-width="2" fill="none" />
+      <path d="M 150 67 L 185 67 M 180 62 L 188 67 L 180 72" style="stroke:${accent};stroke-width:2;fill:none" />
 
-      <!-- Box 2: Núcleo / Transformação (Highlighted) -->
-      <rect x="190" y="15" width="160" height="105" rx="12" fill="${c.stroke}" fill-opacity="0.25" stroke="${c.node}" stroke-width="2" />
-      <rect x="190" y="15" width="160" height="22" rx="12" fill="${c.stroke}" fill-opacity="0.4" />
-      <text x="202" y="30" fill="${c.node}" font-family="sans-serif" font-size="10" font-weight="bold">2. MECANISMO CHAVE</text>
-      <text x="202" y="60" fill="#ffffff" font-family="sans-serif" font-size="12" font-weight="bold">${title.slice(0, 16)}</text>
-      <text x="202" y="80" fill="#e4e4e7" font-family="sans-serif" font-size="9.5">Processamento Central</text>
-      <circle cx="330" cy="95" r="7" fill="${c.accent}" fill-opacity="0.3" />
-      <text x="328" y="98" fill="${c.node}" font-family="sans-serif" font-size="9" font-weight="bold">✦</text>
+      <rect x="190" y="10" width="160" height="115" rx="12" style="fill:${surfaceAccent};stroke:${accent};stroke-width:2" />
+      <text x="202" y="28" ${font} font-size="10" font-weight="bold" style="fill:${accent}">2. MECANISMO CHAVE</text>
+      <text x="202" y="50" ${font} font-size="11.5" font-weight="bold" style="fill:${ink}">${tspans(wrapSvgText(titleText, 22, 3), 202, 15)}</text>
+      <text x="202" y="112" ${font} font-size="9.5" style="fill:${muted}">Processamento Central</text>
 
-      <!-- Connector 2 -->
-      <path d="M 355 67 L 390 67 M 385 62 L 393 67 L 385 72" stroke="${c.accent}" stroke-width="2" fill="none" />
+      <path d="M 355 67 L 390 67 M 385 62 L 393 67 L 385 72" style="stroke:${accent};stroke-width:2;fill:none" />
 
-      <!-- Box 3: Aplicação / Resultado -->
-      <rect x="395" y="30" width="135" height="75" rx="10" fill="#0d0d12" stroke="${c.stroke}" stroke-width="1.5" />
-      <rect x="395" y="30" width="135" height="20" rx="10" fill="${c.stroke}" fill-opacity="0.2" />
-      <text x="407" y="44" fill="${c.node}" font-family="sans-serif" font-size="10" font-weight="bold">3. RESULTADO</text>
-      <text x="407" y="70" fill="#ffffff" font-family="sans-serif" font-size="11" font-weight="bold">Aplicação</text>
-      <text x="407" y="88" fill="#a1a1aa" font-family="sans-serif" font-size="9">Impacto Prático</text>
+      <rect x="395" y="30" width="135" height="75" rx="10" style="fill:${surface2};stroke:${border};stroke-width:1.5" />
+      <text x="407" y="46" ${font} font-size="10" font-weight="bold" style="fill:${accent}">3. RESULTADO</text>
+      <text x="407" y="70" ${font} font-size="11" font-weight="bold" style="fill:${ink}">Aplicação</text>
+      <text x="407" y="88" ${font} font-size="9.5" style="fill:${muted}">Impacto Prático</text>
     </g>
 
-    <!-- Bottom Study Insight Container -->
-    <rect x="30" y="245" width="540" height="120" rx="12" fill="#09090d" fill-opacity="0.95" stroke="${c.stroke}" stroke-width="1.2" stroke-opacity="0.5" />
-    <path d="M 30 245 L 570 245" stroke="url(#gradLine)" stroke-width="1.5" />
-    
-    <circle cx="55" cy="275" r="12" fill="${c.stroke}" fill-opacity="0.4" />
-    <text x="50" y="279" fill="${c.node}" font-family="sans-serif" font-size="12" font-weight="bold">✦</text>
-    <text x="78" y="278" fill="#ffffff" font-family="sans-serif" font-size="12.5" font-weight="bold">${title}</text>
-    <text x="78" y="304" fill="#d4d4d8" font-family="sans-serif" font-size="10.5">${objective.slice(0, 90)}</text>
-    <text x="78" y="332" fill="${c.accent}" font-family="sans-serif" font-size="9" font-weight="bold">Guia de Estudo Visual • Arquétipo ${c.name} (${profile?.toUpperCase() || 'BRAINHEX'})</text>
+    <rect x="30" y="235" width="540" height="140" rx="12" style="fill:${surface2};stroke:${border};stroke-width:1.2" />
+    <path d="M 42 235 L 558 235" style="stroke:url(#exemplo-linha-${id});stroke-width:1.5" />
+    <circle cx="55" cy="263" r="12" style="fill:${surfaceAccent};stroke:${border}" />
+    <text x="50" y="267" ${font} font-size="12" font-weight="bold" style="fill:${accent}">✦</text>
+    <text x="78" y="267" ${font} font-size="12.5" font-weight="bold" style="fill:${ink}">${tspans(wrapSvgText(titleText, 70, 2), 78, 16)}</text>
+    <text x="78" y="310" ${font} font-size="10.5" style="fill:${ink}">${tspans(wrapSvgText(objectiveText, 88, 2), 78, 14)}</text>
+    <text x="78" y="358" ${font} font-size="9" font-weight="bold" style="fill:${accent}">Guia de Estudo Visual • Arquétipo ${escapeXml(PROFILE_PALETTES[key]?.name || '')} (${escapeXml(profileLabel)})</text>
   </svg>`;
+}
 
+function createFallbackIllustrationSvg(slide: SlideData, profile?: string): string {
+  const svg = buildFallbackIllustrationSvgMarkup(slide, profile);
   const base64 = typeof Buffer !== 'undefined'
     ? Buffer.from(svg, 'utf-8').toString('base64')
     : btoa(unescape(encodeURIComponent(svg)));
   return `data:image/svg+xml;base64,${base64}`;
 }
 
+/** O data URI e' o SVG de reserva gerado aqui (e nao uma imagem do professor)? */
+export function isFallbackIllustrationUri(uri: unknown): boolean {
+  if (typeof uri !== 'string' || !uri.startsWith('data:image/svg+xml;base64,')) return false;
+  try {
+    const b64 = uri.slice('data:image/svg+xml;base64,'.length);
+    const head = typeof Buffer !== 'undefined'
+      ? Buffer.from(b64.slice(0, 400), 'base64').toString('utf-8')
+      : atob(b64.slice(0, 400));
+    return head.includes(`${FALLBACK_ILLUSTRATION_MARKER}="1"`);
+  } catch {
+    return false;
+  }
+}
+
 function buildRestylePrompt(slide: SlideData, profile?: string): string {
-  const pKey = (profile || 'mastermind').toLowerCase();
-  const c = PROFILE_PALETTES[pKey] || PROFILE_PALETTES.mastermind;
+  const key = profileKeyOf(profile);
+  const c = PROFILE_PALETTES[key];
+  const cor = PROFILE_SIGNATURES[key];
   return (
-    `Reestilize esta imagem técnica/educativa de referência adaptando a iluminação, atmosfera e estética visual para o perfil BrainHex "${profile || 'Mastermind'}" (${c.env}), mantendo o foco em tons de ${c.accent} e contrastes nítidos. ` +
+    `Reestilize esta imagem técnica/educativa de referência adaptando a iluminação, atmosfera e estética visual para o perfil BrainHex "${profile || 'Mastermind'}" (${c.env}), mantendo o foco em tons da cor ${cor} e contrastes nítidos. ` +
     `Mantenha rigorosamente o conceito pedagógico, os elementos do diagrama, o fluxo ou o exemplo técnico que ela ilustra para o tema "${slide.subtopic || slide.title}". ` +
     'Gere uma imagem nítida, de alta resolução, limpa e educativa, sem ruído visual.'
   );
 }
 
 function buildIllustrationPrompt(slide: SlideData, profile?: string, topic?: string): string {
-  const pKey = (profile || 'mastermind').toLowerCase();
-  const c = PROFILE_PALETTES[pKey] || PROFILE_PALETTES.mastermind;
+  const key = profileKeyOf(profile);
+  const c = PROFILE_PALETTES[key];
+  const cor = PROFILE_SIGNATURES[key];
   const firstParagraph = (slide.contentParagraphs || [])[0] || '';
   const writtenEx = slide.writtenExample?.explanation || '';
   return (
     `Infográfico conceitual, diagrama de arquitetura ou ilustração educativa clara e didática representando o conceito técnico: "${slide.subtopic || slide.title}" (${topic || 'Material Educacional'}). ` +
     `Contexto de estudo: ${firstParagraph.slice(0, 220)}. ${writtenEx ? `Aplicação: ${writtenEx.slice(0, 150)}.` : ''} ` +
-    `Estilo visual: Arte conceitual técnica e nítida, atmosfera imersiva de ${c.env}, iluminação volumétrica com acentos em ${c.accent} e ${c.node}. ` +
+    `Estilo visual: Arte conceitual técnica e nítida, atmosfera imersiva de ${c.env}, iluminação volumétrica com acentos na cor ${cor} (cor-assinatura do perfil), sem trocar por outra matiz. ` +
     'Composição limpa, alto valor para orientar os estudos do aluno, sem poluição visual nem textos ilegíveis.'
   );
 }

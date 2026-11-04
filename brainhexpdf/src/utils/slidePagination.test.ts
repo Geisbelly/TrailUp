@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import type { SlideData } from '../types';
-import { paginateSlidesByDensity } from './slidePagination';
+import { __paginacaoInterna, paginateSlidesByDensity } from './slidePagination';
+
+const { estimateSlideWeight, MAX_CONTENT_WEIGHT } = __paginacaoInterna;
 
 function shortSlide(): SlideData {
   return {
@@ -46,9 +48,10 @@ test('slide acima do orcamento com varios paragrafos e dividido em Parte 1/2', (
   assert.equal(result[0].contentParagraphs.length + result[1].contentParagraphs.length, 4);
 });
 
-test('a segunda parte nao carrega o componente rico (evita duplicar)', () => {
+test('o componente rico aparece numa parte so - a ultima, depois do texto (evita duplicar)', () => {
   const result = paginateSlidesByDensity([heavySlide()]);
-  assert.deepEqual(result[1].metricCards, undefined);
+  assert.equal(result.filter((part) => part.metricCards).length, 1);
+  assert.ok(result[result.length - 1].metricCards);
 });
 
 test('a imagem de referencia PERSISTE nas duas partes de um slide dividido (2026-08-22)', () => {
@@ -96,7 +99,7 @@ test('divide paragrafos por PESO (caracteres), nao por contagem bruta - metades 
   assert.equal(result[1].contentParagraphs[0].length, 200);
 });
 
-test('slide cover pesado E dividido, e a parte 2 vira story_intro (nao repete cabecalho da capa)', () => {
+test('slide cover pesado E dividido, e as partes seguintes viram story_intro (nao repetem a capa)', () => {
   const cover: SlideData = {
     id: 'cover',
     type: 'cover',
@@ -107,9 +110,10 @@ test('slide cover pesado E dividido, e a parte 2 vira story_intro (nao repete ca
 
   const result = paginateSlidesByDensity([cover]);
 
-  assert.equal(result.length, 2);
+  assert.ok(result.length >= 2);
   assert.equal(result[0].type, 'cover');
-  assert.equal(result[1].type, 'story_intro');
+  for (const part of result.slice(1)) assert.equal(part.type, 'story_intro');
+  assert.equal(result.reduce((t, part) => t + part.contentParagraphs.length, 0), 4);
 });
 
 test('tipos ainda nao divisiveis (epic_conclusion, reward_certificate, reflection_checkpoint) nunca sao divididos', () => {
@@ -125,8 +129,10 @@ test('tipos ainda nao divisiveis (epic_conclusion, reward_certificate, reflectio
   assert.equal(result.length, 1);
 });
 
-test('imagem de referencia soma peso ao slide (pode empurrar pra divisao)', () => {
-  const withImage: SlideData = {
+test('imagem AO LADO do texto nao soma altura (sao colunas); empilhada com o widget, soma', () => {
+  // Ate 04/11 a conta somava tudo: 2 paragrafos + imagem dividia, mesmo com
+  // a imagem na outra coluna. A altura e' a da coluna mais alta.
+  const textoEImagem: SlideData = {
     id: 'com-imagem',
     type: 'concept_breakdown',
     title: 'Slide com imagem',
@@ -134,15 +140,13 @@ test('imagem de referencia soma peso ao slide (pode empurrar pra divisao)', () =
     layout: 'split-character',
     referenceImageDataUri: 'data:image/png;base64,AAAA',
   } as SlideData;
-  const withoutImage: SlideData = { ...withImage, id: 'sem-imagem', referenceImageDataUri: undefined };
+  assert.equal(paginateSlidesByDensity([textoEImagem]).length, 1);
 
-  const withImageResult = paginateSlidesByDensity([withImage]);
-  const withoutImageResult = paginateSlidesByDensity([withoutImage]);
-
-  // 2 paragrafos de 400 chars = peso 800, abaixo do teto de 1000 sozinho -
-  // só a imagem (peso 400) empurra pra 1200, acima do teto.
-  assert.equal(withImageResult.length, 2);
-  assert.equal(withoutImageResult.length, 1);
+  const comEtapas: SlideData = {
+    ...textoEImagem,
+    timelineSteps: [1, 2, 3].map((n) => ({ stepNumber: n, title: `Etapa ${n}`, description: 'd'.repeat(120) })),
+  };
+  assert.ok(paginateSlidesByDensity([comEtapas]).length >= 2);
 });
 
 test('imagens adicionais (grid 2a+ linha) somam mais peso que so a primaria - pode empurrar pra divisao', () => {
@@ -163,13 +167,16 @@ test('imagens adicionais (grid 2a+ linha) somam mais peso que so a primaria - po
   const baseResult = paginateSlidesByDensity([base]);
   const gridResult = paginateSlidesByDensity([withGrid]);
 
-  // so a primaria (1 imagem, 1 linha): 400 (2 paragrafos de 200) + 400 (imagem) = 800, nao divide
+  // so a primaria (1 imagem): cabe ao lado do texto, nao divide
   assert.equal(baseResult.length, 1);
-  // 5 imagens (3 linhas no grid 2 colunas) somam bem mais peso, ultrapassa o teto
-  assert.equal(gridResult.length, 2);
+  assert.equal(gridResult.length, 1);
+  // 5 imagens (3 linhas no grid 2 colunas) pesam mais que so a primaria.
+  // Dividir o TEXTO nao resolve uma coluna alta de imagens (elas se repetem
+  // em toda parte), entao o peso cresce mas a divisao nao acontece.
+  assert.ok(estimateSlideWeight(withGrid) > estimateSlideWeight(base));
 });
 
-test('slide com um unico paragrafo gigante nao e dividido (limitacao conhecida)', () => {
+test('paragrafo gigante sem fim de frase nao e cortado (nunca no meio de palavra)', () => {
   const oneHugeParagraph: SlideData = {
     id: 'mono',
     type: 'concept_breakdown',
@@ -219,4 +226,76 @@ test('peso do quiz escala com o texto real, nao um valor fixo (2026-08-22)', () 
 
   assert.equal(resultCurto.length, 1);
   assert.equal(resultLongo.length, 2);
+});
+
+// Caso do print de 04/11 (Socializer, "Jornada da Construção Coletiva -
+// Parte 1/2"): texto + "Na prática" + imagem + "Etapas" num slide so', e o
+// slide rolava.
+function slideDoPrint(): SlideData {
+  return {
+    id: 'print',
+    type: 'concept_breakdown',
+    title: 'Jornada da Construção Coletiva',
+    subtopic: 'Comparação de frações',
+    pedagogicalObjective: 'Dominar o método de comparação de frações através da equalização de denominadores.',
+    contentParagraphs: ['Quando os denominadores são idênticos, a comparação é direta. '.repeat(6), 'A fração com o maior numerador é a maior. '.repeat(6)],
+    layout: 'split-character',
+    writtenExample: { title: 'Comparando 1/2 e 3/4', explanation: '1/2 = 2/4. Como 3/4 > 2/4, concluímos que 3/4 é maior.', code: '1/2 * (2/2) = 2/4. Comparando: 3/4 > 2/4.' },
+    referenceImageDataUri: 'data:image/png;base64,AAAA',
+    timelineSteps: [
+      { stepNumber: 1, title: 'Verificação', description: 'Checar se os denominadores são iguais.' },
+      { stepNumber: 2, title: 'Equivalência', description: 'Se diferentes, encontrar o denominador comum para igualar as partes.' },
+      { stepNumber: 3, title: 'Ordenação', description: 'Comparar os numeradores e definir a maior fração.' },
+    ],
+  } as SlideData;
+}
+
+test('o slide do print vira partes que cabem todas no card, sem perder nada', () => {
+  const original = slideDoPrint();
+  const result = paginateSlidesByDensity([original]);
+
+  assert.ok(result.length >= 2);
+  for (const part of result) {
+    assert.ok(estimateSlideWeight(part) <= MAX_CONTENT_WEIGHT, `${part.title}: ${estimateSlideWeight(part)}`);
+    assert.match(part.title, new RegExp(`— Parte \\d+/${result.length}$`));
+  }
+  assert.equal(result.filter((part) => part.writtenExample).length, 1);
+  assert.equal(result.filter((part) => part.timelineSteps).length, 1);
+  assert.equal(result.flatMap((part) => part.contentParagraphs).join(''), original.contentParagraphs.join(''));
+  // A imagem acompanha toda parte de texto: as duas colunas ficam simetricas.
+  for (const part of result.filter((p) => p.contentParagraphs.length > 0)) {
+    assert.equal(part.referenceImageDataUri, original.referenceImageDataUri);
+  }
+});
+
+test('divide em quantas partes precisar (nao para em 2)', () => {
+  const longo: SlideData = {
+    id: 'longo',
+    type: 'concept_breakdown',
+    title: 'Muito texto',
+    contentParagraphs: Array.from({ length: 8 }, (_, i) => `Frase ${i}. `.repeat(45)),
+    layout: 'split-character',
+  } as SlideData;
+  const result = paginateSlidesByDensity([longo]);
+  assert.ok(result.length >= 3);
+  for (const part of result) assert.ok(estimateSlideWeight(part) <= MAX_CONTENT_WEIGHT);
+});
+
+test('paragrafo gigante com frases e cortado entre frases', () => {
+  const texto = 'Esta é uma frase completa sobre frações. '.repeat(60);
+  const result = paginateSlidesByDensity([
+    { id: 'g', type: 'concept_breakdown', title: 'G', contentParagraphs: [texto], layout: 'split-character' } as SlideData,
+  ]);
+  assert.ok(result.length >= 2);
+  for (const part of result) {
+    for (const p of part.contentParagraphs) assert.match(p, /\.$/);
+  }
+  assert.equal(result.flatMap((part) => part.contentParagraphs).join(' ').replace(/\s+/g, ' '), texto.trim().replace(/\s+/g, ' '));
+});
+
+test('so a primeira parte leva o guia (fala do personagem)', () => {
+  const comGuia = { ...slideDoPrint(), characterGuide: { name: 'Guia', speechText: 'Vamos lá!' } } as SlideData;
+  const result = paginateSlidesByDensity([comGuia]);
+  assert.ok(result[0].characterGuide);
+  for (const part of result.slice(1)) assert.equal(part.characterGuide, undefined);
 });

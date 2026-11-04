@@ -10,7 +10,8 @@ MEDIA_PIPELINE_VERSION = "2026-09-27.1"
 PRESENTATION_ENGINE_VERSION = "brainhexpdf-v1"
 # v4 = deck HTML da #863. Espelho de microservice/src/constants/pipelineVersions.ts:
 # o health do microservice tem de devolver o mesmo valor, senao a API recusa gerar.
-PRESENTATION_DESIGN_VERSION = "trailup-deck-v4"
+# v5 = exemplo didatico na cor do perfil, deck sem XP, divisao em vez de scroll.
+PRESENTATION_DESIGN_VERSION = "trailup-deck-v5"
 
 # O que entra no `source_hash` NAO acompanha as duas versoes do deck: elas ja sao
 # conferidas no `metadata` da apresentacao (`_motivo_da_midia_incompleta`,
