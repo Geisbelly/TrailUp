@@ -6,6 +6,7 @@ import {
   computeAggregatedApresentacaoEntry,
   aggregatedApresentacaoFailure,
   emFilaPorPersonalizacao,
+  apresentacaoDaMesmaVersao,
 } from "./materialsPersistence";
 
 test("generationKeyFor monta cicloId:sourceHash", () => {
@@ -229,6 +230,7 @@ test("persistApresentacaoResult (multi-parte) agrega com as partes ja existentes
       conteudo_id: 170,
       materiais: {
         apresentacao: {
+          metadata: { status: "pending", generation_key: "ciclo-1:hash-abc", engine: "e", design_system: "d", media_pipeline_version: "m" },
           partes: [{ ordem: 1, titulo: "Intro", arquivo_url: "https://storage/p1.html", storage_path: "p1.html", failed: false }],
         },
       },
@@ -469,4 +471,69 @@ test("#775: sem chamadas (rota antiga, falha de validacao) nao grava a chave", a
     totalPartes: 1,
   });
   assert.equal("chamadas" in (calls.rpc[0].args.p_updates as any).apresentacao, false);
+});
+
+// Turma 66, 04/11: deck v3 completo no banco, regeracao em v4 com o mesmo
+// fence. A parte 2 chegava primeiro, somava-se as partes 1 e 3 velhas e o deck
+// virava `completed` em v4; a RPC (que preserva `completed` da mesma geracao e
+// versao) recusava em silencio as partes 3 e 1. Este banco imita essa regra.
+function bancoComRegraDaRpc(materiais: any) {
+  const estado = { materiais };
+  const client = {
+    rpc: async (_name: string, args: Record<string, unknown>) => {
+      const nova = (args.p_updates as any).apresentacao;
+      const atual = estado.materiais.apresentacao?.metadata;
+      const preserva =
+        atual?.status === "completed" &&
+        atual?.generation_key === `${args.p_ciclo_id}:${args.p_source_hash}` &&
+        atual?.engine === nova.metadata.engine &&
+        atual?.design_system === nova.metadata.design_system &&
+        atual?.media_pipeline_version === nova.metadata.media_pipeline_version;
+      if (!preserva) estado.materiais = { ...estado.materiais, apresentacao: nova };
+      return { data: { status: "processando_midias" }, error: null };
+    },
+    from: (_table: string) => ({
+      select: (_cols: string) => ({
+        eq: () => ({ eq: () => ({ eq: () => ({
+          maybeSingle: async () => ({ data: { aluno_id: "a", conteudo_id: 230, materiais: structuredClone(estado.materiais) }, error: null }),
+        }) }) }),
+      }),
+      upsert: async () => ({ error: null }),
+    }),
+  };
+  return { client: client as any, estado };
+}
+
+test("regeracao em outra versao do deck: nenhuma parte velha sobra e todas as novas entram (turma 66, 04/11)", async () => {
+  const fence = { personalizacaoId: 3843, cicloId: "c", sourceHash: "h" };
+  const v3 = { status: "completed", generation_key: "c:h", engine: "e", design_system: "v3", media_pipeline_version: "m" };
+  const velhas = [1, 2, 3].map((ordem) => ({ ordem, titulo: `Velha ${ordem}`, arquivo_url: `https://velho/p${ordem}.html`, storage_path: `p${ordem}.html` }));
+  const { client, estado } = bancoComRegraDaRpc({ apresentacao: { metadata: v3, partes: velhas } });
+  const v4 = { engine: "e", schema: "s", design_system: "v4", media_pipeline_version: "m" };
+
+  const statusDepois: string[] = [];
+  for (const ordem of [2, 3, 1]) {
+    await persistApresentacaoResult(client, {
+      fence, versionMetadata: v4, bucket: "b", storagePath: `p${ordem}.html`,
+      presentationUrl: `https://novo/p${ordem}.html`, failure: null, ordem, totalPartes: 3, titulo: `Nova ${ordem}`,
+    });
+    statusDepois.push(estado.materiais.apresentacao.metadata.status);
+  }
+
+  // So' fica `completed` quando a ultima parte nova chega.
+  assert.deepEqual(statusDepois, ["pending", "pending", "completed"]);
+  const partes = estado.materiais.apresentacao.partes;
+  assert.deepEqual(partes.map((p: any) => p.arquivo_url), ["https://novo/p1.html", "https://novo/p2.html", "https://novo/p3.html"]);
+  assert.equal(estado.materiais.apresentacao.metadata.design_system, "v4");
+});
+
+test("apresentacaoDaMesmaVersao: compara geracao, motor, design e pipeline", () => {
+  const versao = { engine: "e", schema: "s", design_system: "d", media_pipeline_version: "m" };
+  const base = { generation_key: "c:h", engine: "e", design_system: "d", media_pipeline_version: "m" };
+  assert.equal(apresentacaoDaMesmaVersao(base, versao, "c:h"), true);
+  assert.equal(apresentacaoDaMesmaVersao(undefined, versao, "c:h"), false);
+  assert.equal(apresentacaoDaMesmaVersao({ ...base, design_system: "outro" }, versao, "c:h"), false);
+  assert.equal(apresentacaoDaMesmaVersao({ ...base, engine: "outro" }, versao, "c:h"), false);
+  assert.equal(apresentacaoDaMesmaVersao({ ...base, media_pipeline_version: "outro" }, versao, "c:h"), false);
+  assert.equal(apresentacaoDaMesmaVersao(base, versao, "outro:h"), false);
 });
