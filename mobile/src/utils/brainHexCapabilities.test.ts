@@ -17,27 +17,27 @@ test("recursos são determinados somente pelo perfil ativo", () => {
   assert.deepEqual(getBrainHexProfileCapabilities("mastermind"), {
     hasTimer: true,
     hasBattle: false,
-    hasChat: false,
+    hasChat: true,
   });
   assert.deepEqual(getBrainHexProfileCapabilities("achiever"), {
     hasTimer: true,
     hasBattle: false,
-    hasChat: false,
+    hasChat: true,
   });
   assert.deepEqual(getBrainHexProfileCapabilities("survivor"), {
     hasTimer: true,
     hasBattle: true,
-    hasChat: false,
+    hasChat: true,
   });
   assert.deepEqual(getBrainHexProfileCapabilities("daredevil"), {
     hasTimer: true,
     hasBattle: true,
-    hasChat: false,
+    hasChat: true,
   });
   assert.deepEqual(getBrainHexProfileCapabilities("conqueror"), {
     hasTimer: true,
     hasBattle: true,
-    hasChat: false,
+    hasChat: true,
   });
 });
 

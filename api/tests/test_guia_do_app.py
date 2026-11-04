@@ -53,6 +53,19 @@ def test_guia_cobre_as_telas_do_aluno(tela: str) -> None:
     assert tela in guia_do_app()
 
 
+def test_guia_diz_que_a_web_e_o_mesmo_app() -> None:
+    assert "trailup.vercel.app/aluno/" in guia_do_app()
+    # `entradaDoAppAluno` é quem garante essa rota; se ela mudar, o guia mente.
+    fonte = RAIZ / "frontend" / "src" / "features" / "signup" / "trilhaIntrodutoria.ts"
+    assert "'/aluno/'" in fonte.read_text(encoding="utf-8")
+
+
+def test_chat_vale_para_todo_perfil() -> None:
+    fonte = RAIZ / "mobile" / "src" / "utils" / "brainHexCapabilities.ts"
+    assert "hasChat: true," in fonte.read_text(encoding="utf-8")
+    assert "tem um Guardião, e o aluno conversa" in " ".join(guia_do_app().split())
+
+
 def test_a_lumi_recebe_a_mesma_base_do_aluno() -> None:
     assert guia_do_app() in guia_do_produto()
 

@@ -2,7 +2,8 @@
 
 Texto estático, sem dado de aluno: a mesma base serve ao Guardião e à Lumi do professor
 (`escriba.guia_do_produto`). Os códigos de `DESTINOS_DO_APP` têm paridade testada com
-`mobile/src/utils/destinosDoGuia.ts`, que os traduz em rotas.
+`mobile/src/utils/destinosDoGuia.ts`, que os traduz em rotas. A web do aluno (`/aluno/`) é o
+build Expo do mesmo `mobile/`: painel, rotas e lista de destinos são os mesmos.
 """
 
 from functools import lru_cache
