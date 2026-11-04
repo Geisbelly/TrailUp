@@ -7,6 +7,7 @@ import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { alunoAtual } from "@/services/social/guildService";
 import { carregarEventosDaTurma } from "@/services/eventos/eventosDaTurma";
+import { RankDoEvento } from "./RankDoEvento";
 import {
   eventoEmDestaque,
   faseDoEvento,
@@ -203,6 +204,10 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
           </View>
         ) : null}
 
+        {e.temRank ? (
+          <RankDoEvento evento={e} meuId={meuId} accent={accent} textColor={textColor} mutedColor={mutedColor} borderColor={borderColor} largo />
+        ) : null}
+
         {recompensas.length || (andamento && e.missoes.length) ? (
           <View style={[s.pe, { borderTopColor: borderColor }]}>
             <Text style={[s.detalheLargo, s.flex, { color: mutedColor }]}>{recompensas.join(" · ")}</Text>
@@ -299,6 +304,10 @@ export function EventoDaTurma({ classeId, accent, textColor, mutedColor, surface
               A classificação sai quando o professor encerrar o evento.
             </Text>
           )}
+
+          {e.temRank ? (
+            <RankDoEvento evento={e} meuId={meuId} accent={accent} textColor={textColor} mutedColor={mutedColor} borderColor={borderColor} />
+          ) : null}
         </View>
       ) : null}
     </View>

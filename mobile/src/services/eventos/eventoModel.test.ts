@@ -3,7 +3,11 @@ import { describe, it } from "node:test";
 import {
   eventoEmDestaque,
   faseDoEvento,
+  linhasVisiveis,
+  mensagemDaInscricao,
   minhaPosicao,
+  montarRanksDoEvento,
+  podeMexerNaInscricao,
   normalizeEvento,
   podioDoEvento,
   rankingDasGuildas,
@@ -205,5 +209,56 @@ describe("rankingDasGuildas", () => {
     const r = rankingDasGuildas([{ guilda_id: "z", posicao: 1 }, { guilda_id: "", posicao: 2 }, { guilda_id: "b", posicao: null }, null], guildas);
     assert.deepEqual(r.map((g) => g.nome), ["Guilda"]);
     assert.deepEqual(rankingDasGuildas(null, guildas), []);
+  });
+});
+
+describe("rank do evento (#155)", () => {
+  it("temRank vem da peça arena; build sem a coluna fica sem rank", () => {
+    assert.equal(evento({ pecas: ["missoes", "arena"] }).temRank, true);
+    assert.equal(evento({ pecas: ["missoes"] }).temRank, false);
+    assert.equal(evento().temRank, false);
+  });
+
+  it("entrar e sair só com o evento aberto e antes do fim, como nas RPCs", () => {
+    const comRank = evento({ pecas: ["arena"] });
+    assert.equal(podeMexerNaInscricao(comRank, new Date("2026-10-19T10:00:00Z")), true); // aberto, antes do início
+    assert.equal(podeMexerNaInscricao(comRank, AGORA), true);
+    assert.equal(podeMexerNaInscricao(comRank, new Date("2026-10-19T18:00:00Z")), false);
+    assert.equal(podeMexerNaInscricao(evento({ pecas: ["arena"], status: "encerrado" }), AGORA), false);
+    assert.equal(podeMexerNaInscricao(evento(), AGORA), false);
+  });
+
+  it("monta os ranks na ordem dos critérios, com as linhas ordenadas e a minha marcada", () => {
+    const ranks = [
+      { id: 2, tipo: { nome: "Missões", criterio: "missoes" } },
+      { id: 1, tipo: { nome: "Ranqueada", criterio: "ranqueada" } },
+      { id: 3, tipo: null },
+      null,
+    ];
+    const posicoes = [
+      { rank_id: 1, posicao: 2, id_aluno: "eu", nome_aluno: "Eu", pontuacao: "12" },
+      { rank_id: 1, posicao: 1, id_aluno: "b", nome_aluno: " Bia ", pontuacao: 30 },
+      { rank_id: 2, posicao: 0, id_aluno: "x" },
+      { rank_id: 9, posicao: 1, id_aluno: "c" },
+    ];
+    const r = montarRanksDoEvento(ranks, posicoes, "eu");
+    assert.deepEqual(r.map((x) => [x.rankId, x.nome]), [[1, "Pontos de batalha"], [2, "Missões cumpridas"], [3, "Rank do evento"]]);
+    assert.deepEqual(r[0].linhas.map((l) => [l.posicao, l.nome, l.pontos, l.eu]), [[1, "Bia", 30, false], [2, "Eu", 12, true]]);
+    assert.deepEqual(r[1].linhas, []);
+    assert.deepEqual(montarRanksDoEvento(null, posicoes, "eu"), []);
+  });
+
+  it("mostra o topo e a minha linha quando fiquei de fora dele", () => {
+    const linhas = Array.from({ length: 8 }, (_, i) => ({ posicao: i + 1, alunoId: `a${i}`, nome: `A${i}`, pontos: 10 - i, eu: i === 6 }));
+    const rank = { rankId: 1, nome: "R", criterio: "ranqueada", linhas };
+    assert.deepEqual(linhasVisiveis(rank, 3).map((l) => l.posicao), [1, 2, 3, 7]);
+    assert.deepEqual(linhasVisiveis({ ...rank, linhas: linhas.slice(0, 2) }, 3).map((l) => l.posicao), [1, 2]);
+  });
+
+  it("traduz o erro das RPCs sem inventar motivo", () => {
+    assert.match(mensagemDaInscricao({ code: "42501", message: "x" }), /não está nesta turma/);
+    assert.equal(mensagemDaInscricao({ code: "22023", message: "O evento não está aberto." }), "O evento não está aberto.");
+    assert.match(mensagemDaInscricao(new Error("Failed to fetch")), /conexão/);
+    assert.match(mensagemDaInscricao(null), /conexão/);
   });
 });
