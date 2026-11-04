@@ -1,0 +1,101 @@
+{
+  "_leia": "Entradas da memória de cálculo de custos (Resumo Expandido JIC 2026, v7). null = ainda não registrado: o script mostra a linha como PENDENTE em vez de inventar um valor. Cada valor preenchido leva a fonte ao lado.",
+
+  "cambio": {
+    "usd_brl": 5.4935,
+    "fonte": "PTAX venda do Banco Central, 03/11/2026 (valor citado na v7)"
+  },
+
+  "cenario": {
+    "alunos_por_turma": 40,
+    "topicos_por_turma_mes": 2,
+    "perfis_brainhex": 7,
+    "turmas_comparacao": 10,
+    "fonte": "Premissas declaradas na v7 (Material e Métodos)"
+  },
+
+  "horas": {
+    "repositorios": ["."],
+    "autores_regex": "eisbelly|Domiciano",
+    "intervalos_sessao_h": [1, 2, 3, 4],
+    "acrescimo_por_sessao_h": [0.5, 1, 2],
+    "parametro_escolhido": {"intervalo_sessao_h": null, "acrescimo_por_sessao_h": null},
+    "periodo_declarado": {"inicio": "2025-09-01", "fim": "2026-11-30"},
+    "valor_publicado_h": 716,
+    "faixa_publicada_h": [613, 1009]
+  },
+
+  "tokens": {
+    "chars_por_token": 4.0,
+    "chars_por_token_fonte": "Suposição a calibrar com a linha [gemini-diag] dos logs do microservice (opção --logs)",
+    "material_professor_chars_por_topico": null,
+    "saida_texto_chars_por_perfil": null,
+    "roteiro_audio_chars_por_perfil": null,
+    "fator_novas_tentativas": null,
+    "prompts_base_por_perfil": [
+      "api/app/agent/prompts/gerador_conteudo.txt",
+      "api/app/agent/prompts/pipeline_midia_etapas.txt"
+    ],
+    "prompts_base_por_topico": [
+      "api/app/agent/prompts/enriquecedor_blocos_conteudo.txt",
+      "api/app/agent/prompts/materiais_personalizados.txt",
+      "api/app/agent/prompts/boss_falas.txt"
+    ],
+    "prompts_por_aluno_por_ciclo": [
+      "api/app/agent/prompts/personalizacao_comportamental.txt",
+      "api/app/agent/prompts/notificacao_personalizada.txt",
+      "api/app/agent/prompts/intervencao.txt"
+    ],
+    "prompt_mentor": "api/app/agent/prompts/mentor_personalizacao_chat.txt",
+    "ciclos_por_aluno_mes": null,
+    "mensagens_mentor_por_aluno_mes": null,
+    "chamadas_por_mensagem_mentor": 3,
+    "chamadas_por_mensagem_mentor_fonte": "docs/analises/2026-11-02-cli-de-assinatura-no-lugar-da-api-llm.md (2 a 4)"
+  },
+
+  "precos": {
+    "_leia": "Preço de tabela em USD, com a data e a URL da página consultada. Sem isso, o custo por geração não é reproduzível.",
+    "data_consulta": null,
+    "modelo_texto": null,
+    "texto_entrada_usd_por_mtok": null,
+    "texto_saida_usd_por_mtok": null,
+    "modelo_tts": null,
+    "tts_usd_por_mtok_ou_mchar": null,
+    "tts_unidade": null,
+    "imagem_usd_por_unidade": null,
+    "imagens_por_topico": null,
+    "fontes": []
+  },
+
+  "custo_fixo_mensal_brl": {
+    "_leia": "Decomposição da parte fixa em planos pagos (v7: ~R$ 435). Some só o que tiver fonte.",
+    "itens": [
+      {"servico": "VPS (Hetzner, Dokploy)", "brl": 80, "fonte": "Fatura do servidor; valor citado na v7 como custo atual"},
+      {"servico": "Supabase (plano pago)", "brl": null, "fonte": null},
+      {"servico": "Vercel (plano pago)", "brl": null, "fonte": null},
+      {"servico": "Cloudflare R2", "brl": null, "fonte": null},
+      {"servico": "Expo / EAS", "brl": null, "fonte": null},
+      {"servico": "Outros", "brl": null, "fonte": null}
+    ],
+    "valor_publicado_brl": 435
+  },
+
+  "custo_por_aluno_mes_brl": {
+    "valor": null,
+    "valor_publicado_brl": 1.32,
+    "_leia": "Segunda camada: ajuste por ciclo (ai_patch), notificações, intervenções e mentor. Calculado pelos tokens quando precos e ciclos estiverem preenchidos."
+  },
+
+  "gasto_desenvolvimento": {
+    "_leia": "Gasto real com serviços de IA no desenvolvimento, fatura por fatura. Declarar se inclui assinaturas (Claude, Cursor) ou só API.",
+    "faturas": [],
+    "valor_publicado_brl": 314.24
+  },
+
+  "publicado_v7": {
+    "geracao_turma_mes_por_perfil_brl": 19.50,
+    "geracao_turma_mes_por_aluno_brl": 111,
+    "reducao_dez_turmas": 0.44,
+    "reducao_geracoes_por_topico": 0.825
+  }
+}
