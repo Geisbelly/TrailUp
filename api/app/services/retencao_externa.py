@@ -110,7 +110,8 @@ class ApagadorHttp:
             return _ok(resp)
 
     async def openai(self, vector_store_id: str, file_id: str) -> str:
-        chave = getattr(self.settings, "openai_api_key", None) or ""
+        # O arquivo esta na conta do Vector Store: a chave comum nao o alcanca.
+        chave = getattr(self.settings, "openai_rag_api_key", None) or ""
         if not chave:
             raise ConfiguracaoAusente("OpenAI nao configurada")
         headers = {"Authorization": f"Bearer {chave}"}

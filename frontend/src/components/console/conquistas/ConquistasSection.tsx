@@ -164,7 +164,7 @@ export default function ConquistasSection({ professorId }: { professorId?: strin
         acao={
           estado === "ok" && turmaId ? (
             <div className="flex flex-col items-end gap-1.5">
-              <Button className="rounded-full font-bold" onClick={abrirNova} disabled={cheio}>
+              <Button data-tutorial="conquista-nova" className="rounded-full font-bold" onClick={abrirNova} disabled={cheio}>
                 <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
                 Nova conquista
               </Button>

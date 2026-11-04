@@ -26,7 +26,7 @@ def _settings(**kwargs) -> Settings:
         "app_env": "test",
         "supabase_jwt_secret": "test-secret",
         "admin_panel_password": "secret-admin",
-        "openai_api_key": "test-key",
+        "openai_rag_api_key": "test-key",
         "openai_rag_enabled": True,
         "openai_rag_vector_store_id": "vs_test",
     }

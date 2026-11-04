@@ -189,6 +189,8 @@ async def checar_grounding_chat(
             payload={
                 "resposta": resposta.reply,
                 "conteudo_materia": contexto.get("conteudo_materia", {}),
+                # Sem o guia, explicar a Loja viraria "fora da base do tópico".
+                "guia_do_app": contexto.get("guia_do_app", ""),
             },
             schema=GroundingJudgment,
         )

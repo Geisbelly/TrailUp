@@ -19,7 +19,7 @@ def _settings(**extra):
     base = dict(
         supabase_url="https://exemplo.invalid",
         supabase_service_key="chave-falsa",
-        openai_api_key="sk-falsa",
+        openai_rag_api_key="sk-falsa",
         retencao_externa_idade_minima_segundos=0,
         retencao_externa_lote=50,
         retencao_externa_interval_seconds=300,

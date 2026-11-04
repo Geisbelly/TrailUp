@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { destinoParaLink, destinosParaLinks, historicoParaEnvio, mensagemDeErro, TODAS, turmaInicial, type Mensagem } from "./conversa";
+import { destinoParaLink, destinosParaLinks, historicoParaEnvio, mensagemDaResposta, mensagemDeErro, TODAS, turmaInicial, type Mensagem } from "./conversa";
 
 describe("turmaInicial", () => {
   const turmas = [
@@ -66,9 +66,47 @@ describe("destinoParaLink", () => {
     }
   });
 
-  it("lista: sem repetidos, sem lixo, no máximo 3", () => {
-    const links = destinosParaLinks(["trilha", "trilha", 7, "notas", "x", "eventos", "economia"], TODAS);
-    expect(links.map((l) => l.rotulo)).toEqual(["Trilhas", "Notas", "Eventos"]);
+  it("lista: sem repetidos, sem lixo, no máximo 6", () => {
+    const links = destinosParaLinks(["trilha", "trilha", 7, "notas", "x", "eventos", "economia", "missoes", "conquistas", "guildas"], TODAS);
+    expect(links.map((l) => l.rotulo)).toEqual(["Trilhas", "Notas", "Eventos", "Economia", "Missões", "Conquistas"]);
     expect(destinosParaLinks(undefined, TODAS)).toEqual([]);
+  });
+});
+
+describe("mensagemDaResposta", () => {
+  it("cada seção leva o próprio botão, e o botão não se repete embaixo", () => {
+    const m = mensagemDaResposta(
+      1,
+      {
+        resposta: "tudo em linha",
+        introducao: "A economia tem duas partes.",
+        secoes: [
+          { titulo: "Valores", texto: "Ajuste os pontos.", destino: "economia.valores" },
+          { titulo: "Próximo passo", texto: "Revise.", destino: null },
+          { titulo: "", texto: "some" },
+        ],
+        destinos: ["economia.valores", "trilha"],
+        tutorial: "configurar_economia",
+      },
+      "54",
+    );
+    expect(m.texto).toBe("tudo em linha");
+    expect(m.introducao).toBe("A economia tem duas partes.");
+    expect(m.secoes?.map((s) => [s.titulo, s.destino?.caminho ?? null])).toEqual([
+      ["Valores", "/console/economia?turma=54&aba=valores"],
+      ["Próximo passo", null],
+    ]);
+    expect(m.destinos?.map((d) => d.rotulo)).toEqual(["Trilhas"]);
+    expect(m.tutorial?.id).toBe("configurar_economia");
+  });
+
+  it("API antiga, sem seções nem tutorial, continua mostrando o texto", () => {
+    const m = mensagemDaResposta(1, { resposta: "oi", destinos: ["notas"] }, TODAS);
+    expect(m).toMatchObject({ texto: "oi", secoes: undefined, tutorial: null });
+    expect(m.destinos?.map((d) => d.rotulo)).toEqual(["Notas"]);
+  });
+
+  it("tutorial fora do catálogo não vira botão", () => {
+    expect(mensagemDaResposta(1, { resposta: "oi", tutorial: "hackear" }, TODAS).tutorial).toBeNull();
   });
 });

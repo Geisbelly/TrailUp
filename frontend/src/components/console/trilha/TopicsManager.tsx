@@ -1014,7 +1014,7 @@ export default function TopicsManager() {
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2.5">
-          <Button className="rounded-full font-bold" onClick={() => setIaAberta(true)} disabled={!selectedClassFilter}>
+          <Button data-tutorial="trilha-gerar" className="rounded-full font-bold" onClick={() => setIaAberta(true)} disabled={!selectedClassFilter}>
             <Sparkles className="mr-2 h-4 w-4" aria-hidden="true" />
             Gerar trilha com IA
           </Button>
@@ -1110,6 +1110,7 @@ export default function TopicsManager() {
           >
             <button
             type="button"
+            data-tutorial="trilha-topico"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={abrirNovoTopico}
             className="absolute bottom-[60px] left-3 z-10 sm:bottom-3 flex items-center gap-2 rounded-full border-2 border-dashed border-border bg-card/90 px-4 py-2 text-xs font-semibold text-muted-foreground backdrop-blur-sm hover:border-primary hover:text-primary"

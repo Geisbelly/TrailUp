@@ -3,17 +3,32 @@
 
 import { CONSOLE_SECTIONS, ROTULO_DA_VIEW, consolePathForView, viewSoDoDono, type ConsoleView } from "@/pages/consoleSections";
 import { ABAS_DA_ECONOMIA } from "../economia/economiaRegras";
+import { TODAS } from "./constantes";
+import { tutorialPorId, type Tutorial } from "./tutoriais";
 
 export type Papel = "professor" | "escriba";
 export type Destino = { rotulo: string; caminho: string };
-export type Mensagem = { id: number; papel: Papel; texto: string; erro?: boolean; destinos?: Destino[] };
+export type Secao = { titulo: string; texto: string; destino: Destino | null };
+export type Mensagem = {
+  id: number;
+  papel: Papel;
+  /** O texto inteiro: é o que volta para a API como histórico. */
+  texto: string;
+  erro?: boolean;
+  /** Com seções, a abertura que vem antes delas; `texto` não é desenhado. */
+  introducao?: string;
+  secoes?: Secao[];
+  /** Destinos sem seção: botões soltos, abaixo da resposta. */
+  destinos?: Destino[];
+  tutorial?: Tutorial | null;
+};
 export type TurmaDoProfessor = { id: number; descricao: string | null };
 
-export const MENSAGEM_INICIAL = "Olá! Posso te ajudar a entender o desempenho da turma. O que você quer saber?";
+export const MENSAGEM_INICIAL = "Olá! Posso explicar os dados da turma, mostrar onde cada coisa fica no console e tirar dúvidas sobre o app do aluno. O que você quer saber?";
 
 export const SUGESTOES = ["Quem precisa de atenção?", "Onde a turma mais erra?"];
 
-export const TODAS = "todas";
+export { TODAS };
 
 /** Até quantas mensagens anteriores voltam para a API como contexto. */
 export const HISTORICO_ENVIADO = 8;
@@ -52,7 +67,7 @@ export function mensagemDeErro(erro: unknown): string {
   return "Algo deu errado ao falar com a Lumi. Tente de novo em instantes.";
 }
 
-const MAX_DESTINOS = 3;
+const MAX_DESTINOS = 6;
 
 /**
  * Converte o destino que a API devolve ("economia", "economia.valores") no
@@ -87,4 +102,26 @@ export function destinosParaLinks(destinos: unknown, turma: string): Destino[] {
     if (link && !links.some((l) => l.caminho === link.caminho)) links.push(link);
   }
   return links.slice(0, MAX_DESTINOS);
+}
+
+type RespostaDaLumi = { resposta?: string; introducao?: string; secoes?: unknown; destinos?: unknown; tutorial?: unknown };
+
+/** A resposta da API como mensagem do painel. Botão de seção não se repete embaixo. */
+export function mensagemDaResposta(id: number, r: RespostaDaLumi | null | undefined, turma: string): Mensagem {
+  const secoes: Secao[] = [];
+  for (const s of Array.isArray(r?.secoes) ? r.secoes : []) {
+    const { titulo, texto, destino } = (s ?? {}) as { titulo?: unknown; texto?: unknown; destino?: unknown };
+    if (typeof titulo !== "string" || typeof texto !== "string" || !titulo.trim() || !texto.trim()) continue;
+    secoes.push({ titulo: titulo.trim(), texto: texto.trim(), destino: typeof destino === "string" ? destinoParaLink(destino, turma) : null });
+  }
+  const nasSecoes = new Set(secoes.map((s) => s.destino?.caminho));
+  return {
+    id,
+    papel: "escriba",
+    texto: r?.resposta?.trim() || "Não consegui formular uma resposta.",
+    introducao: secoes.length > 0 ? r?.introducao?.trim() ?? "" : undefined,
+    secoes: secoes.length > 0 ? secoes : undefined,
+    destinos: destinosParaLinks(r?.destinos, turma).filter((d) => !nasSecoes.has(d.caminho)),
+    tutorial: typeof r?.tutorial === "string" ? tutorialPorId(r.tutorial) : null,
+  };
 }

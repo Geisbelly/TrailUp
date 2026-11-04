@@ -244,7 +244,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
         subtitulo="Entregas que você corrige, ou metas que o app fecha sozinho."
         acao={
           estado === "ok" && turmaId ? (
-            <Button className="rounded-full font-bold" onClick={abrirNova}>
+            <Button data-tutorial="missao-nova" className="rounded-full font-bold" onClick={abrirNova}>
               <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               Nova missão
             </Button>

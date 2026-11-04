@@ -4,9 +4,10 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.api.deps import get_session, require_professor
-from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba
+from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba, SecaoSaida
 from app.services.escriba import (
     DESTINOS_DO_CONSOLE,
+    TUTORIAIS_DO_CONSOLE,
     EscribaIndisponivel,
     EscribaService,
     TurmaNaoPermitida,
@@ -325,8 +326,87 @@ async def test_destinos_saem_filtrados_pela_lista_fechada(monkeypatch, pergunta)
 
     r = await service.perguntar("prof-1", PerguntaEscriba(pergunta=pergunta, classe_id=54))
 
-    # Sem repetidos, sem o que não é do console (ou é só do dono), no máximo 3.
-    assert r.destinos == ["economia.valores", "trilha", "notas"]
+    # Sem repetidos e sem o que não é do console (ou é só do dono).
+    assert r.destinos == ["economia.valores", "trilha", "notas", "eventos"]
+
+
+@pytest.mark.asyncio
+async def test_sem_destinos_do_modelo_o_botao_sai_do_texto(monkeypatch) -> None:
+    llm = AsyncMock()
+    llm.ainvoke_structured.return_value = EscribaSaida(
+        resposta="Em Economia > Prazos e tempo ajuste os limites. Depois, em Turmas, confira as matrículas e veja as Notas e Metas."
+    )
+    service, _ = _servico(monkeypatch, llm)
+
+    r = await service.perguntar("prof-1", PerguntaEscriba(pergunta="como usar a aba de economia?", classe_id=54))
+
+    # "Notas" e "Metas" sem "em"/"aba"/"Economia >" são palavras da frase, não botões.
+    assert r.destinos == ["economia.prazos", "classes"]
+
+
+@pytest.mark.asyncio
+async def test_secoes_saem_com_o_destino_de_cada_uma_e_a_resposta_fica_inteira(monkeypatch) -> None:
+    llm = AsyncMock()
+    llm.ainvoke_structured.return_value = EscribaSaida(
+        resposta="A economia tem três partes.",
+        secoes=[
+            SecaoSaida(titulo="Valores", texto="Ajuste pontos e moedas."),
+            SecaoSaida(titulo="Vender itens", texto="Em Economia > Loja defina preços.", destino="/console/admin"),
+            SecaoSaida(titulo="Fundo", texto="Meta coletiva.", destino="economia.fundo"),
+            SecaoSaida(titulo="", texto="sem título some"),
+            SecaoSaida(titulo="Próximo passo", texto="Revise antes de abrir as atividades."),
+        ],
+    )
+    service, _ = _servico(monkeypatch, llm)
+
+    r = await service.perguntar("prof-1", PerguntaEscriba(pergunta="como usar a aba de economia?", classe_id=54))
+
+    assert r.introducao == "A economia tem três partes."
+    assert [(s.titulo, s.destino) for s in r.secoes] == [
+        ("Valores", "economia.valores"),
+        ("Vender itens", "economia.loja"),
+        ("Fundo", "economia.fundo"),
+        ("Próximo passo", None),
+    ]
+    assert r.destinos == ["economia.valores", "economia.loja", "economia.fundo"]
+    # Histórico e console antigo leem só `resposta`: nada das seções pode faltar nela.
+    assert "Vender itens: Em Economia > Loja defina preços." in r.resposta
+
+
+def test_ref_vira_nome_dentro_da_secao() -> None:
+    from app.services.escriba import _montar_resposta
+
+    saida = EscribaSaida(resposta="Dois alunos.", secoes=[SecaoSaida(titulo="A1 parado", texto="A1 está sem acessar.")])
+    r = _montar_resposta(saida, [54], datetime.now(UTC), {"A1": "Ana"})
+
+    assert r.secoes[0].titulo == "Ana parado"
+    assert r.secoes[0].texto == "Ana está sem acessar."
+    assert "A1" not in r.resposta
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("do_modelo", "esperado"), [("criar_turma", "criar_turma"), (" CRIAR_TURMA ", "criar_turma"), ("hackear", None), ("", None)])
+async def test_tutorial_sai_filtrado_pelo_catalogo(monkeypatch, do_modelo, esperado) -> None:
+    llm = AsyncMock()
+    llm.ainvoke_structured.return_value = EscribaSaida(resposta="Vou te mostrar.", tutorial=do_modelo)
+    service, _ = _servico(monkeypatch, llm)
+
+    r = await service.perguntar("prof-1", PerguntaEscriba(pergunta="como criar uma turma?", classe_id=54))
+
+    assert r.tutorial == esperado
+
+
+def test_tutoriais_batem_com_o_catalogo_do_console() -> None:
+    import re
+    from pathlib import Path
+
+    fonte = (Path(__file__).resolve().parents[2] / "frontend/src/components/console/escriba/tutoriais.ts").read_text(encoding="utf-8")
+    assert set(re.findall(r'^\s*id: "(\w+)",$', fonte, re.MULTILINE)) == TUTORIAIS_DO_CONSOLE
+
+
+def test_modelo_e_obrigado_a_preencher_as_chaves() -> None:
+    # Chave fora de "required" o modelo pode omitir sem erro (#761).
+    assert set(EscribaSaida.model_json_schema()["required"]) >= {"secoes", "destinos", "tutorial"}
 
 
 def test_destinos_batem_com_as_abas_do_console() -> None:

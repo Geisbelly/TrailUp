@@ -20,6 +20,7 @@ os.environ["SUPABASE_SERVICE_ROLE_KEY"] = ""
 os.environ["SUPABASE_ANON_KEY"] = ""
 os.environ["GEMINI_API_KEY"] = ""
 os.environ["OPENAI_API_KEY"] = ""
+os.environ["OPENAI_RAG_API_KEY"] = ""
 os.environ["BRAINHEX_API_URL"] = ""
 
 from collections.abc import AsyncIterator

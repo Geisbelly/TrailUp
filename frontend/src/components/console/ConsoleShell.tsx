@@ -112,7 +112,7 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
           const soNaGaveta = ICONES_NO_TOPO.includes(section.view);
           const Icon = item.icon;
           const aviso = section.view === "recomendacoes" ? selo : null;
-          return <Link key={section.view} to={consolePathForView(section.view)} data-so-na-gaveta={soNaGaveta || undefined} onClick={() => setMenuAberto(false)} aria-current={view === section.view ? "page" : undefined} aria-label={aviso ? `${item.label}, ${aviso} aguardando decisão` : undefined} title={item.label}><Icon size={20} strokeWidth={1.6} /><span>{item.label}</span>{aviso && <span className="console-nav-badge" aria-hidden="true">{aviso}</span>}</Link>;
+          return <Link key={section.view} to={consolePathForView(section.view)} data-so-na-gaveta={soNaGaveta || undefined} data-tutorial={`menu-${section.view}`} onClick={() => setMenuAberto(false)} aria-current={view === section.view ? "page" : undefined} aria-label={aviso ? `${item.label}, ${aviso} aguardando decisão` : undefined} title={item.label}><Icon size={20} strokeWidth={1.6} /><span>{item.label}</span>{aviso && <span className="console-nav-badge" aria-hidden="true">{aviso}</span>}</Link>;
         })}
       </nav>
       <main className="console-main" aria-label={navigation[view].label}>{children}</main>
