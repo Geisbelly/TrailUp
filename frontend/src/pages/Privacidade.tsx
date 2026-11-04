@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
 
-const PRIVACIDADE_ATUALIZADA_EM = "24/10/2026";
+const PRIVACIDADE_ATUALIZADA_EM = "04/11/2026";
 
 const Secao = ({ titulo, children }: { titulo: string; children: ReactNode }) => (
   <section>
@@ -135,16 +135,21 @@ const Privacidade = () => {
                 <li>Supabase (banco de dados, login e arquivos): Estados Unidos</li>
                 <li>Hetzner (servidor da API e análise de imagem da câmera): Estados Unidos</li>
                 <li>Vercel (hospedagem deste site): Estados Unidos e rede global</li>
-                <li>Google Gemini (inteligência artificial, só para maiores de 18 anos confirmados): Estados Unidos e outros países</li>
+                <li>
+                  Google Gemini (inteligência artificial, só para maiores de 18 anos confirmados): Estados Unidos e
+                  outros países. Usamos o plano gratuito, em que o Google pode usar o que é enviado para melhorar
+                  os produtos dele, inclusive com revisão humana
+                </li>
                 <li>OpenAI (inteligência artificial de reserva, só para maiores de 18 anos confirmados): Estados Unidos</li>
-                <li>Cloudflare R2 (armazenamento de arquivos): local em confirmação</li>
+                <li>Cloudflare R2 (armazenamento de arquivos): Estados Unidos (leste da América do Norte)</li>
                 <li>Expo, Google (FCM) e Apple (APNs) (notificações): Estados Unidos</li>
                 <li>Google (envio dos e-mails de contato e de aviso de conta inativa, pelo Gmail): Estados Unidos e outros países</li>
                 <li>Google (login com Google, vídeos do YouTube e fontes) e Microsoft (visualização de documentos)</li>
               </Lista>
               <p>
-                Estamos formalizando com esses fornecedores as cláusulas contratuais exigidas pela ANPD para
-                a transferência internacional. A lista completa, com finalidade e retenção de cada um, está
+                Ainda não assinamos com esses fornecedores as cláusulas-padrão da ANPD para a transferência
+                internacional: valem os termos e, quando o fornecedor oferece, o acordo de tratamento de dados
+                de cada um. A lista completa, com finalidade e retenção de cada um, está
                 no registro de transferências do projeto e é atualizada sempre que um fornecedor muda.
               </p>
             </Secao>
@@ -188,6 +193,13 @@ const Privacidade = () => {
               <p>
                 Para exercer seus direitos ou tirar dúvidas sobre esta política, use a nossa{" "}
                 <Link to="/contato" className="text-primary hover:underline">página de contato</Link>.
+              </p>
+              <p>
+                Encarregado pelo tratamento de dados pessoais (LGPD, art. 41):{" "}
+                <a href="mailto:geisbelly19@gmail.com" className="text-primary hover:underline">
+                  geisbelly19@gmail.com
+                </a>
+                .
               </p>
             </Secao>
 
