@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { PayloadDoEvento, StatusDoEvento } from "./evento";
-import type { AlunoNoEvento, PainelDurante, SituacaoDoAluno } from "./durante";
+import { criteriosDoRank, type CriterioDoRank, type PayloadDoEvento, type StatusDoEvento } from "./evento";
+import type { AlunoNoEvento, Inscricao, PainelDurante, SituacaoDoAluno } from "./durante";
 import type { LinhaDeGuilda, LinhaDeResultado } from "./resultado";
 
 // `eventos_classe` e as funções `evento_classe_*` são novas (migrations 20261017_01/02) e não estão
@@ -18,6 +18,8 @@ export type Evento = {
   modalidadeGuilda: boolean;
   guildaTamanhoMax: number | null;
   pecas: string[];
+  /** Critérios do rank do evento (`20261104_01`). Vazio = `ranqueada`. */
+  arenaCriterios: CriterioDoRank[];
   /** Ids das missões ligadas (peça "Missões"). */
   missoes: number[];
   pontos: number;
@@ -41,6 +43,7 @@ type LinhaDeEvento = {
   modalidade_guilda: boolean;
   guilda_tamanho_max: number | null;
   pecas: unknown;
+  arena_criterios?: unknown;
   pontos: number | null;
   moedas: number | null;
   medalha_participacao: boolean;
@@ -50,7 +53,7 @@ type LinhaDeEvento = {
 };
 
 const COLUNAS =
-  "id, classe_id, topico_id, titulo, descricao, status, inicio, fim, modalidade_guilda, guilda_tamanho_max, pecas, pontos, moedas, medalha_participacao, medalha_destaque, recompensa, abrir_no_inicio";
+  "id, classe_id, topico_id, titulo, descricao, status, inicio, fim, modalidade_guilda, guilda_tamanho_max, pecas, arena_criterios, pontos, moedas, medalha_participacao, medalha_destaque, recompensa, abrir_no_inicio";
 
 const STATUS: StatusDoEvento[] = ["rascunho", "aberto", "encerrado"];
 
@@ -68,6 +71,7 @@ export function mapearEvento(l: LinhaDeEvento, missoes: number[] = []): Evento {
     modalidadeGuilda: !!l.modalidade_guilda,
     guildaTamanhoMax: l.guilda_tamanho_max,
     pecas: Array.isArray(l.pecas) ? l.pecas.filter((p): p is string => typeof p === "string") : [],
+    arenaCriterios: Array.isArray(l.arena_criterios) ? criteriosDoRank(l.arena_criterios.filter((c): c is string => typeof c === "string")) : [],
     missoes,
     pontos: Number(l.pontos ?? 0),
     moedas: Number(l.moedas ?? 0),
@@ -259,4 +263,17 @@ export async function lerDurante(eventoId: string): Promise<PainelDurante> {
   const { data, error } = await supabase.rpc("evento_classe_durante" as never, { p_evento_id: eventoId } as never);
   if (error) throw error;
   return mapearDurante((data ?? null) as Record<string, unknown> | null);
+}
+
+/** Quem entrou no rank do evento. O professor lê pela RLS (`evento_inscricoes_sel`); só a RPC escreve. */
+export async function lerInscritos(eventoId: string): Promise<Inscricao[]> {
+  const { data, error } = await supabase
+    .from("evento_inscricoes" as never)
+    .select("aluno_id, inscrito_em")
+    .eq("evento_id", eventoId);
+  if (error) throw error;
+  return ((data ?? []) as unknown as { aluno_id: string; inscrito_em: string }[]).map((l) => ({
+    alunoId: String(l.aluno_id),
+    inscritoEm: l.inscrito_em,
+  }));
 }

@@ -34,6 +34,7 @@ const formularioDe = (e: Evento): FormularioDeEvento => ({
   topicoId: e.topicoId ? String(e.topicoId) : "",
   pecas: e.pecas as ChaveDePeca[],
   missoesIds: e.missoes,
+  arenaCriterios: e.arenaCriterios,
   modalidadeGuilda: e.modalidadeGuilda,
   guildaTamanhoMax: e.guildaTamanhoMax ? String(e.guildaTamanhoMax) : "",
   pontos: String(e.pontos),

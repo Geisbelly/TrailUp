@@ -8,12 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  CRITERIO_PADRAO_DO_RANK,
+  CRITERIOS_DO_RANK,
   DESCRICAO_MAX,
   PECAS_DO_EVENTO,
   RECOMPENSA_MAX,
   TITULO_MAX,
   validarEvento,
   type ChaveDePeca,
+  type CriterioDoRank,
   type ErrosDoEvento,
   type FormularioDeEvento,
   type PayloadDoEvento,
@@ -54,6 +57,8 @@ export function FormularioDoEvento({
   const alterar = (parcial: Partial<FormularioDeEvento>) => setForm((f) => ({ ...f, ...parcial }));
   const alternarMissao = (id: number, ligada: boolean) =>
     alterar({ missoesIds: ligada ? [...form.missoesIds, id] : form.missoesIds.filter((m) => m !== id) });
+  const alternarCriterio = (chave: CriterioDoRank, ligado: boolean) =>
+    alterar({ arenaCriterios: ligado ? [...form.arenaCriterios, chave] : form.arenaCriterios.filter((c) => c !== chave) });
   const alternarPeca = (chave: ChaveDePeca, ligada: boolean) =>
     alterar({ pecas: ligada ? [...form.pecas, chave] : form.pecas.filter((c) => c !== chave) });
 
@@ -160,6 +165,33 @@ export function FormularioDoEvento({
                 </ul>
               )}
               {erros.missoes && <p className="mt-2 text-xs text-destructive">{erros.missoes}</p>}
+            </fieldset>
+          )}
+
+          {form.pecas.includes("arena") && (
+            <fieldset disabled={travado} className="rounded-[14px] border bg-background p-4">
+              <legend className={rotulo}>Rank do evento por</legend>
+              <p className="text-[11.5px] text-muted-foreground">
+                Cada critério marcado vira um ranking. Só aparece quem escolher entrar, e entrar não muda nota nem XP. Depois de aberto, os critérios não mudam.
+              </p>
+              <ul className="mt-2 space-y-1.5">
+                {CRITERIOS_DO_RANK.map((c) => (
+                  <li key={c.chave}>
+                    <label className="flex cursor-pointer items-start gap-3 text-sm">
+                      <Checkbox checked={form.arenaCriterios.includes(c.chave)} onCheckedChange={(v) => alternarCriterio(c.chave, v === true)} className="mt-0.5" />
+                      <span>
+                        <span className="block font-semibold">{c.rotulo}</span>
+                        <span className="block text-[11.5px] text-muted-foreground">{c.ajuda}</span>
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              {form.arenaCriterios.length === 0 && (
+                <p className="mt-2 text-[11.5px] text-muted-foreground">
+                  Sem escolha, o evento abre com {CRITERIOS_DO_RANK.find((c) => c.chave === CRITERIO_PADRAO_DO_RANK)?.rotulo}.
+                </p>
+              )}
             </fieldset>
           )}
 

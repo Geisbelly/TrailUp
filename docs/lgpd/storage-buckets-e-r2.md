@@ -13,6 +13,7 @@ Migrations `api/alembic/versions/20261024_09_buckets_privados.py` (buckets do al
 | Storage `banners_fotos` | idem | banner do perfil | app (o próprio aluno) | sim (`alunos.banner_url`) |
 | R2 | `telemetria/lotes/AAAA/MM/DD/<lote>.json` | lote bruto de telemetria | API (`repositories/telemetria.py`) | `telemetria_lotes.payload->>'_r2'`, até a redação |
 | R2 | `telemetria/eventos/AAAA/MM/DD/<uuid>.json` | evento bruto do app | API | `telemetria_eventos_app.payload->>'_r2'`, até o expurgo |
+| R2 | `pesquisa/<sessoes\|lotes\|eventos>/<aluno>/AAAA/MM/DD/<id>.json` | **arquivo da pesquisa** (#17): cópia de cada sessão, lote e evento de quem consentiu pesquisa, com o payload bruto | Edge Function `pesquisa-arquivar` (pg_cron, `20261104_02`) | sim (`pesquisa_arquivo.caminho`). **Nunca sai por prazo**, só com a conta do aluno |
 | Storage `conteudos` (e R2) | `<uid do professor>/<tópico>/<ts>_<nome>` | upload do professor (arquivo do conteúdo, mídia de questão, imagem de card, fonte da personalização) | console | sim (`conteudos.conteudo`, `conteudos.metadata.files[].path`/`media_storage_path`, `midias.url`, `questoes.midia_url`, `cards.imagem_url`, `fontes_personalizacao`) |
 
 ## Buckets privados
@@ -65,7 +66,7 @@ O alembic roda no startup da API, então a migration só cria as funções e as 
 
 ## Ciclo de vida do R2
 
-**Regra:** só a telemetria bruta expira sozinha. Nada que o banco referencia tem expiração automática. Esses arquivos saem pelo expurgo (`retencao_fila_externa`), que confere se outra linha ainda usa o arquivo.
+**Regra:** só a telemetria bruta expira sozinha. Nada que o banco referencia tem expiração automática. O arquivo da pesquisa (`pesquisa/`) não expira nunca: é a base da pesquisa, e só sai quando o aluno pede exclusão — a conta apagada leva as linhas de `pesquisa_arquivo` e o gatilho põe os objetos na fila (`api/tests/test_r2_ciclo_de_vida.py` garante que nenhuma regra o alcança). Esses arquivos saem pelo expurgo (`retencao_fila_externa`), que confere se outra linha ainda usa o arquivo.
 
 | Regra | Prefixo | Expira | Por quê |
 |---|---|---|---|

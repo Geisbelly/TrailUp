@@ -634,6 +634,20 @@ Cada perfil carrega:
   `notificacoes_dispositivos` que eu havia criado foi descartada em
   `20260826_07` por duplicá-la), `aluno_sessoes_app` (histórico de login) e
   `aluno_atividade_diaria` (tempo de uso por dia).
+- `pesquisa_arquivo` — **arquivo da pesquisa no R2** (`20261104_02`, #17). O R2 em `pesquisa/` é a
+  base da pesquisa: cada sessão, lote e evento de quem consentiu pesquisa
+  (`aluno_finalidade_permitida(aluno, 'pesquisa')`) é copiado para lá pela Edge Function
+  `pesquisa-arquivar`, que o pg_cron dispara a cada 10 min. Arquivar não tem modelo, então não passa
+  pela API. Duas regras que não se negociam:
+  - **prazo nunca apaga o arquivo.** A retenção só tira do Postgres a telemetria de quem consentiu
+    depois que a cópia existe (`pesquisa_arquivo_pode_sair`, no `filtro` das políticas), e nada de
+    `pesquisa/` entra na fila de exclusão por prazo nem no ciclo de vida do R2;
+  - **pedido do aluno apaga.** A conta apagada leva as linhas em cascata, e o gatilho põe os objetos
+    na `retencao_fila_externa`.
+
+  `telemetria/` (o payload que a API tira do Postgres) **não** é o arquivo: é armazenamento primário
+  e segue o prazo. Sem FK para turma de propósito — apagar a turma apaga a telemetria em cascata, e o
+  arquivo tem de sobreviver a isso.
 - `personalizacao_item_progresso` — progresso por item (merge: percentual/acertos = máx, tempo = soma).
 - `aluno_perfil`, `perfil` — perfis BrainHex e afinidades.
 

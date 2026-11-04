@@ -90,3 +90,13 @@ def test_uploads_incompletos_sao_abortados_em_todo_o_bucket():
     gerais = [r for r in _regras() if r["conditions"]["prefix"] == "" and "abortMultipartUploadsTransition" in r]
     assert gerais and all("deleteObjectsTransition" not in r for r in gerais)
     assert gerais[0]["abortMultipartUploadsTransition"]["condition"]["maxAge"] <= 7 * DIA
+
+
+def test_arquivo_da_pesquisa_nunca_expira():
+    """`pesquisa/` e' a base da pesquisa (20261104_02): so' sai a pedido do aluno, pela fila da
+    retencao - nunca por regra de idade do R2. Regra com prefixo vazio ou `pesquisa/...` que apague
+    objeto alcancaria o arquivo inteiro."""
+    arquivo = "pesquisa/lotes/0b6c1d7e-2f3a-4b5c-8d9e-0f1a2b3c4d5e/2026/10/14/x.json"
+    for regra in _regras():
+        if "deleteObjectsTransition" in regra:
+            assert not arquivo.startswith(regra["conditions"]["prefix"]), regra["id"]

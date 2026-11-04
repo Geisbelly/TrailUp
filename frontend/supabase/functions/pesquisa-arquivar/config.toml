@@ -1,0 +1,4 @@
+[functions.pesquisa-arquivar]
+# Quem chama e' o pg_cron, sem JWT de usuario. A autorizacao e' o header
+# `x-trailup-segredo`, conferido na propria funcao contra PESQUISA_ARQUIVO_SEGREDO.
+verify_jwt = false
