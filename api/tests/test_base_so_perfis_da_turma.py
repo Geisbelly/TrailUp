@@ -27,6 +27,17 @@ from app.services.personalizacao_jobs import (
     _pular_base_de_perfil_ausente,
 )
 
+
+@pytest.fixture(autouse=True)
+def _enfileirar_sem_trava(monkeypatch):
+    """A trava so existe num Postgres de verdade: aqui a sessao e' um `object()`.
+    A corrida e' medida em `test_e2e_job_manual_um_por_pedido.py`."""
+    monkeypatch.setattr(
+        "app.repositories.personalizacao_jobs.PersonalizacaoJobsRepository.travar_enfileiramento",
+        AsyncMock(return_value=None),
+    )
+
+
 _LISTAR = (
     "app.repositories.conteudo_classe.ConteudoClasseRepository."
     "listar_alunos_classe_com_perfil_dominante"

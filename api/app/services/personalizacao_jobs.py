@@ -1046,6 +1046,7 @@ async def enqueue_personalizacao_job(
     # proprios e o professor via o topico errado "regenerando" no lugar dele.
     requested_topico_ids = sorted(set(resolved_topicos))
     requested_conteudo_ids = _normalized_id_list(conteudo_ids)
+    await repo.travar_enfileiramento(kind=kind, classe_id=classe_id, aluno_id=scoped_aluno_id)
     for candidate in await repo.list_open_jobs_by_payload(
         kind=kind,
         aluno_id=scoped_aluno_id,
