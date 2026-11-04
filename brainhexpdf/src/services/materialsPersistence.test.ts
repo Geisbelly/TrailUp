@@ -412,3 +412,61 @@ test("emFilaPorPersonalizacao: falha de uma gravacao nao trava as seguintes", as
   assert.equal(await depois, 2);
   assert.deepEqual(ordem, ["a", "b"]);
 });
+
+const CHAMADAS = [
+  { etapa: "bloco" as const, slides: 4, resultado: "truncado" as const, modelo: "gemini-3.1-flash-lite", finishReason: "MAX_TOKENS", tokensSaida: 32753 },
+  { etapa: "bloco" as const, slides: 4, resultado: "ok" as const, modelo: "gemini-3.1-flash-lite", finishReason: "STOP", tokensSaida: 8800, slidesRecebidos: 4 },
+];
+
+test("#775: parte que deu certo grava as chamadas ao modelo", async () => {
+  const { client, calls } = fakeClient({
+    selectRow: { aluno_id: "aluno-1", conteudo_id: 282, materiais: { apresentacao: { partes: [] } } },
+  });
+  await persistApresentacaoResult(client, {
+    fence: { personalizacaoId: 42, cicloId: "ciclo-1", sourceHash: "hash-abc" },
+    versionMetadata: VERSAO,
+    bucket: "conteudo_aluno",
+    storagePath: "p/2.html",
+    presentationUrl: "https://storage/2.html",
+    failure: null,
+    ordem: 2,
+    totalPartes: 8,
+    chamadas: CHAMADAS,
+  });
+  const parte = (calls.rpc[0].args.p_updates as any).apresentacao.partes.find((p: any) => p.ordem === 2);
+  assert.deepEqual(parte.chamadas, CHAMADAS);
+  assert.equal(parte.failure, undefined);
+});
+
+test("#775: deck de uma parte grava as chamadas na apresentacao", async () => {
+  const { client, calls } = fakeClient({ selectRow: { aluno_id: "aluno-1", conteudo_id: 282, materiais: {} } });
+  await persistApresentacaoResult(client, {
+    fence: { personalizacaoId: 42, cicloId: "ciclo-1", sourceHash: "hash-abc" },
+    versionMetadata: VERSAO,
+    bucket: "conteudo_aluno",
+    storagePath: "p/1.html",
+    presentationUrl: null,
+    failure: { stage: "generate", error: "Blocos que falharam: 1 por cota." },
+    ordem: 1,
+    totalPartes: 1,
+    chamadas: CHAMADAS,
+  });
+  const apresentacao = (calls.rpc[0].args.p_updates as any).apresentacao;
+  assert.deepEqual(apresentacao.chamadas, CHAMADAS);
+  assert.equal(apresentacao.metadata.status, "failed");
+});
+
+test("#775: sem chamadas (rota antiga, falha de validacao) nao grava a chave", async () => {
+  const { client, calls } = fakeClient({ selectRow: { aluno_id: "aluno-1", conteudo_id: 282, materiais: {} } });
+  await persistApresentacaoResult(client, {
+    fence: { personalizacaoId: 42, cicloId: "ciclo-1", sourceHash: "hash-abc" },
+    versionMetadata: VERSAO,
+    bucket: "conteudo_aluno",
+    storagePath: "p/1.html",
+    presentationUrl: "https://storage/1.html",
+    failure: null,
+    ordem: 1,
+    totalPartes: 1,
+  });
+  assert.equal("chamadas" in (calls.rpc[0].args.p_updates as any).apresentacao, false);
+});

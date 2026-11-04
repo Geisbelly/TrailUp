@@ -28,6 +28,8 @@ import { useGargalosDePersonalizacao } from "./dashboard/useGargalosDePersonaliz
 import { useKpisPorTopico } from "./dashboard/useKpisPorTopico";
 import { useKpisOperacionais } from "./dashboard/useKpisOperacionais";
 import { useDisponibilidade } from "./dashboard/useDisponibilidade";
+import { CHAVE } from "./dashboard/disponibilidade";
+import { useNMinimo } from "./dashboard/useNMinimo";
 import DistribuicaoNotas from "./dashboard/DistribuicaoNotas";
 import TabelaAlunos from "./dashboard/TabelaAlunos";
 import type { SegmentoPerfil } from "./dashboard/graficos";
@@ -515,6 +517,7 @@ export default function DashboardSection() {
   const inatividadeDaTurmaPct =
     hasTurmaKpis && turmaResumo.total_alunos > 0 ? (100 * turmaResumo.alunos_inativos) / turmaResumo.total_alunos : null;
   const disponibilidade = useDisponibilidade(ultimaCarga);
+  const nMinimoInatividade = useNMinimo(CHAVE.inatividade, ultimaCarga);
   const turmaUnica = selectedClassFilter === TODAS_AS_TURMAS ? null : Number(selectedClassFilter);
   const kpisPorTopico = useKpisPorTopico(Number.isFinite(turmaUnica) ? turmaUnica : null, janelaTemporal);
   const riscoDeReprovacao = useRiscoDeReprovacao(Number.isFinite(turmaUnica) ? turmaUnica : null);
@@ -604,6 +607,7 @@ export default function DashboardSection() {
                   segmento={perfilSegmentFilter}
                   onSegmentoChange={setPerfilSegmentFilter}
                   media={inatividadeDaTurmaPct}
+                  nMinimo={nMinimoInatividade}
                 />
               </div>
 

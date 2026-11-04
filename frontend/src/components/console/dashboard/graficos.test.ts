@@ -69,6 +69,12 @@ describe("inatividadePorPerfil", () => {
     const r = inatividadePorPerfil([linhaPerfil({ total_alunos_segmento: 4, alunos_inativos: 4 })], "majoritario");
     expect(r[0]).toMatchObject({ valor: null, alunos: 4 });
   });
+
+  it("o n mínimo do catálogo manda sobre o padrão", () => {
+    const linhas = [linhaPerfil({ total_alunos_segmento: 6, alunos_inativos: 3 })];
+    expect(inatividadePorPerfil(linhas, "majoritario", 8)[0].valor).toBeNull();
+    expect(inatividadePorPerfil(linhas, "majoritario", 6)[0].valor).toBe(50);
+  });
 });
 
 describe("tomDaFaixa", () => {

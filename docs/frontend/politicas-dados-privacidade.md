@@ -1,6 +1,6 @@
 # Políticas de Dados e Privacidade
 
-Atualizado em: 2026-11-02
+Atualizado em: 2026-11-03
 
 ## 1. Objetivo
 
@@ -66,7 +66,7 @@ Vale para o que sai do banco como número de turma ou de grupo (estudo de efetiv
 | Regra | Situação |
 | --- | --- |
 | **Sem identificador direto.** Agregado não devolve `aluno_id`, nome nem e-mail. | Cumprida em `metricas_estudo_coortes`, `metricas_engajamento_turma`, `metricas_engajamento_coortes_turma`, `personalizacao_kpis_operacionais` e `painel_tecnico`. |
-| **Supressão de grupo pequeno.** Célula com menos que `n_minimo` alunos (padrão **5**, `metricas_catalogo`) volta nula **inteira**, não só as taxas. | Cumprida no estudo (`metricas_estudo_coortes`; os campos `lotes_por_plataforma` e `ciclos_personalizacao` escapavam e foram corrigidos na `20261102_24`). As RPCs de engajamento da turma só marcam `amostra_pequena`, porque o único leitor é o professor dono, que já vê cada aluno. |
+| **Supressão de grupo pequeno.** Célula com menos que `n_minimo` alunos (padrão **5**, `metricas_catalogo`) volta nula **inteira**, não só as taxas. | Cumprida no estudo (`metricas_estudo_coortes`; os campos `lotes_por_plataforma` e `ciclos_personalizacao` escapavam e foram corrigidos na `20261102_24`). O gráfico de inatividade por perfil do console lê o mesmo `n_minimo` do catálogo (`useNMinimo`); o `5` no código é só o padrão se a leitura falhar, como o `COALESCE` das RPCs. As RPCs de engajamento da turma só marcam `amostra_pequena`, porque o único leitor é o professor dono, que já vê cada aluno. |
 | **Acesso.** Toda RPC de turma confere `app_classes_do_professor()` e responde 42501 a quem não é dono; o painel técnico confere `app_e_dono()`. | Cumprida. Não existe papel "analítico" separado: qualquer professor dono lê o agregado da própria turma. |
 | **Retenção da telemetria bruta.** | Definida na seção 4; job em modo `simular`. |
 | **Quem não consentiu fica fora do agregado.** | **Não cumprida.** `aluno_finalidade_permitida` só barra a ingestão do modo restrito e do menor (responsável); para maior de idade não lê `consentimento_telemetria`, e o estudo usa todo o `classe_aluno` pareado, não `vw_alunos_pesquisa_elegiveis`. |
@@ -79,7 +79,6 @@ Fora do escopo desta regra, de propósito: telas e exports **do professor sobre 
 2. Fazer o consentimento do maior de idade barrar a ingestão e os agregados, e o estudo passar a usar só `vw_alunos_pesquisa_elegiveis`. Isso muda a população do TCC.
 3. Papel analítico separado do professor dono.
 4. **Finalidade e base legal** de cada categoria: dependem de validação jurídica (#632). Este documento descreve o que o sistema faz, não declara base legal.
-5. Um único lugar para o `n_minimo`: hoje ele está em `metricas_catalogo` e como `5` fixo em código do console (`graficos.ts`).
 
 ## Atualizacoes (2026-04-13)
 

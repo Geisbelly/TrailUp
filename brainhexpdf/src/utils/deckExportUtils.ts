@@ -3,6 +3,7 @@ import { generateMedievalSvgDivider } from '../components/ThematicDecorations';
 import { getProfileCoverCopy } from './profileCoverCopy';
 import { DECK_PREFS_STORAGE_KEY, getDeckScopedCss, getDeckShellCss } from './deckStyles';
 import { emblemSvg, getDeckProfileIdentity, guideInitials } from './deckProfileIdentity';
+import { buildFallbackIllustrationSvgMarkup, isFallbackIllustrationUri } from './slideIllustrations';
 
 // Deck HTML do aluno (o arquivo que o /api/v1/render-and-store sobe para o
 // R2 e que o app abre num WebView e o console num iframe).
@@ -19,7 +20,7 @@ import { emblemSvg, getDeckProfileIdentity, guideInitials } from './deckProfileI
 //    viram marcacao).
 //
 // O que NAO mudou e' contrato com o app: deck/STORAGE_KEY embutidos,
-// mensagens trailup:progress (mesmas chaves e mesmas regras de XP) e os
+// mensagens trailup:progress (mesmas chaves) e os
 // parametros hideQuiz/hideChecklist/hideNotes.
 
 function escapeHtmlText(value: unknown): string {
@@ -147,7 +148,12 @@ export function generateThemedSlideHtml(
     : allReferenceImages.length === 1
       ? `
       <figure class="figure">
-        <img src="${escapeHtmlAttribute(allReferenceImages[0])}" alt="${referenceImageAlt}" />
+        ${isFallbackIllustrationUri(allReferenceImages[0])
+          // O SVG de reserva entra inline, redesenhado aqui a partir do slide
+          // (nunca o conteudo do data URI): como <img> ele nao enxerga as
+          // variaveis do tema e ficava preso ao modo escuro.
+          ? `<div class="figure-svg">${buildFallbackIllustrationSvgMarkup(s, deck.targetProfile, String(idx))}</div>`
+          : `<img src="${escapeHtmlAttribute(allReferenceImages[0])}" alt="${referenceImageAlt}" />`}
         <figcaption>${referenceImageCaption}</figcaption>
       </figure>`
       : '';
@@ -195,7 +201,6 @@ export function generateThemedSlideHtml(
       <section class="quiz-widget-container widget" aria-labelledby="${questionId}">
         <div class="widget-head">
           <p class="widget-label">Desafio · Quiz</p>
-          <span class="xp-tag">+150 XP</span>
         </div>
         <p class="widget-question" id="${questionId}">${rich(q.question)}</p>
         <div class="quiz-options-group option-list" id="quiz-options-group-${idx}" role="group" aria-labelledby="${questionId}">
@@ -242,7 +247,6 @@ export function generateThemedSlideHtml(
               >
                 <span class="chk-status-box check-box" aria-hidden="true">${cidx + 1}</span>
                 <span class="chk-text check-text">${rich(item.text)}</span>
-                <span class="chk-xp-badge xp-tag">+${Number(item.xp) || 50} XP</span>
               </button>
             </li>`).join('')}
         </ul>
@@ -268,7 +272,6 @@ export function generateThemedSlideHtml(
             >
               <span class="choice-top">
                 <span class="choice-title">${rich(c.label)}</span>
-                <span class="xp-tag">+${Number(c.xpReward) || 100} XP</span>
               </span>
               <span class="choice-desc">${rich(c.description)}</span>
             </button>`).join('')}
@@ -364,14 +367,14 @@ export function generateThemedSlideHtml(
       </section>`;
   }
   // I. Ideias-chave (quando nao ha outro widget). Vale tambem no fechamento:
-  // la' sempre foram marcaveis e davam XP (25 cada), e o app soma esse XP.
+  // la' sempre foram marcaveis; marcar chega ao sistema como 1 de 1.
   else if (s.keyTakeaways && s.keyTakeaways.length > 0) {
     const takeawaysLabel = s.type === 'epic_conclusion' || s.type === 'reward_certificate' ? 'O que levar deste tópico' : 'Ideias-chave';
     interactiveWidgetHtml = `
       <section class="widget" aria-label="${takeawaysLabel}">
         <div class="widget-head">
           <p class="widget-label">${takeawaysLabel}</p>
-          <p class="widget-hint">Marque o que você domina (+25 XP)</p>
+          <p class="widget-hint">Marque o que você domina</p>
         </div>
         <ul class="option-list">
           ${s.keyTakeaways.map((t, tidx) => `
@@ -385,7 +388,6 @@ export function generateThemedSlideHtml(
               >
                 <span class="takeaway-status-box check-box" aria-hidden="true">${tidx + 1}</span>
                 <span class="takeaway-text check-text">${rich(t)}</span>
-                <span class="takeaway-xp-badge xp-tag">+25 XP</span>
               </button>
             </li>`).join('')}
         </ul>
@@ -415,7 +417,6 @@ export function generateThemedSlideHtml(
       <section class="unique-interactive-widget widget" aria-labelledby="unique-title-${idx}">
         <div class="widget-head">
           <p class="widget-label">${uniqueTypeLabel[uniqueInteractive.type] || 'Desafio interativo'}</p>
-          <span class="xp-tag">+${Number(uniqueInteractive.xpReward) || 100} XP</span>
         </div>
         <h3 class="widget-title" id="unique-title-${idx}">${rich(uniqueInteractive.title)}</h3>
         ${uniqueInteractive.badge ? `<p class="widget-hint">${rich(uniqueInteractive.badge)}</p>` : ''}
@@ -487,7 +488,7 @@ export function generateThemedSlideHtml(
         aria-expanded="false"
         aria-controls="secret-content-${idx}"
         onclick="revealSecretLore(this)"
-      >${rich(s.secretLore.hint || 'Revelar um segredo')} <span class="xp-tag">+100 XP</span></button>
+      >${rich(s.secretLore.hint || 'Revelar um segredo')}</button>
       <div class="secret-revealed-content note" id="secret-content-${idx}" hidden>
         <span class="note-label">Segredo revelado</span>
         <p>${rich(s.secretLore.revealedContent)}</p>
@@ -571,12 +572,17 @@ export function generateThemedSlideHtml(
   }
   // --- Slides de conteudo ------------------------------------------------
   else {
-    const hasAside = !!interactiveWidgetHtml || !!referenceImageHtml;
+    const hasMainContent = paragraphs.length > 0 || !!s.writtenExample || !!s.codeSnippet || !!s.stickyNote || !!s.secretLore || !!s.quote;
+    // Parte so' de widget (slidePagination.ts): coluna unica, centrada, em
+    // vez de um widget espremido ao lado de uma coluna vazia.
+    const soloWidget = !hasMainContent && !referenceImageHtml && !!interactiveWidgetHtml;
+    const hasAside = !soloWidget && (!!interactiveWidgetHtml || !!referenceImageHtml);
     // Slide com pouco conteudo (tipico de uma "Parte 2/2" apos a divisao
     // por paragrafo, ver slidePagination.ts) ganha fonte maior, em vez de
     // texto pequeno boiando num palco de altura fixa.
     const isSparse =
       !hasAside &&
+      !soloWidget &&
       paragraphs.length <= 1 &&
       !s.writtenExample &&
       !s.codeSnippet &&
@@ -593,7 +599,7 @@ export function generateThemedSlideHtml(
       ${quoteHtml}`;
 
     bodyHtml = `
-      <article class="slide${isSparse ? ' slide--sparse' : ''}" aria-labelledby="${titleId}">
+      <article class="slide${isSparse ? ' slide--sparse' : ''}${soloWidget ? ' slide--solo' : ''}" aria-labelledby="${titleId}">
         <header class="slide-head">
           ${s.subtopic ? `<p class="slide-kicker">${rich(s.subtopic)}</p>` : ''}
           <h2 class="slide-title" id="${titleId}" tabindex="-1">${rich(s.title)}</h2>
@@ -602,7 +608,7 @@ export function generateThemedSlideHtml(
         </header>
         ${guideCalloutHtml(guideName, guideSpeech, s.thematicStorytelling?.storyArcPhase)}
         <div class="slide-body${hasAside ? ' has-aside' : ''}">
-          <div class="slide-main">${mainColumn}</div>
+          <div class="slide-main">${soloWidget ? interactiveWidgetHtml : mainColumn}</div>
           ${hasAside ? `<div class="slide-aside">${referenceImageHtml}${interactiveWidgetHtml}</div>` : ''}
         </div>
       </article>`;
@@ -622,9 +628,6 @@ export function generateInteractiveHtml(
 ): string {
   const identity = getDeckProfileIdentity(deck.targetProfile);
   const totalSlides = deck.slides?.length || 0;
-  // So' no cabecalho, ao lado do XP ja obtido (ver
-  // docs/superpowers/specs/2026-08-24-capa-final-redesign-design.md).
-  const estimatedTotalXp = (totalSlides || 8) * 150;
   const slideTitles = (deck.slides || []).map((sl) => plain(sl.title));
 
   return `<!DOCTYPE html>
@@ -686,9 +689,6 @@ export function generateInteractiveHtml(
       </div>
 
       <div class="deck-controls">
-        <span class="xp-chip" id="xp-badge-container" title="XP desta apresentação (salvo automaticamente)">
-          <span class="sr-only">XP: </span><span id="xp-counter">0</span><span class="xp-total">/${estimatedTotalXp}</span>&nbsp;XP
-        </span>
         <button type="button" class="icon-btn" id="btn-toc" aria-haspopup="dialog" aria-controls="dlg-toc" onclick="openDialog('dlg-toc')" aria-label="Sumário dos slides">
           ${UI_ICONS.toc}<span class="btn-label">Sumário</span>
         </button>
@@ -773,7 +773,7 @@ export function generateInteractiveHtml(
             <label><input type="radio" name="pref-sons" value="desligado" /><span>Desligados</span></label>
           </div>
         </fieldset>
-        <button type="button" id="btn-reset" class="btn btn-secondary" onclick="resetDeckProgress()">${UI_ICONS.restart}<span>Recomeçar respostas e XP</span></button>
+        <button type="button" id="btn-reset" class="btn btn-secondary" onclick="resetDeckProgress()">${UI_ICONS.restart}<span>Recomeçar respostas</span></button>
       </div>
     </dialog>
   </div>
@@ -787,6 +787,11 @@ export function generateInteractiveHtml(
     let isNarrating = false;
     let slideDirection = 'next';
     let firstRender = true;
+    // Paginas do slide atual (paginateCurrentSlide): 0..pageCount-1.
+    let currentPage = 0;
+    let pageCount = 1;
+    let slidePages = null;
+    let goToLastPage = false;
 
     function prefersReducedMotion() {
       const prefs = window.__deckPrefs || {};
@@ -838,7 +843,14 @@ export function generateInteractiveHtml(
       }
     }
 
-    // Reporta XP ganho pro app hospedeiro - o deck NUNCA tem acesso a
+    // Sem XP no deck (04/11): o XP daqui nunca virava ponto do aluno - os
+    // pontos sao 'eventos_aluno', e isto so' grava em
+    // personalizacao_item_progresso - entao o contador prometia o que nao
+    // entregava. As interacoes continuam ligadas ao sistema, agora como
+    // ACERTO: quiz 1 de 1 (certo) ou 0 de 1 (errado); as demais 1 de 1 ao
+    // concluir.
+    //
+    // Reporta o progresso pro app hospedeiro - o deck NUNCA tem acesso a
     // nenhuma credencial/sessao, so emite {itemKey, pontuacaoObtida,
     // pontuacaoMaxima}; quem grava no banco e o app (que ja tem a sessao
     // autenticada do aluno). Funciona nos dois ambientes: nativo injeta
@@ -868,7 +880,7 @@ export function generateInteractiveHtml(
     }
 
     function resetDeckProgress() {
-      if (confirm('Deseja recomeçar todas as respostas e zerar o XP desta apresentação?')) {
+      if (confirm('Deseja recomeçar todas as respostas desta apresentação?')) {
         savedData = {
           totalXp: 0,
           quizAnswers: {},
@@ -884,7 +896,7 @@ export function generateInteractiveHtml(
         updateXpDisplay();
         closeDialog('dlg-reading');
         renderSlide();
-        announce('Respostas e XP recomeçados.');
+        announce('Respostas recomeçadas.');
       }
     }
 
@@ -1048,7 +1060,7 @@ export function generateInteractiveHtml(
       feedback.innerHTML = '';
       const title = document.createElement('p');
       title.className = 'feedback-title';
-      title.textContent = isCorrect ? 'Resposta correta! +150 XP' : 'Ainda não. Tente outra alternativa.';
+      title.textContent = isCorrect ? 'Resposta correta!' : 'Ainda não. Tente outra alternativa.';
       const body = document.createElement('p');
       body.textContent = explanation;
       feedback.appendChild(title);
@@ -1078,11 +1090,9 @@ export function generateInteractiveHtml(
       if (isCorrect) {
         playAudio('correct');
         if (!wasAlreadyRewarded) {
-          totalXp += 150;
           updateXpDisplay();
           triggerConfettiBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, 30);
-          spawnFloatingXp('+150 XP', rect.left + rect.width / 2, rect.top);
-          reportProgressToHost('slide:' + currentIndex + ':quiz', 150, 150);
+          reportProgressToHost('slide:' + currentIndex + ':quiz', 1, 1);
         }
         setOptionState(btnEl, 'correct');
         if (!prefersReducedMotion()) btnEl.classList.add('pop-success');
@@ -1092,6 +1102,9 @@ export function generateInteractiveHtml(
         persistState();
       } else {
         playAudio('wrong');
+        // O erro tambem e' resposta: chega ao sistema como 0 de 1. Quem ja
+        // acertou nao e' rebaixado (o app faz merge pelo maximo por item).
+        if (!wasAlreadyRewarded) reportProgressToHost('slide:' + currentIndex + ':quiz', 0, 1);
         setOptionState(btnEl, 'wrong');
         if (!prefersReducedMotion()) btnEl.classList.add('shake-error');
         showQuizFeedback(feedback, false, explanation);
@@ -1121,7 +1134,7 @@ export function generateInteractiveHtml(
       if (!feedback) return;
       feedback.hidden = false;
       feedback.className = 'feedback feedback--success';
-      feedback.innerHTML = '<p class="feedback-title">Guardião derrotado! +500 XP de vitória</p>';
+      feedback.innerHTML = '<p class="feedback-title">Guardião derrotado!</p>';
       const actions = document.getElementById('boss-actions');
       if (actions) actions.hidden = true;
     }
@@ -1137,11 +1150,10 @@ export function generateInteractiveHtml(
       if (feedback) {
         if (currentBossHp === 0) {
           playAudio('victory');
-          totalXp += 500;
           updateXpDisplay();
-          reportProgressToHost('slide:' + currentIndex + ':boss', 500, 500);
+          reportProgressToHost('slide:' + currentIndex + ':boss', 1, 1);
           triggerConfettiBurst(window.innerWidth / 2, window.innerHeight / 2, 60);
-          spawnFloatingXp('Guardião derrotado! +500 XP', window.innerWidth / 2, window.innerHeight / 2);
+          spawnFloatingXp('Guardião derrotado!', window.innerWidth / 2, window.innerHeight / 2);
           showBossVictory(feedback);
         } else {
           feedback.hidden = false;
@@ -1180,15 +1192,12 @@ export function generateInteractiveHtml(
 
       if (isCompleted) {
         savedData.checklist[storeKey] = false;
-        totalXp = Math.max(0, totalXp - (xp || 50));
         setCheckRow(el, false);
       } else {
         savedData.checklist[storeKey] = true;
-        totalXp += (xp || 50);
-        reportProgressToHost('slide:' + currentIndex + ':checklist:' + realItemId, xp || 50, xp || 50);
+        reportProgressToHost('slide:' + currentIndex + ':checklist:' + realItemId, 1, 1);
         playAudio('checklist');
         triggerConfettiBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, 18);
-        spawnFloatingXp('+' + (xp || 50) + ' XP', rect.left + rect.width / 2, rect.top);
         setCheckRow(el, true);
       }
       updateXpDisplay();
@@ -1204,15 +1213,12 @@ export function generateInteractiveHtml(
 
       if (isMastered) {
         savedData.takeaways[realKeyId] = false;
-        totalXp = Math.max(0, totalXp - (xp || 75));
         setCheckRow(el, false);
       } else {
         savedData.takeaways[realKeyId] = true;
-        totalXp += (xp || 75);
-        reportProgressToHost('slide:' + currentIndex + ':takeaway:' + realKeyId, xp || 75, xp || 75);
+        reportProgressToHost('slide:' + currentIndex + ':takeaway:' + realKeyId, 1, 1);
         playAudio('correct');
         triggerConfettiBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, 20);
-        spawnFloatingXp('+' + (xp || 75) + ' XP', rect.left + rect.width / 2, rect.top);
         setCheckRow(el, true);
       }
       persistState();
@@ -1241,19 +1247,16 @@ export function generateInteractiveHtml(
       savedData.uniqueInteractions[slideIndex] = { note, completed: true };
 
       if (firstCompletion) {
-        const earnedXp = xpReward || 100;
-        totalXp += earnedXp;
-        reportProgressToHost('slide:' + slideIndex + ':unique', earnedXp, earnedXp);
+        reportProgressToHost('slide:' + slideIndex + ':unique', 1, 1);
         playAudio('correct');
         const rect = input.getBoundingClientRect();
         triggerConfettiBurst(rect.left + rect.width / 2, rect.top, 24);
-        spawnFloatingXp('+' + earnedXp + ' XP', rect.left + rect.width / 2, rect.top);
       }
 
       persistState();
       updateXpDisplay();
       if (status) {
-        status.textContent = firstCompletion ? 'Resposta salva e XP conquistado.' : 'Resposta atualizada.';
+        status.textContent = firstCompletion ? 'Resposta salva.' : 'Resposta atualizada.';
         status.className = 'unique-interaction-status status-text is-ok';
       }
     }
@@ -1288,8 +1291,7 @@ export function generateInteractiveHtml(
       // e uma "escolha nova" contra o valor anterior).
       const wasAlreadyChosen = !!savedData.decisions[currentIndex];
       if (!wasAlreadyChosen) {
-        totalXp += (xpReward || 100);
-        reportProgressToHost('slide:' + currentIndex + ':decision:' + choiceId, xpReward || 100, xpReward || 100);
+        reportProgressToHost('slide:' + currentIndex + ':decision:' + choiceId, 1, 1);
         updateXpDisplay();
       }
 
@@ -1303,7 +1305,6 @@ export function generateInteractiveHtml(
         const rect = cardEl.getBoundingClientRect();
         if (!wasAlreadyChosen) {
           triggerConfettiBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, 20);
-          spawnFloatingXp('+' + (xpReward || 100) + ' XP', rect.left + rect.width / 2, rect.top);
         }
         const container = cardEl.closest('.decision-widget-container') || document;
         showDecisionOutcome(container, cardEl, outcome);
@@ -1328,13 +1329,11 @@ export function generateInteractiveHtml(
       const rect = btnEl ? btnEl.getBoundingClientRect() : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
       const wasRevealed = !!savedData.secrets[currentIndex];
       if (!wasRevealed) {
-        totalXp += 100;
         updateXpDisplay();
-        reportProgressToHost('slide:' + currentIndex + ':secret', 100, 100);
+        reportProgressToHost('slide:' + currentIndex + ':secret', 1, 1);
         savedData.secrets[currentIndex] = true;
         persistState();
         triggerConfettiBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, 24);
-        spawnFloatingXp('+100 XP', rect.left + rect.width / 2, rect.top);
       }
       const content = openSecret(btnEl);
       if (content) {
@@ -1466,6 +1465,7 @@ export function generateInteractiveHtml(
         try { localStorage.setItem('${DECK_PREFS_STORAGE_KEY}', JSON.stringify(prefs)); } catch (e) {}
         if (window.__applyDeckPrefs) window.__applyDeckPrefs();
         resizeCanvas();
+        scheduleRepaginate();
       });
     });
 
@@ -1534,10 +1534,220 @@ export function generateInteractiveHtml(
 
     function updateSlideIndicator() {
       const indicator = document.getElementById('slide-indicator');
-      if (indicator) indicator.textContent = 'Slide ' + (currentIndex + 1) + ' de ' + deck.slides.length;
+      if (indicator) {
+        indicator.textContent = 'Slide ' + (currentIndex + 1) + ' de ' + deck.slides.length
+          + (pageCount > 1 ? ' · ' + (currentPage + 1) + '/' + pageCount : '');
+      }
       const bar = document.getElementById('deck-progress-bar');
       if (bar) bar.style.width = (((currentIndex + 1) / Math.max(1, deck.slides.length)) * 100) + '%';
     }
+
+    // ------------------------------------------------------- paginas ----
+    //
+    // O slide que nao cabe no palco e' dividido em PAGINAS no proprio
+    // aparelho, medindo a tela de verdade: a conta do servidor
+    // (slidePagination.ts) nao sabe se o aluno esta no celular em pe, num
+    // tablet ou num notebook, e um orcamento fixo sempre rolava em algum
+    // deles. A pagina so' esconde blocos inteiros (paragrafo, exemplo,
+    // imagem, widget) - nada e' recriado, entao quiz, checklist e estado
+    // salvo continuam funcionando, e o indice do slide (chave do progresso)
+    // nao muda. Refeita ao girar/redimensionar e ao mudar a "Leitura".
+    function pageBlocksOf(stage) {
+      const article = stage.querySelector('article.slide');
+      const body = article ? article.querySelector('.slide-body') : null;
+      if (!body) return null;
+      const main = body.querySelector('.slide-main');
+      const aside = body.querySelector('.slide-aside');
+      const blocks = [];
+      const guide = article.querySelector(':scope > .guide-callout');
+      if (guide) blocks.push({ el: guide, col: 'head' });
+      if (main) {
+        Array.from(main.children).forEach((child) => {
+          if (child.classList.contains('prose') && child.children.length > 1) {
+            Array.from(child.children).forEach((para) => blocks.push({ el: para, col: 'main' }));
+          } else {
+            blocks.push({ el: child, col: 'main' });
+          }
+        });
+      }
+      let figure = null;
+      if (aside) {
+        Array.from(aside.children).forEach((child) => {
+          if (child.matches('figure.figure')) figure = child;
+          else blocks.push({ el: child, col: 'aside' });
+        });
+      }
+      const objective = article.querySelector('.slide-objective');
+      return { article, body, figure, objective, blocks };
+    }
+
+    function stageOverflows(stage) {
+      return stage.scrollHeight > stage.clientHeight + 2;
+    }
+
+    function isTwoColumnLayout(info) {
+      const cols = getComputedStyle(info.body).gridTemplateColumns || '';
+      // Sem regex aqui: este script mora numa template string do TS, e a
+      // barra invertida de um padrao some no HTML gerado.
+      return info.body.classList.contains('has-aside') && cols.split(' ').filter(Boolean).length > 1;
+    }
+
+    // Mostra so' os blocos da pagina. Coluna sem nada visivel vira coluna
+    // unica: um widget sozinho fica largo e centrado, nunca ao lado de uma
+    // coluna vazia. A imagem acompanha toda pagina com texto em duas colunas
+    // (simetria); empilhado (tela estreita) ela fica so' na primeira.
+    function applyPage(info, indices, pageIndex, twoCol) {
+      const visible = new Set(indices);
+      info.blocks.forEach((block, i) => block.el.classList.toggle('is-off-page', !visible.has(i)));
+      // Widget dividido por itens: o cartao aparece (com o rotulo) se algum
+      // item dele estiver na pagina.
+      info.blocks.forEach((block, i) => {
+        if (block.owner && visible.has(i)) block.owner.classList.remove('is-off-page');
+      });
+      info.blocks.forEach((block) => {
+        if (block.owner && !info.blocks.some((b, j) => b.owner === block.owner && visible.has(j))) {
+          block.owner.classList.add('is-off-page');
+        }
+      });
+      const hasMain = indices.some((i) => info.blocks[i].col === 'main');
+      const hasAsideBlock = indices.some((i) => info.blocks[i].col === 'aside');
+      if (info.figure) {
+        const showFigure = twoCol ? (hasMain || !hasAsideBlock) : pageIndex === 0;
+        info.figure.classList.toggle('is-off-page', !showFigure);
+      }
+      // O objetivo e' do slide, nao da pagina: so' a primeira o mostra, e as
+      // seguintes ganham o espaco (no celular deitado ele ocupava metade).
+      if (info.objective) info.objective.classList.toggle('is-off-page', pageIndex > 0);
+      const figureShown = !!info.figure && !info.figure.classList.contains('is-off-page');
+      const solo = !hasMain || !(hasAsideBlock || figureShown);
+      info.body.classList.toggle('is-solo', solo);
+      info.article.classList.toggle('slide--solo', solo && !hasMain);
+    }
+
+    function clearPages(info) {
+      info.blocks.forEach((block) => {
+        block.el.classList.remove('is-off-page');
+        if (block.owner) block.owner.classList.remove('is-off-page');
+      });
+      if (info.figure) info.figure.classList.remove('is-off-page');
+      if (info.objective) info.objective.classList.remove('is-off-page');
+      info.body.classList.remove('is-solo');
+    }
+
+    function paginateCurrentSlide(stage) {
+      slidePages = null;
+      pageCount = 1;
+      const info = pageBlocksOf(stage);
+      if (!info) return;
+      clearPages(info);
+      // Palco escondido ou ainda sem tamanho: nao pagina (refaz no resize).
+      if (stage.clientHeight < 120 || info.blocks.length + (info.figure ? 1 : 0) < 2 || !stageOverflows(stage)) return;
+      const twoCol = isTwoColumnLayout(info);
+      // Empilhado (tela estreita) e' uma coluna so': a imagem vira um bloco
+      // comum, na ordem em que aparece - fixa na primeira pagina, ela mais o
+      // cabecalho e um paragrafo ja passavam da altura de um celular.
+      if (!twoCol && info.figure) {
+        const firstAside = info.blocks.findIndex((b) => b.col === 'aside');
+        info.blocks.splice(firstAside < 0 ? info.blocks.length : firstAside, 0, { el: info.figure, col: 'aside' });
+        info.figure = null;
+      }
+      // Bloco que sozinho ja nao cabe e e' uma lista sem controles (etapas,
+      // colunas, topicos): divide pelos itens. Quiz e checklist ficam
+      // inteiros - esconder opcao de pergunta mudaria a pergunta.
+      for (let i = info.blocks.length - 1; i >= 0; i--) {
+        const block = info.blocks[i];
+        applyPage(info, [i], 0, twoCol);
+        if (!stageOverflows(stage)) continue;
+        if (block.el.querySelector('button, input, select, textarea')) continue;
+        // Uma lista so': na comparacao (uma lista por coluna) dividir uma e
+        // nao a outra desalinharia as colunas.
+        const lists = block.el.matches('ol, ul') ? [block.el] : Array.from(block.el.querySelectorAll('ol, ul'));
+        if (lists.length !== 1) continue;
+        const list = lists[0];
+        const items = list ? Array.from(list.children).filter((li) => li.tagName === 'LI') : [];
+        if (items.length < 2) continue;
+        info.blocks.splice(i, 1, ...items.map((li) => ({ el: li, col: block.col, owner: block.el })));
+      }
+      clearPages(info);
+      const pages = [];
+      let current = [];
+      info.blocks.forEach((_, i) => {
+        applyPage(info, current.concat(i), pages.length, twoCol);
+        if (current.length > 0 && stageOverflows(stage)) {
+          pages.push(current);
+          current = [i];
+        } else {
+          current.push(i);
+        }
+      });
+      if (current.length > 0) pages.push(current);
+      if (pages.length < 2) {
+        clearPages(info);
+        return;
+      }
+      slidePages = { info, pages, twoCol };
+      pageCount = pages.length;
+    }
+
+    function showCurrentPage(moveFocus) {
+      const stage = document.getElementById('slide-stage');
+      if (!stage) return;
+      if (slidePages) {
+        currentPage = Math.min(Math.max(currentPage, 0), pageCount - 1);
+        applyPage(slidePages.info, slidePages.pages[currentPage], currentPage, slidePages.twoCol);
+      } else {
+        currentPage = 0;
+      }
+      fitFigureToStage(stage);
+      stage.scrollTop = 0;
+      updateSlideIndicator();
+      updateNavButtons();
+      if (moveFocus) {
+        const heading = stage.querySelector('.slide-title');
+        if (heading) heading.focus({ preventScroll: true });
+      }
+    }
+
+    // Pagina que ainda rola so' pode ser um bloco que nao se divide. Se a
+    // imagem esta nela, ela encolhe o que falta (ate 80px) em vez de rolar.
+    function fitFigureToStage(stage) {
+      const media = Array.from(stage.querySelectorAll('figure.figure img, figure.figure svg'));
+      media.forEach((m) => { m.style.maxHeight = ''; });
+      const excess = stage.scrollHeight - stage.clientHeight;
+      if (excess <= 2) return;
+      media.filter((m) => m.offsetParent !== null).forEach((m) => {
+        m.style.maxHeight = Math.max(80, m.getBoundingClientRect().height - excess - 4) + 'px';
+      });
+    }
+
+    function updateNavButtons() {
+      const btnPrev = document.getElementById('btn-prev');
+      if (btnPrev) btnPrev.disabled = currentIndex === 0 && currentPage === 0;
+      const isLast = currentIndex === deck.slides.length - 1 && currentPage >= pageCount - 1;
+      const btnNext = document.getElementById('btn-next');
+      if (btnNext) btnNext.disabled = isLast;
+      const btnNextLabel = document.getElementById('btn-next-label');
+      if (btnNextLabel) btnNextLabel.textContent = isLast ? 'Fim' : 'Próximo';
+    }
+
+    // Girar o aparelho, redimensionar a janela ou mudar a "Leitura": refaz as
+    // paginas e volta para a que tem o bloco que estava no topo.
+    function repaginate() {
+      const stage = document.getElementById('slide-stage');
+      if (!stage) return;
+      const firstBlock = slidePages ? slidePages.pages[currentPage][0] : 0;
+      paginateCurrentSlide(stage);
+      currentPage = slidePages ? Math.max(0, slidePages.pages.findIndex((pg) => pg.includes(firstBlock))) : 0;
+      showCurrentPage(false);
+    }
+    let repaginateTimer = null;
+    function scheduleRepaginate() {
+      clearTimeout(repaginateTimer);
+      repaginateTimer = setTimeout(repaginate, 150);
+    }
+    window.addEventListener('resize', scheduleRepaginate);
+    window.addEventListener('orientationchange', scheduleRepaginate);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleRepaginate);
 
     function renderSlide(moveFocus) {
       const stage = document.getElementById('slide-stage');
@@ -1554,26 +1764,20 @@ export function generateInteractiveHtml(
         setNarrating(false);
       }
 
-      updateSlideIndicator();
-
-      const xpCounter = document.getElementById('xp-counter');
-      if (xpCounter) xpCounter.textContent = totalXp;
-
-      const btnPrev = document.getElementById('btn-prev');
-      if (btnPrev) btnPrev.disabled = currentIndex === 0;
-
-      const isLast = currentIndex === deck.slides.length - 1;
-      const btnNext = document.getElementById('btn-next');
-      if (btnNext) btnNext.disabled = isLast;
-      const btnNextLabel = document.getElementById('btn-next-label');
-      if (btnNextLabel) btnNextLabel.textContent = isLast ? 'Fim' : 'Próximo';
-
       if (stage && window.__SLIDES__) {
         stage.innerHTML = window.__SLIDES__[currentIndex] || '';
         stage.scrollTop = 0;
         applyContentVisibilityFromQuery(stage);
         restoreSlideInteractions();
+        paginateCurrentSlide(stage);
+        // Imagem que chega depois da medicao muda a altura: refaz as paginas.
+        stage.querySelectorAll('img').forEach((img) => {
+          if (!img.complete) img.addEventListener('load', scheduleRepaginate, { once: true });
+        });
       }
+      currentPage = goToLastPage ? pageCount - 1 : 0;
+      goToLastPage = false;
+      showCurrentPage(false);
 
       if (!firstRender) {
         announce('Slide ' + (currentIndex + 1) + ' de ' + deck.slides.length + ': ' + (SLIDE_TITLES[currentIndex] || ''));
@@ -1586,6 +1790,14 @@ export function generateInteractiveHtml(
     }
 
     function nextSlide(moveFocus) {
+      if (currentPage < pageCount - 1) {
+        slideDirection = 'next';
+        currentPage++;
+        playAudio('click');
+        announce('Parte ' + (currentPage + 1) + ' de ' + pageCount);
+        showCurrentPage(moveFocus);
+        return;
+      }
       if (currentIndex < deck.slides.length - 1) {
         slideDirection = 'next';
         currentIndex++;
@@ -1595,9 +1807,19 @@ export function generateInteractiveHtml(
     }
 
     function prevSlide(moveFocus) {
+      if (currentPage > 0) {
+        slideDirection = 'prev';
+        currentPage--;
+        playAudio('prev');
+        announce('Parte ' + (currentPage + 1) + ' de ' + pageCount);
+        showCurrentPage(moveFocus);
+        return;
+      }
       if (currentIndex > 0) {
         slideDirection = 'prev';
         currentIndex--;
+        // Voltar de slide cai na ULTIMA pagina dele, como virar a folha.
+        goToLastPage = true;
         playAudio('prev');
         renderSlide(moveFocus);
       }

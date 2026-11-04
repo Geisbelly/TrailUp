@@ -104,6 +104,14 @@ export function getDeckScopedCss(deck: Pick<DeckData, 'targetProfile'>): string 
     .tu-deck .slide-objective strong { color: var(--ink); }
 
     .tu-deck .slide-body { display: grid; gap: 24px; }
+    /* Paginas do slide no aparelho (paginateCurrentSlide). */
+    .tu-deck .is-off-page { display: none !important; }
+    .tu-deck .slide-body.is-solo { grid-template-columns: minmax(0, 1fr) !important; }
+    /* Parte so' de widget (slidePagination.ts): alternativas e itens lado a
+       lado, para a parte caber no card sem rolar e manter a simetria. */
+    @media (min-width: 960px) {
+      .tu-deck .slide--solo .option-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+    }
     @media (min-width: 960px) {
       .tu-deck .slide-body.has-aside { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: start; }
     }
@@ -283,7 +291,9 @@ export function getDeckScopedCss(deck: Pick<DeckData, 'targetProfile'>): string 
     .tu-deck .pull-quote p { margin: 0; font-size: var(--fs-lead); line-height: 1.45; }
     .tu-deck .pull-quote cite { display: block; margin-top: 6px; font-style: normal; font-size: var(--fs-small); color: var(--ink-muted); }
     .tu-deck .figure { margin: 0; padding: 8px; border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--border); }
-    .tu-deck .figure img { display: block; width: 100%; max-height: min(52vh, 380px); object-fit: contain; border-radius: 10px; background: var(--surface); }
+    .tu-deck .figure img { display: block; width: 100%; max-height: min(26vh, 320px); object-fit: contain; border-radius: 10px; background: var(--surface); }
+    .tu-deck .figure-svg { display: flex; justify-content: center; }
+    .tu-deck .figure-svg svg { display: block; width: 100%; height: auto; max-height: min(26vh, 320px); }
     .tu-deck .figure-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .tu-deck .figure-grid img { max-height: 200px; }
     .tu-deck .figure figcaption { margin: 8px 4px 2px; font-size: var(--fs-small); color: var(--ink-muted); }
@@ -475,6 +485,14 @@ export function getDeckShellCss(): string {
       .tu-deck .deck-footer { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
       .tu-deck .deck-footer .btn { min-height: 44px; padding-top: 6px; padding-bottom: 6px; }
       #slide-stage { padding-top: 14px; padding-bottom: 16px; }
+      /* Sobra ~265px de palco: titulo menor, e as alternativas do quiz lado a
+         lado - um quiz nao se divide em paginas (esconder opcao mudaria a
+         pergunta), entao e' o que o faz caber deitado. */
+      .tu-deck .slide-head { margin-bottom: 10px; }
+      .tu-deck .slide-title { font-size: clamp(1.15rem, 4.2vh, 1.5rem); }
+      .tu-deck .slide-kicker { margin-bottom: 2px; }
+      .tu-deck .option-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+      .tu-deck .figure figcaption { display: none; }
     }
 
     .tu-deck .tu-dialog {
