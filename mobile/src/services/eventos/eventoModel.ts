@@ -43,6 +43,8 @@ export type EventoDaTurma = {
   missoes: MissaoDoEvento[];
   /** Vazio enquanto o evento não encerra — por policy, não por falta de dado. */
   posicoes: PosicaoDoEvento[];
+  /** O professor ligou o rank do evento (peça `arena`, #155). Entrar nele é opcional. */
+  temRank: boolean;
 };
 
 function textoOuNulo(valor: unknown): string | null {
@@ -153,6 +155,7 @@ export function normalizeEvento(valor: unknown): EventoDaTurma | null {
     posicoes: Array.isArray(row.posicoes)
       ? (row.posicoes.map(normalizePosicao).filter(Boolean) as PosicaoDoEvento[])
       : [],
+    temRank: Array.isArray(row.pecas) && row.pecas.includes("arena"),
   };
 }
 
@@ -208,4 +211,91 @@ export function rankingDasGuildas(
   const podio = todas.slice(0, 3);
   const minha = todas.find((g) => g.minha);
   return minha && !podio.includes(minha) ? [...podio, minha] : podio;
+}
+
+// --- Rank do evento (#155, migration 20261104_01) --------------------------------------------
+//
+// Quando o evento abre, o banco cria um rank por critério escolhido pelo professor, com a janela
+// do evento, e a view do ranking conta SÓ quem se inscreveu. Entrar e sair são RPCs
+// (`evento_classe_inscrever` / `_sair`); só valem com o evento aberto e antes do fim. Entrar não
+// muda nota nem XP: o duelo saiu do XP na fase 1 (`20261103_15`).
+
+export type LinhaDoRank = { posicao: number; alunoId: string; nome: string; pontos: number; eu: boolean };
+
+export type RankDoEvento = { rankId: number; nome: string; criterio: string; linhas: LinhaDoRank[] };
+
+/** O rank aceita entrar ou sair agora? Mesma regra das RPCs: aberto e antes do fim. */
+export function podeMexerNaInscricao(evento: EventoDaTurma, agora: Date = new Date()): boolean {
+  if (!evento.temRank || evento.status !== "aberto") return false;
+  const fim = evento.fim ? Date.parse(evento.fim) : NaN;
+  return !Number.isFinite(fim) || agora.getTime() < fim;
+}
+
+const ORDEM_DOS_CRITERIOS = ["ranqueada", "pontuacao", "missoes"];
+
+const NOME_DO_CRITERIO: Record<string, string> = {
+  ranqueada: "Pontos de batalha",
+  pontuacao: "Pontuação",
+  missoes: "Missões cumpridas",
+};
+
+/**
+ * Junta os ranks do evento (`ranks` com `rank_tipo`) com as posições da view filtrada. Quem não se
+ * inscreveu não aparece nas linhas, e o corte de visibilidade já veio do banco: aqui só se ordena.
+ */
+export function montarRanksDoEvento(ranks: unknown, posicoes: unknown, meuId: string | null): RankDoEvento[] {
+  if (!Array.isArray(ranks)) return [];
+  const linhasPorRank = new Map<number, LinhaDoRank[]>();
+  for (const valor of Array.isArray(posicoes) ? posicoes : []) {
+    if (!valor || typeof valor !== "object") continue;
+    const row = valor as Record<string, unknown>;
+    const rankId = Number(row.rank_id);
+    const posicao = Number(row.posicao);
+    const alunoId = textoOuNulo(row.id_aluno);
+    if (!Number.isFinite(rankId) || !Number.isFinite(posicao) || posicao < 1 || !alunoId) continue;
+    const linha: LinhaDoRank = {
+      posicao,
+      alunoId,
+      nome: textoOuNulo(row.nome_aluno) ?? "Colega",
+      pontos: numero(row.pontuacao),
+      eu: alunoId === meuId,
+    };
+    linhasPorRank.set(rankId, [...(linhasPorRank.get(rankId) ?? []), linha]);
+  }
+  return ranks
+    .map((valor): RankDoEvento | null => {
+      if (!valor || typeof valor !== "object") return null;
+      const row = valor as Record<string, unknown>;
+      const rankId = Number(row.id);
+      if (!Number.isFinite(rankId)) return null;
+      const tipo = row.tipo && typeof row.tipo === "object" ? (row.tipo as Record<string, unknown>) : {};
+      const criterio = textoOuNulo(tipo.criterio) ?? "";
+      return {
+        rankId,
+        criterio,
+        nome: NOME_DO_CRITERIO[criterio] ?? textoOuNulo(tipo.nome) ?? "Rank do evento",
+        linhas: (linhasPorRank.get(rankId) ?? []).sort((a, b) => a.posicao - b.posicao || a.nome.localeCompare(b.nome, "pt-BR")),
+      };
+    })
+    .filter((r): r is RankDoEvento => r !== null)
+    .sort((a, b) => {
+      const ia = ORDEM_DOS_CRITERIOS.indexOf(a.criterio);
+      const ib = ORDEM_DOS_CRITERIOS.indexOf(b.criterio);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.rankId - b.rankId;
+    });
+}
+
+/** As primeiras posições e, se eu fiquei de fora delas, a minha linha. */
+export function linhasVisiveis(rank: RankDoEvento, quantas = 5): LinhaDoRank[] {
+  const topo = rank.linhas.slice(0, quantas);
+  const eu = rank.linhas.find((l) => l.eu);
+  return eu && !topo.includes(eu) ? [...topo, eu] : topo;
+}
+
+/** O que dizer de um erro das RPCs de inscrição. O texto do banco já é para gente (22023). */
+export function mensagemDaInscricao(erro: unknown): string {
+  const e = (erro ?? {}) as { code?: unknown; message?: unknown };
+  if (e.code === "42501") return "Você não está nesta turma, ou a sessão expirou. Entre de novo e tente outra vez.";
+  if (e.code === "22023" && typeof e.message === "string" && e.message.trim()) return e.message.trim();
+  return "Não foi possível falar com o servidor. Confira a conexão e tente de novo.";
 }

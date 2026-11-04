@@ -1,5 +1,5 @@
 import { supabase } from "@/database/supabase";
-import { normalizeEvento, type EventoDaTurma } from "./eventoModel";
+import { montarRanksDoEvento, normalizeEvento, type EventoDaTurma, type RankDoEvento } from "./eventoModel";
 
 /**
  * Os eventos que o aluno pode ver na turma, com missões e resultado.
@@ -20,7 +20,7 @@ export async function carregarEventosDaTurma(classeId: number): Promise<EventoDa
     .from("eventos_classe")
     .select(
       `id, titulo, descricao, status, inicio, fim, modalidade_guilda, pontos, moedas,
-       medalha_participacao, medalha_destaque, recompensa,
+       medalha_participacao, medalha_destaque, recompensa, pecas,
        missoes:eventos_classe_missoes(atividade_id, atividade:atividades(titulo)),
        posicoes:eventos_classe_resultado(aluno_id, pontos, participou, posicao, destaque)` as never,
     )
@@ -45,4 +45,49 @@ export async function carregarGuildasDoEvento(eventoId: string): Promise<unknown
     .order("posicao", { ascending: true });
   if (error) throw error;
   return (data ?? []) as unknown[];
+}
+
+/**
+ * Estou inscrito no rank deste evento? `evento_inscricoes_sel` só me devolve a minha linha, então
+ * qualquer linha é a minha.
+ */
+export async function estouNoRank(eventoId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("evento_inscricoes" as never)
+    .select("aluno_id")
+    .eq("evento_id", eventoId)
+    .limit(1);
+  if (error) throw error;
+  return ((data ?? []) as unknown[]).length > 0;
+}
+
+/** Entra ou sai do rank do evento. Só a RPC escreve: a tabela não tem escrita para o cliente. */
+export async function mudarInscricao(eventoId: string, entrar: boolean): Promise<void> {
+  const { error } = await supabase.rpc(
+    (entrar ? "evento_classe_inscrever" : "evento_classe_sair") as never,
+    { p_evento_id: eventoId } as never,
+  );
+  if (error) throw error;
+}
+
+/**
+ * Os ranks do evento e as posições. O rank nasce quando o evento abre, um por critério; as
+ * posições vêm da mesma view filtrada do ranking da turma (`vw_rank_posicoes_por_classe`), que
+ * já aplica o corte de visibilidade e conta só os inscritos.
+ */
+export async function carregarRanksDoEvento(eventoId: string, meuId: string | null): Promise<RankDoEvento[]> {
+  const { data: ranks, error } = await supabase
+    .from("ranks")
+    .select("id, tipo:rank_tipo(nome, criterio)" as never)
+    .eq("evento_id" as never, eventoId as never);
+  if (error) throw error;
+  const ids = ((ranks ?? []) as unknown as { id: number }[]).map((r) => r.id).filter((id) => Number.isFinite(Number(id)));
+  if (!ids.length) return [];
+  const { data: posicoes, error: erroPosicoes } = await supabase
+    .from("vw_rank_posicoes_por_classe")
+    .select("rank_id, posicao, id_aluno, nome_aluno, pontuacao")
+    .in("rank_id", ids)
+    .order("posicao", { ascending: true });
+  if (erroPosicoes) throw erroPosicoes;
+  return montarRanksDoEvento(ranks, posicoes, meuId);
 }
