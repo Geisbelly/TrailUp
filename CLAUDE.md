@@ -223,6 +223,11 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    mídia e `gerador_conteudo.txt` com vários formatos, porque a forma muda com o formato, e o patch
    comportamental, que tem `items: dict[...]` e já valida com Pydantic depois.
 
+7. **Ordem do payload é cache.** O Gemini reaproveita só o começo idêntico do pedido, e no 3.6 Flash
+   só a partir de 4.096 tokens (cache implícito, sem configuração). Por isso o que muda menos vem
+   primeiro e a pergunta vem por último, no Guardião, na Lumi, no juiz e nas etapas de mídia. Campo
+   novo que muda a cada chamada não entra na frente. `tokens_cache` em `ia_uso_llm` mostra o efeito.
+
 ## Perfis BrainHex (7)
 
 `Seeker`, `Survivor`, `Daredevil`, `Mastermind`, `Conqueror`, `Socializer`,
