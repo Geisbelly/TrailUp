@@ -96,7 +96,7 @@ PAGINAS: list[Pagina] = [
            "Todas as rotas da API, do microservice, das Edge Functions, da web e do app, geradas do código.",
            ["docs/rotas.md"]),
     Pagina("modelagem", "Sobre a modelagem", "Modelagem",
-           "Como os 44 diagramas foram feitos, conferidos no código e no banco, e o que eles não afirmam.",
+           "Como os 45 diagramas foram feitos, conferidos no código e no banco, e o que eles não afirmam.",
            ["docs/tcc/modelagem/README.md"]),
     Pagina("arquitetura", "Arquitetura", "Modelagem",
            "Contexto, contêineres, a regra de fronteira entre banco e API, implantação e camadas.",
@@ -168,6 +168,7 @@ MARCOS = [  # docs/segundo-cerebro/02-Timeline/timeline.md e histórico de PRs d
     ("28–31/10", "App novo e métricas", "O app mobile-v1 chega à main; métricas F0–F5 com fila de análise no banco; insights e intervenção."),
     ("01/11/2026", "Nota e tentativas pelo banco", "Nota, risco de evasão e tentativas decididos no servidor; falas do boss por perfil; incidente de API fora por migration adiantada."),
     ("04/11/2026", "Privacidade fechada e modelagem", "Link curto assinado para a mídia e aviso de inatividade (#632); IA só para maiores (#933); corpus v1 do RAG; modelagem em 44 diagramas."),
+    ("05/11/2026", "Monitor e rotas fechadas", "Sondas pelo banco com alerta por e-mail; saúde dos clientes gravada no Supabase; rotas do BrainHexPDF com segredo; administração do dono no banco; duelo no evento."),
 ]
 
 

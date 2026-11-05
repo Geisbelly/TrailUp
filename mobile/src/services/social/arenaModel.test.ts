@@ -123,6 +123,13 @@ describe("arenaModel", () => {
 
   it("traduz os códigos do banco", () => {
     assert.equal(mensagemDaArena({ message: "arena_convite_indisponivel" }), "Este convite já não está aberto.");
+    // Duelo no evento (#154): o aceite pela Arena também recebe essas recusas.
+    assert.equal(mensagemDaArena({ message: "evento_duelo_sem_inscricao" }), "Entre no rank do evento para duelar nele.");
+    assert.equal(
+      mensagemDaArena({ message: "evento_duelo_participante_sem_inscricao" }),
+      "Esse colega saiu do rank do evento. Escolha outro.",
+    );
+    assert.equal(mensagemDaArena({ message: "evento_duelo_fora_da_sugestao" }), "A lista de adversários mudou. Atualize e escolha de novo.");
     assert.equal(mensagemDaArena(new Error("guilda_desafio_e_da_arena")), "Este desafio é da Arena: jogue pela aba Arena.");
     assert.equal(mensagemDaArena("arena_sem_permissao"), "Você não está neste desafio.");
     assert.equal(mensagemDaArena("outra coisa"), "Não foi possível concluir. Tente de novo.");

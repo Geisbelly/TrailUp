@@ -242,6 +242,34 @@ export function podeMexerNaInscricao(evento: EventoDaTurma, agora: Date = new Da
   return !Number.isFinite(fim) || agora.getTime() < fim;
 }
 
+/**
+ * Duelar no evento (#154): só quem está no rank, com o evento aberto e um rank de batalha
+ * (`ranqueada`), que é onde o duelo conta. A RPC cobra o mesmo; aqui é só para não oferecer o botão.
+ */
+export function podeDuelarNoEvento(
+  evento: EventoDaTurma,
+  inscrito: boolean | null,
+  ranks: Pick<RankDoEvento, "criterio">[],
+  agora: Date = new Date(),
+): boolean {
+  return inscrito === true && podeMexerNaInscricao(evento, agora) && ranks.some((r) => r.criterio === "ranqueada");
+}
+
+/** Adversário sugerido pelo banco (`evento_sugerir_adversarios`): só id e nome, na ordem da sugestão. */
+export type SugeridoNoEvento = { alunoId: string; nome: string };
+
+export function normalizarSugeridos(valor: unknown): SugeridoNoEvento[] {
+  const alunos = (valor as { alunos?: unknown } | null)?.alunos;
+  if (!Array.isArray(alunos)) return [];
+  return alunos.flatMap((a) => {
+    const r = (a ?? {}) as { aluno_id?: unknown; nome?: unknown };
+    const alunoId = typeof r.aluno_id === "string" ? r.aluno_id : "";
+    if (!alunoId) return [];
+    const nome = typeof r.nome === "string" && r.nome.trim() ? r.nome.trim() : "Colega";
+    return [{ alunoId, nome }];
+  });
+}
+
 const ORDEM_DOS_CRITERIOS = ["ranqueada", "pontuacao", "missoes", "tempo"];
 
 const NOME_DO_CRITERIO: Record<string, string> = {

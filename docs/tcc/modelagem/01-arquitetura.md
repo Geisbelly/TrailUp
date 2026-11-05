@@ -161,6 +161,8 @@ flowchart TB
 
 - **Repositórios:** o código vive em `BitStudioLabs/trail-up`, o canônico. O site no ar, a API e os serviços publicam do espelho `Geisbelly/TrailUp`.
 - **Migrations:** a API roda `alembic upgrade head` ao subir. Se o banco estiver à frente do código publicado, a API não sobe.
+- **BrainHexPDF:** todo `POST` exige `x-api-secret`, e sem `API_SHARED_SECRET` a produção responde 503. `GET /api/v1/decks` fica sem cabeçalho, porque o app e o console abrem essa URL direto, mas só entrega `conteudo_aluno/brainhex/**/*.html`.
+- **Monitoramento:** as sondas saem do Supabase, fora do VPS, e o aviso sai por e-mail. O app fala direto com o Supabase, então a saúde dele vem do próprio cliente (seção 5.8).
 - **Ambiente local:** `npm run docker:up` sobe console `:8080`, API `:8000` e microservice `:3000`.
 
 ## 1.5 Camadas da API

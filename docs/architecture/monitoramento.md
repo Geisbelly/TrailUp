@@ -15,13 +15,13 @@ A tela lê o Supabase direto. Um painel servido pela API cairia junto com ela. P
 
 ## O que é medido
 
-| Alvo | URL | Em aula | Fora de aula | Conta como boa |
-|---|---|---|---|---|
-| `api` | `https://api.trailup.promora.dev.br/health` | 1 min | 1 min | 2xx com `"status":"ok"` |
-| `console` | `https://trailup.vercel.app/version.json` | 1 min | 5 min | 2xx com `build_commit` |
-| `web_aluno` | `https://trailup.vercel.app/aluno/` | 1 min | 5 min | 2xx com `id="root"` |
+| Alvo | URL | Intervalo | Conta como boa |
+|---|---|---|---|
+| `api` | `https://api.trailup.promora.dev.br/health` | 1 min | 2xx com `"status":"ok"` |
+| `console` | `https://trailup.vercel.app/version.json` | 1 min | 2xx com `build_commit` |
+| `web_aluno` | `https://trailup.vercel.app/aluno/` | 1 min | 2xx com `id="root"` |
 
-A meta (99,5%) vale em horário de aula, nos últimos 28 dias. O orçamento é 0,5% dos minutos de aula desde a primeira sonda. O número de todo horário, em 30 dias, é informativo, e queda fora de aula também avisa por e-mail.
+A meta (99,5%) vale 24 horas por dia, todos os dias, nos últimos 28 dias. O orçamento é 0,5% de todos os minutos desde a primeira sonda: cerca de 3h22 em 28 dias. O TrailUp é um app, não tem horário de funcionamento (`20261105_19`).
 
 O app não tem sonda: ele fala com o Supabase. O que ele relata de falha ao chamar a API vem de `telemetria_lotes.fallback_motivo`.
 
@@ -88,15 +88,11 @@ ROLLBACK;
 
 O primeiro e-mail real só sai em um incidente. Para testar o caminho inteiro, grave um alerta de propósito com `SELECT public.fn_monitor_alertar('teste:<data>', '[TrailUp] Teste', 'Teste do monitor.');` como `postgres`: é uma escrita em produção, então faça você mesma. Ele sai no tick seguinte.
 
-## Definir o horário de aula
+## Nomes que ficaram de quando havia janela
 
-O banco não tem grade de aula, então a janela é global e fica em `monitor_config.aula`. Ela é segunda a sexta, das 07:00 às 22:00, em Brasília, decisão de 05/11/2026. Quanto mais larga a janela, mais minutos contam e maior o orçamento. Semanas sem aula entram em `sem_aula`:
+Até a `20261105_19` a meta valia em horário de aula. Os nomes `monitor_config.aula`, `monitor_sonda.em_aula`, `fn_monitor_em_aula` e os campos `*_aula*` do painel continuam por dentro, porque renomeá-los reescreveria funções já testadas. Hoje `aula` cobre todo dia, de `00:00` a `24:00`, e a tela não fala mais em aula.
 
-```json
-{"aula": {"dias": [1, 2, 3, 4, 5], "inicio": "19:00", "fim": "22:30", "sem_aula": [{"de": "2026-12-19", "ate": "2027-02-07"}]}}
-```
-
-`dias` usa 1 para segunda e 7 para domingo. Cada sonda grava se estava em aula no momento em que saiu, então mudar a janela só vale daí em diante.
+Não restrinja `aula` de novo para reduzir sonda: isso tira da meta a queda de madrugada e de fim de semana.
 
 ## Ajustar limiares
 
@@ -108,4 +104,4 @@ O banco não tem grade de aula, então a janela é global e fica em `monitor_con
 - Requisições reais da API: taxa, erro e latência por rota.
 - CPU, memória e disco do VPS.
 
-Na lentidão, a janela de 15 min com mínimo de 10 sondas só alcança console e web do aluno em horário de aula: fora dele, com 5 min, são 3 sondas.
+Na lentidão, a janela de 15 min com mínimo de 10 sondas alcança os três alvos, porque todos rodam a cada minuto.

@@ -6,7 +6,7 @@
 |---|---|---|
 | Aluno | primário | app (`mobile/`) |
 | Professor | primário | console web (`frontend/`) |
-| Dona do projeto | primário | abas Aprovações e Painel técnico do console. A proteção é no banco (`app_e_dono()`) |
+| Dona do projeto | primário | abas Aprovações, Administração e Painel técnico do console. A proteção é no banco (`app_e_dono()`) |
 | Agendador | secundário, sistema | `pg_cron`: 16 rotinas |
 | Agente de IA | secundário, sistema | workers e grafo da API |
 | Provedor de modelo | secundário, externo | Gemini, e OpenAI no RAG |
@@ -92,7 +92,7 @@ flowchart LR
 | UC06 | perfil Survivor, Daredevil ou Conqueror | Boss com falas do perfil (`boss_falas`), ou falas fixas na ausência delas | `PERFIS_COM_BATALHA`, app |
 | UC07 | maior de 18 confirmado | `POST /personalizar/chat`: Guardião do perfil, sem gabarito, com destinos do app | API; 403 para menor |
 | UC08 | matrícula | Missão diária criada às 03:00, texto por IA às 03:05; missões da turma | `pg_cron`, `missoes_ia_loop` |
-| UC09 | matrícula | Ranking por view com filtro de saída; eventos abrem e fecham sozinhos | `vw_rank_posicoes_por_classe`, `fn_eventos_classe_varrer` |
+| UC09 | matrícula | Ranking por view com filtro de saída; eventos abrem e fecham sozinhos; duelo no evento só entre inscritos | `vw_rank_posicoes_por_classe`, `fn_eventos_classe_varrer`, `evento_duelo_criar` |
 | UC12 | conta | Caixa de entrada, push pelo banco, rotina local no aparelho | motor de notificações no banco |
 | UC13/14 | conta | Relatório de dados; pedido de exclusão; cópia anônima para pesquisa só com consentimento | `solicitacoes_exclusao`, retenção, `pesquisa-arquivar` |
 | UC21 | dono da turma | Salvar já enfileira `class_delta_sync` (com coalescência); se algum aluno já viu, registra alteração | gatilhos do editor |
