@@ -10,6 +10,7 @@ from app.services.storage import (
     caminho_do_gateway,
     material_url_de_leitura,
     objeto_do_storage,
+    url_de_leitura_do_servico,
 )
 
 
@@ -406,3 +407,39 @@ def test_caminho_do_gateway_so_reconhece_o_deste_projeto() -> None:
     ):
         assert caminho_do_gateway(BASE, outra) is None
     assert caminho_do_gateway("", f"{GATEWAY_ROTA}?path=a.pdf") is None
+
+
+def _cliente_do_gateway(pedidos: list[httpx.Request], *, status: int = 200, links: dict | None = None) -> httpx.Client:
+    def responder(pedido: httpx.Request) -> httpx.Response:
+        pedidos.append(pedido)
+        return httpx.Response(status, json={"links": {CAMINHO_FONTE: LINK_ASSINADO} if links is None else links})
+
+    return httpx.Client(transport=httpx.MockTransport(responder))
+
+
+def test_url_de_leitura_do_servico_troca_a_do_gateway_pelo_link() -> None:
+    pedidos: list[httpx.Request] = []
+    with _cliente_do_gateway(pedidos) as client:
+        alvo = url_de_leitura_do_servico(
+            client, base_url=BASE, service_key="chave", url=f"{GATEWAY_ROTA}?path={CAMINHO_FONTE}"
+        )
+
+    assert alvo == LINK_ASSINADO
+    assert str(pedidos[0].url) == GATEWAY_ROTA
+    assert pedidos[0].headers["Authorization"] == "Bearer chave"
+
+
+def test_url_de_leitura_do_servico_nao_leva_a_chave_para_url_de_fora() -> None:
+    pedidos: list[httpx.Request] = []
+    with _cliente_do_gateway(pedidos) as client:
+        de_fora = "https://exemplo.invalid/a.pdf"
+        assert url_de_leitura_do_servico(client, base_url=BASE, service_key="chave", url=de_fora) == de_fora
+    assert pedidos == []
+
+
+def test_url_de_leitura_do_servico_sem_link_ou_recusada() -> None:
+    url = f"{GATEWAY_ROTA}?path={CAMINHO_FONTE}"
+    with _cliente_do_gateway([], links={}) as client:
+        assert url_de_leitura_do_servico(client, base_url=BASE, service_key="chave", url=url) is None
+    with _cliente_do_gateway([], status=401) as client, pytest.raises(httpx.HTTPError):
+        url_de_leitura_do_servico(client, base_url=BASE, service_key="chave", url=url)

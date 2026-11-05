@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, text
 
 from app.core.settings import get_settings
 from app.db.migrations import normalize_database_url_for_alembic
+from app.services.storage import url_de_leitura_do_servico
 
 
 def material_refs(value, prefix="materiais"):
@@ -52,7 +53,12 @@ def main():
                         candidates.append(("gateway", gateway))
                 for source, candidate in candidates:
                     try:
-                        with client.stream("GET", candidate, headers={"Range": "bytes=0-255"}) as response:
+                        # O gateway recusa GET sem assinatura desde a #632.
+                        alvo = url_de_leitura_do_servico(client, base_url=settings.supabase_url, service_key=settings.supabase_service_key, url=candidate)
+                        if not alvo:
+                            print({"record": row["id"], "field": label, "source": source, "status": "gateway_sem_link"})
+                            continue
+                        with client.stream("GET", alvo, headers={"Range": "bytes=0-255"}) as response:
                             print({"record": row["id"], "topic": row["topico_id"], "content": row["conteudo_id"], "field": label, "source": source, "status": response.status_code, "redirects": [r.status_code for r in response.history], "destination_host": urlparse(str(response.url)).hostname, "content_type": response.headers.get("content-type")})
                     except httpx.HTTPError as error:
                         print({"record": row["id"], "field": label, "source": source, "error_type": type(error).__name__})

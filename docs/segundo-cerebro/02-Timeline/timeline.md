@@ -54,5 +54,6 @@ Datas aproximadas a partir de `modifiedTime` do Drive (convertidas para BRT) + s
 13. **22–26/10** — LGPD (#195) e RAG do mentor no Vector Store; protótipo mobile-v1
 14. **28–31/10** — app mobile-v1 na main; métricas F0–F5 (#12); a API ganha domínio com certificado válido
 15. **01/11** — nota, evasão e tentativas decididas pelo banco (#136); incidente de 502 por migration; tip `11aa1c65` sincronizado no vault
+16. **04–05/11** — gateway passa a exigir link assinado e a #632 fecha; leitura de servidor corrigida (#974); gateway reaberto por minutos por deploy de branch antiga; 1.0.7 com build pronto, fora da loja
 
-← [[00-Home]] · [[05-PRs-Repos/ultimo-sync-main]] · [[10-Incidentes/perda-dados-console-2026-10-01]] · [[10-Incidentes/api-fora-por-migration-2026-11-01]]
+← [[00-Home]] · [[05-PRs-Repos/ultimo-sync-main]] · [[10-Incidentes/perda-dados-console-2026-10-01]] · [[10-Incidentes/api-fora-por-migration-2026-11-01]] · [[10-Incidentes/gateway-reaberto-por-deploy-2026-11-05]]

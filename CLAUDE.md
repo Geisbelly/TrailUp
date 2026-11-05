@@ -1019,6 +1019,12 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   é um bypass de RLS completo. **Toda view nova nasce com
   `security_invoker = on`** — e se precisar do bypass, nasce sem GRANT para os
   papéis de cliente.
+- **Servidor também lê o gateway por link assinado.** Com
+  `GATEWAY_EXIGE_LINK_ASSINADO=true`, montar `?path=` e dar `GET` leva 401, e o
+  chamador costuma cair no Storage sem erro nenhum. API e microservice pedem o
+  link por `POST` com a chave de serviço (#974). E `supabase functions deploy`
+  publica a pasta de onde roda, não a `main`: em 05/11 um deploy de branch antiga
+  reabriu o gateway.
 - **`storage.objects` não diz mais se um material existe.** Depois da
   migração para o Cloudflare R2
   (`docs/superpowers/specs/2026-08-29-r2-gateway-design.md`), **escrita nova

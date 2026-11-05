@@ -89,11 +89,26 @@ O `storage-redirect` assinava sem login qualquer caminho vivo de `vw_material_st
 
 - **Pedir links:** `POST /functions/v1/storage-redirect` com `Authorization: Bearer <jwt>` e `{ "paths": [...] }` (até 200). O gateway confere a sessão e consulta a view **com o JWT de quem pede**, então a RLS decide. Volta `{ expira_em, links: { <caminho>: <url> } }`. Caminho que a pessoa não pode ler não volta, e a resposta não diz se ele existe.
 - **Usar o link:** a URL é a de sempre (`?path=`) mais `u`, `exp` e `sig` (HMAC-SHA256 com `GATEWAY_LINK_SEGREDO`). O `path` não muda, então a identidade da mídia no app (`mediaUrlPath`) também não. O prazo é o fim da janela seguinte: o link vale entre 1 e 2 horas e sai igual dentro da mesma hora, o que mantém o cache.
-- **Transição:** link com assinatura errada, adulterada ou vencida é recusado já. Link antigo, só com `path`, continua aceito até `GATEWAY_EXIGE_LINK_ASSINADO=true`.
+- **Exigência:** link com assinatura errada, adulterada ou vencida é recusado (403). Link antigo, só com `path`, é recusado (401) desde 04/11, com `GATEWAY_EXIGE_LINK_ASSINADO=true`, que é secret da Edge Function, não da API.
 - **Console:** `useLinkDoGateway` (`frontend/src/hooks/`) assina o material e as imagens do texto antes de usar; junta os pedidos num POST e guarda o link até faltar 5 min. Sem link, usa a URL original.
 - **App:** `resolveSupabaseStorageUrl` (o resolvedor de toda mídia) e `ensureCachedNativeContent` (o download do cache e do prefetch) assinam no fim, com `assinarUrlDoGateway`. A chave do cache e a retomada continuam derivadas da URL sem assinatura, então nada é rebaixado nem perde posição. `mobile/src/utils/linkDoGateway.ts` é cópia do módulo do console.
 - **Servidores:** API e microservice leem fonte e material sem sessão de usuário, então pedem o link com a **chave de serviço** no mesmo `POST` (conferida como no `storage-upload-url`). Ela lê a view inteira, como já lê todo o banco. O link sai com `u` = `00000000-0000-0000-0000-000000000000`, que nenhuma conta tem, e é usado na hora: não se guarda nem vai para log. O `GET` continua sem cabeçalho, para a chave não seguir no 302 até o R2. Sem isso, com `GATEWAY_EXIGE_LINK_ASSINADO=true` todo arquivo que só existe no R2 some para os servidores, sem erro: a geração segue sem a fonte, o hash de reuso não sai e a retomada regera tudo.
-- **Ordem para fechar:** (1) secret `GATEWAY_LINK_SEGREDO` e deploy da função; (2) o console passa a pedir links; (3) app novo nas lojas, pedindo links; (4) versão mínima ligada; (5) `GATEWAY_EXIGE_LINK_ASSINADO=true`. Ligar o passo 5 antes do 4 tira a mídia dos apps antigos.
+- **Ordem planejada:** (1) secret `GATEWAY_LINK_SEGREDO` e deploy da função; (2) o console passa a pedir links; (3) app novo nas lojas, pedindo links; (4) versão mínima ligada; (5) `GATEWAY_EXIGE_LINK_ASSINADO=true`. O passo 5 foi feito antes do 3 e do 4, por decisão de 04/11, com o efeito descrito abaixo.
+- **Deploy da função:** `supabase functions deploy` publica **a pasta de onde roda**, não a `main`. Rode de um checkout com a `origin/main`. Em 05/11, um deploy feito de uma branch antiga reabriu o gateway por alguns minutos (ver `docs/segundo-cerebro/10-Incidentes/gateway-reaberto-por-deploy-2026-11-05.md`).
+
+### Estado em 05/11/2026
+
+| Item | Estado |
+|---|---|
+| Gateway | exige link assinado. Medido: `GET` sem assinatura 401, `POST` sem sessão 401, assinatura forjada 403 |
+| Console | assina (#931) |
+| API e microservice | assinam com a chave de serviço (#974). Medido: `302` para o R2 e `206` no arquivo |
+| App na Play Store | **1.0.6, sem a #934: não carrega a mídia do gateway** (áudio, apresentação, imagens do material) |
+| App 1.0.7 | build de 05/11 pronto, com a #934; **ainda não está na loja** |
+| Versão mínima | **não ligada**: `app_versao_minima` e `app_atualizacao_url` vazios |
+| Buckets do Storage | **os 4 seguem públicos**: `trailup_fechar_buckets_privados()` não foi rodada. O que ainda vive no Storage abre por URL pública direta, sem passar pelo gateway |
+
+O que falta, nesta ordem: publicar a 1.0.7, ligar a versão mínima e rodar o fechamento.
 
 ## Ciclo de vida do R2
 

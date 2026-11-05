@@ -121,6 +121,8 @@ sequenceDiagram
 ```
 
 - **Exigência do link assinado:** `GATEWAY_EXIGE_LINK_ASSINADO=true` desde 04/11. Link sem assinatura recebe 401.
+- **Leitura de servidor:** API e microservice não têm sessão de usuário, então pedem o link no mesmo `POST` com a chave de serviço (#974). O `GET` segue sem cabeçalho, e a chave não acompanha o redirecionamento até o R2.
+- **Limite atual:** o app 1.0.6, que está na Play Store, não pede link e fica sem a mídia do gateway até a 1.0.7 ser publicada.
 - **Código:**
   - `mobile/src/context/TrilhaContext.tsx`
   - `mobile/src/utils/linkDoGateway.ts`
