@@ -1,4 +1,4 @@
-"""`20261105_16` num Postgres descartável: só o dono entra, e cada ação grava o que a página da API gravava."""
+"""`20261105_18` num Postgres descartável: só o dono entra, e cada ação grava o que a página da API gravava."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from sqlalchemy import text
 
 from tests.test_e2e_monitor_disponibilidade import ALUNO, DONO, EMAIL_DONO, _modulo, banco  # noqa: F401
 
-M = _modulo("20261105_16_administracao_no_banco.py")
+M = _modulo("20261105_18_administracao_no_banco.py")
 exige_docker = pytest.mark.skipif(os.environ.get("TRAILUP_TEST_DOCKER") != "1", reason="requer TRAILUP_TEST_DOCKER=1 e Docker")
 OUTRO = str(uuid.uuid4())
 

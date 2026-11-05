@@ -21,8 +21,8 @@ função. `liberado` continua passando por `professor_block_self_approve` e `trg
 
 O reprocessamento de mídia (`/api/v1/admin/personalizacao/media/backfill`) fica na API: ele usa o pipeline de geração.
 
-Revision ID: 20261105_16
-Revises: 20261105_15
+Revision ID: 20261105_18
+Revises: 20261105_17
 Create Date: 2026-11-05
 """
 
@@ -30,8 +30,8 @@ from __future__ import annotations
 
 from alembic import op
 
-revision = "20261105_16"
-down_revision = "20261105_15"
+revision = "20261105_18"
+down_revision = "20261105_17"
 branch_labels = None
 depends_on = None
 
