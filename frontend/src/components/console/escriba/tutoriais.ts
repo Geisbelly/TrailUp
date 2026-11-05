@@ -131,6 +131,11 @@ export type Retangulo = { top: number; left: number; width: number; height: numb
 export type Tela = { width: number; height: number };
 
 /** Elemento escondido ou fora da tela (menu em gaveta fechada) não serve de alvo. */
+/** Sem o menu lateral na tela (celular), o passo do menu aponta para o botão que abre a gaveta. */
+export function alvoAlternativo(alvo: string): string | null {
+  return alvo.startsWith("menu-") && alvo !== "menu-gaveta" ? "menu-gaveta" : null;
+}
+
 export function alvoNaTela(r: Retangulo, tela: Tela): boolean {
   return r.width > 0 && r.height > 0 && r.left + r.width > 0 && r.left < tela.width && r.top + r.height > 0 && r.top < tela.height;
 }

@@ -18,10 +18,12 @@ import {
   TextInput,
   View,
   useWindowDimensions,
+  Modal,
   Platform,
 } from "react-native";
 import tinycolor from "tinycolor2";
 import { usePortoes } from "@/context/PortoesContext";
+import { useAreaVisivelWeb } from "@/hooks/useAreaVisivelWeb";
 import { useEstadoConsentimento } from "@/hooks/useEstadoConsentimento";
 import { BotaoDeDestino, montarRespostaDoGuia, type RespostaDoGuia } from "@/utils/destinosDoGuia";
 import { pedirTutorialDoGuia } from "@/utils/firstAccessTour";
@@ -184,6 +186,28 @@ const MENSAGEM_MENTOR_BLOQUEADO =
   "A IA do TrailUp é só para maiores de 18 anos: se você já tem 18, informe sua data de nascimento " +
   "em Perfil › Coleta e acessos.";
 
+/** Em Modal porque a barra de abas é irmã da tela e ficaria por cima, cobrindo o campo de escrever. */
+function TelaCheiaWeb({
+  ativa,
+  top,
+  altura,
+  onFechar,
+  children,
+}: {
+  ativa: boolean;
+  top: number;
+  altura: number;
+  onFechar: () => void;
+  children: React.ReactNode;
+}) {
+  if (!ativa) return <>{children}</>;
+  return (
+    <Modal visible transparent animationType="none" onRequestClose={onFechar}>
+      <View style={[styles.overlayTelaCheia, { top, height: altura }]}>{children}</View>
+    </Modal>
+  );
+}
+
 export function IAMentorPanel({
   topicoId,
   classeId,
@@ -194,6 +218,9 @@ export function IAMentorPanel({
 }: Props) {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const posicao = ancora ? { right: ancora.direita, bottom: ancora.base } : { bottom: bottomOffset };
+  // Navegador do celular, de pé ou deitado: flutuando, o cabeçalho e o botão de fechar saíam pelo
+  // topo da tela. Aberta, a conversa ocupa a área visível, que encolhe com o teclado.
+  const celularWeb = IS_WEB && !ancora && (windowWidth < 640 || windowHeight <= 500);
   const { usuario } = useUsuario();
   const { aberturas } = usePortoes();
   const {
@@ -223,6 +250,7 @@ export function IAMentorPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sending, setSending] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const areaVisivel = useAreaVisivelWeb(isOpen && !ancora);
   const [hasUnreadCue, setHasUnreadCue] = useState(false);
 
   const mentorScope =
@@ -401,10 +429,11 @@ export function IAMentorPanel({
       : scope === "modulo"
       ? Math.min(windowWidth - 16, 496)
       : Math.min(windowWidth - 16, 438);
-  const panelMaxHeight =
-    scope === "modulo"
-      ? Math.min(windowHeight * 0.76, 640)
-      : Math.min(windowHeight * 0.76, 620);
+  const alturaDisponivelWeb = windowHeight - (ancora ? ancora.base : bottomOffset) - 16;
+  const panelMaxHeight = Math.min(
+    scope === "modulo" ? Math.min(windowHeight * 0.76, 640) : Math.min(windowHeight * 0.76, 620),
+    IS_WEB ? alturaDisponivelWeb : Number.POSITIVE_INFINITY,
+  );
   const messagesMaxHeight =
     scope === "modulo"
       ? Math.min(windowHeight * 0.4, 340)
@@ -682,6 +711,11 @@ export function IAMentorPanel({
     );
   };
 
+  const telaCheia = celularWeb && isOpen;
+  const alturaVisivel = areaVisivel?.height ?? windowHeight;
+  // Com o teclado aberto, sobra pouco: fica só o que serve para conversar.
+  const compacta = telaCheia && alturaVisivel < 480;
+
   return (
     <View
       style={[
@@ -737,6 +771,7 @@ export function IAMentorPanel({
           </Pressable>
         </View>
       ) : (
+        <TelaCheiaWeb ativa={telaCheia} top={areaVisivel?.top ?? 0} altura={alturaVisivel} onFechar={handleClose}>
         <View
           ref={guideTargetRef}
           collapsable={false}
@@ -746,9 +781,12 @@ export function IAMentorPanel({
             {
               // O mínimo de 320 do módulo nunca passa da janela: em tela de 320 o
               // painel (windowWidth - 16) vazava 8 px pela direita.
-              ...(scope === "modulo" ? { minWidth: Math.min(320, windowWidth - 16) } : null),
-              width: panelWidth,
-              maxHeight: panelMaxHeight,
+              ...(scope === "modulo" && !telaCheia ? { minWidth: Math.min(320, windowWidth - 16) } : null),
+              width: telaCheia ? "100%" : panelWidth,
+              maxHeight: telaCheia ? alturaVisivel : panelMaxHeight,
+              ...(telaCheia ? styles.cardTelaCheia : null),
+              ...(telaCheia ? { height: alturaVisivel } : null),
+              ...(IS_WEB ? styles.cardWeb : null),
               backgroundColor: palette.surface,
               borderColor: goldDim,
               ...shadowStyle({ ...SOMBRA_CARD, color: palette.accent }, IS_WEB),
@@ -796,7 +834,7 @@ export function IAMentorPanel({
                     rodapé fica, porque ele também carrega o limite (não entrego
                     respostas de atividade), que é a parte que o aluno precisa
                     saber. */}
-                {scope === "trilha_home" ? (
+                {scope === "trilha_home" && !compacta ? (
                   <Text style={[styles.headerHint, { color: palette.textSubtle }]}>
                     Toque nas explicações abaixo ou envie uma pergunta.
                   </Text>
@@ -810,6 +848,7 @@ export function IAMentorPanel({
                 hitSlop={14}
                 style={[
                   styles.iconButton,
+                  telaCheia ? styles.iconButtonToque : null,
                   styles.iconToggleButton,
                   {
                     backgroundColor: palette.surfaceElevated,
@@ -828,7 +867,7 @@ export function IAMentorPanel({
               <Pressable
                 onPress={handleClose}
                 hitSlop={14}
-                style={styles.iconButton}
+                style={[styles.iconButton, telaCheia ? styles.iconButtonToque : null]}
                 accessibilityRole="button"
                 accessibilityLabel="Fechar"
               >
@@ -837,11 +876,13 @@ export function IAMentorPanel({
             </View>
           </View>
 
+          {compacta ? null : (
           <View style={styles.ornamentRow}>
             <OrnamentDivider color={gold} />
           </View>
+          )}
 
-          <View style={styles.tutorialWrap}>
+          <View style={[styles.tutorialWrap, compacta ? styles.escondido : null]}>
             <Text style={[styles.tutorialLabel, { color: palette.textSubtle }]}>
               Modo tutorial
             </Text>
@@ -875,7 +916,7 @@ export function IAMentorPanel({
 
           <ScrollView
             ref={scrollRef}
-            style={[styles.messagesScroll, { maxHeight: messagesMaxHeight }]}
+            style={[styles.messagesScroll, telaCheia ? styles.messagesTelaCheia : { maxHeight: messagesMaxHeight }]}
             contentContainerStyle={styles.messageStack}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -903,7 +944,7 @@ export function IAMentorPanel({
                   : "Responda ao guia ou pergunte sobre este módulo"
               }
               placeholderTextColor={palette.textSubtle}
-              style={[styles.chatInput, { color: palette.text }]}
+              style={[styles.chatInput, IS_WEB && windowWidth < 1024 ? styles.chatInputWebCelular : null, { color: palette.text }]}
               editable={!sending && canChat && mentorLiberado}
               multiline
               textAlignVertical="top"
@@ -932,11 +973,12 @@ export function IAMentorPanel({
             </Pressable>
           </View>
 
-          <Text style={[styles.guardrailText, { color: palette.textSubtle }]}>
+          <Text style={[styles.guardrailText, compacta ? styles.escondido : null, { color: palette.textSubtle }]}>
             Eu explico sua personalização, métricas e estratégia de estudo. Não entrego
             respostas prontas de atividades.
           </Text>
         </View>
+        </TelaCheiaWeb>
       )}
     </View>
   );
@@ -953,6 +995,21 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     alignItems: "center",
+  },
+  overlayTelaCheia: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+  },
+  cardTelaCheia: {
+    borderRadius: 0,
+    borderWidth: 0,
+  },
+  cardWeb: {
+    overflow: "hidden",
+  },
+  escondido: {
+    display: "none",
   },
   launcherColumn: {
     alignItems: "flex-end",
@@ -1067,6 +1124,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 14,
   },
+  iconButtonToque: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
   iconToggleButton: {
     width: 32,
     height: 32,
@@ -1121,6 +1183,10 @@ const styles = StyleSheet.create({
   },
   messagesScroll: {
     minHeight: 72,
+  },
+  messagesTelaCheia: {
+    flex: 1,
+    minHeight: 0,
   },
   messageStack: {
     gap: 8,
@@ -1234,6 +1300,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     paddingTop: 4,
     paddingBottom: 4,
+  },
+  // Abaixo de 16 px o Safari do iPhone amplia a página ao focar o campo, e ela não volta sozinha.
+  chatInputWebCelular: {
+    fontSize: 16,
+    lineHeight: 22,
   },
   sendButton: {
     width: 40,
