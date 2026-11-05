@@ -110,3 +110,8 @@ updated: 2026-11-01
 - 00-Home e plano-capitulos: links às notas dos parceiros; caps. 7–8 evidências, cap. 9 incidente (causa aberta)
 - Drift migrations (prod `20261003_06` vs código `20261003_10`) + espelho `8e08d7f`/#127 registrados em incidente e mapa-arquitetura
 - 2026-10-13: nota de migrations dos PRs #354/#357 (down_revision corrigido em f806579, não mergeados).
+
+## 2026-11-05 — Gateway e estado do app
+
+- `10-Incidentes/gateway-reaberto-por-deploy-2026-11-05.md`: novo.
+- Timeline: período de 04–05/11.

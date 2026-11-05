@@ -52,6 +52,6 @@ Documentos e decisões de proteção de dados do projeto. A issue de acompanhame
 ## Arquivos do aluno no Storage e no R2 (migration `20261024_09`)
 
 - `conteudo_aluno`, `perfil_fotos` e `banners_fotos` passam a ser privados. A leitura é por URL assinada curta ou pelo gateway `storage-redirect`. O RLS em `storage.objects` limita quem lê ao aluno, aos colegas e professores da turma e ao dono. O banner fecha também, porque é dado pessoal do aluno.
-- O fechamento é manual e vem **depois** do deploy de todo o código novo: `select public.trailup_fechar_buckets_privados();`.
+- O fechamento é manual e vem **depois** do deploy de todo o código novo: `select public.trailup_fechar_buckets_privados();`. **Ainda não foi rodado** (05/11/2026): os quatro buckets seguem públicos, à espera da 1.0.7 na loja e da versão mínima. O estado medido está em [`storage-buckets-e-r2.md`](./storage-buckets-e-r2.md#estado-em-05112026).
 - No R2, só a telemetria bruta (`telemetria/lotes/`, `telemetria/eventos/`) expira sozinha, em 200 dias. Aplicar só com `retencao_modo = 'aplicar'`.
 - Detalhes, ordem de deploy e como aplicar: [`storage-buckets-e-r2.md`](./storage-buckets-e-r2.md).
