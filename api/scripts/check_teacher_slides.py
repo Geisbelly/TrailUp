@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, text
 
 from app.core.settings import get_settings
 from app.db.migrations import normalize_database_url_for_alembic
+from app.services.storage import url_de_leitura_do_servico
 
 
 def main():
@@ -15,6 +16,11 @@ def main():
     parser.add_argument('--classe', type=int, required=True)
     args = parser.parse_args()
     settings = get_settings()
+
+    def assinada(client, url):
+        # O gateway recusa GET sem assinatura desde a #632.
+        return url_de_leitura_do_servico(client, base_url=settings.supabase_url, service_key=settings.supabase_service_key, url=url)
+
     engine = create_engine(normalize_database_url_for_alembic(settings.alembic_database_url or settings.database_url))
     with engine.connect() as conn, httpx.Client(timeout=15, follow_redirects=True) as client:
         rows = conn.execute(text('SELECT c.id, c.topico_id, c.tipo, c.conteudo, c.metadata FROM conteudos c JOIN topicos t ON t.id=c.topico_id WHERE t.classe_id=:classe ORDER BY c.id'), {'classe': args.classe}).mappings()
@@ -38,14 +44,22 @@ def main():
                 result['matching_buckets'] = matches
                 url = ref if parsed.scheme else settings.supabase_url.rstrip('/') + '/storage/v1/object/public/conteudos/' + quote(path, safe='/')
                 try:
-                    with client.stream('GET', url, headers={'Range': 'bytes=0-15'}) as response:
-                        result.update(status=response.status_code, content_type=response.headers.get('content-type'))
+                    alvo = assinada(client, url)
+                    if alvo:
+                        with client.stream('GET', alvo, headers={'Range': 'bytes=0-15'}) as response:
+                            result.update(status=response.status_code, content_type=response.headers.get('content-type'))
+                    else:
+                        result['status'] = 'gateway_sem_link'
                 except httpx.HTTPError as error:
                     result['error'] = type(error).__name__
                 for label, gateway_path in [('gateway', path), ('gateway_bucket', 'conteudos/' + path)]:
                     gateway = settings.supabase_url.rstrip('/') + '/functions/v1/storage-redirect?path=' + quote(gateway_path, safe='/')
                     try:
-                        with client.stream('GET', gateway, headers={'Range': 'bytes=0-15'}) as response:
+                        alvo = assinada(client, gateway)
+                        if not alvo:
+                            result[label] = {'status': 'gateway_sem_link'}
+                            continue
+                        with client.stream('GET', alvo, headers={'Range': 'bytes=0-15'}) as response:
                             result[label] = {'status': response.status_code, 'type': response.headers.get('content-type')}
                     except httpx.HTTPError as error:
                         result[label] = {'error': type(error).__name__}

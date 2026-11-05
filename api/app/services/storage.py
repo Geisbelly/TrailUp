@@ -135,6 +135,22 @@ def caminho_do_gateway(base_url: str | None, url: str | None) -> str | None:
     return caminhos[0] if caminhos else None
 
 
+def url_de_leitura_do_servico(client: httpx.Client, *, base_url: str, service_key: str, url: str) -> str | None:
+    """Versao sincrona para os scripts de diagnostico: a URL do gateway deste
+    projeto vira link assinado (None se ele nao conhece o caminho) e as outras
+    passam como vieram. Levanta `httpx.HTTPError` se o pedido for recusado."""
+    caminho = caminho_do_gateway(base_url, url)
+    if not caminho:
+        return url
+    pedido = client.post(
+        f"{base_url.rstrip('/')}{ROTA_DO_GATEWAY}",
+        json={"paths": [caminho]},
+        headers={"Authorization": f"Bearer {service_key}", "apikey": service_key},
+    )
+    pedido.raise_for_status()
+    return next(iter(((pedido.json() or {}).get("links") or {}).values()), None)
+
+
 def _truncate_extracted(text: str | None, limit: int = 4000) -> str | None:
     if not text:
         return None
