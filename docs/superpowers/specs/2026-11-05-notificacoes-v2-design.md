@@ -1,6 +1,6 @@
 # Notificações v2: mais tipos, mais controle, orçamento por categoria
 
-Data: 2026-11-05 · Status: Fase 1 (motor) em `20261105_03`; fases 2 a 5 por fazer
+Data: 2026-11-05 · Status: Fase 1 (motor) em `20261105_04`; fases 2 a 5 por fazer
 
 ## Por quê
 

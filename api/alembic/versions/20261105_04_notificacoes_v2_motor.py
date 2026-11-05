@@ -75,8 +75,8 @@ Cada troca de nível vai para `aluno_notificacao_intensidade_log`, append-only, 
 cálculo, para a análise. As duas tabelas entram em `retencao_politica` como `vida_da_conta`: saem com
 o aluno pela FK.
 
-Revision ID: 20261105_03
-Revises: 20261105_02
+Revision ID: 20261105_04
+Revises: 20261105_03
 Create Date: 2026-11-05
 """
 
@@ -87,8 +87,8 @@ from pathlib import Path
 
 from alembic import op
 
-revision = "20261105_03"
-down_revision = "20261105_02"
+revision = "20261105_04"
+down_revision = "20261105_03"
 branch_labels = None
 depends_on = None
 
@@ -186,7 +186,7 @@ CREATE TABLE IF NOT EXISTS public.notificacoes_tipos (
   fura_teto_categoria boolean NOT NULL DEFAULT FALSE
 );
 COMMENT ON TABLE public.notificacoes_tipos IS
-  'Catálogo do motor de notificações (20261105_03): categoria, intervalo mínimo entre pushes do tipo, prioridade base.';
+  'Catálogo do motor de notificações (20261105_04): categoria, intervalo mínimo entre pushes do tipo, prioridade base.';
 
 ALTER TABLE public.notificacoes_categorias ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notificacoes_tipos ENABLE ROW LEVEL SECURITY;
@@ -234,7 +234,7 @@ ALTER TABLE public.aluno_notificacao_intensidade_log ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.aluno_notificacao_intensidade, public.aluno_notificacao_intensidade_log
   FROM PUBLIC, anon, authenticated;
 COMMENT ON TABLE public.aluno_notificacao_intensidade IS
-  'Nível de notificação por aluno, calculado pelo banco (20261105_03). Sem policy: só funções SECURITY DEFINER.';
+  'Nível de notificação por aluno, calculado pelo banco (20261105_04). Sem policy: só funções SECURITY DEFINER.';
 """
 
 

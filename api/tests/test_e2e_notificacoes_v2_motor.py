@@ -1,7 +1,7 @@
-"""`20261105_03`: o motor ganha categorias, orçamento, intervalos, prioridade pelo perfil e intensidade.
+"""`20261105_04`: o motor ganha categorias, orçamento, intervalos, prioridade pelo perfil e intensidade.
 
 Mesmo banco do e2e da `20261103_12` (motor da `_01`, matriz e foco da `_18`, guarda da `_24`, texto do
-perfil da `_12`), com a `20261105_03` por cima. `net.http_post` é o dublê da `_18`: cada push vira uma
+perfil da `_12`), com a `20261105_04` por cima. `net.http_post` é o dublê da `_18`: cada push vira uma
 linha em `net.posts`. Dados sintéticos.
 
 Alunos da `_semear` da `_18`: A é Socializer (90) com Mastermind (40); B é Socializer (70) com
@@ -19,12 +19,12 @@ from tests import test_e2e_notificacao_so_com_texto_da_guarda as g
 
 pytestmark = f5.e2e
 
-M = f5.modulo("20261105_03_notificacoes_v2_motor.py")
+M = f5.modulo("20261105_04_notificacoes_v2_motor.py")
 A, B, C = p.A, p.B, p.C
 
 
 def _banco(*, com_v2: bool = True):
-    # O banco do e2e da `20261103_12`, na ordem do histórico, e a `20261105_03` por cima.
+    # O banco do e2e da `20261103_12`, na ordem do histórico, e a `20261105_04` por cima.
     return f5.banco(
         *p.h._motor(),
         *f5.sql_de(p.M01),
