@@ -1,8 +1,8 @@
 """Uso de modelo por chamada: tokens, cache e prompt
 
 O painel técnico (`20261102_22`) mede custo por proxy porque o banco não grava tokens. Esta tabela
-grava, por chamada: prompt, provedor, modelo, tokens, tokens servidos de cache e o motivo de parada
-(`fim`: resposta cortada ou recusada pelo provedor).
+grava, por chamada: prompt, provedor, modelo, tokens, tokens servidos de cache, tempo e o motivo de
+parada (`fim`: resposta cortada, recusada pelo provedor, `erro:<tipo>` ou `prazo_total`).
 
 **Sem `aluno_id` e sem texto**, de propósito: a pergunta é de custo por prompt, não por pessoa.
 
@@ -11,16 +11,20 @@ deixa isso explícito para `anon` e `authenticated`.
 
 Retenção: 180 dias, por pg_cron, porque é só volume e não há dado pessoal.
 
-Revision ID: 20261105_01
-Revises: 20261104_08
+Esta migração nasceu como `20261105_01`, o mesmo número da `novo_material_no_perfil_da_tela`, e a `main`
+ficou com duas cabeças. Por isso ela pode encontrar a tabela já criada, sem `latencia_ms`: o `ADD COLUMN`
+cobre esse caso, e rodar de novo não muda nada.
+
+Revision ID: 20261105_02
+Revises: 20261105_01
 """
 
 from __future__ import annotations
 
 from alembic import op
 
-revision = "20261105_01"
-down_revision = "20261104_08"
+revision = "20261105_02"
+down_revision = "20261105_01"
 branch_labels = None
 depends_on = None
 
@@ -40,8 +44,12 @@ def upgrade() -> None:
           tokens_saida   integer NULL,
           tokens_cache   integer NULL,
           usou_rag       boolean NOT NULL DEFAULT false,
-          fim            text NULL
+          fim            text NULL,
+          latencia_ms    integer NULL
         );
+        ALTER TABLE public.ia_uso_llm
+          ADD COLUMN IF NOT EXISTS fim text NULL,
+          ADD COLUMN IF NOT EXISTS latencia_ms integer NULL;
         CREATE INDEX IF NOT EXISTS idx_ia_uso_llm_criado_em ON public.ia_uso_llm (criado_em);
         ALTER TABLE public.ia_uso_llm ENABLE ROW LEVEL SECURITY;
         REVOKE ALL ON public.ia_uso_llm FROM anon, authenticated;

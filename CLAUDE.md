@@ -574,7 +574,7 @@ Cada perfil carrega:
   escreva nessas tabelas precisa ser `SECURITY DEFINER`**, ou será tratada como o aluno. No
   UPDATE, a coluna nova de `atividade_aluno` nasce protegida; no INSERT, entra na lista da
   migration (o e2e reclama).
-- `ia_uso_llm` — uso de modelo por chamada (`20261105_01`): prompt, provedor, modelo, tokens,
+- `ia_uso_llm` — uso de modelo por chamada (`20261105_02`): prompt, provedor, modelo, tokens,
   tokens de cache e `fim` (motivo de parada). Sem aluno e sem texto, sem policy por decisão (só a API).
   Cobre `JsonLLMService` e `OpenAIRagService`; o microservice e as chamadas HTTP diretas ao Gemini
   ficam de fora. Gravar nunca derruba nem atrasa a resposta (`app/services/uso_llm.py`).
