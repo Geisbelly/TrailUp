@@ -3,7 +3,7 @@
 Data: 2026-11-05 · Issue [#154](https://github.com/BitStudioLabs/trail-up/issues/154) · Continua
 [`2026-11-03-inscricao-em-evento-e-rank-do-evento-design.md`](2026-11-03-inscricao-em-evento-e-rank-do-evento-design.md) §7
 
-**Estado: proposta.** As decisões da §3 esperam aprovação do time antes de qualquer migration.
+**Estado: aprovada em 2026-11-05** ("pode seguir com as recomendações"). Fase 1 na `20261105_13` (#991); fase 2 na `20261105_15`.
 
 ## 1. Resumo
 
@@ -111,7 +111,9 @@ Cada fase é um PR pequeno, partindo da `main`, com e2e em Postgres local.
 1. **Paridade da missão de guilda (D6).** Só banco. Antes, medir em produção quantas missões de
    guilda estão abertas, somente leitura.
 2. **Duelo do evento no banco (D1, D2).** `evento_id`, inscritos, sem Elo, derrota sem aposta no evento.
-   Seguro para builds antigas: sem `evento_id`, nada muda.
+   Seguro para builds antigas: sem `evento_id`, nada muda. Na implementação, `consequencia = 'evento'`
+   já entregava D1 e D2 no fechamento; o que faltava era a ligação, a cobrança da inscrição e a view do
+   rank, que só contava `consequencia = 'ranqueada'` e deixaria o duelo do evento fora do próprio rank.
 3. **Pareamento (D3, D4, D5).** A RPC de sugestão e a recusa fora da sugestão.
 4. **App e console.** O aluno vê "Duelar neste evento" com os sugeridos; o professor vê os duelos do evento. Depende de build nova.
 5. **Medida de paridade (D7).** Indicador no painel técnico.
