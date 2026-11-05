@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { createRequestGuard } from "@/lib/requestGuard";
 import { lerAcessosDosAlunos, lerDisponibilidade, type AcessoDoAluno, type Disponibilidade } from "./disponibilidade";
 import { eSemPermissao } from "./painelTecnico";
+import { lerSaudeDosClientes, type SaudeDosClientes } from "./saudeDosClientes";
 
 export type EstadoDaLeitura = { tipo: "carregando" } | { tipo: "pronto" } | { tipo: "indisponivel" } | { tipo: "erro"; detalhe: string };
 
@@ -27,6 +28,35 @@ export function useDisponibilidade(horas: number) {
       return setEstado((atual) => (atual.tipo === "pronto" ? atual : { tipo: "erro", detalhe: eSemPermissao(error) ? "Sem permissão." : error.message ?? "erro desconhecido" }));
     }
     const lido = lerDisponibilidade(data);
+    if (!lido) return setEstado({ tipo: "erro", detalhe: "Resposta inesperada do banco." });
+    setDados(lido);
+    setEstado({ tipo: "pronto" });
+  }, [horas]);
+
+  useEffect(() => {
+    void carregar();
+    const timer = window.setInterval(() => void carregar(), INTERVALO_MS);
+    return () => window.clearInterval(timer);
+  }, [carregar]);
+
+  return { dados, estado };
+}
+
+/** Erros, Web Vitals e chamadas vistos de dentro dos clientes. Lê do banco, pelo mesmo motivo do monitor. */
+export function useSaudeDosClientes(horas: number) {
+  const [dados, setDados] = useState<SaudeDosClientes | null>(null);
+  const [estado, setEstado] = useState<EstadoDaLeitura>({ tipo: "carregando" });
+  const guarda = useRef(createRequestGuard());
+
+  const carregar = useCallback(async () => {
+    const request = guarda.current.next();
+    const { data, error } = await supabase.rpc("painel_clientes" as never, { p_horas: horas } as never);
+    if (!request.isCurrent()) return;
+    if (error) {
+      if (eFuncaoAusente(error)) return setEstado({ tipo: "indisponivel" });
+      return setEstado((atual) => (atual.tipo === "pronto" ? atual : { tipo: "erro", detalhe: eSemPermissao(error) ? "Sem permissão." : error.message ?? "erro desconhecido" }));
+    }
+    const lido = lerSaudeDosClientes(data);
     if (!lido) return setEstado({ tipo: "erro", detalhe: "Resposta inesperada do banco." });
     setDados(lido);
     setEstado({ tipo: "pronto" });

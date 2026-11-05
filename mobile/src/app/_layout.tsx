@@ -9,14 +9,16 @@ import { LoadingProvider, useLoading } from "@/context/LoadingContext";
 import { SessionProvider, useUsuario } from "@/context/SessaoContext";
 import { PortoesProvider } from "@/context/PortoesContext";
 import { consumeSupabaseUrlAuthError, getSessionSafe, supabase } from "@/database/supabase";
+import { iniciarSaude, marcarInicio, registrarErroDeTela } from "@/services/saude";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { consumePendingRoute, setPendingRoute } from "@/utils/pendingRoute";
+import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { preloadIconFontsWithSwap } from "@/utils/preloadIconFonts";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
-import { Redirect, Stack, usePathname, useSegments, type Href } from "expo-router";
+import { Redirect, Stack, usePathname, useSegments, type ErrorBoundaryProps, type Href } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
-import { LogBox, Platform, View } from "react-native";
+import { LogBox, Platform, Pressable, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 
@@ -31,6 +33,7 @@ export const unstable_settings = Platform.OS === "web" ? {} : {
   anchor: "(tabs)",
 };
 
+iniciarSaude();
 preloadIconFontsWithSwap();
 
 // Aviso de DESENVOLVIMENTO vindo da biblioteca, não do app: no Fabric, o
@@ -44,6 +47,25 @@ preloadIconFontsWithSwap();
 // Cuidado: o LogBox filtra pelo texto, então um bug nosso com o mesmo texto
 // também some daqui — ele continua no terminal do Metro.
 LogBox.ignoreLogs(["Can't perform a React state update on a component that hasn't mounted yet"]);
+
+// O expo-router usa este export como limite de erro da rota. Sem ele, a tela do roteador mostra o
+// erro cru em inglês, e nada fica registrado.
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    registrarErroDeTela(error);
+  }, [error]);
+  // Fora dos provedores não há aluno: sem perfil, a paleta devolve o neutro do sistema.
+  const palette = getProfileShellPalette(null);
+  return (
+    <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16, padding: 24, backgroundColor: palette.background }}>
+      <Text style={{ color: palette.text, fontSize: 20, fontWeight: "600", textAlign: "center" }}>Algo deu errado nesta tela</Text>
+      <Text style={{ color: palette.textMuted, textAlign: "center" }}>Seu progresso continua guardado.</Text>
+      <Pressable accessibilityRole="button" onPress={() => void retry()} style={{ borderRadius: 10, borderWidth: 1, borderColor: palette.accent, backgroundColor: palette.surfaceElevated, paddingHorizontal: 18, paddingVertical: 12 }}>
+        <Text style={{ color: palette.text, fontWeight: "600" }}>Tentar de novo</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 function LoadingOverlay() {
   const { loading } = useLoading();
@@ -129,6 +151,8 @@ export default function RootLayout() {
       authListener?.subscription?.unsubscribe();
     };
   }, []);
+
+  if (sessionChecked) marcarInicio();
 
   if (!sessionChecked) {
     return (

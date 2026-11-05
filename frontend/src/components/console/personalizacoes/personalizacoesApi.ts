@@ -11,6 +11,7 @@ import {
   contarAlunosPorPerfilDominante,
   type LinhaAlunoPerfil,
 } from "./personalizacaoFallback";
+import { registrarFallbackDaApi } from "@/lib/saude";
 
 // ── Tipos compartilhados ──────────────────────────────────────────────────────
 export type DesignTokensCores = {
@@ -337,6 +338,7 @@ export async function fetchPersonalizacaoPorPerfil(
       "[personalizacao] API indisponivel, lendo personalizacoes por perfil direto do Supabase (fallback com menos detalhe):",
       error
     );
+    registrarFallbackDaApi();
     return fetchPersonalizacaoPorPerfilFallback(params);
   }
 }

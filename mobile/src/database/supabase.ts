@@ -2,6 +2,7 @@
 // Optional polyfills for React Native without adding hard dependency
 import { createClient, Session } from '@supabase/supabase-js'
 import { Platform } from 'react-native'
+import { fetchMedido } from '@/services/saude/medicao'
 
 try {
    
@@ -85,6 +86,7 @@ export const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
     detectSessionInUrl,
     storageKey: getAuthStorageKey() ?? undefined,
   },
+  global: { fetch: fetchMedido },
 })
 
 // Preenchido se a URL de retorno trazia um erro (ex.: link de confirmacao
