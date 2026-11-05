@@ -90,7 +90,7 @@ O primeiro e-mail real só sai em um incidente. Para testar o caminho inteiro, g
 
 ## Definir o horário de aula
 
-O banco não tem grade de aula, então a janela é global e fica em `monitor_config.aula`. Ela é segunda a sexta, das 07:00 às 22:00, em Brasília, decisão de 05/11/2026: há universidades com aula de manhã, à tarde e à noite, então a janela cobre os três turnos. Quanto mais larga a janela, mais minutos contam e maior o orçamento. Semanas sem aula entram em `sem_aula`:
+O banco não tem grade de aula, então a janela é global e fica em `monitor_config.aula`. Ela é segunda a sexta, das 07:00 às 22:00, em Brasília, decisão de 05/11/2026. Quanto mais larga a janela, mais minutos contam e maior o orçamento. Semanas sem aula entram em `sem_aula`:
 
 ```json
 {"aula": {"dias": [1, 2, 3, 4, 5], "inicio": "19:00", "fim": "22:30", "sem_aula": [{"de": "2026-12-19", "ate": "2027-02-07"}]}}
