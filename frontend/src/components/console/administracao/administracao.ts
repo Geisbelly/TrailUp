@@ -19,6 +19,9 @@ export type ProfessorAdmin = {
 
 export type Acessos = { professores: ProfessorAdmin[]; alunos: PessoaAluno[] };
 
+/** Onde a foto entra, na tela de 256 × 256 de `mobile/src/utils/profileFrameLayout.ts`. */
+export type Abertura = { x: number; y: number; radius: number };
+
 export type MolduraAdmin = {
   codigo: string;
   nome: string;
@@ -26,6 +29,9 @@ export type MolduraAdmin = {
   preco: number | null;
   ativa: boolean;
   conquista: string | null;
+  conquista_id: number | null;
+  imagem_url: string | null;
+  abertura: Abertura | null;
   donos: number;
 };
 
@@ -38,7 +44,9 @@ export type AcaoAdmin = {
   feitas: number;
 };
 
-export type Molduras = { molduras: MolduraAdmin[]; acoes: AcaoAdmin[] };
+export type ConquistaDoSistema = { id: number; nome: string; moldura: string | null };
+
+export type Molduras = { molduras: MolduraAdmin[]; acoes: AcaoAdmin[]; conquistas: ConquistaDoSistema[] };
 
 export type RegistroDaAuditoria = {
   id: number;
@@ -95,6 +103,14 @@ export function lerAcessos(dado: unknown): Acessos | null {
   };
 }
 
+const lerAbertura = (v: unknown): Abertura | null => {
+  const a = objeto(v);
+  const x = talvez(a?.x);
+  const y = talvez(a?.y);
+  const radius = talvez(a?.radius);
+  return x === null || y === null || radius === null ? null : { x, y, radius };
+};
+
 export function lerMolduras(dado: unknown): Molduras | null {
   const d = objeto(dado);
   if (!d) return null;
@@ -106,6 +122,9 @@ export function lerMolduras(dado: unknown): Molduras | null {
       preco: talvez(m.preco),
       ativa: m.ativa === true,
       conquista: texto(m.conquista),
+      conquista_id: talvez(m.conquista_id),
+      imagem_url: texto(m.imagem_url),
+      abertura: lerAbertura(m.abertura),
       donos: numero(m.donos),
     })),
     acoes: lista(d.acoes).map((a) => ({
@@ -116,6 +135,7 @@ export function lerMolduras(dado: unknown): Molduras | null {
       ativa: a.ativa === true,
       feitas: numero(a.feitas),
     })),
+    conquistas: lista(d.conquistas).map((c) => ({ id: numero(c.id), nome: texto(c.nome) ?? `Conquista ${numero(c.id)}`, moldura: texto(c.moldura) })),
   };
 }
 
@@ -413,4 +433,52 @@ export const MOTIVO_MINIMO = 5;
 export function motivoValido(motivo: string): boolean {
   const limpo = motivo.trim();
   return limpo.length >= MOTIVO_MINIMO && limpo.length <= 500;
+}
+
+// Imagem das molduras (migration 20261105_28).
+export const TELA_DA_MOLDURA = 256;
+export const ABERTURA_PADRAO: Abertura = { x: 128, y: 128, radius: 90 };
+export const IMAGEM_MAX_BYTES = 1024 * 1024;
+const TIPOS_DE_IMAGEM: Record<string, string> = { "image/png": "png", "image/webp": "webp" };
+
+/** Sem imagem própria, vale o desenho do pacote do app, copiado em `public/molduras`. */
+export const imagemDaMoldura = (m: Pick<MolduraAdmin, "codigo" | "imagem_url">): string => m.imagem_url ?? `/molduras/${m.codigo}.webp`;
+
+export function problemaDaImagem(arquivo: { type: string; size: number }): string | null {
+  if (!TIPOS_DE_IMAGEM[arquivo.type.toLowerCase()]) return "Use uma imagem PNG ou WebP, com fundo transparente.";
+  if (arquivo.size > IMAGEM_MAX_BYTES) return "A imagem pode ter no máximo 1 MB.";
+  return null;
+}
+
+export function problemaDoTamanho(largura: number, altura: number): string | null {
+  if (largura !== altura) return "A imagem precisa ser quadrada.";
+  if (largura < TELA_DA_MOLDURA) return `A imagem precisa ter pelo menos ${TELA_DA_MOLDURA} × ${TELA_DA_MOLDURA} px.`;
+  return null;
+}
+
+export const caminhoDaImagem = (codigo: string, tipo: string, agora: number): string => `${codigo}-${agora}.${TIPOS_DE_IMAGEM[tipo.toLowerCase()] ?? "png"}`;
+
+const CAMINHO_NO_BUCKET = /\/storage\/v1\/object\/public\/molduras\/([A-Za-z0-9._-]+)$/;
+
+export const caminhoDaUrl = (url: string | null | undefined): string | null => (url ? (CAMINHO_NO_BUCKET.exec(url)?.[1] ?? null) : null);
+
+/** O código nasce do nome: é a chave da moldura e não muda depois. */
+export function codigoDoNome(nome: string): string {
+  const base = normalizar(nome).replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 40).replace(/_+$/, "");
+  if (!base) return "";
+  return /^[a-z]/.test(base) ? base : `m_${base}`.slice(0, 41);
+}
+
+export function aberturaCabe(a: Abertura): boolean {
+  return a.radius >= 20 && a.radius <= 128 && a.x - a.radius >= 0 && a.y - a.radius >= 0 && a.x + a.radius <= TELA_DA_MOLDURA && a.y + a.radius <= TELA_DA_MOLDURA;
+}
+
+export type RascunhoDaMoldura = { nome: string; origem: "loja" | "conquista" | "acao"; preco: string; conquista: string };
+
+/** A frase do que falta, ou null quando dá para salvar. */
+export function problemaDoRascunho(r: RascunhoDaMoldura): string | null {
+  if (!r.nome.trim()) return "Dê um nome à moldura.";
+  if (r.nome.trim().length > 60) return "O nome pode ter até 60 caracteres.";
+  if (r.origem === "conquista" && !r.conquista) return "Escolha a conquista que libera a moldura.";
+  return r.origem === "loja" && !precoParaGravar("loja", r.preco).ok ? "O preço vai de 1 a 1000 moedas." : null;
 }

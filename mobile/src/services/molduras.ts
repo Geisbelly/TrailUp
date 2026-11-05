@@ -2,11 +2,28 @@
 // ações do app que liberam as raras. Tudo é RPC no banco; o app não grava `moldura_aluno`.
 import { supabase } from "@/database/supabase";
 import { lerCatalogo, mensagemDeErro, type AcaoDeMoldura, type MolduraDoCatalogo } from "@/services/moldurasModel";
+import { definirMoldurasRemotas } from "@/utils/moldurasRemotas";
 
 export type { AcaoDeMoldura, MolduraDoCatalogo, OrigemDeMoldura } from "@/services/moldurasModel";
 
+/**
+ * Imagens cadastradas no console. Nunca levanta: banco sem as colunas ou rede fora só deixam
+ * valer o desenho do pacote. A leitura é de todas, porque o ranking mostra a moldura dos colegas.
+ */
+export async function carregarMoldurasRemotas(): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from("molduras")
+      .select("codigo, imagem_url, abertura" as never)
+      .not("imagem_url" as never, "is", null);
+    if (!error) definirMoldurasRemotas(data);
+  } catch {
+    // Fica com o que já estava carregado.
+  }
+}
+
 export async function carregarMolduras(): Promise<MolduraDoCatalogo[]> {
-  const { data, error } = await supabase.rpc("molduras_catalogo" as never);
+  const [{ data, error }] = await Promise.all([supabase.rpc("molduras_catalogo" as never), carregarMoldurasRemotas()]);
   if (error) throw error;
   return lerCatalogo(data);
 }
@@ -67,6 +84,7 @@ export function molduraEquipadaEmCache(alunoId: string): string | null | undefin
  * novo contra banco velho), só esta leitura falha, e o avatar fica com a moldura do perfil.
  */
 export async function carregarMolduraEquipada(alunoId: string): Promise<string | null> {
+  void carregarMoldurasRemotas();
   const { data, error } = await supabase
     .from("alunos")
     .select("moldura_equipada" as never)
