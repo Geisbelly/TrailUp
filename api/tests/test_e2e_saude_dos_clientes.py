@@ -12,6 +12,7 @@ from sqlalchemy import text
 from tests.test_e2e_monitor_disponibilidade import ALUNO, DONO, EMAIL_DONO, _modulo, alertas, banco  # noqa: F401
 
 M = _modulo("20261105_14_saude_dos_clientes.py")
+V = _modulo("20261105_15_versao_do_cliente_sem_limpeza.py")
 exige_docker = pytest.mark.skipif(os.environ.get("TRAILUP_TEST_DOCKER") != "1", reason="requer TRAILUP_TEST_DOCKER=1 e Docker")
 
 
@@ -20,6 +21,8 @@ def c(banco):  # noqa: F811
     banco.execute(f"INSERT INTO auth.users VALUES ('{ALUNO}', 'aluna@example.test')")
     banco.execute(M.TABELAS)
     banco.execute(M.FUNCOES_SQL)
+    banco.execute(V.FUNCAO)
+    banco.execute(V._trocar(V.ANTES, V.DEPOIS))
     return banco
 
 
@@ -110,6 +113,19 @@ def test_texto_chega_limpo_mesmo_se_o_cliente_nao_limpar(c) -> None:
 
 
 @exige_docker
+def test_versao_guarda_o_sha_inteiro_e_recusa_o_que_nao_e_versao(c) -> None:
+    como(c, ALUNO)
+    registrar(c, sessao(versao="7140574f"), [erro()])
+    registrar(c, sessao(versao="1.0.6"))
+    registrar(c, sessao(versao="maria@escola.br"))
+    voltar(c)
+    assert sorted(str(r[0]) for r in c.execute("SELECT versao FROM public.cliente_sessao").fetchall()) == [
+        "1.0.6", "7140574f", "None"
+    ]
+    assert c.execute("SELECT versao FROM public.cliente_erro").fetchone()[0] == "7140574f"
+
+
+@exige_docker
 def test_erro_junta_por_assinatura_e_lixo_e_recusado(c) -> None:
     s1, s2 = sessao(), sessao()
     como(c, ALUNO)
@@ -188,5 +204,5 @@ def test_erro_comum_nao_avisa(c) -> None:
 
 
 def test_nenhum_bloco_vira_parametro_de_bind() -> None:
-    for bloco in (M.TABELAS, M.FUNCOES_SQL, M.AGENDAR, M.DESAGENDAR):
+    for bloco in (M.TABELAS, M.FUNCOES_SQL, M.AGENDAR, M.DESAGENDAR, V.FUNCAO, V._trocar(V.ANTES, V.DEPOIS), V.CORRIGIR):
         assert not text(bloco).compile().params

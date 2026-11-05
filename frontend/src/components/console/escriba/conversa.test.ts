@@ -61,7 +61,7 @@ describe("destinoParaLink", () => {
   });
 
   it("recusa o que não é aba de turma do console", () => {
-    for (const d of ["aprovacoes", "tecnico", "admin", "economia.inexistente", "trilha.valores", "economia.valores.x", ""]) {
+    for (const d of ["aprovacoes", "tecnico", "administracao", "admin", "economia.inexistente", "trilha.valores", "economia.valores.x", ""]) {
       expect(destinoParaLink(d, "68")).toBeNull();
     }
   });

@@ -119,6 +119,21 @@ SEM_SESSAO_POR_DECISAO: dict[str, str] = {
         "Painel de disponibilidade (20261105_10): delega a `app_e_dono()`, que confere o e-mail do JWT, "
         "antes de qualquer leitura, e so devolve agregado (nenhum aluno_id)."
     ),
+    "admin_acessos": (
+        "Administracao do dono (20261105_16): a primeira instrucao e `app_e_dono()`, que confere o e-mail do JWT."
+    ),
+    "admin_economia": (
+        "Administracao do dono (20261105_16): a primeira instrucao e `app_e_dono()`, que confere o e-mail do JWT."
+    ),
+    "admin_molduras": (
+        "Administracao do dono (20261105_16): a primeira instrucao e `app_e_dono()`, que confere o e-mail do JWT."
+    ),
+    "admin_professor_aluno": (
+        "Administracao do dono (20261105_16): a primeira instrucao e `app_e_dono()`, que confere o e-mail do JWT."
+    ),
+    "admin_professor_liberar": (
+        "Administracao do dono (20261105_16): a primeira instrucao e `app_e_dono()`, que confere o e-mail do JWT."
+    ),
     "painel_clientes": (
         "Saude dos clientes (20261105_14): delega a `app_e_dono()` antes de qualquer leitura e so devolve "
         "agregado (nenhum user_id)."
