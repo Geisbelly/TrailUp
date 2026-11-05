@@ -118,4 +118,5 @@ Um host por linha, entre crases. `*.` vale para qualquer subdomínio.
 - `esm.sh`: imports de código das edge functions (sem dado pessoal)
 - `deno.land`: imports de código das edge functions (sem dado pessoal)
 - `trailup.vercel.app`: console web do projeto na Vercel (linha 3), só o link de entrada no e-mail de aviso; não é um terceiro novo
+- `api.trailup.promora.dev.br`: a API do projeto no VPS (linha 2), sondada pelo banco a cada minuto; a sonda não leva dado pessoal e não é um terceiro novo
 - `*.trailup.app`: domínios próprios do projeto (servidos pela infraestrutura das linhas 2 e 3; não é um terceiro novo)

@@ -17,6 +17,8 @@ Este diretorio consolida os capitulos tecnicos e metodologicos usados para forma
 9. `09-metodologia-de-pesquisa-e-avaliacao.md`
 10. `10-metricas-e-analise-de-resultados.md`
 11. `11-contribuicoes-limitacoes-e-trabalhos-futuros.md`
+12. `12-psicologia-das-cores-perfis.md`
+13. `13-instrumentos-qualitativos.md`
 
 **Estado atual do sistema (04/11/2026):** [`sistema-para-a-monografia-2026-11-04.md`](./sistema-para-a-monografia-2026-11-04.md). Varredura verificada no código e no banco; os capítulos acima são de abril e devem ser revistos a partir dela.
 

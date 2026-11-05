@@ -3,6 +3,10 @@
 Apêndice do resumo *IA onde importa: uma arquitetura para pesquisar
 personalização e acolhimento na educação gamificada* (v7, 04/11/2026).
 
+> Retrato de 04/11/2026. A seção 2 diz que o projeto não grava consumo, e isso não vale mais: o uso do
+> microservice fica em `personalizacao_job_targets.uso_modelo`, e o da API, em `ia_uso_llm`. O estado
+> atual está em [`docs/custos.md`](../../custos.md).
+
 **Para que serve:** qualquer pessoa consegue refazer cada número de custo e de
 horas da v7 a partir das mesmas entradas, ou ver qual entrada ainda falta.
 

@@ -115,6 +115,10 @@ SEM_SESSAO_POR_DECISAO: dict[str, str] = {
         "Mesma delegacao de `aprovacoes_pendentes`: `app_e_dono()` antes de "
         "qualquer leitura, e so o dono do sistema passa."
     ),
+    "painel_disponibilidade": (
+        "Painel de disponibilidade (20261105_10): delega a `app_e_dono()`, que confere o e-mail do JWT, "
+        "antes de qualquer leitura, e so devolve agregado (nenhum aluno_id)."
+    ),
     "painel_tecnico": (
         "Mesma delegacao de `aprovacoes_pendentes` (20261102_22): a primeira "
         "instrucao do corpo e `IF NOT public.app_e_dono() THEN RAISE ... 42501`, "

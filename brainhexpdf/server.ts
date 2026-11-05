@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import { generateInteractiveHtml } from './src/utils/deckExportUtils';
 
 import { checkSupabaseSecretGuard } from './src/security/checkSupabaseSecretGuard';
+import { criarExigirSegredo, deckPodeSerServido } from './src/security/autorizacao';
 import { validateRenderAndStoreInput } from './src/services/renderAndStoreValidation';
 
 import { BRAIN_HEX_PROFILES } from './src/data/brainHexProfiles';
@@ -93,10 +94,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// JSON body parser with 50mb limit for multimodal payloads
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
 // Microservice Request Logger
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (req.path.startsWith('/api') || req.path === '/health' || req.path === '/openapi.json') {
@@ -109,21 +106,14 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
-// Segredo compartilhado com o microservice do trailup. Opt-in: se
-// API_SHARED_SECRET não estiver definido, o middleware deixa passar tudo
-// (mesmo comportamento do microservice/api-brainhex). Aplicado só no
-// endpoint /api/v1/render-and-store — as rotas antigas (UI, demos)
-// continuam sem autenticação, fora de escopo desta mudança.
-const apiSharedSecret = (process.env.API_SHARED_SECRET || '').trim();
+// Segredo compartilhado com o microservice do trailup, em TODO POST: rota nova
+// nasce fechada. Vem antes dos parsers para a recusa sair sem ler 50 MB de corpo.
+const requireSecret = criarExigirSegredo(process.env);
+app.post('*', requireSecret);
 
-function requireSecret(req: Request, res: Response, next: NextFunction) {
-  if (!apiSharedSecret) return next();
-  const provided = req.header('x-api-secret') ?? req.header('authorization')?.replace(/^Bearer\s+/i, '');
-  if (provided !== apiSharedSecret) {
-    return res.status(401).json({ success: false, error: 'auth obrigatória — header x-api-secret ausente ou inválido' });
-  }
-  return next();
-}
+// JSON body parser with 50mb limit for multimodal payloads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Service role: necessária pro endpoint /api/v1/render-and-store gravar no
 // bucket conteudo_aluno (RLS não permite ANON_KEY nesse bucket). As rotas
@@ -397,7 +387,8 @@ app.get('/api/v1/health', handleHealthCheck);
 // text/plain + CSP sandbox pra .html, o que impede o WebView do mobile de
 // executar o deck interativo. Aqui baixamos via service role (server-to-
 // server, não passa pelo gateway público) e devolvemos o Content-Type certo.
-// Sem auth de propósito: mesma exposição que uma URL pública já teria.
+// Sem cabeçalho de propósito (o WebView não tem como mandar), mas só entrega
+// deck: a service role alcança bucket privado (ver deckPodeSerServido).
 app.get('/api/v1/decks/:bucket/*', async (req: Request, res: Response) => {
   const { bucket } = req.params;
   // Express 4 expõe o resto do path casado pelo "*" em params[0].
@@ -406,8 +397,8 @@ app.get('/api/v1/decks/:bucket/*', async (req: Request, res: Response) => {
   if (!bucket || !objectPath) {
     return res.status(400).json({ success: false, error: 'bucket e path são obrigatórios.' });
   }
-  if (objectPath.includes('..')) {
-    return res.status(400).json({ success: false, error: 'path inválido.' });
+  if (!deckPodeSerServido(bucket, objectPath)) {
+    return res.status(404).json({ success: false, error: 'arquivo não encontrado' });
   }
 
   try {
@@ -2101,7 +2092,7 @@ app.post('/api/v1/generate', async (req: Request, res: Response) => {
 // chamador. Não escreve em nenhuma tabela — quem persiste em
 // conteudo_personalizado é o microservice do trailup (ver
 // docs/superpowers/specs/2026-08-15-brainhexpdf-integracao-design.md).
-app.post('/api/v1/render-and-store', requireSecret, medirUsoDaRota, async (req: Request, res: Response) => {
+app.post('/api/v1/render-and-store', medirUsoDaRota, async (req: Request, res: Response) => {
   try {
     const {
       targetProfile,

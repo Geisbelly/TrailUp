@@ -460,6 +460,13 @@ Cada perfil carrega:
     `EstudoRepository`.** A RLS não o cobre. A contaminação na RPC é a exposição medida (tempo
     ativo no escopo `material` dentro da janela retida). Ver
     `docs/superpowers/specs/2026-11-01-cohort-e-baseline-design.md` §6.
+  - **Migration que regrava `metricas_estudo_coortes` parte da última versão, não da `_03`.** A
+    `20261104_04` partiu da `_03` e apagou a trava do relatório; a `20261105_11` a devolveu.
+  - **Análise longitudinal (#19, `20261105_12`):** `metricas_estudo_longitudinal` lê a mesma conta
+    (a janela ganhou `p_perfil`, opcional) e classifica cada indicador em `sustentado`,
+    `ganho_nao_mantido`, `pico_isolado`, `sem_ganho` ou `amostra_insuficiente`. O limiar é o
+    desvio-padrão semanal do baseline: regra descritiva, não teste de significância. Ver
+    `docs/superpowers/specs/2026-11-05-analise-longitudinal-design.md`.
 - **Rank do evento** (`20261104_01`, #155): `evento_inscricoes` + `ranks.evento_id`. Abrir o evento
   cria um rank por critério de `eventos_classe.arena_criterios` (só `pontuacao`, `missoes` e
   `ranqueada`, os que respeitam a janela) com `inicio`/`fim` do evento, e a `_todas` conta **só os
@@ -654,13 +661,34 @@ Cada perfil carrega:
   fila, erro e latência por formato e os quatro gatilhos do §11 (`ok`/`alerta`/`sem_dado`), com o **mesmo
   SLO da #14** (`app_config.personalizacao_kpi_slo`). Confere `app_e_dono()` antes de qualquer leitura e só
   agrega (nenhum `aluno_id`, nenhum texto de erro). Duas regras de honestidade: **o que o banco não mediu é
+
   `sem_dado`, nunca `ok`** (o que a tela não entende também), e o gatilho de custo é um **proxy**
   (execuções por alvo), porque tokens e custo em dinheiro não são gravados. A divergência de progresso é o
+  resultado das invariantes (`metricas_invariante_resultado`). Quando cada worker mexeu por último continua
+  aqui; quem diz se a API está no ar é o monitor (abaixo). O aviso ao dono sai pelo sino (`20261102_23`): o `pg_cron`
+
+  `sem_dado`, nunca `ok`** (o que a tela não entende também), e o gatilho de custo mede **tokens por
+  alvo** (`uso_modelo`, `20261103_14`), com o proxy de execuções só enquanto houver menos de 5 alvos medidos. A divergência de progresso é o
   resultado das invariantes (`metricas_invariante_resultado`). Disponibilidade = quando cada worker mexeu
   por último; o banco não enxerga a API. O aviso ao dono sai pelo sino (`20261102_23`): o `pg_cron`
+
   chama `painel_tecnico` (**a mesma conta da aba**, com o e-mail do dono posto nas claims só dentro da
   transação, por uma função sem EXECUTE para cliente) e grava **um aviso por gatilho em `alerta` por dia**
   em `professor_notificacoes`; `sem_dado` não avisa.
+- **Monitor de disponibilidade (`20261105_09`, `_10`) — o banco sonda de fora e avisa por e-mail.** O `pg_cron`
+  roda `fn_monitor_tick()` a cada minuto: colhe a resposta das sondas do minuto anterior (`net.http_get` só sai
+  depois do commit), aplica na máquina de estados de `monitor_alvo`, varre instabilidade, lentidão e sinais
+  (app sem alcançar a API por `fallback_motivo`, erro do modelo, espaço, conexões, `cron.job_run_details`),
+  dispara as novas e envia os e-mails de `monitor_alerta` pelo Apps Script. Limiares e metas ficam em
+  `app_config.monitor_config`; destino é `monitor_email_destino`, senão `dono_email`. A meta vale em horário de aula, em
+  28 dias: o banco não tem grade, então a janela é global (`monitor_config.aula`), e cada sonda grava `em_aula` ao sair.
+  Em aula, tudo é sondado a cada minuto. Três detalhes. **Sonda sem
+  resposta não é falha**: fica `ok = NULL`, porque quem não respondeu foi o medidor. **`latencia_ms` é proxy**: o
+  `pg_net` não grava a duração. **O monitor cai com o Supabase**: só a batida (`monitor_batida_url` no Vault, para o
+  Healthchecks.io) e um serviço externo cobrem isso. A aba Painel técnico lê `painel_disponibilidade` e
+  `painel_acessos_alunos` direto do Supabase; **não** vá para o `/admin` da API, que cai junto com ela. A lista por
+  aluno abre com código curto e mostrar nomes fica em `monitor_consulta`; nela não entra emoção, BrainHex nem nota.
+  Métricas e metas: `docs/analises/2026-11-05-metricas-e-metas-de-desempenho.md`. Operação: `docs/architecture/monitoramento.md`.
 
 - **Missões sugeridas pela IA (#151, `20261102_20`) — a IA propõe, o banco decide o que entra, o
   professor aprova.** Reaproveita `missoes` (`origem = 'ia'`, `aprovacao = 'pendente'`); o `CHECK`
@@ -1115,6 +1143,12 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   custa essa fatia do lote, e só protege se a chave estiver em outro projeto do Google, porque a cota
   diária é por projeto, e fora do `GEMINI_API_KEY*` do microservice, que tem rodízio próprio.
 
+- **Custos ficam em [`docs/custos.md`](docs/custos.md), e atualizar é parte do PR.** Serviço pago novo
+  ou mudança de plano, fatura, chamada de modelo nova, troca de modelo, ou decisão que mude chamadas,
+  tokens ou cota: o documento muda no mesmo PR, com a data no topo. Número sem fonte fica PENDENTE,
+  nunca estimado. `docs/analises/custos-jic-2026/` é retrato da v7 do resumo, com projeção de planos
+  pagos: não use aqueles valores como gasto atual.
+
 ## Fontes de contexto (fora do código)
 
 Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
@@ -1192,7 +1226,13 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
   [`docs/MANUAL.md`](docs/MANUAL.md),
   [coleta de métricas](docs/architecture/coleta-de-metricas.md),
   [schema não versionado](docs/architecture/schema-nao-versionado.md),
+
+  [rotas de todos os serviços](docs/rotas.md) (gerado por `scripts/site_docs/rotas.py`:
+  mudou rota, rode de novo; `test_doc_rotas.py` cobra a API),
   [`docs/rag/`](docs/rag/) e `graphify-out/` (abaixo).
+
+  [custos](docs/custos.md), [`docs/rag/`](docs/rag/) e `graphify-out/` (abaixo).
+
 
 ## Pontos de entrada (código)
 
