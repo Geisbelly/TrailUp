@@ -29,6 +29,7 @@ import type { TutorialDoGuia } from "@/utils/tutoriaisDoGuia";
 import { type Href, router } from "expo-router";
 import { ModoRestritoError } from "@/utils/consentimentoResponsavel";
 import { shadowStyle } from "@/utils/webShadow";
+import { falaAssinadaDaResposta, falaParaHistorico, type FalaAssinada } from "./historicoDoGuia";
 
 const IS_WEB = Platform.OS === "web";
 const SOMBRA_CARD = { offset: { width: 0, height: 10 }, opacity: 0.28, radius: 20 };
@@ -51,6 +52,7 @@ type ChatMessage = {
   content: string;
   /** Desenho da resposta. Sem ele, mostra `content`. */
   resposta?: RespostaDoGuia;
+  falaAssinada?: FalaAssinada;
 };
 
 type TutorialTip = {
@@ -443,7 +445,7 @@ export function IAMentorPanel({
     setIsOpen(false);
   };
 
-  const appendAssistantMessage = (content: string, resposta?: RespostaDoGuia) => {
+  const appendAssistantMessage = (content: string, resposta?: RespostaDoGuia, falaAssinada?: FalaAssinada) => {
     const normalized = String(content ?? "").trim();
     if (!normalized) return;
     setMessages((prev) => {
@@ -463,6 +465,7 @@ export function IAMentorPanel({
           role: "assistant",
           content: normalized,
           resposta,
+          falaAssinada,
         },
       ];
     });
@@ -520,10 +523,7 @@ export function IAMentorPanel({
         topico_id: topicoId ?? null,
         escopo: scope,
         mensagem: text,
-        historico: nextHistory.slice(-8).map((entry) => ({
-          role: entry.role,
-          content: entry.content,
-        })),
+        historico: nextHistory.slice(-8).map(falaParaHistorico),
       });
 
       const reply = normalizeMentorReplyTone(String(response?.reply ?? ""));
@@ -535,7 +535,7 @@ export function IAMentorPanel({
         ...montada,
         texto: normalizeMentorReplyTone(montada.texto),
         secoes: montada.secoes.map((secao) => ({ ...secao, texto: normalizeMentorReplyTone(secao.texto) })),
-      });
+      }, falaAssinadaDaResposta(response.reply, response.assinatura));
       recordAppEvent({
         eventGroup: "chat",
         eventName: "chat_message",

@@ -73,6 +73,10 @@ def restaurar_refs(texto: str | None, nomes_por_ref: Mapping[str, Any]) -> str |
     return _REF_RE.sub(lambda m: exibicao.get(f"A{m.group(1)}", m.group(0)), texto)
 
 
+def refs_citadas(texto: str | None) -> set[str]:
+    return {f"A{numero}" for numero in _REF_RE.findall(texto or "")}
+
+
 def pseudonimizar_texto(texto: str | None, nomes_por_ref: Mapping[str, Any]) -> str | None:
     """Troca nomes conhecidos por refs num texto livre (pergunta e historico
     do professor) e remove e-mails. Nome completo primeiro, depois o primeiro

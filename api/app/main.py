@@ -16,6 +16,7 @@ from app.core.settings import Settings, get_settings
 from app.core.tracing import aplicar_politica_de_tracing
 from app.db.migrations import upgrade_database_to_head
 from app.db.session import build_session_factory, execute_with_database_retry
+from app.services import uso_llm
 from app.services.alteracao_professor import alteracao_professor_loop
 from app.services.analise_fila import analise_fila_loop
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
@@ -54,6 +55,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.settings = app_settings
         app.state.engine = engine
         app.state.session_factory = session_factory
+        uso_llm.configurar(session_factory)
         app.state.checkpointer_personalizacao = personalizacao_checkpointer
         app.state.checkpointer_backend_personalizacao = personalizacao_backend
         app.state.checkpointer_manager_personalizacao = personalizacao_manager

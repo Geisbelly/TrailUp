@@ -21,6 +21,8 @@ export type Mensagem = {
   /** Destinos sem seção: botões soltos, abaixo da resposta. */
   destinos?: Destino[];
   tutorial?: Tutorial | null;
+  /** Prova de que a fala saiu da API. Sem ela, a API deixa a fala fora do contexto. */
+  assinatura?: string;
 };
 export type TurmaDoProfessor = { id: number; descricao: string | null };
 
@@ -46,11 +48,11 @@ export function turmaInicial(turmas: TurmaDoProfessor[], turmaNaUrl: string | nu
 }
 
 /** A mensagem de boas-vindas e as de erro não são conversa: não voltam para a API. */
-export function historicoParaEnvio(mensagens: Mensagem[]): { papel: Papel; texto: string }[] {
+export function historicoParaEnvio(mensagens: Mensagem[]): { papel: Papel; texto: string; assinatura?: string }[] {
   return mensagens
     .filter((m) => !m.erro && m.id !== 0)
     .slice(-HISTORICO_ENVIADO)
-    .map(({ papel, texto }) => ({ papel, texto: texto.slice(0, 2000) }));
+    .map(({ papel, texto, assinatura }) => ({ papel, texto: texto.slice(0, 2000), ...(assinatura ? { assinatura } : {}) }));
 }
 
 /**
@@ -104,7 +106,7 @@ export function destinosParaLinks(destinos: unknown, turma: string): Destino[] {
   return links.slice(0, MAX_DESTINOS);
 }
 
-type RespostaDaLumi = { resposta?: string; introducao?: string; secoes?: unknown; destinos?: unknown; tutorial?: unknown };
+type RespostaDaLumi = { resposta?: string; introducao?: string; secoes?: unknown; destinos?: unknown; tutorial?: unknown; assinatura?: unknown };
 
 /** A resposta da API como mensagem do painel. Botão de seção não se repete embaixo. */
 export function mensagemDaResposta(id: number, r: RespostaDaLumi | null | undefined, turma: string): Mensagem {
@@ -123,5 +125,6 @@ export function mensagemDaResposta(id: number, r: RespostaDaLumi | null | undefi
     secoes: secoes.length > 0 ? secoes : undefined,
     destinos: destinosParaLinks(r?.destinos, turma).filter((d) => !nasSecoes.has(d.caminho)),
     tutorial: typeof r?.tutorial === "string" ? tutorialPorId(r.tutorial) : null,
+    ...(typeof r?.assinatura === "string" && r.assinatura ? { assinatura: r.assinatura } : {}),
   };
 }

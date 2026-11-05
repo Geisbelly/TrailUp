@@ -27,7 +27,13 @@ async def perguntar_ao_escriba(
     user: UserContext = Depends(require_professor),
     session: AsyncSession = Depends(get_session),
 ) -> RespostaEscriba:
-    service = EscribaService(session, JsonLLMService(request.app.state.settings))
+    settings = request.app.state.settings
+    service = EscribaService(
+        session,
+        JsonLLMService(settings),
+        segredo=settings.supabase_jwt_secret,
+        prazo_total=settings.chat_prazo_total_seconds,
+    )
     try:
         return await service.perguntar(user.professor_id or user.user_id, pedido)
     except TurmaNaoPermitida as exc:

@@ -11,6 +11,9 @@ class TrailUpState(TypedDict, total=False):
     modo_operacao: str
     modo_resposta: str
     perfil_brainhex: list[dict[str, Any]]
+    # O perfil que o aluno escolheu no app (`alunos.perfil_ativo`). Só vale quando é representativo:
+    # quem decide é `agente_notificacao._perfil_da_tela`, com a mesma regra do app e do banco.
+    perfil_ativo: str | None
     historico_eventos: list[dict[str, Any]]
     progresso_trilha: dict[str, Any]
     desempenho_recente: dict[str, Any]

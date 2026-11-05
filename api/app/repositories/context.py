@@ -128,6 +128,7 @@ class ContextRepository:
                   a.apelido,
                   a.descricao,
                   a.modo_resposta,
+                  a.perfil_ativo,
                   mo.nome AS modo_operacao
                 FROM alunos a
                 LEFT JOIN {modo_operacao_relation} mo ON mo.id = a.modooperacao_id
@@ -142,6 +143,7 @@ class ContextRepository:
                   a.apelido,
                   a.descricao,
                   a.modo_resposta,
+                  a.perfil_ativo,
                   NULL::text AS modo_operacao
                 FROM alunos a
                 WHERE a.id = :aluno_id
