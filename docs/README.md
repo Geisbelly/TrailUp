@@ -28,6 +28,8 @@ Documentação que não pertence a um único serviço:
 - **[`sprint/`](./sprint/)** — planejamento e relatórios semanais da sprint.
 - **[`ecossistema/`](./ecossistema/)** — fluxo completo do ecossistema, com a
   versão detalhada e as perspectivas resumidas por serviço.
+- **[Monitoramento de disponibilidade](./architecture/monitoramento.md)** — sondas, incidentes,
+  alertas por e-mail e o que configurar.
 - **[Mapa da coleta de métricas](./architecture/coleta-de-metricas.md)** — o
   que a telemetria coleta, com que limites, o que vira `tempo_gasto_min` e o
   estado medido da realimentação (2026-09-30). Leia antes de interpretar

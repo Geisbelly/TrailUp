@@ -654,13 +654,34 @@ Cada perfil carrega:
   fila, erro e latência por formato e os quatro gatilhos do §11 (`ok`/`alerta`/`sem_dado`), com o **mesmo
   SLO da #14** (`app_config.personalizacao_kpi_slo`). Confere `app_e_dono()` antes de qualquer leitura e só
   agrega (nenhum `aluno_id`, nenhum texto de erro). Duas regras de honestidade: **o que o banco não mediu é
+
+  `sem_dado`, nunca `ok`** (o que a tela não entende também), e o gatilho de custo é um **proxy**
+  (execuções por alvo), porque tokens e custo em dinheiro não são gravados. A divergência de progresso é o
+  resultado das invariantes (`metricas_invariante_resultado`). Quando cada worker mexeu por último continua
+  aqui; quem diz se a API está no ar é o monitor (abaixo). O aviso ao dono sai pelo sino (`20261102_23`): o `pg_cron`
+
   `sem_dado`, nunca `ok`** (o que a tela não entende também), e o gatilho de custo mede **tokens por
   alvo** (`uso_modelo`, `20261103_14`), com o proxy de execuções só enquanto houver menos de 5 alvos medidos. A divergência de progresso é o
   resultado das invariantes (`metricas_invariante_resultado`). Disponibilidade = quando cada worker mexeu
   por último; o banco não enxerga a API. O aviso ao dono sai pelo sino (`20261102_23`): o `pg_cron`
+
   chama `painel_tecnico` (**a mesma conta da aba**, com o e-mail do dono posto nas claims só dentro da
   transação, por uma função sem EXECUTE para cliente) e grava **um aviso por gatilho em `alerta` por dia**
   em `professor_notificacoes`; `sem_dado` não avisa.
+- **Monitor de disponibilidade (`20261105_09`, `_10`) — o banco sonda de fora e avisa por e-mail.** O `pg_cron`
+  roda `fn_monitor_tick()` a cada minuto: colhe a resposta das sondas do minuto anterior (`net.http_get` só sai
+  depois do commit), aplica na máquina de estados de `monitor_alvo`, varre instabilidade, lentidão e sinais
+  (app sem alcançar a API por `fallback_motivo`, erro do modelo, espaço, conexões, `cron.job_run_details`),
+  dispara as novas e envia os e-mails de `monitor_alerta` pelo Apps Script. Limiares e metas ficam em
+  `app_config.monitor_config`; destino é `monitor_email_destino`, senão `dono_email`. A meta vale em horário de aula, em
+  28 dias: o banco não tem grade, então a janela é global (`monitor_config.aula`), e cada sonda grava `em_aula` ao sair.
+  Em aula, tudo é sondado a cada minuto. Três detalhes. **Sonda sem
+  resposta não é falha**: fica `ok = NULL`, porque quem não respondeu foi o medidor. **`latencia_ms` é proxy**: o
+  `pg_net` não grava a duração. **O monitor cai com o Supabase**: só a batida (`monitor_batida_url` no Vault, para o
+  Healthchecks.io) e um serviço externo cobrem isso. A aba Painel técnico lê `painel_disponibilidade` e
+  `painel_acessos_alunos` direto do Supabase; **não** vá para o `/admin` da API, que cai junto com ela. A lista por
+  aluno abre com código curto e mostrar nomes fica em `monitor_consulta`; nela não entra emoção, BrainHex nem nota.
+  Métricas e metas: `docs/analises/2026-11-05-metricas-e-metas-de-desempenho.md`. Operação: `docs/architecture/monitoramento.md`.
 
 - **Missões sugeridas pela IA (#151, `20261102_20`) — a IA propõe, o banco decide o que entra, o
   professor aprova.** Reaproveita `missoes` (`origem = 'ia'`, `aprovacao = 'pendente'`); o `CHECK`
