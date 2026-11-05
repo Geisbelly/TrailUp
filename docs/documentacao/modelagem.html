@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Sobre a modelagem · TrailUp</title><meta name="description" content="Como os 45 diagramas foram feitos, conferidos no código e no banco, e o que eles não afirmam."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" type="image/png" href="../assets/trailup-estrela.png"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><img src="../assets/trailup-estrela.png" alt="" width="34" height="34">TrailUp<small>documentação</small></a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/guardioes.html">Guardiões</a><a href="../documentacao/gamificacao.html">Gamificação</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/artigo-ia-onde-importa.html">Artigos</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a><a class="abrir" href="https://trailup.vercel.app/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li><li><a href="rotas.html">Rotas dos serviços</a></li><li><a href="guardioes.html">Os sete Guardiões</a></li><li><a href="gamificacao.html">Gamificação e personalização</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html" aria-current="page">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Artigos</h4><ul><li><a href="artigo-ia-onde-importa.html">IA onde importa</a></li><li><a href="artigo-da-tipologia-a-trilha.html">Da tipologia à trilha</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Usar o TrailUp</h4><ul><li><a href="https://trailup.vercel.app/" target="_blank" rel="noopener">Site ↗</a></li><li><a href="https://trailup.vercel.app/login" target="_blank" rel="noopener">Console do professor ↗</a></li><li><a href="https://trailup.vercel.app/aluno/login" target="_blank" rel="noopener">TrailUp na web (aluno) ↗</a></li><li><a href="https://play.google.com/apps/test/com.seuprojeto.trailup/20" target="_blank" rel="noopener">App Android ↗</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Sobre a modelagem</h1><p class="lede">Como os 45 diagramas foram feitos, conferidos no código e no banco, e o que eles não afirmam.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/README.md" target="_blank" rel="noopener">docs/tcc/modelagem/README.md</a><span class="chip ok">atualizado 05/11/2026</span></div></header><p>Modelagem completa do sistema para a monografia, em 45 diagramas. Substitui o capítulo <a href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/04-modelagem-do-sistema.md"><code>04-modelagem-do-sistema.md</code></a>, que é de abril de 2026.</p>
-<p><strong>Procedência</strong> (04/11/2026):</p>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Sobre a modelagem · TrailUp</title><meta name="description" content="Como os 72 diagramas foram feitos, conferidos no código e no banco, e o que eles não afirmam."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" type="image/png" href="../assets/trailup-estrela.png"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><img src="../assets/trailup-estrela.png" alt="" width="34" height="34">TrailUp<small>documentação</small></a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/guardioes.html">Guardiões</a><a href="../documentacao/gamificacao.html">Gamificação</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/artigo-ia-onde-importa.html">Artigos</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a><a class="abrir" href="https://trailup.vercel.app/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li><li><a href="rotas.html">Rotas dos serviços</a></li><li><a href="guardioes.html">Os sete Guardiões</a></li><li><a href="gamificacao.html">Gamificação e personalização</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html" aria-current="page">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Artigos</h4><ul><li><a href="artigo-ia-onde-importa.html">IA onde importa</a></li><li><a href="artigo-da-tipologia-a-trilha.html">Da tipologia à trilha</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Usar o TrailUp</h4><ul><li><a href="https://trailup.vercel.app/" target="_blank" rel="noopener">Site ↗</a></li><li><a href="https://trailup.vercel.app/login" target="_blank" rel="noopener">Console do professor ↗</a></li><li><a href="https://trailup.vercel.app/aluno/login" target="_blank" rel="noopener">TrailUp na web (aluno) ↗</a></li><li><a href="https://play.google.com/apps/test/com.seuprojeto.trailup/20" target="_blank" rel="noopener">App Android ↗</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Sobre a modelagem</h1><p class="lede">Como os 72 diagramas foram feitos, conferidos no código e no banco, e o que eles não afirmam.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/README.md" target="_blank" rel="noopener">docs/tcc/modelagem/README.md</a><span class="chip ok">atualizado 05/11/2026</span></div></header><p>Modelagem completa do sistema para a monografia, em 72 diagramas, com 68 casos de uso especificados, 188 tabelas por domínio e 21 fluxos (P0 a P20). Substitui o capítulo <a href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/04-modelagem-do-sistema.md"><code>04-modelagem-do-sistema.md</code></a>, que é de abril de 2026.</p>
+<p><strong>Procedência</strong> (05/11/2026):</p>
 <ul>
-<li><strong>Código:</strong> lido na <code>main</code> do Lab, commit <code>3edd2561</code>.</li>
-<li><strong>Banco:</strong> consultado em produção, só leitura:
+<li><strong>Código:</strong> lido na <code>main</code> do Lab, commit <code>af371249</code>.</li>
+<li><strong>Banco:</strong> consultado em produção, só leitura, entre as migrações <code>20261105_26</code> e <code>20261105_28</code>, que entraram durante a revisão. Das duas novas, conferi em produção as tabelas, as colunas, o bucket e as policies:
 <ul>
 <li>chaves estrangeiras (<code>pg_constraint</code>);</li>
 <li>restrições <code>CHECK</code> de status;</li>
 <li>enums;</li>
 <li>rotinas <code>pg_cron</code>;</li>
-<li>contagens por status.</li>
+<li>contagens por status;</li>
+<li>corpo das funções que definem as transições de estado.</li>
 </ul>
 </li>
-<li><strong>Atualização (05/11/2026):</strong> seção 5.8, duelo no evento, administração do dono e rotas do BrainHexPDF, lidos no código da <code>main</code>, sem nova consulta ao banco.</li>
 <li><strong>Correções:</strong> onde o código e o banco divergiam do que os documentos anteriores diziam, valeu o código e o banco. As correções feitas aparecem ao fim desta página.</li>
 </ul>
 <div class="tabela"><table>
@@ -26,43 +26,44 @@
 <tbody>
 <tr>
 <td><a href="arquitetura.html">1. Arquitetura</a></td>
-<td>contexto (C4-1), contêineres (C4-2), regra de fronteira, implantação, camadas da API</td>
+<td>contexto (C4-1), contêineres (C4-2), regra de fronteira, implantação, camadas da API, rotinas do banco</td>
 <td>arquitetura e implantação</td>
 </tr>
 <tr>
 <td><a href="casos-de-uso.html">2. Casos de uso</a></td>
-<td>aluno; professor e dona; especificação resumida</td>
+<td>aluno, professor, dona, visitante e sistema; especificação de todos, exceções e rastreabilidade</td>
 <td>requisitos e casos de uso</td>
 </tr>
 <tr>
 <td><a href="pipeline.html">3. Pipeline de ponta a ponta</a></td>
-<td>visão do ciclo + 13 fluxos (P0–P13) em diagramas de sequência</td>
+<td>visão do ciclo + fluxos P0–P20 em diagramas de sequência</td>
 <td>funcionamento do sistema</td>
 </tr>
 <tr>
 <td><a href="ia.html">4. IA: grafo e análise</a></td>
-<td>grafo LangGraph (16 nós), regras de roteamento, pipeline de 6 estágios, escolha do provedor</td>
+<td>grafo LangGraph (16 nós), regras de roteamento, pipeline de 6 estágios, escolha do provedor, todas as chamadas ao modelo</td>
 <td>modelo adaptativo</td>
 </tr>
 <tr>
 <td><a href="dados.html">5. Dados</a></td>
-<td>ER por domínio: acadêmico, progresso, personalização, telemetria, gamificação, notificações, privacidade/RAG, observabilidade</td>
+<td>ER por domínio, incluindo economia, arena, social e estudo; apêndice com todas as tabelas</td>
 <td>modelo de dados</td>
 </tr>
 <tr>
 <td><a href="estados.html">6. Estados</a></td>
-<td>jobs, alvos, material, progresso, eventos, notificações, intervenções, gamificação, RAG</td>
+<td>jobs, alvos, material, progresso, eventos, notificações, intervenções, gamificação, RAG, diagnóstico, economia, convites, consentimento, monitor</td>
 <td>comportamento</td>
 </tr>
 <tr>
 <td><a href="classes.html">7. Classes</a></td>
-<td>Strategy do pipeline, serviços de LLM, camadas do backend, provedor do app</td>
+<td>Strategy do pipeline, serviços de LLM, camadas do backend, provedor do app, workers, microservice</td>
 <td>projeto orientado a objetos</td>
 </tr>
 </tbody>
 </table></div>
 <h2 id="imagens">Imagens</h2>
 <p><code>img/</code> traz cada diagrama em SVG, com fundo branco, pronto para inserir no Word ou no LaTeX. O nome do arquivo é <code>&lt;capítulo&gt;-&lt;ordem no capítulo&gt;.svg</code>: <code>03-02.svg</code> é o segundo diagrama do capítulo 3.</p>
+<p>As imagens são numeradas pela ordem no capítulo, então inserir um diagrama desloca os seguintes. Ao citar uma figura na monografia, confira o número.</p>
 <p>Para regerar depois de editar um <code>.md</code>, a partir da raiz do repositório:</p>
 <pre><code class="language-bash">python3 docs/tcc/modelagem/exportar_diagramas.py
 </code></pre>
@@ -71,12 +72,16 @@
 <li>em diagrama de sequência, <code>;</code> dentro de mensagem quebra a linha;</li>
 <li>nota de diagrama de estado não aceita aspas.</li>
 </ul>
+<p>Para conferir se o apêndice de dados cobre todas as tabelas do banco (só lê, e a URL vem de <code>DATABASE_URL</code>):</p>
+<pre><code class="language-bash">python docs/tcc/modelagem/conferir_tabelas.py
+</code></pre>
 <h2 id="o-que-estes-diagramas-não-afirmam">O que estes diagramas não afirmam</h2>
 <ul>
 <li>O pipeline de análise tem <strong>nomes</strong> de algoritmos de ML, mas os estágios são regras. As exceções são a emoção por imagem e o M2. O diagrama 4.2 e o 7.1 marcam o que é regra.</li>
 <li>O RAG está <strong>implementado e não indexado</strong>. Ele aparece tracejado nos diagramas.</li>
 <li><code>agente_emocao</code>, dentro do grafo, usa <code>MockEmocaoAdapter</code>. A emoção que vale é a do estágio 1 do pipeline.</li>
-<li>As transições de missão, desafio de guilda e relação social (6.8) seguem os rótulos dos <code>CHECK</code>. Elas não foram auditadas função por função.</li>
+<li><code>missao_aluno.status = 'expirada'</code> existe no <code>CHECK</code>, e nenhuma função grava esse valor.</li>
+<li>Vários fluxos estão prontos e sem uso real: em 05/11/2026 a produção tinha zero diagnósticos, fundos, desafios, partidas de Elo e coortes. Os diagramas descrevem o comportamento implementado, não uso medido.</li>
 </ul>
 <h2 id="correções-em-relação-aos-documentos-anteriores">Correções em relação aos documentos anteriores</h2>
 <div class="tabela"><table>
@@ -104,9 +109,25 @@
 <td>a do tópico vem da API (<code>GET /personalizar/sugestao/{aluno}/{tópico}</code>), e só a da turma vem do Supabase</td>
 </tr>
 <tr>
+<td>171 tabelas, 16 rotinas <code>pg_cron</code>, 6 workers</td>
+<td>188 tabelas, 21 rotinas, 7 workers</td>
+</tr>
+<tr>
+<td>fila <code>retencao_externa</code></td>
+<td>a tabela é <code>retencao_fila_externa</code>; <code>retencao_externa_loop</code> é o worker</td>
+</tr>
+<tr>
+<td><code>missao_aluno</code>: <code>pendente</code> → <code>em_andamento</code> → <code>concluida</code> para toda missão</td>
+<td>só a missão de guilda passa por <code>pendente</code> e <code>em_andamento</code>; a individual nasce <code>concluida</code></td>
+</tr>
+<tr>
+<td>relação social termina em <code>declined</code> ou <code>blocked</code></td>
+<td><code>declined</code> volta a <code>pending</code> com novo convite; desfazer amizade e desbloquear levam a <code>declined</code></td>
+</tr>
+<tr>
 <td>supervisor do grafo &quot;decide por LLM&quot;</td>
 <td>decide por regra. O modelo só é consultado quando há mais de um candidato, e mesmo assim é filtrado contra a regra. No fluxo de personalização, o modelo nunca é consultado</td>
 </tr>
 </tbody>
 </table></div>
-<nav class="nav-paginas"><a href="rotas.html"><span class="k">← anterior</span><span class="t">Rotas dos serviços</span></a><a class="prox" href="arquitetura.html"><span class="k">próxima →</span><span class="t">Arquitetura</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#imagens">Imagens</a></li><li><a href="#o-que-estes-diagramas-não-afirmam">O que estes diagramas não afirmam</a></li><li><a href="#correções-em-relação-aos-documentos-anteriores">Correções em relação aos documentos anteriores</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>bb5542a1</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
+<nav class="nav-paginas"><a href="rotas.html"><span class="k">← anterior</span><span class="t">Rotas dos serviços</span></a><a class="prox" href="arquitetura.html"><span class="k">próxima →</span><span class="t">Arquitetura</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#imagens">Imagens</a></li><li><a href="#o-que-estes-diagramas-não-afirmam">O que estes diagramas não afirmam</a></li><li><a href="#correções-em-relação-aos-documentos-anteriores">Correções em relação aos documentos anteriores</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>af371249</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
