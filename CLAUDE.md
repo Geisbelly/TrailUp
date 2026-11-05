@@ -214,6 +214,15 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    Ao mexer nesse fluxo, a pergunta é sempre "**o que já está pronto nesta
    geração?**", antes de chamar qualquer modelo.
 
+6. **Saída estruturada nas gerações em lote.** `ainvoke_json(..., schema=)` restringe a saída no
+   provedor e continua sem levantar: sem resposta aproveitável, vale o fallback. Se o provedor
+   devolver 400 (`SchemaRecusadoError`), volta ao JSON livre. Plano, cards e tema do mapa usam schema
+   (`app/schemas/geracao_estruturada.py`). O modelo só escreve o que o schema nomeia, então campo novo
+   entra no schema junto com o prompt, e chave dinâmica (`dict[str, X]`) não serve: nada obriga o
+   modelo a preenchê-la. É por isso que `countries` vem em lista. Ficam em JSON livre as etapas de
+   mídia e `gerador_conteudo.txt` com vários formatos, porque a forma muda com o formato, e o patch
+   comportamental, que tem `items: dict[...]` e já valida com Pydantic depois.
+
 ## Perfis BrainHex (7)
 
 `Seeker`, `Survivor`, `Daredevil`, `Mastermind`, `Conqueror`, `Socializer`,
