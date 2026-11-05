@@ -107,6 +107,22 @@ O resultado é observacional: o grafo escolhe o formato pelo perfil, então ele 
 associação, não causa. A conclusão só volta para a priorização por um ajuste manual, e o caminho
 está em [`2026-11-02-perfil-formato-pr3-design.md`](../superpowers/specs/2026-11-02-perfil-formato-pr3-design.md) §5.
 
+### 6.3 Fase 3: análise longitudinal (#19)
+
+`metricas_estudo_longitudinal(turmas)` lê a mesma conta de `metricas_estudo_coortes` e responde se o
+ganho se sustentou. O ciclo é a semana relativa ao corte. A série sai em três níveis: braço, turma e
+braço × perfil dominante. Em cada semana depois do corte há o ganho sobre o baseline e, na
+intervenção, a diferença-em-diferenças contra a comparação. Os marcos de produto aparecem na semana
+em que caíram.
+
+Cada indicador recebe uma classificação: `sustentado` (acima do limiar em 2 ou mais semanas
+seguidas, incluindo a última), `ganho_nao_mantido`, `pico_isolado`, `sem_ganho` ou
+`amostra_insuficiente`. O limiar é o desvio-padrão semanal do baseline. É uma regra descritiva, não
+um teste de significância, e a resposta traz as limitações junto. O critério "manutenção do ganho
+por mais de um ciclo" (§10) corresponde a `sustentado` comparado pela diferença-em-diferenças. O
+desenho e o roteiro de leitura estão em
+[`2026-11-05-analise-longitudinal-design.md`](../superpowers/specs/2026-11-05-analise-longitudinal-design.md).
+
 ## 7. Controle de vieses
 - padronizar janelas temporais;
 - registrar alteracoes de produto durante coleta;

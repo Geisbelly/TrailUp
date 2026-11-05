@@ -460,6 +460,13 @@ Cada perfil carrega:
     `EstudoRepository`.** A RLS não o cobre. A contaminação na RPC é a exposição medida (tempo
     ativo no escopo `material` dentro da janela retida). Ver
     `docs/superpowers/specs/2026-11-01-cohort-e-baseline-design.md` §6.
+  - **Migration que regrava `metricas_estudo_coortes` parte da última versão, não da `_03`.** A
+    `20261104_04` partiu da `_03` e apagou a trava do relatório; a `20261105_09` a devolveu.
+  - **Análise longitudinal (#19, `20261105_10`):** `metricas_estudo_longitudinal` lê a mesma conta
+    (a janela ganhou `p_perfil`, opcional) e classifica cada indicador em `sustentado`,
+    `ganho_nao_mantido`, `pico_isolado`, `sem_ganho` ou `amostra_insuficiente`. O limiar é o
+    desvio-padrão semanal do baseline: regra descritiva, não teste de significância. Ver
+    `docs/superpowers/specs/2026-11-05-analise-longitudinal-design.md`.
 - **Rank do evento** (`20261104_01`, #155): `evento_inscricoes` + `ranks.evento_id`. Abrir o evento
   cria um rank por critério de `eventos_classe.arena_criterios` (só `pontuacao`, `missoes` e
   `ranqueada`, os que respeitam a janela) com `inicio`/`fim` do evento, e a `_todas` conta **só os
