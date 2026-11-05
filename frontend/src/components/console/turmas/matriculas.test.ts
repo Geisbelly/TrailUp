@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { buscarAlunos, formatarDesde, normalizar, perfilDominantePorAluno, rotuloDaContagem } from "./matriculas";
+import {
+  alternarUm,
+  alternarVisiveis,
+  buscarAlunos,
+  estadoDaSelecao,
+  filtrarMatriculados,
+  formatarDesde,
+  normalizar,
+  perfilDominantePorAluno,
+  resumirNomes,
+  rotuloDaContagem,
+} from "./matriculas";
 
 const alunos = [
   { id: "1", nome: "João Pedro Ribeiro", email: "jpedro@rede.ulbra.br" },
@@ -66,5 +77,35 @@ describe("rótulos e dados do matriculado", () => {
     expect(formatarDesde("2026-03-04T12:00:00")).toBe("04/03/2026");
     expect(formatarDesde(null)).toBeNull();
     expect(formatarDesde("x")).toBeNull();
+  });
+});
+
+describe("seleção e filtro da aba Na turma", () => {
+  const ana = { id: "a", nome: "Ána Lima", email: "ana@x.com" };
+  const bia = { id: "b", nome: "Bia", email: null };
+
+  it("filtra por termo e pelo predicado juntos", () => {
+    expect(filtrarMatriculados([ana, bia], "ana")).toEqual([ana]);
+    expect(filtrarMatriculados([ana, bia], "", (x) => x.id === "b")).toEqual([bia]);
+    expect(filtrarMatriculados([ana, bia], "ana", (x) => x.id === "b")).toEqual([]);
+  });
+
+  it("a caixa do cabeçalho olha só para as linhas visíveis", () => {
+    expect(estadoDaSelecao(["a", "b"], new Set())).toBe("nenhum");
+    expect(estadoDaSelecao(["a", "b"], new Set(["a", "z"]))).toBe("parcial");
+    expect(estadoDaSelecao(["a"], new Set(["a", "z"]))).toBe("todos");
+    expect(estadoDaSelecao([], new Set(["z"]))).toBe("nenhum");
+  });
+
+  it("marcar e desmarcar em lote preservam quem o filtro escondeu", () => {
+    expect([...alternarVisiveis(["a"], new Set(["z"]))].sort()).toEqual(["a", "z"]);
+    expect([...alternarVisiveis(["a"], new Set(["a", "z"]))]).toEqual(["z"]);
+    expect([...alternarUm("a", new Set(["a"]))]).toEqual([]);
+    expect([...alternarUm("a", new Set())]).toEqual(["a"]);
+  });
+
+  it("resume nomes sem virar parágrafo", () => {
+    expect(resumirNomes(["A", "B"])).toBe("A, B");
+    expect(resumirNomes(["A", "B", "C", "D", "E"])).toBe("A, B, C e mais 2");
   });
 });

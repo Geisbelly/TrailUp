@@ -18,12 +18,16 @@ import {
   type PainelTecnico,
 } from "./painelTecnico";
 import DisponibilidadeSection from "./DisponibilidadeSection";
+import { Numero } from "./pecasDoPainel";
 import SaudeDosClientesSection from "./SaudeDosClientesSection";
+import { useDisponibilidade } from "./useDisponibilidade";
 import { usePainelTecnico } from "./usePainelTecnico";
+import VisaoGeralSection from "./VisaoGeralSection";
+import type { AbaDeDetalhe } from "./visaoGeral";
 
-type Aba = "disponibilidade" | "clientes" | "acessos" | "geracao";
+type Aba = "geral" | AbaDeDetalhe;
 
-const ABAS: { value: Aba; label: string }[] = [
+const ABAS: { value: AbaDeDetalhe; label: string }[] = [
   { value: "disponibilidade", label: "Disponibilidade" },
   { value: "clientes", label: "Clientes" },
   { value: "acessos", label: "Acessos" },
@@ -53,15 +57,6 @@ function CartaoDoGatilho({ g }: { g: Gatilho }) {
       </div>
       <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">{g.detalhe}</p>
     </li>
-  );
-}
-
-function Numero({ rotulo, valor, destaque = false }: { rotulo: string; valor: string | number; destaque?: boolean }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card px-4 py-3.5">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.04em] text-muted-foreground">{rotulo}</div>
-      <div className={cn("mt-1 text-2xl font-bold", destaque ? "text-[hsl(var(--warning))]" : "text-foreground")}>{valor}</div>
-    </div>
   );
 }
 
@@ -293,8 +288,11 @@ function Atividade({ p }: { p: PainelTecnico }) {
  */
 export default function PainelTecnicoSection() {
   const [horas, setHoras] = useState(168);
-  const [aba, setAba] = useState<Aba>("disponibilidade");
+  const [aba, setAba] = useState<Aba>("geral");
+  const [alertasPorAba, setAlertasPorAba] = useState<Partial<Record<AbaDeDetalhe, number>>>({});
   const { painel, estado, desatualizado } = usePainelTecnico(horas);
+  // Aqui em cima porque a visão geral e as duas abas de detalhe leem o mesmo dado: sem isso, seriam duas consultas por minuto.
+  const disponibilidade = useDisponibilidade(horas);
 
   if (estado.tipo === "sem_permissao") {
     return (
@@ -336,13 +334,13 @@ export default function PainelTecnicoSection() {
   return (
     <div className="flex flex-col gap-[22px]">
       <header className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-[320px]">
           <h1 className="flex items-center gap-2.5 text-2xl font-bold text-foreground">
             <Activity className="h-6 w-6 text-[hsl(var(--console-violet-text))]" aria-hidden="true" />
             Painel técnico
           </h1>
           <p className="mt-1.5 max-w-[680px] text-[13px] leading-relaxed text-muted-foreground">
-            Disponibilidade, acessos e geração, medidos pelo banco. Atualiza sozinho a cada minuto. Quando algo cai ou um gatilho dispara, o aviso chega por e-mail e ao sino do console. Só você, dono do projeto, vê esta aba.
+            Medido pelo banco e atualizado a cada minuto. Quando algo cai ou um gatilho dispara, o aviso chega por e-mail e ao sino do console. Só o dono do projeto vê esta aba.
           </p>
         </div>
         <SegmentedPills ariaLabel="Janela de tempo" opcoes={JANELAS.map((j) => ({ value: String(j.horas), label: j.rotulo }))} valor={String(horas)} onChange={(v) => setHoras(Number(v))} />
@@ -357,15 +355,17 @@ export default function PainelTecnicoSection() {
       <SegmentedPills<Aba>
         ariaLabel="O que ver"
         className="self-start"
-        opcoes={ABAS}
+        opcoes={[{ value: "geral" as Aba, label: "Visão geral" }, ...ABAS.map((a) => ({ value: a.value as Aba, label: alertasPorAba[a.value] ? `${a.label} (${alertasPorAba[a.value]})` : a.label }))]}
         valor={aba}
         onChange={setAba}
       />
 
-      {aba === "clientes" ? (
+      {aba === "geral" ? (
+        <VisaoGeralSection painel={painel} horas={horas} disponibilidade={disponibilidade} onAbrir={setAba} onContagem={setAlertasPorAba} />
+      ) : aba === "clientes" ? (
         <SaudeDosClientesSection horas={horas} />
       ) : aba !== "geracao" ? (
-        <DisponibilidadeSection horas={horas} aba={aba} />
+        <DisponibilidadeSection horas={horas} aba={aba} dados={disponibilidade.dados} estado={disponibilidade.estado} />
       ) : (
         <>
       <section aria-labelledby="tec-gatilhos" className="flex flex-col gap-3">

@@ -56,3 +56,38 @@ export function formatarDesde(iso: string | null | undefined): string | null {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
+
+/** Filtro da aba "Na turma": busca por nome ou e-mail e, se pedido, só quem o predicado marcar. */
+export function filtrarMatriculados<T extends { nome: string; email?: string | null }>(lista: T[], termo: string, manter?: (aluno: T) => boolean): T[] {
+  const t = normalizar(termo);
+  return lista.filter((a) => (!t || normalizar(a.nome).includes(t) || normalizar(a.email).includes(t)) && (!manter || manter(a)));
+}
+
+export type EstadoDaSelecao = "nenhum" | "parcial" | "todos";
+
+/** O que a caixa do cabeçalho mostra, olhando só para as linhas visíveis. */
+export function estadoDaSelecao(visiveis: string[], selecionados: ReadonlySet<string>): EstadoDaSelecao {
+  const marcados = visiveis.filter((id) => selecionados.has(id)).length;
+  if (marcados === 0) return "nenhum";
+  return marcados === visiveis.length ? "todos" : "parcial";
+}
+
+/** Clique na caixa do cabeçalho: marca as visíveis ou, com todas marcadas, desmarca só elas. Preserva o que o filtro escondeu. */
+export function alternarVisiveis(visiveis: string[], selecionados: ReadonlySet<string>): Set<string> {
+  const proximo = new Set(selecionados);
+  if (estadoDaSelecao(visiveis, selecionados) === "todos") visiveis.forEach((id) => proximo.delete(id));
+  else visiveis.forEach((id) => proximo.add(id));
+  return proximo;
+}
+
+export function alternarUm(id: string, selecionados: ReadonlySet<string>): Set<string> {
+  const proximo = new Set(selecionados);
+  if (!proximo.delete(id)) proximo.add(id);
+  return proximo;
+}
+
+/** "Ana, Bia e mais 3": o suficiente para reconhecer quem será afetado sem virar um parágrafo. */
+export function resumirNomes(nomes: string[], limite = 3): string {
+  if (nomes.length <= limite) return nomes.join(", ");
+  return `${nomes.slice(0, limite).join(", ")} e mais ${nomes.length - limite}`;
+}

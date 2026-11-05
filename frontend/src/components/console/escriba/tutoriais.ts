@@ -49,7 +49,7 @@ export const TUTORIAIS: Tutorial[] = [
     titulo: "Matricular alunos",
     passos: [
       { view: "classes", alvo: "menu-classes", titulo: "Abra Turmas", texto: "As matrículas ficam no cartão de cada turma." },
-      { view: "classes", alvo: "turma-matriculas", titulo: "Clique em Matrículas", texto: "Busque por nome ou e-mail, ou envie um arquivo com uma coluna \"email\". Entram só alunos que já têm conta e acesso liberado para você." },
+      { view: "classes", alvo: "turma-matriculas", titulo: "Clique em Matrículas", texto: "Busque e marque vários alunos, ou cole uma lista de e-mails. Entram só alunos que já têm conta e acesso liberado para você." },
     ],
   },
   {

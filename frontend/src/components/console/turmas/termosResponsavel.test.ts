@@ -7,6 +7,7 @@ import {
   CONSENTIMENTO_RESPONSAVEL_VERSAO,
   NENHUMA_FINALIDADE,
   argumentosTermoPapel,
+  rotuloCurtoDoTermo,
   rotuloDaSituacao,
   validarTermoPapel,
   type DadosTermoPapel,
@@ -61,5 +62,25 @@ describe("termo do responsavel em papel (#195)", () => {
     expect(ok.texto).toContain("em papel");
     expect(ok.texto).toContain("20/10/2026");
     expect(ok.texto).toContain(CONSENTIMENTO_RESPONSAVEL_VERSAO);
+  });
+});
+
+describe("rotuloCurtoDoTermo", () => {
+  const base = { aluno_id: "a", metodo: null, versao: null, decidido_em: null, vigente: false } as const;
+
+  it("marca como pendente só quem precisa de ação", () => {
+    expect(rotuloCurtoDoTermo({ ...base, situacao: "maior" })).toEqual({ texto: "Não se aplica", pendente: false });
+    expect(rotuloCurtoDoTermo({ ...base, situacao: "menor_com_termo", metodo: "papel", vigente: true })).toEqual({ texto: "Em papel", pendente: false });
+    expect(rotuloCurtoDoTermo({ ...base, situacao: "menor_com_termo", metodo: "aparelho", vigente: true })).toEqual({ texto: "No app", pendente: false });
+    expect(rotuloCurtoDoTermo({ ...base, situacao: "menor_sem_termo" })).toEqual({ texto: "Pendente", pendente: true });
+    expect(rotuloCurtoDoTermo({ ...base, situacao: "sem_data_nascimento" })).toEqual({ texto: "Sem nascimento", pendente: true });
+  });
+
+  it("recusa do responsável na versão vigente não é o mesmo que falta de termo", () => {
+    expect(rotuloCurtoDoTermo({ ...base, situacao: "menor_sem_termo", metodo: "papel", versao: CONSENTIMENTO_RESPONSAVEL_VERSAO })).toEqual({ texto: "Não autorizado", pendente: true });
+  });
+
+  it("sem linha ainda não acusa pendência", () => {
+    expect(rotuloCurtoDoTermo(undefined)).toEqual({ texto: "Carregando", pendente: false });
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   candidatosDe,
+  comoLiberaARara,
   contarAlunosDasTurmas,
   filtrarAlunos,
   filtrarMolduras,
@@ -123,5 +124,19 @@ describe("resumo da auditoria", () => {
     expect(resumirMudanca(1, 2)).toBe("1 → 2");
     expect(resumirMudanca(null, null)).toBe("—");
     expect(resumirMudanca({ a: 1 }, { a: 1 })).toBe("sem mudança");
+  });
+});
+
+describe("comoLiberaARara", () => {
+  const acao = (rotulo: string, moldura_codigo: string | null, ativa = true) => ({ acao: rotulo, rotulo, descricao: null, moldura_codigo, ativa, feitas: 0 });
+
+  it("acusa a moldura que nenhuma ação libera", () => {
+    expect(comoLiberaARara("sol", [])).toEqual({ texto: "Nenhuma ação libera esta moldura", alerta: true });
+    expect(comoLiberaARara("sol", [acao("Reportar", "lua")])).toEqual({ texto: "Nenhuma ação libera esta moldura", alerta: true });
+  });
+
+  it("diz qual ação libera e acusa quando ela está desligada", () => {
+    expect(comoLiberaARara("sol", [acao("Reportar", "sol")])).toEqual({ texto: "Ação: Reportar", alerta: false });
+    expect(comoLiberaARara("sol", [acao("Reportar", "sol", false)])).toEqual({ texto: "Ação: Reportar (desligada)", alerta: true });
   });
 });

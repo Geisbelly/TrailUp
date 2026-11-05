@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import SegmentedPills from "../dashboard/SegmentedPills";
 import { Secao } from "../tecnico/pecasDoPainel";
-import { filtrarMolduras, lerMolduras, precoParaGravar, type AcaoAdmin, type FiltroDeOrigem, type MolduraAdmin, type Molduras } from "./administracao";
+import { comoLiberaARara, filtrarMolduras, lerMolduras, precoParaGravar, type AcaoAdmin, type FiltroDeOrigem, type MolduraAdmin, type Molduras } from "./administracao";
 import { CampoDeBusca, CLASSE_SELECT, Estado, useEscrita, useLeitura, Vazio, type Escrever } from "./comum";
 
 const ORIGENS: { value: FiltroDeOrigem; label: string }[] = [
@@ -16,7 +16,7 @@ const ORIGENS: { value: FiltroDeOrigem; label: string }[] = [
 
 const LINHA = "flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 px-4 py-2";
 
-function LinhaDaMoldura({ m, ocupado, escrever }: { m: MolduraAdmin; ocupado: boolean; escrever: Escrever }) {
+function LinhaDaMoldura({ m, acoes, ocupado, escrever }: { m: MolduraAdmin; acoes: AcaoAdmin[]; ocupado: boolean; escrever: Escrever }) {
   const salvo = m.preco === null ? "" : String(m.preco);
   const [ativa, setAtiva] = useState(m.ativa);
   const [preco, setPreco] = useState(salvo);
@@ -26,13 +26,14 @@ function LinhaDaMoldura({ m, ocupado, escrever }: { m: MolduraAdmin; ocupado: bo
   }, [m.ativa, salvo]);
   const gravar = precoParaGravar(m.origem, preco);
   const mudou = ativa !== m.ativa || preco !== salvo;
+  const rara = m.origem === "acao" ? comoLiberaARara(m.codigo, acoes) : null;
 
   return (
     <li className={LINHA}>
       <div className="min-w-0">
         <div className="truncate text-[13px] font-semibold text-foreground">{m.nome}</div>
         <div className="truncate text-[11.5px] text-muted-foreground">
-          {m.origem === "conquista" ? `Conquista${m.conquista ? `: ${m.conquista}` : ""}` : m.origem === "loja" ? "Loja" : "Ação"} · {m.donos} {m.donos === 1 ? "aluno tem" : "alunos têm"}
+          {rara ? <span className={rara.alerta ? "font-semibold text-[hsl(var(--warning))]" : undefined}>{rara.texto}</span> : m.origem === "conquista" ? `Conquista${m.conquista ? `: ${m.conquista}` : ""}` : "Loja"} · {m.donos} {m.donos === 1 ? "aluno tem" : "alunos têm"}
         </div>
       </div>
       <div className="flex items-center gap-2.5">
@@ -104,7 +105,7 @@ export default function AbaMolduras() {
         ) : (
           <ul className="divide-y divide-border rounded-2xl border border-border bg-card">
             {lista.map((m) => (
-              <LinhaDaMoldura key={m.codigo} m={m} ocupado={ocupado} escrever={escrever} />
+              <LinhaDaMoldura key={m.codigo} m={m} acoes={dados.acoes} ocupado={ocupado} escrever={escrever} />
             ))}
           </ul>
         )}

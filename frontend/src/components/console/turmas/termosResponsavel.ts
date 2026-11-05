@@ -74,6 +74,21 @@ export function rotuloDaSituacao(t: TermoDoAluno | undefined): { texto: string; 
   }
 }
 
+/** Versão de coluna: rótulo curto para a tabela. A frase inteira de `rotuloDaSituacao` vai no `title`. */
+export function rotuloCurtoDoTermo(t: TermoDoAluno | undefined): { texto: string; pendente: boolean } {
+  if (!t) return { texto: "Carregando", pendente: false };
+  switch (t.situacao) {
+    case "maior":
+      return { texto: "Não se aplica", pendente: false };
+    case "sem_data_nascimento":
+      return { texto: "Sem nascimento", pendente: true };
+    case "menor_com_termo":
+      return { texto: t.metodo === "papel" ? "Em papel" : "No app", pendente: false };
+    default:
+      return { texto: t.metodo && !t.vigente && t.versao === CONSENTIMENTO_RESPONSAVEL_VERSAO ? "Não autorizado" : "Pendente", pendente: true };
+  }
+}
+
 export type DadosTermoPapel = {
   alunoId: string;
   aceito: boolean;
