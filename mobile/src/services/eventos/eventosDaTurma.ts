@@ -1,5 +1,13 @@
 import { supabase } from "@/database/supabase";
-import { montarRanksDoEvento, normalizeEvento, type EventoDaTurma, type RankDoEvento } from "./eventoModel";
+import type { ModoDaArena } from "@/services/social/arenaModel";
+import {
+  montarRanksDoEvento,
+  normalizarSugeridos,
+  normalizeEvento,
+  type EventoDaTurma,
+  type RankDoEvento,
+  type SugeridoNoEvento,
+} from "./eventoModel";
 
 /**
  * Os eventos que o aluno pode ver na turma, com missões e resultado.
@@ -90,4 +98,26 @@ export async function carregarRanksDoEvento(eventoId: string, meuId: string | nu
     .order("posicao", { ascending: true });
   if (erroPosicoes) throw erroPosicoes;
   return montarRanksDoEvento(ranks, posicoes, meuId);
+}
+
+/**
+ * Os adversários que o banco sugere para duelar no evento (#154, `20261105_16`): os inscritos de
+ * desempenho mais próximo, só com nome. Quem escolhe é o aluno, entre eles.
+ */
+export async function sugerirAdversariosNoEvento(eventoId: string): Promise<SugeridoNoEvento[]> {
+  const { data, error } = await supabase.rpc("evento_sugerir_adversarios" as never, { p_evento_id: eventoId } as never);
+  if (error) throw error;
+  return normalizarSugeridos(data);
+}
+
+/**
+ * Manda o convite de duelo no evento (`evento_duelo_criar`). Depois disso o duelo é o da Arena:
+ * o adversário aceita e os dois jogam por lá.
+ */
+export async function duelarNoEvento(eventoId: string, adversarioId: string, modo: ModoDaArena, quantidade: number): Promise<void> {
+  const { error } = await supabase.rpc(
+    "evento_duelo_criar" as never,
+    { p_evento_id: eventoId, p_formato: "solo", p_modo: modo, p_quantidade: quantidade, p_adversarios: [adversarioId] } as never,
+  );
+  if (error) throw error;
 }

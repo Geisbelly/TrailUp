@@ -250,6 +250,12 @@ export function argumentosDeCriacao(classeId: number, n: NovoDesafio, modo: Modo
 }
 
 const ERROS: [string, string][] = [
+  // Duelo no evento (#154, `20261105_15` e `_16`). O aceite também cai aqui, pela Arena.
+  ["evento_duelo_evento_fechado", "O evento já fechou: não dá mais para duelar nele."],
+  ["evento_duelo_participante_sem_inscricao", "Esse colega saiu do rank do evento. Escolha outro."],
+  ["evento_duelo_sem_inscricao", "Entre no rank do evento para duelar nele."],
+  ["evento_duelo_fora_da_sugestao", "A lista de adversários mudou. Atualize e escolha de novo."],
+  ["evento_duelo_sem_adversario", "Escolha um adversário para o duelo."],
   ["arena_limite_diario_adversario", "Vocês já jogaram o limite de partidas ranqueadas de hoje um contra o outro. Amanhã tem revanche."],
   ["arena_participante_bloqueado", "Há um bloqueio entre você e esse colega."],
   ["arena_participante_fora_da_turma", "Esse colega não está nesta turma."],
