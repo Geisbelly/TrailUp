@@ -13,6 +13,8 @@ type Topico = {
 };
 type Aresta = { from: string; to: string };
 
+export type BonusProfessor = { feitos: number; total: number; completo: boolean };
+
 export type EstadoTopico = "current" | "done" | "open" | "locked";
 
 export type PainelTopico = {
@@ -23,6 +25,11 @@ export type PainelTopico = {
   percentual: number;
   conteudos: number;
   atividades: number;
+  /**
+   * Bônus do conteúdo do professor (#45). Só existe quando o tópico tem percurso personalizado: sem ele, o
+   * conteúdo do professor É o percurso e não é opcional. `null` quando não há bônus a mostrar.
+   */
+  bonusProfessor: BonusProfessor | null;
   /** Títulos dos tópicos que liberam este (só quando bloqueado). */
   prerequisitos: { id: string; titulo: string }[];
   /** Rótulo do botão do pé do painel; null quando bloqueado. */
@@ -42,6 +49,27 @@ const ACAO: Record<EstadoTopico, string | null> = {
   locked: null,
 };
 
+const concluido = (item: unknown): boolean => {
+  const c = item as { status?: string | null; percentual_concluido?: number | null };
+  return String(c?.status ?? "").toLowerCase().includes("concl") || Number(c?.percentual_concluido ?? 0) >= 100;
+};
+
+/**
+ * A mesma conta que o banco faz em `trailup_recalcular_topico_aluno` (conteúdo concluído = status "concl…" ou
+ * 100%), só que contando o que o professor cadastrou como bônus. Item personalizado que o app mistura na lista
+ * não entra: ele é percurso.
+ */
+export function bonusDoProfessor(
+  conteudos: readonly unknown[] | undefined,
+  personalizado: boolean,
+): BonusProfessor | null {
+  if (!personalizado) return null;
+  const doProfessor = (conteudos ?? []).filter((c) => !(c as { isPersonalizedLocal?: boolean })?.isPersonalizedLocal);
+  if (doProfessor.length === 0) return null;
+  const feitos = doProfessor.filter(concluido).length;
+  return { feitos, total: doProfessor.length, completo: feitos === doProfessor.length };
+}
+
 export function estadoDoTopico(no: Pick<No, "id" | "locked" | "completed">, atualId: string | null | undefined): EstadoTopico {
   if (no.locked) return "locked";
   if (no.completed) return "done";
@@ -55,6 +83,7 @@ export function montarPainelTopico(
   atualId: string | null | undefined,
   nos: readonly No[],
   arestas: readonly Aresta[],
+  opcoes: { personalizado?: boolean } = {},
 ): PainelTopico {
   const estado = estadoDoTopico(no, atualId);
   const pct = Number(topico?.percentual_concluido ?? 0);
@@ -74,6 +103,7 @@ export function montarPainelTopico(
     percentual: estado === "done" ? 100 : Math.max(0, Math.min(100, Math.round(Number.isFinite(pct) ? pct : 0))),
     conteudos: topico?.conteudos?.length ?? 0,
     atividades: topico?.atividades?.length ?? 0,
+    bonusProfessor: estado === "locked" ? null : bonusDoProfessor(topico?.conteudos, Boolean(opcoes.personalizado)),
     prerequisitos,
     acao: ACAO[estado],
   };

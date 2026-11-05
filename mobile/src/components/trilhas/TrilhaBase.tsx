@@ -107,7 +107,7 @@ export const TrilhaBase: React.FC<{
     selecionado !== null && nos.some((n) => String(n.id) === selecionado) ? selecionado : topicoInicial(nos, currentTopicId);
   const noFolha = nos.find((n) => String(n.id) === idFolha);
   const topicoDe = (id: string) => classeAtual.topicos.find((t) => String(t.id) === String(id));
-  const painel = noFolha ? montarPainelTopico(noFolha, topicoDe(noFolha.id), currentTopicId, nos, grafo.edges) : null;
+  const painel = noFolha ? montarPainelTopico(noFolha, topicoDe(noFolha.id), currentTopicId, nos, grafo.edges, { personalizado: Boolean(personalizedTopics?.[Number(noFolha.id)]) }) : null;
   const todos = [...nos]
     .sort((a, b) => a.sequence - b.sequence)
     .map((n, i) => {

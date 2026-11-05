@@ -177,6 +177,13 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    nem para "puxar para cima" o que veio do banco. Ver
    `20260826_18_progresso_professor_opcional.py`.
 
+   **O bônus do conteúdo do professor é um selo, não XP** (#45, decidido em 05/11). Concluir
+   conteúdo já paga `conteudo_concluido` (10) para qualquer conteúdo, então um XP extra só
+   inflaria rank e nota. O selo vem de `bonusDoProfessor` (`mobile/src/utils/painelTopicoTrilha.ts`),
+   que repete a conta do banco (concluído = status "concl…" ou 100%), e só aparece em tópico com
+   percurso personalizado: sem ele o conteúdo do professor É o percurso, não bônus. O ícone
+   `book-check` é só do selo.
+
 6. **Nova tentativa NÃO regera tudo: retoma só o que falhou** (#652). Antes,
    uma parte de áudio sem voz fazia a nova tentativa refazer o texto, todas as
    partes de TTS e todos os decks. A RPC descartava o texto refeito, e o que
