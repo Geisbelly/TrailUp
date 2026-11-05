@@ -89,7 +89,7 @@ Médias de incidente não entram como meta. O Google considera MTTR pouco adequa
 | Tráfego | Requisições por rota e por hora | Mesmo contador (falta) | Dá o denominador que decide tudo aqui | Sem meta | — |
 | API vista pelo cliente | Lotes com `via = 'direta'`, por `fallback_motivo` | SQL em `telemetria_lotes`, filtrando `payload->'cliente'` (existe) | Disponibilidade sentida, sem código novo | Sem meta; tendência diária. Build antigo entra como não classificado | Proposta |
 | Saturação do VPS | Disco, memória e swap, CPU com steal, reinício de contêiner | Cron do host pingando o Healthchecks com `df` e memória; olhar o Dokploy (falta) | Explica a causa; alerta que nasce no VPS morre com ele | Disco ≥ 80% gera e-mail. Sem SLO | Proposta |
-| Deploy | Minutos fora por deploy, em aula | Marca de manutenção no estado da sonda (falta) | Mudanças respondem por cerca de 70% das quedas, no exemplo do [Google](https://sre.google/workbook/error-budget-policy/); a API roda migration ao subir | Nenhum deploy em horário de aula, salvo correção | Proposta |
+| Deploy | Minutos fora por deploy | `minutos_deploy` no painel, das sondas com `motivo = 'deploy'` (existe) | Mudanças respondem por cerca de 70% das quedas, no exemplo do [Google](https://sre.google/workbook/error-budget-policy/); a API roda migration ao subir | Sem meta; tendência. Deploy curto sai da meta, e o que passar de 5 min conta | Proposta |
 
 O SLI da API precisa dizer por escrito o que cobre: geração, personalização e análise. Pela regra de fronteira, API fora do ar não é TrailUp fora do ar.
 

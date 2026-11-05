@@ -45,6 +45,10 @@ RUN mkdir -p /opt/models \
 # código (em dev é sobreposto pelo volume do compose)
 COPY . .
 
+# Carimbo desta imagem, lido por `details.imagem` no /health: o monitor separa deploy de crash por ele.
+# Fica depois do COPY para mudar com o código. Build sem mudança em api/ reaproveita o cache e o carimbo.
+RUN head -c 20 /dev/urandom | od -An -tx1 | tr -d ' \n' > /opt/trailup-imagem
+
 # Preencher com o SHA completo do checkout no build do deploy.
 # Depois das dependências, para não invalidar esse cache a cada revisão.
 ARG TRAILUP_BUILD_COMMIT
