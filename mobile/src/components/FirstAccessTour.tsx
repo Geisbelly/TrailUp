@@ -32,7 +32,9 @@ import { obterAlvoTour, revelarAlvoTour } from "@/utils/tourTargets";
 import {
   buildFirstAccessTourSteps,
   buildFirstAccessTourStorageKey,
+  type FirstAccessTourStep,
   ouvirPedidoDeTutorial,
+  ouvirTutorialDoGuia,
 } from "@/utils/firstAccessTour";
 import { shadowStyle } from "@/utils/webShadow";
 
@@ -68,10 +70,13 @@ export function FirstAccessTour({
   const storageKey = userId ? buildFirstAccessTourStorageKey(userId) : null;
   // Na web em tela larga (#346) os textos falam das 6 áreas da barra lateral, não das 4 abas.
   const desktop = useDesktopWeb();
-  const steps = useMemo(() => {
+  const passosDeEntrada = useMemo(() => {
     const passos = buildFirstAccessTourSteps(profile);
     return desktop ? adaptarTourParaTelaLarga(passos, profile) : passos;
   }, [desktop, profile]);
+  // Tutorial pedido pelo Guardião: troca os passos enquanto dura.
+  const [passosDoGuia, setPassosDoGuia] = useState<readonly FirstAccessTourStep[] | null>(null);
+  const steps = passosDoGuia ?? passosDeEntrada;
   const palette = useMemo(() => getProfileShellPalette(profile), [profile]);
   const guideConfig = useMemo(() => getBrainHexConfig(profile ?? undefined), [profile]);
   const guideName = useMemo(() => getBrainHexGuideName(profile), [profile]);
@@ -87,6 +92,18 @@ export function FirstAccessTour({
     () =>
       ouvirPedidoDeTutorial(() => {
         rotaAtualRef.current = null;
+        setPassosDoGuia(null);
+        setIndex(0);
+        setVisible(true);
+      }),
+    [],
+  );
+
+  useEffect(
+    () =>
+      ouvirTutorialDoGuia((passos) => {
+        rotaAtualRef.current = null;
+        setPassosDoGuia(passos);
         setIndex(0);
         setVisible(true);
       }),
@@ -143,6 +160,8 @@ export function FirstAccessTour({
       router.navigate(currentStep.route as never);
     }
 
+    if (passosDoGuia) return;
+
     persistQueueRef.current = persistQueueRef.current
       .then(() =>
         AsyncStorage.setItem(
@@ -153,7 +172,7 @@ export function FirstAccessTour({
       .catch((error) => {
         console.warn("[FirstAccessTour] Falha ao salvar etapa:", error);
       });
-  }, [currentStep, index, router, storageKey, visible]);
+  }, [currentStep, index, passosDoGuia, router, storageKey, visible]);
 
   // Mede o elemento real do passo. A tela pode ter acabado de trocar, entao
   // uma medida unica pegaria o layout no meio da transicao e devolveria zeros;
@@ -188,6 +207,13 @@ export function FirstAccessTour({
   }, [currentStep, height, insets.top, visible, width]);
 
   const finish = useCallback(async () => {
+    // O do Guardião termina onde está: o aluno veio ver essa tela.
+    if (passosDoGuia) {
+      setVisible(false);
+      setIndex(0);
+      setPassosDoGuia(null);
+      return;
+    }
     if (storageKey) {
       try {
         await persistQueueRef.current;
@@ -206,7 +232,7 @@ export function FirstAccessTour({
     // a pilha do perfil sem retorno — o mesmo defeito corrigido acima.
     rotaAtualRef.current = "/(tabs)";
     router.navigate("/(tabs)" as never);
-  }, [router, steps.length, storageKey]);
+  }, [passosDoGuia, router, steps.length, storageKey]);
 
   // Web em tela larga (#346): Esc pula o tutorial; as setas avançam e voltam.
   useEffect(() => {
@@ -326,6 +352,7 @@ export function FirstAccessTour({
               descricao={currentStep.description}
               indice={index}
               total={steps.length}
+              rotuloFinal={passosDoGuia ? "Entendi" : "Começar"}
               alvo={alvoRect}
               tela={{ width, height }}
               cor={accent}
@@ -490,7 +517,7 @@ export function FirstAccessTour({
               accessibilityRole="button"
               style={[styles.nextButton, { backgroundColor: accent }]}
             >
-              <Text style={styles.nextText}>{isLast ? "Começar" : "Próximo"}</Text>
+              <Text style={styles.nextText}>{isLast ? (passosDoGuia ? "Entendi" : "Começar") : "Próximo"}</Text>
             </Pressable>
           </View>
         </View>

@@ -122,13 +122,24 @@ class MentorChatPayload(BaseModel):
     historico: list[MentorChatMessagePayload] = Field(default_factory=list)
 
 
+class SecaoDoGuiaResposta(BaseModel):
+    titulo: str
+    texto: str
+    destino: str | None = None
+
+
 class MentorChatResponse(BaseModel):
+    # O texto inteiro, em linha: é o que volta como histórico (e o que um app antigo mostra).
     reply: str
     scope: Literal["modulo", "trilha_home"]
     should_close: bool = False
     hinted_actions: list[str] = Field(default_factory=list)
     # Telas do app para onde o guia aponta. App antigo ignora o campo.
     destinos: list[str] = Field(default_factory=list)
+    # Com seções, a abertura delas; sem seções, vazio e vale `reply`.
+    introducao: str = ""
+    secoes: list[SecaoDoGuiaResposta] = Field(default_factory=list)
+    tutorial: str | None = None
 
 
 # ── Sub-schemas de artefatos ──────────────────────────────────────────────────

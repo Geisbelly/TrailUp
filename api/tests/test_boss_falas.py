@@ -13,6 +13,8 @@ O que estes testes protegem:
    só pedido ao modelo. O caso medido em produção (01/11) está aqui: Conqueror e Daredevil com
    "Sentinela das Partes Fracionadas" e Survivor com "Guardião das Partes Fracionadas".
 7. **A assinatura editorial inteira chega ao prompt**, não só tom e ritmo.
+8. **Conteúdo idêntico copia as falas sem chamar o modelo**, e só de uma origem que o modelo
+   geraria igual hoje. O SQL de verdade está em `test_e2e_reuso_de_falas_e_demanda.py`.
 """
 
 from __future__ import annotations
@@ -49,6 +51,12 @@ TOPICO = {"id": 7, "nome": "Frações", "descricao": "Partes de um inteiro", "cl
 CONTEUDOS = [
     {"id": 10, "titulo": "O que é fração", "conteudo": "Numerador e denominador."},
     {"id": 11, "titulo": "Frações equivalentes", "conteudo": "Multiplicar os dois termos."},
+]
+# A mesma aula em outra turma, com ids e nome de tópico próprios.
+TOPICO_ORIGEM = {"id": 70, "nome": "Outro nome", "descricao": "Outra descrição", "classe_id": 99}
+CONTEUDOS_ORIGEM = [
+    {"id": 100, "titulo": "O que é fração", "conteudo": "Numerador e denominador."},
+    {"id": 110, "titulo": "Frações equivalentes", "conteudo": "Multiplicar os dois termos."},
 ]
 
 
@@ -303,13 +311,25 @@ class _Sessao:
 
 @pytest.fixture
 def banco(monkeypatch):
-    estado = SimpleNamespace(gravados={}, hashes={}, tabela=True, conteudos=list(CONTEUDOS), outros={}, eventos=[])
+    estado = SimpleNamespace(
+        gravados={},
+        hashes={},
+        tabela=True,
+        conteudos=list(CONTEUDOS),
+        outros={},
+        eventos=[],
+        candidatas={},
+        nomes=[],
+        topicos={TOPICO["id"]: TOPICO, TOPICO_ORIGEM["id"]: TOPICO_ORIGEM},
+        conteudos_origem=list(CONTEUDOS_ORIGEM),
+    )
 
     async def _tabela_existe(_session):
         return estado.tabela
 
     async def _topico(_session, topico_id):
-        return dict(TOPICO) if topico_id == TOPICO["id"] else None
+        topico = estado.topicos.get(topico_id)
+        return dict(topico) if topico else None
 
     async def _hashes(_session, *, topico_id, perfil):
         return dict(estado.hashes)
@@ -329,9 +349,18 @@ def banco(monkeypatch):
         def __init__(self, _session):
             pass
 
-        async def buscar_conteudos_topico(self, _topico_id):
-            return list(estado.conteudos)
+        async def buscar_conteudos_topico(self, topico_id):
+            return list(estado.conteudos_origem if topico_id == TOPICO_ORIGEM["id"] else estado.conteudos)
 
+    async def _candidatas(_session, *, impressoes, perfil, conteudo_ids):
+        estado.eventos.append("ler_candidatas")
+        return {k: list(v) for k, v in estado.candidatas.items() if k in impressoes}
+
+    async def _nomes(_session, *, topico_id):
+        return list(estado.nomes)
+
+    monkeypatch.setattr(boss_falas, "_falas_com_a_mesma_impressao", _candidatas)
+    monkeypatch.setattr(boss_falas, "_nomes_do_topico", _nomes)
     monkeypatch.setattr(boss_falas, "tabela_existe", _tabela_existe)
     monkeypatch.setattr(boss_falas, "_topico", _topico)
     monkeypatch.setattr(boss_falas, "_hashes_gravados", _hashes)
@@ -498,7 +527,7 @@ def _target(topico_id: int, perfil: str | None, aluno_id: str | None = None) -> 
 async def test_fase_do_job_gera_uma_vez_por_topico_e_perfil(monkeypatch) -> None:
     chamadas: list[tuple[int, str]] = []
 
-    async def _gerar(*, session, settings, topico_id, perfil):
+    async def _gerar(*, session, settings, topico_id, perfil, ler_impressoes=None):
         chamadas.append((topico_id, perfil))
         return boss_falas.ResultadoFalas(status="gerado")
 
@@ -524,7 +553,7 @@ async def test_fase_do_job_gera_os_perfis_de_um_topico_um_depois_do_outro(monkey
     pico: dict[int, int] = {}
     chamadas: list[tuple[int, str]] = []
 
-    async def _gerar(*, session, settings, topico_id, perfil):
+    async def _gerar(*, session, settings, topico_id, perfil, ler_impressoes=None):
         ativos[topico_id] = ativos.get(topico_id, 0) + 1
         pico[topico_id] = max(pico.get(topico_id, 0), ativos[topico_id])
         await asyncio.sleep(0.01)
@@ -558,7 +587,7 @@ async def test_fase_do_job_ignora_kinds_que_nao_sao_base(monkeypatch) -> None:
 async def test_fase_do_job_limita_a_rodada_e_pausa_quem_falhou(monkeypatch) -> None:
     chamadas: list[tuple[int, str]] = []
 
-    async def _gerar(*, session, settings, topico_id, perfil):
+    async def _gerar(*, session, settings, topico_id, perfil, ler_impressoes=None):
         chamadas.append((topico_id, perfil))
         if topico_id == 1:
             raise RuntimeError("provedor fora")
@@ -616,3 +645,204 @@ def test_downgrade_remove_policy_e_tabela() -> None:
     sql = _sql("downgrade")
     assert "drop policy if exists boss_falas_minhas_classes_sel" in sql
     assert "drop table if exists public.boss_falas" in sql
+
+
+# ---------------------------------------------------------------- reuso entre turmas
+
+
+class _FabricaComCommit:
+    def __call__(self):
+        return self
+
+    async def __aenter__(self):
+        return _Sessao()
+
+    async def __aexit__(self, *_exc):
+        return False
+
+
+def _candidata(conteudo_id: int, perfil: str = "conqueror", nome: str = "Soberano das Frações", **override) -> dict:
+    linha = {
+        "id": conteudo_id,
+        "topico_id": TOPICO_ORIGEM["id"],
+        "conteudo_id": conteudo_id,
+        "nome": nome,
+        "falas": {"entrada": ["Fala da outra turma."]},
+        "source_hash": hash_do_topico(perfil=perfil, topico=TOPICO_ORIGEM, conteudos=CONTEUDOS_ORIGEM),
+    }
+    linha.update(override)
+    return linha
+
+
+async def _impressoes_iguais(conteudo_ids: list[int]) -> dict[int, str]:
+    return {conteudo_id: f"impressao-{conteudo_id}" for conteudo_id in conteudo_ids}
+
+
+@pytest.mark.asyncio
+async def test_conteudo_identico_copia_as_falas_sem_chamar_o_modelo(banco) -> None:
+    banco.candidatas = {"impressao-10": [_candidata(100)], "impressao-11": [_candidata(110, nome="Eco Equivalente")]}
+    llm = _llm(FalasDoTopico())
+    resultado = await gerar_falas_do_topico(
+        session=_Sessao(), settings=None, topico_id=7, perfil="conqueror", llm=llm, ler_impressoes=_impressoes_iguais
+    )
+    assert resultado.status == "reaproveitado" and resultado.gravados == 2
+    llm.ainvoke_structured.assert_not_awaited()
+    # A linha é da turma nova: ids próprios e o hash deste tópico, senão o próximo poll a acharia velha.
+    copia = banco.gravados[10]
+    assert (copia["classe_id"], copia["topico_id"], copia["conteudo_id"]) == (68, 7, 10)
+    assert copia["source_hash"] == hash_do_topico(perfil="conqueror", topico=TOPICO, conteudos=CONTEUDOS)
+    assert copia["falas"] == {"entrada": ["Fala da outra turma."]}
+
+
+@pytest.mark.asyncio
+async def test_so_o_conteudo_sem_origem_vai_ao_modelo(banco) -> None:
+    banco.candidatas = {"impressao-10": [_candidata(100)]}
+    llm = _llm(FalasDoTopico(bosses=[_boss(11, nome="Eco Equivalente")]))
+    resultado = await gerar_falas_do_topico(
+        session=_Sessao(), settings=None, topico_id=7, perfil="conqueror", llm=llm, ler_impressoes=_impressoes_iguais
+    )
+    assert resultado.status == "gerado" and resultado.gravados == 2
+    pedidos = llm.ainvoke_structured.await_args.kwargs["payload"]["conteudos"]
+    assert [c["conteudo_id"] for c in pedidos] == [11]
+    assert banco.gravados[10]["nome"] == "Soberano das Frações"
+    assert banco.gravados[11]["nome"] == "Eco Equivalente"
+
+
+@pytest.mark.asyncio
+async def test_falas_copiadas_nao_repetem_nome_dentro_do_topico(banco) -> None:
+    # Outro perfil já usa o nome (mesmo com outro título), e os dois conteúdos do tópico vêm da
+    # mesma origem: conteúdo repetido na turma nova não pode sair com dois bosses iguais.
+    banco.nomes = [(10, "daredevil", "Sentinela das Partes Fracionadas")]
+    banco.candidatas = {
+        "impressao": [_candidata(100, nome="Guardião das Partes Fracionadas")],
+    }
+
+    async def _mesma_impressao(conteudo_ids: list[int]) -> dict[int, str]:
+        return dict.fromkeys(conteudo_ids, "impressao")
+
+    banco.conteudos = [
+        {"id": 10, "titulo": "O que é fração", "conteudo": "Numerador e denominador."},
+        {"id": 11, "titulo": "O que é fração", "conteudo": "Numerador e denominador."},
+    ]
+    llm = _llm(FalasDoTopico())
+    await gerar_falas_do_topico(
+        session=_Sessao(), settings=None, topico_id=7, perfil="conqueror", llm=llm, ler_impressoes=_mesma_impressao
+    )
+    llm.ainvoke_structured.assert_not_awaited()
+    primeiro, segundo = banco.gravados[10]["nome"], banco.gravados[11]["nome"]
+    assert primeiro.startswith("Guardião das Partes Fracionadas")
+    assert not nomes_colidem(primeiro, "Sentinela das Partes Fracionadas")
+    assert not nomes_colidem(primeiro, segundo)
+    # A checagem é sob a trava do tópico, depois de escolher as cópias.
+    assert banco.eventos[:2] == ["ler_candidatas", "travar"]
+
+
+@pytest.mark.asyncio
+async def test_versao_nova_regera_mesmo_com_conteudo_identico(banco, monkeypatch) -> None:
+    banco.candidatas = {
+        "impressao-10": [_candidata(100)],
+        "impressao-11": [_candidata(110, nome="Eco Equivalente")],
+    }
+    monkeypatch.setattr(boss_falas, "BOSS_FALAS_VERSION", "versao-nova")
+    llm = _llm(FalasDoTopico(bosses=[_boss(10), _boss(11, nome="Eco Equivalente")]))
+    resultado = await gerar_falas_do_topico(
+        session=_Sessao(), settings=None, topico_id=7, perfil="conqueror", llm=llm, ler_impressoes=_impressoes_iguais
+    )
+    assert resultado.status == "gerado"
+    llm.ainvoke_structured.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_origem_com_conteudo_mudado_nao_serve(banco) -> None:
+    # A impressão gravada anda atrás: as falas da origem já são do texto novo, e a linha de mídia
+    # ainda diz o antigo. O hash bate, então só a comparação do texto segura.
+    novos = [{**CONTEUDOS_ORIGEM[0], "conteudo": "Texto novo."}, CONTEUDOS_ORIGEM[1]]
+    hash_novo = hash_do_topico(perfil="conqueror", topico=TOPICO_ORIGEM, conteudos=novos)
+    banco.conteudos_origem = novos
+    banco.candidatas = {"impressao-10": [_candidata(100, source_hash=hash_novo)]}
+    llm = _llm(FalasDoTopico(bosses=[_boss(10), _boss(11, nome="Eco Equivalente")]))
+    await gerar_falas_do_topico(
+        session=_Sessao(), settings=None, topico_id=7, perfil="conqueror", llm=llm, ler_impressoes=_impressoes_iguais
+    )
+    llm.ainvoke_structured.assert_awaited_once()
+    assert banco.gravados[10]["nome"] == "Guardiã das Frações"
+
+
+@pytest.mark.asyncio
+async def test_candidata_desatualizada_nao_esconde_a_seguinte(banco) -> None:
+    banco.candidatas = {
+        "impressao-10": [_candidata(100, source_hash="velho", nome="Antiga"), _candidata(100, nome="Atual")],
+        "impressao-11": [_candidata(110, nome="Eco Equivalente")],
+    }
+    llm = _llm(FalasDoTopico())
+    await gerar_falas_do_topico(
+        session=_Sessao(), settings=None, topico_id=7, perfil="conqueror", llm=llm, ler_impressoes=_impressoes_iguais
+    )
+    assert banco.gravados[10]["nome"] == "Atual"
+
+
+@pytest.mark.asyncio
+async def test_sem_impressao_segue_para_o_modelo(banco) -> None:
+    async def _sem_impressao(_ids: list[int]) -> dict[int, str]:
+        return {}
+
+    llm = _llm(FalasDoTopico(bosses=[_boss(10), _boss(11, nome="Eco Equivalente")]))
+    resultado = await gerar_falas_do_topico(
+        session=_Sessao(), settings=None, topico_id=7, perfil="conqueror", llm=llm, ler_impressoes=_sem_impressao
+    )
+    assert resultado.status == "gerado"
+    assert "ler_candidatas" not in banco.eventos
+
+
+@pytest.mark.asyncio
+async def test_falha_no_reuso_nao_impede_o_modelo(banco) -> None:
+    async def _quebra(_ids: list[int]) -> dict[int, str]:
+        raise RuntimeError("storage fora")
+
+    llm = _llm(FalasDoTopico(bosses=[_boss(10), _boss(11, nome="Eco Equivalente")]))
+    resultado = await gerar_falas_do_topico(
+        session=_Sessao(), settings=None, topico_id=7, perfil="conqueror", llm=llm, ler_impressoes=_quebra
+    )
+    assert resultado.status == "gerado"
+
+
+@pytest.mark.asyncio
+async def test_retomada_nao_pede_ao_modelo_o_que_ja_esta_atual(banco) -> None:
+    atual = hash_do_topico(perfil="conqueror", topico=TOPICO, conteudos=CONTEUDOS)
+    banco.hashes = {10: atual}
+    llm = _llm(FalasDoTopico(bosses=[_boss(11, nome="Eco Equivalente")]))
+    await gerar_falas_do_topico(session=_Sessao(), settings=None, topico_id=7, perfil="conqueror", llm=llm)
+    pedidos = llm.ainvoke_structured.await_args.kwargs["payload"]["conteudos"]
+    assert [c["conteudo_id"] for c in pedidos] == [11]
+
+
+@pytest.mark.asyncio
+async def test_fase_do_job_passa_a_impressao_calculada_na_hora(monkeypatch) -> None:
+    # A turma nova ainda não tem linha em `conteudo_personalizado` quando a fase roda: ler a coluna
+    # daria vazio. A impressão vem do contexto, e o contexto fica no cache do job.
+    montagens: list[int] = []
+
+    async def _contexto(*, conteudo_id, **_kwargs):
+        montagens.append(conteudo_id)
+        return {"impressao_conteudo": f"impressao-{conteudo_id}"}
+
+    monkeypatch.setattr(personalizacao_jobs, "fetch_personalizacao_context", _contexto)
+    job = {"classe_id": 68}
+    app = SimpleNamespace(state=SimpleNamespace(session_factory=_FabricaComCommit(), settings=None))
+    ler = personalizacao_jobs._leitor_de_impressoes(app=app, job=job, topico_id=7)
+    assert await ler([10, 11]) == {10: "impressao-10", 11: "impressao-11"}
+    assert await ler([10]) == {10: "impressao-10"}
+    assert montagens == [10, 11]
+
+
+@pytest.mark.asyncio
+async def test_fase_do_job_sem_contexto_tira_so_aquele_conteudo_do_reuso(monkeypatch) -> None:
+    async def _contexto(*, conteudo_id, **_kwargs):
+        if conteudo_id == 10:
+            raise ValueError("sem contexto")
+        return {"impressao_conteudo": None if conteudo_id == 11 else "impressao-12"}
+
+    monkeypatch.setattr(personalizacao_jobs, "fetch_personalizacao_context", _contexto)
+    app = SimpleNamespace(state=SimpleNamespace(session_factory=_FabricaComCommit(), settings=None))
+    ler = personalizacao_jobs._leitor_de_impressoes(app=app, job={"classe_id": 68}, topico_id=7)
+    assert await ler([10, 11, 12]) == {12: "impressao-12"}

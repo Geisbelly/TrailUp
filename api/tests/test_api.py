@@ -1078,6 +1078,8 @@ def test_regenerar_documento_route_atualiza_markdown_sem_tocar_no_audio(app, mon
         return {**stored_record, "materiais": materiais}
 
     monkeypatch.setattr(ConteudoPersonalizadoRepository, "atualizar_materiais_e_status", atualizar_stub)
+    marcar_editado = AsyncMock(return_value=None)
+    monkeypatch.setattr(ConteudoPersonalizadoRepository, "marcar_material_editado", marcar_editado)
     monkeypatch.setattr(
         personalizacao_module,
         "regenerar_documento_brainhex",
@@ -1102,6 +1104,8 @@ def test_regenerar_documento_route_atualiza_markdown_sem_tocar_no_audio(app, mon
     assert "revisao" not in body["materiais"]["audio"]
     assert captured["record_id"] == 321
     assert captured["materiais"]["markdown"]["payload"]["markdown"] == "texto novo"
+    # Ajuste manual: esta linha deixa de ser origem e vínculo. As outras turmas não mudam.
+    marcar_editado.assert_awaited_once()
 
 
 def test_regenerar_documento_route_rejeita_sem_markdown(app, monkeypatch) -> None:
@@ -1201,6 +1205,8 @@ def test_regenerar_slide_route_atualiza_slide_preservando_imagem_atual(app, monk
         return {**stored_record, "materiais": materiais}
 
     monkeypatch.setattr(ConteudoPersonalizadoRepository, "atualizar_materiais_e_status", atualizar_stub)
+    marcar_editado = AsyncMock(return_value=None)
+    monkeypatch.setattr(ConteudoPersonalizadoRepository, "marcar_material_editado", marcar_editado)
     monkeypatch.setattr(
         personalizacao_module,
         "regenerar_slide_brainhex",

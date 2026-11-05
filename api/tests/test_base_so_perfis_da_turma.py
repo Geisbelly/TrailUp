@@ -453,7 +453,7 @@ async def test_worker_falha_ao_ler_turma_nao_pula_nada(monkeypatch) -> None:
 async def test_falas_do_boss_nao_saem_para_perfil_sem_aluno(monkeypatch) -> None:
     chamadas: list[tuple[int, str]] = []
 
-    async def _gerar(*, session, settings, topico_id, perfil):
+    async def _gerar(*, session, settings, topico_id, perfil, ler_impressoes=None):
         chamadas.append((topico_id, perfil))
         return boss_falas.ResultadoFalas(status="gerado")
 

@@ -190,14 +190,32 @@ class _Sessao:
         self.commit = AsyncMock()
 
 
+TOPICO_ORIGEM = {"id": 70, "nome": "Outro nome", "descricao": "Outra descrição", "classe_id": 99}
+
+
+def _conteudos_origem() -> list[dict]:
+    """A mesma aula de `CONTEUDOS` em outra turma: só os ids mudam."""
+    return [{**c, "id": c["id"] * 10} for c in CONTEUDOS]
+
+
 @pytest.fixture
 def banco(monkeypatch):
-    estado = SimpleNamespace(gravadas={}, gravados={}, tabela=True, conteudos=list(CONTEUDOS), fontes={})
+    estado = SimpleNamespace(
+        gravadas={},
+        gravados={},
+        tabela=True,
+        conteudos=list(CONTEUDOS),
+        fontes={},
+        candidatas={},
+        conteudos_origem=_conteudos_origem(),
+    )
 
     async def _tabela_existe(_session):
         return estado.tabela
 
     async def _topico(_session, topico_id):
+        if topico_id == TOPICO_ORIGEM["id"]:
+            return dict(TOPICO_ORIGEM)
         return dict(TOPICO) if topico_id == TOPICO["id"] else None
 
     async def _textos(_session, ids):
@@ -213,9 +231,13 @@ def banco(monkeypatch):
         def __init__(self, _session):
             pass
 
-        async def buscar_conteudos_topico(self, _topico_id):
-            return list(estado.conteudos)
+        async def buscar_conteudos_topico(self, topico_id):
+            return list(estado.conteudos_origem if topico_id == TOPICO_ORIGEM["id"] else estado.conteudos)
 
+    async def _candidatas(_session, *, impressoes, conteudo_ids):
+        return {k: list(v) for k, v in estado.candidatas.items() if k in impressoes}
+
+    monkeypatch.setattr(demanda_formato, "_demandas_com_a_mesma_impressao", _candidatas)
     monkeypatch.setattr(demanda_formato, "tabela_existe", _tabela_existe)
     monkeypatch.setattr(demanda_formato, "_topico", _topico)
     monkeypatch.setattr(demanda_formato, "_textos_das_fontes", _textos)
@@ -358,7 +380,7 @@ def _target(topico_id: int | None, perfil: str | None = "survivor", aluno_id: st
 async def test_fase_do_job_analisa_uma_vez_por_topico(monkeypatch) -> None:
     chamadas: list[int] = []
 
-    async def _analisar(*, session, settings, topico_id):
+    async def _analisar(*, session, settings, topico_id, ler_impressoes=None):
         chamadas.append(topico_id)
         return demanda_formato.ResultadoDemanda(status="gerado")
 
@@ -384,7 +406,7 @@ async def test_fase_do_job_ignora_limpeza(monkeypatch) -> None:
 async def test_fase_do_job_limita_a_rodada_e_pausa_quem_caiu_na_regra(monkeypatch) -> None:
     chamadas: list[int] = []
 
-    async def _analisar(*, session, settings, topico_id):
+    async def _analisar(*, session, settings, topico_id, ler_impressoes=None):
         chamadas.append(topico_id)
         if topico_id == 1:
             raise RuntimeError("banco fora")
@@ -401,3 +423,113 @@ async def test_fase_do_job_limita_a_rodada_e_pausa_quem_caiu_na_regra(monkeypatc
     chamadas.clear()
     await personalizacao_jobs._analisar_demanda_do_job(app=app, job=job, targets=targets)
     assert {1, 2}.isdisjoint(chamadas)
+
+
+# ---------------------------------------------------------------- reuso entre turmas
+
+
+DEMANDA_DA_ORIGEM = {dim: {"nivel": "ajuda", "motivo": "da outra turma"} for dim in demanda_formato.DIMENSOES}
+
+
+def _candidata(banco, conteudo_id: int, **override) -> dict:
+    conteudos = [{**c, "textos_fonte": banco.fontes.get(c["id"], [])} for c in banco.conteudos_origem]
+    linha = {
+        "id": conteudo_id,
+        "topico_id": TOPICO_ORIGEM["id"],
+        "conteudo_id": conteudo_id,
+        "demanda": DEMANDA_DA_ORIGEM,
+        "source_hash": hash_do_topico(topico=TOPICO_ORIGEM, conteudos=conteudos),
+    }
+    linha.update(override)
+    return linha
+
+
+async def _impressoes_iguais(conteudo_ids: list[int]) -> dict[int, str]:
+    return {conteudo_id: f"impressao-{conteudo_id}" for conteudo_id in conteudo_ids}
+
+
+def _todas_as_candidatas(banco) -> dict[str, list[dict]]:
+    return {f"impressao-{c['id']}": [_candidata(banco, c["id"] * 10)] for c in CONTEUDOS}
+
+
+@pytest.mark.asyncio
+async def test_conteudo_identico_copia_a_analise_sem_chamar_o_modelo(banco) -> None:
+    banco.candidatas = _todas_as_candidatas(banco)
+    llm = _llm(DemandaDoTopico())
+    resultado = await analisar_demanda_do_topico(
+        session=_Sessao(), settings=None, topico_id=TOPICO["id"], llm=llm, ler_impressoes=_impressoes_iguais
+    )
+    assert resultado.status == "reaproveitado" and resultado.gravados == len(CONTEUDOS)
+    llm.ainvoke_structured.assert_not_awaited()
+    copia = banco.gravados[CONTEUDOS[0]["id"]]
+    assert (copia["classe_id"], copia["topico_id"]) == (TOPICO["classe_id"], TOPICO["id"])
+    assert (copia["origem"], copia["demanda"]) == ("modelo", DEMANDA_DA_ORIGEM)
+    # Com o hash deste tópico, a próxima rodada vê a linha como atual e não chama o modelo.
+    assert copia["source_hash"] == _hash(banco)
+    banco.gravadas = {i: {"origem": g["origem"], "source_hash": g["source_hash"]} for i, g in banco.gravados.items()}
+    segunda = await analisar_demanda_do_topico(
+        session=_Sessao(), settings=None, topico_id=TOPICO["id"], llm=llm, ler_impressoes=_impressoes_iguais
+    )
+    assert segunda.status == "atual"
+
+
+@pytest.mark.asyncio
+async def test_so_o_conteudo_sem_origem_vai_ao_modelo(banco) -> None:
+    primeiro, *resto = CONTEUDOS
+    banco.candidatas = {f"impressao-{primeiro['id']}": [_candidata(banco, primeiro["id"] * 10)]}
+    llm = _llm(DemandaDoTopico(conteudos=[_item(c["id"]) for c in resto]))
+    resultado = await analisar_demanda_do_topico(
+        session=_Sessao(), settings=None, topico_id=TOPICO["id"], llm=llm, ler_impressoes=_impressoes_iguais
+    )
+    assert resultado.status == "gerado" and resultado.gravados == len(CONTEUDOS)
+    pedidos = llm.ainvoke_structured.await_args.kwargs["payload"]["conteudos"]
+    assert [c["conteudo_id"] for c in pedidos] == [c["id"] for c in resto]
+
+
+@pytest.mark.asyncio
+async def test_versao_nova_reanalisa_mesmo_com_conteudo_identico(banco, monkeypatch) -> None:
+    banco.candidatas = _todas_as_candidatas(banco)
+    monkeypatch.setattr(demanda_formato, "DEMANDA_FORMATO_VERSION", "versao-nova")
+    llm = _llm(DemandaDoTopico(conteudos=[_item(c["id"]) for c in CONTEUDOS]))
+    resultado = await analisar_demanda_do_topico(
+        session=_Sessao(), settings=None, topico_id=TOPICO["id"], llm=llm, ler_impressoes=_impressoes_iguais
+    )
+    assert resultado.status == "gerado"
+    llm.ainvoke_structured.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_origem_com_texto_de_fonte_diferente_nao_serve(banco) -> None:
+    # Hash bate na origem, mas o arquivo dela diz outra coisa.
+    banco.fontes = {CONTEUDOS[0]["id"] * 10: ["Texto de outro arquivo"]}
+    banco.candidatas = _todas_as_candidatas(banco)
+    llm = _llm(DemandaDoTopico(conteudos=[_item(CONTEUDOS[0]["id"])]))
+    await analisar_demanda_do_topico(
+        session=_Sessao(), settings=None, topico_id=TOPICO["id"], llm=llm, ler_impressoes=_impressoes_iguais
+    )
+    llm.ainvoke_structured.assert_awaited_once()
+    pedidos = llm.ainvoke_structured.await_args.kwargs["payload"]["conteudos"]
+    assert CONTEUDOS[0]["id"] in [c["conteudo_id"] for c in pedidos]
+
+
+@pytest.mark.asyncio
+async def test_analise_do_professor_nao_e_alvo_do_reuso(banco) -> None:
+    banco.candidatas = _todas_as_candidatas(banco)
+    banco.gravadas = {c["id"]: {"origem": "professor", "source_hash": "x"} for c in CONTEUDOS}
+    llm = _llm(DemandaDoTopico())
+    resultado = await analisar_demanda_do_topico(
+        session=_Sessao(), settings=None, topico_id=TOPICO["id"], llm=llm, ler_impressoes=_impressoes_iguais
+    )
+    assert resultado.status == "atual" and banco.gravados == {}
+
+
+@pytest.mark.asyncio
+async def test_falha_no_reuso_nao_impede_o_modelo(banco) -> None:
+    async def _quebra(_ids: list[int]) -> dict[int, str]:
+        raise RuntimeError("storage fora")
+
+    llm = _llm(DemandaDoTopico(conteudos=[_item(c["id"]) for c in CONTEUDOS]))
+    resultado = await analisar_demanda_do_topico(
+        session=_Sessao(), settings=None, topico_id=TOPICO["id"], llm=llm, ler_impressoes=_quebra
+    )
+    assert resultado.status == "gerado"

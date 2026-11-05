@@ -32,6 +32,7 @@ from app.services.media_contract import (
     SOURCE_HASH_PRESENTATION_ENGINE_VERSION,
 )
 from app.services.media_pipeline import MultiOutputPipeline
+from app.services.reuso_personalizacao import fontes_com_hash_do_arquivo, impressao_do_conteudo
 from app.services.roteamento_ia import rota_de_menor_ativa
 from app.services.storage import SupabaseStorage, build_material_url, material_url_de_leitura
 from app.services.text_cleanup import (
@@ -4639,6 +4640,38 @@ async def _generate_personalized_image_png(
         return None
 
 
+async def _impressao_da_base(
+    *,
+    conteudos: list[dict[str, Any]],
+    atividades: list[dict[str, Any]],
+    fontes: list[dict[str, Any]],
+    arco_narrativo: str | None,
+    fontes_repo: FontesPersonalizacaoRepository,
+    settings: Settings,
+) -> str | None:
+    """Impressao do conteudo para o reuso. Qualquer falha so manda o alvo para a geracao normal."""
+    try:
+        return impressao_do_conteudo(
+            conteudos=conteudos,
+            atividades=atividades,
+            fontes=await fontes_com_hash_do_arquivo(
+                fontes=fontes,
+                storage=SupabaseStorage(settings),
+                fontes_repo=fontes_repo,
+            ),
+            arco_narrativo=arco_narrativo,
+            versoes={
+                "pipeline": _PERSONALIZACAO_PIPELINE_VERSION,
+                "content_enrichment_schema": _CONTENT_ENRICHMENT_SCHEMA_VERSION,
+                "presentation_engine": SOURCE_HASH_PRESENTATION_ENGINE_VERSION,
+                "presentation_design": SOURCE_HASH_PRESENTATION_DESIGN_VERSION,
+            },
+        )
+    except Exception:
+        logger.warning("Falha ao calcular a impressao do conteudo; segue sem reuso", exc_info=True)
+        return None
+
+
 async def fetch_personalizacao_context(
     *,
     # None = base da classe por perfil (sem dono). Ver 20260827_04.
@@ -4811,6 +4844,18 @@ async def fetch_personalizacao_context(
         arco_narrativo=arco_narrativo,
     )
 
+    # So a base entra no reuso: a linha do aluno e derivada dela (`derivar_personalizacao_do_base`).
+    impressao_conteudo = None
+    if aluno_id is None and conteudo_escopo_id is not None:
+        impressao_conteudo = await _impressao_da_base(
+            conteudos=conteudos,
+            atividades=atividades,
+            fontes=fontes_enriquecidas,
+            arco_narrativo=arco_narrativo,
+            fontes_repo=fontes_repo,
+            settings=settings,
+        )
+
     perfil_brainhex = context.get("perfil_brainhex") or []
     perfil_dominante = _perfil_dominante(perfil_brainhex)
 
@@ -4840,6 +4885,7 @@ async def fetch_personalizacao_context(
         # Vai para o microservice como `class_story_arc` (#145).
         "arco_narrativo": arco_narrativo,
         "source_hash": source_hash,
+        "impressao_conteudo": impressao_conteudo,
         "ciclo_id": ciclo_id,
     }
 

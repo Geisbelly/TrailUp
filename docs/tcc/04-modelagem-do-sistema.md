@@ -1,5 +1,7 @@
 # 04. Modelagem do sistema
 
+> **Desatualizado (abril de 2026).** A modelagem atual, conferida no código e no banco em 04/11/2026, está em [`modelagem/`](./modelagem/README.md).
+
 Data de atualizacao: 2026-04-19
 
 ## 1. Visao de contexto

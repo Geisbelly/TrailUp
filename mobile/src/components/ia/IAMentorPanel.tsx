@@ -23,7 +23,9 @@ import {
 import tinycolor from "tinycolor2";
 import { usePortoes } from "@/context/PortoesContext";
 import { useEstadoConsentimento } from "@/hooks/useEstadoConsentimento";
-import { BotaoDeDestino, destinosParaBotoes } from "@/utils/destinosDoGuia";
+import { BotaoDeDestino, montarRespostaDoGuia, type RespostaDoGuia } from "@/utils/destinosDoGuia";
+import { pedirTutorialDoGuia } from "@/utils/firstAccessTour";
+import type { TutorialDoGuia } from "@/utils/tutoriaisDoGuia";
 import { type Href, router } from "expo-router";
 import { ModoRestritoError } from "@/utils/consentimentoResponsavel";
 import { shadowStyle } from "@/utils/webShadow";
@@ -45,8 +47,10 @@ type Props = {
 type ChatMessage = {
   id: string;
   role: "assistant" | "user";
+  /** Vai no histórico para o modelo. */
   content: string;
-  botoes?: BotaoDeDestino[];
+  /** Desenho da resposta. Sem ele, mostra `content`. */
+  resposta?: RespostaDoGuia;
 };
 
 type TutorialTip = {
@@ -208,6 +212,7 @@ export function IAMentorPanel({
   const guideName = useMemo(() => getBrainHexGuideName(profileName), [profileName]);
   const socialSignalStrong = profileName === "socializer";
   const scrollRef = useRef<ScrollView | null>(null);
+  const respostaJaMostradaRef = useRef<string | null>(null);
   const hasManualHomeOpenRef = useRef(false);
   const scopeHistoryRef = useRef<Record<string, ChatMessage[]>>({});
 
@@ -315,13 +320,30 @@ export function IAMentorPanel({
     setHasUnreadCue(false);
   }, [isOpen]);
 
+  const ultimaMensagem = messages[messages.length - 1];
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      respostaJaMostradaRef.current = null;
+      return;
+    }
+    // Resposta em seções é lida de cima para baixo: quem a posiciona é
+    // `mostrarInicioDaResposta`, quando ela já tem altura medida.
+    if (ultimaMensagem?.resposta?.secoes.length) return;
     const timer = setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 40);
     return () => clearTimeout(timer);
-  }, [isOpen, messages.length]);
+  }, [isOpen, messages.length, ultimaMensagem]);
+
+  const mostrarInicioDaResposta = (message: ChatMessage, y: number) => {
+    if (message.id !== ultimaMensagem?.id || !message.resposta?.secoes.length) return;
+    if (respostaJaMostradaRef.current === message.id) return;
+    respostaJaMostradaRef.current = message.id;
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
+    });
+  };
 
   if (mentorSilencedByUser) {
     return (
@@ -421,7 +443,7 @@ export function IAMentorPanel({
     setIsOpen(false);
   };
 
-  const appendAssistantMessage = (content: string, botoes?: BotaoDeDestino[]) => {
+  const appendAssistantMessage = (content: string, resposta?: RespostaDoGuia) => {
     const normalized = String(content ?? "").trim();
     if (!normalized) return;
     setMessages((prev) => {
@@ -440,7 +462,7 @@ export function IAMentorPanel({
           id: `${Date.now()}:${Math.random().toString(36).slice(2, 8)}:assistant`,
           role: "assistant",
           content: normalized,
-          botoes,
+          resposta,
         },
       ];
     });
@@ -508,7 +530,12 @@ export function IAMentorPanel({
       if (!response || !reply) {
         throw new Error("mentor_reply_empty");
       }
-      appendAssistantMessage(reply, destinosParaBotoes(response.destinos, aberturas));
+      const montada = montarRespostaDoGuia({ ...response, reply }, aberturas);
+      appendAssistantMessage(reply, {
+        ...montada,
+        texto: normalizeMentorReplyTone(montada.texto),
+        secoes: montada.secoes.map((secao) => ({ ...secao, texto: normalizeMentorReplyTone(secao.texto) })),
+      });
       recordAppEvent({
         eventGroup: "chat",
         eventName: "chat_message",
@@ -548,23 +575,57 @@ export function IAMentorPanel({
     router.push(botao.rota as Href);
   };
 
-  const renderBotoes = (message: ChatMessage) =>
-    message.botoes?.length ? (
-      <View style={styles.destinos}>
-        {message.botoes.map((botao) => (
-          <Pressable
-            key={botao.rota}
-            onPress={() => abrirDestino(botao)}
-            accessibilityRole="link"
-            accessibilityLabel={`Abrir ${botao.rotulo}`}
-            style={[styles.destino, { borderColor: palette.borderStrong }]}
-          >
-            <Text style={[styles.destinoTexto, { color: palette.accent }]}>{botao.rotulo}</Text>
-            <MaterialCommunityIcons name="arrow-right" size={14} color={palette.accent} />
-          </Pressable>
+  const comecarTutorial = (tutorial: TutorialDoGuia) => {
+    setIsOpen(false);
+    pedirTutorialDoGuia(tutorial.passos);
+  };
+
+  const renderBotao = (botao: BotaoDeDestino) => (
+    <Pressable
+      key={botao.rota}
+      onPress={() => abrirDestino(botao)}
+      accessibilityRole="link"
+      accessibilityLabel={`Abrir ${botao.rotulo}`}
+      style={[styles.destino, { borderColor: palette.borderStrong }]}
+    >
+      <Text style={[styles.destinoTexto, { color: palette.accent }]}>{botao.rotulo}</Text>
+      <MaterialCommunityIcons name="arrow-right" size={14} color={palette.accent} />
+    </Pressable>
+  );
+
+  const renderTexto = (message: ChatMessage, cor: string) => {
+    const texto = message.resposta ? message.resposta.texto : message.content;
+    return texto ? <Text style={[styles.message, { color: cor }]}>{texto}</Text> : null;
+  };
+
+  // Uma parte por assunto, cada uma com o próprio botão; depois o que sobrou e o tutorial.
+  const renderResposta = (message: ChatMessage) => {
+    const resposta = message.resposta;
+    if (!resposta) return null;
+    return (
+      <>
+        {resposta.secoes.map((secao) => (
+          <View key={secao.titulo} style={[styles.secao, { borderColor: palette.border }]}>
+            <Text style={[styles.secaoTitulo, { color: palette.text }]}>{secao.titulo}</Text>
+            <Text style={[styles.message, { color: palette.textMuted }]}>{secao.texto}</Text>
+            {secao.botao ? <View style={styles.destinos}>{renderBotao(secao.botao)}</View> : null}
+          </View>
         ))}
-      </View>
-    ) : null;
+        {resposta.botoes.length ? <View style={styles.destinos}>{resposta.botoes.map(renderBotao)}</View> : null}
+        {resposta.tutorial ? (
+          <Pressable
+            onPress={() => comecarTutorial(resposta.tutorial as TutorialDoGuia)}
+            accessibilityRole="button"
+            accessibilityLabel={`Me mostre: ${resposta.tutorial.titulo}`}
+            style={[styles.tutorial, { backgroundColor: palette.accent }]}
+          >
+            <MaterialCommunityIcons name="gesture-tap" size={16} color={palette.background} />
+            <Text style={[styles.destinoTexto, { color: palette.background }]}>Me mostre como</Text>
+          </Pressable>
+        ) : null}
+      </>
+    );
+  };
 
   const renderMessage = (message: ChatMessage) => {
     const isAssistant = message.role === "assistant";
@@ -582,22 +643,23 @@ export function IAMentorPanel({
 
     if (scope !== "modulo" || !isAssistant) {
       return (
-        <View key={message.id} style={[styles.messageBubble, bubbleStyle]}>
-          <Text
-            style={[
-              styles.message,
-              { color: isAssistant ? palette.textMuted : palette.text },
-            ]}
-          >
-            {message.content}
-          </Text>
-          {renderBotoes(message)}
+        <View
+          key={message.id}
+          style={[styles.messageBubble, bubbleStyle]}
+          onLayout={(evento) => mostrarInicioDaResposta(message, evento.nativeEvent.layout.y)}
+        >
+          {renderTexto(message, isAssistant ? palette.textMuted : palette.text)}
+          {renderResposta(message)}
         </View>
       );
     }
 
     return (
-      <View key={message.id} style={styles.moduleAssistantRow}>
+      <View
+        key={message.id}
+        style={styles.moduleAssistantRow}
+        onLayout={(evento) => mostrarInicioDaResposta(message, evento.nativeEvent.layout.y)}
+      >
         <Image source={avatarSource} style={styles.inlineAvatar} resizeMode="cover" />
         <View style={[styles.moduleSpeechBubble, bubbleStyle]}>
           <View
@@ -613,8 +675,8 @@ export function IAMentorPanel({
           <Text style={[styles.moduleSpeakerName, { color: palette.accent }]}>
             {speakerName}
           </Text>
-          <Text style={[styles.message, { color: palette.textMuted }]}>{message.content}</Text>
-          {renderBotoes(message)}
+          {renderTexto(message, palette.textMuted)}
+          {renderResposta(message)}
         </View>
       </View>
     );
@@ -1098,6 +1160,27 @@ const styles = StyleSheet.create({
     fontFamily: FontFamily.inikaBold,
     fontSize: 12,
     marginBottom: 4,
+  },
+  secao: {
+    borderTopWidth: 1,
+    marginTop: 10,
+    paddingTop: 10,
+  },
+  secaoTitulo: {
+    fontSize: 14,
+    fontFamily: FontFamily.inikaBold,
+    marginBottom: 2,
+  },
+  tutorial: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minHeight: 40,
+    marginTop: 10,
   },
   destinos: {
     flexDirection: "row",
