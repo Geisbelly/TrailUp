@@ -3,7 +3,7 @@
 <p><strong>Procedência</strong> (05/11/2026):</p>
 <ul>
 <li><strong>Código:</strong> lido na <code>main</code> do Lab, commit <code>af371249</code>.</li>
-<li><strong>Banco:</strong> consultado em produção, só leitura, entre as migrações <code>20261105_26</code> e <code>20261105_27</code>, que entrou durante a revisão:
+<li><strong>Banco:</strong> consultado em produção, só leitura, entre as migrações <code>20261105_26</code> e <code>20261105_28</code>, que entraram durante a revisão. Das duas novas, conferi em produção as tabelas, as colunas, o bucket e as policies:
 <ul>
 <li>chaves estrangeiras (<code>pg_constraint</code>);</li>
 <li>restrições <code>CHECK</code> de status;</li>
@@ -13,7 +13,6 @@
 <li>corpo das funções que definem as transições de estado.</li>
 </ul>
 </li>
-<li><strong>Ainda fora de produção na medição:</strong> as colunas <code>molduras.imagem_url</code> e <code>abertura</code> e o bucket <code>molduras</code> (<code>20261105_28</code>), já na <code>main</code>. Essa migration não cria tabela, então as 188 não mudam com ela.</li>
 <li><strong>Correções:</strong> onde o código e o banco divergiam do que os documentos anteriores diziam, valeu o código e o banco. As correções feitas aparecem ao fim desta página.</li>
 </ul>
 <div class="tabela"><table>
