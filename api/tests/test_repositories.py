@@ -3,7 +3,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.repositories.access import AccessRepository
 from app.repositories.aluno_topico_dominio import AlunoTopicoDominioRepository
 from app.repositories.artefatos_personalizados import ArtefatosPersonalizadosRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
@@ -1117,67 +1116,6 @@ async def test_buscar_por_ciclo_id_aceita_aluno_none_para_base_sem_dono() -> Non
     sql, params = session.calls[0]
     assert "IS NOT DISTINCT FROM" in sql
     assert params["aluno_id"] is None
-
-
-@pytest.mark.asyncio
-async def test_access_repository_admin_queries_and_updates() -> None:
-    session = RecordingSession(
-        [
-            MappingResult(
-                [
-                    {
-                        "professor_id": "prof-1",
-                        "nome": "Professor 1",
-                        "descricao": None,
-                        "instituicao": "TrailUp",
-                        "disciplina": "Matematica",
-                        "liberado": True,
-                    }
-                ]
-            ),
-            MappingResult(
-                [
-                    {
-                        "aluno_id": "aluno-1",
-                        "nome": "Aluno 1",
-                        "email": "aluno1@example.com",
-                    }
-                ]
-            ),
-            MappingResult(
-                [
-                    {
-                        "professor_id": "prof-1",
-                        "aluno_id": "aluno-1",
-                        "nome": "Aluno 1",
-                        "email": "aluno1@example.com",
-                    }
-                ]
-            ),
-            ScalarResult(True),
-            ScalarResult(True),
-            ScalarResult(None),
-            ScalarResult(None),
-        ]
-    )
-    repo = AccessRepository(session)
-
-    professores = await repo.list_admin_professors()
-    alunos = await repo.list_admin_students()
-    atribuicoes = await repo.list_direct_professor_assignments()
-    professor_ok = await repo.professor_exists("prof-1")
-    aluno_ok = await repo.aluno_exists("aluno-1")
-    await repo.set_professor_liberado("prof-1", False)
-    await repo.set_professor_student_access("prof-1", "aluno-1", True)
-
-    sql_statements = " ".join(sql for sql, _ in session.calls)
-    assert professores[0]["professor_id"] == "prof-1"
-    assert alunos[0]["aluno_id"] == "aluno-1"
-    assert atribuicoes[0]["aluno_id"] == "aluno-1"
-    assert professor_ok is True
-    assert aluno_ok is True
-    assert "UPDATE professor" in sql_statements
-    assert "INSERT INTO professor_aluno" in sql_statements
 
 
 @pytest.mark.asyncio

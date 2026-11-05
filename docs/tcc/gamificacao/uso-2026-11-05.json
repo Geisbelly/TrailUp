@@ -1,0 +1,106 @@
+{
+  "medido_em": "05/11/2026",
+  "revisao_alembic": "20261105_25",
+  "origem": "Produção, só leitura, em transação READ ONLY. Só contagens agregadas: sem id, nome ou texto de aluno, e sem identificador de turma.",
+  "xp": {
+    "eventos": 685, "alunos": 1, "turmas": 6, "de": "13/04/2026", "ate": "03/11/2026", "pontos": 1155,
+    "por_tipo": [
+      ["Conquista desbloqueada", 22, 615],
+      ["Atividade concluída", 12, 150],
+      ["Participação em aula", 1, 100],
+      ["Presença em aula", 2, 102],
+      ["Atividade revisada", 113, 98],
+      ["Questão acertada", 13, 60],
+      ["Conteúdo concluído", 17, 30],
+      ["Missão diária concluída", 22, 0],
+      ["Sem pontos (abrir, iniciar, errar, pular, ciclos)", 483, 0]
+    ]
+  },
+  "gamificacao": {
+    "alunos_cadastrados": 7, "conquistas_concedidas": 12, "missoes": 209, "missoes_sistema": 202, "missoes_ia": 7, "missoes_ia_aprovadas": 5, "missoes_ia_pendentes": 2,
+    "missoes_concluidas": 20, "moedas_entradas": 10, "moedas_recebidas": 10, "compras": 1, "moedas_gastas": 10, "molduras_obtidas": 0,
+    "eventos": 0, "guildas": 0, "ranks_abertos": 1, "falas_de_boss": 4, "tentativas_no_servidor": 0, "pontuacao_por_turma": 0
+  },
+  "personalizacao": {
+    "conteudos": 17, "prontos": 4, "falhos": 13,
+    "por_mes": [["Outubro", 1, 5, 49, 6, 5], ["Novembro", 3, 8, 3, 25, 3]],
+    "materiais": {"texto": 17, "apresentacao": 16, "audio": 16},
+    "cards": 46, "blocos_expandidos": 24, "fontes_do_professor": 2, "itens_de_progresso": 71, "itens_concluidos": 16,
+    "sugestoes": 1, "registros_de_sugestao": 2, "estados_mentais": 2, "insights": 1,
+    "causas": [
+      ["Áudio sem cota ou crédito de TTS", 11],
+      ["Áudio e apresentação não gerados, sem causa registrada", 10],
+      ["Só áudio não gerado, sem causa registrada", 6],
+      ["Só apresentação não gerada, sem causa registrada", 2],
+      ["Rodada descartada por geração mais nova", 1],
+      ["Aluno menor ou sem data de nascimento: sem IA, como manda a regra", 1]
+    ],
+    "fila": [
+      ["Missões do dia", 73, 6, 0],
+      ["Gerar por perfil, pelo console", 4, 6, 0],
+      ["Tema da turma", 4, 0, 0],
+      ["Matrícula", 2, 2, 0],
+      ["Reprocessar falhas", 0, 2, 2],
+      ["Geração de mídia", 0, 0, 2]
+    ],
+    "origem_dos_jobs": {"banco": 85, "api": 10, "console": 6, "aluno": 2},
+    "geracao": {"jobs_medidos": 24, "p50_min": 19, "p95_h": 25}
+  },
+  "telemetria": {
+    "lotes": 184, "alunos": 1, "sessoes": 113, "sessoes_com_camera": 2, "ativo_min": 12, "ocioso_min": 35, "de": "14/10/2026", "ate": "03/11/2026",
+    "com_ciclo": 29, "com_erro": 155, "expirados": 141, "erros_de_fila": 14
+  },
+  "regras": {
+    "pontos": [
+      ["Concluir atividade", 15, 3, ""],
+      ["Acertar questão", 5, 1, "Vale também em atividade personalizada, sem moedas."],
+      ["Revisar atividade", 2, 0, ""],
+      ["Concluir conteúdo", 10, 2, "Pago pelo banco desde a #1008."],
+      ["Concluir missão diária", 10, 2, "Era 0 até 03/11/2026, e por isso os 22 eventos medidos valem 0."],
+      ["Terminar no tempo, com 70%, 80% ou 90%", 10, 0, "Por faixa e cumulativo, até 30, uma vez por atividade (#759)."],
+      ["Presença em aula", 10, 0, ""],
+      ["Jogar desafio da arena", 3, 0, ""],
+      ["Empatar desafio", 6, 1, ""],
+      ["Vencer desafio", 12, 3, ""],
+      ["Perder desafio ranqueado", -6, 0, "É a aposta. Duelo contra adversário fica fora do XP (#916)."]
+    ],
+    "ranks": [
+      ["Percentual concluído", "Quanto da turma o aluno concluiu"],
+      ["Pontuação", "Pontos acumulados"],
+      ["Tempo de estudo", "Minutos de estudo"],
+      ["Ranqueada", "Pontos ganhos e perdidos em desafios ranqueados"],
+      ["Missões", "Missões cumpridas: o rank de constância"],
+      ["Elo", "Rating dos desafios ranqueados: vencer quem está acima vale mais"]
+    ],
+    "parametros": [
+      ["Ranking", "Aluno vê o topo e a própria linha", "15 posições", "#162"],
+      ["Ranking", "Percentual do líder só aparece com", "8 participantes ou mais", "#636, #920"],
+      ["Elo", "Rating inicial", "1000", "#570"],
+      ["Elo", "Fator K", "32; 40 nas 10 primeiras partidas", "#570"],
+      ["Ranqueada", "Aposta", "1× no normal, 2× no difícil", "#552"],
+      ["Missão diária", "Por dia", "2 a 3 missões", "#551"],
+      ["Missão diária", "Metas", "10 minutos, 5 ações, 2 atividades ou 1 conteúdo", "#551"],
+      ["Cronômetro", "Tempo padrão e tolerância", "120 s, com 5 s de tolerância", "#759"],
+      ["Personalização", "Meta de latência do job (p95)", "30 min", "#817"],
+      ["Personalização", "Meta de geração (p95)", "5 min texto; 10 min áudio e apresentação; 30 min o perfil inteiro", "#817"],
+      ["Personalização", "Falha persistente", "Mais de 20% por 3 dias com job", "#817"],
+      ["Paridade", "Alerta entre guilda e individual", "Diferença de 25%, com 5 alunos ou mais", "#1009"]
+    ]
+  },
+  "desenvolvimento": {
+    "prs_mesclados": 851, "de": "27/08/2026", "ate": "05/11/2026",
+    "por_tema": [
+      ["Personalização e perfis", 4, 13, 59, 59, 135],
+      ["Ranking", 1, 9, 29, 7, 46],
+      ["Eventos", 0, 0, 26, 17, 43],
+      ["Missões", 0, 1, 24, 12, 37],
+      ["Conquistas", 0, 2, 21, 4, 27],
+      ["Moedas e loja", 0, 2, 16, 5, 23],
+      ["Arena e duelo", 0, 0, 10, 10, 20],
+      ["Guildas", 0, 1, 11, 2, 14],
+      ["XP", 0, 2, 3, 8, 13],
+      ["Boss", 0, 1, 3, 9, 13],
+      ["Molduras", 0, 0, 2, 3, 5]
+    ]
+  }
+}
