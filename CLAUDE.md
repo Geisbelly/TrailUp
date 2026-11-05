@@ -675,7 +675,7 @@ Cada perfil carrega:
   chama `painel_tecnico` (**a mesma conta da aba**, com o e-mail do dono posto nas claims só dentro da
   transação, por uma função sem EXECUTE para cliente) e grava **um aviso por gatilho em `alerta` por dia**
   em `professor_notificacoes`; `sem_dado` não avisa.
-- **Saúde dos clientes (`20261105_13`) — erro, Web Vitals e chamadas gravados de dentro do cliente.** Vai direto ao
+- **Saúde dos clientes (`20261105_14`) — erro, Web Vitals e chamadas gravados de dentro do cliente.** Vai direto ao
   Supabase pela RPC `cliente_saude_registrar`, sem API, e o dono lê em `painel_clientes` (aba Clientes do painel
   técnico). Grava uma linha por sessão (`cliente_sessao`, contadores que só sobem) e erro agregado por assinatura
   (`cliente_erro`). `frontend/src/lib/saude/coletor.ts` e `mobile/src/services/saude/coletor.ts` são o **mesmo arquivo**:

@@ -1,4 +1,4 @@
-"""`20261105_13` num Postgres descartável: quem grava, o que limpa, o que o dono lê e quando avisa."""
+"""`20261105_14` num Postgres descartável: quem grava, o que limpa, o que o dono lê e quando avisa."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from sqlalchemy import text
 
 from tests.test_e2e_monitor_disponibilidade import ALUNO, DONO, EMAIL_DONO, _modulo, alertas, banco  # noqa: F401
 
-M = _modulo("20261105_13_saude_dos_clientes.py")
+M = _modulo("20261105_14_saude_dos_clientes.py")
 exige_docker = pytest.mark.skipif(os.environ.get("TRAILUP_TEST_DOCKER") != "1", reason="requer TRAILUP_TEST_DOCKER=1 e Docker")
 
 

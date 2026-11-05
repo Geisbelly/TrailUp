@@ -1,4 +1,4 @@
-// Saúde dos clientes (migration 20261105_13). O banco agrega (`painel_clientes`, só para o dono); aqui ficam a
+// Saúde dos clientes (migration 20261105_14). O banco agrega (`painel_clientes`, só para o dono); aqui ficam a
 // leitura sem confiança no formato e as contas. Sem amostra, a tela mostra traço, nunca um número bom.
 
 export type VitaisDoFormato = {

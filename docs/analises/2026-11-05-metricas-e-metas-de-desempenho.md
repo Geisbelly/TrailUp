@@ -4,7 +4,7 @@ O TrailUp deve acompanhar poucos números, e cada um precisa mudar o que a dona 
 
 > **Decidido em 05/11/2026:** decisões 1 e 2 aceitas. O SLO vale em horário de aula, em 28 dias, com sonda de 1 min em aula, e isso já está na PR #981. A janela de aula é global e provisória (segunda a sexta, 07:00 às 22:00), porque o banco não tem grade. As contas abaixo que falam em 24x7 ou em 5 min descrevem o estado anterior à decisão.
 
-> **Implementado em 05/11/2026 (decisão 4, parte própria):** erro, Web Vitals, chamadas e acessos ao console gravados no Supabase (`20261105_13`), nos três clientes. O Sentry ficou de fora: crash nativo segue sem captura. As tabelas abaixo dizem "falta" para o que existia antes disso. Ver `docs/architecture/monitoramento.md`.
+> **Implementado em 05/11/2026 (decisão 4, parte própria):** erro, Web Vitals, chamadas e acessos ao console gravados no Supabase (`20261105_14`), nos três clientes. O Sentry ficou de fora: crash nativo segue sem captura. As tabelas abaixo dizem "falta" para o que existia antes disso. Ver `docs/architecture/monitoramento.md`.
 
 ## Decisões que a dona precisa tomar
 
