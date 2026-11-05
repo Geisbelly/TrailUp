@@ -23,6 +23,7 @@ from app.repositories.context import ContextRepository
 from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
+from app.schemas.geracao_estruturada import CardsGerados, PlanoGerado
 from app.services.behavioral_personalization import build_behavioral_personalization
 from app.services.gemini_http import gemini_generate
 from app.services.llm import JsonLLMService, load_prompt
@@ -4954,6 +4955,7 @@ async def gerar_cards_direto(
     )
 
     result = await llm.ainvoke_json(
+        schema=CardsGerados,
         prompt_name="gerador_conteudo.txt",
         payload={
             "modelo_editorial": modelo_editorial,
@@ -5005,6 +5007,7 @@ async def generate_plano_personalizacao(state: dict[str, Any], settings: Setting
         ),
     )
     result = await llm.ainvoke_json(
+        schema=PlanoGerado,
         prompt_name="planejador_conteudo.txt",
         payload={
             "perfil_dominante": perfil_dominante,

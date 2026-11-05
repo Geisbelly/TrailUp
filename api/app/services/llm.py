@@ -117,6 +117,14 @@ class ProvedorIndisponivelError(StructuredOutputError):
     dobra a espera de quem está na tela, e o rodízio de chaves já tentou o que dava."""
 
 
+class SchemaRecusadoError(ProvedorIndisponivelError):
+    """O provedor devolveu 400 antes de gerar. Pode ser o schema, que tem limite de complexidade: só
+    dá para saber com ele no ar, e `ainvoke_json` volta ao JSON livre em vez de perder a geração."""
+
+
+_SINAIS_DE_PEDIDO_RECUSADO = ("INVALID_ARGUMENT", "invalid_json_schema")
+
+
 def erro_do_fim(fim: str | None, prompt_name: str) -> StructuredOutputError | None:
     if uso_llm.fim_bloqueado(fim):
         return RespostaBloqueadaError(f"Provedor recusou {prompt_name}: {fim}")
@@ -241,9 +249,24 @@ class JsonLLMService:
         fallback_factory: Callable[[], dict[str, Any]] | None = None,
         model: str | None = None,
         provider: str | None = None,
+        schema: type[BaseModel] | None = None,
     ) -> dict[str, Any]:
+        """Nunca levanta: sem resposta aproveitável, vale o fallback. Com `schema`, a saída vem
+        restrita pelo provedor; campo nulo sai do dicionário, como se o modelo não o tivesse escrito."""
         if fallback_factory is None:
             fallback_factory = dict
+
+        if schema is not None:
+            try:
+                saida = await self.ainvoke_structured(
+                    prompt_name=prompt_name, payload=payload, schema=schema, model=model, provider=provider
+                )
+                return saida.model_dump(mode="json", by_alias=True, exclude_none=True)
+            except SchemaRecusadoError as exc:
+                logger.warning("Schema recusado em %s, voltando ao JSON livre: %s", prompt_name, exc)
+            except StructuredOutputError as exc:
+                logger.warning("LLM fallback acionado para %s: %s", prompt_name, exc)
+                return fallback_factory()
 
         normalized_payload = dict(payload)
         normalized_payload.setdefault("idioma", "português brasileiro")
@@ -341,6 +364,8 @@ class JsonLLMService:
                 if (erro := erro_do_fim(chamada.fim, prompt_name)) is not None:
                     raise erro from exc
                 tipo = StructuredOutputError if isinstance(exc, OutputParserException) else ProvedorIndisponivelError
+                if any(sinal in str(exc) for sinal in _SINAIS_DE_PEDIDO_RECUSADO):
+                    tipo = SchemaRecusadoError
                 raise tipo(f"Falha ao gerar saida estruturada para {prompt_name}: {exc}") from exc
 
         if (erro := erro_do_fim(chamada.fim, prompt_name)) is not None:
