@@ -58,3 +58,21 @@ def test_rag_le_cached_tokens_da_responses_api(monkeypatch) -> None:
 def test_sem_banco_configurado_registrar_nao_quebra() -> None:
     uso_llm.configurar(None)
     uso_llm.registrar(prompt=None, provedor="gemini", modelo=None, tokens_entrada=1, tokens_saida=1, tokens_cache=None)
+
+
+def test_versao_do_prompt_muda_com_o_arquivo_e_nao_leva_texto(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(uso_llm, "_PROMPTS", tmp_path)
+    uso_llm.versao_do_prompt.cache_clear()
+    (tmp_path / "a.txt").write_text("um")
+    (tmp_path / "b.txt").write_text("dois")
+
+    primeira, segunda = uso_llm.versao_do_prompt("a.txt"), uso_llm.versao_do_prompt("b.txt")
+    uso_llm.versao_do_prompt.cache_clear()
+
+    assert len(primeira) == 12
+    assert primeira != segunda
+
+
+def test_prompt_que_nao_e_arquivo_fica_sem_versao() -> None:
+    assert uso_llm.versao_do_prompt("nao_existe.txt") is None
+    assert uso_llm.versao_do_prompt(None) is None

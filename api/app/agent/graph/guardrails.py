@@ -4,6 +4,7 @@ import asyncio
 import inspect
 import logging
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, TypeVar
 
@@ -11,7 +12,7 @@ from pydantic import BaseModel
 
 from app.schemas.mentor_chat import GroundingJudgment, MentorChatLLMResult
 from app.schemas.trilha_config import TrilhaConfig
-from app.services import uso_llm
+from app.services import gemini_chaves, uso_llm
 from app.services.llm import (
     JsonLLMService,
     ProvedorIndisponivelError,
@@ -150,19 +151,22 @@ async def gerar_validado(
     cota e a espera de quem esta na tela. `prazo_total` limita tudo, juizes
     inclusive; estourou, vale o fallback."""
     inicio = time.monotonic()
+    # Quem dá prazo tem alguém esperando na tela: os chats, com o juiz junto.
+    faixa = gemini_chaves.faixa_do_chat() if prazo_total is not None else nullcontext()
     try:
         async with asyncio.timeout(prazo_total):
-            resultado = await _gerar_com_correcao(
-                llm,
-                prompt_name=prompt_name,
-                payload=payload,
-                schema=schema,
-                guardrails=guardrails,
-                contexto=contexto or {},
-                on_violation=on_violation,
-                max_tentativas=max_tentativas,
-                ainvoke_kwargs=ainvoke_kwargs,
-            )
+            with faixa:
+                resultado = await _gerar_com_correcao(
+                    llm,
+                    prompt_name=prompt_name,
+                    payload=payload,
+                    schema=schema,
+                    guardrails=guardrails,
+                    contexto=contexto or {},
+                    on_violation=on_violation,
+                    max_tentativas=max_tentativas,
+                    ainvoke_kwargs=ainvoke_kwargs,
+                )
     except TimeoutError:
         latencia_ms = round((time.monotonic() - inicio) * 1000)
         uso_llm.registrar(

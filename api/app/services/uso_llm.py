@@ -11,11 +11,14 @@ Sem `configurar()` (testes, scripts), o registro fica só no log.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import time
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Iterator
 
 from sqlalchemy import text
@@ -26,6 +29,7 @@ except ImportError:  # pragma: no cover
     BaseCallbackHandler = object  # type: ignore[assignment,misc]
 
 logger = logging.getLogger(__name__)
+_PROMPTS = Path(__file__).resolve().parents[1] / "agent" / "prompts"
 
 # Motivos de parada, em maiúsculas: OpenAI (`finish_reason`), Responses API (`incomplete_details`) e
 # Gemini. `PROMPT_BLOQUEADO` é nosso: o Gemini recusa a entrada e não devolve candidato nem motivo.
@@ -87,6 +91,15 @@ def fim_cortado(fim: str | None) -> bool:
     return (fim or "").upper() in _FINS_CORTADOS
 
 
+@lru_cache(maxsize=128)
+def versao_do_prompt(prompt: str | None) -> str | None:
+    """Os 12 primeiros do sha256 do arquivo: compara antes e depois de mudar um prompt, sem o texto."""
+    try:
+        return hashlib.sha256((_PROMPTS / str(prompt)).read_bytes()).hexdigest()[:12]
+    except OSError:
+        return None
+
+
 async def _gravar(linha: dict[str, Any]) -> None:
     try:
         async with _session_factory() as session:
@@ -94,11 +107,11 @@ async def _gravar(linha: dict[str, Any]) -> None:
                 text(
                     """
                     INSERT INTO ia_uso_llm
-                      (prompt, provedor, modelo, tokens_entrada, tokens_saida, tokens_cache, usou_rag, fim,
-                       latencia_ms)
+                      (prompt, prompt_versao, provedor, modelo, tokens_entrada, tokens_saida, tokens_cache,
+                       usou_rag, fim, latencia_ms)
                     VALUES
-                      (:prompt, :provedor, :modelo, :tokens_entrada, :tokens_saida, :tokens_cache, :usou_rag, :fim,
-                       :latencia_ms)
+                      (:prompt, :prompt_versao, :provedor, :modelo, :tokens_entrada, :tokens_saida, :tokens_cache,
+                       :usou_rag, :fim, :latencia_ms)
                     """
                 ),
                 linha,
@@ -122,6 +135,7 @@ def registrar(
 ) -> None:
     linha = {
         "prompt": prompt or "desconhecido",
+        "prompt_versao": versao_do_prompt(prompt),
         "provedor": provedor,
         "modelo": modelo,
         "tokens_entrada": tokens_entrada,
