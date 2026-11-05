@@ -220,6 +220,39 @@ class ContextRepository:
         async with self.session.begin_nested():
             return await ConteudoClasseRepository(self.session).buscar_arco_narrativo(int(classe_id))
 
+    async def fetch_diagnosticos_do_aluno(self, *, aluno_id: str, classe_id: int | None) -> list[dict[str, Any]]:
+        """Nível que o aluno mostrou no diagnóstico antes de cada tópico da turma (#137).
+
+        Só os respondidos: pendente, dispensado e `sem_ia` não dizem nada sobre o que ele sabe. É o ponto de
+        partida que os nós do grafo podem ler; ler não gera nada nem mexe no `source_hash`.
+        """
+        if classe_id is None:
+            return []
+        # Savepoint: quem chama segue sem diagnóstico se a leitura falhar, sem abortar o ciclo.
+        async with self.session.begin_nested():
+            linhas = (
+                await self.session.execute(
+                    text(
+                        """
+                        SELECT d.topico_id, d.nivel, d.acertos, d.total
+                          FROM diagnostico_topico d
+                         WHERE d.aluno_id = :aluno_id AND d.classe_id = :classe_id AND d.status = 'respondido'
+                         ORDER BY d.topico_id
+                        """
+                    ),
+                    {"aluno_id": aluno_id, "classe_id": int(classe_id)},
+                )
+            ).mappings().all()
+        return [
+            {
+                "topico_id": int(linha["topico_id"]),
+                "nivel": linha["nivel"],
+                "acertos": int(linha["acertos"] or 0),
+                "total": int(linha["total"] or 0),
+            }
+            for linha in linhas
+        ]
+
     async def fetch_foco_de_estudo(
         self, *, aluno_id: str, classe_id: int, topico_id: int | None
     ) -> dict[str, Any] | None:
