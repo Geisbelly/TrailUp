@@ -51,6 +51,4 @@ def test_app_startup_compiles_default_graph(app) -> None:
         == CONTENT_ENRICHMENT_PROVIDER
     )
     assert openapi.status_code == 200
-    paths = openapi.json()["paths"]
-    assert "/api/v1/admin/professores/{professor_id}/liberacao" not in paths
-    assert "/api/v1/admin/professores/{professor_id}/alunos" not in paths
+    assert "/api/v1/admin/personalizacao/media/backfill" not in openapi.json()["paths"]

@@ -4,20 +4,13 @@ Gerado por `scripts/site_docs/rotas.py`, a partir do código. Não edite à mão
 
 A maior parte do sistema não passa por estas rotas. O app e o console falam direto com o Supabase, por tabela e RPC, sob RLS. A API existe para a IA, ver a regra de fronteira no `CLAUDE.md`.
 
-## API (39)
+## API (32)
 
-FastAPI, em `https://api.trailup.promora.dev.br`. O console chega nela por `/trailup-api/*`, um rewrite do Vercel. Contrato interativo em `/docs` e `/redoc`, e em `/openapi.json`, sem as rotas de `/admin`. **Login** é o JWT do Supabase, de aluno ou professor, e a rota confere a posse do dado.
+FastAPI, em `https://api.trailup.promora.dev.br`. O console chega nela por `/trailup-api/*`, um rewrite do Vercel. Contrato interativo em `/docs` e `/redoc`, e em `/openapi.json`, sem as rotas de `/api/v1/admin`. **Login** é o JWT do Supabase, de aluno ou professor, e a rota confere a posse do dado.
 
 | Rota | Acesso | Para quê |
 | --- | --- | --- |
-| `GET /admin/economia` | Admin (senha do painel) | Painel: economia do jogo. |
-| `GET /admin/molduras` | Admin (senha do painel) | Painel: catálogo de molduras. |
-| `POST /admin/molduras/acoes/{acao}` | Admin (senha do painel) | Painel: liga uma ação a uma moldura. |
-| `POST /admin/molduras/{codigo}` | Admin (senha do painel) | Painel: salva uma moldura. |
-| `GET /admin/professores` | Admin (senha do painel) | Painel: professores e a liberação de cada um. |
-| `POST /api/v1/admin/personalizacao/media/backfill` | Admin (senha do painel) | Painel: refaz a mídia que faltou nas personalizações. |
-| `POST /api/v1/admin/professores/{professor_id}/alunos` | Admin (senha do painel) | Painel: atualiza o acesso de aluno do professor. |
-| `POST /api/v1/admin/professores/{professor_id}/liberacao` | Admin (senha do painel) | Painel: atualiza a liberação do professor. |
+| `POST /api/v1/admin/personalizacao/media/backfill` | Admin (senha do `.env`) | Refaz a mídia que faltou nas personalizações. |
 | `POST /api/v1/emocoes/analisar` | Aluno | Analisa a emoção do aluno. |
 | `POST /api/v1/emocoes/analisar-stream` | Aluno | Analisa a emoção do aluno em fluxo contínuo. |
 | `POST /api/v1/escriba/perguntar` | Professor | Chat da Lumi, a assistente do professor. |

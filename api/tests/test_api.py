@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock
 
 import asyncpg
 from fastapi.testclient import TestClient
-from sqlalchemy.exc import DBAPIError, OperationalError
+from sqlalchemy.exc import DBAPIError
 
 from app.api.deps import get_current_user, get_session, require_aluno
 from app.api.v1 import admin as admin_module
@@ -108,138 +108,6 @@ def test_stream_route_emits_sse_events(app, aluno_user, monkeypatch) -> None:
     assert response.status_code == 200
     assert '"node": "DONE"' in response.text
     assert '"agente_ui"' in response.text
-
-
-def test_admin_page_and_posts_manage_professors(app, monkeypatch) -> None:
-    fake_session = FakeSession()
-
-    async def override_session():
-        yield fake_session
-
-    app.dependency_overrides[get_session] = override_session
-    monkeypatch.setattr(
-        AccessRepository,
-        "list_admin_professors",
-        AsyncMock(
-            return_value=[
-                {
-                    "professor_id": "prof-1",
-                    "nome": "Professor 1",
-                    "descricao": None,
-                    "instituicao": "TrailUp",
-                    "disciplina": "Matematica",
-                    "liberado": True,
-                }
-            ]
-        ),
-    )
-    monkeypatch.setattr(
-        AccessRepository,
-        "list_admin_students",
-        AsyncMock(
-            return_value=[
-                {
-                    "aluno_id": "aluno-1",
-                    "nome": "Aluno 1",
-                    "email": "aluno1@example.com",
-                }
-            ]
-        ),
-    )
-    monkeypatch.setattr(
-        AccessRepository,
-        "list_direct_professor_assignments",
-        AsyncMock(
-            return_value=[
-                {
-                    "professor_id": "prof-1",
-                    "aluno_id": "aluno-1",
-                    "nome": "Aluno 1",
-                    "email": "aluno1@example.com",
-                }
-            ]
-        ),
-    )
-    monkeypatch.setattr(AccessRepository, "professor_exists", AsyncMock(return_value=True))
-    monkeypatch.setattr(AccessRepository, "aluno_exists", AsyncMock(return_value=True))
-    monkeypatch.setattr(AccessRepository, "set_professor_liberado", AsyncMock(return_value=None))
-    monkeypatch.setattr(AccessRepository, "set_professor_student_access", AsyncMock(return_value=None))
-
-    with TestClient(app) as client:
-        page = client.get("/admin/professores", auth=("admin", "secret-admin"))
-        liberar = client.post(
-            "/api/v1/admin/professores/prof-1/liberacao",
-            auth=("admin", "secret-admin"),
-            json={"liberado": False},
-        )
-        atribuir = client.post(
-            "/api/v1/admin/professores/prof-1/alunos",
-            auth=("admin", "secret-admin"),
-            json={"aluno_id": "aluno-1", "has_acesso": True},
-        )
-        legado = client.get("/api/v1/professor/me")
-
-    assert page.status_code == 200
-    assert "Painel Admin" in page.text
-    assert "Professor 1" in page.text
-    assert liberar.status_code == 200
-    assert liberar.json() == {"professor_id": "prof-1", "liberado": False}
-    assert atribuir.status_code == 200
-    assert atribuir.json() == {"professor_id": "prof-1", "aluno_id": "aluno-1", "has_acesso": True}
-    assert legado.status_code == 404
-
-
-def test_admin_routes_require_basic_auth(app) -> None:
-    with TestClient(app) as client:
-        page = client.get("/admin/professores")
-        post = client.post("/api/v1/admin/professores/prof-1/liberacao", json={"liberado": True})
-
-    assert page.status_code == 401
-    assert post.status_code == 401
-
-
-def test_admin_page_returns_503_when_schema_is_missing(app, monkeypatch) -> None:
-    fake_session = FakeSession()
-
-    async def override_session():
-        yield fake_session
-
-    app.dependency_overrides[get_session] = override_session
-    monkeypatch.setattr(
-        AccessRepository,
-        "list_admin_professors",
-        AsyncMock(side_effect=OperationalError("SELECT * FROM professor", None, Exception("no such table"))),
-    )
-
-    with TestClient(app) as client:
-        response = client.get("/admin/professores", auth=("admin", "secret-admin"))
-
-    assert response.status_code == 503
-    assert "schema principal do TrailUp" in response.text
-
-
-def test_admin_post_returns_503_when_schema_is_missing(app, monkeypatch) -> None:
-    fake_session = FakeSession()
-
-    async def override_session():
-        yield fake_session
-
-    app.dependency_overrides[get_session] = override_session
-    monkeypatch.setattr(
-        AccessRepository,
-        "professor_exists",
-        AsyncMock(side_effect=OperationalError("SELECT * FROM professor", None, Exception("no such table"))),
-    )
-
-    with TestClient(app) as client:
-        response = client.post(
-            "/api/v1/admin/professores/prof-1/liberacao",
-            auth=("admin", "secret-admin"),
-            json={"liberado": True},
-        )
-
-    assert response.status_code == 503
-    assert "Schema TrailUp indisponivel" in response.json()["detail"]
 
 
 def test_admin_media_backfill_route_supports_dry_run_and_effective_mode(app, monkeypatch) -> None:
@@ -2029,3 +1897,16 @@ def test_criar_job_class_delta_route_devolve_skip_quando_modo_manual(app, monkey
 
     assert response.status_code == 201
     assert response.json() == {"skipped": True, "reason": "geracao_manual_ativa"}
+
+
+def test_paginas_admin_sairam_da_api(app) -> None:
+    with TestClient(app) as client:
+        respostas = [
+            client.get("/admin/professores", auth=("admin", "secret-admin")),
+            client.get("/admin/economia", auth=("admin", "secret-admin")),
+            client.get("/admin/molduras", auth=("admin", "secret-admin")),
+            client.post("/api/v1/admin/professores/p/liberacao", auth=("admin", "secret-admin"), json={"liberado": True}),
+            client.post("/api/v1/admin/professores/p/alunos", auth=("admin", "secret-admin"), json={"aluno_id": "a"}),
+        ]
+
+    assert [r.status_code for r in respostas] == [404] * 5

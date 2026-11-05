@@ -723,7 +723,7 @@ Cada perfil carrega:
   resposta não é falha**: fica `ok = NULL`, porque quem não respondeu foi o medidor. **`latencia_ms` é proxy**: o
   `pg_net` não grava a duração. **O monitor cai com o Supabase**: só a batida (`monitor_batida_url` no Vault, para o
   Healthchecks.io) e um serviço externo cobrem isso. A aba Painel técnico lê `painel_disponibilidade` e
-  `painel_acessos_alunos` direto do Supabase; **não** vá para o `/admin` da API, que cai junto com ela. A lista por
+  `painel_acessos_alunos` direto do Supabase; **não** ponha na API, que cai junto com ela. A lista por
   aluno abre com código curto e mostrar nomes fica em `monitor_consulta`; nela não entra emoção, BrainHex nem nota.
   Deploy curto sai da meta (`20261105_26`): sonda boa com versão nova marca a sequência de falhas de até 5 min como
   `ok = NULL`, `motivo = 'deploy'`, e o painel mostra `minutos_deploy`. Na API a versão é o carimbo da imagem
@@ -757,8 +757,7 @@ Cada perfil carrega:
   `admin_moldura_acao_salvar`, `admin_economia` e `admin_turma_matricular`
   (`20261105_25`), todas com `app_e_dono()` antes de ler ou gravar. Matricular
   pelo dono é só o INSERT em `classe_aluno`, com os mesmos gatilhos; tirar da turma
-  apaga progresso e continua só no modal do professor. As páginas `/admin` da API ainda existem e fazem o mesmo; não
-  acrescente nada novo nelas. Só o reprocessamento de mídia precisa ficar na API,
+  apaga progresso e continua só no modal do professor. As páginas `/admin` da API foram removidas. Só o reprocessamento de mídia precisa ficar na API,
   porque usa o pipeline de geração.
 - **Eventos de turma abrem e encerram no horário pelo banco (#141).**
   `pg_cron` roda `fn_eventos_classe_varrer()` a cada minuto (job

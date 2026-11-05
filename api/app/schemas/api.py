@@ -50,47 +50,6 @@ class MateriaisAlunoResponse(BaseModel):
     materiais: list[MaterialGeradoResponse] = Field(default_factory=list)
 
 
-class AdminAlunoResumo(BaseModel):
-    aluno_id: str
-    nome: str
-    email: str
-
-
-class AdminProfessorResumo(BaseModel):
-    professor_id: str
-    nome: str | None = None
-    descricao: str | None = None
-    instituicao: str | None = None
-    disciplina: str | None = None
-    liberado: bool
-    alunos_diretos: list[AdminAlunoResumo] = Field(default_factory=list)
-
-
-class AdminDashboardData(BaseModel):
-    professores: list[AdminProfessorResumo] = Field(default_factory=list)
-    alunos: list[AdminAlunoResumo] = Field(default_factory=list)
-
-
-class AdminProfessorLiberacaoRequest(BaseModel):
-    liberado: bool
-
-
-class AdminProfessorLiberacaoResponse(BaseModel):
-    professor_id: str
-    liberado: bool
-
-
-class AdminProfessorAlunoAcessoRequest(BaseModel):
-    aluno_id: str
-    has_acesso: bool = True
-
-
-class AdminProfessorAlunoAcessoResponse(BaseModel):
-    professor_id: str
-    aluno_id: str
-    has_acesso: bool
-
-
 class AdminPersonalizacaoMediaBackfillRequest(BaseModel):
     classe_id: int | None = None
     aluno_id: str | None = None
