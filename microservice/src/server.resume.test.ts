@@ -78,8 +78,17 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     arquivos.set(url.slice("https://r2.test/".length), Buffer.from(init.body as Uint8Array).toString("utf-8"));
     return new Response("", { status: 200 });
   }
+  // O gateway so' serve link assinado (#632): o POST devolve o link de quem existe.
+  if (url === "https://fake.supabase.co/functions/v1/storage-redirect" && init?.method === "POST") {
+    const [caminho] = (body?.paths ?? []) as string[];
+    const links = arquivos.has(caminho) ? { [caminho]: `${url}?path=${caminho}&u=0&exp=1&sig=s` } : {};
+    return new Response(JSON.stringify({ links }), { status: 200 });
+  }
   if (url.startsWith("https://fake.supabase.co/functions/v1/storage-redirect?path=")) {
-    const caminho = url.slice(url.indexOf("?path=") + "?path=".length);
+    const inicio = url.indexOf("?path=") + "?path=".length;
+    const assinado = url.indexOf("&sig=") !== -1;
+    if (!assinado) return new Response("sem assinatura", { status: 401 });
+    const caminho = url.slice(inicio, url.indexOf("&", inicio));
     return arquivos.has(caminho) ? new Response(arquivos.get(caminho)) : new Response("nao encontrado", { status: 404 });
   }
   return new Response("rota inesperada no teste", { status: 500 });

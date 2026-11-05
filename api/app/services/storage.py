@@ -3,7 +3,7 @@ import io
 import logging
 import mimetypes
 from typing import Any
-from urllib.parse import quote, unquote
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 
 import httpx
 
@@ -19,6 +19,7 @@ BUCKETS_DO_GATEWAY = frozenset({BUCKET, CONTEUDOS_BUCKET})
 # `PREFIXOS_PERMITIDOS` em `frontend/supabase/functions/storage-upload-url/pedido.ts`;
 # o teste confere os dois).
 FUNCAO_DE_UPLOAD = "storage-upload-url"
+ROTA_DO_GATEWAY = "/functions/v1/storage-redirect"
 PREFIXOS_DO_R2 = ("brainhex/", "fontes/")
 _FUNCAO_NAO_PUBLICADA = object()
 
@@ -121,6 +122,17 @@ def objeto_do_storage(url: str | None) -> tuple[str, str] | None:
     if len(partes) < 3 or partes[0] not in {"public", "sign", "authenticated"} or not partes[1] or not partes[2]:
         return None
     return partes[1], unquote(partes[2])
+
+
+def caminho_do_gateway(base_url: str | None, url: str | None) -> str | None:
+    """Caminho de uma URL do gateway DESTE projeto. Qualquer outra URL da' None:
+    e' o que impede a chave de servico de pedir link para endereco de fora."""
+    base = str(base_url or "").strip().rstrip("/")
+    texto = str(url or "").strip()
+    if not base or not texto.startswith(f"{base}{ROTA_DO_GATEWAY}?"):
+        return None
+    caminhos = parse_qs(urlsplit(texto).query).get("path")
+    return caminhos[0] if caminhos else None
 
 
 def _truncate_extracted(text: str | None, limit: int = 4000) -> str | None:
@@ -347,11 +359,30 @@ class SupabaseStorage:
         foi migrado pro R2 (sem egress do Supabase) ou ainda vive no Storage,
         e resolve isso sozinha via `vw_material_storage_paths`. Sem passar
         por aqui, qualquer arquivo ja copiado pro R2 (e removido do bucket de
-        origem) vira 404/400 pro download direto abaixo."""
-        gateway_url = f"{self._base_url}/functions/v1/storage-redirect"
+        origem) vira 404/400 pro download direto abaixo.
+
+        Desde `GATEWAY_EXIGE_LINK_ASSINADO` (#632) o GET sem assinatura leva 401.
+        O link sai de um POST com a chave de servico, e o GET vai sem ela: o 302
+        aponta para o R2. Link nao se guarda, ele vence em ate' duas horas.
+
+        Falhar aqui nao avisa ninguem: quem chama cai no Storage, onde arquivo
+        novo nao existe, e a geracao segue sem a fonte. Por isso o WARNING.
+        """
+        if not self._enabled:
+            return None
+        gateway_url = f"{self._base_url}{ROTA_DO_GATEWAY}"
         try:
             async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-                resp = await client.get(gateway_url, params={"path": path})
+                pedido = await client.post(gateway_url, json={"paths": [path]}, headers=self._headers())
+                pedido.raise_for_status()
+                links = (pedido.json() or {}).get("links") or {}
+                # Um caminho pedido, um link: a chave da resposta e' o caminho ja'
+                # normalizado pelo gateway, que pode nao ser igual ao pedido.
+                link = next(iter(links.values()), None)
+                if not link:
+                    logger.info("Gateway storage-redirect nao conhece %s", path)
+                    return None
+                resp = await client.get(link)
                 resp.raise_for_status()
                 logger.info(
                     "DEBUG_PERSONALIZACAO.storage_download=%s",
@@ -359,7 +390,9 @@ class SupabaseStorage:
                 )
                 return resp.content
         except Exception as exc:
-            logger.info("Gateway storage-redirect nao serviu %s: %s", path, exc)
+            # O texto do erro traz a URL, e a URL traz a assinatura.
+            status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else type(exc).__name__
+            logger.warning("Gateway storage-redirect nao serviu %s: %s", path, status)
             return None
 
     async def download_bytes(self, *, bucket: str, path: str) -> bytes | None:
@@ -428,6 +461,11 @@ class SupabaseStorage:
             baixado = await self.download_bytes(bucket=objeto[0], path=objeto[1])
             if baixado is not None:
                 return baixado
+        # URL do gateway e' a que fica gravada em `arquivo_url` desde o R2, e sem
+        # assinatura ela da' 401.
+        caminho = caminho_do_gateway(self._base_url, url)
+        if caminho:
+            return await self._download_via_gateway(caminho)
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.get(url)

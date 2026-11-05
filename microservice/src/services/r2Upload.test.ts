@@ -3,10 +3,13 @@ import test from "node:test";
 
 import {
   baixarTextoPeloGateway,
+  caminhoDoGateway,
   FUNCAO_DE_UPLOAD,
   FuncaoDeUploadNaoPublicada,
+  linkDeLeitura,
   uploadPeloSupabase,
   urlDoGateway,
+  urlParaBaixar,
 } from "./r2Upload";
 
 const SUPA = { SUPABASE_URL: "https://proj.supabase.co/", SUPABASE_SERVICE_ROLE_KEY: "chave-de-servico" };
@@ -106,24 +109,71 @@ test("urlDoGateway monta a URL de leitura, e sem SUPABASE_URL devolve null", asy
   assert.equal(await comEnv({ SUPABASE_URL: undefined }, () => urlDoGateway(DECK)), null);
 });
 
-test("baixarTextoPeloGateway le pelo storage-redirect, seguindo o 302", async () => {
-  const { fetchImpl, chamadas } = fetchFalso([new Response("## Parte 2", { status: 200 })]);
+const GATEWAY = "https://proj.supabase.co/functions/v1/storage-redirect";
+const LINK = `${GATEWAY}?path=${DECK}&u=00000000-0000-0000-0000-000000000000&exp=1800000000&sig=abc`;
+const comLink = () => new Response(JSON.stringify({ expira_em: 1800000000, links: { [DECK]: LINK } }), { status: 200 });
+const semLink = () => new Response(JSON.stringify({ expira_em: 1800000000, links: {} }), { status: 200 });
+
+test("baixarTextoPeloGateway pede o link com a chave e baixa sem ela, seguindo o 302", async () => {
+  const { fetchImpl, chamadas } = fetchFalso([comLink(), new Response("## Parte 2", { status: 200 })]);
   const texto = await comEnv(SUPA, () => baixarTextoPeloGateway(DECK, fetchImpl));
   assert.equal(texto, "## Parte 2");
-  assert.equal(chamadas[0].url, `https://proj.supabase.co/functions/v1/storage-redirect?path=${DECK}`);
-  assert.equal(chamadas[0].init.redirect, "follow");
-  // O gateway e' publico: a leitura nao leva a chave de servico.
-  assert.equal(chamadas[0].init.headers, undefined);
+
+  assert.equal(chamadas[0].url, GATEWAY);
+  assert.equal(chamadas[0].init.method, "POST");
+  assert.deepEqual(JSON.parse(String(chamadas[0].init.body)), { paths: [DECK] });
+  assert.equal((chamadas[0].init.headers as Record<string, string>).Authorization, "Bearer chave-de-servico");
+
+  assert.equal(chamadas[1].url, LINK);
+  assert.equal(chamadas[1].init.redirect, "follow");
+  // O 302 aponta para o R2: a chave de servico nao pode ir neste pedido.
+  assert.equal(chamadas[1].init.headers, undefined);
 });
 
-test("baixarTextoPeloGateway: 404 vira null, outro erro lanca, sem SUPABASE_URL nem chama", async () => {
-  const nao = fetchFalso([new Response("", { status: 404 })]);
+test("baixarTextoPeloGateway: caminho desconhecido ou 404 vira null, outro erro lanca, sem env nem chama", async () => {
+  const desconhecido = fetchFalso([semLink()]);
+  assert.equal(await comEnv(SUPA, () => baixarTextoPeloGateway(DECK, desconhecido.fetchImpl)), null);
+  assert.equal(desconhecido.chamadas.length, 1);
+
+  const nao = fetchFalso([comLink(), new Response("", { status: 404 })]);
   assert.equal(await comEnv(SUPA, () => baixarTextoPeloGateway(DECK, nao.fetchImpl)), null);
 
-  const quebrado = fetchFalso([new Response("erro", { status: 502 })]);
+  const quebrado = fetchFalso([comLink(), new Response("erro", { status: 502 })]);
   await assert.rejects(comEnv(SUPA, () => baixarTextoPeloGateway(DECK, quebrado.fetchImpl)));
+
+  // Gateway publicado sem aceitar a chave: lanca, e `downloadStorageText` cai no Storage.
+  const recusado = fetchFalso([new Response("nao", { status: 401 })]);
+  await assert.rejects(comEnv(SUPA, () => baixarTextoPeloGateway(DECK, recusado.fetchImpl)), /401/);
 
   const sem = fetchFalso([]);
   assert.equal(await comEnv({ SUPABASE_URL: undefined }, () => baixarTextoPeloGateway(DECK, sem.fetchImpl)), null);
   assert.equal(sem.chamadas.length, 0);
+});
+
+test("linkDeLeitura pega o link mesmo se o gateway normalizou o caminho", async () => {
+  const { fetchImpl } = fetchFalso([comLink()]);
+  assert.equal(await comEnv(SUPA, () => linkDeLeitura(`/${DECK}`, fetchImpl)), LINK);
+});
+
+test("caminhoDoGateway so' reconhece o gateway deste projeto", async () => {
+  await comEnv(SUPA, () => {
+    assert.equal(caminhoDoGateway(`${GATEWAY}?path=fontes/classe-1/a%20b.pdf`), "fontes/classe-1/a b.pdf");
+    assert.equal(caminhoDoGateway(`https://outro.supabase.co/functions/v1/storage-redirect?path=${DECK}`), null);
+    assert.equal(caminhoDoGateway(`https://proj.supabase.co.exemplo.test/functions/v1/storage-redirect?path=${DECK}`), null);
+    assert.equal(caminhoDoGateway(`${GATEWAY}?outro=1`), null);
+    assert.equal(caminhoDoGateway("https://exemplo.test/a.pdf"), null);
+  });
+});
+
+test("urlParaBaixar troca a URL do gateway pelo link e nao mexe em link externo", async () => {
+  const gateway = fetchFalso([comLink()]);
+  assert.equal(await comEnv(SUPA, () => urlParaBaixar(`${GATEWAY}?path=${DECK}`, gateway.fetchImpl)), LINK);
+
+  const desconhecido = fetchFalso([semLink()]);
+  assert.equal(await comEnv(SUPA, () => urlParaBaixar(`${GATEWAY}?path=${DECK}`, desconhecido.fetchImpl)), null);
+
+  // Link de fora nao recebe a chave de servico: nem chega a chamar.
+  const externo = fetchFalso([]);
+  assert.equal(await comEnv(SUPA, () => urlParaBaixar("https://exemplo.test/a.pdf", externo.fetchImpl)), "https://exemplo.test/a.pdf");
+  assert.equal(externo.chamadas.length, 0);
 });
