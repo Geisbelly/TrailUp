@@ -1,6 +1,6 @@
 """Gera `docs/rotas.md`: as rotas de cada serviço do TrailUp, lidas do código.
 
-A API sai do app FastAPI montado, inclusive as rotas fora do OpenAPI (`/admin`). O resto sai do
+A API sai do app FastAPI montado, inclusive as rotas fora do OpenAPI (`/api/v1/admin`). O resto sai do
 fonte: `microservice/server.ts`, as Edge Functions, `frontend/src/App.tsx` e `mobile/src/app`.
 Rota nova sem descrição aqui faz o script falhar, em vez de ir para o documento em branco.
 
@@ -22,7 +22,7 @@ RAIZ = Path(__file__).resolve().parents[2]
 SAIDA = RAIZ / "docs" / "rotas.md"
 
 ACESSO_API = {
-    "require_admin": "Admin (senha do painel)",
+    "require_admin": "Admin (senha do `.env`)",
     "require_aluno": "Aluno",
     "require_professor": "Professor",
     "get_current_user": "Login",
@@ -30,14 +30,7 @@ ACESSO_API = {
 
 API = {
     "GET /health": "Saúde da API.",
-    "GET /admin/professores": "Painel: professores e a liberação de cada um.",
-    "POST /api/v1/admin/professores/{professor_id}/liberacao": "Painel: atualiza a liberação do professor.",
-    "POST /api/v1/admin/professores/{professor_id}/alunos": "Painel: atualiza o acesso de aluno do professor.",
-    "GET /admin/economia": "Painel: economia do jogo.",
-    "GET /admin/molduras": "Painel: catálogo de molduras.",
-    "POST /admin/molduras/{codigo}": "Painel: salva uma moldura.",
-    "POST /admin/molduras/acoes/{acao}": "Painel: liga uma ação a uma moldura.",
-    "POST /api/v1/admin/personalizacao/media/backfill": "Painel: refaz a mídia que faltou nas personalizações.",
+    "POST /api/v1/admin/personalizacao/media/backfill": "Refaz a mídia que faltou nas personalizações.",
     "POST /api/v1/emocoes/analisar": "Analisa a emoção do aluno.",
     "POST /api/v1/emocoes/analisar-stream": "Analisa a emoção do aluno em fluxo contínuo.",
     "POST /api/v1/escriba/perguntar": "Chat da Lumi, a assistente do professor.",
@@ -268,7 +261,7 @@ def montar() -> str:
         f"## API ({len(api)})",
         "FastAPI, em `https://api.trailup.promora.dev.br`. O console chega nela por `/trailup-api/*`, "
         "um rewrite do Vercel. Contrato interativo em `/docs` e `/redoc`, e em `/openapi.json`, sem "
-        "as rotas de `/admin`. **Login** é o JWT do Supabase, de aluno ou professor, e a rota confere "
+        "as rotas de `/api/v1/admin`. **Login** é o JWT do Supabase, de aluno ou professor, e a rota confere "
         "a posse do dado.",
         tabela(("Rota", "Acesso", "Para quê"), [linha_de_rota(r, a, API) for r, a in api]),
         f"## Microservice ({len(micro)})",
