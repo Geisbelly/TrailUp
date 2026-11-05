@@ -20,7 +20,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import Settings
 from app.repositories.rag_openai_files import RagOpenAIFilesRepository
-from app.services.llm import StructuredOutputError, extract_json, load_prompt
+from app.services import uso_llm
+from app.services.llm import (
+    ProvedorIndisponivelError,
+    RespostaBloqueadaError,
+    RespostaCortadaError,
+    StructuredOutputError,
+    erro_do_fim,
+    extract_json,
+    load_prompt,
+)
 from app.services.rag_observabilidade import registrar_busca, resumo_da_busca
 
 logger = logging.getLogger(__name__)
@@ -108,10 +117,32 @@ class OpenAIRagService:
                 )
             except Exception as exc:
                 self._registrar(None, inicio, prompt_name, modelo, exc)
-                raise
+                uso_llm.registrar(
+                    prompt=prompt_name,
+                    provedor="openai",
+                    modelo=modelo,
+                    tokens_entrada=None,
+                    tokens_saida=None,
+                    tokens_cache=None,
+                    usou_rag=True,
+                    fim=uso_llm.fim_da_excecao(exc),
+                    latencia_ms=round((time.perf_counter() - inicio) * 1000),
+                )
+                raise ProvedorIndisponivelError(f"OpenAI RAG sem resposta: {type(exc).__name__}") from exc
             self._registrar(response, inicio, prompt_name, modelo, None)
+            uso_llm.registrar_resposta_openai(
+                response,
+                prompt=prompt_name,
+                modelo=modelo,
+                usou_rag=True,
+                latencia_ms=round((time.perf_counter() - inicio) * 1000),
+            )
+            if (erro := erro_do_fim(uso_llm.fim_da_resposta_rag(response), prompt_name)) is not None:
+                raise erro
             raw = extract_json(response.output_text)
             return schema.model_validate(raw)
+        except (ProvedorIndisponivelError, RespostaBloqueadaError, RespostaCortadaError):
+            raise
         except Exception as exc:
             raise StructuredOutputError(
                 f"Falha no OpenAI RAG para {prompt_name}: {type(exc).__name__}"

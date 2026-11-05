@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import inspect
+import logging
+import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, TypeVar
 
@@ -8,7 +11,15 @@ from pydantic import BaseModel
 
 from app.schemas.mentor_chat import GroundingJudgment, MentorChatLLMResult
 from app.schemas.trilha_config import TrilhaConfig
-from app.services.llm import JsonLLMService, StructuredOutputError
+from app.services import uso_llm
+from app.services.llm import (
+    JsonLLMService,
+    ProvedorIndisponivelError,
+    RespostaBloqueadaError,
+    StructuredOutputError,
+)
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -126,13 +137,62 @@ async def gerar_validado(
     contexto: dict[str, Any] | None = None,
     on_violation: Callable[[GuardrailViolation, str], Awaitable[None]] | None = None,
     max_tentativas: int = 2,
+    prazo_total: float | None = None,
     **ainvoke_kwargs: Any,
 ) -> T:
     """Gera com schema nativo (Camada 1), roda guardrails de negocio (Camada
     2). Schema invalido OU guardrail violado: 1 retry com o erro anexado ao
     payload como 'correcao'. Falhou de novo: fallback deterministico do
-    proprio no, e a ultima violacao e reportada via on_violation (auditoria)."""
-    contexto = contexto or {}
+    proprio no, e a ultima violacao e reportada via on_violation (auditoria).
+    Recusa do provedor e provedor fora do ar nao tem retry: repetir so gastaria
+    cota e a espera de quem esta na tela. `prazo_total` limita tudo, juizes
+    inclusive; estourou, vale o fallback."""
+    inicio = time.monotonic()
+    try:
+        async with asyncio.timeout(prazo_total):
+            resultado = await _gerar_com_correcao(
+                llm,
+                prompt_name=prompt_name,
+                payload=payload,
+                schema=schema,
+                guardrails=guardrails,
+                contexto=contexto or {},
+                on_violation=on_violation,
+                max_tentativas=max_tentativas,
+                ainvoke_kwargs=ainvoke_kwargs,
+            )
+    except TimeoutError:
+        latencia_ms = round((time.monotonic() - inicio) * 1000)
+        uso_llm.registrar(
+            prompt=prompt_name,
+            provedor="desconhecido",
+            modelo=None,
+            tokens_entrada=None,
+            tokens_saida=None,
+            tokens_cache=None,
+            fim="prazo_total",
+            latencia_ms=latencia_ms,
+        )
+        if on_violation is not None:
+            await on_violation(
+                GuardrailViolation(regra="prazo_total", mensagem=f"sem resposta em {latencia_ms} ms"), "fallback_final"
+            )
+        resultado = None
+    return schema.model_validate(fallback_factory()) if resultado is None else resultado
+
+
+async def _gerar_com_correcao(
+    llm: JsonLLMService,
+    *,
+    prompt_name: str,
+    payload: dict[str, Any],
+    schema: type[T],
+    guardrails: list[Callable[[T, dict[str, Any]], Any]],
+    contexto: dict[str, Any],
+    on_violation: Callable[[GuardrailViolation, str], Awaitable[None]] | None,
+    max_tentativas: int,
+    ainvoke_kwargs: dict[str, Any],
+) -> T | None:
     tentativa_payload = dict(payload)
     ultima_violacao: GuardrailViolation | None = None
 
@@ -144,6 +204,11 @@ async def gerar_validado(
                 schema=schema,
                 **ainvoke_kwargs,
             )
+        except (RespostaBloqueadaError, ProvedorIndisponivelError) as exc:
+            regra = "bloqueio_provedor" if isinstance(exc, RespostaBloqueadaError) else "provedor_indisponivel"
+            if on_violation is not None:
+                await on_violation(GuardrailViolation(regra=regra, mensagem=str(exc)), "fallback_final")
+            return None
         except StructuredOutputError as exc:
             ultima_violacao = GuardrailViolation(regra="schema", mensagem=str(exc))
             tentativa_payload = {**payload, "correcao": ultima_violacao.mensagem}
@@ -170,7 +235,7 @@ async def gerar_validado(
             await on_violation(violacao, fase)
         tentativa_payload = {**payload, "correcao": f"{violacao.regra}: {violacao.mensagem}"}
 
-    return schema.model_validate(fallback_factory())
+    return None
 
 
 async def checar_grounding_chat(
@@ -197,7 +262,9 @@ async def checar_grounding_chat(
             },
             schema=GroundingJudgment,
         )
-    except StructuredOutputError:
+    except StructuredOutputError as exc:
+        # Sem este aviso, juiz fora do ar e resposta aprovada sao indistinguiveis.
+        logger.warning("Juiz de grounding indisponivel, resposta passou sem checagem: %s", exc)
         return None
 
     if julgamento.viola:

@@ -9,7 +9,7 @@ from typing import Any
 from openai import AsyncOpenAI
 
 from app.core.settings import Settings
-from app.services import gemini_chaves
+from app.services import gemini_chaves, uso_llm
 from app.services.media_contract import CONTENT_ENRICHMENT_PROVIDER
 from app.services.roteamento_ia import rota_de_menor_ativa
 
@@ -224,7 +224,12 @@ def _record_openai_spend(usage: Any) -> None:
 def _gemini_client(api_key: str, model: str) -> Any:
     if ChatGoogleGenerativeAI is None:
         return None
-    return ChatGoogleGenerativeAI(model=model, temperature=0, google_api_key=api_key)
+    return ChatGoogleGenerativeAI(
+        model=model,
+        temperature=0,
+        google_api_key=api_key,
+        callbacks=[uso_llm.UsoCallback("gemini", model, prompt="content_enrichment")],
+    )
 
 
 # Chaves, cooldown e classificacao de erro: pool unico em `gemini_chaves`,
@@ -692,6 +697,7 @@ async def _generate_openai_batch(
         ) from exc
 
     _record_openai_spend(getattr(response, "usage", None))
+    uso_llm.registrar_resposta_openai(response, prompt="content_enrichment", modelo=model)
 
     if getattr(response, "status", None) == "incomplete":
         reason = (

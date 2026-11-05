@@ -110,3 +110,17 @@ describe("mensagemDaResposta", () => {
     expect(mensagemDaResposta(1, { resposta: "oi", tutorial: "hackear" }, TODAS).tutorial).toBeNull();
   });
 });
+
+describe("assinatura da fala da Lumi", () => {
+  it("guarda a assinatura da resposta e a devolve no histórico", () => {
+    const m = mensagemDaResposta(1, { resposta: "Ana foi bem.", assinatura: "abc" }, TODAS);
+
+    expect(historicoParaEnvio([m])).toEqual([{ papel: "escriba", texto: "Ana foi bem.", assinatura: "abc" }]);
+  });
+
+  it("fala sem assinatura segue sem o campo", () => {
+    const m = mensagemDaResposta(1, { resposta: "Ana foi bem." }, TODAS);
+
+    expect(historicoParaEnvio([m])).toEqual([{ papel: "escriba", texto: "Ana foi bem." }]);
+  });
+});

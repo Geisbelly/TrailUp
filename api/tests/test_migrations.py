@@ -1,3 +1,5 @@
+import re
+from collections import Counter
 from io import StringIO
 from pathlib import Path
 
@@ -655,3 +657,13 @@ def test_openai_vector_store_registry_renders_remote_catalog_constraints() -> No
     assert "idx_rag_openai_files_source_hash" in rendered
     assert "ALTER TABLE rag_openai_files ENABLE ROW LEVEL SECURITY" in rendered
     assert "UPDATE alembic_version SET version_num='20261024_01'" in rendered
+
+
+def test_nenhuma_revisao_repetida() -> None:
+    """Duas PRs abertas ao mesmo tempo escolhem o mesmo número sem conflito no git, porque os arquivos
+    têm nomes diferentes. Revisão repetida faz o Alembic esconder uma das migrações."""
+    revisoes = [
+        re.search(r"""^revision(?:: str)? = ["']([^"']+)["']""", arquivo.read_text(encoding="utf-8"), re.MULTILINE)[1]
+        for arquivo in (API_ROOT / "alembic" / "versions").glob("*.py")
+    ]
+    assert sorted(revisao for revisao, total in Counter(revisoes).items() if total > 1) == []

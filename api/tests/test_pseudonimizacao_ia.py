@@ -22,6 +22,7 @@ from app.repositories.context import ContextRepository
 from app.schemas.escriba import EscribaSaida, PerguntaEscriba
 from app.schemas.insights import InsightGerado, InsightsTurmaSaida
 from app.schemas.texto_gerado import TextoGerado
+from app.services import assinatura_chat
 from app.services import insights_turma as insights_module
 from app.services.escriba import EscribaService
 from app.services.insights_turma import InsightsTurmaService, montar_payload
@@ -165,7 +166,7 @@ async def test_insights_vai_so_com_ref_e_volta_com_nome(monkeypatch) -> None:
 async def test_escriba_pseudonimiza_payload_pergunta_e_historico_e_restaura(monkeypatch) -> None:
     llm = AsyncMock()
     llm.ainvoke_structured.return_value = EscribaSaida(resposta="A2 e A4 precisam de atencao.")
-    service = EscribaService(FakeSession(), llm)
+    service = EscribaService(FakeSession(), llm, segredo="s")
     monkeypatch.setattr(
         service, "turmas_do_professor",
         AsyncMock(return_value=[{"id": 54, "descricao": "SPD"}, {"id": 56, "descricao": "Redes"}]),
@@ -188,7 +189,15 @@ async def test_escriba_pseudonimiza_payload_pergunta_e_historico_e_restaura(monk
         "prof-1",
         PerguntaEscriba(
             pergunta="Como estao a Ana Clara Souza e o Bruno? (bruno@escola.edu.br)",
-            historico=[{"papel": "escriba", "texto": "Bruno Lima esta sem acessar."}],
+            historico=[
+                {
+                    "papel": "escriba",
+                    "texto": "Bruno Lima esta sem acessar.",
+                    "assinatura": assinatura_chat.assinar(
+                        "Bruno Lima esta sem acessar.", segredo="s", usuario_id="prof-1", canal="lumi"
+                    ),
+                }
+            ],
         ),
     )
 

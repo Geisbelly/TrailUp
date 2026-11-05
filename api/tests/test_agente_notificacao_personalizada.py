@@ -194,7 +194,9 @@ def test_texto_com_topico_cabe_com_o_maior_nome_possivel() -> None:
 
 
 def test_perfil_fora_da_lista_cai_no_mastermind_tambem_com_topico() -> None:
-    n = modulo.notificacao_da_regra("Socialiser", "inatividade", AGORA, {"topico": "Frações"})
+    # Era "Socialiser", que NÃO é perfil fora da lista: é a grafia do banco para o Socializer, e
+    # cair no Mastermind era o defeito (ver test_notificacao_perfil_da_tela.py).
+    n = modulo.notificacao_da_regra("Perfil Inventado", "inatividade", AGORA, {"topico": "Frações"})
     assert n.corpo == modulo._TEXTOS_COM_TOPICO["Mastermind"]["lembrete"].format(topico="Frações")
 
 

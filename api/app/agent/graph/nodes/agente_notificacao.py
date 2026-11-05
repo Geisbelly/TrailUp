@@ -45,7 +45,7 @@ from app.core.settings import Settings
 from app.schemas.notificacao import NotificacaoPayload
 from app.services.llm import JsonLLMService, StructuredOutputError
 from app.services.openai_rag import OpenAIRagService
-from app.services.personalizacao import _build_profile_editorial_context
+from app.services.personalizacao import _build_profile_editorial_context, _normalize_profile_label
 
 BRASILIA = timezone(timedelta(hours=-3))
 _SILENCIO_INICIO = 22
@@ -61,11 +61,35 @@ class NotificacaoGerada(BaseModel):
     evidencia: str | None = Field(default=None, max_length=300)
 
 
-def _perfil_dominante(state: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+# Mesma regra de `perfilVisualDoAluno` (mobile/src/utils/brainHex.ts) e de
+# `notificacoes_perfil_do_aluno` (20261103_12): o perfil escolhido vale quando é representativo
+# (1º ou 2º com afinidade > 0, ou afinidade >= 20); senão, o dominante.
+_SINAL_MINIMO = 20.0
+
+
+def _perfil_da_tela(state: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+    """O perfil que o app mostra ao aluno, e os perfis em ordem de afinidade.
+
+    O texto sai com o guia e o tom DESTE perfil: é o guia que o aluno vê na tela, e o banco resolve
+    `{guia}` e escolhe o material pelo mesmo perfil. Usar o dominante fazia quem escolheu o
+    secundário receber o recado de outro guia.
+    """
     perfis = [p for p in state.get("perfil_brainhex") or [] if isinstance(p, dict)]
-    perfis = sorted(perfis, key=lambda p: float(p.get("afinidade") or 0), reverse=True)
-    dominante = str((perfis[0].get("perfil") or perfis[0].get("nome")) if perfis else "Mastermind")
-    return dominante, perfis
+
+    def chave(p: dict[str, Any]) -> str:
+        return _normalize_profile_label(p.get("perfil") or p.get("nome")) or ""
+
+    # Desempate pelo nome, como o app e o banco: a ordem de chegada das linhas não decide.
+    perfis = sorted(perfis, key=lambda p: (-float(p.get("afinidade") or 0), chave(p)))
+    if not perfis:
+        return "Mastermind", perfis
+    ativo = _normalize_profile_label(state.get("perfil_ativo"))
+    if ativo:
+        for i, p in enumerate(perfis):
+            afinidade = float(p.get("afinidade") or 0)
+            if chave(p) == ativo and ((i <= 1 and afinidade > 0) or afinidade >= _SINAL_MINIMO):
+                return ativo, perfis
+    return str(perfis[0].get("perfil") or perfis[0].get("nome")), perfis
 
 
 # Como cada perfil fala NUMA NOTIFICAÇÃO: em palavras simples, sem os marcadores da assinatura
@@ -103,11 +127,22 @@ _JEITO_NA_NOTIFICACAO: dict[str, dict[str, str]] = {
 }
 
 
+def _chave_das_tabelas(perfil: str | None) -> str:
+    """A chave das tabelas de texto deste módulo, que grafam "Socializer".
+
+    `_normalize_profile_label` devolve "Socialiser" (a grafia do banco). Sem esta ponte, o
+    Socializer caía no `else "Mastermind"` das tabelas e recebia o tom e os textos do Mastermind.
+    """
+    rotulo = _normalize_profile_label(perfil)
+    rotulo = "Socializer" if rotulo == "Socialiser" else rotulo
+    return rotulo if rotulo in _TEXTOS_DA_REGRA else "Mastermind"
+
+
 def _contexto_do_perfil(state: dict[str, Any]) -> dict[str, Any]:
-    dominante, perfis = _perfil_dominante(state)
-    ctx = _build_profile_editorial_context(dominante, perfis)
+    da_tela, perfis = _perfil_da_tela(state)
+    ctx = _build_profile_editorial_context(da_tela, perfis)
     perfil = ctx.get("perfil_dominante")
-    chave = perfil if perfil in _JEITO_NA_NOTIFICACAO else "Mastermind"
+    chave = _chave_das_tabelas(perfil)
     return {"perfil_dominante": perfil, "guia_nome": ctx.get("guia_nome"), **_JEITO_NA_NOTIFICACAO[chave]}
 
 
@@ -270,7 +305,7 @@ def notificacao_da_regra(
     perfil: str, motivo: str, agora: datetime, foco: dict[str, Any] | None = None
 ) -> NotificacaoPayload:
     """Pura. Sem modelo: texto no tom do perfil (com o tópico, se houver), horário pela guarda."""
-    chave = perfil if perfil in _TEXTOS_DA_REGRA else "Mastermind"
+    chave = _chave_das_tabelas(perfil)
     tipo = "suporte" if motivo == "emocao_negativa" else "lembrete"
     titulo, corpo = _TEXTOS_DA_REGRA[chave][tipo]
     topico = (foco or {}).get("topico")

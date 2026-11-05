@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
 
+from app.schemas.entrada_chat import MAX_TEXTO_DO_CHAT, limpar_texto
 from app.schemas.ia_patch import IAPersonalizationPatch
 
 
@@ -108,9 +109,20 @@ class PersonalizacaoItemProgressoResponse(BaseModel):
     updated_at: datetime
 
 
+# As falas que a rota já mandava ao modelo.
+MAX_HISTORICO_DO_CHAT = 6
+
+
 class MentorChatMessagePayload(BaseModel):
     role: Literal["assistant", "user"]
     content: str
+    # Devolvida como veio em `MentorChatResponse`. App antigo não manda.
+    assinatura: str | None = Field(default=None, max_length=64)
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def _content_limpo(cls, valor: Any) -> Any:
+        return limpar_texto(valor, MAX_TEXTO_DO_CHAT) if isinstance(valor, str) else valor
 
 
 class MentorChatPayload(BaseModel):
@@ -120,6 +132,27 @@ class MentorChatPayload(BaseModel):
     escopo: Literal["modulo", "trilha_home"] = "modulo"
     mensagem: str
     historico: list[MentorChatMessagePayload] = Field(default_factory=list)
+
+    # Corta em vez de recusar: o app instalado não limita o campo, e um 422 viraria erro para o aluno.
+    @field_validator("mensagem", mode="before")
+    @classmethod
+    def _mensagem_limpa(cls, valor: Any) -> Any:
+        return limpar_texto(valor, MAX_TEXTO_DO_CHAT) if isinstance(valor, str) else valor
+
+    @field_validator("historico", mode="before")
+    @classmethod
+    def _so_as_ultimas_falas(cls, valor: Any) -> Any:
+        # Uma a mais: a última pode ser a própria mensagem, que `_sem_a_mensagem_repetida` tira.
+        return valor[-(MAX_HISTORICO_DO_CHAT + 1) :] if isinstance(valor, list) else valor
+
+    @model_validator(mode="after")
+    def _sem_a_mensagem_repetida(self) -> "MentorChatPayload":
+        # O app manda a pergunta atual também como última fala do histórico: tokens em dobro a cada turno.
+        ultima = self.historico[-1] if self.historico else None
+        if ultima is not None and ultima.role == "user" and ultima.content.strip() == self.mensagem.strip():
+            self.historico = self.historico[:-1]
+        self.historico = self.historico[-MAX_HISTORICO_DO_CHAT:]
+        return self
 
 
 class SecaoDoGuiaResposta(BaseModel):
@@ -140,6 +173,8 @@ class MentorChatResponse(BaseModel):
     introducao: str = ""
     secoes: list[SecaoDoGuiaResposta] = Field(default_factory=list)
     tutorial: str | None = None
+    # Prova de que `reply` saiu daqui. Volta no histórico junto com o `reply` intacto.
+    assinatura: str | None = None
 
 
 # ── Sub-schemas de artefatos ──────────────────────────────────────────────────

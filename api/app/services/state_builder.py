@@ -92,6 +92,7 @@ async def build_initial_state(
         "modo_operacao": aluno.get("modo_operacao") or "imediato",
         "modo_resposta": aluno.get("modo_resposta") or "imediato",
         "perfil_brainhex": context["perfil_brainhex"],
+        "perfil_ativo": aluno.get("perfil_ativo"),
         "historico_eventos": context["historico_eventos"],
         "progresso_trilha": context["progresso_trilha"],
         "desempenho_recente": context["desempenho_recente"],

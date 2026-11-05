@@ -19,7 +19,7 @@ from typing import Any
 
 import httpx
 
-from app.services import gemini_chaves
+from app.services import gemini_chaves, uso_llm
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +80,16 @@ async def gemini_generate(
                 exc.response.status_code,
                 time.monotonic() - inicio,
             )
+            uso_llm.registrar(
+                prompt=origem,
+                provedor="gemini",
+                modelo=model,
+                tokens_entrada=None,
+                tokens_saida=None,
+                tokens_cache=None,
+                fim=f"erro:http_{exc.response.status_code}",
+                latencia_ms=round((time.monotonic() - inicio) * 1000),
+            )
             if not gemini_chaves.marcar_falha(
                 key,
                 model,
@@ -91,7 +101,11 @@ async def gemini_generate(
             ultimo_erro = exc
             continue
         logger.debug("Gemini %s (%s): ok em %.1fs", origem, model, time.monotonic() - inicio)
-        return response.json()
+        corpo = response.json()
+        uso_llm.registrar_resposta_gemini_http(
+            corpo, prompt=origem, modelo=model, latencia_ms=round((time.monotonic() - inicio) * 1000)
+        )
+        return corpo
 
     if ultimo_erro is not None:
         raise ultimo_erro
