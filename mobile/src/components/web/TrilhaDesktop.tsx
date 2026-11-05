@@ -71,7 +71,7 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
     if (aoClicarNo(nos.find((n) => String(n.id) === String(id))) === "abrir") router.push(rotaDoTopico(String(id)));
   };
   const topicoDe = (id: string) => classeAtual?.topicos.find((t) => String(t.id) === String(id));
-  const painel = noPainel ? montarPainelTopico(noPainel, topicoDe(noPainel.id), atualId, nos, grafo.edges) : null;
+  const painel = noPainel ? montarPainelTopico(noPainel, topicoDe(noPainel.id), atualId, nos, grafo.edges, { personalizado: Boolean(personalizedTopics?.[Number(noPainel.id)]) }) : null;
   const todos = [...nos]
     .sort((a, b) => a.sequence - b.sequence)
     .map((n, i) => {

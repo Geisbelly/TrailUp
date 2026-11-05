@@ -4,6 +4,7 @@ import React, { useEffect, useId, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { HexagonoTopico } from "@/components/web/HexagonoTopico";
+import { BonusDoProfessor } from "@/components/trilhas/BonusDoProfessor";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { rotaDoTopico, type EstadoTopico, type PainelTopico } from "@/utils/painelTopicoTrilha";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
@@ -140,6 +141,7 @@ export function FolhaTopicoTrilha({
                   <Text style={[s.pequeno, { color: palette.textMuted }]}>{painel.atividades === 1 ? "atividade" : "atividades"}</Text>
                 </View>
               </View>
+              {painel.bonusProfessor ? <BonusDoProfessor bonus={painel.bonusProfessor} palette={palette} /> : null}
               {personalizacao ? (
                 <View style={[s.bloco, { backgroundColor: palette.surfaceElevated, borderColor: palette.border, borderWidth: 1 }]}>
                   <View style={[s.chip, { backgroundColor: palette.accentMuted, borderColor: palette.border }]}>
