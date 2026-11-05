@@ -17,6 +17,9 @@ As abas são rotas (`frontend/src/pages/consoleSections.ts`): a URL é a fonte d
 | Meus dados | `/console/meus-dados` | `ProfileSection.tsx` |
 | Painel técnico | `/console/tecnico` | `tecnico/PainelTecnicoSection.tsx` (**só o dono**, como Aprovações: `VIEWS_SO_DO_DONO` em `pages/consoleSections.ts`) |
 | Aprovações | `/console/aprovacoes` | `ProfessorApprovalSection.tsx` (**só o dono**, `OWNER_EMAIL` em `pages/Console.tsx`) |
+| Administração | `/console/administracao` | `administracao/AdministracaoSection.tsx` (**só o dono**, `VIEWS_SO_DO_DONO`) |
+
+As decisões de estrutura de Turmas, Administração e Painel técnico, com as fontes, estão em [console-ux-turmas-admin-tecnico.md](console-ux-turmas-admin-tecnico.md).
 
 A moldura (barra superior, menu lateral, fundo) é `ConsoleShell.tsx`; as cores e tokens do console ficam em `styles/console-theme.css`, com escopo em `.console-shell` — por isso diálogos e selects do Radix, que renderizam em portal fora dele, recebem o tema por `data-console-theme` no `<html>`.
 

@@ -201,6 +201,13 @@ export function filtrarMolduras(molduras: MolduraAdmin[], termo: string, origem:
   return molduras.filter((m) => (origem === "todas" || m.origem === origem) && (!t || normalizar(m.nome).includes(t) || normalizar(m.conquista).includes(t)));
 }
 
+/** O que libera uma moldura de ação. Sem ação ligada ela não sai para ninguém, e a tela precisa dizer isso. */
+export function comoLiberaARara(codigo: string, acoes: AcaoAdmin[]): { texto: string; alerta: boolean } {
+  const acao = acoes.find((a) => a.moldura_codigo === codigo);
+  if (!acao) return { texto: "Nenhuma ação libera esta moldura", alerta: true };
+  return acao.ativa ? { texto: `Ação: ${acao.rotulo}`, alerta: false } : { texto: `Ação: ${acao.rotulo} (desligada)`, alerta: true };
+}
+
 /** Preço só vale na loja, de 1 a 1000. Devolve o valor a gravar, ou null quando a moldura não tem preço. */
 export function precoParaGravar(origem: string, digitado: string): { ok: true; preco: number | null } | { ok: false } {
   if (origem !== "loja") return { ok: true, preco: null };

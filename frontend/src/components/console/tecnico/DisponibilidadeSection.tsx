@@ -20,7 +20,7 @@ import {
 import { formatarMinutos, formatarTokens, haQuanto } from "./painelTecnico";
 import { Numero, Secao, Tabela } from "./pecasDoPainel";
 import { AcessosDoConsole } from "./SaudeDosClientesSection";
-import { useAcessosDosAlunos, useDisponibilidade } from "./useDisponibilidade";
+import { useAcessosDosAlunos, type EstadoDaLeitura } from "./useDisponibilidade";
 
 const COR_DO_ALVO: Record<EstadoDoAlvo, string> = {
   queda: "border-[hsl(var(--warning))] bg-[hsl(var(--warning)/.12)]",
@@ -39,7 +39,7 @@ function IconeDoAlvo({ estado }: { estado: EstadoDoAlvo }) {
 const diaCurto = (dia: string) => dia.split("-").reverse().slice(0, 2).join("/");
 
 /** Uma faixa por dia. A cor nunca está sozinha: cada dia diz o número no `title` e o total vem em texto ao lado. */
-function FaixaDe30Dias({ a }: { a: Alvo }) {
+export function FaixaDe30Dias({ a }: { a: Alvo }) {
   const porDia = new Map(a.serie_30d.map((d) => [d.dia, d]));
   return (
     <div className="mt-3 flex gap-[2px]" role="img" aria-label={`Últimos 30 dias de ${a.nome}: ${contagem(a.serie_30d.filter((d) => estadoDoDia(d) === "falhou").length, a.serie_30d.length)} dias medidos com falha.`}>
@@ -58,6 +58,18 @@ function FaixaDe30Dias({ a }: { a: Alvo }) {
   );
 }
 
+function Dado({ rotulo, valor, nota, destaque = false }: { rotulo: string; valor: string; nota?: string; destaque?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] text-muted-foreground">{rotulo}</dt>
+      <dd className={cn("font-semibold tabular-nums", destaque ? "text-[hsl(var(--console-warning-text))]" : "text-foreground")}>
+        {valor}
+        {nota && <span className="block text-[11px] font-normal text-muted-foreground">{nota}</span>}
+      </dd>
+    </div>
+  );
+}
+
 function CartaoDoAlvo({ a }: { a: Alvo }) {
   const gasto = orcamentoGastoPct(a);
   return (
@@ -67,15 +79,17 @@ function CartaoDoAlvo({ a }: { a: Alvo }) {
         <h3 className="text-[13.5px] font-bold text-foreground">{a.nome}</h3>
         <span className="ml-auto text-[11px] font-semibold text-muted-foreground">{rotuloDoAlvo(a.estado)}</span>
       </div>
-      <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
-        Na janela: {formatarDisponibilidade(a.disponibilidade_pct)} ({contagem(a.boas, a.medidas)} sondas). Tempo até responder: p50 {a.latencia_p50_ms ?? "—"} ms, p95 {a.latencia_p95_ms ?? "—"} ms.
-      </p>
       <FaixaDe30Dias a={a} />
-      <p className="mt-2 text-[12px] leading-snug text-muted-foreground">
-        Disponibilidade: {formatarDisponibilidade(a.disponibilidade_aula_pct)} (meta {a.slo_pct === null ? "—" : `${a.slo_pct.toLocaleString("pt-BR")}%`}). Fora do ar: {formatarMinutos(a.minutos_fora_aula)} de {formatarMinutos(a.orcamento_aula_min)} permitidos{gasto === null ? "" : ` (${gasto}% do orçamento)`}. Tempo medido: {a.cobertura_aula_pct === null ? "—" : `${a.cobertura_aula_pct.toLocaleString("pt-BR")}%`}.
-      </p>
-      <p className="mt-1 text-[11.5px] text-muted-foreground">Últimos 30 dias: {formatarDisponibilidade(a.disponibilidade_30d_pct)}.</p>
-      <p className="mt-1 text-[11.5px] text-muted-foreground">
+      {/* Números em colunas: comparar três serviços lendo parágrafos era o trabalho que esta tela dava. */}
+      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[12px]">
+        <Dado rotulo={`Meta de ${a.slo_pct === null ? "—" : `${a.slo_pct.toLocaleString("pt-BR")}%`}`} valor={formatarDisponibilidade(a.disponibilidade_aula_pct)} />
+        <Dado rotulo="Fora do ar / permitido" valor={`${formatarMinutos(a.minutos_fora_aula)} / ${formatarMinutos(a.orcamento_aula_min)}`} nota={gasto === null ? undefined : `${gasto}% do orçamento`} destaque={(gasto ?? 0) >= 100} />
+        <Dado rotulo="Na janela" valor={formatarDisponibilidade(a.disponibilidade_pct)} nota={`${contagem(a.boas, a.medidas)} sondas`} />
+        <Dado rotulo="Resposta p50 / p95" valor={`${a.latencia_p50_ms ?? "—"} / ${a.latencia_p95_ms ?? "—"} ms`} />
+        <Dado rotulo="Últimos 30 dias" valor={formatarDisponibilidade(a.disponibilidade_30d_pct)} />
+        <Dado rotulo="Tempo medido" valor={a.cobertura_aula_pct === null ? "—" : `${a.cobertura_aula_pct.toLocaleString("pt-BR")}%`} />
+      </dl>
+      <p className="mt-2.5 text-[11.5px] text-muted-foreground">
         Última sonda {haQuanto(a.ultima_sonda_em, new Date())}{a.versao ? `. Versão ${a.versao}` : ""}.
       </p>
     </li>
@@ -127,7 +141,7 @@ function PainelDeDisponibilidade({ d }: { d: Disponibilidade }) {
           <Numero rotulo="Sem alcançar a API" valor={contagem(cliente.sem_alcancar_api, cliente.lotes)} destaque={cliente.sem_alcancar_api > 0} />
         </div>
         <Tabela cabecalho={["Versão do app", "Plataforma", "Lotes"]} vazio="Nenhum lote na janela." linhas={cliente.versoes.map((v) => [v.versao, v.plataforma, v.lotes])} />
-        <p className="text-[11.5px] text-muted-foreground">Erro de tela e travamento do app ainda não são capturados: até lá, isto só mostra a ida à API.</p>
+        <p className="text-[11.5px] text-muted-foreground">Isto mostra a ida à API. Erros de tela e de chamada estão na aba Clientes; crash nativo do app ainda não é capturado.</p>
       </Secao>
 
       <Secao id="disp-ia" titulo="Chamadas ao modelo (pela API)">
@@ -243,8 +257,7 @@ function PainelDeAcessos({ d, horas }: { d: Disponibilidade; horas: number }) {
 }
 
 /** Disponibilidade ou acessos, conforme a aba. Lê direto do banco: com a API fora, esta tela continua de pé. */
-export default function DisponibilidadeSection({ horas, aba }: { horas: number; aba: "disponibilidade" | "acessos" }) {
-  const { dados, estado } = useDisponibilidade(horas);
+export default function DisponibilidadeSection({ horas, aba, dados, estado }: { horas: number; aba: "disponibilidade" | "acessos"; dados: Disponibilidade | null; estado: EstadoDaLeitura }) {
   if (estado.tipo === "indisponivel") {
     return (
       <div className="rounded-[20px] border border-border bg-card px-[30px] py-[50px] text-center">

@@ -77,6 +77,7 @@ Documentação que não pertence a um único serviço:
 - Arquitetura: [camadas](./frontend/arquitetura-estrutura-app-camadas.md) · [funcionamento geral](./frontend/arquitetura-funcionamento-geral-sistema.md)
 - API: [arquitetura e fluxos](./frontend/funcionamento-api-arquitetura-fluxos.md)
 - Banco: [modelagem](./frontend/modelagem-dados-banco.md) · [Supabase](./frontend/estrutura-banco-supabase.md) · [Supabase (executivo)](./frontend/estrutura-banco-supabase-executivo.md)
+- [Console: UX de turmas, administração e painel técnico](./frontend/console-ux-turmas-admin-tecnico.md)
 - [Guia de uso](./frontend/guia-uso-app.md) · [Segurança](./frontend/seguranca.md) · [Políticas de dados/privacidade](./frontend/politicas-dados-privacidade.md)
 
 ### [`microservice/`](./microservice/) — Microsserviço (Node · TS)

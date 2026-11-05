@@ -112,6 +112,41 @@ export function lerEmailsDoCsv(texto: string): ListaLida {
   return { emails, invalidas };
 }
 
+const EMAIL_NO_TEXTO = /[^\s@;,<>"'()]+@[^\s@;,<>"'()]+\.[^\s@;,<>"'()]+/g;
+
+export type ListaColada = { emails: string[]; ignorados: string[] };
+
+/**
+ * E-mails de um texto colado: da planilha, de uma lista separada por vírgula ou do campo "Para" de um
+ * e-mail ("Ana Lima <ana@x.com>"). Trecho sem e-mail vai para `ignorados`, para a tela mostrar o que não
+ * foi aproveitado em vez de sumir com ele. Repetidos contam uma vez.
+ */
+export function lerEmailsColados(texto: string): ListaColada {
+  const vistos = new Set<string>();
+  const emails: string[] = [];
+  const ignorados: string[] = [];
+  for (const trecho of texto.replace(/^\uFEFF/, "").split(/[\r\n,;\t]+/)) {
+    const limpo = trecho.trim();
+    if (!limpo) continue;
+    const achados = limpo.match(EMAIL_NO_TEXTO);
+    if (!achados) {
+      ignorados.push(limpo);
+      continue;
+    }
+    for (const bruto of achados) {
+      const email = bruto.toLowerCase();
+      if (!vistos.has(email)) {
+        vistos.add(email);
+        emails.push(email);
+      }
+    }
+  }
+  return { emails, ignorados };
+}
+
+/** Arquivo de exemplo para quem prefere preencher uma planilha. */
+export const modeloDaLista = (): string => gerarCsv(["email"], [["aluno.um@exemplo.com"], ["aluno.dois@exemplo.com"]]);
+
 export type PlanoDeImportacao = {
   matricular: AlunoCandidato[];
   jaMatriculados: string[];
