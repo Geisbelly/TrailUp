@@ -728,6 +728,13 @@ Cada perfil carrega:
   texto é validado pela API e não se edita pelo console). Quem esconde a fala desligada do aluno é a
   **policy de leitura dele**, não o app, então build antigo também obedece. A API religa ao reescrever a
   linha: texto novo é texto que ninguém leu.
+- **Administração do dono é função do banco, não HTML da API** (`20261105_16`).
+  A aba Administração do console chama `admin_acessos`, `admin_professor_liberar`,
+  `admin_professor_aluno`, `admin_molduras`, `admin_moldura_salvar`,
+  `admin_moldura_acao_salvar` e `admin_economia`, todas com `app_e_dono()` antes
+  de ler ou gravar. As páginas `/admin` da API ainda existem e fazem o mesmo; não
+  acrescente nada novo nelas. Só o reprocessamento de mídia precisa ficar na API,
+  porque usa o pipeline de geração.
 - **Eventos de turma abrem e encerram no horário pelo banco (#141).**
   `pg_cron` roda `fn_eventos_classe_varrer()` a cada minuto (job
   `trailup_eventos_classe_varredura`, migração `20261025_04`): encerra e apura
