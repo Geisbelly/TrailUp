@@ -30,8 +30,8 @@ forma genérica: o novo aparece nos dois sem mudar nada lá. Agregado, sem `alun
 
 O texto da função é o da `20261103_14`, com três trocas que falham alto se o trecho mudou.
 
-Revision ID: 20261105_21
-Revises: 20261105_20
+Revision ID: 20261105_23
+Revises: 20261105_22
 Create Date: 2026-11-05
 """
 
@@ -42,8 +42,8 @@ from pathlib import Path
 
 from alembic import op
 
-revision = "20261105_21"
-down_revision = "20261105_20"
+revision = "20261105_23"
+down_revision = "20261105_22"
 branch_labels = None
 depends_on = None
 
@@ -153,7 +153,7 @@ def painel_novo() -> str:
     texto = painel_anterior()
     for antigo, novo in ((DECLARE_ANTES, DECLARE_DEPOIS), (CONTA_ANTES, CONTA_DEPOIS), (LISTA_ANTES, LISTA_DEPOIS)):
         if texto.count(antigo) != 1:
-            raise RuntimeError("painel_tecnico mudou de forma; revise a 20261105_21")
+            raise RuntimeError("painel_tecnico mudou de forma; revise a 20261105_23")
         texto = texto.replace(antigo, novo)
     return texto
 

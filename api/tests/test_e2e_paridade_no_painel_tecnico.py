@@ -1,4 +1,4 @@
-"""`20261105_21` (#154, fase 5): gatilho de paridade guilda × individual no `painel_tecnico`.
+"""`20261105_23` (#154, fase 5): gatilho de paridade guilda × individual no `painel_tecnico`.
 
 Postgres local, esqueleto de produção. O que a função lê e não está em teste entra como dublê mínimo:
 `app_e_dono` (sempre o dono), `fn_eventos_aluno_resolve_classe_id` (nulo) e as duas tabelas que o
@@ -18,7 +18,7 @@ from tests import _f5_banco as f5
 
 pytestmark = [f5.e2e]
 
-M = f5.modulo("20261105_21_paridade_no_painel_tecnico.py")
+M = f5.modulo("20261105_23_paridade_no_painel_tecnico.py")
 M_CUSTO = f5.modulo("20261103_14_custo_por_geracao.py")
 M_CONFIG = f5.modulo("20261021_05_missao_diaria_deterministica.py")
 D, E = uuid.UUID(int=24), uuid.UUID(int=25)

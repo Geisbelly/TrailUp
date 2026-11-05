@@ -1,4 +1,4 @@
-"""`20261105_21` (#154, fase 5): gatilho de paridade no painel técnico. O comportamento está no e2e."""
+"""`20261105_23` (#154, fase 5): gatilho de paridade no painel técnico. O comportamento está no e2e."""
 
 import importlib.util
 from io import StringIO
@@ -13,7 +13,7 @@ VERSOES = Path(__file__).resolve().parents[1] / "alembic" / "versions"
 
 
 def _modulo():
-    spec = importlib.util.spec_from_file_location("m_20261105_21_teste", VERSOES / "20261105_21_paridade_no_painel_tecnico.py")
+    spec = importlib.util.spec_from_file_location("m_20261105_23_teste", VERSOES / "20261105_23_paridade_no_painel_tecnico.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -21,14 +21,14 @@ def _modulo():
 
 def _sql() -> str:
     output = StringIO()
-    migrations.command.upgrade(_offline_alembic_config(output), "20261105_20:20261105_21", sql=True)
+    migrations.command.upgrade(_offline_alembic_config(output), "20261105_22:20261105_23", sql=True)
     return output.getvalue().replace("%%", "%")
 
 
 def test_uma_cabeca_e_vem_depois_da_20() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
     assert len(scripts.get_heads()) == 1
-    assert scripts.get_revision("20261105_21").down_revision == "20261105_20"
+    assert scripts.get_revision("20261105_23").down_revision == "20261105_22"
 
 
 def test_o_resto_do_painel_nao_muda() -> None:
