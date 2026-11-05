@@ -728,7 +728,7 @@ Cada perfil carrega:
   texto é validado pela API e não se edita pelo console). Quem esconde a fala desligada do aluno é a
   **policy de leitura dele**, não o app, então build antigo também obedece. A API religa ao reescrever a
   linha: texto novo é texto que ninguém leu.
-- **Administração do dono é função do banco, não HTML da API** (`20261105_16`).
+- **Administração do dono é função do banco, não HTML da API** (`20261105_18`).
   A aba Administração do console chama `admin_acessos`, `admin_professor_liberar`,
   `admin_professor_aluno`, `admin_molduras`, `admin_moldura_salvar`,
   `admin_moldura_acao_salvar` e `admin_economia`, todas com `app_e_dono()` antes

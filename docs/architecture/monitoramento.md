@@ -11,7 +11,7 @@ Console web, aba **Painel técnico**, só para o dono (`app_e_dono()`):
 - **Acessos:** ativos sobre matriculados, acessos, plataformas, a lista por aluno e os acessos ao console.
 - **Geração e fila:** o painel técnico da #21.
 
-A tela lê o Supabase direto. Um painel servido pela API cairia junto com ela. Pelo mesmo motivo, liberar professor, vínculo com aluno, molduras e auditoria da economia têm a aba Administração do console, com funções `admin_*` no banco (`20261105_16`).
+A tela lê o Supabase direto. Um painel servido pela API cairia junto com ela. Pelo mesmo motivo, liberar professor, vínculo com aluno, molduras e auditoria da economia têm a aba Administração do console, com funções `admin_*` no banco (`20261105_18`).
 
 ## O que é medido
 

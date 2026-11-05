@@ -1,4 +1,4 @@
-// Administração do dono (migration 20261105_16). Era HTML da API; agora são RPCs do banco, que conferem
+// Administração do dono (migration 20261105_18). Era HTML da API; agora são RPCs do banco, que conferem
 // `app_e_dono()`. Aqui ficam a chamada, a leitura sem confiança no formato e as regras que a tela precisa.
 export type PessoaAluno = { aluno_id: string; nome: string | null; email: string | null };
 
