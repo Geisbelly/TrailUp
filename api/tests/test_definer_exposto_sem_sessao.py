@@ -120,7 +120,7 @@ SEM_SESSAO_POR_DECISAO: dict[str, str] = {
         "antes de qualquer leitura, e so devolve agregado (nenhum aluno_id)."
     ),
     "painel_clientes": (
-        "Saude dos clientes (20261105_13): delega a `app_e_dono()` antes de qualquer leitura e so devolve "
+        "Saude dos clientes (20261105_14): delega a `app_e_dono()` antes de qualquer leitura e so devolve "
         "agregado (nenhum user_id)."
     ),
     "painel_tecnico": (

@@ -40,8 +40,8 @@ por assinatura e versão. A regra é a do relatório: repetição entre pessoas 
 
 Sem `pg_cron` (banco local, CI) a migration passa e nada é agendado.
 
-Revision ID: 20261105_13
-Revises: 20261105_12
+Revision ID: 20261105_14
+Revises: 20261105_13
 Create Date: 2026-11-05
 """
 
@@ -49,8 +49,8 @@ from __future__ import annotations
 
 from alembic import op
 
-revision = "20261105_13"
-down_revision = "20261105_12"
+revision = "20261105_14"
+down_revision = "20261105_13"
 branch_labels = None
 depends_on = None
 

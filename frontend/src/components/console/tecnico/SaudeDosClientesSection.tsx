@@ -106,7 +106,7 @@ function Mensagem({ estado }: { estado: { tipo: "indisponivel" } | { tipo: "erro
     return (
       <div className="rounded-[20px] border border-border bg-card px-[30px] py-[50px] text-center">
         <h2 className="text-lg text-foreground">Saúde dos clientes ainda não disponível</h2>
-        <p className="mx-auto mt-3 max-w-[460px] text-[13px] leading-relaxed text-muted-foreground">O banco deste ambiente ainda não tem a migration 20261105_13.</p>
+        <p className="mx-auto mt-3 max-w-[460px] text-[13px] leading-relaxed text-muted-foreground">O banco deste ambiente ainda não tem a migration 20261105_14.</p>
       </div>
     );
   }
@@ -157,7 +157,7 @@ export function AcessosDoConsole({ horas }: { horas: number }) {
           })}
         </div>
       </div>
-      <p className="text-[11.5px] text-muted-foreground">Conta desde a migration 20261105_13. A conta do dono entra na soma.</p>
+      <p className="text-[11.5px] text-muted-foreground">Conta desde a migration 20261105_14. A conta do dono entra na soma.</p>
     </Secao>
   );
 }
