@@ -13,6 +13,12 @@ todo mundo, e cota diaria fica fora pelo tempo de
 `content_enrichment_gemini_daily_quota_cooldown_sec` (6 h por padrao).
 
 O estado vive em memoria do processo: restart zera, como antes.
+
+Faixas: `gemini_chaves_reservadas_chat` guarda as ultimas chaves da lista para quem tem alguem
+esperando na tela. O chat tenta a reserva primeiro e depois as outras; o resto (fila, enriquecimento,
+agentes) nunca toca nela, entao um lote grande nao tira a cota da aula. So protege de verdade se a
+reserva estiver em outro projeto do Google, porque a cota diaria e por projeto, e se o microservice,
+que tem rodizio proprio, nao usar a mesma chave.
 """
 
 from __future__ import annotations
@@ -20,6 +26,9 @@ from __future__ import annotations
 import logging
 import re
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -29,6 +38,16 @@ COOLDOWN_DIARIO_PADRAO_SEC = 6 * 3_600
 
 _indisponivel_ate: dict[tuple[str, str], float] = {}
 _indice_rodizio: int = 0
+_na_faixa_do_chat: ContextVar[bool] = ContextVar("gemini_na_faixa_do_chat", default=False)
+
+
+@contextmanager
+def faixa_do_chat() -> Iterator[None]:
+    token = _na_faixa_do_chat.set(True)
+    try:
+        yield
+    finally:
+        _na_faixa_do_chat.reset(token)
 
 
 def parse_lista(raw: str | None) -> list[str]:
@@ -111,9 +130,17 @@ def is_transient_error(exc: BaseException) -> bool:
     )
 
 
-def escolher_chave(api_keys: list[str], model: str) -> str | None:
+def escolher_chave(api_keys: list[str], model: str, *, reservadas: int = 0) -> str | None:
     """Round-robin entre as chaves fora de cooldown PARA ESSE MODELO; None se
-    todas estiverem indisponiveis agora."""
+    todas estiverem indisponiveis agora. Reservar todas pararia o lote: vale como sem reserva."""
+    corte = len(api_keys) - reservadas if 0 < reservadas < len(api_keys) else len(api_keys)
+    compartilhadas, reserva = api_keys[:corte], api_keys[corte:]
+    if _na_faixa_do_chat.get():
+        return _proxima_chave(reserva, model) or _proxima_chave(compartilhadas, model)
+    return _proxima_chave(compartilhadas, model)
+
+
+def _proxima_chave(api_keys: list[str], model: str) -> str | None:
     global _indice_rodizio
     if not api_keys:
         return None
@@ -173,6 +200,13 @@ def cooldowns_de(settings: Any) -> tuple[int, int]:
     )
 
 
+def reservadas_de(settings: Any) -> int:
+    try:
+        return max(int(getattr(settings, "gemini_chaves_reservadas_chat", 0) or 0), 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _rotulo_chave(key: str) -> str:
     # Nunca a chave no log: so os 4 ultimos caracteres.
     return key[-4:] if len(key) > 4 else "?"
@@ -190,11 +224,13 @@ __all__ = [
     "chaves_configuradas",
     "cooldowns_de",
     "escolher_chave",
+    "faixa_do_chat",
     "is_daily_quota_error",
     "is_model_unavailable_error",
     "is_quota_error",
     "is_transient_error",
     "marcar_falha",
     "parse_lista",
+    "reservadas_de",
     "reset",
 ]

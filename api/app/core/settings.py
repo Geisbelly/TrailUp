@@ -150,6 +150,9 @@ class Settings(BaseSettings):
     # worker martelar a mesma chave/modelo esgotado a cada poll pelo resto do
     # dia. Ver is_daily_quota_error em gemini_chaves.py (vale para a API toda).
     content_enrichment_gemini_daily_quota_cooldown_sec: int = 6 * 3_600
+    # Ultimas chaves de GEMINI_API_KEY guardadas para o chat. Ver o docstring de gemini_chaves.py antes
+    # de ligar: reservar custa essa fatia da fila, e so protege com a chave em outro projeto do Google.
+    gemini_chaves_reservadas_chat: int = 0
     # Mesma ideia de content_enrichment_gemini_fallback_models, mas pro
     # caminho generico de LLM (JsonLLMService/llm.py) usado pelo supervisor
     # do LangGraph, gerar_cards_direto, generate_plano_personalizacao etc. —

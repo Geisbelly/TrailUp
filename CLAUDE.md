@@ -1098,6 +1098,12 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   card por uma semana (`20261101_07`). Função pura em índice precisa de EXECUTE
   para quem escreve na tabela.
 
+- **Faixas de cota.** `GEMINI_CHAVES_RESERVADAS_CHAT` guarda as últimas chaves da lista para quem tem
+  alguém esperando (`gerar_validado` com `prazo_total`, ou seja, os chats e o juiz). O chat tenta a
+  reserva primeiro; a fila, o enriquecimento e os agentes nunca tocam nela. O padrão é `0`: reservar
+  custa essa fatia do lote, e só protege se a chave estiver em outro projeto do Google, porque a cota
+  diária é por projeto, e fora do `GEMINI_API_KEY*` do microservice, que tem rodízio próprio.
+
 ## Fontes de contexto (fora do código)
 
 Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
