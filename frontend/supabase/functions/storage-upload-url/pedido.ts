@@ -102,6 +102,33 @@ export async function chaveDeServicoDoProjeto(
   }
 }
 
+// Chave que o projeto ja' confirmou como de servico, para nao perguntar ao Auth
+// a cada lote de telemetria. Curto: chave revogada para de passar em minutos.
+const CONFIRMADA_POR_MS = 5 * 60 * 1000;
+
+/**
+ * Conferencia da chave de servico das Edge Functions: compara com a do ambiente
+ * e, se nao bater, pergunta ao projeto (`chaveDeServicoDoProjeto`), guardando o
+ * sim por alguns minutos. Cada funcao cria a sua, porque o cache vive com ela.
+ */
+export function criarConferenciaDeServico(
+  ambiente: () => { chaveDeServico: string | undefined; supabaseUrl: string },
+  fetchImpl: typeof fetch = fetch,
+  agora: () => number = Date.now,
+): (authorization: string | null) => Promise<boolean> {
+  const confirmadas = new Map<string, number>();
+  return async (authorization) => {
+    const { chaveDeServico, supabaseUrl } = ambiente();
+    if (chamadorAutorizado(authorization, chaveDeServico)) return true;
+    const token = bearerDe(authorization);
+    if (!token) return false;
+    if ((confirmadas.get(token) ?? 0) > agora()) return true;
+    if (!(await chaveDeServicoDoProjeto(token, supabaseUrl, fetchImpl))) return false;
+    confirmadas.set(token, agora() + CONFIRMADA_POR_MS);
+    return true;
+  };
+}
+
 export type Pedido = { caminho: string; metodo: Metodo };
 
 /**

@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { assinarLink, caminhosDoPedido, conferirLink, expiracaoDoLink, montarLink } from "./link";
+import {
+  assinarLink,
+  caminhosDoPedido,
+  conferirLink,
+  expiracaoDoLink,
+  identificarChamador,
+  montarLink,
+  USUARIO_DO_SERVICO,
+} from "./link";
 
 const SEGREDO = "segredo-de-teste-com-tamanho-suficiente";
 const ALUNO = "0b6c3a7e-1f2d-4c5b-8a9e-0123456789ab";
@@ -103,5 +111,29 @@ describe("caminhosDoPedido", () => {
     expect(caminhosDoPedido({ paths: [] }, 10)).toBeNull();
     expect(caminhosDoPedido({ paths: ["a", 1] }, 10)).toBeNull();
     expect(caminhosDoPedido({ paths: Array(11).fill("a") }, 10)).toBeNull();
+  });
+});
+
+describe("identificarChamador", () => {
+  it("sessão valida não pergunta pela chave de serviço: aluno não paga uma ida a mais ao Auth", async () => {
+    const ehChaveDeServico = vi.fn(async () => true);
+    const chamador = await identificarChamador({ usuarioDaSessao: async () => ALUNO, ehChaveDeServico });
+    expect(chamador).toEqual({ tipo: "sessao", usuario: ALUNO });
+    expect(ehChaveDeServico).not.toHaveBeenCalled();
+  });
+
+  it("sem sessão, a chave de serviço entra com o usuário reservado", async () => {
+    const chamador = await identificarChamador({ usuarioDaSessao: async () => null, ehChaveDeServico: async () => true });
+    expect(chamador).toEqual({ tipo: "servico", usuario: USUARIO_DO_SERVICO });
+  });
+
+  it("nem sessão nem chave de serviço: ninguém", async () => {
+    expect(await identificarChamador({ usuarioDaSessao: async () => null, ehChaveDeServico: async () => false })).toBeNull();
+  });
+
+  it("o link do serviço passa no GET, e só para o caminho assinado", async () => {
+    const b = await busca("fontes/classe-1/a.pdf", { usuario: USUARIO_DO_SERVICO });
+    expect(await conferir("fontes/classe-1/a.pdf", b)).toBe("valido");
+    expect(await conferir("fontes/classe-1/outro.pdf", b)).toBe("invalido");
   });
 });

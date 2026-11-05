@@ -11,6 +11,8 @@
 // egress. Para ler (a retomada reaproveita o markdown de partes ja' geradas), o
 // caminho e' o mesmo do app: o gateway `storage-redirect`, que responde 302
 // para uma URL assinada do R2, ou do Storage para o que e' anterior a migracao.
+// O gateway so' aceita link assinado (#632): a chave de servico vai no POST que
+// pede o link, e o GET sai sem ela.
 //
 // E' a mesma coisa que `brainhexpdf/src/services/r2Upload.ts` faz para o deck
 // e `api/app/services/storage.py` para o caminho Python. Ate' 03/11 este
@@ -97,6 +99,52 @@ export async function uploadPeloSupabase(
 }
 
 /**
+ * Caminho de uma URL do gateway DESTE projeto. Qualquer outra URL da' `null`: e'
+ * o que impede a chave de servico de pedir link para endereco de fora.
+ */
+export function caminhoDoGateway(url: string): string | null {
+  const base = baseDoSupabase();
+  if (!base || !url.startsWith(`${base}/functions/v1/storage-redirect?`)) return null;
+  return new URL(url).searchParams.get("path");
+}
+
+/**
+ * Link assinado para o servico ler um caminho, ou `null` se o gateway nao o
+ * conhece. Vence em ate' duas horas: nao se guarda, e nao vai para `arquivo_url`.
+ * Lanca se o pedido for recusado.
+ */
+export async function linkDeLeitura(
+  storagePath: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<string | null> {
+  const base = baseDoSupabase();
+  const chave = chaveDeServico();
+  if (!base || !chave) return null;
+  const pedido = await fetchImpl(`${base}/functions/v1/storage-redirect`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${chave}`, apikey: chave, "Content-Type": "application/json" },
+    body: JSON.stringify({ paths: [storagePath] }),
+  });
+  if (!pedido.ok) {
+    throw new Error(`[r2] link de leitura recusado (${storagePath}): ${pedido.status} ${await detalhe(pedido)}`);
+  }
+  const { links } = (await pedido.json().catch(() => ({}))) as { links?: Record<string, string> };
+  // Um caminho pedido, um link: a chave da resposta e' o caminho ja' normalizado
+  // pelo gateway, que pode nao ser igual ao pedido.
+  return Object.values(links ?? {})[0] ?? null;
+}
+
+/**
+ * URL que o servico consegue baixar: a do gateway deste projeto vira link
+ * assinado (`null` se ele nao conhece o caminho) e qualquer outra passa como
+ * veio, porque fonte tambem pode ser link externo.
+ */
+export async function urlParaBaixar(url: string, fetchImpl: typeof fetch = fetch): Promise<string | null> {
+  const caminho = caminhoDoGateway(url);
+  return caminho ? linkDeLeitura(caminho, fetchImpl) : url;
+}
+
+/**
  * Le um arquivo de texto pelo gateway. 404 vira `null`: o caminho ainda nao
  * esta' em `vw_material_storage_paths`, e quem chama decide o que fazer (a
  * retomada tenta o Storage e, sem nada, regera). Outro erro lanca.
@@ -105,7 +153,7 @@ export async function baixarTextoPeloGateway(
   storagePath: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<string | null> {
-  const url = urlDoGateway(storagePath);
+  const url = await linkDeLeitura(storagePath, fetchImpl);
   if (!url) return null;
   const resposta = await fetchImpl(url, { method: "GET", redirect: "follow" });
   if (resposta.status === 404) return null;

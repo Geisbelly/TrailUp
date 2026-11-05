@@ -44,6 +44,28 @@ function iguais(a: string, b: string): boolean {
   return dif === 0;
 }
 
+/**
+ * `u` dos links pedidos com a chave de servico. API e microservice leem fonte e material sem sessao
+ * de usuario, e o `u` do link precisa ser um UUID. Nenhuma conta tem este id: no log, ele separa o
+ * que foi leitura de servidor.
+ */
+export const USUARIO_DO_SERVICO = "00000000-0000-0000-0000-000000000000";
+
+export type Chamador = { tipo: "sessao" | "servico"; usuario: string };
+
+/**
+ * Quem pede os links. A sessao vem primeiro de proposito: e' o caso comum, e perguntar antes pela
+ * chave de servico custaria a aluno e professor uma ida a mais ao Auth em cada pedido.
+ */
+export async function identificarChamador(params: {
+  usuarioDaSessao: () => Promise<string | null>;
+  ehChaveDeServico: () => Promise<boolean>;
+}): Promise<Chamador | null> {
+  const usuario = await params.usuarioDaSessao();
+  if (usuario) return { tipo: "sessao", usuario };
+  return (await params.ehChaveDeServico()) ? { tipo: "servico", usuario: USUARIO_DO_SERVICO } : null;
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Fim da janela SEGUINTE a `agoraS`, em segundos Unix. */
