@@ -69,15 +69,8 @@ uvicorn app.main:app --reload
 pytest
 ```
 
-## Endpoints relevantes
-- `GET /health`
-- `POST /api/v1/personalizar`
-- `GET /api/v1/personalizar/{aluno_id}`
-- `POST /api/v1/personalizar/progresso`
-- `POST /api/v1/personalizar/chat`
-- `POST /api/v1/personalizar/jobs/enrollment`
-- `POST /api/v1/personalizar/jobs/class-delta`
-- `POST /api/v1/telemetria/lotes`
+## Endpoints
+A lista completa, de todos os serviços, está em [`docs/rotas.md`](../docs/rotas.md).
 
 ## Documentacao
 Indice oficial em `docs/README.md`.

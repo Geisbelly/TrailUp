@@ -1219,7 +1219,13 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
   [`docs/MANUAL.md`](docs/MANUAL.md),
   [coleta de métricas](docs/architecture/coleta-de-metricas.md),
   [schema não versionado](docs/architecture/schema-nao-versionado.md),
+
+  [rotas de todos os serviços](docs/rotas.md) (gerado por `scripts/site_docs/rotas.py`:
+  mudou rota, rode de novo; `test_doc_rotas.py` cobra a API),
+  [`docs/rag/`](docs/rag/) e `graphify-out/` (abaixo).
+
   [custos](docs/custos.md), [`docs/rag/`](docs/rag/) e `graphify-out/` (abaixo).
+
 
 ## Pontos de entrada (código)
 

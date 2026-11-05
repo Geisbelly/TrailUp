@@ -92,6 +92,9 @@ PAGINAS: list[Pagina] = [
            "Catálogo peça por peça: cada módulo da API, do microservice, do app e do console, e cada "
            "tabela, função e rotina do banco.",
            ["docs/tcc/inventario-completo-2026-11-04.md"]),
+    Pagina("rotas", "Rotas dos serviços", "Sistema",
+           "Todas as rotas da API, do microservice, das Edge Functions, da web e do app, geradas do código.",
+           ["docs/rotas.md"]),
     Pagina("modelagem", "Sobre a modelagem", "Modelagem",
            "Como os 44 diagramas foram feitos, conferidos no código e no banco, e o que eles não afirmam.",
            ["docs/tcc/modelagem/README.md"]),

@@ -42,6 +42,8 @@ Documentação que não pertence a um único serviço:
 - **[E-mail pelo Apps Script](../scripts/apps-script-email/)**: o script que envia os e-mails do banco no lugar da Brevo (#762), com o passo a passo de publicação.
 
 
+- **[Rotas dos serviços](./rotas.md)** — API, microservice, BrainHexPDF, Edge
+  Functions, web e app, geradas do código por `scripts/site_docs/rotas.py`.
 - **[Schema não versionado](./architecture/schema-nao-versionado.md)** —
   inventário do que existe no banco de produção e não está descrito por
   migration nenhuma (26% das funções, medido em 2026-09-30). Leia antes de
