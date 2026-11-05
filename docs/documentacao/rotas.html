@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Rotas dos serviços · TrailUp</title><meta name="description" content="Todas as rotas da API, do microservice, das Edge Functions, da web e do app, geradas do código."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" type="image/png" href="../assets/trailup-estrela.png"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><img src="../assets/trailup-estrela.png" alt="" width="34" height="34">TrailUp<small>documentação</small></a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/guardioes.html">Guardiões</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/artigo-ia-onde-importa.html">Artigos</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a><a class="abrir" href="https://trailup.vercel.app/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li><li><a href="rotas.html" aria-current="page">Rotas dos serviços</a></li><li><a href="guardioes.html">Os sete Guardiões</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Artigos</h4><ul><li><a href="artigo-ia-onde-importa.html">IA onde importa</a></li><li><a href="artigo-da-tipologia-a-trilha.html">Da tipologia à trilha</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Usar o TrailUp</h4><ul><li><a href="https://trailup.vercel.app/" target="_blank" rel="noopener">Site ↗</a></li><li><a href="https://trailup.vercel.app/login" target="_blank" rel="noopener">Console do professor ↗</a></li><li><a href="https://trailup.vercel.app/aluno/login" target="_blank" rel="noopener">TrailUp na web (aluno) ↗</a></li><li><a href="https://play.google.com/apps/test/com.seuprojeto.trailup/20" target="_blank" rel="noopener">App Android ↗</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Sistema</div><h1>Rotas dos serviços</h1><p class="lede">Todas as rotas da API, do microservice, das Edge Functions, da web e do app, geradas do código.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/rotas.md" target="_blank" rel="noopener">docs/rotas.md</a><span class="chip ok">atualizado 05/11/2026</span></div></header><p>Gerado por <code>scripts/site_docs/rotas.py</code>, a partir do código. Não edite à mão.</p>
+<p>A maior parte do sistema não passa por estas rotas. O app e o console falam direto com o Supabase, por tabela e RPC, sob RLS. A API existe para a IA, ver a regra de fronteira no <code>CLAUDE.md</code>.</p>
+<h2 id="api-39">API (39)</h2>
+<p>FastAPI, em <code>https://api.trailup.promora.dev.br</code>. O console chega nela por <code>/trailup-api/*</code>, um rewrite do Vercel. Contrato interativo em <code>/docs</code> e <code>/redoc</code>, e em <code>/openapi.json</code>, sem as rotas de <code>/admin</code>. <strong>Login</strong> é o JWT do Supabase, de aluno ou professor, e a rota confere a posse do dado.</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Rota</th>
+<th>Acesso</th>
+<th>Para quê</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /admin/economia</code></td>
+<td>Admin (senha do painel)</td>
+<td>Painel: economia do jogo.</td>
+</tr>
+<tr>
+<td><code>GET /admin/molduras</code></td>
+<td>Admin (senha do painel)</td>
+<td>Painel: catálogo de molduras.</td>
+</tr>
+<tr>
+<td><code>POST /admin/molduras/acoes/{acao}</code></td>
+<td>Admin (senha do painel)</td>
+<td>Painel: liga uma ação a uma moldura.</td>
+</tr>
+<tr>
+<td><code>POST /admin/molduras/{codigo}</code></td>
+<td>Admin (senha do painel)</td>
+<td>Painel: salva uma moldura.</td>
+</tr>
+<tr>
+<td><code>GET /admin/professores</code></td>
+<td>Admin (senha do painel)</td>
+<td>Painel: professores e a liberação de cada um.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/admin/personalizacao/media/backfill</code></td>
+<td>Admin (senha do painel)</td>
+<td>Painel: refaz a mídia que faltou nas personalizações.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/admin/professores/{professor_id}/alunos</code></td>
+<td>Admin (senha do painel)</td>
+<td>Painel: atualiza o acesso de aluno do professor.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/admin/professores/{professor_id}/liberacao</code></td>
+<td>Admin (senha do painel)</td>
+<td>Painel: atualiza a liberação do professor.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/emocoes/analisar</code></td>
+<td>Aluno</td>
+<td>Analisa a emoção do aluno.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/emocoes/analisar-stream</code></td>
+<td>Aluno</td>
+<td>Analisa a emoção do aluno em fluxo contínuo.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/escriba/perguntar</code></td>
+<td>Professor</td>
+<td>Chat da Lumi, a assistente do professor.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/insights/turma/{classe_id}/gerar</code></td>
+<td>Professor</td>
+<td>Gera os insights da turma em segundo plano.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/insights/turma/{classe_id}/status</code></td>
+<td>Professor</td>
+<td>Situação da geração de insights da turma.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/materiais/{aluno_id}</code></td>
+<td>Login</td>
+<td>Materiais do aluno.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar</code></td>
+<td>Login</td>
+<td>Roda o grafo de personalização para o aluno.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/chat</code></td>
+<td>Login</td>
+<td>Chat do aluno com o Guardião.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/personalizar/contexto/{aluno_id}</code></td>
+<td>Login</td>
+<td>Contexto do aluno para o professor.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/fontes</code></td>
+<td>Login</td>
+<td>Envia fontes do professor (arquivo ou link).</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/personalizar/grupo/{classe_id}</code></td>
+<td>Login</td>
+<td>Distribuição de perfis e desempenho da turma.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/personalizar/jobs</code></td>
+<td>Professor</td>
+<td>Lista os jobs da fila.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/jobs/class-delta</code></td>
+<td>Professor</td>
+<td>Enfileira o que mudou na turma. O banco já faz isso sozinho.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/jobs/class-theme</code></td>
+<td>Professor</td>
+<td>Enfileira a troca de tema da turma. O banco já faz isso sozinho.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/jobs/enrollment</code></td>
+<td>Professor</td>
+<td>Enfileira a matrícula de um aluno. O banco já faz isso sozinho.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/jobs/full-sync</code></td>
+<td>Professor</td>
+<td>Sincroniza a turma inteira.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/jobs/manual-generate</code></td>
+<td>Professor</td>
+<td>Botão &quot;gerar&quot; de um tópico e perfil.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/jobs/manual-generate-all</code></td>
+<td>Professor</td>
+<td>Botão &quot;gerar tudo&quot; da aba Personalizações.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/jobs/manual-retry</code></td>
+<td>Professor</td>
+<td>Botão &quot;tentar novamente&quot; do console.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/jobs/student-cleanup</code></td>
+<td>Professor</td>
+<td>Limpa as personalizações de um aluno que saiu.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/personalizar/jobs/{job_id}</code></td>
+<td>Professor</td>
+<td>Detalhe de um job.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/personalizar/perfis/{classe_id}/{topico_id}</code></td>
+<td>Professor</td>
+<td>Visão do professor: personalização por perfil.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/perfis/{classe_id}/{topico_id}/regenerar/documento</code></td>
+<td>Professor</td>
+<td>Regera o texto base do perfil.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/perfis/{classe_id}/{topico_id}/regenerar/slide</code></td>
+<td>Professor</td>
+<td>Regera um slide da base do perfil.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/personalizar/progresso</code></td>
+<td>Login</td>
+<td>Grava o progresso em um item personalizado.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/personalizar/sugestao/{aluno_id}/historico</code></td>
+<td>Login</td>
+<td>Sugestão atual, histórico e efetividade.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/personalizar/sugestao/{aluno_id}/{topico_id}</code></td>
+<td>Login</td>
+<td>Ordem aconselhada do material do aluno.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/personalizar/{aluno_id}</code></td>
+<td>Login</td>
+<td>Personalizações do aluno.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/personalizar/{personalizacao_id}/media-status</code></td>
+<td>Login</td>
+<td>Situação da mídia de uma personalização.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/telemetria/lotes</code></td>
+<td>Aluno</td>
+<td>Recebe um lote de telemetria e dispara a análise.</td>
+</tr>
+<tr>
+<td><code>GET /health</code></td>
+<td>Aberta</td>
+<td>Saúde da API.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="microservice-9">Microservice (9)</h2>
+<p>Gerador de mídia por perfil. Só a API chama, com o segredo no cabeçalho <code>x-api-secret</code>.</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Rota</th>
+<th>Acesso</th>
+<th>Para quê</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /api/health</code></td>
+<td>Aberta</td>
+<td>Saúde do serviço.</td>
+</tr>
+<tr>
+<td><code>POST /api/personalizar</code></td>
+<td>Segredo do serviço</td>
+<td>Gera a mídia base de um perfil.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/archive</code></td>
+<td>Segredo do serviço</td>
+<td>Guarda markdown, áudio e apresentação, gerando as imagens que faltam.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/generate/block</code></td>
+<td>Segredo do serviço</td>
+<td>Enriquece um bloco de texto.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/generate/part-audio</code></td>
+<td>Segredo do serviço</td>
+<td>Gera o áudio de uma parte.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/generate/part-presentation</code></td>
+<td>Segredo do serviço</td>
+<td>Gera a apresentação de uma parte.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/regenerate/chapter</code></td>
+<td>Segredo do serviço</td>
+<td>Regera um capítulo.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/regenerate/document</code></td>
+<td>Segredo do serviço</td>
+<td>Regera o documento.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/regenerate/slide</code></td>
+<td>Segredo do serviço</td>
+<td>Regera um slide.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="brainhexpdf">BrainHexPDF</h2>
+<p>Render das apresentações, em <code>https://slides.trailup.promora.dev.br</code>. Aqui estão as rotas que o TrailUp usa.</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Rota</th>
+<th>Acesso</th>
+<th>Para quê</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /health</code></td>
+<td>Aberta</td>
+<td>Saúde do serviço (também em <code>/api/health</code> e <code>/api/v1/health</code>).</td>
+</tr>
+<tr>
+<td><code>GET /openapi.json</code></td>
+<td>Aberta</td>
+<td>Contrato do serviço.</td>
+</tr>
+<tr>
+<td><code>GET /api/v1/docs</code></td>
+<td>Aberta</td>
+<td>Documentação do serviço.</td>
+</tr>
+<tr>
+<td><code>POST /api/v1/render-and-store</code></td>
+<td>Segredo do serviço</td>
+<td>Gera o deck, monta o HTML e sobe o arquivo.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="edge-functions-5">Edge Functions (5)</h2>
+<p>No Supabase, em <code>/functions/v1/&lt;nome&gt;</code>. O app ainda chama <code>personalize_path</code>, que está publicada sem fonte neste repositório.</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Função</th>
+<th>Acesso</th>
+<th>Para quê</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>generate-content-ai</code></td>
+<td>Login</td>
+<td>Console: gera a proposta de trilha e conteúdo.</td>
+</tr>
+<tr>
+<td><code>pesquisa-arquivar</code></td>
+<td>Segredo do banco</td>
+<td>Copia para o R2 a telemetria de quem consentiu. Chamada pelo <code>pg_cron</code>.</td>
+</tr>
+<tr>
+<td><code>storage-redirect</code></td>
+<td>Link assinado ou sessão</td>
+<td>Gateway de arquivos: redireciona para o R2.</td>
+</tr>
+<tr>
+<td><code>storage-upload-url</code></td>
+<td>Chave de serviço</td>
+<td>URL assinada de upload no R2, para os serviços que geram arquivo.</td>
+</tr>
+<tr>
+<td><code>validate-essay-answer-ai</code></td>
+<td>Login</td>
+<td>App: confere a resposta dissertativa.</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="web-33">Web (33)</h2>
+<p>Vite e React, em <code>https://trailup.vercel.app</code>. Qualquer outro caminho cai na página 404.</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Caminho</th>
+<th>Acesso</th>
+<th>Tela</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/</code></td>
+<td>Aberta</td>
+<td>Página inicial.</td>
+</tr>
+<tr>
+<td><code>/aluno</code></td>
+<td>Login</td>
+<td>Introdução do aluno depois do cadastro.</td>
+</tr>
+<tr>
+<td><code>/auth/confirmacao</code></td>
+<td>Aberta</td>
+<td>Confirmação do e-mail.</td>
+</tr>
+<tr>
+<td><code>/blog</code></td>
+<td>Aberta</td>
+<td>Blog.</td>
+</tr>
+<tr>
+<td><code>/blog/:id</code></td>
+<td>Aberta</td>
+<td>Artigo do blog.</td>
+</tr>
+<tr>
+<td><code>/cadastro-aluno</code></td>
+<td>Aberta</td>
+<td>Cadastro do aluno.</td>
+</tr>
+<tr>
+<td><code>/cadastro-professor</code></td>
+<td>Aberta</td>
+<td>Cadastro do professor.</td>
+</tr>
+<tr>
+<td><code>/console/personalizacoes/material</code></td>
+<td>Professor liberado</td>
+<td>Console: material de uma personalização.</td>
+</tr>
+<tr>
+<td><code>/console/trilha/:topicoId/editar</code></td>
+<td>Professor liberado</td>
+<td>Console: editor do tópico.</td>
+</tr>
+<tr>
+<td><code>/contato</code></td>
+<td>Aberta</td>
+<td>Contato.</td>
+</tr>
+<tr>
+<td><code>/download</code></td>
+<td>Aberta</td>
+<td>Download do app.</td>
+</tr>
+<tr>
+<td><code>/esqueci-senha</code></td>
+<td>Aberta</td>
+<td>Pede a troca de senha.</td>
+</tr>
+<tr>
+<td><code>/login</code></td>
+<td>Aberta</td>
+<td>Entrada.</td>
+</tr>
+<tr>
+<td><code>/privacidade</code></td>
+<td>Aberta</td>
+<td>Política de privacidade.</td>
+</tr>
+<tr>
+<td><code>/redefinir-senha</code></td>
+<td>Link do e-mail</td>
+<td>Define a senha nova.</td>
+</tr>
+<tr>
+<td><code>/sobre</code></td>
+<td>Aberta</td>
+<td>Sobre o projeto.</td>
+</tr>
+<tr>
+<td><code>/termos</code></td>
+<td>Aberta</td>
+<td>Termos de uso.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="abas-do-console">Abas do console</h3>
+<p>Uma rota por aba, geradas de <code>frontend/src/pages/consoleSections.ts</code>. Exigem professor liberado. <strong>Aprovações</strong> e <strong>Painel técnico</strong> são do dono do projeto, e quem protege é o banco.</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Caminho</th>
+<th>Aba</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/console</code></td>
+<td>Visão geral</td>
+</tr>
+<tr>
+<td><code>/console/recomendacoes</code></td>
+<td>Recomendações</td>
+</tr>
+<tr>
+<td><code>/console/trilha</code></td>
+<td>Trilhas</td>
+</tr>
+<tr>
+<td><code>/console/missoes</code></td>
+<td>Missões</td>
+</tr>
+<tr>
+<td><code>/console/conquistas</code></td>
+<td>Conquistas</td>
+</tr>
+<tr>
+<td><code>/console/notas</code></td>
+<td>Notas</td>
+</tr>
+<tr>
+<td><code>/console/eventos</code></td>
+<td>Eventos</td>
+</tr>
+<tr>
+<td><code>/console/economia</code></td>
+<td>Economia</td>
+</tr>
+<tr>
+<td><code>/console/turmas</code></td>
+<td>Turmas</td>
+</tr>
+<tr>
+<td><code>/console/personalizacoes</code></td>
+<td>Personalizações</td>
+</tr>
+<tr>
+<td><code>/console/ranks</code></td>
+<td>Rankings</td>
+</tr>
+<tr>
+<td><code>/console/rank-de-batalhas</code></td>
+<td>Rank de batalhas</td>
+</tr>
+<tr>
+<td><code>/console/guildas</code></td>
+<td>Guildas</td>
+</tr>
+<tr>
+<td><code>/console/meus-dados</code></td>
+<td>Meus dados</td>
+</tr>
+<tr>
+<td><code>/console/aprovacoes</code></td>
+<td>Aprovações</td>
+</tr>
+<tr>
+<td><code>/console/tecnico</code></td>
+<td>Painel técnico</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="app-do-aluno-32">App do aluno (32)</h2>
+<p>Expo Router, a partir de <code>mobile/src/app</code>. Os grupos <code>(auth)</code> e <code>(tabs)</code> não entram no caminho. O mesmo app é exportado para a web e abre em <code>https://trailup.vercel.app/aluno/login</code>.</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Caminho</th>
+<th>Acesso</th>
+<th>Tela</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/</code></td>
+<td>Aberta</td>
+<td>Boas-vindas sem login, início com login.</td>
+</tr>
+<tr>
+<td><code>/login</code></td>
+<td>Aberta</td>
+<td>Entrada.</td>
+</tr>
+<tr>
+<td><code>/modal</code></td>
+<td>Login</td>
+<td>Modal genérico.</td>
+</tr>
+<tr>
+<td><code>/notificacoes</code></td>
+<td>Login</td>
+<td>Caixa de entrada.</td>
+</tr>
+<tr>
+<td><code>/notificacoes/[id]</code></td>
+<td>Login</td>
+<td>Uma notificação.</td>
+</tr>
+<tr>
+<td><code>/perfil</code></td>
+<td>Login</td>
+<td>Perfil do aluno.</td>
+</tr>
+<tr>
+<td><code>/perfil/appearance</code></td>
+<td>Login</td>
+<td>Aparência.</td>
+</tr>
+<tr>
+<td><code>/perfil/biblioteca-conquistas</code></td>
+<td>Login</td>
+<td>Biblioteca de conquistas.</td>
+</tr>
+<tr>
+<td><code>/perfil/coleta-dados</code></td>
+<td>Login</td>
+<td>Consentimentos de coleta.</td>
+</tr>
+<tr>
+<td><code>/perfil/excluir</code></td>
+<td>Login</td>
+<td>Exclusão da conta.</td>
+</tr>
+<tr>
+<td><code>/perfil/feedback</code></td>
+<td>Login</td>
+<td>Feedback.</td>
+</tr>
+<tr>
+<td><code>/perfil/info</code></td>
+<td>Login</td>
+<td>Informações.</td>
+</tr>
+<tr>
+<td><code>/perfil/info-app</code></td>
+<td>Login</td>
+<td>Sobre o app.</td>
+</tr>
+<tr>
+<td><code>/perfil/info-versao</code></td>
+<td>Login</td>
+<td>Versão instalada.</td>
+</tr>
+<tr>
+<td><code>/perfil/lembrete-diario</code></td>
+<td>Login</td>
+<td>Lembrete diário.</td>
+</tr>
+<tr>
+<td><code>/perfil/loja</code></td>
+<td>Login</td>
+<td>Loja.</td>
+</tr>
+<tr>
+<td><code>/perfil/metricas-estilo</code></td>
+<td>Login</td>
+<td>Métricas e estilo de jogo.</td>
+</tr>
+<tr>
+<td><code>/perfil/modo-foco</code></td>
+<td>Login</td>
+<td>Modo foco.</td>
+</tr>
+<tr>
+<td><code>/perfil/molduras</code></td>
+<td>Login</td>
+<td>Molduras.</td>
+</tr>
+<tr>
+<td><code>/perfil/notifications</code></td>
+<td>Login</td>
+<td>Preferências de notificação.</td>
+</tr>
+<tr>
+<td><code>/perfil/relatorio</code></td>
+<td>Login</td>
+<td>Relatório do aluno.</td>
+</tr>
+<tr>
+<td><code>/perfil/resetar-senha</code></td>
+<td>Login</td>
+<td>Troca de senha.</td>
+</tr>
+<tr>
+<td><code>/perfil/settings</code></td>
+<td>Login</td>
+<td>Configurações.</td>
+</tr>
+<tr>
+<td><code>/perfil/study</code></td>
+<td>Login</td>
+<td>Preferências de estudo.</td>
+</tr>
+<tr>
+<td><code>/ranking</code></td>
+<td>Login</td>
+<td>Ranking.</td>
+</tr>
+<tr>
+<td><code>/ranking/[id]</code></td>
+<td>Login</td>
+<td>Ranking de uma turma.</td>
+</tr>
+<tr>
+<td><code>/recuperarSenha</code></td>
+<td>Aberta</td>
+<td>Recuperação de senha.</td>
+</tr>
+<tr>
+<td><code>/services/tela_de_entrada/login</code></td>
+<td>Aberta</td>
+<td>Entrada antiga, ainda no roteador.</td>
+</tr>
+<tr>
+<td><code>/social</code></td>
+<td>Login</td>
+<td>Social.</td>
+</tr>
+<tr>
+<td><code>/tela</code></td>
+<td>Aberta</td>
+<td>Tela de abertura.</td>
+</tr>
+<tr>
+<td><code>/trilha</code></td>
+<td>Login</td>
+<td>Trilha.</td>
+</tr>
+<tr>
+<td><code>/trilha/[id]</code></td>
+<td>Login</td>
+<td>Tópico da trilha.</td>
+</tr>
+</tbody>
+</table></div>
+<nav class="nav-paginas"><a href="inventario.html"><span class="k">← anterior</span><span class="t">Inventário completo</span></a><a class="prox" href="modelagem.html"><span class="k">próxima →</span><span class="t">Sobre a modelagem</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#api-39">API (39)</a></li><li><a href="#microservice-9">Microservice (9)</a></li><li><a href="#brainhexpdf">BrainHexPDF</a></li><li><a href="#edge-functions-5">Edge Functions (5)</a></li><li><a href="#web-33">Web (33)</a></li><li><a href="#app-do-aluno-32">App do aluno (32)</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>a7f935bf</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
