@@ -11,6 +11,7 @@ from app.api.deps import get_current_user, get_session
 from app.repositories.access import AccessRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.context import ContextRepository
+from app.repositories.ia_decision_logs import IADecisionLogRepository
 from app.services.auth import UserContext
 from app.services.llm import JsonLLMService
 from tests.conftest import FakeSession
@@ -87,3 +88,20 @@ def test_assinatura_de_outro_aluno_nao_passa_na_rota(app, monkeypatch) -> None:
         )
 
     assert pedidos[-1]["historico"] == []
+
+
+def test_pergunta_de_navegacao_nao_chama_o_modelo_e_sai_assinada(app, monkeypatch) -> None:
+    pedidos = _preparar(app, monkeypatch, [ALUNO])
+    registrar = AsyncMock()
+    monkeypatch.setattr(IADecisionLogRepository, "log", registrar)
+
+    with TestClient(app) as client:
+        resposta = client.post(
+            "/api/v1/personalizar/chat", json={**_pedido([]), "mensagem": "Onde fica a Loja?"}
+        ).json()
+
+    assert pedidos == []
+    assert resposta["destinos"] == ["perfil.loja"]
+    assert resposta["tutorial"] == "gastar_moedas"
+    assert resposta["assinatura"]
+    assert registrar.await_args.kwargs["provider"] == "regra"
