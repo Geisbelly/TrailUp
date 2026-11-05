@@ -17,7 +17,16 @@ import {
   type Gatilho,
   type PainelTecnico,
 } from "./painelTecnico";
+import DisponibilidadeSection from "./DisponibilidadeSection";
 import { usePainelTecnico } from "./usePainelTecnico";
+
+type Aba = "disponibilidade" | "acessos" | "geracao";
+
+const ABAS: { value: Aba; label: string }[] = [
+  { value: "disponibilidade", label: "Disponibilidade" },
+  { value: "acessos", label: "Acessos" },
+  { value: "geracao", label: "Geração e fila" },
+];
 
 const COR: Record<EstadoDoGatilho, string> = {
   alerta: "border-[hsl(var(--warning))] bg-[hsl(var(--warning)/.12)]",
@@ -269,7 +278,7 @@ function Atividade({ p }: { p: PainelTecnico }) {
         <Numero rotulo="Análises na fila (com erro)" valor={`${a.analise_na_fila} (${a.analise_com_erro})`} destaque={a.analise_com_erro > 0} />
       </div>
       <p className="text-[11.5px] text-muted-foreground">
-        O banco não vê se a API está no ar; vê quando ela foi mexer. Um &ldquo;há dias&rdquo; aqui com jobs esperando é o sinal de que o worker parou.
+        Quando cada worker mexeu por último. Um &ldquo;há dias&rdquo; aqui com jobs esperando é o sinal de que o worker parou, mesmo com a API no ar.
       </p>
     </section>
   );
@@ -282,6 +291,7 @@ function Atividade({ p }: { p: PainelTecnico }) {
  */
 export default function PainelTecnicoSection() {
   const [horas, setHoras] = useState(168);
+  const [aba, setAba] = useState<Aba>("disponibilidade");
   const { painel, estado, desatualizado } = usePainelTecnico(horas);
 
   if (estado.tipo === "sem_permissao") {
@@ -330,7 +340,7 @@ export default function PainelTecnicoSection() {
             Painel técnico
           </h1>
           <p className="mt-1.5 max-w-[680px] text-[13px] leading-relaxed text-muted-foreground">
-            Fila de jobs, erro e latência por formato e os quatro gatilhos de revisão arquitetural. Atualiza sozinho a cada minuto. Quando um gatilho dispara, o aviso também chega ao sino do console (no máximo um por gatilho por dia). Só você, dono do projeto, vê esta aba.
+            Disponibilidade, acessos e geração, medidos pelo banco. Atualiza sozinho a cada minuto. Quando algo cai ou um gatilho dispara, o aviso chega por e-mail e ao sino do console. Só você, dono do projeto, vê esta aba.
           </p>
         </div>
         <SegmentedPills ariaLabel="Janela de tempo" opcoes={JANELAS.map((j) => ({ value: String(j.horas), label: j.rotulo }))} valor={String(horas)} onChange={(v) => setHoras(Number(v))} />
@@ -342,6 +352,18 @@ export default function PainelTecnicoSection() {
         </p>
       )}
 
+      <SegmentedPills<Aba>
+        ariaLabel="O que ver"
+        className="self-start"
+        opcoes={ABAS}
+        valor={aba}
+        onChange={setAba}
+      />
+
+      {aba !== "geracao" ? (
+        <DisponibilidadeSection horas={horas} aba={aba} />
+      ) : (
+        <>
       <section aria-labelledby="tec-gatilhos" className="flex flex-col gap-3">
         <h2 id="tec-gatilhos" className="text-base font-bold text-foreground">
           Gatilhos de revisão arquitetural (§11){" "}
@@ -362,6 +384,8 @@ export default function PainelTecnicoSection() {
       <Jobs p={painel} />
       <Invariantes p={painel} />
       <Atividade p={painel} />
+        </>
+      )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import asyncio
 import os
 from datetime import UTC, datetime
 
@@ -19,6 +20,13 @@ from app.services.media_contract import (
 router = APIRouter(tags=["health"])
 
 
+def _estado_do_worker(tarefa: asyncio.Task | None) -> str:
+    """A tarefa existir não prova que ela roda: um loop que levantou continua no estado da app."""
+    if tarefa is None:
+        return "disabled"
+    return "stopped" if tarefa.done() else "running"
+
+
 @router.get("/health", response_model=HealthResponse)
 async def healthcheck(
     request: Request,
@@ -38,7 +46,7 @@ async def healthcheck(
             "checkpoint_retention_days": settings.checkpoint_retention_days,
             "personalizacao_job_concurrency": settings.personalizacao_job_concurrency,
             "personalizacao_job_poll_sec": settings.personalizacao_job_poll_sec,
-            "personalizacao_jobs_worker": "running" if request.app.state.personalizacao_jobs_task else "disabled",
+            "personalizacao_jobs_worker": _estado_do_worker(request.app.state.personalizacao_jobs_task),
             "media_pipeline_version": MEDIA_PIPELINE_VERSION,
             "presentation_engine_version": PRESENTATION_ENGINE_VERSION,
             "presentation_design_version": PRESENTATION_DESIGN_VERSION,

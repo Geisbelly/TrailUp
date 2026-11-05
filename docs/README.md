@@ -15,6 +15,7 @@ e reúne a documentação que antes vivia dentro de cada repositório.
 
 Documentação que não pertence a um único serviço:
 
+- **[Custos](./custos.md)** — o que o projeto paga e consome hoje, como medir e quando atualizar.
 - **[Análise da issue #1: cadastro e BrainHex](./analises/issue-1-cadastro-brainhex.md)** — auditoria do fluxo, revisão crítica de 12 estudos, evidências reproduzíveis e critérios propostos para conclusão (24/10/2026).
 - **[Reverificação dos perfis da issue #1](./analises/issue-1-reverificacao-perfis.md)** — testes dos sete perfis, empates, validação e consumo nas missões; contraexemplos que ainda impedem o fechamento (24/10/2026).
 - **[Adaptação exploratória v3 baseada nas evidências](./analises/issue-1-adaptacao-evidencias.md)** — decisões implementadas, fontes primárias, parâmetros ainda sem calibração, testes e requisitos de implantação.
@@ -27,6 +28,8 @@ Documentação que não pertence a um único serviço:
 - **[`sprint/`](./sprint/)** — planejamento e relatórios semanais da sprint.
 - **[`ecossistema/`](./ecossistema/)** — fluxo completo do ecossistema, com a
   versão detalhada e as perspectivas resumidas por serviço.
+- **[Monitoramento de disponibilidade](./architecture/monitoramento.md)** — sondas, incidentes,
+  alertas por e-mail e o que configurar.
 - **[Mapa da coleta de métricas](./architecture/coleta-de-metricas.md)** — o
   que a telemetria coleta, com que limites, o que vira `tempo_gasto_min` e o
   estado medido da realimentação (2026-09-30). Leia antes de interpretar
@@ -39,6 +42,8 @@ Documentação que não pertence a um único serviço:
 - **[E-mail pelo Apps Script](../scripts/apps-script-email/)**: o script que envia os e-mails do banco no lugar da Brevo (#762), com o passo a passo de publicação.
 
 
+- **[Rotas dos serviços](./rotas.md)** — API, microservice, BrainHexPDF, Edge
+  Functions, web e app, geradas do código por `scripts/site_docs/rotas.py`.
 - **[Schema não versionado](./architecture/schema-nao-versionado.md)** —
   inventário do que existe no banco de produção e não está descrito por
   migration nenhuma (26% das funções, medido em 2026-09-30). Leia antes de
