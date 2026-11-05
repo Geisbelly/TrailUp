@@ -33,7 +33,7 @@ mermaid.initialize({
   // ganham o mesmo id e o segundo é desenhado dentro do primeiro.
   deterministicIds: true,
   theme: "base",
-  fontFamily: '"Bricolage Grotesque", system-ui, sans-serif',
+  fontFamily: "Inter, system-ui, sans-serif",
   themeVariables: {
     darkMode: true,
     background: cor("--surface"),

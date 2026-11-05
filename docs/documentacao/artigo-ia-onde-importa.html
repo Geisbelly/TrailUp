@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>IA onde importa · TrailUp</title><meta name="description" content="Resumo expandido (JIC 2026): cinco princípios arquiteturais para acoplar IA generativa a uma plataforma educacional, avaliados em seis cenários, com custos e limites."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" type="image/png" href="../assets/trailup-estrela.png"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><img src="../assets/trailup-estrela.png" alt="" width="34" height="34">TrailUp<small>documentação</small></a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/guardioes.html">Guardiões</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/artigo-ia-onde-importa.html">Artigos</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a><a class="abrir" href="https://trailup.vercel.app/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li><li><a href="guardioes.html">Os sete Guardiões</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Artigos</h4><ul><li><a href="artigo-ia-onde-importa.html" aria-current="page">IA onde importa</a></li><li><a href="artigo-da-tipologia-a-trilha.html">Da tipologia à trilha</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Usar o TrailUp</h4><ul><li><a href="https://trailup.vercel.app/" target="_blank" rel="noopener">Site ↗</a></li><li><a href="https://trailup.vercel.app/login" target="_blank" rel="noopener">Console do professor ↗</a></li><li><a href="https://trailup.vercel.app/aluno/login" target="_blank" rel="noopener">TrailUp na web (aluno) ↗</a></li><li><a href="https://play.google.com/apps/test/com.seuprojeto.trailup/20" target="_blank" rel="noopener">App Android ↗</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Artigos</div><h1>IA onde importa</h1><p class="lede">Resumo expandido (JIC 2026): cinco princípios arquiteturais para acoplar IA generativa a uma plataforma educacional, avaliados em seis cenários, com custos e limites.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/artigos/2026-jic-ia-onde-importa.md" target="_blank" rel="noopener">docs/tcc/artigos/2026-jic-ia-onde-importa.md</a><span class="chip ok">atualizado 04/11/2026</span></div></header><p><strong>Geisbelly Victoria Feitosa Moraes Domiciano¹, Fábio Castro Araújo²</strong></p>
+<ul>
+<li>¹Estudante do Curso de Ciência da Computação, Centro Universitário Luterano de Palmas – CEULP/ULBRA.</li>
+<li>²Professor/Orientador, Centro Universitário Luterano de Palmas – CEULP/ULBRA.</li>
+</ul>
+<h2 id="resumo">Resumo</h2>
+<p>Acoplar IA generativa, instável e cobrada por uso, a uma plataforma educacional exige decisões sobre custo, falhas e dados de estudantes. Segundo a <em>Design Science Research</em>, este trabalho deriva cinco princípios arquiteturais de problemas observados no TrailUp, plataforma gamificada com perfis inspirados no BrainHex, e os avalia analiticamente, por inspeção do código e testes simulados, em seis cenários. As regras seguem sem a IA, e a mídia-base depende dos perfis presentes, não dos alunos, mas o ganho pode sumir em turmas pequenas. A contribuição é mostrar quando subordinar a IA a regras determinísticas delimita custo, falha e exposição de dados.</p>
+<p><strong>Palavras-chave:</strong> Inteligência artificial generativa; arquitetura de software; personalização.</p>
+<h2 id="introdução">Introdução</h2>
+<p>A gamificação (uso de pontos, níveis e rankings fora dos jogos) tem efeitos variáveis sobre a aprendizagem, e o tipo de jogador é uma das explicações (Sailer; Homner, 2020). Personalizar por tipo é a estratégia mais comum (Klock <em>et al.</em>, 2020); o BrainHex, com sete arquétipos (Nacke; Bateman; Mandryk, 2014), foi a mais frequente nos estudos educacionais de Oliveira <em>et al.</em> (2023), mas as tipologias se sobrepõem, e Kirchner-Krath <em>et al.</em> (2024) recomendam tratar as preferências como afinidades contínuas (Lavoué <em>et al.</em>, 2019). Personalizar não basta: a motivação depende de competência, autonomia e pertencimento (Ryan; Deci, 2000), favorecido por narrativa e equipe (Sailer <em>et al.</em>, 2017). Aqui, acolhimento designa o tom com que a plataforma fala com o aluno, o apoio na dificuldade e regras que não punem o erro; é diretriz de projeto, sem efeito medido. Modelos de linguagem, IA que gera texto a partir de instruções, servem às duas coisas, mas podem enviesar respostas, exigem supervisão humana (Kasneci <em>et al.</em>, 2023) e saem caros em grande volume (Chen; Zaharia; Zou, 2023).</p>
+<p>Os trabalhos citados tratam do que adaptar; este trata de como organizar a plataforma. O problema investigado é como acoplar serviços de IA não determinísticos (a mesma entrada pode gerar saídas diferentes), cobrados por uso e sujeitos a falha a uma plataforma que precisa manter regras pedagógicas consistentes, proteger dados de estudantes e registrar o que a pesquisa mede. O caso é o TrailUp, plataforma gamificada de estudo para graduandos que gera material por perfil e usa IA no apoio ao aluno. Os objetivos são (i) formular princípios arquiteturais (regras sobre onde fica cada função do sistema) a partir de problemas dele, (ii) mostrar como a plataforma os implementa e (iii) examinar, em cenários, onde valem e onde falham. P1, P3 e P5 aplicam práticas conhecidas: separar o que não depende da IA, não refazer o que já foi feito e registrar o que o sistema faz; a contribuição está em derivá-las do caso, combiná-las com P2 e P4 e delimitar onde valem. A pesquisa segue a <em>Design Science Research</em> (DSR), método que constrói e avalia um artefato para resolver um problema prático (Hevner <em>et al.</em>, 2004).</p>
+<h2 id="material-e-métodos">Material e métodos</h2>
+<p>O trabalho seguiu as atividades de Peffers <em>et al.</em> (2007): problema e objetivos (requisitos), projeto e demonstração (o TrailUp), avaliação (cenários) e comunicação. Dos seis requisitos, a literatura motivou dois: personalizar por perfil (R1) e acolher sem expor o aluno (R2). Um levantamento de experiência do usuário de 2025, com 50 estudantes (questionário, observação de aulas, diário de campo), reforçou R1: 34 dos 50 (68%) dizem aprender em ritmo próprio. O instrumento, pesquisa exploratória de mercado para orientar o produto, pedia o nome; convidados por mensagem privada, os participantes souberam do uso no trabalho de conclusão de curso, sem termo de consentimento formal nem comitê de ética. Por isso, o levantamento entra só agregado, como origem de requisito. O desenvolvimento impôs funcionar sem serviços externos (R3), proteger dados, inclusive de menores (Brasil, 2018, art. 14) (R4), operar com planos gratuitos (R5) e registrar o que a pesquisa mede (R6). Cada princípio seguiu a cadeia problema, requisito violado, decisão, generalização e critério conferível em cenário (Tabelas 1 e 2); as decisões nasceram de incidentes, e a generalização veio depois, o que a expõe a viés retrospectivo. O código é público (github.com/Geisbelly/TrailUp), com testes e incidentes registrados.</p>
+<p>Seis cenários avaliam custo, continuidade, proteção e limites do P2. Os resultados vêm de análise e testes (como test_base_so_perfis_da_turma e test_roteamento_ia_menores), não da produção. Cada afirmação tem um nível de evidência: implementado, se está no código; testado, se um teste a exercita (provedores simulados, banco local); ou observado, se consta dos registros. O resto é proposta. Sem avaliação independente nem teste de carga.</p>
+<p>Os modelos cobram por <em>tokens</em>, unidades de texto da entrada e da saída. A projeção usa o Gemini 3.6 Flash (US$ 0,75 e 3,75 por 1M <em>tokens</em> de entrada e saída, inclusive de raciocínio; preço que dobra em 2027) e o Gemini 2.5 Flash TTS, que converte texto em fala (US$ 0,50 e 10,00), a preços de 3 e 4/11/2026 e câmbio PTAX de R$ 5,4935. A saída vem do tamanho medido dos arquivos (texto de 29 kB; áudio de 1,5 MB a 128 kbit/s, ≈ 93 s); entrada, raciocínio, <em>tokens</em> de áudio e novas tentativas são hipóteses. O esforço veio do histórico de <em>commits</em> (registros de alterações), com pausas de até 2 h contadas como trabalho (faixa: 1 h a 4 h). Os assistentes de programação Claude Code e Cursor apoiaram a implementação; o Claude Opus 5.5 (Anthropic), a análise do código, referências, redação e figuras, sob revisão da autora.</p>
+<h2 id="resultados-e-discussão">Resultados e discussão</h2>
+<p>A Tabela 1 resume os cinco princípios, cada um ligado ao requisito de que derivou.</p>
+<p><strong>Tabela 1</strong> — Princípios arquiteturais: problema, decisão, evidência e limite</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Princípio (requisito)</th>
+<th>Problema observado</th>
+<th>Decisão e implementação</th>
+<th>Evidência</th>
+<th>Condição ou limite</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P1 Fronteira (R3)</td>
+<td>Queda da API parava o estudo</td>
+<td>Regras, filas e agendamentos no banco</td>
+<td>Parcial: 44/168 funções sem migração</td>
+<td>Exige governança de esquema</td>
+</tr>
+<tr>
+<td>P2 Duas camadas (R1, R5)</td>
+<td>Gerar 7 perfis gastava cota com perfis sem aluno</td>
+<td>Base só para perfis presentes; adequação individual sem mídia</td>
+<td>Implementado e testado</td>
+<td>Menos perfis que alunos; sem partilha entre turmas</td>
+</tr>
+<tr>
+<td>P3 Não gerar duas vezes (R3, R5)</td>
+<td>Falha no áudio refazia tudo (≈30 pipelines/dia); base gerada 5 vezes</td>
+<td>Chave de ciclo e hash da fonte; retoma a etapa falha; uma base por vez</td>
+<td>Observado; testado (rede simulada, banco local)</td>
+<td>Modelo ou prompt novo só invalida se a versão subir</td>
+</tr>
+<tr>
+<td>P4 Acolher com minimização (R2, R4)</td>
+<td>Proposta inicial monitorava o rosto; possíveis menores</td>
+<td>Apoio por regra; câmera opcional; marcadores; IA só para maiores</td>
+<td>Implementado; marcadores e rota testados (simulação)</td>
+<td>Pseudonimização parcial; menores acessam sem IA</td>
+</tr>
+<tr>
+<td>P5 Pesquisa embutida (R6)</td>
+<td>Tempo de tela aberta não mede estudo</td>
+<td>Tempo ativo; catálogo de regras com fonte; linha de base das coortes</td>
+<td>Implementado; coortes testadas em banco local</td>
+<td>Estudo de coortes não conduzido</td>
+</tr>
+</tbody>
+</table></div>
+<p><small>Fonte: Elaboração própria (2026).</small></p>
+<p>Na Tabela 1, o P1 aparece na implantação (Figura 1): aplicativo e console acessam direto o banco (Supabase, sobre PostgreSQL), sob controle de acesso por linha (<em>row-level security</em>, RLS), que limita cada consulta ao papel e à turma do usuário. Sem a API de IA, serviço do projeto que chama os modelos, seguem funcionando trilha, notas, pontos de experiência (XP), ranking, filas e avisos agendados, que são funções e gatilhos (rotinas que o banco executa quando um dado muda). Dependem dela a geração de material, a conversa com o guia e o texto do apoio; a adequação por aluno cai numa predefinição.</p>
+<p><strong>Figura 1</strong> — Visão de implantação do TrailUp</p>
+<p><img src="midia/docs/docs-tcc-artigos-img-ia-onde-importa-figura-1.png" alt="Figura 1: Visão de implantação do TrailUp" loading="lazy" /></p>
+<p><small>Fonte: Elaboração própria (2026).</small></p>
+<p>Na Figura 1, as setas roxas são acesso autenticado ao banco, e as tracejadas, pedidos à API; só a API e o serviço de mídia chamam provedores de modelo. O limite do P1 é de governança: regras no banco exigem versionar funções e gatilhos, e em 30/09/2026 44 das 168 funções (26%) não estavam em nenhuma migração, o script versionado que altera o banco.</p>
+<p>No P2, a mídia-base (texto, áudio e apresentação do tópico) é gerada por turma, tópico e perfil presente (principal ou secundário de algum aluno matriculado), enquanto a adequação individual só ordena formatos e ajusta parâmetros de jogo, sem nova mídia (Figura 2). O perfil vem de um questionário autoral de 32 itens inspirado no BrainHex, sem equivalência com o original nem validação psicométrica, que gera um vetor de afinidades contínuas (Kirchner-Krath <em>et al.</em>, 2024): o perfil principal escolhe a base, e o vetor ordena os formatos. Como os vetores saíam quase planos, o motor passou a pesar só o excesso de cada afinidade sobre a média; o ganho de casar formato e perfil segue como hipótese. No P3, cada material carrega uma chave com o ciclo de geração e o <em>hash</em> (identificador calculado que muda quando o conteúdo muda) do conteúdo-fonte; a apresentação confere ainda as versões do <em>pipeline</em> (a sequência de etapas de geração) e do design. Uma nova tentativa reaproveita o que tem a mesma chave e refaz só a etapa que falhou, e o banco libera uma base por vez. Como a chave não inclui o modelo nem as instruções (<em>prompt</em>), trocá-los não invalida texto e áudio já gerados, salvo se a versão for incrementada à mão: o P3 evita regerar, mas não garante que o material corresponda à configuração atual. Chen, Zaharia e Zou (2023) reduzem o custo por consulta com adaptação de <em>prompts</em>, aproximação e cascata de modelos (tentar um modelo barato antes de um caro); P2 e P3 atuam antes, reduzindo o número de gerações. Testes cobrem a retomada (rede simulada) e duas tarefas na mesma base (banco local), não outras concorrências.</p>
+<p><strong>Figura 2</strong> — Personalização em duas camadas</p>
+<p><img src="midia/docs/docs-tcc-artigos-img-ia-onde-importa-figura-2.png" alt="Figura 2: Personalização em duas camadas" loading="lazy" /></p>
+<p><small>Fonte: Elaboração própria (2026).</small></p>
+<p>Na Figura 2, o losango é o P3, e a camada 2 não gera mídia; a Figura 3 traz o P4.</p>
+<p><strong>Figura 3</strong> — Fluxo de dados por ambiente: o que cada fronteira recebe</p>
+<p><img src="midia/docs/docs-tcc-artigos-img-ia-onde-importa-figura-3.png" alt="Figura 3: Fluxo de dados por ambiente: o que cada fronteira recebe" loading="lazy" /></p>
+<p><small>Fonte: Elaboração própria (2026), com base no registro de transferências internacionais do repositório.</small></p>
+<p>Na Figura 3, a imagem da câmera, se autorizada, vai ao servidor, é analisada em memória e descartada; o banco guarda só o rótulo, por 30 dias, e o modelo dessa análise não foi validado. O provedor recebe identificador, desempenho, perfil, estado de estudo, rótulo e texto digitado; o rótulo de emoção só ajusta ritmo, tema e oferta de apoio, fora de nota e ranking, e o aluno pode desligá-lo; nome e <em>e-mail</em> viram marcadores, o que é pseudonimização, não anonimização: a correspondência ainda reidentifica o aluno. O Gemini é usado no plano gratuito, cujos termos permitem usar os dados para melhorar os serviços, com revisão humana, e restringem o envio de dados pessoais (Google, 2026): uma limitação externa e não resolvida, que a pseudonimização não afasta. O TrailUp destina-se a graduandos adultos: a IA só é acionada com maioridade confirmada pela data de nascimento do cadastro, e quem tem menos de 18 anos ou não a informou usa a plataforma sem IA. Como os termos do Gemini vedam serviços acessados por menores e o cadastro não os impede, resta uma limitação de compatibilidade com o provedor; atender esse público exigiria outra arquitetura. Não se afirma adequação à LGPD.</p>
+<p>O P5 prepara a pesquisa sem demonstrar efeitos: fixa uma linha de base para comparar coortes (turmas acompanhadas no tempo), e, por heurística, conta como ativo só o estudo com até 15 s sem toque, o que subestima a leitura: em 21/09/2026, contou cerca de 545 s de 2.000 s com o material aberto; tempo ativo não indica atenção nem aprendizagem (ver Tabela 2).</p>
+<p><strong>Tabela 2</strong> — Cenários de avaliação: condição, critério, resultado e evidência</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Cenário e condição (princípio)</th>
+<th>Critério</th>
+<th>Resultado</th>
+<th>Evidência</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Projeção de crescimento: 40 ou 400 alunos, 1 tópico (P2)</td>
+<td>Mídia-base por tópico não cresce com os alunos</td>
+<td>Até 7 bases; chamadas curtas crescem, sem medição</td>
+<td>Testado (perfis presentes); teto calculado</td>
+</tr>
+<tr>
+<td>Turma pequena, <em>n</em> alunos (limite, P2)</td>
+<td>Base por perfil gera menos que por aluno</td>
+<td>Depende: ganha só se <em>k</em> &lt; <em>n</em></td>
+<td>Análise do código</td>
+</tr>
+<tr>
+<td>Mesmo conteúdo em várias turmas (limite, P2)</td>
+<td>Base reaproveitada entre turmas</td>
+<td>Não: base gerada por turma</td>
+<td>Análise do código; partilha é proposta</td>
+</tr>
+<tr>
+<td>Cota esgotada (P3)</td>
+<td>Concluído não é refeito</td>
+<td>Sim; o novo espera a cota</td>
+<td>Testado; espera observada</td>
+</tr>
+<tr>
+<td>API indisponível (P1)</td>
+<td>Funções sem IA seguem; pedidos não se perdem</td>
+<td>Esperado: geração fica pendente</td>
+<td>Análise do código; não testado com a API fora</td>
+</tr>
+<tr>
+<td>Risco ao aluno (P4)</td>
+<td>Papel vê só seu escopo; nome e imagem não saem</td>
+<td>Parcial: identificador, perfil e texto seguem</td>
+<td>RLS implementado; marcadores e rota testados</td>
+</tr>
+</tbody>
+</table></div>
+<p><small>Fonte: Elaboração própria (2026).</small></p>
+<p>Na Tabela 2, cada aluno com perfil traz dois perfis distintos (principal e secundário); com <em>k</em> perfis distintos e <em>n</em> alunos com perfil, 2 ≤ <em>k</em> ≤ min(7, 2<em>n</em>). Geram-se <em>k</em> bases contra <em>n</em> versões, e só há ganho se <em>k</em> &lt; <em>n</em>. Com três alunos, <em>k</em> vai de 2 (mesmo par de perfis) a 6 (nenhum repetido): pode ser melhor, igual ou pior que três versões. A vantagem só é garantida a partir de oito alunos. A Tabela 3 separa os custos.</p>
+<p><strong>Tabela 3</strong> — Custos do TrailUp por natureza</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Valor</th>
+<th>Natureza</th>
+<th>Escopo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IA no desenvolvimento</td>
+<td>R$ 314,24</td>
+<td>Pago</td>
+<td>OpenAI e Claude, set/2025–nov/2026, só deste projeto</td>
+</tr>
+<tr>
+<td>Servidor (API e mídia)</td>
+<td>R$ 80/mês</td>
+<td>Pago</td>
+<td>Por outro projeto, partilhado; fora do valor acima</td>
+</tr>
+<tr>
+<td>Banco, site e notificações</td>
+<td>R$ 0</td>
+<td>Plano gratuito</td>
+<td>Com limites; planos pagos: US$ 64/mês (projeção)</td>
+</tr>
+<tr>
+<td>Saída de dados do banco</td>
+<td>6,38 GB (cota 5 GB)</td>
+<td>Medido</td>
+<td>Painel do Supabase (29/08/2026); motivou o R2</td>
+</tr>
+<tr>
+<td>Esforço</td>
+<td>≈ 716 h (613–1.009)</td>
+<td>Estimado</td>
+<td>Histórico de commits, 137 dias</td>
+</tr>
+</tbody>
+</table></div>
+<p><small>Fonte: Elaboração própria (2026).</small></p>
+<p>Na Tabela 3, só a IA do desenvolvimento foi paga; a operação paga foi só projetada (R$/mês, T turmas de 40 alunos): C = 434,92 + 72,30·T por perfil e 434,92 + 163,80·T por aluno, com fixo de planos (US$ 64 = R$ 351,58), servidor (R$ 80) e domínio (R$ 3,33), somados antes do arredondamento. Por material, com 50% para novas tentativas, (38.000 × 0,75 + 31.200 × 3,75 + 350 × 0,50 + 2.336 × 10) × 1,5 / 1.000.000 = US$ 0,254 ≈ R$ 1,39, somando Flash e TTS (25 <em>tokens</em> por segundo de áudio). Cada turma soma R$ 52,80 de chamadas curtas (adequação, apoio e análise: 120 mil tokens de entrada e 40 mil de saída por aluno ao mês, a R$ 1,32 arredondado) e a mídia de 2 tópicos ao mês: R$ 19,50 por perfil (14 bases) ou R$ 111 por aluno (80 versões). Uma turma custa R$ 507 por perfil e R$ 599 por aluno; dez, R$ 1.158 e R$ 2.073. A economia do P2 e do P3 é estimada, não medida.</p>
+<h2 id="conclusão">Conclusão</h2>
+<p>Os objetivos foram atendidos: os cinco princípios vieram de problemas do TrailUp, estão implementados (o P1 em parte) e foram examinados em cenários. A geração por perfil só reduz bases com menos perfis distintos que alunos (<em>k</em> &lt; <em>n</em>), e conteúdo repetido em outra turma gera nova base. Restam riscos: o P3 pode servir material de modelo ou prompt anterior, o plano gratuito do Gemini, regras fora do versionamento, texto do aluno nos provedores e gargalos de cota e servidor. Próximos passos: medir <em>tokens</em>, avaliar as saídas da IA e partilhar bases entre turmas. Para plataformas educacionais com IA, o caso sugere decidir antes o que fica fora dela, fronteira que torna previsíveis custo, falhas e exposição.</p>
+<h2 id="referências">Referências</h2>
+<p>BRASIL. Lei nº 13.709, de 14 de agosto de 2018. Lei Geral de Proteção de Dados Pessoais (LGPD). Brasília, DF: Presidência da República, 2018. Disponível em: https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm. Acesso em: 3 nov. 2026.</p>
+<p>CHEN, Lingjiao; ZAHARIA, Matei; ZOU, James. FrugalGPT: how to use large language models while reducing cost and improving performance. arXiv, 2305.05176, 2023. DOI: https://doi.org/10.48550/arXiv.2305.05176.</p>
+<p>GOOGLE. Gemini API Additional Terms of Service. [<em>S. l.</em>]: Google, 2026. Disponível em: https://ai.google.dev/gemini-api/terms. Acesso em: 4 nov. 2026.</p>
+<p>HEVNER, Alan R. <em>et al.</em> Design science in information systems research. MIS Quarterly, v. 28, n. 1, p. 75-105, 2004. DOI: https://doi.org/10.2307/25148625.</p>
+<p>KASNECI, Enkelejda <em>et al.</em> ChatGPT for good? On opportunities and challenges of large language models for education. Learning and Individual Differences, v. 103, art. 102274, 2023. DOI: https://doi.org/10.1016/j.lindif.2023.102274.</p>
+<p>KIRCHNER-KRATH, Jeanine <em>et al.</em> Uncovering the theoretical basis of user types: an empirical analysis and critical discussion of user typologies in research on tailored gameful design. International Journal of Human-Computer Studies, v. 190, art. 103314, 2024. DOI: https://doi.org/10.1016/j.ijhcs.2024.103314.</p>
+<p>KLOCK, Ana Carolina Tomé <em>et al.</em> Tailored gamification: a review of literature. International Journal of Human-Computer Studies, v. 144, art. 102495, 2020. DOI: https://doi.org/10.1016/j.ijhcs.2020.102495.</p>
+<p>LAVOUÉ, Élise <em>et al.</em> Adaptive gamification for learning environments. IEEE Transactions on Learning Technologies, v. 12, n. 1, p. 16-28, 2019. DOI: https://doi.org/10.1109/TLT.2018.2823710.</p>
+<p>NACKE, Lennart E.; BATEMAN, Chris; MANDRYK, Regan L. BrainHex: a neurobiological gamer typology survey. Entertainment Computing, v. 5, n. 1, p. 55-62, 2014. DOI: https://doi.org/10.1016/j.entcom.2013.06.002.</p>
+<p>OLIVEIRA, Wilk <em>et al.</em> Tailored gamification in education: a literature review and future agenda. Education and Information Technologies, v. 28, n. 1, p. 373-406, 2023. DOI: https://doi.org/10.1007/s10639-022-11122-4.</p>
+<p>PEFFERS, Ken <em>et al.</em> A design science research methodology for information systems research. Journal of Management Information Systems, v. 24, n. 3, p. 45-77, 2007. DOI: https://doi.org/10.2753/MIS0742-1222240302.</p>
+<p>RYAN, Richard M.; DECI, Edward L. Self-determination theory and the facilitation of intrinsic motivation, social development, and well-being. American Psychologist, v. 55, n. 1, p. 68-78, 2000. DOI: https://doi.org/10.1037/0003-066X.55.1.68.</p>
+<p>SAILER, Michael <em>et al.</em> How gamification motivates: an experimental study of the effects of specific game design elements on psychological need satisfaction. Computers in Human Behavior, v. 69, p. 371-380, 2017. DOI: https://doi.org/10.1016/j.chb.2016.12.033.</p>
+<p>SAILER, Michael; HOMNER, Lisa. The gamification of learning: a meta-analysis. Educational Psychology Review, v. 32, n. 1, p. 77-112, 2020. DOI: https://doi.org/10.1007/s10648-019-09498-w.</p>
+<nav class="nav-paginas"><a href="adr.html"><span class="k">← anterior</span><span class="t">Decisões de arquitetura</span></a><a class="prox" href="artigo-da-tipologia-a-trilha.html"><span class="k">próxima →</span><span class="t">Da tipologia à trilha</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#resumo">Resumo</a></li><li><a href="#introdução">Introdução</a></li><li><a href="#material-e-métodos">Material e métodos</a></li><li><a href="#resultados-e-discussão">Resultados e discussão</a></li><li><a href="#conclusão">Conclusão</a></li><li><a href="#referências">Referências</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>d29b5ebf</code> em 04/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
