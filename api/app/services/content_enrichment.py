@@ -937,6 +937,7 @@ async def _generate_gemini_batch(
     feedback: str,
     quota_cooldown_sec: int,
     daily_quota_cooldown_sec: int,
+    chaves_reservadas: int = 0,
 ) -> tuple[dict[str, Any], str]:
     correction = (
         f"\n\nCORREÇÕES OBRIGATÓRIAS DA TENTATIVA ANTERIOR:\n{feedback}"
@@ -959,7 +960,7 @@ async def _generate_gemini_batch(
     tried_any_key = False
     for model in candidate_models:
         for _ in range(len(api_keys)):
-            key = gemini_chaves.escolher_chave(api_keys, model)
+            key = gemini_chaves.escolher_chave(api_keys, model, reservadas=chaves_reservadas)
             if key is None:
                 break
             tried_any_key = True
@@ -1092,6 +1093,7 @@ async def _enrich_base_blocks_with_gemini(
                 feedback=feedback,
                 quota_cooldown_sec=quota_cooldown_sec,
                 daily_quota_cooldown_sec=daily_quota_cooldown_sec,
+                chaves_reservadas=gemini_chaves.reservadas_de(settings),
             )
             calls += 1
             models.add(used_model)

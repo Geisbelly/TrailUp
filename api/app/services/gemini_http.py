@@ -64,7 +64,7 @@ async def gemini_generate(
     ultimo_erro: httpx.HTTPStatusError | None = None
 
     for _ in range(len(api_keys)):
-        key = gemini_chaves.escolher_chave(api_keys, model)
+        key = gemini_chaves.escolher_chave(api_keys, model, reservadas=gemini_chaves.reservadas_de(settings))
         if key is None:
             break
         inicio = time.monotonic()

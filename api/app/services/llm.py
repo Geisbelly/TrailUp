@@ -218,7 +218,9 @@ class JsonLLMService:
         last_exc: Exception | None = None
         for model in candidate_models:
             for _ in range(len(api_keys)):
-                key = gemini_chaves.escolher_chave(api_keys, model)
+                key = gemini_chaves.escolher_chave(
+                    api_keys, model, reservadas=gemini_chaves.reservadas_de(self.settings)
+                )
                 if key is None:
                     break
                 client = self._get_gemini_client(model, key)
