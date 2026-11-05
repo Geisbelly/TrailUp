@@ -66,7 +66,7 @@ from app.schemas.personalizacao import (
     SugestaoMaterialItem,
     SugestaoMaterialResponse,
 )
-from app.services import modo_restrito
+from app.services import assinatura_chat, modo_restrito
 from app.services.auth import UserContext
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
 from app.services.group_analysis import GroupAnalysisService
@@ -1584,6 +1584,15 @@ async def conversar_com_mentor_personalizacao(
     # #67: as buscas do RAG desta requisição vão para `ia_decision_logs`, sem texto.
     buscas_rag = iniciar_coleta_rag()
     settings = request.app.state.settings
+    historico_do_chat, falas_sem_assinatura = assinatura_chat.historico_do_mentor(
+        payload.historico,
+        segredo=settings.supabase_jwt_secret,
+        usuario_id=aluno_id,
+        exigir_assinatura=settings.mentor_exigir_fala_assinada,
+    )
+    if falas_sem_assinatura:
+        # Quando isto sumir do log, o app antigo saiu de uso e dá para ligar a exigência.
+        logger.info("personalizacao.chat.falas_sem_assinatura=%s", falas_sem_assinatura)
     async with rota_ia_para_alunos(session, [aluno_id]):
         provedor_do_chat = settings.llm_provider
         modelo_do_chat = (
@@ -1595,10 +1604,7 @@ async def conversar_com_mentor_personalizacao(
             payload={
                 "escopo": payload.escopo,
                 "mensagem": _sem_nome(payload.mensagem),
-                "historico": [
-                    {k: _sem_nome(v) for k, v in item.model_dump(mode="json").items()}
-                    for item in payload.historico[-6:]
-                ],
+                "historico": [{k: _sem_nome(v) for k, v in fala.items()} for fala in historico_do_chat],
                 # Sem o UUID do aluno: nenhum prompt usa, e dado pseudonimizado
                 # continua sendo dado pessoal (LGPD, minimizacao).
                 "aluno": {
@@ -1662,6 +1668,7 @@ async def conversar_com_mentor_personalizacao(
                 "guia_do_app": guia_do_app(),
             },
             on_violation=_auditar_chat,
+            prazo_total=settings.chat_prazo_total_seconds,
             use_rag=bool(request.app.state.settings.openai_rag_enabled),
         )
 
@@ -1677,6 +1684,9 @@ async def conversar_com_mentor_personalizacao(
         # Fechar o painel sumiria com os botoes que acabaram de chegar.
         should_close=mentor_result.should_close and not tem_acao,
         hinted_actions=[item.strip() for item in mentor_result.hinted_actions if item.strip()],
+        assinatura=assinatura_chat.assinar(
+            resposta_do_guia["reply"], segredo=settings.supabase_jwt_secret, usuario_id=aluno_id, canal="mentor"
+        ),
         **resposta_do_guia,
     )
 
@@ -1693,7 +1703,7 @@ async def conversar_com_mentor_personalizacao(
             trigger_event=payload.escopo,
             input_summary={
                 "mensagem": payload.mensagem,
-                "historico": [item.model_dump(mode="json") for item in payload.historico[-6:]],
+                "historico": historico_do_chat,
                 "metricas_aluno": _build_student_metrics_summary(context),
             },
             prompt_text=load_prompt("mentor_personalizacao_chat.txt"),

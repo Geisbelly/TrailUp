@@ -9,6 +9,8 @@ from app.schemas.entrada_chat import limpar_texto
 class MensagemEscriba(BaseModel):
     papel: Literal["professor", "escriba"]
     texto: str = Field(min_length=1, max_length=2000)
+    # Devolvida como veio em `RespostaEscriba`; só vale para as falas da Lumi.
+    assinatura: str | None = Field(default=None, max_length=64)
 
     @field_validator("texto", mode="before")
     @classmethod
@@ -66,3 +68,5 @@ class RespostaEscriba(BaseModel):
     # Já filtrados pela lista fechada; o console desenha um botão por destino.
     destinos: list[str] = Field(default_factory=list)
     tutorial: str | None = None
+    # Prova de que `resposta` saiu daqui. Fala da Lumi sem ela não volta ao modelo.
+    assinatura: str | None = None

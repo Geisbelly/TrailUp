@@ -13,6 +13,8 @@ import unicodedata
 _ZWJ = "‍"
 _QUEBRAS = "\n\r\t"
 
+MAX_TEXTO_DO_CHAT = 2000
+
 
 def _legivel(caractere: str) -> bool:
     if caractere in _QUEBRAS or caractere == _ZWJ:

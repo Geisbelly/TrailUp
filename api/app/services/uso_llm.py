@@ -1,17 +1,21 @@
-"""Uso de modelo por chamada: tokens, cache e prompt, sem texto e sem aluno.
+"""Uso de modelo por chamada: tokens, cache, tempo e motivo de parada, sem texto e sem aluno.
 
-Mede `JsonLLMService` e `OpenAIRagService`. Não cobre o microservice nem as chamadas HTTP diretas ao
-Gemini. Medir nunca derruba nem atrasa a resposta: a gravação sai em segundo plano e a falha só vai
-para o log. Sem `configurar()` (testes, scripts), o registro fica só no log.
+Mede tudo o que a API chama: `JsonLLMService`, `OpenAIRagService`, `gemini_http` e `content_enrichment`,
+inclusive a chamada que falha (`fim` = `erro:<tipo>`). O microservice mede o dele em `usoDoModelo.ts` e
+devolve à API por `uso_do_modelo`, que grava no alvo da fila: registrar aqui também contaria em dobro.
+
+Medir nunca derruba nem atrasa a resposta: a gravação sai em segundo plano e a falha só vai para o log.
+Sem `configurar()` (testes, scripts), o registro fica só no log.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Iterator
 
 from sqlalchemy import text
@@ -32,6 +36,9 @@ _FINS_BLOQUEADOS = frozenset(
     }
 )
 _FINS_CORTADOS = frozenset({"LENGTH", "MAX_TOKENS", "MAX_OUTPUT_TOKENS"})
+# No `json_schema`, o SDK da OpenAI levanta estas no lugar de devolver a resposta. Pelo nome porque
+# `openai` é import opcional.
+_FIM_DA_EXCECAO = {"LengthFinishReasonError": "length", "ContentFilterFinishReasonError": "content_filter"}
 
 
 @dataclass
@@ -39,6 +46,10 @@ class Chamada:
     """Preenchida pelo callback. `with_structured_output` devolve só o dict e o motivo se perderia."""
 
     fim: str | None = None
+    inicio: float = field(default_factory=time.monotonic)
+
+    def latencia_ms(self) -> int:
+        return round((time.monotonic() - self.inicio) * 1000)
 
 
 _prompt_atual: ContextVar[str | None] = ContextVar("uso_llm_prompt", default=None)
@@ -64,6 +75,10 @@ def etiqueta(prompt_name: str) -> Iterator[Chamada]:
         _prompt_atual.reset(token)
 
 
+def fim_da_excecao(exc: BaseException) -> str:
+    return _FIM_DA_EXCECAO.get(type(exc).__name__) or f"erro:{type(exc).__name__}"
+
+
 def fim_bloqueado(fim: str | None) -> bool:
     return (fim or "").upper() in _FINS_BLOQUEADOS
 
@@ -79,9 +94,11 @@ async def _gravar(linha: dict[str, Any]) -> None:
                 text(
                     """
                     INSERT INTO ia_uso_llm
-                      (prompt, provedor, modelo, tokens_entrada, tokens_saida, tokens_cache, usou_rag, fim)
+                      (prompt, provedor, modelo, tokens_entrada, tokens_saida, tokens_cache, usou_rag, fim,
+                       latencia_ms)
                     VALUES
-                      (:prompt, :provedor, :modelo, :tokens_entrada, :tokens_saida, :tokens_cache, :usou_rag, :fim)
+                      (:prompt, :provedor, :modelo, :tokens_entrada, :tokens_saida, :tokens_cache, :usou_rag, :fim,
+                       :latencia_ms)
                     """
                 ),
                 linha,
@@ -101,6 +118,7 @@ def registrar(
     tokens_cache: int | None,
     usou_rag: bool = False,
     fim: str | None = None,
+    latencia_ms: int | None = None,
 ) -> None:
     linha = {
         "prompt": prompt or "desconhecido",
@@ -111,6 +129,7 @@ def registrar(
         "tokens_cache": tokens_cache,
         "usou_rag": usou_rag,
         "fim": fim,
+        "latencia_ms": latencia_ms,
     }
     logger.info("llm.uso=%s", linha)
     if _session_factory is None:
@@ -137,8 +156,32 @@ class UsoCallback(BaseCallbackHandler):  # type: ignore[misc,valid-type]
 
     run_inline = True
 
-    def __init__(self, provedor: str) -> None:
+    def __init__(self, provedor: str, modelo: str | None = None, prompt: str | None = None) -> None:
         self.provedor = provedor
+        self.modelo = modelo
+        self.prompt = prompt
+
+    def on_llm_error(self, error: BaseException, **_kwargs: Any) -> None:
+        try:
+            fim = fim_da_excecao(error)
+            chamada = _chamada_atual.get()
+            if chamada is not None:
+                chamada.fim = fim
+            # `LengthFinishReasonError` traz a resposta: os tokens dela foram gastos do mesmo jeito.
+            uso = getattr(getattr(error, "completion", None), "usage", None)
+            detalhes = getattr(uso, "prompt_tokens_details", None)
+            registrar(
+                prompt=_prompt_atual.get() or self.prompt,
+                provedor=self.provedor,
+                modelo=self.modelo,
+                tokens_entrada=getattr(uso, "prompt_tokens", None),
+                tokens_saida=getattr(uso, "completion_tokens", None),
+                tokens_cache=getattr(detalhes, "cached_tokens", None),
+                fim=fim,
+                latencia_ms=chamada.latencia_ms() if chamada is not None else None,
+            )
+        except Exception:  # pragma: no cover
+            logger.debug("Erro do modelo ilegivel", exc_info=True)
 
     def on_llm_end(self, response: Any, **_kwargs: Any) -> None:
         try:
@@ -152,13 +195,14 @@ class UsoCallback(BaseCallbackHandler):  # type: ignore[misc,valid-type]
             if not uso:
                 return
             registrar(
-                prompt=_prompt_atual.get(),
+                prompt=_prompt_atual.get() or self.prompt,
                 provedor=self.provedor,
-                modelo=metadados.get("model_name") or metadados.get("model"),
+                modelo=metadados.get("model_name") or metadados.get("model") or self.modelo,
                 tokens_entrada=uso.get("input_tokens"),
                 tokens_saida=uso.get("output_tokens"),
                 tokens_cache=(uso.get("input_token_details") or {}).get("cache_read"),
                 fim=fim,
+                latencia_ms=chamada.latencia_ms() if chamada is not None else None,
             )
         except Exception:  # pragma: no cover
             logger.debug("Uso do modelo ilegivel", exc_info=True)
@@ -179,7 +223,9 @@ def fim_da_resposta_rag(response: Any) -> str | None:
     return None
 
 
-def registrar_resposta_rag(response: Any, *, prompt: str, modelo: str) -> None:
+def registrar_resposta_openai(
+    response: Any, *, prompt: str, modelo: str, usou_rag: bool = False, latencia_ms: int | None = None
+) -> None:
     """Responses API: `usage.input_tokens_details.cached_tokens`."""
     try:
         uso = getattr(response, "usage", None)
@@ -193,8 +239,32 @@ def registrar_resposta_rag(response: Any, *, prompt: str, modelo: str) -> None:
             tokens_entrada=getattr(uso, "input_tokens", None),
             tokens_saida=getattr(uso, "output_tokens", None),
             tokens_cache=getattr(detalhes, "cached_tokens", None),
-            usou_rag=True,
+            usou_rag=usou_rag,
             fim=fim_da_resposta_rag(response),
+            latencia_ms=latencia_ms,
         )
     except Exception:  # pragma: no cover
-        logger.debug("Uso do RAG ilegivel", exc_info=True)
+        logger.debug("Uso da OpenAI ilegivel", exc_info=True)
+
+
+def registrar_resposta_gemini_http(
+    corpo: dict[str, Any], *, prompt: str, modelo: str, latencia_ms: int | None = None
+) -> None:
+    """JSON cru do `generateContent`. A saída cobrada inclui o raciocínio, como em `usoDoModelo.ts`."""
+    try:
+        uso = corpo.get("usageMetadata") or {}
+        candidatos = corpo.get("candidates") or [{}]
+        bloqueio = (corpo.get("promptFeedback") or {}).get("blockReason")
+        saida = (uso.get("candidatesTokenCount") or 0) + (uso.get("thoughtsTokenCount") or 0)
+        registrar(
+            prompt=prompt,
+            provedor="gemini",
+            modelo=modelo,
+            tokens_entrada=uso.get("promptTokenCount"),
+            tokens_saida=saida if uso else None,
+            tokens_cache=uso.get("cachedContentTokenCount"),
+            fim=candidatos[0].get("finishReason") or ("PROMPT_BLOQUEADO" if bloqueio else None),
+            latencia_ms=latencia_ms,
+        )
+    except Exception:  # pragma: no cover
+        logger.debug("Uso do Gemini ilegivel", exc_info=True)

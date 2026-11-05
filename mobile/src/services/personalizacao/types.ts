@@ -97,6 +97,8 @@ export type PersonalizacaoProgressDirectPayload =
 export type MentorChatMessagePayload = {
   role: "assistant" | "user";
   content: string;
+  /** A de `MentorChatResponse`, com o `reply` intacto em `content`. */
+  assinatura?: string;
 };
 
 export type MentorChatPayload = {
@@ -119,6 +121,7 @@ export type MentorChatResponse = {
   secoes?: { titulo: string; texto: string; destino?: string | null }[];
   /** Código de `tutoriaisDoGuia.ts`. */
   tutorial?: string | null;
+  assinatura?: string | null;
 };
 
 export type PersonalizacaoJobRecord = {

@@ -576,8 +576,10 @@ Cada perfil carrega:
   migration (o e2e reclama).
 - `ia_uso_llm` — uso de modelo por chamada (`20261105_02`): prompt, provedor, modelo, tokens,
   tokens de cache e `fim` (motivo de parada). Sem aluno e sem texto, sem policy por decisão (só a API).
-  Cobre `JsonLLMService` e `OpenAIRagService`; o microservice e as chamadas HTTP diretas ao Gemini
-  ficam de fora. Gravar nunca derruba nem atrasa a resposta (`app/services/uso_llm.py`).
+  Traz também `latencia_ms`, e `fim` vale `erro:<tipo>` ou `prazo_total` quando a chamada falha: cobre
+  tudo o que a API chama. **Não grave o microservice aqui:** ele já mede em `usoDoModelo.ts` e o uso
+  chega ao alvo da fila por `uso_do_modelo.py`, então contaria em dobro. Gravar nunca derruba nem atrasa
+  a resposta (`app/services/uso_llm.py`).
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
@@ -703,11 +705,25 @@ Cada perfil carrega:
 
 ## Guardrails dos chats (mentor do aluno e Lumi do professor)
 
-Os dois recebem `historico` do cliente a cada pergunta e nada no servidor prova que uma fala "da IA"
-ali foi dita: quem chama a API pode escrevê-la. Por isso esse texto entra limpo e limitado
-(`app/schemas/entrada_chat.py`) e os prompts dizem que ele não vale como instrução. O mentor **corta**
-em vez de recusar, porque o app instalado não limita o campo; a Lumi recusa com 422, porque o console
-já limita.
+Os dois recebem `historico` do cliente a cada pergunta, e a conversa não é gravada. Esse texto entra
+limpo e limitado (`app/schemas/entrada_chat.py`). O mentor **corta** em vez de recusar, porque o app
+instalado não limita o campo; a Lumi recusa com 422, porque o console já limita.
+
+**Fala da IA só conta assinada** (`app/services/assinatura_chat.py`): a resposta sai com um HMAC preso
+ao usuário e ao chat, com chave derivada do `supabase_jwt_secret`. Fala com assinatura errada sai
+sempre. Sem assinatura, a Lumi descarta; o mentor manda ao modelo como `verificada: false` até ligar
+`MENTOR_EXIGIR_FALA_ASSINADA`, porque o app instalado não assina. Ligue depois da versão mínima do app:
+`personalizacao.chat.falas_sem_assinatura` no log diz quando sumiu.
+
+> **O cliente devolve o texto intacto.** O mobile ajusta o tom do `reply` para mostrar
+> (`normalizeMentorReplyTone`), então guarda o original em `falaAssinada`
+> (`mobile/src/components/ia/historicoDoGuia.ts`). Devolver o texto da tela invalida a assinatura em
+> silêncio: a fala só some do contexto.
+
+**Latência:** repetir só vale quando o modelo respondeu mal (schema, guardrail, resposta cortada).
+`ProvedorIndisponivelError` e recusa vão direto ao fallback. `chat_prazo_total_seconds` limita a
+resposta inteira, juiz e rodízio de chaves inclusive: um 503 percorre 4 chaves × 6 modelos, e sem o
+teto o console desistia aos 75 s.
 
 > **Resposta cortada parseia.** O `JsonOutputParser` do LangChain conserta JSON truncado, então
 > `{"resposta": "A turma foi bem e o proximo pa` vira um dict válido, sem erro. Por isso

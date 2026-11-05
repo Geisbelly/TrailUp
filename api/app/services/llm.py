@@ -14,10 +14,12 @@ from app.services.roteamento_ia import (
 )
 
 try:
+    from langchain_core.exceptions import OutputParserException
     from langchain_core.messages import HumanMessage, SystemMessage
     from langchain_openai import ChatOpenAI
 except ImportError:  # pragma: no cover
     ChatOpenAI = None
+    OutputParserException = ()  # type: ignore[assignment,misc]
     HumanMessage = None
     SystemMessage = None
 
@@ -110,9 +112,9 @@ class RespostaCortadaError(StructuredOutputError):
     pela metade ao usuário sem erro nenhum, por isso o motivo é conferido também quando parseia."""
 
 
-# No `json_schema`, o SDK da OpenAI levanta estas antes de o callback ver a resposta. Pelo nome porque
-# `openai` é import opcional aqui.
-_FIM_DA_EXCECAO = {"LengthFinishReasonError": "length", "ContentFilterFinishReasonError": "content_filter"}
+class ProvedorIndisponivelError(StructuredOutputError):
+    """Timeout, cota, 5xx ou nenhum provedor. O modelo não chegou a responder: repetir na hora só
+    dobra a espera de quem está na tela, e o rodízio de chaves já tentou o que dava."""
 
 
 def erro_do_fim(fim: str | None, prompt_name: str) -> StructuredOutputError | None:
@@ -152,7 +154,7 @@ class JsonLLMService:
                 temperature=0,
                 api_key=self.settings.openai_api_key,
                 timeout=self._timeout(),
-                callbacks=[uso_llm.UsoCallback("openai")],
+                callbacks=[uso_llm.UsoCallback("openai", model)],
             )
         elif effective_provider == "gemini":
             api_keys = _parse_gemini_keys(str(self.settings.gemini_api_key or ""))
@@ -175,7 +177,7 @@ class JsonLLMService:
             google_api_key=api_key,
             max_retries=_GEMINI_MAX_RETRIES,
             timeout=self._timeout(),
-            callbacks=[uso_llm.UsoCallback("gemini")],
+            callbacks=[uso_llm.UsoCallback("gemini", model)],
         )
 
     def _get_gemini_client(self, model: str, api_key: str) -> Any:
@@ -336,16 +338,16 @@ class JsonLLMService:
                         else None
                     )
             except Exception as exc:
-                fim = chamada.fim or _FIM_DA_EXCECAO.get(type(exc).__name__)
-                raise erro_do_fim(fim, prompt_name) or StructuredOutputError(
-                    f"Falha ao gerar saida estruturada para {prompt_name}: {exc}"
-                ) from exc
+                if (erro := erro_do_fim(chamada.fim, prompt_name)) is not None:
+                    raise erro from exc
+                tipo = StructuredOutputError if isinstance(exc, OutputParserException) else ProvedorIndisponivelError
+                raise tipo(f"Falha ao gerar saida estruturada para {prompt_name}: {exc}") from exc
 
         if (erro := erro_do_fim(chamada.fim, prompt_name)) is not None:
             raise erro
 
         if response is None:
-            raise StructuredOutputError(
+            raise ProvedorIndisponivelError(
                 f"Nenhum provedor LLM disponivel para {prompt_name}"
             )
 

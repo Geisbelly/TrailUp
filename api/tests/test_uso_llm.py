@@ -27,6 +27,7 @@ def test_callback_le_tokens_e_cache_do_prompt_etiquetado(monkeypatch) -> None:
     with uso_llm.etiqueta("supervisor.txt"):
         uso_llm.UsoCallback("gemini").on_llm_end(LLMResult(generations=[[ChatGeneration(message=mensagem)]]))
 
+    assert linhas[0].pop("latencia_ms") >= 0
     assert linhas == [
         {
             "prompt": "supervisor.txt",
@@ -49,7 +50,7 @@ def test_resposta_sem_uso_nao_registra(monkeypatch) -> None:
 def test_rag_le_cached_tokens_da_responses_api(monkeypatch) -> None:
     linhas = _capturar(monkeypatch)
     uso = SimpleNamespace(input_tokens=50, output_tokens=5, input_tokens_details=SimpleNamespace(cached_tokens=32))
-    uso_llm.registrar_resposta_rag(SimpleNamespace(usage=uso), prompt="p.txt", modelo="gpt-4o-mini")
+    uso_llm.registrar_resposta_openai(SimpleNamespace(usage=uso), prompt="p.txt", modelo="gpt-4o-mini", usou_rag=True)
     assert linhas[0]["tokens_cache"] == 32
     assert linhas[0]["usou_rag"] is True
 
