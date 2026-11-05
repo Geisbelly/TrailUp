@@ -119,10 +119,29 @@ colunas, e mudar `materiais` ou `plano` por essa via marca `editado`.
 - **Turma de origem apagada:** `vinculado_de_id` vira `NULL`, os arquivos ficam enquanto alguém os
   citar, e a última linha a sair leva o arquivo.
 
+## Falas do boss e demanda de formato
+
+`boss_falas` e `conteudo_demanda_formato` têm hash com `conteudo_id`, então cada turma pagava uma
+chamada por tópico × perfil (falas) e por tópico (demanda). Agora conteúdo com a mesma impressão de
+outro já analisado copia as linhas, sem chamar o modelo. Os conteúdos do tópico sem origem seguem para
+o modelo, e o pedido leva só eles.
+
+- **A impressão da turma nova é calculada, não lida.** As duas fases rodam antes dos targets do poll,
+  e a turma nova ainda não tem linha em `conteudo_personalizado`. Ler a coluna daria sempre vazio. O
+  contexto fica no cache do job (`_leitor_de_impressoes`) e só é montado quando há conteúdo pendente.
+- **O que serve de origem:** linha da versão atual, cujo `source_hash` recalculado na turma de origem
+  bate e cujo título e texto são iguais aos deste conteúdo. A segunda parte existe porque a impressão
+  gravada anda atrás: depois de uma edição, as falas regeram antes de o target da mídia passar.
+- **O que não serve:** fala que o professor desligou, análise do professor e regra fixa.
+- **A cópia é uma linha da turma nova**, com ids próprios e o `source_hash` deste tópico. `enemy.id`
+  é calculado no app e não muda. O nome passa por `nome_unico` sob a trava do tópico, contra todos os
+  nomes do tópico. Texto igual ao que o professor já desligou continua desligado.
+- **Subir `BOSS_FALAS_VERSION` ou `DEMANDA_FORMATO_VERSION` regera:** a versão antiga deixa de servir
+  de origem. Subir a versão do pipeline muda a impressão, e o reuso só volta quando as origens forem
+  reprocessadas.
+
 ## Fora deste PR
 
-- `boss_falas` e `conteudo_demanda_formato` têm hash com `conteudo_id`, então continuam com uma
-  chamada por turma. Dá para reaproveitar depois.
 - Linha antiga não tem impressão: ela ganha quando passa pelo worker, ou por
   `python -m scripts.preencher_impressao_conteudo --aplicar`, que não foi executado.
 - `trailup_pode_ler_arquivo` (acesso direto ao Storage) continua lendo a turma pelo caminho. Os
@@ -137,3 +156,6 @@ colunas, e mudar `materiais` ou `plano` por essa via marca `editado`.
 - edição: gatilho desvincula só a linha editada; o `materiais` da outra não muda;
 - retenção: arquivo citado pelo vínculo não é apagado (e2e no Postgres);
 - gateway: aluno da turma B lê o caminho da turma A com o papel `authenticated`.
+- falas e demanda: modelo não chamado na cópia; só o conteúdo sem origem vai ao modelo; versão nova
+  regera; origem com texto mudado não serve; nome único no tópico (e2e com asyncpg em
+  `test_e2e_reuso_de_falas_e_demanda.py`).

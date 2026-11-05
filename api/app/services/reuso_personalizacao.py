@@ -24,10 +24,13 @@ import json
 import logging
 import re
 import unicodedata
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+# Impressão de cada conteúdo de uma lista de ids. Conteúdo sem impressão fica de fora do resultado.
+LeitorDeImpressoes = Callable[[list[int]], Awaitable[dict[int, str]]]
 
 # Valor de `impressao_conteudo` em material ajustado à mão: fica fora de qualquer comparação.
 IMPRESSAO_EDITADO = "editado"
@@ -49,7 +52,7 @@ def normalizar_texto(valor: Any) -> str:
     return _ESPACOS.sub(" ", unicodedata.normalize("NFC", str(valor or ""))).strip()
 
 
-def _texto_do_conteudo(conteudo: dict[str, Any]) -> str:
+def texto_comparavel(conteudo: dict[str, Any]) -> str:
     """Texto escrito pelo professor. Quando o campo é só o caminho do arquivo, quem compara é a fonte.
 
     Mesmo arquivo enviado duas vezes tem dois caminhos; comparar o caminho veria dois conteúdos.
@@ -113,7 +116,7 @@ def impressao_do_conteudo(
             {
                 "titulo": normalizar_texto(item.get("titulo")),
                 "tipo": normalizar_texto(item.get("tipo")),
-                "texto": _texto_do_conteudo(item),
+                "texto": texto_comparavel(item),
                 "anexos": _anexos(item),
             }
             for item in conteudos

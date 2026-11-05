@@ -56,6 +56,7 @@ from app.services.personalizacao import (
     fetch_personalizacao_context,
     gerar_cards_direto,
 )
+from app.services.reuso_personalizacao import LeitorDeImpressoes
 from app.services.roteamento_ia import rota_ia_se_tiver_aluno
 from app.services.storage import BUCKET, SupabaseStorage
 
@@ -2356,6 +2357,68 @@ _BOSS_FALAS_CONCORRENCIA = 2
 _BOSS_FALAS_PAUSA_APOS_FALHA_SEC = 30 * 60
 
 
+async def _impressao_do_conteudo_da_base(
+    *,
+    app: FastAPI,
+    job: dict[str, Any],
+    topico_id: int,
+    conteudo_id: int,
+) -> str | None:
+    """Impressao de um conteudo, calculada agora e nao lida de `conteudo_personalizado`.
+
+    Falas e demanda rodam ANTES dos targets do poll, quando a turma nova ainda nao tem linha com
+    impressao. Ler a coluna daria sempre vazio e o modelo seria chamado de todo jeito. O contexto
+    fica no cache do job, entao o prewarm nao o monta de novo; falha so tira o conteudo do reuso.
+    """
+
+    async with app.state.session_factory() as session:
+
+        async def _fetch_context() -> dict[str, Any]:
+            return await fetch_personalizacao_context(
+                aluno_id=None,
+                classe_id=int(job["classe_id"]),
+                topico_id=topico_id,
+                conteudo_id=conteudo_id,
+                settings=app.state.settings,
+                session=session,
+                include_student_sources=False,
+            )
+
+        try:
+            context = await _get_runtime_cached_dict(
+                job=job,
+                cache_name="_runtime_personalizacao_context",
+                locks_name="_runtime_personalizacao_context_locks",
+                key=f"base:{topico_id}:{conteudo_id}",
+                factory=_fetch_context,
+            )
+            await session.commit()
+        except Exception as exc:
+            logger.warning(
+                "Falha ao calcular impressao para reuso: topico=%s conteudo=%s erro=%s",
+                topico_id,
+                conteudo_id,
+                _compact_exception_text(exc),
+            )
+            return None
+    impressao = context.get("impressao_conteudo")
+    return str(impressao) if impressao else None
+
+
+def _leitor_de_impressoes(*, app: FastAPI, job: dict[str, Any], topico_id: int) -> LeitorDeImpressoes:
+    async def _ler(conteudo_ids: list[int]) -> dict[int, str]:
+        impressoes: dict[int, str] = {}
+        for conteudo_id in conteudo_ids:
+            impressao = await _impressao_do_conteudo_da_base(
+                app=app, job=job, topico_id=topico_id, conteudo_id=conteudo_id
+            )
+            if impressao:
+                impressoes[conteudo_id] = impressao
+        return impressoes
+
+    return _ler
+
+
 async def _gerar_falas_boss_do_job(
     *,
     app: FastAPI,
@@ -2421,6 +2484,7 @@ async def _gerar_falas_boss_do_job(
                             settings=app.state.settings,
                             topico_id=topico_id,
                             perfil=perfil,
+                            ler_impressoes=_leitor_de_impressoes(app=app, job=job, topico_id=topico_id),
                         )
                     status.append(resultado.status)
                 except Exception as exc:  # um perfil que falha nao impede o proximo
@@ -2503,6 +2567,7 @@ async def _analisar_demanda_do_job(
                     session=session,
                     settings=app.state.settings,
                     topico_id=topico_id,
+                    ler_impressoes=_leitor_de_impressoes(app=app, job=job, topico_id=topico_id),
                 )
         except Exception as exc:  # um topico que falha nao impede o proximo
             logger.warning(

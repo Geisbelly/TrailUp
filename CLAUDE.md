@@ -459,6 +459,15 @@ Cada perfil carrega:
   gerado entra no inimigo, mas o `enemy.id` **não muda** — ele está na chave do estado salvo
   da batalha, e trocá-lo zeraria o boss do aluno. Versão própria (`BOSS_FALAS_VERSION`): subir
   `_PERSONALIZACAO_PIPELINE_VERSION` por causa de fala regeraria a mídia de todas as turmas.
+
+  **Conteúdo idêntico copia, não chama o modelo** (`_copiar_falas_iguais`, e
+  `_copiar_demandas_iguais` em `conteudo_demanda_formato`). `source_hash` inclui `conteudo_id` e
+  nunca bate entre turmas; quem compara é a `impressao_conteudo`. A impressão da turma nova é
+  **calculada na hora** (`_leitor_de_impressoes`), não lida da coluna: as duas fases rodam antes dos
+  targets do poll, quando a turma nova ainda não tem linha. Só serve de origem o que o modelo geraria
+  igual hoje: versão atual, hash recalculado batendo e o mesmo texto (a impressão gravada anda atrás
+  do conteúdo). Fala desligada pelo professor, análise do professor e regra fixa não servem. Falha no
+  reuso segue para o modelo. Efeito aceito, o mesmo do material: a fala pode citar o tópico de origem.
   **Nome próprio por perfil é garantido na gravação**, não no prompt: os perfis de um tópico são
   gerados um depois do outro (cada um recebe `nomes_em_uso`), e `nome_unico` relê os nomes sob
   `pg_advisory_xact_lock` do tópico e acrescenta o epíteto do perfil a nome igual ou que só troca o
