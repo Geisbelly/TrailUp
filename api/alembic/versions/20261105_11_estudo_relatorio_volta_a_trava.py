@@ -16,8 +16,8 @@ Esta migration grava a RPC da `_05` com a troca de população da `_04_04` por c
 caminho das duas (texto da migration de origem + trocas que falham alto se o trecho mudou). O
 downgrade volta ao que a `_04_04` deixou.
 
-Revision ID: 20261105_09
-Revises: 20261105_08
+Revision ID: 20261105_11
+Revises: 20261105_10
 Create Date: 2026-11-05
 """
 
@@ -28,8 +28,8 @@ from pathlib import Path
 
 from alembic import op
 
-revision = "20261105_09"
-down_revision = "20261105_08"
+revision = "20261105_11"
+down_revision = "20261105_10"
 branch_labels = None
 depends_on = None
 
@@ -37,7 +37,7 @@ AQUI = Path(__file__).resolve()
 
 
 def _load(nome: str):
-    spec = importlib.util.spec_from_file_location(f"m_{nome[:11]}_para_05_09", AQUI.with_name(nome))
+    spec = importlib.util.spec_from_file_location(f"m_{nome[:11]}_para_05_11", AQUI.with_name(nome))
     assert spec and spec.loader
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -60,7 +60,7 @@ def rpc_nova() -> str:
     return m._trocar(
         _load("20261102_05_trava_da_personalizacao.py").rpc_nova(),
         m.TROCAS_ESTUDO,
-        "metricas_estudo_coortes da 20261102_05; revise a 20261105_09",
+        "metricas_estudo_coortes da 20261102_05; revise a 20261105_11",
     )
 
 

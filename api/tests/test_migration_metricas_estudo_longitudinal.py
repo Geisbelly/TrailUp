@@ -1,4 +1,4 @@
-"""`20261105_10` (#19): análise longitudinal do estudo.
+"""`20261105_12` (#19): análise longitudinal do estudo.
 
 O comportamento está em `test_e2e_metricas_estudo_longitudinal.py` (Postgres local). Aqui fica o
 que dá para travar sem banco.
@@ -17,8 +17,8 @@ VERSOES = Path(__file__).resolve().parents[1] / "alembic" / "versions"
 
 
 def _modulo():
-    path = VERSOES / "20261105_10_metricas_estudo_longitudinal.py"
-    spec = importlib.util.spec_from_file_location("m_20261105_10_teste", path)
+    path = VERSOES / "20261105_12_metricas_estudo_longitudinal.py"
+    spec = importlib.util.spec_from_file_location("m_20261105_12_teste", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -26,7 +26,7 @@ def _modulo():
 
 def _sql(direcao: str) -> str:
     output = StringIO()
-    faixa = "20261105_09:20261105_10" if direcao == "upgrade" else "20261105_10:20261105_09"
+    faixa = "20261105_11:20261105_12" if direcao == "upgrade" else "20261105_12:20261105_11"
     comando = migrations.command.upgrade if direcao == "upgrade" else migrations.command.downgrade
     comando(_offline_alembic_config(output), faixa, sql=True)
     return output.getvalue().replace("%%", "%")
@@ -35,7 +35,7 @@ def _sql(direcao: str) -> str:
 def test_a_arvore_continua_com_uma_cabeca_e_vem_depois_da_09() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
     assert len(scripts.get_heads()) == 1
-    assert scripts.get_revision("20261105_10").down_revision == "20261105_09"
+    assert scripts.get_revision("20261105_12").down_revision == "20261105_11"
 
 
 def test_a_janela_ganha_perfil_opcional_sem_perder_o_consentimento() -> None:

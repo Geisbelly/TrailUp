@@ -1,4 +1,4 @@
-"""`20261105_09`: o relatório do estudo volta a mostrar a trava (#13, #17).
+"""`20261105_11`: o relatório do estudo volta a mostrar a trava (#13, #17).
 
 A cadeia de produção: a `_05` (trava), a `_04_04` (só quem consentiu) e a `_09`. Sem a `_09`, a
 `_04_04` apaga a trava do relatório; com ela, as duas coisas valem juntas.
@@ -13,7 +13,7 @@ from tests import test_e2e_trava_personalizacao as trava
 from tests.test_e2e_retencao_expurgo import CARIMBO
 
 M_CONSENTIU = f5.modulo("20261104_04_agregados_so_quem_consentiu.py")
-M = f5.modulo("20261105_09_estudo_relatorio_volta_a_trava.py")
+M = f5.modulo("20261105_11_estudo_relatorio_volta_a_trava.py")
 
 
 def _banco(*depois: str):

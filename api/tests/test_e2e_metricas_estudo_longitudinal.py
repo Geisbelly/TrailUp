@@ -1,4 +1,4 @@
-"""`20261105_10` (#19): análise longitudinal por semana, com ganho sustentado × pico isolado.
+"""`20261105_12` (#19): análise longitudinal por semana, com ganho sustentado × pico isolado.
 
 Mesmo banco do e2e do estudo, com o consentimento por baixo (`20261104_04`). A e C consentiram
 pesquisa, B não; D entrou depois do corte. Então os pareados da turma 1 são A e C.
@@ -28,7 +28,7 @@ from tests import test_e2e_agregados_so_quem_consentiu as ag
 from tests import test_e2e_estudo_coorte as e
 
 M_CONSENTIU = f5.modulo("20261104_04_agregados_so_quem_consentiu.py")
-M = f5.modulo("20261105_10_metricas_estudo_longitudinal.py")
+M = f5.modulo("20261105_12_metricas_estudo_longitudinal.py")
 
 PERFIS = """
 INSERT INTO public.perfil (id, nome) VALUES

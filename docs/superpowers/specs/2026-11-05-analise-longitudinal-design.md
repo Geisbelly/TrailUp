@@ -1,6 +1,6 @@
 # Análise longitudinal por ciclo (#19)
 
-Data: 2026-11-05 · Migration `20261105_10` · Depende da #13 (cohort e baseline) e da `20261105_09`
+Data: 2026-11-05 · Migration `20261105_12` · Depende da #13 (cohort e baseline) e da `20261105_11`
 
 A fase 3 da metodologia pede o acompanhamento da "estabilidade dos ganhos ao longo de ciclos"
 (TCC 09 §4). O critério de impacto exige "manutenção do ganho por mais de um ciclo" (09 §10). A #13

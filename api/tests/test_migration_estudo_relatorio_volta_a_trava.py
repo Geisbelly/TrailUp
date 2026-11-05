@@ -1,4 +1,4 @@
-"""`20261105_09`: o relatório do estudo volta a mostrar a trava (#13, #17).
+"""`20261105_11`: o relatório do estudo volta a mostrar a trava (#13, #17).
 
 A `20261104_04` regravou `metricas_estudo_coortes` a partir da `_03` e apagou o que a `_05` tinha
 posto. Estes testes travam, sem banco, que a RPC final tem as duas coisas: a trava da `_05` e a
@@ -25,8 +25,8 @@ DO_CONSENTIMENTO = "pareados com consentimento de pesquisa vigente (vw_alunos_pe
 
 
 def _modulo():
-    path = VERSOES / "20261105_09_estudo_relatorio_volta_a_trava.py"
-    spec = importlib.util.spec_from_file_location("m_20261105_09_teste", path)
+    path = VERSOES / "20261105_11_estudo_relatorio_volta_a_trava.py"
+    spec = importlib.util.spec_from_file_location("m_20261105_11_teste", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -34,19 +34,19 @@ def _modulo():
 
 def _upgrade_sql() -> str:
     output = StringIO()
-    migrations.command.upgrade(_offline_alembic_config(output), "20261105_08:20261105_09", sql=True)
+    migrations.command.upgrade(_offline_alembic_config(output), "20261105_10:20261105_11", sql=True)
     return output.getvalue().replace("%%", "%")
 
 
 def test_a_arvore_continua_com_uma_cabeca_e_vem_depois_da_08() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
     assert len(scripts.get_heads()) == 1
-    assert scripts.get_revision("20261105_09").down_revision == "20261105_08"
+    assert scripts.get_revision("20261105_11").down_revision == "20261105_10"
 
 
 def test_a_04_04_tinha_perdido_a_trava() -> None:
     """O defeito que esta migration corrige: se um dia a `_04_04` passar a partir da `_05`, este
-    teste avisa que a `_05_09` ficou redundante."""
+    teste avisa que a `_05_11` ficou redundante."""
     anterior = _modulo().rpc_anterior()
     assert DO_CONSENTIMENTO in anterior
     for trecho in DA_TRAVA:

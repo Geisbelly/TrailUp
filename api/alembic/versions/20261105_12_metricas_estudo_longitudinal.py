@@ -23,8 +23,8 @@ segue o padrão da `20261104_04`: falha alto se o trecho mudou.
 Mesma supressão da #13: célula com menos pareados que `n_minimo` volta nula, e nenhum `aluno_id`
 sai. Desenho em `docs/superpowers/specs/2026-11-05-analise-longitudinal-design.md`.
 
-Revision ID: 20261105_10
-Revises: 20261105_09
+Revision ID: 20261105_12
+Revises: 20261105_11
 Create Date: 2026-11-05
 """
 
@@ -35,8 +35,8 @@ from pathlib import Path
 
 from alembic import op
 
-revision = "20261105_10"
-down_revision = "20261105_09"
+revision = "20261105_12"
+down_revision = "20261105_11"
 branch_labels = None
 depends_on = None
 
@@ -77,7 +77,7 @@ def janela_nova() -> str:
     texto = janela_anterior()
     for antigo, novo in TROCAS_JANELA:
         if texto.count(antigo) != 1:
-            raise RuntimeError("estudo_indicadores_janela mudou de forma; revise a 20261105_10")
+            raise RuntimeError("estudo_indicadores_janela mudou de forma; revise a 20261105_12")
         texto = texto.replace(antigo, novo)
     return texto
 
