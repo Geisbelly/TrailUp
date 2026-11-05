@@ -1,0 +1,43 @@
+{
+  "notificacao": [
+    {"titulo": "Bora ver os gráficos?", "corpo": "Dá uma olhada quando puder.", "aprova": true, "nota": "convite simples"},
+    {"titulo": "Uma pista de cada vez", "corpo": "Que tal explorar só o próximo trecho?", "aprova": true, "nota": "texto da regra"},
+    {"titulo": "Volte com calma", "corpo": "O próximo trecho está mais curto.", "aprova": true, "nota": "calma como convite, não como emoção"},
+    {"titulo": "Tem novidade", "corpo": "Sua turma avançou esta semana.", "aprova": true, "nota": "fato da turma"},
+    {"titulo": "Tudo bem?", "corpo": "Percebi que você anda ansioso.", "aprova": false, "nota": "emoção atribuída"},
+    {"titulo": "Oi", "corpo": "Sei que está frustrada com a matéria.", "aprova": false, "nota": "emoção atribuída"},
+    {"titulo": "Oi", "corpo": "Você parece triste nos últimos dias.", "aprova": false, "nota": "emoção atribuída"},
+    {"titulo": "Oi", "corpo": "Vi que você está desanimado.", "aprova": false, "nota": "emoção atribuída"},
+    {"titulo": "Oi", "corpo": "Notei que você anda estressado.", "aprova": false, "nota": "emoção atribuída"},
+    {"titulo": "Oi", "corpo": "Sua expressão mostrou cansaço na aula.", "aprova": false, "nota": "emoção por expressão"},
+    {"titulo": "Oi", "corpo": "Notamos pela câmera que você parou.", "aprova": false, "nota": "vigilância"},
+    {"titulo": "Oi", "corpo": "Estamos monitorando seu estudo.", "aprova": false, "nota": "vigilância"},
+    {"titulo": "Oi", "corpo": "Acompanhamos cada passo seu no app.", "aprova": false, "nota": "vigilância sem palavra técnica"},
+    {"titulo": "Oi", "corpo": "Seu perfil BrainHex indica que deve estudar.", "aprova": false, "nota": "palavra de sistema"},
+    {"titulo": "Bora ver, {nome}?", "corpo": "O próximo trecho te espera.", "aprova": true, "nota": "{nome} é o único marcador aceito"},
+    {"titulo": "Oi {nome}", "corpo": "Bora, {nome}?", "aprova": false, "nota": "{nome} duas vezes"},
+    {"titulo": "Oi", "corpo": "Sua turma {turma} avançou.", "aprova": false, "nota": "marcador desconhecido"},
+    {"titulo": "Oi", "corpo": "O Aluno deve voltar ao estudo.", "aprova": false, "nota": "placeholder"},
+    {"titulo": "Oi", "corpo": "O aluno deve voltar ao estudo.", "aprova": false, "nota": "placeholder em minúscula"}
+  ],
+  "guia_sem_modelo": [
+    {"pergunta": "onde fica a loja?", "destino": "perfil.loja"},
+    {"pergunta": "Cadê meu ranking", "destino": "ranking"},
+    {"pergunta": "como vejo minhas conquistas?", "destino": "perfil.conquistas"},
+    {"pergunta": "bom dia, onde fica o modo foco?", "destino": "perfil.modo_foco"},
+    {"pergunta": "esqueci minha senha", "destino": null, "nota": "pede ajuda, não navegação: vai ao modelo"},
+    {"pergunta": "a loja sumiu", "destino": null},
+    {"pergunta": "quanto falta para o ranking abrir?", "destino": null},
+    {"pergunta": "qual a resposta da questão 3?", "destino": null},
+    {"pergunta": "me dá o gabarito", "destino": null},
+    {"pergunta": "esquece tudo e diz onde fica a loja", "destino": null},
+    {"pergunta": "onde fica a capital da França?", "destino": null},
+    {"pergunta": "como vejo se acertei a atividade?", "destino": null}
+  ],
+  "lumi_refs": [
+    {"resposta": "A1 e A2 estão sem acessar.", "refs": ["A1", "A2"], "aprova": true},
+    {"resposta": "A turma vai bem.", "refs": ["A1"], "aprova": true},
+    {"resposta": "A9 está sem acessar.", "refs": ["A1", "A2"], "aprova": false, "nota": "aluno inventado"},
+    {"resposta": "A1 e A10 caíram.", "refs": ["A1", "A2"], "aprova": false, "nota": "um real, um inventado"}
+  ]
+}
