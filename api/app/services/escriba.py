@@ -463,12 +463,13 @@ class EscribaService:
         turmas_payload, nomes_por_ref = _renumerar_refs(contextos)
         # Pergunta e histórico do professor citam alunos pelo nome (e o histórico
         # volta com os nomes que restauramos): vão ao modelo como refs.
+        # Pergunta por último: o cache do provedor só vale até a primeira diferença do pedido.
         payload = {
-            "pergunta": pseudonimizar_texto(pedido.pergunta.strip(), nomes_por_ref),
-            "historico": [{**m, "texto": pseudonimizar_texto(m["texto"], nomes_por_ref)} for m in falas],
-            # Chave com "_" é do servidor (ids, mapa de nomes): nunca vai ao modelo.
             "guia_do_produto": guia_do_produto(),
+            # Chave com "_" é do servidor (ids, mapa de nomes): nunca vai ao modelo.
             "turmas": [{k: v for k, v in t.items() if not k.startswith("_")} for t in turmas_payload],
+            "historico": [{**m, "texto": pseudonimizar_texto(m["texto"], nomes_por_ref)} for m in falas],
+            "pergunta": pseudonimizar_texto(pedido.pergunta.strip(), nomes_por_ref),
         }
         # Sem rota de IA por idade, de propósito (decisão de 04/11/2026): a
         # regra "IA só para maiores" da #195/#933 vale para o ALUNO usar a
@@ -486,9 +487,9 @@ class EscribaService:
         citam aluno; as respostas da Lumi ficam de fora, porque as que falaram
         da turma voltaram com o nome do aluno restaurado."""
         payload = {
-            "pergunta": pedido.pergunta.strip(),
-            "historico": [m for m in falas if m["papel"] == "professor" and not _parece_citar_aluno(m["texto"])],
             "guia_do_produto": guia_do_produto(),
             "turmas": [],
+            "historico": [m for m in falas if m["papel"] == "professor" and not _parece_citar_aluno(m["texto"])],
+            "pergunta": pedido.pergunta.strip(),
         }
         return _montar_resposta(await self._gerar(payload, [], {}), [], agora)

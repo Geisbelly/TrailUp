@@ -73,11 +73,11 @@ export const GRUPOS_CONFIGURACAO: GrupoSubtelas[] = [
     itens: [
       {
         id: "lembrete",
-        rotulo: "Lembrete diário",
+        rotulo: "Lembretes e silêncio",
         grupo: PREFERENCIAS,
-        titulo: "Lembrete diário",
+        titulo: "Lembretes e silêncio",
         descricao:
-          "Escolha o horário em que o TrailUp te avisa para continuar a trilha. Funciona mesmo com o app fechado (no navegador, só quando o app está aberto).",
+          "Escolha os dias e até quatro horários em que o TrailUp te avisa, e quando ele fica quieto. Funciona mesmo com o app fechado (no navegador, só quando o app está aberto).",
       },
       {
         id: "foco",

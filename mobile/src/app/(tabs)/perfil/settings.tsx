@@ -127,10 +127,10 @@ function SettingsLista() {
           ),
         },
         {
-          label: "Lembrete diário",
+          label: "Lembretes e silêncio",
           render: (
             <LinhaConfig icone="bell" onPress={() => router.push("/(tabs)/perfil/lembrete-diario")} palette={palette}>
-              Lembrete diário
+              Lembretes e silêncio
             </LinhaConfig>
           ),
         },
@@ -400,7 +400,7 @@ function SettingsLista() {
               ]}
             />
           </View>
-          <GrupoConfig titulo="Preferências" palette={palette} itens={[ligacao("Lembrete diário"), ligacao("Estilo das métricas")]} />
+          <GrupoConfig titulo="Preferências" palette={palette} itens={[ligacao("Lembretes e silêncio"), ligacao("Estilo das métricas")]} />
         </View>
         <View ref={aboutGuideRef} collapsable={false}>
           <GrupoConfig
