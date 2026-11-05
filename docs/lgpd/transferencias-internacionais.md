@@ -66,8 +66,8 @@ Não há Sentry nem SDK de analytics no mobile, no frontend, no microservice nem
   - Classificador de emoção **FER+** (`emotion-ferplus-8.onnx`, [ONNX Model Zoo](https://github.com/onnx/models/tree/main/validated/vision/body_analysis/emotion_ferplus)). Licença do modelo: **MIT**, declarada no README do modelo (o repositório `onnx/models` como um todo é Apache-2.0). Os termos dos dados de treino (FER2013 / rótulos FER+) não foram conferidos (não confirmado).
   - Os modelos são abertos, baixados no build da imagem Docker e conferidos por SHA256 em `/opt/models` (`api/Dockerfile`).
 - **O que fica:** os bytes da imagem existem só em memória durante a análise. **Não são gravados:** nem o JPEG, nem o recorte do rosto, nem as probabilidades por imagem. Os frames são retirados do payload antes de gravar `telemetria_lotes` e `ia_decision_logs`. Fica só o resultado (rótulo, valência, confiança), em `aluno_mental_state_history`, por **30 dias**.
-- **Ligado por configuração:** o padrão é `emotion_model_provider = "deepface"`, nome histórico de uma **heurística por regras** que não olha a imagem. A análise por imagem liga com `EMOTION_MODEL_PROVIDER=local_vision` no app da API. O valor em produção não foi lido neste levantamento (não confirmado). Mesmo com a heurística, as imagens chegam ao VPS quando a câmera está ligada e autorizada.
-- **Transferência:** a imagem do rosto atravessa a fronteira até o VPS nos EUA. É o dado de maior risco do registro. Mover o VPS para a UE resolve a transferência dela.
+- **Ligado por configuração explícita:** o padrão (`emotion_model_provider`) é `unavailable`; sem frame ou sem analisador, a emoção fica indisponível. `EMOTION_MODEL_PROVIDER=local_vision` ativa FER+ em CPU, apenas após o consentimento das finalidades `camera` e `emocional`. O valor de produção foi confirmado como `local_vision` em 04/11 (#632); esta mudança mantém o opt-in por configuração, não altera esse valor implantado.
+- **Transferência:** a imagem do rosto atravessa a fronteira até o VPS nos EUA. É dado pessoal sensível e não há adequação reconhecida pela ANPD para os EUA. A política e o termo descrevem o país e a ausência de envio a terceiros; isso **não comprova por si só** mecanismo de transferência válido. A escolha/validação do mecanismo do art. 33 continua pendente.
 
 ## 4. Inferência emocional (decisão de 24/10/2026)
 
@@ -81,14 +81,14 @@ Não há Sentry nem SDK de analytics no mobile, no frontend, no microservice nem
 - Os EUA não têm adequação reconhecida pela ANPD; a UE tem (Res. CD/ANPD 32/2026). [Regulamentações da ANPD](https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd)
 - Sem país adequado, a transferência precisa de um mecanismo do art. 33. As cláusulas-padrão contratuais da ANPD ([Res. CD/ANPD 19/2024](https://www.gov.br/anpd/pt-br/acesso-a-informacao/institucional/atos-normativos/regulamentacoes_anpd/resolucao-cd-anpd-no-19-de-23-de-agosto-de-2024)) precisam ser adotadas **na íntegra**, e o prazo de adequação acabou em 23/08/2025. SCC europeia ≠ CPC da ANPD.
 - **Pendências abertas:**
-  1. Escolher o mecanismo: CPC da ANPD em cada contrato e/ou consentimento específico e destacado (art. 33, VIII) num termo v6 que cite países e riscos.
+  1. Escolher e validar o mecanismo: CPC da ANPD em cada contrato e/ou consentimento específico e destacado (art. 33, VIII), com revisão jurídica. O termo v6 identifica os EUA e a transferência internacional; isso não encerra a pendência até validar o mecanismo e o texto.
   2. Gemini: **as chaves estão no plano gratuito** (confirmado pela Geisbelly em 04/11/2026), então o Google pode usar o que é enviado para melhorar os produtos, com revisão humana. Isso está declarado na Privacidade (seção 6). Não há plano pago previsto. Sobre menores, a decisão é não barrar no cadastro: eles usam o app sem IA (ver linha 4), e isso fica registrado como limite declarado.
   3. OpenAI: ZDR só volta a ser pendência se a OpenAI voltar a receber dado de menor.
   4. ~~R2: conferir o local do bucket.~~ `ENAM` (leste da América do Norte), medido em 04/11/2026. Publicado na Privacidade.
   5. ~~Definir o e-mail do encarregado.~~ Feito em 04/11/2026 (ver o topo deste registro).
-  8. Apps Script de e-mail: publicar numa conta Workspace/institucional (conta pessoal não tem DPA) e desativar a chave antiga no painel da Brevo.
-  6. Hetzner: avaliar a mudança do VPS para a UE e trocar o TLS autoassinado.
-  7. Confirmar `APP_ENV` (trava do LangSmith) e o valor de `EMOTION_MODEL_PROVIDER` em produção.
+  6. Apps Script de e-mail: publicar numa conta Workspace/institucional (conta pessoal não tem DPA) e desativar a chave antiga no painel da Brevo.
+  7. Hetzner: avaliar a mudança do VPS para a UE e trocar o TLS autoassinado.
+  8. Confirmar `APP_ENV` (trava do LangSmith) em produção. `EMOTION_MODEL_PROVIDER=local_vision` foi confirmado em produção em 04/11 (#632); o default do código é `unavailable`.
 - **Contratos assinados (DPA/CPC):** ficam fora do repositório (Drive do projeto), referenciados aqui por nome e data quando existirem. Hoje: **nenhum**. Em 04/11/2026 a Geisbelly confirmou que não há CPC da ANPD, ZDR na OpenAI nem VPS na UE. A Privacidade diz isso desde a mesma data, em vez de "estamos formalizando".
 
 ---

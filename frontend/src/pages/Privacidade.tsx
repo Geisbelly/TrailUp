@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
 
-const PRIVACIDADE_ATUALIZADA_EM = "04/11/2026";
+const PRIVACIDADE_ATUALIZADA_EM = "05/11/2026";
 
 const Secao = ({ titulo, children }: { titulo: string; children: ReactNode }) => (
   <section>
@@ -62,22 +62,21 @@ const Privacidade = () => {
               </Lista>
               <p className="font-semibold text-foreground">2.3 Câmera (opcional, desligada por padrão)</p>
               <p>
-                A câmera só é usada se você ligar e permitir a finalidade de câmera e a de personalização
-                emocional nas configurações. Para menores de 18 anos, também é preciso a autorização do
-                responsável. Com a câmera ligada, imagens do rosto são enviadas ao servidor da TrailUp
-                (nos Estados Unidos). Quando a análise por imagem está ativada na configuração do servidor,
-                elas são analisadas na memória por modelos abertos de detecção de rosto e de expressão
-                (YuNet e FER+) para estimar a emoção. Se essa análise não estiver ativada, a estimativa usa
-                só sinais de uso. As imagens <strong>não são gravadas nem enviadas a terceiros</strong>,
-                inclusive provedores de inteligência artificial. Fica guardado só o resultado (a emoção
-                estimada).
+                A câmera só é usada se você ligar e permitir as finalidades de câmera e personalização
+                emocional. Para menores de 18 anos, também é necessária autorização do responsável. As imagens
+                do rosto são enviadas ao servidor da TrailUp nos Estados Unidos. Quando o provedor local
+                `local_vision` está explicitamente configurado — como na API de produção —, YuNet e FER+
+                analisam as imagens na memória, sem enviá-las a provedores externos. Sem essa configuração
+                ou sem resultado de análise, a emoção fica indisponível; sinais de uso não são usados como
+                substituto. A imagem não é gravada; categoria, confiança e resumo ficam por 30 dias.
               </p>
             </Secao>
 
             <Secao titulo="3. Inferência Emocional">
               <p>
-                Se você permitir, o TrailUp estima seu estado emocional a partir de sinais de uso e,
-                quando a câmera está ligada, da análise de imagem descrita acima. Isso serve para:
+                Quando a análise visual estiver explicitamente ativada e você tiver autorizado a câmera e a
+                personalização emocional, o TrailUp estima uma expressão facial. Sem esse sinal, a emoção fica
+                indisponível; sinais comportamentais não são usados para inferir emoção. Isso serve para:
               </p>
               <Lista>
                 <li>adaptar ritmo, temas e a oferta de apoio no app;</li>
@@ -159,10 +158,12 @@ const Privacidade = () => {
                 <li>Google (login com Google, vídeos do YouTube e fontes) e Microsoft (visualização de documentos)</li>
               </Lista>
               <p>
-                Ainda não assinamos com esses fornecedores as cláusulas-padrão da ANPD para a transferência
-                internacional: valem os termos e, quando o fornecedor oferece, o acordo de tratamento de dados
-                de cada um. A lista completa, com finalidade e retenção de cada um, está
-                no registro de transferências do projeto e é atualizada sempre que um fornecedor muda.
+                Não temos cláusulas-padrão da ANPD assinadas com esses fornecedores. Os EUA não têm
+                adequação reconhecida pela ANPD; portanto, a transferência de imagens para o servidor
+                da API exige mecanismo válido previsto na LGPD. A escolha e a validação desse mecanismo
+                continuam pendentes e estão registradas em
+                <code>docs/lgpd/transferencias-internacionais.md</code>. O consentimento não é apresentado
+                como prova de que essa pendência jurídica foi resolvida.
               </p>
             </Secao>
 

@@ -4,7 +4,7 @@ from typing import Any
 from langgraph.graph import END, START, StateGraph
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.adapters.mock_emocao import MockEmocaoAdapter
+from app.adapters.local_vision_emocao import LocalVisionEmotionAdapter
 from app.agent.graph import nodes, routing
 from app.agent.graph.state import TrailUpState
 from app.core.settings import Settings
@@ -17,6 +17,14 @@ def build_graph(
     interrupt_before: list[str] | None = None,
 ):
     graph = StateGraph(TrailUpState)
+    emotion_adapter = (
+        LocalVisionEmotionAdapter(
+            caminho_modelo=settings.emotion_vision_model_path,
+            caminho_detector=settings.emotion_vision_detector_path,
+        )
+        if settings.emotion_model_provider == "local_vision"
+        else None
+    )
 
     graph.add_node("supervisor", partial(nodes.supervisor, settings=settings))
     graph.add_node("agente_plano_personalizacao", partial(nodes.agente_plano_personalizacao, settings=settings))
@@ -25,7 +33,7 @@ def build_graph(
         "agente_midias_personalizadas",
         partial(nodes.agente_midias_personalizadas, settings=settings, session_factory=session_factory),
     )
-    graph.add_node("agente_emocao", partial(nodes.agente_emocao, adapter=MockEmocaoAdapter()))
+    graph.add_node("agente_emocao", partial(nodes.agente_emocao, adapter=emotion_adapter))
     graph.add_node("agente_perfil", partial(nodes.agente_perfil, settings=settings))
     graph.add_node(
         "agente_trilha",

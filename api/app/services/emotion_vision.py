@@ -1,28 +1,10 @@
-"""Analise de emocao a partir do frame da camera, com modelo LOCAL.
+"""Camera-based emotion analysis using a local model.
 
-Diferente dos seis estagios de `linear_analysis_pipeline.py`, cujos nomes
-anunciam algoritmos que nao estao implementados (ver a nota no topo daquele
-arquivo), esta classe faz o que o nome diz: decodifica o JPEG, procura um
-rosto, recorta, e roda uma rede de verdade.
+Without a camera frame or successful image inference, emotion is unavailable.
+Behavior and performance telemetry are never used as an emotional proxy.
 
-MODELO. FER+ (`emotion-ferplus-8.onnx`, ONNX Model Zoo, licenca MIT). Entrada
-1x1x64x64 em tons de cinza; saida com 8 logits. Foi escolhido no lugar do
-DeepFace porque o DeepFace puxa TensorFlow (~500 MB) e CPU pesada para o mesmo
-VPS que ja roda API, microservice e BrainHexPDF; o FER+ em onnxruntime ocupa
-~35 MB e infere em milissegundos sobre um recorte 48x48.
-
-DEGRADACAO. Nada aqui pode derrubar o ciclo de analise. Sem o arquivo do
-modelo, sem `onnxruntime`/`cv2`, sem frame, sem rosto detectado ou com erro de
-inferencia, o resultado do analisador heuristico injetado em `fallback` e
-devolvido como esta. O motivo da queda vai sempre em `resumo["visao"]`, para a
-diferenca entre "nao rodou" e "rodou e nao achou rosto" ser legivel depois.
-
-PRIVACIDADE. Os bytes do frame existem so dentro de `analyze`. Nada e gravado:
-nem o JPEG, nem o recorte do rosto, nem o vetor de probabilidades por frame. O
-que sai daqui e um rotulo, uma valencia e uma confianca — e `resumo`, que
-guarda contagens, nunca imagem. `_sanitize_lote_payload` ja impede que o frame
-chegue a `telemetria_lotes` e a `ia_decision_logs`; esta classe nao abre
-nenhuma porta nova.
+The FER+ model runs locally in the API process. Camera frames are not persisted;
+only the returned category, confidence, and summary are exposed to the pipeline.
 """
 
 from __future__ import annotations
@@ -50,11 +32,10 @@ _FERPLUS_LABELS = (
     "contempt",
 )
 
-# De-para para o vocabulario que o resto do sistema ja usa (o mesmo da
-# heuristica: neutro/focado/frustrado/ansioso/cansado). E uma ESCOLHA, nao uma
-# equivalencia cientifica — "happiness" nao e' "focado", e "surprise" pode ser
-# engajamento tanto quanto susto. Fica aqui, explicito e num lugar so, para
-# poder ser revisto sem cacar constante espalhada pelo codigo.
+# De-para para o vocabulario de emocao ja consumido pelo sistema. E uma
+# escolha de mapeamento, nao uma equivalencia cientifica: "happiness" nao e'
+# "focado", e "surprise" pode ser engajamento tanto quanto susto. Fica aqui,
+# explicito e num lugar so, para poder ser revisto sem cacar constante espalhada.
 _PARA_VOCABULARIO: dict[str, tuple[str, float]] = {
     "neutral": ("neutro", 0.10),
     "happiness": ("focado", 0.55),
@@ -215,25 +196,16 @@ def _analisar_frames(
 
 
 class LocalVisionEmotionAnalyzer:
-    """Estagio de emocao que de fato olha para a imagem.
-
-    `fallback` e' injetado em vez de importado para nao fechar ciclo com
-    `linear_analysis_pipeline`, que e' quem registra esta classe na fabrica.
-    Ele e' usado SEMPRE que a visao nao conclui — e tambem quando o lote traz
-    evento explicito de erro, porque "errou tres vezes seguidas" e' um sinal
-    mais confiavel de frustracao do que a expressao de um unico quadro.
-    """
+    """Analyze available camera frames; return no emotion when inference fails."""
 
     provider_name = "local_vision"
 
     def __init__(
         self,
         *,
-        fallback: Any,
         caminho_modelo: str | None = None,
         caminho_detector: str | None = None,
     ) -> None:
-        self._fallback = fallback
         self._caminho_modelo = caminho_modelo
         self._caminho_detector = caminho_detector
 
@@ -255,59 +227,34 @@ class LocalVisionEmotionAnalyzer:
         eventos_novos: list[Any],
         telemetry_payload: dict[str, Any] | None,
         state: dict[str, Any],
-    ) -> Any:
-        base = await self._fallback.analyze(
-            frames_b64=frames_b64,
-            eventos_novos=eventos_novos,
-            telemetry_payload=telemetry_payload,
-            state=state,
-        )
-
+    ) -> Any | None:
         if not frames_b64:
-            base.resumo = {**base.resumo, "visao": {"usada": False, "motivo": "sem_frame"}}
-            return base
+            return None
 
-        visao = _analisar_frames(frames_b64, *self._caminhos())
-        if visao is None:
-            base.resumo = {**base.resumo, "visao": {"usada": False, "motivo": "sem_conclusao"}}
-            return base
+        try:
+            visao = _analisar_frames(frames_b64, *self._caminhos())
+        except Exception as exc:
+            logger.warning("emocao.visao indisponivel: falha na analise (%s)", type(exc).__name__)
+            return None
 
-        # Evento explicito de erro vence a expressao facial: ele e' um fato
-        # sobre o que o aluno FEZ, nao uma leitura de como ele parece estar.
-        tipos = {getattr(evento, "tipo", None) for evento in eventos_novos}
-        if tipos & {"erro_recorrente", "abandono_atividade"}:
-            base.resumo = {
-                **base.resumo,
-                "visao": {
-                    "usada": False,
-                    "motivo": "evento_de_erro_tem_precedencia",
-                    "rotulo_descartado": visao.rotulo_ferplus,
-                },
-            }
-            return base
+        from app.services.linear_analysis_pipeline import EmotionStageResult
 
         emocao, valencia = _PARA_VOCABULARIO.get(visao.rotulo_ferplus, ("neutro", 0.1))
-        tipo_resultado = type(base)
-        return tipo_resultado(
+        return EmotionStageResult(
             provider_name=self.provider_name,
             emocao_primaria=emocao,
             valencia=valencia,
-            # A confianca e' a probabilidade do modelo, limitada pela fracao de
-            # frames em que houve rosto: concordancia de 1 quadro em 5 nao vale
-            # o mesmo que de 5 em 5.
             confianca=min(
                 0.95,
                 max(0.2, visao.probabilidade * (visao.frames_com_rosto / max(visao.frames_tentados, 1))),
             ),
             resumo={
-                **base.resumo,
                 "visao": {
                     "usada": True,
                     "rotulo_ferplus": visao.rotulo_ferplus,
                     "probabilidade": round(visao.probabilidade, 3),
                     "frames_com_rosto": visao.frames_com_rosto,
                     "frames_tentados": visao.frames_tentados,
-                    "heuristica_diria": base.emocao_primaria,
                 },
             },
         )

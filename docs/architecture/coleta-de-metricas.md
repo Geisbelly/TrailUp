@@ -118,6 +118,15 @@ contagem só empurra `confianca` em `+ min(frame_count, 30) * 0.01`.
 > Consequência prática: **desligar a câmera não muda a emoção estimada**, só a
 > confiança declarada.
 
+### Estado atual da análise emocional (#30, 05/11/2026)
+
+O quadro acima descreve a implementação medida naquele levantamento histórico.
+No fluxo atual, `LocalVisionEmotionAnalyzer` só processa frames autorizados
+quando `EMOTION_MODEL_PROVIDER=local_vision`; sem frame ou sem conclusão, a
+emoção é explicitamente `indisponivel`. O default da API é
+`EMOTION_MODEL_PROVIDER=unavailable`. Eventos, erros e ritmo de estudo não são
+usados como proxy de emoção ou frustração.
+
 ## 6. A realimentação, no estado medido
 
 **Os 290 lotes têm `analysis_ciclo_id IS NULL`.** Nenhum ciclo na janela.

@@ -1,19 +1,12 @@
 """Pipeline linear de analise adaptativa.
 
-NOTA SOBRE OS NOMES DAS CLASSES: os seis estagios se chamam DeepFace,
-IsolationForest, HiddenMarkovModel, DeepKnowledgeTracing, RandomForest e
-XGBoost, e nenhum deles roda o algoritmo que o nome anuncia. Todos sao
-heuristicas por regra -- comparacoes e somas de constantes escritas a mao.
+Com exceção do estágio de emoção (que usa o modelo local de visão em
+`emotion_vision.py` quando há frame autorizado), os nomes dos estágios indicam
+algoritmos pretendidos: leitura, interação, desempenho, atenção e decisão usam
+heurísticas por regra. Cada classe descreve o que faz de fato.
 
-Isto nao e acidente de leitura: a API nao tem NENHUMA biblioteca de ML ou visao
-nas dependencias (sem scikit-learn, xgboost, hmmlearn, deepface, opencv,
-torch, tensorflow), este modulo importa apenas `Counter`, `dataclass`, `typing`
-e `fastapi`, e usa `numpy` zero vezes.
-
-Os nomes indicam o algoritmo PRETENDIDO para cada estagio, e ficaram como
-marcadores do desenho. Cada classe diz na propria docstring o que faz de fato.
-Ao ler medicao ou documentacao que cite "o modelo de emocao", confira aqui
-antes: o que existe e uma regra.
+Sem frame ou sem inferência visual válida, emoção fica indisponível. Eventos,
+desempenho e comportamento não são usados como substitutos de emoção.
 """
 
 from __future__ import annotations
@@ -269,7 +262,7 @@ class EmotionAnalyzer(Protocol):
         eventos_novos: list[Evento],
         telemetry_payload: dict[str, Any] | None,
         state: dict[str, Any],
-    ) -> EmotionStageResult: ...
+    ) -> EmotionStageResult | None: ...
 
 
 class ReadingAnalyzer(Protocol):
@@ -311,7 +304,7 @@ class AttentionAnalyzer(Protocol):
     async def analyze(
         self,
         *,
-        emotion: EmotionStageResult,
+        emotion: EmotionStageResult | None,
         reading: ReadingStageResult,
         interaction: InteractionStageResult,
         performance: PerformanceStageResult,
@@ -336,22 +329,10 @@ class AdaptiveContentGenerator(Protocol):
     async def generate(self, *, request: Request, state: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]: ...
 
 
-class DeepFaceEmotionAnalyzer:
-    """Heuristica por regra. NAO roda DeepFace, nem olha para a imagem.
+class UnavailableEmotionAnalyzer:
+    """Reports no emotion when no camera analyzer is configured."""
 
-    O nome diz o algoritmo PRETENDIDO, nao o implementado -- vale para os seis
-    estagios deste modulo (ver nota no topo do arquivo).
-
-    `frames_b64` entra aqui e vira `len()`: a contagem so empurra `confianca`
-    em `+ min(frame_count, 30) * 0.01`. Os bytes nunca sao decodificados, e nao
-    ha deepface/opencv/mediapipe/torch nas dependencias da API. A emocao sai de
-    contagem de eventos (`erro_recorrente`, `atividade_errada`,
-    `atividade_acertada`) e de `idle_sec`.
-
-    Consequencia pratica: desligar a camera nao muda a emocao estimada, so
-    reduz a confianca declarada.
-    """
-    provider_name = "deepface"
+    provider_name = "unavailable"
 
     async def analyze(
         self,
@@ -360,42 +341,8 @@ class DeepFaceEmotionAnalyzer:
         eventos_novos: list[Evento],
         telemetry_payload: dict[str, Any] | None,
         state: dict[str, Any],
-    ) -> EmotionStageResult:
-        counts = Counter(evento.tipo for evento in eventos_novos)
-        frame_count = len(frames_b64)
-        idle_sec = _safe_float((telemetry_payload or {}).get("idle_sec"))
-
-        emocao = "neutro"
-        valencia = 0.1
-        confianca = 0.36 if frame_count == 0 else 0.55
-
-        if counts.get("erro_recorrente", 0) or counts.get("abandono_atividade", 0):
-            emocao = "frustrado"
-            valencia = -0.62
-            confianca = 0.8 if frame_count else 0.58
-        elif counts.get("atividade_errada", 0) >= 2:
-            emocao = "ansioso"
-            valencia = -0.44
-            confianca = 0.72 if frame_count else 0.49
-        elif counts.get("atividade_acertada", 0) >= max(1, counts.get("atividade_errada", 0)):
-            emocao = "focado"
-            valencia = 0.54
-            confianca = 0.74 if frame_count else 0.46
-        elif idle_sec >= 120:
-            emocao = "cansado"
-            valencia = -0.28
-            confianca = 0.61 if frame_count else 0.41
-
-        return EmotionStageResult(
-            provider_name=self.provider_name,
-            emocao_primaria=emocao,
-            valencia=valencia,
-            confianca=min(0.95, max(0.2, confianca + min(frame_count, 30) * 0.01)),
-            resumo={
-                "frames_recebidos": frame_count,
-                "eventos": dict(counts),
-            },
-        )
+    ) -> EmotionStageResult | None:
+        return None
 
 
 class IsolationForestReadingAnalyzer:
@@ -610,7 +557,7 @@ class RandomForestAttentionAnalyzer:
     async def analyze(
         self,
         *,
-        emotion: EmotionStageResult,
+        emotion: EmotionStageResult | None,
         reading: ReadingStageResult,
         interaction: InteractionStageResult,
         performance: PerformanceStageResult,
@@ -628,7 +575,8 @@ class RandomForestAttentionAnalyzer:
         score += 0.18 if reading.status == "fluido" else -0.16 if reading.status == "anomalo" else 0
         score += 0.16 if interaction.estado == "engajado" else -0.18 if interaction.estado == "disperso" else -0.05 if interaction.estado == "hesitante" else 0
         score += 0.14 if performance.dominio_estimado >= 0.7 else -0.1 if performance.dominio_estimado < 0.45 else 0
-        score += emotion.valencia * 0.22
+        if emotion is not None:
+            score += emotion.valencia * 0.22
         score -= min(idle_sec / 300, 0.18)
         score += 0.08 if focus_ratio >= 0.62 else -0.08 if focus_ratio < 0.32 else 0
         score -= min(entity_idle_ratio * 0.16, 0.16)
@@ -648,10 +596,10 @@ class RandomForestAttentionAnalyzer:
         elif performance.dominio_estimado > 0.75 and interaction.estado == "engajado":
             dificuldade = "baixa"
 
-        frustracao = "baixa"
-        if emotion.emocao_primaria in {"frustrado", "ansioso"} or interaction.estado == "hesitante":
+        frustracao = "indisponivel" if emotion is None else "baixa"
+        if emotion is not None and emotion.emocao_primaria in {"frustrado", "ansioso"}:
             frustracao = "alta"
-        elif emotion.emocao_primaria == "cansado":
+        elif emotion is not None and emotion.emocao_primaria == "cansado":
             frustracao = "media"
 
         engajamento = "medio"
@@ -668,8 +616,7 @@ class RandomForestAttentionAnalyzer:
             engajamento=engajamento,
             score=round(score, 2),
             resumo={
-                "emotion": emotion.resumo,
-                "reading": reading.resumo,
+                "emotion": emotion.resumo if emotion is not None else {"estado_sinal": "indisponivel"},
                 "interaction": interaction.resumo,
                 "performance": performance.resumo,
                 "time_metrics": time_summary,
@@ -861,7 +808,8 @@ class LinearAnalysisOrchestrator:
             **decide_kwargs,  # type: ignore[arg-type]
         )
 
-        state["emocao_atual"] = emotion.as_schema()
+        estado_emocao = emotion.as_schema() if emotion is not None else {"estado_sinal": "indisponivel"}
+        state["emocao_atual"] = estado_emocao
         state["attention_snapshot"] = {
             "modelo": attention.provider_name,
             "estado_atencao": attention.estado_atencao,
@@ -877,7 +825,11 @@ class LinearAnalysisOrchestrator:
             "resumo": decision.resumo,
         }
         state["pipeline_stage_outputs"] = {
-            "emotion": {"modelo": emotion.provider_name, **emotion.resumo, **emotion.as_schema()},
+            "emotion": (
+                {"modelo": emotion.provider_name, **emotion.resumo, **emotion.as_schema()}
+                if emotion is not None
+                else {"modelo": "indisponivel", "estado_sinal": "indisponivel"}
+            ),
             "reading": {"modelo": reading.provider_name, **reading.resumo, "status": reading.status, "anomalia": reading.anomalia, "confianca": reading.confianca},
             "interaction": {"modelo": interaction.provider_name, **interaction.resumo, "estado": interaction.estado, "confianca": interaction.confianca},
             "performance": {"modelo": performance.provider_name, **performance.resumo, "dominio_estimado": performance.dominio_estimado, "tendencia": performance.tendencia, "confianca": performance.confianca},
@@ -891,7 +843,7 @@ class LinearAnalysisOrchestrator:
             state["payload_modo"] = decision.modo_sugerido
         state["acoes_aplicadas"] = _dedupe_preserve_order(
             [
-                f"analise_emocao:{emotion.provider_name}",
+                *([f"analise_emocao:{emotion.provider_name}"] if emotion is not None else ["analise_emocao:indisponivel"]),
                 f"analise_leitura:{reading.provider_name}",
                 f"analise_interacao:{interaction.provider_name}",
                 f"analise_desempenho:{performance.provider_name}",
@@ -926,12 +878,8 @@ class LinearAnalysisOrchestrator:
 
 def build_linear_analysis_orchestrator(settings: Settings) -> LinearAnalysisOrchestrator:
     emotion_factory = {
-        "deepface": DeepFaceEmotionAnalyzer,
-        # lambda, e nao a classe: LocalVisionEmotionAnalyzer recebe o
-        # analisador heuristico por injecao para nao fechar ciclo de import.
-        "local_vision": lambda: LocalVisionEmotionAnalyzer(
-            fallback=DeepFaceEmotionAnalyzer()
-        ),
+        "unavailable": UnavailableEmotionAnalyzer,
+        "local_vision": LocalVisionEmotionAnalyzer,
     }
     reading_factory = {
         "isolation_forest": IsolationForestReadingAnalyzer,
@@ -951,7 +899,7 @@ def build_linear_analysis_orchestrator(settings: Settings) -> LinearAnalysisOrch
     }
 
     return LinearAnalysisOrchestrator(
-        emotion_analyzer=emotion_factory.get(settings.emotion_model_provider, DeepFaceEmotionAnalyzer)(),
+        emotion_analyzer=emotion_factory.get(settings.emotion_model_provider, UnavailableEmotionAnalyzer)(),
         reading_analyzer=reading_factory.get(settings.reading_model_provider, IsolationForestReadingAnalyzer)(),
         interaction_analyzer=interaction_factory.get(settings.interaction_model_provider, HiddenMarkovInteractionAnalyzer)(),
         performance_analyzer=performance_factory.get(settings.performance_model_provider, DeepKnowledgeTracingAnalyzer)(),
