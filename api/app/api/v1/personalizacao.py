@@ -102,6 +102,7 @@ from app.services.pseudonimizacao import (
     restaurar_nome,
 )
 from app.services.rag_observabilidade import gravar_buscas_rag, iniciar_coleta_rag
+from app.services.respostas_do_guia import resposta_sem_modelo
 from app.services.roteamento_ia import (
     MENSAGEM_IA_INDISPONIVEL,
     ROTA_MENOR,
@@ -1592,86 +1593,91 @@ async def conversar_com_mentor_personalizacao(
     if falas_sem_assinatura:
         # Mostra quantos ainda usam app que não assina e estão conversando sem contexto.
         logger.info("personalizacao.chat.falas_sem_assinatura=%s", falas_sem_assinatura)
-    async with rota_ia_para_alunos(session, [aluno_id]):
-        provedor_do_chat = settings.llm_provider
-        modelo_do_chat = (
-            settings.openai_model_default if provedor_do_chat == "openai" else settings.active_model_default
-        )
-        mentor_result = await gerar_validado(
-            llm,
-            prompt_name="mentor_personalizacao_chat.txt",
-            payload={
-                # O que muda menos vem primeiro: o provedor so reaproveita o comeco identico do
-                # pedido. A mensagem do aluno na frente derrubava o cache logo depois do prompt.
-                # Texto estatico sobre as telas do app; nenhum dado do aluno.
-                "guia_do_app": guia_do_app(),
-                "guardrails": {
-                    "sem_gabarito": True,
-                    "sem_resposta_direta_atividade": True,
+    mentor_result = resposta_sem_modelo(payload.mensagem)
+    if mentor_result is not None:
+        # Fica no log para medir quantas perguntas nem chegam ao modelo.
+        provedor_do_chat, modelo_do_chat = "regra", "respostas_do_guia"
+    else:
+        async with rota_ia_para_alunos(session, [aluno_id]):
+            provedor_do_chat = settings.llm_provider
+            modelo_do_chat = (
+                settings.openai_model_default if provedor_do_chat == "openai" else settings.active_model_default
+            )
+            mentor_result = await gerar_validado(
+                llm,
+                prompt_name="mentor_personalizacao_chat.txt",
+                payload={
+                    # O que muda menos vem primeiro: o provedor so reaproveita o comeco identico do
+                    # pedido. A mensagem do aluno na frente derrubava o cache logo depois do prompt.
+                    # Texto estatico sobre as telas do app; nenhum dado do aluno.
+                    "guia_do_app": guia_do_app(),
+                    "guardrails": {
+                        "sem_gabarito": True,
+                        "sem_resposta_direta_atividade": True,
+                    },
+                    # Conteudo completo do topico (da turma) para o guia se especializar
+                    # na materia e direcionar o estudo. Sem respostas de questoes.
+                    "conteudo_materia": {
+                        "conteudos": [
+                            {
+                                "titulo": c.get("titulo"),
+                                "tipo": c.get("tipo"),
+                                "resumo": str(c.get("conteudo") or "")[:600],
+                                "ordem": c.get("ordem"),
+                            }
+                            for c in (conteudos_topico or [])[:12]
+                            if isinstance(c, dict)
+                        ],
+                        "atividades": [
+                            {
+                                "titulo": a.get("titulo"),
+                                "descricao": a.get("descricao"),
+                                "tipo": a.get("tipo"),
+                            }
+                            for a in (atividades_topico or [])[:12]
+                            if isinstance(a, dict)
+                        ],
+                        "questoes_temas": [
+                            {"enunciado": q.get("enunciado"), "tipo": q.get("tipo")}
+                            for q in (questoes_topico or [])[:20]
+                            if isinstance(q, dict)
+                        ],
+                    },
+                    "topico": {
+                        "id": payload.topico_id,
+                        "nome": (topico or {}).get("nome") if isinstance(topico, dict) else None,
+                        "descricao": (topico or {}).get("descricao") if isinstance(topico, dict) else None,
+                    },
+                    "decisao_personalizacao": (
+                        ((latest_record or {}).get("plano") or {}).get("justificativa")
+                        if latest_record
+                        else None
+                    ),
+                    # Sem o UUID do aluno: nenhum prompt usa, e dado pseudonimizado
+                    # continua sendo dado pessoal (LGPD, minimizacao).
+                    "aluno": {
+                        "modo_operacao": (context.get("aluno") or {}).get("modo_operacao") if isinstance(context.get("aluno"), dict) else None,
+                        "modo_resposta": (context.get("aluno") or {}).get("modo_resposta") if isinstance(context.get("aluno"), dict) else None,
+                    },
+                    "perfil_brainhex": context.get("perfil_brainhex", [])[:4],
+                    "metricas_aluno": _build_student_metrics_summary(context, para_llm=True),
+                    "leituras_adaptativas": _build_student_reading_summary(context),
+                    "escopo": payload.escopo,
+                    "historico": [{k: _sem_nome(v) for k, v in fala.items()} for fala in historico_do_chat],
+                    "mensagem": _sem_nome(payload.mensagem),
                 },
-                # Conteudo completo do topico (da turma) para o guia se especializar
-                # na materia e direcionar o estudo. Sem respostas de questoes.
-                "conteudo_materia": {
-                    "conteudos": [
-                        {
-                            "titulo": c.get("titulo"),
-                            "tipo": c.get("tipo"),
-                            "resumo": str(c.get("conteudo") or "")[:600],
-                            "ordem": c.get("ordem"),
-                        }
-                        for c in (conteudos_topico or [])[:12]
-                        if isinstance(c, dict)
-                    ],
-                    "atividades": [
-                        {
-                            "titulo": a.get("titulo"),
-                            "descricao": a.get("descricao"),
-                            "tipo": a.get("tipo"),
-                        }
-                        for a in (atividades_topico or [])[:12]
-                        if isinstance(a, dict)
-                    ],
-                    "questoes_temas": [
-                        {"enunciado": q.get("enunciado"), "tipo": q.get("tipo")}
-                        for q in (questoes_topico or [])[:20]
-                        if isinstance(q, dict)
-                    ],
+                schema=MentorChatLLMResult,
+                guardrails=[checar_grounding_chat],
+                fallback_factory=lambda: dict(fallback),
+                contexto={
+                    "llm": llm,
+                    "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
+                    "guia_do_app": guia_do_app(),
                 },
-                "topico": {
-                    "id": payload.topico_id,
-                    "nome": (topico or {}).get("nome") if isinstance(topico, dict) else None,
-                    "descricao": (topico or {}).get("descricao") if isinstance(topico, dict) else None,
-                },
-                "decisao_personalizacao": (
-                    ((latest_record or {}).get("plano") or {}).get("justificativa")
-                    if latest_record
-                    else None
-                ),
-                # Sem o UUID do aluno: nenhum prompt usa, e dado pseudonimizado
-                # continua sendo dado pessoal (LGPD, minimizacao).
-                "aluno": {
-                    "modo_operacao": (context.get("aluno") or {}).get("modo_operacao") if isinstance(context.get("aluno"), dict) else None,
-                    "modo_resposta": (context.get("aluno") or {}).get("modo_resposta") if isinstance(context.get("aluno"), dict) else None,
-                },
-                "perfil_brainhex": context.get("perfil_brainhex", [])[:4],
-                "metricas_aluno": _build_student_metrics_summary(context, para_llm=True),
-                "leituras_adaptativas": _build_student_reading_summary(context),
-                "escopo": payload.escopo,
-                "historico": [{k: _sem_nome(v) for k, v in fala.items()} for fala in historico_do_chat],
-                "mensagem": _sem_nome(payload.mensagem),
-            },
-            schema=MentorChatLLMResult,
-            guardrails=[checar_grounding_chat],
-            fallback_factory=lambda: dict(fallback),
-            contexto={
-                "llm": llm,
-                "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
-                "guia_do_app": guia_do_app(),
-            },
-            on_violation=_auditar_chat,
-            prazo_total=settings.chat_prazo_total_seconds,
-            use_rag=bool(request.app.state.settings.openai_rag_enabled),
-        )
+                on_violation=_auditar_chat,
+                prazo_total=settings.chat_prazo_total_seconds,
+                use_rag=bool(request.app.state.settings.openai_rag_enabled),
+            )
 
     resposta_do_guia = montar_resposta_do_guia(
         mentor_result,

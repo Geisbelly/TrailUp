@@ -228,6 +228,13 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    primeiro e a pergunta vem por último, no Guardião, na Lumi, no juiz e nas etapas de mídia. Campo
    novo que muda a cada chamada não entra na frente. `tokens_cache` em `ia_uso_llm` mostra o efeito.
 
+8. **Pergunta de navegação não chama o modelo.** `respostas_do_guia.py` responde "onde fica a Loja"
+   com texto fixo, botão e tutorial: sem cota, sem juiz e sem a voz do Guardião. Só casa a frase
+   inteira e curta, com verbo de navegação e nome da tela; o resto vai ao modelo, e errar para esse
+   lado é o barato. Vale depois das checagens de idade e de modo restrito, que continuam barrando.
+   Os textos resumem `guia_do_app_aluno.md`: mudou a tela, mude os dois. `provider = 'regra'` em
+   `ia_decision_logs` conta quantas perguntas não chegaram ao modelo.
+
 ## Perfis BrainHex (7)
 
 `Seeker`, `Survivor`, `Daredevil`, `Mastermind`, `Conqueror`, `Socializer`,

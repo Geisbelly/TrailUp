@@ -98,6 +98,7 @@ import {
   getBuildCommit,
 } from "./src/constants/pipelineVersions";
 import { versionStoragePath } from "./src/constants/generationStorage";
+import { urlParaBaixar } from "./src/services/r2Upload";
 import { medirUso, novoUso } from "./src/lib/usoDoModelo";
 
 export {
@@ -1567,7 +1568,14 @@ async function downloadFonteStreamed(url: string): Promise<Buffer | null> {
   const ac    = new AbortController();
   const timer = setTimeout(() => ac.abort(), FONTE_FETCH_TIMEOUT_MS);
   try {
-    const response = await fetch(url, { signal: ac.signal });
+    // A fonte do professor vem com a URL do gateway, que sem assinatura da' 401.
+    // O log segue com `url`: o link assinado nao vai para log.
+    const alvo = await urlParaBaixar(url, (entrada, init) => fetch(entrada, { ...init, signal: ac.signal }));
+    if (!alvo) {
+      log.warn("fonte fora do gateway", { url });
+      return null;
+    }
+    const response = await fetch(alvo, { signal: ac.signal });
     if (!response.ok) {
       log.error("download falhou", { status: response.status, url });
       return null;

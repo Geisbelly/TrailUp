@@ -1,7 +1,16 @@
+from typing import Any
+
+import httpx
 import pytest
 
 from app.core.settings import Settings
-from app.services.storage import SupabaseStorage, build_public_storage_url, material_url_de_leitura, objeto_do_storage
+from app.services.storage import (
+    SupabaseStorage,
+    build_public_storage_url,
+    caminho_do_gateway,
+    material_url_de_leitura,
+    objeto_do_storage,
+)
 
 
 def test_build_public_storage_url_normaliza_prefixo_bucket_e_encoding() -> None:
@@ -269,3 +278,131 @@ async def test_download_public_bytes_de_bucket_privado_usa_a_chave_de_servico(mo
     monkeypatch.setattr(storage, "download_bytes", _fake_download_bytes)
     assert await storage.download_public_bytes(f"{BASE}/storage/v1/object/public/conteudos/u/1/a%20b.pdf") == b"ok"
     assert pedidos == [("conteudos", "u/1/a b.pdf")]
+
+
+# --- Leitura de servidor pelo gateway (#632) ---------------------------------
+#
+# Desde GATEWAY_EXIGE_LINK_ASSINADO o GET sem assinatura leva 401. A API pede o
+# link por POST, com a chave de servico, e o GET vai sem ela: o 302 aponta para o R2.
+
+GATEWAY_ROTA = f"{BASE}/functions/v1/storage-redirect"
+CAMINHO_FONTE = "fontes/classe-1/topico-2/conteudo-3/aula.pdf"
+LINK_ASSINADO = f"{GATEWAY_ROTA}?path={CAMINHO_FONTE}&u=0&exp=1&sig=segredo-do-link"
+
+
+class _GatewayFalso:
+    """httpx.AsyncClient que responde como o `storage-redirect` publicado."""
+
+    def __init__(self, *, links: dict[str, str] | None = None, status_post: int = 200, status_get: int = 200) -> None:
+        self.links = {CAMINHO_FONTE: LINK_ASSINADO} if links is None else links
+        self.status_post = status_post
+        self.status_get = status_get
+        self.posts: list[tuple[str, Any, dict[str, str]]] = []
+        self.gets: list[tuple[str, dict[str, str] | None]] = []
+
+    def __call__(self, *args: Any, **kwargs: Any) -> "_GatewayFalso":
+        return self
+
+    async def __aenter__(self) -> "_GatewayFalso":
+        return self
+
+    async def __aexit__(self, *_: Any) -> bool:
+        return False
+
+    async def post(self, url: str, *, json: Any, headers: dict[str, str]) -> httpx.Response:
+        self.posts.append((url, json, headers))
+        return httpx.Response(
+            self.status_post, json={"links": self.links}, request=httpx.Request("POST", url)
+        )
+
+    async def get(self, url: str, headers: dict[str, str] | None = None, **_: Any) -> httpx.Response:
+        self.gets.append((url, headers))
+        return httpx.Response(self.status_get, content=b"bytes da fonte", request=httpx.Request("GET", url))
+
+
+def _storage_com(monkeypatch, gateway: _GatewayFalso) -> SupabaseStorage:
+    monkeypatch.setattr("app.services.storage.httpx.AsyncClient", gateway)
+    return SupabaseStorage(Settings(supabase_url=BASE, supabase_service_key="chave-de-servico"))
+
+
+@pytest.mark.asyncio
+async def test_download_bytes_pede_o_link_com_a_chave_e_baixa_sem_ela(monkeypatch) -> None:
+    gateway = _GatewayFalso()
+    storage = _storage_com(monkeypatch, gateway)
+
+    assert await storage.download_bytes(bucket="conteudo_aluno", path=CAMINHO_FONTE) == b"bytes da fonte"
+
+    [(url, corpo, headers)] = gateway.posts
+    assert url == GATEWAY_ROTA
+    assert corpo == {"paths": [CAMINHO_FONTE]}
+    assert headers["Authorization"] == "Bearer chave-de-servico"
+    # Nada de GET sem assinatura, e a chave nao segue no pedido que redireciona para o R2.
+    assert gateway.gets == [(LINK_ASSINADO, None)]
+
+
+@pytest.mark.asyncio
+async def test_download_bytes_com_o_gateway_recusando_avisa_e_cai_no_storage(monkeypatch, caplog) -> None:
+    gateway = _GatewayFalso(status_post=401)
+    storage = _storage_com(monkeypatch, gateway)
+
+    with caplog.at_level("WARNING", logger="app.services.storage"):
+        assert await storage.download_bytes(bucket="conteudo_aluno", path=CAMINHO_FONTE) == b"bytes da fonte"
+
+    assert "401" in caplog.text
+    assert [url for url, _ in gateway.gets] == [f"{BASE}/storage/v1/object/conteudo_aluno/{CAMINHO_FONTE}"]
+
+
+@pytest.mark.asyncio
+async def test_falha_no_download_nao_poe_a_assinatura_no_log(monkeypatch, caplog) -> None:
+    gateway = _GatewayFalso(status_get=500)
+    storage = _storage_com(monkeypatch, gateway)
+
+    with caplog.at_level("INFO", logger="app.services.storage"):
+        await storage._download_via_gateway(CAMINHO_FONTE)
+
+    assert "500" in caplog.text
+    assert "segredo-do-link" not in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_caminho_que_o_gateway_nao_conhece_nao_tenta_baixar(monkeypatch) -> None:
+    gateway = _GatewayFalso(links={})
+    storage = _storage_com(monkeypatch, gateway)
+
+    assert await storage._download_via_gateway(CAMINHO_FONTE) is None
+    assert gateway.gets == []
+
+
+@pytest.mark.asyncio
+async def test_download_public_bytes_baixa_a_url_do_gateway_gravada_em_arquivo_url(monkeypatch) -> None:
+    gateway = _GatewayFalso()
+    storage = _storage_com(monkeypatch, gateway)
+
+    assert await storage.download_public_bytes(f"{GATEWAY_ROTA}?path={CAMINHO_FONTE}") == b"bytes da fonte"
+    assert gateway.gets == [(LINK_ASSINADO, None)]
+
+
+@pytest.mark.asyncio
+async def test_download_public_bytes_nao_leva_a_chave_para_fora_do_projeto(monkeypatch) -> None:
+    gateway = _GatewayFalso()
+    storage = _storage_com(monkeypatch, gateway)
+    de_fora = f"https://outro.supabase.co/functions/v1/storage-redirect?path={CAMINHO_FONTE}"
+
+    assert await storage.download_public_bytes(de_fora) == b"bytes da fonte"
+    assert gateway.posts == []
+    assert gateway.gets == [(de_fora, None)]
+
+
+def test_caminho_do_gateway_so_reconhece_o_deste_projeto() -> None:
+    assert caminho_do_gateway(BASE, f"{GATEWAY_ROTA}?path=fontes/a%20b.pdf") == "fontes/a b.pdf"
+    assert caminho_do_gateway(f"{BASE}/", f"{GATEWAY_ROTA}?path=a.pdf&u=x&sig=y") == "a.pdf"
+    for outra in (
+        "https://outro.supabase.co/functions/v1/storage-redirect?path=a.pdf",
+        f"{BASE}.exemplo.test/functions/v1/storage-redirect?path=a.pdf",
+        f"{GATEWAY_ROTA}?outro=1",
+        f"{BASE}/storage/v1/object/public/conteudos/a.pdf",
+        "",
+        None,
+    ):
+        assert caminho_do_gateway(BASE, outra) is None
+    assert caminho_do_gateway("", f"{GATEWAY_ROTA}?path=a.pdf") is None

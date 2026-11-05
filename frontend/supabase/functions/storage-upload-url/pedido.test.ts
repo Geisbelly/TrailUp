@@ -3,6 +3,7 @@ import {
   bearerDe,
   chamadorAutorizado,
   chaveDeServicoDoProjeto,
+  criarConferenciaDeServico,
   lerPedido,
   mesmaChave,
   urlDeLeitura,
@@ -137,5 +138,38 @@ describe("lerPedido: arquivo da pesquisa (#17)", () => {
 
   it("o gateway nao serve o arquivo da pesquisa", () => {
     expect(urlDeLeitura("https://x.supabase.co", ARQUIVO)).toBeNull();
+  });
+});
+
+describe("criarConferenciaDeServico", () => {
+  const ambiente = () => ({ chaveDeServico: CHAVE, supabaseUrl: "https://x.supabase.co" });
+  const responde = (status: number) => vi.fn(async () => new Response("", { status }));
+
+  it("a chave do ambiente passa sem perguntar ao projeto", async () => {
+    const fetchImpl = responde(401);
+    const confere = criarConferenciaDeServico(ambiente, fetchImpl as unknown as typeof fetch);
+    expect(await confere(`Bearer ${CHAVE}`)).toBe(true);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("outra chave de serviço do projeto passa e fica guardada por minutos, não para sempre", async () => {
+    const fetchImpl = responde(200);
+    let agora = 1_000;
+    const confere = criarConferenciaDeServico(ambiente, fetchImpl as unknown as typeof fetch, () => agora);
+    expect(await confere("Bearer outra")).toBe(true);
+    expect(await confere("Bearer outra")).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    agora += 5 * 60 * 1000 + 1;
+    expect(await confere("Bearer outra")).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("token que o projeto recusa não passa, e sem Bearer nem pergunta", async () => {
+    const fetchImpl = responde(403);
+    const confere = criarConferenciaDeServico(ambiente, fetchImpl as unknown as typeof fetch);
+    expect(await confere("Bearer eyJ.aluno.x")).toBe(false);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(await confere(null)).toBe(false);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });

@@ -46,6 +46,11 @@
 // Transicao: link sem assinatura continua aceito ate' GATEWAY_EXIGE_LINK_ASSINADO
 // = "true" (depois da versao minima do app). Link com assinatura errada ou
 // vencida e' recusado desde ja'.
+//
+// LEITURA DE SERVIDOR. API e microservice baixam fonte e material sem sessao de
+// usuario, entao pedem o link com a chave de servico (a mesma conferencia do
+// `storage-upload-url`). O link sai com `u` = USUARIO_DO_SERVICO e o GET continua
+// com uma regra so': a chave nunca vai no pedido que redireciona para o R2.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
@@ -53,7 +58,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 import { normalizarStoragePath } from "./caminho.ts";
 import { inicioDaJanela, presignR2GetUrl } from "./r2Presign.ts";
 import { bucketDoCaminho, urlAssinadaDoSupabase, validadeDaAssinatura } from "./destino.ts";
-import { caminhosDoPedido, conferirLink, expiracaoDoLink, montarLink } from "./link.ts";
+import { caminhosDoPedido, conferirLink, expiracaoDoLink, identificarChamador, montarLink } from "./link.ts";
+import { criarConferenciaDeServico } from "../storage-upload-url/pedido.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -63,6 +69,11 @@ const CORS = {
 
 const JANELA_SEGUNDOS = 3600;
 const MAX_CAMINHOS_POR_PEDIDO = 200;
+
+const ehChaveDeServico = criarConferenciaDeServico(() => ({
+  chaveDeServico: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+  supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
+}));
 
 function json(status: number, corpo: unknown): Response {
   return new Response(JSON.stringify(corpo), {
@@ -74,7 +85,8 @@ function json(status: number, corpo: unknown): Response {
 /**
  * POST: links curtos para os caminhos que QUEM PEDE pode ler. A permissao e' da
  * RLS: a consulta a view (security_invoker) vai com o JWT do chamador. Caminho
- * que ele nao pode ler simplesmente nao volta - sem dizer se existe.
+ * que ele nao pode ler simplesmente nao volta - sem dizer se existe. A chave de
+ * servico le a view inteira, como ja' le em todo o resto do banco.
  */
 async function emitirLinks(req: Request, segredo: string | undefined): Promise<Response> {
   if (!segredo) {
@@ -88,8 +100,14 @@ async function emitirLinks(req: Request, segredo: string | undefined): Promise<R
   const servico = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "", {
     auth: { persistSession: false },
   });
-  const { data: sessao, error: erroSessao } = await servico.auth.getUser(token);
-  if (erroSessao || !sessao?.user) return erro(401, "Sessao invalida.");
+  const chamador = await identificarChamador({
+    usuarioDaSessao: async () => {
+      const { data: sessao, error: erroSessao } = await servico.auth.getUser(token);
+      return erroSessao ? null : sessao?.user?.id ?? null;
+    },
+    ehChaveDeServico: () => ehChaveDeServico(`Bearer ${token}`),
+  });
+  if (!chamador) return erro(401, "Sessao invalida.");
 
   let corpo: unknown;
   try {
@@ -101,10 +119,12 @@ async function emitirLinks(req: Request, segredo: string | undefined): Promise<R
   if (!pedidos) return erro(400, `Envie { paths: [...] } com 1 a ${MAX_CAMINHOS_POR_PEDIDO} caminhos.`);
   const caminhos = pedidos.map(normalizarStoragePath).filter((c): c is string => c !== null);
 
-  const comoQuemPede = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
-    auth: { persistSession: false },
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
+  const comoQuemPede = chamador.tipo === "servico"
+    ? servico
+    : createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
+      auth: { persistSession: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
   const { data, error } = caminhos.length
     ? await comoQuemPede.from("vw_material_storage_paths").select("storage_path").in("storage_path", caminhos)
     : { data: [], error: null };
@@ -117,7 +137,7 @@ async function emitirLinks(req: Request, segredo: string | undefined): Promise<R
   const links: Record<string, string> = {};
   for (const linha of data ?? []) {
     const caminho = (linha as { storage_path: string }).storage_path;
-    links[caminho] = await montarLink({ base: supabaseUrl, segredo, caminho, usuario: sessao.user.id, expira });
+    links[caminho] = await montarLink({ base: supabaseUrl, segredo, caminho, usuario: chamador.usuario, expira });
   }
   return json(200, { expira_em: expira, links });
 }

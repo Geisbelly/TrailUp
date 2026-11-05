@@ -185,7 +185,7 @@ test("uploadBuffer com o R2 recusando lanca e nao grava em silencio no Supabase"
   }
 });
 
-test("downloadStorageText le pelo gateway antes do Storage, e cai no Storage com 404", async () => {
+test("downloadStorageText le pelo link do gateway antes do Storage, e cai no Storage sem link", async () => {
   let storageLido = 0;
   const client = {
     storage: {
@@ -199,16 +199,27 @@ test("downloadStorageText le pelo gateway antes do Storage, e cai no Storage com
   } as unknown as SupabaseClient;
   setSupabaseClientForTesting(client);
   try {
+    // Como o gateway publicado: GET sem assinatura leva 401 (#632).
+    const assinado = `${GATEWAY_MD}&u=00000000-0000-0000-0000-000000000000&exp=1&sig=s`;
     await comGatewayFalso(
-      () => new Response("do gateway", { status: 200 }),
+      (url, init) => {
+        if (init?.method === "POST") return new Response(JSON.stringify({ links: { [MD]: assinado } }), { status: 200 });
+        return url === assinado ? new Response("do gateway", { status: 200 }) : new Response("", { status: 401 });
+      },
       async () => assert.equal(await downloadStorageText("conteudo_aluno", MD), "do gateway"),
     );
     assert.equal(storageLido, 0);
     await comGatewayFalso(
-      () => new Response("", { status: 404 }),
+      () => new Response(JSON.stringify({ links: {} }), { status: 200 }),
       async () => assert.equal(await downloadStorageText("conteudo_aluno", MD), "do storage"),
     );
     assert.equal(storageLido, 1);
+    // Gateway que ainda nao aceita a chave: nao derruba a leitura.
+    await comGatewayFalso(
+      () => new Response("", { status: 401 }),
+      async () => assert.equal(await downloadStorageText("conteudo_aluno", MD), "do storage"),
+    );
+    assert.equal(storageLido, 2);
   } finally {
     setSupabaseClientForTesting(null);
   }

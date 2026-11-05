@@ -20,7 +20,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 import { presignR2GetUrl } from "../storage-redirect/r2Presign.ts";
-import { bearerDe, chamadorAutorizado, chaveDeServicoDoProjeto, lerPedido, urlDeLeitura } from "./pedido.ts";
+import { criarConferenciaDeServico, lerPedido, urlDeLeitura } from "./pedido.ts";
 
 // Janela curta: a URL so' precisa viver o tempo de um upload. Dentro da janela
 // a assinatura e' a mesma para o mesmo caminho; a validade e' o dobro, senao a
@@ -35,21 +35,10 @@ function json(status: number, corpo: Record<string, unknown>): Response {
   });
 }
 
-// Chave que o projeto ja' confirmou como de servico, para nao perguntar ao Auth
-// a cada lote de telemetria. Curto: chave revogada para de passar em minutos.
-const CONFIRMADA_POR_MS = 5 * 60 * 1000;
-const confirmadas = new Map<string, number>();
-
-async function autorizado(authorization: string | null): Promise<boolean> {
-  if (chamadorAutorizado(authorization, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"))) return true;
-  const token = bearerDe(authorization);
-  if (!token) return false;
-  const agora = Date.now();
-  if ((confirmadas.get(token) ?? 0) > agora) return true;
-  if (!(await chaveDeServicoDoProjeto(token, Deno.env.get("SUPABASE_URL") ?? ""))) return false;
-  confirmadas.set(token, agora + CONFIRMADA_POR_MS);
-  return true;
-}
+const autorizado = criarConferenciaDeServico(() => ({
+  chaveDeServico: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+  supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
+}));
 
 serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "Use POST." });
