@@ -182,3 +182,4 @@ src/utils/bloqueioDeCaptura.test.ts
 src/utils/progressoDaTurma.test.ts
 src/utils/linkDoGateway.test.ts
 src/utils/destinosDoGuia.test.ts
+src/services/saude/medicao.test.ts
