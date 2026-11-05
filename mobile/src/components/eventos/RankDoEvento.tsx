@@ -12,10 +12,12 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellPalette";
 import { formatRankScore } from "@/utils/rankingPodium";
 import { carregarRanksDoEvento, estouNoRank, mudarInscricao } from "@/services/eventos/eventosDaTurma";
+import { DueloNoEvento } from "./DueloNoEvento";
 import {
   enfaseDoRank,
   fraseDoRank,
   mensagemDaInscricao,
+  podeDuelarNoEvento,
   podeMexerNaInscricao,
   vizinhanca,
   type BlocoDoRank,
@@ -345,6 +347,8 @@ export function RankDoEvento({ evento, classeId, meuId, palette }: Props) {
         </View>
       ) : null}
 
+      {podeDuelarNoEvento(evento, inscrito, ranks) ? <DueloNoEvento evento={evento} palette={palette} onEnviado={() => void carregar()} /> : null}
+
       <View style={[s.regras, { borderTopColor: palette.border }]}>
         <Pressable
           accessibilityRole="button"
@@ -358,7 +362,8 @@ export function RankDoEvento({ evento, classeId, meuId, palette }: Props) {
         {regrasAbertas ? (
           <Text style={[s.texto, { color: palette.textMuted }]}>
             Só aparece quem escolheu entrar. Cada critério é um rank, contado só na janela do evento, com os mesmos números do ranking da
-            turma. Entrar ou sair não muda nota, XP nem o ranking da turma.
+            turma. Entrar ou sair não muda nota, XP nem o ranking da turma. Em Batalha contam os duelos do evento, contra colegas do rank
+            com desempenho parecido; quem perde não perde ponto.
           </Text>
         ) : null}
       </View>

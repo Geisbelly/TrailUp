@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contagem, estadoDoDia, formatarDisponibilidade, lerAcessosDosAlunos, lerDisponibilidade, orcamentoGastoPct, rotuloDaAula, rotuloDaOrigem, ultimosDias } from "./disponibilidade";
+import { contagem, estadoDoDia, formatarDisponibilidade, lerAcessosDosAlunos, lerDisponibilidade, orcamentoGastoPct, rotuloDaOrigem, ultimosDias } from "./disponibilidade";
 
 describe("lerDisponibilidade", () => {
   it("recusa o que não é objeto", () => {
@@ -39,10 +39,6 @@ describe("rótulos e contas", () => {
     expect(orcamentoGastoPct({ minutos_fora_aula: 0, orcamento_aula_min: null, medidas_aula: 10 })).toBeNull();
     expect(orcamentoGastoPct({ minutos_fora_aula: 0, orcamento_aula_min: 90, medidas_aula: 0 })).toBeNull();
     expect(orcamentoGastoPct({ minutos_fora_aula: 45, orcamento_aula_min: 90, medidas_aula: 10 })).toBe(50);
-  });
-
-  it("a janela de aula aparece por extenso", () => {
-    expect(rotuloDaAula({ dias: [1, 5], inicio: "07:00", fim: "22:00" })).toBe("seg, sex, 07:00 às 22:00");
   });
 
   it("contagem traz o denominador, e denominador zero é traço", () => {

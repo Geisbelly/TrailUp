@@ -2,13 +2,13 @@
 
 O TrailUp deve acompanhar poucos números, e cada um precisa mudar o que a dona faz. A base é uma disponibilidade por sonda com 99,5% provisório, um indicador de frescor da geração, a contagem de alunos afetados por falha e a fração da turma ativa por semana. O problema mais urgente não é a falta de métrica, e sim onde o SLO vale: medido 24x7 em 30 dias, 99,5% permite 216 minutos fora, e uma única queda às 23 h vista às 7 h gasta 480 minutos, mais que todo o orçamento. Medir só em horário de aula corrige isso, mas expõe um segundo ponto: com sonda de 5 minutos, console e web do aluno não têm resolução para essa meta. O maior ponto cego é outro: o app fala direto com o Supabase, então nenhuma das três sondas mede o app, e sem a captura de erro no cliente ninguém vê um crash. Percentual de crash, p99 e DAU/MAU não servem para 30 alunos, porque um aluno vale 3,3 pontos e p99 nem tem intervalo de confiança abaixo de 368 amostras. Nesse porte, a conclusão vem de contagem absoluta com denominador visível. Quase todas as metas abaixo são propostas: as únicas importadas de fora são limiares públicos, como Web Vitals e Android vitals. O próprio repositório pede cautela (`docs/architecture/mapa-dados-metricas-kpis.md` diz "Não inventar SLO ou metas"), por isso cada meta traz sua marca.
 
-> **Decidido em 05/11/2026:** decisões 1 e 2 aceitas. O SLO vale em horário de aula, em 28 dias, com sonda de 1 min em aula, e isso já está na PR #981. A janela de aula é global, porque o banco não tem grade, e está confirmada: segunda a sexta, 07:00 às 22:00. As contas abaixo que falam em 24x7 ou em 5 min descrevem o estado anterior à decisão.
+> **Decidido em 05/11/2026, depois revisto:** a primeira decisão pôs o SLO em horário de aula, em 28 dias. No mesmo dia ela caiu: o TrailUp é um app, então a meta vale 24 horas por dia, todos os dias, com sonda de 1 min nos três alvos (`20261105_19`). Este relatório recomendava o contrário, e as contas abaixo que falam em horário de aula descrevem essa proposta, não o que está no ar. O custo conhecido dessa escolha: sem plantão, uma queda de madrugada pode gastar sozinha os cerca de 3h22 do orçamento de 28 dias.
 
 > **Implementado em 05/11/2026 (decisão 4, parte própria):** erro, Web Vitals, chamadas e acessos ao console gravados no Supabase (`20261105_14`), nos três clientes. O Sentry ficou de fora: crash nativo segue sem captura. As tabelas abaixo dizem "falta" para o que existia antes disso. Ver `docs/architecture/monitoramento.md`.
 
 ## Decisões que a dona precisa tomar
 
-O monitor descrito aqui está nas migrations `20261105_09` e `20261105_10`, ainda em revisão. Mudar um limiar ou uma meta é editar `app_config.monitor_config`, sem migration; a janela de aula também.
+O monitor descrito aqui está nas migrations `20261105_09`, `20261105_10` e `20261105_19`. Mudar um limiar ou uma meta é editar `app_config.monitor_config`, sem migration.
 
 | # | Decisão | Opção recomendada | Motivo em uma frase |
 |---|---|---|---|

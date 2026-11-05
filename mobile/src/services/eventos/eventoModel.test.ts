@@ -8,6 +8,8 @@ import {
   mensagemDaInscricao,
   minhaPosicao,
   montarRanksDoEvento,
+  normalizarSugeridos,
+  podeDuelarNoEvento,
   podeMexerNaInscricao,
   normalizeEvento,
   podioDoEvento,
@@ -333,5 +335,31 @@ describe("rank do evento (#155)", () => {
     assert.equal(mensagemDaInscricao({ code: "22023", message: "O evento não está aberto." }), "O evento não está aberto.");
     assert.match(mensagemDaInscricao(new Error("Failed to fetch")), /conexão/);
     assert.match(mensagemDaInscricao(null), /conexão/);
+  });
+});
+
+describe("duelo no evento (#154)", () => {
+  const comRank = evento({ pecas: ["arena"] });
+  const batalha = [{ criterio: "ranqueada" }];
+
+  it("só oferece o duelo a inscrito, com o evento aberto e rank de batalha", () => {
+    assert.equal(podeDuelarNoEvento(comRank, true, batalha, AGORA), true);
+    assert.equal(podeDuelarNoEvento(comRank, false, batalha, AGORA), false);
+    assert.equal(podeDuelarNoEvento(comRank, null, batalha, AGORA), false);
+    assert.equal(podeDuelarNoEvento(comRank, true, [{ criterio: "pontuacao" }], AGORA), false);
+    assert.equal(podeDuelarNoEvento(comRank, true, batalha, new Date("2026-10-19T18:00:00Z")), false);
+    assert.equal(podeDuelarNoEvento(evento({ pecas: ["arena"], status: "encerrado" }), true, batalha, AGORA), false);
+  });
+
+  it("lê a sugestão do banco na ordem, sem inventar quem não veio", () => {
+    assert.deepEqual(
+      normalizarSugeridos({ k: 3, alunos: [{ aluno_id: "a", nome: " Ana " }, { aluno_id: "", nome: "x" }, { aluno_id: "b", nome: null }] }),
+      [
+        { alunoId: "a", nome: "Ana" },
+        { alunoId: "b", nome: "Colega" },
+      ],
+    );
+    assert.deepEqual(normalizarSugeridos(null), []);
+    assert.deepEqual(normalizarSugeridos({ alunos: "x" }), []);
   });
 });

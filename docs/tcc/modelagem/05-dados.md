@@ -168,9 +168,12 @@ erDiagram
   GUILDAS ||--o{ GUILDA_MEMBROS : guilda_id
   GUILDAS ||--o{ GUILDA_DESAFIOS : guilda_id
   GUILDA_DESAFIOS ||--o{ RANQUEADA_ELO_PARTIDA : desafio_id
+  EVENTOS_CLASSE ||--o{ GUILDA_DESAFIOS : evento_id
   CLASSE ||--o{ FUNDOS_TURMA : classe_id
   FUNDOS_TURMA ||--o{ FUNDOS_TURMA_CONTRIBUICAO : fundo_id
 ```
+
+**Duelo no evento:** `guilda_desafios.evento_id` é nulo fora de evento, e um `CHECK` exige `consequencia = 'evento'` quando ele existe. Essa consequência não mexe no Elo nem cobra aposta, e fica fora do XP. No evento, o adversário vem dos inscritos de desempenho mais próximo (`evento_sugerir_adversarios`, que devolve só nomes). No Social, a escolha continua livre.
 
 ## 5.6 Notificações
 
@@ -212,3 +215,29 @@ erDiagram
 
 - **Consentimentos:** as FKs usam `SET NULL` de propósito, para que a prova de consentimento sobreviva à exclusão da conta. As demais tabelas do aluno usam `CASCADE`.
 - **Exclusões que saem do banco:** apagar uma linha de `rag_openai_files` ou de uma fonte enfileira em `retencao_externa` a remoção do arquivo fora do banco, no R2 ou na OpenAI.
+
+## 5.8 Observabilidade
+
+```mermaid
+erDiagram
+  MONITOR_ALVO ||--o{ MONITOR_SONDA : alvo_id
+  MONITOR_ALVO ||..o{ MONITOR_INCIDENTE : "alvo_id, sem FK"
+  MONITOR_ALERTA
+  MONITOR_CONSULTA
+  AUTH_USERS ||--o{ CLIENTE_SESSAO : user_id
+  CLIENTE_ERRO
+  IA_USO_LLM
+
+  CLIENTE_ERRO {
+    date dia
+    text superficie "console | web_aluno | app"
+    text versao
+    text assinatura
+    integer vezes
+  }
+```
+
+- **De fora (`monitor_*`):** o `pg_cron` sonda a API, o console e a web do aluno, aplica o resultado na máquina de estados de `monitor_alvo` e envia os alertas de `monitor_alerta` por e-mail. A sonda sem resposta fica com `ok` nulo, porque quem falhou foi o medidor. O monitor cai junto com o Supabase.
+- **De dentro (`cliente_*`):** erro, Web Vitals, falha de chamada e acesso são gravados pelo próprio cliente, direto no Supabase, por RPC. `cliente_sessao` tem uma linha por sessão e `cliente_erro` agrega por assinatura, dia, superfície e versão, guardando até 50 ids de sessão para contar pessoas afetadas. Não há stack, URL completa nem texto digitado, e as tabelas não têm policy nem GRANT: a RPC é a única porta.
+- **Modelo (`ia_uso_llm`):** registra cada chamada ao modelo de linguagem: prompt, provedor, tokens, cache e tempo. Não tem `aluno_id` nem texto, e só o `service_role` lê e escreve.
+- **Acesso por aluno:** a lista do painel técnico abre com código curto, e mostrar nomes fica registrado em `monitor_consulta`. Nela não entram emoção, BrainHex nem nota.
