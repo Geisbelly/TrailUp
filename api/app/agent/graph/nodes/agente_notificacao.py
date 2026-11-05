@@ -41,6 +41,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.agent.graph.nodes.agente_intervencao import _TERMOS_DE_EMOCAO
 from app.core.settings import Settings
 from app.schemas.notificacao import NotificacaoPayload
 from app.services.llm import JsonLLMService, StructuredOutputError
@@ -152,10 +153,12 @@ _TERMOS_DE_SISTEMA = re.compile(
     r"metricas?|algoritmos?|sistemas?|telemetria|engajamento|desempenho|brainhex|perfis|perfil|"
     r"modulos?|ciclos?|blocos?|modelos?|analis\w*|analise|dados|estrategic\w*|eficiencia)\b"
 )
+# O aluno não pode ler que foi observado. Casa sem acento, como os termos de sistema.
+_TERMOS_DE_VIGILANCIA = re.compile(r"\b(monitor\w*|vigi\w*|rastre\w*|detect\w*|camera|cameras|coletad\w*)\b")
 _PLACEHOLDER = re.compile(r"[\[\]{}<>]|\bMOCK\b|\bAlun[oa]\b|\bEstudante\b")
 _PALAVRAS_POR_FRASE = 18
 # Versão desta guarda, gravada em `contexto.texto_guarda`. O banco não entrega abaixo do mínimo dele.
-TEXTO_GUARDA_VERSAO = 1
+TEXTO_GUARDA_VERSAO = 2
 
 
 def _sem_acento(texto: str) -> str:
@@ -182,6 +185,13 @@ def problemas_do_texto(titulo: str, corpo: str, foco: dict[str, Any] | None = No
     termos = sorted({m.group(0) for m in _TERMOS_DE_SISTEMA.finditer(livre)})
     if termos:
         problemas.append("usa palavras de sistema: " + ", ".join(termos))
+    # DAT-45: o sistema não mede emoção, e o modelo recebe `emocao_atual` para escolher o que dizer.
+    emocoes = sorted({m.group(0) for m in _TERMOS_DE_EMOCAO.finditer(livre)})
+    if emocoes:
+        problemas.append("atribui emoção ao aluno: " + ", ".join(emocoes))
+    vigilancia = sorted({m.group(0) for m in _TERMOS_DE_VIGILANCIA.finditer(livre)})
+    if vigilancia:
+        problemas.append("diz que o aluno foi observado: " + ", ".join(vigilancia))
     frases = [f for f in re.split(r"[.!?]+", corpo) if f.strip()]
     if any(len(f.split()) > _PALAVRAS_POR_FRASE for f in frases):
         problemas.append(f"tem frase com mais de {_PALAVRAS_POR_FRASE} palavras")

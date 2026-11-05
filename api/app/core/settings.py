@@ -162,9 +162,6 @@ class Settings(BaseSettings):
     # Teto da resposta inteira nos chats, somando repeticao, juiz e rodizio de chaves. Sem ele, um 503
     # do Gemini percorre todas as chaves e modelos, e o console desiste aos 75 s sem resposta nenhuma.
     chat_prazo_total_seconds: float = 40.0
-    # Ligar depois da versao minima do app que assina: antes disso, fala do guia sem assinatura segue
-    # ao modelo marcada como nao verificada. A Lumi nao depende disto, o console ja assina.
-    mentor_exigir_fala_assinada: bool = False
     # Teto de UMA requisicao ao modelo no JsonLLMService (grafo, supervisor...).
     # Sem ele o cliente espera para sempre. Medido em 02/11: ciclo inteiro com
     # 8 chamadas sai em 16 s quando a cota responde, entao 30 s por chamada

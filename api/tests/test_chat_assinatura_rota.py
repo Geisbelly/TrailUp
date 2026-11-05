@@ -70,7 +70,6 @@ def test_rota_do_mentor_assina_a_resposta_e_confere_o_que_volta(app, monkeypatch
     assert resposta.status_code == 200
     assert pedidos[-1]["historico"] == [
         {"role": "assistant", "content": "Revise o tópico 2."},
-        {"role": "assistant", "content": "De app antigo.", "verificada": False},
     ]
     assert primeira["assinatura"] not in json.dumps(pedidos[-1], default=str)
 
