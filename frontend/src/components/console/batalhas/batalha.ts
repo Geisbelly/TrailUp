@@ -11,6 +11,8 @@ export type Duelo = {
   modo: "todos" | "velocidade" | "precisao" | "duelo" | "duplo";
   dificuldade: "normal" | "dificil";
   consequencia: "treino" | "ranqueada" | "evento";
+  /** Duelo dentro de um evento (#154, `20261105_15`); `null` no Social. */
+  eventoId: string | null;
   status: "aberto" | "encerrado";
   resultado: "vitoria" | "empate" | "sem_adversario" | null;
   vencedorEquipe: 1 | 2 | null;

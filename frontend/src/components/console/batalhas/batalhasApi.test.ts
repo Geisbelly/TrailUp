@@ -21,6 +21,11 @@ describe("mapearDuelo", () => {
     expect(d.equipes).toEqual([{ equipe: 1, pontos: 5, integrantes: 2 }, { equipe: 2, pontos: 0, integrantes: 2 }]);
   });
 
+  it("diz de qual evento é o duelo (#154)", () => {
+    expect(mapearDuelo({ id: "d3", consequencia: "evento", evento_id: "ev-1" })).toMatchObject({ consequencia: "evento", eventoId: "ev-1" });
+    expect(mapearDuelo({ id: "d4" }).eventoId).toBeNull();
+  });
+
   it("sem equipes nem resultado conhecido", () => {
     const d = mapearDuelo({ id: "d2", resultado: "outro", vencedor_equipe: 3, equipes: null });
     expect(d).toMatchObject({ resultado: null, vencedorEquipe: null, status: "aberto", equipes: [] });

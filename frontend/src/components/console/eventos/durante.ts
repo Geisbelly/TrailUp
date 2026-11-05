@@ -72,3 +72,32 @@ export function resumoDosInscritos(inscritos: number, total: number): string {
   const quem = inscritos === 1 ? "1 aluno entrou" : `${inscritos} alunos entraram`;
   return `${quem} no rank (${percentual(inscritos, total)}% da turma). Entrar é opcional e não muda nota nem XP.`;
 }
+
+/** O que o painel precisa de cada duelo da turma (`arena_professor_resumo`). */
+export type DueloDaTurma = { eventoId: string | null; status: "aberto" | "encerrado"; resultado: string | null };
+
+export type DuelosDoEvento = { total: number; jogados: number; aguardando: number; semAdversario: number };
+
+/**
+ * Os duelos de um evento (#154): os que o resumo da arena marca com o `evento_id` dele. `jogados` são
+ * os encerrados com resultado de verdade; `sem_adversario` (ninguém aceitou) conta à parte.
+ */
+export function duelosDoEvento(duelos: DueloDaTurma[], eventoId: string): DuelosDoEvento {
+  const doEvento = duelos.filter((d) => d.eventoId === eventoId);
+  const semAdversario = doEvento.filter((d) => d.status === "encerrado" && d.resultado === "sem_adversario").length;
+  const aguardando = doEvento.filter((d) => d.status === "aberto").length;
+  return { total: doEvento.length, jogados: doEvento.length - aguardando - semAdversario, aguardando, semAdversario };
+}
+
+/**
+ * A frase do painel. `recorte`: o resumo da arena traz só os duelos mais recentes da turma (40); com a
+ * lista cheia, a contagem pode estar curta, e a frase diz isso em vez de afirmar um total.
+ */
+export function resumoDosDuelos(d: DuelosDoEvento, recorte: boolean): string {
+  if (d.total === 0) return "Nenhum duelo no evento ainda. Duelar é opcional: quem perde não perde ponto.";
+  const partes = [`${d.jogados} ${d.jogados === 1 ? "jogado" : "jogados"}`];
+  if (d.aguardando) partes.push(`${d.aguardando} esperando o adversário aceitar`);
+  if (d.semAdversario) partes.push(`${d.semAdversario} sem adversário`);
+  const total = `${d.total} ${d.total === 1 ? "duelo" : "duelos"} no evento: ${partes.join(", ")}.`;
+  return recorte ? `${total} A contagem olha os 40 duelos mais recentes da turma.` : total;
+}
