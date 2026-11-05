@@ -266,6 +266,13 @@ class Settings(BaseSettings):
     missoes_ia_trava_seconds: int = 600
     # Restringe o worker a estas turmas, como PERSONALIZACAO_JOBS_CLASSE_IDS (#652).
     missoes_ia_classe_ids: list[int] = []
+    # Diagnostico antes do topico (20261105_22, #137): o aluno pede pelo banco e este laco escreve as perguntas.
+    diagnostico_enabled: bool = True
+    diagnostico_interval_seconds: int = 30
+    diagnostico_lote: int = 3
+    diagnostico_trava_seconds: int = 600
+    # Restringe o worker a estas turmas, como PERSONALIZACAO_JOBS_CLASSE_IDS (#652).
+    diagnostico_classe_ids: list[int] = []
     personalizacao_job_concurrency: int = 2
     # Restringe o worker local a estas turmas (ex.: PERSONALIZACAO_JOBS_CLASSE_IDS=[66]).
     # Vazio = todas, que e o que a producao usa. Sem isso, uma API subida na maquina de

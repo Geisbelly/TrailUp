@@ -70,6 +70,8 @@ import {
 import { useCheckpointResume } from "@/hooks/trilha/useCheckpointResume";
 import { useMaterialSuggestion, useSugestaoCongelada } from "@/hooks/trilha/useMaterialSuggestion";
 import { useAlteracoesDoProfessor } from "@/hooks/trilha/useAlteracoesDoProfessor";
+import { useDiagnosticoDoTopico } from "@/hooks/trilha/useDiagnosticoDoTopico";
+import { DiagnosticoDoTopico } from "@/components/trilhas/DiagnosticoDoTopico";
 import { SeloAlteracaoProfessor } from "@/components/trilhas/SeloAlteracaoProfessor";
 import { SeloComecePorAqui } from "@/components/trilhas/SeloComecePorAqui";
 import { chaveDoItem, type Destaque } from "@/utils/alteracoesDoProfessor";
@@ -787,6 +789,17 @@ export default function TrilhaConteudoScreen() {
   const { alteracoes, marcarVista } = useAlteracoesDoProfessor({
     alunoId: usuario?.id ?? null,
     classeId: classeAtual?.classe_id ?? topico?.classe_id ?? null,
+  });
+  // Diagnóstico curto antes do tópico (#137): só se o aluno ABRIU o tópico sem tê-lo começado. A decisão é
+  // tomada na entrada: se valesse o percentual de agora, o cartão sumiria no meio das respostas assim que a
+  // leitura registrasse o primeiro progresso. Opcional e nunca bloqueia (ver `useDiagnosticoDoTopico`).
+  const diagnosticoNaEntrada = useRef<{ topicoId: number; ativo: boolean } | null>(null);
+  if (topico && diagnosticoNaEntrada.current?.topicoId !== topico.id) {
+    diagnosticoNaEntrada.current = { topicoId: topico.id, ativo: Number(topico.percentual_concluido ?? 0) === 0 };
+  }
+  const diagnostico = useDiagnosticoDoTopico({
+    topicoId: topico?.id ?? null,
+    ativo: Boolean(usuario?.id) && diagnosticoNaEntrada.current?.ativo === true,
   });
   const revisaoDaAtividade = useCallback(
     (atividade: any): Destaque | null => {
@@ -2021,6 +2034,16 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
             {destaqueSugestao ? (
               <SeloComecePorAqui motivo={destaqueSugestao.motivo} palette={profilePalette} />
             ) : null}
+
+            <DiagnosticoDoTopico
+              fase={diagnostico.fase}
+              perguntas={diagnostico.perguntas}
+              nivel={diagnostico.nivel}
+              enviando={diagnostico.enviando}
+              onResponder={diagnostico.responder}
+              onDispensar={diagnostico.dispensar}
+              palette={profilePalette}
+            />
 
             {seloDoBloco && seloDoBloco.chave === chaveDoBlocoAtual ? (
               <SeloAlteracaoProfessor

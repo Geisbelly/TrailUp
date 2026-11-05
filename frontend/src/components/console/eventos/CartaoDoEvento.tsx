@@ -1,7 +1,7 @@
 import { Activity, CalendarDays, Lock, Medal, Pencil, PlayCircle, StopCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SeloDeStatus } from "../comum/PaginaDoConsole";
-import { rotuloDaJanela, rotuloDasPecas, rotuloDoStatus, situacaoDoEvento } from "./evento";
+import { rotuloDaJanela, rotuloDaModalidade, rotuloDasPecas, rotuloDoStatus, situacaoDoEvento } from "./evento";
 import type { Evento } from "./eventosApi";
 
 const TOM = { rascunho: "neutro", aberto: "ativo", encerrado: "alerta" } as const;
@@ -62,7 +62,7 @@ export function CartaoDoEvento({
         <div>
           <dt className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Modalidades</dt>
           <dd className="mt-1 text-sm font-semibold">
-            {evento.modalidadeGuilda ? `Individual + guilda (até ${evento.guildaTamanhoMax ?? "?"})` : "Individual"}
+            {rotuloDaModalidade(evento)}
           </dd>
         </div>
         <div>

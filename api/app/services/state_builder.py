@@ -42,6 +42,21 @@ async def _arco_narrativo(context_repo: Any, *, classe_id: int | None) -> str | 
         return None
 
 
+async def _diagnosticos(context_repo: Any, *, aluno_id: str, classe_id: int | None) -> list[dict[str, Any]]:
+    """Nível do aluno em cada tópico que ele diagnosticou (#137). Nunca derruba o ciclo.
+
+    É contexto, não decisão: sem ele os nós decidem como antes, sem saber o ponto de partida do aluno.
+    """
+    buscar = getattr(context_repo, "fetch_diagnosticos_do_aluno", None)
+    if buscar is None:
+        return []
+    try:
+        return list(await buscar(aluno_id=aluno_id, classe_id=classe_id))
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Falha ao ler o diagnostico do aluno: %s", exc)
+        return []
+
+
 async def _personalizacao_retida(context_repo: Any, *, classe_id: int | None) -> bool:
     """Turma retida pelo estudo (#13): o grafo só mede. Repositório sem o método (testes) = não retida.
 
@@ -78,6 +93,7 @@ async def build_initial_state(
     )
     personalizacao_retida = await _personalizacao_retida(context_repo, classe_id=payload.classe_id)
     arco_narrativo = await _arco_narrativo(context_repo, classe_id=payload.classe_id)
+    diagnosticos_topico = await _diagnosticos(context_repo, aluno_id=aluno_id, classe_id=payload.classe_id)
     gerar_materiais = bool(
         payload.modo == "prova"
         or float(desempenho.get("media_acertos", 100)) < 50
@@ -102,6 +118,7 @@ async def build_initial_state(
         "foco_estudo": foco_estudo,
         "personalizacao_retida": personalizacao_retida,
         "arco_narrativo_turma": arco_narrativo,
+        "diagnosticos_topico": diagnosticos_topico,
         "emocao_atual": None,
         "emocao_historico": [],
         "frame_b64": payload.frame_b64,

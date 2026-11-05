@@ -17,8 +17,7 @@ A saída é o `docs/` do branch do Pages no espelho (`Geisbelly/TrailUp`):
 `index.html` na raiz, as páginas em `documentacao/` e o tema em `assets/`.
 Os relatórios semanais (`sprint/`) já estão lá e não são tocados.
 
-Os números do banco (tabelas, rotinas) são os medidos na varredura de
-04/11/2026; o histórico (commits, PRs por semana) sai do git na hora.
+Os números do banco (tabelas, rotinas) são os remedidos em 05/11/2026; o histórico (commits, PRs por semana) sai do git na hora.
 """
 
 from __future__ import annotations
@@ -38,6 +37,7 @@ from pathlib import Path
 from markdown_it import MarkdownIt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+import gamificacao
 import guardioes
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -71,6 +71,7 @@ SUBSTITUICOES = (
 
 
 GUARDIOES = ("guardioes", "Os sete Guardiões")
+GAMIFICACAO = ("gamificacao", "Gamificação e personalização")
 
 
 @dataclass
@@ -138,8 +139,8 @@ PAGINAS: list[Pagina] = [
            ["docs/tcc/artigos/2026-jic-da-tipologia-a-trilha.md"]),
 ]
 
-# Dados medidos em produção na varredura de 04/11/2026 (docs/tcc/sistema-para-a-monografia-2026-11-04.md).
-BANCO = {"tabelas": 171, "funcoes": 612, "gatilhos": 144, "policies": 286, "cron": 16}
+# Linhas medidas na varredura de 04/11/2026 (docs/tcc/sistema-para-a-monografia-2026-11-04.md); o banco foi remedido em 05/11.
+BANCO = {"tabelas": 186, "funcoes": 678, "gatilhos": 147, "policies": 291, "cron": 21}  # remedido em 05/11/2026, revisão 20261105_24
 LINHAS_POR_SERVICO = [  # sem testes, medido em 04/11/2026
     ("App do aluno", 93567), ("Console web", 59024), ("API", 46413),
     ("BrainHexPDF", 26845), ("Microservice", 12506),
@@ -169,6 +170,7 @@ MARCOS = [  # docs/segundo-cerebro/02-Timeline/timeline.md e histórico de PRs d
     ("01/11/2026", "Nota e tentativas pelo banco", "Nota, risco de evasão e tentativas decididos no servidor; falas do boss por perfil; incidente de API fora por migration adiantada."),
     ("04/11/2026", "Privacidade fechada e modelagem", "Link curto assinado para a mídia e aviso de inatividade (#632); IA só para maiores (#933); corpus v1 do RAG; modelagem em 44 diagramas."),
     ("05/11/2026", "Monitor e rotas fechadas", "Sondas pelo banco a cada minuto, com meta de 24 horas e alerta por e-mail; saúde dos clientes gravada no Supabase; rotas do BrainHexPDF com segredo; administração do dono no banco; duelo no evento."),
+    ("05/11/2026", "Molduras por desafio e diagnóstico", "18 molduras saem por desafios difíceis e diferentes; XP de conteúdo pelo banco; diagnóstico curto antes do tópico; paridade entre guilda e individual no painel técnico."),
 ]
 
 
@@ -349,6 +351,7 @@ def topo_html(base: str) -> str:
         "TrailUp<small>documentação</small></a>"
         f'<nav><a href="{base}documentacao/visao-geral.html">Sistema</a>'
         f'<a href="{base}documentacao/guardioes.html">Guardiões</a>'
+        f'<a href="{base}documentacao/gamificacao.html">Gamificação</a>'
         f'<a href="{base}documentacao/arquitetura.html">Modelagem</a>'
         f'<a href="{base}documentacao/rag.html">RAG</a>'
         f'<a href="{base}documentacao/artigo-ia-onde-importa.html">Artigos</a>'
@@ -364,7 +367,7 @@ def lateral_html(atual: str) -> str:
     grupos: dict[str, list[tuple[str, str]]] = {}
     for p in PAGINAS:
         grupos.setdefault(p.grupo, []).append((p.slug, p.titulo))
-    grupos["Sistema"].append(GUARDIOES)
+    grupos["Sistema"].extend((GUARDIOES, GAMIFICACAO))
     grupos["Projeto"] = [("historico", "Histórico e números")]
     partes = ['<aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul>']
     for grupo, itens in grupos.items():
@@ -511,7 +514,10 @@ def inicio_html(saida: Path, ref_curta: str, hoje: str, n_commits: int, n_migrat
         if grupo == "Sistema":
             extra = (f'<a class="card" href="documentacao/{GUARDIOES[0]}.html"><div class="top"><span class="dot2" style="background:var(--seeker)"></span>'
                      f'<span class="name">{GUARDIOES[1]}</span></div><p>Os guias de cada perfil: cartões, voz, assinatura editorial, '
-                     "tokens, especificação de uso e as evidências dos PRs.</p></a>")
+                     "tokens, especificação de uso e as evidências dos PRs.</p></a>"
+                     f'<a class="card" href="documentacao/{GAMIFICACAO[0]}.html"><div class="top"><span class="dot2" style="background:var(--achiever)"></span>'
+                     f'<span class="name">{GAMIFICACAO[1]}</span></div><p>Design, paleta, biblioteca de elementos agrupada, conquistas, molduras '
+                     "e as evidências dos PRs, com o que não foi verificado.</p></a>")
         cards = extra + "".join(
             f'<a class="card" href="documentacao/{p.slug}.html"><div class="top"><span class="dot2" style="background:var({cores[grupo]})"></span>'
             f'<span class="name">{html.escape(p.titulo)}</span></div><p>{html.escape(p.descricao)}</p></a>'
@@ -558,7 +564,7 @@ def inicio_html(saida: Path, ref_curta: str, hoje: str, n_commits: int, n_migrat
         '<a class="btn" href="documentacao/historico.html">Histórico</a></div></section>'
         f'<section class="bloco" id="acessar"><h2>Acessar o TrailUp</h2><div class="cards">{acessos}</div></section>'
         f'<section class="bloco"><h2>Em números</h2><div class="ficha">{ficha}</div>'
-        f'<p class="fine">Banco medido em produção em 04/11/2026; commits e migrations contados na geração ({hoje}).</p></section>'
+        f'<p class="fine">Banco medido em produção em 05/11/2026; commits e migrations contados na geração ({hoje}).</p></section>'
         '<section class="bloco"><h2>Os sete Guardiões</h2><p class="lede">Cada perfil BrainHex tem um guia, com voz, tom, ritmo e cor '
         'próprios. <a href="documentacao/guardioes.html">Ver a ficha de cada um →</a></p>'
         f'<div class="perfis">{perfis}</div></section>'
@@ -586,6 +592,7 @@ def construir(saida: Path) -> None:
     shutil.copy(AQUI / "site.js", saida / "assets" / "site.js")
     shutil.copy(AQUI / "trailup-estrela.png", saida / "assets" / "trailup-estrela.png")
     guardioes.copiar_midia(RAIZ, saida / "documentacao")
+    gamificacao.copiar_midia(RAIZ, saida / "documentacao")
 
     mapa = {p.fontes[0]: p.slug for p in PAGINAS}
     for p in PAGINAS:
@@ -632,6 +639,17 @@ def construir(saida: Path) -> None:
                     corpo=corpo_g, toc=toc_g, chips=f'<span class="chip ok">lido do código em {hoje}</span>'
                     f'<span class="chip warn">{n_evid} PRs com evidência</span>' + fontes_g,
                     anterior=(PAGINAS[1].slug, PAGINAS[1].titulo), proxima=(PAGINAS[2].slug, PAGINAS[2].titulo),
+                    ref_curta=ref_curta, hoje=hoje),
+        encoding="utf-8")
+
+    corpo_j, toc_j, n_evid_j = gamificacao.corpo_gamificacao(RAIZ)
+    (saida / "documentacao" / f"{GAMIFICACAO[0]}.html").write_text(
+        pagina_html(slug=GAMIFICACAO[0], titulo=GAMIFICACAO[1], grupo="Sistema",
+                    descricao="O desenho da gamificação e da personalização: princípios, paleta de cada perfil, biblioteca de elementos "
+                              "agrupada e o que cada PR verificou ou deixou de fora.",
+                    corpo=corpo_j, toc=toc_j, chips='<span class="chip ok">catálogo medido em 05/11/2026</span>'
+                    f'<span class="chip warn">{n_evid_j} PRs com evidência</span><span class="chip flat">sem resultado educacional</span>',
+                    anterior=(GUARDIOES[0], GUARDIOES[1]), proxima=(PAGINAS[2].slug, PAGINAS[2].titulo),
                     ref_curta=ref_curta, hoje=hoje),
         encoding="utf-8")
 

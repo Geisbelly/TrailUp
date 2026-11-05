@@ -536,6 +536,17 @@ Cada perfil carrega:
   hoje são cinco (`pontuacao` do rank, apuração do evento, `aluno_faixa_xp`, `fn_xp_da_matricula` e
   `professor_notas_da_turma`). Não troque a coluna por função dentro da view do ranking: ela pediria
   EXECUTE para o cliente, e foi assim que o ranking deu `42501` em 29/10.
+- `diagnostico_topico` + `diagnostico_topico_gabarito` — diagnóstico curto **antes do tópico** (#137,
+  `20261105_22`): 3 a 5 perguntas sobre o que o aluno já sabe, que viram um nível (`inicial`/
+  `intermediario`/`avancado`). **A IA só escreve as perguntas** (worker `app/services/diagnostico_topico.py`,
+  fila no banco); pedir, corrigir, decidir o nível, dispensar e desistir são do banco, e o app fala direto
+  com as RPCs `diagnostico_pedir`/`_responder`/`_dispensar`. O gabarito mora numa tabela sem policy e sem
+  GRANT: o cliente nunca o lê, quem corrige é `diagnostico_responder`. **Não gera material nem mexe no
+  `source_hash`**; uma vez por aluno e tópico, só antes de começar (`ja_iniciado` não cria nada); opcional e
+  sem nota. Cota estourada ou modelo fora: espera 2^n min e, na 3ª falha, `sem_ia` e o aluno segue o tópico
+  como sempre. Turma retida pelo estudo recebe `retido` e a policy `RESTRICTIVE` a esconde. O nível chega
+  ao grafo em `diagnosticos_topico` (declarado em `TrailUpState`), só dos respondidos; **os nós ainda não o
+  usam para decidir nada**, e por isso o texto do app descreve o ponto de partida sem prometer adaptação.
 - `alteracao_professor` + `alteracao_aluno` — o professor mudou um conteúdo ou
   uma atividade que algum aluno já viu ou fez (`20261101_12`). **O banco
   registra** (gatilho nas quatro tabelas do editor e em `questao_gabarito`, só
@@ -740,8 +751,10 @@ Cada perfil carrega:
 - **Administração do dono é função do banco, não HTML da API** (`20261105_18`).
   A aba Administração do console chama `admin_acessos`, `admin_professor_liberar`,
   `admin_professor_aluno`, `admin_molduras`, `admin_moldura_salvar`,
-  `admin_moldura_acao_salvar` e `admin_economia`, todas com `app_e_dono()` antes
-  de ler ou gravar. As páginas `/admin` da API ainda existem e fazem o mesmo; não
+  `admin_moldura_acao_salvar`, `admin_economia` e `admin_turma_matricular`
+  (`20261105_25`), todas com `app_e_dono()` antes de ler ou gravar. Matricular
+  pelo dono é só o INSERT em `classe_aluno`, com os mesmos gatilhos; tirar da turma
+  apaga progresso e continua só no modal do professor. As páginas `/admin` da API ainda existem e fazem o mesmo; não
   acrescente nada novo nelas. Só o reprocessamento de mídia precisa ficar na API,
   porque usa o pipeline de geração.
 - **Eventos de turma abrem e encerram no horário pelo banco (#141).**

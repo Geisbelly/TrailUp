@@ -8,6 +8,7 @@ import {
   resumoDosInscritos,
   resumoEmFrase,
   rotuloDasGuildas,
+  textoSemNinguemParaEmpurrar,
   type AlunoNoEvento,
   type PainelDurante,
 } from "./durante";
@@ -112,5 +113,15 @@ describe("duelos do evento (#154)", () => {
     expect(resumoDosDuelos({ total: 1, jogados: 1, aguardando: 0, semAdversario: 0 }, true)).toBe(
       "1 duelo no evento: 1 jogado. A contagem olha os 40 duelos mais recentes da turma.",
     );
+  });
+});
+
+describe("textoSemNinguemParaEmpurrar", () => {
+  it("turma sem aluno não diz que todos participam", () => {
+    expect(textoSemNinguemParaEmpurrar({ total: 0 })).toBe("Sem alunos matriculados para acompanhar.");
+  });
+
+  it("com alunos e ninguém para empurrar, diz que todos participam", () => {
+    expect(textoSemNinguemParaEmpurrar({ total: 4 })).toBe("Ninguém por enquanto: todos estão participando.");
   });
 });

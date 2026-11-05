@@ -315,8 +315,8 @@ Distribuição dos perfis dominantes em produção [banco], 6 alunos com perfil:
 | Mecanismo | Estado |
 |---|---|
 | XP e faixas | 10 faixas com título e barra até a próxima |
-| Conquistas | 38 no catálogo; as do sistema têm um tipo cada |
-| Molduras de perfil | 40 (loja, conquistas e por ação) |
+| Conquistas | 38 no catálogo em 04/11; 45 do sistema em 05/11 (24 comuns, 21 por perfil), com as 8 da #1011; as do sistema têm um tipo cada |
+| Molduras de perfil | 40: 20 na loja, 18 por desafio e 2 por ação (05/11, #1011) |
 | Moedas e loja | Livro-caixa (`moedas_ledger`), 5 itens, preço por turma, auditoria da economia |
 | Missões | 201 geradas. A missão diária sai do banco (`pg_cron` às 03h); o texto dela é gerado por IA. Missões de turma e de aluno contam a partir da criação |
 | Rankings | Por turma; posições visíveis limitadas; pódio congelado |
@@ -467,7 +467,7 @@ As duas são defensáveis. A segunda cabe no prazo com o sistema como está.
 | 5.4 Interface do professor | Aciona personalização e vê indicadores | 16 abas (seção 4); a Lumi, assistente com alunos pseudonimizados; insights da turma gerados por IA; editor que já dispara a regeração |
 | 5.5 API | Endpoints de personalização, progresso, chat, jobs e telemetria | Falta o **grafo LangGraph** (supervisor e 13 especialistas), o **pipeline de 6 estágios** (heurístico, ver o aviso na seção 5.3) e o **M2** (único modelo treinado do desempenho) |
 | 5.8 BrainHex | "A etapa do RAG pretende reduzir o caráter engessado das regras" | Isso já existe sem RAG: o motor de sugestão diz ao aluno que ordenar por perfil é hipótese e deixa todos os formatos disponíveis (`evidencias_pedagogicas.py`). Descrever também o questionário autoral de 32 itens em 8 eixos (seção 7) |
-| 5.9 Gamificação | "progressão, conquistas e ranking" | Muito mais amplo: XP com 10 faixas, 38 conquistas, 40 molduras, moedas e loja, missões diárias, eventos de turma, guildas, boss por perfil e ranqueada com ELO (seção 10) |
+| 5.9 Gamificação | "progressão, conquistas e ranking" | Muito mais amplo: XP com 10 faixas, 45 conquistas do sistema (05/11), 40 molduras, moedas e loja, missões diárias, eventos de turma, guildas, boss por perfil e ranqueada com ELO (seção 10) |
 | 5.10 Telemetria | Tempo ativo, conclusão, acerto, interação | Confere. Falta citar os limites de coleta (seção 9), a câmera opcional com análise local YuNet + FER+, e que tempo é **tempo ativo** |
 | 6.2 e 6.4 | **vazias** | Usar os 4 destinos de cada documento (corpus, texto derivado, só citação, não usar) e os níveis de confiança das regras (forte, moderada, hipótese, dado do aluno) |
 | 6.5 e 6.6 Fluxo | dados → RAG → evidências → regras → LLM | No código, o RAG está no mentor, na intervenção e na notificação. A **sugestão de material não usa RAG**: é determinística, com texto derivado. Descrever as duas coisas como são |

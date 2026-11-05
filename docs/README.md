@@ -21,6 +21,7 @@ Documentação que não pertence a um único serviço:
 - **[Adaptação exploratória v3 baseada nas evidências](./analises/issue-1-adaptacao-evidencias.md)** — decisões implementadas, fontes primárias, parâmetros ainda sem calibração, testes e requisitos de implantação.
 
 - **[`tcc/`](./tcc/)** — documento do TCC (versão única).
+- **[`tcc/gamificacao/`](./tcc/gamificacao/)** — catálogo, artes e capturas da página de gamificação e personalização do site.
   Material de origem do Drive (proposta, UX, TCC 1, monografia) em
   [`tcc/fontes-drive/`](./tcc/fontes-drive/).
 - **[`segundo-cerebro/`](./segundo-cerebro/)** — vault Obsidian do TCC
