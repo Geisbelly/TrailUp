@@ -27,16 +27,15 @@ const GuildasSection = lazyWithReload(() => import("@/components/console/guildas
 const NotasSection = lazyWithReload(() => import("@/components/console/notas/NotasSection"));
 const EventosSection = lazyWithReload(() => import("@/components/console/eventos/EventosSection"));
 const EconomiaSection = lazyWithReload(() => import("@/components/console/economia/EconomiaSection"));
+import { AceiteDosTermos } from "@/components/console/AceiteDosTermos";
+
 const ClassManagementSection = lazyWithReload(() => import("@/components/console/ClassManagementSection"));
 const AdministracaoSection = lazyWithReload(() => import("@/components/console/administracao/AdministracaoSection"));
 const PainelTecnicoSection = lazyWithReload(() => import("@/components/console/tecnico/PainelTecnicoSection"));
 const RecomendacoesSection = lazyWithReload(() => import("@/components/console/recomendacoes/RecomendacoesSection"));
 const PersonalizacoesSection = lazyWithReload(() => import("@/components/console/personalizacoes/PersonalizacoesSection"));
-const ProfessorApprovalSection = lazyWithReload(() =>
-  import("@/components/console/ProfessorApprovalSection").then((m) => ({ default: m.ProfessorApprovalSection }))
-);
 
-// Aba de aprovação de professores só é visível para a dona do projeto (TCC);
+// A Administração e o painel técnico só são visíveis para a dona do projeto (TCC);
 // os demais professores nunca veem nem conseguem acessar essa view. Quem é o
 // dono vem do banco (`app_e_dono()`, contra `app_config.dono_email`): o e-mail
 // não fica no bundle (#195), e a conferência de verdade já era feita lá.
@@ -199,6 +198,7 @@ export default function Console() {
 
   return (
     <ConsoleShell view={view} name={professorData?.nome || "Professor"} institution={professorData?.instituicao} isOwner={isOwner} onSignOut={handleLogout}>
+        {professorData && <AceiteDosTermos onSair={handleLogout} />}
         <Suspense
           fallback={
             <div className="flex-1 flex items-center justify-center">
@@ -237,19 +237,13 @@ export default function Console() {
               ) : view === "personalizacoes" ? (
                 <PersonalizacoesSection professorId={professorData?.id} />
               ) : view === "tecnico" ? (
-                // Mesma regra da aba Aprovações: a URL é digitável, e o banco é quem de fato recusa quem
-                // não é o dono (`painel_tecnico` confere `app_e_dono()`).
+                // A URL é digitável: sem dono confirmado, manda para o dashboard em vez de uma página em
+                // branco, e espera professorData carregar para não expulsar o próprio dono no primeiro
+                // render. Quem de fato recusa é o banco (`painel_tecnico` confere `app_e_dono()`).
                 isOwner ? <PainelTecnicoSection /> : professorData && ownerStatus === false ? <Navigate to={consolePathForView("dashboard")} replace /> : null
               ) : view === "administracao" ? (
                 // Idem: cada função `admin_*` confere `app_e_dono()` antes de ler ou gravar.
                 isOwner ? <AdministracaoSection /> : professorData && ownerStatus === false ? <Navigate to={consolePathForView("dashboard")} replace /> : null
-              ) : view === "aprovacoes" ? (
-                // Agora que /console/aprovacoes e uma URL de verdade, qualquer
-                // professor pode digita-la. Sem dono confirmado, manda pro
-                // dashboard em vez de renderizar uma pagina em branco - e espera
-                // professorData carregar antes de decidir, senao o proprio dono
-                // seria expulso no primeiro render.
-                isOwner ? <ProfessorApprovalSection /> : professorData && ownerStatus === false ? <Navigate to={consolePathForView("dashboard")} replace /> : null
               ) : (
                 <ClassManagementSection professorId={professorData?.id} />
               )}

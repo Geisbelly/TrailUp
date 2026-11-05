@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { aceitarTermosDoProfessor } from "@/lib/aceiteDoProfessor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,6 +67,9 @@ export function ProfessorSignupForm({ sessionEmail, onDone }: Props) {
         toast.error(upsertErr.message);
         return;
       }
+
+      // A caixinha acima é o aceite: se esta gravação falhar, o console pede de novo.
+      await aceitarTermosDoProfessor("cadastro").catch(() => undefined);
 
       localStorage.removeItem(`${STORAGE_PREFIX}${sessionEmail.toLowerCase()}`);
       onDone();

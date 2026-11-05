@@ -1,4 +1,4 @@
-// Administração do dono (migrations 20261105_18 e _25). Era HTML da API; agora são RPCs do banco, que conferem
+// Administração do dono (migrations 20261105_18, _25 e _27). Era HTML da API; agora são RPCs do banco, que conferem
 // `app_e_dono()`. Aqui ficam a leitura sem confiança no formato, os filtros e as regras que a tela precisa.
 import { normalizar, type AlunoCandidato } from "../turmas/matriculas";
 
@@ -225,4 +225,192 @@ export function resumirMudanca(antes: unknown, depois: unknown): string {
   const chaves = [...new Set([...Object.keys(a ?? {}), ...Object.keys(d ?? {})])].filter((c) => c !== "ator");
   const mudou = chaves.filter((c) => valor(a?.[c]) !== valor(d?.[c]));
   return mudou.length ? mudou.map((c) => `${c}: ${valor(a?.[c])} → ${valor(d?.[c])}`).join("; ") : "sem mudança";
+}
+
+// Termos, aceites e assinaturas (migration 20261105_27). Prova só cresce: o dono acrescenta, nunca reescreve.
+export type Decisao = "accepted" | "rejected";
+
+export type RegistroDeTermo = { status: Decisao; versao: string; decidido_em: string | null; vigente: boolean; metodo: string | null };
+
+export type Idade = "desconhecida" | "menor" | "maior";
+
+export type TermosDoAluno = PessoaAluno & {
+  idade: Idade;
+  modo_restrito: boolean;
+  termo: RegistroDeTermo | null;
+  responsavel: RegistroDeTermo | null;
+  pesquisa: RegistroDeTermo | null;
+};
+
+export type TermosDoProfessor = {
+  professor_id: string;
+  nome: string | null;
+  email: string | null;
+  instituicao: string | null;
+  liberado: boolean;
+  aceite: RegistroDeTermo | null;
+};
+
+export type PainelDeTermos = {
+  versoes: { responsavel: string; pesquisa: string; professor: string };
+  alunos: TermosDoAluno[];
+  professores: TermosDoProfessor[];
+};
+
+const lerRegistro = (v: unknown): RegistroDeTermo | null => {
+  const r = objeto(v);
+  if (!r) return null;
+  return {
+    status: r.status === "accepted" ? "accepted" : "rejected",
+    versao: texto(r.versao) ?? "?",
+    decidido_em: texto(r.decidido_em),
+    vigente: r.vigente === true,
+    metodo: texto(r.metodo),
+  };
+};
+
+export function lerTermos(dado: unknown): PainelDeTermos | null {
+  const d = objeto(dado);
+  const versoes = objeto(d?.versoes);
+  if (!d || !versoes) return null;
+  return {
+    versoes: {
+      responsavel: texto(versoes.responsavel) ?? "?",
+      pesquisa: texto(versoes.pesquisa) ?? "?",
+      professor: texto(versoes.professor) ?? "?",
+    },
+    alunos: lista(d.alunos).map((a) => ({
+      ...lerAluno(a),
+      idade: a.idade === "menor" || a.idade === "maior" ? a.idade : "desconhecida",
+      modo_restrito: a.modo_restrito === true,
+      termo: lerRegistro(a.termo),
+      responsavel: lerRegistro(a.responsavel),
+      pesquisa: lerRegistro(a.pesquisa),
+    })),
+    professores: lista(d.professores).map((p) => ({
+      professor_id: String(p.professor_id ?? ""),
+      nome: texto(p.nome),
+      email: texto(p.email),
+      instituicao: texto(p.instituicao),
+      liberado: p.liberado === true,
+      aceite: lerRegistro(p.aceite),
+    })),
+  };
+}
+
+export type LinhaDoHistorico = {
+  id: number;
+  status: Decisao;
+  versao: string;
+  decidido_em: string | null;
+  metodo: string | null;
+  nome: string | null;
+  relacao: string | null;
+  finalidades: string[];
+  motivo: string | null;
+  canal: string | null;
+  plataforma: string | null;
+  por: string | null;
+};
+
+export type CorrecaoDeNascimento = { data_anterior: string | null; data_nova: string | null; motivo: string; corrigido_em: string | null; por: string | null };
+
+export type DetalheDoAluno = {
+  nascimento: string | null;
+  correcoes: CorrecaoDeNascimento[];
+  termos: LinhaDoHistorico[];
+  responsavel: LinhaDoHistorico[];
+  pesquisa: LinhaDoHistorico[];
+};
+
+const lerHistorico = (v: unknown): LinhaDoHistorico[] =>
+  lista(v).map((l) => {
+    const finalidades = objeto(l.finalidades) ?? {};
+    return {
+      id: numero(l.id),
+      status: l.status === "accepted" ? "accepted" : "rejected",
+      versao: texto(l.versao) ?? "?",
+      decidido_em: texto(l.decidido_em),
+      metodo: texto(l.metodo),
+      nome: texto(l.nome),
+      relacao: texto(l.relacao),
+      finalidades: Object.keys(finalidades).filter((k) => finalidades[k] === true),
+      motivo: texto(l.motivo),
+      canal: texto(l.canal),
+      plataforma: texto(l.plataforma),
+      por: texto(l.por),
+    };
+  });
+
+export function lerDetalheDoAluno(dado: unknown): DetalheDoAluno | null {
+  const d = objeto(dado);
+  if (!d) return null;
+  return {
+    nascimento: texto(objeto(d.nascimento)?.data),
+    correcoes: lista(d.correcoes).map((c) => ({
+      data_anterior: texto(c.data_anterior),
+      data_nova: texto(c.data_nova),
+      motivo: texto(c.motivo) ?? "",
+      corrigido_em: texto(c.corrigido_em),
+      por: texto(c.por),
+    })),
+    termos: lerHistorico(d.termos),
+    responsavel: lerHistorico(d.responsavel),
+    pesquisa: lerHistorico(d.pesquisa),
+  };
+}
+
+export function lerDetalheDoProfessor(dado: unknown): LinhaDoHistorico[] | null {
+  const d = objeto(dado);
+  return d ? lerHistorico(d.aceites) : null;
+}
+
+export type Selo = { texto: string; pendente: boolean };
+
+export function seloDaIdade(idade: Idade): Selo {
+  if (idade === "menor") return { texto: "Menor de idade", pendente: false };
+  if (idade === "maior") return { texto: "Maior de idade", pendente: false };
+  return { texto: "Sem data", pendente: true };
+}
+
+export function seloDoTermo(r: RegistroDeTermo | null): Selo {
+  if (!r) return { texto: "Sem registro", pendente: true };
+  return r.status === "accepted" ? { texto: "Aceitou", pendente: false } : { texto: "Recusou", pendente: true };
+}
+
+export function seloDoResponsavel(a: Pick<TermosDoAluno, "idade" | "responsavel">): Selo {
+  const r = a.responsavel;
+  if (a.idade === "maior") return { texto: "Não se aplica", pendente: false };
+  if (!r) return { texto: "Sem assinatura", pendente: a.idade === "menor" };
+  if (r.status === "rejected") return { texto: "Não autorizou", pendente: true };
+  if (!r.vigente) return { texto: "Versão antiga", pendente: true };
+  return { texto: r.metodo === "papel" ? "Assinou em papel" : "Aceitou no app", pendente: false };
+}
+
+export function seloDaPesquisa(r: RegistroDeTermo | null): Selo {
+  if (!r) return { texto: "Sem decisão", pendente: false };
+  if (r.status === "rejected") return { texto: "Recusou", pendente: false };
+  return r.vigente ? { texto: "Aceitou", pendente: false } : { texto: "Versão antiga", pendente: true };
+}
+
+export function seloDoProfessor(r: RegistroDeTermo | null): Selo {
+  if (!r) return { texto: "Sem aceite registrado", pendente: true };
+  if (r.status === "rejected") return { texto: "Aceite revogado", pendente: true };
+  return r.vigente ? { texto: "Aceitou", pendente: false } : { texto: "Versão antiga", pendente: true };
+}
+
+export type FiltroDeTermos = "todos" | "pendentes";
+
+export const alunoTemPendencia = (a: TermosDoAluno): boolean => a.modo_restrito || seloDoTermo(a.termo).pendente;
+
+export function filtrarTermos<T extends { nome: string | null; email: string | null }>(pessoas: T[], busca: string, filtro: FiltroDeTermos, pendente: (p: T) => boolean): T[] {
+  const termo = normalizar(busca);
+  return pessoas.filter((p) => (filtro === "todos" || pendente(p)) && (!termo || normalizar(`${p.nome ?? ""} ${p.email ?? ""}`).includes(termo)));
+}
+
+export const MOTIVO_MINIMO = 5;
+
+export function motivoValido(motivo: string): boolean {
+  const limpo = motivo.trim();
+  return limpo.length >= MOTIVO_MINIMO && limpo.length <= 500;
 }
