@@ -1,6 +1,6 @@
 # Modelagem do sistema TrailUp
 
-Modelagem completa do sistema para a monografia, em 44 diagramas. Substitui o capítulo [`04-modelagem-do-sistema.md`](../04-modelagem-do-sistema.md), que é de abril de 2026.
+Modelagem completa do sistema para a monografia, em 45 diagramas. Substitui o capítulo [`04-modelagem-do-sistema.md`](../04-modelagem-do-sistema.md), que é de abril de 2026.
 
 **Procedência** (04/11/2026):
 
@@ -11,6 +11,7 @@ Modelagem completa do sistema para a monografia, em 44 diagramas. Substitui o ca
   - enums;
   - rotinas `pg_cron`;
   - contagens por status.
+- **Atualização (05/11/2026):** seção 5.8, duelo no evento, administração do dono e rotas do BrainHexPDF, lidos no código da `main`, sem nova consulta ao banco.
 - **Correções:** onde o código e o banco divergiam do que os documentos anteriores diziam, valeu o código e o banco. As correções feitas aparecem ao fim desta página.
 
 | Capítulo | Diagramas | Para a monografia |
@@ -19,7 +20,7 @@ Modelagem completa do sistema para a monografia, em 44 diagramas. Substitui o ca
 | [2. Casos de uso](./02-casos-de-uso.md) | aluno; professor e dona; especificação resumida | requisitos e casos de uso |
 | [3. Pipeline de ponta a ponta](./03-pipeline-ponta-a-ponta.md) | visão do ciclo + 13 fluxos (P0–P13) em diagramas de sequência | funcionamento do sistema |
 | [4. IA: grafo e análise](./04-ia-grafo-e-analise.md) | grafo LangGraph (16 nós), regras de roteamento, pipeline de 6 estágios, escolha do provedor | modelo adaptativo |
-| [5. Dados](./05-dados.md) | ER por domínio: acadêmico, progresso, personalização, telemetria, gamificação, notificações, privacidade/RAG | modelo de dados |
+| [5. Dados](./05-dados.md) | ER por domínio: acadêmico, progresso, personalização, telemetria, gamificação, notificações, privacidade/RAG, observabilidade | modelo de dados |
 | [6. Estados](./06-estados.md) | jobs, alvos, material, progresso, eventos, notificações, intervenções, gamificação, RAG | comportamento |
 | [7. Classes](./07-classes.md) | Strategy do pipeline, serviços de LLM, camadas do backend, provedor do app | projeto orientado a objetos |
 
