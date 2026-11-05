@@ -725,6 +725,9 @@ Cada perfil carrega:
   Healthchecks.io) e um serviço externo cobrem isso. A aba Painel técnico lê `painel_disponibilidade` e
   `painel_acessos_alunos` direto do Supabase; **não** vá para o `/admin` da API, que cai junto com ela. A lista por
   aluno abre com código curto e mostrar nomes fica em `monitor_consulta`; nela não entra emoção, BrainHex nem nota.
+  Deploy curto sai da meta (`20261105_26`): sonda boa com versão nova marca a sequência de falhas de até 5 min como
+  `ok = NULL`, `motivo = 'deploy'`, e o painel mostra `minutos_deploy`. Na API a versão é o carimbo da imagem
+  (`details.imagem`, gravado no `Dockerfile`): deploy muda, restart não, então crash continua contando.
   Métricas e metas: `docs/analises/2026-11-05-metricas-e-metas-de-desempenho.md`. Operação: `docs/architecture/monitoramento.md`.
 
 - **Missões sugeridas pela IA (#151, `20261102_20`) — a IA propõe, o banco decide o que entra, o

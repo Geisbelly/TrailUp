@@ -83,7 +83,7 @@ function CartaoDoAlvo({ a }: { a: Alvo }) {
       {/* Números em colunas: comparar três serviços lendo parágrafos era o trabalho que esta tela dava. */}
       <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 text-[12px]">
         <Dado rotulo={`Meta de ${a.slo_pct === null ? "—" : `${a.slo_pct.toLocaleString("pt-BR")}%`}`} valor={formatarDisponibilidade(a.disponibilidade_aula_pct)} />
-        <Dado rotulo="Fora do ar / permitido" valor={`${formatarMinutos(a.minutos_fora_aula)} / ${formatarMinutos(a.orcamento_aula_min)}`} nota={gasto === null ? undefined : `${gasto}% do orçamento`} destaque={(gasto ?? 0) >= 100} />
+        <Dado rotulo="Fora do ar / permitido" valor={`${formatarMinutos(a.minutos_fora_aula)} / ${formatarMinutos(a.orcamento_aula_min)}`} nota={[gasto === null ? "" : `${gasto}% do orçamento`, a.minutos_deploy > 0 ? `${formatarMinutos(a.minutos_deploy)} de deploy fora da conta` : ""].filter(Boolean).join(" · ") || undefined} destaque={(gasto ?? 0) >= 100} />
         <Dado rotulo="Na janela" valor={formatarDisponibilidade(a.disponibilidade_pct)} nota={`${contagem(a.boas, a.medidas)} sondas`} />
         <Dado rotulo="Resposta p50 / p95" valor={`${a.latencia_p50_ms ?? "—"} / ${a.latencia_p95_ms ?? "—"} ms`} />
         <Dado rotulo="Últimos 30 dias" valor={formatarDisponibilidade(a.disponibilidade_30d_pct)} />
