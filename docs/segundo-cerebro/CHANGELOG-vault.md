@@ -1,9 +1,20 @@
 ---
 tags: [changelog, vault]
-updated: 2026-11-01
+updated: 2026-11-05
 ---
 
 # CHANGELOG — vault TCC TrailUp
+
+## 2026-11-05 — página de gamificação e personalização
+
+### Atualizados
+
+- `02-Timeline/timeline.md` — marco de 05/11: molduras por desafio, XP de conteúdo pelo banco, diagnóstico e a página nova do site.
+
+### Fora do vault
+
+- `docs/tcc/gamificacao/` — catálogo medido em produção, reduções das artes e capturas dos PRs, com as regras para acrescentar imagem pública.
+- `docs/tcc/sistema-para-a-monografia-2026-11-04.md` — conquistas e molduras remedidas em 05/11. Os demais números seguem de 04/11.
 
 ## 2026-11-01 — TCC TrailUp (delta main `b5491b02…11aa1c65`, 305 commits)
 

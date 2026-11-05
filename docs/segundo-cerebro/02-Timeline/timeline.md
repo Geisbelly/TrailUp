@@ -56,5 +56,6 @@ Datas aproximadas a partir de `modifiedTime` do Drive (convertidas para BRT) + s
 15. **01/11** — nota, evasão e tentativas decididas pelo banco (#136); incidente de 502 por migration; tip `11aa1c65` sincronizado no vault
 16. **04–05/11** — gateway passa a exigir link assinado e a #632 fecha; leitura de servidor corrigida (#974); gateway reaberto por minutos por deploy de branch antiga; 1.0.7 com build pronto, fora da loja
 17. **05/11** — monitor de disponibilidade no banco, com e-mail real conferido e meta de 24 horas (#981, #1004); saúde dos clientes (#992); rotas do BrainHexPDF com segredo (#983); administração do dono no banco (#997); duelo no evento (#995, #996, #1003). Quatro colisões de revisão do Alembic no mesmo dia, todas pegas antes de chegar à produção (#963, #988, #993, #999), com o CI parado
+18. **05/11** — molduras por desafios difíceis (#1011), XP de conteúdo pelo banco (#1008) e diagnóstico antes do tópico (#1010); página pública de gamificação e personalização, com paleta, biblioteca de elementos e evidências dos PRs
 
 ← [[00-Home]] · [[05-PRs-Repos/ultimo-sync-main]] · [[10-Incidentes/perda-dados-console-2026-10-01]] · [[10-Incidentes/api-fora-por-migration-2026-11-01]] · [[10-Incidentes/gateway-reaberto-por-deploy-2026-11-05]]
