@@ -5,7 +5,9 @@
 """Gera o site de documentação do TrailUp (GitHub Pages do espelho).
 
 Lê os documentos do próprio repositório (modelagem, dossiê, inventário, RAG,
-ADRs), aplica o tema dos relatórios semanais e grava HTML estático. Os
+ADRs, artigos), monta a página dos Guardiões a partir do código, aplica a
+identidade do site e do console (estrela da marca, Cinzel e Inter, paleta de
+`frontend/src/index.css`) e grava HTML estático. Os
 diagramas Mermaid são desenhados no navegador, com o tema escuro do site.
 
 Uso, a partir da raiz do repositório:
@@ -27,6 +29,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date
@@ -34,16 +37,30 @@ from pathlib import Path
 
 from markdown_it import MarkdownIt
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import guardioes
+
 RAIZ = Path(__file__).resolve().parents[2]
 AQUI = Path(__file__).resolve().parent
 REPO_PUBLICO = "https://github.com/Geisbelly/TrailUp"
 FONTES_GOOGLE = (
     '<link rel="preconnect" href="https://fonts.googleapis.com">'
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;'
-    "12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:"
-    'wght@400;500;700&display=swap">'
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800'
+    "&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap\">"
 )
+SITE = "https://trailup.vercel.app"
+# Onde usar o TrailUp. O app está em teste fechado na Play Store: a página pública da loja dá 404,
+# o link que funciona é o de testadores (o mesmo de frontend/src/pages/Download.tsx).
+ACESSOS = [
+    ("Site", f"{SITE}/", "trailup.vercel.app", "Página pública: o que é o TrailUp, blog, contato e cadastro.", "--seeker"),
+    ("Console do professor", f"{SITE}/login", "trailup.vercel.app/login",
+     "Entre como professor para montar trilhas e acompanhar a turma, as personalizações, os insights e a Lumi.", "--mastermind"),
+    ("TrailUp na web (aluno)", f"{SITE}/aluno/login", "trailup.vercel.app/aluno/login",
+     "Entre como aluno para estudar a trilha no navegador.", "--conqueror"),
+    ("App Android", "https://play.google.com/apps/test/com.seuprojeto.trailup/20", "Google Play · teste fechado",
+     "O app do aluno. Entre como testador na Play Store, ou baixe pela página de download do site.", "--achiever"),
+]
 # Identificadores de infraestrutura que não precisam estar numa página pública.
 SUBSTITUICOES = (
     ("projeto `xrebtkmdewolzmpsdwgh`", "projeto de produção"),
@@ -51,6 +68,9 @@ SUBSTITUICOES = (
     ("projeto xrebtkmdewolzmpsdwgh", "projeto de produção"),
     ("xrebtkmdewolzmpsdwgh", "produção"),
 )
+
+
+GUARDIOES = ("guardioes", "Os sete Guardiões")
 
 
 @dataclass
@@ -105,6 +125,14 @@ PAGINAS: list[Pagina] = [
     Pagina("adr", "Decisões de arquitetura", "Evidência e RAG",
            "Os registros de decisão (ADR) do armazenamento vetorial do RAG.",
            ["docs/adr/0001-rag-vector-store.md", "docs/adr/0002-rag-openai-vector-store.md"]),
+    Pagina("artigo-ia-onde-importa", "IA onde importa", "Artigos",
+           "Resumo expandido (JIC 2026): cinco princípios arquiteturais para acoplar IA generativa a uma plataforma "
+           "educacional, avaliados em seis cenários, com custos e limites.",
+           ["docs/tcc/artigos/2026-jic-ia-onde-importa.md"]),
+    Pagina("artigo-da-tipologia-a-trilha", "Da tipologia à trilha", "Artigos",
+           "Resumo expandido (JIC 2026): o TrailUp como artefato e um experimento com 252 textos sobre se o modelo "
+           "segue as características de cada perfil BrainHex.",
+           ["docs/tcc/artigos/2026-jic-da-tipologia-a-trilha.md"]),
 ]
 
 # Dados medidos em produção na varredura de 04/11/2026 (docs/tcc/sistema-para-a-monografia-2026-11-04.md).
@@ -187,13 +215,15 @@ def slug_github(texto: str) -> str:
 
 
 class Conversor:
-    def __init__(self, mapa_fontes: dict[str, str]) -> None:
+    def __init__(self, mapa_fontes: dict[str, str], saida: Path) -> None:
         self.mapa = mapa_fontes  # caminho .md no repo -> slug da página
+        self.saida = saida
         self.md = MarkdownIt("commonmark", {"html": True}).enable(["table", "strikethrough"])
         # O markdown-it amarra a regra ao renderer (primeiro argumento); por isso as funções intermediárias.
         self.md.add_render_rule("heading_open", lambda _r, *a: self._heading_open(*a))
         self.md.add_render_rule("fence", lambda _r, *a: self._fence(*a))
         self.md.add_render_rule("link_open", lambda _r, *a: self._link_open(*a))
+        self.md.add_render_rule("image", lambda _r, *a: self._image(*a))
         self.md.add_render_rule("table_open", lambda *a: '<div class="tabela"><table>\n')
         self.md.add_render_rule("table_close", lambda *a: "</table></div>\n")
 
@@ -232,6 +262,20 @@ class Conversor:
         elif href and not href.startswith(("#", "mailto:")):
             tok.attrSet("href", self._resolver(href, env["fonte"]))
         return self.md.renderer.renderToken(tokens, idx, options, env)
+
+    def _image(self, tokens, idx, options, env):
+        # Imagem do repositório vai para documentacao/midia/docs/, com o caminho achatado no nome.
+        tok = tokens[idx]
+        src = tok.attrGet("src") or ""
+        if src and not src.startswith(("http://", "https://", "data:")):
+            alvo = (RAIZ / env["fonte"]).parent.joinpath(src).resolve()
+            nome = alvo.relative_to(RAIZ).as_posix().replace("/", "-")
+            destino = self.saida / "documentacao" / "midia" / "docs"
+            destino.mkdir(parents=True, exist_ok=True)
+            shutil.copy(alvo, destino / nome)
+            tok.attrSet("src", f"midia/docs/{nome}")
+        tok.attrSet("loading", "lazy")
+        return self.md.renderer.image(tokens, idx, options, env)
 
     def _resolver(self, href: str, fonte: str) -> str:
         caminho, _, ancora = href.partition("#")
@@ -289,8 +333,7 @@ def cabecalho_html(titulo: str, base: str, descricao: str) -> str:
         f'<meta name="description" content="{html.escape(descricao)}">'
         f"{FONTES_GOOGLE}"
         f'<link rel="stylesheet" href="{base}assets/site.css">'
-        '<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E'
-        '%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 transform=%22rotate(45 8 8)%22 fill=%22%23a08df5%22/%3E%3C/svg%3E">'
+        f'<link rel="icon" type="image/png" href="{base}assets/trailup-estrela.png">'
         '</head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div>'
     )
 
@@ -298,12 +341,16 @@ def cabecalho_html(titulo: str, base: str, descricao: str) -> str:
 def topo_html(base: str) -> str:
     return (
         '<header class="topbar">'
-        f'<a class="wordmark" href="{base}index.html"><span class="diamond"></span>TrailUp · documentação</a>'
+        f'<a class="wordmark" href="{base}index.html"><img src="{base}assets/trailup-estrela.png" alt="" width="34" height="34">'
+        "TrailUp<small>documentação</small></a>"
         f'<nav><a href="{base}documentacao/visao-geral.html">Sistema</a>'
+        f'<a href="{base}documentacao/guardioes.html">Guardiões</a>'
         f'<a href="{base}documentacao/arquitetura.html">Modelagem</a>'
         f'<a href="{base}documentacao/rag.html">RAG</a>'
+        f'<a href="{base}documentacao/artigo-ia-onde-importa.html">Artigos</a>'
         f'<a href="{base}documentacao/historico.html">Histórico</a>'
-        f'<a href="{REPO_PUBLICO}" target="_blank" rel="noopener">GitHub</a></nav>'
+        f'<a href="{REPO_PUBLICO}" target="_blank" rel="noopener">GitHub</a>'
+        f'<a class="abrir" href="{SITE}/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a></nav>'
         '<button class="menu-btn" type="button" aria-label="Abrir menu">menu</button>'
         "</header>"
     )
@@ -313,6 +360,7 @@ def lateral_html(atual: str) -> str:
     grupos: dict[str, list[tuple[str, str]]] = {}
     for p in PAGINAS:
         grupos.setdefault(p.grupo, []).append((p.slug, p.titulo))
+    grupos["Sistema"].append(GUARDIOES)
     grupos["Projeto"] = [("historico", "Histórico e números")]
     partes = ['<aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul>']
     for grupo, itens in grupos.items():
@@ -321,6 +369,9 @@ def lateral_html(atual: str) -> str:
             atual_attr = ' aria-current="page"' if slug == atual else ""
             partes.append(f'<li><a href="{slug}.html"{atual_attr}>{html.escape(titulo)}</a></li>')
         partes.append("</ul>")
+    partes.append("<h4>Usar o TrailUp</h4><ul>" + "".join(
+        f'<li><a href="{url}" target="_blank" rel="noopener">{html.escape(nome)} ↗</a></li>' for nome, url, *_ in ACESSOS
+    ) + "</ul>")
     partes.append('<h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside>')
     return "".join(partes)
 
@@ -389,7 +440,7 @@ def relatorios_html(saida: Path, base: str) -> str:
 
 
 def historico_pagina(saida: Path, semanas: list[dict], ref_curta: str, hoje: str, n_commits: int, n_prs: int) -> str:
-    rotulo = lambda s: "S" + s["semana"].split("-W")[1]  # noqa: E731
+    rotulo = lambda s: "S" + s["semana"].split("-W")[1]
     dados = {
         "prs": {"tipo": "colunas", "titulo": "PRs que entraram na main por semana", "unidade": "PRs",
                 "pontos": [{"r": rotulo(s), "v": s["prs"], "parcial": s["parcial"]} for s in semanas]},
@@ -440,17 +491,24 @@ def historico_pagina(saida: Path, semanas: list[dict], ref_curta: str, hoje: str
 
 def inicio_html(saida: Path, ref_curta: str, hoje: str, n_commits: int, n_migrations: int, n_diagramas: int) -> str:
     perfis = "".join(
-        f'<div class="perfil" style="--c:var({c})"><span class="pt">{html.escape(pt)}</span>'
-        f'<span class="n">{html.escape(en)}</span><p>{html.escape(d)}</p><span class="g">Guardião: {html.escape(g)}</span></div>'
+        f'<a class="perfil" style="--c:var({c})" href="documentacao/guardioes.html#{g.split()[0].lower()}-{en.lower()}">'
+        f'<img class="retrato" src="documentacao/midia/guardioes/{en.lower()}.webp" alt="" loading="lazy">'
+        f'<span class="pt">{html.escape(pt)}</span>'
+        f'<span class="n">{html.escape(en)}</span><p>{html.escape(d)}</p><span class="g">Guardião: {html.escape(g)}</span></a>'
         for en, pt, c, d, g in PERFIS
     )
     grupos: dict[str, list[Pagina]] = {}
     for p in PAGINAS:
         grupos.setdefault(p.grupo, []).append(p)
-    cores = {"Sistema": "--seeker", "Modelagem": "--mastermind", "Evidência e RAG": "--achiever"}
+    cores = {"Sistema": "--seeker", "Modelagem": "--mastermind", "Evidência e RAG": "--achiever", "Artigos": "--socializer"}
     mapa = ""
     for grupo, paginas in grupos.items():
-        cards = "".join(
+        extra = ""
+        if grupo == "Sistema":
+            extra = (f'<a class="card" href="documentacao/{GUARDIOES[0]}.html"><div class="top"><span class="dot2" style="background:var(--seeker)"></span>'
+                     f'<span class="name">{GUARDIOES[1]}</span></div><p>Os guias de cada perfil: cartões, voz, assinatura editorial, '
+                     "tokens, especificação de uso e as evidências dos PRs.</p></a>")
+        cards = extra + "".join(
             f'<a class="card" href="documentacao/{p.slug}.html"><div class="top"><span class="dot2" style="background:var({cores[grupo]})"></span>'
             f'<span class="name">{html.escape(p.titulo)}</span></div><p>{html.escape(p.descricao)}</p></a>'
             for p in paginas
@@ -476,21 +534,30 @@ def inicio_html(saida: Path, ref_curta: str, hoje: str, n_commits: int, n_migrat
         f'<div class="card"><div class="top"><span class="handle">{html.escape(a)}</span></div>'
         f'<span class="name">{html.escape(b)}</span><p>{html.escape(c)}</p></div>' for a, b, c in principios
     )
+    acessos = "".join(
+        f'<a class="card acesso" href="{url}" target="_blank" rel="noopener"><div class="top"><span class="dot2" style="background:var({c})"></span>'
+        f'<span class="name">{html.escape(nome)} ↗</span></div><span class="handle">{html.escape(rot)}</span><p>{html.escape(d)}</p></a>'
+        for nome, url, rot, d, c in ACESSOS
+    )
     corpo = (
         '<main class="home">'
         '<section class="hero"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>'
         "Plataforma educacional adaptativa · TCC</div>"
+        '<img class="logo" src="assets/trailup-estrela.png" alt="" width="88" height="88">'
         "<h1>Trail<span>Up</span></h1>"
         '<p class="lede">Trilhas de estudo gamificadas que se adaptam ao perfil de jogador de cada aluno. '
         "O professor monta a trilha; a IA gera o material para os sete perfis BrainHex, observa como o aluno estuda "
         "e ajusta o caminho. Esta é a documentação completa do sistema: arquitetura, modelagem, dados, IA e histórico.</p>"
-        '<div class="acoes"><a class="btn primario" href="documentacao/visao-geral.html">Ver o sistema</a>'
+        f'<div class="acoes"><a class="btn primario" href="{SITE}/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a>'
+        '<a class="btn" href="documentacao/visao-geral.html">Ver o sistema</a>'
         '<a class="btn" href="documentacao/pipeline.html">Pipeline de ponta a ponta</a>'
         '<a class="btn" href="documentacao/historico.html">Histórico</a></div></section>'
+        f'<section class="bloco" id="acessar"><h2>Acessar o TrailUp</h2><div class="cards">{acessos}</div></section>'
         f'<section class="bloco"><h2>Em números</h2><div class="ficha">{ficha}</div>'
         f'<p class="fine">Banco medido em produção em 04/11/2026; commits e migrations contados na geração ({hoje}).</p></section>'
-        '<section class="bloco"><h2>Os sete perfis</h2><p class="lede">A tipologia BrainHex organiza o tom, o ritmo, '
-        f'a voz e a cor do material de cada aluno.</p><div class="perfis">{perfis}</div></section>'
+        '<section class="bloco"><h2>Os sete Guardiões</h2><p class="lede">Cada perfil BrainHex tem um guia, com voz, tom, ritmo e cor '
+        'próprios. <a href="documentacao/guardioes.html">Ver a ficha de cada um →</a></p>'
+        f'<div class="perfis">{perfis}</div></section>'
         f'<section class="bloco"><h2>Princípios de projeto</h2><div class="cards">{princ}</div></section>'
         f'<section class="bloco"><h2>Documentação</h2>{mapa}</section>'
         '<section class="bloco"><h2 id="relatorios-semanais">Relatórios semanais</h2>'
@@ -513,12 +580,14 @@ def construir(saida: Path) -> None:
     (saida / "assets").mkdir(exist_ok=True)
     shutil.copy(AQUI / "site.css", saida / "assets" / "site.css")
     shutil.copy(AQUI / "site.js", saida / "assets" / "site.js")
+    shutil.copy(AQUI / "trailup-estrela.png", saida / "assets" / "trailup-estrela.png")
+    guardioes.copiar_midia(RAIZ, saida / "documentacao")
 
     mapa = {p.fontes[0]: p.slug for p in PAGINAS}
     for p in PAGINAS:
         for f in p.fontes[1:]:
             mapa[f] = p.slug
-    conversor = Conversor(mapa)
+    conversor = Conversor(mapa, saida)
     total_diagramas = 0
     for i, p in enumerate(PAGINAS):
         env: dict = {}
@@ -526,7 +595,7 @@ def construir(saida: Path) -> None:
         for fonte in p.fontes:
             texto = (RAIZ / fonte).read_text(encoding="utf-8")
             if len(p.fontes) > 1:
-                texto = re.sub(r"^# ", "## ", preparar(texto, p.cortar, tirar_h1=False), count=1, flags=re.M)
+                texto = re.sub(r"^# ", "## ", preparar(texto, p.cortar, tirar_h1=False), count=1, flags=re.MULTILINE)
             else:
                 texto = preparar(texto, p.cortar, tirar_h1=True)
             partes.append(conversor.converter(texto, fonte, env))
@@ -548,6 +617,20 @@ def construir(saida: Path) -> None:
             encoding="utf-8",
         )
 
+    corpo_g, toc_g, n_evid = guardioes.corpo_guardioes(RAIZ)
+    fontes_g = "".join(
+        f'<a class="chip flat" href="{REPO_PUBLICO}/blob/main/{f}" target="_blank" rel="noopener">{html.escape(Path(f).name)}</a>'
+        for f in guardioes.FONTES.values())
+    (saida / "documentacao" / f"{GUARDIOES[0]}.html").write_text(
+        pagina_html(slug=GUARDIOES[0], titulo=GUARDIOES[1], grupo="Sistema",
+                    descricao="Os guias de cada perfil BrainHex: quem são, como falam, que voz e cor têm, onde aparecem no app "
+                              "e o que os PRs verificaram.",
+                    corpo=corpo_g, toc=toc_g, chips=f'<span class="chip ok">lido do código em {hoje}</span>'
+                    f'<span class="chip warn">{n_evid} PRs com evidência</span>' + fontes_g,
+                    anterior=(PAGINAS[1].slug, PAGINAS[1].titulo), proxima=(PAGINAS[2].slug, PAGINAS[2].titulo),
+                    ref_curta=ref_curta, hoje=hoje),
+        encoding="utf-8")
+
     semanas = historico_semanal(ref)
     n_commits = sum(s["commits"] for s in semanas)
     n_prs = sum(s["prs"] for s in semanas)
@@ -556,7 +639,7 @@ def construir(saida: Path) -> None:
         historico_pagina(saida, semanas, ref_curta, hoje, n_commits, n_prs), encoding="utf-8")
     (saida / "index.html").write_text(
         inicio_html(saida, ref_curta, hoje, n_commits, n_migrations, total_diagramas), encoding="utf-8")
-    print(f"{len(PAGINAS) + 2} páginas, {total_diagramas} diagramas da modelagem, ref {ref_curta} → {saida}")
+    print(f"{len(PAGINAS) + 3} páginas, {total_diagramas} diagramas da modelagem, ref {ref_curta} → {saida}")
 
 
 def main() -> None:
