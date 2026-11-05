@@ -82,7 +82,7 @@
 .console-mobile-menu-toggle { display: none; flex: none; width: 40px; height: 40px; place-items: center; border: 1px solid hsl(var(--border)); border-radius: 12px; color: hsl(var(--foreground)); background: hsl(var(--card) / .75); }
 .escriba-panel-floating { right: 16px; bottom: calc(max(20px, env(safe-area-inset-bottom)) + 70px); }
 .console-bell-badge { position: absolute; top: 3px; right: 2px; min-width: 17px; padding: 0 4px; border-radius: 999px; background: hsl(var(--console-violet)); color: #fff; font-size: 10px; font-weight: 700; line-height: 17px; text-align: center; }
-.console-navigation { padding: 20px 16px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid hsl(var(--border)); background: hsl(var(--console-sidebar)); overflow-y: auto; }
+.console-navigation { padding: 20px 16px; display: flex; flex-direction: column; justify-content: safe center; gap: 2px; border-right: 1px solid hsl(var(--border)); background: hsl(var(--console-sidebar)); overflow-y: auto; }
 .console-navigation a { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; color: hsl(var(--muted-foreground)); font-size: 14.5px; white-space: nowrap; }
 .console-navigation a svg { flex: none; }
 .console-navigation a:hover { color: hsl(var(--foreground)); background: hsl(var(--muted) / .6); }

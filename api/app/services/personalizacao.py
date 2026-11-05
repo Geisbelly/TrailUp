@@ -1428,6 +1428,16 @@ def _extract_format_payload_candidate(formato: str, raw: Any) -> dict[str, Any] 
     return coerced
 
 
+# Iguais entre etapas, formatos e os 7 perfis do mesmo tópico. Vêm antes de `etapa` e `formato`
+# porque o cache do provedor só vale até a primeira diferença do pedido.
+_CAMPOS_IGUAIS_ENTRE_ETAPAS = ("topico", "fontes_chunks", "fontes_midias_relevantes", "arco_narrativo_turma")
+
+
+def _iguais_entre_etapas_primeiro(payload: dict[str, Any]) -> dict[str, Any]:
+    iguais = {chave: payload[chave] for chave in _CAMPOS_IGUAIS_ENTRE_ETAPAS if chave in payload}
+    return {**iguais, **payload}
+
+
 async def _invoke_media_stage_llm(
     *,
     llm: JsonLLMService,
@@ -1449,7 +1459,7 @@ async def _invoke_media_stage_llm(
     }
     return await llm.ainvoke_json(
         prompt_name=_MIDIA_PIPELINE_PROMPT,
-        payload=context_payload,
+        payload=_iguais_entre_etapas_primeiro(context_payload),
         fallback_factory=lambda: fallback_result,
         provider="gemini",
         model=str(getattr(settings, "gemini_materiais_model", "") or "").strip() or None,

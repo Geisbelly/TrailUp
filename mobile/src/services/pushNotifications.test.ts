@@ -62,3 +62,22 @@ test('loads notifications lazily and configures the handler once in a developmen
   assert.equal(loads(), 1);
   assert.equal(handlers(), 1);
 });
+
+test('a rotina vira um disparo por horário e por dia escolhido', () => {
+  const { service } = loadService('web', 'standalone');
+  const base = {
+    id: 1, tipo: 'revisao_diaria', recorrencia: 'diaria', gatilho: 'horario' as const, titulo: null,
+    corpo: null, hora_local: 19, minuto_local: 30, timezone: 'UTC', prioridade: 0, contexto: null,
+    ativo: true, proxima_execucao: null,
+  };
+  // Objetos nascem dentro do `vm`: comparar em texto, não por protótipo.
+  const texto = (r: typeof base & Record<string, unknown>) =>
+    service.disparosDaRotina(r).map((d) => `${d.hora}:${d.minuto}@${d.diaDaSemana}`).join(' ');
+  // Sem dias nem lista (app e banco antigos): um disparo diário, como antes.
+  assert.equal(texto(base), '19:30@null');
+  // Os 7 dias são "todo dia".
+  assert.equal(texto({ ...base, dias_semana: [1, 2, 3, 4, 5, 6, 7] }), '19:30@null');
+  // Segunda (ISO 1) e domingo (ISO 7) viram 2 e 1 no Expo; os horários saem em ordem.
+  assert.equal(texto({ ...base, dias_semana: [7, 1], horarios: [1200, 480] }), '8:0@2 8:0@1 20:0@2 20:0@1');
+  assert.equal(texto({ ...base, hora_local: null as unknown as number }), '');
+});

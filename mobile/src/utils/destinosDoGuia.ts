@@ -17,7 +17,7 @@ export const DESTINOS_DO_GUIA: Record<string, { rotulo: string; rota: string }> 
   "perfil.molduras": { rotulo: "Molduras", rota: "/(tabs)/perfil/molduras" },
   "perfil.metricas": { rotulo: "Estilo das métricas", rota: "/(tabs)/perfil/metricas-estilo" },
   "perfil.modo_foco": { rotulo: "Modo foco e avisos", rota: "/(tabs)/perfil/modo-foco" },
-  "perfil.lembrete": { rotulo: "Lembrete diário", rota: "/(tabs)/perfil/lembrete-diario" },
+  "perfil.lembrete": { rotulo: "Lembretes e silêncio", rota: "/(tabs)/perfil/lembrete-diario" },
   "perfil.coleta": { rotulo: "Coleta e acessos", rota: "/(tabs)/perfil/coleta-dados" },
   "perfil.relatorio": { rotulo: "Relatório dos dados", rota: "/(tabs)/perfil/relatorio" },
   "perfil.erro": { rotulo: "Reportar um erro", rota: "/(tabs)/perfil/feedback" },

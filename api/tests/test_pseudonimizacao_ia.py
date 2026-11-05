@@ -206,6 +206,8 @@ async def test_escriba_pseudonimiza_payload_pergunta_e_historico_e_restaura(monk
     # "semana", que a busca por pedaço de nome acusaria.
     from app.services.escriba import guia_do_produto
 
+    # O cache do provedor só vale até a primeira diferença do pedido.
+    assert list(payload) == ["guia_do_produto", "turmas", "historico", "pergunta"]
     assert payload.pop("guia_do_produto") == guia_do_produto()
     _sem_identificador(payload)
     assert "Carla" not in json.dumps(payload)
@@ -268,6 +270,10 @@ def test_mentor_nao_manda_nome_nem_apelido_e_restaura_na_resposta(app, aluno_use
     assert payloads, "o mentor nao chamou o provedor"
     from app.services.guia_do_app import guia_do_app
 
+    # O cache do provedor só vale até a primeira diferença do pedido.
+    assert list(payloads[0])[0] == "guia_do_app"
+    assert list(payloads[0])[-1] == "mensagem"
+    assert list(payloads[1])[-1] == "resposta"
     for payload in payloads:
         # Texto estatico do produto; "semana" e afins dariam falso positivo com "ana".
         assert payload.pop("guia_do_app") == guia_do_app()

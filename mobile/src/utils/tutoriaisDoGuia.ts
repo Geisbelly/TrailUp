@@ -105,7 +105,7 @@ export const TUTORIAIS_DO_GUIA: readonly TutorialDoGuia[] = [
     id: "lembrete_diario",
     titulo: "Criar um lembrete",
     passos: [
-      { id: "lembrete", route: "/(tabs)/perfil/lembrete-diario", page: "Lembrete diário", title: "Escolha o horário", description: "O app avisa nesse horário para você continuar. No navegador, só com o app aberto." },
+      { id: "lembrete", route: "/(tabs)/perfil/lembrete-diario", page: "Lembretes e silêncio", title: "Escolha dias e horários", description: "O app avisa nesses horários para você continuar e fica quieto no seu silêncio. No navegador, só com o app aberto." },
     ],
   },
 ];
