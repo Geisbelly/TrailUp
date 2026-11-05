@@ -4,12 +4,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH } from "./features/auth/resetPasswordRoute";
-import { CONSOLE_SECTIONS, consolePathForView } from "./pages/consoleSections";
+import { CAMINHO_ANTIGO_DE_APROVACOES, CAMINHO_DE_APROVACOES, CONSOLE_SECTIONS, consolePathForView } from "./pages/consoleSections";
 import { MATERIAL_ROUTE_PATH } from "./components/console/personalizacoes/materialRoute";
 
 // Cada pagina vira o proprio chunk (import dinamico) em vez de entrar tudo
@@ -76,6 +76,7 @@ const App = () => (
                   }
                 />
               ))}
+              <Route path={CAMINHO_ANTIGO_DE_APROVACOES} element={<Navigate to={CAMINHO_DE_APROVACOES} replace />} />
               {/* Subrotas com conteudo proprio dentro de uma aba: a aba ativa sai
                   do primeiro segmento (consoleSections), entao elas continuam
                   abrindo o console na secao certa. */}

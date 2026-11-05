@@ -107,13 +107,7 @@ export function ProfessorApprovalSection() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <span className="inline-flex items-center rounded-full border border-warning/40 bg-warning/15 px-[13px] py-[5px] text-[10.5px] font-bold uppercase tracking-[0.1em] text-warning">
-          Administração interna
-        </span>
-        <h2 className="mt-3 text-[30px] font-bold leading-tight">Aprovações</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Cadastros aguardando liberação de acesso ao console.</p>
-      </div>
+      <p className="text-[13px] text-muted-foreground">Cadastros aguardando liberação de acesso ao console.</p>
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16" role="status" aria-label="Carregando cadastros pendentes">

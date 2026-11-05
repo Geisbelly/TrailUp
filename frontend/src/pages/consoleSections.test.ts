@@ -27,7 +27,6 @@ describe("consolePathForView", () => {
     expect(consolePathForView("eventos")).toBe("/console/eventos");
     expect(consolePathForView("economia")).toBe("/console/economia");
     expect(consolePathForView("profile")).toBe("/console/meus-dados");
-    expect(consolePathForView("aprovacoes")).toBe("/console/aprovacoes");
     expect(consolePathForView("tecnico")).toBe("/console/tecnico");
   });
 });
@@ -52,7 +51,8 @@ describe("consoleViewFromPathname", () => {
     expect(consoleViewFromPathname("/console/eventos")).toBe("eventos");
     expect(consoleViewFromPathname("/console/economia")).toBe("economia");
     expect(consoleViewFromPathname("/console/meus-dados")).toBe("profile");
-    expect(consoleViewFromPathname("/console/aprovacoes")).toBe("aprovacoes");
+    expect(consoleViewFromPathname("/console/administracao")).toBe("administracao");
+    expect(consoleViewFromPathname("/console/aprovacoes")).toBeNull();
     expect(consoleViewFromPathname("/console/tecnico")).toBe("tecnico");
   });
 

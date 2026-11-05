@@ -283,7 +283,7 @@ def montar() -> str:
                [(f"`{c}`", WEB[c][1], WEB[c][0]) for c in sorted(web)]),
         "### Abas do console",
         "Uma rota por aba, geradas de `frontend/src/pages/consoleSections.ts`. Exigem professor "
-        "liberado. **Aprovações** e **Painel técnico** são do dono do projeto, e quem protege é o banco.",
+        "liberado. **Administração** e **Painel técnico** são do dono do projeto, e quem protege é o banco.",
         tabela(("Caminho", "Aba"), [(f"`{c}`", rotulo) for c, rotulo in abas]),
         f"## App do aluno ({len(telas)})",
         "Expo Router, a partir de `mobile/src/app`. Os grupos `(auth)` e `(tabs)` não entram no caminho. "

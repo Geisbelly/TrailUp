@@ -1,15 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
+  alunoTemPendencia,
   candidatosDe,
   comoLiberaARara,
   contarAlunosDasTurmas,
   filtrarAlunos,
   filtrarMolduras,
   filtrarProfessores,
+  filtrarTermos,
   lerAcessos,
+  lerDetalheDoAluno,
+  lerDetalheDoProfessor,
   lerEconomia,
   lerMolduras,
+  lerTermos,
+  motivoValido,
   precoParaGravar,
+  seloDaIdade,
+  seloDoProfessor,
+  seloDoResponsavel,
+  seloDoTermo,
   resumirMudanca,
   todasAsTurmas,
   turmasPorAluno,
@@ -138,5 +148,68 @@ describe("comoLiberaARara", () => {
   it("diz qual ação libera e acusa quando ela está desligada", () => {
     expect(comoLiberaARara("sol", [acao("Reportar", "sol")])).toEqual({ texto: "Ação: Reportar", alerta: false });
     expect(comoLiberaARara("sol", [acao("Reportar", "sol", false)])).toEqual({ texto: "Ação: Reportar (desligada)", alerta: true });
+  });
+});
+
+describe("termos", () => {
+  const painel = {
+    versoes: { responsavel: "r1", pesquisa: "p1", professor: "pr1" },
+    alunos: [
+      { aluno_id: "a", nome: "Ana", email: "ana@x", idade: "menor", modo_restrito: true, termo: null, responsavel: { status: "rejected", versao: "r1", metodo: "papel", vigente: false }, pesquisa: null },
+      { aluno_id: "b", nome: "Beto", email: "beto@x", idade: "maior", modo_restrito: false, termo: { status: "accepted", versao: "v5" }, responsavel: null, pesquisa: { status: "accepted", versao: "p1", vigente: true } },
+      { aluno_id: "c", nome: "Caio", email: null, idade: "outra", modo_restrito: true },
+    ],
+    professores: [{ professor_id: "p", nome: "Prof", email: "p@x", liberado: true, aceite: null }],
+  };
+
+  it("lê o painel sem confiar no formato", () => {
+    expect(lerTermos(null)).toBeNull();
+    expect(lerTermos({ alunos: [] })).toBeNull();
+    const lido = lerTermos(painel)!;
+    expect(lido.alunos[2].idade).toBe("desconhecida");
+    expect(lido.alunos[1].termo?.versao).toBe("v5");
+    expect(lido.professores[0].aceite).toBeNull();
+  });
+
+  it("dá nome à situação de cada aluno", () => {
+    const [ana, beto, caio] = lerTermos(painel)!.alunos;
+    expect(seloDoResponsavel(ana)).toEqual({ texto: "Não autorizou", pendente: true });
+    expect(seloDoResponsavel(beto)).toEqual({ texto: "Não se aplica", pendente: false });
+    expect(seloDoResponsavel(caio)).toEqual({ texto: "Sem assinatura", pendente: false });
+    expect(seloDoResponsavel({ idade: "menor", responsavel: { status: "accepted", versao: "r1", decidido_em: null, vigente: true, metodo: "papel" } }).texto).toBe("Assinou em papel");
+    expect(seloDoResponsavel({ idade: "menor", responsavel: { status: "accepted", versao: "r0", decidido_em: null, vigente: false, metodo: "aparelho" } })).toEqual({ texto: "Versão antiga", pendente: true });
+    expect(seloDaIdade(caio.idade).pendente).toBe(true);
+    expect(seloDoTermo(beto.termo)).toEqual({ texto: "Aceitou", pendente: false });
+  });
+
+  it("professor sem prova é pendência", () => {
+    expect(seloDoProfessor(null)).toEqual({ texto: "Sem aceite registrado", pendente: true });
+    expect(seloDoProfessor({ status: "rejected", versao: "pr1", decidido_em: null, vigente: false, metodo: null }).texto).toBe("Aceite revogado");
+  });
+
+  it("filtra por pendência e por nome, sem acento", () => {
+    const { alunos } = lerTermos(painel)!;
+    expect(filtrarTermos(alunos, "", "pendentes", alunoTemPendencia).map((a) => a.aluno_id)).toEqual(["a", "c"]);
+    expect(filtrarTermos(alunos, "BÉTO", "todos", alunoTemPendencia).map((a) => a.aluno_id)).toEqual(["b"]);
+  });
+
+  it("lê o histórico com finalidades e revogação", () => {
+    const d = lerDetalheDoAluno({
+      nascimento: { data: "2015-01-15" },
+      responsavel: [{ id: 2, status: "accepted", versao: "r1", finalidades: { camera: true, mentor: false }, nome: "Mãe" }],
+      pesquisa: [{ id: 3, status: "rejected", versao: "p1", motivo: "pedido" }],
+    })!;
+    expect(d.nascimento).toBe("2015-01-15");
+    expect(d.responsavel[0].finalidades).toEqual(["camera"]);
+    expect(d.pesquisa[0].motivo).toBe("pedido");
+    expect(d.correcoes).toEqual([]);
+    expect(lerDetalheDoAluno({ nascimento: null })?.nascimento).toBeNull();
+    expect(lerDetalheDoProfessor({ aceites: [{ id: 1, status: "accepted", versao: "pr1" }] })?.[0].status).toBe("accepted");
+  });
+
+  it("exige motivo de verdade", () => {
+    expect(motivoValido("    ")).toBe(false);
+    expect(motivoValido("ok")).toBe(false);
+    expect(motivoValido("pedido do titular")).toBe(true);
   });
 });

@@ -108,7 +108,7 @@ Vite e React, em `https://trailup.vercel.app`. Qualquer outro caminho cai na pá
 
 ### Abas do console
 
-Uma rota por aba, geradas de `frontend/src/pages/consoleSections.ts`. Exigem professor liberado. **Aprovações** e **Painel técnico** são do dono do projeto, e quem protege é o banco.
+Uma rota por aba, geradas de `frontend/src/pages/consoleSections.ts`. Exigem professor liberado. **Administração** e **Painel técnico** são do dono do projeto, e quem protege é o banco.
 
 | Caminho | Aba |
 | --- | --- |
@@ -126,7 +126,6 @@ Uma rota por aba, geradas de `frontend/src/pages/consoleSections.ts`. Exigem pro
 | `/console/rank-de-batalhas` | Rank de batalhas |
 | `/console/guildas` | Guildas |
 | `/console/meus-dados` | Meus dados |
-| `/console/aprovacoes` | Aprovações |
 | `/console/tecnico` | Painel técnico |
 | `/console/administracao` | Administração |
 
