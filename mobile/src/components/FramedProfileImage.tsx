@@ -5,7 +5,8 @@ import { getGuardianFaceImage, normalizeBrainHexProfile } from '@/constants/prof
 import { getProfileShellPalette } from '@/utils/profileShellTheme';
 import { FRAME_CANVAS_SIZE, getFrameLayout, getProfileFrameLayout } from '@/utils/profileFrameLayout';
 import { useFonteDeImagem } from '@/hooks/useFonteDeImagem';
-import React, { useId } from 'react';
+import { molduraRemota, ouvirMoldurasRemotas, retratoDasMoldurasRemotas } from '@/utils/moldurasRemotas';
+import React, { useId, useSyncExternalStore } from 'react';
 import { Image, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 
@@ -16,7 +17,7 @@ type Props = {
   fit?: 'cover' | 'contain';
   label?: string;
   artworkTone?: boolean;
-  /** Moldura equipada (`alunos.moldura_equipada`). Sem ela, ou com código que este build não tem, vale a do perfil. */
+  /** Moldura equipada (`alunos.moldura_equipada`). Sem ela, ou com código sem imagem no banco nem no pacote, vale a do perfil. */
   moldura?: string | null;
 };
 
@@ -26,7 +27,8 @@ export function FramedProfileImage({ profile, source: sourceBruta, size = 112, f
   const rimId = `profile-rim-${useId().replace(/:/g, '')}`;
   const key = normalizeBrainHexProfile(profile) ?? 'mastermind';
   const palette = getProfileShellPalette(key);
-  const extra = molduraConhecida(moldura) ? molduras[moldura] : null;
+  useSyncExternalStore(ouvirMoldurasRemotas, retratoDasMoldurasRemotas, retratoDasMoldurasRemotas);
+  const extra = molduraRemota(moldura) ?? (molduraConhecida(moldura) ? molduras[moldura] : null);
   const { opening, photoSize: innerSize, photoLeft, photoTop } = extra ? getFrameLayout(extra.opening, size) : getProfileFrameLayout(key, size);
   return (
     <View accessible={Boolean(label)} accessibilityLabel={label} style={[styles.root, { width: size, height: size }, { pointerEvents: "none" }]}>

@@ -1,5 +1,6 @@
 // Molduras: a parte pura (sem Supabase), para rodar no Node. Ver `services/molduras.ts`.
 import { molduraConhecida } from "@/constants/molduras";
+import { molduraRemota } from "@/utils/moldurasRemotas";
 
 export type OrigemDeMoldura = "loja" | "conquista" | "acao";
 
@@ -32,8 +33,8 @@ export type AcaoDeMoldura =
 const ORIGENS: readonly OrigemDeMoldura[] = ["loja", "conquista", "acao"];
 
 /**
- * Linha de `molduras_catalogo` → modelo. Moldura que este build não tem desenho (o banco
- * ganhou uma depois) fica de fora: mostrar o nome sem a imagem é pior que não mostrar.
+ * Linha de `molduras_catalogo` → modelo. Moldura sem desenho no pacote e sem imagem cadastrada
+ * fica de fora: mostrar o nome sem a imagem é pior que não mostrar.
  */
 export function lerCatalogo(linhas: unknown): MolduraDoCatalogo[] {
   if (!Array.isArray(linhas)) return [];
@@ -42,7 +43,7 @@ export function lerCatalogo(linhas: unknown): MolduraDoCatalogo[] {
     const l = (bruta ?? {}) as Record<string, unknown>;
     const codigo = String(l.codigo ?? "");
     const origem = String(l.origem ?? "") as OrigemDeMoldura;
-    if (!molduraConhecida(codigo) || !ORIGENS.includes(origem)) continue;
+    if ((!molduraConhecida(codigo) && !molduraRemota(codigo)) || !ORIGENS.includes(origem)) continue;
     saida.push({
       codigo,
       nome: String(l.nome ?? codigo),
