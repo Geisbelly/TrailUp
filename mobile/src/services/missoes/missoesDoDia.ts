@@ -28,19 +28,25 @@ function diaDeHoje(): string {
  * `ativa` e `aprovacao` NÃO são filtrados aqui de propósito: a policy já os cobre, e repetir
  * a regra no cliente cria uma segunda fonte da verdade que envelhece sozinha.
  */
+const COLUNAS = "id, titulo, descricao, criterio, perfil_alvo, dia, slot, origem, escopo, janela_inicio, janela_fim";
+
 export async function carregarMissoesDoAluno(
   classeId: number,
   perfilAtivo?: string | null,
 ): Promise<MissaoDoAluno[]> {
   const dia = diaDeHoje();
 
-  const { data, error } = await supabase
-    .from("missoes")
-    .select("id, titulo, descricao, criterio, perfil_alvo, dia, slot, origem, escopo, janela_inicio, janela_fim" as never)
-    .eq("classe_id", classeId)
-    .or(`and(origem.eq.sistema,dia.eq.${dia}),origem.eq.professor`)
-    .limit(30);
+  const buscar = (colunas: string) =>
+    supabase
+      .from("missoes")
+      .select(colunas as never)
+      .eq("classe_id", classeId)
+      .or(`and(origem.eq.sistema,dia.eq.${dia}),origem.eq.professor`)
+      .limit(30);
 
+  let { data, error } = await buscar(`${COLUNAS}, alvo_por_membro`);
+  // Banco antes da 20261105_13 (#154): sem a coluna, a lista vem sem ela e o rótulo fica o de antes.
+  if (error?.code === "42703") ({ data, error } = await buscar(COLUNAS));
   if (error) throw error;
   const linhas = (data ?? []) as never[];
   if (!linhas.length) return [];

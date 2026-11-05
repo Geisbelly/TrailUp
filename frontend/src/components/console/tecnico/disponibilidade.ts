@@ -278,6 +278,9 @@ export function ultimosDias(hoje: Date, quantos = 30): string[] {
   return Array.from({ length: quantos }, (_, i) => fuso.format(new Date(hoje.getTime() - (quantos - 1 - i) * 86_400_000)));
 }
 
+/** Data e hora em Brasília. Sem valor, traço. */
+export const quando = (iso: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }) : "—");
+
 /** Contagem com denominador: com turma pequena, o percentual sozinho engana. */
 export function contagem(parte: number, total: number): string {
   return total === 0 ? "—" : `${parte} de ${total}`;

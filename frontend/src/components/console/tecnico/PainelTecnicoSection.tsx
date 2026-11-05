@@ -18,12 +18,14 @@ import {
   type PainelTecnico,
 } from "./painelTecnico";
 import DisponibilidadeSection from "./DisponibilidadeSection";
+import SaudeDosClientesSection from "./SaudeDosClientesSection";
 import { usePainelTecnico } from "./usePainelTecnico";
 
-type Aba = "disponibilidade" | "acessos" | "geracao";
+type Aba = "disponibilidade" | "clientes" | "acessos" | "geracao";
 
 const ABAS: { value: Aba; label: string }[] = [
   { value: "disponibilidade", label: "Disponibilidade" },
+  { value: "clientes", label: "Clientes" },
   { value: "acessos", label: "Acessos" },
   { value: "geracao", label: "Geração e fila" },
 ];
@@ -360,7 +362,9 @@ export default function PainelTecnicoSection() {
         onChange={setAba}
       />
 
-      {aba !== "geracao" ? (
+      {aba === "clientes" ? (
+        <SaudeDosClientesSection horas={horas} />
+      ) : aba !== "geracao" ? (
         <DisponibilidadeSection horas={horas} aba={aba} />
       ) : (
         <>
