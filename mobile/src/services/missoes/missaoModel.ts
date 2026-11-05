@@ -75,7 +75,16 @@ export function pedeAtividade(criterio: unknown): boolean {
   return metrica === "eventos_no_dia" && String(c?.evento ?? "").includes("atividade");
 }
 
-export function rotuloCriterio(criterio: unknown): string {
+/**
+ * O alvo da missão em palavras. `porMembro`: missão de guilda com alvo por membro (`20261105_13`,
+ * #154): a guilda cumpre `alvo × membros`, então o rótulo diz "por membro".
+ */
+export function rotuloCriterio(criterio: unknown, porMembro = false): string {
+  const rotulo = rotuloDoAlvo(criterio);
+  return porMembro ? `${rotulo} por membro` : rotulo;
+}
+
+function rotuloDoAlvo(criterio: unknown): string {
   const c = criterio && typeof criterio === "object" ? (criterio as Record<string, unknown>) : null;
   const metrica = String(c?.metrica ?? "");
   if (metrica === "minutos_no_dia") return `${Number(c?.minutos) || "?"} min hoje`;
@@ -226,6 +235,8 @@ type LinhaMissao = {
   escopo: string | null;
   janela_inicio: string | null;
   janela_fim: string | null;
+  /** Só existe a partir da `20261105_13`. */
+  alvo_por_membro?: boolean | null;
 };
 
 type LinhaProgresso = { missao_id: number; status: string | null; progresso: number | null };
@@ -257,7 +268,7 @@ export function montarMissoes(
         descricao: m.descricao?.trim() || "",
         progresso: Number(p?.progresso ?? 0),
         status: statusDe(p?.status),
-        criterioRotulo: rotuloCriterio(m.criterio),
+        criterioRotulo: rotuloCriterio(m.criterio, m.escopo === "guilda" && m.alvo_por_membro === true),
         metrica: String((m.criterio as Record<string, unknown> | null)?.metrica ?? ""),
         atividadeId: atividadeDoCriterio(m.criterio),
         pedeAtividade: pedeAtividade(m.criterio),

@@ -24,7 +24,7 @@ const CAMINHOS = [
  */
 const ESCOPOS = [
   { chave: "turma" as const, titulo: "Cada aluno da turma", ajuda: "Cada um cumpre a sua." },
-  { chave: "guilda" as const, titulo: "A guilda, junta", ajuda: "Soma o que os membros fazem no período." },
+  { chave: "guilda" as const, titulo: "A guilda, junta", ajuda: "Soma o que os membros fazem no período. O alvo vale por membro." },
 ];
 
 /** Tópicos da turma e o que ela tem, para o select de tópico e o alvo sugerido. */
@@ -212,7 +212,10 @@ export function FormularioDaMissao({
               })}
             </div>
             {guilda && (
-              <p className="mt-1 text-[11.5px] text-muted-foreground">Na guilda a missão é uma meta: o progresso é a soma dos membros.</p>
+              <p className="mt-1 text-[11.5px] text-muted-foreground">
+                Na guilda a missão é uma meta: o progresso é a soma dos membros, e o alvo vale por membro. Com 10 por
+                membro, uma guilda de 4 precisa somar 40.
+              </p>
             )}
             {erros.caminho && <p className="mt-1 text-xs text-destructive">{erros.caminho}</p>}
             {editando && inicial.caminho === "entrega" && form.caminho === "meta" && (

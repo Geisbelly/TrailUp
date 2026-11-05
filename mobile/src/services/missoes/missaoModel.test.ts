@@ -64,6 +64,11 @@ describe("rotuloCriterio", () => {
     assert.equal(rotuloCriterio({ metrica: "atividade_especifica", atividade_id: 7 }), "entregar a atividade");
   });
 
+  it("missão de guilda com alvo por membro diz isso no rótulo (#154)", () => {
+    assert.equal(rotuloCriterio({ metrica: "atividades_concluidas", minimo: 10 }, true), "10 atividade(s) por membro");
+    assert.equal(rotuloCriterio({ metrica: "atividades_concluidas", minimo: 10 }), "10 atividade(s)");
+  });
+
   it("métrica desconhecida mostra o nome dela em vez de sumir", () => {
     assert.equal(rotuloCriterio({ metrica: "metrica_nova" }), "metrica_nova");
     assert.equal(rotuloCriterio(null), "missão");
@@ -141,6 +146,22 @@ describe("ordenarMissoes", () => {
 });
 
 describe("montarMissoes", () => {
+  it("só a missão de guilda com alvo por membro ganha o \"por membro\" (20261105_13)", () => {
+    const criterio = { metrica: "atividades_concluidas", minimo: 10 };
+    const [nova, antiga, turma] = montarMissoes(
+      [
+        linha({ id: 1, escopo: "guilda", criterio, alvo_por_membro: true }),
+        linha({ id: 2, escopo: "guilda", criterio, alvo_por_membro: false }),
+        linha({ id: 3, escopo: "turma", criterio, alvo_por_membro: true }),
+      ],
+      [],
+      { agora: AGORA },
+    ).sort((a, b) => a.id - b.id);
+    assert.equal(nova.criterioRotulo, "10 atividade(s) por membro");
+    assert.equal(antiga.criterioRotulo, "10 atividade(s)");
+    assert.equal(turma.criterioRotulo, "10 atividade(s)");
+  });
+
   it("junta o progresso do aluno com a missão", () => {
     const r = montarMissoes([linha()], [{ missao_id: 1, status: "em andamento", progresso: 40 }], { agora: AGORA });
     assert.equal(r[0].progresso, 40);
