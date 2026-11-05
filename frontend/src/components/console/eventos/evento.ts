@@ -265,3 +265,9 @@ export function resumoDeAbertura(e: {
   linhas.push("Depois de aberto, só título e descrição podem mudar.");
   return linhas;
 }
+
+/** "Individual", ou "Individual + guilda (até N)". Sem tamanho gravado a frase não mostra "(até ?)". */
+export function rotuloDaModalidade(e: { modalidadeGuilda: boolean; guildaTamanhoMax: number | null }): string {
+  if (!e.modalidadeGuilda) return "Individual";
+  return e.guildaTamanhoMax ? `Individual + guilda (até ${e.guildaTamanhoMax})` : "Individual + guilda";
+}

@@ -6,6 +6,7 @@ import {
   dataParaCampo,
   resumoDeAbertura,
   rotuloDaJanela,
+  rotuloDaModalidade,
   rotuloDasPecas,
   rotuloDoStatus,
   situacaoDoEvento,
@@ -172,5 +173,21 @@ describe("critérios do rank do evento (#155)", () => {
     expect(texto).toMatch(/entrar não muda nota nem XP/);
     expect(resumoDeAbertura(base).join(" ")).toMatch(/Pontos de batalha/);
     expect(resumoDeAbertura({ ...base, pecas: ["missoes"] }).join(" ")).not.toMatch(/Rank do evento por/);
+  });
+});
+
+describe("rotuloDaModalidade", () => {
+  it("individual", () => {
+    expect(rotuloDaModalidade({ modalidadeGuilda: false, guildaTamanhoMax: null })).toBe("Individual");
+    // Tamanho solto sem guilda não aparece: o banco só aceita tamanho com modalidade de guilda.
+    expect(rotuloDaModalidade({ modalidadeGuilda: false, guildaTamanhoMax: 5 })).toBe("Individual");
+  });
+
+  it("guilda com tamanho mostra o limite", () => {
+    expect(rotuloDaModalidade({ modalidadeGuilda: true, guildaTamanhoMax: 5 })).toBe("Individual + guilda (até 5)");
+  });
+
+  it("guilda sem tamanho gravado não mostra \"(até ?)\"", () => {
+    expect(rotuloDaModalidade({ modalidadeGuilda: true, guildaTamanhoMax: null })).toBe("Individual + guilda");
   });
 });
