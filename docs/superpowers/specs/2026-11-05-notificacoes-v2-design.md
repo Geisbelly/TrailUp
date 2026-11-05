@@ -1,6 +1,6 @@
 # Notificações v2: mais tipos, mais controle, orçamento por categoria
 
-Data: 2026-11-05 · Status: proposta, números para revisar antes da Fase 1
+Data: 2026-11-05 · Status: Fase 1 (motor) em `20261105_03`; fases 2 a 5 por fazer
 
 ## Por quê
 
@@ -41,7 +41,7 @@ Proposta. Prioridade base de 0 (baixa) a 3 (urgente). "Intervalo" é o mínimo e
 
 | Categoria | Tipo | Quem produz | Intervalo | Prio. | Silenciável |
 |---|---|---|---|---|---|
-| estudo | `revisao_diaria` | rotina do aluno | 20 h | 1 | sim |
+| estudo | `revisao_diaria` | rotina do aluno | 6 h (era 20 h: a fase 2 permite 3 horários por dia) | 1 | sim |
 | estudo | `retomada_login` | login | 20 h | 1 | sim |
 | estudo | `pausa_saudavel` | tempo de uso | 3 h | 1 | sim |
 | estudo | `lembrete`, `suporte` | IA (`notificacoes_ia`) | 12 h | 2 | sim |
