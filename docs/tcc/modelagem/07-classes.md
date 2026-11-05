@@ -179,3 +179,103 @@ classDiagram
 | `listarPersonalizacoesPersistidasPerfil`, `listarSugestoesMaterialTurma`, `listarJobsPersistidosAluno` | Supabase, com RLS |
 | `salvarProgressoPersonalizadoDiretoSupabase` | Supabase |
 | `subscribePersonalizacoesPersistidasClasse` | Supabase Realtime |
+
+## 7.5 Workers da API
+
+Os workers seguem o mesmo molde: um laço longo no `lifespan` de `app/main.py`, uma função que processa um lote e um contrato com o banco para reivindicar e devolver. Isso permite testar a passada sem o laço.
+
+```mermaid
+classDiagram
+  direction LR
+  class Worker {
+    <<molde>>
+    +loop(app)
+    +processar_uma_vez(app) dict
+  }
+  class PersonalizacaoJobs {
+    personalizacao_jobs_loop
+  }
+  class AnaliseFila {
+    analise_fila_loop
+    processar_fila_analise_uma_vez
+  }
+  class AlteracaoProfessor {
+    alteracao_professor_loop
+    processar_alteracoes_uma_vez
+  }
+  class MissoesIa {
+    missoes_ia_loop
+    processar_pedidos_uma_vez
+  }
+  class DiagnosticoTopico {
+    diagnostico_loop
+    processar_diagnosticos_uma_vez
+  }
+  class RetencaoExterna {
+    retencao_externa_loop
+    processar_fila_uma_vez
+  }
+  class CheckpointRetention {
+    checkpoint_retention_loop
+    run_checkpoint_retention_once
+  }
+  class FuncoesDoBanco {
+    <<Postgres>>
+    fn_*_reivindicar()
+    fn_*_registrar()
+    fn_*_falhou()
+  }
+  Worker <|.. PersonalizacaoJobs
+  Worker <|.. AnaliseFila
+  Worker <|.. AlteracaoProfessor
+  Worker <|.. MissoesIa
+  Worker <|.. DiagnosticoTopico
+  Worker <|.. RetencaoExterna
+  Worker <|.. CheckpointRetention
+  MissoesIa --> FuncoesDoBanco
+  DiagnosticoTopico --> FuncoesDoBanco
+```
+
+`Worker` é um molde de código, não uma classe base: são funções de módulo com o mesmo formato. O diagrama mostra a convenção. O trio `reivindicar`, `registrar` e `falhou` existe em missões e diagnóstico; os outros workers têm contratos próprios.
+
+## 7.6 Microservice de mídia
+
+```mermaid
+classDiagram
+  direction LR
+  class Server {
+    <<server.ts>>
+    POST /api/personalizar
+    POST /api/v1/archive
+  }
+  class GeminiService {
+    <<geminiService.ts>>
+    texto por perfil
+    áudio TTS
+  }
+  class ContentGenerationService {
+    <<contentGenerationService.ts>>
+    escolhe modelo e provedor
+  }
+  class MediaResume {
+    <<mediaResume.ts>>
+    planMediaResume()
+    isMaterialDone()
+    reusableMarkdownPartes()
+  }
+  class BrainHexPdfClient {
+    <<brainHexPdfClient.ts>>
+    renderAndUploadPresentationViaBrainHexPdf()
+  }
+  class BrainHexPDF {
+    <<serviço externo>>
+    POST /api/v1/render-and-store
+  }
+  Server --> GeminiService
+  Server --> MediaResume
+  Server --> BrainHexPdfClient
+  GeminiService --> ContentGenerationService
+  BrainHexPdfClient --> BrainHexPDF
+```
+
+`mediaResume` decide o que reaproveitar quando uma geração é retomada: arquivo que já existe não é gerado de novo. O microservice continua dono do merge em `conteudo_personalizado.materiais`, mesmo quando a apresentação vem do BrainHexPDF.

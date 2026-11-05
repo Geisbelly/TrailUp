@@ -20,6 +20,24 @@ flowchart LR
   P11 --> P4
 ```
 
+Em volta desse ciclo correm os fluxos que não dependem dele:
+
+```mermaid
+flowchart LR
+  P9["P9 Progresso e<br/>pontuação"] --> P14["P14 Missões diárias<br/>e da IA"]
+  P9 --> P15["P15 Arena e Elo"]
+  P9 --> P16["P16 Evento com rank<br/>e duelo"]
+  P9 --> P17["P17 Moedas, loja<br/>e fundo da turma"]
+  P15 --> P16
+  P14 --> P17
+  P15 --> P17
+  P18["P18 Diagnóstico<br/>do tópico"] --> P4["P4 Estudo"]
+  P4 --> P19["P19 Estudo de efetividade<br/>e métricas"]
+  P20["P20 Monitor e<br/>marca de deploy"]
+  P12["P12 Notificações"]
+  P13["P13 Privacidade"]
+```
+
 Cada etapa abaixo traz o diagrama de sequência e onde está no código.
 
 ---
@@ -318,7 +336,7 @@ sequenceDiagram
 
   CRON->>DB: trailup_retencao (03:23): redige telemetria bruta, apaga por política
   CRON->>DB: retencao_avisos_email (30 min) · aviso por push (#937)
-  DB->>DB: exclusão de fonte/arquivo/rag_openai_files → retencao_externa
+  DB->>DB: exclusão de fonte/arquivo/rag_openai_files → retencao_fila_externa
   W->>DB: reivindica
   W->>R2: apaga objeto
   W->>OAI: apaga arquivo do Vector Store
@@ -326,3 +344,217 @@ sequenceDiagram
   DB->>EF: pg_net
   EF->>R2: pesquisa/ (cópia anônima, só de quem consentiu)
 ```
+
+## P14 — Missões: a diária do banco e a sugestão da IA
+
+A missão diária e a sugerida pela IA usam a mesma entidade (`missoes`) e o mesmo avaliador. O critério reaproveita as métricas das conquistas, e a recompensa é uma chave de `eventos_pontuacao`, nunca um número solto.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant CRON as pg_cron
+  participant DB as Postgres
+  participant W as API · missoes_ia_loop
+  participant LLM as Modelo
+  participant P as Professor
+  participant APP as App
+
+  CRON->>DB: 03:00 fn_missao_diaria_gerar (turma × perfil)
+  CRON->>DB: 03:05 fn_missao_diaria_enfileirar_texto
+  W->>DB: fn_missao_ia_reivindicar
+  W->>LLM: reescreve o texto
+  W->>DB: fn_missao_diaria_reescrever_texto
+  Note over DB,W: qualquer falha deixa o texto de molde no lugar
+  P->>DB: rpc missao_ia_pedir (1 a 5, com teto por dia)
+  W->>DB: reivindica o pedido e lê fn_missao_ia_contexto
+  W->>LLM: propõe missões
+  W->>DB: fn_missao_ia_registrar (aplica as regras)
+  DB->>DB: missoes.origem = ia, aprovacao = pendente
+  P->>DB: aprova ou recusa (fn_missoes_ia_log)
+  APP->>DB: lê missoes (RLS: ativa e aprovada)
+  APP->>DB: estudo, resposta, evento
+  DB->>DB: gatilhos avaliam o critério
+  DB->>DB: missao_aluno concluida, paga uma vez
+```
+
+- Trocar o perfil ativo gera na hora a coorte do perfil novo (`trg_alunos_missao_diaria_perfil`). Sem isso, o aluno ficaria sem diária até a madrugada seguinte.
+- A missão de guilda soma os membros (`fn_missao_guilda_progresso`): é o único caminho que grava `pendente` e `em_andamento`.
+
+## P15 — Arena: desafio com adversário e Elo
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant A as Aluno A
+  participant B as Aluno B
+  participant DB as Postgres
+  participant CRON as pg_cron
+
+  A->>DB: rpc arena_desafio_criar (formato, modo, consequência)
+  DB->>DB: guilda_desafios aberto · desafio_participantes por equipe
+  B->>DB: rpc arena_convite_responder (aceito | recusado)
+  A->>DB: rpc arena_responder
+  B->>DB: rpc arena_responder
+  DB->>DB: fn_arena_placar
+  alt todos responderam
+    DB->>DB: fn_desafio_encerrar
+  else passaram 30 minutos
+    CRON->>DB: fn_desafio_varrer_abandonados (5 min)
+    DB->>DB: fn_desafio_encerrar
+  end
+  DB->>DB: resultado = vitoria | empate | sem_adversario
+  opt consequência ranqueada, com equipe 2, vitória ou empate
+    DB->>DB: ranqueada_elo + ranqueada_elo_partida
+  end
+  opt consequência diferente de treino
+    DB->>DB: eventos_aluno → pontos e moedas
+  end
+```
+
+- `fn_desafio_encerrar` é o fechamento compartilhado: atende arena, desafio de guilda e varredura. A função é idempotente: desafio já encerrado devolve o resultado guardado.
+- `arena_encerrar` saiu da mão do jogador (`20261021_26`): encerrar por conta própria faria o adversário perder sem jogar.
+- O desafio cooperativo de guilda usa as mesmas tabelas, sem equipe 2, por `guilda_desafio_responder`. Cada função recusa o tipo da outra.
+
+## P16 — Evento com rank e duelo
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant P as Professor
+  participant DB as Postgres
+  participant CRON as pg_cron
+  participant A as Aluno
+
+  P->>DB: cria evento em rascunho (janela, peças, missões)
+  CRON->>DB: fn_eventos_classe_varrer (1 min)
+  DB->>DB: abre o rascunho marcado (fn_evento_classe_abrir_agora)
+  A->>DB: rpc evento_classe_inscrever (peça arena)
+  A->>DB: rpc evento_sugerir_adversarios (só nomes)
+  A->>DB: rpc evento_duelo_criar
+  DB->>DB: guilda_desafios com evento_id, consequência evento
+  Note over DB: duelo não mexe no Elo, não cobra aposta e fica fora do XP
+  CRON->>DB: fim vencido → fn_evento_classe_encerrar_agora
+  DB->>DB: fn_evento_classe_apurar
+  DB->>DB: eventos_classe_resultado e resultado por guilda
+```
+
+Os miolos sem sessão travam a linha e decidem pelo estado. Por isso, um clique do professor e a rotina no mesmo instante não creditam duas vezes.
+
+## P17 — Moedas, loja e fundo da turma
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant A as Aluno
+  participant DB as Postgres
+  participant P as Professor
+
+  A->>DB: rpc loja_comprar (preço e estoque da turma)
+  DB->>DB: moedas_ledger (débito) · loja_compras ativa
+  A->>DB: rpc loja_usar (alvo, chave do cliente)
+  DB->>DB: confere limite por situação
+  DB->>DB: aplica o efeito (prazo, tempo, dica, segunda chance, formato)
+  DB->>DB: loja_uso_log · compra consumida
+  opt ainda ativa
+    P->>DB: rpc loja_estornar
+    DB->>DB: moedas_ledger (crédito) · compra estornada
+  end
+  P->>DB: rpc fundo_turma_criar
+  A->>DB: rpc fundo_turma_contribuir
+  DB->>DB: cobra até o que falta · moedas_ledger
+  alt meta atingida e benefício dado
+    P->>DB: fundo_turma_encerrar (entregue)
+  else cancelado
+    P->>DB: fundo_turma_encerrar (estorno de todas as doações)
+  end
+```
+
+- O saldo é a soma do razão `moedas_ledger`, que só recebe acréscimos. Ele nunca é materializado.
+- A compra só concede a posse. O efeito sai no uso, com chave para não aplicar duas vezes quando a resposta se perde.
+- As configurações resolvem em camadas: atividade, tópico, turma e padrão global. Toda mudança vai para `economia_auditoria`.
+- Moldura nova ou imagem trocada vem da aba Molduras (UC53): o console sobe o arquivo direto no bucket público `molduras`, e `admin_moldura_gravar` grava a referência. Sem imagem no banco, vale o desenho do pacote do app.
+
+## P18 — Diagnóstico do tópico
+
+A IA escreve as perguntas. Pedir, guardar, corrigir, decidir o nível e dispensar são do banco.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant APP as App
+  participant DB as Postgres
+  participant W as API · diagnostico_loop
+  participant LLM as Modelo
+
+  APP->>DB: rpc diagnostico_pedir (aluno, tópico)
+  alt tópico já iniciado ou turma retida
+    DB-->>APP: ja_iniciado | retido
+  else
+    DB->>DB: diagnostico_topico pendente
+  end
+  W->>DB: fn_diagnostico_reivindicar
+  W->>DB: fn_diagnostico_contexto
+  W->>LLM: gera as perguntas
+  alt modelo respondeu
+    W->>DB: fn_diagnostico_registrar (valida)
+    DB->>DB: pronto · gabarito em tabela sem policy
+  else falhou
+    W->>DB: fn_diagnostico_falhou (2^n min, até 120)
+    DB->>DB: na terceira falha, sem_ia
+  end
+  APP->>DB: rpc diagnostico_responder
+  DB->>DB: corrige e decide o nível · respondido
+  APP->>DB: ou rpc diagnostico_dispensar
+```
+
+O diagnóstico é opcional, acontece uma vez por aluno e tópico, e nunca dispara geração de material.
+
+## P19 — Estudo de efetividade e métricas
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant P as Professor
+  participant DB as Postgres
+  participant CRON as pg_cron
+  participant D as Dona
+
+  P->>DB: rpc estudo_coorte_registrar (braço, baseline, corte, fim)
+  DB->>DB: recusa baseline já iniciado
+  DB->>DB: gatilho trava os campos quando a data passa
+  DB->>DB: alembic_version → marco_produto automático
+  P->>DB: registra marco manual da turma
+  DB->>DB: vw_estudo_participantes (entrada atribuída e observada)
+  CRON->>DB: 06:30 fn_auditoria_metricas_rodar (I01 a I20)
+  DB->>DB: metricas_invariante_resultado e amostra
+  CRON->>DB: fn_painel_tecnico_avisar_dono (30 min)
+  D->>DB: lê o resultado no painel técnico
+```
+
+O desenho é prospectivo: a coorte precisa existir antes do estudo começar. A produção tem zero coortes registradas, então o fluxo está pronto e ainda não tem resultado.
+
+## P20 — Monitor e marca de deploy
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant CRON as pg_cron
+  participant DB as Postgres
+  participant ALVO as API · console · web do aluno
+  participant MAIL as E-mail
+  participant D as Dona
+
+  CRON->>DB: fn_monitor_tick (1 min)
+  DB->>DB: colhe as respostas em net._http_response
+  DB->>DB: aplica no estado de monitor_alvo
+  DB->>DB: varre instabilidade, lentidão e degradação
+  DB->>ALVO: pg_net: sondas do minuto
+  ALVO-->>DB: status e versão (details.imagem)
+  DB->>MAIL: monitor_alerta pendente
+  opt sonda boa com versão nova, falhas curtas
+    DB->>DB: sondas viram ok nulo, motivo deploy
+  end
+  D->>DB: rpc painel_disponibilidade (app_e_dono)
+```
+
+Quem mede a API é o banco, de fora do VPS, então relógio e alerta continuam com a API fora do ar. Se o Supabase cair, nada disso roda. Para esse caso existe a batida externa, ainda não configurada.
