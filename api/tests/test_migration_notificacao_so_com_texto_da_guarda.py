@@ -9,6 +9,7 @@ from tests import _f5_banco as f5
 M = f5.modulo("20261102_24_notificacao_so_com_texto_da_guarda.py")
 UP = "\n".join(f5.sql_de(M))
 DOWN = "\n".join(f5.sql_de(M, "downgrade"))
+ATUAL = f5.modulo("20261105_03_guarda_sem_emocao_nem_vigilancia.py")
 notificacao = import_module("app.agent.graph.nodes.agente_notificacao")
 
 
@@ -25,8 +26,13 @@ def test_sem_porcentagem_literal():
 
 def test_minimo_do_banco_e_a_versao_da_guarda_da_api():
     # Mínimo acima da API cala todo aviso; abaixo, deixa sair texto aprovado por guarda velha.
-    assert M.VERSAO_MINIMA == notificacao.TEXTO_GUARDA_VERSAO
+    # Quem sobe a guarda sobe o mínimo numa migration nova, e é ela que tem de bater com a API.
+    assert M.VERSAO_MINIMA == 1
     assert f"('{M.CHAVE}', '{M.VERSAO_MINIMA}'" in UP
+    assert ATUAL.VERSAO_MINIMA == notificacao.TEXTO_GUARDA_VERSAO
+    assert ATUAL.CHAVE == M.CHAVE
+    assert f"SET valor = '{ATUAL.VERSAO_MINIMA}'" in "\n".join(f5.sql_de(ATUAL))
+    assert f"SET valor = '{M.VERSAO_MINIMA}'" in "\n".join(f5.sql_de(ATUAL, "downgrade"))
 
 
 def test_a_entrega_ganha_so_a_guarda_e_o_resto_e_a_da_18():

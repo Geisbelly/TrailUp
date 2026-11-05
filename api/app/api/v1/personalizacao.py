@@ -1588,10 +1588,9 @@ async def conversar_com_mentor_personalizacao(
         payload.historico,
         segredo=settings.supabase_jwt_secret,
         usuario_id=aluno_id,
-        exigir_assinatura=settings.mentor_exigir_fala_assinada,
     )
     if falas_sem_assinatura:
-        # Quando isto sumir do log, o app antigo saiu de uso e dá para ligar a exigência.
+        # Mostra quantos ainda usam app que não assina e estão conversando sem contexto.
         logger.info("personalizacao.chat.falas_sem_assinatura=%s", falas_sem_assinatura)
     async with rota_ia_para_alunos(session, [aluno_id]):
         provedor_do_chat = settings.llm_provider

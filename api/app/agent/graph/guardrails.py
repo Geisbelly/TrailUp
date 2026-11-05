@@ -28,6 +28,8 @@ T = TypeVar("T", bound=BaseModel)
 class GuardrailViolation:
     regra: str
     mensagem: str
+    # Repetir não resolve: a causa não está no texto gerado. Vai direto ao fallback.
+    definitiva: bool = False
 
 
 def checar_ordem_sequencial(
@@ -230,9 +232,11 @@ async def _gerar_com_correcao(
             return resultado
 
         ultima_violacao = violacao
-        fase = "retry" if tentativa < max_tentativas - 1 else "fallback_final"
+        fase = "retry" if tentativa < max_tentativas - 1 and not violacao.definitiva else "fallback_final"
         if on_violation is not None:
             await on_violation(violacao, fase)
+        if violacao.definitiva:
+            return None
         tentativa_payload = {**payload, "correcao": f"{violacao.regra}: {violacao.mensagem}"}
 
     return None
@@ -244,9 +248,9 @@ async def checar_grounding_chat(
     """Unica regra desta leva que precisa de julgamento sobre texto livre —
     o payload do chat nem contem gabarito pra comparar diretamente
     (buscar_questoes_topico ja filtra isso). Usa uma segunda chamada LLM
-    barata como juiz. Falha aberta: se o juiz falhar, nao bloqueia o chat
-    (a resposta principal ja passou pelas instrucoes de guardrail no prompt;
-    o juiz e uma camada extra de verificacao, nao a unica linha de defesa)."""
+    barata como juiz. Falha fechada: resposta que ninguem conferiu nao chega
+    ao aluno, vale o fallback. Gerar de novo nao adiantaria, o juiz continuaria
+    sem responder."""
     llm: JsonLLMService = contexto["llm"]
     try:
         julgamento = await llm.ainvoke_structured(
@@ -263,9 +267,8 @@ async def checar_grounding_chat(
             schema=GroundingJudgment,
         )
     except StructuredOutputError as exc:
-        # Sem este aviso, juiz fora do ar e resposta aprovada sao indistinguiveis.
-        logger.warning("Juiz de grounding indisponivel, resposta passou sem checagem: %s", exc)
-        return None
+        logger.warning("Juiz de grounding indisponivel, resposta trocada pelo fallback: %s", exc)
+        return GuardrailViolation(regra="grounding_indisponivel", mensagem=str(exc), definitiva=True)
 
     if julgamento.viola:
         return GuardrailViolation(regra="grounding_chat", mensagem=julgamento.motivo)

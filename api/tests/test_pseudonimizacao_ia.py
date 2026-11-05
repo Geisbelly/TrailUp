@@ -249,13 +249,17 @@ def test_mentor_nao_manda_nome_nem_apelido_e_restaura_na_resposta(app, aluno_use
 
     monkeypatch.setattr(JsonLLMService, "ainvoke_structured", fake_ainvoke_structured)
 
+    fala_do_guia = "Ola, Ana! Em que posso ajudar?"
     with TestClient(app) as client:
+        assinatura = assinatura_chat.assinar(
+            fala_do_guia, segredo=app.state.settings.supabase_jwt_secret, usuario_id="aluno-1", canal="mentor"
+        )
         r = client.post(
             "/api/v1/personalizar/chat",
             json={
                 "classe_id": 1, "topico_id": None, "conteudo_id": None, "escopo": "trilha_home",
                 "mensagem": "Oi, sou a Ana Clara Souza, como estudo melhor?",
-                "historico": [{"role": "assistant", "content": "Ola, Ana! Em que posso ajudar?"}],
+                "historico": [{"role": "assistant", "content": fala_do_guia, "assinatura": assinatura}],
             },
         )
 
