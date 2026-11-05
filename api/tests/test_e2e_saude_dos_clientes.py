@@ -12,7 +12,7 @@ from sqlalchemy import text
 from tests.test_e2e_monitor_disponibilidade import ALUNO, DONO, EMAIL_DONO, _modulo, alertas, banco  # noqa: F401
 
 M = _modulo("20261105_14_saude_dos_clientes.py")
-V = _modulo("20261105_15_versao_do_cliente_sem_limpeza.py")
+V = _modulo("20261105_17_versao_do_cliente_sem_limpeza.py")
 exige_docker = pytest.mark.skipif(os.environ.get("TRAILUP_TEST_DOCKER") != "1", reason="requer TRAILUP_TEST_DOCKER=1 e Docker")
 
 

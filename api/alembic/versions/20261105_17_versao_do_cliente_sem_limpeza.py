@@ -8,8 +8,8 @@ Versão não é texto livre, então a regra é outra: formato de versão (`1.0.6
 como na `20261104_04`, e falha alto se o trecho mudou. `cliente_erro` fica como está: a versão faz parte da chave
 única, e reescrevê-la poderia colidir e impedir a API de subir. O que houver expira em 90 dias.
 
-Revision ID: 20261105_15
-Revises: 20261105_14
+Revision ID: 20261105_17
+Revises: 20261105_16
 Create Date: 2026-11-05
 """
 
@@ -17,8 +17,8 @@ from __future__ import annotations
 
 from alembic import op
 
-revision = "20261105_15"
-down_revision = "20261105_14"
+revision = "20261105_17"
+down_revision = "20261105_16"
 branch_labels = None
 depends_on = None
 
@@ -42,7 +42,7 @@ DECLARE
   v_def text := pg_get_functiondef('public.cliente_saude_registrar(jsonb, jsonb)'::regprocedure);
 BEGIN
   IF position('__DE__' IN v_def) = 0 THEN
-    RAISE EXCEPTION 'cliente_saude_registrar mudou de forma; revise a 20261105_15';
+    RAISE EXCEPTION 'cliente_saude_registrar mudou de forma; revise a 20261105_17';
   END IF;
   EXECUTE replace(v_def, '__DE__', '__PARA__');
 END
