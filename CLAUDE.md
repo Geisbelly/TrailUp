@@ -654,8 +654,8 @@ Cada perfil carrega:
   fila, erro e latência por formato e os quatro gatilhos do §11 (`ok`/`alerta`/`sem_dado`), com o **mesmo
   SLO da #14** (`app_config.personalizacao_kpi_slo`). Confere `app_e_dono()` antes de qualquer leitura e só
   agrega (nenhum `aluno_id`, nenhum texto de erro). Duas regras de honestidade: **o que o banco não mediu é
-  `sem_dado`, nunca `ok`** (o que a tela não entende também), e o gatilho de custo é um **proxy**
-  (execuções por alvo), porque tokens e custo em dinheiro não são gravados. A divergência de progresso é o
+  `sem_dado`, nunca `ok`** (o que a tela não entende também), e o gatilho de custo mede **tokens por
+  alvo** (`uso_modelo`, `20261103_14`), com o proxy de execuções só enquanto houver menos de 5 alvos medidos. A divergência de progresso é o
   resultado das invariantes (`metricas_invariante_resultado`). Disponibilidade = quando cada worker mexeu
   por último; o banco não enxerga a API. O aviso ao dono sai pelo sino (`20261102_23`): o `pg_cron`
   chama `painel_tecnico` (**a mesma conta da aba**, com o e-mail do dono posto nas claims só dentro da
@@ -1115,6 +1115,12 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   custa essa fatia do lote, e só protege se a chave estiver em outro projeto do Google, porque a cota
   diária é por projeto, e fora do `GEMINI_API_KEY*` do microservice, que tem rodízio próprio.
 
+- **Custos ficam em [`docs/custos.md`](docs/custos.md), e atualizar é parte do PR.** Serviço pago novo
+  ou mudança de plano, fatura, chamada de modelo nova, troca de modelo, ou decisão que mude chamadas,
+  tokens ou cota: o documento muda no mesmo PR, com a data no topo. Número sem fonte fica PENDENTE,
+  nunca estimado. `docs/analises/custos-jic-2026/` é retrato da v7 do resumo, com projeção de planos
+  pagos: não use aqueles valores como gasto atual.
+
 ## Fontes de contexto (fora do código)
 
 Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
@@ -1192,7 +1198,7 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
   [`docs/MANUAL.md`](docs/MANUAL.md),
   [coleta de métricas](docs/architecture/coleta-de-metricas.md),
   [schema não versionado](docs/architecture/schema-nao-versionado.md),
-  [`docs/rag/`](docs/rag/) e `graphify-out/` (abaixo).
+  [custos](docs/custos.md), [`docs/rag/`](docs/rag/) e `graphify-out/` (abaixo).
 
 ## Pontos de entrada (código)
 
