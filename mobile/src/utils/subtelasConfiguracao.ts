@@ -77,7 +77,7 @@ export const GRUPOS_CONFIGURACAO: GrupoSubtelas[] = [
         grupo: PREFERENCIAS,
         titulo: "Lembretes e silêncio",
         descricao:
-          "Escolha os dias e até três horários em que o TrailUp te avisa, e quando ele fica quieto. Funciona mesmo com o app fechado (no navegador, só quando o app está aberto).",
+          "Escolha os dias e até quatro horários em que o TrailUp te avisa, e quando ele fica quieto. Funciona mesmo com o app fechado (no navegador, só quando o app está aberto).",
       },
       {
         id: "foco",

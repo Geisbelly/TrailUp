@@ -1,4 +1,4 @@
-"""`20261105_05`: o aluno escolhe os dias, até 3 horários e o próprio silêncio.
+"""`20261105_05`: o aluno escolhe os dias, até 4 horários e o próprio silêncio.
 
 Mesmo banco do e2e da `20261105_04` (motor v2), com a `20261105_05` por cima. As RPCs do app são
 chamadas como o PostgREST chamaria: `SET ROLE authenticated` com o `sub` do JWT. Dados sintéticos.
@@ -21,6 +21,7 @@ from tests import test_e2e_notificacoes_v2_motor as v2
 pytestmark = f5.e2e
 
 M = f5.modulo("20261105_05_notificacoes_v2_controles.py")
+M06 = f5.modulo("20261105_06_notificacoes_4_horarios_4h.py")
 A, B = p.A, p.B
 UTC = dt.timezone.utc
 
@@ -38,6 +39,7 @@ def _banco():
         *f5.sql_de(v2.fala.M),
         *f5.sql_de(v2.M),
         *f5.sql_de(M),
+        *f5.sql_de(M06),
     )
 
 
@@ -178,10 +180,10 @@ def test_o_app_antigo_nao_apaga_o_que_o_aluno_escolheu():
 @pytest.mark.parametrize(
     ("kwargs", "codigo"),
     [
-        ({"horarios": [6 * 60, 12 * 60, 18 * 60, 23 * 60]}, "horarios_demais"),
-        ({"horarios": [8 * 60, 10 * 60]}, "horarios_perto_demais"),
-        # 2h, 14h e 21h: de 21h às 2h do dia seguinte são só 5 h (a volta da meia-noite conta).
-        ({"horarios": [14 * 60, 21 * 60, 2 * 60]}, "horarios_perto_demais"),
+        ({"horarios": [4 * 60, 9 * 60, 14 * 60, 19 * 60, 23 * 60]}, "horarios_demais"),
+        ({"horarios": [8 * 60, 11 * 60]}, "horarios_perto_demais"),
+        # 1h, 14h e 22h: de 22h à 1h do dia seguinte são só 3 h (a volta da meia-noite conta).
+        ({"horarios": [14 * 60, 22 * 60, 1 * 60]}, "horarios_perto_demais"),
         ({"horarios": [24 * 60]}, "horario_invalido"),
         ({"dias": [0]}, "dias_invalidos"),
         ({"dias": []}, "dias_invalidos"),
@@ -201,11 +203,15 @@ def _sql_salvar(kwargs: dict) -> tuple:
     )
 
 
-def test_tres_horarios_a_seis_horas_passam():
+def test_quatro_horarios_a_quatro_horas_passam():
     with _banco() as c:
         p._semear(c)
-        _salvar(c, A, horarios=[8 * 60, 14 * 60, 20 * 60])
-        assert _rotina(c, A)[3] == [480, 840, 1200]
+        _salvar(c, A, horarios=[8 * 60, 12 * 60, 16 * 60, 20 * 60])
+        assert _rotina(c, A)[3] == [480, 720, 960, 1200]
+        intervalo = c.execute(
+            "SELECT intervalo_min FROM public.notificacoes_tipos WHERE tipo = 'revisao_diaria'"
+        ).fetchone()[0]
+    assert intervalo == 240  # o motor não adia o que a RPC aceitou
 
 
 def test_horario_dentro_do_silencio_e_recusado():
@@ -364,6 +370,11 @@ def test_aluno_le_so_o_proprio_silencio():
 
 def test_downgrade_devolve_as_funcoes_de_antes():
     with _banco() as c:
+        for sql in f5.sql_de(M06, "downgrade"):
+            c.execute(sql)
+        intervalo = c.execute(
+            "SELECT intervalo_min FROM public.notificacoes_tipos WHERE tipo = 'revisao_diaria'"
+        ).fetchone()[0]
         for sql in f5.sql_de(M, "downgrade"):
             c.execute(sql)
         args = dict(
@@ -392,3 +403,4 @@ def test_downgrade_devolve_as_funcoes_de_antes():
         for trecho in ("janela_silencio(", "dias_semana", "now(), p_aluno)", "v_adiar, p_aluno)", "iniciada_em, p_aluno)")
     )
     assert colunas == 0
+    assert intervalo == 360

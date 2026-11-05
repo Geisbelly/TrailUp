@@ -41,7 +41,7 @@ Proposta. Prioridade base de 0 (baixa) a 3 (urgente). "Intervalo" é o mínimo e
 
 | Categoria | Tipo | Quem produz | Intervalo | Prio. | Silenciável |
 |---|---|---|---|---|---|
-| estudo | `revisao_diaria` | rotina do aluno | 6 h (era 20 h: a fase 2 permite 3 horários por dia) | 1 | sim |
+| estudo | `revisao_diaria` | rotina do aluno | 4 h desde a `20261105_06` (era 20 h; a `_04` gravou 6 h; a fase 2 permite 4 horários por dia) | 1 | sim |
 | estudo | `retomada_login` | login | 20 h | 1 | sim |
 | estudo | `pausa_saudavel` | tempo de uso | 3 h | 1 | sim |
 | estudo | `lembrete`, `suporte` | IA (`notificacoes_ia`) | 12 h | 2 | sim |
@@ -121,14 +121,17 @@ O professor vê o nível no console, só leitura.
 - **Dias da semana:** `notificacoes_agendamentos.dias_semana smallint[]` (ISO, 1 = segunda), nulo = todo dia.
   `notificacoes_proxima_ocorrencia` pula os dias fora da lista.
 - **Vários horários:** `notificacoes_agendamentos.horarios smallint[]` (minutos desde a meia-noite,
-  até 3), uma linha por tipo. *Mudou na implementação (`20261105_05`):* a spec previa trocar a chave
+  até 4), uma linha por tipo. *Mudou na implementação (`20261105_05`):* a spec previa trocar a chave
   única para `(aluno_id, tipo, hora_local, minuto_local)`, mas a chave `(aluno_id, tipo)` está em três
   `ON CONFLICT` e na hora inferida; o array guarda o mesmo sem mexer neles. `hora_local`/`minuto_local`
   seguem sendo o primeiro horário. A RPC confere o limite e o `intervalo_min` do tipo entre horários
-  (6 h na revisão), e o dedupe do dia passa a levar o horário. `p_dias_semana`/`p_horarios` nulos
+  (4 h na revisão, decisão de 05/11; a `20261105_06` baixa o `intervalo_min` de 6 h para 4 h), e o dedupe do dia passa a levar o horário. `p_dias_semana`/`p_horarios` nulos
   **mantêm** o que está, para o app antigo não apagar a escolha.
   O app agenda cada horário × dia localmente (`WEEKLY` do Expo quando há dias) e reagenda logo depois
   de salvar. Antes só reagendava no login.
+  *Decisão de 05/11:* os horários escolhidos pelo aluno **ficam dentro do orçamento** da categoria
+  (`estudo`, 2 pushes por dia). Com 3 ou 4 horários, todos os lembretes locais tocam no aparelho, mas do 3º
+  push em diante do servidor no mesmo dia é suprimidos pelo orçamento, como qualquer outro push de estudo.
 - **Silêncio próprio:** `alunos_notificacao_preferencias (aluno_id, silencio_inicio, silencio_fim)`,
   com o padrão de `notificacoes_config` (22h e 7h). Mínimo de 6 h e máximo de 14 h, para o aluno não
   zerar o silêncio por engano nem calar o dia inteiro. `notificacoes_em_silencio`/`_fora_do_silencio`

@@ -241,7 +241,7 @@ export async function agendarRotinasLocais(rotinas: RotinaNotificacao[]): Promis
     for (const rotina of rotinas) {
       if (!rotina.ativo || rotina.gatilho !== 'horario') continue;
 
-      // Até 3 horários × 7 dias = 21 por rotina: longe do limite de 64 agendadas do iOS.
+      // Até 4 horários × 7 dias = 28 por rotina: longe do limite de 64 agendadas do iOS.
       for (const disparo of disparosDaRotina(rotina)) {
         const sufixo = `${disparo.hora * 60 + disparo.minuto}${disparo.diaDaSemana ? `-d${disparo.diaDaSemana}` : ''}`;
         await Notifications.scheduleNotificationAsync({

@@ -151,7 +151,7 @@ export function salvarRotina(params: {
   ativo?: boolean;
   /** Omitido mantém os dias de antes; os 7 dias voltam a "todo dia". */
   diasSemana?: number[];
-  /** Minutos desde a meia-noite, até 3. Omitido mantém a lista de antes. */
+  /** Minutos desde a meia-noite, até 4. Omitido mantém a lista de antes. */
   horarios?: number[];
 }) {
   return chamarComMotivo<{
@@ -183,9 +183,9 @@ export function salvarRotina(params: {
 export function motivoDaRecusa(codigo: string | null): string {
   switch (codigo) {
     case 'horarios_demais':
-      return 'Dá para escolher até 3 horários.';
+      return 'Dá para escolher até 4 horários.';
     case 'horarios_perto_demais':
-      return 'Deixe pelo menos 6 horas entre um horário e outro.';
+      return 'Deixe pelo menos 4 horas entre um horário e outro.';
     case 'horario_no_silencio':
       return 'Esse horário cai no seu silêncio. Mude o horário ou o silêncio.';
     case 'dias_invalidos':

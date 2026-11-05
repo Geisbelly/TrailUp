@@ -41,7 +41,7 @@ const TIPO_REVISAO_DIARIA = "revisao_diaria";
 // escolher e nao depende de nenhuma biblioteca de time picker (que nem
 // funcionaria igual na web).
 const HORARIOS_SUGERIDOS = [7, 8, 12, 14, 18, 19, 20, 21];
-const MAX_HORARIOS = 3;
+const MAX_HORARIOS = 4;
 
 // Dias ISO, como o banco guarda (1 = segunda).
 const DIAS = [
@@ -355,7 +355,7 @@ export default function LembreteDiarioScreen() {
                 </View>
 
                 <Text style={[styles.sectionLabel, { color: palette.textMuted }]}>
-                  Horários (até {MAX_HORARIOS}, com 6 h entre eles)
+                  Horários (até {MAX_HORARIOS}, com 4 h entre eles)
                 </Text>
                 <View style={styles.horariosGrid}>
                   {HORARIOS_SUGERIDOS.map((hora) => {
@@ -452,7 +452,7 @@ export default function LembreteDiarioScreen() {
           <ApoioConfig titulo="Como chega" palette={palette}>
             <TextoApoio palette={palette}>
               Com o app aberto no navegador, o aviso aparece como notificação; ele também fica em Notificações, como
-              revisão diária. Até três horários por dia, nos dias que você escolher.
+              revisão diária. Até quatro horários por dia, nos dias que você escolher.
             </TextoApoio>
           </ApoioConfig>
         }
