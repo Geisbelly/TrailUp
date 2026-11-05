@@ -89,7 +89,7 @@ No Supabase, em `/functions/v1/<nome>`. O app ainda chama `personalize_path`, qu
 | `storage-upload-url` | Chave de serviço | URL assinada de upload no R2, para os serviços que geram arquivo. |
 | `validate-essay-answer-ai` | Login | App: confere a resposta dissertativa. |
 
-## Web (33)
+## Web (34)
 
 Vite e React, em `https://trailup.vercel.app`. Qualquer outro caminho cai na página 404.
 
@@ -135,6 +135,7 @@ Uma rota por aba, geradas de `frontend/src/pages/consoleSections.ts`. Exigem pro
 | `/console/meus-dados` | Meus dados |
 | `/console/aprovacoes` | Aprovações |
 | `/console/tecnico` | Painel técnico |
+| `/console/administracao` | Administração |
 
 ## App do aluno (32)
 

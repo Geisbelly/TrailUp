@@ -71,13 +71,13 @@ describe("shared page surfaces", () => {
       view: "aprovacoes", name: "Professor", isOwner: true, onSignOut: () => {},
     }));
     const [topo, lateral] = markup.split('id="console-sections-navigation"');
-    for (const view of ["profile", "recomendacoes", "aprovacoes", "tecnico"] as const) {
+    for (const view of ["profile", "recomendacoes", "aprovacoes", "tecnico", "administracao"] as const) {
       expect(topo, view).toContain(`href="${consolePathForView(view)}"`);
     }
     expect(topo).toContain('aria-current="page"');
     // Meus dados é o avatar. Os ícones do topo só aparecem na gaveta da tela estreita (CSS).
     expect(lateral).not.toContain(`href="${consolePathForView("profile")}"`);
-    for (const view of ["recomendacoes", "aprovacoes", "tecnico"] as const) {
+    for (const view of ["recomendacoes", "aprovacoes", "tecnico", "administracao"] as const) {
       expect(lateral, view).toMatch(new RegExp(`<a data-so-na-gaveta="true"[^>]*href="${consolePathForView(view)}"`));
     }
   });
@@ -88,6 +88,7 @@ describe("shared page surfaces", () => {
     }));
     expect(markup).not.toContain('href="/console/aprovacoes"');
     expect(markup).not.toContain('href="/console/tecnico"');
+    expect(markup).not.toContain('href="/console/administracao"');
   });
 
   it("shows the Lumi on the working sections but not on Aprovações", () => {

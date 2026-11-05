@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Activity, Award, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, Lightbulb, LogOut, Menu, Route, Settings, ShieldCheck, Sparkles, Trophy, X } from "lucide-react";
+import { Activity, Award, Building2, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, Lightbulb, LogOut, Menu, Route, Settings, ShieldCheck, Sparkles, Trophy, X } from "lucide-react";
 import { Shield, Swords } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMinhaConta } from "@/hooks/useMinhaConta";
@@ -28,12 +28,13 @@ const navigation = {
   profile: { label: ROTULO_DA_VIEW.profile, icon: Settings },
   aprovacoes: { label: ROTULO_DA_VIEW.aprovacoes, icon: ShieldCheck },
   tecnico: { label: ROTULO_DA_VIEW.tecnico, icon: Activity },
+  administracao: { label: ROTULO_DA_VIEW.administracao, icon: Building2 },
 };
 
 // Recomendações, conta e administração ficam no topo, ao lado do sino; o menu lateral fica com as
 // telas de trabalho. "Meus dados" é o avatar com o nome. Na tela estreita, onde o menu vira gaveta,
 // os ícones não cabem no topo e voltam para a gaveta (CSS).
-const ICONES_NO_TOPO: ConsoleView[] = ["recomendacoes", "aprovacoes", "tecnico"];
+const ICONES_NO_TOPO: ConsoleView[] = ["recomendacoes", "aprovacoes", "tecnico", "administracao"];
 
 // Dialog, Select e Popover do Radix renderizam em portal no <body>, fora de
 // .console-shell — sem isto eles ficariam com as cores da área pública.

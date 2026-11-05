@@ -11,7 +11,7 @@ Console web, aba **Painel técnico**, só para o dono (`app_e_dono()`):
 - **Acessos:** ativos sobre matriculados, acessos, plataformas, a lista por aluno e os acessos ao console.
 - **Geração e fila:** o painel técnico da #21.
 
-A tela lê o Supabase direto. O HTML `/admin/professores` da API continua só para liberar professor: um painel servido pela API cairia junto com ela.
+A tela lê o Supabase direto. Um painel servido pela API cairia junto com ela. Pelo mesmo motivo, liberar professor, vínculo com aluno, molduras e auditoria da economia têm a aba Administração do console, com funções `admin_*` no banco (`20261105_18`).
 
 ## O que é medido
 
@@ -90,7 +90,7 @@ O primeiro e-mail real só sai em um incidente. Para testar o caminho inteiro, g
 
 ## Definir o horário de aula
 
-O banco não tem grade de aula, então a janela é global e fica em `monitor_config.aula`. O padrão é provisório: segunda a sexta, das 07:00 às 22:00, em Brasília. Quanto mais larga a janela, mais minutos contam e maior o orçamento. Férias e semanas sem aula entram em `sem_aula`:
+O banco não tem grade de aula, então a janela é global e fica em `monitor_config.aula`. Ela é segunda a sexta, das 07:00 às 22:00, em Brasília, decisão de 05/11/2026. Quanto mais larga a janela, mais minutos contam e maior o orçamento. Semanas sem aula entram em `sem_aula`:
 
 ```json
 {"aula": {"dias": [1, 2, 3, 4, 5], "inicio": "19:00", "fim": "22:30", "sem_aula": [{"de": "2026-12-19", "ate": "2027-02-07"}]}}
