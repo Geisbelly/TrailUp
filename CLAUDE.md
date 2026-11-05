@@ -520,6 +520,15 @@ Cada perfil carrega:
   `pg_advisory_xact_lock` do tópico e acrescenta o epíteto do perfil a nome igual ou que só troca o
   título. O prompt recebe a assinatura editorial inteira (`_assinatura`), amarrada a momentos da
   batalha; ela entra no `source_hash`, então mudar a voz de um perfil regera as falas dele.
+- `molduras.imagem_url` + `molduras.abertura` — moldura cadastrada na Administração (`20261105_28`).
+  `NULL` nas duas quer dizer "usa o desenho do pacote": as 40 originais continuam no pacote do app, e o
+  console as mostra de `frontend/public/molduras/`. Cadastro, edição e remoção são RPC
+  (`admin_moldura_gravar`, `admin_moldura_remover`, só `app_e_dono()`), e o console sobe o arquivo direto
+  no bucket público `molduras`, sem passar pela API. As duas devolvem `imagem_anterior`, e quem apaga o
+  arquivo velho é o console, **depois** de o banco confirmar. `codigo` não muda, porque está em
+  `moldura_aluno`, e moldura com dono não sai: a recusa é `23503`, e o caminho é desligar a chave. **Só
+  build novo mostra imagem do banco:** não há OTA, e o app antigo descarta código que não conhece e fica
+  com o desenho do pacote nas que já existem.
 - `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
   sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
   ou por aluno (estes vêm do `agente_intervencao`, quando um alerta de estudo

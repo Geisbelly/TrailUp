@@ -16,6 +16,7 @@ Migrations `api/alembic/versions/20261024_09_buckets_privados.py` (buckets do al
 | R2 | `pesquisa/<sessoes\|lotes\|eventos>/<aluno>/AAAA/MM/DD/<id>.json` | **arquivo da pesquisa** (#17): cópia de cada sessão, lote e evento de quem consentiu pesquisa, com o payload bruto | Edge Function `pesquisa-arquivar` (pg_cron, `20261104_02`) | sim (`pesquisa_arquivo.caminho`). **Nunca sai por prazo**, só com a conta do aluno |
 | R2 | `pesquisa/anonimo/<sessoes\|lotes\|eventos>/<titular>/<código>.json` | **cópia anônima** do arquivo de quem consentiu e pediu exclusão (`20261104_03`): todo id vira HMAC com um sal por exclusão, apagado ao concluir; vai junto o perfil BrainHex dominante | Edge Function `pesquisa-arquivar` | não (de propósito: nada no banco liga a cópia ao aluno). Não é dado pessoal e não sai |
 | Storage `conteudos` (e R2) | `<uid do professor>/<tópico>/<ts>_<nome>` | upload do professor (arquivo do conteúdo, mídia de questão, imagem de card, fonte da personalização) | console | sim (`conteudos.conteudo`, `conteudos.metadata.files[].path`/`media_storage_path`, `midias.url`, `questoes.midia_url`, `cards.imagem_url`, `fontes_personalizacao`) |
+| Storage `molduras` (público) | `<código>-<ts>.<ext>` | imagem de moldura cadastrada na Administração (`20261105_28`). Arte do produto, não dado de pessoa: por isso é público. PNG ou WebP, até 1 MB. Só o dono do projeto sobe e apaga | console (dono), direto no Storage | sim (`molduras.imagem_url`) |
 
 ## Buckets privados
 

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { molduras } from "@/constants/molduras";
+import { definirMoldurasRemotas, molduraRemota } from "@/utils/moldurasRemotas";
 import { FRAME_CANVAS_SIZE, getFrameLayout } from "@/utils/profileFrameLayout";
 import { lerCatalogo, mensagemDeErro } from "./moldurasModel";
 
@@ -37,4 +38,29 @@ test("toda moldura extra tem abertura que cabe na tela de 256 e centraliza a fot
       assert.ok(photoLeft >= 0 && photoTop >= 0 && photoLeft + photoSize <= size && photoTop + photoSize <= size, codigo);
     }
   }
+});
+
+test("moldura com imagem cadastrada entra no catálogo mesmo sem desenho no pacote", () => {
+  const linha = { codigo: "nova_do_console", nome: "Nova", origem: "loja", preco: 10 };
+  definirMoldurasRemotas([]);
+  assert.deepEqual(lerCatalogo([linha]), []);
+  definirMoldurasRemotas([{ codigo: "nova_do_console", imagem_url: "https://x/y.webp", abertura: { x: 128, y: 128, radius: 90 } }]);
+  assert.equal(lerCatalogo([linha]).length, 1);
+  definirMoldurasRemotas([]);
+});
+
+test("imagem cadastrada: guarda URI e abertura, e ignora linha incompleta", () => {
+  definirMoldurasRemotas([
+    { codigo: "boa", imagem_url: "https://x/y.webp", abertura: { x: 120, y: 130, radius: 80 } },
+    { codigo: "http", imagem_url: "http://x/y.webp", abertura: { x: 1, y: 1, radius: 1 } },
+    { codigo: "sem_abertura", imagem_url: "https://x/y.webp", abertura: { x: 1 } },
+    { imagem_url: "https://x/y.webp", abertura: { x: 1, y: 1, radius: 1 } },
+    null,
+  ]);
+  assert.deepEqual(molduraRemota("boa"), { source: { uri: "https://x/y.webp" }, opening: { x: 120, y: 130, radius: 80 } });
+  assert.equal(molduraRemota("http"), null);
+  assert.equal(molduraRemota("sem_abertura"), null);
+  assert.equal(molduraRemota("toString"), null);
+  definirMoldurasRemotas(null);
+  assert.equal(molduraRemota("boa"), null);
 });
