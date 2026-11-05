@@ -43,9 +43,8 @@
 // LINK CURTO POR SESSAO (#632, ver link.ts). Em vez do JWT no GET, o cliente
 // logado pede os links por POST (com Authorization) e o gateway so' assina o
 // caminho que a RLS deixa ele ler. O GET confere `u`/`exp`/`sig` sem cabecalho.
-// Transicao: link sem assinatura continua aceito ate' GATEWAY_EXIGE_LINK_ASSINADO
-// = "true" (depois da versao minima do app). Link com assinatura errada ou
-// vencida e' recusado desde ja'.
+// Link sem assinatura e' recusado com GATEWAY_EXIGE_LINK_ASSINADO = "true", ligado
+// em 04/11. Link com assinatura errada ou vencida e' recusado sempre.
 //
 // LEITURA DE SERVIDOR. API e microservice baixam fonte e material sem sessao de
 // usuario, entao pedem o link com a chave de servico (a mesma conferencia do

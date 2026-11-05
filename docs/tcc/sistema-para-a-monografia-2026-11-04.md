@@ -84,7 +84,7 @@ Isso é uma decisão de arquitetura própria do projeto e pode ser descrita como
 
 ## 3. App do aluno (`mobile/`)
 
-Expo SDK 54, React Native, roteamento por arquivos (`expo-router`). Versão 1.0.6 na Play Store, de 01/11/2026. [código]
+Expo SDK 54, React Native, roteamento por arquivos (`expo-router`). Versão 1.0.6 na Play Store, de 01/11/2026. A 1.0.7 tem build de 05/11 e ainda não foi publicada; até lá, o app da loja não carrega a mídia servida pelo gateway, porque não pede o link assinado. [código]
 
 | Área | Telas | O que faz |
 |---|---|---|
@@ -378,7 +378,8 @@ Em produção ainda não há evento de turma nem guilda criados: 0 de cada. [ban
   - Se o aluno pede exclusão, a cópia identificada sai.
   - Fica só uma cópia anônima, e só de quem consentiu: os identificadores viram HMAC com um sal que é descartado.
 - **Arquivos do material:**
-  - são servidos só por link assinado e de curta duração (`storage-redirect`), exigido desde 04/11;
+  - pelo gateway (`storage-redirect`), só saem por link assinado e de curta duração, exigido desde 04/11;
+  - os quatro buckets do Storage ainda estão públicos em 05/11, à espera do fechamento: o que vive lá abre por URL direta, então não afirme que todo arquivo exige link;
   - conteúdo apagado leva os arquivos dele do Storage e do R2.
 - **Direitos do titular, no app:** relatório dos dados, exclusão da conta e revogação dos consentimentos.
 - **Encarregado (DPO):** publicado na seção 10 da Privacidade.

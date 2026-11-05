@@ -154,11 +154,19 @@ _TERMOS_DE_SISTEMA = re.compile(
     r"modulos?|ciclos?|blocos?|modelos?|analis\w*|analise|dados|estrategic\w*|eficiencia)\b"
 )
 # O aluno não pode ler que foi observado. Casa sem acento, como os termos de sistema.
-_TERMOS_DE_VIGILANCIA = re.compile(r"\b(monitor\w*|vigi\w*|rastre\w*|detect\w*|camera|cameras|coletad\w*)\b")
+_TERMOS_DE_VIGILANCIA = re.compile(
+    r"\b(monitor\w*|vigi\w*|rastre\w*|detect\w*|camera|cameras|coletad\w*"
+    r"|acompanh(?:amos|ando|ei) (?:cada|seus?|suas?|voce|tudo))\b"
+)
+# Só aqui, não em `_TERMOS_DE_EMOCAO`: aquele filtra também o texto que o professor lê, onde falar de
+# cansaço da turma é legítimo. Ao aluno, o sistema não pode dizer o que ele sente (DAT-45).
+_EMOCAO_AO_ALUNO = re.compile(r"\b(desanimad\w*|desanimo|cansad\w*|cansaco|abatid\w*|angusti\w*|nervos[oa]s?)\b")
+# Sobre o texto sem nome de tópico: "O aluno e a escola" pode ser tópico do professor.
+_TERCEIRA_PESSOA = re.compile(r"\b[oa] (alun[oa]|estudante)\b")
 _PLACEHOLDER = re.compile(r"[\[\]{}<>]|\bMOCK\b|\bAlun[oa]\b|\bEstudante\b")
 _PALAVRAS_POR_FRASE = 18
 # Versão desta guarda, gravada em `contexto.texto_guarda`. O banco não entrega abaixo do mínimo dele.
-TEXTO_GUARDA_VERSAO = 2
+TEXTO_GUARDA_VERSAO = 3
 
 
 def _sem_acento(texto: str) -> str:
@@ -182,11 +190,13 @@ def problemas_do_texto(titulo: str, corpo: str, foco: dict[str, Any] | None = No
     for nome in ((foco or {}).get("topico"), (foco or {}).get("proximo_conteudo")):
         if nome:
             livre = livre.replace(_sem_acento(str(nome)), " ")
+    if _TERCEIRA_PESSOA.search(livre):
+        problemas.append("fala do aluno na terceira pessoa")
     termos = sorted({m.group(0) for m in _TERMOS_DE_SISTEMA.finditer(livre)})
     if termos:
         problemas.append("usa palavras de sistema: " + ", ".join(termos))
     # DAT-45: o sistema não mede emoção, e o modelo recebe `emocao_atual` para escolher o que dizer.
-    emocoes = sorted({m.group(0) for m in _TERMOS_DE_EMOCAO.finditer(livre)})
+    emocoes = sorted({m.group(0) for r in (_TERMOS_DE_EMOCAO, _EMOCAO_AO_ALUNO) for m in r.finditer(livre)})
     if emocoes:
         problemas.append("atribui emoção ao aluno: " + ", ".join(emocoes))
     vigilancia = sorted({m.group(0) for m in _TERMOS_DE_VIGILANCIA.finditer(livre)})
