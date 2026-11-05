@@ -46,7 +46,8 @@ export type DiaDeAcesso = { dia: string; alunos: number; minutos: number };
 
 export type Disponibilidade = {
   gerado_em: string;
-  aula: { agora: boolean; dias: number[]; inicio: string; fim: string; slo_janela_dias: number; slo_24x7_pct: number | null };
+  /** O JSON do banco mantém o nome `aula`; o monitor vale 24 horas. */
+  aula: { slo_janela_dias: number };
   alvos: Alvo[];
   incidentes: Incidente[];
   resumo: { abertos: number; quedas: number; instabilidades: number; lentidoes: number; degradacoes: number; mediana_queda_min: number | null };
@@ -114,16 +115,11 @@ export function lerDisponibilidade(bruto: unknown): Disponibilidade | null {
   const banco = obj(b.banco);
   const alertas = obj(b.alertas);
   const acessos = obj(b.acessos);
-  const aula = obj(b.aula);
+  const janela = obj(b.aula);
   return {
     gerado_em: texto(b.gerado_em),
     aula: {
-      agora: aula.agora === true,
-      dias: Array.isArray(aula.dias) ? aula.dias.filter((d): d is number => typeof d === "number") : [],
-      inicio: texto(aula.inicio),
-      fim: texto(aula.fim),
-      slo_janela_dias: num(aula.slo_janela_dias, 28),
-      slo_24x7_pct: numOuNulo(aula.slo_24x7_pct),
+      slo_janela_dias: num(janela.slo_janela_dias, 28),
     },
     alvos: lista(b.alvos).map((a) => ({
       id: texto(a.id, "?"),
@@ -254,16 +250,10 @@ export function formatarDisponibilidade(pct: number | null): string {
   return pct === null ? "—" : `${pct.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`;
 }
 
-/** Fração do orçamento de aula já gasta. Sem meta ou sem sonda em aula, não há o que dizer. */
+/** Fração do orçamento já gasta. Sem meta ou sem sonda medida, não há o que dizer. */
 export function orcamentoGastoPct(a: Pick<Alvo, "minutos_fora_aula" | "orcamento_aula_min" | "medidas_aula">): number | null {
   if (!a.orcamento_aula_min || a.medidas_aula === 0) return null;
   return Math.round((100 * a.minutos_fora_aula) / a.orcamento_aula_min);
-}
-
-const DIAS = ["", "seg", "ter", "qua", "qui", "sex", "sáb", "dom"];
-/** "seg, ter, qua, qui, sex, 07:00 às 22:00": a janela que vale para a meta, dita na tela. */
-export function rotuloDaAula(a: Pick<Disponibilidade["aula"], "dias" | "inicio" | "fim">): string {
-  return `${a.dias.map((d) => DIAS[d] ?? "?").join(", ")}, ${a.inicio} às ${a.fim}`;
 }
 
 /** A faixa de um dia: `sem_dado` quando nada foi medido, em vez de parecer um dia bom. */

@@ -8,7 +8,6 @@ import {
   estadoDoDia,
   formatarDisponibilidade,
   orcamentoGastoPct,
-  rotuloDaAula,
   rotuloDaOrigem,
   rotuloDoAlvo,
   rotuloDoIncidente,
@@ -73,9 +72,9 @@ function CartaoDoAlvo({ a }: { a: Alvo }) {
       </p>
       <FaixaDe30Dias a={a} />
       <p className="mt-2 text-[12px] leading-snug text-muted-foreground">
-        Em aula: {formatarDisponibilidade(a.disponibilidade_aula_pct)} (meta {a.slo_pct === null ? "—" : `${a.slo_pct.toLocaleString("pt-BR")}%`}). Fora do ar em aula: {formatarMinutos(a.minutos_fora_aula)} de {formatarMinutos(a.orcamento_aula_min)} permitidos{gasto === null ? "" : ` (${gasto}% do orçamento)`}. Aula medida: {a.cobertura_aula_pct === null ? "—" : `${a.cobertura_aula_pct.toLocaleString("pt-BR")}%`}.
+        Disponibilidade: {formatarDisponibilidade(a.disponibilidade_aula_pct)} (meta {a.slo_pct === null ? "—" : `${a.slo_pct.toLocaleString("pt-BR")}%`}). Fora do ar: {formatarMinutos(a.minutos_fora_aula)} de {formatarMinutos(a.orcamento_aula_min)} permitidos{gasto === null ? "" : ` (${gasto}% do orçamento)`}. Tempo medido: {a.cobertura_aula_pct === null ? "—" : `${a.cobertura_aula_pct.toLocaleString("pt-BR")}%`}.
       </p>
-      <p className="mt-1 text-[11.5px] text-muted-foreground">Todo horário, 30 dias: {formatarDisponibilidade(a.disponibilidade_30d_pct)} (informativo).</p>
+      <p className="mt-1 text-[11.5px] text-muted-foreground">Últimos 30 dias: {formatarDisponibilidade(a.disponibilidade_30d_pct)}.</p>
       <p className="mt-1 text-[11.5px] text-muted-foreground">
         Última sonda {haQuanto(a.ultima_sonda_em, new Date())}{a.versao ? `. Versão ${a.versao}` : ""}.
       </p>
@@ -94,7 +93,7 @@ function PainelDeDisponibilidade({ d }: { d: Disponibilidade }) {
           ))}
         </ul>
         <p className="text-[11.5px] text-muted-foreground">
-          A meta vale em horário de aula ({rotuloDaAula(d.aula)}), nos últimos {d.aula.slo_janela_dias} dias{d.aula.agora ? ", e agora é horário de aula" : ""}. Em aula as sondas rodam a cada minuto. Quem mede é o banco, de fora do servidor da API. O tempo até responder inclui a espera do pg_net: serve para ver tendência, não como número absoluto. O app não tem sonda; o que ele vê está em &ldquo;O que os aparelhos relatam&rdquo;.
+          A meta vale 24 horas por dia, nos últimos {d.aula.slo_janela_dias} dias, e as sondas rodam a cada minuto. Quem mede é o banco, de fora do servidor da API. O tempo até responder inclui a espera do pg_net: serve para ver tendência, não como número absoluto. O app não tem sonda; o que ele vê está em &ldquo;O que os aparelhos relatam&rdquo;.
         </p>
       </Secao>
 

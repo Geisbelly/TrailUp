@@ -697,9 +697,9 @@ Cada perfil carrega:
   depois do commit), aplica na máquina de estados de `monitor_alvo`, varre instabilidade, lentidão e sinais
   (app sem alcançar a API por `fallback_motivo`, erro do modelo, espaço, conexões, `cron.job_run_details`),
   dispara as novas e envia os e-mails de `monitor_alerta` pelo Apps Script. Limiares e metas ficam em
-  `app_config.monitor_config`; destino é `monitor_email_destino`, senão `dono_email`. A meta vale em horário de aula, em
-  28 dias: o banco não tem grade, então a janela é global (`monitor_config.aula`), e cada sonda grava `em_aula` ao sair.
-  Em aula, tudo é sondado a cada minuto. Três detalhes. **Sonda sem
+  `app_config.monitor_config`; destino é `monitor_email_destino`, senão `dono_email`. A meta vale 24 horas por dia, em
+  28 dias, e tudo é sondado a cada minuto (`20261105_19`): é um app, não tem horário de funcionamento. Os nomes
+  `aula` e `em_aula` ficaram por dentro; `aula` cobre todo dia e não deve ser restringida de novo. Três detalhes. **Sonda sem
   resposta não é falha**: fica `ok = NULL`, porque quem não respondeu foi o medidor. **`latencia_ms` é proxy**: o
   `pg_net` não grava a duração. **O monitor cai com o Supabase**: só a batida (`monitor_batida_url` no Vault, para o
   Healthchecks.io) e um serviço externo cobrem isso. A aba Painel técnico lê `painel_disponibilidade` e
