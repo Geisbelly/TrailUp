@@ -479,6 +479,10 @@ Cada perfil carrega:
   (CHECK). A consequência já tira o Elo e a aposta no fechamento; quem cria é só `evento_duelo_criar`,
   que exige o evento aberto e **todo convocado inscrito**, e aceitar o convite cobra o mesmo
   (`fn_evento_duelo_cobrar`). No rank do evento, o `ranqueada` conta também os duelos daquele evento.
+  **Pareamento** (`20261105_16`): no evento o adversário vem dos `k` inscritos de desempenho mais
+  próximo (`evento_sugerir_adversarios`, que devolve só nomes); o desempenho é o Elo de quem já jogou
+  e o acerto convertido de quem não. Guilda pela média, com limite de tamanho. Parâmetros em
+  `app_config` (`evento_pareamento_*`). O Social continua com escolha livre.
   **Missão de guilda** (`20261105_13`): com `missoes.alvo_por_membro` (padrão das novas), o alvo é
   alvo × membros ativos, para a via em guilda render o mesmo que a individual.
 - `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_11`):

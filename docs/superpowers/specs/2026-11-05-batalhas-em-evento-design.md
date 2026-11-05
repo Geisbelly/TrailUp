@@ -3,7 +3,7 @@
 Data: 2026-11-05 · Issue [#154](https://github.com/BitStudioLabs/trail-up/issues/154) · Continua
 [`2026-11-03-inscricao-em-evento-e-rank-do-evento-design.md`](2026-11-03-inscricao-em-evento-e-rank-do-evento-design.md) §7
 
-**Estado: aprovada em 2026-11-05** ("pode seguir com as recomendações"). Fase 1 na `20261105_13` (#991); fase 2 na `20261105_15`.
+**Estado: aprovada em 2026-11-05** ("pode seguir com as recomendações"). Fase 1 na `20261105_13` (#991); fase 2 na `20261105_15` (#995); fase 3 na `20261105_16`.
 
 ## 1. Resumo
 
