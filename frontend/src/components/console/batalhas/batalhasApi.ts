@@ -20,6 +20,7 @@ export function mapearDuelo(b: Bruto): Duelo {
     modo: dentro(b.modo, ["todos", "velocidade", "precisao", "duelo", "duplo"] as const, "todos"),
     dificuldade: dentro(b.dificuldade, ["normal", "dificil"] as const, "normal"),
     consequencia: dentro(b.consequencia, ["treino", "ranqueada", "evento"] as const, "ranqueada"),
+    eventoId: texto(b.evento_id),
     status: dentro(b.status, ["aberto", "encerrado"] as const, "aberto"),
     resultado: b.resultado === "vitoria" || b.resultado === "empate" || b.resultado === "sem_adversario" ? b.resultado : null,
     vencedorEquipe: b.vencedor_equipe === 1 || b.vencedor_equipe === 2 ? b.vencedor_equipe : null,

@@ -4,18 +4,25 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ErroDaPagina, SeloDeStatus } from "../comum/PaginaDoConsole";
 import {
+  duelosDoEvento,
   inscritosComNome,
   percentual,
   quemPrecisaDeEmpurrao,
+  resumoDosDuelos,
   resumoDosInscritos,
   resumoEmFrase,
   ROTULO_DA_SITUACAO,
   rotuloDasGuildas,
+  type DueloDaTurma,
   type Inscricao,
   type PainelDurante,
 } from "./durante";
 import { rotuloDosCriterios } from "./evento";
 import { lerDurante, lerInscritos, traduzirErroDeEvento, type Evento } from "./eventosApi";
+import { lerBatalhas } from "../batalhas/batalhasApi";
+
+/** O resumo da arena devolve no máximo esta quantidade de duelos (`arena_professor_resumo`). */
+const LIMITE_DO_RESUMO = 40;
 
 const rotulo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
 
@@ -38,6 +45,8 @@ export function DuranteDoEventoDialog({ evento, onFechar }: { evento: Evento; on
   // `null` = ainda lendo; falha nos inscritos não derruba o painel, só esta seção.
   const [inscricoes, setInscricoes] = useState<Inscricao[] | null>(null);
   const [erroDosInscritos, setErroDosInscritos] = useState(false);
+  // Duelos da turma, para contar os do evento (#154). Falha aqui só esconde a linha.
+  const [duelos, setDuelos] = useState<DueloDaTurma[] | null>(null);
 
   useEffect(() => {
     let ativo = true;
@@ -52,11 +61,15 @@ export function DuranteDoEventoDialog({ evento, onFechar }: { evento: Evento; on
       lerInscritos(evento.id)
         .then((l) => ativo && setInscricoes(l))
         .catch(() => ativo && setErroDosInscritos(true));
+      setDuelos(null);
+      lerBatalhas(evento.classeId)
+        .then((r) => ativo && setDuelos(r.duelos))
+        .catch(() => ativo && setDuelos(null));
     }
     return () => {
       ativo = false;
     };
-  }, [evento.id, tentativa, temRank]);
+  }, [evento.id, evento.classeId, tentativa, temRank]);
 
   const empurrar = painel ? quemPrecisaDeEmpurrao(painel.alunos) : [];
   const inscritos = painel && inscricoes ? inscritosComNome(inscricoes, painel.alunos) : null;
@@ -107,6 +120,9 @@ export function DuranteDoEventoDialog({ evento, onFechar }: { evento: Evento; on
                           <li key={a.alunoId} className="rounded-full border bg-background px-3 py-1 text-sm">{a.nome}</li>
                         ))}
                       </ul>
+                    )}
+                    {duelos && (
+                      <p className="mt-3 text-sm">{resumoDosDuelos(duelosDoEvento(duelos, evento.id), duelos.length >= LIMITE_DO_RESUMO)}</p>
                     )}
                   </>
                 )}
