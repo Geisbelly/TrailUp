@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Visão geral do sistema · TrailUp</title><meta name="description" content="O sistema inteiro em uma página: arquitetura, app, console, API e IA, geração, perfis, RAG, telemetria, gamificação, banco e privacidade, com a procedência de cada dado."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 transform=%22rotate(45 8 8)%22 fill=%22%23a08df5%22/%3E%3C/svg%3E"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><span class="diamond"></span>TrailUp · documentação</a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html" aria-current="page">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Sistema</div><h1>Visão geral do sistema</h1><p class="lede">O sistema inteiro em uma página: arquitetura, app, console, API e IA, geração, perfis, RAG, telemetria, gamificação, banco e privacidade, com a procedência de cada dado.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/sistema-para-a-monografia-2026-11-04.md" target="_blank" rel="noopener">docs/tcc/sistema-para-a-monografia-2026-11-04.md</a><span class="chip ok">atualizado 04/11/2026</span><span class="chip warn">2 diagramas</span></div></header><p>Varredura completa do sistema, para os capítulos de desenvolvimento (5), Evidence Base e RAG (6), avaliação (7) e limitações (9) da monografia. Cada dado tem uma marca de procedência:</p>
+<ul>
+<li><strong>[código]</strong>: lido na <code>main</code> do Lab no commit <code>20cfdd78</code> (04/11/2026).</li>
+<li><strong>[banco]</strong>: consultado em produção (projeto de produção) em 04/11/2026, só leitura.</li>
+<li><strong>[doc]</strong>: tirado de um documento do repositório, citado no item.</li>
+</ul>
+<p>O catálogo peça por peça (cada módulo, tela, aba, tabela, função, rotina e prompt) está no <a href="inventario.html">inventário completo</a>, que também lista o que a segunda varredura acrescentou: desenho experimental, análise BrainHex v3, guardrails e mais formatos de saída.</p>
+<p>Os capítulos <code>01</code> a <code>11</code> desta pasta são de abril de 2026 e estão desatualizados em vários pontos (ver a seção 15). Onde este documento e eles divergirem, vale este, até os capítulos serem revistos.</p>
+<hr />
+<h2 id="1-o-sistema-em-números">1. O sistema em números</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Valor</th>
+<th>Procedência</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Serviços</td>
+<td>4 no monorepo (API, microservice, console web, app) e o BrainHexPDF (<code>brainhexpdf/</code>)</td>
+<td>[código]</td>
+</tr>
+<tr>
+<td>Linhas de código, sem testes</td>
+<td>API 46.413 (Python) · microservice 12.506 · console web 59.024 · app 93.567 · BrainHexPDF 26.845 (TypeScript)</td>
+<td>[código]</td>
+</tr>
+<tr>
+<td>Arquivos de teste</td>
+<td>API 338 · microservice 44 · console 143 · app 200</td>
+<td>[código]</td>
+</tr>
+<tr>
+<td>Migrations de banco</td>
+<td>307 (Alembic, de <code>20260405_01</code> a <code>20261104_06</code>)</td>
+<td>[código]</td>
+</tr>
+<tr>
+<td>Histórico do monorepo</td>
+<td>882 commits desde 25/08/2026 · 777 PRs mesclados · 145 issues (136 fechadas)</td>
+<td>[código] e GitHub</td>
+</tr>
+<tr>
+<td>Banco</td>
+<td>171 tabelas · 27 views · 612 funções · 144 gatilhos · 286 políticas de RLS · 16 rotinas agendadas (<code>pg_cron</code>)</td>
+<td>[banco]</td>
+</tr>
+<tr>
+<td>Edge Functions</td>
+<td>6: <code>generate-content-ai</code>, <code>validate-essay-answer-ai</code>, <code>storage-redirect</code>, <code>storage-upload-url</code>, <code>pesquisa-arquivar</code>, <code>personalize_path</code></td>
+<td>[banco]</td>
+</tr>
+</tbody>
+</table></div>
+<p>O desenvolvimento ocupou cerca de 716 horas em 137 dias com commit (set/2025 a nov/2026), segundo o levantamento de custos feito para o resumo da JIC 2026 (pausa de até 2 h entre commits, faixa de 613 a 1.009 h). A conta inclui os repositórios anteriores ao monorepo.</p>
+<hr />
+<h2 id="2-arquitetura">2. Arquitetura</h2>
+<figure class="diagrama" id="diagrama-1"><div class="area"><pre class="mermaid">flowchart LR
+  subgraph Clientes
+    APP[App do aluno&lt;br/&gt;Expo / React Native]
+    WEB[Console do professor&lt;br/&gt;Vite / React]
+  end
+  subgraph Supabase
+    DB[(Postgres&lt;br/&gt;RLS, gatilhos, pg_cron, pg_net)]
+    AUTH[Auth]
+    EF[Edge Functions]
+    ST[Storage legado]
+  end
+  subgraph VPS[&quot;VPS (Dokploy)&quot;]
+    API[API FastAPI&lt;br/&gt;LangGraph]
+    MS[Microservice&lt;br/&gt;geração de mídia]
+    PDF[BrainHexPDF&lt;br/&gt;apresentações]
+  end
+  R2[(Cloudflare R2)]
+  LLM[Gemini API&lt;br/&gt;OpenAI como reserva]
+  EXPO[Expo Push]
+
+  APP -- leitura e escrita com RLS --&gt; DB
+  WEB -- leitura e escrita com RLS --&gt; DB
+  APP -- telemetria, chat do mentor --&gt; API
+  WEB -- geração, insights, Lumi --&gt; API
+  API --&gt; DB
+  API --&gt; MS --&gt; PDF
+  API --&gt; LLM
+  MS --&gt; LLM
+  PDF --&gt; LLM
+  MS --&gt; R2
+  PDF --&gt; R2
+  APP -- mídia por link assinado --&gt; EF --&gt; R2
+  DB -- pg_net --&gt; EXPO
+  DB -- pg_cron --&gt; EF
+</pre></div><figcaption><span>Diagrama 1</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p><strong>Regra de fronteira</strong> (<code>CLAUDE.md</code>): a API só faz o que envolve modelo de linguagem, ou seja, LangGraph, RAG, geração e decisão adaptativa. Fila, agendamento, contadores, notificações, progresso e cópias de turma ficam no Postgres, em funções, gatilhos e <code>pg_cron</code>. Os clientes falam direto com o Supabase, autorizados por RLS. A regra tem dois motivos registrados:</p>
+<ul>
+<li>a API pode cair, e o que depende de relógio pararia junto;</li>
+<li><code>cliente → API → banco</code> acrescenta um salto e uma segunda cópia das regras de acesso.</li>
+</ul>
+<p>Isso é uma decisão de arquitetura própria do projeto e pode ser descrita como contribuição de engenharia. Ficaram exceções antigas registradas como dívida, por exemplo <code>POST /telemetria/lotes</code>.</p>
+<p><strong>Hospedagem</strong> [doc]:</p>
+<ul>
+<li>API, microservice e BrainHexPDF rodam no Dokploy, numa VPS Hetzner em Ashburn (EUA).</li>
+<li>O console está no Vercel e é publicado a partir do repositório espelho.</li>
+<li>Banco e autenticação ficam no Supabase, região <code>us-west-2</code>.</li>
+<li>Os arquivos ficam no Cloudflare R2, região ENAM. O Storage do Supabase guarda só o legado.</li>
+</ul>
+<hr />
+<h2 id="3-app-do-aluno-mobile">3. App do aluno (<code>mobile/</code>)</h2>
+<p>Expo SDK 54, React Native, roteamento por arquivos (<code>expo-router</code>). Versão 1.0.6 na Play Store, de 01/11/2026. [código]</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Área</th>
+<th>Telas</th>
+<th>O que faz</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Entrada</td>
+<td><code>(auth)/</code>: login, recuperar senha</td>
+<td>Login com e-mail ou Google, portão de consentimento e data de nascimento</td>
+</tr>
+<tr>
+<td>Trilha</td>
+<td><code>(tabs)/trilha</code>, <code>trilha/[id]</code></td>
+<td>Mapa de tópicos (grafo), material personalizado por perfil (texto, áudio, apresentação, cards), atividades e questões, batalha com o boss nos perfis Survivor, Daredevil e Conqueror</td>
+</tr>
+<tr>
+<td>Ranking</td>
+<td><code>(tabs)/ranking</code>, <code>ranking/[id]</code></td>
+<td>Ranks da turma e do evento</td>
+</tr>
+<tr>
+<td>Social</td>
+<td><code>(tabs)/social</code></td>
+<td>Amigos, mensagens, guildas</td>
+</tr>
+<tr>
+<td>Notificações</td>
+<td><code>(tabs)/notificacoes</code></td>
+<td>Caixa de entrada; o toque leva ao destino</td>
+</tr>
+<tr>
+<td>Perfil</td>
+<td><code>(tabs)/perfil/*</code> (20 telas)</td>
+<td>Loja, molduras, conquistas, métricas de estilo, modo foco, lembrete diário, coleta de dados e consentimentos, relatório dos dados (LGPD), exclusão da conta</td>
+</tr>
+</tbody>
+</table></div>
+<p>Coleta de telemetria, fila local de envio (outbox de 7 dias), cache de mídia offline e retomada de leitura e áudio ficam em <code>mobile/src/context/metricas/</code> e <code>mobile/src/services/</code>.</p>
+<hr />
+<h2 id="4-console-do-professor-frontend">4. Console do professor (<code>frontend/</code>)</h2>
+<p>Vite e React. O site público tem início, sobre, blog, download, contato, termos, privacidade e cadastro de aluno e de professor. O console tem 16 abas (<code>frontend/src/pages/consoleSections.ts</code>) [código]:</p>
+<blockquote>
+<p>Visão geral · Recomendações · Trilhas · Missões · Conquistas · Notas · Eventos · Economia · Turmas · Personalizações · Rankings · Rank de batalhas · Guildas · Meus dados · Aprovações* · Painel técnico*</p>
+<p>* só para a dona do projeto. A proteção é no banco (<code>app_e_dono()</code>), não na rota.</p>
+</blockquote>
+<ul>
+<li><strong>Editor de trilha:</strong> cria tópicos, conteúdos, atividades, questões e cards. Salvar já enfileira a regeração do material por gatilho no banco; o console não chama a API depois.</li>
+<li><strong>Lumi (escriba):</strong> assistente do professor que responde sobre as turmas dele. Os alunos aparecem só como <code>A1…An</code>, sem nome.</li>
+</ul>
+<hr />
+<h2 id="5-api-e-inteligência-artificial-api">5. API e inteligência artificial (<code>api/</code>)</h2>
+<h3 id="51-endpoints">5.1 Endpoints</h3>
+<p>Cerca de 30 rotas em <code>/api/v1</code> [código]:</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Grupo</th>
+<th>Rotas</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Personalização</td>
+<td><code>POST /personalizar</code>, <code>GET /personalizar/{aluno}</code>, <code>POST /personalizar/chat</code> (mentor), fontes, progresso, status de mídia, histórico de sugestão, <code>GET /personalizar/grupo/{classe}</code></td>
+</tr>
+<tr>
+<td>Fila de geração</td>
+<td><code>/personalizar/jobs/*</code>: <code>enrollment</code>, <code>class-delta</code>, <code>class-theme</code>, <code>full-sync</code>, <code>student-cleanup</code>, <code>manual-*</code></td>
+</tr>
+<tr>
+<td>Telemetria</td>
+<td><code>POST /telemetria/lotes</code>, que grava e dispara a análise</td>
+</tr>
+<tr>
+<td>Emoção</td>
+<td><code>POST /emocoes/analisar</code>, <code>/analisar-stream</code></td>
+</tr>
+<tr>
+<td>Professor</td>
+<td><code>POST /escriba/perguntar</code> (Lumi), status de <code>/insights/turma/{classe}</code></td>
+</tr>
+<tr>
+<td>Administração</td>
+<td>economia, molduras, professores, <code>GET /health</code></td>
+</tr>
+</tbody>
+</table></div>
+<p>Além das rotas, a API roda <strong>workers em laço</strong> no próprio processo:</p>
+<ul>
+<li>fila de geração;</li>
+<li>análise de telemetria;</li>
+<li>remoção de arquivos externos (retenção);</li>
+<li>análise de alteração do professor.</li>
+</ul>
+<h3 id="52-grafo-langgraph-apiappagentgraph">5.2 Grafo LangGraph (<code>api/app/agent/graph/</code>)</h3>
+<figure class="diagrama" id="diagrama-2"><div class="area"><pre class="mermaid">flowchart TD
+  S((START)) --&gt; SUP[supervisor]
+  SUP --&gt;|roteamento por estado| ESP{{especialistas}}
+  ESP --&gt; SUP
+  SUP --&gt; PER[persist_personalizacao] --&gt; E((END))
+  SUP --&gt; EXE[executor] --&gt; E
+  SUP --&gt;|finish| E
+</pre></div><figcaption><span>Diagrama 2</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<ul>
+<li><strong>Especialistas de análise (10):</strong>
+<ul>
+<li><code>agente_emocao</code>, <code>agente_perfil</code>, <code>agente_trilha</code>, <code>agente_conteudo</code>, <code>agente_geracao_midia</code>;</li>
+<li><code>agente_notificacao</code>, <code>agente_intervencao</code>, <code>agente_cronometro</code>, <code>agente_ui</code>, <code>agente_texto</code>.</li>
+</ul>
+</li>
+<li><strong>Especialistas de personalização (3):</strong> <code>agente_plano_personalizacao</code>, <code>agente_ai_patch</code>, <code>agente_midias_personalizadas</code>.</li>
+<li><strong>Roteamento:</strong> o supervisor decide por regras sobre o estado (<code>routing.py</code>). Exemplos:
+<ul>
+<li>perfil a cada 10 eventos;</li>
+<li>conteúdo quando a média de acertos fica abaixo de 50%.</li>
+</ul>
+</li>
+<li><strong>Turma retida pelo estudo:</strong> só rodam emoção, perfil e intervenção (<code>RETIDA_SPECIALIST_NODES</code>), para não contaminar a comparação.</li>
+<li><strong>Persistência:</strong> o estado tem checkpoint no Postgres (<code>langgraph-checkpoint-postgres</code>).</li>
+<li><strong>Memória do aluno:</strong> o histórico de estado mental (<code>aluno_mental_state_history</code>) volta ao grafo. Uma recorrência é 3 estados negativos iguais entre os 5 últimos registros. Ela alimenta o tema de suporte (<code>agente_ui</code>) e o alerta ao professor (<code>agente_intervencao</code>).</li>
+</ul>
+<h3 id="53-pipeline-de-análise-da-telemetria-linear_analysis_pipelinepy">5.3 Pipeline de análise da telemetria (<code>linear_analysis_pipeline.py</code>)</h3>
+<p>Tem seis estágios em sequência: emoção, leitura, interação, desempenho, atenção e decisão.</p>
+<blockquote>
+<p><strong>Atenção para a redação.</strong> Os estágios têm nomes de algoritmos (DeepFace, IsolationForest, HiddenMarkov, DeepKnowledgeTracing, RandomForest, XGBoost), mas <strong>nenhum roda o algoritmo do nome</strong>. São heurísticas por regra, e a própria docstring do módulo avisa isso. Os nomes marcam o algoritmo <em>pretendido</em>. Na monografia, descreva como &quot;pipeline de seis estágios com regras heurísticas, desenhado para receber modelos treinados&quot;, nunca como &quot;modelos de ML&quot;.</p>
+</blockquote>
+<p>Há duas exceções, em que existe modelo de verdade:</p>
+<ol>
+<li><strong>Emoção por imagem</strong> (<code>emotion_vision.py</code>, <code>EMOTION_MODEL_PROVIDER=local_vision</code>, ligado em produção):
+<ul>
+<li>o detector de rosto YuNet e o classificador FER+ rodam em ONNX, no próprio servidor;</li>
+<li>a imagem não é gravada nem enviada a nenhum provedor;</li>
+<li>sem câmera, ou sem rosto detectado, cai na regra.</li>
+<li>O nó <code>agente_emocao</code> do <em>grafo</em> é outra coisa: usa <code>MockEmocaoAdapter</code>, uma regra fixa sobre os eventos, com <code>origem = mock_*</code>.</li>
+</ul>
+</li>
+<li><strong>Knowledge tracing M2</strong> (<code>m2_inference.py</code>, <code>models/m2_knowledge_tracing/v3/</code>):
+<ul>
+<li>são dois <code>HistGradientBoostingClassifier</code> treinados no EdNet KT3;</li>
+<li>o de domínio responde &quot;o aluno acerta?&quot; (AUC 0,753, ECE 0,002);</li>
+<li>o gate responde &quot;o aluno vai travar no tópico?&quot; (AUC 0,779);</li>
+<li>a regra que eles substituem tinha AUC 0,587 e 0,703;</li>
+<li><strong>não estão calibrados em dado próprio</strong>: as probabilidades valem só como ordenação (<code>m2_calibrated=false</code>);</li>
+<li>em qualquer falha, a origem volta a ser <code>regra</code>.</li>
+</ul>
+</li>
+</ol>
+<p><strong>Leitura (WPM):</strong> o denominador é o tempo ativo (<code>active_sec</code>), não o tempo com o material aberto. Leitura lenta é abaixo de 120 palavras por minuto; leitura por cima, acima de 400.</p>
+<h3 id="54-provedores-e-modelos">5.4 Provedores e modelos</h3>
+<p>[código: <code>api/app/core/settings.py</code>, microservice e edge functions]</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Uso</th>
+<th>Modelo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Texto, supervisor, materiais, enriquecimento</td>
+<td><code>gemini-3.6-flash</code>, com reserva <code>gemini-3.1-flash-lite</code></td>
+</tr>
+<tr>
+<td>Áudio (TTS)</td>
+<td><code>gemini-2.5-flash-preview-tts</code>; 7 vozes de guardião, uma por perfil (<code>guardianVoices.ts</code>)</td>
+</tr>
+<tr>
+<td>Imagem</td>
+<td><code>gemini-2.0-flash-preview-image-generation</code></td>
+</tr>
+<tr>
+<td>Reserva</td>
+<td>OpenAI <code>gpt-4o-mini</code> (sem crédito hoje)</td>
+</tr>
+</tbody>
+</table></div>
+<p>As 4 chaves do Gemini estão no <strong>plano gratuito</strong>, em rodízio. Nesse plano, o Google pode usar o que é enviado para melhorar os produtos (declarado na Privacidade). [doc]</p>
+<h3 id="55-regra-de-idade">5.5 Regra de idade</h3>
+<p>A IA é só para maiores de 18 anos confirmados pela data de nascimento (#933, 04/11/2026):</p>
+<ul>
+<li>para menor ou aluno sem data, nenhuma chamada sai: nem LLM, nem RAG, nem TTS, nem imagem;</li>
+<li>o mentor responde 403 para esse aluno;</li>
+<li>menores podem se cadastrar e usam o material-base por perfil, que é gerado sem dado de aluno.</li>
+</ul>
+<p>A exceção é a Lumi do professor: ela recebe a turma com referências <code>A1…An</code>. A razão é que os termos da Gemini API exigem 18 anos ou mais. [código e doc]</p>
+<hr />
+<h2 id="6-geração-do-material-personalizado">6. Geração do material personalizado</h2>
+<p><strong>Duas camadas</strong> (<code>CLAUDE.md</code>):</p>
+<ol>
+<li><strong>Base por perfil:</strong> um material por <code>turma × tópico × perfil BrainHex</code>, gerado pelo microservice e reaproveitado entre os alunos do mesmo perfil. É texto (markdown), áudio narrado pelo guardião do perfil, apresentação (deck HTML) e cards.</li>
+<li><strong>Adequação por aluno:</strong> uma camada leve sobre a base (<code>ai_patch</code>), feita a partir de preferências, emoção, estado mental e necessidades do grupo. Não gera mídia pesada de novo.</li>
+</ol>
+<p><strong>Fluxo de geração:</strong></p>
+<ol>
+<li>O professor salva o tópico.</li>
+<li>Um gatilho no banco enfileira o job (<code>fn_enqueue_class_delta_job</code>), juntando as edições em um job pendente por turma.</li>
+<li>O worker da API processa o job e chama o microservice.</li>
+<li>O microservice gera o texto e o áudio com o Gemini e pede a apresentação ao BrainHexPDF.</li>
+<li>Os arquivos sobem para o R2.</li>
+<li>O resultado é gravado em <code>conteudo_personalizado.materiais</code>, com <code>revisao</code> por material.</li>
+</ol>
+<p>A deduplicação usa <code>source_hash</code>, que inclui a versão do pipeline.</p>
+<p><strong>Contraste WCAG AAA:</strong> cada perfil mantém a cor-assinatura dele. O sistema clareia o accent quando a cor fica escura demais, e as cores de sucesso, aviso e informação são fixas.</p>
+<p><strong>Estado em produção</strong> [banco]: 17 registros em <code>conteudo_personalizado</code>, com <strong>4 prontos e 13 com falha</strong>. Entre 10/2026 e 11/2026 a geração manual por perfil teve 4 jobs concluídos e 6 com falha.</p>
+<ul>
+<li>A causa provável é a cota do plano gratuito do Gemini, mas <strong>isso não foi medido nesta varredura</strong>.</li>
+<li>Para a monografia, o pipeline é <strong>funcional, mas instável no plano gratuito</strong>.</li>
+<li>Não afirme taxa de sucesso maior que a medida.</li>
+</ul>
+<hr />
+<h2 id="7-perfis-brainhex">7. Perfis BrainHex</h2>
+<ul>
+<li><strong>Questionário</strong> (<code>frontend/src/features/signup/brainhex.ts</code>): 32 itens autorais em escala de 0 a 5, 4 por eixo, em 8 eixos:
+<ul>
+<li>curiosidade, desafio, risco, maestria, competição, conclusão, social e imersão;</li>
+<li>8 itens são invertidos, para controlar a aquiescência;</li>
+<li>o código declara que os itens <strong>não reproduzem o questionário original</strong> e que a adaptação ainda pede entrevistas cognitivas e validação local.</li>
+</ul>
+</li>
+<li><strong>Resultado:</strong> os eixos viram 7 perfis com afinidade de 0 a 100, guardados em <code>aluno_perfil</code>. O perfil dominante é o de maior afinidade, mas o vetor completo também é usado.</li>
+<li><strong>Cada perfil tem:</strong>
+<ul>
+<li>cor, ícone e guardião;</li>
+<li>assinatura editorial: tom, ritmo, abertura e proibições;</li>
+<li>voz de TTS com idade, sexo, origem e interpretação definidos.</li>
+</ul>
+</li>
+<li><strong>Como hipótese:</strong> o motor de sugestão diz ao aluno que ordenar os formatos pelo perfil é hipótese. A avaliação da literatura não achou evidência de que aprender no formato &quot;preferido&quot; melhore o resultado (DAT-14, DAT-35, DAT-40). O único achado a favor é de tempo de uso (DAT-03). Todos os formatos ficam disponíveis para todos. [código: <code>evidencias_pedagogicas.py</code>]</li>
+</ul>
+<p>Distribuição dos perfis dominantes em produção [banco], 6 alunos com perfil: Daredevil 2, Achiever 1, Conqueror 1, Mastermind 1, Seeker 1.</p>
+<hr />
+<h2 id="8-evidence-base-e-rag">8. Evidence Base e RAG</h2>
+<h3 id="81-o-que-está-implementado-código">8.1 O que está implementado [código]</h3>
+<ul>
+<li><code>OpenAIRagService</code> usa o <strong>Vector Store da OpenAI</strong> com <code>file_search</code> na Responses API. A OpenAI faz o parsing, o chunking, os embeddings e a recuperação.</li>
+<li>O RAG é chamado em três lugares:
+<ul>
+<li><code>llm.ainvoke_structured</code>, usado pelo mentor;</li>
+<li><code>agente_intervencao</code>;</li>
+<li><code>agente_notificacao</code>.</li>
+</ul>
+</li>
+<li><strong>Observabilidade:</strong> cada busca grava em <code>ia_decision_logs</code> (<code>stage = rag_retrieval</code>) o <code>file_id</code>, o score, o número de resultados e a latência, sem texto do aluno.</li>
+<li>A intervenção valida cada citação contra os arquivos que foram de fato recuperados.</li>
+</ul>
+<h3 id="82-estado-em-produção-banco">8.2 Estado em produção [banco]</h3>
+<ul>
+<li><strong>0 buscas</strong> registradas, <strong>0 chunks</strong> em <code>rag_chunks</code> e <strong>0 arquivos</strong> em <code>rag_openai_files</code>.</li>
+<li>A OpenAI está sem crédito, e o corpus licenciado não foi indexado. A ordem planejada é: inventário (#70) → triagem (#71) → extração (#72) → curadoria (#73) → indexação → golden set (#75) → medição (#67). Ela parou antes da indexação.</li>
+</ul>
+<p><strong>Conclusão para o capítulo 6:</strong> o RAG está <strong>implementado e instrumentado, mas não operacional</strong>. Não há resultado de recuperação para relatar.</p>
+<h3 id="83-o-que-existe-no-lugar">8.3 O que existe no lugar</h3>
+<ul>
+<li><strong>Avaliação da literatura</strong> (<code>docs/rag/avaliacao-documentos.md</code>): os 47 documentos da planilha, cada um com um destino:
+<ul>
+<li><em>corpus do RAG</em>;</li>
+<li><em>texto derivado</em>;</li>
+<li><em>só citação</em>;</li>
+<li><em>não usar</em>.</li>
+</ul>
+</li>
+<li><strong>Texto derivado em produção</strong> (<code>evidencias_pedagogicas.py</code>):
+<ul>
+<li>as regras do motor de sugestão de material citam a fonte (<code>DAT-xx</code>) e um grau de confiança: forte, moderada, hipótese ou dado do aluno;</li>
+<li>o motor é <strong>determinístico</strong>, e o RAG não entra na decisão;</li>
+<li>cada decisão grava a versão do catálogo em <code>personalizacao_sugestao_log</code>.</li>
+</ul>
+</li>
+<li><strong>Golden set v1</strong> (<code>docs/rag/golden-set-documentos-v1.md</code>): 30 perguntas de referência com a resposta esperada e as fontes aceitáveis. Algumas são de propósito &quot;não respondíveis&quot;, para testar se o sistema reconhece o limite.</li>
+<li><strong>Duas regras de honestidade:</strong>
+<ul>
+<li>casar formato com perfil é hipótese;</li>
+<li>telemetria mede engajamento comportamental, e não emoção nem atenção (DAT-45, DAT-04).</li>
+</ul>
+</li>
+<li><strong>PRISMA:</strong> o projeto desistiu dele em 02/11. Chame de análise crítica da literatura: 24 aprovados entre os 28 já decididos, e 19 pendentes.</li>
+</ul>
+<hr />
+<h2 id="9-telemetria-e-métricas">9. Telemetria e métricas</h2>
+<ul>
+<li><strong>Coleta</strong> (<code>docs/architecture/coleta-de-metricas.md</code>):
+<ul>
+<li>um lote por minuto;</li>
+<li>ocioso depois de 15 s sem toque;</li>
+<li>toques amostrados a cada 750 ms, com no máximo 25 por lote;</li>
+<li>câmera opcional, uma foto a cada 6 s, com no máximo 30 por lote;</li>
+<li>fila local de 7 dias.</li>
+</ul>
+</li>
+<li><strong>Tempo de estudo</strong> é <strong>tempo ativo</strong>: a soma de <code>active_sec</code> por escopo. Cada lote traz só o tempo daquele lote. Os escopos tópico, conteúdo e material contam o mesmo intervalo e não podem ser somados entre si.</li>
+<li><strong>Fluxo da análise:</strong>
+<ol>
+<li>O lote chega à API ou direto ao Supabase. A coluna <code>via</code> registra o caminho.</li>
+<li>É gravado em <code>telemetria_lotes</code>.</li>
+<li>Entra na fila de análise.</li>
+<li>O pipeline de 6 estágios processa o lote.</li>
+<li>A decisão é gravada em <code>ia_decision_logs</code>.</li>
+<li>Se a ação casar com a política de atualização, o app pede um novo ciclo de personalização.</li>
+</ol>
+</li>
+<li><strong>Catálogo e auditoria:</strong>
+<ul>
+<li>29 métricas no catálogo (<code>metricas_catalogo</code>);</li>
+<li>invariantes conferidas todo dia por <code>pg_cron</code> (<code>trailup_auditoria_metricas</code>);</li>
+<li>agregado diário por turma (<code>telemetria_agregado_turma_dia</code>).</li>
+</ul>
+</li>
+<li><strong>Dados reais</strong> [banco]:
+<ul>
+<li>113 sessões de telemetria;</li>
+<li>184 lotes: 156 de 14 a 29/10, e 28 depois de 31/10 (5 pela API e 23 direto no Supabase);</li>
+<li>1.013 eventos do app;</li>
+<li>29 análises adaptativas registradas entre 31/10 e 03/11.</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h2 id="10-gamificação">10. Gamificação</h2>
+<p>[banco: contagens · código]</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Mecanismo</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>XP e faixas</td>
+<td>10 faixas com título e barra até a próxima</td>
+</tr>
+<tr>
+<td>Conquistas</td>
+<td>38 no catálogo; as do sistema têm um tipo cada</td>
+</tr>
+<tr>
+<td>Molduras de perfil</td>
+<td>40 (loja, conquistas e por ação)</td>
+</tr>
+<tr>
+<td>Moedas e loja</td>
+<td>Livro-caixa (<code>moedas_ledger</code>), 5 itens, preço por turma, auditoria da economia</td>
+</tr>
+<tr>
+<td>Missões</td>
+<td>201 geradas. A missão diária sai do banco (<code>pg_cron</code> às 03h); o texto dela é gerado por IA. Missões de turma e de aluno contam a partir da criação</td>
+</tr>
+<tr>
+<td>Rankings</td>
+<td>Por turma; posições visíveis limitadas; pódio congelado</td>
+</tr>
+<tr>
+<td>Eventos de turma</td>
+<td>Abrem e fecham sozinhos pelo banco a cada minuto; inscrição, rank do evento (pontuação, missões, ranqueada)</td>
+</tr>
+<tr>
+<td>Guildas</td>
+<td>Convites, desafios, mensagens, fundo da turma</td>
+</tr>
+<tr>
+<td>Batalha com boss</td>
+<td>Perfis Survivor, Daredevil e Conqueror. Nome e falas por perfil gerados por IA (<code>boss_falas</code>); sem eles, falas fixas</td>
+</tr>
+<tr>
+<td>Ranqueada</td>
+<td>Placar ELO por partida (<code>ranqueada_elo</code>)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Em produção ainda não há evento de turma nem guilda criados: 0 de cada. [banco]</p>
+<hr />
+<h2 id="11-banco-de-dados-e-automações">11. Banco de dados e automações</h2>
+<ul>
+<li><strong>Autorização:</strong> a RLS é a autorização, não uma defesa a mais. Cliente tem GRANT em tudo, e as policies decidem.
+<ul>
+<li>Funções auxiliares <code>SECURITY DEFINER</code> evitam recursão de RLS: <code>app_classes_do_professor()</code>, <code>app_alunos_do_professor()</code>, <code>app_colegas_de_turma()</code>.</li>
+<li>Tabela nova já nasce com RLS ligada, por um event trigger.</li>
+<li>Toda view nasce com <code>security_invoker = on</code>.</li>
+</ul>
+</li>
+<li><strong>16 rotinas <code>pg_cron</code></strong> [banco]:
+<ul>
+<li>missão diária e o texto dela;</li>
+<li>eventos de turma, a cada minuto;</li>
+<li>desafios de guilda;</li>
+<li>notas com prazo;</li>
+<li>notificações: varredura, ranking, conciliação de push e recálculo de rotinas;</li>
+<li>retenção, avisos de inatividade e limpeza de logs de IA;</li>
+<li>arquivo da pesquisa;</li>
+<li>auditoria de métricas;</li>
+<li>expurgo de medidas de perfil;</li>
+<li>aviso ao dono pelo painel técnico.</li>
+</ul>
+</li>
+<li><strong>Motor de notificações inteiro no banco</strong>, com quatro tabelas de papéis diferentes:
+<ul>
+<li><code>notificacoes_ia</code>: o que a IA sugeriu;</li>
+<li><code>notificacoes_pendentes</code>: a fila;</li>
+<li><code>notificacoes_agendamentos</code>: a rotina;</li>
+<li><code>notificacoes</code>: a caixa de entrada.</li>
+<li>O push sai do Postgres por <code>pg_net</code> para o Expo e respeita horário de silêncio e modo foco. O lembrete diário é uma notificação local do aparelho.</li>
+<li>Em produção há 431 notificações entregues.</li>
+</ul>
+</li>
+<li><strong>Progresso:</strong> um gatilho calcula o percentual do tópico (<code>trailup_recalcular_topico_aluno</code>), e nenhum cliente grava esse valor. O denominador é o material personalizado; o do professor é opcional e dá bônus.</li>
+<li><strong>Operações em transação no banco:</strong> duplicar turma, tópico e atividade.</li>
+</ul>
+<hr />
+<h2 id="12-privacidade-lgpd-e-ética">12. Privacidade, LGPD e ética</h2>
+<p>[código e doc: <code>docs/lgpd/</code>, página <code>/privacidade</code>]</p>
+<ul>
+<li><strong>Consentimentos separados:</strong> telemetria, câmera, emoção e pesquisa. Menor de 18 precisa de autorização do responsável, item por item. Em produção há 24 registros de consentimento de telemetria e 1 de pesquisa. [banco]</li>
+<li><strong>Câmera:</strong> é opcional e vem desligada. A análise é local (seção 5.3) e a imagem nunca é gravada.</li>
+<li><strong>Pseudonimização:</strong>
+<ul>
+<li>nome e e-mail não vão aos prompts;</li>
+<li>o UUID do aluno também saiu dos prompts em 04/11;</li>
+<li>os insights e a Lumi usam referências <code>A1…An</code>.</li>
+</ul>
+</li>
+<li><strong>Retenção:</strong> 113 políticas, aplicadas todo dia em modo <code>aplicar</code> desde 04/11. Os prazos são:
+<ul>
+<li>telemetria bruta, 90 dias (180 com consentimento de pesquisa);</li>
+<li>indicadores, 13 meses;</li>
+<li>emoção estimada, 30 dias;</li>
+<li>conta inativa, 24 meses, com aviso por e-mail e push e mais 30 dias de prazo;</li>
+<li>registro de consentimento, 5 anos.</li>
+</ul>
+</li>
+<li><strong>Arquivo da pesquisa:</strong> o R2 guarda em <code>pesquisa/</code> uma cópia das sessões, lotes e eventos de quem consentiu. Esse arquivo não expira por prazo. Hoje são 1.310 objetos. [banco]
+<ul>
+<li>Se o aluno pede exclusão, a cópia identificada sai.</li>
+<li>Fica só uma cópia anônima, e só de quem consentiu: os identificadores viram HMAC com um sal que é descartado.</li>
+</ul>
+</li>
+<li><strong>Arquivos do material:</strong>
+<ul>
+<li>são servidos só por link assinado e de curta duração (<code>storage-redirect</code>), exigido desde 04/11;</li>
+<li>conteúdo apagado leva os arquivos dele do Storage e do R2.</li>
+</ul>
+</li>
+<li><strong>Direitos do titular, no app:</strong> relatório dos dados, exclusão da conta e revogação dos consentimentos.</li>
+<li><strong>Encarregado (DPO):</strong> publicado na seção 10 da Privacidade.</li>
+<li><strong>Transferência internacional:</strong> todos os fornecedores ficam nos EUA. Não há cláusulas-padrão da ANPD assinadas (<code>docs/lgpd/transferencias-internacionais.md</code>). Isso é uma <strong>limitação declarada</strong>.</li>
+</ul>
+<hr />
+<h2 id="13-qualidade-e-processo">13. Qualidade e processo</h2>
+<ul>
+<li><strong>CI</strong> (<code>.github/workflows/ci.yml</code>): o job de cada serviço só roda quando esse serviço muda. Os jobs são API, microservice, frontend, mobile, BrainHexPDF e docs.
+<ul>
+<li>A API roda <code>ruff</code>, <code>pytest</code> e a migração completa num Postgres em Docker.</li>
+<li>Os clientes rodam lint, typecheck e testes.</li>
+<li>Os docs passam por uma checagem de encoding (UTF-8 sem BOM e sem mojibake).</li>
+</ul>
+</li>
+<li><strong>Migrations:</strong> uma única head no Alembic; a API aplica <code>upgrade head</code> ao subir.</li>
+<li><strong>Fluxo de trabalho:</strong>
+<ul>
+<li>todo trabalho entra por PR no repositório do Lab;</li>
+<li>um sync leva a <code>main</code> ao espelho, de onde saem o site e a API;</li>
+<li>nenhum merge é feito por agente.</li>
+</ul>
+</li>
+<li><strong>Desenvolvimento assistido por agente de programação (Claude):</strong> se entrar na metodologia, declare que o código foi revisado e mesclado pela autora, PR a PR.</li>
+</ul>
+<hr />
+<h2 id="14-os-dados-de-produção-e-o-que-eles-permitem">14. Os dados de produção e o que eles permitem</h2>
+<p>[banco]</p>
+<ul>
+<li><strong>Usuários:</strong> 7 alunos, 6 professores, 4 turmas e 6 matrículas.</li>
+<li><strong>Conteúdo:</strong> 8 tópicos, 15 conteúdos, 1 atividade e 1 questão.</li>
+<li><strong>Coorte de estudo:</strong> nenhuma (<code>estudo_coorte</code> está vazia).</li>
+</ul>
+<p>É uma <strong>base de teste e de piloto</strong>, não um uso em escala. Para os capítulos 7 e 8:</p>
+<ul>
+<li><strong>não há amostra</strong> para efeito educacional, comparação entre coortes ou validação do BrainHex;</li>
+<li>o que dá para relatar é a <strong>viabilidade técnica</strong>: o pipeline funciona de ponta a ponta, com as taxas de falha da seção 6. Somam-se a isso a avaliação da literatura e o desenho do experimento;</li>
+<li>o M2 tem métrica de validação no EdNet, que é <strong>dado externo</strong>. Ela não vale como resultado no TrailUp.</li>
+</ul>
+<hr />
+<h2 id="15-o-que-não-afirmar-na-monografia">15. O que não afirmar na monografia</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Não escreva</th>
+<th>Escreva</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&quot;modelos de ML (Random Forest, XGBoost, HMM…) analisam o aluno&quot;</td>
+<td>pipeline de seis estágios com regras heurísticas, preparado para modelos treinados; o único modelo treinado em uso é o M2 (knowledge tracing, dado externo) e o FER+ para emoção por imagem</td>
+</tr>
+<tr>
+<td>&quot;o RAG recupera evidências para o aluno&quot;</td>
+<td>o RAG está implementado e instrumentado, mas não indexado nem em uso; a evidência entra como texto derivado em regras determinísticas</td>
+</tr>
+<tr>
+<td>&quot;o sistema detecta a emoção do aluno&quot;</td>
+<td>o sistema <strong>estima</strong> um estado a partir de imagem (opcional) ou de comportamento; telemetria mede engajamento, não emoção</td>
+</tr>
+<tr>
+<td>&quot;o perfil BrainHex determina o melhor formato&quot;</td>
+<td>ordenar formatos pelo perfil é hipótese; todos os formatos ficam disponíveis</td>
+</tr>
+<tr>
+<td>&quot;questionário BrainHex validado&quot;</td>
+<td>adaptação autoral de 32 itens, sem validação local</td>
+</tr>
+<tr>
+<td>&quot;revisão sistemática PRISMA&quot;</td>
+<td>análise crítica da literatura (47 documentos)</td>
+</tr>
+<tr>
+<td>&quot;dados não são usados para treino&quot;</td>
+<td>Gemini no plano gratuito; o Google pode usar os dados para melhorar produtos</td>
+</tr>
+<tr>
+<td>&quot;API hospedada no Render&quot;</td>
+<td>Dokploy, em VPS própria</td>
+</tr>
+<tr>
+<td>&quot;resultados mostram melhora de aprendizagem&quot;</td>
+<td>não há amostra para isso; relatar viabilidade técnica</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>O que os capítulos 01 a 11 desta pasta dizem que já mudou:</strong></p>
+<ul>
+<li>falam do Render, que não é usado;</li>
+<li>não têm a regra de fronteira com o banco;</li>
+<li>não têm a regra de idade;</li>
+<li>não têm o R2 nem o link assinado;</li>
+<li>descrevem o RAG como parte do fluxo;</li>
+<li>não registram que os estágios da análise são heurísticos.</li>
+</ul>
+<p>Revise-os a partir deste documento.</p>
+<nav class="nav-paginas"><span></span><a class="prox" href="inventario.html"><span class="k">próxima →</span><span class="t">Inventário completo</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#1-o-sistema-em-números">1. O sistema em números</a></li><li><a href="#2-arquitetura">2. Arquitetura</a></li><li><a href="#3-app-do-aluno-mobile">3. App do aluno (mobile/)</a></li><li><a href="#4-console-do-professor-frontend">4. Console do professor (frontend/)</a></li><li><a href="#5-api-e-inteligência-artificial-api">5. API e inteligência artificial (api/)</a></li><li><a href="#6-geração-do-material-personalizado">6. Geração do material personalizado</a></li><li><a href="#7-perfis-brainhex">7. Perfis BrainHex</a></li><li><a href="#8-evidence-base-e-rag">8. Evidence Base e RAG</a></li><li><a href="#9-telemetria-e-métricas">9. Telemetria e métricas</a></li><li><a href="#10-gamificação">10. Gamificação</a></li><li><a href="#11-banco-de-dados-e-automações">11. Banco de dados e automações</a></li><li><a href="#12-privacidade-lgpd-e-ética">12. Privacidade, LGPD e ética</a></li><li><a href="#13-qualidade-e-processo">13. Qualidade e processo</a></li><li><a href="#14-os-dados-de-produção-e-o-que-eles-permitem">14. Os dados de produção e o que eles permitem</a></li><li><a href="#15-o-que-não-afirmar-na-monografia">15. O que não afirmar na monografia</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>ea19135a</code> em 04/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>

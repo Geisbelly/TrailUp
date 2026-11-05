@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>RAG no sistema · TrailUp</title><meta name="description" content="Onde a busca na Evidence Base entra, o que falta para ligá-la e como será avaliada."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 transform=%22rotate(45 8 8)%22 fill=%22%23a08df5%22/%3E%3C/svg%3E"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><span class="diamond"></span>TrailUp · documentação</a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html" aria-current="page">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Evidência e RAG</div><h1>RAG no sistema</h1><p class="lede">Onde a busca na Evidence Base entra, o que falta para ligá-la e como será avaliada.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/rag/mapa-do-rag-no-sistema.md" target="_blank" rel="noopener">docs/rag/mapa-do-rag-no-sistema.md</a><span class="chip ok">atualizado 04/11/2026</span><span class="chip warn">1 diagramas</span></div></header><p>A decisão de 04/11/2026 é que <strong>a monografia precisa do RAG funcionando</strong>: o teste em sala depende dele (seções 4.10 e 7.3 da monografia). Este mapa mostra, parte por parte do sistema, o papel do RAG, o que já existe e o que falta para ligá-lo.</p>
+<p><strong>Base da varredura:</strong></p>
+<ul>
+<li>código da <code>main</code> do Lab em <code>8a5c4c65</code>;</li>
+<li>banco de produção, só leitura: 0 linhas em <code>rag_openai_files</code>, <code>rag_chunks</code> e <code>rag_relacoes</code>; 0 buscas em <code>ia_decision_logs</code> (<code>stage = rag_retrieval</code>);</li>
+<li>issues #63, #64, #66, #67, #165, #218, #877 e PR #945.</li>
+</ul>
+<p>Inventário do resto do sistema: <a href="inventario.html"><code>docs/tcc/inventario-completo-2026-11-04.md</code></a>.</p>
+<hr />
+<h2 id="1-resumo-o-que-impede-o-rag-de-funcionar">1. Resumo: o que impede o RAG de funcionar</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Bloqueio</th>
+<th>Situação</th>
+<th>Quem resolve</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>B1</td>
+<td><strong>Não existe ingestão.</strong> Nenhum código chama <code>upload_public_file</code>, então nada entra no Vector Store</td>
+<td>Corrigido em <code>upload_public_file</code> (#945), mas sem chamador</td>
+<td>Código: script de ingestão</td>
+</tr>
+<tr>
+<td>B2</td>
+<td><strong>O corpus está vazio.</strong> Dos 47 documentos avaliados, <strong>0</strong> foram para &quot;corpus do RAG&quot;, por licença. O que existe pronto são as <strong>12 regras derivadas</strong> (RD-01 a RD-12), texto próprio com fonte e metadados</td>
+<td>Texto pronto em <code>docs/rag/regras-derivadas.md</code></td>
+<td>Código: transformar cada RD num documento indexável</td>
+</tr>
+<tr>
+<td>B3</td>
+<td><strong>Configuração.</strong> O RAG só liga com <code>OPENAI_RAG_ENABLED=true</code>, <code>OPENAI_RAG_API_KEY</code> (conta separada, #945) e <code>OPENAI_RAG_VECTOR_STORE_ID</code> na API</td>
+<td>Não dá para conferir daqui. As 0 buscas sugerem que está desligado ou que nunca houve uso</td>
+<td>Autora, no Dokploy</td>
+</tr>
+<tr>
+<td>B4</td>
+<td><strong>A avaliação não roda.</strong> O golden set tem 30 perguntas (<code>golden-set-documentos-v1.md</code>), mas não há rotina que meça a recuperação contra ele. As fontes esperadas apontam para documentos <code>DAT-xx</code>, que não estão no índice</td>
+<td>Só o texto</td>
+<td>Código: avaliador e mapeamento GS → RD</td>
+</tr>
+<tr>
+<td>B5</td>
+<td><strong>As buscas só são registradas no mentor.</strong> A intervenção e a notificação usam o RAG, mas não gravam em <code>ia_decision_logs</code></td>
+<td>Só o chat grava</td>
+<td>Código, se a avaliação precisar</td>
+</tr>
+</tbody>
+</table></div>
+<p>Com B1 a B4 resolvidos, o RAG passa a funcionar de ponta a ponta com o corpus v1, que são as 12 regras derivadas. Os documentos integrais só entram quando a licença de cada um permitir (B2).</p>
+<hr />
+<h2 id="2-arquitetura-do-rag-como-está-no-código">2. Arquitetura do RAG como está no código</h2>
+<figure class="diagrama" id="diagrama-1"><div class="area"><pre class="mermaid">flowchart LR
+  subgraph Corpus
+    RD[12 regras derivadas&lt;br/&gt;docs/rag/regras-derivadas.md]
+    DOC[47 documentos avaliados&lt;br/&gt;0 liberados para o corpus]
+  end
+  ING[[ingestão&lt;br/&gt;NÃO EXISTE]]
+  UP[upload_public_file&lt;br/&gt;scope=publico, hash, catálogo]
+  VS[(OpenAI Vector Store&lt;br/&gt;conta própria do RAG)]
+  CAT[(rag_openai_files&lt;br/&gt;catálogo e exclusão)]
+  RD -.-&gt; ING --&gt; UP --&gt; VS
+  UP --&gt; CAT
+  subgraph Consumidores
+    MEN[Mentor do aluno&lt;br/&gt;POST /personalizar/chat]
+    INT[agente_intervencao&lt;br/&gt;sugestão ao professor]
+    NOT[agente_notificacao&lt;br/&gt;push por perfil]
+  end
+  MEN -- file_search + geração OpenAI --&gt; VS
+  INT -- file_search --&gt; VS
+  NOT -- file_search --&gt; VS
+  MEN --&gt; LOG[(ia_decision_logs&lt;br/&gt;stage=rag_retrieval)]
+  RET[retencao_externa] -- apaga arquivo --&gt; VS
+</pre></div><figcaption><span>Diagrama 1</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p><strong>Como funciona uma chamada</strong> (<code>OpenAIRagService.invoke_structured</code>):</p>
+<ol>
+<li>Monta o prompt e os dados da sessão, que estão pseudonimizados.</li>
+<li>Chama a Responses API da OpenAI com a ferramenta <code>file_search</code> no store, filtrando <code>scope = publico</code>.</li>
+<li>O modelo da OpenAI (<code>gpt-4o-mini</code>) <strong>gera</strong> a resposta e cita os arquivos.</li>
+<li>Grava o resumo da busca: ids, scores e latência, sem texto.</li>
+</ol>
+<p>Consequência importante: <strong>ligar o RAG muda o provedor de geração.</strong> O mentor e a intervenção deixam de gerar com o Gemini e passam a gerar com a OpenAI, na conta do RAG. Se a chamada RAG falhar, eles caem no modelo sem busca, e depois na regra.</p>
+<p><strong>Travas que já valem:</strong></p>
+<ul>
+<li>a IA é só para maiores de 18: a busca nem acontece na rota de menor (<code>llm.py</code>, antes do <code>use_rag</code>);</li>
+<li>o store só aceita e só busca escopo público;</li>
+<li>arquivo de turma ou de aluno nunca vai para esse store (ADR-0002);</li>
+<li>os conjuntos sensíveis ficam fora do índice (política da #74);</li>
+<li>a citação da intervenção só vale se o arquivo citado estiver entre os recuperados.</li>
+</ul>
+<hr />
+<h2 id="3-mapa-por-parte-do-sistema">3. Mapa por parte do sistema</h2>
+<p>Legenda da coluna &quot;Usa RAG&quot;:</p>
+<ul>
+<li><strong>sim:</strong> o código chama o <code>file_search</code> quando o RAG está ligado;</li>
+<li><strong>não (decidido):</strong> a triagem decidiu que não deve usar;</li>
+<li><strong>não:</strong> não usa, e não há decisão registrada.</li>
+</ul>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Parte do sistema</th>
+<th>Arquivo</th>
+<th>Usa RAG</th>
+<th>O que o RAG faz ou faria ali</th>
+<th>Estado e lacuna</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Mentor do aluno</strong> (chat)</td>
+<td><code>api/v1/personalizacao.py</code> (<code>POST /personalizar/chat</code>), prompt <code>mentor_personalizacao_chat.txt</code></td>
+<td><strong>sim</strong></td>
+<td>Fundamenta a resposta ao aluno com a evidência (como estudar, revisar, lidar com o erro) e cita a fonte</td>
+<td>Pronto e com registro das buscas (#67). Há guardrail de <em>grounding</em> com uma segunda chamada (<code>mentor_grounding_check.txt</code>). Falta corpus (B1, B2) e configuração (B3)</td>
+</tr>
+<tr>
+<td><strong>Intervenção ao professor</strong></td>
+<td><code>agent/graph/nodes/agente_intervencao.py</code>, prompt <code>intervencao.txt</code></td>
+<td><strong>sim</strong></td>
+<td>Quando um estado negativo se repete (3 dos 5 últimos registros), sugere ao professor uma ação com fonte</td>
+<td>Pronto. As fontes citadas aparecem na aba Insights (#823). Não grava a busca em <code>ia_decision_logs</code> (B5)</td>
+</tr>
+<tr>
+<td><strong>Notificação personalizada</strong></td>
+<td><code>agent/graph/nodes/agente_notificacao.py</code>, prompt <code>notificacao_personalizada.txt</code></td>
+<td><strong>sim</strong></td>
+<td>Escolhe o tom e o momento do lembrete com base na evidência (RD-06: lembrete ligado a progresso e próximo passo)</td>
+<td>Pronto: o RAG é a 1ª tentativa, com uma revisão sem RAG. Não grava a busca (B5)</td>
+</tr>
+<tr>
+<td><strong>Sugestão de material</strong> (ordem de consumo)</td>
+<td><code>services/sugestao_material.py</code>, <code>evidencias_pedagogicas.py</code></td>
+<td><strong>não (decidido)</strong></td>
+<td>A evidência entra como texto derivado em regras <strong>determinísticas</strong>, com fonte e confiança (reescopo da #66)</td>
+<td>Funcionando sem RAG. É o uso da Evidence Base que já existe hoje. Manter: a decisão precisa ser reproduzível para o estudo</td>
+</tr>
+<tr>
+<td><strong>Insights da turma</strong></td>
+<td><code>services/insights_turma.py</code>, prompt <code>insights_turma.txt</code></td>
+<td>não</td>
+<td>Poderia citar evidência nas sínteses ao professor</td>
+<td>Sem decisão registrada. Candidato natural depois do mentor</td>
+</tr>
+<tr>
+<td><strong>Lumi</strong> (assistente do professor)</td>
+<td><code>services/escriba.py</code>, prompts <code>escriba.txt</code> e <code>lumi_conhecimento.md</code></td>
+<td>não</td>
+<td>Poderia responder &quot;o que a literatura diz&quot; sobre a turma</td>
+<td>Sem decisão registrada. Também é candidato</td>
+</tr>
+<tr>
+<td><strong>Missões sugeridas pela IA</strong></td>
+<td><code>services/missoes_ia.py</code></td>
+<td>não</td>
+<td>—</td>
+<td>Propõe metas de missão; evidência pouco útil aqui</td>
+</tr>
+<tr>
+<td><strong>Material base por perfil</strong> (texto, áudio, apresentação)</td>
+<td><code>services/personalizacao.py</code>, microservice, BrainHexPDF</td>
+<td>não (decidido)</td>
+<td>—</td>
+<td>Fonte curricular é o conteúdo do professor. A literatura não altera o conteúdo da disciplina (monografia 6.3)</td>
+</tr>
+<tr>
+<td><strong>Fontes do professor</strong></td>
+<td><code>repositories/fontes_personalizacao.py</code>, <code>app/ingestion/</code></td>
+<td>não (decidido)</td>
+<td>—</td>
+<td>Vão para o contexto da geração, nunca para o store público (ADR-0002). Exigiriam store separado por turma</td>
+</tr>
+<tr>
+<td><strong>Análise da telemetria</strong> (6 estágios)</td>
+<td><code>services/linear_analysis_pipeline.py</code></td>
+<td>não</td>
+<td>—</td>
+<td>Regras determinísticas. A evidência vale como limite de interpretação (RD-12: logs são comportamento, não emoção)</td>
+</tr>
+<tr>
+<td><strong>Grafo LangGraph</strong> (supervisor)</td>
+<td><code>agent/graph/</code></td>
+<td>não (decidido)</td>
+<td>—</td>
+<td>O nó <code>agente_rag</code> da #63 foi substituído: o RAG entra pelo consumidor, não como nó</td>
+</tr>
+<tr>
+<td><strong>Formato pedido pelo conteúdo</strong></td>
+<td><code>services/demanda_formato.py</code></td>
+<td>não</td>
+<td>—</td>
+<td>Classificação por conteúdo; sem evidência envolvida</td>
+</tr>
+<tr>
+<td><strong>Falas do boss, tema do mapa, missão diária</strong></td>
+<td><code>boss_falas.py</code>, <code>classe_mapa_tema.py</code>, <code>missao_diaria_texto.py</code></td>
+<td>não</td>
+<td>—</td>
+<td>Texto de jogo; sem evidência</td>
+</tr>
+<tr>
+<td><strong>Alteração do professor</strong></td>
+<td><code>services/alteracao_professor.py</code></td>
+<td>não</td>
+<td>—</td>
+<td>Decide se o aluno revisa; sem evidência</td>
+</tr>
+<tr>
+<td><strong>Correção de redação</strong></td>
+<td>edge function <code>validate-essay-answer-ai</code></td>
+<td>não</td>
+<td>—</td>
+<td>Corrige pelo gabarito do professor</td>
+</tr>
+<tr>
+<td><strong>App do aluno</strong></td>
+<td><code>mobile/</code></td>
+<td>indireto</td>
+<td>Mostra a resposta do mentor e os lembretes</td>
+<td>Não mostra a fonte citada. Avaliar se a citação deve aparecer ao aluno</td>
+</tr>
+<tr>
+<td><strong>Console do professor</strong></td>
+<td>aba Insights</td>
+<td>indireto</td>
+<td>Mostra as fontes da intervenção</td>
+<td>Pronto (#823)</td>
+</tr>
+<tr>
+<td><strong>Banco</strong></td>
+<td><code>rag_openai_files</code>, <code>rag_chunks</code> (pgvector), <code>rag_relacoes</code></td>
+<td>catálogo</td>
+<td><code>rag_openai_files</code> é o catálogo que a exclusão consulta. <code>rag_chunks</code> vem do desenho pgvector (ADR-0001, substituído)</td>
+<td>Tudo vazio. <code>rag_chunks</code> e <code>rag_relacoes</code> ficaram sem uso</td>
+</tr>
+<tr>
+<td><strong>Retenção e exclusão</strong></td>
+<td><code>services/retencao_externa.py</code></td>
+<td>sim</td>
+<td>Apaga o arquivo no store quando ele sai do catálogo</td>
+<td>Pronto, com a chave do RAG (#945)</td>
+</tr>
+<tr>
+<td><strong>Registro das buscas</strong></td>
+<td><code>services/rag_observabilidade.py</code>, <code>docs/rag/observabilidade.md</code></td>
+<td>sim</td>
+<td>Latência, cobertura, scores e taxa de intervenção do guardrail, sem texto</td>
+<td>Só o mentor grava (B5). As consultas SQL de métrica estão prontas</td>
+</tr>
+<tr>
+<td><strong>LGPD</strong></td>
+<td><code>docs/lgpd/transferencias-internacionais.md</code> (linha 5)</td>
+<td>—</td>
+<td>A OpenAI recebe os dados da sessão, pseudonimizados e só de adultos, com <code>store=false</code></td>
+<td>Registrado (#945). O corpus é público e não tem dado pessoal</td>
+</tr>
+</tbody>
+</table></div>
+<hr />
+<h2 id="4-o-corpus-o-que-pode-ser-indexado-hoje">4. O corpus: o que pode ser indexado hoje</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Origem</th>
+<th>Quantidade</th>
+<th>Pode indexar?</th>
+<th>Por quê</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Regras derivadas RD-01 a RD-12</td>
+<td>12</td>
+<td><strong>Sim</strong></td>
+<td>Texto próprio, com fonte, população, tipo de estudo, confiança e limite. A triagem prevê que texto derivado entre no índice como documento próprio, com <code>tipo=derivado</code></td>
+</tr>
+<tr>
+<td>Documentos aprovados da Evidence Base</td>
+<td>24 aprovados entre os 28 decididos</td>
+<td>Não, por enquanto</td>
+<td>Nenhum foi para &quot;corpus do RAG&quot;: a licença não permite indexar o texto integral, ou o documento serve só para citação</td>
+</tr>
+<tr>
+<td>Documentos pendentes</td>
+<td>19</td>
+<td>Não</td>
+<td>Sem decisão final da curadora</td>
+</tr>
+<tr>
+<td>Conjuntos sensíveis (saúde mental, neurodivergência, biometria)</td>
+<td>5</td>
+<td><strong>Nunca</strong></td>
+<td>Política da #74</td>
+</tr>
+<tr>
+<td>Conjuntos de pesquisa (EdNet, OULAD…)</td>
+<td>—</td>
+<td>Não, como linha</td>
+<td>Só viram texto derivado</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Corpus v1 = 12 regras derivadas.</strong> Cobrem:</p>
+<ul>
+<li>formato e escolha (RD-01, RD-02);</li>
+<li>revisão espaçada (RD-03);</li>
+<li>recuperação ativa (RD-04);</li>
+<li>autorregulação (RD-05, RD-08);</li>
+<li>lembretes (RD-06);</li>
+<li>feedback (RD-07, RD-11);</li>
+<li>gamificação como engajamento, não aprendizagem (RD-09, RD-10);</li>
+<li>logs como comportamento (RD-12).</li>
+</ul>
+<p>São justamente os domínios das perguntas do golden set.</p>
+<p>Os atributos de cada arquivo no store seguem o contrato da #73:</p>
+<ul>
+<li><code>scope=publico</code>;</li>
+<li><code>tipo=derivado</code>;</li>
+<li><code>construto</code>, <code>confianca</code> e <code>tipo_estudo</code>;</li>
+<li><code>rd</code> (o id, como RD-03);</li>
+<li><code>fontes</code> (os DAT-xx).</li>
+</ul>
+<hr />
+<h2 id="5-avaliação-do-rag-para-a-monografia">5. Avaliação do RAG (para a monografia)</h2>
+<p>O golden set v1 tem 30 perguntas. Algumas são <strong>não respondíveis</strong> de propósito, como GS-18 e GS-19, para medir se o sistema admite que não há evidência. Para virar medição, faltam três coisas:</p>
+<ol>
+<li><strong>Fontes esperadas no índice.</strong> Cada pergunta aceita documentos <code>DAT-xx</code>. Como o índice terá as RDs, é preciso mapear &quot;pergunta → RDs aceitáveis&quot;. Cada RD já cita os DAT dela, então o mapeamento sai dessas citações e não é invenção.</li>
+<li><strong>Medida da recuperação, sem geração.</strong> A busca direta no store (<code>vector_stores.search</code>) devolve os arquivos e scores sem gerar texto. Com ela se mede:
+<ul>
+<li><strong>recall@k</strong>: a RD esperada aparece entre os k primeiros?</li>
+<li><strong>MRR</strong>: em que posição ela aparece?</li>
+<li><strong>precisão@k</strong>.</li>
+<li>Custa pouco e é reproduzível: mesma versão do corpus, mesmo k.</li>
+</ul>
+</li>
+<li><strong>Medida da resposta</strong> (com geração), feita no mentor:
+<ul>
+<li>para as respondíveis: a resposta cita uma fonte aceitável?</li>
+<li>para as não respondíveis: a resposta reconhece a falta de evidência?</li>
+<li>Esta parte pede julgamento. A avaliação é humana, com uma rubrica de 3 níveis.</li>
+</ul>
+</li>
+</ol>
+<p>O resultado entra na seção 8.1 da monografia (&quot;Resultados da Evidence Base&quot;) e responde ao item do Apêndice F: &quot;testar respostas do RAG contra um conjunto de perguntas de validação&quot;.</p>
+<hr />
+<h2 id="6-plano-para-ligar-o-rag">6. Plano para ligar o RAG</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Passo</th>
+<th>O quê</th>
+<th>Tipo</th>
+<th>Depende de</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Corpus v1:</strong> gerar um arquivo por regra derivada a partir de <code>regras-derivadas.md</code>, com os atributos da seção 4 e o hash de conteúdo</td>
+<td>PR (código)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Ingestão:</strong> script <code>api/scripts/rag_indexar_corpus.py</code>, que chama <code>upload_public_file</code>, é idempotente pelo hash, mostra o que muda e só envia com <code>--aplicar</code></td>
+<td>PR (código)</td>
+<td>1</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Configuração:</strong> conferir <code>OPENAI_RAG_ENABLED</code>, <code>OPENAI_RAG_API_KEY</code> e <code>OPENAI_RAG_VECTOR_STORE_ID</code> no Dokploy. Conferir também se o store tem arquivos sem <code>scope=publico</code></td>
+<td>Autora</td>
+<td>—</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Indexar:</strong> rodar o passo 2 com <code>--aplicar</code> e conferir <code>rag_openai_files</code></td>
+<td>Autora, ou eu com autorização</td>
+<td>2, 3</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Avaliador:</strong> mapeamento GS → RD e script de recall@k/MRR pela busca direta, com relatório versionado em <code>docs/rag/</code></td>
+<td>PR (código)</td>
+<td>1</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Rodar a avaliação</strong> e registrar o resultado (seção 8.1 da monografia)</td>
+<td>Execução</td>
+<td>4, 5</td>
+</tr>
+<tr>
+<td>7</td>
+<td>(opcional) Registrar as buscas da intervenção e da notificação em <code>ia_decision_logs</code> (B5)</td>
+<td>PR (código)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>8</td>
+<td>(opcional) Decidir se a Lumi e os insights também usam o RAG</td>
+<td>Decisão</td>
+<td>6</td>
+</tr>
+</tbody>
+</table></div>
+<p>Os passos 1, 2 e 5 não dependem de nada externo e podem começar já. O 3 e o 4 dependem de quem tem acesso ao Dokploy e à conta da OpenAI do RAG.</p>
+<hr />
+<h2 id="7-o-que-dizer-na-monografia-depois-disso">7. O que dizer na monografia depois disso</h2>
+<ul>
+<li><strong>Seção 6.5:</strong> o RAG fundamenta três decisões de IA (mentor, intervenção e notificação) por busca semântica num corpus de regras derivadas da Evidence Base.</li>
+<li><strong>A sugestão de material</strong> usa a mesma evidência de forma determinística, para ser reproduzível no estudo.</li>
+<li><strong>O corpus v1</strong> tem só texto próprio (regras derivadas) por causa da licença dos documentos integrais. Essa é uma limitação declarada.</li>
+<li><strong>Seção 8.1:</strong> recall@k e MRR no golden set de 30 perguntas, e o comportamento nas perguntas sem evidência.</li>
+<li><strong>Não dizer:</strong>
+<ul>
+<li>que o RAG &quot;garante&quot; a resposta certa (Apêndice H);</li>
+<li>que ele recupera os artigos integrais.</li>
+</ul>
+</li>
+</ul>
+<nav class="nav-paginas"><a href="classes.html"><span class="k">← anterior</span><span class="t">Diagramas de classes</span></a><a class="prox" href="rag-teste.html"><span class="k">próxima →</span><span class="t">Teste com e sem RAG</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#1-resumo-o-que-impede-o-rag-de-funcionar">1. Resumo: o que impede o RAG de funcionar</a></li><li><a href="#2-arquitetura-do-rag-como-está-no-código">2. Arquitetura do RAG como está no código</a></li><li><a href="#3-mapa-por-parte-do-sistema">3. Mapa por parte do sistema</a></li><li><a href="#4-o-corpus-o-que-pode-ser-indexado-hoje">4. O corpus: o que pode ser indexado hoje</a></li><li><a href="#5-avaliação-do-rag-para-a-monografia">5. Avaliação do RAG (para a monografia)</a></li><li><a href="#6-plano-para-ligar-o-rag">6. Plano para ligar o RAG</a></li><li><a href="#7-o-que-dizer-na-monografia-depois-disso">7. O que dizer na monografia depois disso</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>ea19135a</code> em 04/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Casos de uso · TrailUp</title><meta name="description" content="Atores, casos de uso do aluno, do professor e da dona do projeto."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 transform=%22rotate(45 8 8)%22 fill=%22%23a08df5%22/%3E%3C/svg%3E"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><span class="diamond"></span>TrailUp · documentação</a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html" aria-current="page">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Casos de uso</h1><p class="lede">Atores, casos de uso do aluno, do professor e da dona do projeto.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/02-casos-de-uso.md" target="_blank" rel="noopener">docs/tcc/modelagem/02-casos-de-uso.md</a><span class="chip ok">atualizado 04/11/2026</span><span class="chip warn">2 diagramas</span></div></header><h2 id="21-atores">2.1 Atores</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Ator</th>
+<th>Tipo</th>
+<th>Onde atua</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Aluno</td>
+<td>primário</td>
+<td>app (<code>mobile/</code>)</td>
+</tr>
+<tr>
+<td>Professor</td>
+<td>primário</td>
+<td>console web (<code>frontend/</code>)</td>
+</tr>
+<tr>
+<td>Dona do projeto</td>
+<td>primário</td>
+<td>abas Aprovações e Painel técnico do console. A proteção é no banco (<code>app_e_dono()</code>)</td>
+</tr>
+<tr>
+<td>Agendador</td>
+<td>secundário, sistema</td>
+<td><code>pg_cron</code>: 16 rotinas</td>
+</tr>
+<tr>
+<td>Agente de IA</td>
+<td>secundário, sistema</td>
+<td>workers e grafo da API</td>
+</tr>
+<tr>
+<td>Provedor de modelo</td>
+<td>secundário, externo</td>
+<td>Gemini, e OpenAI no RAG</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="22-diagrama-aluno">2.2 Diagrama: aluno</h2>
+<figure class="diagrama" id="diagrama-1"><div class="area"><pre class="mermaid">flowchart LR
+  A([Aluno])
+  subgraph App do aluno
+    UC01((UC01 Cadastrar-se e&lt;br/&gt;responder o quiz BrainHex))
+    UC02((UC02 Dar ou revogar&lt;br/&gt;consentimentos))
+    UC03((UC03 Entrar numa turma))
+    UC04((UC04 Estudar o tópico:&lt;br/&gt;texto, áudio, apresentação, cards))
+    UC05((UC05 Fazer atividade&lt;br/&gt;e questões))
+    UC06((UC06 Batalhar com o boss))
+    UC07((UC07 Conversar com o Guardião))
+    UC08((UC08 Cumprir missões))
+    UC09((UC09 Ver ranking,&lt;br/&gt;participar de evento))
+    UC10((UC10 Social e guildas))
+    UC11((UC11 Loja, moedas,&lt;br/&gt;molduras, conquistas))
+    UC12((UC12 Receber notificações,&lt;br/&gt;definir lembrete e modo foco))
+    UC13((UC13 Ver e exportar&lt;br/&gt;os próprios dados))
+    UC14((UC14 Excluir a conta))
+  end
+  IA([Agente de IA])
+  CRON([Agendador])
+
+  A --- UC01 &amp; UC02 &amp; UC03 &amp; UC04 &amp; UC05 &amp; UC06 &amp; UC07
+  A --- UC08 &amp; UC09 &amp; UC10 &amp; UC11 &amp; UC12 &amp; UC13 &amp; UC14
+  UC03 -. include .-&gt; UCG((Gerar material&lt;br/&gt;por perfil))
+  UC04 -. include .-&gt; UCT((Coletar telemetria))
+  UC05 -. include .-&gt; UCT
+  UCT -. extend .-&gt; UCA((Analisar e adaptar))
+  UC07 --- IA
+  UCG --- IA
+  UCA --- IA
+  UC08 --- CRON
+  UC09 --- CRON
+  UC12 --- CRON
+</pre></div><figcaption><span>Diagrama 1</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="23-diagrama-professor-e-dona">2.3 Diagrama: professor e dona</h2>
+<figure class="diagrama" id="diagrama-2"><div class="area"><pre class="mermaid">flowchart LR
+  P([Professor])
+  D([Dona do projeto])
+  subgraph Console
+    UC20((UC20 Criar e configurar turma))
+    UC21((UC21 Editar trilha:&lt;br/&gt;tópicos, conteúdos,&lt;br/&gt;atividades, questões, cards))
+    UC22((UC22 Duplicar turma,&lt;br/&gt;tópico, atividade))
+    UC23((UC23 Acompanhar e&lt;br/&gt;reprocessar personalizações))
+    UC24((UC24 Ler insights da turma))
+    UC25((UC25 Perguntar à Lumi))
+    UC26((UC26 Corrigir notas,&lt;br/&gt;aprovar entregas))
+    UC27((UC27 Criar missões,&lt;br/&gt;conquistas, eventos))
+    UC28((UC28 Configurar economia&lt;br/&gt;e loja da turma))
+    UC29((UC29 Decidir alteração&lt;br/&gt;sem análise da IA))
+    UC30((UC30 Aprovar professores))
+    UC31((UC31 Painel técnico))
+  end
+  IA([Agente de IA])
+  P --- UC20 &amp; UC21 &amp; UC22 &amp; UC23 &amp; UC24 &amp; UC25 &amp; UC26 &amp; UC27 &amp; UC28 &amp; UC29
+  D --- UC30 &amp; UC31
+  UC21 -. include .-&gt; E((Enfileirar regeração&lt;br/&gt;gatilho no banco))
+  UC21 -. extend .-&gt; ALT((Registrar alteração&lt;br/&gt;vista por aluno))
+  E --- IA
+  ALT --- IA
+  UC24 --- IA
+  UC25 --- IA
+</pre></div><figcaption><span>Diagrama 2</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="24-especificação-resumida">2.4 Especificação resumida</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>UC</th>
+<th>Pré-condição</th>
+<th>Fluxo principal</th>
+<th>Onde mora a regra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UC01</td>
+<td>—</td>
+<td>Cria conta pelo Supabase Auth, responde 32 itens (8 eixos) e grava 7 afinidades em <code>aluno_perfil</code></td>
+<td><code>frontend/src/features/signup/brainhex.ts</code>, banco</td>
+</tr>
+<tr>
+<td>UC02</td>
+<td>conta</td>
+<td>Consentimento de telemetria, pesquisa e, para menor, responsável. Revogar para a coleta</td>
+<td><code>consentimento_*</code>, RLS</td>
+</tr>
+<tr>
+<td>UC03</td>
+<td>conta</td>
+<td>Entra na turma (<code>classe_aluno</code>); o gatilho enfileira <code>student_enrollment</code></td>
+<td><code>fn_enqueue_student_enrollment_job</code></td>
+</tr>
+<tr>
+<td>UC04</td>
+<td>matrícula</td>
+<td>O app lê <code>conteudo_personalizado</code> do perfil dominante e baixa a mídia pelo gateway assinado; o progresso por item vai para <code>personalizacao_item_progresso</code></td>
+<td>RLS, <code>storage-redirect</code>, gatilho de progresso</td>
+</tr>
+<tr>
+<td>UC05</td>
+<td>matrícula</td>
+<td>Tentativa registrada no servidor; nota e status recalculados no banco</td>
+<td><code>atividade_tentativas</code>, <code>trailup_recalcular_*</code></td>
+</tr>
+<tr>
+<td>UC06</td>
+<td>perfil Survivor, Daredevil ou Conqueror</td>
+<td>Boss com falas do perfil (<code>boss_falas</code>), ou falas fixas na ausência delas</td>
+<td><code>PERFIS_COM_BATALHA</code>, app</td>
+</tr>
+<tr>
+<td>UC07</td>
+<td>maior de 18 confirmado</td>
+<td><code>POST /personalizar/chat</code>: Guardião do perfil, sem gabarito, com destinos do app</td>
+<td>API; 403 para menor</td>
+</tr>
+<tr>
+<td>UC08</td>
+<td>matrícula</td>
+<td>Missão diária criada às 03:00, texto por IA às 03:05; missões da turma</td>
+<td><code>pg_cron</code>, <code>missoes_ia_loop</code></td>
+</tr>
+<tr>
+<td>UC09</td>
+<td>matrícula</td>
+<td>Ranking por view com filtro de saída; eventos abrem e fecham sozinhos</td>
+<td><code>vw_rank_posicoes_por_classe</code>, <code>fn_eventos_classe_varrer</code></td>
+</tr>
+<tr>
+<td>UC12</td>
+<td>conta</td>
+<td>Caixa de entrada, push pelo banco, rotina local no aparelho</td>
+<td>motor de notificações no banco</td>
+</tr>
+<tr>
+<td>UC13/14</td>
+<td>conta</td>
+<td>Relatório de dados; pedido de exclusão; cópia anônima para pesquisa só com consentimento</td>
+<td><code>solicitacoes_exclusao</code>, retenção, <code>pesquisa-arquivar</code></td>
+</tr>
+<tr>
+<td>UC21</td>
+<td>dono da turma</td>
+<td>Salvar já enfileira <code>class_delta_sync</code> (com coalescência); se algum aluno já viu, registra alteração</td>
+<td>gatilhos do editor</td>
+</tr>
+<tr>
+<td>UC23</td>
+<td>dono da turma</td>
+<td>Lê <code>personalizacao_jobs</code> direto; reprocessar e gerar por perfil chamam a API</td>
+<td>RLS + <code>/personalizar/jobs/manual-*</code></td>
+</tr>
+<tr>
+<td>UC24</td>
+<td>dono da turma</td>
+<td><code>POST /insights/turma/{id}/gerar</code> (intervalo mínimo de 5 min); listar, aceitar e ignorar direto no banco</td>
+<td>API + GRANT por coluna</td>
+</tr>
+<tr>
+<td>UC25</td>
+<td>professor</td>
+<td><code>POST /escriba/perguntar</code>; alunos aparecem como <code>A1…An</code></td>
+<td>API</td>
+</tr>
+<tr>
+<td>UC29</td>
+<td>alteração <code>pendente_analise</code></td>
+<td><code>alteracao_decidir</code></td>
+<td>RPC</td>
+</tr>
+</tbody>
+</table></div>
+<nav class="nav-paginas"><a href="arquitetura.html"><span class="k">← anterior</span><span class="t">Arquitetura</span></a><a class="prox" href="pipeline.html"><span class="k">próxima →</span><span class="t">Pipeline de ponta a ponta</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#21-atores">2.1 Atores</a></li><li><a href="#22-diagrama-aluno">2.2 Diagrama: aluno</a></li><li><a href="#23-diagrama-professor-e-dona">2.3 Diagrama: professor e dona</a></li><li><a href="#24-especificação-resumida">2.4 Especificação resumida</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>ea19135a</code> em 04/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>

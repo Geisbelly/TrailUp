@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Modelo de dados · TrailUp</title><meta name="description" content="Entidades e relações por domínio, a partir das chaves estrangeiras de produção."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect x=%223%22 y=%223%22 width=%2210%22 height=%2210%22 transform=%22rotate(45 8 8)%22 fill=%22%23a08df5%22/%3E%3C/svg%3E"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><span class="diamond"></span>TrailUp · documentação</a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html" aria-current="page">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Modelo de dados</h1><p class="lede">Entidades e relações por domínio, a partir das chaves estrangeiras de produção.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/05-dados.md" target="_blank" rel="noopener">docs/tcc/modelagem/05-dados.md</a><span class="chip ok">atualizado 04/11/2026</span><span class="chip warn">8 diagramas</span></div></header><p>Os diagramas saem das <strong>chaves estrangeiras reais</strong> de produção (<code>pg_constraint</code>, lidas em 04/11/2026). São 171 tabelas, agrupadas aqui por domínio. Cada diagrama mostra as tabelas centrais e as relações entre elas; colunas aparecem só quando definem o papel da tabela. <code>alunos.id</code> e <code>professor.id</code> são o próprio <code>auth.users.id</code>.</p>
+<h2 id="51-núcleo-acadêmico">5.1 Núcleo acadêmico</h2>
+<figure class="diagrama" id="diagrama-1"><div class="area"><pre class="mermaid">erDiagram
+  AUTH_USERS ||--o| ALUNOS : &quot;id&quot;
+  AUTH_USERS ||--o| PROFESSOR : &quot;id&quot;
+  MATERIA ||--o{ CLASSE : materia_id
+  PROFESSOR ||--o{ CLASSE : professor_id
+  CLASSE ||--o{ CLASSE_ALUNO : classe_id
+  ALUNOS ||--o{ CLASSE_ALUNO : aluno_id
+  CLASSE ||--o{ TOPICOS : classe_id
+  TOPICOS ||--o{ TOPICO_EDGES : &quot;from_id / to_id&quot;
+  TOPICOS ||--o{ CONTEUDOS : topico_id
+  TOPICOS ||--o{ ATIVIDADES : topico_id
+  CONTEUDOS ||--o{ MIDIAS : conteudo_id
+  CONTEUDOS ||--o{ CARDS : conteudo_id
+  ATIVIDADES ||--o{ ATIVIDADE_CONTEUDOS : atividade_id
+  CONTEUDOS ||--o{ ATIVIDADE_CONTEUDOS : conteudo_id
+  ATIVIDADES ||--o{ QUESTOES : atividade_id
+  QUESTOES ||--o| QUESTAO_GABARITO : questao_id
+
+  CLASSE {
+    bigint id PK
+    uuid professor_id FK
+    bigint materia_id FK
+  }
+  TOPICOS {
+    bigint id PK
+    bigint classe_id FK
+  }
+  CLASSE_ALUNO {
+    bigint classe_id FK
+    uuid aluno_id FK
+  }
+</pre></div><figcaption><span>Diagrama 1</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p><code>questao_gabarito</code> fica separada de <code>questoes</code> para que o aluno leia a questão sem conseguir ler a resposta.</p>
+<h2 id="52-progresso-e-avaliação">5.2 Progresso e avaliação</h2>
+<figure class="diagrama" id="diagrama-2"><div class="area"><pre class="mermaid">erDiagram
+  ALUNOS ||--o{ TOPICO_ALUNO : aluno_id
+  TOPICOS ||--o{ TOPICO_ALUNO : topico_id
+  ALUNOS ||--o{ CONTEUDO_ALUNO : aluno_id
+  CONTEUDOS ||--o{ CONTEUDO_ALUNO : conteudo_id
+  ALUNOS ||--o{ ATIVIDADE_ALUNO : aluno_id
+  ATIVIDADES ||--o{ ATIVIDADE_ALUNO : atividade_id
+  ATIVIDADES ||--o{ ATIVIDADE_TENTATIVAS : atividade_id
+  ALUNOS ||--o{ ATIVIDADE_TENTATIVAS : aluno_id
+  QUESTOES ||--o{ QUESTAO_ALUNO : questao_id
+  ALUNOS ||--o{ QUESTAO_ALUNO : aluno_id
+  ATIVIDADES ||--o{ ATIVIDADE_APROVACAO : atividade_id
+  ATIVIDADES ||--o{ ATIVIDADE_PRAZO_ALUNO : atividade_id
+  ALUNOS ||--o{ ESTUDO_SESSOES : aluno_id
+  ALUNOS ||--o{ ALUNO_TOPICO_DOMINIO : aluno_id
+
+  TOPICO_ALUNO {
+    status_atividade status &quot;não iniciado | em andamento | concluido&quot;
+    numeric percentual_concluido &quot;só o gatilho grava&quot;
+    numeric tempo_gasto_min &quot;tempo ativo da telemetria&quot;
+  }
+</pre></div><figcaption><span>Diagrama 2</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="53-perfil-e-personalização">5.3 Perfil e personalização</h2>
+<h3 id="531-perfil-e-material">5.3.1 Perfil e material</h3>
+<figure class="diagrama" id="diagrama-3"><div class="area"><pre class="mermaid">erDiagram
+  PERFIL ||--o{ ALUNO_PERFIL : perfil_id
+  ALUNOS ||--o{ ALUNO_PERFIL : aluno_id
+  ALUNOS ||--o{ ALUNO_MENTAL_STATE_HISTORY : aluno_id
+  CLASSE ||--o{ CONTEUDO_PERSONALIZADO : classe_id
+  TOPICOS ||--o{ CONTEUDO_PERSONALIZADO : topico_id
+  CONTEUDOS ||--o{ CONTEUDO_PERSONALIZADO : conteudo_id
+  ALUNOS |o--o{ CONTEUDO_PERSONALIZADO : &quot;aluno_id (nulo = base por perfil)&quot;
+  CONTEUDO_PERSONALIZADO ||--o{ PERSONALIZACAO_ITEM_PROGRESSO : personalizacao_id
+  CONTEUDO_PERSONALIZADO ||--o{ MATERIAIS_GERADOS : personalizacao_id
+  CONTEUDOS ||--o{ BOSS_FALAS : conteudo_id
+
+  CONTEUDO_PERSONALIZADO {
+    jsonb plano
+    jsonb materiais &quot;audio, apresentacao, markdown, cards · revisao por material&quot;
+    jsonb ai_patch &quot;adequação por aluno&quot;
+    text brainhex_profile_key
+    text source_hash &quot;dedup; inclui a versão do pipeline&quot;
+    text status &quot;processando_midias | pronto | failed (falha: legado)&quot;
+  }
+</pre></div><figcaption><span>Diagrama 3</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h3 id="532-fila-de-geração-sugestão-e-resumo-da-turma">5.3.2 Fila de geração, sugestão e resumo da turma</h3>
+<figure class="diagrama" id="diagrama-4"><div class="area"><pre class="mermaid">erDiagram
+  CLASSE ||--o{ PERSONALIZACAO_JOBS : classe_id
+  PERSONALIZACAO_JOBS ||--o{ PERSONALIZACAO_JOB_TARGETS : job_id
+  PERSONALIZACAO_JOBS ||--o{ PERSONALIZACAO_BLOCOS_GERADOS : job_id
+  CONTEUDO_PERSONALIZADO ||--o{ PERSONALIZACAO_JOB_TARGETS : personalizacao_id
+  ALUNOS ||--o{ PERSONALIZACAO_SUGESTAO : aluno_id
+  PERSONALIZACAO_SUGESTAO ||--o{ PERSONALIZACAO_SUGESTAO_LOG : sugestao_id
+  CLASSE ||--o{ CLASSE_PERFIL_SUMMARY : classe_id
+  CLASSE ||--o{ CLASSE_MAPA_TEMA : classe_id
+  CLASSE ||--o{ FONTES_PERSONALIZACAO : classe_id
+
+  PERSONALIZACAO_JOBS {
+    text kind
+    text status &quot;pending | processing | partial | completed | failed&quot;
+    int total_targets
+    int processed_targets
+  }
+  PERSONALIZACAO_JOB_TARGETS {
+    text status &quot;pending | processing | completed | failed | skipped&quot;
+    text media_kind &quot;enriquecimento | capitulo | audio | apresentacao&quot;
+  }
+</pre></div><figcaption><span>Diagrama 4</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="54-telemetria-e-decisões-da-ia">5.4 Telemetria e decisões da IA</h2>
+<figure class="diagrama" id="diagrama-5"><div class="area"><pre class="mermaid">erDiagram
+  ALUNOS ||--o{ TELEMETRIA_SESSOES : aluno_id
+  TELEMETRIA_SESSOES ||--o{ TELEMETRIA_LOTES : sessao_id
+  TELEMETRIA_LOTES ||--o{ TELEMETRIA_TIME_METRIC_ENTRIES : lote_id
+  TELEMETRIA_LOTES ||--o| TELEMETRIA_ANALISE_FILA : lote_id
+  TELEMETRIA_SESSOES ||--o{ TELEMETRIA_EVENTOS_APP : sessao_id
+  ALUNOS ||--o{ IA_DECISION_LOGS : aluno_id
+  ALUNOS ||--o{ INTERVENCOES : aluno_id
+  ALUNOS ||--o{ ALUNO_ESTADO_ATENCAO : aluno_id
+  CLASSE ||--o{ ESTUDO_COORTE : classe_id
+
+  TELEMETRIA_LOTES {
+    jsonb payload &quot;dwell, active, idle do lote (não acumulado)&quot;
+    text via &quot;api | direta&quot;
+    text fallback_motivo
+  }
+  TELEMETRIA_TIME_METRIC_ENTRIES {
+    text scope &quot;topic | content | material | activity (não somar entre si)&quot;
+    numeric active_sec
+  }
+</pre></div><figcaption><span>Diagrama 5</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="55-gamificação">5.5 Gamificação</h2>
+<figure class="diagrama" id="diagrama-6"><div class="area"><pre class="mermaid">erDiagram
+  ALUNOS ||--o{ EVENTOS_ALUNO : aluno_id
+  CLASSE ||--o{ RANKS : classe_id
+  RANK_TIPO ||--o{ RANKS : tipo_id
+  RANKS ||--o{ RANK_PODIO_CONGELADO : rank_id
+  CLASSE ||--o{ EVENTOS_CLASSE : classe_id
+  EVENTOS_CLASSE ||--o{ EVENTO_INSCRICOES : evento_id
+  EVENTOS_CLASSE ||--o{ EVENTOS_CLASSE_RESULTADO : evento_id
+  CLASSE ||--o{ MISSOES : classe_id
+  MISSOES ||--o{ MISSAO_ALUNO : missao_id
+  MISSOES_IA_PEDIDOS ||--o{ MISSOES : pedido_ia_id
+  CONQUISTAS ||--o{ CONQUISTAS_ALUNO : conquista_id
+  CONQUISTAS ||--o{ MOLDURAS : conquista_id
+  MOLDURAS ||--o{ MOLDURA_ALUNO : moldura_codigo
+  ALUNOS ||--o{ MOEDAS_LEDGER : aluno_id
+  LOJA_ITENS ||--o{ LOJA_COMPRAS : item_codigo
+  LOJA_COMPRAS ||--o{ LOJA_USO_LOG : compra_id
+  CLASSE ||--o{ GUILDAS : classe_id
+  GUILDAS ||--o{ GUILDA_MEMBROS : guilda_id
+  GUILDAS ||--o{ GUILDA_DESAFIOS : guilda_id
+  GUILDA_DESAFIOS ||--o{ RANQUEADA_ELO_PARTIDA : desafio_id
+  CLASSE ||--o{ FUNDOS_TURMA : classe_id
+  FUNDOS_TURMA ||--o{ FUNDOS_TURMA_CONTRIBUICAO : fundo_id
+</pre></div><figcaption><span>Diagrama 6</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="56-notificações">5.6 Notificações</h2>
+<figure class="diagrama" id="diagrama-7"><div class="area"><pre class="mermaid">erDiagram
+  ALUNOS ||--o{ NOTIFICACOES_IA : &quot;o que a IA sugeriu&quot;
+  ALUNOS ||--o{ NOTIFICACOES_PENDENTES : &quot;a fila&quot;
+  ALUNOS ||--o{ NOTIFICACOES_AGENDAMENTOS : &quot;a rotina&quot;
+  ALUNOS ||--o{ NOTIFICACOES : &quot;a caixa de entrada&quot;
+  ALUNOS ||--o{ EXPO_TOKENS : &quot;um por aparelho&quot;
+  ALUNOS ||--o{ NOTIFICACOES_PUSH_ENVIOS : aluno_id
+  ALUNOS ||--o{ ALUNO_MODO_FOCO : aluno_id
+  PROFESSOR ||--o{ PROFESSOR_NOTIFICACOES : professor_id
+</pre></div><figcaption><span>Diagrama 7</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>As quatro primeiras têm papéis que não se trocam. Só <code>notificacoes_ia</code> recebe escrita da API.</p>
+<h2 id="57-privacidade-pesquisa-e-rag">5.7 Privacidade, pesquisa e RAG</h2>
+<figure class="diagrama" id="diagrama-8"><div class="area"><pre class="mermaid">erDiagram
+  ALUNOS ||--o{ CONSENTIMENTO_TELEMETRIA : &quot;aluno_id (SET NULL)&quot;
+  ALUNOS ||--o{ CONSENTIMENTO_PESQUISA : &quot;aluno_id (SET NULL)&quot;
+  ALUNOS ||--o{ CONSENTIMENTO_RESPONSAVEL : &quot;aluno_id (SET NULL)&quot;
+  ALUNOS ||--o| ALUNO_NASCIMENTO : aluno_id
+  ALUNOS ||--o{ SOLICITACOES_EXCLUSAO : aluno_id
+  ALUNOS ||--o{ PESQUISA_ARQUIVO : aluno_id
+  ALUNOS ||--o{ RETENCAO_AVISOS_INATIVIDADE : aluno_id
+  ALUNOS |o--o{ RAG_OPENAI_FILES : &quot;aluno_id (escopo aluno)&quot;
+  RAG_CHUNKS ||--o{ RAG_RELACOES : &quot;origem / destino&quot;
+
+  RAG_OPENAI_FILES {
+    text scope &quot;publico | turma | aluno&quot;
+    text source_hash
+    jsonb attributes &quot;corpus, rd, fontes …&quot;
+    text status &quot;in_progress | completed | failed | cancelled&quot;
+  }
+</pre></div><figcaption><span>Diagrama 8</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<ul>
+<li><strong>Consentimentos:</strong> as FKs usam <code>SET NULL</code> de propósito, para que a prova de consentimento sobreviva à exclusão da conta. As demais tabelas do aluno usam <code>CASCADE</code>.</li>
+<li><strong>Exclusões que saem do banco:</strong> apagar uma linha de <code>rag_openai_files</code> ou de uma fonte enfileira em <code>retencao_externa</code> a remoção do arquivo fora do banco, no R2 ou na OpenAI.</li>
+</ul>
+<nav class="nav-paginas"><a href="ia.html"><span class="k">← anterior</span><span class="t">IA: grafo e análise</span></a><a class="prox" href="estados.html"><span class="k">próxima →</span><span class="t">Diagramas de estado</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#51-núcleo-acadêmico">5.1 Núcleo acadêmico</a></li><li><a href="#52-progresso-e-avaliação">5.2 Progresso e avaliação</a></li><li><a href="#53-perfil-e-personalização">5.3 Perfil e personalização</a></li><li><a href="#54-telemetria-e-decisões-da-ia">5.4 Telemetria e decisões da IA</a></li><li><a href="#55-gamificação">5.5 Gamificação</a></li><li><a href="#56-notificações">5.6 Notificações</a></li><li><a href="#57-privacidade-pesquisa-e-rag">5.7 Privacidade, pesquisa e RAG</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>ea19135a</code> em 04/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
