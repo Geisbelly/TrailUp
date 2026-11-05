@@ -25,6 +25,8 @@ export type Alvo = {
   minutos_aula: number | null;
   cobertura_aula_pct: number | null;
   minutos_fora_aula: number;
+  /** Minutos de deploy curto, tirados da meta e mostrados à parte (migration 20261105_26). */
+  minutos_deploy: number;
   orcamento_aula_min: number | null;
   medidas_30d: number;
   disponibilidade_30d_pct: number | null;
@@ -140,6 +142,7 @@ export function lerDisponibilidade(bruto: unknown): Disponibilidade | null {
       minutos_aula: numOuNulo(a.minutos_aula),
       cobertura_aula_pct: numOuNulo(a.cobertura_aula_pct),
       minutos_fora_aula: num(a.minutos_fora_aula),
+      minutos_deploy: num(a.minutos_deploy),
       orcamento_aula_min: numOuNulo(a.orcamento_aula_min),
       medidas_30d: num(a.medidas_30d),
       disponibilidade_30d_pct: numOuNulo(a.disponibilidade_30d_pct),
