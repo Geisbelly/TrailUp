@@ -491,7 +491,9 @@ Cada perfil carrega:
   e o acerto convertido de quem não. Guilda pela média, com limite de tamanho. Parâmetros em
   `app_config` (`evento_pareamento_*`). O Social continua com escolha livre.
   **Missão de guilda** (`20261105_13`): com `missoes.alvo_por_membro` (padrão das novas), o alvo é
-  alvo × membros ativos, para a via em guilda render o mesmo que a individual.
+  alvo × membros ativos, para a via em guilda render o mesmo que a individual. A paridade é medida
+  no `painel_tecnico` (`20261105_21`, gatilho `paridade_guilda`): XP sem duelo por atividade
+  concluída, em guilda × fora, com limiar e mínimo em `app_config` (`paridade_guilda_*`).
 - `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_11`):
   entrada, derrota, provocação de dano, marcos de metade/um quarto da vida, alerta de tempo,
   contra-ataque e a mensagem de vitória. **Gerar é IA, então é API**: o worker da fila faz uma
