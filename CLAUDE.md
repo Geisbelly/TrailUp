@@ -751,8 +751,10 @@ Cada perfil carrega:
 - **Administração do dono é função do banco, não HTML da API** (`20261105_18`).
   A aba Administração do console chama `admin_acessos`, `admin_professor_liberar`,
   `admin_professor_aluno`, `admin_molduras`, `admin_moldura_salvar`,
-  `admin_moldura_acao_salvar` e `admin_economia`, todas com `app_e_dono()` antes
-  de ler ou gravar. As páginas `/admin` da API ainda existem e fazem o mesmo; não
+  `admin_moldura_acao_salvar`, `admin_economia` e `admin_turma_matricular`
+  (`20261105_25`), todas com `app_e_dono()` antes de ler ou gravar. Matricular
+  pelo dono é só o INSERT em `classe_aluno`, com os mesmos gatilhos; tirar da turma
+  apaga progresso e continua só no modal do professor. As páginas `/admin` da API ainda existem e fazem o mesmo; não
   acrescente nada novo nelas. Só o reprocessamento de mídia precisa ficar na API,
   porque usa o pipeline de geração.
 - **Eventos de turma abrem e encerram no horário pelo banco (#141).**
