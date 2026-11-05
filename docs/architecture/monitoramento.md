@@ -86,7 +86,11 @@ SELECT assunto, enviado_em, tentativas, erro FROM public.monitor_alerta ORDER BY
 ROLLBACK;
 ```
 
-O caminho do e-mail foi conferido em 05/11/2026: o alerta de teste saiu no tick seguinte, na primeira tentativa, e chegou ao destino. Um incidente real ainda não gerou e-mail em produção. Para repetir o teste, grave um alerta de propósito com `SELECT public.fn_monitor_alertar('teste:<data>', '[TrailUp] Teste', 'Teste do monitor.');` como `postgres`: é uma escrita em produção, então faça você mesma. Ele sai no tick seguinte.
+O caminho do e-mail foi conferido em 05/11/2026: o alerta de teste saiu no tick seguinte, na primeira tentativa, e chegou ao destino. O primeiro incidente real saiu no mesmo dia: a instabilidade da API das 14:59 às 15:28 UTC mandou os dois e-mails, o de abertura e o de fechamento, e eles chegaram. A confirmação no banco pode vir em menos de um segundo, sem que isso indique falha: nesse incidente levou cerca de 0,14 s, e no teste, 8 s. Para repetir o teste, grave um alerta de propósito com `SELECT public.fn_monitor_alertar('teste:<data>', '[TrailUp] Teste', 'Teste do monitor.');` como `postgres`: é uma escrita em produção, então faça você mesma. Ele sai no tick seguinte.
+
+## Deploy conta como falha
+
+O monitor não sabe que houve deploy. Em 05/11/2026 as sondas ruins da API foram 502 isolados, de 6 a 8 minutos depois do merge de cada sync no espelho (14:28, 14:48, 14:58 e 17:14 UTC), e três deles em uma hora abriram o incidente de instabilidade. O horário aponta para o restart da API, mas o log do Dokploy não foi conferido. Enquanto isso, cada deploy gasta um pouco da meta.
 
 ## Nomes que ficaram de quando havia janela
 

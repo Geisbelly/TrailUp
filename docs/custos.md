@@ -89,7 +89,7 @@ Guardião custa essa chamada mais o juiz de grounding.
 
 | Data | Decisão | Efeito | Estado |
 |---|---|---|---|
-| 05/11/2026 | Monitor 24 horas, com sonda de 1 min nos três alvos (#1004) | Nenhuma chamada de modelo. `monitor_sonda` chega a ~151 mil linhas em 35 dias. Na proporção medida (243 linhas em 123 kB, 05/11/2026) seriam até ~76 MB; a amostra é pequena e tende a superestimar | Na fila do sync |
+| 05/11/2026 | Monitor 24 horas, com sonda de 1 min nos três alvos (#1004) | Nenhuma chamada de modelo. `monitor_sonda` chega a ~151 mil linhas em 35 dias. Na proporção medida (243 linhas em 123 kB, 05/11/2026) seriam até ~76 MB; a amostra é pequena e tende a superestimar | No ar |
 | 05/11/2026 | Payload com o que é fixo primeiro (#971) | Cache de 1.900 de ~5.285 tokens no Guardião, medido | No ar |
 | 05/11/2026 | Pergunta de navegação sem modelo (#973) | Duas chamadas a menos por pergunta; volume desconhecido | No ar, sem medir |
 | 05/11/2026 | Schema nativo em plano, cards e mapa (#967) | Saída só com o que foi pedido | No ar |
