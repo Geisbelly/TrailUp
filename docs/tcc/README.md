@@ -22,7 +22,7 @@ Este diretorio consolida os capitulos tecnicos e metodologicos usados para forma
 
 **Estado atual do sistema (04/11/2026):** [`sistema-para-a-monografia-2026-11-04.md`](./sistema-para-a-monografia-2026-11-04.md). Varredura verificada no código e no banco; os capítulos acima são de abril e devem ser revistos a partir dela.
 
-**Modelagem do sistema (04/11/2026):** [`modelagem/`](./modelagem/README.md). 45 diagramas (arquitetura, casos de uso, pipeline de ponta a ponta, grafo da IA, ER, estados, classes), conferidos no código e no banco, com SVG pronto em `modelagem/img/`.
+**Modelagem do sistema (05/11/2026):** [`modelagem/`](./modelagem/README.md). 72 diagramas e 68 casos de uso (arquitetura, casos de uso, pipeline de ponta a ponta, grafo da IA, ER, estados, classes), conferidos no código e no banco, com SVG pronto em `modelagem/img/`.
 
 **Inventário completo (04/11/2026):** [`inventario-completo-2026-11-04.md`](./inventario-completo-2026-11-04.md). Cada módulo, tela, aba, tabela, função, rotina e prompt do sistema.
 

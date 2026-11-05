@@ -131,29 +131,57 @@ stateDiagram-v2
 
 ## 6.8 Gamificação e social
 
+As transições abaixo foram auditadas nas funções em 05/11/2026, no lugar de seguir só os rótulos do `CHECK`.
+
 ```mermaid
 stateDiagram-v2
   state "missao_aluno" as M {
-    [*] --> pendente
+    [*] --> pendente: guilda, soma zero
+    [*] --> em_andamento: guilda, soma parcial
+    [*] --> concluida: missão individual
     pendente --> em_andamento
     em_andamento --> concluida
-    pendente --> expirada
-    em_andamento --> expirada
   }
   state "guilda_desafios" as D {
     [*] --> aberto
-    aberto --> encerrado: resultado = vitoria | empate | sem_adversario
+    aberto --> encerrado: fn_desafio_encerrar
   }
   state "social_relacionamentos" as S {
-    [*] --> pending
-    pending --> accepted
-    pending --> declined
-    pending --> blocked
-    accepted --> blocked
+    [*] --> pending: social_enviar_convite
+    pending --> accepted: aceite, ou convite cruzado
+    pending --> declined: social_recusar_convite
+    accepted --> declined: social_desfazer_amizade
+    declined --> pending: novo convite
+    pending --> blocked: social_bloquear
+    accepted --> blocked: social_bloquear
+    declined --> blocked: social_bloquear
+    blocked --> declined: social_desbloquear
   }
 ```
 
-Em 6.8, os estados são os do `CHECK`. As transições desenhadas são as que os nomes indicam; elas não foram auditadas função por função.
+- **`missao_aluno`:** a linha da missão individual só nasce quando o critério é cumprido, já `concluida`. `pendente` e `em_andamento` são gravados apenas pela missão de guilda.
+- **`expirada`:** o rótulo existe no `CHECK`, mas nenhuma função o grava. A diária vale pela janela da missão (`janela_fim`).
+- **`guilda_desafios.resultado`:** `vitoria`, `empate` ou `sem_adversario`. A `consequencia` é `treino`, `ranqueada` ou `evento`.
+- **Bloqueio:** é um estado da mesma linha, e `blocked_by_id` existe se e somente se o status é `blocked`. Desbloquear volta a `declined`, nunca à amizade.
+
+Aprovação de missão, pedido à IA e os demais estados dos fluxos novos:
+
+```mermaid
+stateDiagram-v2
+  state "missoes.aprovacao" as A {
+    [*] --> nao_requer: professor criou
+    [*] --> pendente: origem ia
+    pendente --> aprovada
+    pendente --> recusada: motivo_recusa
+  }
+  state "missoes_ia_pedidos" as P {
+    [*] --> pedido_pendente: missao_ia_pedir
+    pedido_pendente --> concluido
+    pedido_pendente --> falhou: tentativas esgotadas
+  }
+```
+
+`CHECK (origem <> 'ia' OR aprovacao <> 'nao_requer')` garante no banco que nada da IA chega ao aluno sem aprovação. A policy só entrega missão `ativa` com `nao_requer` ou `aprovada`.
 
 ## 6.9 Arquivo do RAG (`rag_openai_files`)
 
@@ -163,7 +191,98 @@ stateDiagram-v2
   in_progress --> completed
   in_progress --> failed
   in_progress --> cancelled
-  completed --> [*]: DELETE da linha → retencao_externa apaga na OpenAI
+  completed --> [*]: DELETE da linha → retencao_fila_externa apaga na OpenAI
 ```
 
 Produção: nenhuma linha. O corpus ainda não foi indexado.
+
+## 6.10 Diagnóstico do tópico (`diagnostico_topico`)
+
+```mermaid
+stateDiagram-v2
+  [*] --> pendente: diagnostico_pedir
+  pendente --> pronto: fn_diagnostico_registrar
+  pendente --> pendente: fn_diagnostico_falhou, espera 2^n min
+  pendente --> sem_ia: terceira falha
+  pronto --> respondido: diagnostico_responder
+  pendente --> dispensado: diagnostico_dispensar
+  pronto --> dispensado: diagnostico_dispensar
+  respondido --> [*]
+```
+
+Produção: nenhuma linha em 05/11/2026.
+
+## 6.11 Economia
+
+```mermaid
+stateDiagram-v2
+  state "loja_compras" as C {
+    [*] --> ativa: loja_comprar
+    ativa --> consumida: loja_usar
+    ativa --> estornada: loja_estornar
+  }
+  state "fundos_turma" as F {
+    [*] --> aberto: fundo_turma_criar
+    aberto --> atingido: doação alcança a meta
+    atingido --> entregue: professor entrega
+    aberto --> cancelado: estorna as doações
+    atingido --> cancelado: estorna as doações
+  }
+```
+
+Compra consumida não estorna (`ja_usado`), e repetir um estorno devolve o resultado anterior. Só existe um fundo `aberto` ou `atingido` por turma, garantido por índice parcial.
+
+## 6.12 Convites
+
+```mermaid
+stateDiagram-v2
+  state "desafio_participantes" as D {
+    [*] --> convidado
+    convidado --> aceito: arena_convite_responder
+    convidado --> recusado: arena_convite_responder
+  }
+  state "guilda_convites" as G {
+    [*] --> pending: guilda_convidar
+    pending --> accepted: guilda_aceitar_convite
+    pending --> declined: guilda_recusar_convite
+    pending --> cancelled: quem convidou cancela
+    pending --> cancelled: bloqueio detectado no aceite
+  }
+```
+
+O aceite do convite de guilda reconfere o bloqueio (`20261031_09`). Se os dois se bloquearam depois do convite, ele é cancelado em vez de aceito.
+
+## 6.13 Consentimento (`consentimento_*`)
+
+```mermaid
+stateDiagram-v2
+  [*] --> accepted: linha nova
+  [*] --> rejected: linha nova
+  accepted --> rejected: revogar é outra linha
+  rejected --> accepted: aceitar de novo é outra linha
+```
+
+O registro é só de acréscimo: `registrado_em` vem do servidor, e o estado vigente é a linha mais recente. Nada apaga prova. Ao excluir a conta, a FK usa `SET NULL` e a linha sobrevive sem o titular. Vale o mesmo para `consentimento_professor` (`20261105_27`), criada na `main` e ainda não aplicada em produção na data da medição.
+
+## 6.14 Monitor de disponibilidade
+
+```mermaid
+stateDiagram-v2
+  state "monitor_alvo.estado" as A {
+    [*] --> sem_dado
+    sem_dado --> ok
+    ok --> queda: falhas seguidas (3)
+    queda --> ok: sucessos seguidos
+    sem_dado --> queda
+  }
+  state "monitor_incidente" as I {
+    [*] --> aberto: queda, instabilidade, lentidão, degradação
+    aberto --> fechado: fim preenchido
+    aberto --> aberto: motivo deploy, sem apagar a queda
+  }
+```
+
+- O início do incidente é a primeira sonda ruim, não a terceira.
+- Sonda sem resposta fica com `ok` nulo, porque quem falhou foi o medidor.
+- Sonda da marca de deploy também fica com `ok` nulo, com `motivo = 'deploy'`, e aparece no painel como `minutos_deploy`. Valem as três condições: versão nova, sequência curta e versão anterior conhecida.
+- Enquanto a instabilidade do alvo está aberta, as quedas dele não mandam e-mail.

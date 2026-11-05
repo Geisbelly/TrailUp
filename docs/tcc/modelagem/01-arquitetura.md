@@ -1,6 +1,6 @@
 # 1. Arquitetura
 
-Procedência: código da `main` do Lab em `3edd2561` e banco de produção consultado só para leitura, ambos em 04/11/2026. Os números de tabelas, funções e rotinas estão no [dossiê do sistema](../sistema-para-a-monografia-2026-11-04.md#1-o-sistema-em-números).
+Procedência: código da `main` do Lab em `66cf0c33` e banco de produção consultado só para leitura, ambos em 05/11/2026. Os números de tabelas, funções e rotinas estão no [dossiê do sistema](../sistema-para-a-monografia-2026-11-04.md#1-o-sistema-em-números).
 
 ## 1.1 Contexto (C4, nível 1)
 
@@ -39,14 +39,14 @@ flowchart TB
 
   subgraph SUPA["Supabase (us-west-2)"]
     AUTH[Auth<br/>e-mail e Google]
-    DB[("Postgres<br/>171 tabelas · RLS<br/>gatilhos · pg_cron · pg_net")]
+    DB[("Postgres<br/>188 tabelas · RLS<br/>gatilhos · pg_cron · pg_net")]
     RT[Realtime]
     EF["Edge Functions<br/>storage-redirect · storage-upload-url<br/>pesquisa-arquivar · generate-content-ai<br/>validate-essay-answer-ai · personalize_path"]
-    STL[Storage<br/>só legado]
+    STL[Storage<br/>legado e molduras]
   end
 
   subgraph VPS["VPS Hetzner · Dokploy"]
-    API["API<br/>FastAPI · LangGraph<br/>+ 6 workers em laço"]
+    API["API<br/>FastAPI · LangGraph<br/>+ 7 workers em laço"]
     MS["microservice (api-brainhex)<br/>Node · TS<br/>texto, áudio, cards"]
     PDF["BrainHexPDF<br/>deck e HTML da apresentação"]
   end
@@ -114,8 +114,9 @@ A comunicação entre os dois lados é sempre por **tabela de fila**: o banco gr
 | `personalizacao_jobs` + `_job_targets` | gatilhos `fn_enqueue_class_delta_job`, `fn_enqueue_student_enrollment_job`, `fn_enqueue_classe_mapa_tema_job`; console (manual) | `personalizacao_jobs_loop` |
 | `telemetria_analise_fila` | gatilho `trg_telemetria_lotes_enfileira_analise` | `analise_fila_loop` |
 | `alteracao_professor` | gatilho nas tabelas do editor e em `questao_gabarito` | `alteracao_professor_loop` |
-| `missoes_ia_pedidos` | `pg_cron` 03:05 (`fn_missao_diaria_enfileirar_texto`) e console | `missoes_ia_loop` |
-| `retencao_externa` | gatilhos de exclusão (fontes, `rag_openai_files`, arquivos) | `retencao_externa_loop` |
+| `missoes_ia_pedidos` | `pg_cron` 03:05 (`fn_missao_diaria_enfileirar_texto`) e console (`missao_ia_pedir`) | `missoes_ia_loop` |
+| `diagnostico_topico` | app (`diagnostico_pedir`) | `diagnostico_loop` |
+| `retencao_fila_externa` | gatilhos de exclusão (fontes, `rag_openai_files`, arquivos) | `retencao_externa_loop` |
 | checkpoints do LangGraph | o próprio grafo | `checkpoint_retention_loop` |
 
 ## 1.4 Implantação
@@ -190,3 +191,31 @@ flowchart TB
   - `graph_personalizacao`: checkpoint persistente no Postgres.
   - `graph_ephemeral`: usado pela análise de telemetria.
 - **Portão de idade:** fica em `llm.ainvoke_structured`, antes de qualquer chamada a modelo, inclusive a busca do RAG.
+
+## 1.6 Rotinas do banco
+
+São 21 rotinas no `pg_cron`, todas ativas em 05/11/2026. Elas continuam rodando com a API fora do ar, que é o motivo de estarem no banco. Horários em UTC: 03:00 UTC é meia-noite em Brasília.
+
+| Frequência | Rotina | O que faz |
+|---|---|---|
+| 1 min | `trailup_eventos_classe_varredura` | abre e encerra eventos da turma |
+| 1 min | `trailup_monitor_tick` | sonda, aplica estados, abre incidentes e envia alertas |
+| 5 min | `trailup_desafio_varredura` | encerra desafios abandonados |
+| 5 min | `trailup-notificacoes-varrer` | entrega a fila de notificações |
+| 5 min | `trailup-notificacoes-conciliar-push` | confere o recibo do push |
+| 10 min | `trailup_notificacoes_rank` | avisa mudança de posição no rank |
+| 10 min | `trailup_pesquisa_arquivo` | dispara o arquivo da pesquisa |
+| 10 min | `trailup_saude_clientes` | varre a saúde dos clientes |
+| 30 min | `trailup_painel_tecnico_avisar_dono` | avisa a dona no sino do console |
+| 30 min | `trailup_retencao_avisos` | avisa antes de apagar por inatividade |
+| 1 h (:07) | `trailup_notas_com_prazo` | recalcula notas com prazo vencido |
+| diária 03:00 | `trailup_missao_diaria` | gera as missões do dia |
+| diária 03:05 | `trailup_missao_diaria_texto` | enfileira a reescrita do texto |
+| diária 03:17 | `trailup_expurgo_medidas_perfil` | expurga medidas antigas de perfil |
+| diária 03:23 | `trailup_retencao` | redige e apaga por política |
+| diária 03:41 | `trailup_retencao_ia_decision_logs` | retenção das decisões da IA |
+| diária 03:47 | `trailup_ia_uso_llm_retencao` | apaga uso do modelo com mais de 180 dias |
+| diária 06:10 | `trailup_notificacoes_intensidade` | recalcula a intensidade de avisos por aluno |
+| diária 06:17 | `trailup_monitor_expurgo` | expurga sondas antigas |
+| diária 06:30 | `trailup_auditoria_metricas` | roda as 20 invariantes |
+| diária 09:00 | `trailup_notificacoes_recalcular_rotinas` | recalcula as rotinas de lembrete |
