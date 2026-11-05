@@ -177,6 +177,13 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    nem para "puxar para cima" o que veio do banco. Ver
    `20260826_18_progresso_professor_opcional.py`.
 
+   **O bônus do conteúdo do professor é um selo, não XP** (#45, decidido em 05/11). Concluir
+   conteúdo já paga `conteudo_concluido` (10) para qualquer conteúdo, então um XP extra só
+   inflaria rank e nota. O selo vem de `bonusDoProfessor` (`mobile/src/utils/painelTopicoTrilha.ts`),
+   que repete a conta do banco (concluído = status "concl…" ou 100%), e só aparece em tópico com
+   percurso personalizado: sem ele o conteúdo do professor É o percurso, não bônus. O ícone
+   `book-check` é só do selo.
+
 6. **Nova tentativa NÃO regera tudo: retoma só o que falhou** (#652). Antes,
    uma parte de áudio sem voz fazia a nova tentativa refazer o texto, todas as
    partes de TTS e todos os decks. A RPC descartava o texto refeito, e o que
@@ -484,7 +491,9 @@ Cada perfil carrega:
   e o acerto convertido de quem não. Guilda pela média, com limite de tamanho. Parâmetros em
   `app_config` (`evento_pareamento_*`). O Social continua com escolha livre.
   **Missão de guilda** (`20261105_13`): com `missoes.alvo_por_membro` (padrão das novas), o alvo é
-  alvo × membros ativos, para a via em guilda render o mesmo que a individual.
+  alvo × membros ativos, para a via em guilda render o mesmo que a individual. A paridade é medida
+  no `painel_tecnico` (`20261105_23`, gatilho `paridade_guilda`): XP sem duelo por atividade
+  concluída, em guilda × fora, com limiar e mínimo em `app_config` (`paridade_guilda_*`).
 - `boss_falas` — nome e falas do boss por `(conteúdo × perfil BrainHex)` (`20261101_11`):
   entrada, derrota, provocação de dano, marcos de metade/um quarto da vida, alerta de tempo,
   contra-ataque e a mensagem de vitória. **Gerar é IA, então é API**: o worker da fila faz uma

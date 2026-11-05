@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import React, { useId, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { BonusDoProfessor } from "@/components/trilhas/BonusDoProfessor";
 import { HexagonoTopico } from "@/components/web/HexagonoTopico";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { rotaDoTopico, type EstadoTopico, type PainelTopico } from "@/utils/painelTopicoTrilha";
@@ -105,6 +106,11 @@ export function PainelTopicoTrilha({
                     <Text style={[s.pequeno, { color: palette.textMuted }]}>atividades</Text>
                   </View>
                 </View>
+                {painel.bonusProfessor ? (
+                  <View style={s.secao}>
+                    <BonusDoProfessor bonus={painel.bonusProfessor} palette={palette} />
+                  </View>
+                ) : null}
                 {personalizacao ? (
                   <View style={s.secao}>
                     <View style={[s.perso, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
