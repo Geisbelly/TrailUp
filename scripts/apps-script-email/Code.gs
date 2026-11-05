@@ -30,7 +30,7 @@ var TEMA = {
   primaria: '#ba93e1',    // --primary
   destaque: '#95dfc9',    // --accent
   destaqueTexto: '#0e251f', // --accent-foreground
-  logo: 'https://trailup.vercel.app/trailup-app-icon.png' // a estrela (ícone do app)
+  logo: 'https://trailup.vercel.app/trailup-estrela.png' // a estrela da marca, a do cabeçalho do console
 };
 var FONTE_TEXTO = "Inter, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 var FONTE_TITULO = "Cinzel, Georgia, 'Times New Roman', serif";

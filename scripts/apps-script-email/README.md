@@ -51,8 +51,8 @@ aceito. Os dois contatos enfileiram e seguem, como faziam com a Brevo.
   dia; Workspace: mais). Esgotada, o script levanta e o aviso tenta de novo depois.
 - **Remetente:** a própria conta Google. O nome exibido vem de `nome_remetente`.
 - **Visual:** todo e-mail sai no tema do TrailUp (`montarHtml_`): fundo e cartão roxos, título em
-  Cinzel, botão no verde de destaque e a estrela do ícone do app
-  (`trailup.vercel.app/trailup-app-icon.png`). As cores em `TEMA` são os tokens de
+  Cinzel, botão no verde de destaque e a estrela da marca
+  (`trailup.vercel.app/trailup-estrela.png`). As cores em `TEMA` são os tokens de
   `frontend/src/index.css` em hex; mudou lá, muda aqui (e publica nova versão). O texto puro vai
   junto, para cliente que não mostra HTML.
 - **Gmail em modo escuro (iPhone e Android):** inverte as cores de todo e-mail e ignora
