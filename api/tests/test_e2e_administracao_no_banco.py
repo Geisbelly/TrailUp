@@ -12,6 +12,7 @@ from sqlalchemy import text
 from tests.test_e2e_monitor_disponibilidade import ALUNO, DONO, EMAIL_DONO, _modulo, banco  # noqa: F401
 
 M = _modulo("20261105_18_administracao_no_banco.py")
+T = _modulo("20261105_25_administracao_com_turmas.py")
 exige_docker = pytest.mark.skipif(os.environ.get("TRAILUP_TEST_DOCKER") != "1", reason="requer TRAILUP_TEST_DOCKER=1 e Docker")
 OUTRO = str(uuid.uuid4())
 
@@ -54,6 +55,11 @@ CREATE FUNCTION public.economia_consistencia()
 RETURNS TABLE (aluno_id uuid, saldo numeric, saldo_negativo boolean, compras_sem_debito bigint, estornos_sem_credito bigint)
 LANGUAGE sql AS $f$ SELECT NULL::uuid, 0::numeric, false, 0::bigint, 0::bigint WHERE false $f$;
 REVOKE ALL ON FUNCTION public.economia_consistencia() FROM PUBLIC;
+ALTER TABLE public.classe ADD COLUMN professor_id uuid, ADD COLUMN descricao text;
+INSERT INTO public.classe VALUES (7, '{OUTRO}', 'Algoritmos');
+ALTER TABLE public.classe_aluno ADD COLUMN id bigserial PRIMARY KEY;
+CREATE UNIQUE INDEX ux_classe_aluno ON public.classe_aluno (aluno_id, classe_id);
+ALTER TABLE public.classe_aluno ENABLE ROW LEVEL SECURITY;
 """
 
 
@@ -61,6 +67,9 @@ REVOKE ALL ON FUNCTION public.economia_consistencia() FROM PUBLIC;
 def c(banco):  # noqa: F811
     banco.execute(ESTRUTURA)
     banco.execute(M.FUNCOES)
+    banco.execute(T.ACESSOS)
+    banco.execute(T.MATRICULAR)
+    banco.execute(T.ECONOMIA)
     return banco
 
 
@@ -82,6 +91,7 @@ CHAMADAS = [
     "SELECT public.admin_moldura_salvar('ouro', true, 5)",
     "SELECT public.admin_moldura_acao_salvar('perfil', true, 'ouro')",
     "SELECT public.admin_economia()",
+    f"SELECT public.admin_turma_matricular(7, '{ALUNO}')",
 ]
 
 
@@ -168,5 +178,42 @@ def test_economia_filtra_e_limita(c) -> None:
     voltar(c)
 
 
+@exige_docker
+def test_matricula_passa_pela_rls_e_aparece_na_turma(c) -> None:
+    como(c, DONO, EMAIL_DONO)
+    assert c.execute(f"SELECT public.admin_turma_matricular(7, '{ALUNO}')").fetchone()[0]["matriculado"] is True
+    assert c.execute(f"SELECT public.admin_turma_matricular(7, '{ALUNO}')").fetchone()[0]["matriculado"] is False
+    dados = c.execute("SELECT public.admin_acessos()").fetchone()[0]
+    voltar(c)
+    assert c.execute("SELECT count(*) FROM public.classe_aluno WHERE classe_id = 7").fetchone()[0] == 1
+    prof = next(p for p in dados["professores"] if p["professor_id"] == OUTRO)
+    assert prof["turmas"] == [{"classe_id": 7, "nome": "Algoritmos", "alunos": [ALUNO]}]
+    assert prof["alunos"] == []
+
+
+@exige_docker
+def test_matricula_em_alvo_inexistente_e_avisada(c) -> None:
+    import psycopg
+
+    como(c, DONO, EMAIL_DONO)
+    with pytest.raises(psycopg.errors.NoDataFound):
+        c.execute(f"SELECT public.admin_turma_matricular(999, '{ALUNO}')")
+    with pytest.raises(psycopg.errors.NoDataFound):
+        c.execute(f"SELECT public.admin_turma_matricular(7, '{uuid.uuid4()}')")
+    voltar(c)
+
+
+@exige_docker
+def test_economia_traz_nome_e_operacoes(c) -> None:
+    c.execute(f"UPDATE public.economia_auditoria SET aluno_id = '{ALUNO}' WHERE operacao = 'compra'")
+    c.execute(f"UPDATE public.alunos SET nome = 'Ana' WHERE id = '{ALUNO}'")
+    como(c, DONO, EMAIL_DONO)
+    dados = c.execute("SELECT public.admin_economia('compra', 10)").fetchone()[0]
+    voltar(c)
+    assert dados["operacoes"] == ["compra", "estorno"]
+    assert dados["auditoria"][0]["aluno_nome"] == "Ana"
+
+
 def test_nenhum_bloco_vira_parametro_de_bind() -> None:
-    assert not text(M.FUNCOES).compile().params
+    for bloco in (M.FUNCOES, T.ACESSOS, T.MATRICULAR, T.ECONOMIA):
+        assert not text(bloco).compile().params

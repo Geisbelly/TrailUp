@@ -13,6 +13,7 @@ import {
   resumoEmFrase,
   ROTULO_DA_SITUACAO,
   rotuloDasGuildas,
+  textoSemNinguemParaEmpurrar,
   type DueloDaTurma,
   type Inscricao,
   type PainelDurante,
@@ -132,7 +133,7 @@ export function DuranteDoEventoDialog({ evento, onFechar }: { evento: Evento; on
             <section aria-label="Quem precisa de um empurrão">
               <h3 className={rotulo}>Quem precisa de um empurrão</h3>
               {empurrar.length === 0 ? (
-                <p className="mt-2 text-sm text-muted-foreground">Ninguém por enquanto: todos estão participando.</p>
+                <p className="mt-2 text-sm text-muted-foreground">{textoSemNinguemParaEmpurrar(painel)}</p>
               ) : (
                 <ul className="mt-2 space-y-1.5">
                   {empurrar.map((a) => (

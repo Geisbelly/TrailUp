@@ -217,3 +217,16 @@ if (fonte) {
     });
   });
 }
+
+// Modelos da página de gamificação: troca a cor sem recarregar.
+document.querySelectorAll(".tema-trocar").forEach((grupo) => {
+  const vitrine = grupo.nextElementSibling;
+  grupo.addEventListener("click", (ev) => {
+    const b = ev.target.closest("button");
+    if (!b || !vitrine) return;
+    vitrine.style.setProperty("--c", b.dataset.temaCor);
+    vitrine.style.setProperty("--p", b.dataset.temaPrimaria);
+    vitrine.style.setProperty("--f", b.dataset.temaFundo);
+    grupo.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  });
+});

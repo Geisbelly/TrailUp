@@ -101,3 +101,11 @@ export function resumoDosDuelos(d: DuelosDoEvento, recorte: boolean): string {
   const total = `${d.total} ${d.total === 1 ? "duelo" : "duelos"} no evento: ${partes.join(", ")}.`;
   return recorte ? `${total} A contagem olha os 40 duelos mais recentes da turma.` : total;
 }
+
+/**
+ * O que a lista "Quem precisa de um empurrão" diz quando está vazia. Turma sem aluno não tem ninguém
+ * "participando": dizer que todos participam seria falso.
+ */
+export function textoSemNinguemParaEmpurrar(p: Pick<PainelDurante, "total">): string {
+  return p.total === 0 ? "Sem alunos matriculados para acompanhar." : "Ninguém por enquanto: todos estão participando.";
+}

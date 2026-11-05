@@ -128,6 +128,9 @@ SEM_SESSAO_POR_DECISAO: dict[str, str] = {
     "admin_molduras": (
         "Administracao do dono (20261105_18): a primeira instrucao e `app_e_dono()`, que confere o e-mail do JWT."
     ),
+    "admin_turma_matricular": (
+        "Administracao do dono (20261105_25): a primeira instrucao e `app_e_dono()`, que confere o e-mail do JWT."
+    ),
     "admin_professor_aluno": (
         "Administracao do dono (20261105_18): a primeira instrucao e `app_e_dono()`, que confere o e-mail do JWT."
     ),

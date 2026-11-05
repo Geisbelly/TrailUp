@@ -74,6 +74,10 @@ class TrailUpState(TypedDict, total=False):
     # Arco narrativo da turma, escrito pelo professor (#145, 20261102_16). Entra nos prompts de
     # geração do caminho Python. Montado por `build_initial_state`; mesma razão de estar declarado.
     arco_narrativo_turma: str | None
+    # Nível que o aluno mostrou no diagnóstico antes de cada tópico (#137, 20261105_22): lista de
+    # `{topico_id, nivel, acertos, total}` só dos respondidos. Montado por `build_initial_state`; chave fora
+    # do schema é descartada em silêncio na entrada do LangGraph, então a declaração é o que a deixa chegar.
+    diagnosticos_topico: list[dict[str, Any]]
     intervencao_payload: dict[str, Any] | None
     # `CronometroDecisao` (#136): o executor desliga o cronometro e avisa o professor.
     cronometro_payload: dict[str, Any] | None
