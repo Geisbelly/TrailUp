@@ -36,6 +36,9 @@ Fase 3 (avaliacao longitudinal):
 - questionarios de percepcao de utilidade e usabilidade;
 - entrevistas semiestruturadas com docentes.
 
+O questionário, o roteiro de entrevista, o consentimento e a triangulação estão no
+[capítulo 13](13-instrumentos-qualitativos.md) (#22).
+
 ## 6. Procedimento de coleta
 ```mermaid
 flowchart TD
@@ -120,7 +123,7 @@ está em [`2026-11-02-perfil-formato-pr3-design.md`](../superpowers/specs/2026-1
 - estatistica descritiva por cohorte;
 - comparacao pre vs pos intervencao;
 - analise segmentada por perfil BrainHex;
-- triangulacao quantitativa + qualitativa.
+- triangulacao quantitativa + qualitativa (matriz no [capítulo 13 §6](13-instrumentos-qualitativos.md#6-triangulação)).
 
 ## 10. Criterios de aceitacao de impacto
 - melhoria estatisticamente e pedagogicamente relevante;
