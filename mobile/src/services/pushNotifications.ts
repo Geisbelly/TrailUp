@@ -187,6 +187,32 @@ export async function registrarParaPush(): Promise<RegistroPush> {
   }
 }
 
+/** Um disparo local: todo dia (`diaDaSemana` null) ou num dia da semana do Expo (1 = domingo). */
+export type DisparoLocal = { hora: number; minuto: number; diaDaSemana: number | null };
+
+/**
+ * Os disparos de uma rotina: cada horário × cada dia escolhido. Sem dias, um disparo diário por
+ * horário. O banco guarda o dia ISO (1 = segunda, 7 = domingo); o Expo conta 1 = domingo.
+ */
+export function disparosDaRotina(rotina: RotinaNotificacao): DisparoLocal[] {
+  const minutos =
+    rotina.horarios && rotina.horarios.length > 0
+      ? rotina.horarios.filter((m, i, todos) => todos.indexOf(m) === i).sort((x, y) => x - y)
+      : rotina.hora_local === null || rotina.hora_local === undefined
+        ? []
+        : [rotina.hora_local * 60 + (rotina.minuto_local ?? 0)];
+  const dias =
+    rotina.dias_semana && rotina.dias_semana.length > 0 && rotina.dias_semana.length < 7
+      ? rotina.dias_semana
+          .filter((iso, i, todos) => todos.indexOf(iso) === i)
+          .sort((x, y) => x - y)
+          .map((iso) => (iso % 7) + 1)
+      : [null];
+  return minutos.flatMap((m) =>
+    dias.map((diaDaSemana) => ({ hora: Math.floor(m / 60), minuto: m % 60, diaDaSemana }))
+  );
+}
+
 /**
  * Agenda no APARELHO as rotinas de relógio do aluno.
  *
@@ -214,24 +240,36 @@ export async function agendarRotinasLocais(rotinas: RotinaNotificacao[]): Promis
     let total = 0;
     for (const rotina of rotinas) {
       if (!rotina.ativo || rotina.gatilho !== 'horario') continue;
-      if (rotina.hora_local === null || rotina.hora_local === undefined) continue;
 
-      await Notifications.scheduleNotificationAsync({
-        identifier: `${PREFIXO_ROTINA}${rotina.tipo}`,
-        content: {
-          title: rotina.titulo ?? 'TrailUp',
-          body: rotina.corpo ?? 'Você tem novidades na sua trilha.',
-          data: { rotina: rotina.tipo, local: true },
-          sound: 'default',
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DAILY,
-          hour: rotina.hora_local,
-          minute: rotina.minuto_local ?? 0,
-          channelId: CANAL_ANDROID,
-        },
-      });
-      total += 1;
+      // Até 3 horários × 7 dias = 21 por rotina: longe do limite de 64 agendadas do iOS.
+      for (const disparo of disparosDaRotina(rotina)) {
+        const sufixo = `${disparo.hora * 60 + disparo.minuto}${disparo.diaDaSemana ? `-d${disparo.diaDaSemana}` : ''}`;
+        await Notifications.scheduleNotificationAsync({
+          identifier: `${PREFIXO_ROTINA}${rotina.tipo}-${sufixo}`,
+          content: {
+            title: rotina.titulo ?? 'TrailUp',
+            body: rotina.corpo ?? 'Você tem novidades na sua trilha.',
+            data: { rotina: rotina.tipo, local: true },
+            sound: 'default',
+          },
+          trigger:
+            disparo.diaDaSemana === null
+              ? {
+                  type: Notifications.SchedulableTriggerInputTypes.DAILY,
+                  hour: disparo.hora,
+                  minute: disparo.minuto,
+                  channelId: CANAL_ANDROID,
+                }
+              : {
+                  type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+                  weekday: disparo.diaDaSemana,
+                  hour: disparo.hora,
+                  minute: disparo.minuto,
+                  channelId: CANAL_ANDROID,
+                },
+        });
+        total += 1;
+      }
     }
     return total;
   } catch (erro) {

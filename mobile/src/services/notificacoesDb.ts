@@ -41,6 +41,10 @@ export type RotinaNotificacao = {
   contexto: Record<string, unknown> | null;
   ativo: boolean;
   proxima_execucao: string | null;
+  /** Dias ISO (1 = segunda) em que dispara; null ou ausente = todo dia (migração 20261105_05). */
+  dias_semana?: number[] | null;
+  /** Minutos desde a meia-noite, em ordem; null ou ausente = só `hora_local:minuto_local`. */
+  horarios?: number[] | null;
 };
 
 /**
@@ -65,6 +69,29 @@ async function chamar<T>(fn: string, args: Record<string, unknown>): Promise<T |
   } catch (erro) {
     console.warn(`[notificacoesDb] ${fn} lançou:`, erro);
     return null;
+  }
+}
+
+/**
+ * Como `chamar`, mas devolve o código que o banco mandou (`22023` com `MESSAGE` = código):
+ * as telas de escolha precisam dizer ao aluno POR QUE a escolha foi recusada.
+ */
+export type ResultadoRpc<T> = { data: T | null; erro: string | null };
+
+async function chamarComMotivo<T>(fn: string, args: Record<string, unknown>): Promise<ResultadoRpc<T>> {
+  try {
+    const { data: auth, error: authError } = await supabase.auth.getSession();
+    if (authError) throw authError;
+    if (!auth.session) return { data: null, erro: 'sem_sessao' };
+    const { data, error } = await supabase.rpc(fn, args);
+    if (error) {
+      console.warn(`[notificacoesDb] ${fn} falhou:`, error.message);
+      return { data: null, erro: error.code === '22023' ? error.message : 'falha' };
+    }
+    return { data: (data ?? null) as T | null, erro: null };
+  } catch (erro) {
+    console.warn(`[notificacoesDb] ${fn} lançou:`, erro);
+    return { data: null, erro: 'falha' };
   }
 }
 
@@ -122,8 +149,17 @@ export function salvarRotina(params: {
   prioridade?: number;
   contexto?: Record<string, unknown>;
   ativo?: boolean;
+  /** Omitido mantém os dias de antes; os 7 dias voltam a "todo dia". */
+  diasSemana?: number[];
+  /** Minutos desde a meia-noite, até 3. Omitido mantém a lista de antes. */
+  horarios?: number[];
 }) {
-  return chamar<{ id: number; proxima_execucao: string | null }>(
+  return chamarComMotivo<{
+    id: number;
+    proxima_execucao: string | null;
+    dias_semana: number[] | null;
+    horarios: number[] | null;
+  }>(
     'notificacoes_salvar_rotina',
     {
       p_tipo: params.tipo,
@@ -137,8 +173,48 @@ export function salvarRotina(params: {
       p_prioridade: params.prioridade ?? 0,
       p_contexto: params.contexto ?? {},
       p_ativo: params.ativo ?? true,
+      p_dias_semana: params.diasSemana ?? null,
+      p_horarios: params.horarios ?? null,
     }
   );
+}
+
+/** Por que o banco recusou a rotina ou o silêncio, em palavras do aluno. */
+export function motivoDaRecusa(codigo: string | null): string {
+  switch (codigo) {
+    case 'horarios_demais':
+      return 'Dá para escolher até 3 horários.';
+    case 'horarios_perto_demais':
+      return 'Deixe pelo menos 6 horas entre um horário e outro.';
+    case 'horario_no_silencio':
+      return 'Esse horário cai no seu silêncio. Mude o horário ou o silêncio.';
+    case 'dias_invalidos':
+      return 'Escolha pelo menos um dia.';
+    case 'silencio_duracao':
+      return 'O silêncio precisa ter de 6 a 14 horas.';
+    default:
+      return 'Tente novamente em instantes.';
+  }
+}
+
+/** Silêncio que vale para o aluno: o dele (`proprio`) ou o padrão. Horas locais. */
+export type SilencioDoAluno = {
+  inicio: number;
+  fim: number;
+  proprio: boolean;
+  padrao_inicio: number;
+  padrao_fim: number;
+  duracao_min_h: number;
+  duracao_max_h: number;
+};
+
+export function meuSilencio() {
+  return chamar<SilencioDoAluno>('notificacoes_meu_silencio', {});
+}
+
+/** `null` nos dois volta ao padrão. */
+export function salvarSilencio(inicio: number | null, fim: number | null) {
+  return chamarComMotivo<SilencioDoAluno>('notificacoes_salvar_silencio', { p_inicio: inicio, p_fim: fim });
 }
 
 /**

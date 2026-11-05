@@ -120,14 +120,23 @@ O professor vê o nível no console, só leitura.
 
 - **Dias da semana:** `notificacoes_agendamentos.dias_semana smallint[]` (ISO, 1 = segunda), nulo = todo dia.
   `notificacoes_proxima_ocorrencia` pula os dias fora da lista.
-- **Vários horários:** a chave de unicidade passa a `(aluno_id, tipo, hora_local, minuto_local)`.
-  Limite de 3 horários por tipo, conferido na RPC. A `notificacoes_salvar_rotina` aceita `p_dias_semana`.
-  O app agenda cada horário localmente, como já faz com a diária.
+- **Vários horários:** `notificacoes_agendamentos.horarios smallint[]` (minutos desde a meia-noite,
+  até 3), uma linha por tipo. *Mudou na implementação (`20261105_05`):* a spec previa trocar a chave
+  única para `(aluno_id, tipo, hora_local, minuto_local)`, mas a chave `(aluno_id, tipo)` está em três
+  `ON CONFLICT` e na hora inferida; o array guarda o mesmo sem mexer neles. `hora_local`/`minuto_local`
+  seguem sendo o primeiro horário. A RPC confere o limite e o `intervalo_min` do tipo entre horários
+  (6 h na revisão), e o dedupe do dia passa a levar o horário. `p_dias_semana`/`p_horarios` nulos
+  **mantêm** o que está, para o app antigo não apagar a escolha.
+  O app agenda cada horário × dia localmente (`WEEKLY` do Expo quando há dias) e reagenda logo depois
+  de salvar. Antes só reagendava no login.
 - **Silêncio próprio:** `alunos_notificacao_preferencias (aluno_id, silencio_inicio, silencio_fim)`,
   com o padrão de `notificacoes_config` (22h e 7h). Mínimo de 6 h e máximo de 14 h, para o aluno não
-  zerar o silêncio por engano nem calar o dia inteiro.
-- Tela no app: a de lembrete diário (`perfil/lembrete-diario.tsx`) vira "Notificações", com os dias,
-  os horários, o silêncio e a lista dos tipos silenciáveis.
+  zerar o silêncio por engano nem calar o dia inteiro. `notificacoes_em_silencio`/`_fora_do_silencio`
+  ganham `p_aluno`, passado por fila, adiamento, push e hora inferida. Silêncio que cobre uma rotina
+  ativa é recusado (o lembrete local tocaria mesmo assim).
+- Tela no app: a de lembrete diário (`perfil/lembrete-diario.tsx`) vira "Lembretes e silêncio" (não
+  "Notificações", que já é o nome da caixa de entrada), com os dias, os horários, o silêncio e o
+  atalho para os tipos silenciados, que já moram no modo foco.
 
 ## Texto: banco de variações
 

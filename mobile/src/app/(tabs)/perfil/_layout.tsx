@@ -43,7 +43,7 @@ export default function PerfilStack() {
       />
       <Stack.Screen name="info" options={{ title: "INFORMAÇÕES" }} />
       {/* Sem esta entrada o cabeçalho mostrava o nome da rota ("lembrete-diario"). */}
-      <Stack.Screen name="lembrete-diario" options={{ title: "LEMBRETE DIÁRIO" }} />
+      <Stack.Screen name="lembrete-diario" options={{ title: "LEMBRETES E SILÊNCIO" }} />
       <Stack.Screen name="modo-foco" options={{ title: "MODO FOCO" }} />
       <Stack.Screen
         name="info-versao"
