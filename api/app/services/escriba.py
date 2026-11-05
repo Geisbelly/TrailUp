@@ -21,11 +21,12 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.graph.guardrails import GuardrailViolation, gerar_validado
 from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba, SecaoDaResposta
 from app.services.guia_do_app import guia_do_app
 from app.services.insights_turma import InsightsTurmaService
-from app.services.llm import JsonLLMService, StructuredOutputError, load_prompt
-from app.services.pseudonimizacao import pseudonimizar_texto, restaurar_refs
+from app.services.llm import JsonLLMService, load_prompt
+from app.services.pseudonimizacao import pseudonimizar_texto, refs_citadas, restaurar_refs
 
 logger = logging.getLogger(__name__)
 
@@ -139,6 +140,20 @@ def _destino_da_secao(secao: Any) -> str | None:
         return pelo_titulo
     citados = _destinos_citados(f"{secao.titulo}: {secao.texto}")
     return citados[0] if citados else None
+
+
+def checar_refs_existem(saida: EscribaSaida, contexto: dict[str, Any]) -> GuardrailViolation | None:
+    """`restaurar_refs` deixa como está a ref que não conhece, então um aluno inventado apareceria
+    na tela como "A99". Conferir aqui não gasta chamada de modelo."""
+    textos = [saida.resposta, *(f"{s.titulo} {s.texto}" for s in getattr(saida, "secoes", None) or [])]
+    citadas = set().union(*(refs_citadas(texto) for texto in textos))
+    desconhecidas = sorted(citadas - set(contexto.get("nomes_por_ref") or {}))
+    if desconhecidas:
+        return GuardrailViolation(
+            regra="refs_existem",
+            mensagem=f"alunos citados que nao estao no payload: {desconhecidas}. Cite so refs de turmas[].alunos.",
+        )
+    return None
 
 
 def _montar_resposta(saida: EscribaSaida, turmas: list[int], agora: datetime, nomes_por_ref: dict[str, Any] | None = None) -> RespostaEscriba:
@@ -369,6 +384,25 @@ class EscribaService:
             "_nomes_por_ref": nomes_por_ref,
         }
 
+    async def _gerar(self, payload: dict[str, Any], guardrails: list[Any], contexto: dict[str, Any]) -> EscribaSaida:
+        async def _auditar(violacao: GuardrailViolation, fase: str) -> None:
+            logger.warning("Escriba: %s (%s): %s", violacao.regra, fase, violacao.mensagem)
+
+        def _sem_resposta() -> dict[str, Any]:
+            # Não existe resposta de reserva: número da turma inventado é pior que erro.
+            raise EscribaIndisponivel("modelo sem resposta valida")
+
+        return await gerar_validado(
+            self.llm,
+            prompt_name="escriba.txt",
+            payload=payload,
+            schema=EscribaSaida,
+            guardrails=guardrails,
+            fallback_factory=_sem_resposta,
+            contexto=contexto,
+            on_violation=_auditar,
+        )
+
     async def perguntar(self, professor_id: str, pedido: PerguntaEscriba, agora: datetime | None = None) -> RespostaEscriba:
         agora = agora or datetime.now(UTC)
         turmas = await self.turmas_do_professor(professor_id)
@@ -403,17 +437,12 @@ class EscribaService:
             "guia_do_produto": guia_do_produto(),
             "turmas": [{k: v for k, v in t.items() if not k.startswith("_")} for t in turmas_payload],
         }
-        try:
-            # Sem rota de IA por idade, de propósito (decisão de 04/11/2026): a
-            # regra "IA só para maiores" da #195/#933 vale para o ALUNO usar a
-            # IA, não para o professor perguntar sobre as próprias turmas. Aluno
-            # menor ou sem data de nascimento entra no payload como os outros,
-            # só pela ref (A1...), sem nome, e-mail nem UUID.
-            saida = await self.llm.ainvoke_structured(prompt_name="escriba.txt", payload=payload, schema=EscribaSaida)
-        except StructuredOutputError as exc:
-            logger.warning("Escriba: modelo falhou: %s", exc)
-            raise EscribaIndisponivel(str(exc)) from exc
-
+        # Sem rota de IA por idade, de propósito (decisão de 04/11/2026): a
+        # regra "IA só para maiores" da #195/#933 vale para o ALUNO usar a
+        # IA, não para o professor perguntar sobre as próprias turmas. Aluno
+        # menor ou sem data de nascimento entra no payload como os outros,
+        # só pela ref (A1...), sem nome, e-mail nem UUID.
+        saida = await self._gerar(payload, [checar_refs_existem], {"nomes_por_ref": nomes_por_ref})
         return _montar_resposta(saida, [int(t["id"]) for t in escopo], agora, nomes_por_ref)
 
     async def _responder_sobre_o_produto(
@@ -433,9 +462,4 @@ class EscribaService:
             "guia_do_produto": guia_do_produto(),
             "turmas": [],
         }
-        try:
-            saida = await self.llm.ainvoke_structured(prompt_name="escriba.txt", payload=payload, schema=EscribaSaida)
-        except StructuredOutputError as exc:
-            logger.warning("Escriba: modelo falhou (produto): %s", exc)
-            raise EscribaIndisponivel(str(exc)) from exc
-        return _montar_resposta(saida, [], agora)
+        return _montar_resposta(await self._gerar(payload, [], {}), [], agora)

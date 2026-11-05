@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import logging
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, TypeVar
 
@@ -8,7 +9,9 @@ from pydantic import BaseModel
 
 from app.schemas.mentor_chat import GroundingJudgment, MentorChatLLMResult
 from app.schemas.trilha_config import TrilhaConfig
-from app.services.llm import JsonLLMService, StructuredOutputError
+from app.services.llm import JsonLLMService, RespostaBloqueadaError, StructuredOutputError
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -131,7 +134,9 @@ async def gerar_validado(
     """Gera com schema nativo (Camada 1), roda guardrails de negocio (Camada
     2). Schema invalido OU guardrail violado: 1 retry com o erro anexado ao
     payload como 'correcao'. Falhou de novo: fallback deterministico do
-    proprio no, e a ultima violacao e reportada via on_violation (auditoria)."""
+    proprio no, e a ultima violacao e reportada via on_violation (auditoria).
+    Recusa do provedor nao tem retry: a mesma entrada seria recusada de novo, e
+    a tentativa so gastaria cota."""
     contexto = contexto or {}
     tentativa_payload = dict(payload)
     ultima_violacao: GuardrailViolation | None = None
@@ -144,6 +149,10 @@ async def gerar_validado(
                 schema=schema,
                 **ainvoke_kwargs,
             )
+        except RespostaBloqueadaError as exc:
+            if on_violation is not None:
+                await on_violation(GuardrailViolation(regra="bloqueio_provedor", mensagem=str(exc)), "fallback_final")
+            break
         except StructuredOutputError as exc:
             ultima_violacao = GuardrailViolation(regra="schema", mensagem=str(exc))
             tentativa_payload = {**payload, "correcao": ultima_violacao.mensagem}
@@ -197,7 +206,9 @@ async def checar_grounding_chat(
             },
             schema=GroundingJudgment,
         )
-    except StructuredOutputError:
+    except StructuredOutputError as exc:
+        # Sem este aviso, juiz fora do ar e resposta aprovada sao indistinguiveis.
+        logger.warning("Juiz de grounding indisponivel, resposta passou sem checagem: %s", exc)
         return None
 
     if julgamento.viola:

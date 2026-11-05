@@ -1,8 +1,9 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import AliasChoices, BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field, field_validator
 
+from app.schemas.entrada_chat import limpar_texto
 from app.schemas.ia_patch import IAPersonalizationPatch
 
 
@@ -108,9 +109,19 @@ class PersonalizacaoItemProgressoResponse(BaseModel):
     updated_at: datetime
 
 
+# O mesmo que a Lumi aceita por fala, e as falas que a rota já mandava ao modelo.
+MAX_TEXTO_DO_CHAT = 2000
+MAX_HISTORICO_DO_CHAT = 6
+
+
 class MentorChatMessagePayload(BaseModel):
     role: Literal["assistant", "user"]
     content: str
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def _content_limpo(cls, valor: Any) -> Any:
+        return limpar_texto(valor, MAX_TEXTO_DO_CHAT) if isinstance(valor, str) else valor
 
 
 class MentorChatPayload(BaseModel):
@@ -120,6 +131,17 @@ class MentorChatPayload(BaseModel):
     escopo: Literal["modulo", "trilha_home"] = "modulo"
     mensagem: str
     historico: list[MentorChatMessagePayload] = Field(default_factory=list)
+
+    # Corta em vez de recusar: o app instalado não limita o campo, e um 422 viraria erro para o aluno.
+    @field_validator("mensagem", mode="before")
+    @classmethod
+    def _mensagem_limpa(cls, valor: Any) -> Any:
+        return limpar_texto(valor, MAX_TEXTO_DO_CHAT) if isinstance(valor, str) else valor
+
+    @field_validator("historico", mode="before")
+    @classmethod
+    def _so_as_ultimas_falas(cls, valor: Any) -> Any:
+        return valor[-MAX_HISTORICO_DO_CHAT:] if isinstance(valor, list) else valor
 
 
 class SecaoDoGuiaResposta(BaseModel):

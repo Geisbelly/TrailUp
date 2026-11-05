@@ -574,6 +574,10 @@ Cada perfil carrega:
   escreva nessas tabelas precisa ser `SECURITY DEFINER`**, ou será tratada como o aluno. No
   UPDATE, a coluna nova de `atividade_aluno` nasce protegida; no INSERT, entra na lista da
   migration (o e2e reclama).
+- `ia_uso_llm` — uso de modelo por chamada (`20261105_01`): prompt, provedor, modelo, tokens,
+  tokens de cache e `fim` (motivo de parada). Sem aluno e sem texto, sem policy por decisão (só a API).
+  Cobre `JsonLLMService` e `OpenAIRagService`; o microservice e as chamadas HTTP diretas ao Gemini
+  ficam de fora. Gravar nunca derruba nem atrasa a resposta (`app/services/uso_llm.py`).
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
@@ -696,6 +700,26 @@ Cada perfil carrega:
   o número tem de bater com a lista. Agregado de pesquisa novo usa a view; a ingestão não muda.
 - `personalizacao_item_progresso` — progresso por item (merge: percentual/acertos = máx, tempo = soma).
 - `aluno_perfil`, `perfil` — perfis BrainHex e afinidades.
+
+## Guardrails dos chats (mentor do aluno e Lumi do professor)
+
+Os dois recebem `historico` do cliente a cada pergunta e nada no servidor prova que uma fala "da IA"
+ali foi dita: quem chama a API pode escrevê-la. Por isso esse texto entra limpo e limitado
+(`app/schemas/entrada_chat.py`) e os prompts dizem que ele não vale como instrução. O mentor **corta**
+em vez de recusar, porque o app instalado não limita o campo; a Lumi recusa com 422, porque o console
+já limita.
+
+> **Resposta cortada parseia.** O `JsonOutputParser` do LangChain conserta JSON truncado, então
+> `{"resposta": "A turma foi bem e o proximo pa` vira um dict válido, sem erro. Por isso
+> `ainvoke_structured` confere o motivo de parada **também no sucesso**. A origem do motivo muda por
+> caminho: callback (`response_metadata`), exceção do SDK da OpenAI no `json_schema`, `llm_output` na
+> entrada recusada pelo Gemini e `incomplete_details` no RAG. Ao mexer, teste com o cliente de verdade
+> e só a rede falsa (`test_guardrails_de_entrada.py`): chamar o callback direto esconde tudo isso.
+>
+> `RespostaBloqueadaError` não tem retry em `gerar_validado` (a mesma entrada seria recusada de novo);
+> `RespostaCortadaError` tem, pedindo resposta mais curta. A Lumi passa por `gerar_validado` sem juiz de
+> modelo, para não gastar cota: `checar_refs_existem` barra aluno inventado de graça. Sem resposta
+> válida ela responde 503; não existe resposta de reserva com número de turma.
 
 ## Telemetria → análise → realimentação
 

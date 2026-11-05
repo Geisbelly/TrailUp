@@ -1,12 +1,19 @@
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.schemas.entrada_chat import limpar_texto
 
 
 class MensagemEscriba(BaseModel):
     papel: Literal["professor", "escriba"]
     texto: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("texto", mode="before")
+    @classmethod
+    def _texto_limpo(cls, valor: Any) -> Any:
+        return limpar_texto(valor) if isinstance(valor, str) else valor
 
 
 class PerguntaEscriba(BaseModel):
@@ -15,6 +22,11 @@ class PerguntaEscriba(BaseModel):
     classe_id: int | None = None
     # Conversa anterior, só para dar continuidade; nada é gravado no banco.
     historico: list[MensagemEscriba] = Field(default_factory=list, max_length=12)
+
+    @field_validator("pergunta", mode="before")
+    @classmethod
+    def _pergunta_limpa(cls, valor: Any) -> Any:
+        return limpar_texto(valor) if isinstance(valor, str) else valor
 
 
 class SecaoSaida(BaseModel):

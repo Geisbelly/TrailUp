@@ -6,7 +6,7 @@ from typing import Any, Callable, TypeVar
 from pydantic import BaseModel
 
 from app.core.settings import Settings
-from app.services import gemini_chaves
+from app.services import gemini_chaves, uso_llm
 from app.services.roteamento_ia import (
     MENSAGEM_IA_INDISPONIVEL,
     IAIndisponivelParaMenor,
@@ -101,6 +101,28 @@ class MenorSemOpenAIError(StructuredOutputError, IAIndisponivelParaMenor):
         self.mensagem = MENSAGEM_IA_INDISPONIVEL
 
 
+class RespostaBloqueadaError(StructuredOutputError):
+    """O provedor recusou a entrada ou a saída. A mesma entrada seria recusada de novo."""
+
+
+class RespostaCortadaError(StructuredOutputError):
+    """A resposta bateu no limite de tamanho. O parser conserta o JSON cortado e o texto chegaria
+    pela metade ao usuário sem erro nenhum, por isso o motivo é conferido também quando parseia."""
+
+
+# No `json_schema`, o SDK da OpenAI levanta estas antes de o callback ver a resposta. Pelo nome porque
+# `openai` é import opcional aqui.
+_FIM_DA_EXCECAO = {"LengthFinishReasonError": "length", "ContentFilterFinishReasonError": "content_filter"}
+
+
+def erro_do_fim(fim: str | None, prompt_name: str) -> StructuredOutputError | None:
+    if uso_llm.fim_bloqueado(fim):
+        return RespostaBloqueadaError(f"Provedor recusou {prompt_name}: {fim}")
+    if uso_llm.fim_cortado(fim):
+        return RespostaCortadaError(f"Resposta de {prompt_name} cortada pelo limite de tamanho: responda mais curto")
+    return None
+
+
 class JsonLLMService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -126,7 +148,11 @@ class JsonLLMService:
             if not self.settings.openai_api_key or ChatOpenAI is None:
                 return None
             client = ChatOpenAI(
-                model=model, temperature=0, api_key=self.settings.openai_api_key, timeout=self._timeout()
+                model=model,
+                temperature=0,
+                api_key=self.settings.openai_api_key,
+                timeout=self._timeout(),
+                callbacks=[uso_llm.UsoCallback("openai")],
             )
         elif effective_provider == "gemini":
             api_keys = _parse_gemini_keys(str(self.settings.gemini_api_key or ""))
@@ -149,6 +175,7 @@ class JsonLLMService:
             google_api_key=api_key,
             max_retries=_GEMINI_MAX_RETRIES,
             timeout=self._timeout(),
+            callbacks=[uso_llm.UsoCallback("gemini")],
         )
 
     def _get_gemini_client(self, model: str, api_key: str) -> Any:
@@ -236,14 +263,15 @@ class JsonLLMService:
         effective_model = model or self._active_default(provider)
 
         try:
-            if effective_provider == "gemini":
-                response = await self._ainvoke_gemini_with_rotation(
-                    messages=messages,
-                    primary_model=effective_model,
-                )
-            else:
-                client = self._get_client(effective_model, provider=provider)
-                response = await client.ainvoke(messages) if client is not None else None
+            with uso_llm.etiqueta(prompt_name):
+                if effective_provider == "gemini":
+                    response = await self._ainvoke_gemini_with_rotation(
+                        messages=messages,
+                        primary_model=effective_model,
+                    )
+                else:
+                    client = self._get_client(effective_model, provider=provider)
+                    response = await client.ainvoke(messages) if client is not None else None
             if response is None:
                 return fallback_factory()
             return extract_json(response.content)
@@ -292,24 +320,29 @@ class JsonLLMService:
         effective_provider = provider or self.settings.llm_provider
         effective_model = model or self._active_default(provider)
 
-        try:
-            if effective_provider == "gemini":
-                response = await self._ainvoke_gemini_with_rotation(
-                    messages=messages,
-                    primary_model=effective_model,
-                    structured_schema=json_schema,
-                )
-            else:
-                client = self._get_client(effective_model, provider=provider)
-                response = (
-                    await client.with_structured_output(json_schema).ainvoke(messages)
-                    if client is not None
-                    else None
-                )
-        except Exception as exc:
-            raise StructuredOutputError(
-                f"Falha ao gerar saida estruturada para {prompt_name}: {exc}"
-            ) from exc
+        with uso_llm.etiqueta(prompt_name) as chamada:
+            try:
+                if effective_provider == "gemini":
+                    response = await self._ainvoke_gemini_with_rotation(
+                        messages=messages,
+                        primary_model=effective_model,
+                        structured_schema=json_schema,
+                    )
+                else:
+                    client = self._get_client(effective_model, provider=provider)
+                    response = (
+                        await client.with_structured_output(json_schema).ainvoke(messages)
+                        if client is not None
+                        else None
+                    )
+            except Exception as exc:
+                fim = chamada.fim or _FIM_DA_EXCECAO.get(type(exc).__name__)
+                raise erro_do_fim(fim, prompt_name) or StructuredOutputError(
+                    f"Falha ao gerar saida estruturada para {prompt_name}: {exc}"
+                ) from exc
+
+        if (erro := erro_do_fim(chamada.fim, prompt_name)) is not None:
+            raise erro
 
         if response is None:
             raise StructuredOutputError(
