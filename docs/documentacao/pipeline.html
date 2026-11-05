@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Pipeline de ponta a ponta · TrailUp</title><meta name="description" content="Do professor salvando a trilha ao material adaptado e de volta à análise, em 13 fluxos."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" type="image/png" href="../assets/trailup-estrela.png"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><img src="../assets/trailup-estrela.png" alt="" width="34" height="34">TrailUp<small>documentação</small></a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/guardioes.html">Guardiões</a><a href="../documentacao/gamificacao.html">Gamificação</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/artigo-ia-onde-importa.html">Artigos</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a><a class="abrir" href="https://trailup.vercel.app/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li><li><a href="rotas.html">Rotas dos serviços</a></li><li><a href="guardioes.html">Os sete Guardiões</a></li><li><a href="gamificacao.html">Gamificação e personalização</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html" aria-current="page">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Artigos</h4><ul><li><a href="artigo-ia-onde-importa.html">IA onde importa</a></li><li><a href="artigo-da-tipologia-a-trilha.html">Da tipologia à trilha</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Usar o TrailUp</h4><ul><li><a href="https://trailup.vercel.app/" target="_blank" rel="noopener">Site ↗</a></li><li><a href="https://trailup.vercel.app/login" target="_blank" rel="noopener">Console do professor ↗</a></li><li><a href="https://trailup.vercel.app/aluno/login" target="_blank" rel="noopener">TrailUp na web (aluno) ↗</a></li><li><a href="https://play.google.com/apps/test/com.seuprojeto.trailup/20" target="_blank" rel="noopener">App Android ↗</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Pipeline de ponta a ponta</h1><p class="lede">Do professor salvando a trilha ao material adaptado e de volta à análise, em 13 fluxos.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/03-pipeline-ponta-a-ponta.md" target="_blank" rel="noopener">docs/tcc/modelagem/03-pipeline-ponta-a-ponta.md</a><span class="chip ok">atualizado 05/11/2026</span><span class="chip warn">12 diagramas</span></div></header><p>O ciclo inteiro, do cadastro ao material adaptado e de volta à análise:</p>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Pipeline de ponta a ponta · TrailUp</title><meta name="description" content="Do professor salvando a trilha ao material adaptado e de volta à análise, em 13 fluxos."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" type="image/png" href="../assets/trailup-estrela.png"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><img src="../assets/trailup-estrela.png" alt="" width="34" height="34">TrailUp<small>documentação</small></a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/guardioes.html">Guardiões</a><a href="../documentacao/gamificacao.html">Gamificação</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/artigo-ia-onde-importa.html">Artigos</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a><a class="abrir" href="https://trailup.vercel.app/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li><li><a href="rotas.html">Rotas dos serviços</a></li><li><a href="guardioes.html">Os sete Guardiões</a></li><li><a href="gamificacao.html">Gamificação e personalização</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html" aria-current="page">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Artigos</h4><ul><li><a href="artigo-ia-onde-importa.html">IA onde importa</a></li><li><a href="artigo-da-tipologia-a-trilha.html">Da tipologia à trilha</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Usar o TrailUp</h4><ul><li><a href="https://trailup.vercel.app/" target="_blank" rel="noopener">Site ↗</a></li><li><a href="https://trailup.vercel.app/login" target="_blank" rel="noopener">Console do professor ↗</a></li><li><a href="https://trailup.vercel.app/aluno/login" target="_blank" rel="noopener">TrailUp na web (aluno) ↗</a></li><li><a href="https://play.google.com/apps/test/com.seuprojeto.trailup/20" target="_blank" rel="noopener">App Android ↗</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Pipeline de ponta a ponta</h1><p class="lede">Do professor salvando a trilha ao material adaptado e de volta à análise, em 13 fluxos.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/03-pipeline-ponta-a-ponta.md" target="_blank" rel="noopener">docs/tcc/modelagem/03-pipeline-ponta-a-ponta.md</a><span class="chip ok">atualizado 05/11/2026</span><span class="chip warn">20 diagramas</span></div></header><p>O ciclo inteiro, do cadastro ao material adaptado e de volta à análise:</p>
 <figure class="diagrama" id="diagrama-1"><div class="area"><pre class="mermaid">flowchart LR
   P1[&quot;P1 Cadastro&lt;br/&gt;e perfil BrainHex&quot;] --&gt; P2[&quot;P2 Matrícula&quot;]
   P0[&quot;P0 Professor&lt;br/&gt;monta a trilha&quot;] --&gt; P3
@@ -16,10 +16,25 @@
   P0 --&gt; P11[&quot;P11 Alteração do professor&lt;br/&gt;vista por aluno&quot;]
   P11 --&gt; P4
 </pre></div><figcaption><span>Diagrama 1</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>Em volta desse ciclo correm os fluxos que não dependem dele:</p>
+<figure class="diagrama" id="diagrama-2"><div class="area"><pre class="mermaid">flowchart LR
+  P9[&quot;P9 Progresso e&lt;br/&gt;pontuação&quot;] --&gt; P14[&quot;P14 Missões diárias&lt;br/&gt;e da IA&quot;]
+  P9 --&gt; P15[&quot;P15 Arena e Elo&quot;]
+  P9 --&gt; P16[&quot;P16 Evento com rank&lt;br/&gt;e duelo&quot;]
+  P9 --&gt; P17[&quot;P17 Moedas, loja&lt;br/&gt;e fundo da turma&quot;]
+  P15 --&gt; P16
+  P14 --&gt; P17
+  P15 --&gt; P17
+  P18[&quot;P18 Diagnóstico&lt;br/&gt;do tópico&quot;] --&gt; P4[&quot;P4 Estudo&quot;]
+  P4 --&gt; P19[&quot;P19 Estudo de efetividade&lt;br/&gt;e métricas&quot;]
+  P20[&quot;P20 Monitor e&lt;br/&gt;marca de deploy&quot;]
+  P12[&quot;P12 Notificações&quot;]
+  P13[&quot;P13 Privacidade&quot;]
+</pre></div><figcaption><span>Diagrama 2</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <p>Cada etapa abaixo traz o diagrama de sequência e onde está no código.</p>
 <hr />
 <h2 id="p0--p3--o-professor-salva-a-trilha-e-a-base-por-perfil-é-gerada">P0 + P3 — O professor salva a trilha e a base por perfil é gerada</h2>
-<figure class="diagrama" id="diagrama-2"><div class="area"><pre class="mermaid">sequenceDiagram
+<figure class="diagrama" id="diagrama-3"><div class="area"><pre class="mermaid">sequenceDiagram
   autonumber
   actor Prof as Professor
   participant WEB as Console
@@ -49,7 +64,7 @@
     W-&gt;&gt;DB: target completed / failed (retry até max) · contadores do job
   end
   DB-&gt;&gt;DB: gatilho trg_conteudo_personalizado_novo_material&lt;br/&gt;→ notificacoes_enfileirar_evento
-</pre></div><figcaption><span>Diagrama 2</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 3</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <ul>
 <li><strong>Deduplicação:</strong> <code>source_hash</code> inclui <code>_PERSONALIZACAO_PIPELINE_VERSION</code>. Hash igual não gera de novo.</li>
 <li><strong>Kinds de job:</strong> <code>class_delta_sync</code>, <code>student_enrollment</code>, <code>class_theme_sync</code>, <code>full_class_sync</code>, <code>student_cleanup</code>, <code>manual_retry</code>, <code>manual_profile_generate</code>, <code>manual_profile_generate_all</code>. Os manuais furam o circuit breaker.</li>
@@ -65,7 +80,7 @@
 </li>
 </ul>
 <h2 id="p1--p2--cadastro-perfil-e-matrícula">P1 + P2 — Cadastro, perfil e matrícula</h2>
-<figure class="diagrama" id="diagrama-3"><div class="area"><pre class="mermaid">sequenceDiagram
+<figure class="diagrama" id="diagrama-4"><div class="area"><pre class="mermaid">sequenceDiagram
   autonumber
   actor Al as Aluno
   participant APP as App / site
@@ -84,10 +99,10 @@
   APP-&gt;&gt;DB: INSERT classe_aluno
   DB-&gt;&gt;DB: gatilho fn_enqueue_student_enrollment_job&lt;br/&gt;(alvos com perfil dominante, não duplica job ativo)
   Note over DB: falha ao enfileirar não desfaz a matrícula
-</pre></div><figcaption><span>Diagrama 3</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 4</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <p><strong>Regra de idade:</strong> sem data de nascimento, ou com menos de 18 anos, o aluno usa o material-base, que é gerado sem dado dele, mas não tem chat, ciclo adaptativo, TTS nem imagem por IA.</p>
 <h2 id="p4--estudo-no-app-e-mídia-pelo-gateway">P4 — Estudo no app e mídia pelo gateway</h2>
-<figure class="diagrama" id="diagrama-4"><div class="area"><pre class="mermaid">sequenceDiagram
+<figure class="diagrama" id="diagrama-5"><div class="area"><pre class="mermaid">sequenceDiagram
   autonumber
   actor Al as Aluno
   participant APP as App
@@ -107,7 +122,7 @@
   Al-&gt;&gt;APP: lê / ouve / passa slides
   APP-&gt;&gt;DB: personalizacao_item_progresso (via outbox)
   DB-&gt;&gt;DB: gatilho → trailup_recalcular_topico_aluno → topico_aluno
-</pre></div><figcaption><span>Diagrama 4</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 5</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <ul>
 <li><strong>Exigência do link assinado:</strong> <code>GATEWAY_EXIGE_LINK_ASSINADO=true</code> desde 04/11. Link sem assinatura recebe 401.</li>
 <li><strong>Leitura de servidor:</strong> API e microservice não têm sessão de usuário, então pedem o link no mesmo <code>POST</code> com a chave de serviço (#974). O <code>GET</code> segue sem cabeçalho, e a chave não acompanha o redirecionamento até o R2.</li>
@@ -121,7 +136,7 @@
 </li>
 </ul>
 <h2 id="p5--p6--telemetria-análise-e-grafo-adaptativo">P5 + P6 — Telemetria, análise e grafo adaptativo</h2>
-<figure class="diagrama" id="diagrama-5"><div class="area"><pre class="mermaid">sequenceDiagram
+<figure class="diagrama" id="diagrama-6"><div class="area"><pre class="mermaid">sequenceDiagram
   autonumber
   participant APP as App
   participant API as API · POST /telemetria/lotes
@@ -149,14 +164,14 @@
   G-&gt;&gt;DB: ia_decision_logs, intervencoes, notificacoes_ia,&lt;br/&gt;aluno_mental_state_history, ai_patch …
   W-&gt;&gt;DB: sai da fila (ou fn_telemetria_analise_falhou → nova tentativa)
   APP-&gt;&gt;APP: usePersonalizationRefresh: ação casa com&lt;br/&gt;refresh_policy.trigger_actions → pede novo ciclo
-</pre></div><figcaption><span>Diagrama 5</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 6</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <ul>
 <li><strong>Fechamento da sessão:</strong> é local e imediato (<code>cicloSessao.ts</code>). Só o envio do último lote espera a fila.</li>
 <li><strong>Lote no worker:</strong> chega sem o frame da câmera, porque o lote gravado não guarda rosto. A emoção por imagem (YuNet + FER+) só roda no envio direto pela API.</li>
 <li><strong>Turma retida pelo estudo:</strong> o grafo roda só emoção, perfil e intervenção.</li>
 </ul>
 <h2 id="p7--ciclo-de-personalização-por-aluno">P7 — Ciclo de personalização por aluno</h2>
-<figure class="diagrama" id="diagrama-6"><div class="area"><pre class="mermaid">sequenceDiagram
+<figure class="diagrama" id="diagrama-7"><div class="area"><pre class="mermaid">sequenceDiagram
   autonumber
   participant APP as App
   participant API as API · POST /personalizar
@@ -175,10 +190,10 @@
   end
   G-&gt;&gt;DB: persist_personalizacao → conteudo_personalizado (plano, ai_patch)
   API--&gt;&gt;APP: plano + ai_patch + status de mídia
-</pre></div><figcaption><span>Diagrama 6</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 7</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <p>Nesse fluxo o supervisor é <strong>determinístico</strong>: <code>compute_personalizacao_next</code> não consulta modelo.</p>
 <h2 id="p8--professor-intervenções-e-insights">P8 — Professor: intervenções e insights</h2>
-<figure class="diagrama" id="diagrama-7"><div class="area"><pre class="mermaid">sequenceDiagram
+<figure class="diagrama" id="diagrama-8"><div class="area"><pre class="mermaid">sequenceDiagram
   autonumber
   actor Prof as Professor
   participant WEB as Console
@@ -194,10 +209,10 @@
   API-&gt;&gt;DB: INSERT intervencoes (geracao_id)
   Prof-&gt;&gt;WEB: aceitar / ignorar
   WEB-&gt;&gt;DB: UPDATE status, motivo_descarte (GRANT só dessas colunas)
-</pre></div><figcaption><span>Diagrama 7</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 8</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <p>Sem modelo disponível, nada é gravado. Não existe insight &quot;de reserva&quot;.</p>
 <h2 id="p9--progresso-nota-e-gamificação-só-banco">P9 — Progresso, nota e gamificação (só banco)</h2>
-<figure class="diagrama" id="diagrama-8"><div class="area"><pre class="mermaid">flowchart LR
+<figure class="diagrama" id="diagrama-9"><div class="area"><pre class="mermaid">flowchart LR
   CA[conteudo_aluno] --&gt; T1{{trailup_recalcular_topico_aluno}}
   AA[atividade_aluno] --&gt; T1
   PIP[personalizacao_item_progresso] --&gt; T1
@@ -210,13 +225,13 @@
   EV --&gt; MO[missao_aluno · conquistas_aluno&lt;br/&gt;moedas_ledger]
   CRON1((pg_cron 03:00)) --&gt; MD[missão diária]
   CRON2((pg_cron 1 min)) --&gt; EVC[eventos_classe&lt;br/&gt;abre/encerra e apura]
-</pre></div><figcaption><span>Diagrama 8</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 9</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <ul>
 <li><strong>Quem grava o progresso:</strong> nenhum cliente escreve <code>percentual_concluido</code> nem <code>status</code> em <code>topico_aluno</code>.</li>
 <li><strong>Denominador:</strong> é o material personalizado. Enquanto ele não existir, vale o material do professor.</li>
 </ul>
 <h2 id="p10--chat-do-guardião">P10 — Chat do Guardião</h2>
-<figure class="diagrama" id="diagrama-9"><div class="area"><pre class="mermaid">sequenceDiagram
+<figure class="diagrama" id="diagrama-10"><div class="area"><pre class="mermaid">sequenceDiagram
   autonumber
   actor Al as Aluno
   participant APP as App
@@ -235,9 +250,9 @@
   LLM-&gt;&gt;LLM: guardrail checar_grounding_chat (fallback se violar)
   API-&gt;&gt;DB: ia_decision_logs (conversa cifrada em repouso)
   API--&gt;&gt;APP: reply em seções + destinos válidos do app
-</pre></div><figcaption><span>Diagrama 9</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 10</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <h2 id="p11--o-professor-muda-algo-que-um-aluno-já-viu">P11 — O professor muda algo que um aluno já viu</h2>
-<figure class="diagrama" id="diagrama-10"><div class="area"><pre class="mermaid">sequenceDiagram
+<figure class="diagrama" id="diagrama-11"><div class="area"><pre class="mermaid">sequenceDiagram
   autonumber
   actor Prof as Professor
   participant DB as Postgres
@@ -256,9 +271,9 @@
   else sem modelo
     Note over DB: continua pendente_analise:&lt;br/&gt;o professor decide (alteracao_decidir)
   end
-</pre></div><figcaption><span>Diagrama 10</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 11</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <h2 id="p12--notificações-motor-no-banco">P12 — Notificações (motor no banco)</h2>
-<figure class="diagrama" id="diagrama-11"><div class="area"><pre class="mermaid">sequenceDiagram
+<figure class="diagrama" id="diagrama-12"><div class="area"><pre class="mermaid">sequenceDiagram
   autonumber
   participant G as Grafo / gatilhos de evento
   participant DB as Postgres
@@ -274,9 +289,9 @@
   DB-&gt;&gt;EXPO: pg_net (respeita silêncio e modo foco)
   CRON-&gt;&gt;DB: notificacoes_conciliar_push (5 min)
   Note over APP: lembrete diário = notificação local,&lt;br/&gt;dispara com o app fechado
-</pre></div><figcaption><span>Diagrama 11</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 12</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <h2 id="p13--privacidade-retenção-exclusão-e-arquivo-da-pesquisa">P13 — Privacidade: retenção, exclusão e arquivo da pesquisa</h2>
-<figure class="diagrama" id="diagrama-12"><div class="area"><pre class="mermaid">sequenceDiagram
+<figure class="diagrama" id="diagrama-13"><div class="area"><pre class="mermaid">sequenceDiagram
   autonumber
   participant CRON as pg_cron
   participant DB as Postgres
@@ -287,12 +302,202 @@
 
   CRON-&gt;&gt;DB: trailup_retencao (03:23): redige telemetria bruta, apaga por política
   CRON-&gt;&gt;DB: retencao_avisos_email (30 min) · aviso por push (#937)
-  DB-&gt;&gt;DB: exclusão de fonte/arquivo/rag_openai_files → retencao_externa
+  DB-&gt;&gt;DB: exclusão de fonte/arquivo/rag_openai_files → retencao_fila_externa
   W-&gt;&gt;DB: reivindica
   W-&gt;&gt;R2: apaga objeto
   W-&gt;&gt;OAI: apaga arquivo do Vector Store
   CRON-&gt;&gt;DB: pesquisa_arquivo_disparar (10 min)
   DB-&gt;&gt;EF: pg_net
   EF-&gt;&gt;R2: pesquisa/ (cópia anônima, só de quem consentiu)
-</pre></div><figcaption><span>Diagrama 12</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
-<nav class="nav-paginas"><a href="casos-de-uso.html"><span class="k">← anterior</span><span class="t">Casos de uso</span></a><a class="prox" href="ia.html"><span class="k">próxima →</span><span class="t">IA: grafo e análise</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#p0--p3--o-professor-salva-a-trilha-e-a-base-por-perfil-é-gerada">P0 + P3 — O professor salva a trilha e a base por perfil é gerada</a></li><li><a href="#p1--p2--cadastro-perfil-e-matrícula">P1 + P2 — Cadastro, perfil e matrícula</a></li><li><a href="#p4--estudo-no-app-e-mídia-pelo-gateway">P4 — Estudo no app e mídia pelo gateway</a></li><li><a href="#p5--p6--telemetria-análise-e-grafo-adaptativo">P5 + P6 — Telemetria, análise e grafo adaptativo</a></li><li><a href="#p7--ciclo-de-personalização-por-aluno">P7 — Ciclo de personalização por aluno</a></li><li><a href="#p8--professor-intervenções-e-insights">P8 — Professor: intervenções e insights</a></li><li><a href="#p9--progresso-nota-e-gamificação-só-banco">P9 — Progresso, nota e gamificação (só banco)</a></li><li><a href="#p10--chat-do-guardião">P10 — Chat do Guardião</a></li><li><a href="#p11--o-professor-muda-algo-que-um-aluno-já-viu">P11 — O professor muda algo que um aluno já viu</a></li><li><a href="#p12--notificações-motor-no-banco">P12 — Notificações (motor no banco)</a></li><li><a href="#p13--privacidade-retenção-exclusão-e-arquivo-da-pesquisa">P13 — Privacidade: retenção, exclusão e arquivo da pesquisa</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>bb5542a1</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
+</pre></div><figcaption><span>Diagrama 13</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="p14--missões-a-diária-do-banco-e-a-sugestão-da-ia">P14 — Missões: a diária do banco e a sugestão da IA</h2>
+<p>A missão diária e a sugerida pela IA usam a mesma entidade (<code>missoes</code>) e o mesmo avaliador. O critério reaproveita as métricas das conquistas, e a recompensa é uma chave de <code>eventos_pontuacao</code>, nunca um número solto.</p>
+<figure class="diagrama" id="diagrama-14"><div class="area"><pre class="mermaid">sequenceDiagram
+  autonumber
+  participant CRON as pg_cron
+  participant DB as Postgres
+  participant W as API · missoes_ia_loop
+  participant LLM as Modelo
+  participant P as Professor
+  participant APP as App
+
+  CRON-&gt;&gt;DB: 03:00 fn_missao_diaria_gerar (turma × perfil)
+  CRON-&gt;&gt;DB: 03:05 fn_missao_diaria_enfileirar_texto
+  W-&gt;&gt;DB: fn_missao_ia_reivindicar
+  W-&gt;&gt;LLM: reescreve o texto
+  W-&gt;&gt;DB: fn_missao_diaria_reescrever_texto
+  Note over DB,W: qualquer falha deixa o texto de molde no lugar
+  P-&gt;&gt;DB: rpc missao_ia_pedir (1 a 5, com teto por dia)
+  W-&gt;&gt;DB: reivindica o pedido e lê fn_missao_ia_contexto
+  W-&gt;&gt;LLM: propõe missões
+  W-&gt;&gt;DB: fn_missao_ia_registrar (aplica as regras)
+  DB-&gt;&gt;DB: missoes.origem = ia, aprovacao = pendente
+  P-&gt;&gt;DB: aprova ou recusa (fn_missoes_ia_log)
+  APP-&gt;&gt;DB: lê missoes (RLS: ativa e aprovada)
+  APP-&gt;&gt;DB: estudo, resposta, evento
+  DB-&gt;&gt;DB: gatilhos avaliam o critério
+  DB-&gt;&gt;DB: missao_aluno concluida, paga uma vez
+</pre></div><figcaption><span>Diagrama 14</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<ul>
+<li>Trocar o perfil ativo gera na hora a coorte do perfil novo (<code>trg_alunos_missao_diaria_perfil</code>). Sem isso, o aluno ficaria sem diária até a madrugada seguinte.</li>
+<li>A missão de guilda soma os membros (<code>fn_missao_guilda_progresso</code>): é o único caminho que grava <code>pendente</code> e <code>em_andamento</code>.</li>
+</ul>
+<h2 id="p15--arena-desafio-com-adversário-e-elo">P15 — Arena: desafio com adversário e Elo</h2>
+<figure class="diagrama" id="diagrama-15"><div class="area"><pre class="mermaid">sequenceDiagram
+  autonumber
+  participant A as Aluno A
+  participant B as Aluno B
+  participant DB as Postgres
+  participant CRON as pg_cron
+
+  A-&gt;&gt;DB: rpc arena_desafio_criar (formato, modo, consequência)
+  DB-&gt;&gt;DB: guilda_desafios aberto · desafio_participantes por equipe
+  B-&gt;&gt;DB: rpc arena_convite_responder (aceito | recusado)
+  A-&gt;&gt;DB: rpc arena_responder
+  B-&gt;&gt;DB: rpc arena_responder
+  DB-&gt;&gt;DB: fn_arena_placar
+  alt todos responderam
+    DB-&gt;&gt;DB: fn_desafio_encerrar
+  else passaram 30 minutos
+    CRON-&gt;&gt;DB: fn_desafio_varrer_abandonados (5 min)
+    DB-&gt;&gt;DB: fn_desafio_encerrar
+  end
+  DB-&gt;&gt;DB: resultado = vitoria | empate | sem_adversario
+  opt consequência ranqueada, com equipe 2, vitória ou empate
+    DB-&gt;&gt;DB: ranqueada_elo + ranqueada_elo_partida
+  end
+  opt consequência diferente de treino
+    DB-&gt;&gt;DB: eventos_aluno → pontos e moedas
+  end
+</pre></div><figcaption><span>Diagrama 15</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<ul>
+<li><code>fn_desafio_encerrar</code> é o fechamento compartilhado: atende arena, desafio de guilda e varredura. A função é idempotente: desafio já encerrado devolve o resultado guardado.</li>
+<li><code>arena_encerrar</code> saiu da mão do jogador (<code>20261021_26</code>): encerrar por conta própria faria o adversário perder sem jogar.</li>
+<li>O desafio cooperativo de guilda usa as mesmas tabelas, sem equipe 2, por <code>guilda_desafio_responder</code>. Cada função recusa o tipo da outra.</li>
+</ul>
+<h2 id="p16--evento-com-rank-e-duelo">P16 — Evento com rank e duelo</h2>
+<figure class="diagrama" id="diagrama-16"><div class="area"><pre class="mermaid">sequenceDiagram
+  autonumber
+  participant P as Professor
+  participant DB as Postgres
+  participant CRON as pg_cron
+  participant A as Aluno
+
+  P-&gt;&gt;DB: cria evento em rascunho (janela, peças, missões)
+  CRON-&gt;&gt;DB: fn_eventos_classe_varrer (1 min)
+  DB-&gt;&gt;DB: abre o rascunho marcado (fn_evento_classe_abrir_agora)
+  A-&gt;&gt;DB: rpc evento_classe_inscrever (peça arena)
+  A-&gt;&gt;DB: rpc evento_sugerir_adversarios (só nomes)
+  A-&gt;&gt;DB: rpc evento_duelo_criar
+  DB-&gt;&gt;DB: guilda_desafios com evento_id, consequência evento
+  Note over DB: duelo não mexe no Elo, não cobra aposta e fica fora do XP
+  CRON-&gt;&gt;DB: fim vencido → fn_evento_classe_encerrar_agora
+  DB-&gt;&gt;DB: fn_evento_classe_apurar
+  DB-&gt;&gt;DB: eventos_classe_resultado e resultado por guilda
+</pre></div><figcaption><span>Diagrama 16</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>Os miolos sem sessão travam a linha e decidem pelo estado. Por isso, um clique do professor e a rotina no mesmo instante não creditam duas vezes.</p>
+<h2 id="p17--moedas-loja-e-fundo-da-turma">P17 — Moedas, loja e fundo da turma</h2>
+<figure class="diagrama" id="diagrama-17"><div class="area"><pre class="mermaid">sequenceDiagram
+  autonumber
+  participant A as Aluno
+  participant DB as Postgres
+  participant P as Professor
+
+  A-&gt;&gt;DB: rpc loja_comprar (preço e estoque da turma)
+  DB-&gt;&gt;DB: moedas_ledger (débito) · loja_compras ativa
+  A-&gt;&gt;DB: rpc loja_usar (alvo, chave do cliente)
+  DB-&gt;&gt;DB: confere limite por situação
+  DB-&gt;&gt;DB: aplica o efeito (prazo, tempo, dica, segunda chance, formato)
+  DB-&gt;&gt;DB: loja_uso_log · compra consumida
+  opt ainda ativa
+    P-&gt;&gt;DB: rpc loja_estornar
+    DB-&gt;&gt;DB: moedas_ledger (crédito) · compra estornada
+  end
+  P-&gt;&gt;DB: rpc fundo_turma_criar
+  A-&gt;&gt;DB: rpc fundo_turma_contribuir
+  DB-&gt;&gt;DB: cobra até o que falta · moedas_ledger
+  alt meta atingida e benefício dado
+    P-&gt;&gt;DB: fundo_turma_encerrar (entregue)
+  else cancelado
+    P-&gt;&gt;DB: fundo_turma_encerrar (estorno de todas as doações)
+  end
+</pre></div><figcaption><span>Diagrama 17</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<ul>
+<li>O saldo é a soma do razão <code>moedas_ledger</code>, que só recebe acréscimos. Ele nunca é materializado.</li>
+<li>A compra só concede a posse. O efeito sai no uso, com chave para não aplicar duas vezes quando a resposta se perde.</li>
+<li>As configurações resolvem em camadas: atividade, tópico, turma e padrão global. Toda mudança vai para <code>economia_auditoria</code>.</li>
+<li>Moldura nova ou imagem trocada vem da aba Molduras (UC53): o console sobe o arquivo direto no bucket público <code>molduras</code>, e <code>admin_moldura_gravar</code> grava a referência. Sem imagem no banco, vale o desenho do pacote do app.</li>
+</ul>
+<h2 id="p18--diagnóstico-do-tópico">P18 — Diagnóstico do tópico</h2>
+<p>A IA escreve as perguntas. Pedir, guardar, corrigir, decidir o nível e dispensar são do banco.</p>
+<figure class="diagrama" id="diagrama-18"><div class="area"><pre class="mermaid">sequenceDiagram
+  autonumber
+  participant APP as App
+  participant DB as Postgres
+  participant W as API · diagnostico_loop
+  participant LLM as Modelo
+
+  APP-&gt;&gt;DB: rpc diagnostico_pedir (aluno, tópico)
+  alt tópico já iniciado ou turma retida
+    DB--&gt;&gt;APP: ja_iniciado | retido
+  else
+    DB-&gt;&gt;DB: diagnostico_topico pendente
+  end
+  W-&gt;&gt;DB: fn_diagnostico_reivindicar
+  W-&gt;&gt;DB: fn_diagnostico_contexto
+  W-&gt;&gt;LLM: gera as perguntas
+  alt modelo respondeu
+    W-&gt;&gt;DB: fn_diagnostico_registrar (valida)
+    DB-&gt;&gt;DB: pronto · gabarito em tabela sem policy
+  else falhou
+    W-&gt;&gt;DB: fn_diagnostico_falhou (2^n min, até 120)
+    DB-&gt;&gt;DB: na terceira falha, sem_ia
+  end
+  APP-&gt;&gt;DB: rpc diagnostico_responder
+  DB-&gt;&gt;DB: corrige e decide o nível · respondido
+  APP-&gt;&gt;DB: ou rpc diagnostico_dispensar
+</pre></div><figcaption><span>Diagrama 18</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>O diagnóstico é opcional, acontece uma vez por aluno e tópico, e nunca dispara geração de material.</p>
+<h2 id="p19--estudo-de-efetividade-e-métricas">P19 — Estudo de efetividade e métricas</h2>
+<figure class="diagrama" id="diagrama-19"><div class="area"><pre class="mermaid">sequenceDiagram
+  autonumber
+  participant P as Professor
+  participant DB as Postgres
+  participant CRON as pg_cron
+  participant D as Dona
+
+  P-&gt;&gt;DB: rpc estudo_coorte_registrar (braço, baseline, corte, fim)
+  DB-&gt;&gt;DB: recusa baseline já iniciado
+  DB-&gt;&gt;DB: gatilho trava os campos quando a data passa
+  DB-&gt;&gt;DB: alembic_version → marco_produto automático
+  P-&gt;&gt;DB: registra marco manual da turma
+  DB-&gt;&gt;DB: vw_estudo_participantes (entrada atribuída e observada)
+  CRON-&gt;&gt;DB: 06:30 fn_auditoria_metricas_rodar (I01 a I20)
+  DB-&gt;&gt;DB: metricas_invariante_resultado e amostra
+  CRON-&gt;&gt;DB: fn_painel_tecnico_avisar_dono (30 min)
+  D-&gt;&gt;DB: lê o resultado no painel técnico
+</pre></div><figcaption><span>Diagrama 19</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>O desenho é prospectivo: a coorte precisa existir antes do estudo começar. A produção tem zero coortes registradas, então o fluxo está pronto e ainda não tem resultado.</p>
+<h2 id="p20--monitor-e-marca-de-deploy">P20 — Monitor e marca de deploy</h2>
+<figure class="diagrama" id="diagrama-20"><div class="area"><pre class="mermaid">sequenceDiagram
+  autonumber
+  participant CRON as pg_cron
+  participant DB as Postgres
+  participant ALVO as API · console · web do aluno
+  participant MAIL as E-mail
+  participant D as Dona
+
+  CRON-&gt;&gt;DB: fn_monitor_tick (1 min)
+  DB-&gt;&gt;DB: colhe as respostas em net._http_response
+  DB-&gt;&gt;DB: aplica no estado de monitor_alvo
+  DB-&gt;&gt;DB: varre instabilidade, lentidão e degradação
+  DB-&gt;&gt;ALVO: pg_net: sondas do minuto
+  ALVO--&gt;&gt;DB: status e versão (details.imagem)
+  DB-&gt;&gt;MAIL: monitor_alerta pendente
+  opt sonda boa com versão nova, falhas curtas
+    DB-&gt;&gt;DB: sondas viram ok nulo, motivo deploy
+  end
+  D-&gt;&gt;DB: rpc painel_disponibilidade (app_e_dono)
+</pre></div><figcaption><span>Diagrama 20</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>Quem mede a API é o banco, de fora do VPS, então relógio e alerta continuam com a API fora do ar. Se o Supabase cair, nada disso roda. Para esse caso existe a batida externa, ainda não configurada.</p>
+<nav class="nav-paginas"><a href="casos-de-uso.html"><span class="k">← anterior</span><span class="t">Casos de uso</span></a><a class="prox" href="ia.html"><span class="k">próxima →</span><span class="t">IA: grafo e análise</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#p0--p3--o-professor-salva-a-trilha-e-a-base-por-perfil-é-gerada">P0 + P3 — O professor salva a trilha e a base por perfil é gerada</a></li><li><a href="#p1--p2--cadastro-perfil-e-matrícula">P1 + P2 — Cadastro, perfil e matrícula</a></li><li><a href="#p4--estudo-no-app-e-mídia-pelo-gateway">P4 — Estudo no app e mídia pelo gateway</a></li><li><a href="#p5--p6--telemetria-análise-e-grafo-adaptativo">P5 + P6 — Telemetria, análise e grafo adaptativo</a></li><li><a href="#p7--ciclo-de-personalização-por-aluno">P7 — Ciclo de personalização por aluno</a></li><li><a href="#p8--professor-intervenções-e-insights">P8 — Professor: intervenções e insights</a></li><li><a href="#p9--progresso-nota-e-gamificação-só-banco">P9 — Progresso, nota e gamificação (só banco)</a></li><li><a href="#p10--chat-do-guardião">P10 — Chat do Guardião</a></li><li><a href="#p11--o-professor-muda-algo-que-um-aluno-já-viu">P11 — O professor muda algo que um aluno já viu</a></li><li><a href="#p12--notificações-motor-no-banco">P12 — Notificações (motor no banco)</a></li><li><a href="#p13--privacidade-retenção-exclusão-e-arquivo-da-pesquisa">P13 — Privacidade: retenção, exclusão e arquivo da pesquisa</a></li><li><a href="#p14--missões-a-diária-do-banco-e-a-sugestão-da-ia">P14 — Missões: a diária do banco e a sugestão da IA</a></li><li><a href="#p15--arena-desafio-com-adversário-e-elo">P15 — Arena: desafio com adversário e Elo</a></li><li><a href="#p16--evento-com-rank-e-duelo">P16 — Evento com rank e duelo</a></li><li><a href="#p17--moedas-loja-e-fundo-da-turma">P17 — Moedas, loja e fundo da turma</a></li><li><a href="#p18--diagnóstico-do-tópico">P18 — Diagnóstico do tópico</a></li><li><a href="#p19--estudo-de-efetividade-e-métricas">P19 — Estudo de efetividade e métricas</a></li><li><a href="#p20--monitor-e-marca-de-deploy">P20 — Monitor e marca de deploy</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>af371249</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>

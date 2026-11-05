@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Casos de uso · TrailUp</title><meta name="description" content="Atores, casos de uso do aluno, do professor e da dona do projeto."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" type="image/png" href="../assets/trailup-estrela.png"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><img src="../assets/trailup-estrela.png" alt="" width="34" height="34">TrailUp<small>documentação</small></a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/guardioes.html">Guardiões</a><a href="../documentacao/gamificacao.html">Gamificação</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/artigo-ia-onde-importa.html">Artigos</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a><a class="abrir" href="https://trailup.vercel.app/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li><li><a href="rotas.html">Rotas dos serviços</a></li><li><a href="guardioes.html">Os sete Guardiões</a></li><li><a href="gamificacao.html">Gamificação e personalização</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html" aria-current="page">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Artigos</h4><ul><li><a href="artigo-ia-onde-importa.html">IA onde importa</a></li><li><a href="artigo-da-tipologia-a-trilha.html">Da tipologia à trilha</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Usar o TrailUp</h4><ul><li><a href="https://trailup.vercel.app/" target="_blank" rel="noopener">Site ↗</a></li><li><a href="https://trailup.vercel.app/login" target="_blank" rel="noopener">Console do professor ↗</a></li><li><a href="https://trailup.vercel.app/aluno/login" target="_blank" rel="noopener">TrailUp na web (aluno) ↗</a></li><li><a href="https://play.google.com/apps/test/com.seuprojeto.trailup/20" target="_blank" rel="noopener">App Android ↗</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Casos de uso</h1><p class="lede">Atores, casos de uso do aluno, do professor e da dona do projeto.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/02-casos-de-uso.md" target="_blank" rel="noopener">docs/tcc/modelagem/02-casos-de-uso.md</a><span class="chip ok">atualizado 05/11/2026</span><span class="chip warn">2 diagramas</span></div></header><h2 id="21-atores">2.1 Atores</h2>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Casos de uso · TrailUp</title><meta name="description" content="Atores, casos de uso do aluno, do professor e da dona do projeto."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" type="image/png" href="../assets/trailup-estrela.png"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><img src="../assets/trailup-estrela.png" alt="" width="34" height="34">TrailUp<small>documentação</small></a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/guardioes.html">Guardiões</a><a href="../documentacao/gamificacao.html">Gamificação</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/artigo-ia-onde-importa.html">Artigos</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a><a class="abrir" href="https://trailup.vercel.app/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li><li><a href="rotas.html">Rotas dos serviços</a></li><li><a href="guardioes.html">Os sete Guardiões</a></li><li><a href="gamificacao.html">Gamificação e personalização</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html" aria-current="page">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Artigos</h4><ul><li><a href="artigo-ia-onde-importa.html">IA onde importa</a></li><li><a href="artigo-da-tipologia-a-trilha.html">Da tipologia à trilha</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Usar o TrailUp</h4><ul><li><a href="https://trailup.vercel.app/" target="_blank" rel="noopener">Site ↗</a></li><li><a href="https://trailup.vercel.app/login" target="_blank" rel="noopener">Console do professor ↗</a></li><li><a href="https://trailup.vercel.app/aluno/login" target="_blank" rel="noopener">TrailUp na web (aluno) ↗</a></li><li><a href="https://play.google.com/apps/test/com.seuprojeto.trailup/20" target="_blank" rel="noopener">App Android ↗</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Casos de uso</h1><p class="lede">Atores, casos de uso do aluno, do professor e da dona do projeto.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/02-casos-de-uso.md" target="_blank" rel="noopener">docs/tcc/modelagem/02-casos-de-uso.md</a><span class="chip ok">atualizado 05/11/2026</span><span class="chip warn">8 diagramas</span></div></header><p>Procedência: telas de <code>mobile/src/app</code> e do console (<code>ConsoleShell</code>), rotas da API, funções do banco e rotinas do <code>pg_cron</code> em produção, medidas em 05/11/2026.</p>
+<p>Os números dos casos de uso são estáveis: UC01 a UC14 e UC20 a UC31 mantêm o significado da primeira versão, e os novos ocupam UC15 a UC19 e de UC32 em diante. Assim, referências já feitas na monografia continuam válidas.</p>
+<h2 id="21-atores">2.1 Atores</h2>
 <div class="tabela"><table>
 <thead>
 <tr>
@@ -10,6 +12,11 @@
 </thead>
 <tbody>
 <tr>
+<td>Visitante</td>
+<td>primário, sem sessão</td>
+<td>site público (<code>/</code>, <code>/blog</code>, <code>/sobre</code>, <code>/contato</code>, <code>/download</code>, <code>/privacidade</code>, <code>/termos</code>)</td>
+</tr>
+<tr>
 <td>Aluno</td>
 <td>primário</td>
 <td>app (<code>mobile/</code>)</td>
@@ -17,22 +24,22 @@
 <tr>
 <td>Professor</td>
 <td>primário</td>
-<td>console web (<code>frontend/</code>)</td>
+<td>console web (<code>frontend/</code>). Só entra depois de aprovado</td>
 </tr>
 <tr>
 <td>Dona do projeto</td>
 <td>primário</td>
-<td>abas Aprovações, Administração e Painel técnico do console. A proteção é no banco (<code>app_e_dono()</code>)</td>
+<td>abas Administração (que inclui as aprovações e os termos) e Painel técnico do console. A proteção é no banco (<code>app_e_dono()</code>)</td>
 </tr>
 <tr>
 <td>Agendador</td>
 <td>secundário, sistema</td>
-<td><code>pg_cron</code>: 16 rotinas</td>
+<td><code>pg_cron</code>: 21 rotinas, listadas em <a href="arquitetura.html#16-rotinas-do-banco">1.6</a></td>
 </tr>
 <tr>
 <td>Agente de IA</td>
 <td>secundário, sistema</td>
-<td>workers e grafo da API</td>
+<td>7 workers e grafo da API</td>
 </tr>
 <tr>
 <td>Provedor de modelo</td>
@@ -41,70 +48,182 @@
 </tr>
 </tbody>
 </table></div>
-<h2 id="22-diagrama-aluno">2.2 Diagrama: aluno</h2>
+<h2 id="22-aluno-estudar">2.2 Aluno: estudar</h2>
 <figure class="diagrama" id="diagrama-1"><div class="area"><pre class="mermaid">flowchart LR
   A([Aluno])
-  subgraph App do aluno
+  subgraph App do aluno: estudo
     UC01((UC01 Cadastrar-se e&lt;br/&gt;responder o quiz BrainHex))
-    UC02((UC02 Dar ou revogar&lt;br/&gt;consentimentos))
     UC03((UC03 Entrar numa turma))
+    UC15((UC15 Responder o&lt;br/&gt;diagnóstico do tópico))
     UC04((UC04 Estudar o tópico:&lt;br/&gt;texto, áudio, apresentação, cards))
     UC05((UC05 Fazer atividade&lt;br/&gt;e questões))
+    UC19((UC19 Ligar ou desligar&lt;br/&gt;o cronômetro))
+    UC18((UC18 Guardar itens na Bag))
     UC06((UC06 Batalhar com o boss))
     UC07((UC07 Conversar com o Guardião))
-    UC08((UC08 Cumprir missões))
-    UC09((UC09 Ver ranking,&lt;br/&gt;participar de evento))
-    UC10((UC10 Social e guildas))
-    UC11((UC11 Loja, moedas,&lt;br/&gt;molduras, conquistas))
-    UC12((UC12 Receber notificações,&lt;br/&gt;definir lembrete e modo foco))
-    UC13((UC13 Ver e exportar&lt;br/&gt;os próprios dados))
-    UC14((UC14 Excluir a conta))
   end
   IA([Agente de IA])
-  CRON([Agendador])
+  UCG((Gerar material&lt;br/&gt;por perfil))
+  UCT((Coletar telemetria))
+  UCA((Analisar e adaptar))
 
-  A --- UC01 &amp; UC02 &amp; UC03 &amp; UC04 &amp; UC05 &amp; UC06 &amp; UC07
-  A --- UC08 &amp; UC09 &amp; UC10 &amp; UC11 &amp; UC12 &amp; UC13 &amp; UC14
-  UC03 -. include .-&gt; UCG((Gerar material&lt;br/&gt;por perfil))
-  UC04 -. include .-&gt; UCT((Coletar telemetria))
+  A --- UC01 &amp; UC03 &amp; UC15 &amp; UC04 &amp; UC05
+  A --- UC19 &amp; UC18 &amp; UC06 &amp; UC07
+  UC03 -. include .-&gt; UCG
+  UC04 -. include .-&gt; UCT
   UC05 -. include .-&gt; UCT
-  UCT -. extend .-&gt; UCA((Analisar e adaptar))
+  UCT -. extend .-&gt; UCA
+  UC15 --- IA
   UC07 --- IA
   UCG --- IA
   UCA --- IA
-  UC08 --- CRON
-  UC09 --- CRON
-  UC12 --- CRON
 </pre></div><figcaption><span>Diagrama 1</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
-<h2 id="23-diagrama-professor-e-dona">2.3 Diagrama: professor e dona</h2>
+<h2 id="23-aluno-jogar-com-a-turma">2.3 Aluno: jogar com a turma</h2>
 <figure class="diagrama" id="diagrama-2"><div class="area"><pre class="mermaid">flowchart LR
+  A([Aluno])
+  subgraph App do aluno: jogo e turma
+    UC08((UC08 Cumprir missões))
+    UC09((UC09 Ver ranking))
+    UC17((UC17 Entrar no rank do&lt;br/&gt;evento e duelar))
+    UC16((UC16 Desafiar colega&lt;br/&gt;na arena))
+    UC10((UC10 Amizades, conversas&lt;br/&gt;e guildas))
+    UC11((UC11 Moedas, loja, molduras&lt;br/&gt;e conquistas))
+    UC32((UC32 Usar item comprado))
+    UC33((UC33 Doar ao fundo da turma))
+  end
+  CRON([Agendador])
+  IA([Agente de IA])
+
+  A --- UC08 &amp; UC09 &amp; UC17 &amp; UC16
+  A --- UC10 &amp; UC11 &amp; UC33
+  UC11 -. extend .-&gt; UC32
+  UC17 -. extend .-&gt; UC16
+  UC08 --- CRON
+  UC08 --- IA
+  UC16 --- CRON
+  UC17 --- CRON
+</pre></div><figcaption><span>Diagrama 2</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="24-aluno-conta-privacidade-e-avisos">2.4 Aluno: conta, privacidade e avisos</h2>
+<figure class="diagrama" id="diagrama-3"><div class="area"><pre class="mermaid">flowchart LR
+  A([Aluno])
+  subgraph App do aluno: conta
+    UC02((UC02 Dar ou revogar&lt;br/&gt;consentimentos))
+    UC12((UC12 Notificações, lembrete&lt;br/&gt;e modo foco))
+    UC34((UC34 Trocar o perfil ativo))
+    UC35((UC35 Ver relatório e&lt;br/&gt;métricas de estilo))
+    UC36((UC36 Enviar feedback))
+    UC13((UC13 Ver e exportar&lt;br/&gt;os próprios dados))
+    UC14((UC14 Excluir a conta))
+  end
+  CRON([Agendador])
+  A --- UC02 &amp; UC12 &amp; UC34 &amp; UC35 &amp; UC36 &amp; UC13 &amp; UC14
+  UC12 --- CRON
+  UC14 --- CRON
+</pre></div><figcaption><span>Diagrama 3</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="25-professor-turma-e-conteúdo">2.5 Professor: turma e conteúdo</h2>
+<figure class="diagrama" id="diagrama-4"><div class="area"><pre class="mermaid">flowchart LR
   P([Professor])
-  D([Dona do projeto])
-  subgraph Console
+  subgraph Console: conteúdo
     UC20((UC20 Criar e configurar turma))
     UC21((UC21 Editar trilha:&lt;br/&gt;tópicos, conteúdos,&lt;br/&gt;atividades, questões, cards))
     UC22((UC22 Duplicar turma,&lt;br/&gt;tópico, atividade))
+    UC37((UC37 Escrever o arco&lt;br/&gt;narrativo da turma))
     UC23((UC23 Acompanhar e&lt;br/&gt;reprocessar personalizações))
+    UC29((UC29 Decidir alteração&lt;br/&gt;sem análise da IA))
+    UC38((UC38 Excluir a própria conta))
+    UC52((UC52 Aceitar os termos))
+  end
+  IA([Agente de IA])
+  E((Enfileirar regeração&lt;br/&gt;gatilho no banco))
+  ALT((Registrar alteração&lt;br/&gt;vista por aluno))
+  P --- UC20 &amp; UC21 &amp; UC22 &amp; UC37 &amp; UC23 &amp; UC29 &amp; UC38 &amp; UC52
+  UC21 -. include .-&gt; E
+  UC37 -. include .-&gt; E
+  UC21 -. extend .-&gt; ALT
+  UC29 -. extend .-&gt; ALT
+  E --- IA
+  ALT --- IA
+</pre></div><figcaption><span>Diagrama 4</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="26-professor-acompanhar-a-turma">2.6 Professor: acompanhar a turma</h2>
+<figure class="diagrama" id="diagrama-5"><div class="area"><pre class="mermaid">flowchart LR
+  P([Professor])
+  subgraph Console: acompanhamento
     UC24((UC24 Ler insights da turma))
     UC25((UC25 Perguntar à Lumi))
     UC26((UC26 Corrigir notas,&lt;br/&gt;aprovar entregas))
-    UC27((UC27 Criar missões,&lt;br/&gt;conquistas, eventos))
-    UC28((UC28 Configurar economia&lt;br/&gt;e loja da turma))
-    UC29((UC29 Decidir alteração&lt;br/&gt;sem análise da IA))
-    UC30((UC30 Aprovar professores))
-    UC31((UC31 Painel técnico))
+    UC39((UC39 Registrar presença))
+    UC40((UC40 Ver risco de reprovação&lt;br/&gt;e indicadores))
+    UC41((UC41 Registrar coorte do&lt;br/&gt;estudo e marcos))
   end
   IA([Agente de IA])
-  P --- UC20 &amp; UC21 &amp; UC22 &amp; UC23 &amp; UC24 &amp; UC25 &amp; UC26 &amp; UC27 &amp; UC28 &amp; UC29
-  D --- UC30 &amp; UC31
-  UC21 -. include .-&gt; E((Enfileirar regeração&lt;br/&gt;gatilho no banco))
-  UC21 -. extend .-&gt; ALT((Registrar alteração&lt;br/&gt;vista por aluno))
-  E --- IA
-  ALT --- IA
+  P --- UC24 &amp; UC25 &amp; UC26 &amp; UC39 &amp; UC40 &amp; UC41
   UC24 --- IA
   UC25 --- IA
-</pre></div><figcaption><span>Diagrama 2</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
-<h2 id="24-especificação-resumida">2.4 Especificação resumida</h2>
+</pre></div><figcaption><span>Diagrama 5</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="27-professor-gamificação-e-economia">2.7 Professor: gamificação e economia</h2>
+<figure class="diagrama" id="diagrama-6"><div class="area"><pre class="mermaid">flowchart LR
+  P([Professor])
+  subgraph Console: jogo da turma
+    UC27((UC27 Criar missões,&lt;br/&gt;conquistas, eventos))
+    UC42((UC42 Pedir missões à IA&lt;br/&gt;e aprovar ou recusar))
+    UC28((UC28 Configurar economia&lt;br/&gt;e loja da turma))
+    UC43((UC43 Abrir, entregar ou&lt;br/&gt;cancelar fundo da turma))
+    UC44((UC44 Configurar guildas&lt;br/&gt;e acompanhar batalhas))
+    UC45((UC45 Configurar ranks))
+  end
+  IA([Agente de IA])
+  P --- UC27 &amp; UC42 &amp; UC28 &amp; UC43 &amp; UC44 &amp; UC45
+  UC42 --- IA
+</pre></div><figcaption><span>Diagrama 6</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="28-dona-do-projeto-e-visitante">2.8 Dona do projeto e visitante</h2>
+<figure class="diagrama" id="diagrama-7"><div class="area"><pre class="mermaid">flowchart LR
+  D([Dona do projeto])
+  V([Visitante])
+  subgraph Console: administração e operação
+    UC30((UC30 Aprovar professores))
+    UC31((UC31 Painel técnico))
+    UC46((UC46 Administrar professores,&lt;br/&gt;alunos e turmas))
+    UC47((UC47 Administrar economia&lt;br/&gt;e molduras))
+    UC48((UC48 Ver disponibilidade&lt;br/&gt;e incidentes))
+    UC49((UC49 Ver saúde dos clientes))
+    UC50((UC50 Consultar acesso&lt;br/&gt;por aluno))
+    UC51((UC51 Ver termos, aceites&lt;br/&gt;e assinaturas))
+    UC53((UC53 Cadastrar, trocar e&lt;br/&gt;remover moldura))
+  end
+  subgraph Site público
+    UC60((UC60 Conhecer o produto&lt;br/&gt;e baixar o app))
+    UC61((UC61 Enviar contato))
+    UC62((UC62 Pedir acesso&lt;br/&gt;como professor))
+  end
+  D --- UC30 &amp; UC31 &amp; UC46 &amp; UC47 &amp; UC48 &amp; UC49 &amp; UC50 &amp; UC51 &amp; UC53
+  V --- UC60 &amp; UC61 &amp; UC62
+  UC62 -. include .-&gt; UC30
+</pre></div><figcaption><span>Diagrama 7</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="29-sistema-o-que-roda-sem-ninguém-pedir">2.9 Sistema: o que roda sem ninguém pedir</h2>
+<figure class="diagrama" id="diagrama-8"><div class="area"><pre class="mermaid">flowchart LR
+  CRON([Agendador])
+  IA([Agente de IA])
+  subgraph Rotinas
+    UC70((UC70 Gerar missões diárias))
+    UC71((UC71 Abrir e encerrar eventos))
+    UC72((UC72 Encerrar desafios&lt;br/&gt;abandonados))
+    UC73((UC73 Entregar notificações))
+    UC74((UC74 Recalcular notas&lt;br/&gt;com prazo))
+    UC75((UC75 Sondar disponibilidade&lt;br/&gt;e abrir incidentes))
+    UC76((UC76 Aplicar retenção e&lt;br/&gt;arquivar a pesquisa))
+    UC77((UC77 Auditar as invariantes&lt;br/&gt;das métricas))
+  end
+  subgraph Workers
+    UC78((UC78 Gerar material))
+    UC79((UC79 Analisar telemetria))
+    UC80((UC80 Classificar alteração&lt;br/&gt;do professor))
+    UC81((UC81 Escrever texto de&lt;br/&gt;missão e diagnóstico))
+  end
+  CRON --- UC70 &amp; UC71 &amp; UC72 &amp; UC73 &amp; UC74 &amp; UC75 &amp; UC76 &amp; UC77
+  IA --- UC78 &amp; UC79 &amp; UC80 &amp; UC81
+  UC70 -. include .-&gt; UC81
+</pre></div><figcaption><span>Diagrama 8</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<h2 id="210-especificação-aluno">2.10 Especificação: aluno</h2>
 <div class="tabela"><table>
 <thead>
 <tr>
@@ -160,19 +279,31 @@
 <tr>
 <td>UC08</td>
 <td>matrícula</td>
-<td>Missão diária criada às 03:00, texto por IA às 03:05; missões da turma</td>
-<td><code>pg_cron</code>, <code>missoes_ia_loop</code></td>
+<td>Missão diária criada às 03:00, texto por IA às 03:05; missões da turma e de guilda. O progresso é avaliado em gatilho e a recompensa sai uma vez</td>
+<td><code>pg_cron</code>, <code>fn_missao_diaria_gerar</code>, <code>missoes_ia_loop</code></td>
 </tr>
 <tr>
 <td>UC09</td>
 <td>matrícula</td>
-<td>Ranking por view com filtro de saída; eventos abrem e fecham sozinhos; duelo no evento só entre inscritos</td>
-<td><code>vw_rank_posicoes_por_classe</code>, <code>fn_eventos_classe_varrer</code>, <code>evento_duelo_criar</code></td>
+<td>Ranking por view com filtro de saída: posição, limite visível, o próprio aluno</td>
+<td><code>vw_rank_posicoes_por_classe</code></td>
+</tr>
+<tr>
+<td>UC10</td>
+<td>matrícula</td>
+<td>Convite, aceite, recusa e bloqueio entre colegas; conversa privada e de guilda cifrada em repouso; guilda criada ou integrada dentro da janela da turma; desafio cooperativo de guilda</td>
+<td><code>social_*</code>, <code>guilda_*</code>, <code>chat_*</code></td>
+</tr>
+<tr>
+<td>UC11</td>
+<td>matrícula</td>
+<td>Saldo = soma do razão <code>moedas_ledger</code>. Compra concede a posse pelo preço da turma; molduras e conquistas por critério</td>
+<td><code>loja_comprar</code>, <code>conquistas</code>, <code>moldura_aluno</code></td>
 </tr>
 <tr>
 <td>UC12</td>
 <td>conta</td>
-<td>Caixa de entrada, push pelo banco, rotina local no aparelho</td>
+<td>Caixa de entrada, push pelo banco, rotina local no aparelho, tipos silenciados, horário de silêncio e modo foco</td>
 <td>motor de notificações no banco</td>
 </tr>
 <tr>
@@ -182,10 +313,95 @@
 <td><code>solicitacoes_exclusao</code>, retenção, <code>pesquisa-arquivar</code></td>
 </tr>
 <tr>
+<td>UC15</td>
+<td>matrícula, tópico não iniciado</td>
+<td>O app pede o diagnóstico, responde quando pronto ou dispensa. O banco corrige e decide o nível</td>
+<td><code>diagnostico_pedir</code>, <code>_responder</code>, <code>_dispensar</code>; worker <code>diagnostico_loop</code></td>
+</tr>
+<tr>
+<td>UC16</td>
+<td>matrícula, colega da turma</td>
+<td>Cria desafio, convida, cada lado responde as questões. Ao encerrar, o placar define vitória, empate ou sem adversário. Só <code>ranqueada</code> move o Elo</td>
+<td><code>arena_desafio_criar</code>, <code>arena_convite_responder</code>, <code>arena_responder</code>, <code>fn_desafio_encerrar</code></td>
+</tr>
+<tr>
+<td>UC17</td>
+<td>evento <code>aberto</code> com rank</td>
+<td>Inscreve-se ou sai com o evento aberto; o adversário do duelo vem dos inscritos mais próximos; duelo fora do XP e do Elo</td>
+<td><code>evento_classe_inscrever</code>, <code>_sair</code>, <code>evento_duelo_criar</code>, <code>evento_sugerir_adversarios</code></td>
+</tr>
+<tr>
+<td>UC18</td>
+<td>matrícula</td>
+<td>Guarda anotações e cartões pessoais ligados a tópico ou conteúdo; exclusão lógica</td>
+<td><code>bag_criar</code>, <code>_atualizar</code>, <code>_listar</code>, <code>_excluir</code></td>
+</tr>
+<tr>
+<td>UC19</td>
+<td>conta</td>
+<td>Liga ou desliga o cronômetro das atividades. Sem escolha, vale o perfil. O tempo não entra na nota</td>
+<td><code>aluno_cronometro</code></td>
+</tr>
+<tr>
+<td>UC32</td>
+<td>compra <code>ativa</code></td>
+<td>Aplica o item na atividade, no tópico ou na questão, dentro do limite por situação; a chave do cliente torna o pedido repetível</td>
+<td><code>loja_usar</code>, <code>loja_usar_item</code>, <code>loja_uso_log</code></td>
+</tr>
+<tr>
+<td>UC33</td>
+<td>fundo aberto na turma</td>
+<td>Doa moedas; a doação é atômica, idempotente e não passa da meta. Vê o total e a própria doação</td>
+<td><code>fundo_turma_contribuir</code></td>
+</tr>
+<tr>
+<td>UC34</td>
+<td>conta</td>
+<td>Muda <code>perfil_ativo</code>; o progresso é recalculado e a coorte diária do perfil novo é gerada na hora</td>
+<td><code>fn_atualizar_aluno_perfil</code>, <code>trg_alunos_missao_diaria_perfil</code></td>
+</tr>
+<tr>
+<td>UC35</td>
+<td>conta</td>
+<td>Lê o próprio relatório e as métricas de estilo</td>
+<td>telas <code>perfil/relatorio</code>, <code>perfil/metricas-estilo</code></td>
+</tr>
+<tr>
+<td>UC36</td>
+<td>conta</td>
+<td>Envia feedback, com teto de envios por aluno</td>
+<td><code>fn_enviar_contato</code>, <code>contato_envios</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="211-especificação-professor">2.11 Especificação: professor</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>UC</th>
+<th>Pré-condição</th>
+<th>Fluxo principal</th>
+<th>Onde mora a regra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UC20</td>
+<td>professor aprovado</td>
+<td>Cria a turma, define matéria e dados básicos e escolhe o tema do mapa. Mudar o tema enfileira <code>class_theme_sync</code></td>
+<td><code>classe</code>, <code>fn_enqueue_classe_mapa_tema_job</code></td>
+</tr>
+<tr>
 <td>UC21</td>
 <td>dono da turma</td>
 <td>Salvar já enfileira <code>class_delta_sync</code> (com coalescência); se algum aluno já viu, registra alteração</td>
 <td>gatilhos do editor</td>
+</tr>
+<tr>
+<td>UC22</td>
+<td>dono da turma</td>
+<td>Copia numa transação só; não copia matrícula, progresso, telemetria nem personalização</td>
+<td><code>duplicar_classe</code>, <code>duplicar_topico</code>, <code>duplicar_atividade</code></td>
 </tr>
 <tr>
 <td>UC23</td>
@@ -206,11 +422,550 @@
 <td>API</td>
 </tr>
 <tr>
+<td>UC26</td>
+<td>dono da turma</td>
+<td>Lista as entregas, avalia e lança nota; a última avaliação fica em <code>atividade_aprovacao</code></td>
+<td><code>avaliar_entrega</code>, <code>professor_notas_da_turma</code></td>
+</tr>
+<tr>
+<td>UC27</td>
+<td>dono da turma</td>
+<td>Cria missão manual, conquista da turma e evento com peças, janela e abertura automática</td>
+<td><code>missoes</code>, <code>conquista_da_turma_salvar</code>, <code>evento_classe_abrir</code></td>
+</tr>
+<tr>
+<td>UC28</td>
+<td>dono da turma</td>
+<td>Ajusta preços, estoque, dotação, limites de uso, metas e valores de evento, em camadas (atividade, tópico, turma, global). Estorna compra ainda não usada</td>
+<td><code>economia_salvar_*</code>, <code>loja_estornar</code>, <code>economia_auditoria</code></td>
+</tr>
+<tr>
 <td>UC29</td>
 <td>alteração <code>pendente_analise</code></td>
 <td><code>alteracao_decidir</code></td>
 <td>RPC</td>
 </tr>
+<tr>
+<td>UC37</td>
+<td>dono da turma</td>
+<td>Escreve o arco (até 3000 caracteres). Ele entra na geração; o aluno o vê só dentro do material</td>
+<td><code>classe_arco_narrativo</code></td>
+</tr>
+<tr>
+<td>UC52</td>
+<td>professor sem prova da versão vigente</td>
+<td>Ao abrir o console, aceita os termos uma vez</td>
+<td><code>professor_registrar_aceite_termos</code>, <code>consentimento_professor</code></td>
+</tr>
+<tr>
+<td>UC38</td>
+<td>conta de professor</td>
+<td>A conta sai na hora, com as turmas e tudo o que depende delas; o usuário do Auth vai para a fila externa e fica só o registro do pedido. A dona não pode usar este caminho</td>
+<td><code>fn_excluir_minha_conta_professor</code>, <code>trg_professor_removido_apaga_turmas</code></td>
+</tr>
+<tr>
+<td>UC39</td>
+<td>dono da turma</td>
+<td>Marca presença ou participação, de alunos escolhidos ou da turma inteira. Vira <code>presenca_aula</code> ou <code>participacao_aula</code> em <code>eventos_aluno</code>, com a data na referência, o que impede repetir no mesmo dia</td>
+<td><code>registrar_presenca_da_turma</code></td>
+</tr>
+<tr>
+<td>UC40</td>
+<td>dono da turma</td>
+<td>Vê quem está sinalizado e quais fatores dispararam (atividade, acertos, faltas, prazos, estado negativo recorrente), além dos indicadores da turma</td>
+<td><code>professor_risco_reprovacao_turma</code>, <code>vw_metricas_*</code></td>
+</tr>
+<tr>
+<td>UC41</td>
+<td>dono da turma, baseline futuro</td>
+<td>Registra a coorte com braço, baseline, corte e fim. Depois que a data passa, o gatilho trava os campos</td>
+<td><code>estudo_coorte_registrar</code>, <code>fn_estudo_coorte_trava</code>, <code>marco_produto</code></td>
+</tr>
+<tr>
+<td>UC42</td>
+<td>dono da turma</td>
+<td>Pede de 1 a 5 sugestões (padrão 3); o worker gera; nada chega ao aluno sem aprovação; cada decisão vai para o log</td>
+<td><code>missao_ia_pedir</code>, <code>fn_missao_ia_registrar</code>, <code>missoes_ia_log</code></td>
+</tr>
+<tr>
+<td>UC43</td>
+<td>dono da turma, sem fundo ativo</td>
+<td>Abre um fundo com meta; entrega só com meta atingida; cancelar estorna todas as doações</td>
+<td><code>fundo_turma_criar</code>, <code>fundo_turma_encerrar</code></td>
+</tr>
+<tr>
+<td>UC44</td>
+<td>dono da turma</td>
+<td>Define o tamanho máximo e a janela de formação das guildas; acompanha batalhas e desafios da turma</td>
+<td><code>guilda_configurar_turma</code>, <code>arena_professor_resumo</code></td>
+</tr>
+<tr>
+<td>UC45</td>
+<td>dono da turma</td>
+<td>Escolhe e organiza os ranks da turma</td>
+<td><code>ranks</code>, <code>rank_tipo</code></td>
+</tr>
 </tbody>
 </table></div>
-<nav class="nav-paginas"><a href="arquitetura.html"><span class="k">← anterior</span><span class="t">Arquitetura</span></a><a class="prox" href="pipeline.html"><span class="k">próxima →</span><span class="t">Pipeline de ponta a ponta</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#21-atores">2.1 Atores</a></li><li><a href="#22-diagrama-aluno">2.2 Diagrama: aluno</a></li><li><a href="#23-diagrama-professor-e-dona">2.3 Diagrama: professor e dona</a></li><li><a href="#24-especificação-resumida">2.4 Especificação resumida</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>bb5542a1</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
+<h2 id="212-especificação-dona-visitante-e-sistema">2.12 Especificação: dona, visitante e sistema</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>UC</th>
+<th>Pré-condição</th>
+<th>Fluxo principal</th>
+<th>Onde mora a regra</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UC30</td>
+<td><code>app_e_dono()</code></td>
+<td>Aprova ou recusa o pedido de acesso do professor</td>
+<td><code>ProfessorApprovalSection</code>, RPC</td>
+</tr>
+<tr>
+<td>UC31</td>
+<td><code>app_e_dono()</code></td>
+<td>Vê a última atividade de cada worker, filas e avisos</td>
+<td><code>PainelTecnico</code></td>
+</tr>
+<tr>
+<td>UC46</td>
+<td><code>app_e_dono()</code></td>
+<td>Lista e ajusta professores, alunos e turmas pela aba Administração</td>
+<td>RPCs <code>admin_*</code>, <code>admin_turma_matricular</code></td>
+</tr>
+<tr>
+<td>UC47</td>
+<td><code>app_e_dono()</code></td>
+<td>Ajusta catálogo global, preço e chave das molduras e ações de moldura; lê a auditoria e a consistência da economia</td>
+<td><code>admin_economia</code>, <code>molduras_acoes</code>, <code>economia_consistencia</code></td>
+</tr>
+<tr>
+<td>UC48</td>
+<td><code>app_e_dono()</code></td>
+<td>Vê alvos, disponibilidade, incidentes e marcas de deploy</td>
+<td><code>painel_disponibilidade</code></td>
+</tr>
+<tr>
+<td>UC49</td>
+<td><code>app_e_dono()</code></td>
+<td>Vê erros, Web Vitals e versões por superfície, sem stack, URL completa nem texto digitado</td>
+<td><code>cliente_erro</code>, <code>cliente_sessao</code>, <code>fn_cliente_saude_varrer</code></td>
+</tr>
+<tr>
+<td>UC50</td>
+<td><code>app_e_dono()</code></td>
+<td>A lista abre com código curto; mostrar nomes fica registrado</td>
+<td><code>monitor_consulta</code></td>
+</tr>
+<tr>
+<td>UC51</td>
+<td><code>app_e_dono()</code></td>
+<td>Lê situação e histórico, registra termo em papel, revoga com motivo e corrige a data de nascimento. Nada apaga prova: toda ação é uma linha nova</td>
+<td><code>admin_termos</code>, <code>admin_termo_revogar</code>, <code>professor_registrar_termo_papel</code></td>
+</tr>
+<tr>
+<td>UC53</td>
+<td><code>app_e_dono()</code></td>
+<td>Cadastra moldura com imagem, nome, origem, preço ou conquista e a abertura onde a foto entra; edita, troca a imagem e remove a que não tem dono. <code>codigo</code> não muda depois de criado</td>
+<td><code>admin_moldura_gravar</code>, <code>admin_moldura_remover</code>, bucket <code>molduras</code></td>
+</tr>
+<tr>
+<td>UC60</td>
+<td>—</td>
+<td>Navega no site e segue para a loja de aplicativos</td>
+<td><code>frontend/</code></td>
+</tr>
+<tr>
+<td>UC61</td>
+<td>—</td>
+<td>Envia a mensagem pelo formulário; o banco aplica o teto de envios</td>
+<td><code>fn_enviar_contato_publico</code>, <code>contato_publico_envios</code></td>
+</tr>
+<tr>
+<td>UC62</td>
+<td>—</td>
+<td>Cadastra-se em <code>/cadastro-professor</code> e aguarda UC30</td>
+<td>rota pública + RPC</td>
+</tr>
+<tr>
+<td>UC70</td>
+<td>turma com alunos</td>
+<td>03:00 gera a coorte <code>turma × perfil</code>; 03:05 enfileira o texto</td>
+<td><code>fn_missao_diaria_gerar</code>, <code>fn_missao_diaria_enfileirar_texto</code></td>
+</tr>
+<tr>
+<td>UC71</td>
+<td>evento marcado</td>
+<td>A cada minuto abre o <code>rascunho</code> marcado para abrir no início e encerra e apura o <code>aberto</code> vencido; clique e rotina ao mesmo tempo não creditam duas vezes</td>
+<td><code>fn_eventos_classe_varrer</code></td>
+</tr>
+<tr>
+<td>UC72</td>
+<td>desafio aberto há mais de 30 min</td>
+<td>A cada 5 min chama o encerramento, até 200 por passada</td>
+<td><code>fn_desafio_varrer_abandonados</code></td>
+</tr>
+<tr>
+<td>UC73</td>
+<td>item na fila</td>
+<td>A cada 5 min entrega e concilia push; a cada 10 min varre mudança de rank</td>
+<td><code>notificacoes_varrer</code>, <code>notificacoes_conciliar_push</code>, <code>notificacoes_rank_varrer</code></td>
+</tr>
+<tr>
+<td>UC74</td>
+<td>atividade com prazo</td>
+<td>A cada hora recalcula a nota das atividades de prazo vencido</td>
+<td><code>trailup_recalcular_notas_com_prazo</code></td>
+</tr>
+<tr>
+<td>UC75</td>
+<td>alvo ativo</td>
+<td>A cada minuto colhe, aplica a máquina de estados, varre sinais, sonda e envia alertas</td>
+<td><code>fn_monitor_tick</code></td>
+</tr>
+<tr>
+<td>UC76</td>
+<td>política em <code>retencao_politica</code></td>
+<td>Redige e apaga por prazo; avisa antes; arquiva <code>pesquisa/</code> no R2</td>
+<td><code>trailup_retencao</code>, <code>pesquisa_arquivo_disparar</code></td>
+</tr>
+<tr>
+<td>UC77</td>
+<td>—</td>
+<td>Às 06:30 roda as 20 invariantes e guarda resultado e amostra</td>
+<td><code>fn_auditoria_metricas_rodar</code></td>
+</tr>
+<tr>
+<td>UC78–81</td>
+<td>item na fila</td>
+<td>O worker reivindica, chama o modelo e devolve ao banco. Sem modelo, nada é inventado</td>
+<td><code>personalizacao_jobs_loop</code>, <code>analise_fila_loop</code>, <code>alteracao_professor_loop</code>, <code>missoes_ia_loop</code>, <code>diagnostico_loop</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="213-fluxos-alternativos-e-exceções">2.13 Fluxos alternativos e exceções</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>UC</th>
+<th>Situação</th>
+<th>O que acontece</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UC03</td>
+<td>matrícula repetida com job em aberto</td>
+<td>não duplica: o gatilho reaproveita <code>pending</code> ou <code>processing</code>. Falha ao enfileirar não desfaz a matrícula</td>
+</tr>
+<tr>
+<td>UC04</td>
+<td>material por gerar</td>
+<td>o app mostra o conteúdo do professor, que volta a ser o percurso até o material existir</td>
+</tr>
+<tr>
+<td>UC04</td>
+<td>API fora do ar</td>
+<td>a leitura continua, porque é Supabase direto e gateway; só a geração espera</td>
+</tr>
+<tr>
+<td>UC05</td>
+<td>prazo vencido</td>
+<td>nota ajustada pelo prazo; <code>prazo_extra</code> estende por aluno</td>
+</tr>
+<tr>
+<td>UC07</td>
+<td>menor de 18 ou sem data confirmada</td>
+<td>403 antes de chamar modelo. Cadastro não é barrado</td>
+</tr>
+<tr>
+<td>UC15</td>
+<td>tópico já iniciado</td>
+<td>recusa <code>ja_iniciado</code>: o diagnóstico é só antes de começar</td>
+</tr>
+<tr>
+<td>UC15</td>
+<td>modelo falhou</td>
+<td>nova tentativa com espera de 2^n minutos, até 120; na terceira falha, <code>sem_ia</code></td>
+</tr>
+<tr>
+<td>UC15</td>
+<td>turma retida pelo estudo</td>
+<td>devolve <code>retido</code>: a turma não recebe o recurso</td>
+</tr>
+<tr>
+<td>UC16</td>
+<td>adversário não aceitou nem jogou</td>
+<td>resultado <code>sem_adversario</code>, sem Elo</td>
+</tr>
+<tr>
+<td>UC17</td>
+<td>evento encerrado ou sem peça <code>arena</code></td>
+<td>recusa; encerrado, o rank é o resultado e ninguém entra nem sai</td>
+</tr>
+<tr>
+<td>UC32</td>
+<td>pedido repetido por queda da rede</td>
+<td>devolve o mesmo resultado pela chave do cliente</td>
+</tr>
+<tr>
+<td>UC32</td>
+<td>acima do limite da situação</td>
+<td>recusa; o corte fica em <code>loja_uso_log</code></td>
+</tr>
+<tr>
+<td>UC33</td>
+<td>doação passaria da meta</td>
+<td>cobra só o que falta</td>
+</tr>
+<tr>
+<td>UC42</td>
+<td>sem modelo</td>
+<td>o pedido falha, as tentativas são espaçadas e param. Nada é inventado</td>
+</tr>
+<tr>
+<td>UC42</td>
+<td>sugestão repete título, traz link ou métrica fora do catálogo</td>
+<td><code>fn_missao_ia_registrar</code> descarta</td>
+</tr>
+<tr>
+<td>UC43</td>
+<td>entregar antes da meta</td>
+<td>recusa <code>meta_nao_atingida</code></td>
+</tr>
+<tr>
+<td>UC29</td>
+<td>modelo indisponível</td>
+<td>a alteração fica <code>pendente_analise</code>, o aluno não vê selo e o professor decide</td>
+</tr>
+<tr>
+<td>UC53</td>
+<td>moldura com dono</td>
+<td>recusa <code>23503</code>: a moldura não sai, e o caminho é desligar a chave, o que a tira da loja e das recompensas sem tirar de quem já tem</td>
+</tr>
+<tr>
+<td>UC53</td>
+<td>gravação falha depois do envio</td>
+<td>o console apaga o arquivo que acabou de subir; o antigo só sai depois de o banco confirmar a troca</td>
+</tr>
+<tr>
+<td>UC53</td>
+<td>app em build antigo</td>
+<td>continua com o desenho do pacote nas molduras que já existem e descarta o código que não conhece</td>
+</tr>
+<tr>
+<td>UC75</td>
+<td>sonda sem resposta</td>
+<td><code>ok</code> nulo: conta como <code>sem_dado</code>, não como falha</td>
+</tr>
+<tr>
+<td>UC75</td>
+<td>Supabase fora</td>
+<td>nada roda; cobre só a batida externa, quando configurada</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="214-rastreabilidade">2.14 Rastreabilidade</h2>
+<p>Do caso de uso ao fluxo (capítulo 3), ao dado (capítulo 5) e ao estado (capítulo 6).</p>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>UC</th>
+<th>Fluxo</th>
+<th>Dados</th>
+<th>Estado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UC01, UC02, UC03</td>
+<td>P1 + P2</td>
+<td>5.1, 5.3.1, 5.7</td>
+<td>6.13</td>
+</tr>
+<tr>
+<td>UC04, UC05</td>
+<td>P4, P5 + P6, P9</td>
+<td>5.2, 5.3.1, 5.4</td>
+<td>6.3, 6.4</td>
+</tr>
+<tr>
+<td>UC07</td>
+<td>P10</td>
+<td>5.4</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC08, UC70</td>
+<td>P14</td>
+<td>5.5.1</td>
+<td>6.8</td>
+</tr>
+<tr>
+<td>UC09, UC17, UC71</td>
+<td>P15, P16</td>
+<td>5.5.1, 5.5.3</td>
+<td>6.5</td>
+</tr>
+<tr>
+<td>UC10, UC16, UC72</td>
+<td>P15</td>
+<td>5.5.3, 5.5.4</td>
+<td>6.8, 6.12</td>
+</tr>
+<tr>
+<td>UC11, UC28, UC32, UC33, UC43</td>
+<td>P17</td>
+<td>5.5.2</td>
+<td>6.11</td>
+</tr>
+<tr>
+<td>UC12, UC73</td>
+<td>P12</td>
+<td>5.6</td>
+<td>6.6</td>
+</tr>
+<tr>
+<td>UC13, UC14, UC76</td>
+<td>P13</td>
+<td>5.7</td>
+<td>6.13</td>
+</tr>
+<tr>
+<td>UC15</td>
+<td>P18</td>
+<td>5.3.3</td>
+<td>6.10</td>
+</tr>
+<tr>
+<td>UC20, UC21, UC22, UC23, UC37, UC78</td>
+<td>P0 + P3</td>
+<td>5.1, 5.3</td>
+<td>6.1, 6.2, 6.3</td>
+</tr>
+<tr>
+<td>UC24, UC25, UC79</td>
+<td>P5 + P6, P8</td>
+<td>5.4</td>
+<td>6.7</td>
+</tr>
+<tr>
+<td>UC29, UC80</td>
+<td>P11</td>
+<td>5.2</td>
+<td>6.7</td>
+</tr>
+<tr>
+<td>UC40, UC41, UC77</td>
+<td>P19</td>
+<td>5.9</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC42, UC81</td>
+<td>P14</td>
+<td>5.5.1</td>
+<td>6.8</td>
+</tr>
+<tr>
+<td>UC51, UC52</td>
+<td>P13</td>
+<td>5.7</td>
+<td>6.13</td>
+</tr>
+<tr>
+<td>UC06</td>
+<td>P0 + P3</td>
+<td>5.3.1</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC18, UC19</td>
+<td>— (só banco)</td>
+<td>5.2</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC26, UC74</td>
+<td>P9</td>
+<td>5.2</td>
+<td>6.4</td>
+</tr>
+<tr>
+<td>UC27</td>
+<td>P14, P16</td>
+<td>5.5.1, 5.5.3</td>
+<td>6.5, 6.8</td>
+</tr>
+<tr>
+<td>UC30, UC62</td>
+<td>— (só banco)</td>
+<td>5.1</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC34</td>
+<td>— (só banco)</td>
+<td>5.3.1</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC35</td>
+<td>— (leitura)</td>
+<td>5.4</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC36, UC61</td>
+<td>— (só banco)</td>
+<td>5.7</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC38</td>
+<td>— (só banco)</td>
+<td>5.7</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC39, UC45</td>
+<td>P9</td>
+<td>5.5.1</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC44</td>
+<td>P15</td>
+<td>5.5.3</td>
+<td>6.8</td>
+</tr>
+<tr>
+<td>UC46</td>
+<td>— (só banco)</td>
+<td>5.1</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC47, UC53</td>
+<td>P17</td>
+<td>5.5.1, 5.5.2</td>
+<td>6.11</td>
+</tr>
+<tr>
+<td>UC60</td>
+<td>— (site público)</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>UC31, UC48, UC49, UC50, UC75</td>
+<td>P20</td>
+<td>5.8</td>
+<td>6.14</td>
+</tr>
+</tbody>
+</table></div>
+<nav class="nav-paginas"><a href="arquitetura.html"><span class="k">← anterior</span><span class="t">Arquitetura</span></a><a class="prox" href="pipeline.html"><span class="k">próxima →</span><span class="t">Pipeline de ponta a ponta</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#21-atores">2.1 Atores</a></li><li><a href="#22-aluno-estudar">2.2 Aluno: estudar</a></li><li><a href="#23-aluno-jogar-com-a-turma">2.3 Aluno: jogar com a turma</a></li><li><a href="#24-aluno-conta-privacidade-e-avisos">2.4 Aluno: conta, privacidade e avisos</a></li><li><a href="#25-professor-turma-e-conteúdo">2.5 Professor: turma e conteúdo</a></li><li><a href="#26-professor-acompanhar-a-turma">2.6 Professor: acompanhar a turma</a></li><li><a href="#27-professor-gamificação-e-economia">2.7 Professor: gamificação e economia</a></li><li><a href="#28-dona-do-projeto-e-visitante">2.8 Dona do projeto e visitante</a></li><li><a href="#29-sistema-o-que-roda-sem-ninguém-pedir">2.9 Sistema: o que roda sem ninguém pedir</a></li><li><a href="#210-especificação-aluno">2.10 Especificação: aluno</a></li><li><a href="#211-especificação-professor">2.11 Especificação: professor</a></li><li><a href="#212-especificação-dona-visitante-e-sistema">2.12 Especificação: dona, visitante e sistema</a></li><li><a href="#213-fluxos-alternativos-e-exceções">2.13 Fluxos alternativos e exceções</a></li><li><a href="#214-rastreabilidade">2.14 Rastreabilidade</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>af371249</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Modelo de dados · TrailUp</title><meta name="description" content="Entidades e relações por domínio, a partir das chaves estrangeiras de produção."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" type="image/png" href="../assets/trailup-estrela.png"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><img src="../assets/trailup-estrela.png" alt="" width="34" height="34">TrailUp<small>documentação</small></a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/guardioes.html">Guardiões</a><a href="../documentacao/gamificacao.html">Gamificação</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/artigo-ia-onde-importa.html">Artigos</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a><a class="abrir" href="https://trailup.vercel.app/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li><li><a href="rotas.html">Rotas dos serviços</a></li><li><a href="guardioes.html">Os sete Guardiões</a></li><li><a href="gamificacao.html">Gamificação e personalização</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html" aria-current="page">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Artigos</h4><ul><li><a href="artigo-ia-onde-importa.html">IA onde importa</a></li><li><a href="artigo-da-tipologia-a-trilha.html">Da tipologia à trilha</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Usar o TrailUp</h4><ul><li><a href="https://trailup.vercel.app/" target="_blank" rel="noopener">Site ↗</a></li><li><a href="https://trailup.vercel.app/login" target="_blank" rel="noopener">Console do professor ↗</a></li><li><a href="https://trailup.vercel.app/aluno/login" target="_blank" rel="noopener">TrailUp na web (aluno) ↗</a></li><li><a href="https://play.google.com/apps/test/com.seuprojeto.trailup/20" target="_blank" rel="noopener">App Android ↗</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Modelo de dados</h1><p class="lede">Entidades e relações por domínio, a partir das chaves estrangeiras de produção.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/05-dados.md" target="_blank" rel="noopener">docs/tcc/modelagem/05-dados.md</a><span class="chip ok">atualizado 05/11/2026</span><span class="chip warn">9 diagramas</span></div></header><p>Os diagramas saem das <strong>chaves estrangeiras reais</strong> de produção (<code>pg_constraint</code>, lidas em 04/11/2026). São 171 tabelas, agrupadas aqui por domínio. Cada diagrama mostra as tabelas centrais e as relações entre elas; colunas aparecem só quando definem o papel da tabela. <code>alunos.id</code> e <code>professor.id</code> são o próprio <code>auth.users.id</code>.</p>
+<html lang="pt-BR" translate="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="google" content="notranslate"><title>Modelo de dados · TrailUp</title><meta name="description" content="Entidades e relações por domínio, a partir das chaves estrangeiras de produção."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"><link rel="stylesheet" href="../assets/site.css"><link rel="icon" type="image/png" href="../assets/trailup-estrela.png"></head><body class="notranslate"><div class="bg-glow"></div><div class="bg-stars"></div><header class="topbar"><a class="wordmark" href="../index.html"><img src="../assets/trailup-estrela.png" alt="" width="34" height="34">TrailUp<small>documentação</small></a><nav><a href="../documentacao/visao-geral.html">Sistema</a><a href="../documentacao/guardioes.html">Guardiões</a><a href="../documentacao/gamificacao.html">Gamificação</a><a href="../documentacao/arquitetura.html">Modelagem</a><a href="../documentacao/rag.html">RAG</a><a href="../documentacao/artigo-ia-onde-importa.html">Artigos</a><a href="../documentacao/historico.html">Histórico</a><a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">GitHub</a><a class="abrir" href="https://trailup.vercel.app/" target="_blank" rel="noopener">Abrir o TrailUp ↗</a></nav><button class="menu-btn" type="button" aria-label="Abrir menu">menu</button></header><div class="shell"><aside class="side" aria-label="Navegação"><h4>Início</h4><ul><li><a href="../index.html">Página inicial</a></li></ul><h4>Sistema</h4><ul><li><a href="visao-geral.html">Visão geral do sistema</a></li><li><a href="inventario.html">Inventário completo</a></li><li><a href="rotas.html">Rotas dos serviços</a></li><li><a href="guardioes.html">Os sete Guardiões</a></li><li><a href="gamificacao.html">Gamificação e personalização</a></li></ul><h4>Modelagem</h4><ul><li><a href="modelagem.html">Sobre a modelagem</a></li><li><a href="arquitetura.html">Arquitetura</a></li><li><a href="casos-de-uso.html">Casos de uso</a></li><li><a href="pipeline.html">Pipeline de ponta a ponta</a></li><li><a href="ia.html">IA: grafo e análise</a></li><li><a href="dados.html" aria-current="page">Modelo de dados</a></li><li><a href="estados.html">Diagramas de estado</a></li><li><a href="classes.html">Diagramas de classes</a></li></ul><h4>Evidência e RAG</h4><ul><li><a href="rag.html">RAG no sistema</a></li><li><a href="rag-teste.html">Teste com e sem RAG</a></li><li><a href="adr.html">Decisões de arquitetura</a></li></ul><h4>Artigos</h4><ul><li><a href="artigo-ia-onde-importa.html">IA onde importa</a></li><li><a href="artigo-da-tipologia-a-trilha.html">Da tipologia à trilha</a></li></ul><h4>Projeto</h4><ul><li><a href="historico.html">Histórico e números</a></li></ul><h4>Usar o TrailUp</h4><ul><li><a href="https://trailup.vercel.app/" target="_blank" rel="noopener">Site ↗</a></li><li><a href="https://trailup.vercel.app/login" target="_blank" rel="noopener">Console do professor ↗</a></li><li><a href="https://trailup.vercel.app/aluno/login" target="_blank" rel="noopener">TrailUp na web (aluno) ↗</a></li><li><a href="https://play.google.com/apps/test/com.seuprojeto.trailup/20" target="_blank" rel="noopener">App Android ↗</a></li></ul><h4>Relatórios</h4><ul><li><a href="historico.html#relatorios-semanais">Relatórios semanais</a></li></ul></aside><main class="main"><article class="prose"><header class="page-head"><div class="eyebrow"><span class="diamond" style="width:.55rem;height:.55rem"></span>Modelagem</div><h1>Modelo de dados</h1><p class="lede">Entidades e relações por domínio, a partir das chaves estrangeiras de produção.</p><div class="meta"><a class="chip flat" href="https://github.com/Geisbelly/TrailUp/blob/main/docs/tcc/modelagem/05-dados.md" target="_blank" rel="noopener">docs/tcc/modelagem/05-dados.md</a><span class="chip ok">atualizado 05/11/2026</span><span class="chip warn">14 diagramas</span></div></header><p>Os diagramas saem das <strong>chaves estrangeiras reais</strong> de produção (<code>pg_constraint</code>, lidas em 05/11/2026). São 188 tabelas e 27 views em <code>public</code>, agrupadas aqui por domínio, com 679 funções, 291 policies e 147 gatilhos. Cada diagrama mostra as tabelas centrais e as relações entre elas; colunas aparecem só quando definem o papel da tabela. <code>alunos.id</code> e <code>professor.id</code> são o próprio <code>auth.users.id</code>.</p>
+<p>O <a href="#ap%C3%AAndice-todas-as-tabelas-por-dom%C3%ADnio">apêndice</a> lista todas as tabelas. <code>conferir_tabelas.py</code>, nesta pasta, compara essa lista com o banco e aponta o que ficou de fora.</p>
 <h2 id="51-núcleo-acadêmico">5.1 Núcleo acadêmico</h2>
 <figure class="diagrama" id="diagrama-1"><div class="area"><pre class="mermaid">erDiagram
   AUTH_USERS ||--o| ALUNOS : &quot;id&quot;
@@ -18,6 +19,15 @@
   CONTEUDOS ||--o{ ATIVIDADE_CONTEUDOS : conteudo_id
   ATIVIDADES ||--o{ QUESTOES : atividade_id
   QUESTOES ||--o| QUESTAO_GABARITO : questao_id
+  ALUNOS ||--o{ QUESTAO_GABARITO_REVELADO : aluno_id
+  PROFESSOR ||--o{ PROFESSOR_ALUNO : professor_id
+  ALUNOS ||--o{ PROFESSOR_ALUNO : aluno_id
+  CLASSE ||--o| CLASSE_ARCO_NARRATIVO : classe_id
+  CLASSE ||--o{ TRILHA_MODELO : classe_id
+  TRILHA_MODELO ||--o{ TRILHA_ALUNO : trilha_modelo_id
+  ALUNOS ||--o{ TRILHA_ALUNO : aluno_id
+  ALUNOS ||--o{ TRILHA_CHECKPOINT_NAVEGACAO : aluno_id
+  TOPICOS ||--o{ TRILHA_CHECKPOINT_NAVEGACAO : topico_id
 
   CLASSE {
     bigint id PK
@@ -33,7 +43,7 @@
     uuid aluno_id FK
   }
 </pre></div><figcaption><span>Diagrama 1</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
-<p><code>questao_gabarito</code> fica separada de <code>questoes</code> para que o aluno leia a questão sem conseguir ler a resposta.</p>
+<p><code>questao_gabarito</code> fica separada de <code>questoes</code> para que o aluno leia a questão sem conseguir ler a resposta. <code>questao_gabarito_revelado</code> registra o fato de o aluno ter visto o gabarito. <code>classe_aluno_saidas</code> guarda quando o aluno saiu da turma, porque essa data conta o prazo de retenção.</p>
 <h2 id="52-progresso-e-avaliação">5.2 Progresso e avaliação</h2>
 <figure class="diagrama" id="diagrama-2"><div class="area"><pre class="mermaid">erDiagram
   ALUNOS ||--o{ TOPICO_ALUNO : aluno_id
@@ -50,6 +60,13 @@
   ATIVIDADES ||--o{ ATIVIDADE_PRAZO_ALUNO : atividade_id
   ALUNOS ||--o{ ESTUDO_SESSOES : aluno_id
   ALUNOS ||--o{ ALUNO_TOPICO_DOMINIO : aluno_id
+  ALUNOS ||--o{ ESTUDO_INTERVALOS : aluno_id
+  TOPICOS ||--o{ TOPICO_ALUNO_CONCLUSAO : topico_id
+  ALUNOS ||--o{ ATIVIDADE_TEMPO_ALUNO : aluno_id
+  ALUNOS ||--o| ALUNO_CRONOMETRO : aluno_id
+  ALUNOS ||--o{ BAG_ITENS : aluno_id
+  TOPICOS ||--o{ BAG_ITENS : topico_id
+  CONTEUDOS ||--o{ BAG_ITENS : conteudo_id
 
   TOPICO_ALUNO {
     status_atividade status &quot;não iniciado | em andamento | concluido&quot;
@@ -103,8 +120,30 @@
     text media_kind &quot;enriquecimento | capitulo | audio | apresentacao&quot;
   }
 </pre></div><figcaption><span>Diagrama 4</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
-<h2 id="54-telemetria-e-decisões-da-ia">5.4 Telemetria e decisões da IA</h2>
+<h3 id="533-diagnóstico-formato-e-percurso">5.3.3 Diagnóstico, formato e percurso</h3>
 <figure class="diagrama" id="diagrama-5"><div class="area"><pre class="mermaid">erDiagram
+  ALUNOS ||--o{ DIAGNOSTICO_TOPICO : aluno_id
+  TOPICOS ||--o{ DIAGNOSTICO_TOPICO : topico_id
+  CLASSE ||--o{ DIAGNOSTICO_TOPICO : classe_id
+  DIAGNOSTICO_TOPICO ||--o| DIAGNOSTICO_TOPICO_GABARITO : diagnostico_id
+  CONTEUDOS ||--o{ CONTEUDO_DEMANDA_FORMATO : conteudo_id
+  TOPICOS ||--o{ CONTEUDO_DEMANDA_FORMATO : topico_id
+  ALUNOS ||--o{ LOJA_FORMATO_ESCOLHIDO : aluno_id
+  CONTEUDO_PERSONALIZADO ||--o{ PERSONALIZACAO_PERCURSO : personalizacao_id
+  ALUNOS ||--o{ PERSONALIZACAO_PERCURSO : aluno_id
+  ALUNOS ||--o{ CARDS_PERSONALIZADOS : aluno_id
+  CONTEUDOS ||--o{ CARDS_PERSONALIZADOS : conteudo_id
+  ALUNOS ||--o{ ALUNO_PERFIL_MEDIDA : aluno_id
+
+  DIAGNOSTICO_TOPICO {
+    text status &quot;pendente | pronto | respondido | sem_ia | dispensado&quot;
+    jsonb perguntas &quot;sem a resposta&quot;
+    int tentativas
+  }
+</pre></div><figcaption><span>Diagrama 5</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p><code>diagnostico_topico_gabarito</code> não tem policy: só as funções do banco leem a resposta. <code>conteudo_demanda_formato</code> guarda o formato que cada conteúdo pede para ser entendido (visual, escrito, sonoro, prática), classificado pela IA e usado pelo motor de sugestão. <code>loja_formato_escolhido</code> é tabela própria porque <code>conteudo_personalizado</code> é compartilhado por perfil, e a compra é de um aluno.</p>
+<h2 id="54-telemetria-e-decisões-da-ia">5.4 Telemetria e decisões da IA</h2>
+<figure class="diagrama" id="diagrama-6"><div class="area"><pre class="mermaid">erDiagram
   ALUNOS ||--o{ TELEMETRIA_SESSOES : aluno_id
   TELEMETRIA_SESSOES ||--o{ TELEMETRIA_LOTES : sessao_id
   TELEMETRIA_LOTES ||--o{ TELEMETRIA_TIME_METRIC_ENTRIES : lote_id
@@ -113,7 +152,9 @@
   ALUNOS ||--o{ IA_DECISION_LOGS : aluno_id
   ALUNOS ||--o{ INTERVENCOES : aluno_id
   ALUNOS ||--o{ ALUNO_ESTADO_ATENCAO : aluno_id
-  CLASSE ||--o{ ESTUDO_COORTE : classe_id
+  ALUNOS ||--o{ PROFESSOR_INTERVENCOES_PASSO : aluno_id
+  ALUNOS ||--o{ ALTERACAO_ALUNO : aluno_id
+  ALTERACAO_PROFESSOR ||--o{ ALTERACAO_ALUNO : alteracao_id
 
   TELEMETRIA_LOTES {
     jsonb payload &quot;dwell, active, idle do lote (não acumulado)&quot;
@@ -124,36 +165,131 @@
     text scope &quot;topic | content | material | activity (não somar entre si)&quot;
     numeric active_sec
   }
-</pre></div><figcaption><span>Diagrama 5</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 6</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <h2 id="55-gamificação">5.5 Gamificação</h2>
-<figure class="diagrama" id="diagrama-6"><div class="area"><pre class="mermaid">erDiagram
+<h3 id="551-pontuação-ranking-missões-e-conquistas">5.5.1 Pontuação, ranking, missões e conquistas</h3>
+<figure class="diagrama" id="diagrama-7"><div class="area"><pre class="mermaid">erDiagram
   ALUNOS ||--o{ EVENTOS_ALUNO : aluno_id
+  EVENTOS_PONTUACAO ||..o{ EVENTOS_PONTUACAO_CLASSE : &quot;tipo, sobreposição da turma, sem FK&quot;
+  CLASSE ||--o{ EVENTOS_PONTUACAO_CLASSE : classe_id
   CLASSE ||--o{ RANKS : classe_id
   RANK_TIPO ||--o{ RANKS : tipo_id
   RANKS ||--o{ RANK_PODIO_CONGELADO : rank_id
-  CLASSE ||--o{ EVENTOS_CLASSE : classe_id
-  EVENTOS_CLASSE ||--o{ EVENTO_INSCRICOES : evento_id
-  EVENTOS_CLASSE ||--o{ EVENTOS_CLASSE_RESULTADO : evento_id
+  RANKS ||--o{ RANK_POSICAO_ANTERIOR : rank_id
   CLASSE ||--o{ MISSOES : classe_id
   MISSOES ||--o{ MISSAO_ALUNO : missao_id
   MISSOES_IA_PEDIDOS ||--o{ MISSOES : pedido_ia_id
+  MISSOES_IA_PEDIDOS ||--o{ MISSOES_IA_EXECUCOES : pedido_id
+  MISSOES ||--o{ MISSOES_IA_LOG : missao_id
+  TOPICOS ||--o{ MISSOES_IA_PEDIDOS : topico_id
   CONQUISTAS ||--o{ CONQUISTAS_ALUNO : conquista_id
+  CONQUISTAS ||--o{ CONQUISTAS_CRITERIO_LOG : conquista_id
   CONQUISTAS ||--o{ MOLDURAS : conquista_id
   MOLDURAS ||--o{ MOLDURA_ALUNO : moldura_codigo
+  MOLDURAS_ACOES ||--o{ MOLDURA_ACAO_ALUNO : acao
+  ALUNOS ||--o{ MOLDURA_ACAO_ALUNO : aluno_id
+
+  MOLDURAS {
+    text codigo PK &quot;não muda depois de criado&quot;
+    text imagem_url &quot;NULL usa o desenho do pacote&quot;
+    jsonb abertura &quot;onde a foto entra, junto com imagem_url&quot;
+  }
+
+  MISSOES {
+    text origem &quot;professor | ia | sistema&quot;
+    text aprovacao &quot;nao_requer | pendente | aprovada | recusada&quot;
+    text recompensa_tipo &quot;chave de eventos_pontuacao&quot;
+    jsonb criterio &quot;mesmas métricas das conquistas&quot;
+  }
+</pre></div><figcaption><span>Diagrama 7</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p><code>xp_faixa</code> guarda piso e título de cada nível. O nível é a posição pelo piso, então não existe tabela de nível por aluno.</p>
+<h3 id="552-economia-e-loja">5.5.2 Economia e loja</h3>
+<figure class="diagrama" id="diagrama-8"><div class="area"><pre class="mermaid">erDiagram
   ALUNOS ||--o{ MOEDAS_LEDGER : aluno_id
+  ALUNOS ||--o{ ECONOMIA_AUDITORIA : aluno_id
+  CLASSE ||--o{ ECONOMIA_META : classe_id
+  CLASSE ||--o{ ECONOMIA_CONFIG_ESCOPO : classe_id
+  CLASSE ||--o| LOJA_CONFIG_CLASSE : classe_id
+  LOJA_ITENS ||--o{ LOJA_PRECO_CLASSE : item_codigo
+  LOJA_ITENS ||--o{ LOJA_DOTACAO : item_codigo
+  LOJA_ITENS ||--o{ LOJA_LIMITE_USO : item_codigo
   LOJA_ITENS ||--o{ LOJA_COMPRAS : item_codigo
+  ALUNOS ||--o{ LOJA_COMPRAS : aluno_id
   LOJA_COMPRAS ||--o{ LOJA_USO_LOG : compra_id
-  CLASSE ||--o{ GUILDAS : classe_id
-  GUILDAS ||--o{ GUILDA_MEMBROS : guilda_id
-  GUILDAS ||--o{ GUILDA_DESAFIOS : guilda_id
-  GUILDA_DESAFIOS ||--o{ RANQUEADA_ELO_PARTIDA : desafio_id
-  EVENTOS_CLASSE ||--o{ GUILDA_DESAFIOS : evento_id
+  LOJA_COMPRAS ||--o{ LOJA_DICA_LIBERADA : compra_id
+  ATIVIDADES ||--o{ ATIVIDADE_PRAZO_ALUNO : atividade_id
   CLASSE ||--o{ FUNDOS_TURMA : classe_id
   FUNDOS_TURMA ||--o{ FUNDOS_TURMA_CONTRIBUICAO : fundo_id
-</pre></div><figcaption><span>Diagrama 6</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+
+  MOEDAS_LEDGER {
+    int delta &quot;saldo = soma; nunca materializar&quot;
+    text motivo
+    text referencia &quot;impede crédito repetido&quot;
+  }
+  LOJA_COMPRAS {
+    text status &quot;ativa | consumida | estornada&quot;
+    text alvo_tipo &quot;atividade | topico | questao&quot;
+  }
+  FUNDOS_TURMA {
+    text status &quot;aberto | atingido | entregue | cancelado&quot;
+    int meta
+    int arrecadado
+  }
+</pre></div><figcaption><span>Diagrama 8</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>Os cinco itens do catálogo são <code>dica</code>, <code>prazo_extra</code>, <code>segunda_chance</code>, <code>tempo_extra</code> e <code>troca_formato</code>. <code>plataforma_dev</code> diz quem lê a auditoria, e nasce vazia.</p>
+<h3 id="553-guildas-arena-e-eventos">5.5.3 Guildas, arena e eventos</h3>
+<figure class="diagrama" id="diagrama-9"><div class="area"><pre class="mermaid">erDiagram
+  CLASSE ||--o{ GUILDAS : classe_id
+  CLASSE ||--o| GUILDA_CONFIG_TURMA : classe_id
+  GUILDAS ||--o{ GUILDA_MEMBROS : guilda_id
+  GUILDAS ||--o{ GUILDA_CONVITES : guilda_id
+  GUILDAS ||--o{ GUILDA_MENSAGENS : guilda_id
+  GUILDAS ||--o{ GUILDA_EVENTO_SNAPSHOT : guilda_id
+  GUILDAS ||--o{ GUILDA_DESAFIOS : guilda_id
+  GUILDAS ||--o{ GUILDA_DESAFIOS : guilda_rival_id
+  GUILDA_DESAFIOS ||--o{ DESAFIO_PARTICIPANTES : desafio_id
+  GUILDA_DESAFIOS ||--o{ GUILDA_DESAFIO_QUESTOES : desafio_id
+  QUESTOES ||--o{ GUILDA_DESAFIO_QUESTOES : questao_id
+  GUILDA_DESAFIOS ||--o{ GUILDA_DESAFIO_RESPOSTAS : desafio_id
+  GUILDA_DESAFIOS ||--o{ RANQUEADA_ELO_PARTIDA : desafio_id
+  ALUNOS ||--o{ RANQUEADA_ELO : aluno_id
+  CLASSE ||--o{ RANQUEADA_ELO : classe_id
+  CLASSE ||--o{ EVENTOS_CLASSE : classe_id
+  EVENTOS_CLASSE ||--o{ EVENTO_INSCRICOES : evento_id
+  EVENTOS_CLASSE ||--o{ EVENTOS_CLASSE_MISSOES : evento_id
+  ATIVIDADES ||--o{ EVENTOS_CLASSE_MISSOES : atividade_id
+  EVENTOS_CLASSE ||--o{ EVENTOS_CLASSE_RESULTADO : evento_id
+  EVENTOS_CLASSE ||--o{ EVENTOS_CLASSE_RESULTADO_GUILDA : evento_id
+  EVENTOS_CLASSE ||--o{ GUILDA_DESAFIOS : evento_id
+
+  GUILDA_DESAFIOS {
+    text status &quot;aberto | encerrado&quot;
+    text resultado &quot;vitoria | empate | sem_adversario&quot;
+    text consequencia &quot;treino | ranqueada | evento&quot;
+    bigint evento_id &quot;nulo fora de evento&quot;
+  }
+  EVENTOS_CLASSE {
+    text status &quot;rascunho | aberto | encerrado&quot;
+    jsonb pecas
+    boolean abrir_no_inicio
+  }
+</pre></div><figcaption><span>Diagrama 9</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <p><strong>Duelo no evento:</strong> <code>guilda_desafios.evento_id</code> é nulo fora de evento, e um <code>CHECK</code> exige <code>consequencia = 'evento'</code> quando ele existe. Essa consequência não mexe no Elo nem cobra aposta, e fica fora do XP. No evento, o adversário vem dos inscritos de desempenho mais próximo (<code>evento_sugerir_adversarios</code>, que devolve só nomes). No Social, a escolha continua livre.</p>
+<p>As tabelas de arena têm RLS e nenhuma policy: só se chega a elas por função <code>SECURITY DEFINER</code>.</p>
+<h3 id="554-social">5.5.4 Social</h3>
+<figure class="diagrama" id="diagrama-10"><div class="area"><pre class="mermaid">erDiagram
+  ALUNOS ||--o{ SOCIAL_RELACIONAMENTOS : &quot;aluno_a_id, aluno_b_id&quot;
+  ALUNOS ||--o{ SOCIAL_MENSAGENS : &quot;remetente_id, destinatario_id&quot;
+  ALUNOS ||--o{ CHAT_LEITURA : aluno_id
+
+  SOCIAL_RELACIONAMENTOS {
+    text status &quot;pending | accepted | declined | blocked&quot;
+    uuid blocked_by_id &quot;presente só em blocked&quot;
+  }
+</pre></div><figcaption><span>Diagrama 10</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>As mensagens privadas e de guilda são cifradas em repouso (<code>20261022_05</code>).</p>
 <h2 id="56-notificações">5.6 Notificações</h2>
-<figure class="diagrama" id="diagrama-7"><div class="area"><pre class="mermaid">erDiagram
+<figure class="diagrama" id="diagrama-11"><div class="area"><pre class="mermaid">erDiagram
   ALUNOS ||--o{ NOTIFICACOES_IA : &quot;o que a IA sugeriu&quot;
   ALUNOS ||--o{ NOTIFICACOES_PENDENTES : &quot;a fila&quot;
   ALUNOS ||--o{ NOTIFICACOES_AGENDAMENTOS : &quot;a rotina&quot;
@@ -162,17 +298,34 @@
   ALUNOS ||--o{ NOTIFICACOES_PUSH_ENVIOS : aluno_id
   ALUNOS ||--o{ ALUNO_MODO_FOCO : aluno_id
   PROFESSOR ||--o{ PROFESSOR_NOTIFICACOES : professor_id
-</pre></div><figcaption><span>Diagrama 7</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
-<p>As quatro primeiras têm papéis que não se trocam. Só <code>notificacoes_ia</code> recebe escrita da API.</p>
+  ALUNOS ||--o| ALUNOS_NOTIFICACAO_PREFERENCIAS : aluno_id
+  ALUNOS ||--o| ALUNO_NOTIFICACAO_INTENSIDADE : aluno_id
+  ALUNOS ||--o{ ALUNO_NOTIFICACAO_INTENSIDADE_LOG : aluno_id
+  ALUNOS ||--o{ NOTIFICACOES_SILENCIADAS : aluno_id
+  ALUNOS ||--o{ NOTIFICACOES_SILENCIAMENTO_LOG : aluno_id
+  ALUNOS ||--o{ NOTIFICACOES_MATERIAL_PRONTO : aluno_id
+  ALUNOS ||--o{ ALUNO_SESSOES_APP : aluno_id
+  ALUNOS ||--o{ ALUNO_ATIVIDADE_DIARIA : aluno_id
+  NOTIFICACOES_CATEGORIAS ||--o{ NOTIFICACOES_TIPOS : categoria
+</pre></div><figcaption><span>Diagrama 11</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<p>As quatro primeiras têm papéis que não se trocam. Só <code>notificacoes_ia</code> recebe escrita da API. <code>notificacoes_tipos</code> traz os 28 tipos, com categoria e intervalo mínimo, e <code>notificacoes_textos_perfil</code> e <code>notificacoes_modelos_texto</code> escrevem cada aviso no tom do perfil. <code>aluno_notificacao_intensidade</code> é calculada pelo banco, às 06:10.</p>
 <h2 id="57-privacidade-pesquisa-e-rag">5.7 Privacidade, pesquisa e RAG</h2>
-<figure class="diagrama" id="diagrama-8"><div class="area"><pre class="mermaid">erDiagram
+<figure class="diagrama" id="diagrama-12"><div class="area"><pre class="mermaid">erDiagram
   ALUNOS ||--o{ CONSENTIMENTO_TELEMETRIA : &quot;aluno_id (SET NULL)&quot;
   ALUNOS ||--o{ CONSENTIMENTO_PESQUISA : &quot;aluno_id (SET NULL)&quot;
   ALUNOS ||--o{ CONSENTIMENTO_RESPONSAVEL : &quot;aluno_id (SET NULL)&quot;
+  PROFESSOR ||--o{ CONSENTIMENTO_PROFESSOR : &quot;professor_id (SET NULL)&quot;
   ALUNOS ||--o| ALUNO_NASCIMENTO : aluno_id
   ALUNOS ||--o{ SOLICITACOES_EXCLUSAO : aluno_id
   ALUNOS ||--o{ PESQUISA_ARQUIVO : aluno_id
   ALUNOS ||--o{ RETENCAO_AVISOS_INATIVIDADE : aluno_id
+  ALUNOS ||--o{ CONTATO_ENVIOS : aluno_id
+  RETENCAO_POLITICA
+  RETENCAO_EXECUCOES
+  RETENCAO_FILA_EXTERNA
+  PESQUISA_ANONIMIZACAO
+  EXCLUSAO_CONTA_PROFESSOR
+  CONTATO_PUBLICO_ENVIOS
   ALUNOS |o--o{ RAG_OPENAI_FILES : &quot;aluno_id (escopo aluno)&quot;
   RAG_CHUNKS ||--o{ RAG_RELACOES : &quot;origem / destino&quot;
 
@@ -182,13 +335,15 @@
     jsonb attributes &quot;corpus, rd, fontes …&quot;
     text status &quot;in_progress | completed | failed | cancelled&quot;
   }
-</pre></div><figcaption><span>Diagrama 8</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 12</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <ul>
 <li><strong>Consentimentos:</strong> as FKs usam <code>SET NULL</code> de propósito, para que a prova de consentimento sobreviva à exclusão da conta. As demais tabelas do aluno usam <code>CASCADE</code>.</li>
-<li><strong>Exclusões que saem do banco:</strong> apagar uma linha de <code>rag_openai_files</code> ou de uma fonte enfileira em <code>retencao_externa</code> a remoção do arquivo fora do banco, no R2 ou na OpenAI.</li>
+<li><strong>Exclusões que saem do banco:</strong> apagar uma linha de <code>rag_openai_files</code> ou de uma fonte enfileira em <code>retencao_fila_externa</code> a remoção fora do banco: R2, Storage, OpenAI ou usuário do Auth.</li>
+<li><strong>Política:</strong> <code>retencao_politica</code> tem 118 linhas, uma por tabela com dado de pessoa.</li>
+<li><strong><code>consentimento_professor</code> e <code>aluno_nascimento_correcao</code>:</strong> criadas pela <code>20261105_27</code>. A segunda guarda cada correção de data de nascimento feita pela dona e é só de RPC: RLS ligada e sem policy, de propósito.</li>
 </ul>
 <h2 id="58-observabilidade">5.8 Observabilidade</h2>
-<figure class="diagrama" id="diagrama-9"><div class="area"><pre class="mermaid">erDiagram
+<figure class="diagrama" id="diagrama-13"><div class="area"><pre class="mermaid">erDiagram
   MONITOR_ALVO ||--o{ MONITOR_SONDA : alvo_id
   MONITOR_ALVO ||..o{ MONITOR_INCIDENTE : &quot;alvo_id, sem FK&quot;
   MONITOR_ALERTA
@@ -204,11 +359,134 @@
     text assinatura
     integer vezes
   }
-</pre></div><figcaption><span>Diagrama 9</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+</pre></div><figcaption><span>Diagrama 13</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
 <ul>
 <li><strong>De fora (<code>monitor_*</code>):</strong> o <code>pg_cron</code> sonda a API, o console e a web do aluno a cada minuto, 24 horas por dia, aplica o resultado na máquina de estados de <code>monitor_alvo</code> e envia os alertas de <code>monitor_alerta</code> por e-mail. A sonda sem resposta fica com <code>ok</code> nulo, porque quem falhou foi o medidor. O monitor cai junto com o Supabase.</li>
 <li><strong>De dentro (<code>cliente_*</code>):</strong> erro, Web Vitals, falha de chamada e acesso são gravados pelo próprio cliente, direto no Supabase, por RPC. <code>cliente_sessao</code> tem uma linha por sessão e <code>cliente_erro</code> agrega por assinatura, dia, superfície e versão, guardando até 50 ids de sessão para contar pessoas afetadas. Não há stack, URL completa nem texto digitado, e as tabelas não têm policy nem GRANT: a RPC é a única porta.</li>
 <li><strong>Modelo (<code>ia_uso_llm</code>):</strong> registra cada chamada ao modelo de linguagem: prompt, provedor, tokens, cache e tempo. Não tem <code>aluno_id</code> nem texto, e só o <code>service_role</code> lê e escreve.</li>
 <li><strong>Acesso por aluno:</strong> a lista do painel técnico abre com código curto, e mostrar nomes fica registrado em <code>monitor_consulta</code>. Nela não entram emoção, BrainHex nem nota.</li>
 </ul>
-<nav class="nav-paginas"><a href="ia.html"><span class="k">← anterior</span><span class="t">IA: grafo e análise</span></a><a class="prox" href="estados.html"><span class="k">próxima →</span><span class="t">Diagramas de estado</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#51-núcleo-acadêmico">5.1 Núcleo acadêmico</a></li><li><a href="#52-progresso-e-avaliação">5.2 Progresso e avaliação</a></li><li><a href="#53-perfil-e-personalização">5.3 Perfil e personalização</a></li><li><a href="#54-telemetria-e-decisões-da-ia">5.4 Telemetria e decisões da IA</a></li><li><a href="#55-gamificação">5.5 Gamificação</a></li><li><a href="#56-notificações">5.6 Notificações</a></li><li><a href="#57-privacidade-pesquisa-e-rag">5.7 Privacidade, pesquisa e RAG</a></li><li><a href="#58-observabilidade">5.8 Observabilidade</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>bb5542a1</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
+<h2 id="59-estudo-de-efetividade-e-métricas">5.9 Estudo de efetividade e métricas</h2>
+<figure class="diagrama" id="diagrama-14"><div class="area"><pre class="mermaid">erDiagram
+  CLASSE ||--o| ESTUDO_COORTE : classe_id
+  CLASSE |o--o{ MARCO_PRODUTO : &quot;classe_id (nulo = global)&quot;
+  METRICAS_CATALOGO ||..o{ METRICAS_INVARIANTE_RESULTADO : &quot;invariantes I01 a I20, sem FK&quot;
+  METRICAS_INVARIANTE_RESULTADO ||..o{ METRICAS_INVARIANTE_AMOSTRA : &quot;por rodada, sem FK&quot;
+
+  ESTUDO_COORTE {
+    text braco &quot;intervencao | comparacao&quot;
+    date baseline_inicio &quot;travado quando passa&quot;
+    date corte &quot;travado quando passa&quot;
+    date fim
+  }
+</pre></div><figcaption><span>Diagrama 14</span><button class="ampliar" type="button">ampliar</button></figcaption></figure>
+<ul>
+<li><strong>Coorte é a turma</strong>, com data de corte. O material-base é compartilhado por perfil e o ranking compara colegas, então sortear dentro da turma contaminaria a comparação.</li>
+<li><strong><code>metricas_catalogo</code></strong> tem 29 métricas: quem enxerga, de onde vem e de quais invariantes depende.</li>
+<li><strong><code>metricas_invariante_amostra</code></strong> guarda até 20 ids por rodada. Tem id de aluno, então só o <code>service_role</code> lê.</li>
+</ul>
+<h2 id="510-configuração-e-infraestrutura">5.10 Configuração e infraestrutura</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Tabela</th>
+<th>Papel</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app_config</code></td>
+<td>parâmetros, uma linha por chave. <code>publico</code> decide o que o cliente lê; os tetos anti-abuso ficam privados</td>
+</tr>
+<tr>
+<td><code>alembic_version</code></td>
+<td>migração aplicada. O gatilho dela também registra marcos de produto</td>
+</tr>
+<tr>
+<td><code>checkpoints</code>, <code>checkpoint_blobs</code>, <code>checkpoint_writes</code>, <code>checkpoint_migrations</code></td>
+<td>estado persistente do LangGraph</td>
+</tr>
+<tr>
+<td><code>iaDescricao</code>, <code>modoOperacao</code></td>
+<td>tabelas do fluxo adaptativo com nome em camelCase, herdadas da primeira versão</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="apêndice-todas-as-tabelas-por-domínio">Apêndice: todas as tabelas por domínio</h2>
+<div class="tabela"><table>
+<thead>
+<tr>
+<th>Domínio</th>
+<th style="text-align:right">Qtd.</th>
+<th>Tabelas</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Núcleo acadêmico</td>
+<td style="text-align:right">25</td>
+<td><code>aluno_cadastro_concluido</code>, <code>aluno_introducao</code>, <code>aluno_nascimento</code>, <code>alunos</code>, <code>atividade_conteudos</code>, <code>atividades</code>, <code>cards</code>, <code>classe</code>, <code>classe_aluno</code>, <code>classe_aluno_saidas</code>, <code>classe_arco_narrativo</code>, <code>classe_mapa_tema</code>, <code>conteudos</code>, <code>materia</code>, <code>midias</code>, <code>professor</code>, <code>professor_aluno</code>, <code>questao_gabarito</code>, <code>questao_gabarito_revelado</code>, <code>questoes</code>, <code>topico_edges</code>, <code>topicos</code>, <code>trilha_aluno</code>, <code>trilha_checkpoint_navegacao</code>, <code>trilha_modelo</code></td>
+</tr>
+<tr>
+<td>Progresso e avaliação</td>
+<td style="text-align:right">15</td>
+<td><code>aluno_cronometro</code>, <code>aluno_topico_dominio</code>, <code>atividade_aluno</code>, <code>atividade_aprovacao</code>, <code>atividade_prazo_aluno</code>, <code>atividade_tempo_aluno</code>, <code>atividade_tentativa</code>, <code>atividade_tentativas</code>, <code>bag_itens</code>, <code>conteudo_aluno</code>, <code>estudo_intervalos</code>, <code>estudo_sessoes</code>, <code>questao_aluno</code>, <code>topico_aluno</code>, <code>topico_aluno_conclusao</code></td>
+</tr>
+<tr>
+<td>Perfil e personalização</td>
+<td style="text-align:right">23</td>
+<td><code>alteracao_aluno</code>, <code>alteracao_professor</code>, <code>aluno_estado_atencao</code>, <code>aluno_mental_state_history</code>, <code>aluno_perfil</code>, <code>aluno_perfil_medida</code>, <code>boss_falas</code>, <code>cards_personalizados</code>, <code>classe_perfil_summary</code>, <code>conteudo_demanda_formato</code>, <code>conteudo_personalizado</code>, <code>diagnostico_topico</code>, <code>diagnostico_topico_gabarito</code>, <code>fontes_personalizacao</code>, <code>materiais_gerados</code>, <code>perfil</code>, <code>personalizacao_blocos_gerados</code>, <code>personalizacao_item_progresso</code>, <code>personalizacao_job_targets</code>, <code>personalizacao_jobs</code>, <code>personalizacao_percurso</code>, <code>personalizacao_sugestao</code>, <code>personalizacao_sugestao_log</code></td>
+</tr>
+<tr>
+<td>Telemetria e IA</td>
+<td style="text-align:right">12</td>
+<td><code>iaDescricao</code>, <code>ia_decision_logs</code>, <code>ia_uso_llm</code>, <code>intervencoes</code>, <code>modoOperacao</code>, <code>professor_intervencoes_passo</code>, <code>telemetria_agregado_turma_dia</code>, <code>telemetria_analise_fila</code>, <code>telemetria_eventos_app</code>, <code>telemetria_lotes</code>, <code>telemetria_sessoes</code>, <code>telemetria_time_metric_entries</code></td>
+</tr>
+<tr>
+<td>Pontuação, missões e conquistas</td>
+<td style="text-align:right">20</td>
+<td><code>conquistas</code>, <code>conquistas_aluno</code>, <code>conquistas_criterio_log</code>, <code>eventos_aluno</code>, <code>eventos_pontuacao</code>, <code>eventos_pontuacao_classe</code>, <code>missao_aluno</code>, <code>missoes</code>, <code>missoes_ia_execucoes</code>, <code>missoes_ia_log</code>, <code>missoes_ia_pedidos</code>, <code>moldura_acao_aluno</code>, <code>moldura_aluno</code>, <code>molduras</code>, <code>molduras_acoes</code>, <code>rank_podio_congelado</code>, <code>rank_posicao_anterior</code>, <code>rank_tipo</code>, <code>ranks</code>, <code>xp_faixa</code></td>
+</tr>
+<tr>
+<td>Economia e loja</td>
+<td style="text-align:right">16</td>
+<td><code>economia_auditoria</code>, <code>economia_config_escopo</code>, <code>economia_meta</code>, <code>fundos_turma</code>, <code>fundos_turma_contribuicao</code>, <code>loja_compras</code>, <code>loja_config_classe</code>, <code>loja_dica_liberada</code>, <code>loja_dotacao</code>, <code>loja_formato_escolhido</code>, <code>loja_itens</code>, <code>loja_limite_uso</code>, <code>loja_preco_classe</code>, <code>loja_uso_log</code>, <code>moedas_ledger</code>, <code>plataforma_dev</code></td>
+</tr>
+<tr>
+<td>Guildas, arena e eventos</td>
+<td style="text-align:right">17</td>
+<td><code>desafio_participantes</code>, <code>evento_inscricoes</code>, <code>eventos_classe</code>, <code>eventos_classe_missoes</code>, <code>eventos_classe_resultado</code>, <code>eventos_classe_resultado_guilda</code>, <code>guilda_config_turma</code>, <code>guilda_convites</code>, <code>guilda_desafio_questoes</code>, <code>guilda_desafio_respostas</code>, <code>guilda_desafios</code>, <code>guilda_evento_snapshot</code>, <code>guilda_membros</code>, <code>guilda_mensagens</code>, <code>guildas</code>, <code>ranqueada_elo</code>, <code>ranqueada_elo_partida</code></td>
+</tr>
+<tr>
+<td>Social</td>
+<td style="text-align:right">3</td>
+<td><code>chat_leitura</code>, <code>social_mensagens</code>, <code>social_relacionamentos</code></td>
+</tr>
+<tr>
+<td>Notificações</td>
+<td style="text-align:right">21</td>
+<td><code>aluno_atividade_diaria</code>, <code>aluno_modo_foco</code>, <code>aluno_notificacao_intensidade</code>, <code>aluno_notificacao_intensidade_log</code>, <code>aluno_sessoes_app</code>, <code>alunos_notificacao_preferencias</code>, <code>expo_tokens</code>, <code>notificacoes</code>, <code>notificacoes_agendamentos</code>, <code>notificacoes_categorias</code>, <code>notificacoes_config</code>, <code>notificacoes_ia</code>, <code>notificacoes_material_pronto</code>, <code>notificacoes_modelos_texto</code>, <code>notificacoes_pendentes</code>, <code>notificacoes_push_envios</code>, <code>notificacoes_silenciadas</code>, <code>notificacoes_silenciamento_log</code>, <code>notificacoes_textos_perfil</code>, <code>notificacoes_tipos</code>, <code>professor_notificacoes</code></td>
+</tr>
+<tr>
+<td>Privacidade, pesquisa e RAG</td>
+<td style="text-align:right">18</td>
+<td><code>aluno_nascimento_correcao</code>, <code>consentimento_pesquisa</code>, <code>consentimento_professor</code>, <code>consentimento_responsavel</code>, <code>consentimento_telemetria</code>, <code>contato_envios</code>, <code>contato_publico_envios</code>, <code>exclusao_conta_professor</code>, <code>pesquisa_anonimizacao</code>, <code>pesquisa_arquivo</code>, <code>rag_chunks</code>, <code>rag_openai_files</code>, <code>rag_relacoes</code>, <code>retencao_avisos_inatividade</code>, <code>retencao_execucoes</code>, <code>retencao_fila_externa</code>, <code>retencao_politica</code>, <code>solicitacoes_exclusao</code></td>
+</tr>
+<tr>
+<td>Observabilidade</td>
+<td style="text-align:right">7</td>
+<td><code>cliente_erro</code>, <code>cliente_sessao</code>, <code>monitor_alerta</code>, <code>monitor_alvo</code>, <code>monitor_consulta</code>, <code>monitor_incidente</code>, <code>monitor_sonda</code></td>
+</tr>
+<tr>
+<td>Estudo e métricas</td>
+<td style="text-align:right">5</td>
+<td><code>estudo_coorte</code>, <code>marco_produto</code>, <code>metricas_catalogo</code>, <code>metricas_invariante_amostra</code>, <code>metricas_invariante_resultado</code></td>
+</tr>
+<tr>
+<td>Configuração e infraestrutura</td>
+<td style="text-align:right">6</td>
+<td><code>alembic_version</code>, <code>app_config</code>, <code>checkpoint_blobs</code>, <code>checkpoint_migrations</code>, <code>checkpoint_writes</code>, <code>checkpoints</code></td>
+</tr>
+</tbody>
+</table></div>
+<nav class="nav-paginas"><a href="ia.html"><span class="k">← anterior</span><span class="t">IA: grafo e análise</span></a><a class="prox" href="estados.html"><span class="k">próxima →</span><span class="t">Diagramas de estado</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#51-núcleo-acadêmico">5.1 Núcleo acadêmico</a></li><li><a href="#52-progresso-e-avaliação">5.2 Progresso e avaliação</a></li><li><a href="#53-perfil-e-personalização">5.3 Perfil e personalização</a></li><li><a href="#54-telemetria-e-decisões-da-ia">5.4 Telemetria e decisões da IA</a></li><li><a href="#55-gamificação">5.5 Gamificação</a></li><li><a href="#56-notificações">5.6 Notificações</a></li><li><a href="#57-privacidade-pesquisa-e-rag">5.7 Privacidade, pesquisa e RAG</a></li><li><a href="#58-observabilidade">5.8 Observabilidade</a></li><li><a href="#59-estudo-de-efetividade-e-métricas">5.9 Estudo de efetividade e métricas</a></li><li><a href="#510-configuração-e-infraestrutura">5.10 Configuração e infraestrutura</a></li><li><a href="#apêndice-todas-as-tabelas-por-domínio">Apêndice: todas as tabelas por domínio</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>af371249</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
