@@ -710,10 +710,9 @@ limpo e limitado (`app/schemas/entrada_chat.py`). O mentor **corta** em vez de r
 instalado não limita o campo; a Lumi recusa com 422, porque o console já limita.
 
 **Fala da IA só conta assinada** (`app/services/assinatura_chat.py`): a resposta sai com um HMAC preso
-ao usuário e ao chat, com chave derivada do `supabase_jwt_secret`. Fala com assinatura errada sai
-sempre. Sem assinatura, a Lumi descarta; o mentor manda ao modelo como `verificada: false` até ligar
-`MENTOR_EXIGIR_FALA_ASSINADA`, porque o app instalado não assina. Ligue depois da versão mínima do app:
-`personalizacao.chat.falas_sem_assinatura` no log diz quando sumiu.
+ao usuário e ao chat, com chave derivada do `supabase_jwt_secret`. Fala da IA sem assinatura válida
+fica de fora nos dois chats. App que ainda não assina continua sendo respondido, só sem as falas
+anteriores do Guardião; `personalizacao.chat.falas_sem_assinatura` no log mostra quantos são.
 
 > **O cliente devolve o texto intacto.** O mobile ajusta o tom do `reply` para mostrar
 > (`normalizeMentorReplyTone`), então guarda o original em `falaAssinada`
@@ -721,7 +720,8 @@ sempre. Sem assinatura, a Lumi descarta; o mentor manda ao modelo como `verifica
 > silêncio: a fala só some do contexto.
 
 **Latência:** repetir só vale quando o modelo respondeu mal (schema, guardrail, resposta cortada).
-`ProvedorIndisponivelError` e recusa vão direto ao fallback. `chat_prazo_total_seconds` limita a
+`ProvedorIndisponivelError` e recusa vão direto ao fallback, e o juiz de grounding fora do ar também:
+resposta que ninguém conferiu não chega ao aluno (`GuardrailViolation.definitiva`). `chat_prazo_total_seconds` limita a
 resposta inteira, juiz e rodízio de chaves inclusive: um 503 percorre 4 chaves × 6 modelos, e sem o
 teto o console desistia aos 75 s.
 

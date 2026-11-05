@@ -247,7 +247,7 @@ def test_checar_grounding_chat_aceita_resposta_que_guia_sem_entregar() -> None:
     assert violacao is None
 
 
-def test_checar_grounding_chat_falha_aberta_quando_juiz_indisponivel() -> None:
+def test_checar_grounding_chat_falha_fechada_quando_juiz_indisponivel() -> None:
     resposta = MentorChatLLMResult(reply="qualquer coisa", should_close=False, hinted_actions=[])
 
     class _JuizQuebrado:
@@ -258,7 +258,9 @@ def test_checar_grounding_chat_falha_aberta_quando_juiz_indisponivel() -> None:
         checar_grounding_chat(resposta, {"llm": _JuizQuebrado(), "conteudo_materia": {}})
     )
 
-    assert violacao is None
+    assert violacao is not None
+    assert violacao.regra == "grounding_indisponivel"
+    assert violacao.definitiva is True
 
 
 def test_checar_evidencia_dominio_usa_dominio_persistido_do_topico() -> None:

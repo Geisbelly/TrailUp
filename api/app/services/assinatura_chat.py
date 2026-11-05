@@ -37,13 +37,11 @@ def confere(assinatura: str | None, texto: str, *, segredo: str, usuario_id: Any
     return hmac.compare_digest(assinatura.encode(), esperada.encode())
 
 
-def historico_do_mentor(
-    falas: list[Any], *, segredo: str, usuario_id: Any, exigir_assinatura: bool
-) -> tuple[list[dict[str, Any]], int]:
+def historico_do_mentor(falas: list[Any], *, segredo: str, usuario_id: Any) -> tuple[list[dict[str, Any]], int]:
     """O que vai ao modelo, e quantas falas vieram sem assinatura.
 
-    Fala com assinatura errada sai sempre. Sem assinatura, depende de `exigir_assinatura`: o app
-    instalado ainda não assina, então até a versão mínima ela segue marcada como não verificada.
+    Fala da IA sem assinatura válida fica de fora, como na Lumi. App que ainda não assina perde o que
+    o Guardião disse antes na conversa, mas continua sendo respondido: as falas do aluno seguem.
     """
     saida: list[dict[str, Any]] = []
     sem_assinatura = 0
@@ -53,8 +51,6 @@ def historico_do_mentor(
             continue
         if fala.assinatura is None:
             sem_assinatura += 1
-            if not exigir_assinatura:
-                saida.append({"role": fala.role, "content": fala.content, "verificada": False})
             continue
         if confere(fala.assinatura, fala.content, segredo=segredo, usuario_id=usuario_id, canal="mentor"):
             saida.append({"role": fala.role, "content": fala.content})
