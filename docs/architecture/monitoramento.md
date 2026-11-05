@@ -29,7 +29,7 @@ O microservice não é sondado: não tem URL pública conhecida. Para sondar out
 
 ## O que os clientes relatam
 
-As sondas veem o site de fora. Tela branca, rede da escola, build antigo e RLS recusando só aparecem de dentro. A gravação é própria, no Supabase, sem passar pela API (`20261105_13`):
+As sondas veem o site de fora. Tela branca, rede da escola, build antigo e RLS recusando só aparecem de dentro. A gravação é própria, no Supabase, sem passar pela API (`20261105_14`):
 
 - `cliente_sessao`: uma linha por sessão, com contadores acumulados. Reenviar não conta duas vezes.
 - `cliente_erro`: uma linha por assinatura, dia, superfície e versão, com até 50 sessões para contar pessoas afetadas.

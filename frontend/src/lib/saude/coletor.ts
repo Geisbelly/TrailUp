@@ -4,7 +4,7 @@
 //
 // Grava no aparelho antes de enviar: a falha some justamente quando a rede cai. Só contadores e erros
 // agregados saem daqui, nunca texto digitado, stack ou URL com id. Destino e fim no banco:
-// `cliente_saude_registrar` (migration 20261105_13).
+// `cliente_saude_registrar` (migration 20261105_14).
 
 export type Superficie = "console" | "web_aluno" | "app";
 export type TipoDeErro = "erro" | "promessa" | "tela" | "fatal";
