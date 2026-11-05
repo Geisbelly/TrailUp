@@ -15,7 +15,10 @@ export type FirstAccessTourRoute =
   | "/(tabs)/perfil/settings"
   | "/(tabs)/perfil/metricas-estilo"
   | "/(tabs)/perfil/coleta-dados"
-  | "/(tabs)/perfil/relatorio";
+  | "/(tabs)/perfil/relatorio"
+  | "/(tabs)/perfil/modo-foco"
+  | "/(tabs)/perfil/lembrete-diario"
+  | "/(tabs)/social";
 
 export type FirstAccessTourStep = {
   id: string;
@@ -226,6 +229,21 @@ export function ouvirPedidoDeTutorial(ouvinte: () => void) {
   ouvintesTutorialAgora.add(ouvinte);
   return () => {
     ouvintesTutorialAgora.delete(ouvinte);
+  };
+}
+
+// Tutorial prático pedido pelo Guardião: usa o mesmo balão e o mesmo destaque, sem mexer no
+// tutorial de entrada (não salva etapa nem marca nada como concluído).
+const ouvintesTutorialDoGuia = new Set<(passos: readonly FirstAccessTourStep[]) => void>();
+
+export function pedirTutorialDoGuia(passos: readonly FirstAccessTourStep[]) {
+  ouvintesTutorialDoGuia.forEach((ouvinte) => ouvinte(passos));
+}
+
+export function ouvirTutorialDoGuia(ouvinte: (passos: readonly FirstAccessTourStep[]) => void) {
+  ouvintesTutorialDoGuia.add(ouvinte);
+  return () => {
+    ouvintesTutorialDoGuia.delete(ouvinte);
   };
 }
 

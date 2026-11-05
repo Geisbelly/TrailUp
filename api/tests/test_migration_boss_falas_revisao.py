@@ -61,7 +61,8 @@ def test_a_data_da_desativacao_e_do_gatilho() -> None:
 def test_a_api_religa_quando_escreve_texto_novo() -> None:
     fonte = inspect.getsource(boss_falas._gravar)
     assert "ON CONFLICT (conteudo_id, perfil) DO UPDATE SET" in fonte
-    assert "ativa = true" in fonte
+    # Texto igual ao que estava é texto lido: a cópia de outra turma não religa o que foi desligado.
+    assert "ativa = public.boss_falas.ativa OR public.boss_falas.falas IS DISTINCT FROM EXCLUDED.falas" in fonte
 
 
 def test_o_downgrade_devolve_a_policy_antiga() -> None:

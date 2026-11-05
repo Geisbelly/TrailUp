@@ -286,6 +286,28 @@ Cada perfil carrega:
     da turma inteira, com a mesma coalescência e o mesmo portão de geração manual do editor.
   - Cards não recebem o arco: são reaproveitados entre perfis e gerações, e ficariam com
     histórias diferentes lado a lado.
+  > **Conteúdo idêntico se vincula, não gera** (`20261104_08`, spec
+  > `2026-11-04-reuso-de-personalizacao-design.md`). Antes da expansão, o worker
+  > compara `impressao_conteudo` (`reuso_personalizacao.py`): SHA-256 do que entra
+  > na geração, **sem nenhum id, URL ou caminho**, com o hash dos bytes de cada
+  > arquivo. `source_hash` não serve para isso porque inclui os ids. Nome,
+  > descrição e objetivo do tópico ficam de fora por decisão: só o conteúdo importa.
+  > Bateu, `trailup_vincular_personalizacao` cria a linha da turma citando os
+  > **mesmos arquivos** da origem, sem modelo, microservice nem TTS.
+  >
+  > **A linha da turma é o vínculo**: uma linha por turma, de propósito. RLS,
+  > gateway, retenção, trava do estudo, progresso e telemetria continuam por linha
+  > da turma, e o app instalado funciona sem mudança. Um caminho
+  > `brainhex/<perfil>/classe-N/...` **não prova mais** que o material é da turma N.
+  >
+  > Editar desvincula só a linha editada: o gatilho `trg_conteudo_personalizado_reuso`
+  > zera as duas colunas quando `source_hash` muda. O material da outra turma não
+  > muda, e o arquivo fica enquanto alguém o citar (`_ainda_usado`). O gatilho também
+  > impede a forja: cliente não muda essas colunas, e mudar `materiais` por ele marca
+  > `editado`. Sem isso, com o reuso entre professores, uma linha adulterada serviria
+  > material a outra turma. Refinar à mão (`regenerar/documento`, `regenerar/slide`)
+  > marca `editado` também: não serve de origem.
+
 - `cards_personalizados`, `atividades_personalizadas`, `questoes_personalizadas` — artefatos desnormalizados (com `ativo`/`obsoleto_em`).
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.
 - `personalizacao_jobs` + `personalizacao_job_targets` — fila assíncrona
@@ -437,6 +459,15 @@ Cada perfil carrega:
   gerado entra no inimigo, mas o `enemy.id` **não muda** — ele está na chave do estado salvo
   da batalha, e trocá-lo zeraria o boss do aluno. Versão própria (`BOSS_FALAS_VERSION`): subir
   `_PERSONALIZACAO_PIPELINE_VERSION` por causa de fala regeraria a mídia de todas as turmas.
+
+  **Conteúdo idêntico copia, não chama o modelo** (`_copiar_falas_iguais`, e
+  `_copiar_demandas_iguais` em `conteudo_demanda_formato`). `source_hash` inclui `conteudo_id` e
+  nunca bate entre turmas; quem compara é a `impressao_conteudo`. A impressão da turma nova é
+  **calculada na hora** (`_leitor_de_impressoes`), não lida da coluna: as duas fases rodam antes dos
+  targets do poll, quando a turma nova ainda não tem linha. Só serve de origem o que o modelo geraria
+  igual hoje: versão atual, hash recalculado batendo e o mesmo texto (a impressão gravada anda atrás
+  do conteúdo). Fala desligada pelo professor, análise do professor e regra fixa não servem. Falha no
+  reuso segue para o modelo. Efeito aceito, o mesmo do material: a fala pode citar o tópico de origem.
   **Nome próprio por perfil é garantido na gravação**, não no prompt: os perfis de um tópico são
   gerados um depois do outro (cada um recebe `nomes_em_uso`), e `nome_unico` relê os nomes sob
   `pg_advisory_xact_lock` do tópico e acrescenta o epíteto do perfil a nome igual ou que só troca o

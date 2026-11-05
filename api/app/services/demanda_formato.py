@@ -24,6 +24,10 @@ Duas fontes, marcadas em ``origem``:
 
 Análise do professor (``origem = 'professor'``) nunca é sobrescrita. É base por conteúdo: nada do
 aluno entra no prompt nem na linha.
+
+**Conteúdo idêntico copia, não chama o modelo** (``_copiar_demandas_iguais``), pelo mesmo critério das
+falas do boss: mesma ``impressao_conteudo`` (#955), versão atual e hash da origem batendo. Só análise
+do modelo serve de origem: a do professor é decisão daquela turma, e a regra fixa não custa nada.
 """
 
 from __future__ import annotations
@@ -43,6 +47,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings import Settings
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.services.llm import JsonLLMService
+from app.services.reuso_personalizacao import LeitorDeImpressoes, normalizar_texto, texto_comparavel
 from app.services.sugestao_material import FORMATOS_POR_DIMENSAO, NIVEIS_DEMANDA
 
 logger = logging.getLogger(__name__)
@@ -80,7 +85,7 @@ class DemandaDoTopico(BaseModel):
 
 @dataclass
 class ResultadoDemanda:
-    status: str  # "atual" | "gerado" | "parcial" | "heuristica" | "sem_conteudo" | "sem_tabela"
+    status: str  # "atual" | "gerado" | "reaproveitado" | "parcial" | "heuristica" | "sem_conteudo" | "sem_tabela"
     gravados: int = 0
     erro: str | None = None
 
@@ -196,6 +201,17 @@ def hash_do_topico(*, topico: dict[str, Any], conteudos: list[dict[str, Any]]) -
     }
     bruto = json.dumps(material, ensure_ascii=False, sort_keys=True, default=str)
     return hashlib.sha256(bruto.encode("utf-8")).hexdigest()
+
+
+def _chave_do_prompt(conteudo: dict[str, Any]) -> list[Any]:
+    """O que o modelo leu deste conteúdo, sem caminho de arquivo: mesmo arquivo, dois caminhos."""
+    fontes = [normalizar_texto(t) for t in conteudo.get("textos_fonte") or [] if t]
+    return [
+        normalizar_texto(conteudo.get("titulo")),
+        normalizar_texto(conteudo.get("tipo")),
+        "\n".join([texto_comparavel(conteudo), *fontes])[:TRECHO_MAX],
+        _arquivos(conteudo),
+    ]
 
 
 def montar_payload(*, topico: dict[str, Any], conteudos: list[dict[str, Any]]) -> dict[str, Any]:
@@ -316,6 +332,80 @@ async def _gravadas(session: AsyncSession, *, topico_id: int) -> dict[int, dict[
     return {int(row.conteudo_id): {"origem": row.origem, "source_hash": row.source_hash} for row in result}
 
 
+async def _demandas_com_a_mesma_impressao(
+    session: AsyncSession,
+    *,
+    impressoes: list[str],
+    conteudo_ids: list[int],
+) -> dict[str, list[dict[str, Any]]]:
+    """Análises do modelo na versão atual em outros conteúdos com estas impressões, as mais novas antes."""
+    result = await session.execute(
+        text(
+            """
+            SELECT DISTINCT cp.impressao_conteudo AS impressao, d.id, d.topico_id, d.conteudo_id,
+                   d.demanda, d.source_hash, d.gerado_em
+              FROM public.conteudo_personalizado cp
+              JOIN public.conteudo_demanda_formato d ON d.conteudo_id = cp.conteudo_id
+             WHERE cp.aluno_id IS NULL
+               AND cp.impressao_conteudo = ANY(CAST(:impressoes AS text[]))
+               AND d.origem = 'modelo'
+               AND d.versao = :versao
+               AND d.conteudo_id <> ALL(CAST(:conteudo_ids AS bigint[]))
+             ORDER BY d.gerado_em DESC, d.id DESC
+             LIMIT 50
+            """
+        ),
+        {"impressoes": impressoes, "versao": DEMANDA_FORMATO_VERSION, "conteudo_ids": conteudo_ids},
+    )
+    linhas: dict[str, list[dict[str, Any]]] = {}
+    for row in result.mappings():
+        linhas.setdefault(str(row["impressao"]), []).append(dict(row))
+    return linhas
+
+
+async def _conteudos_com_fontes(session: AsyncSession, topico_id: int) -> list[dict[str, Any]]:
+    conteudos = await ConteudoClasseRepository(session).buscar_conteudos_topico(topico_id)
+    textos = await _textos_das_fontes(session, [int(c["id"]) for c in conteudos])
+    return [{**c, "textos_fonte": textos.get(int(c["id"]), [])} for c in conteudos]
+
+
+async def _demandas_que_servem(
+    session: AsyncSession,
+    *,
+    pendentes: list[dict[str, Any]],
+    impressoes: dict[int, str],
+) -> dict[int, dict[str, Any]]:
+    """Análise pronta para cada conteúdo pendente com origem válida.
+
+    A impressão gravada anda atrás do conteúdo, por isso a origem também precisa ter sido analisada
+    do conteúdo atual dela e dizer o mesmo que este (ver `boss_falas._falas_que_servem`).
+    """
+    candidatas = await _demandas_com_a_mesma_impressao(
+        session,
+        impressoes=sorted(set(impressoes.values())),
+        conteudo_ids=[int(c["id"]) for c in pendentes],
+    )
+    topicos: dict[int, tuple[dict[str, Any] | None, list[dict[str, Any]]]] = {}
+    copias: dict[int, dict[str, Any]] = {}
+    for conteudo in pendentes:
+        for linha in candidatas.get(impressoes.get(int(conteudo["id"]), ""), []):
+            topico_id = int(linha["topico_id"])
+            if topico_id not in topicos:
+                topicos[topico_id] = (await _topico(session, topico_id), await _conteudos_com_fontes(session, topico_id))
+            topico_origem, conteudos_origem = topicos[topico_id]
+            origem = next((c for c in conteudos_origem if int(c["id"]) == int(linha["conteudo_id"])), None)
+            if (
+                topico_origem is not None
+                and origem is not None
+                and _chave_do_prompt(origem) == _chave_do_prompt(conteudo)
+                and hash_do_topico(topico=topico_origem, conteudos=conteudos_origem) == linha["source_hash"]
+            ):
+                demanda = linha["demanda"]
+                copias[int(conteudo["id"])] = json.loads(demanda) if isinstance(demanda, str) else demanda
+                break
+    return copias
+
+
 async def ler_do_topico(session: AsyncSession, topico_id: int) -> dict[str, Any] | None:
     """Agregado do tópico para o motor, ou None sem análise (ou sem a tabela ainda)."""
     if not await tabela_existe(session):
@@ -376,12 +466,54 @@ async def _gravar(
 # ---------------------------------------------------------------- orquestração
 
 
+async def _copiar_demandas_iguais(
+    session: AsyncSession,
+    *,
+    topico: dict[str, Any],
+    pendentes: list[dict[str, Any]],
+    source_hash: str,
+    ler_impressoes: LeitorDeImpressoes,
+) -> set[int]:
+    """Copia a análise de conteúdos idênticos e devolve quais conteúdos ficaram resolvidos.
+
+    A linha copiada leva o `source_hash` deste tópico, senão pareceria desatualizada e iria ao
+    modelo no próximo poll. Qualquer falha aqui só devolve vazio: o conteúdo segue para o modelo.
+    """
+    topico_id = int(topico["id"])
+    try:
+        # Montar o contexto pode baixar arquivo: a leitura não fica aberta enquanto isso.
+        await session.rollback()
+        impressoes = await ler_impressoes([int(c["id"]) for c in pendentes])
+        copias = await _demandas_que_servem(session, pendentes=pendentes, impressoes=impressoes) if impressoes else {}
+        if not copias:
+            await session.rollback()
+            return set()
+        for conteudo_id, demanda in copias.items():
+            await _gravar(
+                session,
+                classe_id=int(topico["classe_id"]),
+                topico_id=topico_id,
+                conteudo_id=conteudo_id,
+                demanda=demanda,
+                origem="modelo",
+                source_hash=source_hash,
+            )
+        await session.commit()
+    except Exception as exc:
+        await session.rollback()
+        logger.warning("Demanda de formato nao reaproveitada: topico=%s erro=%s", topico_id, str(exc)[:300])
+        return set()
+    logger.info("Demanda de formato reaproveitada sem modelo: topico=%s conteudos=%s", topico_id, sorted(copias))
+    return set(copias)
+
+
 async def analisar_demanda_do_topico(
     *,
     session: AsyncSession,
     settings: Settings,
     topico_id: int,
     llm: JsonLLMService | None = None,
+    ler_impressoes: LeitorDeImpressoes | None = None,
 ) -> ResultadoDemanda:
     if not await tabela_existe(session):
         # Código no ar antes da migração: nada a fazer, sem barulho.
@@ -408,7 +540,20 @@ async def analisar_demanda_do_topico(
         await session.rollback()
         return ResultadoDemanda(status="atual")
 
-    payload = montar_payload(topico=topico, conteudos=conteudos)
+    copiados: set[int] = set()
+    if ler_impressoes is not None:
+        copiados = await _copiar_demandas_iguais(
+            session,
+            topico=topico,
+            pendentes=pendentes,
+            source_hash=source_hash,
+            ler_impressoes=ler_impressoes,
+        )
+        pendentes = [c for c in pendentes if int(c["id"]) not in copiados]
+        if not pendentes:
+            return ResultadoDemanda(status="reaproveitado", gravados=len(copiados))
+
+    payload = montar_payload(topico=topico, conteudos=[c for c in conteudos if int(c["id"]) not in copiados])
     # Encerra a leitura antes da chamada externa: não segura transação aberta durante a LLM.
     await session.rollback()
 
@@ -429,7 +574,7 @@ async def analisar_demanda_do_topico(
         erro = str(exc)[:300]
         logger.warning("Demanda de formato sem modelo: topico=%s erro=%s", topico_id, erro)
 
-    gravados = 0
+    gravados = len(copiados)
     for conteudo in pendentes:
         conteudo_id = int(conteudo["id"])
         if conteudo_id in validas:

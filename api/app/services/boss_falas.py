@@ -23,6 +23,12 @@ Duas garantias que o prompt sozinho não dava (01/11: Conqueror e Daredevil rece
   progressão e fechamento amarrados a momentos da batalha, o ritmo virado em tamanho de frase e
   a direção do nome. Antes iam só tom, ritmo e marcadores, e as falas dos três perfis saíam
   trocáveis entre si.
+
+**Conteúdo idêntico copia, não chama o modelo** (`_copiar_falas_iguais`). `source_hash` inclui o
+`conteudo_id`, então ele nunca bate entre turmas; quem compara é a `impressao_conteudo` (#955). O
+nome e a descrição do tópico ficam fora, a mesma decisão do reuso de material. Só serve de origem
+a linha que o modelo geraria igual hoje: versão atual, hash recalculado batendo e fala ligada. A
+fala que um professor desligou não chega a outra turma.
 """
 
 from __future__ import annotations
@@ -44,6 +50,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings import Settings
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.services.llm import JsonLLMService
+from app.services.reuso_personalizacao import LeitorDeImpressoes, normalizar_texto, texto_comparavel
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +157,8 @@ class FalasDoTopico(BaseModel):
 
 @dataclass
 class ResultadoFalas:
-    status: str  # "atual" | "gerado" | "parcial" | "failed" | "sem_conteudo" | "sem_tabela" | "sem_batalha"
+    # "atual" | "gerado" | "reaproveitado" | "parcial" | "failed" | "sem_conteudo" | "sem_tabela" | "sem_batalha"
+    status: str
     gravados: int = 0
     erro: str | None = None
 
@@ -281,6 +289,11 @@ def hash_do_topico(*, perfil: str, topico: dict[str, Any], conteudos: list[dict[
     return hashlib.sha256(bruto.encode("utf-8")).hexdigest()
 
 
+def _chave_do_prompt(conteudo: dict[str, Any]) -> list[str]:
+    """O que o modelo leu deste conteúdo, sem caminho de arquivo: mesmo arquivo, dois caminhos."""
+    return [normalizar_texto(conteudo.get("titulo")), texto_comparavel(conteudo)[:TRECHO_MAX]]
+
+
 def montar_payload(
     *,
     perfil: str,
@@ -345,6 +358,97 @@ async def _nomes_de_outros_perfis(session: AsyncSession, *, topico_id: int, perf
     return nomes
 
 
+async def _nomes_do_topico(session: AsyncSession, *, topico_id: int) -> list[tuple[int, str, str]]:
+    result = await session.execute(
+        text("SELECT conteudo_id, perfil, nome FROM public.boss_falas WHERE topico_id = :topico_id"),
+        {"topico_id": topico_id},
+    )
+    return [(int(row.conteudo_id), str(row.perfil), str(row.nome)) for row in result]
+
+
+async def _falas_com_a_mesma_impressao(
+    session: AsyncSession,
+    *,
+    impressoes: list[str],
+    perfil: str,
+    conteudo_ids: list[int],
+) -> dict[str, list[dict[str, Any]]]:
+    """Falas ligadas da versão atual em outros conteúdos com estas impressões, as mais novas antes.
+
+    A impressão vive em `conteudo_personalizado` e é neutra de perfil: basta uma linha de base do
+    conteúdo, de qualquer perfil, para ligar a impressão às falas dele.
+    """
+    result = await session.execute(
+        text(
+            """
+            SELECT DISTINCT cp.impressao_conteudo AS impressao, b.id, b.topico_id, b.conteudo_id,
+                   b.nome, b.falas, b.source_hash, b.gerado_em
+              FROM public.conteudo_personalizado cp
+              JOIN public.boss_falas b ON b.conteudo_id = cp.conteudo_id
+             WHERE cp.aluno_id IS NULL
+               AND cp.impressao_conteudo = ANY(CAST(:impressoes AS text[]))
+               AND b.perfil = :perfil
+               AND b.versao = :versao
+               AND b.ativa
+               AND b.conteudo_id <> ALL(CAST(:conteudo_ids AS bigint[]))
+             ORDER BY b.gerado_em DESC, b.id DESC
+             LIMIT 50
+            """
+        ),
+        {"impressoes": impressoes, "perfil": perfil, "versao": BOSS_FALAS_VERSION, "conteudo_ids": conteudo_ids},
+    )
+    linhas: dict[str, list[dict[str, Any]]] = {}
+    for row in result.mappings():
+        linhas.setdefault(str(row["impressao"]), []).append(dict(row))
+    return linhas
+
+
+async def _falas_que_servem(
+    session: AsyncSession,
+    *,
+    perfil: str,
+    pendentes: list[dict[str, Any]],
+    impressoes: dict[int, str],
+) -> dict[int, dict[str, Any]]:
+    """Falas prontas para cada conteúdo pendente que tem origem válida.
+
+    A impressão gravada anda atrás do conteúdo: as falas regeram antes de o target da mídia passar.
+    Por isso a origem também precisa ter sido gerada do conteúdo atual dela (o hash recalculado
+    pega a assinatura do perfil mudada) e dizer o mesmo que este conteúdo.
+    """
+    candidatas = await _falas_com_a_mesma_impressao(
+        session,
+        impressoes=sorted(set(impressoes.values())),
+        perfil=perfil,
+        conteudo_ids=[int(c["id"]) for c in pendentes],
+    )
+    topicos: dict[int, tuple[dict[str, Any] | None, list[dict[str, Any]]]] = {}
+    copias: dict[int, dict[str, Any]] = {}
+    for conteudo in pendentes:
+        for linha in candidatas.get(impressoes.get(int(conteudo["id"]), ""), []):
+            topico_id = int(linha["topico_id"])
+            if topico_id not in topicos:
+                topicos[topico_id] = (
+                    await _topico(session, topico_id),
+                    await ConteudoClasseRepository(session).buscar_conteudos_topico(topico_id),
+                )
+            topico_origem, conteudos_origem = topicos[topico_id]
+            origem = next((c for c in conteudos_origem if int(c["id"]) == int(linha["conteudo_id"])), None)
+            if (
+                topico_origem is not None
+                and origem is not None
+                and _chave_do_prompt(origem) == _chave_do_prompt(conteudo)
+                and hash_do_topico(perfil=perfil, topico=topico_origem, conteudos=conteudos_origem) == linha["source_hash"]
+            ):
+                falas = linha["falas"]
+                copias[int(conteudo["id"])] = {
+                    "nome": str(linha["nome"]),
+                    "falas": json.loads(falas) if isinstance(falas, str) else falas,
+                }
+                break
+    return copias
+
+
 def _chave_da_trava(topico_id: int) -> int:
     digest = hashlib.sha256(f"boss_falas:{topico_id}".encode()).digest()
     return int.from_bytes(digest[:8], "big", signed=True)
@@ -386,7 +490,8 @@ async def _gravar(
               gerado_em = now(),
               -- Texto novo é texto que ninguém leu: religa o que o professor tinha desligado
               -- (20261102_17). Sem mudança de conteúdo o modelo nem é chamado, e a decisão vale.
-              ativa = true
+              -- A cópia de outra turma pode trazer o mesmo texto: aí ele já foi lido e desligado.
+              ativa = public.boss_falas.ativa OR public.boss_falas.falas IS DISTINCT FROM EXCLUDED.falas
             """
         ),
         {
@@ -402,6 +507,55 @@ async def _gravar(
     )
 
 
+async def _copiar_falas_iguais(
+    session: AsyncSession,
+    *,
+    topico: dict[str, Any],
+    perfil: str,
+    pendentes: list[dict[str, Any]],
+    source_hash: str,
+    ler_impressoes: LeitorDeImpressoes,
+) -> set[int]:
+    """Copia as falas de conteúdos idênticos e devolve quais conteúdos ficaram resolvidos.
+
+    A linha copiada leva o `source_hash` deste tópico, senão pareceria desatualizada e iria ao
+    modelo no próximo poll. Qualquer falha aqui só devolve vazio: o conteúdo segue para o modelo.
+    """
+    topico_id = int(topico["id"])
+    try:
+        # Montar o contexto pode baixar arquivo: a leitura não fica aberta enquanto isso.
+        await session.rollback()
+        impressoes = await ler_impressoes([int(c["id"]) for c in pendentes])
+        copias = await _falas_que_servem(session, perfil=perfil, pendentes=pendentes, impressoes=impressoes) if impressoes else {}
+        if not copias:
+            await session.rollback()
+            return set()
+
+        await _travar_topico(session, topico_id)
+        nomes = await _nomes_do_topico(session, topico_id=topico_id)
+        for conteudo_id, copia in copias.items():
+            outros = [item for item in nomes if item[:2] != (conteudo_id, perfil)]
+            nome = nome_unico(copia["nome"], perfil, [item[2] for item in outros])
+            await _gravar(
+                session,
+                classe_id=int(topico["classe_id"]),
+                topico_id=topico_id,
+                conteudo_id=conteudo_id,
+                perfil=perfil,
+                nome=nome,
+                falas=copia["falas"],
+                source_hash=source_hash,
+            )
+            nomes = [*outros, (conteudo_id, perfil, nome)]
+        await session.commit()
+    except Exception as exc:
+        await session.rollback()
+        logger.warning("Falas do boss nao reaproveitadas: topico=%s perfil=%s erro=%s", topico_id, perfil, str(exc)[:300])
+        return set()
+    logger.info("Falas do boss reaproveitadas sem modelo: topico=%s perfil=%s conteudos=%s", topico_id, perfil, sorted(copias))
+    return set(copias)
+
+
 async def gerar_falas_do_topico(
     *,
     session: AsyncSession,
@@ -409,6 +563,7 @@ async def gerar_falas_do_topico(
     topico_id: int,
     perfil: str,
     llm: JsonLLMService | None = None,
+    ler_impressoes: LeitorDeImpressoes | None = None,
 ) -> ResultadoFalas:
     if perfil not in PERFIS:
         return ResultadoFalas(status="failed", erro=f"perfil desconhecido: {perfil}")
@@ -426,12 +581,27 @@ async def gerar_falas_do_topico(
 
     source_hash = hash_do_topico(perfil=perfil, topico=topico, conteudos=conteudos)
     gravados = await _hashes_gravados(session, topico_id=topico_id, perfil=perfil)
-    if all(gravados.get(int(c["id"])) == source_hash for c in conteudos):
+    pendentes = [c for c in conteudos if gravados.get(int(c["id"])) != source_hash]
+    if not pendentes:
         await session.rollback()
         return ResultadoFalas(status="atual")
 
+    copiados: set[int] = set()
+    if ler_impressoes is not None:
+        copiados = await _copiar_falas_iguais(
+            session,
+            topico=topico,
+            perfil=perfil,
+            pendentes=pendentes,
+            source_hash=source_hash,
+            ler_impressoes=ler_impressoes,
+        )
+        pendentes = [c for c in pendentes if int(c["id"]) not in copiados]
+        if not pendentes:
+            return ResultadoFalas(status="reaproveitado", gravados=len(copiados))
+
     nomes_em_uso = await _nomes_de_outros_perfis(session, topico_id=topico_id, perfil=perfil)
-    payload = montar_payload(perfil=perfil, topico=topico, conteudos=conteudos, nomes_em_uso=nomes_em_uso)
+    payload = montar_payload(perfil=perfil, topico=topico, conteudos=pendentes, nomes_em_uso=nomes_em_uso)
     # Encerra a leitura antes da chamada externa: não segura transação aberta durante a LLM.
     await session.rollback()
 
@@ -447,7 +617,7 @@ async def gerar_falas_do_topico(
         )
         return ResultadoFalas(status="failed", erro=str(exc)[:300])
 
-    esperados = {int(c["id"]) for c in conteudos}
+    esperados = {int(c["id"]) for c in pendentes}
     validos: dict[int, dict[str, Any]] = {}
     for boss in resposta.bosses:
         # Conteúdo que não estava no pedido não entra: o modelo não escolhe onde gravar.
@@ -491,5 +661,5 @@ async def gerar_falas_do_topico(
             len(validos),
             len(esperados),
         )
-        return ResultadoFalas(status="parcial" if validos else "failed", gravados=len(validos))
-    return ResultadoFalas(status="gerado", gravados=len(validos))
+        return ResultadoFalas(status="parcial" if validos else "failed", gravados=len(validos) + len(copiados))
+    return ResultadoFalas(status="gerado", gravados=len(validos) + len(copiados))

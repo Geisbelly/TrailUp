@@ -70,7 +70,7 @@ from app.services import modo_restrito
 from app.services.auth import UserContext
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
 from app.services.group_analysis import GroupAnalysisService
-from app.services.guia_do_app import destinos_do_app_validos, guia_do_app
+from app.services.guia_do_app import guia_do_app, montar_resposta_do_guia
 from app.services.llm import JsonLLMService, load_prompt
 from app.services.material_revisao import incrementar_revisao
 from app.services.media_agents import (
@@ -1665,23 +1665,19 @@ async def conversar_com_mentor_personalizacao(
             use_rag=bool(request.app.state.settings.openai_rag_enabled),
         )
 
-    mentor_result = mentor_result.model_copy(
-        update={
-            "reply": restaurar_nome(
-                mentor_result.reply, aluno_ctx.get("apelido") or aluno_ctx.get("nome")
-            )
-            or ""
-        }
+    resposta_do_guia = montar_resposta_do_guia(
+        mentor_result,
+        lambda texto: restaurar_nome(texto, aluno_ctx.get("apelido") or aluno_ctx.get("nome")) or "",
     )
+    mentor_result = mentor_result.model_copy(update={"reply": resposta_do_guia["reply"]})
     result = mentor_result.model_dump(mode="json")
-    destinos = destinos_do_app_validos(mentor_result.destinos)
+    tem_acao = bool(resposta_do_guia["destinos"] or resposta_do_guia["tutorial"])
     response = MentorChatResponse(
-        reply=mentor_result.reply.strip(),
         scope=payload.escopo,
         # Fechar o painel sumiria com os botoes que acabaram de chegar.
-        should_close=mentor_result.should_close and not destinos,
+        should_close=mentor_result.should_close and not tem_acao,
         hinted_actions=[item.strip() for item in mentor_result.hinted_actions if item.strip()],
-        destinos=destinos,
+        **resposta_do_guia,
     )
 
     try:
@@ -2291,6 +2287,7 @@ async def regenerar_documento_personalizacao(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Falha ao persistir o documento regenerado.",
         )
+    await personalizacao_repo.marcar_material_editado(record_id=int(record["id"]))
     return _to_response(updated_record)
 
 
@@ -2385,6 +2382,7 @@ async def regenerar_slide_personalizacao(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Falha ao persistir o slide regenerado.",
         )
+    await personalizacao_repo.marcar_material_editado(record_id=int(record["id"]))
 
     return RegenerarSlideResponse(
         personalizacao=_to_response(updated_record),

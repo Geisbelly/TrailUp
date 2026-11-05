@@ -115,6 +115,10 @@ export type MentorChatResponse = {
   hinted_actions?: string[];
   /** Códigos de tela; `destinosDoGuia.ts` os traduz em botões. */
   destinos?: string[];
+  introducao?: string | null;
+  secoes?: { titulo: string; texto: string; destino?: string | null }[];
+  /** Código de `tutoriaisDoGuia.ts`. */
+  tutorial?: string | null;
 };
 
 export type PersonalizacaoJobRecord = {

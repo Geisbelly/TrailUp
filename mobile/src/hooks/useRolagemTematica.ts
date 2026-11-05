@@ -6,9 +6,10 @@ import { cssRolagemTematica } from "@/utils/rolagemTematica";
 const ID_ESTILO = "trailup-rolagem-tematica";
 
 /**
- * Web em tela larga (#346, protótipo v4, revisão 03): barras de rolagem finas,
- * na cor da borda do perfil, no lugar da barra cinza do sistema. Põe uma
- * folha de estilo no <head> enquanto `ativo`; a cor acompanha o perfil.
+ * Web (#346, protótipo v4, revisão 03): barras de rolagem finas, na cor da borda
+ * do perfil, no lugar da barra do sistema. Põe uma folha de estilo no <head>
+ * enquanto `ativo`; a cor acompanha o perfil. A folha é uma só: chame só de
+ * `RolagemDoPerfil`, porque a limpeza de um segundo uso a tiraria do outro.
  */
 export function useRolagemTematica(ativo: boolean, cor: string) {
   useEffect(() => {
