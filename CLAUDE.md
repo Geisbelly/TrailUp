@@ -638,6 +638,16 @@ Cada perfil carrega:
   tudo o que a API chama. **Não grave o microservice aqui:** ele já mede em `usoDoModelo.ts` e o uso
   chega ao alvo da fila por `uso_do_modelo.py`, então contaria em dobro. Gravar nunca derruba nem atrasa
   a resposta (`app/services/uso_llm.py`).
+- `consentimento_professor` + `aluno_nascimento_correcao` (`20261105_27`). Antes, o "li e aceito" do
+  professor era só uma trava do formulário: nada era gravado. Agora segue o padrão dos outros
+  `consentimento_*` (só cresce, carimbo do servidor, revogar é linha `rejected`, conta apagada deixa só a
+  prova mínima), e `AceiteDosTermos` pede o aceite no console a quem não tem prova da versão vigente; se
+  a leitura falhar, não pede. A aba Termos da Administração nunca reescreve prova: lê com `admin_termos`,
+  registra papel por `professor_registrar_termo_papel` (o dono passa da checagem de turma) e revoga por
+  `admin_termo_revogar`. **Termo do aluno (`consentimento_telemetria`) não se revoga por lá, de
+  propósito:** quem liga e desliga a coleta é o aparelho, e nada no banco lê essa tabela para decidir.
+  `admin_aluno_nascimento_corrigir` pode tirar um menor do modo restrito, então exige motivo e guarda a
+  data anterior.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere

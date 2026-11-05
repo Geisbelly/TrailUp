@@ -21,7 +21,6 @@ export const CONSOLE_SECTIONS = [
   { view: "batalhas", slug: "rank-de-batalhas" },
   { view: "guildas", slug: "guildas" },
   { view: "profile", slug: "meus-dados" },
-  { view: "aprovacoes", slug: "aprovacoes" },
   { view: "tecnico", slug: "tecnico" },
   { view: "administracao", slug: "administracao" },
 ] as const;
@@ -44,7 +43,6 @@ export const ROTULO_DA_VIEW: Record<ConsoleView, string> = {
   batalhas: "Rank de batalhas",
   guildas: "Guildas",
   profile: "Meus dados",
-  aprovacoes: "Aprovações",
   tecnico: "Painel técnico",
   administracao: "Administração",
 };
@@ -54,13 +52,16 @@ export const ROTULO_DA_VIEW: Record<ConsoleView, string> = {
  * professores e a Lumi não as acompanha. A rota em si não protege nada (qualquer um digita a URL); quem
  * protege é o banco (`app_e_dono()` nas funções de cada aba), e a tela só evita mostrar um beco sem saída.
  */
-export const VIEWS_SO_DO_DONO: readonly ConsoleView[] = ["aprovacoes", "tecnico", "administracao"];
+export const VIEWS_SO_DO_DONO: readonly ConsoleView[] = ["tecnico", "administracao"];
 
 export function viewSoDoDono(view: ConsoleView): boolean {
   return VIEWS_SO_DO_DONO.includes(view);
 }
 
 export const CONSOLE_BASE_PATH = "/console";
+/** Aprovações virou parte da Administração; o endereço antigo continua chegando lá. */
+export const CAMINHO_ANTIGO_DE_APROVACOES = "/console/aprovacoes";
+export const CAMINHO_DE_APROVACOES = "/console/administracao?aba=aprovacoes";
 export const DEFAULT_CONSOLE_VIEW: ConsoleView = "dashboard";
 
 export function consolePathForView(view: ConsoleView): string {

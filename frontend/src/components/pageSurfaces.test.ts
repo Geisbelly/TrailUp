@@ -68,16 +68,16 @@ describe("shared page surfaces", () => {
 
   it("keeps account and admin in the top bar, out of the side menu", () => {
     const markup = render(createElement(ConsoleShell, {
-      view: "aprovacoes", name: "Professor", isOwner: true, onSignOut: () => {},
+      view: "administracao", name: "Professor", isOwner: true, onSignOut: () => {},
     }));
     const [topo, lateral] = markup.split('id="console-sections-navigation"');
-    for (const view of ["profile", "recomendacoes", "aprovacoes", "tecnico", "administracao"] as const) {
+    for (const view of ["profile", "recomendacoes", "tecnico", "administracao"] as const) {
       expect(topo, view).toContain(`href="${consolePathForView(view)}"`);
     }
     expect(topo).toContain('aria-current="page"');
     // Meus dados é o avatar. Os ícones do topo só aparecem na gaveta da tela estreita (CSS).
     expect(lateral).not.toContain(`href="${consolePathForView("profile")}"`);
-    for (const view of ["recomendacoes", "aprovacoes", "tecnico", "administracao"] as const) {
+    for (const view of ["recomendacoes", "tecnico", "administracao"] as const) {
       expect(lateral, view).toMatch(new RegExp(`<a data-so-na-gaveta="true"[^>]*href="${consolePathForView(view)}"`));
     }
   });
@@ -86,19 +86,18 @@ describe("shared page surfaces", () => {
     const markup = render(createElement(ConsoleShell, {
       view: "dashboard", name: "Professor", isOwner: false, onSignOut: () => {},
     }));
-    expect(markup).not.toContain('href="/console/aprovacoes"');
     expect(markup).not.toContain('href="/console/tecnico"');
     expect(markup).not.toContain('href="/console/administracao"');
   });
 
-  it("shows the Lumi on the working sections but not on Aprovações", () => {
+  it("shows the Lumi on the working sections but not on the owner sections", () => {
     const escriba = /aria-label="Pergunte à Lumi, a guia do professor"/g;
     for (const view of ["dashboard", "trilha", "classes", "personalizacoes", "ranks", "profile"] as const) {
       const markup = render(createElement(ConsoleShell, { view, name: "Professor", isOwner: true, onSignOut: () => {} }));
       expect(markup.match(escriba), view).toHaveLength(1);
     }
-    const aprovacoes = render(createElement(ConsoleShell, { view: "aprovacoes", name: "Professor", isOwner: true, onSignOut: () => {} }));
-    expect(aprovacoes).not.toMatch(escriba);
+    const administracao = render(createElement(ConsoleShell, { view: "administracao", name: "Professor", isOwner: true, onSignOut: () => {} }));
+    expect(administracao).not.toMatch(escriba);
     const tecnico = render(createElement(ConsoleShell, { view: "tecnico", name: "Professor", isOwner: true, onSignOut: () => {} }));
     expect(tecnico).not.toMatch(escriba);
   });
