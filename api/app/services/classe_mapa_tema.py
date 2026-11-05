@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import Settings
 from app.repositories.classe_mapa_tema import ClasseMapaTemaRepository
+from app.schemas.geracao_estruturada import TemaDoMapaGerado
 from app.services.llm import JsonLLMService
 
 _PROMPT_NAME = "classe_mapa_tema.txt"
@@ -179,6 +180,9 @@ def _normalize_countries(raw: Any, context: dict[str, Any], fallback: dict[str, 
         expected_by_node[node_id] = (topic_id, _as_text(topico.get("nome"), f"Topico {idx}"))
 
     normalized: dict[str, Any] = {}
+    # Lista é o que o modelo devolve; mapa é o fallback.
+    if isinstance(raw, list):
+        raw = {str(item.get("nodeId")): item for item in raw if isinstance(item, dict)}
     raw_obj = raw if isinstance(raw, dict) else {}
     for node_id, (topic_id, topic_title) in expected_by_node.items():
         candidate = raw_obj.get(node_id) if isinstance(raw_obj, dict) else None
@@ -245,6 +249,7 @@ async def gerar_classe_mapa_tema(
     fallback = _build_fallback_theme(context)
     llm = JsonLLMService(settings)
     raw = await llm.ainvoke_json(
+        schema=TemaDoMapaGerado,
         prompt_name=_PROMPT_NAME,
         payload={
             "classe": {

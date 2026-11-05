@@ -33,8 +33,8 @@ Regras obrigatorias:
     "panelBg": "string",
     "panelBorder": "string"
   },
-  "countries": {
-    "<topic_id_string>": {
+  "countries": [
+    {
       "nodeId": "string",
       "topicId": 0,
       "topicTitle": "string",
@@ -44,10 +44,10 @@ Regras obrigatorias:
       "emblem": "string",
       "biome": "string"
     }
-  }
+  ]
 }
 
-2) O campo "countries" DEVE conter todos os topicos recebidos na entrada.
+2) A lista "countries" DEVE ter um item para cada topico recebido na entrada.
 3) "nodeId" deve ser igual ao topic_id em string.
 4) Nao invente topicos que nao existem na entrada.
 5) Em "palette", use formato hexadecimal (#RRGGBB) para cores principais.

@@ -28,12 +28,12 @@ O que importa no retorno é a melhor forma de apresentar o conteúdo do módulo.
 - Se usar `"analysis"`, preencha `trigger_actions` apenas com ações realmente necessárias para reorganização.
 
 Escolha entre 2 e 4 formatos dos disponíveis:
-pdf, documento, apresentacao, imagem, cards, quiz, video, audio
+markdown, apresentacao, cards, audio
 
 Retorne SOMENTE JSON válido, sem markdown e sem texto extra:
 {
-  "formato_prioritario": "documento",
-  "formatos": ["documento", "quiz", "cards"],
+  "formato_prioritario": "markdown",
+  "formatos": ["markdown", "audio", "cards"],
   "nivel": "reforco | equilibrado | avancado",
   "tom": "encorajador | neutro | desafiador",
   "estilo": "descrição curta da estratégia pedagógica",
