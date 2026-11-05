@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  duelosDoEvento,
   inscritosComNome,
   percentual,
   quemPrecisaDeEmpurrao,
+  resumoDosDuelos,
   resumoDosInscritos,
   resumoEmFrase,
   rotuloDasGuildas,
@@ -83,5 +85,32 @@ describe("inscritos no rank do evento", () => {
     expect(resumoDosInscritos(3, 10)).toMatch(/^3 alunos entraram/);
     expect(resumoDosInscritos(3, 10)).toMatch(/não muda nota nem XP/);
     expect(resumoDosInscritos(0, 0)).toMatch(/Nenhum aluno matriculado/);
+  });
+});
+
+describe("duelos do evento (#154)", () => {
+  const d = (eventoId: string | null, status: "aberto" | "encerrado", resultado: string | null = null) => ({ eventoId, status, resultado });
+
+  it("conta só os do evento, separando jogados, aguardando e sem adversário", () => {
+    const r = duelosDoEvento(
+      [
+        d("ev", "encerrado", "vitoria"),
+        d("ev", "encerrado", "empate"),
+        d("ev", "aberto"),
+        d("ev", "encerrado", "sem_adversario"),
+        d("outro", "encerrado", "vitoria"),
+        d(null, "aberto"),
+      ],
+      "ev",
+    );
+    expect(r).toEqual({ total: 4, jogados: 2, aguardando: 1, semAdversario: 1 });
+    expect(resumoDosDuelos(r, false)).toBe("4 duelos no evento: 2 jogados, 1 esperando o adversário aceitar, 1 sem adversário.");
+  });
+
+  it("sem duelo, e com a lista no limite", () => {
+    expect(resumoDosDuelos(duelosDoEvento([], "ev"), false)).toBe("Nenhum duelo no evento ainda. Duelar é opcional: quem perde não perde ponto.");
+    expect(resumoDosDuelos({ total: 1, jogados: 1, aguardando: 0, semAdversario: 0 }, true)).toBe(
+      "1 duelo no evento: 1 jogado. A contagem olha os 40 duelos mais recentes da turma.",
+    );
   });
 });

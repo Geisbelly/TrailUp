@@ -115,3 +115,7 @@ updated: 2026-11-01
 
 - `10-Incidentes/gateway-reaberto-por-deploy-2026-11-05.md`: novo.
 - Timeline: período de 04–05/11.
+
+## 2026-11-05 — Monitor 24 horas
+
+- Timeline: item 17, com o monitor, a meta de 24 horas e as colisões de revisão.

@@ -86,7 +86,7 @@ SELECT assunto, enviado_em, tentativas, erro FROM public.monitor_alerta ORDER BY
 ROLLBACK;
 ```
 
-O primeiro e-mail real só sai em um incidente. Para testar o caminho inteiro, grave um alerta de propósito com `SELECT public.fn_monitor_alertar('teste:<data>', '[TrailUp] Teste', 'Teste do monitor.');` como `postgres`: é uma escrita em produção, então faça você mesma. Ele sai no tick seguinte.
+O caminho do e-mail foi conferido em 05/11/2026: o alerta de teste saiu no tick seguinte, na primeira tentativa, e chegou ao destino. Um incidente real ainda não gerou e-mail em produção. Para repetir o teste, grave um alerta de propósito com `SELECT public.fn_monitor_alertar('teste:<data>', '[TrailUp] Teste', 'Teste do monitor.');` como `postgres`: é uma escrita em produção, então faça você mesma. Ele sai no tick seguinte.
 
 ## Nomes que ficaram de quando havia janela
 

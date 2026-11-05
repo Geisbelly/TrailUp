@@ -38,6 +38,8 @@ O tier free não cobra em dinheiro, mas tem teto:
   gasta a mesma cota diária. Um `402` é sinal de chave fora do tier free: avise, não contorne.
 - **Faixa do chat:** `GEMINI_CHAVES_RESERVADAS_CHAT` está em `0`. Para ligar sem tirar capacidade da
   fila, crie uma 5ª chave em projeto novo, ponha no fim de `GEMINI_API_KEY` só na API e use `1`.
+- **Espaço do Supabase:** o plano Free tem 500 MB, e o banco estava em 77,6 MB em 05/11/2026. O monitor guarda 35 dias de `monitor_sonda`, então ela cresce até parar perto de 151 mil linhas (ver a decisão abaixo).
+- **E-mail:** o Apps Script envia para 100 destinatários por dia, divididos com o contato e o aviso de conta inativa. O monitor tem teto de 10 por dia (`emails_por_dia`).
 - **Dados:** no tier free, o Google pode usar o que é enviado. Ver
   [`lgpd/transferencias-internacionais.md`](lgpd/transferencias-internacionais.md).
 
@@ -87,6 +89,7 @@ Guardião custa essa chamada mais o juiz de grounding.
 
 | Data | Decisão | Efeito | Estado |
 |---|---|---|---|
+| 05/11/2026 | Monitor 24 horas, com sonda de 1 min nos três alvos (#1004) | Nenhuma chamada de modelo. `monitor_sonda` chega a ~151 mil linhas em 35 dias. Na proporção medida (243 linhas em 123 kB, 05/11/2026) seriam até ~76 MB; a amostra é pequena e tende a superestimar | Na fila do sync |
 | 05/11/2026 | Payload com o que é fixo primeiro (#971) | Cache de 1.900 de ~5.285 tokens no Guardião, medido | No ar |
 | 05/11/2026 | Pergunta de navegação sem modelo (#973) | Duas chamadas a menos por pergunta; volume desconhecido | No ar, sem medir |
 | 05/11/2026 | Schema nativo em plano, cards e mapa (#967) | Saída só com o que foi pedido | No ar |
