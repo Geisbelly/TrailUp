@@ -89,6 +89,7 @@ function CartaoDaTurma({ turma, porId, alunos, ocupado, escrever }: { turma: Tur
 
 function DetalheDoProfessor({ p, alunos, ocupado, escrever }: { p: ProfessorAdmin; alunos: PessoaAluno[]; ocupado: boolean; escrever: Escrever }) {
   const [vinculando, setVinculando] = useState(false);
+  const [confirmandoBloqueio, setConfirmandoBloqueio] = useState(false);
   const nome = nomeDoProfessor(p);
   const porId = useMemo(() => new Map(alunos.map((a) => [a.aluno_id, a])), [alunos]);
   const candidatos = useMemo(() => candidatosDe(alunos), [alunos]);
@@ -103,11 +104,38 @@ function DetalheDoProfessor({ p, alunos, ocupado, escrever }: { p: ProfessorAdmi
         </div>
         <div className="flex items-center gap-2">
           <Situacao liberado={p.liberado} />
-          <Button type="button" size="sm" variant="outline" disabled={ocupado} onClick={() => void escrever("admin_professor_liberar", { p_professor: p.professor_id, p_liberado: !p.liberado }, p.liberado ? `${nome} bloqueado.` : `${nome} liberado.`)}>
-            {p.liberado ? "Bloquear" : "Liberar"}
-          </Button>
+          {p.liberado ? (
+            <Button type="button" size="sm" variant="outline" disabled={ocupado || confirmandoBloqueio} onClick={() => setConfirmandoBloqueio(true)}>
+              Bloquear…
+            </Button>
+          ) : (
+            <Button type="button" size="sm" variant="outline" disabled={ocupado} onClick={() => void escrever("admin_professor_liberar", { p_professor: p.professor_id, p_liberado: true }, `${nome} liberado.`)}>
+              Liberar
+            </Button>
+          )}
         </div>
       </header>
+
+      {confirmandoBloqueio && p.liberado && (
+        <div role="alertdialog" aria-labelledby="admin-bloqueio" className="rounded-[14px] border border-destructive/50 bg-destructive/10 px-3.5 py-3">
+          <p id="admin-bloqueio" className="text-[13px] font-semibold text-foreground">Bloquear o acesso de {nome}?</p>
+          <p className="mt-1 text-[12px] leading-normal text-foreground">A pessoa deixa de entrar no console até ser liberada de novo. As turmas e os alunos dela continuam como estão.</p>
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
+            <Button type="button" size="sm" variant="outline" autoFocus disabled={ocupado} onClick={() => setConfirmandoBloqueio(false)}>
+              Manter liberado
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              disabled={ocupado}
+              onClick={() => void escrever("admin_professor_liberar", { p_professor: p.professor_id, p_liberado: false }, `${nome} bloqueado.`).then(() => setConfirmandoBloqueio(false))}
+            >
+              Bloquear acesso
+            </Button>
+          </div>
+        </div>
+      )}
 
       <section aria-labelledby="admin-turmas" className="flex flex-col gap-2">
         <h4 id="admin-turmas" className="font-sans text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">

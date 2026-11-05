@@ -3,6 +3,8 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { CampoDeBusca, FiltrosRapidos } from "./comum/FiltrosDaLista";
 import { PresencaDialog } from "./PresencaDialog";
 import { CardDaTurma, CardNovaTurma } from "./turmas/CardDaTurma";
 import { TurmasCarregando, TurmasErro, TurmasVazio } from "./turmas/TurmasEstados";
@@ -10,6 +12,19 @@ import { ConfirmarExclusao } from "./turmas/ConfirmarExclusao";
 import { ConfirmarDuplicacao, FaixaTurmaDuplicada } from "./turmas/ConfirmarDuplicacao";
 import { idDaCopia, mensagemDeErroDaDuplicacao } from "./turmas/duplicacao";
 import { ModalMatriculas } from "./turmas/ModalMatriculas";
+import { TabelaDeTurmas } from "./turmas/TabelaDeTurmas";
+import {
+  ORDENS,
+  contarPorFiltro,
+  gravarVisualizacao,
+  lerVisualizacao,
+  organizarTurmas,
+  type FiltroDeTurma,
+  type OrdemDeTurma,
+  type TurmaDaLista,
+  type Visualizacao,
+} from "./turmas/listaDeTurmas";
+import SegmentedPills from "./dashboard/SegmentedPills";
 import { FaixaTurmaCriada, FormularioDeTurma } from "./turmas/FormularioDeTurma";
 import { CAMPOS_VAZIOS, criarTurma, nomeDaTurma, type BancoDeTurmas, type DadosDaTurma, type PesoDoXp } from "./turmas/formulario";
 import { resumirTurmas, type MatriculaDaTurma, type ResumoDaTurma, type TopicoDaTurma } from "./turmas/resumo";
@@ -57,6 +72,13 @@ export default function ClassManagementSection({ professorId }: Props) {
   const [selectedClassForStudents, setSelectedClassForStudents] = useState<Classe | null>(null);
   const [classeParaPresenca, setClasseParaPresenca] = useState<Classe | null>(null);
 
+  // --- Busca, filtro e forma de ver ---
+  const [busca, setBusca] = useState("");
+  const [filtro, setFiltro] = useState<FiltroDeTurma>("todas");
+  const [ordem, setOrdem] = useState<OrdemDeTurma>("recentes");
+  const [visualizacao, setVisualizacao] = useState<Visualizacao>(lerVisualizacao);
+  // A tabela não cabe no celular: lá são sempre os cartões, sem perder a preferência de quem usa os dois.
+  const celular = useIsMobile();
 
   // --- Carregamento ---
   // Cada leitura confere o `error` do Supabase: uma falha vira estado de erro,
@@ -253,32 +275,14 @@ export default function ClassManagementSection({ professorId }: Props) {
       .map((s) => ({ id: s.id, nome: s.nome }));
   }, [classeParaPresenca, classStudents, students]);
 
-  const handleAddStudentToClass = async (alunoId: string) => {
-    if (!selectedClassForStudents) return;
-    const classId = selectedClassForStudents.id;
-    if (classStudents[classId]?.includes(alunoId)) {
-      toast.error("Aluno já está na turma.");
-      return;
-    }
-    const { error: enrollmentError } = await supabase.from("classe_aluno").insert({ classe_id: classId, aluno_id: alunoId });
-    if (enrollmentError) {
-      toast.error(`Não foi possível matricular: ${enrollmentError.message}`);
-      return;
-    }
-    // O material do aluno é enfileirado pelo próprio banco, no mesmo INSERT
-    // (trigger trg_classe_aluno_enrollment_job, migration 20261011_02): não
-    // depende da API estar acordada nem da sessão do console.
-    setClassStudents((prev) => ({ ...prev, [classId]: [...(prev[classId] || []), alunoId] }));
-    toast.success("Aluno matriculado.");
-    void loadData(true);
-  };
-
-  // Importação por CSV (#146): um INSERT só, atômico — ou entram todos, ou nenhum. Cada linha dispara
-  // o mesmo gatilho de matrícula do banco (material do aluno enfileirado).
+  // Busca ou lista (#146): um INSERT só, atômico — ou entram todos, ou nenhum. Cada linha dispara o mesmo
+  // gatilho do banco (trg_classe_aluno_enrollment_job, migration 20261011_02), que enfileira o material do
+  // aluno: não depende da API estar no ar nem da sessão do console.
   const handleAddManyStudentsToClass = async (alunoIds: string[]) => {
     if (!selectedClassForStudents || alunoIds.length === 0) return;
     const classId = selectedClassForStudents.id;
     const novos = alunoIds.filter((id) => !classStudents[classId]?.includes(id));
+    if (novos.length === 0) return;
     const { error } = await supabase.from("classe_aluno").insert(novos.map((aluno_id) => ({ classe_id: classId, aluno_id })));
     if (error) throw new Error(`Não foi possível matricular: ${error.message}`);
     setClassStudents((prev) => ({ ...prev, [classId]: [...(prev[classId] || []), ...novos] }));
@@ -286,17 +290,55 @@ export default function ClassManagementSection({ professorId }: Props) {
     void loadData(true);
   };
 
-  const handleRemoveStudentFromClass = async (alunoId: string) => {
-    if (!selectedClassForStudents) return;
+  // Um por vez: cada DELETE faz a limpeza do aluno na própria transação. Quem falhar não derruba os outros
+  // e volta para a tela como ainda selecionado.
+  const handleRemoveStudentsFromClass = async (alunoIds: string[]): Promise<string[]> => {
+    if (!selectedClassForStudents) return alunoIds;
     const classId = selectedClassForStudents.id;
-    try {
-      await removeClassStudent(classId, alunoId);
-      setClassStudents((prev) => ({ ...prev, [classId]: (prev[classId] || []).filter((id) => id !== alunoId) }));
-      toast.success("Aluno removido da turma.");
-      void loadData(true);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao remover.");
+    const falhas: string[] = [];
+    let motivo = "";
+    for (const alunoId of alunoIds) {
+      try {
+        await removeClassStudent(classId, alunoId);
+      } catch (e) {
+        falhas.push(alunoId);
+        motivo = e instanceof Error ? e.message : "";
+      }
     }
+    const removidos = alunoIds.length - falhas.length;
+    setClassStudents((prev) => ({ ...prev, [classId]: (prev[classId] || []).filter((id) => !alunoIds.includes(id) || falhas.includes(id)) }));
+    if (removidos > 0) toast.success(removidos === 1 ? "Aluno removido da turma." : `${removidos} alunos removidos da turma.`);
+    if (falhas.length > 0) toast.error(`${falhas.length === 1 ? "1 aluno não foi removido" : `${falhas.length} alunos não foram removidos`}${motivo ? `: ${motivo}` : "."}`);
+    void loadData(true);
+    return falhas;
+  };
+
+  const turmasDaLista = useMemo<TurmaDaLista[]>(
+    () =>
+      classes.map((c) => ({
+        id: c.id,
+        nome: nomeDaTurma(c),
+        materia: materias.find((m) => m.id === c.materia_id)?.nome?.trim() || null,
+        criadaEm: c.created_at,
+        resumo: resumos.get(c.id) ?? { alunos: (classStudents[c.id] || []).length, topicos: 0, conclusaoPct: null },
+      })),
+    [classes, materias, resumos, classStudents],
+  );
+  const contagens = useMemo(() => contarPorFiltro(turmasDaLista), [turmasDaLista]);
+  const visiveis = useMemo(() => organizarTurmas(turmasDaLista, busca, filtro, ordem), [turmasDaLista, busca, filtro, ordem]);
+  const filtrando = busca.trim() !== "" || filtro !== "todas";
+  const acoesDaTurma = (id: number) => {
+    const c = classes.find((x) => x.id === id)!;
+    return {
+      onMatriculas: () => setSelectedClassForStudents(c),
+      onPresenca: () => setClasseParaPresenca(c),
+      onEditar: () => {
+        setTurmaCriada(null);
+        setFormulario({ modo: "editar", turma: c });
+      },
+      onDuplicar: () => setParaDuplicar(c),
+      onExcluir: () => setParaExcluir(c),
+    };
   };
 
   return (
@@ -359,25 +401,93 @@ export default function ClassManagementSection({ professorId }: Props) {
       ) : classes.length === 0 ? (
         <TurmasVazio onCriar={() => abrirCriar()} />
       ) : (
-        <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr))]">
-          {classes.map((c) => (
-            <CardDaTurma
-              key={c.id}
-              turma={{ id: c.id, descricao: c.descricao, materiaNome: materias.find((m) => m.id === c.materia_id)?.nome ?? null }}
-              resumo={resumos.get(c.id) ?? { alunos: (classStudents[c.id] || []).length, topicos: 0, conclusaoPct: null }}
-              ocupado={isSaving || duplicando}
-              onMatriculas={() => setSelectedClassForStudents(c)}
-              onPresenca={() => setClasseParaPresenca(c)}
-              onEditar={() => {
-                setTurmaCriada(null);
-                setFormulario({ modo: "editar", turma: c });
-              }}
-              onDuplicar={() => setParaDuplicar(c)}
-              onExcluir={() => setParaExcluir(c)}
-            />
-          ))}
-          <CardNovaTurma onCriar={() => abrirCriar()} />
-        </div>
+        <>
+          {/* Com uma turma só não há o que procurar. */}
+          {classes.length > 1 && (
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <CampoDeBusca
+                  className="min-w-[220px] flex-1"
+                  rotulo="Buscar turma"
+                  placeholder="Buscar por turma ou matéria"
+                  valor={busca}
+                  onChange={setBusca}
+                  contagem={filtrando ? `${visiveis.length} de ${classes.length}` : undefined}
+                />
+                <label className="flex items-center gap-2 text-[12px] font-semibold text-muted-foreground">
+                  Ordenar
+                  <select
+                    value={ordem}
+                    onChange={(e) => setOrdem(e.target.value as OrdemDeTurma)}
+                    className="h-[42px] rounded-[14px] border border-border bg-muted px-3 text-[13px] font-medium text-foreground focus:border-[hsl(var(--console-violet))] focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {ORDENS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {!celular && (
+                  <SegmentedPills<Visualizacao>
+                    ariaLabel="Forma de ver as turmas"
+                    valor={visualizacao}
+                    onChange={(v) => {
+                      setVisualizacao(v);
+                      gravarVisualizacao(v);
+                    }}
+                    opcoes={[
+                      { value: "cartoes", label: "Cartões" },
+                      { value: "lista", label: "Lista" },
+                    ]}
+                  />
+                )}
+              </div>
+              <FiltrosRapidos<FiltroDeTurma>
+                rotulo="Filtrar turmas"
+                valor={filtro}
+                onChange={setFiltro}
+                opcoes={[
+                  { value: "todas", label: "Todas", contagem: contagens.todas },
+                  { value: "com_trilha", label: "Com trilha", contagem: contagens.com_trilha },
+                  { value: "sem_trilha", label: "Sem trilha", contagem: contagens.sem_trilha, destaque: true },
+                  { value: "sem_alunos", label: "Sem alunos", contagem: contagens.sem_alunos, destaque: true },
+                ]}
+              />
+            </div>
+          )}
+
+          {visiveis.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 rounded-[20px] border border-border bg-card px-6 py-14 text-center">
+              <p className="text-[15px] font-semibold text-foreground">Nenhuma turma com esses filtros</p>
+              <Button
+                variant="outline"
+                className="rounded-full"
+                onClick={() => {
+                  setBusca("");
+                  setFiltro("todas");
+                }}
+              >
+                Limpar filtros
+              </Button>
+            </div>
+          ) : visualizacao === "lista" && !celular ? (
+            <TabelaDeTurmas turmas={visiveis} ocupado={isSaving || duplicando} acoes={acoesDaTurma} />
+          ) : (
+            <div className="grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr))]">
+              {visiveis.map((t) => (
+                <CardDaTurma
+                  key={t.id}
+                  turma={{ id: t.id, descricao: classes.find((c) => c.id === t.id)?.descricao ?? null, materiaNome: t.materia }}
+                  resumo={t.resumo}
+                  ocupado={isSaving || duplicando}
+                  {...acoesDaTurma(t.id)}
+                />
+              ))}
+              {!filtrando && <CardNovaTurma onCriar={() => abrirCriar()} />}
+            </div>
+          )}
+        </>
       )}
 
       <ConfirmarDuplicacao
@@ -408,9 +518,8 @@ export default function ClassManagementSection({ professorId }: Props) {
         turma={selectedClassForStudents}
         candidatos={students}
         matriculadosIds={selectedClassForStudents ? classStudents[selectedClassForStudents.id] || [] : []}
-        onMatricular={handleAddStudentToClass}
         onMatricularVarios={handleAddManyStudentsToClass}
-        onRemover={handleRemoveStudentFromClass}
+        onRemover={handleRemoveStudentsFromClass}
         onFechar={() => setSelectedClassForStudents(null)}
       />
     </div>

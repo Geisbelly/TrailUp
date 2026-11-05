@@ -10,7 +10,7 @@ export function Numero({ rotulo, valor, destaque = false }: { rotulo: string; va
   );
 }
 
-export function Tabela({ cabecalho, linhas, vazio }: { cabecalho: string[]; linhas: (string | number)[][]; vazio: string }) {
+export function Tabela({ cabecalho, linhas, vazio }: { cabecalho: string[]; linhas: ReactNode[][]; vazio: string }) {
   if (linhas.length === 0) return <p className="text-[12.5px] text-muted-foreground">{vazio}</p>;
   return (
     <div className="overflow-x-auto rounded-2xl border border-border bg-card">

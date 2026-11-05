@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { csvDasNotas, gerarCsv, lerEmailsDoCsv, lerNotas, nomeDoArquivo, planejarImportacao } from "./csvTurma";
+import { csvDasNotas, gerarCsv, lerEmailsColados, lerEmailsDoCsv, lerNotas, modeloDaLista, nomeDoArquivo, planejarImportacao } from "./csvTurma";
 
 describe("gerarCsv", () => {
   it("BOM, ponto e vírgula, vírgula decimal, aspas quando precisa e CRLF", () => {
@@ -59,5 +59,24 @@ describe("planejarImportacao", () => {
     expect(p.matricular.map((a) => a.id)).toEqual(["a"]);
     expect(p.jaMatriculados).toEqual(["beto@y.org"]);
     expect(p.naoEncontrados).toEqual(["zeca@z.com"]);
+  });
+});
+
+describe("lerEmailsColados", () => {
+  it("aceita planilha, vírgula, ponto e vírgula e o campo Para de um e-mail", () => {
+    const texto = "ana@x.com\nBIA@x.com, Caio Lima <caio@x.com>; dani@x.com\tedu@x.com";
+    expect(lerEmailsColados(texto)).toEqual({ emails: ["ana@x.com", "bia@x.com", "caio@x.com", "dani@x.com", "edu@x.com"], ignorados: [] });
+  });
+
+  it("conta repetido uma vez e mostra o que não aproveitou", () => {
+    expect(lerEmailsColados("ana@x.com\nana@x.com\nsem email aqui\nbia@sem-ponto\n\n")).toEqual({ emails: ["ana@x.com"], ignorados: ["sem email aqui", "bia@sem-ponto"] });
+  });
+
+  it("dois e-mails separados só por espaço contam os dois", () => {
+    expect(lerEmailsColados("ana@x.com bia@x.com").emails).toEqual(["ana@x.com", "bia@x.com"]);
+  });
+
+  it("o modelo se lê de volta sem sobrar linha", () => {
+    expect(lerEmailsDoCsv(modeloDaLista())).toEqual({ emails: ["aluno.um@exemplo.com", "aluno.dois@exemplo.com"], invalidas: [] });
   });
 });
