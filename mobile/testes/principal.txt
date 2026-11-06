@@ -58,7 +58,6 @@ src/utils/classeMetrics.canonicalProgress.test.ts
 src/utils/classeResumo.camelCase.test.ts
 src/utils/conquistaAudience.test.ts
 src/utils/conquistaProgress.test.ts
-src/utils/consentimentoDaCamera.test.ts
 src/utils/consentimentoVigente.test.ts
 src/utils/consentimentoResponsavel.test.ts
 src/utils/bossFalas.test.ts

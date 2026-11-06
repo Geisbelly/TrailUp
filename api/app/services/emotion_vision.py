@@ -236,6 +236,9 @@ class LocalVisionEmotionAnalyzer:
         except Exception as exc:
             logger.warning("emocao.visao indisponivel: falha na analise (%s)", type(exc).__name__)
             return None
+        # Sem modelo ou sem rosto em nenhum frame, nao ha sinal: nada de emocao por proxy.
+        if visao is None:
+            return None
 
         from app.services.linear_analysis_pipeline import EmotionStageResult
 

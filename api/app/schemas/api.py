@@ -11,6 +11,7 @@ from app.schemas.texto_gerado import TextoGerado
 from app.schemas.trilha_config import TrilhaConfig
 from app.schemas.ui_config import UIConfig
 
+
 class EmocaoIndisponivel(BaseModel):
     estado_sinal: Literal["indisponivel"]
 
