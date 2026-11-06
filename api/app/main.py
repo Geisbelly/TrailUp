@@ -164,7 +164,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(
         title=app_settings.app_name,
-        debug=app_settings.app_debug,
         lifespan=lifespan,
     )
     app.add_middleware(
