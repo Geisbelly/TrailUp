@@ -1,3 +1,4 @@
+import { textoDeErro } from "@/utils/textoDeErro";
 import { HallBackground } from "@/components/HallTheme";
 import { FramedProfileImage } from "@/components/FramedProfileImage";
 import { useUsuario } from "@/context/SessaoContext";
@@ -68,7 +69,7 @@ export default function MoldurasScreen() {
       if (sucesso) avisar(sucesso, undefined, "success");
       await carregar();
     } catch (e) {
-      avisar("Molduras", e instanceof Error ? e.message : "Não foi possível concluir.", "error");
+      avisar("Molduras", textoDeErro(e, "Não foi possível concluir."), "error");
     } finally {
       trava.current = false;
       setOcupada(null);

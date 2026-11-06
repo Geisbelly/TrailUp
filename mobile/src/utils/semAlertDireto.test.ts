@@ -4,7 +4,7 @@ import { extname, join, relative } from "node:path";
 import test from "node:test";
 
 /**
- * `Alert.alert` não pode ser chamado direto: ele é invisível na web.
+ * `Alert.alert` não pode ser usado: ele é invisível na web e cru no aparelho.
  *
  * No `react-native-web` o módulo é, inteiro:
  *
@@ -15,15 +15,14 @@ import test from "node:test";
  * simplesmente não funciona: "Excluir guilda" e "Excluir item" eram clique sem
  * efeito nenhum (#28).
  *
- * O caminho é `useAviso()` (`src/hooks/useAviso.ts`), que decide por
- * PLATAFORMA: diálogo do app na web, `Alert` do sistema no nativo. Duas telas
- * já desviavam à mão, mas decidindo por LARGURA de tela, o que deixava a web
- * em janela estreita sem aviso — é o erro que este guarda impede de voltar.
+ * No aparelho ele é a caixa crua do sistema, sem a identidade do perfil. O caminho
+ * é `useAviso()` (`src/hooks/useAviso.ts`), que usa o diálogo do app nas duas
+ * plataformas.
  */
 const RAIZ = join(process.cwd(), "src");
 
-/** O único arquivo que pode falar com o `Alert` direto é o próprio hook. */
-const PERMITIDO = join("src", "hooks", "useAviso.ts");
+/** O hook de avisos: ele também não fala com o `Alert`. */
+const HOOK = join("src", "hooks", "useAviso.ts");
 
 function arquivos(dir: string): string[] {
   return readdirSync(dir).flatMap((nome) => {
@@ -37,18 +36,19 @@ test("ninguem chama Alert.alert fora do useAviso", () => {
     .filter((c) => [".ts", ".tsx"].includes(extname(c)))
     .filter((c) => !c.endsWith(".test.ts") && !c.endsWith(".test.tsx"))
     .map((c) => relative(process.cwd(), c))
-    .filter((c) => c !== PERMITIDO)
     .filter((c) => /\bAlert\s*\.\s*alert\s*\(/.test(readFileSync(c, "utf8")));
 
   assert.deepEqual(
     culpados,
     [],
-    "Alert.alert nao aparece na web; use useAviso() em:\n  " + culpados.join("\n  ")
+    "Alert.alert e a caixa crua do aparelho e nao aparece na web; use useAviso() em:\n  " + culpados.join("\n  ")
   );
 });
 
-test("o hook existe e e' ele que trata as duas plataformas", () => {
-  const fonte = readFileSync(PERMITIDO, "utf8");
-  assert.match(fonte, /Platform\.OS === "web"/, "a decisao e' de plataforma, nao de largura");
-  assert.match(fonte, /Alert\.alert/, "no nativo o caminho continua sendo o Alert do sistema");
+test("o hook usa so o dialogo do app, nas duas plataformas", () => {
+  const fonte = readFileSync(HOOK, "utf8");
+  assert.doesNotMatch(fonte, /Platform/, "a decisao nao depende de plataforma");
+  assert.doesNotMatch(fonte, /from "react-native"/, "o Alert do sistema nao entra aqui");
+  assert.match(fonte, /showDialog/);
+  assert.match(fonte, /showConfirm/);
 });

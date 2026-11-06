@@ -1,3 +1,4 @@
+import { textoDeErro } from "@/utils/textoDeErro";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -50,7 +51,7 @@ export function BagModal({ visible, classeId, topicId, contentId, profile, onClo
     }
     if (refresh) setRefreshing(true); else setLoading(true);
     try { setItems(await listBagItems(filter)); }
-    catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a Bag."); }
+    catch (err) { setError(textoDeErro(err, "Não foi possível carregar a Bag.")); }
     finally { setLoading(false); setRefreshing(false); }
   }, [filter]);
 
@@ -63,7 +64,7 @@ export function BagModal({ visible, classeId, topicId, contentId, profile, onClo
 
   const excluir = async (item: BagItem) => {
     try { await deleteBagItem(item.sourceId); await load(true); }
-    catch (err) { setError(err instanceof Error ? err.message : "Não foi possível excluir o item."); }
+    catch (err) { setError(textoDeErro(err, "Não foi possível excluir o item.")); }
   };
   // Na web o Alert do react-native não abre nada — em QUALQUER largura. Decidir
   // por `desktop` deixava a janela estreita sem confirmação e sem exclusão (#28).

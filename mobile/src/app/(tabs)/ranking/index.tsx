@@ -152,7 +152,7 @@ const s = StyleSheet.create({
   },
   description: { fontSize: 14, lineHeight: 20, marginTop: 6 },
   vazioCelular: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 24 },
-  topoCelular: { paddingHorizontal: 18, paddingTop: 8, paddingBottom: 8 },
+  topoCelular: { paddingHorizontal: 18, paddingTop: 20, paddingBottom: 12 },
   tituloCelular: { fontFamily: "Georgia, serif", fontSize: 22 },
   abas: { flexDirection: "row", gap: 8, paddingHorizontal: 18 },
   aba: { flex: 1, minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderRadius: 8, paddingHorizontal: 6 },

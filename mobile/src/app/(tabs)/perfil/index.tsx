@@ -1,3 +1,4 @@
+import { textoDeErro } from "@/utils/textoDeErro";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { ProfessorDaTurma } from "@/components/social/ProfessorDaTurma";
 import { ProfessorProfileModal } from "@/components/social/ProfessorProfileModal";
@@ -302,7 +303,7 @@ export default function PerfilHome() {
       } catch (error) {
         avisar(
           "Não foi possível trocar o perfil",
-          error instanceof Error ? error.message : "Tente novamente em instantes.",
+          textoDeErro(error, "Tente novamente em instantes."),
           "error",
         );
       } finally {

@@ -99,7 +99,7 @@ export default function TrilhasIndex() {
           <MaterialCommunityIcons name="alert-circle-outline" size={44} color={palette.textSubtle} />
           <Text style={[styles.erroTitulo, { color: palette.text }]}>Não foi possível carregar a trilha</Text>
           <Text style={[styles.erroTexto, { color: palette.textSubtle }]}>
-            Confira sua conexão e volte para esta aba em instantes. {erro.message}
+            Confira sua conexão e volte para esta aba em instantes.
           </Text>
         </View>
       </SafeAreaView>

@@ -83,16 +83,12 @@ test("na web o aviso vai pelo dialogo do app, nunca pelo Alert", () => {
   });
 });
 
-test("no nativo o aviso continua no Alert do sistema", () => {
+test("no aparelho o aviso tambem vai pelo dialogo do app, nunca pela caixa do sistema", () => {
   const registro: Chamada[] = [];
-  carregarUseAviso("ios", registro).avisar("Erro", "Não deu", "error");
+  carregarUseAviso("android", registro).avisar("Erro", "Não deu", "error");
 
-  assert.deepEqual(
-    registro.map((c) => c.onde),
-    ["alert"],
-    "a tela do app ja funcionava; o comportamento dela nao muda"
-  );
-  assert.deepEqual(registro[0].args, ["Erro", "Não deu"]);
+  assert.deepEqual(registro.map((c) => c.onde), ["dialogo"]);
+  assert.deepEqual(registro[0].args[0], { title: "Erro", description: "Não deu", tone: "error" });
 });
 
 test("confirmar na web abre o dialogo com o botao de perigo", () => {
@@ -105,13 +101,13 @@ test("confirmar na web abre o dialogo com o botao de perigo", () => {
     onConfirmar: () => undefined,
   });
 
-  assert.equal(registro[0]?.onde, "confirm", "na web o Alert com botoes nao abre nada");
+  assert.equal(registro[0]?.onde, "confirm", "o aviso nao passa pelo sistema");
   const opcoes = registro[0].args[0] as Record<string, unknown>;
   assert.equal(opcoes.confirmLabel, "Excluir");
   assert.equal(opcoes.confirmVariant, "danger");
 });
 
-test("confirmar no nativo mantem os dois botoes do Alert", () => {
+test("confirmar no aparelho abre o dialogo, com o botao de perigo e a acao", () => {
   const registro: Chamada[] = [];
   let confirmou = false;
   carregarUseAviso("android", registro).confirmar({
@@ -123,14 +119,11 @@ test("confirmar no nativo mantem os dois botoes do Alert", () => {
     },
   });
 
-  assert.equal(registro[0]?.onde, "alert");
-  const botoes = registro[0].args[2] as { text: string; style?: string; onPress?: () => void }[];
-  assert.deepEqual(
-    botoes.map((b) => b.text),
-    ["Cancelar", "Excluir"],
-    "perder o Cancelar transformaria a pergunta em acao direta"
-  );
-  assert.equal(botoes[1].style, "destructive");
-  botoes[1].onPress?.();
+  assert.equal(registro[0]?.onde, "confirm");
+  const opcoes = registro[0].args[0] as { confirmLabel: string; cancelLabel: string; confirmVariant: string; onConfirm: () => void };
+  assert.equal(opcoes.cancelLabel, "Cancelar", "perder o Cancelar transformaria a pergunta em acao direta");
+  assert.equal(opcoes.confirmLabel, "Excluir");
+  assert.equal(opcoes.confirmVariant, "danger");
+  opcoes.onConfirm();
   assert.equal(confirmou, true, "o Excluir tem de chamar a acao");
 });

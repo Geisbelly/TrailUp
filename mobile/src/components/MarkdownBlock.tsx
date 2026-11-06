@@ -1,3 +1,4 @@
+import { textoDeErro } from "@/utils/textoDeErro";
 import { useUsuario } from "@/context/SessaoContext";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -220,7 +221,7 @@ export function MarkdownBlock({ payload }: Props) {
         return r.text();
       })
       .then((text) => { if (ativo) setMarkdown(text); })
-      .catch((e) => { if (ativo) setErro(e instanceof Error ? e.message : "Falha ao carregar."); })
+      .catch((e) => { if (ativo) setErro(textoDeErro(e, "Não foi possível carregar este trecho.")); })
       .finally(() => { if (ativo) setCarregando(false); });
     return () => { ativo = false; };
   }, [inlineMarkdown, sourceUrl, bucketHint]);

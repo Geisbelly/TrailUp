@@ -100,7 +100,7 @@ export function ListaCelular({
 }
 
 const s = StyleSheet.create({
-  lista: { gap: ESPACO, paddingTop: 6, paddingHorizontal: 14, paddingBottom: RESERVA_DOS_FLUTUANTES },
+  lista: { gap: ESPACO, paddingTop: 18, paddingHorizontal: 14, paddingBottom: RESERVA_DOS_FLUTUANTES },
   linha: {
     flexDirection: "row",
     alignItems: "center",
