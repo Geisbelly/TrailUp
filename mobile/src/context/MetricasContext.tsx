@@ -2,6 +2,9 @@ import { useIA } from "@/context/IAContext";
 import { initialStudyContext } from '@/utils/studyContext';
 import {
   accumulateContextTime,
+  intervaloCreditavelMs,
+  registraNoConteudo,
+  somarTimeMetrics,
   buildEmptyBatch,
   nextStudyBatch,
   restoreUnsentBatch,
@@ -62,6 +65,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { supabase } from "@/database/supabase";
 import { AppState, Platform, StyleSheet, View } from "react-native";
 
 type CameraPermissionState = "unknown" | "granted" | "denied" | "unavailable";
@@ -129,7 +133,8 @@ type MetricasContextValue = {
 };
 
 type MetricasBatchContextValue = {
-  lastBatchTimeMetrics: TelemetryTimeMetrics | null;
+  /** Soma dos lotes desde que o app abriu, mais o lote em andamento. */
+  timeMetricsRecentes: TelemetryTimeMetrics | null;
 };
 
 const IDLE_THRESHOLD_MS = 15_000;
@@ -274,7 +279,7 @@ function registerContextTouch(batch: BatchAccumulator, context: CurrentStudyCont
     }).touchCount += 1;
   }
 
-  if (context.conteudoId != null) {
+  if (registraNoConteudo(context)) {
     getOrCreateTimeMetricEntry(batch.timeMetrics.contents, {
       key: `content:${context.conteudoId}`,
       topicoId: context.topicoId,
@@ -325,7 +330,7 @@ function registerContextScroll(
     entry.maxDepthPx = Math.max(entry.maxDepthPx, depthY);
   }
 
-  if (context.conteudoId != null) {
+  if (registraNoConteudo(context)) {
     const entry = getOrCreateTimeMetricEntry(batch.timeMetrics.contents, {
       key: `content:${context.conteudoId}`,
       topicoId: context.topicoId,
@@ -370,10 +375,9 @@ function buildTimeMetricsSnapshot(
   batch: BatchAccumulator,
   nowMs: number
 ): TelemetryTimeMetrics {
-  const screenDwellSec = Math.max(
-    0,
-    Math.round((nowMs - batch.batchStartedAtMs) / 1000)
-  );
+  // O que passou pela linha do tempo, não `agora - início do lote`: esse relógio
+  // de parede incluía `inactive` e o trecho com a tela desligada.
+  const screenDwellSec = roundSeconds(batch.generalActiveMs + batch.generalIdleMs);
   const idleSec = Math.min(screenDwellSec, roundSeconds(batch.generalIdleMs));
   const activeSec = Math.min(
     screenDwellSec,
@@ -439,7 +443,10 @@ function mapSignal(signal: IATriggerSignal): TelemetrySignalPayload {
 export function MetricasProvider({ children }: { children: React.ReactNode }) {
   const { subscribeToSignals } = useIA();
   const [lastAnalysis, setLastAnalysis] = useState<TelemetryBatchResponse["analysis"] | null>(null);
-  const [lastBatchTimeMetrics, setLastBatchTimeMetrics] = useState<TelemetryTimeMetrics | null>(null);
+  const [timeMetricsRecentes, setTimeMetricsRecentes] = useState<TelemetryTimeMetrics | null>(null);
+  // Só lotes já fechados: o lote em andamento entra na hora de publicar, senão
+  // a publicação de cada segundo o somaria de novo.
+  const lotesFechadosRef = useRef<TelemetryTimeMetrics | null>(null);
   const [cameraOptIn, setCameraOptInState] = useState(false);
   const [cameraPermission, setCameraPermission] = useState<CameraPermissionState>(
     Platform.OS === "web" || !CameraView ? "unavailable" : "unknown"
@@ -485,6 +492,16 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
   const captureRef = useRef<any>(null);
   const frameCaptureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isCapturingFrameRef = useRef(false);
+
+  // O recente é do aluno logado: quem entra depois no aparelho não herda a soma.
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento !== "SIGNED_OUT") return;
+      lotesFechadosRef.current = null;
+      setTimeMetricsRecentes(null);
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   const applyConsentRecord = useCallback((record: TelemetryConsentRecord | null) => {
     // Termo de versao antiga NAO conta como consentimento para coletar. Aceitar
@@ -537,7 +554,9 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
 
     const startMs = batch.lastAccruedAtMs;
     const endMs = Math.max(atMs, startMs);
-    const deltaMs = endMs - startMs;
+    // Tela desligada: o JS dormiu antes de o `AppState` avisar. Esse trecho não
+    // é estudo, e sem isto viraria tempo inteiro de uma vez ao acordar.
+    const deltaMs = intervaloCreditavelMs(endMs - startMs);
     if (deltaMs <= 0) {
       batch.lastAccruedAtMs = endMs;
       return;
@@ -552,9 +571,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     batch.generalActiveMs += activeMs;
     batch.generalIdleMs += idleMs;
 
-    if (currentContext.studyState === "active") {
-      accumulateContextTime(batch, currentContext, activeMs, idleMs);
-    }
+    accumulateContextTime(batch, currentContext, activeMs, idleMs);
     batch.lastAccruedAtMs = endMs;
   }, []);
 
@@ -882,7 +899,8 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
           },
       };
 
-      setLastBatchTimeMetrics(timeMetrics);
+      lotesFechadosRef.current = somarTimeMetrics(lotesFechadosRef.current, timeMetrics);
+      setTimeMetricsRecentes(lotesFechadosRef.current);
 
       // The UI keeps collecting while a request is in flight. Swapping only
       // after the await discarded those new interactions and seconds.
@@ -945,6 +963,9 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       } finally {
         if (!assumido && sessionRef.current === session && batchRef.current) {
           batchRef.current = restoreUnsentBatch(batch, batchRef.current);
+          if (lotesFechadosRef.current) {
+            lotesFechadosRef.current = somarTimeMetrics(lotesFechadosRef.current, payload.time_metrics, -1);
+          }
         }
         resetFrameCaptureTimer();
       }
@@ -1361,9 +1382,13 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       const nowMs = Date.now();
       if (telemetryPreferences.usageEnabled) {
         syncBatchTimeline(nowMs);
-        setLastBatchTimeMetrics(buildTimeMetricsSnapshot(session, batch, nowMs));
+        setTimeMetricsRecentes(
+          somarTimeMetrics(lotesFechadosRef.current, buildTimeMetricsSnapshot(session, batch, nowMs))
+        );
       } else {
-        setLastBatchTimeMetrics(buildDisabledUsageTimeMetrics());
+        setTimeMetricsRecentes(
+          somarTimeMetrics(lotesFechadosRef.current, buildDisabledUsageTimeMetrics())
+        );
       }
     };
 
@@ -1577,7 +1602,7 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <MetricasBatchContext.Provider value={{ lastBatchTimeMetrics }}>
+    <MetricasBatchContext.Provider value={{ timeMetricsRecentes }}>
     <MetricasContext.Provider value={value}>
       {children}
       {Platform.OS !== "web" &&

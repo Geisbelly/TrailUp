@@ -7,10 +7,13 @@ import { formatStudyMinutes } from './studyTimeFormat';
 test('sessão iniciada após abrir atividade preserva tópico/conteúdo/atividade ativos', () => {
   const current = { ...EMPTY_STUDY_CONTEXT, topicoId: 131, conteudoId: 192, atividadeId: 1068, studyState: 'active' as const };
   const batch = buildEmptyBatch(0);
-  accumulateContextTime(batch, initialStudyContext(131, current), 60_000, 0);
+  const contexto = initialStudyContext(131, current);
+  assert.equal(contexto.conteudoId, 192);
+  accumulateContextTime(batch, contexto, 60_000, 0);
   assert.equal(batch.timeMetrics.topics['topic:131'].activeMs, 60_000);
-  assert.equal(batch.timeMetrics.contents['content:192'].activeMs, 60_000);
   assert.equal(batch.timeMetrics.activities['activity:1068'].activeMs, 60_000);
+  // O conteúdo vinculado segue no contexto como referência, mas o tempo é da atividade.
+  assert.deepEqual(batch.timeMetrics.contents, {});
 });
 test('nova sessão em outro tópico não herda conteúdo da anterior', () => {
   assert.deepEqual(initialStudyContext(133, { ...EMPTY_STUDY_CONTEXT, topicoId: 131, conteudoId: 192, studyState: 'active' }), { ...EMPTY_STUDY_CONTEXT, topicoId: 133 });

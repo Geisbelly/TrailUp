@@ -11,8 +11,9 @@ import hashlib
 import io
 import json
 import logging
+import re
 import time
-from typing import Any
+from typing import Any, Iterable
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel
@@ -35,10 +36,17 @@ from app.services.rag_observabilidade import registrar_busca, resumo_da_busca
 logger = logging.getLogger(__name__)
 
 ESCOPO_PUBLICO = "publico"
-# O store configurado e compartilhado por todas as turmas (ADR-0002). A busca so
-# enxerga o que foi marcado como publico: um arquivo de turma ou de aluno que
-# parasse aqui por engano nao seria recuperado para outro aluno.
+CORPUS_REGRAS_DERIVADAS = "regras-derivadas"
 _FILTRO_CORPUS_PUBLICO = {"type": "eq", "key": "scope", "value": ESCOPO_PUBLICO}
+_FILTRO_REGRAS_DERIVADAS = {
+    "type": "and",
+    "filters": [
+        _FILTRO_CORPUS_PUBLICO,
+        {"type": "eq", "key": "corpus", "value": CORPUS_REGRAS_DERIVADAS},
+    ],
+}
+_FONTE_DAT = re.compile(r"^DAT-\d{2}$")
+_REGRA_DERIVADA = re.compile(r"^RD-(?:0[1-9]|1[0-2])$")
 
 
 class OpenAIRagService:
@@ -65,6 +73,157 @@ class OpenAIRagService:
             and str(self.settings.openai_rag_api_key or "").strip()
             and self.vector_store_id
         )
+
+    async def buscar_evidencias_pedagogicas(
+        self, *, session: AsyncSession, fontes: Iterable[str], limite: int = 8
+    ) -> list[dict[str, Any]]:
+        """Busca citações curadas sem enviar contexto individual do aluno.
+        Texto de tópico, perfil, telemetria, scores e identificadores de aluno nunca
+        entram no request. Só metadados conhecidos de regras derivadas são devolvidos.
+        """
+        fontes_solicitadas = sorted(
+            {fonte for fonte in fontes if isinstance(fonte, str) and _FONTE_DAT.fullmatch(fonte)}
+        )
+        if not fontes_solicitadas or not self.is_configured():
+            return []
+
+        catalogo = await RagOpenAIFilesRepository(session).listar_do_corpus(
+            vector_store_id=str(self.vector_store_id), corpus=CORPUS_REGRAS_DERIVADAS
+        )
+        arquivos_permitidos: dict[str, dict[str, Any]] = {}
+        for registro in catalogo:
+            atributos = registro.get("attributes")
+            if isinstance(atributos, str):
+                try:
+                    atributos = json.loads(atributos)
+                except json.JSONDecodeError:
+                    continue
+            file_id = registro.get("openai_file_id")
+            if (
+                registro.get("status") == "completed"
+                and isinstance(file_id, str)
+                and isinstance(atributos, dict)
+                and atributos.get("scope") == ESCOPO_PUBLICO
+                and atributos.get("corpus") == CORPUS_REGRAS_DERIVADAS
+                and isinstance(atributos.get("rd"), str)
+                and _REGRA_DERIVADA.fullmatch(atributos["rd"])
+            ):
+                arquivos_permitidos[file_id] = atributos
+        fontes_catalogadas = {
+            fonte.strip()
+            for atributos in arquivos_permitidos.values()
+            for fonte in str(atributos.get("fontes") or "").split(",")
+            if _FONTE_DAT.fullmatch(fonte.strip())
+        }
+        fontes_solicitadas = sorted(set(fontes_solicitadas).intersection(fontes_catalogadas))
+        if not fontes_solicitadas:
+            return []
+        inicio = time.perf_counter()
+        try:
+            resposta = await self._get_client().vector_stores.search(
+                vector_store_id=str(self.vector_store_id),
+                query="Evidências pedagógicas curadas e limitações para "
+                + ", ".join(fontes_solicitadas),
+                filters=dict(_FILTRO_REGRAS_DERIVADAS),
+                max_num_results=max(1, min(limite, 10)),
+            )
+        except Exception as exc:
+            self._registrar_retrieval_direto(
+                latencia_ms=(time.perf_counter() - inicio) * 1000,
+                limite=limite,
+                n_resultados=0,
+                erro=exc,
+            )
+            raise OpenAIRagError(f"Falha no retrieval de evidências: {type(exc).__name__}") from exc
+
+        citacoes: list[dict[str, Any]] = []
+        vistos: set[str] = set()
+        for resultado in getattr(resposta, "data", None) or []:
+            atributos = getattr(resultado, "attributes", None)
+            if not isinstance(atributos, dict):
+                continue
+            file_id = getattr(resultado, "file_id", None)
+            atributos_catalogados = arquivos_permitidos.get(file_id)
+            if not isinstance(atributos_catalogados, dict) or any(
+                atributos.get(chave) != atributos_catalogados.get(chave)
+                for chave in ("scope", "corpus", "rd", "fontes", "confianca")
+            ):
+                continue
+            regra_id = atributos.get("rd")
+            if (
+                atributos.get("scope") != ESCOPO_PUBLICO
+                or atributos.get("corpus") != CORPUS_REGRAS_DERIVADAS
+                or not isinstance(regra_id, str)
+                or not _REGRA_DERIVADA.fullmatch(regra_id)
+                or regra_id in vistos
+            ):
+                continue
+            fontes_resultado = atributos.get("fontes")
+            if isinstance(fontes_resultado, str):
+                fontes_validas = sorted(
+                    {
+                        fonte.strip()
+                        for fonte in fontes_resultado.split(",")
+                        if fonte.strip() in fontes_solicitadas
+                    }
+                )
+            elif isinstance(fontes_resultado, list):
+                fontes_validas = sorted(
+                    {
+                        fonte
+                        for fonte in fontes_resultado
+                        if isinstance(fonte, str)
+                        and _FONTE_DAT.fullmatch(fonte)
+                        and fonte in fontes_solicitadas
+                    }
+                )
+            else:
+                fontes_validas = []
+            if not fontes_validas:
+                continue
+            vistos.add(regra_id)
+            confianca = atributos.get("confianca")
+            citacoes.append(
+                {
+                    "regra": regra_id,
+                    "fontes": fontes_validas,
+                    "confianca": confianca[:120] if isinstance(confianca, str) else "",
+                }
+            )
+        self._registrar_retrieval_direto(
+            latencia_ms=(time.perf_counter() - inicio) * 1000,
+            limite=limite,
+            n_resultados=len(citacoes),
+            erro=None,
+        )
+        return citacoes
+
+    @staticmethod
+    def _registrar_retrieval_direto(
+        *, latencia_ms: float, limite: int, n_resultados: int, erro: BaseException | None
+    ) -> None:
+        # Nunca registra a consulta, conteúdo, fontes individuais ou detalhes do erro.
+        try:
+            registrar_busca(
+                {
+                    "provider": "openai",
+                    "prompt": "sugestao_evidencia",
+                    "model": None,
+                    "status": "erro" if erro is not None else "ok",
+                    "erro": type(erro).__name__ if erro is not None else None,
+                    "latencia_ms": round(latencia_ms, 1),
+                    "top_k": max(1, min(limite, 10)),
+                    "consultas": 1,
+                    "n_resultados": n_resultados,
+                    "com_resultado": n_resultados > 0,
+                    "score_max": None,
+                    "score_medio": None,
+                    "resultados": [],
+                    "fontes_citadas": [],
+                }
+            )
+        except Exception:  # pragma: no cover - observabilidade nunca derruba a sugestão.
+            pass
 
     async def invoke_structured(
         self,

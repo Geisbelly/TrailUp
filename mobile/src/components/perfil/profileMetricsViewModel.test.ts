@@ -28,14 +28,14 @@ test('próximo movimento respeita bloqueio e progresso canônico', () => {
 });
 
 test('perfil não soma a sessão inteira sobre o tempo persistido e agrega bosses dos conteúdos', () => {
-  const vm = build({ ...input(), lastBatchTimeMetrics: { general: { session_elapsed_sec: 260 } } as any,
+  const vm = build({ ...input(), timeMetricsRecentes: { general: { session_elapsed_sec: 260 } } as any,
     battleStates: [{ totalDamage: 40 }, { totalDamage: 25 }] as any });
   assert.equal(vm.tempo, 1);
   assert.equal(vm.danoTotal, 65);
 });
 
 test('tempo recente soma os itens do mesmo escopo, não tira a média', () => {
-  const vm = build({ ...input(), lastBatchTimeMetrics: {
+  const vm = build({ ...input(), timeMetricsRecentes: {
     general: {}, topics: [{ active_sec: 60 }], contents: [{ active_sec: 60 }],
     activities: [{ active_sec: 15 }, { active_sec: 45 }], materials: [],
   } as any });

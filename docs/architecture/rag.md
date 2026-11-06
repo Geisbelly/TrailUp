@@ -2,7 +2,7 @@
 
 ## Propósito
 
-Este documento define a arquitetura do sistema de Retrieval-Augmented Generation (RAG) do TrailUp. O RAG alimenta respostas do mentor virtual, sugestões de personalização, intervenções psicopedagógicas e notificações personalizadas com base em evidências internas e externas.
+Este documento define a arquitetura do sistema de Retrieval-Augmented Generation (RAG) do TrailUp. O RAG alimenta respostas do mentor virtual, citações de evidências nas sugestões de material (sem decidir a ordem) e notificações personalizadas. Dados individuais do aluno não são enviados ao retrieval usado nas sugestões.
 
 ## Estado atual
 
@@ -22,11 +22,10 @@ O que já existe na API:
 
 O que ainda falta:
 - Expor um fluxo administrativo para cadastrar documentos públicos no Vector Store.
-- Tabela de intervenções e leitura do histórico de estado mental.
-- Modelo de comportamento do aluno e camada preditiva antes do LLM.
+- Confirmar em produção que as regras derivadas da Evidence Base estão indexadas com `scope=publico` e `corpus=regras-derivadas`; arquivos anexados sem esses atributos não são elegíveis às sugestões.
+- Atualizar os componentes de intervenção que ainda não usam retrieval.
 
-Já existe a integração operacional do chat com retrieval via `file_search` e o
-serviço backend para indexar arquivos públicos de forma explícita.
+Já existe a integração operacional do chat via `file_search`, o serviço backend para indexar arquivos públicos e retrieval opcional de metadados curados nas sugestões. Na sugestão, o RAG só acrescenta referências `RD-xx`/`DAT-xx`; os scores e a ordem continuam determinísticos. Notificações usam RAG no fluxo existente, sem mudanças neste ADR.
 
 ## Fontes de conhecimento
 
@@ -137,6 +136,16 @@ dependam de `rag_chunks` devem ser migradas antes da remoção desse schema.
 4. Envia o arquivo à OpenAI Files e ao Vector Store autorizado; o serviço faz chunking e embeddings.
 5. Aguarda a indexação e registra `openai_file_id`, vínculo remoto e status em `rag_openai_files`.
 6. Atualiza relações locais quando houver pré-requisitos identificados.
+
+### Citações de evidência nas sugestões (#66)
+
+1. O motor determinístico compõe a ordem e as evidências locais normalmente.
+2. O backend extrai apenas referências públicas `DAT-xx` já presentes no catálogo de evidências.
+3. O Vector Store é consultado com `scope=publico` e `corpus=regras-derivadas`; nenhum dado individual, perfil, telemetria ou texto do tópico é incluído na consulta.
+4. A API aceita somente metadados de regras conhecidas `RD-01`–`RD-12` cujas fontes coincidam com a evidência local.
+5. O console do professor mostra as citações curadas. Sem credenciais, resultado elegível ou em caso de falha, a ordem continua igual e a citação fica ausente.
+
+O campo de citações é opcional e aninhado na evidência existente; conteúdo bruto recuperado não é persistido nem devolvido.
 
 ### Retrieval no chat do mentor
 

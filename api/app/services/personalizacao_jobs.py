@@ -2997,13 +2997,18 @@ async def process_personalizacao_job_once(app: FastAPI) -> bool:
                         generation_key=generation_key,
                     )
 
+                # Sem perfil nao ha Guardiao: o job falha em vez de sair na voz de outro.
+                perfil_do_job = str(payload.get("brainhex_profile_key") or "").strip()
+                if not perfil_do_job:
+                    raise RuntimeError("job media_generation sem brainhex_profile_key")
+
                 resultado = await processar_job_media_generation_once(
                     jobs_repo=jobs_repo,
                     blocos_repo=blocos_repo,
                     job=job,
                     base_blocks_by_id=base_blocks_by_id,
                     topic=topic_payload,
-                    profile=str(payload.get("brainhex_profile_key") or "mastermind"),
+                    profile=_normalize_profile_key(perfil_do_job),
                     settings=app.state.settings,
                     max_retries=int(app.state.settings.personalizacao_job_max_retries),
                     total_partes_calculator=lambda _targets: 1,

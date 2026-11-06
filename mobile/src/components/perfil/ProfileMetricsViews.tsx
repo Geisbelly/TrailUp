@@ -1067,8 +1067,8 @@ function AffinityBoard({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
 function TempoEstudoSection({ vm, palette, accent, targetRef }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string; targetRef?: React.RefObject<View | null> }) {
   // Duas leituras diferentes, e por isso duas fileiras rotuladas em vez de um
   // numero so: o ACUMULADO responde "quanto tempo eu ja investi" e vem do que
-  // esta persistido; a MEDIA DA SESSAO responde "qual meu ritmo agora" e vem da
-  // telemetria do lote atual. Antes a tela mostrava apenas a segunda -- e ela
+  // esta persistido; o RECENTE responde "quanto estudei agora" e soma a telemetria
+  // desde que o app abriu. Antes a tela mostrava apenas a segunda -- e ela
   // desaparecia inteira quando nao havia sessao, entao quem estudou ontem via
   // zero.
   if (!vm.temTempoAcumulado && !vm.hasSessionMetrics) return null;
@@ -1080,7 +1080,7 @@ function TempoEstudoSection({ vm, palette, accent, targetRef }: { vm: ProfileMet
         subtitle={
           vm.temTempoAcumulado
             ? "Tempo acumulado na turma. Conteúdos e atividades já estão incluídos no tempo dos tópicos."
-            : "Tempo ativo no intervalo recente de estudo."
+            : "Tempo ativo somado desde que você abriu o app."
         }
         icon="timer-outline"
         palette={palette}
@@ -1169,7 +1169,7 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
             icon="clock-outline"
             label="Tempo ativo"
             value={formatSeconds(vm.sessionActiveSec)}
-            helper={vm.hasSessionMetrics ? "sessão atual" : vm.presencaResumo}
+            helper={vm.hasSessionMetrics ? "desde que abriu o app" : vm.presencaResumo}
             palette={palette}
             accent={accent}
             targetRef={guideRef(guideRefs, "arena-active-time")}

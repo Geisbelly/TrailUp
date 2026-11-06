@@ -134,6 +134,9 @@ export interface AudioScriptStyle {
 }
 
 const HEADING_LINE_RE = /^#{1,6}[ \t]+(.+?)[ \t#]*$/;
+// O modelo também escreve o título no meio da linha ("...inteiro. ## Frações. Imagine").
+// Ali não dá para saber onde o título acaba: só o marcador sai, senão o TTS o lê em voz alta.
+const INLINE_HEADING_MARK_RE = /(^|\s)#{1,6}[ \t]+/g;
 const TAG_RE = /\[[^\]\n]{1,80}\]/g;
 const TAG_ONLY_LINE_RE = /^(?:\s*\[[^\]\n]{1,80}\]\s*)+$/;
 // Só o marcador visual sai; "1." de passo numerado é fala ("primeiro...").
@@ -153,7 +156,8 @@ function lastTag(text: string): string | null {
 
 /**
  * Limpa o roteiro de uma seção para o TTS:
- * - tira linhas de título ("## …"), que são marcador de corte e não fala;
+ * - tira linhas de título ("## …"), que são marcador de corte e não fala, e o
+ *   marcador de título que vier no meio da linha;
  * - tira ênfase e marcador de lista do markdown (o TTS lê "asterisco");
  * - junta a tag de tom que veio sozinha na linha com a fala seguinte e tira
  *   tag que sobrou no fim, sem fala depois (a seção acabaria numa instrução);
@@ -167,7 +171,8 @@ export function cleanAudioScript(text: string, style: AudioScriptStyle = {}): st
     .replace(/\r\n?/g, "\n")
     .split("\n")
     .map((line) => line.replace(/\*\*|__|`/g, "").replace(/(^|\s)\*(\S[^*]*?)\*(?=\s|$|[.,;:!?])/g, "$1$2"))
-    .filter((line) => !HEADING_LINE_RE.test(line.trim()));
+    .filter((line) => !HEADING_LINE_RE.test(line.trim()))
+    .map((line) => line.replace(INLINE_HEADING_MARK_RE, "$1"));
 
   if (dialogue) {
     const speakerRe = speakerPrefixRe(style.speakers ?? []);

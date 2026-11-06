@@ -8,7 +8,7 @@ números publicados na v7, em [`analises/custos-jic-2026/`](analises/custos-jic-
 projeta planos pagos; este documento registra o que acontece de fato. Os R$ 435 de parte fixa são
 projeção, não gasto.
 
-Última atualização: 05/11/2026.
+Última atualização: 06/11/2026.
 
 ## O que é pago hoje
 
@@ -51,6 +51,7 @@ O tier free não cobra em dinheiro, mas tem teto:
 | `personalizacao_job_targets.uso_modelo` | Geração de mídia do microservice, com Gemini, OpenAI, deck e caracteres da voz, somando as tentativas | Chamadas da API, como o enriquecimento |
 | `ia_decision_logs` com `provider = 'regra'` | Perguntas respondidas sem modelo | Consumo em tokens |
 | Logs do microservice, linha `[gemini-diag]` | Amostra crua do `usageMetadata` | Histórico, some com o log |
+| OpenAI Vector Store `vector_stores.search` (#66) | RAG nas citações das sugestões: latência, limite e resultados no log da API | Não registra tokens nem valor faturado; custo segue **PENDENTE** até conferir a fatura da conta RAG |
 
 As duas primeiras fontes não se somam por engano: o microservice não grava em `ia_uso_llm`.
 

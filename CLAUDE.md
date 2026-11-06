@@ -916,6 +916,24 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > porque o aninhamento é inclusivo: cada escopo conta o mesmo intervalo. Somar
 > escopos diferentes multiplica o tempo — filtre por `scope` sempre.
 >
+> **Tópico ≥ conteúdo + atividade é regra do coletor** (`accumulateContextTime`), a menos do
+> arredondamento por entrada do lote. O escopo `topic` corre com o aluno em qualquer ponto do
+> tópico, inclusive fora de um item; `content`, `activity` e `material` só com o item aberto.
+> Atividade vinculada a um conteúdo credita só a atividade: o `conteudoId` no contexto é
+> referência, como em `planSessionRegistrations`. A exceção é a atividade personalizada
+> (`registraNoConteudo`): o id é local e negativo, não há `atividade_aluno`, e o tempo fica no
+> conteúdo. Lotes de até o app 1.0.7 têm o trecho duplicado e não foram recalculados.
+>
+> **Tela desligada não conta, e são duas barreiras:** o `AppState` para os relógios, e um salto
+> grande entre marcações é descartado para o caso de o JS dormir antes de o evento chegar
+> (`intervaloCreditavelMs`, `INTERVALO_MAXIMO_MS`, `criarTempoCorrido`). `tempo_gasto_seg` da
+> questão e `screen_dwell_sec` do lote também só contam tempo visível: os dois já foram
+> `agora - início`. Exceção de propósito: o prazo da tentativa de atividade é do servidor (#136)
+> e corre com a tela desligada.
+>
+> Na tela do perfil, a fileira "(recente)" é `timeMetricsRecentes`: a soma dos lotes desde que o
+> app abriu (`somarTimeMetrics`). Ela já foi só o último lote, então nunca passava de 60 s.
+>
 > Corolário: `tempo_gasto_min` em `topico_aluno`, `conteudo_aluno` e
 > `atividade_aluno` é **tempo ativo** (`trailup_tempo_telemetria_min`, soma de
 > `active_sec` / 60 por escopo). A **conta** é uma só, mas três lugares a

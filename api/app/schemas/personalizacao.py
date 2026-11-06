@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import AliasChoices, BaseModel, Field, field_validator, model_validator
+from pydantic import AliasChoices, BaseModel, Field, StringConstraints, field_validator, model_validator
 
 from app.schemas.entrada_chat import MAX_TEXTO_DO_CHAT, limpar_texto
 from app.schemas.ia_patch import IAPersonalizationPatch
@@ -247,6 +247,18 @@ class PersonalizacaoMediaStatusResponse(BaseModel):
     materiais: list[PersonalizacaoMediaItemStatusResponse] = Field(default_factory=list)
 
 
+_RegraRag = Annotated[str, StringConstraints(pattern=r"^RD-(?:0[1-9]|1[0-2])$")]
+_FonteRag = Annotated[str, StringConstraints(pattern=r"^DAT-\d{2}$")]
+
+
+class SugestaoReferenciaRag(BaseModel):
+    """Citação curta de regra derivada pública; nunca contém texto bruto recuperado."""
+
+    regra: _RegraRag
+    fontes: list[_FonteRag] = Field(default_factory=list)
+    confianca: str = Field(default="", max_length=120)
+
+
 class SugestaoEvidencia(BaseModel):
     """Por que um formato está onde está: a regra do catálogo e os números do aluno.
 
@@ -261,6 +273,7 @@ class SugestaoEvidencia(BaseModel):
     fontes: list[str] = Field(default_factory=list)
     confianca: str = "hipotese"
     dados: dict[str, Any] = Field(default_factory=dict)
+    referencias_rag: list[SugestaoReferenciaRag] = Field(default_factory=list)
 
 
 class SugestaoMaterialItem(BaseModel):

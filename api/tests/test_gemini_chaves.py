@@ -189,7 +189,6 @@ async def test_tts_do_guardiao_com_varias_chaves_manda_uma_so(monkeypatch) -> No
     from app.services import media_agents
 
     usadas = _cliente_falso(monkeypatch, {"k1": [_resposta(200, {"candidates": []})], "k2": []})
-    monkeypatch.setattr(media_agents, "gerar_mp3_gtts", lambda **_: b"gtts")
     settings = SimpleNamespace(**vars(_settings()), gemini_model_tts="tts-model")
 
     resultado = await media_agents.gerar_audio_gemini_tts(
@@ -197,4 +196,5 @@ async def test_tts_do_guardiao_com_varias_chaves_manda_uma_so(monkeypatch) -> No
     )
 
     assert usadas == ["k1"]
-    assert resultado == b"gtts"
+    # Gemini sem audio nao vira voz generica: sai sem audio.
+    assert resultado is None

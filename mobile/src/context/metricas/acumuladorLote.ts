@@ -16,6 +16,7 @@ import type {
   TelemetrySignalPayload,
   TelemetryStudyState,
   TelemetryTimeMetricEntry,
+  TelemetryTimeMetrics,
   TelemetryTouchSample,
   TelemetryTouchTarget,
 } from "@/interfaces/telemetria/TelemetryContracts";
@@ -209,8 +210,37 @@ export function accumulateEntryTime(
 }
 
 /**
- * TEMPO. Só corre com o aluno de fato num item — no menu da trilha ele nao
- * esta consumindo nada, e contar ali inflaria o tempo de estudo.
+ * Acima disto, o intervalo entre duas marcações não é tempo vivido: é o JS que
+ * ficou parado. Com a sessão aberta a linha do tempo é marcada a cada 1 s
+ * (`publishSnapshot`), então um salto assim só acontece com o aparelho dormindo
+ * (tela desligada) antes de o evento do `AppState` chegar. O limite é folgado
+ * para uma tela pesada travar o JS por uns segundos sem perder tempo de verdade.
+ */
+export const SALTO_MAXIMO_DA_LINHA_DO_TEMPO_MS = 10_000;
+
+export function intervaloCreditavelMs(deltaMs: number): number {
+  return deltaMs > 0 && deltaMs <= SALTO_MAXIMO_DA_LINHA_DO_TEMPO_MS ? deltaMs : 0;
+}
+
+/**
+ * Atividade vinculada a um conteúdo carrega `conteudoId` só como referência (é
+ * a mesma regra de `planSessionRegistrations`). Creditar os dois contava o mesmo
+ * intervalo duas vezes, e conteúdo + atividade passava do total do tópico.
+ *
+ * A exceção é a atividade personalizada: o id dela é negativo e local
+ * (`buildStableNegativeId`), não existe `atividade_aluno` para receber o tempo, e
+ * sem cair no conteúdo ele sumiria dos dois.
+ */
+export function registraNoConteudo(context: CurrentStudyContext): boolean {
+  if (context.conteudoId == null) return false;
+  return context.atividadeId == null || context.atividadeId <= 0;
+}
+
+/**
+ * TEMPO. O total do TÓPICO é o tempo do aluno dentro dele, inclusive fora de um
+ * item (resumo, troca de bloco): por isso não exige `studyState === "active"` e
+ * cobre a soma dos outros dois, a menos do arredondamento de cada entrada do
+ * lote. Conteúdo, atividade e material só correm com o item aberto.
  */
 export function accumulateContextTime(
   batch: BatchAccumulator,
@@ -218,10 +248,6 @@ export function accumulateContextTime(
   activeMs: number,
   idleMs: number
 ) {
-  if (context.studyState !== "active") {
-    return;
-  }
-
   if (context.topicoId != null) {
     accumulateEntryTime(
       getOrCreateTimeMetricEntry(batch.timeMetrics.topics, {
@@ -233,7 +259,11 @@ export function accumulateContextTime(
     );
   }
 
-  if (context.conteudoId != null) {
+  if (context.studyState !== "active") {
+    return;
+  }
+
+  if (registraNoConteudo(context)) {
     accumulateEntryTime(
       getOrCreateTimeMetricEntry(batch.timeMetrics.contents, {
         key: `content:${context.conteudoId}`,
@@ -365,4 +395,66 @@ export function serializeTimeMetricEntries(
       }
       return left.key.localeCompare(right.key);
     });
+}
+
+function somarEntradas(
+  acumuladas: TelemetryTimeMetricEntry[],
+  novas: TelemetryTimeMetricEntry[],
+  sinal: 1 | -1
+): TelemetryTimeMetricEntry[] {
+  const soma = (a: number, b: number) => Math.max(0, a + sinal * b);
+  const porChave = new Map(acumuladas.map((entrada) => [entrada.key, { ...entrada }]));
+  for (const nova of novas) {
+    const atual = porChave.get(nova.key);
+    porChave.set(
+      nova.key,
+      atual
+        ? {
+            ...nova,
+            visits: soma(atual.visits, nova.visits),
+            dwell_sec: soma(atual.dwell_sec, nova.dwell_sec),
+            active_sec: soma(atual.active_sec, nova.active_sec),
+            idle_sec: soma(atual.idle_sec, nova.idle_sec),
+            touch_count: soma(atual.touch_count, nova.touch_count),
+            scroll_distance_px: soma(atual.scroll_distance_px, nova.scroll_distance_px),
+            max_depth_px: Math.max(atual.max_depth_px, nova.max_depth_px),
+          }
+        : { ...nova }
+    );
+  }
+  return [...porChave.values()].sort((a, b) => b.active_sec - a.active_sec || a.key.localeCompare(b.key));
+}
+
+/**
+ * Cada lote traz só o tempo DELE (`buildEmptyBatch`), então o que a tela mostra
+ * como "recente" precisa somar os lotes: mostrar o último exibia no máximo 60 s,
+ * e o número caía a cada envio.
+ *
+ * `sinal = -1` tira um lote que não foi aceito e voltou para o lote em andamento
+ * (`restoreUnsentBatch`): sem isso ele apareceria duas vezes.
+ */
+export function somarTimeMetrics(
+  acumulado: TelemetryTimeMetrics | null,
+  lote: TelemetryTimeMetrics,
+  sinal: 1 | -1 = 1
+): TelemetryTimeMetrics {
+  if (!acumulado) return lote;
+  const soma = (x: number, y: number) => Math.max(0, x + sinal * y);
+  const a = acumulado.general;
+  const b = lote.general;
+  return {
+    general: {
+      ...b,
+      batch_dwell_sec: soma(a.batch_dwell_sec, b.batch_dwell_sec),
+      batch_active_sec: soma(a.batch_active_sec, b.batch_active_sec),
+      batch_idle_sec: soma(a.batch_idle_sec, b.batch_idle_sec),
+      touch_count: soma(a.touch_count, b.touch_count),
+      scroll_distance_px: soma(a.scroll_distance_px, b.scroll_distance_px),
+      max_depth_px: Math.max(a.max_depth_px, b.max_depth_px),
+    },
+    topics: somarEntradas(acumulado.topics, lote.topics, sinal),
+    contents: somarEntradas(acumulado.contents, lote.contents, sinal),
+    activities: somarEntradas(acumulado.activities, lote.activities, sinal),
+    materials: somarEntradas(acumulado.materials, lote.materials, sinal),
+  };
 }

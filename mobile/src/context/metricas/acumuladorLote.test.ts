@@ -5,8 +5,12 @@ import {
   accumulateContextTime,
   buildEmptyBatch,
   EMPTY_STUDY_CONTEXT,
+  intervaloCreditavelMs,
   markContextVisit,
+  registraNoConteudo,
+  SALTO_MAXIMO_DA_LINHA_DO_TEMPO_MS,
   serializeTimeMetricEntries,
+  somarTimeMetrics,
   type CurrentStudyContext,
 } from "./acumuladorLote";
 
@@ -58,21 +62,118 @@ test("visita conta para conteudo, atividade e material", () => {
   assert.equal(batch.timeMetrics.materials["material:content:42"]?.visits, 1);
 });
 
-test("TEMPO segue exigindo contexto ativo", () => {
-  // O guard saiu da visita, nao do tempo: contar tempo no menu da trilha, onde
-  // o aluno nao consome nada, inflaria o tempo de estudo.
+test("o topico conta fora do item; conteudo, atividade e material exigem item aberto", () => {
   const batch = buildEmptyBatch(T0);
 
-  accumulateContextTime(batch, contexto({ topicoId: 128, studyState: "idle" }), 5_000, 0);
-  // `assert.ok` em vez de comparar com `undefined`: o `assert.equal` do modo
-  // strict estreita o tipo e o reacesso abaixo viraria `never`.
-  assert.ok(
-    !("topic:128" in batch.timeMetrics.topics),
-    "contexto idle nao pode nem criar a entrada de tempo"
+  accumulateContextTime(
+    batch,
+    contexto({ topicoId: 128, conteudoId: 87, atividadeId: 9, materialKey: "m", studyState: "idle" }),
+    5_000,
+    0
   );
 
-  accumulateContextTime(batch, contexto({ topicoId: 128, studyState: "active" }), 5_000, 0);
   assert.equal(batch.timeMetrics.topics["topic:128"]?.activeMs, 5_000);
+  assert.deepEqual(batch.timeMetrics.contents, {});
+  assert.deepEqual(batch.timeMetrics.activities, {});
+  assert.deepEqual(batch.timeMetrics.materials, {});
+});
+
+test("atividade vinculada a conteudo nao credita o conteudo: o topico fica maior que a soma", () => {
+  const batch = buildEmptyBatch(T0);
+
+  accumulateContextTime(batch, contexto({ topicoId: 7, studyState: "idle" }), 2_000, 0);
+  accumulateContextTime(batch, contexto({ topicoId: 7, conteudoId: 87, studyState: "active" }), 10_000, 0);
+  accumulateContextTime(
+    batch,
+    contexto({ topicoId: 7, conteudoId: 87, atividadeId: 9, studyState: "active" }),
+    3_000,
+    0
+  );
+
+  const conteudo = batch.timeMetrics.contents["content:87"]?.activeMs ?? 0;
+  const atividade = batch.timeMetrics.activities["activity:9"]?.activeMs ?? 0;
+  const topico = batch.timeMetrics.topics["topic:7"]?.activeMs ?? 0;
+  assert.equal(conteudo, 10_000);
+  assert.equal(atividade, 3_000);
+  assert.equal(topico, 15_000);
+  assert.ok(topico > conteudo + atividade);
+});
+
+test("atividade personalizada (id local negativo) segue creditando o conteudo vinculado", () => {
+  const batch = buildEmptyBatch(T0);
+
+  accumulateContextTime(
+    batch,
+    contexto({ topicoId: 7, conteudoId: 87, atividadeId: -123, studyState: "active" }),
+    3_000,
+    0
+  );
+
+  assert.equal(batch.timeMetrics.contents["content:87"]?.activeMs, 3_000);
+});
+
+test("registraNoConteudo: so conteudo real sem atividade real", () => {
+  assert.equal(registraNoConteudo(contexto({ conteudoId: 87 })), true);
+  assert.equal(registraNoConteudo(contexto({ conteudoId: 87, atividadeId: -1 })), true);
+  assert.equal(registraNoConteudo(contexto({ conteudoId: 87, atividadeId: 9 })), false);
+  assert.equal(registraNoConteudo(contexto({ atividadeId: 9 })), false);
+  assert.equal(registraNoConteudo(contexto()), false);
+});
+
+test("salto na linha do tempo e JS dormindo, nao tempo de estudo", () => {
+  assert.equal(intervaloCreditavelMs(1_000), 1_000);
+  assert.equal(intervaloCreditavelMs(SALTO_MAXIMO_DA_LINHA_DO_TEMPO_MS), SALTO_MAXIMO_DA_LINHA_DO_TEMPO_MS);
+  assert.equal(intervaloCreditavelMs(30 * 60_000), 0);
+  assert.equal(intervaloCreditavelMs(-1), 0);
+});
+
+function metricas(activeSec: number, chave = "topic:7") {
+  const entrada = {
+    key: chave, visits: 1, dwell_sec: activeSec, active_sec: activeSec, idle_sec: 0,
+    touch_count: 1, scroll_distance_px: 10, max_depth_px: activeSec,
+  };
+  return {
+    general: {
+      session_elapsed_sec: activeSec, batch_dwell_sec: activeSec, batch_active_sec: activeSec,
+      batch_idle_sec: 0, touch_count: 1, scroll_distance_px: 10, max_depth_px: activeSec,
+    },
+    topics: [entrada], contents: [], activities: [], materials: [],
+  };
+}
+
+test("o recente soma os lotes em vez de ficar com o ultimo", () => {
+  const somado = somarTimeMetrics(somarTimeMetrics(null, metricas(60)), metricas(19));
+
+  assert.equal(somado.topics.length, 1);
+  assert.equal(somado.topics[0].active_sec, 79);
+  assert.equal(somado.topics[0].max_depth_px, 60);
+  assert.equal(somado.general.batch_active_sec, 79);
+  assert.equal(somado.general.touch_count, 2);
+});
+
+test("somar nao altera o acumulado: o lote em andamento nao pode entrar duas vezes", () => {
+  const fechados = somarTimeMetrics(null, metricas(60));
+
+  somarTimeMetrics(fechados, metricas(5));
+  const publicado = somarTimeMetrics(fechados, metricas(6));
+
+  assert.equal(publicado.topics[0].active_sec, 66);
+  assert.equal(fechados.topics[0].active_sec, 60);
+});
+
+test("lote devolvido sai do acumulado: ele volta a contar pelo lote em andamento", () => {
+  const fechados = somarTimeMetrics(metricas(60), metricas(30));
+
+  const semODevolvido = somarTimeMetrics(fechados, metricas(30), -1);
+
+  assert.equal(semODevolvido.topics[0].active_sec, 60);
+  assert.equal(semODevolvido.general.batch_active_sec, 60);
+});
+
+test("topicos diferentes ficam em entradas separadas, a maior primeiro", () => {
+  const somado = somarTimeMetrics(metricas(10, "topic:1"), metricas(40, "topic:2"));
+
+  assert.deepEqual(somado.topics.map((t) => t.key), ["topic:2", "topic:1"]);
 });
 
 test("dwell e a soma de ativo e ocioso", () => {

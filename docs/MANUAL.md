@@ -182,7 +182,7 @@ docker compose down              # encerra
 > `frontend` roda no **navegador do host**, então mantém
 > `VITE_APITRAIUP_URL=http://localhost:8000`.
 >
-> A imagem da api instala **ffmpeg** (necessário para `moviepy`/`gTTS`).
+> A imagem da api instala **ffmpeg** (necessário para `moviepy`).
 
 ---
 

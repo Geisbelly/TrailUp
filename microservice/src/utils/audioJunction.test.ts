@@ -13,6 +13,17 @@ const frase = (n: number) => `Frase número ${n} sobre frações, com numerador 
 const paragrafo = (inicio: number, frases: number) =>
   Array.from({ length: frases }, (_, i) => frase(inicio + i)).join(" ");
 
+test("cleanAudioScript tira o marcador de título no meio da linha, sem perder a fala", () => {
+  assert.equal(
+    cleanAudioScript("[Tom: Calmo] Comece aqui. ## Frações no dia. Imagine um C# e 3 # 4.\n### Outra\nFim."),
+    "[Tom: Calmo] Comece aqui. Frações no dia. Imagine um C# e 3 4. Fim.",
+  );
+  assert.equal(
+    cleanAudioScript("Mateo: Oi. ## Frações\nZuri: Olá.", { speakers: ["Mateo", "Zuri"] }),
+    "Mateo: Oi. Frações\nZuri: Olá.",
+  );
+});
+
 test("tag de tom sozinha na linha vai para a fala seguinte, e tag sem fala no fim sai (Daredevil, turma 66)", () => {
   const roteiro = "Saudações! Preparado?\n\n[Tom: Focado e Pragmático]\nAgora, vamos ao cerne da missão.\n\n[Tom: Entusiasmado e Didático]";
   assert.equal(

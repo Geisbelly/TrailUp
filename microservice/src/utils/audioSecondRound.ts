@@ -58,10 +58,8 @@ export function resolveAudioSecondRoundConfig(
 }
 
 /**
- * A falha que chega aqui pode ser a do Gemini ou a da reserva OpenAI, que
- * embrulha a do Gemini em `cause` ("reserva OpenAI falhou (...) depois do
- * Gemini: ..."). O que decide é a causa original no Gemini: sem crédito na
- * OpenAI, a resposta sem áudio do Gemini continua sendo a falha que passa.
+ * A falha que chega aqui pode vir embrulhada em `cause`. O que decide é a causa
+ * original no Gemini.
  */
 export function audioFailureKind(reason: unknown): TtsFailureKind {
   return classifyTtsFailure(rootCause(reason));
