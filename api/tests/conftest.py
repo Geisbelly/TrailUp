@@ -71,7 +71,6 @@ class FakeGraph:
 def settings() -> Settings:
     return Settings(
         app_env="test",
-        app_debug=True,
         database_url="sqlite+aiosqlite:///:memory:",
         langgraph_db_url=None,
         supabase_jwt_secret="test-secret",

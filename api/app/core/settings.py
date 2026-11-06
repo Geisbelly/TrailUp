@@ -14,7 +14,6 @@ class Settings(BaseSettings):
 
     app_name: str = "TrailUp API"
     app_env: str = "development"
-    app_debug: bool = False
     cors_allow_origins: list[str] = Field(default_factory=lambda: ["*"])
     cors_allow_methods: list[str] = Field(default_factory=lambda: ["*"])
     cors_allow_headers: list[str] = Field(default_factory=lambda: ["*"])
