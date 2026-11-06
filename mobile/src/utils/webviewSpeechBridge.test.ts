@@ -5,6 +5,8 @@ import vm from "node:vm";
 import {
   SCRIPT_CALAR_FALA,
   SCRIPT_PONTE_DE_VOZ,
+  calarVozDoIframe,
+  observarFalaDoIframe,
   parsePedidoDeFala,
   scriptDeConclusao,
 } from "./webviewSpeechBridge";
@@ -184,4 +186,40 @@ test("pagina sem a API e sem ponte nao quebra ao calar", () => {
   const contexto = vm.createContext({ window: {} });
 
   assert.equal(vm.runInContext(SCRIPT_CALAR_FALA, contexto), true);
+});
+
+test("na web o app fica sabendo da fala antes de ela sair", () => {
+  const ordem: string[] = [];
+  const janela = {
+    speechSynthesis: {
+      speak: (fala: string) => void ordem.push(fala),
+      cancel: () => {},
+    },
+  };
+
+  observarFalaDoIframe(janela, () => ordem.push("aviso"));
+  janela.speechSynthesis.speak("fala");
+
+  assert.deepEqual(ordem, ["aviso", "fala"]);
+});
+
+test("calar alcanca a voz do iframe", () => {
+  let canceladas = 0;
+  const janela = { speechSynthesis: { speak: () => {}, cancel: () => void (canceladas += 1) } };
+
+  calarVozDoIframe(janela);
+
+  assert.equal(canceladas, 1);
+});
+
+test("iframe de outra origem nao quebra quem o observa nem quem o cala", () => {
+  const outraOrigem = {
+    get speechSynthesis(): never {
+      throw new Error("SecurityError");
+    },
+  };
+
+  assert.doesNotThrow(() => observarFalaDoIframe(outraOrigem, () => {}));
+  assert.doesNotThrow(() => calarVozDoIframe(outraOrigem));
+  assert.doesNotThrow(() => calarVozDoIframe(null));
 });

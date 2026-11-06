@@ -105,4 +105,5 @@ test("o frame cala a narracao ao sair da tela e ao desmontar", async () => {
 
   assert.match(fonte, /usePausarAoSairDaTela\(narracao\.pausar\)/);
   assert.match(fonte, /useLayoutEffect\(\(\) => narracao\.pausar, \[narracao\]\)/);
+  assert.match(fonte, /observarFalaDoIframe\(evento\.currentTarget\.contentWindow/);
 });

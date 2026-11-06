@@ -20,6 +20,9 @@
  * No iOS o WKWebView implementa a API, o polyfill nao entra e a voz e do WebKit, fora do alcance do
  * `expo-speech`. O script so envolve o `speak` para o app saber que a narracao comecou; calar e por
  * `SCRIPT_CALAR_FALA`. Ver `narracaoDoDeck.ts`.
+ *
+ * Na web nao ha WebView: o deck roda num `iframe` `srcDoc`, da mesma origem, e o app alcanca a voz
+ * dele direto (`observarFalaDoIframe`, `calarVozDoIframe`).
  */
 
 const CANAL = "__trailupSpeech";
@@ -139,6 +142,35 @@ export const SCRIPT_CALAR_FALA = `
 })();
 true;
 `;
+
+type JanelaComVoz = {
+  speechSynthesis?: { speak: (fala: any) => void; cancel: () => void };
+};
+
+/**
+ * Envolve o `speak` da janela do `iframe` para o app saber que a narracao comecou. Avisa ANTES de
+ * falar: no Chromium a fila de voz e uma so, e o aviso pode calar outro frame com `cancel()`.
+ *
+ * O `try` cobre o `iframe` de outra origem: ler `speechSynthesis` nele lanca `SecurityError`.
+ */
+export function observarFalaDoIframe(janela: JanelaComVoz | null | undefined, aoFalar: () => void) {
+  try {
+    const voz = janela?.speechSynthesis;
+    if (!voz) return;
+    const falar = voz.speak;
+    voz.speak = (fala) => {
+      aoFalar();
+      falar.call(voz, fala);
+    };
+  } catch {}
+}
+
+/** `Speech.stop()` age na janela de cima, e so o Chromium foi medido calando o `iframe` por ali. */
+export function calarVozDoIframe(janela: JanelaComVoz | null | undefined) {
+  try {
+    janela?.speechSynthesis?.cancel();
+  } catch {}
+}
 
 /**
  * Le uma mensagem do WebView e devolve o pedido de fala, ou null.

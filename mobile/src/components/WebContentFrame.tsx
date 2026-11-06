@@ -6,6 +6,8 @@ import { criarNarracaoDoDeck } from "@/utils/narracaoDoDeck";
 import {
   SCRIPT_CALAR_FALA,
   SCRIPT_PONTE_DE_VOZ,
+  calarVozDoIframe,
+  observarFalaDoIframe,
   parsePedidoDeFala,
   scriptDeConclusao,
 } from "@/utils/webviewSpeechBridge";
@@ -53,12 +55,18 @@ export function WebContentFrame({
   onProgressEvent,
 }: Props) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  // Separado de `iframeRef` de propósito: é ele que libera o `postMessage` de progresso, e o
+  // `srcDoc` nunca passou por ali.
+  const iframeDoHtmlRef = useRef<HTMLIFrameElement | null>(null);
   const webViewRef = useRef<any>(null);
 
   const [narracao] = useState(() =>
     criarNarracaoDoDeck({
       pararVozDoApp: () => void Speech.stop(),
-      pararVozDoDeck: () => webViewRef.current?.injectJavaScript?.(SCRIPT_CALAR_FALA),
+      pararVozDoDeck: () => {
+        calarVozDoIframe(iframeDoHtmlRef.current?.contentWindow);
+        webViewRef.current?.injectJavaScript?.(SCRIPT_CALAR_FALA);
+      },
     })
   );
 
@@ -105,8 +113,8 @@ export function WebContentFrame({
   // seguia falando sobre o resto do app.
   usePausarAoSairDaTela(narracao.pausar);
 
-  // Layout, não `useEffect`: a limpeza dele roda com o `webViewRef` já vazio, e a
-  // voz do WebKit só se cala de dentro da página.
+  // Layout, não `useEffect`: a limpeza dele roda com os refs já vazios, e a voz do
+  // navegador só se cala de dentro da página.
   useLayoutEffect(() => narracao.pausar, [narracao]);
 
   // Escuta postMessage do deck (ver reportProgressToHost em
@@ -132,8 +140,14 @@ export function WebContentFrame({
   if (Platform.OS === "web") {
     return html ? (
       <iframe
+        ref={iframeDoHtmlRef}
         title={title ?? "Visualizador"}
         srcDoc={html}
+        onLoad={(evento) =>
+          observarFalaDoIframe(evento.currentTarget.contentWindow, () =>
+            narracao.comecou("fala-nativa")
+          )
+        }
         style={{ ...webFrameStyle, height, backgroundColor: palette.surface }}
         allowFullScreen
       />
