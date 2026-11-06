@@ -57,6 +57,7 @@ export default function TrilhaStack() {
     const hasBattle = ["survivor", "daredevil", "conqueror"].includes(String(perfil));
 
     return {
+      headerTitleAlign: "left" as const,
       headerTitle: () => (
         <ModuleHeaderTitle
           title={titulo}

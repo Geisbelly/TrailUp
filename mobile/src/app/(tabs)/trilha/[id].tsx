@@ -59,6 +59,7 @@ import {
   resolveIAItemKey,
 } from "@/interfaces/personalizacao/IAContracts";
 import { styles } from "@/styles/trilhaTopicoStyles";
+import { reservaDoChipDeBatalha } from "@/utils/cabecalhoDoTopico";
 import { buildContentBlocks } from "@/utils/contentBlocks";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { ordenarBlocosPorSugestao } from "@/utils/materialSuggestion";
@@ -357,6 +358,7 @@ export default function TrilhaConteudoScreen() {
   const progressGuideTargetRef = useRef<View | null>(null);
   const timerGuideTargetRef = useRef<View | null>(null);
   const battleGuideTargetRef = useRef<View | null>(null);
+  const [larguraChipBatalha, setLarguraChipBatalha] = useState(0);
   const chatGuideTargetRef = useRef<View | null>(null);
   const guideTargetRefs = useMemo<GuideTargetRefs>(
     () => ({
@@ -1837,7 +1839,9 @@ export default function TrilhaConteudoScreen() {
           blocos={estadosBlocos}
           atual={!mostrarResumo && atualBlock ? index + 1 : 0}
           alvoRef={progressGuideTargetRef}
-          reservaDireita={!mostrarResumo && isCurrentStudyBlockTrackable && topicoId ? 96 : 0}
+          reservaDireita={reservaDoChipDeBatalha(
+            !mostrarResumo && isCurrentStudyBlockTrackable && topicoId ? larguraChipBatalha : 0,
+          )}
           aviso={personalizacaoCarregando ? "Atualizando conteúdo..." : null}
           onIr={(i) => {
             setMostrarResumo(false);
@@ -2303,6 +2307,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
           ref={battleGuideTargetRef}
           collapsable={false}
           style={[styles.floatingBattleWrap, { pointerEvents: "box-none" }]}
+          onLayout={(evento) => setLarguraChipBatalha(evento.nativeEvent.layout.width)}
         >
           <IABattleHeaderChip
             topicoId={topicoId}

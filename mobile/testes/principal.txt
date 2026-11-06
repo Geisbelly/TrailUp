@@ -133,6 +133,7 @@ src/components/web/MapaPaisesDesktop.clique.test.tsx
 src/utils/gradeMapaTrilha.test.ts
 src/utils/mapaPaises.test.ts
 src/utils/arvoreCelular.test.ts
+src/utils/cabecalhoDoTopico.test.ts
 src/utils/velocidadeAudio.test.ts
 src/utils/grupoNotificacao.test.ts
 src/services/loja/ganhoMoedasModel.test.ts
