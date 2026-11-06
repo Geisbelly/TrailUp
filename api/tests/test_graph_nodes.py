@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.adapters.mock_emocao import MockEmocaoAdapter
+from app.adapters.local_vision_emocao import LocalVisionEmotionAdapter
 from app.agent.graph.nodes.agente_conteudo import _fallback_conteudo
 from app.agent.graph.nodes.agente_emocao import agente_emocao
 from app.agent.graph.nodes.agente_geracao_midia import agente_geracao_midia
@@ -164,20 +164,76 @@ def test_compute_personalizacao_next_routes_plan_then_ai_patch_and_media() -> No
 
 
 @pytest.mark.asyncio
-async def test_agente_emocao_uses_mock_adapter_for_events() -> None:
+async def test_agente_emocao_mantem_indisponivel_quando_nao_ha_frame() -> None:
+    adapter = AsyncMock()
     result = await agente_emocao(
         {
             "aluno_id": "aluno-1",
             "classe_id": 10,
+            "frame_b64": None,
             "eventos_novos": [{"tipo": "inatividade"}],
             "emocao_historico": [],
         },
-        adapter=MockEmocaoAdapter(),
+        adapter=adapter,
     )
 
-    assert result["emocao_atual"]["emocao_primaria"] == "frustrado"
+    assert result["emocao_atual"] == {"estado_sinal": "indisponivel"}
+    assert result["frame_b64"] is None
     assert result["completed_nodes"] == ["agente_emocao"]
+    adapter.analisar_frame.assert_not_awaited()
 
+
+@pytest.mark.asyncio
+async def test_agente_emocao_nao_inventa_resultado_quando_visao_nao_conclui() -> None:
+    adapter = AsyncMock()
+    adapter.analisar_frame.return_value = None
+    result = await agente_emocao(
+        {
+            "aluno_id": "aluno-1",
+            "classe_id": 10,
+            "frame_b64": "camera-frame",
+            "emocao_historico": [],
+        },
+        adapter=adapter,
+    )
+
+    assert result["emocao_atual"] == {"estado_sinal": "indisponivel"}
+    assert result["frame_b64"] is None
+    assert "emocao_historico" not in result
+
+
+@pytest.mark.asyncio
+async def test_adaptador_local_vision_usa_somente_o_frame_autorizado(monkeypatch) -> None:
+    module = import_module("app.adapters.local_vision_emocao")
+    captured = {}
+
+    class Analyzer:
+        def __init__(self, **kwargs) -> None:
+            captured["paths"] = kwargs
+
+        async def analyze(self, **kwargs):
+            captured["input"] = kwargs
+            return type(
+                "Result",
+                (),
+                {
+                    "emocao_primaria": "concentrado",
+                    "valencia": 0.25,
+                    "confianca": 0.8,
+                    "provider_name": "local_vision",
+                },
+            )()
+
+    monkeypatch.setattr(module, "LocalVisionEmotionAnalyzer", Analyzer)
+    adapter = LocalVisionEmotionAdapter(caminho_modelo="model.onnx", caminho_detector="face.onnx")
+    result = await adapter.analisar_frame("frame-b64", {"aluno_id": "a1", "classe_id": 3})
+
+    assert result is not None
+    assert result.emocao_primaria == "concentrado"
+    assert captured["input"]["frames_b64"] == ["frame-b64"]
+    assert captured["input"]["eventos_novos"] == []
+    assert captured["input"]["telemetry_payload"] is None
+    assert captured["paths"] == {"caminho_modelo": "model.onnx", "caminho_detector": "face.onnx"}
 
 @pytest.mark.asyncio
 async def test_agente_perfil_falls_back_without_openai() -> None:

@@ -24,13 +24,13 @@ const ITENS: { chave: Finalidade; titulo: string; descricao: string }[] = [
     chave: "camera",
     titulo: "Câmera durante o estudo",
     descricao:
-      "Imagens da câmera frontal enquanto o aluno estuda, analisadas no servidor do TrailUp e descartadas na hora. Exige também a análise de emoções.",
+      "Imagens da câmera frontal durante o estudo são enviadas ao servidor da TrailUp nos Estados Unidos para análise visual local e descartadas após o processamento. Não são enviadas a provedores externos. A análise visual de emoções precisa estar autorizada.",
   },
   {
     chave: "emocional",
-    titulo: "Análise de emoções",
+    titulo: "Personalização adaptativa e análise emocional",
     descricao:
-      "Estimativa de atenção, frustração e engajamento a partir do comportamento no app (e da câmera, se autorizada) para adaptar conteúdo e dificuldade. É um palpite, não vira nota.",
+      "Esta autorização permite usar sinais de estudo para adaptar o conteúdo, sem inferir emoções desses sinais. Se a câmera também estiver autorizada, o sistema pode estimar a expressão facial. Essa estimativa não vira nota.",
   },
   {
     chave: "telemetria",

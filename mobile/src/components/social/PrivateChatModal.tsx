@@ -3,7 +3,9 @@ import {
   socialChatEnviar,
   socialChatPresenca,
 } from "@/services/social/socialService";
+import { useAreaVisivelWeb } from "@/hooks/useAreaVisivelWeb";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
+import { useRolagemDoChat } from "@/hooks/useRolagemDoChat";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -51,6 +53,8 @@ export function PrivateChatModal({
   const [messages, setMessages] = useState<Message[]>([]);
   // Web em tela larga (#346, protótipo v4 06-social): painel à direita, mensagens em balões.
   const desktop = useDesktopWeb();
+  const area = useAreaVisivelWeb(visible);
+  const { descerAoEnviar, propsDaLista } = useRolagemDoChat(visible);
   const [text, setText] = useState("");
   const [online, setOnline] = useState(Boolean(person.online));
   const [loading, setLoading] = useState(false);
@@ -96,6 +100,7 @@ export function PrivateChatModal({
     try {
       await socialChatEnviar(person.alunoId, text);
       setText("");
+      descerAoEnviar();
       await load();
     } catch {
       setError("Não foi possível enviar a mensagem.");
@@ -108,7 +113,7 @@ export function PrivateChatModal({
       <SafeAreaProvider>
         {desktop ? <Pressable accessibilityLabel="Fechar conversa" onPress={onClose} style={s.fundoLateral} /> : null}
         <SafeAreaView
-          style={[s.screen, desktop && [s.painelLateral, { borderLeftColor: palette.border }], { backgroundColor: palette.background }]}
+          style={[s.screen, area && !desktop ? [s.areaVisivel, { top: area.top, height: area.height }] : null, desktop && [s.painelLateral, { borderLeftColor: palette.border }], { backgroundColor: palette.background }]}
         >
           {/* "padding" também no Android: com edge-to-edge (SDK 54) a janela do Modal não encolhe com o
               teclado, e sem behavior o campo de mensagem ficava atrás dele. Onde a janela ainda encolher,
@@ -158,6 +163,7 @@ export function PrivateChatModal({
               <ActivityIndicator color={accent} style={s.screen} />
             ) : (
               <ScrollView
+                {...propsDaLista}
                 contentContainerStyle={s.messages}
                 keyboardShouldPersistTaps="handled"
               >
@@ -200,6 +206,7 @@ export function PrivateChatModal({
                 accessibilityLabel="Mensagem privada"
                 style={[
                   s.input,
+                  area && !desktop ? s.inputWebCelular : null,
                   { color: palette.text, borderColor: palette.border },
                 ]}
                 maxLength={500}
@@ -238,6 +245,8 @@ export function PrivateChatModal({
 }
 const s = StyleSheet.create({
   screen: { flex: 1 },
+  // Navegador do celular: o teclado encolhe só a área visível, e o campo ficaria atrás dele.
+  areaVisivel: { position: "absolute", left: 0, right: 0, flex: 0 },
   fundoLateral: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,.55)" },
   painelLateral: { position: "absolute", top: 0, right: 0, bottom: 0, width: 440, flex: 0, borderLeftWidth: 1 },
   balaoMeu: { alignSelf: "flex-end", maxWidth: "85%", borderRadius: 12 },
@@ -281,6 +290,8 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 14,
   },
+  // Abaixo de 16 px o Safari do iPhone amplia a página ao focar o campo.
+  inputWebCelular: { fontSize: 16 },
   send: {
     width: 46,
     minHeight: 46,

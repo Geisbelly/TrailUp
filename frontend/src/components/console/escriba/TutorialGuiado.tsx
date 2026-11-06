@@ -3,35 +3,56 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import fotoDaLumi from "@/assets/design/lumi.webp";
-import { alvoNaTela, caminhoDoPasso, posicaoDoBalao, type Retangulo, type Tutorial } from "./tutoriais";
+import { alvoAlcancavel, alvoAlternativo, alvoNaTela, balaoCobreAlvo, caminhoDoPasso, posicaoDoBalao, type Retangulo, type Tutorial } from "./tutoriais";
 
 // A tela do passo é lazy e pode ler do banco: o alvo demora a aparecer.
 const ESPERA_DO_ALVO_MS = 2500;
 const INTERVALO_MS = 120;
 const RESPIRO = 6;
 
-function retanguloDoAlvo(alvo: string | undefined): Retangulo | null {
-  if (!alvo) return null;
+function telaAtual() {
+  return { width: window.innerWidth, height: window.innerHeight };
+}
+
+function elementoAlcancavel(alvo: string): { el: HTMLElement; retangulo: Retangulo } | null {
   const el = document.querySelector<HTMLElement>(`[data-tutorial="${alvo}"]`);
   if (!el) return null;
   const { top, left, width, height } = el.getBoundingClientRect();
-  const r = { top, left, width, height };
-  return alvoNaTela(r, { width: window.innerWidth, height: window.innerHeight }) ? r : null;
+  const retangulo = { top, left, width, height };
+  return alvoAlcancavel(retangulo) ? { el, retangulo } : null;
+}
+
+function localizarAlvo(alvo: string | undefined) {
+  if (!alvo) return null;
+  const direto = elementoAlcancavel(alvo);
+  if (direto) return { ...direto, noMenu: false };
+  const alternativo = alvoAlternativo(alvo);
+  const pelaGaveta = alternativo ? elementoAlcancavel(alternativo) : null;
+  return pelaGaveta ? { ...pelaGaveta, noMenu: true } : null;
+}
+
+/** O retângulo a destacar, só enquanto o alvo está de fato na tela. */
+function retanguloVisivel(alvo: string | undefined): Retangulo | null {
+  const retangulo = localizarAlvo(alvo)?.retangulo ?? null;
+  return retangulo && alvoNaTela(retangulo, telaAtual()) ? retangulo : null;
 }
 
 /**
  * O tutorial guiado da Lumi. Cobre a página de propósito, como o tutorial de
  * entrada do app: um formulário aberto por baixo prenderia o foco e o balão
  * deixaria de responder. Não grava nada; fechar é sempre seguro. Alvo que não
- * está na tela (turma vazia, menu em gaveta) não trava: o balão vai ao centro.
+ * está na tela (turma vazia) não trava: o balão vai ao centro. Item do menu em
+ * gaveta (celular) aponta para o botão que abre a gaveta.
  */
 export default function TutorialGuiado({ tutorial, turma, onFechar }: { tutorial: Tutorial; turma: string; onFechar: () => void }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [indice, setIndice] = useState(0);
   const [alvo, setAlvo] = useState<Retangulo | null>(null);
+  const [noMenu, setNoMenu] = useState(false);
   const [posicao, setPosicao] = useState<{ top: number; left: number } | null>(null);
   const balao = useRef<HTMLDivElement>(null);
+  const passoJaRolado = useRef<unknown>(null);
   const avancar = useRef<HTMLButtonElement>(null);
   const passo = tutorial.passos[indice];
   const ultimo = indice === tutorial.passos.length - 1;
@@ -45,15 +66,17 @@ export default function TutorialGuiado({ tutorial, turma, onFechar }: { tutorial
 
   useEffect(() => {
     setAlvo(null);
+    setNoMenu(false);
     if (!passo.alvo) return;
     const inicio = Date.now();
     const procurar = () => {
-      const el = document.querySelector<HTMLElement>(`[data-tutorial="${passo.alvo}"]`);
-      if (el) {
-        el.scrollIntoView({ block: "nearest", inline: "nearest" });
-        setAlvo(retanguloDoAlvo(passo.alvo));
+      const achado = localizarAlvo(passo.alvo);
+      if (achado) {
+        achado.el.scrollIntoView({ block: "nearest", inline: "nearest" });
+        setAlvo(retanguloVisivel(passo.alvo));
+        setNoMenu(achado.noMenu);
       }
-      if (el || Date.now() - inicio >= ESPERA_DO_ALVO_MS) window.clearInterval(id);
+      if (achado || Date.now() - inicio >= ESPERA_DO_ALVO_MS) window.clearInterval(id);
     };
     const id = window.setInterval(procurar, INTERVALO_MS);
     procurar();
@@ -61,7 +84,7 @@ export default function TutorialGuiado({ tutorial, turma, onFechar }: { tutorial
   }, [passo]);
 
   useEffect(() => {
-    const atualizar = () => setAlvo(retanguloDoAlvo(passo.alvo));
+    const atualizar = () => setAlvo(retanguloVisivel(passo.alvo));
     window.addEventListener("resize", atualizar);
     window.addEventListener("scroll", atualizar, true);
     return () => {
@@ -73,8 +96,14 @@ export default function TutorialGuiado({ tutorial, turma, onFechar }: { tutorial
   useLayoutEffect(() => {
     if (!balao.current) return;
     const { width, height } = balao.current.getBoundingClientRect();
-    setPosicao(posicaoDoBalao(alvo, { width: window.innerWidth, height: window.innerHeight }, { width, height }));
-  }, [alvo, indice]);
+    setPosicao(posicaoDoBalao(alvo, telaAtual(), { width, height }));
+    // Tela baixa: leva o alvo para o topo, abrindo lugar embaixo dele. Uma vez por
+    // passo, porque a rolagem traz de volta a este efeito.
+    if (alvo && passoJaRolado.current !== passo && balaoCobreAlvo(alvo, telaAtual(), { width, height })) {
+      passoJaRolado.current = passo;
+      localizarAlvo(passo.alvo)?.el.scrollIntoView({ block: "start", inline: "nearest" });
+    }
+  }, [alvo, passo, noMenu]);
 
   // `visibility: hidden` não recebe foco, então espera o balão ter lugar. A troca de
   // tela também derruba o foco para o body: `alvo` muda depois dela e o devolve.
@@ -134,7 +163,7 @@ export default function TutorialGuiado({ tutorial, turma, onFechar }: { tutorial
         role="dialog"
         aria-modal="true"
         aria-label={`Tutorial: ${tutorial.titulo}`}
-        className="fixed w-[min(320px,calc(100vw-32px))] rounded-[18px] border border-border bg-card p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+        className="fixed max-h-[calc(100dvh-32px)] w-[min(320px,calc(100vw-32px))] overflow-y-auto rounded-[18px] border border-border bg-card p-4 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
         style={posicao ?? { visibility: "hidden" }}
       >
         <div className="flex items-center gap-2">
@@ -154,6 +183,7 @@ export default function TutorialGuiado({ tutorial, turma, onFechar }: { tutorial
         <div aria-live="polite">
           <h2 className="mt-2 text-[15px] font-bold text-foreground">{passo.titulo}</h2>
           <p className="mt-1 text-[13px] leading-normal text-foreground">{passo.texto}</p>
+          {noMenu && <p className="mt-1.5 text-xs font-semibold text-[hsl(var(--console-bronze-text))]">No celular, esta área fica neste menu.</p>}
         </div>
         <div className="mt-3 flex items-center justify-end gap-2">
           {indice > 0 && (

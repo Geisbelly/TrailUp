@@ -80,7 +80,20 @@
 .console-account-link:hover, .console-account-link[aria-current="page"] { background: hsl(var(--muted)); }
 .console-navigation [data-so-na-gaveta] { display: none; }
 .console-mobile-menu-toggle { display: none; flex: none; width: 40px; height: 40px; place-items: center; border: 1px solid hsl(var(--border)); border-radius: 12px; color: hsl(var(--foreground)); background: hsl(var(--card) / .75); }
-.escriba-panel-floating { right: 16px; bottom: calc(max(20px, env(safe-area-inset-bottom)) + 70px); }
+.escriba-panel-floating { right: 16px; bottom: calc(max(20px, env(safe-area-inset-bottom)) + 70px); width: min(360px, calc(100vw - 32px)); max-height: min(560px, calc(100dvh - 120px)); border: 1px solid hsl(var(--border)); border-radius: 20px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); }
+.escriba-panel-cheia { top: var(--escriba-topo, 0); left: 0; width: 100%; height: var(--escriba-altura, 100dvh); }
+.escriba-campo { font-size: 13px; }
+.escriba-campo-turma { font-size: 12px; }
+/* Celular, de pé ou deitado: a conversa ocupa a área visível, que encolhe com o teclado (useAreaVisivel). */
+@media (max-width: 639px), (max-height: 500px) {
+  .escriba-panel-floating { top: var(--escriba-topo, 0); left: 0; right: 0; bottom: auto; width: 100%; max-height: none; height: var(--escriba-altura, 100dvh); border: 0; border-radius: 0; box-shadow: none; }
+  .escriba-expandir { display: none; }
+}
+/* Abaixo de 16 px o Safari do iPhone amplia a página ao focar o campo, e ela não volta sozinha. */
+@media (pointer: coarse) {
+  .escriba-campo, .escriba-campo-turma { font-size: 16px; }
+  .escriba-toque { width: 44px; height: 44px; }
+}
 .console-bell-badge { position: absolute; top: 3px; right: 2px; min-width: 17px; padding: 0 4px; border-radius: 999px; background: hsl(var(--console-violet)); color: #fff; font-size: 10px; font-weight: 700; line-height: 17px; text-align: center; }
 .console-navigation { padding: 20px 16px; display: flex; flex-direction: column; justify-content: safe center; gap: 2px; border-right: 1px solid hsl(var(--border)); background: hsl(var(--console-sidebar)); overflow-y: auto; }
 .console-navigation a { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px; color: hsl(var(--muted-foreground)); font-size: 14.5px; white-space: nowrap; }
@@ -111,7 +124,7 @@
   .console-navigation a { gap: 10px; padding-inline: 12px; font-size: 13px; }
   .console-section-content, .console-trail-content { padding: 20px; }
 }
-@media (min-width: 640px) {
+@media (min-width: 640px) and (min-height: 501px) {
   .escriba-panel-floating { right: 32px; bottom: 98px; }
 }
 
@@ -166,4 +179,9 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .public-page *, .console-shell *, .console-editor * { animation: none !important; transition: none !important; }
+}
+
+/* O tutorial rola o botão até o alto da área rolável: sem isso, o destaque encosta na borda. */
+[data-tutorial] {
+  scroll-margin: 16px;
 }

@@ -6,7 +6,7 @@ import {
 } from "@/components/SectionGuideButton";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { useMetricas } from "@/context/MetricasContext";
 import { useUsuario } from "@/context/SessaoContext";
@@ -22,10 +22,9 @@ import { mensagemDoModo, type EstadoConsentimento } from "@/utils/consentimentoR
 import { DataNascimentoForm } from "@/components/consentimento/DataNascimentoForm";
 import { ResponsavelConsentForm } from "@/components/consentimento/ResponsavelConsentForm";
 
-// O que o servidor libera para cada toggle (#195). Camera precisa tambem da
-// analise de emocoes; os outros grupos sao telemetria de comportamento.
+// O que o servidor libera para cada toggle (#195). A web não oferece captura por câmera.
 function toggleLiberado(key: keyof TelemetryConsentPreferences, estado: EstadoConsentimento): boolean {
-  if (key === "cameraEnabled") return estado.finalidades.camera && estado.finalidades.emocional;
+  if (key === "cameraEnabled") return Platform.OS !== "web" && estado.finalidades.camera && estado.finalidades.emocional;
   return estado.finalidades.telemetria;
 }
 
@@ -39,11 +38,11 @@ type ToggleItem = {
 const TOGGLE_ITEMS: ToggleItem[] = [
   {
     key: "cameraEnabled",
-    // O rotulo diz o que acontece, nao o sensor usado: quem le "Camera" nao
-    // deduz que a propria expressao sera classificada.
-    title: "Câmera e expressão facial",
+    title: Platform.OS === "web" ? "Câmera (indisponível na web)" : "Câmera e expressão facial",
     description:
-      "Captura imagens durante o estudo e estima sua expressão (neutro, concentrado, frustrado…) para adaptar o conteúdo. A imagem é descartada após a análise; só o resultado é guardado.",
+      Platform.OS === "web"
+        ? "A versão web não captura imagens. Nenhum sinal de emoção é inferido do comportamento."
+        : "Captura imagens durante o estudo e analisa a expressão. A imagem é descartada após a análise; só o resultado é guardado.",
     icon: "camera-outline",
   },
   {
@@ -108,9 +107,11 @@ export default function ColetaDadosScreen() {
       {
         id: "collection-camera",
         target: "collection_camera",
-        title: "Ativar ou desativar a câmera",
+        title: Platform.OS === "web" ? "Câmera indisponível na web" : "Ativar ou desativar a câmera",
         description:
-          "A câmera é opcional. Ativo permite analisar frames durante o estudo, desde que o Android também tenha concedido a permissão. Desativado interrompe essa captura sem bloquear aulas, atividades ou notas.",
+          Platform.OS === "web"
+            ? "A versão web não captura imagens e não infere emoções do comportamento."
+            : "A câmera é opcional. Ativo permite analisar frames durante o estudo, desde que o aparelho tenha concedido a permissão. Desativado interrompe essa captura sem bloquear aulas, atividades ou notas.",
         icon: "camera-outline",
       },
       {
@@ -140,9 +141,11 @@ export default function ColetaDadosScreen() {
       {
         id: "collection-permission",
         target: "collection_permission",
-        title: "Permissão do aparelho",
+        title: Platform.OS === "web" ? "Câmera indisponível" : "Permissão do aparelho",
         description:
-          "Este estado vem do Android. A coleta por câmera só funciona quando o controle acima está Ativo e a permissão do sistema está Permitida.",
+          Platform.OS === "web"
+            ? "A câmera não está disponível nesta plataforma."
+            : "Este estado vem do aparelho. A coleta por câmera só funciona quando o controle acima está Ativo e a permissão do sistema está Permitida.",
         icon: "shield-lock-outline",
       },
     ],
@@ -342,18 +345,24 @@ export default function ColetaDadosScreen() {
         collapsable={false}
         style={[styles.infoBox, { backgroundColor: palette.surface, borderColor: palette.border }]}
       >
-        <Text style={[styles.infoTitle, { color: palette.text }]}>Permissão de câmera</Text>
+        <Text style={[styles.infoTitle, { color: palette.text }]}>{Platform.OS === "web" ? "Câmera na web" : "Permissão de câmera"}</Text>
         <Text style={[styles.infoBody, { color: palette.textMuted }]}>
-          Estado atual:{" "}
-          <Text style={{ color: palette.text, fontFamily: FontFamily.inikaBold }}>
-            {cameraPermission === "granted"
-              ? "permitida"
-              : cameraPermission === "denied"
-              ? "negada"
-              : cameraPermission === "unavailable"
-              ? "indisponível"
-              : "não definida"}
-          </Text>
+          {Platform.OS === "web" ? (
+            <Text style={{ color: palette.text, fontFamily: FontFamily.inikaBold }}>indisponível nesta plataforma</Text>
+          ) : (
+            <>
+              Estado atual:{" "}
+              <Text style={{ color: palette.text, fontFamily: FontFamily.inikaBold }}>
+                {cameraPermission === "granted"
+                  ? "permitida"
+                  : cameraPermission === "denied"
+                  ? "negada"
+                  : cameraPermission === "unavailable"
+                  ? "indisponível"
+                  : "não definida"}
+              </Text>
+            </>
+          )}
         </Text>
       </View>
     </ScrollView>

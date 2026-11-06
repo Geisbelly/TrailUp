@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -10,6 +10,10 @@ from app.schemas.notificacao import NotificacaoPayload
 from app.schemas.texto_gerado import TextoGerado
 from app.schemas.trilha_config import TrilhaConfig
 from app.schemas.ui_config import UIConfig
+
+class EmocaoIndisponivel(BaseModel):
+    estado_sinal: Literal["indisponivel"]
+
 
 
 class AnalisarPayload(BaseModel):
@@ -29,7 +33,7 @@ class AnalisarResponse(BaseModel):
     textos_gerados: list[TextoGerado] = Field(default_factory=list)
     notificacao_payload: NotificacaoPayload | None = None
     trilha_config: TrilhaConfig | None = None
-    emocao_atual: EmocaoResult | None = None
+    emocao_atual: EmocaoResult | EmocaoIndisponivel | None = None
     acoes_aplicadas: list[str] = Field(default_factory=list)
     erros: list[str] = Field(default_factory=list)
 
