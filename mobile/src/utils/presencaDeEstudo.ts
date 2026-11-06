@@ -55,6 +55,55 @@ export function cronometroDeveContar(estado: EstadoDoCronometro): boolean {
   return estado.recursoAtivo && estado.appEmPrimeiroPlano && estado.telaFocada;
 }
 
+/**
+ * Acima disto, o intervalo entre dois toques do relógio é o JS parado (tela
+ * desligada), não tempo vivido. O relógio toca a cada 1 s.
+ */
+export const SALTO_MAXIMO_DO_RELOGIO_MS = 5_000;
+
+export interface TempoCorrido {
+  /** Marca um toque do relógio: credita o tempo desde o toque anterior. */
+  avancar(agoraMs: number): void;
+  /** Credita o último trecho e para; o próximo `avancar` só retoma a contagem. */
+  pausar(agoraMs: number): void;
+  zerar(): void;
+  decorridoMs(): number;
+}
+
+/**
+ * Tempo em que o relógio esteve de fato rodando.
+ *
+ * Soma trechos em vez de subtrair pausas de `agora - início`. A conta por
+ * subtração perdia o que descontar sempre que as pausas eram zeradas: o chip do
+ * módulo as apagava a cada troca de item, e 30 min de tela desligada apareciam
+ * de uma vez ao avançar para o próximo bloco.
+ */
+export function criarTempoCorrido(): TempoCorrido {
+  let acumuladoMs = 0;
+  let ultimoToqueMs: number | null = null;
+
+  function avancar(agoraMs: number) {
+    if (ultimoToqueMs != null) {
+      const trechoMs = agoraMs - ultimoToqueMs;
+      if (trechoMs > 0 && trechoMs <= SALTO_MAXIMO_DO_RELOGIO_MS) acumuladoMs += trechoMs;
+    }
+    ultimoToqueMs = agoraMs;
+  }
+
+  return {
+    avancar,
+    pausar(agoraMs) {
+      avancar(agoraMs);
+      ultimoToqueMs = null;
+    },
+    zerar() {
+      acumuladoMs = 0;
+      ultimoToqueMs = null;
+    },
+    decorridoMs: () => acumuladoMs,
+  };
+}
+
 export interface EstadoDePresenca {
   agoraMs: number;
   /** Último toque, rolagem ou retorno ao app. */

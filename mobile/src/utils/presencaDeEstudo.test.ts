@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   INTERVALO_ENTRE_PERGUNTAS_MS,
   OCIOSIDADE_PARA_PERGUNTAR_MS,
+  criarTempoCorrido,
   cronometroDeveContar,
   devePerguntarSeEstaAi,
   estaNaTrilhaDeEstudo,
@@ -126,4 +127,37 @@ test("estudando é estar dentro de um módulo, não na listagem", () => {
   assert.equal(estaNaTrilhaDeEstudo(["(tabs)", "trilha"]), false);
   assert.equal(estaNaTrilhaDeEstudo(["(tabs)", "ranking"]), false);
   assert.equal(estaNaTrilhaDeEstudo([]), false);
+});
+
+test("tela desligada nao entra no tempo do modulo, nem depois de trocar de item", () => {
+  const tempo = criarTempoCorrido();
+  for (let s = 0; s <= 60; s++) tempo.avancar(s * 1000);
+  tempo.pausar(60_000);
+
+  // 30 min apagada, e o aluno volta e segue para o proximo item.
+  const voltou = 60_000 + 30 * 60_000;
+  tempo.avancar(voltou);
+  tempo.avancar(voltou + 1000);
+
+  assert.equal(tempo.decorridoMs(), 61_000);
+});
+
+test("JS dormindo sem o AppState avisar tambem nao conta", () => {
+  const tempo = criarTempoCorrido();
+  tempo.avancar(0);
+  tempo.avancar(1000);
+  tempo.avancar(1000 + 30 * 60_000);
+  tempo.avancar(2000 + 30 * 60_000);
+
+  assert.equal(tempo.decorridoMs(), 2000);
+});
+
+test("pausar credita o trecho em andamento e zerar recomeca", () => {
+  const tempo = criarTempoCorrido();
+  tempo.avancar(0);
+  tempo.pausar(800);
+  assert.equal(tempo.decorridoMs(), 800);
+
+  tempo.zerar();
+  assert.equal(tempo.decorridoMs(), 0);
 });

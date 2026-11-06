@@ -52,3 +52,14 @@ test('frações curtas não são arredondadas para zero', () => {
   for(let i=1;i<=120;i++) total += clock.flush(i*500)?.minutes ?? 0;
   assert.ok(Math.abs(total-1)<1e-9);
 });
+
+test('JS que dormiu com a tela desligada não vira sessão longa', () => {
+  const clock = new StudyClock();
+  clock.setBlock(block,0);
+
+  // O relógio acorda antes do evento de AppState: 30 min depois, sem ter fechado nada.
+  assert.equal(clock.flush(30 * 60_000), null);
+
+  // O salto não sobra para o intervalo seguinte.
+  assert.equal(clock.flush(30 * 60_000 + 60_000)?.minutes, 1);
+});

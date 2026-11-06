@@ -17,7 +17,7 @@ import {
 import { FontFamily } from "@/styles/GlobalStyle";
 import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
-import { cronometroDeveContar } from "@/utils/presencaDeEstudo";
+import { criarTempoCorrido, cronometroDeveContar } from "@/utils/presencaDeEstudo";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
@@ -146,8 +146,8 @@ export function IAHeaderTimer({
   const timeoutSentRef = useRef(false);
   const pendingResetRef = useRef(false);
   const [isAppActive, setIsAppActive] = useState(AppState.currentState === "active");
-  const pausedStartedAtRef = useRef<number | null>(null);
-  const pausedAccumulatedMsRef = useRef(0);
+  const tempoNoModuloRef = useRef(criarTempoCorrido());
+  const moduloAtualRef = useRef(elapsedStartAtMs);
 
   const isTimerRunning = cronometroDeveContar({
     recursoAtivo: active,
@@ -169,24 +169,16 @@ export function IAHeaderTimer({
     return () => subscription.remove();
   }, []);
 
-  // Abre e fecha a janela de pausa a cada mudança em `isTimerRunning`, o que
-  // cobre as DUAS causas de pausa: app em segundo plano e tela sem foco. Antes
-  // isso vivia dentro do listener de AppState, então sair para outra aba não
-  // acumulava nada -- e o "tempo no módulo" dava um salto igual ao tempo que o
-  // aluno passou fora ao voltar.
+  // O "tempo no módulo" é do módulo, não do item: só recomeça com um módulo novo.
+  // Vazio → preenchido não é módulo novo: a tela só publica o início depois do
+  // primeiro render, e zerar ali perderia o que já contou.
   useEffect(() => {
-    if (!isTimerRunning) {
-      if (pausedStartedAtRef.current == null) {
-        pausedStartedAtRef.current = Date.now();
-      }
-      return;
-    }
-
-    if (pausedStartedAtRef.current != null) {
-      pausedAccumulatedMsRef.current += Date.now() - pausedStartedAtRef.current;
-      pausedStartedAtRef.current = null;
-    }
-  }, [isTimerRunning]);
+    const anterior = moduloAtualRef.current;
+    moduloAtualRef.current = elapsedStartAtMs;
+    if (anterior == null || anterior === elapsedStartAtMs) return;
+    tempoNoModuloRef.current.zerar();
+    setElapsedSeconds(0);
+  }, [elapsedStartAtMs]);
 
   // ── Animação de pulso crítico (native driver OK — só transform) ──────────
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -216,20 +208,14 @@ export function IAHeaderTimer({
     if (!active) {
       pendingResetRef.current = false;
       setSecondsLeft(0);
-      setElapsedSeconds(0);
       warningSentRef.current = false;
       timeoutSentRef.current = false;
-      pausedStartedAtRef.current = null;
-      pausedAccumulatedMsRef.current = 0;
       return;
     }
     pendingResetRef.current = true;
     setSecondsLeft(duration);
-    setElapsedSeconds(0);
     warningSentRef.current = false;
     timeoutSentRef.current = false;
-    pausedStartedAtRef.current = null;
-    pausedAccumulatedMsRef.current = 0;
   }, [active, duration, scopeKey, timerSelection?.featureKey]);
 
   // ── Countdown ────────────────────────────────────────────────────────────
@@ -241,22 +227,22 @@ export function IAHeaderTimer({
   }, [isTimerRunning, isElapsedMode, secondsLeft, timerSelection]);
 
   // ── Elapsed ──────────────────────────────────────────────────────────────
+  // Corre em todo bloco do módulo. Nos de atividade o chip mostra a contagem
+  // regressiva, mas o tempo deles continua sendo tempo no módulo.
   useEffect(() => {
-    if (!isTimerRunning || !timerSelection?.resolved.enabled || !timerSelection.resolved.timer || !isElapsedMode) return;
+    if (!isTimerRunning || !hasTimerSignal) return;
+    const tempoNoModulo = tempoNoModuloRef.current;
     const update = () => {
-      if (!elapsedStartAtMs) { setElapsedSeconds(0); return; }
-      const pausedNow =
-        pausedStartedAtRef.current != null ? Date.now() - pausedStartedAtRef.current : 0;
-      const elapsedMs = Math.max(
-        0,
-        Date.now() - elapsedStartAtMs - pausedAccumulatedMsRef.current - pausedNow
-      );
-      setElapsedSeconds(Math.floor(elapsedMs / 1000));
+      tempoNoModulo.avancar(Date.now());
+      if (isElapsedMode) setElapsedSeconds(Math.floor(tempoNoModulo.decorridoMs() / 1000));
     };
     update();
     const timer = setInterval(update, 1000);
-    return () => clearInterval(timer);
-  }, [isTimerRunning, elapsedStartAtMs, isElapsedMode, timerSelection]);
+    return () => {
+      clearInterval(timer);
+      tempoNoModulo.pausar(Date.now());
+    };
+  }, [hasTimerSignal, isElapsedMode, isTimerRunning]);
 
   // ── Sinais de aviso / timeout ────────────────────────────────────────────
   useEffect(() => {

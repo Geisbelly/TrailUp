@@ -157,8 +157,9 @@ export function buildClasseAcademicMetrics(classe: Classe | null): ClasseAcademi
     const tempo = Number((conteudo as any)?.tempo_gasto_min ?? 0);
     return sum + (Number.isFinite(tempo) ? Math.max(0, tempo) : 0);
   }, 0);
-  // Content and activity scopes overlap (a question may be linked to a
-  // content). The stored class/topic totals are authoritative, including 0.
+  // Lotes antigos creditavam a atividade vinculada também ao conteúdo, então a
+  // soma dos itens não é o total. The stored class/topic totals are authoritative,
+  // including 0.
   const tempoResumo = classe?.resumo?.tempoGastoMin;
   const hasTopicTime = topicos.some((topico) => topico.tempo_gasto_min != null);
   const tempoTotalMin = roundMetric(

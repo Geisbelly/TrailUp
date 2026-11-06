@@ -273,7 +273,7 @@ type BuildMetricsViewModelParams = {
   posicoesDoAluno: PosicaoDoAluno[];
   perfis: PerfilDoAluno[];
   lastAnalysis: TelemetryAnalysisResponse | null;
-  lastBatchTimeMetrics?: TelemetryTimeMetrics | null;
+  timeMetricsRecentes?: TelemetryTimeMetrics | null;
   cameraOptIn: boolean;
   cameraPermission: MetricsCameraPermissionState;
   battleState?: IABattleRuntimeState | null;
@@ -312,7 +312,7 @@ export function buildProfileMetricsViewModel({
   posicoesDoAluno,
   perfis,
   lastAnalysis,
-  lastBatchTimeMetrics,
+  timeMetricsRecentes,
   cameraOptIn,
   cameraPermission,
   battleState,
@@ -406,7 +406,7 @@ export function buildProfileMetricsViewModel({
   const taxaConteudo = totalConteudos > 0 ? clampPercent((conteudosConcluidos / totalConteudos) * 100) : 0;
   const taxaAtividade = totalAtividades > 0 ? clampPercent((atividadesConcluidas / totalAtividades) * 100) : 0;
 
-  const tm = lastBatchTimeMetrics ?? null;
+  const tm = timeMetricsRecentes ?? null;
   const sessionActiveSec = tm?.general.batch_active_sec ?? 0;
   const sessionIdleSec = tm?.general.batch_idle_sec ?? 0;
   const tempoAtivoMin = Math.max(0, Math.round(sessionActiveSec / 60));
@@ -414,7 +414,7 @@ export function buildProfileMetricsViewModel({
     sessionActiveSec + sessionIdleSec > 0
       ? clampPercent((sessionActiveSec / (sessionActiveSec + sessionIdleSec)) * 100)
       : 0;
-  // O último lote não é tempo ainda não salvo; somá-lo duplica a sessão.
+  // O recente é parte do que já está salvo; somá-lo ao total duplicaria a sessão.
   const tempo = Math.max(0, Number(tempoPersistido));
   const topicsArr = tm?.topics ?? [];
   const contentsArr = tm?.contents ?? [];
