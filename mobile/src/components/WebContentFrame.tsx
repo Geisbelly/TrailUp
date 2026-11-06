@@ -1,13 +1,16 @@
 import { Color } from "@/styles/GlobalStyle";
+import { usePausarAoSairDaTela } from "@/hooks/usePausarAoSairDaTela";
 import { getProfileShellPalette, ProfileShellPalette } from "@/utils/profileShellTheme";
 import { parseDeckProgressMessage, type DeckProgressEvent } from "@/utils/deckProgressMessage";
+import { criarNarracaoDoDeck } from "@/utils/narracaoDoDeck";
 import {
+  SCRIPT_CALAR_FALA,
   SCRIPT_PONTE_DE_VOZ,
   parsePedidoDeFala,
   scriptDeConclusao,
 } from "@/utils/webviewSpeechBridge";
 import * as Speech from "expo-speech";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -52,23 +55,38 @@ export function WebContentFrame({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const webViewRef = useRef<any>(null);
 
-  // Narração do deck no TTS nativo. O WebView do Android não implementa a Web
-  // Speech API, então o polyfill injetado manda o texto para cá.
+  const [narracao] = useState(() =>
+    criarNarracaoDoDeck({
+      pararVozDoApp: () => void Speech.stop(),
+      pararVozDoDeck: () => webViewRef.current?.injectJavaScript?.(SCRIPT_CALAR_FALA),
+    })
+  );
+
+  // Narração do deck. O WebView do Android não implementa a Web Speech API, então
+  // o polyfill injetado manda o texto para cá. No iOS quem fala é o WebKit, e daqui
+  // só chega o aviso de que a fala começou.
   const tratarPedidoDeFala = React.useCallback(
     (pedido: ReturnType<typeof parsePedidoDeFala>) => {
       if (!pedido) return;
 
       if (pedido.acao === "cancel") {
-        void Speech.stop();
+        narracao.pausar();
+        return;
+      }
+
+      if (pedido.acao === "fala-nativa") {
+        narracao.comecou("fala-nativa");
         return;
       }
 
       const avisarDeck = (comErro: boolean) => {
+        narracao.terminou(pedido.id);
         // A página pode ter recarregado no meio da fala; o próprio script
         // injetado checa se o callback ainda existe.
         webViewRef.current?.injectJavaScript?.(scriptDeConclusao(pedido.id, comErro));
       };
 
+      narracao.comecou(pedido.id);
       // Uma fala por vez: sem isto, tocar "Narrar" no slide seguinte empilharia
       // as duas vozes em cima uma da outra.
       void Speech.stop();
@@ -80,16 +98,16 @@ export function WebContentFrame({
         onError: () => avisarDeck(true),
       });
     },
-    []
+    [narracao]
   );
 
-  useEffect(() => {
-    // Sair da tela com a narração no ar deixaria a voz tocando sobre o resto do
-    // app.
-    return () => {
-      void Speech.stop();
-    };
-  }, []);
+  // Navegar não desmonta: as abas e o stack mantêm a tela viva por baixo, e a voz
+  // seguia falando sobre o resto do app.
+  usePausarAoSairDaTela(narracao.pausar);
+
+  // Layout, não `useEffect`: a limpeza dele roda com o `webViewRef` já vazio, e a
+  // voz do WebKit só se cala de dentro da página.
+  useLayoutEffect(() => narracao.pausar, [narracao]);
 
   // Escuta postMessage do deck (ver reportProgressToHost em
   // BrainHexPDF/src/utils/deckExportUtils.ts). window.addEventListener('message')

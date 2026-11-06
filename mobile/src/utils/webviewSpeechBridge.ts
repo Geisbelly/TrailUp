@@ -16,13 +16,18 @@
  *   - `'speechSynthesis' in window`
  *   - `new SpeechSynthesisUtterance(texto)` com `lang`, `rate`, `onend`, `onerror`
  *   - `speechSynthesis.speak(utterance)` e `speechSynthesis.cancel()`
+ *
+ * No iOS o WKWebView implementa a API, o polyfill nao entra e a voz e do WebKit, fora do alcance do
+ * `expo-speech`. O script so envolve o `speak` para o app saber que a narracao comecou; calar e por
+ * `SCRIPT_CALAR_FALA`. Ver `narracaoDoDeck.ts`.
  */
 
 const CANAL = "__trailupSpeech";
 
 export type PedidoDeFala =
   | { acao: "speak"; id: string; texto: string; lang: string | null; rate: number | null }
-  | { acao: "cancel" };
+  | { acao: "cancel" }
+  | { acao: "fala-nativa" };
 
 /**
  * Script injetado ANTES do conteudo carregar.
@@ -32,21 +37,29 @@ export type PedidoDeFala =
  * chegasse depois, o construtor real ja teria faltado no parse.
  *
  * Nao sobrescreve uma implementacao nativa existente (navegador/iOS): so entra
- * quando a API realmente nao existe.
+ * quando a API realmente nao existe. Nesse caso, so avisa o app de cada fala.
  */
 export const SCRIPT_PONTE_DE_VOZ = `
 (function () {
-  if (window.speechSynthesis && typeof window.speechSynthesis.speak === 'function') return;
-  if (!window.ReactNativeWebView) return;
-
-  var pendentes = {};
-  var sequencia = 0;
-
   function enviar(payload) {
     try {
       window.ReactNativeWebView.postMessage(JSON.stringify(payload));
     } catch (e) {}
   }
+
+  var vozNativa = window.speechSynthesis;
+  if (vozNativa && typeof vozNativa.speak === 'function') {
+    var falarNativo = vozNativa.speak;
+    vozNativa.speak = function (utterance) {
+      enviar({ ${CANAL}: 'fala-nativa' });
+      return falarNativo.call(vozNativa, utterance);
+    };
+    return;
+  }
+  if (!window.ReactNativeWebView) return;
+
+  var pendentes = {};
+  var sequencia = 0;
 
   function Utterance(texto) {
     this.text = String(texto == null ? '' : texto);
@@ -115,6 +128,19 @@ true;
 `;
 
 /**
+ * Cala a voz do WebKit, no iOS. Com o polyfill nao faz nada, de proposito: o `cancel` dele zera
+ * `pendentes`, e aí o `onStopped` do `expo-speech` nao acharia a fala para devolver o `onend`. O
+ * botao do deck ficaria preso em "Parar".
+ */
+export const SCRIPT_CALAR_FALA = `
+(function () {
+  var voz = window.speechSynthesis;
+  if (voz && !window.__trailupSpeechDone) voz.cancel();
+})();
+true;
+`;
+
+/**
  * Le uma mensagem do WebView e devolve o pedido de fala, ou null.
  *
  * Devolve null para tudo que nao e desta ponte -- o mesmo `onMessage` recebe
@@ -133,6 +159,7 @@ export function parsePedidoDeFala(raw: unknown): PedidoDeFala | null {
 
   const acao = dados[CANAL];
   if (acao === "cancel") return { acao: "cancel" };
+  if (acao === "fala-nativa") return { acao: "fala-nativa" };
   if (acao !== "speak") return null;
 
   const texto = String(dados.texto ?? "").trim();

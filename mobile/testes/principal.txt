@@ -156,6 +156,7 @@ src/utils/estadoDeAudio.test.ts
 src/components/funcionais/VideoPlayer.youtube.test.tsx
 src/utils/tocadorDeAudioWeb.test.ts
 src/utils/controleDeAudio.test.ts
+src/utils/narracaoDoDeck.test.ts
 src/components/funcionais/AudioPlayer.tela.test.tsx
 src/utils/paletaPorPerfil.test.ts
 src/utils/notificacaoDetalheCores.test.ts
