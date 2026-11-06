@@ -3,28 +3,38 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import fotoDaLumi from "@/assets/design/lumi.webp";
-import { alvoAlternativo, alvoNaTela, caminhoDoPasso, posicaoDoBalao, type Retangulo, type Tutorial } from "./tutoriais";
+import { alvoAlcancavel, alvoAlternativo, alvoNaTela, balaoCobreAlvo, caminhoDoPasso, posicaoDoBalao, type Retangulo, type Tutorial } from "./tutoriais";
 
 // A tela do passo é lazy e pode ler do banco: o alvo demora a aparecer.
 const ESPERA_DO_ALVO_MS = 2500;
 const INTERVALO_MS = 120;
 const RESPIRO = 6;
 
-function elementoNaTela(alvo: string): { el: HTMLElement; retangulo: Retangulo } | null {
+function telaAtual() {
+  return { width: window.innerWidth, height: window.innerHeight };
+}
+
+function elementoAlcancavel(alvo: string): { el: HTMLElement; retangulo: Retangulo } | null {
   const el = document.querySelector<HTMLElement>(`[data-tutorial="${alvo}"]`);
   if (!el) return null;
   const { top, left, width, height } = el.getBoundingClientRect();
   const retangulo = { top, left, width, height };
-  return alvoNaTela(retangulo, { width: window.innerWidth, height: window.innerHeight }) ? { el, retangulo } : null;
+  return alvoAlcancavel(retangulo) ? { el, retangulo } : null;
 }
 
 function localizarAlvo(alvo: string | undefined) {
   if (!alvo) return null;
-  const direto = elementoNaTela(alvo);
+  const direto = elementoAlcancavel(alvo);
   if (direto) return { ...direto, noMenu: false };
   const alternativo = alvoAlternativo(alvo);
-  const pelaGaveta = alternativo ? elementoNaTela(alternativo) : null;
+  const pelaGaveta = alternativo ? elementoAlcancavel(alternativo) : null;
   return pelaGaveta ? { ...pelaGaveta, noMenu: true } : null;
+}
+
+/** O retângulo a destacar, só enquanto o alvo está de fato na tela. */
+function retanguloVisivel(alvo: string | undefined): Retangulo | null {
+  const retangulo = localizarAlvo(alvo)?.retangulo ?? null;
+  return retangulo && alvoNaTela(retangulo, telaAtual()) ? retangulo : null;
 }
 
 /**
@@ -42,6 +52,7 @@ export default function TutorialGuiado({ tutorial, turma, onFechar }: { tutorial
   const [noMenu, setNoMenu] = useState(false);
   const [posicao, setPosicao] = useState<{ top: number; left: number } | null>(null);
   const balao = useRef<HTMLDivElement>(null);
+  const passoJaRolado = useRef<unknown>(null);
   const avancar = useRef<HTMLButtonElement>(null);
   const passo = tutorial.passos[indice];
   const ultimo = indice === tutorial.passos.length - 1;
@@ -62,7 +73,7 @@ export default function TutorialGuiado({ tutorial, turma, onFechar }: { tutorial
       const achado = localizarAlvo(passo.alvo);
       if (achado) {
         achado.el.scrollIntoView({ block: "nearest", inline: "nearest" });
-        setAlvo(localizarAlvo(passo.alvo)?.retangulo ?? null);
+        setAlvo(retanguloVisivel(passo.alvo));
         setNoMenu(achado.noMenu);
       }
       if (achado || Date.now() - inicio >= ESPERA_DO_ALVO_MS) window.clearInterval(id);
@@ -73,7 +84,7 @@ export default function TutorialGuiado({ tutorial, turma, onFechar }: { tutorial
   }, [passo]);
 
   useEffect(() => {
-    const atualizar = () => setAlvo(localizarAlvo(passo.alvo)?.retangulo ?? null);
+    const atualizar = () => setAlvo(retanguloVisivel(passo.alvo));
     window.addEventListener("resize", atualizar);
     window.addEventListener("scroll", atualizar, true);
     return () => {
@@ -85,8 +96,14 @@ export default function TutorialGuiado({ tutorial, turma, onFechar }: { tutorial
   useLayoutEffect(() => {
     if (!balao.current) return;
     const { width, height } = balao.current.getBoundingClientRect();
-    setPosicao(posicaoDoBalao(alvo, { width: window.innerWidth, height: window.innerHeight }, { width, height }));
-  }, [alvo, indice, noMenu]);
+    setPosicao(posicaoDoBalao(alvo, telaAtual(), { width, height }));
+    // Tela baixa: leva o alvo para o topo, abrindo lugar embaixo dele. Uma vez por
+    // passo, porque a rolagem traz de volta a este efeito.
+    if (alvo && passoJaRolado.current !== passo && balaoCobreAlvo(alvo, telaAtual(), { width, height })) {
+      passoJaRolado.current = passo;
+      localizarAlvo(passo.alvo)?.el.scrollIntoView({ block: "start", inline: "nearest" });
+    }
+  }, [alvo, passo, noMenu]);
 
   // `visibility: hidden` não recebe foco, então espera o balão ter lugar. A troca de
   // tela também derruba o foco para o body: `alvo` muda depois dela e o devolve.

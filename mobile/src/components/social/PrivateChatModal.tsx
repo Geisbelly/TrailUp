@@ -5,6 +5,7 @@ import {
 } from "@/services/social/socialService";
 import { useAreaVisivelWeb } from "@/hooks/useAreaVisivelWeb";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
+import { useRolagemDoChat } from "@/hooks/useRolagemDoChat";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -53,6 +54,7 @@ export function PrivateChatModal({
   // Web em tela larga (#346, protótipo v4 06-social): painel à direita, mensagens em balões.
   const desktop = useDesktopWeb();
   const area = useAreaVisivelWeb(visible);
+  const { descerAoEnviar, propsDaLista } = useRolagemDoChat(visible);
   const [text, setText] = useState("");
   const [online, setOnline] = useState(Boolean(person.online));
   const [loading, setLoading] = useState(false);
@@ -98,6 +100,7 @@ export function PrivateChatModal({
     try {
       await socialChatEnviar(person.alunoId, text);
       setText("");
+      descerAoEnviar();
       await load();
     } catch {
       setError("Não foi possível enviar a mensagem.");
@@ -160,6 +163,7 @@ export function PrivateChatModal({
               <ActivityIndicator color={accent} style={s.screen} />
             ) : (
               <ScrollView
+                {...propsDaLista}
                 contentContainerStyle={s.messages}
                 keyboardShouldPersistTaps="handled"
               >

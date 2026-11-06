@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { CONSOLE_SECTIONS } from "@/pages/consoleSections";
 import { ABAS_DA_ECONOMIA } from "../economia/economiaRegras";
 import { TODAS } from "./constantes";
-import { alvoAlternativo, alvoNaTela, caminhoDoPasso, posicaoDoBalao, TUTORIAIS, tutorialPorId } from "./tutoriais";
+import { alvoAlcancavel, alvoAlternativo, alvoNaTela, balaoCobreAlvo, caminhoDoPasso, posicaoDoBalao, TUTORIAIS, tutorialPorId } from "./tutoriais";
 
 const RAIZ = join(__dirname, "..");
 function fontes(pasta: string): string {
@@ -74,6 +74,32 @@ describe("balão", () => {
     const p = posicaoDoBalao({ top: 300, left: 300, width: 60, height: 30 }, celular, { width: 343, height: 200 });
     expect(p.left).toBe(16);
     expect(p.left + 343).toBeLessThanOrEqual(375 - 16);
+  });
+
+  it("tela baixa: usa o lado livre em vez de cobrir o alvo", () => {
+    const deitado = { width: 667, height: 375 };
+    const medida = { width: 320, height: 200 };
+    expect(posicaoDoBalao({ top: 150, left: 480, width: 150, height: 52 }, deitado, medida)).toEqual({ top: 150, left: 146 });
+    expect(balaoCobreAlvo({ top: 150, left: 480, width: 150, height: 52 }, deitado, medida)).toBe(false);
+  });
+
+  it("tela baixa e alvo no meio: avisa que só rolando cabe, e não sai da tela", () => {
+    const deitado = { width: 667, height: 375 };
+    const medida = { width: 320, height: 200 };
+    const meio = { top: 150, left: 267, width: 149, height: 52 };
+    expect(balaoCobreAlvo(meio, deitado, medida)).toBe(true);
+    const p = posicaoDoBalao(meio, deitado, medida);
+    expect(p.top + medida.height).toBeLessThanOrEqual(375 - 16);
+    expect(p.left).toBe(16);
+    expect(balaoCobreAlvo({ ...meio, top: 72 }, deitado, medida)).toBe(false);
+  });
+
+  it("alvo abaixo da dobra pode ser alcançado rolando; gaveta fechada, não", () => {
+    const abaixoDaDobra = { top: 900, left: 100, width: 160, height: 40 };
+    expect(alvoNaTela(abaixoDaDobra, tela)).toBe(false);
+    expect(alvoAlcancavel(abaixoDaDobra)).toBe(true);
+    expect(alvoAlcancavel({ top: 100, left: -280, width: 260, height: 40 })).toBe(false);
+    expect(alvoAlcancavel({ top: 100, left: 0, width: 0, height: 0 })).toBe(false);
   });
 
   it("menu em gaveta fechada não conta como alvo", () => {

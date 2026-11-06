@@ -180,3 +180,8 @@
 @media (prefers-reduced-motion: reduce) {
   .public-page *, .console-shell *, .console-editor * { animation: none !important; transition: none !important; }
 }
+
+/* O tutorial rola o botão até o alto da área rolável: sem isso, o destaque encosta na borda. */
+[data-tutorial] {
+  scroll-margin: 16px;
+}
