@@ -5,8 +5,7 @@ import path from "path";
 import { randomUUID } from "crypto";
 import {
   processMediaWithGemini,
-  generateLongNaturalAudio,
-  generateLongConversationalAudio,
+  generateGuardianAudio,
   splitProcessedContentIntoParts,
   regenerateChapterContent,
   regenerateSlideContent,
@@ -1117,7 +1116,6 @@ export async function runPipeline(
   }
 
   const voiceProfile = GUARDIAN_VOICE_PROFILES[profile];
-  const voice = voiceProfile.voice;
   const secondaryGuideName = BRAIN_HEX_CONFIG[profile]?.secondaryGuideName;
   const secondaryVoice = voiceProfile.secondaryVoice;
   const isDialogue = Boolean(secondaryGuideName && secondaryVoice);
@@ -1325,14 +1323,7 @@ export async function runPipeline(
     apresentacao: `${toRender.length}/${resume.apresentacaoDone ? 0 : totalPartes} partes`,
   });
 
-  const generatePartAudio = (audioScript: string) =>
-    isDialogue
-      ? generateLongConversationalAudio(
-          audioScript,
-          { name: BRAIN_HEX_CONFIG[profile].guideName, voice, direction: voiceProfile.direction },
-          { name: secondaryGuideName as string, voice: secondaryVoice!, direction: voiceProfile.secondaryDirection },
-        )
-      : generateLongNaturalAudio(audioScript, voice, voiceProfile.direction);
+  const generatePartAudio = (audioScript: string) => generateGuardianAudio(audioScript, profile);
 
   // O audio usa settleWithConcurrency com teto de partes simultaneas -
   // disparar todas de uma vez estourava RPM do free tier do Gemini. A
@@ -1910,16 +1901,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       if (typeof bucket !== "string" || !bucket.trim() || typeof storagePath !== "string" || !storagePath.trim()) {
         return res.status(400).json({ error: "bucket e storagePath são obrigatórios" });
       }
-      const typedProfile = profile as BrainHexProfile;
-      const voiceProfile = GUARDIAN_VOICE_PROFILES[typedProfile];
-      const secondaryGuideName = BRAIN_HEX_CONFIG[typedProfile]?.secondaryGuideName;
-      const audioResult = secondaryGuideName && voiceProfile.secondaryVoice
-        ? await generateLongConversationalAudio(
-            audioScript,
-            { name: BRAIN_HEX_CONFIG[typedProfile].guideName, voice: voiceProfile.voice, direction: voiceProfile.direction },
-            { name: secondaryGuideName, voice: voiceProfile.secondaryVoice, direction: voiceProfile.secondaryDirection },
-          )
-        : await generateLongNaturalAudio(audioScript, voiceProfile.voice, voiceProfile.direction);
+      const audioResult = await generateGuardianAudio(audioScript, profile as BrainHexProfile);
 
       const audioPayload = audioResult.mp3 ?? audioResult.wav;
       if (!audioPayload) {
@@ -1984,7 +1966,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
   //
   // Chamado pelo frontend depois de:
   //   1. processMediaWithGemini (texto + slides)
-  //   2. generateNaturalAudio (wav + mp3)
+  //   2. generateGuardianAudio (wav + mp3)
   //
   // Body: { profile, class_name, processed, mp3Base64, wavBase64?,
   //         slideImages? (opcional — se o frontend já os gerou) }

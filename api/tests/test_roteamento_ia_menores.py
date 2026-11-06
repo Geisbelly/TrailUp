@@ -396,20 +396,14 @@ async def test_microservice_e_imagem_gemini_bloqueados_para_menor(monkeypatch) -
 
 @pytest.mark.asyncio
 async def test_tts_de_menor_fica_sem_audio_e_sem_chamada(monkeypatch) -> None:
-    """Nem Gemini TTS, nem gTTS, nem OpenAI: menor fica sem audio gerado."""
-    from app.services import audio, gemini_http, media_agents
+    """Nem Gemini TTS, nem OpenAI: menor fica sem audio gerado."""
+    from app.services import gemini_http, media_agents
 
-    def _gtts_proibido(**_kwargs: Any) -> bytes:
-        raise AssertionError("gTTS chamado")
-
-    monkeypatch.setattr(media_agents, "gerar_mp3_gtts", _gtts_proibido)
     monkeypatch.setattr(media_agents.httpx, "AsyncClient", _HttpProibido)
     monkeypatch.setattr(gemini_http.httpx, "AsyncClient", _HttpProibido)
     settings = _settings(gemini_api_key="g-key", openai_api_key="o-key")
     with usar_rota("menor"):
         assert await media_agents.gerar_audio_gemini_tts(settings=settings, texto="ola", voz="Kore") is None
-        assert await audio.gerar_mp3_gemini_tts(settings=settings, texto="ola") is None
-    assert not hasattr(audio, "gerar_mp3_openai_tts")
 
 
 @pytest.mark.asyncio

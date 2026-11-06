@@ -12,9 +12,8 @@ process.env.SUPABASE_URL = "https://fake.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-teste";
 process.env.BRAINHEXPDF_API_URL = "http://brainhexpdf.test";
 process.env.CONTENT_GENERATION_AUDIO_SECOND_ROUND_DELAY_MS = "0";
-delete process.env.TTS_ENABLE_OPENAI_FALLBACK;
 
-type Evento = { tipo: "tts" | "texto" | "deck" | "openai" | "merge"; detalhe: string };
+type Evento = { tipo: "tts" | "texto" | "deck" | "merge"; detalhe: string };
 const eventos: Evento[] = [];
 let ttsResponde: (texto: string) => Response;
 let textoResponde: (corpo: any) => Response;
@@ -54,13 +53,6 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     }
     eventos.push({ tipo: "texto", detalhe: JSON.stringify(body?.generationConfig?.responseSchema ?? body?.config?.responseSchema ?? {}) });
     return textoResponde(body);
-  }
-  if (url.includes("/audio/speech")) {
-    eventos.push({ tipo: "openai", detalhe: "" });
-    return new Response(JSON.stringify({ error: { code: "insufficient_quota", message: "no credits" } }), {
-      status: 429,
-      headers: { "content-type": "application/json", "x-should-retry": "false" },
-    });
   }
   if (url.startsWith("http://brainhexpdf.test")) {
     eventos.push({ tipo: "deck", detalhe: String(body?.ordem) });

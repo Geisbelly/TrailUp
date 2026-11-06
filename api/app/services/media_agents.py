@@ -9,7 +9,6 @@ from typing import Any
 import httpx
 
 from app.core.settings import Settings
-from app.services.audio import gerar_mp3_gtts
 from app.services.gemini_http import gemini_generate
 from app.services.llm import JsonLLMService
 from app.services.media_contract import (
@@ -139,7 +138,7 @@ async def gerar_audio_gemini_tts(
     *,
     settings: Settings,
     texto: str,
-    voz: str = "Kore",
+    voz: str,
     direcao_voz: str = "",
     nome_speaker_principal: str | None = None,
     speaker_secundario: tuple[str, str] | None = None,
@@ -157,7 +156,7 @@ async def gerar_audio_gemini_tts(
     if not cleaned:
         return None
     if rota_de_menor_ativa():
-        # #195: IA so para adulto confirmado; menor fica sem audio (nem Gemini, nem gTTS).
+        # #195: IA so para adulto confirmado; menor fica sem audio.
         return None
 
     tts_prompt = _build_guardian_tts_prompt(
@@ -211,12 +210,10 @@ async def gerar_audio_gemini_tts(
                     if converted:
                         return converted
         except Exception:
-            pass
+            logger.warning("TTS do Guardiao falhou", exc_info=True)
 
-    try:
-        return gerar_mp3_gtts(texto=cleaned, lang="pt")
-    except Exception:
-        return None
+    # Sem voz generica de proposito: o aluno so ouve a voz do Guardiao.
+    return None
 
 
 async def gerar_roteiro_video_llm(

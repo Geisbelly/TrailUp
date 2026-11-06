@@ -158,8 +158,8 @@ test("texto do checkpoint é pending (a parte 1 ainda pode ganhar a imagem do de
 test("audioFailedOnlyForQuota: cota do dia e 402 sim; cota por minuto, sem áudio ou mistura, não", () => {
   const diaria = new Error('429 RESOURCE_EXHAUSTED quotaId "GenerateRequestsPerDayPerProjectPerModel"');
   const credito = new Error('{"error":{"code":402,"message":"Your prepayment credits are depleted"}}');
-  const reservaSemCredito = new Error("reserva OpenAI falhou (429 no credits) depois do Gemini", { cause: diaria });
-  assert.equal(audioFailedOnlyForQuota([diaria, credito, reservaSemCredito]), true);
+  const embrulhado = new Error("falha na parte 2", { cause: diaria });
+  assert.equal(audioFailedOnlyForQuota([diaria, credito, embrulhado]), true);
   assert.equal(audioFailedOnlyForQuota([new Error("429 RESOURCE_EXHAUSTED per minute")]), false);
   assert.equal(audioFailedOnlyForQuota([diaria, new TtsNoAudioError("sem voz")]), false);
   assert.equal(audioFailedOnlyForQuota([]), false);

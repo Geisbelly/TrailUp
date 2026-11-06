@@ -382,14 +382,14 @@ class _ClienteHttpFalso:
 async def test_chave_do_gemini_vai_no_header_e_nunca_na_url(monkeypatch) -> None:
     import httpx
 
-    from app.services import audio as audio_module
+    from app.services import media_agents
 
     _ClienteHttpFalso.chamadas = []
     monkeypatch.setattr(httpx, "AsyncClient", _ClienteHttpFalso)
     settings = _settings(gemini_api_key="CHAVE-FALSA-123")
 
     try:
-        await audio_module.gerar_mp3_gemini_tts(settings=settings, texto="Ola turma")
+        await media_agents.gerar_audio_gemini_tts(settings=settings, texto="Ola turma", voz="Kore")
     except Exception:
         pass
     assert len(_ClienteHttpFalso.chamadas) >= 1
