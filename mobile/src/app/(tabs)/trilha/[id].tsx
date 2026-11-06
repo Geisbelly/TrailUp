@@ -1787,8 +1787,8 @@ export default function TrilhaConteudoScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.center}>
-          <Text style={styles.errorTitle}>Erro ao carregar trilha</Text>
-          <Text style={styles.helperText}>{erro.message}</Text>
+          <Text style={styles.errorTitle}>Não foi possível carregar a trilha</Text>
+          <Text style={styles.helperText}>Confira sua conexão e tente de novo em instantes.</Text>
         </View>
       </SafeAreaView>
     );

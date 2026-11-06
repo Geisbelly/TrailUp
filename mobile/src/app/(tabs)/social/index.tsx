@@ -5,9 +5,6 @@ import { EsqueletoDasHistorias, EsqueletoDoSocial } from "@/components/social/Es
 import { SocialInviteCard } from "@/components/social/SocialInviteCard";
 import { SocialPersonCard } from "@/components/social/SocialPersonCard";
 import { SocialProfileModal } from "@/components/social/SocialProfileModal";
-import { ProfessorDaTurma } from "@/components/social/ProfessorDaTurma";
-import { ProfessorProfileModal } from "@/components/social/ProfessorProfileModal";
-import { rotuloDaTurma } from "@/utils/rotuloDaTurma";
 import { PrivateChatModal } from "@/components/social/PrivateChatModal";
 import { ArenaSection } from "@/components/social/ArenaSection";
 import { GuildSection } from "@/components/social/GuildSection";
@@ -90,8 +87,6 @@ export default function SocialScreen() {
   const [guilds, setGuilds] = useState<Awaited<ReturnType<typeof carregarGuildas>>>([]);
   const [janela, setJanela] = useState<Awaited<ReturnType<typeof carregarJanelaDaFormacao>>>(null);
   const [selectedPerson, setSelectedPerson] = useState<SocialPerson | null>(null);
-  const [perfilDoProfessorAberto, setPerfilDoProfessorAberto] = useState(false);
-  const professorDaTurma = rotuloDaTurma(classeAtual?.resumo).professor;
   // Celular: uma página por área, com abas de ícone como as do perfil do Instagram, em vez da
   // rolagem longa com âncoras (que parecia landing page). Abre na aba do perfil até o aluno tocar outra.
   const rolagemRef = useRef<ScrollView>(null);
@@ -348,9 +343,6 @@ export default function SocialScreen() {
               </View>
             )}
             {desktop ? <Text style={[styles.subtitle, { color: palette.textMuted }]}>Encontre sua turma e avance em companhia.</Text> : null}
-            {professorDaTurma && classeId > 0 ? (
-              <ProfessorDaTurma professor={professorDaTurma} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} cartao={{ surface: palette.surface, border: palette.border }} onPress={() => setPerfilDoProfessorAberto(true)} />
-            ) : null}
             {/* Stories (#789): na tela larga, "Encontrar" leva à pílula de mesmo nome. */}
             {social && social.friends.length + social.candidates.length > 0 ? <SocialStories amigos={social.friends} colegas={social.candidates} naoLidas={naoLidas.privado} palette={palette} onConversar={abrirConversa} onEncontrar={() => { if (!desktop) return irPara("encontrar"); setSection("discover"); setSearch(""); }} /> : loading && !social ? <EsqueletoDasHistorias palette={palette} /> : null}
           </View>
@@ -474,7 +466,6 @@ export default function SocialScreen() {
       <BagModal visible={bagVisible} classeId={activeClasseId > 0 ? activeClasseId : null} profile={profile} onClose={() => setBagVisible(false)} />
       {usuario?.id && activeClasseId > 0 ? <StoreModal visible={storeVisible} alunoId={usuario.id} classeId={activeClasseId} profileName={profile} onClose={() => setStoreVisible(false)} /> : null}
       <SocialProfileModal visible={selectedPerson !== null} alunoId={selectedPerson?.alunoId ?? null} classeId={activeClasseId} accent={palette.accent} online={selectedPerson?.online} onPressChat={() => { if (selectedPerson) abrirConversa(selectedPerson); setSelectedPerson(null); }} onClose={() => setSelectedPerson(null)} />
-      {perfilDoProfessorAberto ? <ProfessorProfileModal classeId={classeId} accent={palette.accent} centralizado={desktop} onClose={() => setPerfilDoProfessorAberto(false)} /> : null}
       <GuildChatModal visible={chatGuilda !== null} guild={chatGuilda} accent={palette.accent} profile={profile} options={shareOptions} onClose={() => { if (chatGuilda) marcarLida("guilda", chatGuilda.id); setChatGuilda(null); }} />
       {chatPerson ? <PrivateChatModal visible={chatPerson !== null} person={chatPerson} accent={palette.accent} profile={profile} onClose={() => { marcarLida("privado", chatPerson.alunoId); setChatPerson(null); }} /> : null}
     </View>
@@ -484,7 +475,7 @@ export default function SocialScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 }, safeArea: { flex: 1 },
   content: { paddingHorizontal: 20, paddingBottom: 28 },
-  cabecalhoLargo: { gap: 4, paddingTop: 8 },
+  cabecalhoLargo: { gap: 4, paddingTop: 28 },
   eyebrowLargo: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 1.2 },
   tituloLargo: { fontFamily: FontFamily.inikaBold, fontSize: 30 },
   pilula: { borderRadius: 999, minHeight: 36, paddingHorizontal: 16 },
