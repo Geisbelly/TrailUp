@@ -1,11 +1,10 @@
 """Observabilidade do RAG (#67): o que a busca no Vector Store fez, sem texto do aluno.
 
-`OpenAIRagService.invoke_structured` monta um resumo de cada chamada com `file_search`
-(`resumo_da_busca`) e o entrega a quem estiver coletando (`coletar_buscas_rag`). O chat do mentor
-grava os resumos em `ia_decision_logs` (`source='chat'`, `stage='rag_retrieval'`); essa persistência
-omite nomes de arquivo. O nó de intervenção usa apenas `fontes_citadas`, validando cada citação
-contra os IDs de arquivo recuperados, e salva os nomes em `intervencoes.contexto`.
-
+`OpenAIRagService.invoke_structured` resume chamadas `file_search` (`resumo_da_busca`); chat e
+intervenção as entregam ao coletor, sem texto. O chat do mentor grava o resumo em `ia_decision_logs`
+(`source='chat'`, `stage='rag_retrieval'`); a intervenção valida as citações contra os IDs de arquivo.
+O retrieval direto de citações da sugestão (#66) usa `vector_stores.search` e registra no log da API
+apenas status, latência, limite e quantidade de resultados; não grava consultas nem resultado bruto.
 O que é persistido no resumo, e por quê:
 
 - **Sem conteúdo.** Nem a mensagem do aluno, nem as consultas geradas, nem o trecho recuperado,

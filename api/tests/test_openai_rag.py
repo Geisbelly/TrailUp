@@ -23,6 +23,129 @@ class _FakeClient:
     def __init__(self, response):
         self.responses = _FakeResponses(response)
 
+class _FakeSearch:
+    def __init__(self, response):
+        self.response = response
+        self.calls = []
+
+    async def __call__(self, **kwargs):
+        self.calls.append(kwargs)
+        return self.response
+
+
+class _FakeVectorStores:
+    def __init__(self, response):
+        self.search = _FakeSearch(response)
+
+
+class _FakeSearchClient:
+    def __init__(self, response):
+        self.vector_stores = _FakeVectorStores(response)
+
+
+
+@pytest.mark.asyncio
+async def test_busca_evidencia_restringe_corpus_e_nao_envia_dados_individuais(monkeypatch):
+    atributos_validos = {
+        "scope": "publico",
+        "corpus": "regras-derivadas",
+        "rd": "RD-04",
+        "fontes": "DAT-21, DAT-36",
+        "confianca": "alta",
+    }
+    resposta = SimpleNamespace(
+        data=[
+            SimpleNamespace(file_id="file-curado", attributes=dict(atributos_validos)),
+            SimpleNamespace(
+                file_id="nao-catalogado",
+                attributes={
+                    **atributos_validos,
+                    "scope": "turma",
+                    "rd": "RD-03",
+                    "fontes": "DAT-21",
+                },
+            ),
+            SimpleNamespace(
+                file_id="nao-catalogado",
+                attributes={
+                    **atributos_validos,
+                    "corpus": "pdf-bruto",
+                    "rd": "RD-08",
+                    "fontes": "DAT-21",
+                },
+            ),
+            SimpleNamespace(
+                file_id="nao-catalogado",
+                attributes={**atributos_validos, "rd": "RD-99", "fontes": "DAT-21"},
+            ),
+        ]
+    )
+    client = _FakeSearchClient(resposta)
+
+    async def listar_do_corpus(_repo, *, vector_store_id, corpus):
+        assert vector_store_id == "vs_test"
+        assert corpus == "regras-derivadas"
+        return [
+            {
+                "openai_file_id": "file-curado",
+                "status": "completed",
+                "attributes": atributos_validos,
+            }
+        ]
+
+    monkeypatch.setattr(
+        "app.services.openai_rag.RagOpenAIFilesRepository.listar_do_corpus", listar_do_corpus
+    )
+    service = OpenAIRagService(_settings(), client=client)
+
+    citacoes = await service.buscar_evidencias_pedagogicas(
+        session=object(), fontes=["DAT-21", "DAT-36", "nome do aluno"]
+    )
+
+    assert citacoes == [
+        {"regra": "RD-04", "fontes": ["DAT-21", "DAT-36"], "confianca": "alta"}
+    ]
+    chamada = client.vector_stores.search.calls[0]
+    assert chamada["filters"] == {
+        "type": "and",
+        "filters": [
+            {"type": "eq", "key": "scope", "value": "publico"},
+            {"type": "eq", "key": "corpus", "value": "regras-derivadas"},
+        ],
+    }
+    assert "nome do aluno" not in chamada["query"]
+    assert chamada["query"] == "Evidências pedagógicas curadas e limitações para DAT-21, DAT-36"
+
+
+@pytest.mark.asyncio
+async def test_busca_evidencia_sem_fontes_nao_chama_o_vector_store():
+    client = _FakeSearchClient(SimpleNamespace(data=[]))
+    service = OpenAIRagService(_settings(), client=client)
+
+    assert await service.buscar_evidencias_pedagogicas(
+        session=object(), fontes=["nome do aluno"]
+    ) == []
+    assert client.vector_stores.search.calls == []
+
+
+@pytest.mark.asyncio
+async def test_busca_evidencia_sem_catalogo_curado_nao_consulta_vector_store(monkeypatch):
+    client = _FakeSearchClient(SimpleNamespace(data=[]))
+    service = OpenAIRagService(_settings(), client=client)
+
+    async def sem_arquivos(_repo, **_kwargs):
+        return []
+
+    monkeypatch.setattr(
+        "app.services.openai_rag.RagOpenAIFilesRepository.listar_do_corpus", sem_arquivos
+    )
+
+    assert await service.buscar_evidencias_pedagogicas(
+        session=object(), fontes=["DAT-21"]
+    ) == []
+    assert client.vector_stores.search.calls == []
+
+
 
 class _Answer:
     @classmethod

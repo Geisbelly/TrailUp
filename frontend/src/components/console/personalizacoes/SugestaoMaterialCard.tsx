@@ -176,6 +176,23 @@ export function SugestaoMaterialCard({ alunoId, topicoId, resolveToken }: Props)
                                       {dadosLegiveis.join(" · ")}
                                     </p>
                                   )}
+                                  {evidencia.referencias_rag?.length ? (
+                                    <ul className="mt-1 text-muted-foreground">
+                                      {evidencia.referencias_rag.map((referencia) => (
+                                        <li
+                                          key={`${referencia.regra}-${referencia.fontes.join("-")}`}
+                                        >
+                                          Evidência curada {referencia.regra}
+                                          {referencia.fontes.length > 0
+                                            ? ` · ${referencia.fontes.join(", ")}`
+                                            : ""}
+                                          {referencia.confianca
+                                            ? ` · confiança ${referencia.confianca}`
+                                            : ""}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : null}
                                 </li>
                               );
                             })}

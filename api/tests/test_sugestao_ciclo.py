@@ -775,7 +775,14 @@ def test_resposta_leva_evidencias_e_descarta_as_malformadas():
                 "score": 1.2,
                 "motivos": ["x"],
                 "evidencias": [
-                    {"regra": "reexposicao_quiz", "fontes": ["DAT-21"], "confianca": "forte"},
+                    {
+                        "regra": "reexposicao_quiz",
+                        "fontes": ["DAT-21"],
+                        "confianca": "forte",
+                        "referencias_rag": [
+                            {"regra": "RD-04", "fontes": ["DAT-21"], "confianca": "alta"}
+                        ],
+                    },
                     {"regra": "quebrada", "fontes": "nao-e-lista"},
                     {"sem": "regra"},
                 ],
@@ -787,6 +794,90 @@ def test_resposta_leva_evidencias_e_descarta_as_malformadas():
 
     assert [e.regra for e in itens[0].evidencias] == ["reexposicao_quiz"]
     assert itens[1].evidencias == []
+
+    assert itens[0].evidencias[0].referencias_rag[0].regra == "RD-04"
+
+@pytest.mark.asyncio
+async def test_citacoes_rag_enriquecem_evidencia_sem_alterar_a_ordem(monkeypatch):
+    from app.services import sugestao_ciclo
+
+    class RAGFake:
+        def __init__(self, _settings):
+            pass
+
+        async def buscar_evidencias_pedagogicas(self, *, session, fontes):
+            assert session is not None
+            assert fontes == ["DAT-21", "DAT-45"]
+            return [
+                {"regra": "RD-04", "fontes": ["DAT-21"], "confianca": "alta"},
+                {"regra": "RD-12", "fontes": ["DAT-45"], "confianca": "alta"},
+            ]
+
+    monkeypatch.setattr(sugestao_ciclo, "get_settings", lambda: object())
+    monkeypatch.setattr(sugestao_ciclo, "OpenAIRagService", RAGFake)
+    ordem = [
+        {
+            "formato": "cards",
+            "posicao": 1,
+            "score": 1.5,
+            "evidencias": [{"regra": "reexposicao_quiz", "fontes": ["DAT-21"]}],
+        },
+        {
+            "formato": "audio",
+            "posicao": 2,
+            "score": 1.0,
+            "evidencias": [{"regra": "engajamento_comportamental", "fontes": ["DAT-45"]}],
+        },
+    ]
+
+    await sugestao_ciclo._anexar_citacoes_rag(ordem, session=object())
+
+    assert [(item["formato"], item["posicao"], item["score"]) for item in ordem] == [
+        ("cards", 1, 1.5),
+        ("audio", 2, 1.0),
+    ]
+    assert ordem[0]["evidencias"][0]["referencias_rag"] == [
+        {"regra": "RD-04", "fontes": ["DAT-21"], "confianca": "alta"}
+    ]
+    assert ordem[1]["evidencias"][0]["referencias_rag"][0]["regra"] == "RD-12"
+
+@pytest.mark.asyncio
+async def test_falha_no_rag_deixa_evidencia_e_ordem_intactas(monkeypatch):
+    from app.services import sugestao_ciclo
+    from app.services.openai_rag import OpenAIRagError
+
+    class RAGFake:
+        def __init__(self, _settings):
+            pass
+
+        async def buscar_evidencias_pedagogicas(self, *, session, fontes):
+            assert session is not None and fontes == ["DAT-21"]
+            raise OpenAIRagError("remote failure details must not leak")
+
+    monkeypatch.setattr(sugestao_ciclo, "get_settings", lambda: object())
+    monkeypatch.setattr(sugestao_ciclo, "OpenAIRagService", RAGFake)
+    ordem = [
+        {
+            "formato": "cards",
+            "posicao": 1,
+            "score": 1.5,
+            "evidencias": [{"regra": "reexposicao_quiz", "fontes": ["DAT-21"]}],
+        }
+    ]
+
+    await sugestao_ciclo._anexar_citacoes_rag(ordem, session=object())
+
+    assert ordem == [
+        {
+            "formato": "cards",
+            "posicao": 1,
+            "score": 1.5,
+            "evidencias": [{"regra": "reexposicao_quiz", "fontes": ["DAT-21"]}],
+        }
+    ]
+
+
+
 
 
 def test_resposta_leva_camada_motivo_do_aluno_e_necessidades():

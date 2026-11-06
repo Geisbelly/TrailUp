@@ -45,7 +45,7 @@ Os artigos da Evidence Base passam pelo mesmo critério em [avaliação dos docu
 - **#165 (OpenAI Vector Store + `file_search` no mentor) é o caminho canônico.** PR #166 foi mergeada em 2026-09-10; o desenho pgvector (`agente_rag`, `rag_context`, `RAGRetrievalService`) é anterior ao ADR e está substituído.
 - Consequência para as issues pgvector:
   - **#63** (nó `agente_rag`): fechar como substituída — o mentor já recupera via `file_search`, sem nó no grafo. Reabrir só se um segundo consumidor (fora do mentor) exigir retrieval no LangGraph.
-  - **#66** (sugestão/notificação com RAG): reescopo — `sugestao_material.py` é determinístico hoje e deve continuar; RAG entra só via mentor (caminho #165), não via `rag_context` no estado.
+  - **#66** (sugestão/notificação com RAG): `sugestao_material.py` mantém ordem determinística. Aprovado em 2026-11-06: o retrieval do Vector Store pode acrescentar citações apenas das regras derivadas elegíveis (`scope=publico`, `corpus=regras-derivadas`), sem enviar contexto individual nem alterar scores/ordem. Notificações já usam RAG pelo caminho existente.
   - **#67** (observabilidade/testes do RAG): reescopo — observar o caminho `file_search` (latência, top_k, taxa de citação), não um `RAGRetrievalService` que não existe.
   - **#64** (intervenções): tabela `intervencoes` + leitura de `aluno_mental_state_history` continuam válidas como entrega; só o item "buscar via RAG" passa a significar consultar o mentor/file_search, não `agente_rag`.
 - **#72, #73, #75** (extração, curadoria, golden set) continuam válidas e passam a alimentar o Vector Store, não o pgvector.
