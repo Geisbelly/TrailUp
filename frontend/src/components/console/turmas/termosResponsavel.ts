@@ -8,9 +8,8 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
-// As MESMAS strings de `api/alembic/versions/20261024_02_*.py`; o teste
-// `test_migration_consentimento_responsavel.py` confere que batem.
-export const CONSENTIMENTO_RESPONSAVEL_VERSAO = "2026-10-24-resp-v1";
+// A versão vigente é sincronizada com a migration 20261105_28.
+export const CONSENTIMENTO_RESPONSAVEL_VERSAO = "2026-11-05-resp-v2";
 export const CONSENTIMENTO_PESQUISA_VERSAO = "2026-10-24-pesq-v1";
 
 export const FINALIDADES = [

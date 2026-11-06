@@ -5,9 +5,9 @@
 // `aluno_finalidade_permitida`, migracao 20261024_02); aqui so se le o que a
 // RPC `aluno_meu_consentimento` devolveu e se decide o que mostrar.
 
-// As MESMAS strings de `api/alembic/versions/20261024_02_*.py`; o teste
-// `test_migration_consentimento_responsavel.py` confere que batem.
-export const CONSENTIMENTO_RESPONSAVEL_VERSAO = "2026-10-24-resp-v1";
+// As MESMAS strings de `api/alembic/versions`; testes conferem a versão vigente
+// do banco e a versão histórica preservada na migration original.
+export const CONSENTIMENTO_RESPONSAVEL_VERSAO = "2026-11-05-resp-v2";
 export const CONSENTIMENTO_PESQUISA_VERSAO = "2026-10-24-pesq-v1";
 
 export const FINALIDADES = ["camera", "telemetria", "emocional", "mentor", "pesquisa"] as const;

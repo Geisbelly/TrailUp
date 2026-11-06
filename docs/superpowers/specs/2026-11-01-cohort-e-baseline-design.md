@@ -68,9 +68,12 @@ precisa existir antes de o estudo começar.
   - `alunos_expostos_pct` em cada janela;
   - `baseline_contaminado`;
   - `comparacao_recebeu_personalizacao`, só na turma de comparação.
-- **Viés de plataforma** (#30): `lotes_por_plataforma` em cada janela. Abaixo de `n_minimo` ele
-  volta nulo, como as taxas e `ciclos_personalizacao` (`20261102_25`, #17): numa turma de três
-  alunos, "1 lote de ios" diz quem tem iPhone.
+- **Viés de plataforma** (#30): `lotes_por_plataforma` em cada janela informa cobertura; abaixo
+  de `n_minimo` volta nulo. Isso não estratifica os desfechos: PR1 e PR2 continuam agregados e
+  não podem ser comparados por plataforma, o que a RPC declara em `limitacoes`. O motivo é que o
+  tempo ativo e os desfechos não carregam atribuição de plataforma por aluno/resultado. Portanto,
+  não interpretar diferenças web × app como efeito da personalização; uma análise estratificada
+  exige persistir essa atribuição de forma consistente.
 
 ## 4. O que ficou de fora
 

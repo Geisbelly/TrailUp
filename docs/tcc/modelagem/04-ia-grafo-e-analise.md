@@ -14,7 +14,7 @@ Qual workflow roda depende de `workflow_kind` no estado, não da instância.
 ```mermaid
 flowchart LR
   S((START)) --> SUP{supervisor}
-  ANALISE["<b>Workflow de análise</b><br/>10 especialistas<br/>──────────<br/>agente_emocao (MockEmocaoAdapter)<br/>agente_perfil · agente_ui<br/>agente_conteudo · agente_geracao_midia<br/>agente_trilha · agente_notificacao<br/>agente_intervencao · agente_cronometro<br/>agente_texto"]
+  ANALISE["<b>Workflow de análise</b><br/>10 especialistas<br/>──────────<br/>agente_emocao (LocalVisionEmotionAdapter opt-in; indisponível sem resultado)<br/>agente_perfil · agente_ui<br/>agente_conteudo · agente_geracao_midia<br/>agente_trilha · agente_notificacao<br/>agente_intervencao · agente_cronometro<br/>agente_texto"]
   PERS["<b>Workflow de personalização</b><br/>workflow_kind = personalizar<br/>──────────<br/>agente_plano_personalizacao<br/>agente_ai_patch<br/>agente_midias_personalizadas"]
   SUP -- "candidatos por regra<br/>(modelo só desempata)" --> ANALISE
   ANALISE -- "cada especialista<br/>volta ao supervisor" --> SUP

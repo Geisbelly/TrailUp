@@ -14,45 +14,10 @@ modelo FER+ com saida valida.
 from __future__ import annotations
 
 import base64
-from dataclasses import dataclass
-from typing import Any
 
 import pytest
 
 from app.services import emotion_vision as ev
-
-
-@dataclass
-class _ResultadoFake:
-    provider_name: str
-    emocao_primaria: str
-    valencia: float
-    confianca: float
-    resumo: dict[str, Any]
-
-
-class _EventoFake:
-    def __init__(self, tipo: str) -> None:
-        self.tipo = tipo
-
-
-class _HeuristicaFake:
-    """Dubla o DeepFaceEmotionAnalyzer sem importar o pipeline (evita ciclo)."""
-
-    provider_name = "deepface"
-
-    def __init__(self) -> None:
-        self.chamadas = 0
-
-    async def analyze(self, **_: Any) -> _ResultadoFake:
-        self.chamadas += 1
-        return _ResultadoFake(
-            provider_name=self.provider_name,
-            emocao_primaria="neutro",
-            valencia=0.1,
-            confianca=0.36,
-            resumo={"eventos": {}},
-        )
 
 
 def test_softmax_normaliza_e_preserva_a_ordem() -> None:
@@ -104,87 +69,65 @@ def test_valencia_negativa_para_emocao_negativa() -> None:
 
 
 @pytest.mark.asyncio
-async def test_sem_frame_devolve_a_heuristica_intacta() -> None:
-    heuristica = _HeuristicaFake()
+async def test_sem_frame_emocao_fica_indisponivel_mesmo_com_eventos() -> None:
     analisador = ev.LocalVisionEmotionAnalyzer(
-        fallback=heuristica, caminho_modelo="/nao/existe", caminho_detector="/nao/existe"
+        caminho_modelo="/nao/existe", caminho_detector="/nao/existe"
     )
     saida = await analisador.analyze(
-        frames_b64=[], eventos_novos=[], telemetry_payload={}, state={}
+        frames_b64=[],
+        eventos_novos=[{"tipo": "erro_recorrente"}],
+        telemetry_payload={"idle_sec": 300},
+        state={},
     )
-    assert saida.emocao_primaria == "neutro"
-    assert saida.provider_name == "deepface"
-    assert saida.resumo["visao"] == {"usada": False, "motivo": "sem_frame"}
-    assert heuristica.chamadas == 1
+    assert saida is None
 
 
 @pytest.mark.asyncio
-async def test_modelo_ausente_nao_derruba_o_ciclo() -> None:
-    heuristica = _HeuristicaFake()
+async def test_modelo_ausente_nao_cria_emocao_por_proxy() -> None:
     analisador = ev.LocalVisionEmotionAnalyzer(
-        fallback=heuristica,
         caminho_modelo="/opt/models/nao-existe.onnx",
         caminho_detector="/opt/models/tambem-nao.onnx",
     )
     saida = await analisador.analyze(
-        frames_b64=["ZmFrZQ=="], eventos_novos=[], telemetry_payload={}, state={}
-    )
-    assert saida.provider_name == "deepface"
-    assert saida.resumo["visao"]["motivo"] == "sem_conclusao"
-
-
-@pytest.mark.asyncio
-async def test_evento_de_erro_tem_precedencia_sobre_a_face(monkeypatch) -> None:
-    """Errar tres vezes e' um fato; a cara de um quadro e' uma leitura."""
-    monkeypatch.setattr(
-        ev,
-        "_analisar_frames",
-        lambda *_args, **_kw: ev._Visao("happiness", 0.9, 5, 5),
-    )
-    heuristica = _HeuristicaFake()
-    analisador = ev.LocalVisionEmotionAnalyzer(fallback=heuristica, caminho_modelo="x", caminho_detector="y")
-    saida = await analisador.analyze(
         frames_b64=["ZmFrZQ=="],
-        eventos_novos=[_EventoFake("erro_recorrente")],
-        telemetry_payload={},
+        eventos_novos=[{"tipo": "erro_recorrente"}],
+        telemetry_payload={"idle_sec": 300},
         state={},
     )
-    assert saida.provider_name == "deepface"
-    assert saida.resumo["visao"]["motivo"] == "evento_de_erro_tem_precedencia"
-    assert saida.resumo["visao"]["rotulo_descartado"] == "happiness"
+    assert saida is None
 
 
 @pytest.mark.asyncio
-async def test_visao_vence_quando_conclui_e_nao_ha_evento_de_erro(monkeypatch) -> None:
+async def test_visao_real_preserva_resultado_sem_uso_de_proxy_comportamental(monkeypatch) -> None:
     monkeypatch.setattr(
         ev, "_analisar_frames", lambda *_a, **_k: ev._Visao("anger", 0.8, 4, 5)
     )
-    analisador = ev.LocalVisionEmotionAnalyzer(
-        fallback=_HeuristicaFake(), caminho_modelo="x", caminho_detector="y"
-    )
+    analisador = ev.LocalVisionEmotionAnalyzer(caminho_modelo="x", caminho_detector="y")
     saida = await analisador.analyze(
-        frames_b64=["ZmFrZQ=="], eventos_novos=[], telemetry_payload={}, state={}
+        frames_b64=["ZmFrZQ=="],
+        eventos_novos=[{"tipo": "erro_recorrente"}],
+        telemetry_payload={"idle_sec": 300},
+        state={},
     )
+    assert saida is not None
     assert saida.provider_name == "local_vision"
     assert saida.emocao_primaria == "frustrado"
     assert saida.valencia < 0
-    # 4 rostos em 5 quadros reduz a confianca: 0.8 * 0.8
     assert pytest.approx(saida.confianca, abs=1e-6) == 0.64
-    assert saida.resumo["visao"]["heuristica_diria"] == "neutro"
 
 
 @pytest.mark.asyncio
-async def test_base64_invalido_nao_levanta(monkeypatch) -> None:
-    # Sem o modelo em disco o caminho ja' retorna cedo; com ele, o decode
-    # invalido tem de ser engolido. Garante os dois sem exigir o arquivo.
+async def test_base64_invalido_nao_cria_emocao() -> None:
     analisador = ev.LocalVisionEmotionAnalyzer(
-        fallback=_HeuristicaFake(), caminho_modelo="/x", caminho_detector="/y"
+        caminho_modelo="/x", caminho_detector="/y"
     )
     saida = await analisador.analyze(
-        frames_b64=["nao-e-base64-valido!!!"], eventos_novos=[], telemetry_payload={}, state={}
+        frames_b64=["nao-e-base64-valido!!!"],
+        eventos_novos=[],
+        telemetry_payload={},
+        state={},
     )
-    assert saida.provider_name == "deepface"
-
+    assert saida is None
 
 @pytest.mark.asyncio
 async def test_resumo_nao_carrega_imagem(monkeypatch) -> None:
@@ -195,13 +138,12 @@ async def test_resumo_nao_carrega_imagem(monkeypatch) -> None:
     monkeypatch.setattr(
         ev, "_analisar_frames", lambda *_a, **_k: ev._Visao("neutral", 0.7, 2, 3)
     )
-    analisador = ev.LocalVisionEmotionAnalyzer(
-        fallback=_HeuristicaFake(), caminho_modelo="x", caminho_detector="y"
-    )
+    analisador = ev.LocalVisionEmotionAnalyzer(caminho_modelo="x", caminho_detector="y")
     saida = await analisador.analyze(
         frames_b64=[frame], eventos_novos=[], telemetry_payload={}, state={}
     )
 
+    assert saida is not None
     serializado = json.dumps(saida.resumo)
     assert frame not in serializado
     # nenhum valor longo o bastante para ser imagem embutida

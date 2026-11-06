@@ -45,7 +45,13 @@ def _needs_emotion(state: dict[str, Any], completed: set[str]) -> bool:
 
 
 def _needs_ui(state: dict[str, Any], completed: set[str]) -> bool:
-    return bool(state.get("emocao_atual")) and "agente_ui" not in completed and not state.get("ui_config")
+    emocao = state.get("emocao_atual") or {}
+    return (
+        bool(emocao)
+        and emocao.get("estado_sinal") != "indisponivel"
+        and "agente_ui" not in completed
+        and not state.get("ui_config")
+    )
 
 
 def _needs_conteudo(state: dict[str, Any], completed: set[str]) -> bool:

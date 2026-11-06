@@ -130,29 +130,60 @@ export function caminhoDoPasso(passo: PassoDoTutorial, turma: string): string {
 export type Retangulo = { top: number; left: number; width: number; height: number };
 export type Tela = { width: number; height: number };
 
-/** Elemento escondido ou fora da tela (menu em gaveta fechada) não serve de alvo. */
+/** Sem o menu lateral na tela (celular), o passo do menu aponta para o botão que abre a gaveta. */
+export function alvoAlternativo(alvo: string): string | null {
+  return alvo.startsWith("menu-") && alvo !== "menu-gaveta" ? "menu-gaveta" : null;
+}
+
+/**
+ * Elemento escondido (menu em gaveta fechada, que sai pela esquerda) não serve de
+ * alvo. O que só está além da rolagem serve: é rolando até ele que o passo aparece.
+ */
+export function alvoAlcancavel(r: Retangulo): boolean {
+  return r.width > 0 && r.height > 0 && r.left + r.width > 0;
+}
+
 export function alvoNaTela(r: Retangulo, tela: Tela): boolean {
-  return r.width > 0 && r.height > 0 && r.left + r.width > 0 && r.left < tela.width && r.top + r.height > 0 && r.top < tela.height;
+  return alvoAlcancavel(r) && r.left < tela.width && r.top + r.height > 0 && r.top < tela.height;
 }
 
 const MARGEM = 16;
 const FOLGA = 14;
 
 /** Onde o balão fica: abaixo do alvo, senão acima, senão ao lado; sem alvo, no centro. */
+function posicaoSemCobrir(alvo: Retangulo, tela: Tela, balao: { width: number; height: number }): { top: number; left: number } | null {
+  const limite = (valor: number, maximo: number) => Math.max(MARGEM, Math.min(valor, maximo - MARGEM));
+  const maxLeft = tela.width - balao.width;
+  const maxTop = tela.height - balao.height;
+  const abaixo = alvo.top + alvo.height + FOLGA;
+  const acima = alvo.top - FOLGA - balao.height;
+  const aDireita = alvo.left + alvo.width + FOLGA;
+  const aEsquerda = alvo.left - FOLGA - balao.width;
+  const cabeADireita = aDireita + balao.width <= tela.width - MARGEM;
+  if (cabeADireita && alvo.left < tela.width / 3) return { top: limite(alvo.top, maxTop), left: aDireita };
+  const centrado = limite(alvo.left + alvo.width / 2 - balao.width / 2, maxLeft);
+  if (abaixo + balao.height <= tela.height - MARGEM) return { top: abaixo, left: centrado };
+  if (acima >= MARGEM) return { top: acima, left: centrado };
+  if (cabeADireita) return { top: limite(alvo.top, maxTop), left: aDireita };
+  if (aEsquerda >= MARGEM) return { top: limite(alvo.top, maxTop), left: aEsquerda };
+  return null;
+}
+
+/** Em tela baixa pode não haver lugar para o balão sem cobrir o alvo: aí é preciso rolar. */
+export function balaoCobreAlvo(alvo: Retangulo, tela: Tela, balao: { width: number; height: number }): boolean {
+  return posicaoSemCobrir(alvo, tela, balao) === null;
+}
+
 export function posicaoDoBalao(alvo: Retangulo | null, tela: Tela, balao: { width: number; height: number }): { top: number; left: number } {
   const limite = (valor: number, maximo: number) => Math.max(MARGEM, Math.min(valor, maximo - MARGEM));
   const maxLeft = tela.width - balao.width;
   const maxTop = tela.height - balao.height;
   if (!alvo) return { top: limite(maxTop / 2, maxTop), left: limite(maxLeft / 2, maxLeft) };
-
-  const abaixo = alvo.top + alvo.height + FOLGA;
-  const acima = alvo.top - FOLGA - balao.height;
-  const aoLado = alvo.left + alvo.width + FOLGA;
-  if (aoLado + balao.width <= tela.width - MARGEM && alvo.left < tela.width / 3) {
-    return { top: limite(alvo.top, maxTop), left: aoLado };
-  }
-  const centrado = limite(alvo.left + alvo.width / 2 - balao.width / 2, maxLeft);
-  if (abaixo + balao.height <= tela.height - MARGEM) return { top: abaixo, left: centrado };
-  if (acima >= MARGEM) return { top: acima, left: centrado };
-  return { top: limite(abaixo, maxTop), left: centrado };
+  return (
+    posicaoSemCobrir(alvo, tela, balao) ?? {
+      top: limite(alvo.top + alvo.height + FOLGA, maxTop),
+      // Sem lugar nem rolando: encosta no lado oposto, para o alvo seguir à vista em parte.
+      left: alvo.left + alvo.width / 2 < tela.width / 2 ? limite(maxLeft, maxLeft) : MARGEM,
+    }
+  );
 }
