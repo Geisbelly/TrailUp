@@ -33,3 +33,22 @@ test("a margem da linha só existe depois das saídas sem batalha", () => {
   assert.ok(semBatalha > 0 && margem > semBatalha);
   assert.doesNotMatch(ler("../styles/trilhaTopicoStyles.ts"), /linhaBatalha: \{[^}]*(margin|padding|height)/);
 });
+
+test("no Android a linha do chip tem altura própria e não cobre o conteúdo", () => {
+  const chip = ler("../components/ia/IABattleHeaderChip.tsx");
+  assert.match(chip, /variante === "linha" && styles\.chipEmLinha/);
+  assert.match(chip, /chipEmLinha: \{ flex: 0 \}/);
+});
+
+test("o título guarda folga até o cronômetro no Android", () => {
+  const titulo = ler("../components/trilhas/ModuleHeaderTitle.tsx");
+  assert.match(titulo, /Platform\.OS === "android" && styles\.containerAndroid/);
+});
+
+test("o destaque do tour mede a barra certa e soma a barra de status no Android", () => {
+  const tela = ler("../app/(tabs)/trilha/[id].tsx");
+  assert.equal(tela.match(/ref=\{progressGuideTargetRef\}/g), null);
+  assert.equal(tela.match(/alvoRef=\{progressGuideTargetRef\}/g)?.length, 1);
+  const titulo = ler("../components/trilhas/ModuleHeaderTitle.tsx");
+  assert.match(titulo, /y \+ \(Platform\.OS === "android" \? \(StatusBar\.currentHeight \?\? 0\) : 0\) - padding/);
+});

@@ -1874,7 +1874,7 @@ export default function TrilhaConteudoScreen() {
       >
         {/* Na tela larga o progresso fica nos pontos do cabeçalho. */}
         <View style={[styles.header, { display: "none" }]}>
-          <View ref={progressGuideTargetRef} collapsable={false} style={styles.headerTopMeta}>
+          <View style={styles.headerTopMeta}>
             {progressoPercurso.total > 0 ? (
               <>
                 <View style={styles.progressHeaderRow}>

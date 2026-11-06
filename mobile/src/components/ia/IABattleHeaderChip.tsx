@@ -214,6 +214,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
       <Pressable
         style={[
           styles.chip,
+          variante === "linha" && styles.chipEmLinha,
           {
             borderColor: palette.borderStrong,
             backgroundColor: palette.surfaceElevated,
@@ -431,6 +432,8 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
 const styles = StyleSheet.create({
   painelComFala: { gap: 8 },
   linha: { marginHorizontal: 12, marginVertical: 6 },
+  // Sem isto, o flex: 1 do chip deixa a linha sem altura no Android e ele cobre o conteúdo.
+  chipEmLinha: { flex: 0 },
   pausada: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 8 },
   pausadaTitulo: { flexDirection: "row", alignItems: "center", gap: 8 },
   pausadaTituloTexto: { fontFamily: FontFamily.interMedium, fontSize: 15, fontWeight: "700" },
