@@ -1,3 +1,4 @@
+import { textoDeErro } from "@/utils/textoDeErro";
 import { useCallback } from "react";
 import type { Router } from "expo-router";
 
@@ -326,7 +327,7 @@ export function useTopicoCompletion(args: {
       console.error("[TrilhaConteudo] Erro ao concluir topico:", err);
       showDialog({
         title: "Não foi possível concluir o módulo",
-        description: err instanceof Error ? err.message : "Não conseguimos confirmar a conclusão. Tente novamente; seu progresso salvo foi mantido.",
+        description: textoDeErro(err, "Não conseguimos confirmar a conclusão. Tente novamente; seu progresso salvo foi mantido."),
         tone: "error",
       });
     }

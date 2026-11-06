@@ -1,3 +1,4 @@
+import { textoDeErro } from "@/utils/textoDeErro";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -58,7 +59,7 @@ export function LojaDesktop() {
       setGanho(rendimento);
       setVersao((v) => v + 1);
     } catch (caught) {
-      if (atual === pedido.current) setErro(caught instanceof Error ? caught.message : "Não foi possível carregar a loja.");
+      if (atual === pedido.current) setErro(textoDeErro(caught, "Não foi possível carregar a loja."));
     } finally {
       if (atual === pedido.current) setCarregando(false);
     }

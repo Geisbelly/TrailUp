@@ -1,3 +1,4 @@
+import { textoDeErro } from "@/utils/textoDeErro";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -45,7 +46,7 @@ export function BagEditorModal({ visible, initialItem, context, accent, surface,
     const validation = validateBagDraft(draft);
     if (validation) { setError(validation); return; }
     setSaving(true); setError(null);
-    try { await onSave(draft, initialItem); onClose(); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível salvar o item."); } finally { setSaving(false); }
+    try { await onSave(draft, initialItem); onClose(); } catch (err) { setError(textoDeErro(err, "Não foi possível salvar o item.")); } finally { setSaving(false); }
   };
 
   return <Modal visible={visible} transparent animationType={desktop ? "fade" : "slide"} onRequestClose={onClose}>

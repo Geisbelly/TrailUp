@@ -1,3 +1,4 @@
+import { textoDeErro } from "@/utils/textoDeErro";
 import { avisoDaDoacao, opcoesDeDoacao, progressoDoFundo, textoDoProgresso } from "@/services/loja/fundoTurmaModel";
 import { carregarFundoDaTurma, doarAoFundo, type FundoComMinhaDoacao } from "@/services/loja/fundoTurmaService";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -55,7 +56,7 @@ export function FundoDaTurmaCard({ alunoId, classeId, saldo, palette, onDoou }: 
       onDoou();
       await carregar();
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível registrar a doação.");
+      setErro(textoDeErro(e, "Não foi possível registrar a doação."));
     } finally {
       trava.current = false;
       setEnviando(false);
