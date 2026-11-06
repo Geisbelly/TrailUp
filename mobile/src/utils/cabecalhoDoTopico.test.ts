@@ -4,33 +4,32 @@ import { dirname, resolve } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { larguraMaximaDoTitulo, reservaDoChipDeBatalha } from "./cabecalhoDoTopico";
+import { larguraMaximaDoTitulo } from "./cabecalhoDoTopico";
 
 const aqui = dirname(fileURLToPath(import.meta.url));
-
-test("sem chip de batalha a barra não guarda espaço à direita", () => {
-  assert.equal(reservaDoChipDeBatalha(0), 0);
-  assert.equal(reservaDoChipDeBatalha(Number.NaN), 0);
-});
-
-test("com chip a reserva cobre a largura medida, a distância da borda e a folga", () => {
-  assert.equal(reservaDoChipDeBatalha(120), 144);
-  assert.equal(reservaDoChipDeBatalha(120.4), 145);
-});
+const ler = (caminho: string) => readFileSync(resolve(aqui, caminho), "utf8");
 
 test("o título usa o que sobra na tela e não some nas telas estreitas", () => {
-  assert.equal(larguraMaximaDoTitulo(412), 204);
-  assert.equal(larguraMaximaDoTitulo(360), 152);
+  assert.equal(larguraMaximaDoTitulo(412), 220);
+  assert.equal(larguraMaximaDoTitulo(360), 168);
   assert.equal(larguraMaximaDoTitulo(280), 112);
 });
 
-test("a tela do Tópico mede o chip em vez de reservar um valor fixo", () => {
-  const tela = readFileSync(resolve(aqui, "../app/(tabs)/trilha/[id].tsx"), "utf8");
-  assert.match(tela, /reservaDireita=\{reservaDoChipDeBatalha\(/);
-  assert.doesNotMatch(tela, /reservaDireita=\{[^}]*\? 96/);
+test("o cabeçalho do Tópico alinha o título à esquerda", () => {
+  const layout = ler("../app/(tabs)/trilha/_layout.tsx");
+  assert.match(layout, /return \{\s*headerTitleAlign: "left" as const,/);
 });
 
-test("o cabeçalho do Tópico alinha o título à esquerda", () => {
-  const layout = readFileSync(resolve(aqui, "../app/(tabs)/trilha/_layout.tsx"), "utf8");
-  assert.match(layout, /return \{\s*headerTitleAlign: "left" as const,/);
+test("no celular o chip de batalha fica em linha própria, sem disputar a barra de partes", () => {
+  const tela = ler("../app/(tabs)/trilha/[id].tsx");
+  assert.match(tela, /<IABattleHeaderChip variante="linha"/);
+  assert.doesNotMatch(tela, /reservaDireita/);
+});
+
+test("a margem da linha só existe depois das saídas sem batalha", () => {
+  const chip = ler("../components/ia/IABattleHeaderChip.tsx");
+  const semBatalha = chip.indexOf("!hasBattleSignal ||");
+  const margem = chip.indexOf("<View style={styles.linha}>");
+  assert.ok(semBatalha > 0 && margem > semBatalha);
+  assert.doesNotMatch(ler("../styles/trilhaTopicoStyles.ts"), /linhaBatalha: \{[^}]*(margin|padding|height)/);
 });

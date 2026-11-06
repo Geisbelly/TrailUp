@@ -19,7 +19,6 @@ export function BarraPartesTopico({
   onIr,
   aviso,
   alvoRef,
-  reservaDireita = 0,
 }: {
   palette: ProfileShellPalette;
   blocos: EstadoBlocoTopico[];
@@ -29,13 +28,11 @@ export function BarraPartesTopico({
   aviso?: string | null;
   /** Alvo do tour/guia ("progresso do módulo"). */
   alvoRef?: React.RefObject<View | null>;
-  /** Espaço à direita para o chip de batalha flutuante (absoluto, top 8 / right 16), que senão cobre o contador. */
-  reservaDireita?: number;
 }) {
   const total = blocos.length;
   if (total === 0) return null;
   return (
-    <View ref={alvoRef} collapsable={false} style={[s.raiz, { backgroundColor: palette.surface, borderBottomColor: palette.border }, reservaDireita > 0 ? { paddingRight: reservaDireita } : null]}>
+    <View ref={alvoRef} collapsable={false} style={[s.raiz, { backgroundColor: palette.surface, borderBottomColor: palette.border }]}>
       <View
         accessibilityRole="progressbar"
         accessibilityLabel={atual > 0 ? `Parte ${atual} de ${total}` : `${total} partes`}
