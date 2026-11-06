@@ -3,6 +3,14 @@ import type { StudyBlockSnapshot } from '../hooks/trilha/types';
 type Block = Omit<StudyBlockSnapshot, 'startedAtMs'>;
 export type StudyInterval = { block: Block; startedAtMs: number; endedAtMs: number; minutes: number };
 
+/**
+ * Os dois relógios fecham o intervalo a cada 60 s. Passou muito disso, o JS
+ * dormiu com a tela desligada antes de o `AppState` avisar. Não dá para saber
+ * quanto do trecho foi estudo, e o que não pode é contar tela desligada: o
+ * intervalo inteiro é descartado.
+ */
+export const INTERVALO_MAXIMO_MS = 90_000;
+
 /** Consumes each foreground interval once, before any asynchronous write. */
 export class StudyClock {
   private block: Block | null = null;
@@ -30,7 +38,7 @@ export class StudyClock {
     const start = this.startedAt;
     const end = Math.max(start, now);
     this.startedAt = end;
-    if (end === start) return null;
+    if (end === start || end - start > INTERVALO_MAXIMO_MS) return null;
     return { block: this.block, startedAtMs: start, endedAtMs: end, minutes: (end - start) / 60_000 };
   }
 }

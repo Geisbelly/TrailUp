@@ -18,6 +18,7 @@ import { mensagemDeUso, podeResponderComCompra } from '@/services/loja/usoItem';
 import { linhasDoRetorno, mensagemDaRecusa, retornoDesde } from '@/services/tentativasAtividade.core';
 import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayValidation';
 import { Ionicons } from '@expo/vector-icons';
+import { useTempoVisivel } from '@/hooks/trilha/useTempoVisivel';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import { perfilVisualDoAluno } from "@/utils/brainHex";
@@ -607,11 +608,7 @@ export default function QuestionActivity({
   // Na nova tentativa, a questão errada também abre como nunca respondida.
   const respondidaAntes = !refazendoRevisao && !refazendoEsta && hasQuestionAttempt(questao, respostaAnterior);
   const scrollRef = useRef<ScrollView | null>(null)
-  const questionStartedAtRef = useRef(Date.now());
-
-  useEffect(() => {
-    questionStartedAtRef.current = Date.now();
-  }, [atividade?.id, questao?.id, questaoIndex]);
+  const segundosNaQuestao = useTempoVisivel(`${atividade?.id}:${questao?.id}:${questaoIndex}`);
 
   useEffect(() => {
     if (reviewMode && respondidaAntes && atividadeConcluidaPersistida && !reResponder) {
@@ -1137,10 +1134,7 @@ export default function QuestionActivity({
           const respostaSelecionada = isFillBlankActivity || isDissertativaActivity
             ? respostaDigitada
             : String(alternativas[escolhido ?? -1] ?? '');
-          const tempoGastoSeg = Math.max(
-            0,
-            Math.round((Date.now() - questionStartedAtRef.current) / 1000)
-          );
+          const tempoGastoSeg = segundosNaQuestao();
 
           // Dissertativa: valida por IA (contexto do enunciado + gabarito do
           // professor) em vez de comparar texto/similaridade — perguntas

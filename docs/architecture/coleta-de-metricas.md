@@ -32,11 +32,11 @@ Distribuição real dos eventos: **`scroll` é 72%** de tudo (3.081 de 4.269),
 
 ## 2. Os quatro escopos são aninhados — somá-los multiplica o tempo
 
-`accumulateContextTime` soma **o mesmo intervalo** a `topic`, `content`,
-`activity` e `material` simultaneamente. Não é bug: cada escopo conta o
-intervalo inteiro em que o aluno esteve nele.
+`accumulateContextTime` soma **o mesmo intervalo** a `topic` e ao item aberto
+(`content` ou `activity`), e a `material` quando há um. Não é bug: cada escopo
+conta o intervalo inteiro em que o aluno esteve nele.
 
-Medido:
+Medido antes de a atividade parar de creditar o conteúdo vinculado:
 
 | escopo | dwell |
 | --- | ---: |
@@ -47,7 +47,10 @@ Medido:
 
 A soma dá 256 min para ~85 min reais. **Filtre por `scope` sempre.**
 
-Tempo só corre com `studyState === "active"` — no menu da trilha não conta.
+`topic` corre com o aluno em qualquer ponto do tópico, inclusive fora de um
+item. `content`, `activity` e `material` só com `studyState === "active"`.
+Atividade do professor vinculada a um conteúdo credita só a atividade; a
+personalizada tem id local negativo, sem `atividade_aluno`, e continua no conteúdo.
 Visita é diferente e **não** exige `active`: abrir um tópico é uma visita
 mesmo sem material escolhido.
 

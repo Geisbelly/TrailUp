@@ -81,7 +81,7 @@ export default function PerfilHome() {
   const { conquistas, carregando, eventos, faixaXp, posicoesDoAluno, presenca, reloadAll } =
     useConquistaRank();
   const { lastAnalysis, cameraOptIn, cameraPermission } = useMetricas();
-  const { lastBatchTimeMetrics } = useMetricasBatch();
+  const { timeMetricsRecentes } = useMetricasBatch();
   const { runtimeStates } = useIA();
   const router = useRouter();
   // Na web em tela larga (#346): informações do aluno e conquistas em destaque.
@@ -169,7 +169,7 @@ export default function PerfilHome() {
         posicoesDoAluno,
         perfis: usuario?.perfis ?? [],
         lastAnalysis,
-        lastBatchTimeMetrics,
+        timeMetricsRecentes,
         cameraOptIn,
         cameraPermission,
         battleStates,
@@ -186,7 +186,7 @@ export default function PerfilHome() {
       eventos,
       progressoPersonalizado,
       lastAnalysis,
-      lastBatchTimeMetrics,
+      timeMetricsRecentes,
       posicoesDoAluno,
       usuario?.perfis,
     ],

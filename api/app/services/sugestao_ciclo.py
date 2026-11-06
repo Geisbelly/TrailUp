@@ -45,7 +45,7 @@ from app.repositories.sugestao_material import SugestaoMaterialRepository
 from app.services import demanda_formato
 from app.services.evidencias_pedagogicas import CATALOGO_VERSAO
 from app.services.memoria_aluno import _JANELA_RECORRENCIA, _detectar_recorrencia
-from app.services.openai_rag import OpenAIRagError, OpenAIRagService
+from app.services.openai_rag import OpenAIRagService
 from app.services.sugestao_material import (
     LIMIAR_MUDANCA_PADRAO,
     MINIMO_EVIDENCIA_PADRAO,
