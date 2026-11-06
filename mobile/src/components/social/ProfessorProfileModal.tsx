@@ -88,7 +88,7 @@ export function ProfessorProfileModal({ classeId, accent, onClose, centralizado 
                   <View style={s.badges}>
                     {perfil.turmas.map((turma) => (
                       <View key={turma.classeId} style={[s.badge, { backgroundColor: palette.surfaceElevated }]}>
-                        <Text style={s.badgeText}>{turma.nome ?? `Turma ${turma.classeId}`}</Text>
+                        <Text style={s.badgeText}>{turma.nome?.trim() || "Turma"}</Text>
                         <Text style={s.badgeMeta}>{turma.materia ?? "Geral"}</Text>
                       </View>
                     ))}
