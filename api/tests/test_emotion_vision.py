@@ -20,7 +20,6 @@ import pytest
 from app.services import emotion_vision as ev
 
 
-
 def test_softmax_normaliza_e_preserva_a_ordem() -> None:
     saida = ev._softmax([2.0, 1.0, 0.1])
     assert pytest.approx(sum(saida), abs=1e-9) == 1.0
