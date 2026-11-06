@@ -6,6 +6,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DesktopSidebar } from "@/components/web/DesktopSidebar";
 import { DesktopTopBar } from "@/components/web/DesktopTopBar";
+import { ProfessorDaTurma } from "@/components/social/ProfessorDaTurma";
+import { ProfessorProfileModal } from "@/components/social/ProfessorProfileModal";
 import { FONTE_TITULO_TRILHA, useFonteCinzel } from "@/components/web/fonteCinzel";
 import { getProfileArtwork } from "@/constants/designAssets";
 import { getGuardianFaceImage } from "@/constants/profileImages";
@@ -17,6 +19,7 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { porcentagemDaTurma } from "@/utils/progressoDaTurma";
 import { useUrlDeImagem } from "@/hooks/useFonteDeImagem";
+import { rotuloDaTurma } from "@/utils/rotuloDaTurma";
 
 type Props = {
   classes: Classe[];
@@ -50,6 +53,7 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
   const { aberturas } = usePortoes();
   const palette = getProfileShellPalette(perfil);
   const [saindo, setSaindo] = useState(false);
+  const [perfilDaTurma, setPerfilDaTurma] = useState<number | null>(null);
   const [tentando, setTentando] = useState<number[]>([]);
   const fotoAssinada = useUrlDeImagem(usuario?.foto_url);
   const foto = fotoAssinada ? { uri: fotoAssinada } : getGuardianFaceImage(perfil);
@@ -147,8 +151,7 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
                 </Text>
                 <View style={s.grade}>
                   {classes.map((classe) => {
-                    const materia = classe.resumo?.materia_nome || "Turma";
-                    const professor = classe.resumo?.professor_nome;
+                    const { materia, titulo, professor, descricaoAcessivel } = rotuloDaTurma(classe.resumo);
                     if (classe.detalheErro) {
                       // Só esta turma não carregou: as outras seguem na grade e esta tem a própria nova tentativa.
                       const emTentativa = tentando.includes(classe.classe_id);
@@ -157,11 +160,11 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
                           <View style={[s.chip, { backgroundColor: palette.surfaceElevated }]}>
                             <Text style={[s.chipTexto, { color: palette.textMuted }]}>{materia.toUpperCase()}</Text>
                           </View>
-                          <Text style={[s.cartaoTitulo, { color: palette.text }]} numberOfLines={2}>{materia}</Text>
-                          <Text style={[s.meta, { color: palette.textMuted }]}>
-                            Turma {classe.classe_id}
-                            {professor ? ` · Prof. ${professor}` : ""}
-                          </Text>
+                          <Text style={[s.cartaoTitulo, { color: palette.text }]} numberOfLines={2}>{titulo}</Text>
+                          {professor ? (
+                            <ProfessorDaTurma professor={professor} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} onPress={() => setPerfilDaTurma(classe.classe_id)} />
+                          ) : null}
+                          <Text style={[s.meta, { color: palette.textMuted }]}>Turma {classe.classe_id}</Text>
                           <View style={s.avisoTurma}>
                             <MaterialCommunityIcons name="alert-circle-outline" size={16} color={palette.textMuted} />
                             <Text accessibilityRole="alert" style={[s.meta, s.avisoTurmaTexto, { color: palette.textMuted }]}>
@@ -192,18 +195,18 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
                         <View style={[s.chip, { backgroundColor: pct > 0 ? palette.accentMuted : palette.surfaceElevated }]}>
                           <Text style={[s.chipTexto, { color: pct > 0 ? palette.accent : palette.textMuted }]}>{materia.toUpperCase()}</Text>
                         </View>
-                        <Text style={[s.cartaoTitulo, { color: palette.text }]} numberOfLines={2}>{materia}</Text>
-                        <Text style={[s.meta, { color: palette.textMuted }]}>
-                          Turma {classe.classe_id}
-                          {professor ? ` · Prof. ${professor}` : ""}
-                        </Text>
+                        <Text style={[s.cartaoTitulo, { color: palette.text }]} numberOfLines={2}>{titulo}</Text>
+                        {professor ? (
+                          <ProfessorDaTurma professor={professor} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} onPress={() => setPerfilDaTurma(classe.classe_id)} />
+                        ) : null}
+                        <Text style={[s.meta, { color: palette.textMuted }]}>Turma {classe.classe_id}</Text>
                         <View style={[s.trilho, { backgroundColor: palette.progressTrack }]}>
                           <View style={[s.preenchido, { width: `${pct}%`, backgroundColor: palette.accent }]} />
                         </View>
                         <Text style={[s.meta, { color: palette.textSubtle }]}>{pct > 0 ? `${pct}% concluído` : "Não iniciada"}</Text>
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel={`Entrar em ${materia}, turma ${classe.classe_id}${professor ? `, professor ${professor}` : ""}`}
+                          accessibilityLabel={`Entrar em ${descricaoAcessivel}, turma ${classe.classe_id}${professor ? `, professor ${professor}` : ""}`}
                           onPress={() => onSelect(classe.classe_id)}
                           style={({ hovered }: { hovered?: boolean; pressed: boolean }) => [
                             s.botao,
@@ -226,6 +229,9 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
           </ScrollView>
         </View>
       </View>
+      {perfilDaTurma !== null ? (
+        <ProfessorProfileModal classeId={perfilDaTurma} accent={palette.accent} centralizado onClose={() => setPerfilDaTurma(null)} />
+      ) : null}
     </View>
   );
 }

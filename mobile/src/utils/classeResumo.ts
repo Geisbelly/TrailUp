@@ -9,6 +9,7 @@ export function mapClasseResumoRow(row: Record<string, any>): ClasseResumo {
   return {
     aluno_id: row.aluno_id,
     classe_id: row.classe_id,
+    classe_nome: row.classe_nome ?? null,
     materia_nome: row.materia_nome ?? null,
     materia_descricao: row.materia_descricao ?? null,
     professor_nome: row.professor_nome ?? null,

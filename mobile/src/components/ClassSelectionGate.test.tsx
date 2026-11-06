@@ -80,6 +80,21 @@ test("antes da escolha não monta estudo e mostra as turmas com matéria e profe
   assert.equal(childMounts, 1);
 });
 
+test("o nome do professor é um botão próprio, separado do de entrar na turma", () => {
+  availableClasses = [
+    ...classes,
+    { aluno_id: "aluno", classe_id: 60, resumo: { materia_nome: null, professor_nome: null, classe_nome: "Reforço" } as never, topicos: [{ id: 140 }] },
+  ];
+  const html = render();
+  const entrar = buttons.filter((button) => button.label.startsWith("Entrar em"));
+  const perfil = buttons.filter((button) => button.label.startsWith("Ver perfil de"));
+  assert.equal(entrar.length, 3);
+  assert.deepEqual(perfil.map((button) => button.label), ["Ver perfil de Ana, professor da turma", "Ver perfil de Paulo, professor da turma"]);
+  assert.match(html, /GERAL/);
+  assert.match(html, /Reforço/);
+  assert.match(entrar[2].label, /^Entrar em Reforço, matéria Geral, turma 60/);
+});
+
 test("matrícula única também aguarda confirmação do aluno", () => {
   availableClasses = classes.slice(0, 1);
   assert.match(render(), /Escolha sua turma/);

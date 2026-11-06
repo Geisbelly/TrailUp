@@ -7541,6 +7541,7 @@ export type Database = {
           aluno_id: string | null
           atividadesConcluidas: Json | null
           classe_id: number | null
+          classe_nome: string | null
           insights: Json | null
           isComplete: boolean | null
           materia_descricao: string | null

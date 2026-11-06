@@ -1,4 +1,7 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { ProfessorDaTurma } from "@/components/social/ProfessorDaTurma";
+import { ProfessorProfileModal } from "@/components/social/ProfessorProfileModal";
+import { rotuloDaTurma } from "@/utils/rotuloDaTurma";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -84,6 +87,7 @@ export default function PerfilHome() {
   const desktop = useDesktopWeb();
   const { avisar } = useAviso();
   const [bagOpen, setBagOpen] = useState(false);
+  const [perfilDoProfessorAberto, setPerfilDoProfessorAberto] = useState(false);
   const [lojaAberta, setLojaAberta] = useState(false);
   const alvoLoja = useAlvoTour("perfil_loja");
   // No celular a Loja é um modal: é assim que o botão do Guardião chega nela.
@@ -438,6 +442,22 @@ export default function PerfilHome() {
     ) : carregando ? (
       <EsqueletoDaFaixaXp palette={shellPalette} style={desktop ? styles.faixaXpLarga : styles.faixaXp} />
     ) : null;
+
+  // A aba Social fica fechada no começo da trilha, e a turma salva pula os cards: aqui o aluno
+  // sempre alcança o professor.
+  const professorDaTurma = rotuloDaTurma(classeAtual?.resumo).professor;
+  const professorNoPerfil = professorDaTurma && classeAtual ? (
+    <View style={desktop ? styles.faixaXpLarga : styles.faixaXp}>
+      <ProfessorDaTurma
+        professor={professorDaTurma}
+        accent={shellPalette.accent}
+        textColor={shellPalette.text}
+        mutedColor={shellPalette.textMuted}
+        cartao={{ surface: shellPalette.surface, border: shellPalette.border }}
+        onPress={() => setPerfilDoProfessorAberto(true)}
+      />
+    </View>
+  ) : null;
 
   // Troca de perfil no celular, logo abaixo do nome, em formato compacto: um rótulo e um
   // botão por perfil (emblema, nome, afinidade), o em uso destacado na cor dele. O que a
@@ -809,13 +829,15 @@ export default function PerfilHome() {
             <View style={styles.colunas}>
               <View style={[styles.colunaIdentidade, styles.colunaIdentidadeGrudada]}>
                 {identidade}
+                {professorNoPerfil}
                 {faixaDaTurma}
               </View>
               <View style={styles.colunaPrincipal}>{principal}</View>
             </View>
           ) : (
             <>
-              {faixaDaTurma}
+              {professorNoPerfil}
+                {faixaDaTurma}
               {trocaDePerfil}
               {principal}
             </>
@@ -831,6 +853,9 @@ export default function PerfilHome() {
           />
         ) : null}
 
+        {perfilDoProfessorAberto && classeAtual ? (
+          <ProfessorProfileModal classeId={Number(classeAtual.classe_id)} accent={shellPalette.accent} centralizado={desktop} onClose={() => setPerfilDoProfessorAberto(false)} />
+        ) : null}
         <BagModal
           visible={bagOpen}
           classeId={classeAtual?.classe_id ?? null}

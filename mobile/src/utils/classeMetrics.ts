@@ -221,6 +221,7 @@ export function buildClasseResumoFallback(
   return {
     aluno_id: alunoId,
     classe_id: classeId,
+    classe_nome: baseResumo?.classe_nome ?? null,
     materia_nome: baseResumo?.materia_nome ?? null,
     materia_descricao: baseResumo?.materia_descricao ?? null,
     professor_nome: baseResumo?.professor_nome ?? null,
