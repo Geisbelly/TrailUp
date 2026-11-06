@@ -16,6 +16,19 @@ from app.services.r2_storage import enviar_para_r2, ler_config_r2
 logger = logging.getLogger(__name__)
 
 
+
+def _id_do_professor(valor: Any) -> int | None:
+    """Id que pode entrar numa coluna com FK; material personalizado não tem um.
+
+    Bloco personalizado chega com id negativo, que aponta para o item de origem só pelo
+    `item_key`. Gravado como veio, viola `fk_telemetria_eventos_app_conteudo` e o lote inteiro
+    responde 500: em 06/11, 36 lotes caíram no caminho direto com `fallback_motivo = http_5xx`.
+    O caminho direto do app já troca esses ids por NULL. O servidor faz o mesmo, porque os
+    builds instalados continuam mandando o negativo.
+    """
+    return valor if isinstance(valor, int) and valor > 0 else None
+
+
 class TelemetriaRepository:
     _STATEMENT_TIMEOUT_MS = 15000
 
@@ -535,10 +548,10 @@ class TelemetriaRepository:
                     "sessao_id": sessao_id,
                     "aluno_id": aluno_id,
                     "classe_id": classe_id,
-                    "topico_id": evento.get("topico_id"),
-                    "conteudo_id": evento.get("conteudo_id"),
-                    "atividade_id": evento.get("atividade_id"),
-                    "questao_id": evento.get("questao_id"),
+                    "topico_id": _id_do_professor(evento.get("topico_id")),
+                    "conteudo_id": _id_do_professor(evento.get("conteudo_id")),
+                    "atividade_id": _id_do_professor(evento.get("atividade_id")),
+                    "questao_id": _id_do_professor(evento.get("questao_id")),
                     "item_key": evento.get("item_key"),
                     "screen_name": evento.get("screen_name") or screen_name,
                     "route_name": evento.get("route_name") or route_name,

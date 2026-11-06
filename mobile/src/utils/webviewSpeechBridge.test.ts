@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import vm from "node:vm";
 
 import {
+  SCRIPT_CALAR_FALA,
   SCRIPT_PONTE_DE_VOZ,
+  calarVozDoIframe,
+  observarFalaDoIframe,
   parsePedidoDeFala,
   scriptDeConclusao,
 } from "./webviewSpeechBridge";
@@ -98,11 +102,11 @@ test("polyfill cobre exatamente o que o deck usa", () => {
 
 test("polyfill nao sobrescreve implementacao nativa existente", () => {
   // Em navegador e no iOS a API existe de verdade; substituir seria piorar.
-  assert.ok(
-    SCRIPT_PONTE_DE_VOZ.includes(
-      "if (window.speechSynthesis && typeof window.speechSynthesis.speak === 'function') return;"
-    )
-  );
+  const vozNativa = { speak: () => {}, cancel: () => {} };
+  const { janela } = pagina(vozNativa);
+
+  assert.equal(janela.speechSynthesis, vozNativa);
+  assert.equal(janela.SpeechSynthesisUtterance, undefined);
 });
 
 test("polyfill nao roda fora do WebView", () => {
@@ -125,4 +129,97 @@ test("conclusao chama o callback certo e escapa o id", () => {
 test("conclusao nao explode se o polyfill nao existir", () => {
   // A pagina pode ter recarregado entre o pedido e o fim da fala.
   assert.ok(scriptDeConclusao("u1").startsWith("window.__trailupSpeechDone &&"));
+});
+
+/** Roda os scripts como o WebView: uma pagina, com ou sem a Web Speech API nativa. */
+function pagina(vozNativa?: { speak: (u: unknown) => void; cancel: () => void }) {
+  const mensagens: string[] = [];
+  const janela: any = {
+    ReactNativeWebView: { postMessage: (m: string) => mensagens.push(m) },
+    ...(vozNativa ? { speechSynthesis: vozNativa } : {}),
+  };
+  janela.window = janela;
+  const contexto = vm.createContext(janela);
+  vm.runInContext(SCRIPT_PONTE_DE_VOZ, contexto);
+  return { janela, mensagens, rodar: (script: string) => vm.runInContext(script, contexto) };
+}
+
+test("no iOS a fala continua no WebKit e o app fica sabendo", () => {
+  const faladas: unknown[] = [];
+  const vozNativa = { speak: (u: unknown) => void faladas.push(u), cancel: () => {} };
+  const { janela, mensagens } = pagina(vozNativa);
+
+  janela.speechSynthesis.speak("fala");
+
+  assert.deepEqual(faladas, ["fala"]);
+  assert.equal(mensagens.length, 1);
+  assert.deepEqual(parsePedidoDeFala(mensagens[0]), { acao: "fala-nativa" });
+  assert.equal(janela.__trailupSpeechDone, undefined, "o polyfill nao entra com a API nativa");
+});
+
+test("calar para a voz do WebKit", () => {
+  let canceladas = 0;
+  const { rodar } = pagina({ speak: () => {}, cancel: () => void (canceladas += 1) });
+
+  rodar(SCRIPT_CALAR_FALA);
+
+  assert.equal(canceladas, 1);
+});
+
+test("calar nao prende o botao do deck no Android", () => {
+  const { janela, rodar } = pagina();
+  const utterance = new janela.SpeechSynthesisUtterance("Slide 1.");
+  let terminou = 0;
+  utterance.onend = () => {
+    terminou += 1;
+  };
+  janela.speechSynthesis.speak(utterance);
+
+  rodar(SCRIPT_CALAR_FALA);
+  // O que o `onStopped` do expo-speech faz depois de `Speech.stop()`.
+  rodar(scriptDeConclusao("u1"));
+
+  assert.equal(terminou, 1);
+});
+
+test("pagina sem a API e sem ponte nao quebra ao calar", () => {
+  const contexto = vm.createContext({ window: {} });
+
+  assert.equal(vm.runInContext(SCRIPT_CALAR_FALA, contexto), true);
+});
+
+test("na web o app fica sabendo da fala antes de ela sair", () => {
+  const ordem: string[] = [];
+  const janela = {
+    speechSynthesis: {
+      speak: (fala: string) => void ordem.push(fala),
+      cancel: () => {},
+    },
+  };
+
+  observarFalaDoIframe(janela, () => ordem.push("aviso"));
+  janela.speechSynthesis.speak("fala");
+
+  assert.deepEqual(ordem, ["aviso", "fala"]);
+});
+
+test("calar alcanca a voz do iframe", () => {
+  let canceladas = 0;
+  const janela = { speechSynthesis: { speak: () => {}, cancel: () => void (canceladas += 1) } };
+
+  calarVozDoIframe(janela);
+
+  assert.equal(canceladas, 1);
+});
+
+test("iframe de outra origem nao quebra quem o observa nem quem o cala", () => {
+  const outraOrigem = {
+    get speechSynthesis(): never {
+      throw new Error("SecurityError");
+    },
+  };
+
+  assert.doesNotThrow(() => observarFalaDoIframe(outraOrigem, () => {}));
+  assert.doesNotThrow(() => calarVozDoIframe(outraOrigem));
+  assert.doesNotThrow(() => calarVozDoIframe(null));
 });
