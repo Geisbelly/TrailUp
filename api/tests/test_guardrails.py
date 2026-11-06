@@ -217,10 +217,32 @@ class _FakeJuizLLM:
     def __init__(self, resposta: dict) -> None:
         self._resposta = resposta
         self.chamadas = 0
+        self.payloads: list[dict] = []
 
     async def ainvoke_structured(self, *, prompt_name, payload, schema, **kwargs):
         self.chamadas += 1
+        self.payloads.append(payload)
         return schema.model_validate(self._resposta)
+
+
+def test_checar_grounding_chat_inclui_contexto_personalizacao_como_evidencia() -> None:
+    resposta = MentorChatLLMResult(reply="Seu perfil recebeu cards primeiro.", should_close=False, hinted_actions=[])
+    contexto_personalizacao = {
+        "perfil": "Survivor",
+        "formato_prioritario": "cards",
+        "formatos_disponiveis": ["cards", "markdown"],
+    }
+    juiz = _FakeJuizLLM({"viola": False, "motivo": ""})
+
+    violacao = asyncio.run(
+        checar_grounding_chat(
+            resposta,
+            {"llm": juiz, "conteudo_materia": {}, "contexto_personalizacao": contexto_personalizacao},
+        )
+    )
+
+    assert violacao is None
+    assert juiz.payloads[0]["contexto_personalizacao"] == contexto_personalizacao
 
 
 def test_checar_grounding_chat_detecta_violacao_via_juiz() -> None:

@@ -231,7 +231,7 @@ export default function SocialScreen() {
     person.status === "incoming" ? (
       <SocialInviteCard key={person.relationshipId} person={person} accent={palette.accent} onAccept={() => act(person.alunoId, () => aceitarConvite(person.relationshipId!))} onDecline={() => act(person.alunoId, () => recusarConvite(person.relationshipId!))} onPressProfile={() => setSelectedPerson(person)} />
     ) : (
-      <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => abrirConversa(person)} naoLidas={naoLidas.privado[person.alunoId]} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />
+      <SocialPersonCard key={person.relationshipId ?? person.alunoId} person={person} accent={palette.accent} actionLabel={busy === person.alunoId ? "..." : actionFor(person).label} actionIcon={person.status === "candidate" ? "account-plus-outline" : undefined} onAction={actionFor(person).fn} onPressProfile={() => setSelectedPerson(person)} onPressChat={() => abrirConversa(person)} naoLidas={naoLidas.privado[person.alunoId]} secondaryLabel={person.status === "friend" ? "Bloquear" : undefined} onSecondary={() => act(person.alunoId, () => bloquear(person.alunoId))} />
     );
 
   const vazioDe: Record<string, string> = {

@@ -1532,6 +1532,25 @@ async def conversar_com_mentor_personalizacao(
         limit=3,
     )
     latest_record = records[0] if records else None
+    latest_plan = (latest_record or {}).get("plano")
+    latest_plan = latest_plan if isinstance(latest_plan, dict) else {}
+    personalization_context = None
+    if latest_record:
+        raw_formats = latest_record.get("formatos_gerados")
+        personalization_context = {
+            "perfil": latest_record.get("brainhex_profile_key")
+            or latest_plan.get("perfil_dominante")
+            or latest_plan.get("perfil"),
+            "formato_prioritario": latest_record.get("formato_prioritario"),
+            "formatos_disponiveis": [
+                str(item).strip().lower()
+                for item in raw_formats[:8]
+                if isinstance(item, str) and item.strip()
+            ]
+            if isinstance(raw_formats, list)
+            else [],
+            "justificativa": latest_plan.get("justificativa"),
+        }
     topico = await classe_repo.buscar_topico(payload.topico_id) if payload.topico_id is not None else None
 
     # Conteudo da materia do topico para o guia direcionar o estudo. Sem
@@ -1649,10 +1668,9 @@ async def conversar_com_mentor_personalizacao(
                         "descricao": (topico or {}).get("descricao") if isinstance(topico, dict) else None,
                     },
                     "decisao_personalizacao": (
-                        ((latest_record or {}).get("plano") or {}).get("justificativa")
-                        if latest_record
-                        else None
+                        latest_plan.get("justificativa") if latest_record else None
                     ),
+                    "contexto_personalizacao": personalization_context,
                     # Sem o UUID do aluno: nenhum prompt usa, e dado pseudonimizado
                     # continua sendo dado pessoal (LGPD, minimizacao).
                     "aluno": {
@@ -1672,6 +1690,7 @@ async def conversar_com_mentor_personalizacao(
                 contexto={
                     "llm": llm,
                     "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
+                    "contexto_personalizacao": personalization_context,
                     "guia_do_app": guia_do_app(),
                 },
                 on_violation=_auditar_chat,

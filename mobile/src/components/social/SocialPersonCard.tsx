@@ -16,6 +16,7 @@ type Props = {
   person: SocialPerson;
   accent: string;
   actionLabel?: string;
+  actionIcon?: keyof typeof MaterialCommunityIcons.glyphMap;
   onAction?: () => void;
   secondaryLabel?: string;
   onSecondary?: () => void;
@@ -37,6 +38,7 @@ export function SocialPersonCard({
   onPressChat,
   naoLidas = 0,
   onDesafiar,
+  actionIcon,
 }: Props) {
   const canChat = person.status === "friend" || person.status === "candidate";
   const profile = normalizeBrainHexProfile(person.perfilAtivo);
@@ -153,35 +155,30 @@ export function SocialPersonCard({
       <View style={s.top}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Abrir perfil de ${person.apelido || person.nome}`}
+          accessibilityLabel={`Abrir perfil de ${nome}`}
           onPress={onPressProfile}
           style={s.identity}
         >
           {person.fotoUrl || profile ? (
-            <FramedProfileImage
-              profile={profile}
-              source={person.fotoUrl ? { uri: person.fotoUrl } : undefined}
-              size={56}
-            />
+            <FramedProfileImage profile={profile} source={person.fotoUrl ? { uri: person.fotoUrl } : undefined} size={44} />
           ) : (
-            <View style={[s.avatar, { borderColor: accent }]}>
-              <MaterialCommunityIcons
-                name="account-outline"
-                size={28}
-                color="#ffffff"
-              />
+            <View style={[s.avatar, s.avatarCompacto, { borderColor: accent }]}>
+              <MaterialCommunityIcons name="account-outline" size={22} color="#ffffff" />
             </View>
           )}
           <View style={s.info}>
-            <Text style={s.name}>{person.apelido || person.nome}</Text>
-            <Text style={[s.profile, { color: profile ? getProfileShellPalette(profile).accent : palette.textMuted }]}>
+            <Text numberOfLines={1} style={s.name}>{nome}</Text>
+            <Text numberOfLines={1} style={[s.profile, { color: profile ? getProfileShellPalette(profile).accent : palette.textMuted }]}>
               {profile ? getBrainHexConfig(profile).label : "Aluno"}
             </Text>
-            {person.guildaNome ? (
-              <Text style={s.guild}>{person.guildaNome}</Text>
-            ) : null}
+            {person.guildaNome ? <Text numberOfLines={1} style={s.guild}>{person.guildaNome}</Text> : null}
           </View>
         </Pressable>
+        <View
+          accessible
+          accessibilityLabel={person.online ? "Online" : "Offline"}
+          style={[s.dot, { backgroundColor: person.online ? "#62db9b" : "#90949d" }]}
+        />
         {canChat ? (
           <Pressable
             accessibilityRole="button"
@@ -189,47 +186,31 @@ export function SocialPersonCard({
             onPress={onPressChat ?? onPressProfile}
             style={[s.chat, { borderColor: `${accent}70` }]}
           >
-            <MaterialCommunityIcons
-              name="message-text-outline"
-              size={20}
-              color="#ffffff"
-            />
+            <MaterialCommunityIcons name="message-text-outline" size={20} color="#ffffff" />
             {naoLidas ? <SeloDeNaoLidas n={naoLidas} palette={palette} style={s.seloNoBotao} /> : null}
           </Pressable>
         ) : null}
       </View>
       <View style={s.actions}>
-        <View style={s.presence}>
-          <View
-            style={[
-              s.dot,
-              { backgroundColor: person.online ? "#62db9b" : "#90949d" },
-            ]}
-          />
-          <Text style={s.presenceText}>
-            {person.online ? "Online" : "Offline"}
-          </Text>
-        </View>
         {secondaryLabel && onSecondary ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onSecondary}
-            style={s.secondary}
-          >
+          <Pressable accessibilityRole="button" onPress={onSecondary} style={s.secondary}>
             <Text style={s.secondaryText}>{secondaryLabel}</Text>
           </Pressable>
         ) : null}
         {actionLabel ? (
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={actionLabel}
             disabled={!onAction || actionLabel === "..."}
-            accessibilityState={{
-              disabled: !onAction || actionLabel === "...",
-            }}
+            accessibilityState={{ disabled: !onAction || actionLabel === "..." }}
             onPress={onAction}
-            style={[s.action, { borderColor: accent }]}
+            style={[s.action, actionIcon && s.actionIcon, { borderColor: accent }]}
           >
-            <Text style={[s.actionText, { color: accent }]}>{actionLabel}</Text>
+            {actionIcon && actionLabel !== "..." ? (
+              <MaterialCommunityIcons name={actionIcon} size={20} color={accent} />
+            ) : (
+              <Text style={[s.actionText, { color: accent }]}>{actionLabel}</Text>
+            )}
           </Pressable>
         ) : null}
       </View>
@@ -280,14 +261,9 @@ const s = StyleSheet.create({
     gap: 10,
     marginTop: 12,
   },
-  presence: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginRight: "auto",
-  },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  presenceText: { color: "#d2d4df", fontSize: 12 },
+  avatarCompacto: { width: 44, height: 44, borderRadius: 22 },
+  actionIcon: { width: 44, paddingHorizontal: 0, alignItems: "center" },
   action: {
     minHeight: 44,
     paddingHorizontal: 14,

@@ -742,6 +742,50 @@ def test_build_personalizacao_steps_aceita_payloads_legados_em_lista() -> None:
     assert apresentacao_step["blocks"][0]["payload"]["slides"][0]["titulo"] == "Slide 1"
 
 
+def test_build_personalizacao_steps_ordena_formatos_pelo_perfil_e_nao_pela_chave_json() -> None:
+    steps = build_personalizacao_steps(
+        {
+            "id": 12,
+            "topico_id": 2,
+            "conteudo_id": 4,
+            "brainhex_profile_key": "survivor",
+            "formato_prioritario": "markdown",
+            "formatos_gerados": ["markdown", "audio", "apresentacao", "cards"],
+            "plano": {},
+            "materiais": {
+                "markdown": {"payload": {"texto": "Texto"}},
+                "audio": {"payload": {"roteiro": "Áudio"}},
+                "apresentacao": {"payload": {"slides": []}},
+                "cards": {"payload": [{"frente": "F", "verso": "V"}]},
+            },
+        }
+    )
+
+    assert [step["metadata"]["material_type"] for step in steps] == [
+        "cards",
+        "markdown",
+        "audio",
+        "apresentacao",
+    ]
+
+
+def test_build_personalizacao_steps_prioriza_formato_quando_registro_nao_tem_perfil() -> None:
+    steps = build_personalizacao_steps(
+        {
+            "id": 13,
+            "topico_id": 2,
+            "conteudo_id": 4,
+            "formato_prioritario": "audio",
+            "formatos_gerados": ["markdown", "audio"],
+            "materiais": {
+                "markdown": {"payload": {"texto": "Texto"}},
+                "audio": {"payload": {"roteiro": "Áudio"}},
+            },
+        }
+    )
+
+    assert [step["metadata"]["material_type"] for step in steps] == ["audio", "markdown"]
+
 def test_build_personalizacao_steps_ignora_midia_pendente_ou_falha() -> None:
     steps = build_personalizacao_steps(
         {
