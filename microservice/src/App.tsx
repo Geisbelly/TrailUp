@@ -30,8 +30,7 @@ import { cn } from "./lib/utils";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import { PROFILES, BRAIN_HEX_CONFIG, BrainHexProfile } from "./constants/brainHex";
-import { GUARDIAN_VOICE_PROFILES } from "./constants/guardianVoices";
-import { processMediaWithGemini, generateNaturalAudio, generateSlideImage } from "./services/geminiService";
+import { processMediaWithGemini, generateGuardianAudio, generateSlideImage } from "./services/geminiService";
 import { ProcessedContent } from "./types";
 
 export default function App() {
@@ -130,12 +129,7 @@ export default function App() {
       // Step 2: Assets (SLOW - TTS & Images)
       // Generate Audio
       try {
-        const voiceProfile = GUARDIAN_VOICE_PROFILES[profile];
-        const { wav, mp3 } = await generateNaturalAudio(
-          textResult.audioScript,
-          voiceProfile.voice,
-          voiceProfile.direction,
-        );
+        const { wav, mp3 } = await generateGuardianAudio(textResult.audioScript, profile);
         
         setResult((prev: any) => ({ ...prev, audioBase64: wav, audioMp3Base64: mp3 }));
         
@@ -219,7 +213,7 @@ export default function App() {
 
       // 2. Generate Audio (Frontend)
       console.log("[Alchemy UI] Gerando áudio místico...");
-      const { wav, mp3 } = await generateNaturalAudio(processed.audioScript);
+      const { wav, mp3 } = await generateGuardianAudio(processed.audioScript, selectedProfile);
       
       // 3. Send to Microservice for Archiving (Supabase)
       console.log("[Alchemy UI] Enviando para o Microserviço de Arquivamento...");
@@ -282,12 +276,7 @@ export default function App() {
     
     setIsGeneratingAudio(true);
     try {
-      const voiceProfile = GUARDIAN_VOICE_PROFILES[selectedProfile];
-      const { wav, mp3 } = await generateNaturalAudio(
-        result.audioScript,
-        voiceProfile.voice,
-        voiceProfile.direction,
-      );
+      const { wav, mp3 } = await generateGuardianAudio(result.audioScript, selectedProfile);
       
       setResult((prev: any) => ({ ...prev, audioBase64: wav, audioMp3Base64: mp3 }));
 

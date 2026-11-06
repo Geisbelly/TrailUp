@@ -4,15 +4,9 @@ import {
   classifyTtsFailure,
   isDailyQuotaError,
   rootCause,
-  openAiVoiceFor,
-  OPENAI_TTS_MAX_INPUT_CHARS,
-  prepareTextForOpenAiTts,
-  resolveOpenAiTtsFallback,
-  splitForOpenAiTts,
-  synthesizeOpenAiPcm,
+  stripToneTags,
   synthesizeSpeechWithRecovery,
   TtsNoAudioError,
-  type OpenAiSpeechClient,
 } from "./ttsRecovery";
 
 // Mensagens como chegaram em materiais.audio.metadata.failure_reason (turma 68,
@@ -47,42 +41,41 @@ test("classifyTtsFailure reconhece resposta sem áudio e texto no lugar de áudi
   assert.equal(classifyTtsFailure(new TypeError("Cannot read properties of undefined")), "other");
 });
 
-test("402: não espera nem repete o Gemini, vai direto para a reserva", async () => {
+test("402: não espera nem repete o Gemini, e o erro sobe intacto (é o que vira failure_reason)", async () => {
   const { esperas, sleep } = semEspera();
   let gemini = 0;
-  let openai = 0;
-  const resultado = await synthesizeSpeechWithRecovery({
-    label: "narração",
-    synthesizeWithGemini: async () => { gemini += 1; throw ERRO_402; },
-    synthesizeWithOpenAI: async () => { openai += 1; return "audio-openai"; },
-    sleep,
-    warn: () => {},
-  });
-  assert.equal(resultado, "audio-openai");
+  await assert.rejects(
+    synthesizeSpeechWithRecovery({
+      label: "narração",
+      synthesizeWithGemini: async () => { gemini += 1; throw ERRO_402; },
+      sleep,
+      warn: () => {},
+    }),
+    (error) => error === ERRO_402,
+  );
   assert.equal(gemini, 1);
-  assert.equal(openai, 1);
   assert.deepEqual(esperas, []);
 });
 
-test("429: mantém as três esperas de antes (5/10/15 s) e só então usa a reserva", async () => {
+test("429: mantém as três esperas de antes (5/10/15 s) e depois falha com o erro do Gemini", async () => {
   const { esperas, sleep } = semEspera();
   let gemini = 0;
-  const resultado = await synthesizeSpeechWithRecovery({
-    label: "narração",
-    synthesizeWithGemini: async () => { gemini += 1; throw ERRO_429; },
-    synthesizeWithOpenAI: async () => "audio-openai",
-    sleep,
-    warn: () => {},
-  });
-  assert.equal(resultado, "audio-openai");
+  await assert.rejects(
+    synthesizeSpeechWithRecovery({
+      label: "narração",
+      synthesizeWithGemini: async () => { gemini += 1; throw ERRO_429; },
+      sleep,
+      warn: () => {},
+    }),
+    (error) => error === ERRO_429,
+  );
   assert.equal(gemini, 4);
   assert.deepEqual(esperas, [5_000, 10_000, 15_000]);
 });
 
-test("429 que passa na segunda tentativa não chega a chamar a reserva", async () => {
+test("429 que passa na segunda tentativa devolve o áudio do Gemini", async () => {
   const { sleep } = semEspera();
   let gemini = 0;
-  let openai = 0;
   const resultado = await synthesizeSpeechWithRecovery({
     label: "narração",
     synthesizeWithGemini: async () => {
@@ -90,18 +83,16 @@ test("429 que passa na segunda tentativa não chega a chamar a reserva", async (
       if (gemini === 1) throw ERRO_429;
       return "audio-gemini";
     },
-    synthesizeWithOpenAI: async () => { openai += 1; return "audio-openai"; },
     sleep,
     warn: () => {},
   });
   assert.equal(resultado, "audio-gemini");
-  assert.equal(openai, 0);
+  assert.equal(gemini, 2);
 });
 
-test("resposta sem áudio (causa de 16/10) é repetida e passa sem precisar da reserva", async () => {
+test("resposta sem áudio (causa de 16/10) é repetida e passa", async () => {
   const { esperas, sleep } = semEspera();
   let gemini = 0;
-  let openai = 0;
   const resultado = await synthesizeSpeechWithRecovery({
     label: "narração",
     synthesizeWithGemini: async () => {
@@ -110,149 +101,48 @@ test("resposta sem áudio (causa de 16/10) é repetida e passa sem precisar da r
       if (gemini === 2) throw ERRO_400_TEXTO;
       return "audio-gemini";
     },
-    synthesizeWithOpenAI: async () => { openai += 1; return "audio-openai"; },
     sleep,
     warn: () => {},
   });
   assert.equal(resultado, "audio-gemini");
   assert.equal(gemini, 3);
-  assert.equal(openai, 0);
   assert.deepEqual(esperas, [2_000, 4_000]);
 });
 
-test("sem áudio repetido além do limite cai na reserva", async () => {
+test("sem áudio repetido além do limite falha, sem outra voz no lugar", async () => {
   const { sleep } = semEspera();
   let gemini = 0;
-  const resultado = await synthesizeSpeechWithRecovery({
-    label: "diálogo",
-    synthesizeWithGemini: async () => { gemini += 1; throw new TtsNoAudioError("vazio"); },
-    synthesizeWithOpenAI: async () => "audio-openai",
-    sleep,
-    warn: () => {},
-  });
-  assert.equal(resultado, "audio-openai");
+  await assert.rejects(
+    synthesizeSpeechWithRecovery({
+      label: "diálogo",
+      synthesizeWithGemini: async () => { gemini += 1; throw new TtsNoAudioError("vazio"); },
+      sleep,
+      warn: () => {},
+    }),
+    TtsNoAudioError,
+  );
   assert.equal(gemini, 3);
 });
 
-test("erro fora da lista (bug, rede) sobe como está, sem repetir e sem reserva", async () => {
+test("erro fora da lista (bug, rede) sobe como está, sem repetir", async () => {
   const { esperas, sleep } = semEspera();
   const bug = new TypeError("Cannot read properties of undefined");
-  let openai = 0;
   await assert.rejects(
     synthesizeSpeechWithRecovery({
       label: "narração",
       synthesizeWithGemini: async () => { throw bug; },
-      synthesizeWithOpenAI: async () => { openai += 1; return "audio-openai"; },
       sleep,
       warn: () => {},
     }),
     (error) => error === bug,
   );
-  assert.equal(openai, 0);
   assert.deepEqual(esperas, []);
 });
 
-test("sem reserva configurada, o erro do Gemini sobe intacto (é o que vira failure_reason)", async () => {
-  const { sleep } = semEspera();
-  await assert.rejects(
-    synthesizeSpeechWithRecovery({
-      label: "narração",
-      synthesizeWithGemini: async () => { throw ERRO_402; },
-      synthesizeWithOpenAI: null,
-      sleep,
-      warn: () => {},
-    }),
-    (error) => error === ERRO_402,
-  );
-});
-
-test("reserva que também falha leva os dois motivos, o da OpenAI primeiro (o failure_reason corta em 400)", async () => {
-  const { sleep } = semEspera();
-  await assert.rejects(
-    synthesizeSpeechWithRecovery({
-      label: "narração",
-      synthesizeWithGemini: async () => { throw ERRO_402; },
-      synthesizeWithOpenAI: async () => { throw new Error("insufficient_quota"); },
-      sleep,
-      warn: () => {},
-    }),
-    (error: unknown) => {
-      const message = (error as Error).message;
-      assert.ok(message.startsWith("reserva OpenAI falhou (insufficient_quota)"), message);
-      assert.ok(message.includes("402"), message);
-      return true;
-    },
-  );
-});
-
-test("resolveOpenAiTtsFallback: ligada por padrão com chave, desligada sem chave ou pela flag", () => {
-  assert.deepEqual(resolveOpenAiTtsFallback({ OPENAI_API_KEY: "sk-x" }), { enabled: true, model: "gpt-4o-mini-tts" });
-  assert.equal(resolveOpenAiTtsFallback({ OPENAI_API_KEY: "" }).enabled, false);
-  assert.equal(resolveOpenAiTtsFallback({ OPENAI_API_KEY: "sk-x", TTS_ENABLE_OPENAI_FALLBACK: "false" }).enabled, false);
-  assert.equal(resolveOpenAiTtsFallback({ OPENAI_API_KEY: "sk-x", OPENAI_TTS_MODEL: "tts-1" }).model, "tts-1");
-});
-
-test("openAiVoiceFor mantém o gênero do Guardião", () => {
-  assert.equal(openAiVoiceFor("Leda"), "coral");
-  assert.equal(openAiVoiceFor("Kore"), "coral");
-  assert.equal(openAiVoiceFor("Charon"), "ash");
-  assert.equal(openAiVoiceFor("Orus"), "ash");
-});
-
-test("prepareTextForOpenAiTts tira as marcas de tom e só os prefixos dos falantes informados", () => {
-  const roteiro = "[Tom: Calculista e pausado] Saudações.\nMateo: Olá, Zuri!\nZuri: Oi, Mateo.\nLembre-se: partes iguais.";
+test("stripToneTags tira as marcas de tom e mantém os falantes e as quebras de linha", () => {
   assert.equal(
-    prepareTextForOpenAiTts(roteiro, ["Mateo", "Zuri"]),
-    "Saudações.\nOlá, Zuri!\nOi, Mateo.\nLembre-se: partes iguais.",
-  );
-  assert.equal(prepareTextForOpenAiTts("Mateo: Olá"), "Mateo: Olá");
-});
-
-test("splitForOpenAiTts respeita o limite da API e não perde texto", () => {
-  const frase = "Uma fração representa partes iguais de um todo. ";
-  const texto = frase.repeat(300);
-  const pedacos = splitForOpenAiTts(texto);
-  assert.ok(pedacos.length > 1);
-  for (const pedaco of pedacos) assert.ok(pedaco.length <= OPENAI_TTS_MAX_INPUT_CHARS, String(pedaco.length));
-  assert.equal(pedacos.join(" ").replace(/\s+/g, " "), texto.trim().replace(/\s+/g, " "));
-
-  const semEspaco = "a".repeat(OPENAI_TTS_MAX_INPUT_CHARS + 10);
-  assert.deepEqual(splitForOpenAiTts(semEspaco).map((p) => p.length), [OPENAI_TTS_MAX_INPUT_CHARS, 10]);
-});
-
-test("synthesizeOpenAiPcm pede PCM (mesmo formato do Gemini) e emenda os pedaços na ordem", async () => {
-  const pedidos: Array<Record<string, unknown>> = [];
-  const client: OpenAiSpeechClient = {
-    audio: {
-      speech: {
-        create: async (body) => {
-          pedidos.push(body);
-          const n = pedidos.length;
-          return { arrayBuffer: async () => new Uint8Array([n, n]).buffer };
-        },
-      },
-    },
-  };
-  const texto = "Primeira frase longa. ".repeat(250);
-  const pcm = await synthesizeOpenAiPcm({ text: texto, voice: "ash", instructions: "voz serena", model: "gpt-4o-mini-tts", client });
-  assert.equal(pedidos.length, splitForOpenAiTts(texto).length);
-  assert.ok(pedidos.length > 1);
-  for (const pedido of pedidos) {
-    assert.equal(pedido.response_format, "pcm");
-    assert.equal(pedido.voice, "ash");
-    assert.equal(pedido.model, "gpt-4o-mini-tts");
-    assert.equal(pedido.instructions, "voz serena");
-  }
-  assert.deepEqual(Array.from(pcm.slice(0, 4)), [1, 1, 2, 2]);
-});
-
-test("synthesizeOpenAiPcm recusa resposta vazia em vez de gravar áudio mudo", async () => {
-  const client: OpenAiSpeechClient = {
-    audio: { speech: { create: async () => ({ arrayBuffer: async () => new ArrayBuffer(0) }) } },
-  };
-  await assert.rejects(
-    synthesizeOpenAiPcm({ text: "Olá.", voice: "coral", model: "gpt-4o-mini-tts", client }),
-    /sem áudio/,
+    stripToneTags("[Tom: Sereno] Olá.\nMateo: [Tom: Alegre] Oi, Zuri!"),
+    "Olá.\nMateo: Oi, Zuri!",
   );
 });
 
@@ -269,17 +159,18 @@ test("isDailyQuotaError separa a cota do dia da cota por minuto", () => {
   assert.equal(isDailyQuotaError(new TtsNoAudioError("vazio")), false);
 });
 
-test("cota do dia esgotada vai direto para a reserva, sem as esperas de 5/10/15 s (turma 68, 02/11)", async () => {
+test("cota do dia esgotada falha na hora, sem as esperas de 5/10/15 s (turma 68, 02/11)", async () => {
   const { esperas, sleep } = semEspera();
   let gemini = 0;
-  const resultado = await synthesizeSpeechWithRecovery({
-    label: "narração",
-    synthesizeWithGemini: async () => { gemini += 1; throw ERRO_429_DIA; },
-    synthesizeWithOpenAI: async () => "audio-openai",
-    sleep,
-    warn: () => {},
-  });
-  assert.equal(resultado, "audio-openai");
+  await assert.rejects(
+    synthesizeSpeechWithRecovery({
+      label: "narração",
+      synthesizeWithGemini: async () => { gemini += 1; throw ERRO_429_DIA; },
+      sleep,
+      warn: () => {},
+    }),
+    (error) => error === ERRO_429_DIA,
+  );
   assert.equal(gemini, 1);
   assert.deepEqual(esperas, []);
 });
@@ -294,15 +185,14 @@ test("depois de uma resposta sem áudio, a nova tentativa vai sem as tags de tom
       if (pedidos.length < 3) throw new TtsNoAudioError("vazio");
       return "audio";
     },
-    synthesizeWithOpenAI: null,
     sleep,
     warn: () => {},
   });
   assert.deepEqual(pedidos, [false, true, true]);
 });
 
-test("rootCause chega ao erro do Gemini embrulhado pela reserva", () => {
-  const embrulhado = new Error("reserva OpenAI falhou (429 no credits) depois do Gemini", { cause: ERRO_429_DIA });
+test("rootCause chega ao erro original embrulhado em cause", () => {
+  const embrulhado = new Error("falha na parte 2", { cause: ERRO_429_DIA });
   assert.equal(rootCause(embrulhado), ERRO_429_DIA);
   assert.equal(rootCause(ERRO_429), ERRO_429);
 });

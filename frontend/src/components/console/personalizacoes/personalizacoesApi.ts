@@ -430,12 +430,20 @@ export async function fetchAdequacaoGrupo(
  * (`api/app/services/evidencias_pedagogicas.py`) e os numeros do aluno que a
  * decisao viu. `confianca` = `forte` | `moderada` | `hipotese` | `dado_do_aluno`.
  */
+export type SugestaoReferenciaRag = {
+  regra: string;
+  fontes: string[];
+  confianca: string;
+};
+
 export type SugestaoEvidencia = {
   regra: string;
   enunciado: string;
   fontes: string[];
   confianca: string;
   dados: Record<string, unknown>;
+  /** Ausente nos registros anteriores ao retrieval curado (#66). */
+  referencias_rag?: SugestaoReferenciaRag[];
 };
 
 export type SugestaoMaterialItem = {

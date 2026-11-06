@@ -1,7 +1,7 @@
 # API TrailUp (FastAPI) — imagem de desenvolvimento
 FROM python:3.12-slim
 
-# ffmpeg: necessário para moviepy/gTTS (geração de mídia)
+# ffmpeg: necessário para moviepy (geração de mídia)
 # build-essential/libpq: garantem compilação de pacotes sem wheel
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \

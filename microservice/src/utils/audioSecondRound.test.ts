@@ -12,11 +12,7 @@ import { TtsNoAudioError } from "../services/ttsRecovery";
 // Os três jeitos como uma parte falhou na turma 68 em 01/11 (#777).
 const SEM_AUDIO = new TtsNoAudioError("A voz mística falhou em se materializar.");
 const TEXTO_NO_LUGAR = new Error('{"error":{"code":400,"message":"Model tried to generate text, but it should only be used for TTS."}}');
-// Reserva OpenAI sem crédito embrulha a falha do Gemini em `cause` (ttsRecovery.ts).
-const RESERVA_SEM_CREDITO = new Error(
-  "reserva OpenAI falhou (429 You have no credits remaining) depois do Gemini: A voz mística falhou em se materializar.",
-  { cause: SEM_AUDIO },
-);
+const EMBRULHADO = new Error("falha na parte 2", { cause: SEM_AUDIO });
 const COTA = new Error('{"error":{"code":429,"message":"Quota exceeded for metric: generate_content_free_tier_requests"}}');
 
 const ok = <T>(value: T): PromiseSettledResult<T> => ({ status: "fulfilled", value });
@@ -29,15 +25,15 @@ function semEspera() {
 
 const CONFIG = { maxParts: 3, delayMs: 10_000 };
 
-test("audioFailureKind lê a causa no Gemini mesmo quando a reserva OpenAI embrulhou o erro", () => {
-  assert.equal(audioFailureKind(RESERVA_SEM_CREDITO), "no_audio");
+test("audioFailureKind lê a causa no Gemini mesmo com o erro embrulhado", () => {
+  assert.equal(audioFailureKind(EMBRULHADO), "no_audio");
   assert.equal(audioFailureKind(TEXTO_NO_LUGAR), "text_instead_of_audio");
   assert.equal(audioFailureKind(COTA), "quota");
 });
 
 test("Achiever 7/8: a parte que saiu sem voz é refeita sozinha e o perfil fica com áudio", async () => {
   const partes = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"];
-  const settled = partes.map((p) => (p === "p5" ? falhou(RESERVA_SEM_CREDITO) : ok(`audio-${p}`)));
+  const settled = partes.map((p) => (p === "p5" ? falhou(EMBRULHADO) : ok(`audio-${p}`)));
   const refeitas: string[] = [];
   const { esperas, sleep } = semEspera();
 

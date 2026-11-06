@@ -290,6 +290,16 @@ class SlidesPipeline(MediaPipeline):
         )
 
 
+def _roteiro_em_falas(roteiro: str, nome_principal: str, nome_secundario: str) -> str:
+    """Devolve uma fala por linha: `normalize_script` junta tudo, e o TTS de duas vozes
+    troca de voz pelo "Nome: " no comeco da linha."""
+    nomes = "|".join(re.escape(nome) for nome in (nome_principal, nome_secundario) if nome)
+    falas = re.sub(rf"\s+(?=(?:{nomes}):\s)", "\n", roteiro.strip())
+    if not re.match(rf"(?:{nomes}):\s", falas):
+        falas = f"{nome_principal}: {falas}"
+    return falas
+
+
 class AudioPipeline(MediaPipeline):
     kind = "audio"
     extension = "mp3"
@@ -320,8 +330,11 @@ class AudioPipeline(MediaPipeline):
             return base64.b64decode(audio_bytes_b64)
         roteiro = str(payload.get("roteiro") or "")
         perfil_editorial = context.state.get("perfil_editorial") if isinstance(context.state.get("perfil_editorial"), dict) else {}
-        voz = str(perfil_editorial.get("guia_voz") or "Kore")
-        direcao_voz = str(perfil_editorial.get("guia_direcao_voz") or "")
+        voz = str(perfil_editorial.get("guia_voz") or "").strip()
+        direcao_voz = str(perfil_editorial.get("guia_direcao_voz") or "").strip()
+        if not voz or not direcao_voz:
+            # Sem o Guardiao do perfil nao ha audio: nunca sai uma voz padrao.
+            raise RuntimeError("audio_sem_guardiao")
         nome_secundario = perfil_editorial.get("guia_nome_secundario")
         voz_secundaria = perfil_editorial.get("guia_voz_secundario")
         direcao_voz_secundaria = str(perfil_editorial.get("guia_direcao_voz_secundaria") or "")
@@ -331,7 +344,9 @@ class AudioPipeline(MediaPipeline):
             # texto solto na frente, pro Gemini casar speaker por speaker.
             rendered = await gerar_audio_gemini_tts(
                 settings=context.settings,
-                texto=roteiro[:1500],
+                texto=_roteiro_em_falas(
+                    roteiro[:1500], str(perfil_editorial.get("guia_nome") or ""), str(nome_secundario)
+                ),
                 voz=voz,
                 direcao_voz=direcao_voz,
                 nome_speaker_principal=str(perfil_editorial.get("guia_nome") or ""),

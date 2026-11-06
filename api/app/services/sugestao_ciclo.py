@@ -32,10 +32,12 @@ não pode impedir o material de ser gerado.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any, Iterable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.settings import get_settings
 from app.repositories.context import ContextRepository
 from app.repositories.mental_state import MentalStateHistoryRepository
 from app.repositories.personalizacao_progresso import PersonalizacaoProgressoRepository
@@ -43,6 +45,7 @@ from app.repositories.sugestao_material import SugestaoMaterialRepository
 from app.services import demanda_formato
 from app.services.evidencias_pedagogicas import CATALOGO_VERSAO
 from app.services.memoria_aluno import _JANELA_RECORRENCIA, _detectar_recorrencia
+from app.services.openai_rag import OpenAIRagError, OpenAIRagService
 from app.services.sugestao_material import (
     LIMIAR_MUDANCA_PADRAO,
     MINIMO_EVIDENCIA_PADRAO,
@@ -119,6 +122,84 @@ async def _contexto_da_decisao(
     }
 
 
+async def _anexar_citacoes_rag(
+    ordem: list[dict[str, Any]], *, session: AsyncSession | None
+) -> None:
+    """Anexa citações públicas à evidência local, sem interferir na decisão."""
+    if session is None:
+        return
+    citacoes_existentes: dict[str, dict[str, Any]] = {}
+    for item in ordem:
+        for evidencia_item in item.get("evidencias") or []:
+            if not isinstance(evidencia_item, dict):
+                continue
+            for citacao in evidencia_item.get("referencias_rag") or []:
+                if not isinstance(citacao, dict):
+                    continue
+                regra_id = citacao.get("regra")
+                fontes_citadas = citacao.get("fontes")
+                if (
+                    not isinstance(regra_id, str)
+                    or not re.fullmatch(r"RD-(?:0[1-9]|1[0-2])", regra_id)
+                    or not isinstance(fontes_citadas, list)
+                ):
+                    continue
+                fontes_seguras = sorted(
+                    {
+                        fonte
+                        for fonte in fontes_citadas
+                        if isinstance(fonte, str) and re.fullmatch(r"DAT-\d{2}", fonte)
+                    }
+                )
+                if not fontes_seguras:
+                    continue
+                citacoes_existentes[regra_id] = {
+                    "regra": regra_id,
+                    "fontes": fontes_seguras,
+                    "confianca": str(citacao.get("confianca") or "")[:120],
+                }
+    fontes_cobertas = {
+        fonte for citacao in citacoes_existentes.values() for fonte in citacao["fontes"]
+    }
+    fontes = sorted(
+        {
+            fonte
+            for item in ordem
+            for evidencia_item in item.get("evidencias") or []
+            if isinstance(evidencia_item, dict)
+            for fonte in evidencia_item.get("fontes") or []
+            if isinstance(fonte, str) and fonte not in fontes_cobertas
+        }
+    )
+    citacoes = list(citacoes_existentes.values())
+    if fontes:
+        try:
+            novas = await OpenAIRagService(get_settings()).buscar_evidencias_pedagogicas(
+                session=session, fontes=fontes
+            )
+        except Exception as exc:  # noqa: BLE001 - RAG é apenas enriquecimento opcional.
+            logger.info("sugestao.rag_indisponivel tipo=%s", type(exc).__name__)
+            novas = []
+        citacoes.extend(novas)
+
+    for item in ordem:
+        for evidencia_item in item.get("evidencias") or []:
+            if not isinstance(evidencia_item, dict):
+                continue
+            fontes_da_evidencia = {
+                fonte
+                for fonte in evidencia_item.get("fontes") or []
+                if isinstance(fonte, str)
+            }
+            referencias = [
+                citacao
+                for citacao in citacoes
+                if fontes_da_evidencia.intersection(citacao["fontes"])
+            ]
+            if referencias:
+                evidencia_item["referencias_rag"] = referencias
+
+
 async def garantir_sugestao(
     repo: SugestaoMaterialRepository,
     *,
@@ -151,6 +232,7 @@ async def garantir_sugestao(
         # Sem formato gerado ainda não há o que sugerir. Não grava linha vazia:
         # ela viraria "sugestão versão 1" sem conteúdo e sujaria a métrica.
         return None
+    await _anexar_citacoes_rag(sugestao["ordem"], session=getattr(repo, "session", None))
 
     # A versão do catálogo vai junto: o "por quê" de cada item cita regras do
     # catálogo, e uma auditoria precisa saber com que texto foi justificado.
@@ -287,6 +369,7 @@ async def revisar_sugestao(
         return decisao
 
     nova_ordem = decisao["ordem"]
+    await _anexar_citacoes_rag(nova_ordem, session=getattr(repo, "session", None))
     salvo = await repo.salvar(
         aluno_id=aluno_id,
         topico_id=topico_id,

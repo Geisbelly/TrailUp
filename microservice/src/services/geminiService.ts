@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 const require = createRequire(import.meta.url);
 import { BrainHexProfile, BRAIN_HEX_CONFIG } from "../constants/brainHex";
 import { GUARDIAN_VOICE_PROFILES } from "../constants/guardianVoices";
+import { cleanAudioScript } from "../utils/audioJunction";
 import {
   buildPresentationDesignPlan,
   type PresentationDesignPlan,
@@ -25,10 +26,7 @@ import {
   type StructuredContentGenerationCall,
 } from "./contentGenerationService";
 import {
-  openAiVoiceFor,
-  prepareTextForOpenAiTts,
-  resolveOpenAiTtsFallback,
-  synthesizeOpenAiPcm,
+  stripToneTags,
   synthesizeSpeechWithRecovery,
   TtsNoAudioError,
 } from "./ttsRecovery";
@@ -2243,16 +2241,15 @@ export function extractTtsAudioData(
  */
 export async function generateNaturalAudio(
   text: string,
-  voice: GeminiTtsVoice = 'Kore',
-  direction = "Voz natural, didática e expressiva em português brasileiro.",
+  voice: GeminiTtsVoice,
+  direction: string,
 ): Promise<{ wav: string, mp3: string | null }> {
-  const fallback = resolveOpenAiTtsFallback();
   return synthesizeSpeechWithRecovery({
     label: "narração",
     synthesizeWithGemini: async ({ plain }) => {
       // `plain`: nova tentativa depois de resposta sem áudio vai sem as tags
       // de tom (ver ttsRecovery.ts).
-      const transcript = plain ? prepareTextForOpenAiTts(text) : text;
+      const transcript = plain ? stripToneTags(text) : text;
       const response = await generateGeminiContent({
         model: "gemini-3.1-flash-tts-preview",
         contents: [{
@@ -2281,14 +2278,6 @@ export async function generateNaturalAudio(
       const pcmBuffer = new Uint8Array(pcmBinary.length).map((_, i) => pcmBinary.charCodeAt(i));
       return encodePcmToWavAndMp3(pcmBuffer);
     },
-    synthesizeWithOpenAI: fallback.enabled
-      ? async () => encodePcmToWavAndMp3(await synthesizeOpenAiPcm({
-          text: prepareTextForOpenAiTts(text),
-          voice: openAiVoiceFor(voice),
-          instructions: direction,
-          model: fallback.model,
-        }))
-      : null,
   });
 }
 
@@ -2352,8 +2341,8 @@ async function joinAudioChapters(
 
 export async function generateLongNaturalAudio(
   text: string,
-  voice: GeminiTtsVoice = "Kore",
-  direction = "Voz natural, didática e expressiva em português brasileiro.",
+  voice: GeminiTtsVoice,
+  direction: string,
 ): Promise<{ wav: string; mp3: string | null }> {
   return joinAudioChapters(
     splitTtsChapters(text),
@@ -2371,7 +2360,6 @@ export async function generateConversationalAudio(
   speakerA: { name: string; voice: GeminiTtsVoice; direction?: string },
   speakerB: { name: string; voice: GeminiTtsVoice; direction?: string },
 ): Promise<{ wav: string, mp3: string | null }> {
-  const fallback = resolveOpenAiTtsFallback();
   return synthesizeSpeechWithRecovery({
     label: "diálogo",
     synthesizeWithGemini: async ({ plain }) => {
@@ -2408,16 +2396,6 @@ export async function generateConversationalAudio(
       const pcmBuffer = new Uint8Array(pcmBinary.length).map((_, i) => pcmBinary.charCodeAt(i));
       return encodePcmToWavAndMp3(pcmBuffer);
     },
-    // A reserva não tem diálogo de duas vozes: o Guardião principal lê as
-    // falas dos dois, sem os prefixos "Nome: " que só o Gemini usa.
-    synthesizeWithOpenAI: fallback.enabled
-      ? async () => encodePcmToWavAndMp3(await synthesizeOpenAiPcm({
-          text: prepareTextForOpenAiTts(text, [speakerA.name, speakerB.name]),
-          voice: openAiVoiceFor(speakerA.voice),
-          instructions: speakerA.direction,
-          model: fallback.model,
-        }))
-      : null,
   });
 }
 
@@ -2430,6 +2408,38 @@ export async function generateLongConversationalAudio(
     splitTtsChapters(text),
     (chapter) => generateConversationalAudio(chapter, speakerA, speakerB),
   );
+}
+
+/**
+ * O jeito de gerar o áudio de um perfil: todo caminho passa por aqui, e é isto que
+ * garante a personalização. Resolve a voz e a direção do Guardião, faz diálogo
+ * onde o perfil tem dois Guardiões e limpa o roteiro. Sem Guardião ou sem roteiro,
+ * falha: nunca sai uma voz padrão. Limpar de novo um roteiro já limpo não muda nada.
+ */
+export async function generateGuardianAudio(
+  audioScript: string,
+  profile: BrainHexProfile,
+): Promise<{ wav: string; mp3: string | null }> {
+  const voiceProfile = GUARDIAN_VOICE_PROFILES[profile];
+  const guide = BRAIN_HEX_CONFIG[profile];
+  if (!voiceProfile || !guide) throw new Error(`perfil sem Guardião: "${String(profile)}"`);
+
+  const secondaryName = guide.secondaryGuideName;
+  const secondaryVoice = voiceProfile.secondaryVoice;
+  const isDialogue = Boolean(secondaryName && secondaryVoice);
+  const script = cleanAudioScript(
+    audioScript,
+    isDialogue ? { speakers: [guide.guideName, secondaryName as string] } : {},
+  );
+  if (!script.trim()) throw new Error(`roteiro de áudio vazio (${profile})`);
+
+  return isDialogue
+    ? generateLongConversationalAudio(
+        script,
+        { name: guide.guideName, voice: voiceProfile.voice, direction: voiceProfile.direction },
+        { name: secondaryName as string, voice: secondaryVoice!, direction: voiceProfile.secondaryDirection },
+      )
+    : generateLongNaturalAudio(script, voiceProfile.voice, voiceProfile.direction);
 }
 
 // addWavHeader extraído para src/lib/wav.ts (testado).
@@ -2552,6 +2562,7 @@ export async function regenerateChapterContent(
     conteúdo - ele nunca autoriza omitir conceitos técnicos que já estavam
     corretos no capítulo atual (Fidelidade Absoluta continua valendo).
     ${FORMULA_AS_PLAIN_TEXT_RULE}
+    ${config.secondaryGuideName ? `O campo 'audioScript' é um diálogo entre ${config.guideName} e ${config.secondaryGuideName}: mantenha cada fala em uma linha começando por "${config.guideName}: " ou "${config.secondaryGuideName}: ".` : ""}
     ${options.expansionPrompt ? `DIRETRIZ DE EXPANSÃO GERAL (aplique também): "${options.expansionPrompt}"` : ""}
   `;
   const contentsParts = [{
@@ -2574,8 +2585,7 @@ export async function regenerateChapterContent(
     customKeys: options.keysConfig,
     temperature: 0.6,
   });
-  const voiceProfile = GUARDIAN_VOICE_PROFILES[profile];
-  const audio = await generateNaturalAudio(updated.audioScript, voiceProfile.voice, voiceProfile.direction);
+  const audio = await generateGuardianAudio(updated.audioScript, profile);
   return {
     markdown: updated.markdown,
     audioScript: updated.audioScript,
