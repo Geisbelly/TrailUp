@@ -5,15 +5,12 @@
 
 import type { TelemetryConsentRecord } from "./telemetryConsent";
 
-// v4: a analise de expressao facial passou a existir. A v3 dizia, com todas as
-// letras, que "as imagens da camera nao sao analisadas" e prometia pedir
-// consentimento de novo antes de isso mudar. Esta versao e o cumprimento dessa
-// promessa — trocar a string forca o termo a reaparecer para todo mundo.
-//
-// v5 (#195): o termo passou a explicar o modo restrito e o termo separado do
-// responsavel para menores de 18. E a chave local passou a ser por aluno, entao
-// o aceite antigo (por aparelho) nao vale mais de qualquer jeito.
-export const TELEMETRY_CONSENT_VERSION = "2026-10-24-v5";
+// v4: camera emotion analysis was described in the consent terms.
+// v5 (#195): the terms gained the restricted mode and responsible-adult consent.
+// v6 (#30): the terms distinguish web from camera-capable platforms, state that
+// behavioral telemetry does not infer emotion, and disclose the US image transfer.
+// Reacceptance is required.
+export const TELEMETRY_CONSENT_VERSION = "2026-11-05-v6";
 
 // Chave antiga, por APARELHO: num celular compartilhado (comum na escola), o
 // aceite de um aluno valia para o proximo que entrasse. Agora e por aluno.

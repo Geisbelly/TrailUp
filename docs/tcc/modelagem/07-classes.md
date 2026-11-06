@@ -48,9 +48,8 @@ classDiagram
   LinearAnalysisOrchestrator o-- DecisionEngine
   LinearAnalysisOrchestrator o-- AdaptiveContentGenerator
 
-  EmotionAnalyzer <|.. DeepFaceEmotionAnalyzer : regra
-  EmotionAnalyzer <|.. LocalVisionEmotionAnalyzer : YuNet + FER+
-  LocalVisionEmotionAnalyzer --> DeepFaceEmotionAnalyzer : fallback
+  EmotionAnalyzer <|.. UnavailableEmotionAnalyzer : indisponível
+  EmotionAnalyzer <|.. LocalVisionEmotionAnalyzer : YuNet + FER+ (opt-in)
   ReadingAnalyzer <|.. IsolationForestReadingAnalyzer : regra
   InteractionAnalyzer <|.. HiddenMarkovInteractionAnalyzer : regra
   PerformanceAnalyzer <|.. DeepKnowledgeTracingAnalyzer : regra

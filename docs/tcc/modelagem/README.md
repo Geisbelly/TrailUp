@@ -51,7 +51,8 @@ python docs/tcc/modelagem/conferir_tabelas.py
 
 - O pipeline de análise tem **nomes** de algoritmos de ML, mas os estágios são regras. As exceções são a emoção por imagem e o M2. O diagrama 4.2 e o 7.1 marcam o que é regra.
 - O RAG está **implementado e não indexado**. Ele aparece tracejado nos diagramas.
-- `agente_emocao`, dentro do grafo, usa `MockEmocaoAdapter`. A emoção que vale é a do estágio 1 do pipeline.
+- `agente_emocao` usa `LocalVisionEmotionAdapter` somente com `EMOTION_MODEL_PROVIDER=local_vision`; sem frame, modelo configurado ou resultado visual, informa emoção indisponível. Eventos e telemetria não são proxies de emoção.
+- As transições de missão, desafio de guilda e relação social (6.8) seguem os rótulos dos `CHECK`. Elas não foram auditadas função por função.
 - `missao_aluno.status = 'expirada'` existe no `CHECK`, e nenhuma função grava esse valor.
 - Vários fluxos estão prontos e sem uso real: em 05/11/2026 a produção tinha zero diagnósticos, fundos, desafios, partidas de Elo e coortes. Os diagramas descrevem o comportamento implementado, não uso medido.
 

@@ -20,6 +20,7 @@ import { ResponsavelConsentForm } from "@/components/consentimento/ResponsavelCo
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -182,50 +183,50 @@ export function TelemetryConsentGate() {
               sinais de estudo durante o uso do app.
             </Text>
             <Text style={[styles.sectionTitle, { color: palette.accent }]}>Informações coletadas</Text>
-            <Text style={[styles.body, { color: palette.textMuted }]}>
-              Câmera frontal durante sessões de estudo, com captura de 10 frames por
-              minuto e envio em lote a cada 1 minuto.
-            </Text>
-            <Text style={[styles.body, { color: palette.textMuted }]}>
-              Tempo de leitura, tempo ativo/inativo, histórico recente de navegação,
-              toques, rolagem e contexto do tópico/atividade.
-            </Text>
-            <Text style={[styles.body, { color: palette.textMuted }]}>
-              Respostas e desempenho em exercícios para ajuste pedagógico.
-            </Text>
+            {Platform.OS === "web" ? (
+              <Text style={[styles.body, { color: palette.textMuted }]}>
+                A versão web não captura imagens pela câmera. Coleta tempo de leitura, tempo ativo/inativo,
+                navegação, toques, rolagem e contexto do tópico/atividade, além de respostas e desempenho
+                em exercícios, conforme suas preferências de coleta.
+              </Text>
+            ) : (
+              <>
+                <Text style={[styles.body, { color: palette.textMuted }]}>
+                  Câmera frontal durante sessões de estudo, com captura de até 10 frames por minuto e
+                  envio em lote a cada 1 minuto, somente se você ativar a câmera e conceder permissão.
+                </Text>
+                <Text style={[styles.body, { color: palette.textMuted }]}>
+                  Tempo de leitura, tempo ativo/inativo, histórico recente de navegação, toques, rolagem e
+                  contexto do tópico/atividade.
+                </Text>
+                <Text style={[styles.body, { color: palette.textMuted }]}>
+                  Respostas e desempenho em exercícios para ajuste pedagógico.
+                </Text>
+              </>
+            )}
             <Text style={[styles.sectionTitle, { color: palette.accent }]}>Como os dados são usados</Text>
             <Text style={[styles.body, { color: palette.textMuted }]}>
-              Atenção, dificuldade, frustração e engajamento são estimados a partir do
-              seu comportamento no app — tempo ativo e inativo, toques, rolagem,
-              respostas e acertos — e também da sua expressão facial, quando a câmera
-              está ligada. É isso que gera as recomendações e o conteúdo adaptativo.
+              Sinais de interação, leitura, desempenho e tempo ajudam a adaptar conteúdo e interface. Eles
+              não são usados para inferir emoção. Quando há câmera disponível, ativada e autorizada, o
+              sistema pode analisar a expressão facial; sem esse sinal, a emoção fica indisponível.
             </Text>
-            <Text style={[styles.sectionTitle, { color: palette.accent }]}>Sobre a câmera, especificamente</Text>
-            <Text style={[styles.body, { color: palette.textMuted }]}>
-              As imagens da câmera são analisadas para estimar sua expressão no
-              momento do estudo. O programa localiza o rosto na imagem e classifica a
-              expressão em categorias como neutro, concentrado, frustrado, ansioso ou
-              cansado. Isso influencia o conteúdo e a dificuldade que o app te mostra
-              depois.
-            </Text>
-            <Text style={[styles.body, { color: palette.textMuted }]}>
-              A análise é feita no servidor do próprio TrailUp, não em serviço de
-              terceiros, e a imagem não sai dele para lugar nenhum.
-            </Text>
-            <Text style={[styles.body, { color: palette.textMuted }]}>
-              A imagem é usada e descartada na mesma hora. Não é gravada em lugar
-              nenhum — nem no registro do lote, nem no log de decisão. Fica guardado
-              só o resultado: a categoria estimada e o quanto o programa confia nela.
-            </Text>
-            <Text style={[styles.body, { color: palette.textMuted }]}>
-              O que você faz vale mais do que a sua cara. Se você errar várias vezes
-              seguidas, por exemplo, isso conta mais do que a expressão de um
-              instante — e a estimativa pela imagem é descartada nesse caso.
-            </Text>
-            <Text style={[styles.body, { color: palette.textMuted }]}>
-              A expressão estimada é um palpite, não um diagnóstico. Ela não vira
-              nota, não é mostrada para o professor como avaliação sua, e pode errar.
-            </Text>
+            {Platform.OS === "web" ? null : (
+              <>
+                <Text style={[styles.sectionTitle, { color: palette.accent }]}>Sobre a câmera, especificamente</Text>
+                <Text style={[styles.body, { color: palette.textMuted }]}>
+                  Se você ativar a câmera e autorizar a análise emocional, imagens do rosto serão enviadas
+                  ao servidor da TrailUp nos Estados Unidos. Esse país não tem adequação reconhecida pela
+                  ANPD; o tratamento da transferência internacional e os riscos associados estão descritos
+                  na Política de Privacidade. A análise é local, sem envio das imagens a provedores externos.
+                </Text>
+                <Text style={[styles.body, { color: palette.textMuted }]}>
+                  O detector de rosto e o classificador analisam a imagem na memória. A imagem é descartada
+                  após o processamento; ficam apenas a categoria de emoção, a confiança e os dados resumidos
+                  da análise, pelo prazo informado na Política de Privacidade. Isso não é diagnóstico e pode
+                  errar.
+                </Text>
+              </>
+            )}
             <Text style={[styles.sectionTitle, { color: palette.accent }]}>Menores de 18 anos</Text>
             <Text style={[styles.body, { color: palette.textMuted }]}>
               A inteligência artificial do TrailUp é só para maiores de 18 anos:

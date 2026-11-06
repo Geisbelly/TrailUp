@@ -3,12 +3,25 @@ import asyncio
 import pytest
 
 from app.core.settings import Settings
+from app.schemas.api import AnalisarResponse, EmocaoIndisponivel
 from app.schemas.common import Evento
 from app.services.linear_analysis_pipeline import (
     DeepKnowledgeTracingAnalyzer,
     _summarize_reading_pace,
     build_linear_analysis_orchestrator,
 )
+
+
+def test_default_de_emocao_falha_fechado_e_resposta_preserva_indisponibilidade() -> None:
+    settings = Settings(_env_file=None)
+    assert settings.emotion_model_provider == "unavailable"
+
+    response = AnalisarResponse(
+        ciclo_id="ciclo",
+        emocao_atual={"estado_sinal": "indisponivel"},
+    )
+    assert isinstance(response.emocao_atual, EmocaoIndisponivel)
+    assert response.model_dump()["emocao_atual"] == {"estado_sinal": "indisponivel"}
 
 
 def test_summarize_reading_pace_flags_slow_and_skimming() -> None:
@@ -205,8 +218,9 @@ async def test_linear_analysis_orchestrator_runs_all_stages_and_enriches_state()
         ],
     )
 
-    assert state["emocao_atual"]["origem"] == "deepface"
-    assert state["attention_snapshot"]["estado_atencao"] in {"baixa", "moderada", "alta"}
+    assert state["emocao_atual"] == {"estado_sinal": "indisponivel"}
+    assert state["pipeline_stage_outputs"]["emotion"]["estado_sinal"] == "indisponivel"
+    assert state["attention_snapshot"]["frustracao"] == "indisponivel"
     assert "decision" in state["pipeline_stage_outputs"]
     assert state["pipeline_stage_outputs"]["reading"]["material_focus_ratio"] >= 0
     assert "time_metrics" in state["pipeline_stage_outputs"]["attention"]

@@ -26,7 +26,7 @@ from app.services import assinatura_chat
 from app.services import insights_turma as insights_module
 from app.services.escriba import EscribaService
 from app.services.insights_turma import InsightsTurmaService, montar_payload
-from app.services.llm import JsonLLMService
+from app.services.llm import JsonLLMService, StructuredOutputError
 from app.services.pseudonimizacao import (
     PLACEHOLDER_NOME,
     pseudonimizar_nome_proprio,
@@ -111,6 +111,29 @@ async def test_agente_texto_nao_manda_nome_e_restaura_na_resposta(monkeypatch) -
     assert texto["titulo"] == "Bora, Ana!"
     assert texto["corpo"] == "Ana, voce esta indo bem."
 
+
+
+@pytest.mark.asyncio
+async def test_agente_texto_usa_template_completo_quando_modelo_falha(monkeypatch) -> None:
+    class LLMFalso:
+        def __init__(self, settings) -> None: ...
+
+        async def ainvoke_structured(self, **kwargs):
+            raise StructuredOutputError("saida estruturada indisponivel")
+
+    monkeypatch.setattr(agente_texto_module, "JsonLLMService", LLMFalso)
+    out = await agente_texto_module.agente_texto(
+        {
+            "ui_config": {"tipo_modal": "suporte"},
+            "perfil_brainhex": [{"perfil": "Achiever", "afinidade": 0.9}],
+            "emocao_atual": {"estado_sinal": "indisponivel"},
+        },
+        settings=None,
+    )
+    texto = out["textos_gerados"][0]
+    assert texto["titulo"] == "Respire e avance"
+    assert "partes menores" in texto["corpo"]
+    assert "Perfil dominante: Achiever." in texto["corpo"]
 
 # ---------------------------------------------------------------- insights
 

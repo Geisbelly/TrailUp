@@ -21,6 +21,7 @@ import {
   type TurmaDoProfessor,
 } from "./conversa";
 import TutorialGuiado from "./TutorialGuiado";
+import { useAreaVisivel } from "./useAreaVisivel";
 import { tutorialPorId, type Tutorial } from "./tutoriais";
 
 // Cabe o acordar da API no plano gratuito (a primeira chamada depois de um
@@ -76,8 +77,11 @@ export default function Escriba() {
       });
   }, [aberto, turmas, user?.id, turmaNaUrl]);
 
+  // No toque, focar o campo abriria o teclado por cima da saudação e das sugestões.
   useEffect(() => {
-    if (aberto) campo.current?.focus();
+    if (!aberto) return;
+    if (window.matchMedia("(pointer: coarse)").matches) painel.current?.focus();
+    else campo.current?.focus();
   }, [aberto]);
 
   // Resposta nova abre pelo começo: em resposta longa, rolar até o fim esconderia as primeiras seções.
@@ -175,6 +179,7 @@ export default function Escriba() {
     }
   };
 
+  const areaVisivel = useAreaVisivel(aberto);
   const ultimaPergunta = [...mensagens].reverse().find((m) => m.papel === "professor")?.texto;
   const conversou = mensagens.length > 1;
 
@@ -187,16 +192,18 @@ export default function Escriba() {
           role="dialog"
           aria-modal="true"
           aria-labelledby={idTitulo}
+          tabIndex={-1}
           onKeyDown={noTeclado}
+          style={areaVisivel}
           className={cn(
-            "fixed z-[100] flex flex-col overflow-hidden bg-card",
+            "fixed z-[100] flex flex-col overflow-hidden bg-card outline-none",
             telaCheia
-              ? "inset-0 h-[100dvh] w-screen rounded-none border-0 shadow-none"
-              : "escriba-panel-floating max-h-[min(560px,calc(100dvh-120px))] w-[min(360px,calc(100vw-32px))] rounded-[20px] border border-border shadow-[0_20px_50px_rgba(0,0,0,0.5)]",
+              ? "escriba-panel-cheia"
+              : "escriba-panel-floating",
           )}
         >
           {/* Bronze claro com texto escuro: o branco sobre o degradê do protótipo fica em ~2,6:1. */}
-          <div className="flex items-center gap-3 bg-[hsl(var(--console-bronze-light))] px-[18px] py-4 text-[hsl(var(--background))]">
+          <div className="flex flex-none items-center gap-3 bg-[hsl(var(--console-bronze-light))] px-[18px] py-3 text-[hsl(var(--background))]">
             <img src={fotoDaLumi} alt="" aria-hidden="true" className="h-[38px] w-[38px] flex-none rounded-full bg-[hsl(var(--card))] object-cover ring-2 ring-black/15" />
             <div className="min-w-0 flex-1">
               <h2 id={idTitulo} className="font-['Cinzel',serif] text-sm font-bold leading-tight">
@@ -209,7 +216,7 @@ export default function Escriba() {
               onClick={() => setTelaCheia((expandida) => !expandida)}
               aria-label={telaCheia ? "Reduzir conversa" : "Expandir conversa em tela cheia"}
               title={telaCheia ? "Reduzir conversa" : "Tela cheia"}
-              className="flex h-8 w-8 flex-none items-center justify-center rounded-full hover:bg-black/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--background))]"
+              className="escriba-expandir escriba-toque flex h-8 w-8 flex-none items-center justify-center rounded-full hover:bg-black/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--background))]"
             >
               {telaCheia ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             </button>
@@ -217,13 +224,13 @@ export default function Escriba() {
               type="button"
               onClick={fechar}
               aria-label="Fechar a Lumi"
-              className="flex h-8 w-8 flex-none items-center justify-center rounded-full hover:bg-black/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--background))]"
+              className="escriba-toque flex h-8 w-8 flex-none items-center justify-center rounded-full hover:bg-black/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--background))]"
             >
               <X size={16} />
             </button>
           </div>
 
-          <div className="flex items-center gap-2 border-b border-border px-[18px] py-2.5">
+          <div className="flex flex-none items-center gap-2 border-b border-border px-[18px] py-2">
             <label htmlFor={`${idPainel}-turma`} className="text-[11.5px] text-muted-foreground">
               Turma
             </label>
@@ -232,7 +239,7 @@ export default function Escriba() {
               value={turma}
               disabled={turmas === null || pensando}
               onChange={(e) => trocarTurma(e.target.value)}
-              className="min-w-0 flex-1 truncate rounded-full border border-border bg-muted px-3 py-1.5 text-xs text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="escriba-campo-turma min-w-0 flex-1 truncate rounded-full border border-border bg-muted px-3 py-1.5 text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {turmas === null ? (
                 <option value={TODAS}>Carregando turmas…</option>
@@ -249,7 +256,7 @@ export default function Escriba() {
             </select>
           </div>
 
-          <div role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversa com a Lumi" className="flex min-h-[140px] flex-1 flex-col gap-3 overflow-y-auto px-[18px] py-4">
+          <div role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversa com a Lumi" className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain px-[18px] py-4 [overflow-wrap:anywhere]">
             {mensagens.map((m) => {
               const comSecoes = Boolean(m.secoes?.length);
               const fala = (comSecoes ? m.introducao : m.texto) ? (
@@ -351,7 +358,7 @@ export default function Escriba() {
           </div>
 
           <form
-            className="flex items-end gap-2.5 border-t border-border px-3.5 py-3"
+            className="flex flex-none items-end gap-2.5 border-t border-border px-3.5 py-3"
             onSubmit={(e) => {
               e.preventDefault();
               void enviar(pergunta);
@@ -375,13 +382,13 @@ export default function Escriba() {
                 }
               }}
               placeholder="Pergunte à Lumi…"
-              className="max-h-28 min-w-0 flex-1 resize-none rounded-[18px] border border-input bg-background px-3.5 py-[9px] text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="escriba-campo max-h-28 min-w-0 flex-1 resize-none rounded-[18px] border border-input bg-background px-3.5 py-[9px] text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <button
               type="submit"
               disabled={pensando || !pergunta.trim() || turmas === null}
               aria-label="Enviar pergunta"
-              className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[hsl(var(--console-bronze-light))] text-[hsl(var(--background))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+              className="escriba-toque flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[hsl(var(--console-bronze-light))] text-[hsl(var(--background))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             >
               <Send size={15} strokeWidth={2} />
             </button>

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { CONSOLE_SECTIONS } from "@/pages/consoleSections";
 import { ABAS_DA_ECONOMIA } from "../economia/economiaRegras";
 import { TODAS } from "./constantes";
-import { alvoNaTela, caminhoDoPasso, posicaoDoBalao, TUTORIAIS, tutorialPorId } from "./tutoriais";
+import { alvoAlternativo, alvoNaTela, caminhoDoPasso, posicaoDoBalao, TUTORIAIS, tutorialPorId } from "./tutoriais";
 
 const RAIZ = join(__dirname, "..");
 function fontes(pasta: string): string {
@@ -80,5 +80,13 @@ describe("balão", () => {
     expect(alvoNaTela({ top: 100, left: -280, width: 260, height: 40 }, tela)).toBe(false);
     expect(alvoNaTela({ top: 100, left: 0, width: 0, height: 0 }, tela)).toBe(false);
     expect(alvoNaTela({ top: 100, left: 10, width: 260, height: 40 }, tela)).toBe(true);
+  });
+});
+
+describe("alvoAlternativo", () => {
+  it("leva o item do menu em gaveta ao botão que abre a gaveta, e só ele", () => {
+    expect(alvoAlternativo("menu-trilha")).toBe("menu-gaveta");
+    expect(alvoAlternativo("menu-gaveta")).toBeNull();
+    expect(alvoAlternativo("turma-nova")).toBeNull();
   });
 });

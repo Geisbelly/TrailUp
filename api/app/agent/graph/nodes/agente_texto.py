@@ -11,7 +11,7 @@ def _fallback_texto(state: dict[str, Any]) -> dict[str, Any]:
     tipo = ui.get("tipo_modal") or "motivacional_push"
     perfis = state.get("perfil_brainhex", [])
     perfil_dom = max(perfis, key=lambda item: item.get("afinidade", 0))["perfil"] if perfis else "Achiever"
-    emocao = (state.get("emocao_atual") or {}).get("emocao_primaria", "concentrado")
+    emocao = (state.get("emocao_atual") or {}).get("emocao_primaria")
 
     templates = {
         "suporte": ("Respire e avance", "Vamos quebrar este passo em partes menores para voce retomar com seguranca."),
@@ -19,8 +19,14 @@ def _fallback_texto(state: dict[str, Any]) -> dict[str, Any]:
         "dica": ("Dica do momento", "Use um exemplo pratico curto antes de seguir para a proxima atividade."),
         "desafio": ("Novo desafio", "Voce esta pronto para subir o nivel e testar essa habilidade agora."),
     }
-    titulo, corpo = templates.get(tipo, ("Continue", "Seu proximo passo ja esta preparado para voce."))
-    corpo = f"{corpo} Perfil dominante: {perfil_dom}. Estado atual: {emocao}."
+    titulo, corpo = templates.get(
+        tipo,
+        ("Mensagem do TrailUp", "Continue no seu ritmo e avance para a proxima etapa."),
+    )
+    if emocao:
+        corpo = f"{corpo} Perfil dominante: {perfil_dom}. Estado atual: {emocao}."
+    else:
+        corpo = f"{corpo} Perfil dominante: {perfil_dom}."
     return {"titulo": titulo, "corpo": corpo, "emoji": None}
 
 

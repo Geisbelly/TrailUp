@@ -74,6 +74,7 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         <button
           type="button"
           className="console-mobile-menu-toggle"
+          data-tutorial="menu-gaveta"
           aria-label={menuAberto ? "Fechar menu de navegação" : "Abrir menu de navegação"}
           aria-expanded={menuAberto}
           aria-controls="console-sections-navigation"

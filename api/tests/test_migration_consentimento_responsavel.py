@@ -32,6 +32,17 @@ def _modulo():
 
 M = _modulo()
 
+def _modulo_vigente():
+    path = API_ROOT / "alembic" / "versions" / "20261105_30_consentimento_responsavel_v2.py"
+    spec = importlib.util.spec_from_file_location("m_20261105_30_consentimento_v2_atual", path)
+    assert spec and spec.loader
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    return modulo
+
+
+VIGENTE = _modulo_vigente()
+
 
 def _config(output: StringIO | None = None) -> Config:
     config = Config(str(API_ROOT / "alembic.ini"), output_buffer=output)
@@ -172,5 +183,5 @@ def test_versoes_espelhadas_nos_clientes(arquivo: tuple[str, ...]) -> None:
     # O banco recusa versao diferente da vigente; cliente com string velha
     # nao consegue registrar aceite nenhum.
     ts = REPO_ROOT.joinpath(*arquivo).read_text(encoding="utf-8")
-    assert f'"{M.VERSAO_RESPONSAVEL}"' in ts
+    assert f'"{VIGENTE.VERSAO_NOVA}"' in ts
     assert f'"{M.VERSAO_PESQUISA}"' in ts
