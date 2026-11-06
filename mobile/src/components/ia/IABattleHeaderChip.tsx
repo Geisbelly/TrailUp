@@ -28,7 +28,7 @@ type Props = {
   topicoId?: number | null;
   itemKey?: string | null;
   /** "painel": o IABattlePanel direto, sem chip nem janela (coluna lateral do Tópico na web em tela larga, #346). */
-  variante?: "chip" | "painel";
+  variante?: "chip" | "painel" | "linha";
 };
 
 function formatBattleDate(value?: number | null) {
@@ -208,7 +208,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
     resolvedBattle?.battle?.timing?.encounterDurationSec ?? null
   );
 
-  return (
+  const chipComFala = (
     <>
       <BossFala topicoId={topicoId} itemKey={chaveDoConfronto} arte={bossArt} palette={palette} flutuante />
       <Pressable
@@ -423,10 +423,14 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
       </Modal>
     </>
   );
+
+  // A margem fica aqui, depois das saídas sem batalha: sem chip, a linha não ocupa espaço.
+  return variante === "linha" ? <View style={styles.linha}>{chipComFala}</View> : chipComFala;
 }
 
 const styles = StyleSheet.create({
   painelComFala: { gap: 8 },
+  linha: { marginHorizontal: 12, marginVertical: 6 },
   pausada: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 8 },
   pausadaTitulo: { flexDirection: "row", alignItems: "center", gap: 8 },
   pausadaTituloTexto: { fontFamily: FontFamily.interMedium, fontSize: 15, fontWeight: "700" },
