@@ -4,7 +4,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { IAFeatureSelectorScope } from "@/interfaces/personalizacao/IAContracts";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { batalhaPausadaPeloEstado } from "@/utils/batalhaRegras";
-import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -103,10 +103,7 @@ export function IABattleHeaderChip({ topicoId = null, itemKey = null, variante =
   const insets = useSafeAreaInsets();
   const { getBattleState, resolveFeature } = useIA();
   const { usuario } = useUsuario();
-  const profileName = resolveActiveBrainHexProfile(
-    usuario?.perfis ?? null,
-    usuario?.perfilAtivo,
-  );
+  const profileName = perfilVisualDoAluno(usuario);
   const hasBattleSignal = getBrainHexProfileCapabilities(profileName).hasBattle;
   const palette = useMemo(() => getProfileShellPalette(profileName), [profileName]);
 

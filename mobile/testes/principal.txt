@@ -56,6 +56,7 @@ src/services/telemetriaPayload.test.ts
 src/utils/audioImageCues.test.ts
 src/utils/brainHexCapabilities.test.ts
 src/utils/brainHexRepresentative.test.ts
+src/utils/brainHexContaDemonstracao.test.ts
 src/utils/cameraDesligadaPorPadrao.test.ts
 src/utils/classeMetrics.canonicalProgress.test.ts
 src/utils/classeResumo.camelCase.test.ts
