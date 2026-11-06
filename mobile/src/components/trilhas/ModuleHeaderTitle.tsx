@@ -21,6 +21,7 @@ import {
   Modal,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -219,7 +220,7 @@ export function ModuleHeaderTitle({
 
   return (
     <>
-      <View style={[styles.container, { maxWidth: larguraMaxima }]}>
+      <View style={[styles.container, { maxWidth: larguraMaxima }, Platform.OS === "android" && styles.containerAndroid]}>
         <View style={styles.copy}>
           <Text
             style={[styles.title, { color: palette.text }]}
@@ -448,7 +449,8 @@ function GuideModalContent({
         }
         const padding = 6;
         setMeasuredSpotlight({
-          top: Math.max(0, y - padding),
+          // No Android, measureInWindow desconta a barra de status; o Modal desenha a partir dela.
+          top: Math.max(0, y + (Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0) - padding),
           left: Math.max(0, x - padding),
           width: Math.min(screenWidth, width + padding * 2),
           height: Math.min(screenHeight, height + padding * 2),
@@ -898,6 +900,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+  },
+  // No Android quem corta o título é o cabeçalho nativo, rente ao cronômetro (2 dp no Pixel 4).
+  containerAndroid: {
+    paddingRight: 12,
   },
   copy: {
     flexShrink: 1,
