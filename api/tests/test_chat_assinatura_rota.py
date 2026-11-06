@@ -105,3 +105,30 @@ def test_pergunta_de_navegacao_nao_chama_o_modelo_e_sai_assinada(app, monkeypatc
     assert resposta["tutorial"] == "gastar_moedas"
     assert resposta["assinatura"]
     assert registrar.await_args.kwargs["provider"] == "regra"
+
+
+def test_rota_do_mentor_envia_contexto_real_da_personalizacao(app, monkeypatch) -> None:
+    pedidos = _preparar(app, monkeypatch, [ALUNO])
+    registro = {
+        "id": 77,
+        "brainhex_profile_key": "survivor",
+        "formato_prioritario": "cards",
+        "formatos_gerados": ["cards", "markdown"],
+        "plano": {"justificativa": "Você aprende com etapas curtas."},
+    }
+    monkeypatch.setattr(
+        ConteudoPersonalizadoRepository,
+        "buscar_por_aluno",
+        AsyncMock(return_value=[registro]),
+    )
+
+    with TestClient(app) as client:
+        resposta = client.post("/api/v1/personalizar/chat", json=_pedido([]))
+
+    assert resposta.status_code == 200, resposta.text
+    assert pedidos[-1]["contexto_personalizacao"] == {
+        "perfil": "survivor",
+        "formato_prioritario": "cards",
+        "formatos_disponiveis": ["cards", "markdown"],
+        "justificativa": "Você aprende com etapas curtas.",
+    }

@@ -76,7 +76,8 @@ com acerto ou engajamento pior que outro):
 
 1. Mude a ordem do perfil em `_PROFILE_FORMAT_PREFERENCES`
    (`api/app/services/personalizacao.py`). É ela que define o `formato_prioritario` no plano de
-   reserva e reordena o plano gerado pelo modelo. Confira também `_PESOS_POR_PERFIL`
+   reserva, reordena o plano gerado pelo modelo e a sequência de `steps` entregue ao aluno. Para
+   registros legados sem perfil, `formato_prioritario` vem primeiro. Confira também `_PESOS_POR_PERFIL`
    (`api/app/services/sugestao_material.py`), a outra tabela por perfil que ainda não foi calibrada.
 2. No PR, anexe a resposta da RPC (sem nada que identifique aluno), as turmas e a janela.
 3. **Não** suba `_PERSONALIZACAO_PIPELINE_VERSION`. A ordem só muda o plano dos próximos ciclos, e

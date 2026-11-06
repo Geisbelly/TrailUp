@@ -4251,15 +4251,29 @@ def build_personalizacao_steps(record: dict[str, Any]) -> list[dict[str, Any]]:
     plano = record.get("plano") if isinstance(record.get("plano"), dict) else {}
     topico_id = record.get("topico_id")
     content_id = record.get("conteudo_id")
-    ordered_formats = [
-        *[str(item).strip().lower() for item in (record.get("formatos_gerados") or []) if str(item).strip()],
-        str(record.get("formato_prioritario") or "").strip().lower(),
+    generated_formats = [
+        str(item).strip().lower() for item in (record.get("formatos_gerados") or []) if str(item).strip()
     ]
-    seen_formats: set[str] = set()
-    formatos = [item for item in ordered_formats if item and not (item in seen_formats or seen_formats.add(item))]
-    if not formatos:
-        formatos = [item for item in materiais.keys() if materiais.get(item)]
+    if not generated_formats:
+        generated_formats = [item for item in materiais if materiais.get(item)]
+    preferred_format = str(record.get("formato_prioritario") or "").strip().lower()
+    if preferred_format and preferred_format not in generated_formats:
+        generated_formats.append(preferred_format)
 
+    profile = _normalize_profile_label(
+        record.get("brainhex_profile_key")
+        or plano.get("perfil_dominante")
+        or plano.get("perfil")
+    )
+    if profile:
+        formatos = _ordenar_formatos_por_perfil(generated_formats, profile)
+    elif preferred_format:
+        formatos = [preferred_format, *(item for item in generated_formats if item != preferred_format)]
+    else:
+        formatos = generated_formats
+
+    seen_formats: set[str] = set()
+    formatos = [item for item in formatos if item and not (item in seen_formats or seen_formats.add(item))]
     steps: list[dict[str, Any]] = []
     ordem = 0
 

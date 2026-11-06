@@ -263,6 +263,7 @@ async def checar_grounding_chat(
                 # Sem o guia, explicar a Loja viraria "fora da base do tópico".
                 "guia_do_app": contexto.get("guia_do_app", ""),
                 "conteudo_materia": contexto.get("conteudo_materia", {}),
+                "contexto_personalizacao": contexto.get("contexto_personalizacao", {}),
                 # Por último, porque é o que muda: o cache só vale até a primeira diferença.
                 # As seções também vão ao aluno: um gabarito ali passaria sem o juiz ver.
                 "resposta": "\n\n".join(
