@@ -6,6 +6,7 @@ import {
 } from "@/constants/profileImages";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { FramedProfileImage } from "@/components/FramedProfileImage";
+import { larguraMaximaDoTitulo } from "@/utils/cabecalhoDoTopico";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import {
@@ -181,9 +182,8 @@ export function ModuleHeaderTitle({
   perfis,
 }: Props) {
   const [open, setOpen] = useState(false);
-  // Seta à esquerda (~56) + cronômetro e guia à direita (~150): o título lê só no que sobra.
   const { width: larguraTela } = useWindowDimensions();
-  const larguraMaxima = Math.min(276, Math.max(120, larguraTela - 260));
+  const larguraMaxima = larguraMaximaDoTitulo(larguraTela);
   const normalizedProfile = useMemo(
     () => normalizeBrainHexProfile(profile) ?? "mastermind",
     [profile],
@@ -897,13 +897,11 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: 10,
-    maxWidth: 276,
   },
   copy: {
     flexShrink: 1,
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 1,
   },
   title: {
