@@ -8,6 +8,9 @@ import type { Classe } from "@/models/Classe";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { porcentagemDaTurma } from "@/utils/progressoDaTurma";
+import { ProfessorDaTurma } from "@/components/social/ProfessorDaTurma";
+import { ProfessorProfileModal } from "@/components/social/ProfessorProfileModal";
+import { rotuloDaTurma } from "@/utils/rotuloDaTurma";
 
 type Props = {
   classes: Classe[];
@@ -28,6 +31,7 @@ type Props = {
 export default function SelecionarTurmaScreen({ classes, carregando, erro, perfil, onSelect, onRetry, onRetryTurma }: Props) {
   const palette = getProfileShellPalette(perfil);
   const [saindo, setSaindo] = useState(false);
+  const [perfilDaTurma, setPerfilDaTurma] = useState<number | null>(null);
   const [tentando, setTentando] = useState<number[]>([]);
 
   const tentarTurma = async (classeId: number) => {
@@ -90,8 +94,7 @@ export default function SelecionarTurmaScreen({ classes, carregando, erro, perfi
         ) : (
           <View style={styles.list}>
             {classes.map((classe) => {
-              const materia = classe.resumo?.materia_nome || "Turma";
-              const professor = classe.resumo?.professor_nome;
+              const { materia, titulo, professor, descricaoAcessivel } = rotuloDaTurma(classe.resumo);
               if (classe.detalheErro) {
                 // Só esta turma não carregou: as outras seguem na lista e esta tem a própria nova tentativa.
                 const emTentativa = tentando.includes(classe.classe_id);
@@ -100,10 +103,11 @@ export default function SelecionarTurmaScreen({ classes, carregando, erro, perfi
                     <View style={[styles.materia, { backgroundColor: palette.accentMuted, borderColor: palette.accentSoft }]}>
                       <Text style={[styles.materiaTexto, { color: palette.accent }]}>{materia.toUpperCase()}</Text>
                     </View>
-                    <Text style={[styles.cardTitle, { color: palette.text }]}>{materia}</Text>
-                    <Text style={[styles.professor, { color: palette.textMuted }]}>
-                      {professor ? `Prof. ${professor} · ` : ""}Turma {classe.classe_id}
-                    </Text>
+                    <Text style={[styles.cardTitle, { color: palette.text }]}>{titulo}</Text>
+                    {professor ? (
+                      <ProfessorDaTurma professor={professor} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} onPress={() => setPerfilDaTurma(classe.classe_id)} />
+                    ) : null}
+                    <Text style={[styles.professor, { color: palette.textMuted }]}>Turma {classe.classe_id}</Text>
                     <View style={styles.avisoTurma}>
                       <MaterialCommunityIcons name="alert-circle-outline" size={18} color={palette.textMuted} />
                       <Text accessibilityRole="alert" style={[styles.professor, styles.avisoTurmaTexto, { color: palette.textMuted }]}>
@@ -126,33 +130,42 @@ export default function SelecionarTurmaScreen({ classes, carregando, erro, perfi
               }
               const progresso = porcentagemDaTurma(classe);
               return (
-                <Pressable
+                <View
                   key={classe.classe_id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Entrar em ${materia}, turma ${classe.classe_id}${professor ? `, professor ${professor}` : ""}, ${progresso}% concluído`}
-                  disabled={saindo}
-                  onPress={() => onSelect(classe.classe_id)}
-                  style={({ pressed }) => [styles.card, {
-                    backgroundColor: pressed ? palette.surfaceElevated : palette.surface,
-                    borderColor: pressed ? palette.accent : palette.border,
-                    opacity: saindo ? 0.5 : 1,
-                  }]}
+                  style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border, opacity: saindo ? 0.5 : 1 }]}
                 >
-                  <View style={[styles.materia, { backgroundColor: palette.accentMuted, borderColor: palette.accentSoft }]}>
-                    <Text style={[styles.materiaTexto, { color: palette.accent }]}>{materia.toUpperCase()}</Text>
-                  </View>
-                  <Text style={[styles.cardTitle, { color: palette.text }]}>{materia}</Text>
-                  <Text style={[styles.professor, { color: palette.textMuted }]}>
-                    {professor ? `Prof. ${professor} · ` : ""}Turma {classe.classe_id}
-                  </Text>
-                  <View style={[styles.trilho, { backgroundColor: palette.background, borderColor: palette.border }]}>
-                    <View style={[styles.preenchido, { width: `${progresso}%`, backgroundColor: palette.accent }]} />
-                  </View>
-                  <Text style={[styles.progresso, { color: palette.textMuted }]}>{progresso}% concluído</Text>
-                  <View style={[styles.entrar, { borderColor: palette.accent }]}>
-                    <Text style={[styles.entrarTexto, { color: palette.text }]}>Entrar na turma</Text>
-                  </View>
-                </Pressable>
+                  {/* O nome do professor abre o perfil, então não pode ficar dentro do botão de entrar:
+                      um botão que envolve outro esconde o de dentro do leitor de tela. */}
+                  <Pressable accessible={false} disabled={saindo} onPress={() => onSelect(classe.classe_id)} style={styles.cabecalhoDoCard}>
+                    <View style={[styles.materia, { backgroundColor: palette.accentMuted, borderColor: palette.accentSoft }]}>
+                      <Text style={[styles.materiaTexto, { color: palette.accent }]}>{materia.toUpperCase()}</Text>
+                    </View>
+                    <Text style={[styles.cardTitle, { color: palette.text }]}>{titulo}</Text>
+                  </Pressable>
+                  {professor ? (
+                    <ProfessorDaTurma professor={professor} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} onPress={() => setPerfilDaTurma(classe.classe_id)} />
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Entrar em ${descricaoAcessivel}, turma ${classe.classe_id}${professor ? `, professor ${professor}` : ""}, ${progresso}% concluído`}
+                    disabled={saindo}
+                    onPress={() => onSelect(classe.classe_id)}
+                    style={styles.corpoDoCard}
+                  >
+                    {({ pressed }) => (
+                      <>
+                        <Text style={[styles.professor, { color: palette.textMuted }]}>Turma {classe.classe_id}</Text>
+                        <View style={[styles.trilho, { backgroundColor: palette.background, borderColor: palette.border }]}>
+                          <View style={[styles.preenchido, { width: `${progresso}%`, backgroundColor: palette.accent }]} />
+                        </View>
+                        <Text style={[styles.progresso, { color: palette.textMuted }]}>{progresso}% concluído</Text>
+                        <View style={[styles.entrar, { borderColor: palette.accent, backgroundColor: pressed ? palette.surfaceElevated : "transparent" }]}>
+                          <Text style={[styles.entrarTexto, { color: palette.text }]}>Entrar na turma</Text>
+                        </View>
+                      </>
+                    )}
+                  </Pressable>
+                </View>
               );
             })}
           </View>
@@ -187,6 +200,9 @@ export default function SelecionarTurmaScreen({ classes, carregando, erro, perfi
         </Pressable>
         {erroSaida ? <Text accessibilityRole="alert" style={[styles.description, { color: palette.text }]}>{erroSaida}</Text> : null}
       </ScrollView>
+      {perfilDaTurma !== null ? (
+        <ProfessorProfileModal classeId={perfilDaTurma} accent={palette.accent} onClose={() => setPerfilDaTurma(null)} />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -201,6 +217,8 @@ const styles = StyleSheet.create({
   feedback: { alignItems: "center", gap: 16, paddingVertical: 28 },
   list: { gap: 12 },
   card: { borderWidth: 1, borderRadius: 14, padding: 16, gap: 8 },
+  cabecalhoDoCard: { gap: 8 },
+  corpoDoCard: { gap: 8 },
   materia: { alignSelf: "flex-start", borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
   materiaTexto: { fontFamily: FontFamily.interMedium, fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
   cardTitle: { fontFamily: FontFamily.inikaBold, fontSize: 20 },
