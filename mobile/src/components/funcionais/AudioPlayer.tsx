@@ -18,7 +18,9 @@ import {
   segundosDeMillis,
   type EstadoDeReproducao,
 } from "@/utils/estadoDeAudio";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { criarControleDeAudio, tocandoSegundoOStatus } from "@/utils/controleDeAudio";
+import { usePausarAoSairDaTela } from "@/hooks/usePausarAoSairDaTela";
+import React,{ useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -96,11 +98,6 @@ export default function AudioPlayer({
     [perfilDoMaterial]
   );
   const sourceUrl = String(url ?? "").trim();
-  const soundRef = useRef<TocadorDeAudio | null>(null);
-  // A assinatura do listener tem de ser guardada: `expo-audio` não tem o
-  // `setOnPlaybackStatusUpdate(null)` do `expo-av`, e listener que sobrevive ao player chama
-  // `setPlayback` depois de a tela sair.
-  const statusSubRef = useRef<{ remove: () => void } | null>(null);
   const resumePositionRef = useRef(0);
   const resumeLoadRef = useRef<Promise<number>>(Promise.resolve(0));
   const lastPersistedAtRef = useRef(0);
@@ -119,6 +116,9 @@ export default function AudioPlayer({
   const velocidadeRef = useRef(1);
   velocidadeRef.current = velocidade;
   const [playback, setPlayback] = useState<PlaybackState>(AUDIO_PARADO);
+  // O que o aluno pediu, que é o que o botão mostra. `playback.isPlaying` fica falso enquanto
+  // carrega, e o botão não pode voltar a "reproduzir" com o áudio prestes a sair.
+  const [querTocar, setQuerTocar] = useState(false);
   const resumeStorageKey = useMemo(
     () => buildContentResumeKey(usuario?.id, "audio", progressKey ?? sourceUrl),
     [progressKey, sourceUrl, usuario?.id]
@@ -133,6 +133,87 @@ export default function AudioPlayer({
     [resumeStorageKey]
   );
 
+  const playbackUrl = resolvedUrl;
+  // O controle vive enquanto o componente viver; o que muda entre renders ele lê por aqui.
+  const fonteRef = useRef({ playbackUrl, persistPosition });
+  fonteRef.current = { playbackUrl, persistPosition };
+
+  // A regra de quando o som para está em `controleDeAudio`, com teste.
+  const [controle] = useState(() =>
+    criarControleDeAudio({
+      preparar: async () => {
+        await resumeLoadRef.current;
+        // Os nomes do modo de áudio mudaram no `expo-audio` (`allowsRecordingIOS` ->
+        // `allowsRecording`, `playsInSilentModeIOS` -> `playsInSilentMode`,
+        // `staysActiveInBackground` -> `shouldPlayInBackground`, `shouldDuckAndroid` ->
+        // `interruptionMode`). Chave antiga é ignorada em silêncio, então tocar com a tela
+        // bloqueada ou em modo silencioso pararia de funcionar sem erro nenhum.
+        // O modo de áudio é do aparelho: silencioso, gravação, segundo plano, duck. Na web nada
+        // disso existe — quem decide é o navegador — e o ramo web do `expo-audio` não é usado
+        // aqui, então chamar isto só adicionaria um await que pode rejeitar à toa.
+        if (Platform.OS !== "web") {
+          await setAudioModeAsync({
+            allowsRecording: false,
+            playsInSilentMode: true,
+            shouldPlayInBackground: false,
+            interruptionMode: "duckOthers",
+          });
+        }
+      },
+      instanciar: (): TocadorDeAudio => {
+        const url = fonteRef.current.playbackUrl;
+        if (!url) throw new Error("Áudio sem URL.");
+        // `createAudioPlayer` é síncrono e carrega em segundo plano — não há mais um `status`
+        // inicial para semear a tela. Quem preenche é o listener abaixo; até lá o estado fica
+        // `AUDIO_PARADO`, que é o mesmo que o `expo-av` reportava enquanto `isLoaded` era falso.
+        // Na web o tocador é o `<audio>` do HTML por trás do mesmo contrato (ver
+        // `tocadorDeAudioWeb`): a tela acima é uma só, no padrão do sistema, nas duas
+        // plataformas.
+        return Platform.OS === "web"
+          ? criarTocadorDeAudioWeb(url)
+          : createAudioPlayer({ uri: url }, { updateInterval: 350 });
+      },
+      configurar: async (sound) => {
+        // O tocador nasce em 1×: reaplica a velocidade que o aluno já escolheu.
+        if (velocidadeRef.current !== 1) sound.setPlaybackRate(velocidadeRef.current);
+
+        const restoredPosition = await resumeLoadRef.current;
+        if (restoredPosition > 0) {
+          try {
+            await sound.seekTo(segundosDeMillis(restoredPosition));
+          } catch {}
+        }
+      },
+      assinar: (sound, controleDoSom) =>
+        sound.addListener("playbackStatusUpdate", (nextStatus) => {
+          const normalized = estadoDeAudio(nextStatus);
+          setPlayback(normalized);
+          if (nextStatus.isLoaded && nextStatus.didJustFinish) {
+            fonteRef.current.persistPosition(0);
+            controleDoSom.terminou();
+            return;
+          }
+          controleDoSom.sincronizar(tocandoSegundoOStatus(nextStatus));
+          if (nextStatus.isLoaded) {
+            resumePositionRef.current = normalized.positionMillis;
+            const now = Date.now();
+            if (!normalized.isPlaying || now - lastPersistedAtRef.current >= 2000) {
+              lastPersistedAtRef.current = now;
+              fonteRef.current.persistPosition(normalized.positionMillis);
+            }
+          }
+        }),
+      aoMudarIntencao: setQuerTocar,
+      aoCarregar: (carregando) => {
+        setLoadingAudio(carregando);
+        if (carregando) setFailed(false);
+      },
+      aoFalhar: () => setFailed(true),
+    })
+  );
+
+  usePausarAoSairDaTela(controle.pausar);
+
   useEffect(() => {
     let active = true;
     resumePositionRef.current = 0;
@@ -141,12 +222,12 @@ export default function AudioPlayer({
       if (!active) return;
       resumePositionRef.current = restored;
       setPlayback((current) => ({ ...current, positionMillis: resumePositionRef.current }));
-      if (soundRef.current) void soundRef.current.seekTo(segundosDeMillis(resumePositionRef.current));
+      void controle.tocador()?.seekTo(segundosDeMillis(resumePositionRef.current));
       return restored;
     });
     resumeLoadRef.current = request.then((value) => value ?? 0);
     return () => { active = false; };
-  }, [resumeStorageKey]);
+  }, [controle, resumeStorageKey]);
 
   // Troca a imagem exibida conforme a posicao de reproducao cruza os cues
   // (minutagem ESTIMADA por proporcao de texto, ver computeImageCues no
@@ -186,19 +267,6 @@ export default function AudioPlayer({
     return () => { active = false; };
   }, [bucketHint, capaUrl, imageCues]);
 
-  const unloadSound = useCallback(async () => {
-    const currentSound = soundRef.current;
-    soundRef.current = null;
-
-    if (!currentSound) return;
-
-    statusSubRef.current?.remove();
-    statusSubRef.current = null;
-    try {
-      currentSound.remove();
-    } catch {}
-  }, []);
-
   useEffect(() => {
     let active = true;
 
@@ -223,7 +291,7 @@ export default function AudioPlayer({
       durationMillis: 0,
       positionMillis: 0,
     });
-    void unloadSound();
+    controle.encerrar();
 
     resolveSupabaseStorageUrl(sourceUrl, { bucket: bucketHint })
       .then((nextUrl) => {
@@ -247,127 +315,33 @@ export default function AudioPlayer({
     return () => {
       active = false;
     };
-  }, [bucketHint, sourceUrl, unloadSound]);
+  }, [bucketHint, controle, sourceUrl]);
 
   useEffect(() => {
     return () => {
       persistPosition(resumePositionRef.current);
-      void unloadSound();
+      controle.encerrar();
     };
-  }, [persistPosition, unloadSound]);
-
-  const playbackUrl = resolvedUrl;
-
-  const ensureSound = useCallback(
-    async (shouldPlay: boolean) => {
-      if (!playbackUrl) return null;
-
-      if (soundRef.current) {
-        // `play()` do `expo-audio` é síncrono (o `expo-av` devolvia Promise).
-        if (shouldPlay) soundRef.current.play();
-        return soundRef.current;
-      }
-
-      setLoadingAudio(true);
-      setFailed(false);
-
-      try {
-        const restoredPosition = await resumeLoadRef.current;
-        // Os nomes do modo de áudio mudaram no `expo-audio` (`allowsRecordingIOS` ->
-        // `allowsRecording`, `playsInSilentModeIOS` -> `playsInSilentMode`,
-        // `staysActiveInBackground` -> `shouldPlayInBackground`, `shouldDuckAndroid` ->
-        // `interruptionMode`). Chave antiga é ignorada em silêncio, então tocar com a tela
-        // bloqueada ou em modo silencioso pararia de funcionar sem erro nenhum.
-        // O modo de áudio é do aparelho: silencioso, gravação, segundo plano, duck. Na web nada
-        // disso existe — quem decide é o navegador — e o ramo web do `expo-audio` não é usado
-        // aqui, então chamar isto só adicionaria um await que pode rejeitar à toa.
-        if (Platform.OS !== "web") {
-          await setAudioModeAsync({
-            allowsRecording: false,
-            playsInSilentMode: true,
-            shouldPlayInBackground: false,
-            interruptionMode: "duckOthers",
-          });
-        }
-
-        // `createAudioPlayer` é síncrono e carrega em segundo plano — não há mais um `status`
-        // inicial para semear a tela. Quem preenche é o listener abaixo; até lá o estado fica
-        // `AUDIO_PARADO`, que é o mesmo que o `expo-av` reportava enquanto `isLoaded` era falso.
-        // Na web o tocador é o `<audio>` do HTML por trás do mesmo contrato (ver
-        // `tocadorDeAudioWeb`): a tela acima é uma só, no padrão do sistema, nas duas
-        // plataformas.
-        const sound: TocadorDeAudio =
-          Platform.OS === "web"
-            ? criarTocadorDeAudioWeb(playbackUrl)
-            : createAudioPlayer({ uri: playbackUrl }, { updateInterval: 350 });
-        soundRef.current = sound;
-        // O tocador nasce em 1×: reaplica a velocidade que o aluno já escolheu.
-        if (velocidadeRef.current !== 1) sound.setPlaybackRate(velocidadeRef.current);
-
-        if (restoredPosition > 0) {
-          try {
-            await sound.seekTo(segundosDeMillis(restoredPosition));
-          } catch {}
-        }
-
-        statusSubRef.current = sound.addListener("playbackStatusUpdate", (nextStatus) => {
-          const normalized = estadoDeAudio(nextStatus);
-          setPlayback(normalized);
-          if (nextStatus.isLoaded && nextStatus.didJustFinish) {
-            persistPosition(0);
-            void sound.seekTo(0);
-          } else if (nextStatus.isLoaded) {
-            resumePositionRef.current = normalized.positionMillis;
-            const now = Date.now();
-            if (!normalized.isPlaying || now - lastPersistedAtRef.current >= 2000) {
-              lastPersistedAtRef.current = now;
-              persistPosition(normalized.positionMillis);
-            }
-          }
-        });
-
-        if (shouldPlay) sound.play();
-
-        return sound;
-      } catch {
-        setFailed(true);
-        return null;
-      } finally {
-        setLoadingAudio(false);
-      }
-    },
-    [persistPosition, playbackUrl]
-  );
+  }, [controle, persistPosition]);
 
   const handleTogglePlayback = useCallback(async () => {
     if (!playbackUrl) return;
-
-    if (!soundRef.current) {
-      await ensureSound(true);
-      return;
-    }
-
-    if (playback.isPlaying) {
-      soundRef.current.pause();
-      return;
-    }
-
-    soundRef.current.play();
-  }, [ensureSound, playback.isPlaying, playbackUrl]);
+    await controle.alternar();
+  }, [controle, playbackUrl]);
 
   const trocarVelocidade = useCallback(() => {
     const proxima = proximaVelocidade(velocidade);
     setVelocidade(proxima);
-    soundRef.current?.setPlaybackRate(proxima);
-  }, [velocidade]);
+    controle.tocador()?.setPlaybackRate(proxima);
+  }, [controle, velocidade]);
 
   const handleRestart = useCallback(async () => {
-    const sound = await ensureSound(false);
-    if (!sound) return;
-    await sound.seekTo(0);
-    persistPosition(0);
-    sound.play();
-  }, [ensureSound, persistPosition]);
+    if (!playbackUrl) return;
+    await controle.tocar(async (sound) => {
+      await sound.seekTo(0);
+      persistPosition(0);
+    });
+  }, [controle, persistPosition, playbackUrl]);
 
   const seekToRatio = useCallback(async (ratio: number, persist = false) => {
     const duration = playback.durationMillis;
@@ -375,10 +349,10 @@ export default function AudioPlayer({
     const nextPosition = Math.max(0, Math.min(duration, Math.round(duration * ratio)));
     setPlayback((current) => ({ ...current, positionMillis: nextPosition }));
     resumePositionRef.current = nextPosition;
-    const sound = await ensureSound(false);
+    const sound = await controle.obter();
     await sound?.seekTo(segundosDeMillis(nextPosition));
     if (persist) persistPosition(nextPosition);
-  }, [ensureSound, persistPosition, playback.durationMillis]);
+  }, [controle, persistPosition, playback.durationMillis]);
 
   const seekFromLocation = useCallback((locationX: number, commit = false) => {
     const ratio = locationX / Math.max(1, progressWidthRef.current);
@@ -445,13 +419,13 @@ export default function AudioPlayer({
             ]}
             disabled={resolvingUrl || loadingAudio || !playbackUrl}
             accessibilityRole="button"
-            accessibilityLabel={playback.isPlaying ? "Pausar áudio" : "Reproduzir áudio"}
+            accessibilityLabel={querTocar ? "Pausar áudio" : "Reproduzir áudio"}
           >
             {resolvingUrl || loadingAudio ? (
               <ActivityIndicator size="small" color={palette.background} />
             ) : (
               <Ionicons
-                name={playback.isPlaying ? "pause" : "play"}
+                name={querTocar ? "pause" : "play"}
                 size={20}
                 color={palette.background}
               />
@@ -464,7 +438,7 @@ export default function AudioPlayer({
                 ? "Não foi possível reproduzir o áudio."
                 : resolvingUrl
                 ? "Preparando áudio..."
-                : playback.isPlaying
+                : querTocar
                 ? "Reproduzindo"
                 : playback.isLoaded
                 ? "Pronto para ouvir"

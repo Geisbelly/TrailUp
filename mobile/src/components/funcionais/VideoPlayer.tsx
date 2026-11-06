@@ -7,7 +7,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { VideoView, useVideoPlayer } from "expo-video";
 
 import { millisDeSegundos, segundosDeMillis } from "@/utils/estadoDeAudio";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { assumirReproducao, soltarReproducao, type DonoDaReproducao } from "@/utils/controleDeAudio";
+import { usePausarAoSairDaTela } from "@/hooks/usePausarAoSairDaTela";
+import React,{ useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -89,6 +91,12 @@ export default function VideoPlayer({
     // que o `expo-av` usava — mudar isso muda a granularidade da telemetria de escuta.
     instancia.timeUpdateEventInterval = 0.35;
   });
+  const pausarVideo = useCallback(() => {
+    try {
+      player?.pause();
+    } catch {}
+  }, [player]);
+  usePausarAoSairDaTela(pausarVideo);
   // A retomada é aplicada UMA vez por player: `currentTime` antes do carregamento é ignorado,
   // então o seek espera o status `readyToPlay`.
   const retomadaAplicadaRef = useRef(false);
@@ -202,6 +210,8 @@ export default function VideoPlayer({
   useEffect(() => {
     if (!player) return;
     retomadaAplicadaRef.current = false;
+    // Vídeo e áudio dividem a mesma regra: quem começa a tocar cala o outro.
+    const dono: DonoDaReproducao = { pausar: pausarVideo };
 
     const assinaturas = [
       player.addListener("timeUpdate", ({ currentTime }) => {
@@ -217,7 +227,12 @@ export default function VideoPlayer({
       }),
       player.addListener("playingChange", ({ isPlaying: tocando }) => {
         setIsPlaying(tocando);
-        if (tocando) setAssistido(false);
+        if (tocando) {
+          setAssistido(false);
+          assumirReproducao(dono);
+        } else {
+          soltarReproducao(dono);
+        }
       }),
       player.addListener("playToEnd", () => {
         persistPosition(0);
@@ -233,8 +248,11 @@ export default function VideoPlayer({
       }),
     ];
 
-    return () => assinaturas.forEach((assinatura) => assinatura.remove());
-  }, [persistPosition, player]);
+    return () => {
+      assinaturas.forEach((assinatura) => assinatura.remove());
+      soltarReproducao(dono);
+    };
+  }, [pausarVideo, persistPosition, player]);
 
   const seekToLocation = useCallback(async (locationX: number, commit = false) => {
     if (!durationMs) return;
