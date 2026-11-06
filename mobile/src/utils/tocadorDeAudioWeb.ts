@@ -27,12 +27,17 @@
 
 /** O pedaço do player do `expo-audio` que o `AudioPlayer` realmente usa. */
 export type TocadorDeAudioMinimo = {
+  /** O estado real, lido na hora. O último status pode estar atrasado. */
+  readonly playing: boolean;
   play: () => void;
   pause: () => void;
   seekTo: (segundos: number) => Promise<void> | void;
   /** 1 = normal. No `expo-audio` é `setPlaybackRate`; na web, o `playbackRate` do elemento. */
   setPlaybackRate: (velocidade: number) => void;
+  /** No nativo isto NÃO para o som. Para encerrar, use `encerrarTocador` (`controleDeAudio`). */
   remove: () => void;
+  /** Do `SharedObject` do nativo: é ele que pausa e solta o player. Não existe na web. */
+  release?: () => void;
   addListener: (
     evento: "playbackStatusUpdate",
     ouvinte: (status: StatusDeReproducao) => void
@@ -108,6 +113,9 @@ export function criarTocadorDeAudioWeb(
   }
 
   return {
+    get playing() {
+      return !elemento.paused;
+    },
     play: () => {
       // O navegador rejeita a promessa quando falta gesto do usuário. Quem chama já veio de um
       // toque no botão; engolir aqui evita um "unhandled rejection" no console por um caso que a
