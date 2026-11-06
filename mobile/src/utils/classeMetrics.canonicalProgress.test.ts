@@ -69,6 +69,7 @@ test("resumo remoto continua sendo a autoridade dos agregados da classe", () => 
   const resumo = buildClasseResumoFallback(classe, {
     aluno_id: "aluno-1",
     classe_id: 7,
+    classe_nome: null,
     materia_nome: "História",
     materia_descricao: null,
     professor_nome: null,

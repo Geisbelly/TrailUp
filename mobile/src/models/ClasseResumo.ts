@@ -1,6 +1,8 @@
 export type ClasseResumo = {
   aluno_id: string;
   classe_id: number;
+  /** Nome que o professor deu à turma (`classe.descricao`). */
+  classe_nome: string | null;
   materia_nome: string | null;
   materia_descricao: string | null;
   professor_nome: string | null;

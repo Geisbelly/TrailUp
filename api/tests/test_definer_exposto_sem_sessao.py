@@ -70,6 +70,16 @@ SESSAO = ("auth.uid()", "auth.jwt()")
 # Linha nova aqui e decisao de produto, nao conveniencia: diga o que protege o
 # dado, ou revogue o EXECUTE.
 SEM_SESSAO_POR_DECISAO: dict[str, str] = {
+    "aluno_ver_professor_da_turma": (
+        "Delega a sessao: so devolve linha se a turma estiver em `app_minhas_classes()`, resolvida "
+        "pelo `auth.uid()`, e o resto do corpo parte dessa turma. Fora dela, NULL; medido em "
+        "`test_e2e_aluno_ve_professor_da_turma.py`."
+    ),
+    "trailup_professor_da_turma": (
+        "Delega a sessao: filtra por `app_minhas_classes()` (auth.uid()) ou `app_e_dono()` (auth.jwt()). "
+        "A view `vw_aluno_classe_resumo` e invoker e precisa do EXECUTE para o aluno. Medido em "
+        "`test_e2e_aluno_ve_professor_da_turma.py`."
+    ),
     "fn_enviar_contato_publico": (
         "Contato do site publico (20261024_06, #195): quem usa nao tem conta, entao nao ha sessao "
         "para conferir. Nao le nem devolve dado de ninguem: so dispara um e-mail para o destino "
