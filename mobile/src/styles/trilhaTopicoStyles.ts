@@ -165,10 +165,8 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  floatingBattleWrap: {
-    position: "absolute",
-    top: 8,
-    right: 16,
+  // Acima do conteúdo, para o balão da fala do boss não ficar atrás dele.
+  linhaBatalha: {
     zIndex: 46,
   },
   progressHeaderRow: {
