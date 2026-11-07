@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import re
 from collections import Counter
 from pathlib import Path
@@ -18,7 +19,8 @@ def test_cadeia_do_dia_sem_id_duplicado() -> None:
     for arquivo in VERSOES.glob("2*.py"):
         texto = arquivo.read_text(encoding="utf-8")
         rev = re.search(r"^revision\b[^=\n]*=\s*['\"]([^'\"]+)['\"]", texto, re.M).group(1)
-        down = re.search(r"^down_revision\b[^=\n]*=\s*(.+)$", texto, re.M).group(1).strip().strip("\"'")
+        # Revisao de merge tem `down_revision` em tupla (`20261106_07`): os dois pais contam.
+        down = ast.literal_eval(re.search(r"^down_revision\b[^=\n]*=\s*(.+)$", texto, re.M).group(1).split("#")[0].strip())
         ids[rev] += 1
         pares[rev] = down
     assert [r for r, n in ids.items() if n > 1] == []
@@ -31,7 +33,8 @@ def test_cadeia_do_dia_sem_id_duplicado() -> None:
     assert pares["20261024_10"] == "20261024_09"
     assert pares["20261024_11"] == "20261024_10"
     # Cabeca unica, sem fixar qual: migration nova do dia seguinte nao precisa mexer aqui.
-    assert len(set(pares) - set(pares.values())) == 1
+    pais = {pai for down in pares.values() for pai in (down if isinstance(down, tuple) else (down,))}
+    assert len(set(pares) - pais) == 1
 
 
 # Sem FK (ficariam orfas), FK SET NULL (ficariam soltas) e FK NO ACTION/RESTRICT

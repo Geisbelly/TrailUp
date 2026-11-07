@@ -63,16 +63,20 @@ def test_alembic_tem_uma_unica_cabeca_e_cadeia_continua() -> None:
     heads = scripts.get_heads()
     assert len(heads) == 1, f"cadeia ramificada: {heads}"
 
+    # Uma revisao de merge (`20261106_07`, `down_revision` em tupla) tem dois pais: os dois
+    # caminhos sao percorridos. Juntar cabecas com merge vazio e o jeito seguro quando nao se
+    # sabe o que producao ja aplicou; renumerar uma das pontas pode pular migration.
     visitadas = set()
-    atual = scripts.get_revision(heads[0])
-    while atual is not None:
-        assert atual.revision not in visitadas, f"ciclo em {atual.revision}"
-        visitadas.add(atual.revision)
-        anterior = atual.down_revision
+    pendentes = [heads[0]]
+    while pendentes:
+        revisao = pendentes.pop()
+        if revisao in visitadas:
+            continue
+        visitadas.add(revisao)
+        anterior = scripts.get_revision(revisao).down_revision
         if anterior is None:
-            break
-        assert isinstance(anterior, str), f"merge inesperado em {atual.revision}"
-        atual = scripts.get_revision(anterior)
+            continue
+        pendentes.extend(anterior if isinstance(anterior, tuple) else (anterior,))
 
     # Toda migracao no diretorio precisa estar nesse caminho; uma solta nunca
     # roda e passa despercebida.

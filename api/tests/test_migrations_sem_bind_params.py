@@ -10,6 +10,7 @@ Aqui cada migration roda com um `op` falso que só guarda o que iria para `execu
 
 from __future__ import annotations
 
+import re
 import runpy
 import sys
 from pathlib import Path
@@ -61,8 +62,16 @@ RECENTES = [p for p in MIGRATIONS if p.name >= "20261024_02"]
 
 @pytest.mark.parametrize("caminho", RECENTES, ids=lambda p: p.stem)
 def test_upgrade_recente_roda_inteiro_no_op_falso(caminho: Path) -> None:
-    """As migrations que ainda vão para prod (a partir da 20261024_02) são verificadas por inteiro."""
-    assert _sql_executado(caminho, "upgrade", estrito=True)
+    """As migrations que ainda vão para prod (a partir da 20261024_02) são verificadas por inteiro.
+
+    A de merge (`down_revision` em tupla, como a `20261106_07`) só junta cabeças: ela tem de rodar
+    inteira e NÃO pode executar SQL, senão a mudança de schema some no meio de um merge.
+    """
+    sql = _sql_executado(caminho, "upgrade", estrito=True)
+    if re.search(r"^down_revision\b[^=\n]*=\s*\(", caminho.read_text(encoding="utf-8"), re.M):
+        assert sql == [], f"{caminho.name} é merge e não deveria mudar o schema"
+    else:
+        assert sql
 
 
 def test_regex_da_07_sai_com_dois_pontos_literais() -> None:
