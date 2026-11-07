@@ -925,11 +925,17 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > conteúdo. Lotes de até o app 1.0.7 têm o trecho duplicado e não foram recalculados.
 >
 > **Tela desligada não conta, e são duas barreiras:** o `AppState` para os relógios, e um salto
-> grande entre marcações é descartado para o caso de o JS dormir antes de o evento chegar
-> (`intervaloCreditavelMs`, `INTERVALO_MAXIMO_MS`, `criarTempoCorrido`). `tempo_gasto_seg` da
+> grande entre marcações é descartado para o caso de o JS dormir antes de o evento chegar:
+> 10 s na telemetria (`intervaloCreditavelMs`, `SALTO_MAXIMO_DA_LINHA_DO_TEMPO_MS`), 90 s no
+> cronômetro (`INTERVALO_MAXIMO_MS`), e `criarTempoCorrido` nas telas. `tempo_gasto_seg` da
 > questão e `screen_dwell_sec` do lote também só contam tempo visível: os dois já foram
 > `agora - início`. Exceção de propósito: o prazo da tentativa de atividade é do servidor (#136)
 > e corre com a tela desligada.
+>
+> **Áudio e vídeo tocando contam como interação** (`marcarLinhaDoTempo`, `haReproducaoEmCurso`):
+> quem só escuta não toca na tela, e sem isso 10 min de áudio viravam 15 s de tempo ativo e o resto
+> ocioso. Vale só com o app na frente (a tela desligada continua não contando), e não alcança o
+> YouTube embutido, que não passa pelo `controleDeAudio`. Quem lê sem tocar segue parando em 15 s.
 >
 > Na tela do perfil, a fileira "(recente)" é `timeMetricsRecentes`: a soma dos lotes desde que o
 > app abriu (`somarTimeMetrics`). Ela já foi só o último lote, então nunca passava de 60 s.

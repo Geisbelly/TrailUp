@@ -43,6 +43,11 @@ export function soltarReproducao(dono: DonoDaReproducao) {
   if (ativo === dono) ativo = null;
 }
 
+/** Áudio ou vídeo saindo agora: para a telemetria é estudo, mesmo sem toque na tela. */
+export function haReproducaoEmCurso() {
+  return ativo !== null;
+}
+
 /** Cada passo no seu `try`: uma falha no primeiro não pode deixar o áudio tocando. */
 export function encerrarTocador(tocador: Pick<TocadorDeAudioMinimo, "pause" | "remove" | "release">) {
   try {
@@ -196,7 +201,10 @@ export function criarControleDeAudio(opcoes: OpcoesDoControle): ControleDeAudio 
     },
 
     sincronizar: (tocando) => {
-      if (tocando !== null) definirIntencao(tocando);
+      if (tocando === null) return;
+      definirIntencao(tocando);
+      // Pausa que não passou pelo botão (ligação, fone desconectado): o som parou.
+      if (!tocando) soltarReproducao(controle);
     },
 
     encerrar: () => {
