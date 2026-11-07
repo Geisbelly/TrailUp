@@ -67,3 +67,16 @@ test("os ícones da Bag no tópico pintam com a paleta, não com cor fixa", () =
   const usos = [...TELA.matchAll(/styles\.botaoBagIcone, \{ borderColor: profilePalette\./g)];
   assert.equal(usos.length, 2, "salvar material e criar anotação: os dois com a borda da paleta");
 });
+
+test("os ícones da Bag ficam na linha do título do material, não depois dele", () => {
+  // No fim do texto, depois da rolagem inteira, o aluno não os achava (07/11).
+  const linha = TELA.indexOf("<View style={styles.linhaTituloBloco}>");
+  const salvar = TELA.indexOf('accessibilityLabel="Salvar este material na Bag"');
+  const anotar = TELA.indexOf('accessibilityLabel="Adicionar anotação, resumo ou card à Bag"');
+  const material = TELA.indexOf("<ContentRenderer");
+  assert.ok(linha >= 0, "a linha do título do bloco sumiu");
+  assert.ok(salvar > linha && anotar > linha, "os ícones da Bag saíram da linha do título");
+  assert.ok(salvar < material && anotar < material, "os ícones da Bag voltaram para depois do material");
+  assert.equal(TELA.split('accessibilityLabel="Salvar este material na Bag"').length, 2, "salvar aparece uma vez só");
+  assert.ok(estilo("tituloBlocoNaLinha").includes("flex: 1"), "o título precisa ceder espaço aos ícones");
+});
