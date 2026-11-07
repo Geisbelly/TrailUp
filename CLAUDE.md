@@ -249,6 +249,24 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
 guardados em `aluno_perfil` (com `afinidade` 0–100). O **perfil dominante** é o de
 maior afinidade; o vetor completo de afinidades também é usado.
 
+**O perfil ativo** (`alunos.perfil_ativo`) é o que dá cor, guia e material ao app. O aluno
+o escolhe na tela de Perfil, mas só entre os **representativos**: o primeiro e o segundo
+da ordem de afinidade, se tiverem afinidade > 0, e qualquer um com afinidade ≥ 20
+(`resolveRepresentativeBrainHexProfiles`).
+Quem responde "quais perfis este aluno pode escolher" é **uma função só**,
+`perfisSelecionaveisDoAluno` (`mobile/src/utils/brainHex.ts`). Ela vale para a troca, para
+a gravação (`SessaoContext.selecionarPerfilAtivo`) e para o perfil que pinta a tela
+(`perfilVisualDoAluno`). Componente que chama `resolveActiveBrainHexProfile` por conta própria
+volta ao dominante quando o perfil escolhido está fora dos representativos.
+
+> **Conta de demonstração escolhe entre os 7** (`mobile/src/constants/contasDemonstracao.ts`, #1045).
+> As afinidades dela não mudam, e as conquistas por perfil e a missão do dia continuam nos
+> representativos: o banco só usa `perfil_ativo` quando ele é representativo (`20261021_20`).
+> A lista compara **`alunos.email`, não o e-mail do login**, porque `SessaoContext` usa
+> `data.email ?? sessão`. A conta de demonstração entra pelo Google com `geisbelly19@gmail.com`,
+> e a linha dela em `alunos` guarda `demo@trailup.app`. O #1044 pôs só o e-mail do login, e
+> logada a troca continuou com 2 perfis (#1055). Ao incluir uma conta, confira o e-mail na linha de `alunos`.
+
 Cada perfil carrega:
 - **Cor-assinatura, ícone, guia/mentor, gradiente** — `microservice/src/constants/brainHex.ts` (fonte oficial); espelhos em mobile/frontend.
 - **Assinatura editorial** (tom de voz, ritmo, abertura, progressão narrativa,
@@ -925,11 +943,17 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 > conteúdo. Lotes de até o app 1.0.7 têm o trecho duplicado e não foram recalculados.
 >
 > **Tela desligada não conta, e são duas barreiras:** o `AppState` para os relógios, e um salto
-> grande entre marcações é descartado para o caso de o JS dormir antes de o evento chegar
-> (`intervaloCreditavelMs`, `INTERVALO_MAXIMO_MS`, `criarTempoCorrido`). `tempo_gasto_seg` da
+> grande entre marcações é descartado para o caso de o JS dormir antes de o evento chegar:
+> 10 s na telemetria (`intervaloCreditavelMs`, `SALTO_MAXIMO_DA_LINHA_DO_TEMPO_MS`), 90 s no
+> cronômetro (`INTERVALO_MAXIMO_MS`), e `criarTempoCorrido` nas telas. `tempo_gasto_seg` da
 > questão e `screen_dwell_sec` do lote também só contam tempo visível: os dois já foram
 > `agora - início`. Exceção de propósito: o prazo da tentativa de atividade é do servidor (#136)
 > e corre com a tela desligada.
+>
+> **Áudio e vídeo tocando contam como interação** (`marcarLinhaDoTempo`, `haReproducaoEmCurso`):
+> quem só escuta não toca na tela, e sem isso 10 min de áudio viravam 15 s de tempo ativo e o resto
+> ocioso. Vale só com o app na frente (a tela desligada continua não contando), e não alcança o
+> YouTube embutido, que não passa pelo `controleDeAudio`. Quem lê sem tocar segue parando em 15 s.
 >
 > Na tela do perfil, a fileira "(recente)" é `timeMetricsRecentes`: a soma dos lotes desde que o
 > app abriu (`somarTimeMetrics`). Ela já foi só o último lote, então nunca passava de 60 s.

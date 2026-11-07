@@ -239,7 +239,7 @@ flowchart LR
 | UC19 | conta | Liga ou desliga o cronômetro das atividades. Sem escolha, vale o perfil. O tempo não entra na nota | `aluno_cronometro` |
 | UC32 | compra `ativa` | Aplica o item na atividade, no tópico ou na questão, dentro do limite por situação; a chave do cliente torna o pedido repetível | `loja_usar`, `loja_usar_item`, `loja_uso_log` |
 | UC33 | fundo aberto na turma | Doa moedas; a doação é atômica, idempotente e não passa da meta. Vê o total e a própria doação | `fundo_turma_contribuir` |
-| UC34 | conta | Muda `perfil_ativo`; o progresso é recalculado e a coorte diária do perfil novo é gerada na hora | `fn_atualizar_aluno_perfil`, `trg_alunos_missao_diaria_perfil` |
+| UC34 | conta | Escolhe entre os perfis representativos (a conta de demonstração, entre os 7) e muda `perfil_ativo`; o progresso é recalculado e a coorte diária do perfil novo é gerada na hora. A missão do dia só segue um perfil representativo | `perfisSelecionaveisDoAluno`, `fn_atualizar_aluno_perfil`, `trg_alunos_missao_diaria_perfil` |
 | UC35 | conta | Lê o próprio relatório e as métricas de estilo | telas `perfil/relatorio`, `perfil/metricas-estilo` |
 | UC36 | conta | Envia feedback, com teto de envios por aluno | `fn_enviar_contato`, `contato_envios` |
 
