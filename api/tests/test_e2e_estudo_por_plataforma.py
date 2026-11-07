@@ -138,5 +138,8 @@ def test_downgrade_volta_a_janela_de_seis_argumentos() -> None:
     with _banco() as c:
         for sql in f5.sql_de(M, "downgrade"):
             c.execute(sql)
-        existe = lambda assinatura: c.execute("SELECT to_regprocedure(%s) IS NOT NULL", (assinatura,)).fetchone()[0]
+
+        def existe(assinatura: str) -> bool:
+            return c.execute("SELECT to_regprocedure(%s) IS NOT NULL", (assinatura,)).fetchone()[0]
+
         assert existe(M.JANELA_6) and not existe(M.JANELA_7) and not existe(M.HELPER)
