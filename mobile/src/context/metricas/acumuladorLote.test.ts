@@ -110,6 +110,7 @@ test("atividade personalizada (id local negativo) segue creditando o conteudo vi
   );
 
   assert.equal(batch.timeMetrics.contents["content:87"]?.activeMs, 3_000);
+  assert.deepEqual(batch.timeMetrics.activities, {}, "o mesmo intervalo nao entra nos dois escopos");
 });
 
 test("registraNoConteudo: so conteudo real sem atividade real", () => {

@@ -16,7 +16,7 @@ Um lote por minuto, montado em `MetricasContext.tsx` e tipado em
 | constante | valor | efeito |
 | --- | --- | --- |
 | `BATCH_INTERVAL_MS` | 60 s | um lote por minuto |
-| `IDLE_THRESHOLD_MS` | 15 s | sem toque por 15 s → `idle` |
+| `IDLE_THRESHOLD_MS` | 15 s | sem toque por 15 s → `idle`, salvo com áudio ou vídeo tocando |
 | `TOUCH_SAMPLE_THROTTLE_MS` | 750 ms | 1 coordenada por 750 ms |
 | `MAX_TOUCH_SAMPLES` | 25 | teto de coordenadas por lote |
 | `FRAME_CAPTURE_INTERVAL_MS` | 6 s | uma foto a cada 6 segundos |

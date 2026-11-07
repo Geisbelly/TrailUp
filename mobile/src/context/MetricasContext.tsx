@@ -2,7 +2,7 @@ import { useIA } from "@/context/IAContext";
 import { initialStudyContext } from '@/utils/studyContext';
 import {
   accumulateContextTime,
-  intervaloCreditavelMs,
+  marcarLinhaDoTempo,
   registraNoConteudo,
   somarTimeMetrics,
   buildEmptyBatch,
@@ -18,6 +18,7 @@ import {
 } from "@/context/metricas/acumuladorLote";
 import { criarCicloSessao, type CicloSessao } from "@/context/metricas/cicloSessao";
 import { decidirTransicaoAppState, eventoDeFim, podeCapturarQuadro } from "@/context/metricas/fimDeSessao";
+import { haReproducaoEmCurso } from "@/utils/controleDeAudio";
 import { IATriggerSignal } from "@/interfaces/personalizacao/IAContracts";
 import {
   BeginStudySessionParams,
@@ -137,7 +138,6 @@ type MetricasBatchContextValue = {
   timeMetricsRecentes: TelemetryTimeMetrics | null;
 };
 
-const IDLE_THRESHOLD_MS = 15_000;
 const MAX_TOUCH_SAMPLES = 25;
 const TOUCH_SAMPLE_THROTTLE_MS = 750;
 // Flush periodico da telemetria. Reduzido de 180s -> 60s para capturar
@@ -547,32 +547,10 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
     const batch = batchRef.current;
     if (!batch) return;
 
-    if (appStateRef.current !== 'active') {
-      batch.lastAccruedAtMs = atMs;
-      return;
-    }
-
-    const startMs = batch.lastAccruedAtMs;
-    const endMs = Math.max(atMs, startMs);
-    // Tela desligada: o JS dormiu antes de o `AppState` avisar. Esse trecho não
-    // é estudo, e sem isto viraria tempo inteiro de uma vez ao acordar.
-    const deltaMs = intervaloCreditavelMs(endMs - startMs);
-    if (deltaMs <= 0) {
-      batch.lastAccruedAtMs = endMs;
-      return;
-    }
-
-    const idleStartsAt = batch.lastInteractionAtMs + IDLE_THRESHOLD_MS;
-    const activeUntil = Math.min(endMs, idleStartsAt);
-    const activeMs = Math.max(0, activeUntil - startMs);
-    const idleMs = Math.max(0, endMs - Math.max(startMs, idleStartsAt));
-    const currentContext = currentContextRef.current;
-
-    batch.generalActiveMs += activeMs;
-    batch.generalIdleMs += idleMs;
-
-    accumulateContextTime(batch, currentContext, activeMs, idleMs);
-    batch.lastAccruedAtMs = endMs;
+    marcarLinhaDoTempo(batch, currentContextRef.current, atMs, {
+      appAtivo: appStateRef.current === 'active',
+      reproduzindo: haReproducaoEmCurso(),
+    });
   }, []);
 
   const trackInteraction = useCallback((atMs: number) => {

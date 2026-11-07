@@ -222,6 +222,48 @@ export function intervaloCreditavelMs(deltaMs: number): number {
   return deltaMs > 0 && deltaMs <= SALTO_MAXIMO_DA_LINHA_DO_TEMPO_MS ? deltaMs : 0;
 }
 
+/** Sem toque por este tempo, o que corre é ocioso. */
+export const IDLE_THRESHOLD_MS = 15_000;
+
+/**
+ * Credita no lote o trecho desde a última marcação. Fora do app nada entra, e o
+ * salto de quem dormiu é descartado. Áudio ou vídeo tocando conta como interação:
+ * quem só escuta não toca na tela, e sem isto 10 min de áudio virariam 15 s.
+ */
+export function marcarLinhaDoTempo(
+  batch: BatchAccumulator,
+  context: CurrentStudyContext,
+  atMs: number,
+  situacao: { appAtivo: boolean; reproduzindo: boolean }
+) {
+  if (!situacao.appAtivo) {
+    batch.lastAccruedAtMs = atMs;
+    return;
+  }
+
+  const startMs = batch.lastAccruedAtMs;
+  const endMs = Math.max(atMs, startMs);
+  if (intervaloCreditavelMs(endMs - startMs) <= 0) {
+    batch.lastAccruedAtMs = endMs;
+    return;
+  }
+
+  if (situacao.reproduzindo) {
+    batch.lastInteractionAtMs = Math.max(batch.lastInteractionAtMs, endMs);
+  }
+
+  const idleStartsAt = batch.lastInteractionAtMs + IDLE_THRESHOLD_MS;
+  const activeUntil = Math.min(endMs, idleStartsAt);
+  const activeMs = Math.max(0, activeUntil - startMs);
+  const idleMs = Math.max(0, endMs - Math.max(startMs, idleStartsAt));
+
+  batch.generalActiveMs += activeMs;
+  batch.generalIdleMs += idleMs;
+
+  accumulateContextTime(batch, context, activeMs, idleMs);
+  batch.lastAccruedAtMs = endMs;
+}
+
 /**
  * Atividade vinculada a um conteúdo carrega `conteudoId` só como referência (é
  * a mesma regra de `planSessionRegistrations`). Creditar os dois contava o mesmo
@@ -276,7 +318,8 @@ export function accumulateContextTime(
     );
   }
 
-  if (context.atividadeId != null) {
+  // A personalizada já caiu no conteúdo: creditar aqui também repetiria o intervalo.
+  if (context.atividadeId != null && context.atividadeId > 0) {
     accumulateEntryTime(
       getOrCreateTimeMetricEntry(batch.timeMetrics.activities, {
         key: `activity:${context.atividadeId}`,

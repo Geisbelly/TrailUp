@@ -5,6 +5,7 @@ import {
   assumirReproducao,
   criarControleDeAudio,
   encerrarTocador,
+  haReproducaoEmCurso,
   soltarReproducao,
   tocandoSegundoOStatus,
   type ControleDeAudio,
@@ -190,6 +191,19 @@ test("o botao pausa quando o tocador toca sem a tela saber", async () => {
   await controle.alternar();
 
   assert.equal(criados[0].audivel, false);
+});
+
+test("a telemetria sabe quando ha som saindo, inclusive em pausa fora do botao", async () => {
+  const { controle } = montar();
+
+  await controle.tocar();
+  assert.equal(haReproducaoEmCurso(), true);
+
+  controle.sincronizar(null);
+  assert.equal(haReproducaoEmCurso(), true, "carregando nao e pausa");
+
+  controle.sincronizar(false);
+  assert.equal(haReproducaoEmCurso(), false);
 });
 
 test("alternar pausa e volta no mesmo tocador", async () => {
