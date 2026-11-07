@@ -25,7 +25,7 @@ import {
   IATriggerSignal,
 } from "@/interfaces/personalizacao/IAContracts";
 import { PersonalizedTopicPayload } from "@/interfaces/personalizacao/IPersonalizedTopic";
-import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import React, {
   createContext,
@@ -540,10 +540,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
   );
 
   const userId = usuario?.id ?? null;
-  const profileName = resolveActiveBrainHexProfile(
-    usuario?.perfis ?? null,
-    usuario?.perfilAtivo,
-  );
+  const profileName = perfilVisualDoAluno(usuario);
   const guideName = getBrainHexGuideName(profileName);
   const modoNome = usuario?.modoOperacao_nome ?? usuario?.modoOperacao_descricao ?? null;
   const profileCapabilities = useMemo(
