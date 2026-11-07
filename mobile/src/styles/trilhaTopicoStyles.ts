@@ -345,11 +345,21 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 2,
   },
+  // Título do bloco e, no material, os ícones da Bag à direita, na mesma linha. O título
+  // quebra em quantas linhas precisar; os ícones ficam no alto, junto da primeira.
+  linhaTituloBloco: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  tituloBlocoNaLinha: {
+    flex: 1,
+    minWidth: 0,
+  },
   acoesBag: {
     flexDirection: "row",
-    justifyContent: "flex-end",
     gap: 8,
-    marginTop: 10,
+    flexShrink: 0,
   },
   botaoBagIcone: {
     width: 36,
