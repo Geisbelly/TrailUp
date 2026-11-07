@@ -39,10 +39,9 @@ function geminiModels(): string[] {
  * todas esgotarem, os modelos de reserva. Devolve a primeira resposta que
  * nao seja de cota/credito; se todas forem, devolve a ultima.
  */
-// apiData fica `any`, como era o retorno de res.json() antes desta funcao:
-// os dois chamadores navegam candidates[0].content.parts sem tipo.
-// deno-lint-ignore no-explicit-any
-type GeminiResult = { res: Response; apiData: any };
+// Sem `any`: o eslint do frontend (no-explicit-any) varre esta pasta. Os dois
+// chamadores fazem cast explicito ao navegar candidates[0].content.parts.
+type GeminiResult = { res: Response; apiData: JsonRecord };
 
 async function fetchGemini(rawKeys: string, body: unknown): Promise<GeminiResult> {
   const keys = splitList(rawKeys);
