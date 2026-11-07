@@ -186,6 +186,7 @@ src/components/carregamento/TelaCarregamento.tela.test.tsx
 src/utils/esqueleto.test.ts
 src/components/carregamento/Esqueleto.tela.test.tsx
 src/components/ia/historicoDoGuia.test.ts
+src/components/ia/ladoDoPainel.test.ts
 src/utils/bloqueioDeCaptura.test.ts
 src/utils/progressoDaTurma.test.ts
 src/utils/linkDoGateway.test.ts

@@ -32,6 +32,7 @@ import { type Href, router } from "expo-router";
 import { ModoRestritoError } from "@/utils/consentimentoResponsavel";
 import { shadowStyle } from "@/utils/webShadow";
 import { falaAssinadaDaResposta, falaParaHistorico, type FalaAssinada } from "./historicoDoGuia";
+import { painelAoLadoDoBotao } from "./ladoDoPainel";
 
 const IS_WEB = Platform.OS === "web";
 const SOMBRA_CARD = { offset: { width: 0, height: 10 }, opacity: 0.28, radius: 20 };
@@ -712,13 +713,16 @@ export function IAMentorPanel({
   const alturaVisivel = areaVisivel?.height ?? windowHeight;
   // Com o teclado aberto, sobra pouco: fica só o que serve para conversar.
   const compacta = telaCheia && alturaVisivel < 480;
+  // Tela larga: aberto, o painel fica à direita, junto do botão (ladoDoPainel.ts).
+  const aoLadoDoBotao =
+    !telaCheia && painelAoLadoDoBotao({ temAncora: Boolean(ancora), larguraJanela: windowWidth, larguraPainel: panelWidth });
 
   return (
     <View
       style={[
         styles.overlay,
         posicao,
-        isOpen && !ancora ? styles.overlayOpen : null,
+        isOpen && !ancora ? (aoLadoDoBotao ? styles.overlayOpenAoLadoDoBotao : styles.overlayOpen) : null,
         { pointerEvents: "box-none" },
       ]}
     >
@@ -774,7 +778,7 @@ export function IAMentorPanel({
           collapsable={false}
           style={[
             styles.card,
-            scope === "modulo" ? styles.cardModule : styles.cardFloating,
+            aoLadoDoBotao ? styles.cardAoLadoDoBotao : scope === "modulo" ? styles.cardModule : styles.cardFloating,
             {
               // O mínimo de 320 do módulo nunca passa da janela: em tela de 320 o
               // painel (windowWidth - 16) vazava 8 px pela direita.
@@ -993,6 +997,11 @@ const styles = StyleSheet.create({
     right: 16,
     alignItems: "center",
   },
+  overlayOpenAoLadoDoBotao: {
+    left: 16,
+    right: 16,
+    alignItems: "flex-end",
+  },
   overlayTelaCheia: {
     position: "absolute",
     left: 0,
@@ -1077,6 +1086,10 @@ const styles = StyleSheet.create({
   },
   cardModule: {
     alignSelf: "stretch",
+  },
+  // Largura fixa vence o stretch: sem isto, na tela larga o cartão encostava à esquerda.
+  cardAoLadoDoBotao: {
+    alignSelf: "flex-end",
   },
   headerRow: {
     flexDirection: "row",
