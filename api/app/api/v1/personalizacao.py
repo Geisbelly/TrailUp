@@ -69,6 +69,7 @@ from app.schemas.personalizacao import (
 from app.services import assinatura_chat, modo_restrito
 from app.services.auth import UserContext
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
+from app.services.contexto_chat_materia import montar_conteudo_materia
 from app.services.group_analysis import GroupAnalysisService
 from app.services.guia_do_app import guia_do_app, montar_resposta_do_guia
 from app.services.llm import JsonLLMService, load_prompt
@@ -1581,6 +1582,12 @@ async def conversar_com_mentor_personalizacao(
         latest_record=latest_record,
         context=context,
     )
+    conteudo_materia = montar_conteudo_materia(
+        conteudos=conteudos_topico,
+        atividades=atividades_topico,
+        questoes=questoes_topico,
+        registros=records,
+    )
 
     llm = JsonLLMService(request.app.state.settings)
 
@@ -1636,32 +1643,9 @@ async def conversar_com_mentor_personalizacao(
                     },
                     # Conteudo completo do topico (da turma) para o guia se especializar
                     # na materia e direcionar o estudo. Sem respostas de questoes.
-                    "conteudo_materia": {
-                        "conteudos": [
-                            {
-                                "titulo": c.get("titulo"),
-                                "tipo": c.get("tipo"),
-                                "resumo": str(c.get("conteudo") or "")[:600],
-                                "ordem": c.get("ordem"),
-                            }
-                            for c in (conteudos_topico or [])[:12]
-                            if isinstance(c, dict)
-                        ],
-                        "atividades": [
-                            {
-                                "titulo": a.get("titulo"),
-                                "descricao": a.get("descricao"),
-                                "tipo": a.get("tipo"),
-                            }
-                            for a in (atividades_topico or [])[:12]
-                            if isinstance(a, dict)
-                        ],
-                        "questoes_temas": [
-                            {"enunciado": q.get("enunciado"), "tipo": q.get("tipo")}
-                            for q in (questoes_topico or [])[:20]
-                            if isinstance(q, dict)
-                        ],
-                    },
+                    # Conteudo do topico (da turma) + o material personalizado que o aluno le na
+                    # tela, para o guia explicar a materia. Sem respostas de questoes.
+                    "conteudo_materia": conteudo_materia,
                     "topico": {
                         "id": payload.topico_id,
                         "nome": (topico or {}).get("nome") if isinstance(topico, dict) else None,
@@ -1689,7 +1673,8 @@ async def conversar_com_mentor_personalizacao(
                 fallback_factory=lambda: dict(fallback),
                 contexto={
                     "llm": llm,
-                    "conteudo_materia": {"conteudos": conteudos_topico, "atividades": atividades_topico},
+                    # O juiz ve o mesmo recorte que o modelo: o que ele nao ve, ele reprova.
+                    "conteudo_materia": conteudo_materia,
                     "contexto_personalizacao": personalization_context,
                     "guia_do_app": guia_do_app(),
                 },

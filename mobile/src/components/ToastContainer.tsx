@@ -120,13 +120,14 @@ const NotificationModal = ({ item, onRemove }: { item: ToastMessage; onRemove: (
         };
 
       case 'error':
+        // Erro com a cor e o ícone do perfil (06/11), como a conquista; o selo de alerta diz o resto.
         return {
-          icon: 'alert-octagon-outline',
-          secondaryIcon: null,
-          color: '#EF4444', // Vermelho
-          titleColor: '#F87171',
-          btnLabel: 'FECHAR',
-          isProfileThemed: false
+          icon: profileConfig.icon,
+          secondaryIcon: 'alert-circle',
+          color: profileConfig.color,
+          titleColor: palette.accent,
+          btnLabel: 'ENTENDI',
+          isProfileThemed: true
         };
 
       case 'success':
@@ -199,7 +200,11 @@ const NotificationModal = ({ item, onRemove }: { item: ToastMessage; onRemove: (
           {/* Badge de conquista mantido */}
           {config.isProfileThemed && (
             <View style={[styles.badgeIcon, { backgroundColor: palette.surfaceElevated }]}>
-              <UtilityIcon kind="medal" size={26} />
+              {item.type === 'error' ? (
+                <MaterialCommunityIcons name="alert-circle" size={22} color={palette.accent} />
+              ) : (
+                <UtilityIcon kind="medal" size={26} />
+              )}
             </View>
           )}
         </View>

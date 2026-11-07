@@ -353,6 +353,8 @@ function NotificacoesLista() {
           )}
           contentContainerStyle={{
             flexGrow: 1,
+            // Folga entre o cabeçalho e o primeiro aviso (o cartão encostava no topo).
+            paddingTop: 12,
             paddingBottom: Math.max(insets.bottom, 12),
           }}
           showsVerticalScrollIndicator={false}

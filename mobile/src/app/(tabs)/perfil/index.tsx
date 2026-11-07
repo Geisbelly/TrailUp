@@ -798,14 +798,6 @@ export default function PerfilHome() {
               >
                 <UtilityIcon kind="bag" size={34} />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.btnTopo}
-                onPress={() => router.push("/(tabs)/perfil/molduras")}
-                accessibilityRole="button"
-                accessibilityLabel="Molduras"
-              >
-                <MaterialCommunityIcons name="circle-double" size={30} color={shellPalette.accent} />
-              </TouchableOpacity>
               <View ref={profileLibraryGuideRef} collapsable={false}>
                 <TouchableOpacity
                   style={styles.btnTopo}

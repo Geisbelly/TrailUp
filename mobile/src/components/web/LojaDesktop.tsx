@@ -14,6 +14,7 @@ import { FundoDaTurmaCard } from "@/components/loja/FundoDaTurmaCard";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { avisoCompraFeita, textoConfirmacao } from "@/utils/compraLoja";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { SecaoDeMolduras } from "@/components/molduras/SecaoDeMolduras";
 
 type Ganho = Awaited<ReturnType<typeof carregarGanhoMoedas>>;
 
@@ -195,6 +196,9 @@ export function LojaDesktop() {
       ) : !erro ? (
         <Text style={[s.vazio, { color: palette.textMuted }]}>Nenhum item disponível no momento.</Text>
       ) : null}
+      <View style={s.molduras}>
+        <SecaoDeMolduras secao="loja" palette={palette} onSaldoMudou={() => void carregar()} />
+      </View>
       </View>
 
       {alunoId && classeId ? (
@@ -216,6 +220,7 @@ export function LojaDesktop() {
 }
 
 const s = StyleSheet.create({
+  molduras: { marginTop: 28 },
   // Sem largura máxima: no protótipo v4 (12-loja.html) a página ocupa a área toda, só com o respiro lateral.
   pagina: { paddingHorizontal: 32, paddingTop: 28, paddingBottom: 40, gap: 20, width: "100%" },
   cabecalho: { gap: 4 },

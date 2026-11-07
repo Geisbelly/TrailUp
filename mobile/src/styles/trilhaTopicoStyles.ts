@@ -345,6 +345,20 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 2,
   },
+  acoesBag: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 10,
+  },
+  botaoBagIcone: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   secondaryButton: {
     flex: 1,
     minHeight: 56,

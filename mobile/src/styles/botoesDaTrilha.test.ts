@@ -38,7 +38,8 @@ test("todo uso de secondaryButton preenche com a paleta", () => {
   // Um `styles.secondaryButton` sem `backgroundColor` logo em seguida volta a herdar cor fixa
   // se alguem repuser um default -- e foi exatamente assim que a Bag ficou roxa.
   const usos = [...TELA.matchAll(/styles\.secondaryButton,\n([\s\S]{0,320}?)\]/g)];
-  assert.ok(usos.length >= 3, `esperava ao menos 3 usos, achei ${usos.length}`);
+  // Eram 3 com o "Guardar na Bag"; ele virou os ícones discretos de `botaoBagIcone` (06/11).
+  assert.ok(usos.length >= 2, `esperava ao menos 2 usos, achei ${usos.length}`);
   usos.forEach((uso, i) => {
     assert.ok(
       /backgroundColor: profilePalette\./.test(uso[1]),
@@ -56,4 +57,13 @@ test("o texto do botao principal usa o par de contraste testado", () => {
 
 test("o fundo do botao principal continua sendo o accent do perfil", () => {
   assert.ok(TELA.includes("backgroundColor: profilePalette.accent"), "o principal perdeu o accent");
+});
+
+test("os ícones da Bag no tópico pintam com a paleta, não com cor fixa", () => {
+  const corpo = estilo("botaoBagIcone");
+  for (const chave of ["backgroundColor", "color", "borderColor"]) {
+    assert.ok(!corpo.includes(chave), `botaoBagIcone define ${chave} no estilo`);
+  }
+  const usos = [...TELA.matchAll(/styles\.botaoBagIcone, \{ borderColor: profilePalette\./g)];
+  assert.equal(usos.length, 2, "salvar material e criar anotação: os dois com a borda da paleta");
 });

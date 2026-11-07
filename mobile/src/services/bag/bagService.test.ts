@@ -4,7 +4,9 @@ import test from "node:test";
 import {
   actionsForBagItem,
   bagTypeFilterOptions,
+  bagMaterialFormat,
   isBagClassReady,
+  materialDraft,
   normalizeBagItem,
   normalizeBagContentId,
   shouldShowBagTypeFilters,
@@ -19,7 +21,7 @@ test("Bag só pode carregar quando a turma atual está resolvida", () => {
 });
 
 test("filtros de tipo não tratam compra como card ou anotação", () => {
-  assert.deepEqual(bagTypeFilterOptions(null), ["resumo", "anotacao", "card"]);
+  assert.deepEqual(bagTypeFilterOptions(null), ["resumo", "anotacao", "card", "material"]);
   assert.deepEqual(bagTypeFilterOptions("loja"), []);
   assert.equal(shouldShowBagTypeFilters(null), true);
   assert.equal(shouldShowBagTypeFilters("loja"), false);
@@ -75,4 +77,22 @@ test("não envia ID sintético de conteúdo personalizado para a Bag", () => {
   assert.equal(normalizeBagContentId("-3746"), null);
   assert.equal(normalizeBagContentId(null), null);
   assert.equal(normalizeBagContentId(174), 174);
+});
+
+test("material salvo é atalho: formato e bloco no metadata, sem URL", () => {
+  const draft = materialDraft({ formato: "audio", bloco: "audio-1", titulo: "  Áudio do Guardião ", classId: 3, topicId: 9, contentId: -4 });
+  assert.equal(draft.type, "material");
+  assert.equal(draft.title, "Áudio do Guardião");
+  assert.equal(draft.contentId, null, "id negativo é de bloco personalizado, não de conteúdo");
+  assert.deepEqual(draft.metadata, { formato: "audio", bloco: "audio-1" });
+  assert.equal(validateBagDraft(draft), null);
+  assert.match(validateBagDraft({ ...draft, topicId: null }) ?? "", /tópico/i);
+  assert.match(validateBagDraft({ ...draft, metadata: { formato: "gif" } }) ?? "", /formato/i);
+});
+
+test("material da Bag abre no tópico e só sai da Bag", () => {
+  const item = normalizeBagItem({ id: "item:7", source_id: 7, origem: "aluno", tipo: "material", topico_id: 9, metadata: { formato: "apresentacao", bloco: "deck" } });
+  assert.equal(item.type, "material");
+  assert.equal(bagMaterialFormat(item), "apresentacao");
+  assert.deepEqual(actionsForBagItem(item), ["abrir", "excluir"]);
 });

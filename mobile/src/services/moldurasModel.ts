@@ -57,6 +57,16 @@ export function lerCatalogo(linhas: unknown): MolduraDoCatalogo[] {
   return saida;
 }
 
+/** Onde a moldura aparece: comprar na Loja, ganhar nas Conquistas, as que o aluno tem na Bag. */
+export type SecaoDeMoldura = "loja" | "conquistas" | "minhas";
+
+export function moldurasDaSecao(itens: MolduraDoCatalogo[], secao: SecaoDeMoldura): MolduraDoCatalogo[] {
+  if (secao === "minhas") return itens.filter((m) => m.tenho);
+  if (secao === "loja") return itens.filter((m) => m.origem === "loja");
+  // As "raras" (por ação no app) também são ganhas, não compradas: ficam com as de conquista.
+  return itens.filter((m) => m.origem === "conquista" || m.origem === "acao");
+}
+
 const ERROS: Record<string, string> = {
   saldo_insuficiente: "Moedas insuficientes para esta moldura.",
   moldura_indisponivel: "Esta moldura não está à venda agora.",

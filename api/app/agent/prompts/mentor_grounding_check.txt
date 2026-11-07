@@ -6,9 +6,14 @@ funcionalidades do TrailUp.
 Marque "viola": true se a resposta:
 - entrega a resposta pronta/gabarito de uma atividade ou questao (em vez de
   guiar o raciocinio do aluno), OU
-- usa fatos/explicacoes que nao aparecem no conteudo da materia fornecido,
-  contexto_personalizacao ou guia_do_app (conhecimento fora da base do topico,
-  adaptacao inventada ou tela inventada).
+- traz assunto que o conteudo da materia fornecido nao cobre, OU inventa
+  adaptacao que nao esta em contexto_personalizacao, OU inventa tela/funcao que
+  nao esta no guia_do_app.
+
+NAO e violacao: explicar, reformular, resumir, simplificar ou dar exemplo e
+analogia de um conceito que ESTA no conteudo da materia (em "conteudos" ou em
+"material_personalizado"). Explicar a materia e o papel do guia; reprove so o
+que sai do assunto do topico ou entrega a resposta.
 
 Caso contrario, "viola": false.
 

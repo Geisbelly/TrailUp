@@ -5,7 +5,8 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { Color, FontFamily } from "@/styles/GlobalStyle";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View, Platform } from "react-native";
+import { Image, Modal, Pressable, StyleSheet, Text, View, Platform } from "react-native";
+import { getBrainHexGuideName, getGuardianFaceImage } from "@/constants/profileImages";
 import tinycolor from "tinycolor2";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { shadowStyle, textShadowStyle } from "@/utils/webShadow";
@@ -81,10 +82,12 @@ function getToneConfig(
         border: "rgba(251, 191, 36, 0.35)",
       };
     case "error":
+      // Erro também é do perfil (06/11): a cor dele e o rosto do Guardião, não o vermelho
+      // genérico. O selo de alerta no rosto e o ícone continuam dizendo que deu errado.
       return {
-        icon: "alert-octagon-outline" as const,
-        color: "#F87171",
-        border: "rgba(248, 113, 113, 0.35)",
+        icon: "alert-circle-outline" as const,
+        color: palette.accent,
+        border: palette.borderStrong,
       };
     default:
       return {
@@ -97,7 +100,8 @@ function getToneConfig(
 
 export function DialogProvider({ children }: { children: React.ReactNode }) {
   const { usuario } = useUsuario();
-  const palette = getProfileShellPalette(perfilVisualDoAluno(usuario));
+  const perfilDoAluno = perfilVisualDoAluno(usuario);
+  const palette = getProfileShellPalette(perfilDoAluno);
   const [dialog, setDialog] = useState<DialogState | null>(null);
 
   const gold = tinycolor(palette.accent).lighten(10).toHexString();
@@ -224,7 +228,20 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
                 { backgroundColor: tinycolor(toneColor).setAlpha(0.14).toRgbString() },
               ]}
             >
-              <MaterialCommunityIcons name={toneConfig.icon} size={34} color={toneColor} />
+              {dialog?.tone === "error" ? (
+                <>
+                  <Image
+                    source={getGuardianFaceImage(perfilDoAluno)}
+                    style={styles.rostoDoGuia}
+                    accessibilityLabel={`${getBrainHexGuideName(perfilDoAluno)}, seu guia`}
+                  />
+                  <View style={[styles.seloDeAlerta, { backgroundColor: palette.surfaceElevated, borderColor: toneColor }]}>
+                    <MaterialCommunityIcons name={toneConfig.icon} size={16} color={toneColor} />
+                  </View>
+                </>
+              ) : (
+                <MaterialCommunityIcons name={toneConfig.icon} size={34} color={toneColor} />
+              )}
             </View>
 
             {/* Título */}
@@ -344,6 +361,18 @@ const styles = StyleSheet.create({
   cornerTR: { top: CORNER_OFFSET, right: CORNER_OFFSET, borderTopWidth: 1.5, borderRightWidth: 1.5 },
   cornerBL: { bottom: CORNER_OFFSET, left: CORNER_OFFSET, borderBottomWidth: 1.5, borderLeftWidth: 1.5 },
   cornerBR: { bottom: CORNER_OFFSET, right: CORNER_OFFSET, borderBottomWidth: 1.5, borderRightWidth: 1.5 },
+  rostoDoGuia: { width: "100%", height: "100%", borderRadius: 999 },
+  seloDeAlerta: {
+    position: "absolute",
+    right: -4,
+    bottom: -4,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   iconWrap: {
     width: 72,
     height: 72,

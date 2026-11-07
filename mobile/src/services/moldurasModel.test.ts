@@ -4,7 +4,7 @@ import test from "node:test";
 import { molduras } from "@/constants/molduras";
 import { definirMoldurasRemotas, molduraRemota } from "@/utils/moldurasRemotas";
 import { FRAME_CANVAS_SIZE, getFrameLayout } from "@/utils/profileFrameLayout";
-import { lerCatalogo, mensagemDeErro } from "./moldurasModel";
+import { lerCatalogo, mensagemDeErro, moldurasDaSecao, type MolduraDoCatalogo } from "./moldurasModel";
 
 test("catálogo: lê a linha da RPC e descarta moldura que este build não desenha", () => {
   const r = lerCatalogo([
@@ -63,4 +63,13 @@ test("imagem cadastrada: guarda URI e abertura, e ignora linha incompleta", () =
   assert.equal(molduraRemota("toString"), null);
   definirMoldurasRemotas(null);
   assert.equal(molduraRemota("boa"), null);
+});
+
+test("seções: Loja vende, Conquistas reúne conquista e rara, Bag mostra só as que o aluno tem", () => {
+  const m = (codigo: string, origem: MolduraDoCatalogo["origem"], tenho: boolean): MolduraDoCatalogo =>
+    ({ codigo, nome: codigo, origem, preco: origem === "loja" ? 10 : null, comoGanhar: "", tenho, equipada: false });
+  const itens = [m("a", "loja", false), m("b", "loja", true), m("c", "conquista", false), m("d", "acao", true)];
+  assert.deepEqual(moldurasDaSecao(itens, "loja").map((x) => x.codigo), ["a", "b"]);
+  assert.deepEqual(moldurasDaSecao(itens, "conquistas").map((x) => x.codigo), ["c", "d"]);
+  assert.deepEqual(moldurasDaSecao(itens, "minhas").map((x) => x.codigo), ["b", "d"]);
 });

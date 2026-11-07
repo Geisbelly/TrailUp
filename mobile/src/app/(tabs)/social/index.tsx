@@ -1,4 +1,5 @@
 import { HallBackground } from "@/components/HallTheme";
+import { EstadoDeErro } from "@/components/EstadoDeErro";
 import { JourneyHeading } from "@/components/JourneyHeading";
 import { JourneySymbol } from "@/components/JourneySymbol";
 import { EsqueletoDasHistorias, EsqueletoDoSocial } from "@/components/social/EsqueletoDoSocial";
@@ -310,11 +311,7 @@ export default function SocialScreen() {
   // Primeira carga: o esqueleto no formato da aba (destaque e cartões de pessoa), em vez de
   // um spinner sozinho no lugar da página inteira.
   const carregandoOuErro = loading && !social ? <EsqueletoDoSocial palette={palette} comDestaque={!desktop && abaAtiva === abaDoDestaque} /> : error ? (
-    <View style={styles.empty}>
-      <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
-      <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>
-      <Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={[styles.retryText, { color: palette.background }]}>Tentar novamente</Text></Pressable>
-    </View>
+    <EstadoDeErro variante="bloco" palette={palette} titulo="Não foi possível carregar" mensagem={error} onTentarDeNovo={() => void load()} />
   ) : null;
 
   const emptyMessage = section === "friends" ? "Você ainda não tem amigos na jornada." : section === "invites" ? "Nenhum convite por enquanto." : section === "discover" ? "Nenhum colega disponível para convidar." : "Você não bloqueou ninguém.";
@@ -439,11 +436,7 @@ export default function SocialScreen() {
             />
           ) : null}
           {loading && !social ? <EsqueletoDoSocial palette={palette} comDestaque={false} /> : error ? (
-            <View style={styles.empty}>
-              <MaterialCommunityIcons name="alert-circle-outline" size={42} color={Color.colorWhite} />
-              <Text style={[styles.message, { color: palette.textMuted }]}>{error}</Text>
-              <Pressable onPress={() => void load()} style={[styles.retry, { backgroundColor: palette.accent }]}><Text style={[styles.retryText, { color: palette.background }]}>Tentar novamente</Text></Pressable>
-            </View>
+            <EstadoDeErro variante="bloco" palette={palette} titulo="Não foi possível carregar" mensagem={error} onTentarDeNovo={() => void load()} />
           ) : section === "arena" ? (
             <ArenaSection classeId={activeClasseId} meuId={usuario?.id ?? null} people={social ? [...social.friends, ...social.incoming, ...social.outgoing, ...social.candidates] : []} guilds={guilds} accent={palette.accent} profile={profile} dueloCom={dueloCom} abrirLobby={lobbyArena} />
           ) : section === "guilds" ? (

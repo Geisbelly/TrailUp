@@ -35,7 +35,7 @@ export function useAcaoDeMoldura() {
   return useCallback(
     (acao: AcaoDeMoldura) => {
       void registrarAcaoDeMoldura(acao).then((nome) => {
-        if (nome) avisar("Moldura nova!", `Você ganhou a moldura ${nome}. Equipe em Perfil › Molduras.`, "success");
+        if (nome) avisar("Moldura nova!", `Você ganhou a moldura ${nome}. Equipe na sua Bag, na aba Molduras.`, "success");
       });
     },
     [avisar],

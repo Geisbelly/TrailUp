@@ -77,15 +77,16 @@ export function MapaMosaicoCelular({
   const continente = L.celulas.map(({ c, r }) => caminhoCelula(L, c, r)).join(" ");
   const rosto = guardianFaceImages[normalizeBrainHexProfile(perfil) ?? "mastermind"];
   // Abre centrado no tópico atual (no protótipo, `scrollTop` até `.no.atual`).
-  const foco = useTrailAutoFocus(atual >= 0 ? topicos[atual].id : null, atual >= 0 ? L.nos[atual].y : null);
+  const { folga, ...foco } = useTrailAutoFocus(atual >= 0 ? topicos[atual].id : null, atual >= 0 ? L.nos[atual].y : null, false, true);
 
   return (
     <ScrollView
       {...foco}
       showsVerticalScrollIndicator={false}
       style={s.rolagem}
-      // Folga para o último país subir acima do botão de missões e do mentor.
-      contentContainerStyle={{ paddingBottom: RESERVA_DOS_FLUTUANTES }}
+      // Meia tela em cima e embaixo: o tópico atual abre no meio e o mapa rola mesmo quando é
+      // curto. Embaixo vale o maior entre a folga e o espaço do botão de missões e do mentor.
+      contentContainerStyle={{ paddingTop: folga, paddingBottom: Math.max(folga, RESERVA_DOS_FLUTUANTES) }}
       onLayout={(e) => {
         foco.onLayout(e);
         const w = Math.round(e.nativeEvent.layout.width);
