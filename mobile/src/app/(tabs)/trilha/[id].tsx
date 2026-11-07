@@ -2064,21 +2064,59 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
             </View>
             )}
 
-            <Text
-              style={[
-                styles.cardTitle,
-                conteudoComFocoEmArquivo && styles.cardTitleFileFocus,
-                leituraLarga && styles.cardTitleLeituraDesktop,
-                leituraCelular && styles.cardTitleLeituraCelular,
-                { color: profilePalette.text },
-              ]}
-            >
-              {atualBlock.kind === "conteudo"
-                ? isPlaceholderTitle(atualBlock.conteudo.titulo)
-                  ? topico.nome
-                  : atualBlock.conteudo.titulo
-                : atualBlock.atividade.titulo ?? "Atividade"}
-            </Text>
+            {/* Salvar e anotar ficam na linha do título do material (07/11): no fim do texto,
+                depois da rolagem inteira, o aluno nem chegava a vê-los. Discretos de propósito:
+                dois ícones no canto, não um botão do tamanho da tela. */}
+            <View style={styles.linhaTituloBloco}>
+              <Text
+                style={[
+                  styles.cardTitle,
+                  styles.tituloBlocoNaLinha,
+                  conteudoComFocoEmArquivo && styles.cardTitleFileFocus,
+                  leituraLarga && styles.cardTitleLeituraDesktop,
+                  leituraCelular && styles.cardTitleLeituraCelular,
+                  { color: profilePalette.text },
+                ]}
+              >
+                {atualBlock.kind === "conteudo"
+                  ? isPlaceholderTitle(atualBlock.conteudo.titulo)
+                    ? topico.nome
+                    : atualBlock.conteudo.titulo
+                  : atualBlock.atividade.titulo ?? "Atividade"}
+              </Text>
+              {atualBlock.kind === "conteudo" ? (
+                <View style={styles.acoesBag}>
+                  {formatoDoMaterialAtual ? (
+                    <Pressable
+                      style={[styles.botaoBagIcone, { borderColor: profilePalette.border }]}
+                      onPress={() => void salvarMaterialAtualNaBag()}
+                      disabled={salvandoMaterial}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                      accessibilityLabel="Salvar este material na Bag"
+                    >
+                      <MaterialCommunityIcons
+                        name={salvandoMaterial ? "progress-clock" : "bookmark-plus-outline"}
+                        size={18}
+                        color={profilePalette.textMuted}
+                      />
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    style={[styles.botaoBagIcone, { borderColor: profilePalette.border }]}
+                    onPress={() => {
+                      setBagContentId(normalizeBagContentId(atualBlock.conteudo.id));
+                      setBagEditorOpen(true);
+                    }}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel="Adicionar anotação, resumo ou card à Bag"
+                  >
+                    <MaterialCommunityIcons name="note-plus-outline" size={18} color={profilePalette.textMuted} />
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
 
             {destaqueSugestao ? (
               <SeloComecePorAqui motivo={destaqueSugestao.motivo} palette={profilePalette} />
@@ -2122,37 +2160,6 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                   topicoId={topicoId}
                   onDeckProgressEvent={handleDeckProgressEvent}
                 />
-                {/* Discreto de propósito: dois ícones no canto, não um botão do tamanho da tela. */}
-                <View style={styles.acoesBag}>
-                  {formatoDoMaterialAtual ? (
-                    <Pressable
-                      style={[styles.botaoBagIcone, { borderColor: profilePalette.border }]}
-                      onPress={() => void salvarMaterialAtualNaBag()}
-                      disabled={salvandoMaterial}
-                      hitSlop={6}
-                      accessibilityRole="button"
-                      accessibilityLabel="Salvar este material na Bag"
-                    >
-                      <MaterialCommunityIcons
-                        name={salvandoMaterial ? "progress-clock" : "bookmark-plus-outline"}
-                        size={18}
-                        color={profilePalette.textMuted}
-                      />
-                    </Pressable>
-                  ) : null}
-                  <Pressable
-                    style={[styles.botaoBagIcone, { borderColor: profilePalette.border }]}
-                    onPress={() => {
-                      setBagContentId(normalizeBagContentId(atualBlock.conteudo.id));
-                      setBagEditorOpen(true);
-                    }}
-                    hitSlop={6}
-                    accessibilityRole="button"
-                    accessibilityLabel="Adicionar anotação, resumo ou card à Bag"
-                  >
-                    <MaterialCommunityIcons name="note-plus-outline" size={18} color={profilePalette.textMuted} />
-                  </Pressable>
-                </View>
               </>
             ) : (
               <ActivityRenderer
