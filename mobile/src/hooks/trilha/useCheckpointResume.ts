@@ -42,6 +42,8 @@ export function useCheckpointResume(args: {
    * que marca o tópico como iniciado; o foco é usado nesse toque (ver `[id].tsx`).
    */
   focoAtividadeId?: number | null;
+  /** Mesmo papel, para um conteúdo: o material salvo na Bag abre no bloco de onde saiu. */
+  focoConteudoId?: number | null;
 }): {
   index: number;
   mostrarResumo: boolean;
@@ -62,6 +64,7 @@ export function useCheckpointResume(args: {
     topicoConcluido,
     blocosProntos,
     focoAtividadeId = null,
+    focoConteudoId = null,
   } = args;
 
   const [index, setIndex] = useState(-1);
@@ -121,10 +124,14 @@ export function useCheckpointResume(args: {
       }
 
       const posicaoDoFoco =
-        focoAtividadeId != null ? resolveCheckpointPosition(blocks, "atividade", focoAtividadeId) : -1;
+        focoAtividadeId != null
+          ? resolveCheckpointPosition(blocks, "atividade", focoAtividadeId)
+          : focoConteudoId != null
+          ? resolveCheckpointPosition(blocks, "conteudo", focoConteudoId)
+          : -1;
 
       if (posicaoDoFoco >= 0 && (topicoJaIniciado || topicoConcluido)) {
-        decisao(`foco pedido na atividade ${focoAtividadeId} -> bloco ${posicaoDoFoco}`);
+        decisao(`foco pedido em ${focoAtividadeId != null ? `atividade ${focoAtividadeId}` : `conteudo ${focoConteudoId}`} -> bloco ${posicaoDoFoco}`);
         setIndex(posicaoDoFoco);
         setMostrarResumo(false);
       } else if (checkpoint?.mostrarResumo) {
@@ -175,6 +182,7 @@ export function useCheckpointResume(args: {
     blocosProntos,
     checkpointParams,
     focoAtividadeId,
+    focoConteudoId,
     primeiraVez,
     topico?.ultima_atividade,
     topicoConcluido,

@@ -16,7 +16,8 @@ from app.services.respostas_do_guia import _RESPOSTAS, resposta_sem_modelo
         ("cadê a loja?", "perfil.loja"),
         ("Como gasto minhas moedas?", "perfil.loja"),
         ("como faço para ver minhas conquistas?", "perfil.conquistas"),
-        ("onde vejo as molduras", "perfil.molduras"),
+        # Desde a #1049 a moldura se compra na Loja, e a resposta cita a Loja: o botão dela vem junto.
+        ("onde vejo as molduras", ["perfil.molduras", "perfil.loja"]),
         ("como ligo o modo foco?", "perfil.modo_foco"),
         ("como mudo o lembrete", "perfil.lembrete"),
         ("como desligo a câmera?", "perfil.coleta"),
@@ -29,11 +30,12 @@ from app.services.respostas_do_guia import _RESPOSTAS, resposta_sem_modelo
         ("quero ver as amizades", "social"),
     ],
 )
-def test_pergunta_de_navegacao_sai_sem_modelo(pergunta: str, destino: str) -> None:
+def test_pergunta_de_navegacao_sai_sem_modelo(pergunta: str, destino: str | list[str]) -> None:
     saida = resposta_sem_modelo(pergunta)
 
     assert saida is not None
-    assert montar_resposta_do_guia(saida, lambda texto: texto)["destinos"] == [destino]
+    esperados = destino if isinstance(destino, list) else [destino]
+    assert montar_resposta_do_guia(saida, lambda texto: texto)["destinos"] == esperados
 
 
 @pytest.mark.parametrize(

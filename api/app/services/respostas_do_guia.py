@@ -57,7 +57,8 @@ _RESPOSTAS = (
         ("conquistas", "biblioteca de conquistas"),
     ),
     RespostaPronta(
-        "As Molduras ficam no Perfil. Umas se compram, outras saem ao concluir conquistas.",
+        "As Molduras se compram na Loja e se ganham nas Conquistas. As que você já tem ficam na Bag, "
+        "na aba Molduras, onde você equipa.",
         "perfil.molduras",
         "",
         ("molduras",),

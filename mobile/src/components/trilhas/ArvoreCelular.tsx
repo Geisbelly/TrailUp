@@ -52,7 +52,8 @@ export function ArvoreCelular({
   const porId = useMemo(() => new Map(topicos.map((t) => [t.id, t] as const)), [topicos]);
   const rosto = guardianFaceImages[normalizeBrainHexProfile(perfil) ?? "mastermind"];
   const atual = topicos.find((t) => t.estado === "current");
-  const foco = useTrailAutoFocus(atual?.id ?? null, atual ? (L.pos[atual.id]?.y ?? null) : null);
+  // O centro soma o paddingTop (16) do conteúdo; a folga deixa qualquer nó chegar ao meio da tela.
+  const { folga, ...foco } = useTrailAutoFocus(atual?.id ?? null, atual && L.pos[atual.id] ? 16 + L.pos[atual.id].y : null, false, true);
 
   return (
     <ScrollView
@@ -60,7 +61,7 @@ export function ArvoreCelular({
       showsVerticalScrollIndicator={false}
       style={s.rolagem}
       // Folga para o balão "Você parou aqui" quando o tópico atual é o primeiro.
-      contentContainerStyle={s.conteudo}
+      contentContainerStyle={[s.conteudo, { paddingTop: 16 + folga, paddingBottom: Math.max(folga, RESERVA_DOS_FLUTUANTES) }]}
       onLayout={(e) => {
         foco.onLayout(e);
         const w = Math.round(e.nativeEvent.layout.width);

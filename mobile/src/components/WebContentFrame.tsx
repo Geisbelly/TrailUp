@@ -1,7 +1,11 @@
 import { Color } from "@/styles/GlobalStyle";
 import { usePausarAoSairDaTela } from "@/hooks/usePausarAoSairDaTela";
 import { getProfileShellPalette, ProfileShellPalette } from "@/utils/profileShellTheme";
-import { parseDeckProgressMessage, type DeckProgressEvent } from "@/utils/deckProgressMessage";
+import {
+  parseDeckProgressMessage,
+  progressoDoProprioFrame,
+  type DeckProgressEvent,
+} from "@/utils/deckProgressMessage";
 import { criarNarracaoDoDeck } from "@/utils/narracaoDoDeck";
 import {
   SCRIPT_CALAR_FALA,
@@ -54,17 +58,17 @@ export function WebContentFrame({
   WebView,
   onProgressEvent,
 }: Props) {
+  // Um ref só para os dois `iframe` da web (`srcDoc` e `uri`): só um deles existe por vez, e é
+  // por ele que o progresso do deck é aceito. O `srcDoc` já ficou sem ref, e todo quiz respondido
+  // no deck da web era descartado.
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  // Separado de `iframeRef` de propósito: é ele que libera o `postMessage` de progresso, e o
-  // `srcDoc` nunca passou por ali.
-  const iframeDoHtmlRef = useRef<HTMLIFrameElement | null>(null);
   const webViewRef = useRef<any>(null);
 
   const [narracao] = useState(() =>
     criarNarracaoDoDeck({
       pararVozDoApp: () => void Speech.stop(),
       pararVozDoDeck: () => {
-        calarVozDoIframe(iframeDoHtmlRef.current?.contentWindow);
+        calarVozDoIframe(iframeRef.current?.contentWindow);
         webViewRef.current?.injectJavaScript?.(SCRIPT_CALAR_FALA);
       },
     })
@@ -118,18 +122,13 @@ export function WebContentFrame({
   useLayoutEffect(() => narracao.pausar, [narracao]);
 
   // Escuta postMessage do deck (ver reportProgressToHost em
-  // BrainHexPDF/src/utils/deckExportUtils.ts). window.addEventListener('message')
-  // recebe mensagem de QUALQUER origem por padrao - o check de
-  // event.source === iframeRef.current.contentWindow garante que a
-  // mensagem veio especificamente do nosso proprio iframe, nao de outra
-  // aba/origem arbitraria.
+  // brainhexpdf/src/utils/deckExportUtils.ts). Só vale a mensagem que saiu do
+  // nosso próprio iframe: ver `progressoDoProprioFrame`.
   useEffect(() => {
     if (Platform.OS !== "web" || !onProgressEvent) return;
 
     function handleMessage(event: MessageEvent) {
-      if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
-      const raw = typeof event.data === "string" ? event.data : "";
-      const parsed = parseDeckProgressMessage(raw);
+      const parsed = progressoDoProprioFrame(event, iframeRef.current?.contentWindow);
       if (parsed) onProgressEvent!(parsed);
     }
 
@@ -140,7 +139,7 @@ export function WebContentFrame({
   if (Platform.OS === "web") {
     return html ? (
       <iframe
-        ref={iframeDoHtmlRef}
+        ref={iframeRef}
         title={title ?? "Visualizador"}
         srcDoc={html}
         onLoad={(evento) =>

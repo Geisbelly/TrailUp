@@ -159,14 +159,6 @@ function SettingsLista() {
           ),
         },
         {
-          label: "Molduras",
-          render: (
-            <LinhaConfig icone="circle" onPress={() => router.push("/(tabs)/perfil/molduras")} palette={palette}>
-              Molduras
-            </LinhaConfig>
-          ),
-        },
-        {
           label: "Biblioteca de conquistas",
           render: (
             <LinhaConfig icone="award" onPress={() => router.push("/(tabs)/perfil/biblioteca-conquistas")} palette={palette}>

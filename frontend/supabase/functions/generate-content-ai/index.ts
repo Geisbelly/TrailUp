@@ -6,8 +6,111 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GEMINI_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent";
+const GEMINI_PRIMARY_MODEL = "gemini-3.6-flash";
+// Cota do tier free e por (chave, modelo): quando o principal esgota, os
+// "lite" da mesma serie ainda costumam responder. Sobrescreva com
+// GEMINI_FALLBACK_MODELS (separados por virgula) sem precisar de deploy.
+const GEMINI_DEFAULT_FALLBACK_MODELS = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"];
+// Status em que vale tentar outra chave/modelo: cota (429), credito
+// pre-pago esgotado (402), chave sem permissao (403) e sobrecarga (500/503).
+// O 402 caia no "Gemini API error" 502 sem tentar mais nada.
+const GEMINI_ROTATE_STATUSES = new Set([402, 403, 429, 500, 503]);
+// Par (chave, modelo) que esgotou fica de fora por um tempo nesta instancia,
+// pra nao gastar ida e volta em chave morta a cada pedido.
+const GEMINI_EXHAUSTED_COOLDOWN_MS = 10 * 60 * 1000;
+const geminiExhaustedUntil = new Map<string, number>();
+
+function splitList(raw: string | undefined | null): string[] {
+  return String(raw ?? "")
+    .split(/[,;\s]+/)
+    .map((item) => item.trim().replace(/^"|"$/g, ""))
+    .filter(Boolean);
+}
+
+function geminiModels(): string[] {
+  const fallbacks = splitList(Deno.env.get("GEMINI_FALLBACK_MODELS"));
+  const list = [GEMINI_PRIMARY_MODEL, ...(fallbacks.length ? fallbacks : GEMINI_DEFAULT_FALLBACK_MODELS)];
+  return Array.from(new Set(list));
+}
+
+/**
+ * Chama o Gemini percorrendo todas as chaves de GEMINI_API_KEY (aceita
+ * varias, separadas por virgula ou ponto e virgula, como na API) e, se
+ * todas esgotarem, os modelos de reserva. Devolve a primeira resposta que
+ * nao seja de cota/credito; se todas forem, devolve a ultima.
+ */
+// Sem `any`: o eslint do frontend (no-explicit-any) varre esta pasta. Os dois
+// chamadores fazem cast explicito ao navegar candidates[0].content.parts.
+type GeminiResult = { res: Response; apiData: JsonRecord };
+
+async function fetchGemini(rawKeys: string, body: unknown): Promise<GeminiResult> {
+  const keys = splitList(rawKeys);
+  if (keys.length === 0) keys.push(rawKeys);
+  const payload = JSON.stringify(body);
+  const now = Date.now();
+  const pairs: Array<{ key: string; keyIndex: number; model: string; id: string }> = [];
+  for (const model of geminiModels()) {
+    keys.forEach((key, keyIndex) => pairs.push({ key, keyIndex, model, id: `${key}|${model}` }));
+  }
+  const fresh = pairs.filter((pair) => (geminiExhaustedUntil.get(pair.id) ?? 0) <= now);
+  // Se tudo estiver em cooldown, tenta mesmo assim: a cota pode ter voltado.
+  const order = fresh.length ? fresh : pairs;
+
+  let last: GeminiResult | null = null;
+  let lastNetworkError: unknown = null;
+  for (const pair of order) {
+    let res: Response;
+    try {
+      // Chave no header, nao na URL (#195): URL vai parar em log.
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${pair.model}:generateContent`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": pair.key },
+          body: payload,
+        },
+      );
+    } catch (error) {
+      lastNetworkError = error;
+      continue;
+    }
+    const apiData = (await res.json().catch(() => ({
+      error: { message: "Resposta nao JSON do Gemini." },
+    }))) as JsonRecord;
+    if (res.ok) {
+      if (pair.model !== GEMINI_PRIMARY_MODEL || pair.keyIndex !== 0) {
+        console.log(`gemini: respondeu com chave #${pair.keyIndex} e modelo ${pair.model}`);
+      }
+      return { res, apiData };
+    }
+    last = { res, apiData };
+    if (!GEMINI_ROTATE_STATUSES.has(res.status)) return last;
+    const status = (apiData?.error as JsonRecord | undefined)?.status;
+    console.warn(`gemini: chave #${pair.keyIndex} modelo ${pair.model} -> ${res.status} ${status ?? ""}`);
+    if (res.status === 402 || res.status === 403 || res.status === 429) {
+      geminiExhaustedUntil.set(pair.id, Date.now() + GEMINI_EXHAUSTED_COOLDOWN_MS);
+    }
+  }
+
+  if (last) return last;
+  throw new AiStructuredError(
+    "Nao foi possivel conectar ao Gemini.",
+    "gemini_network_error",
+    502,
+    { cause: lastNetworkError instanceof Error ? lastNetworkError.message : String(lastNetworkError) },
+  );
+}
+
+function geminiHttpError(status: number, apiData: JsonRecord): AiStructuredError {
+  // 402 (credito esgotado) tambem e falta de cota pra quem usa: mesma mensagem do 429.
+  const quota = status === 429 || status === 402;
+  return new AiStructuredError(
+    quota ? "Limite temporario do Gemini atingido. Tente novamente em instantes." : "Gemini API error",
+    quota ? "gemini_rate_limit" : "gemini_error",
+    quota ? 429 : 502,
+    { upstream_status: status, response: apiData },
+  );
+}
 
 type JsonRecord = Record<string, unknown>;
 
@@ -377,31 +480,14 @@ async function callGeminiJson(options: GeminiCallOptions): Promise<{ parsed: unk
   let lastError: AiStructuredError | null = null;
 
   for (const attempt of attemptConfigs) {
-    let res: Response;
-    try {
-      // Chave no header, nao na URL (#195): URL vai parar em log.
-      res = await fetch(GEMINI_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": options.key },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: options.prompt }] }],
-          generationConfig: {
-            maxOutputTokens: options.maxOutputTokens,
-            responseMimeType: "application/json",
-            ...(attempt.useSchema && options.responseSchema ? { responseSchema: options.responseSchema } : {}),
-          },
-        }),
-      });
-    } catch (error) {
-      throw new AiStructuredError(
-        "Nao foi possivel conectar ao Gemini.",
-        "gemini_network_error",
-        502,
-        { cause: error instanceof Error ? error.message : String(error) },
-      );
-    }
-
-    const apiData = await res.json().catch(() => ({ error: { message: "Resposta nao JSON do Gemini." } }));
+    const { res, apiData } = await fetchGemini(options.key, {
+      contents: [{ parts: [{ text: options.prompt }] }],
+      generationConfig: {
+        maxOutputTokens: options.maxOutputTokens,
+        responseMimeType: "application/json",
+        ...(attempt.useSchema && options.responseSchema ? { responseSchema: options.responseSchema } : {}),
+      },
+    });
     if (!res.ok) {
       const reason = String((apiData as JsonRecord)?.error ? JSON.stringify((apiData as JsonRecord).error) : "");
       const schemaIssue =
@@ -410,18 +496,13 @@ async function callGeminiJson(options: GeminiCallOptions): Promise<{ parsed: unk
           reason.toLowerCase().includes("schema") ||
           reason.toLowerCase().includes("generationconfig"));
 
-      const err = new AiStructuredError(
-        res.status === 429 ? "Limite temporario do Gemini atingido. Tente novamente em instantes." : "Gemini API error",
-        res.status === 429 ? "gemini_rate_limit" : "gemini_error",
-        res.status === 429 ? 429 : 502,
-        { upstream_status: res.status, response: apiData },
-      );
+      const err = geminiHttpError(res.status, apiData);
       lastError = err;
       if (schemaIssue) continue;
       throw err;
     }
 
-    const candidate = (apiData as JsonRecord)?.candidates?.[0] as JsonRecord | undefined;
+    const candidate = ((apiData as JsonRecord)?.candidates as JsonRecord[] | undefined)?.[0];
     const finishReason = String(candidate?.finishReason ?? candidate?.finish_reason ?? "").toUpperCase();
     const rawText = String(
       ((candidate?.content as JsonRecord | undefined)?.parts as JsonRecord[] | undefined)?.[0]?.text ?? "{}",
@@ -992,7 +1073,6 @@ function withLegacyCompatibility(payload: JsonRecord, mode: RequestBody["mode"])
 }
 
 // ===== Modo description/content: helpers do PR #3 (contexto, tema, essay, best-of-N) =====
-const GEMINI_MODEL = "gemini-3.6-flash";
 const MAX_FILE_CONTENT_CHARS = 10000;
 const MAX_CONTENT_SNIPPET = 900;
 const CONTENT_GEN_ATTEMPTS = 3;
@@ -1201,48 +1281,23 @@ async function callGemini(params: {
   maxOutputTokens: number;
   responseSchema?: Record<string, unknown>;
 }) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": params.key },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: params.prompt }] }],
-        generationConfig: {
-          maxOutputTokens: params.maxOutputTokens,
-          responseMimeType: "application/json",
-          ...(params.responseSchema ? { responseSchema: params.responseSchema } : {}),
-        },
-      }),
-    });
-  } catch (error) {
-    throw new AiStructuredError(
-      "Nao foi possivel conectar ao Gemini.",
-      "gemini_network_error",
-      502,
-      { cause: error instanceof Error ? error.message : String(error) },
-    );
-  }
-
-  const apiData = (await response.json().catch(() => ({
-    error: { message: "Resposta nao JSON do Gemini." },
-  }))) as JsonObject;
+  const { res: response, apiData } = await fetchGemini(params.key, {
+    contents: [{ parts: [{ text: params.prompt }] }],
+    generationConfig: {
+      maxOutputTokens: params.maxOutputTokens,
+      responseMimeType: "application/json",
+      ...(params.responseSchema ? { responseSchema: params.responseSchema } : {}),
+    },
+  });
   if (!response.ok) {
-    throw new AiStructuredError(
-      response.status === 429 ? "Limite temporario do Gemini atingido. Tente novamente em instantes." : "Gemini API error",
-      response.status === 429 ? "gemini_rate_limit" : "gemini_error",
-      response.status === 429 ? 429 : 502,
-      { upstream_status: response.status, response: apiData },
-    );
+    throw geminiHttpError(response.status, apiData);
   }
 
   const candidate = Array.isArray((apiData as { candidates?: unknown }).candidates)
     ? ((apiData as { candidates: Array<Record<string, unknown>> }).candidates[0] ?? null)
     : null;
-  const parts = Array.isArray(candidate?.content && (candidate.content as { parts?: unknown }).parts)
-    ? ((candidate.content as { parts: Array<Record<string, unknown>> }).parts ?? [])
-    : [];
+  const rawParts = (candidate?.content as { parts?: unknown } | undefined)?.parts;
+  const parts: Array<Record<string, unknown>> = Array.isArray(rawParts) ? rawParts : [];
   const text = parts.map((part) => (typeof part.text === "string" ? part.text : "")).join("").trim();
   const finishReason = typeof candidate?.finishReason === "string" ? candidate.finishReason : null;
   return { text, finishReason };

@@ -2,7 +2,7 @@ import { Image, View, type StyleProp, type ViewStyle } from "react-native";
 import { profileUtilityIcons } from "@/constants/profileUtilityIcons";
 import { normalizeBrainHexProfile } from "@/constants/brainHexProfiles";
 import { useUsuario } from "@/context/SessaoContext";
-import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 
 export type UtilityIconKind = keyof typeof profileUtilityIcons;
 
@@ -18,7 +18,7 @@ type Props = {
 export function UtilityIcon({ kind, size = 34, height = size, profile: profileOverride, style }: Props) {
   const { usuario } = useUsuario();
   const profile = normalizeBrainHexProfile(profileOverride) ??
-    resolveActiveBrainHexProfile(usuario?.perfis, usuario?.perfilAtivo);
+    perfilVisualDoAluno(usuario);
   return (
     <View style={[{ width: size, height, flexShrink: 0 }, style, { pointerEvents: "none" }]}>
       <Image source={profileUtilityIcons[kind][profile]} resizeMode="contain" accessible={false} style={{ width: "100%", height: "100%" }} />

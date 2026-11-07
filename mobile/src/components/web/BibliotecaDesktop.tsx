@@ -31,12 +31,15 @@ export function BibliotecaDesktop({
   palette,
   resumoRef,
   onAbrir,
+  rodape,
 }: {
   itens: ConquistaBibliotecaItem[];
   carregando: boolean;
   palette: ProfileShellPalette;
   resumoRef?: React.RefObject<View | null>;
   onAbrir: (conquista: Conquista) => void;
+  /** Vai no fim da página, dentro da rolagem (as molduras de conquista). */
+  rodape?: React.ReactNode;
 }) {
   const [filtro, setFiltro] = useState<Filtro>("todas");
   const [largura, setLargura] = useState(0);
@@ -133,6 +136,7 @@ export function BibliotecaDesktop({
             );
           })}
         </View>
+        {rodape}
       </View>
     </ScrollView>
   );

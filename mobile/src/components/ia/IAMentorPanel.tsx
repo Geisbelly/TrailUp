@@ -5,7 +5,7 @@ import { useMetricas } from "@/context/MetricasContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { usePersonalizacaoProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import { FontFamily } from "@/styles/GlobalStyle";
-import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -232,10 +232,7 @@ export function IAMentorPanel({
   const { recordAppEvent } = useMetricas();
   const personalizacaoProvider = usePersonalizacaoProvider();
 
-  const profileName = resolveActiveBrainHexProfile(
-    usuario?.perfis ?? null,
-    usuario?.perfilAtivo,
-  );
+  const profileName = perfilVisualDoAluno(usuario);
   const palette = useMemo(() => getProfileShellPalette(profileName), [profileName]);
   const guideConfig = useMemo(() => getBrainHexConfig(profileName), [profileName]);
   const guideName = useMemo(() => getBrainHexGuideName(profileName), [profileName]);

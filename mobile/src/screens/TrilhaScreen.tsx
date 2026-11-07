@@ -1,4 +1,5 @@
 import CardSemDados from "@/components/CardSemDados";
+import { EstadoDeErro } from "@/components/EstadoDeErro";
 import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { EsqueletoTrilha } from "@/components/trilhas/EsqueletoTrilha";
 import { BagModal } from "@/components/bag/BagModal";
@@ -12,8 +13,7 @@ import { Color } from "@/styles/GlobalStyle";
 import { esperandoPrimeiraCarga } from "@/utils/esqueleto";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TrilhasIndex() {
@@ -66,6 +66,16 @@ export default function TrilhasIndex() {
     };
   }, [classeAtual, personalizedTopics]);
 
+  // O chat da trilha precisa de um tópico para conhecer a matéria. Antes ia só o primeiro com
+  // justificativa de personalização (ou nenhum), e a pergunta sobre o conteúdo ficava sem base:
+  // agora vai o tópico em andamento, depois o primeiro não concluído, e só então o da justificativa.
+  const topicoDoChat = useMemo(() => {
+    const topicos = classeAtual?.topicos ?? [];
+    const emAndamento = topicos.find((t) => t.status === "em andamento");
+    const pendente = topicos.find((t) => t.status !== "concluido");
+    return emAndamento?.id ?? pendente?.id ?? trailMentorCue?.topicoId ?? null;
+  }, [classeAtual, trailMentorCue]);
+
   useEffect(() => {
     if (!trailMentorCue) return;
     if (personalizationCueKeyRef.current === trailMentorCue.key) return;
@@ -95,13 +105,11 @@ export default function TrilhasIndex() {
         edges={["top", "left", "right"]}
         style={[styles.root, { backgroundColor: palette.background }]}
       >
-        <View style={styles.erro} accessibilityRole="alert">
-          <MaterialCommunityIcons name="alert-circle-outline" size={44} color={palette.textSubtle} />
-          <Text style={[styles.erroTitulo, { color: palette.text }]}>Não foi possível carregar a trilha</Text>
-          <Text style={[styles.erroTexto, { color: palette.textSubtle }]}>
-            Confira sua conexão e volte para esta aba em instantes.
-          </Text>
-        </View>
+        <EstadoDeErro
+          palette={palette}
+          titulo="Não foi possível carregar a trilha"
+          mensagem="Confira sua conexão e volte para esta aba em instantes."
+        />
       </SafeAreaView>
     );
   }
@@ -137,7 +145,7 @@ export default function TrilhasIndex() {
       )}
       <IAMentorPanel
         classeId={classeAtual?.classe_id ?? null}
-        topicoId={trailMentorCue?.topicoId ?? null}
+        topicoId={topicoDoChat}
         scope="trilha_home"
         bottomOffset={desktop ? 10 : BASE_DOS_FLUTUANTES}
         guideTargetRef={chatGuideTargetRef}

@@ -15,7 +15,7 @@ import {
   IATimerTimeoutAction,
 } from "@/interfaces/personalizacao/IAContracts";
 import { FontFamily } from "@/styles/GlobalStyle";
-import { resolveActiveBrainHexProfile } from "@/utils/brainHex";
+import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { criarTempoCorrido, cronometroDeveContar } from "@/utils/presencaDeEstudo";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
@@ -70,8 +70,7 @@ export function IAHeaderTimer({
   // reregistre o `headerRight` ao perder o foco.
   const telaFocada = useIsFocused();
   const { usuario } = useUsuario();
-  const perfis = usuario?.perfis ?? null;
-  const activeProfile = resolveActiveBrainHexProfile(perfis, usuario?.perfilAtivo);
+  const activeProfile = perfilVisualDoAluno(usuario);
   const palette = useMemo(() => getProfileShellPalette(activeProfile), [activeProfile]);
   const hasTimerSignal = getBrainHexProfileCapabilities(activeProfile).hasTimer;
 
