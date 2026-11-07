@@ -67,8 +67,9 @@ atividades movem o ranking.
   entrega o benefício.
 - Biblioteca de conquistas: mostra as concluídas, em progresso e bloqueadas, com o
   que falta. As de perfil são ligadas ao BrainHex; as comuns valem para todos.
-- Molduras: em volta da foto. Umas se compram, outras saem ao concluir conquistas
-  ou ao fazer algo especial no app.
+- Molduras: em volta da foto. As que se compram ficam na Loja; as que saem ao concluir
+  conquistas ou ao fazer algo especial no app ficam na Biblioteca de conquistas. As que o
+  aluno já tem ficam na Bag, na aba Molduras, onde ele equipa.
 - Estilo das métricas: muda só a aparência do painel de métricas; o automático
   segue o perfil BrainHex.
 - Modo foco e avisos: com o foco ligado, nenhuma notificação chega. Ao sair, vem

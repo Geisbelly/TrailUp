@@ -15,6 +15,7 @@ import CardSemDados from "@/components/CardSemDados";
 import { EsqueletoBloco, EsqueletoGrupo } from "@/components/carregamento/Esqueleto";
 import { EsqueletoDaBiblioteca } from "@/components/perfil/EsqueletoDoPerfil";
 import ConquistaModal from "@/components/ConquistaModal";
+import { SecaoDeMolduras } from "@/components/molduras/SecaoDeMolduras";
 import { BibliotecaDesktop } from "@/components/web/BibliotecaDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { getAchievementArtwork } from "@/constants/achievementImages";
@@ -206,6 +207,11 @@ export default function BibliotecaConquistasScreen() {
           palette={shellPalette}
           resumoRef={summaryGuideRef}
           onAbrir={setSelected}
+          rodape={
+            <View style={styles.molduras}>
+              <SecaoDeMolduras secao="conquistas" palette={shellPalette} />
+            </View>
+          }
         />
         {detalhe}
       </>
@@ -354,6 +360,10 @@ export default function BibliotecaConquistasScreen() {
             })}
           </View>
         )}
+
+        <View style={styles.molduras}>
+          <SecaoDeMolduras secao="conquistas" palette={shellPalette} />
+        </View>
       </ScrollView>
 
       {detalhe}
@@ -362,6 +372,7 @@ export default function BibliotecaConquistasScreen() {
 }
 
 const styles = StyleSheet.create({
+  molduras: { marginTop: 24 },
   screen: { flex: 1 },
   grade: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   numeros: { flexDirection: "row", gap: 8 },

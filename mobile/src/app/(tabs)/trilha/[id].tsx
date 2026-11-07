@@ -1,4 +1,5 @@
 import { referenciaDeAtividade } from "@/utils/referenciaDeEvento";
+import { EstadoDeErro } from "@/components/EstadoDeErro";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { progressoCanonicoTopico, topicoConcluidoNaTela } from '@/utils/topicoProgress';
@@ -91,7 +92,9 @@ import {
   tentativaAberta,
   type TentativaAberta,
 } from "@/services/tentativasAtividade";
-import { normalizeBagContentId, type BagDraft } from "@/services/bag/bagModel";
+import { bagFormatForBlockType, materialDraft, normalizeBagContentId, type BagDraft } from "@/services/bag/bagModel";
+import { useAviso } from "@/hooks/useAviso";
+import { textoDeErro } from "@/utils/textoDeErro";
 import {
   buildBlocksForTopico,
   calcularProgressoVisualPercurso,
@@ -191,7 +194,7 @@ export default function TrilhaConteudoScreen() {
   const isScreenFocused = useIsFocused();
   const router = useRouter();
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ id?: string | string[]; atividade?: string | string[] }>();
+  const params = useLocalSearchParams<{ id?: string | string[]; atividade?: string | string[]; conteudo?: string | string[] }>();
 
   const {
     carregando,
@@ -258,6 +261,14 @@ export default function TrilhaConteudoScreen() {
     const id = Number(bruto);
     return Number.isInteger(id) && id > 0 ? id : null;
   }, [params.atividade]);
+
+  // `?conteudo=`: o material salvo na Bag abre no bloco de onde saiu. Bloco personalizado tem id
+  // negativo (só existe no app), então aceita qualquer inteiro diferente de zero.
+  const focoConteudoId = useMemo(() => {
+    const bruto = Array.isArray(params.conteudo) ? params.conteudo[0] : params.conteudo;
+    const id = Number(bruto);
+    return Number.isInteger(id) && id !== 0 ? id : null;
+  }, [params.conteudo]);
 
   const topico =
     topicoId == null || !classeAtual
@@ -574,6 +585,7 @@ export default function TrilhaConteudoScreen() {
     topicoConcluido,
     blocosProntos,
     focoAtividadeId,
+    focoConteudoId,
   });
 
   useEffect(() => {
@@ -870,6 +882,34 @@ export default function TrilhaConteudoScreen() {
       currentContentItemKey
     );
   }, [atualBlock, conteudoBlocks, currentContentItemKey]);
+  // Salvar o material na Bag (#urgente 06/11): atalho para este bloco, sem URL — ver `materialDraft`.
+  const { avisar } = useAviso();
+  const [salvandoMaterial, setSalvandoMaterial] = useState(false);
+  const formatoDoMaterialAtual = bagFormatForBlockType(currentMaterialContext.materialType);
+  const salvarMaterialAtualNaBag = useCallback(async () => {
+    const classeId = Number(classeAtual?.classe_id ?? 0);
+    if (!atualBlock || atualBlock.kind !== "conteudo" || !formatoDoMaterialAtual || !topicoId || classeId <= 0) return;
+    const conteudoId = Number(atualBlock.conteudo.id);
+    const titulo = String((atualBlock.conteudo as any)?.titulo ?? (topico as any)?.titulo ?? "Material");
+    setSalvandoMaterial(true);
+    try {
+      await createBagItem(
+        materialDraft({
+          formato: formatoDoMaterialAtual,
+          bloco: String(conteudoId),
+          titulo,
+          classId: classeId,
+          topicId: topicoId,
+          contentId: conteudoId,
+        }),
+      );
+      avisar("Salvo na Bag", "Abra pela Bag quando quiser rever este material.", "success");
+    } catch (erro) {
+      avisar("Bag", textoDeErro(erro, "Não foi possível salvar o material."), "error");
+    } finally {
+      setSalvandoMaterial(false);
+    }
+  }, [atualBlock, avisar, classeAtual?.classe_id, formatoDoMaterialAtual, topico, topicoId]);
   const isCurrentStudyBlockTrackable = useMemo(() => {
     if (mostrarResumo || index < 0 || !atualBlock) return false;
     return true;
@@ -1785,24 +1825,24 @@ export default function TrilhaConteudoScreen() {
 
   if (erro) {
     return (
-      <SafeAreaView style={styles.screen}>
-        <View style={styles.center}>
-          <Text style={styles.errorTitle}>Não foi possível carregar a trilha</Text>
-          <Text style={styles.helperText}>Confira sua conexão e tente de novo em instantes.</Text>
-        </View>
+      <SafeAreaView style={[styles.screen, { backgroundColor: profilePalette.background }]}>
+        <EstadoDeErro
+          palette={profilePalette}
+          titulo="Não foi possível carregar a trilha"
+          mensagem="Confira sua conexão e tente de novo em instantes."
+        />
       </SafeAreaView>
     );
   }
 
   if (!topico) {
     return (
-      <SafeAreaView style={styles.screen}>
-        <View style={styles.center}>
-          <Text style={styles.errorTitle}>Trilha não encontrada</Text>
-          <Text style={styles.helperText}>
-            Não foi possível localizar os conteúdos desta trilha.
-          </Text>
-        </View>
+      <SafeAreaView style={[styles.screen, { backgroundColor: profilePalette.background }]}>
+        <EstadoDeErro
+          palette={profilePalette}
+          titulo="Trilha não encontrada"
+          mensagem="Não foi possível localizar os conteúdos desta trilha."
+        />
       </SafeAreaView>
     );
   }
@@ -2082,33 +2122,37 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                   topicoId={topicoId}
                   onDeckProgressEvent={handleDeckProgressEvent}
                 />
-                <Pressable
-                  style={[
-                    styles.secondaryButton,
-                    {
-                      backgroundColor: profilePalette.surface,
-                      borderColor: profilePalette.accent,
-                      marginTop: 14,
-                    },
-                    leituraLarga && [styles.botaoBagDesktop, { borderColor: profilePalette.borderStrong }],
-                  ]}
-                  onPress={() => {
-                    setBagContentId(normalizeBagContentId(atualBlock.conteudo.id));
-                    setBagEditorOpen(true);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Adicionar anotação, resumo ou card à Bag"
-                >
-                  <Text
-                    style={[
-                      styles.secondaryButtonText,
-                      { color: profilePalette.accent },
-                      leituraLarga && [styles.botaoBagDesktopTexto, { color: profilePalette.text }],
-                    ]}
+                {/* Discreto de propósito: dois ícones no canto, não um botão do tamanho da tela. */}
+                <View style={styles.acoesBag}>
+                  {formatoDoMaterialAtual ? (
+                    <Pressable
+                      style={[styles.botaoBagIcone, { borderColor: profilePalette.border }]}
+                      onPress={() => void salvarMaterialAtualNaBag()}
+                      disabled={salvandoMaterial}
+                      hitSlop={6}
+                      accessibilityRole="button"
+                      accessibilityLabel="Salvar este material na Bag"
+                    >
+                      <MaterialCommunityIcons
+                        name={salvandoMaterial ? "progress-clock" : "bookmark-plus-outline"}
+                        size={18}
+                        color={profilePalette.textMuted}
+                      />
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    style={[styles.botaoBagIcone, { borderColor: profilePalette.border }]}
+                    onPress={() => {
+                      setBagContentId(normalizeBagContentId(atualBlock.conteudo.id));
+                      setBagEditorOpen(true);
+                    }}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel="Adicionar anotação, resumo ou card à Bag"
                   >
-                    {leituraCelular ? "＋ Adicionar à Bag" : "＋ Guardar na Bag"}
-                  </Text>
-                </Pressable>
+                    <MaterialCommunityIcons name="note-plus-outline" size={18} color={profilePalette.textMuted} />
+                  </Pressable>
+                </View>
               </>
             ) : (
               <ActivityRenderer
@@ -2172,6 +2216,8 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                   const posicaoDoFoco =
                     focoAtividadeId != null
                       ? resolveCheckpointPosition(displayedBlocks, "atividade", focoAtividadeId)
+                      : focoConteudoId != null
+                      ? resolveCheckpointPosition(displayedBlocks, "conteudo", focoConteudoId)
                       : -1;
                   const posicao =
                     posicaoDoFoco >= 0

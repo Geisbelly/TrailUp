@@ -38,7 +38,7 @@ function draftParams(draft: BagDraft) {
     p_classe_id: draft.classId ?? null,
     p_topico_id: draft.topicId ?? null,
     p_conteudo_id: draft.contentId ?? null,
-    p_metadata: {},
+    p_metadata: draft.metadata ?? {},
   };
 }
 

@@ -51,12 +51,13 @@ export function ListaCelular({
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const rosto = guardianFaceImages[normalizeBrainHexProfile(perfil) ?? "mastermind"];
   const iAtual = topicos.findIndex((t) => t.estado === "current");
-  const foco = useTrailAutoFocus(iAtual >= 0 ? topicos[iAtual].id : null, iAtual >= 0 ? 6 + iAtual * (ALTURA_LINHA + ESPACO) + ALTURA_LINHA / 2 : null);
+  // 18 = paddingTop de `s.lista` (a #1034 subiu de 6 para 18 e o centro ficou com o valor velho).
+  const foco = useTrailAutoFocus(iAtual >= 0 ? topicos[iAtual].id : null, iAtual >= 0 ? 18 + iAtual * (ALTURA_LINHA + ESPACO) + ALTURA_LINHA / 2 : null);
   const fundoLinha = tinycolor(palette.surface).setAlpha(0.88).toRgbString();
   const cor: Record<EstadoTopico, string> = { done: SUCESSO, current: palette.accent, open: palette.textMuted, locked: palette.textSubtle };
 
   return (
-    <ScrollView {...foco} showsVerticalScrollIndicator={false} contentContainerStyle={s.lista}>
+    <ScrollView ref={foco.ref} onLayout={foco.onLayout} onContentSizeChange={foco.onContentSizeChange} showsVerticalScrollIndicator={false} contentContainerStyle={s.lista}>
       {topicos.map((t, i) => {
         const atual = t.estado === "current";
         const sel = selecionado === t.id;

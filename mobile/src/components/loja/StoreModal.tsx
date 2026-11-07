@@ -1,4 +1,5 @@
 import { JourneyHeading } from "@/components/JourneyHeading";
+import { SecaoDeMolduras } from "@/components/molduras/SecaoDeMolduras";
 import { SeletorQuantidade } from "@/components/loja/SeletorQuantidade";
 import { StoreItemIcon } from "@/components/loja/StoreItemIcon";
 import { UtilityIcon } from "@/components/UtilityIcon";
@@ -237,6 +238,7 @@ export function StoreModal({
                 Nenhum item disponível no momento.
               </Text>
             ) : null}
+            <SecaoDeMolduras secao="loja" palette={palette} recarregarQuando={visible} onSaldoMudou={() => void load()} />
             <Text style={[s.sectionTitle, { color: palette.text }]}>Histórico</Text>
             <View style={s.filters}>
               {FILTROS_EXTRATO.map((opcao) => (
@@ -548,7 +550,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  content: { paddingHorizontal: 20, paddingBottom: 28, gap: 16 },
+  content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28, gap: 16 },
   balance: {
     flexDirection: "row",
     alignItems: "center",
