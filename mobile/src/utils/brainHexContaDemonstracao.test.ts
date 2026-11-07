@@ -16,6 +16,15 @@ const perfis = [
   { nome: "survivor", afinidade: 5 },
 ];
 
+test("conta de demonstração é reconhecida pelo e-mail de alunos, não só pelo do login", () => {
+  // O app compara `alunos.email`. Na conta de demonstração ele é demo@trailup.app, e o login
+  // (Google) é geisbelly19@gmail.com: com só o do login na lista, a conta via 2 perfis.
+  assert.equal(ehContaDemonstracao("demo@trailup.app"), true);
+  const aluno = { email: "demo@trailup.app", perfis, perfilAtivo: "daredevil" };
+  assert.equal(perfisSelecionaveisDoAluno(aluno).length, 7);
+  assert.equal(perfilVisualDoAluno(aluno), "daredevil");
+});
+
 test("conta de demonstração é reconhecida sem depender da caixa nem de espaços", () => {
   assert.equal(ehContaDemonstracao("geisbelly19@gmail.com"), true);
   assert.equal(ehContaDemonstracao("  Geisbelly19@Gmail.com "), true);
