@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -7,6 +9,7 @@ import {
   intervaloDaConsulta,
   lerPerguntas,
   respostasParaEnviar,
+  telaDoDiagnosticoAberta,
   textoDoNivel,
   AVISO_DO_CARTAO,
   type LinhaDoDiagnostico,
@@ -86,4 +89,22 @@ test("o resultado descreve o ponto de partida: sem nota, sem acertos, sem promes
 test("o aviso do cartão diz que é opcional e que não vale nota", () => {
   assert.match(AVISO_DO_CARTAO, /não vale nota/i);
   assert.match(AVISO_DO_CARTAO, /pode pular/);
+});
+
+test("a tela do diagnóstico abre sozinha e só fecha depois do resultado ou do pular", () => {
+  assert.equal(telaDoDiagnosticoAberta("preparando", false), true);
+  assert.equal(telaDoDiagnosticoAberta("pronto", false), true);
+  assert.equal(telaDoDiagnosticoAberta("respondido", false), true);
+  assert.equal(telaDoDiagnosticoAberta("respondido", true), false);
+  assert.equal(telaDoDiagnosticoAberta("nada", false), false);
+});
+
+test("o diagnóstico é uma tela própria, sem botão Responder antes das perguntas", () => {
+  // Era um cartão no meio do material: o aluno tocava em "Responder" e as perguntas se espremiam numa
+  // linha só (o cartão era `flexDirection: "row"`), por cima do texto (07/11).
+  const tela = readFileSync(join(process.cwd(), "src", "components", "trilhas", "DiagnosticoDoTopico.tsx"), "utf8");
+  assert.match(tela, /<Modal\b[^>]*presentationStyle="fullScreen"/);
+  assert.match(tela, /visible=\{aberta\}/);
+  assert.doesNotMatch(tela, />Responder</);
+  assert.doesNotMatch(tela, /setRespondendo/);
 });

@@ -66,6 +66,16 @@ export function faseDoDiagnostico(pedido: PedidoDeDiagnostico | null, linha: Lin
   return "nada";
 }
 
+/**
+ * A tela própria do diagnóstico abre sozinha quando o aluno entra no tópico (07/11): enquanto a IA escreve,
+ * com as perguntas prontas e com o resultado, até o aluno tocar em "Começar o tópico". Não há botão
+ * "Responder" antes: as perguntas aparecem direto. Pular (ou fechar a tela) leva a fase a "nada".
+ */
+export function telaDoDiagnosticoAberta(fase: FaseDoDiagnostico, resultadoVisto: boolean): boolean {
+  if (fase === "respondido") return !resultadoVisto;
+  return fase === "preparando" || fase === "pronto";
+}
+
 /** Só vale continuar consultando enquanto a IA escreve. */
 export function continuaConsultando(status: StatusDoDiagnostico | null | undefined): boolean {
   return status === "pendente";
