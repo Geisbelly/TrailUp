@@ -380,6 +380,40 @@ class ConteudoClasseRepository:
         )
         return [dict(row._mapping) for row in result]
 
+    async def buscar_questoes_com_gabarito_topico(self, topico_id: int) -> list[dict[str, Any]]:
+        """Questões do tópico com as alternativas e a resposta correta, para o chat do guia.
+
+        A resposta NÃO vai ao modelo que fala com o aluno: `montar_conteudo_materia` só copia
+        enunciado e alternativas, e `montar_gabarito_protegido` leva a resposta ao Guardian.
+        O gabarito pode morar só em `questao_gabarito` (`trg_questoes_espelha_gabarito`), uma
+        tabela fora do Alembic; sem ela, vale `questoes.resposta_correta`.
+        """
+        tem_tabela_de_gabarito = bool(
+            (await self.session.execute(text("SELECT to_regclass('public.questao_gabarito') IS NOT NULL"))).scalar()
+        )
+        gabarito = (
+            "COALESCE(g.resposta_correta::text, q.resposta_correta::text)"
+            if tem_tabela_de_gabarito
+            else "q.resposta_correta::text"
+        )
+        juncao = "LEFT JOIN questao_gabarito g ON g.questao_id = q.id" if tem_tabela_de_gabarito else ""
+        result = await self.session.execute(
+            text(
+                f"""
+                SELECT q.id, q.atividade_id, q.enunciado, q.tipo, q.alternativas,
+                       {gabarito} AS resposta_correta
+                FROM questoes q
+                JOIN atividades a ON a.id = q.atividade_id
+                {juncao}
+                WHERE a.topico_id = :topico_id
+                ORDER BY q.atividade_id, q.id
+                LIMIT 200
+                """
+            ),
+            {"topico_id": topico_id},
+        )
+        return [dict(row._mapping) for row in result]
+
     async def buscar_topico(self, topico_id: int) -> dict[str, Any] | None:
         result = await self.session.execute(
             text("SELECT id, nome, descricao FROM topicos WHERE id = :id"),
