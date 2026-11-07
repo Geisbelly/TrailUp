@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from app.schemas.mentor_chat import GroundingJudgment, MentorChatLLMResult
 from app.schemas.trilha_config import TrilhaConfig
 from app.services import gemini_chaves, uso_llm
+from app.services.contexto_chat_materia import gabarito_na_resposta
 from app.services.llm import (
     JsonLLMService,
     ProvedorIndisponivelError,
@@ -246,13 +247,41 @@ async def _gerar_com_correcao(
     return None
 
 
+def _texto_que_vai_ao_aluno(resposta: MentorChatLLMResult) -> str:
+    # As seções também vão ao aluno: um gabarito ali passaria sem ninguém ver.
+    return "\n\n".join([resposta.reply, *(f"{secao.titulo}: {secao.texto}" for secao in resposta.secoes)])
+
+
+def checar_vazamento_de_gabarito(
+    resposta: MentorChatLLMResult, contexto: dict[str, Any]
+) -> GuardrailViolation | None:
+    """Guardian, primeira barreira (07/11): a fala do guia não pode trazer a resposta de uma
+    questão nem o verso de um card do tópico. Esta parte é exata e não chama modelo — pega a
+    cópia ao pé da letra (ver `gabarito_na_resposta`); o resto fica com o juiz, que também
+    recebe o gabarito.
+
+    Não é definitiva: o modelo tenta de novo com a correção. A correção NÃO repete a resposta —
+    ela iria para o próprio modelo que acabou de vazá-la."""
+    item = gabarito_na_resposta(_texto_que_vai_ao_aluno(resposta), contexto.get("gabarito_protegido"))
+    if item is None:
+        return None
+    origem = "do verso de um card" if item.get("origem") == "card" else "de uma questão"
+    return GuardrailViolation(
+        regra="vazamento_gabarito",
+        mensagem=(
+            f"a resposta repete a resposta {origem} do tópico. Reescreva sem ela: dê uma dica, "
+            "uma pergunta que faça o aluno pensar ou um exemplo com outros dados, e aponte o "
+            "trecho do material que ajuda."
+        ),
+    )
+
+
 async def checar_grounding_chat(
     resposta: MentorChatLLMResult, contexto: dict[str, Any]
 ) -> GuardrailViolation | None:
-    """Unica regra desta leva que precisa de julgamento sobre texto livre —
-    o payload do chat nem contem gabarito pra comparar diretamente
-    (buscar_questoes_topico ja filtra isso). Usa uma segunda chamada LLM
-    barata como juiz. Falha fechada: resposta que ninguem conferiu nao chega
+    """Guardian, segunda barreira: julgamento sobre texto livre, por uma segunda chamada LLM
+    barata. O juiz recebe o gabarito protegido (que o modelo do chat nunca vê) para reconhecer
+    resposta entregue por outras palavras, por eliminação de alternativas ou por conta feita. Falha fechada: resposta que ninguem conferiu nao chega
     ao aluno, vale o fallback. Gerar de novo nao adiantaria, o juiz continuaria
     sem responder."""
     llm: JsonLLMService = contexto["llm"]
@@ -264,11 +293,11 @@ async def checar_grounding_chat(
                 "guia_do_app": contexto.get("guia_do_app", ""),
                 "conteudo_materia": contexto.get("conteudo_materia", {}),
                 "contexto_personalizacao": contexto.get("contexto_personalizacao", {}),
+                # A resposta de cada questão e o verso de cada card: o juiz só reconhece um
+                # vazamento se souber o que é a resposta. O modelo que fala com o aluno não vê isto.
+                "gabarito_protegido": contexto.get("gabarito_protegido", []),
                 # Por último, porque é o que muda: o cache só vale até a primeira diferença.
-                # As seções também vão ao aluno: um gabarito ali passaria sem o juiz ver.
-                "resposta": "\n\n".join(
-                    [resposta.reply, *(f"{secao.titulo}: {secao.texto}" for secao in resposta.secoes)]
-                ),
+                "resposta": _texto_que_vai_ao_aluno(resposta),
             },
             schema=GroundingJudgment,
         )
