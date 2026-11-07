@@ -69,7 +69,7 @@ import {
 } from "@/utils/profileMetricThemes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { registrarAlvoTour, useAlvoTour } from "@/utils/tourTargets";
-import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
+import { perfisSelecionaveisDoAluno, resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
 import { buildProfileGuideSteps } from "@/utils/profileSectionGuide";
 import { selectClassBattles } from '@/utils/battleRuntime';
 import { ImagemDoStorage } from "@/components/ImagemDoStorage";
@@ -157,6 +157,11 @@ export default function PerfilHome() {
     () => resolveRepresentativeBrainHexProfiles(usuario?.perfis),
     [usuario?.perfis],
   );
+  // O que a troca oferece: os representativos e, em conta de demonstração, os 7 perfis.
+  const perfisSelecionaveis = useMemo(
+    () => perfisSelecionaveisDoAluno(usuario),
+    [usuario],
+  );
   const hexConfig = getBrainHexConfig(perfil);
   const shellPalette = useMemo(() => getProfileShellPalette(perfil), [perfil]);
   const resolvedTheme = resolveMetricsTheme(perfil, themeOverride);
@@ -195,11 +200,11 @@ export default function PerfilHome() {
   const profileGuideSteps = useMemo(
     () =>
       buildProfileGuideSteps({
-        hasProfileSwitcher: perfisRepresentativos.length > 1,
+        hasProfileSwitcher: perfisSelecionaveis.length > 1,
         theme: resolvedTheme,
         vm: metricsViewModel,
       }),
-    [metricsViewModel, perfisRepresentativos.length, resolvedTheme],
+    [metricsViewModel, perfisSelecionaveis.length, resolvedTheme],
   );
   const metricGuideRefs = useMemo<Record<string, React.RefObject<View | null>>>(
     () =>
@@ -295,7 +300,7 @@ export default function PerfilHome() {
     : "@USUARIO";
 
   const handleSelecionarPerfil = useCallback(
-    async (profile: (typeof perfisRepresentativos)[number]) => {
+    async (profile: (typeof perfisSelecionaveis)[number]) => {
       if (profile === perfil || perfilSalvando) return;
       setPerfilSalvando(profile);
       try {
@@ -417,7 +422,7 @@ export default function PerfilHome() {
         {desktop ? (
           // Tela larga (#346, protótipo v4): troca em lista, barra das afinidades e os números da jornada.
           <AfinidadesPerfilDesktop
-            afinidades={perfisRepresentativos.map((profileKey) => ({
+            afinidades={perfisSelecionaveis.map((profileKey) => ({
               perfil: profileKey,
               afinidade: usuario?.perfis.find((item) => normalizeBrainHexProfile(item.nome) === profileKey)?.afinidade ?? 0,
             }))}
@@ -466,11 +471,11 @@ export default function PerfilHome() {
   // troca faz está no guia da seção (passo "Troca de perfil").
   const trocaDePerfil = (
     <>
-        {desktop ? null : perfisRepresentativos.length > 1 ? (
+        {desktop ? null : perfisSelecionaveis.length > 1 ? (
           <View ref={profileSwitcherGuideRef} collapsable={false} style={styles.trocaPerfil}>
             <Text style={[styles.trocaPerfilRotulo, { color: shellPalette.textSubtle }]}>PERFIL BRAINHEX</Text>
             <View accessibilityRole="radiogroup" accessibilityLabel="Perfil BrainHex em uso" style={styles.trocaPerfilLista}>
-              {perfisRepresentativos.map((profileKey) => {
+              {perfisSelecionaveis.map((profileKey) => {
                 const config = getBrainHexConfig(profileKey);
                 const corDoPerfil = getProfileShellPalette(profileKey).accent;
                 const afinidade = Math.round(afinidadeDe(profileKey));

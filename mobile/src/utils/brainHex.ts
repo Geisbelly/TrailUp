@@ -2,6 +2,7 @@ import {
   BrainHexProfile,
   normalizeBrainHexProfile,
 } from "@/constants/brainHexProfiles";
+import { ehContaDemonstracao } from "@/constants/contasDemonstracao";
 
 type BrainHexPerfilLike = {
   nome?: string | null;
@@ -78,12 +79,12 @@ export function resolveActiveBrainHexProfile(
   perfis: BrainHexPerfilLike[] | null | undefined,
   preferred?: string | null,
   fallback: BrainHexProfile = PERFIL_PADRAO,
+  selecionaveis: BrainHexProfile[] = resolveRepresentativeBrainHexProfiles(perfis),
 ): BrainHexProfile {
   const normalizedPreferred = normalizeBrainHexProfile(preferred);
-  const representativeProfiles = resolveRepresentativeBrainHexProfiles(perfis);
   if (
     normalizedPreferred &&
-    representativeProfiles.includes(normalizedPreferred)
+    selecionaveis.includes(normalizedPreferred)
   ) {
     return normalizedPreferred;
   }
@@ -122,9 +123,43 @@ export function isCombatBrainHexProfile(profile?: BrainHexProfile | null) {
 
 
 type AlunoComPerfil = {
+  email?: string | null;
   perfilAtivo?: string | null;
   perfis?: BrainHexPerfilLike[] | null;
 };
+
+/** Os 7 perfis, na ordem em que o produto os apresenta quando não há afinidade para ordenar. */
+export const TODOS_OS_PERFIS: readonly BrainHexProfile[] = [
+  "seeker",
+  "survivor",
+  "daredevil",
+  "mastermind",
+  "conqueror",
+  "socializer",
+  "achiever",
+];
+
+/**
+ * Os perfis que o aluno pode escolher como ativo — UM so' lugar que responde isso: a troca na
+ * tela de perfil, a gravacao em `alunos.perfil_ativo` e o perfil que pinta a tela.
+ *
+ * Para todo aluno, sao os representativos. Para conta de demonstracao (`ehContaDemonstracao`),
+ * sao os 7: os representativos primeiro, na mesma ordem (o primeiro continua sendo o dominante),
+ * depois os demais pela afinidade e, por fim, os que nem tem linha em `aluno_perfil`.
+ */
+export function perfisSelecionaveisDoAluno(
+  aluno: AlunoComPerfil | null | undefined,
+): BrainHexProfile[] {
+  const representativos = resolveRepresentativeBrainHexProfiles(aluno?.perfis);
+  if (!ehContaDemonstracao(aluno?.email)) return representativos;
+  return Array.from(
+    new Set<BrainHexProfile>([
+      ...representativos,
+      ...rankBrainHexProfiles(aluno?.perfis).map((entry) => entry.profile),
+      ...TODOS_OS_PERFIS,
+    ]),
+  );
+}
 
 /**
  * O perfil que pinta a tela do aluno — UM so' lugar que responde isso.
@@ -144,5 +179,10 @@ type AlunoComPerfil = {
  * do produto; a outra era um atalho.
  */
 export function perfilVisualDoAluno(aluno: AlunoComPerfil | null | undefined): BrainHexProfile {
-  return resolveActiveBrainHexProfile(aluno?.perfis ?? null, aluno?.perfilAtivo, PERFIL_PADRAO);
+  return resolveActiveBrainHexProfile(
+    aluno?.perfis ?? null,
+    aluno?.perfilAtivo,
+    PERFIL_PADRAO,
+    perfisSelecionaveisDoAluno(aluno),
+  );
 }

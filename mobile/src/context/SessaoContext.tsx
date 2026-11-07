@@ -5,7 +5,7 @@ import {
   normalizeBrainHexProfile,
 } from "@/constants/brainHexProfiles";
 import { Aluno } from "@/models/Aluno";
-import { resolveRepresentativeBrainHexProfiles } from "@/utils/brainHex";
+import { perfisSelecionaveisDoAluno } from "@/utils/brainHex";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 
 type SessionLike = {
@@ -406,8 +406,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const current = usuarioRef.current;
       if (!current?.id) throw new Error("Usuário não carregado.");
 
-      const representativeProfiles = resolveRepresentativeBrainHexProfiles(current.perfis);
-      if (!representativeProfiles.includes(profile)) {
+      if (!perfisSelecionaveisDoAluno(current).includes(profile)) {
         throw new Error("Este perfil não está entre os seus perfis representativos.");
       }
 

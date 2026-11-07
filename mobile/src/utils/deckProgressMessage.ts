@@ -32,3 +32,17 @@ export function parseDeckProgressMessage(raw: string): DeckProgressEvent | null 
     pontuacaoMaxima: obj.pontuacaoMaxima,
   };
 }
+
+/**
+ * Na web, o progresso que veio do `iframe` do proprio frame, ou null.
+ *
+ * `window.addEventListener('message')` recebe mensagem de QUALQUER origem; so vale a que saiu da
+ * janela do nosso `iframe`. Sem janela (o `iframe` ainda sem ref), nada passa.
+ */
+export function progressoDoProprioFrame(
+  evento: { source: unknown; data: unknown },
+  janelaDoFrame: unknown
+): DeckProgressEvent | null {
+  if (!janelaDoFrame || evento.source !== janelaDoFrame) return null;
+  return parseDeckProgressMessage(typeof evento.data === "string" ? evento.data : "");
+}

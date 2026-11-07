@@ -107,3 +107,11 @@ test("o frame cala a narracao ao sair da tela e ao desmontar", async () => {
   assert.match(fonte, /useLayoutEffect\(\(\) => narracao\.pausar, \[narracao\]\)/);
   assert.match(fonte, /observarFalaDoIframe\(evento\.currentTarget\.contentWindow/);
 });
+
+test("os dois iframe da web usam o ref que libera o progresso do deck", async () => {
+  // Sem ref no `srcDoc`, o listener de `message` descartava todo quiz respondido no deck da web.
+  const fonte = await readFile(resolve("src/components/WebContentFrame.tsx"), "utf8");
+
+  assert.equal(fonte.match(/ref=\{iframeRef\}/g)?.length, 2);
+  assert.match(fonte, /ref=\{iframeRef\}\s+title=\{title \?\? "Visualizador"\}\s+srcDoc=\{html\}/);
+});
