@@ -6,6 +6,7 @@ from app.agent.graph.guardrails import (
     checar_grounding_chat,
     checar_ordem_sequencial,
     checar_topicos_existem,
+    checar_vazamento_de_gabarito,
     gerar_validado,
 )
 from app.schemas.mentor_chat import MentorChatLLMResult
@@ -320,3 +321,54 @@ def test_checar_evidencia_dominio_rejeita_com_dominio_persistido_baixo() -> None
 
     assert violacao is not None
     assert violacao.regra == "evidencia_dominio"
+
+
+# --- Guardian: vazamento de gabarito (07/11) ----------------------------------------------------
+
+_GABARITO = [
+    {"origem": "card", "pergunta": "O que é o denominador?", "respostas": ["É o número de partes iguais em que o inteiro foi dividido."]},
+    {"origem": "questao", "pergunta": "Quanto é metade de 1/2?", "respostas": ["1/4"]},
+]
+
+
+def test_vazamento_de_gabarito_barra_copia_do_verso_e_nao_repete_a_resposta_na_correcao() -> None:
+    resposta = MentorChatLLMResult(
+        reply="O denominador é o número de partes iguais em que o inteiro foi dividido.",
+        should_close=False,
+        hinted_actions=[],
+    )
+    violacao = checar_vazamento_de_gabarito(resposta, {"gabarito_protegido": _GABARITO})
+    assert violacao is not None
+    assert violacao.regra == "vazamento_gabarito"
+    assert violacao.definitiva is False  # o modelo reescreve como dica
+    assert "partes iguais" not in violacao.mensagem
+
+
+def test_vazamento_de_gabarito_olha_tambem_as_secoes() -> None:
+    resposta = MentorChatLLMResult.model_validate(
+        {
+            "reply": "Veja as partes.",
+            "should_close": False,
+            "hinted_actions": [],
+            "secoes": [{"titulo": "Denominador", "texto": "É o número de partes iguais em que o inteiro foi dividido.", "destino": ""}],
+        }
+    )
+    assert checar_vazamento_de_gabarito(resposta, {"gabarito_protegido": _GABARITO}) is not None
+
+
+def test_vazamento_de_gabarito_deixa_passar_dica() -> None:
+    resposta = MentorChatLLMResult(
+        reply="Olhe a parte de baixo da fração: o que ela conta? Tente e me diga.", should_close=False, hinted_actions=[]
+    )
+    assert checar_vazamento_de_gabarito(resposta, {"gabarito_protegido": _GABARITO}) is None
+    assert checar_vazamento_de_gabarito(resposta, {}) is None
+
+
+def test_juiz_recebe_o_gabarito_protegido_antes_da_resposta() -> None:
+    resposta = MentorChatLLMResult(reply="Tente dividir a pizza em 4.", should_close=False, hinted_actions=[])
+    juiz = _FakeJuizLLM({"viola": False, "motivo": ""})
+    asyncio.run(checar_grounding_chat(resposta, {"llm": juiz, "conteudo_materia": {}, "gabarito_protegido": _GABARITO}))
+    payload = juiz.payloads[0]
+    assert payload["gabarito_protegido"] == _GABARITO
+    # A resposta fica por último: o cache do provedor só vale até a primeira diferença.
+    assert list(payload)[-1] == "resposta"

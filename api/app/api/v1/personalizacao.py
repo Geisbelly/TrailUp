@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.graph.guardrails import checar_grounding_chat, gerar_validado
+from app.agent.graph.guardrails import checar_grounding_chat, checar_vazamento_de_gabarito, gerar_validado
 from app.api.deps import ensure_professor_access, get_current_user, get_session, require_professor
 from app.core.settings import get_settings
 from app.repositories.access import AccessRepository
@@ -69,7 +69,7 @@ from app.schemas.personalizacao import (
 from app.services import assinatura_chat, modo_restrito
 from app.services.auth import UserContext
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
-from app.services.contexto_chat_materia import montar_conteudo_materia
+from app.services.contexto_chat_materia import montar_conteudo_materia, montar_gabarito_protegido
 from app.services.group_analysis import GroupAnalysisService
 from app.services.guia_do_app import guia_do_app, montar_resposta_do_guia
 from app.services.llm import JsonLLMService, load_prompt
@@ -1554,17 +1554,20 @@ async def conversar_com_mentor_personalizacao(
         }
     topico = await classe_repo.buscar_topico(payload.topico_id) if payload.topico_id is not None else None
 
-    # Conteudo da materia do topico para o guia direcionar o estudo. Sem
-    # gabaritos/respostas (buscar_questoes_topico retorna apenas enunciado/tipo,
-    # respeitando os guardrails). Falha aqui nao deve quebrar o chat.
+    # Conteudo da materia do topico para o guia apoiar o estudo: conteudos, atividades, questoes
+    # (com alternativas) e cards. As questoes vem COM a resposta correta, mas ela so vai ao
+    # Guardian (montar_gabarito_protegido); o recorte do guia (montar_conteudo_materia) leva
+    # enunciado, alternativas e a frente do card. Falha aqui nao deve quebrar o chat.
     conteudos_topico: list = []
     atividades_topico: list = []
     questoes_topico: list = []
+    cards_topico: list = []
     if payload.topico_id is not None:
         try:
             conteudos_topico = await classe_repo.buscar_conteudos_topico(payload.topico_id)
             atividades_topico = await classe_repo.buscar_atividades_topico(payload.topico_id)
-            questoes_topico = await classe_repo.buscar_questoes_topico(payload.topico_id)
+            questoes_topico = await classe_repo.buscar_questoes_com_gabarito_topico(payload.topico_id)
+            cards_topico = await classe_repo.buscar_cards_topico(payload.topico_id)
         except Exception as exc:  # pragma: no cover
             logger.warning("Falha ao carregar conteudo da materia para o guia: %s", exc)
 
@@ -1587,6 +1590,13 @@ async def conversar_com_mentor_personalizacao(
         atividades=atividades_topico,
         questoes=questoes_topico,
         registros=records,
+        cards=cards_topico,
+    )
+    # So para o Guardian: o modelo que responde ao aluno nao recebe isto.
+    gabarito_protegido = montar_gabarito_protegido(
+        questoes=questoes_topico,
+        registros=records,
+        cards=cards_topico,
     )
 
     llm = JsonLLMService(request.app.state.settings)
@@ -1669,7 +1679,8 @@ async def conversar_com_mentor_personalizacao(
                     "mensagem": _sem_nome(payload.mensagem),
                 },
                 schema=MentorChatLLMResult,
-                guardrails=[checar_grounding_chat],
+                # Guardian: primeiro a copia literal do gabarito (sem modelo), depois o juiz.
+                guardrails=[checar_vazamento_de_gabarito, checar_grounding_chat],
                 fallback_factory=lambda: dict(fallback),
                 contexto={
                     "llm": llm,
@@ -1677,6 +1688,8 @@ async def conversar_com_mentor_personalizacao(
                     "conteudo_materia": conteudo_materia,
                     "contexto_personalizacao": personalization_context,
                     "guia_do_app": guia_do_app(),
+                    # So o Guardian ve as respostas: o modelo do chat nao as recebe.
+                    "gabarito_protegido": gabarito_protegido,
                 },
                 on_violation=_auditar_chat,
                 prazo_total=settings.chat_prazo_total_seconds,
