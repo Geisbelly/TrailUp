@@ -69,11 +69,15 @@ precisa existir antes de o estudo começar.
   - `baseline_contaminado`;
   - `comparacao_recebeu_personalizacao`, só na turma de comparação.
 - **Viés de plataforma** (#30): `lotes_por_plataforma` em cada janela informa cobertura; abaixo
-  de `n_minimo` volta nulo. Isso não estratifica os desfechos: PR1 e PR2 continuam agregados e
-  não podem ser comparados por plataforma, o que a RPC declara em `limitacoes`. O motivo é que o
-  tempo ativo e os desfechos não carregam atribuição de plataforma por aluno/resultado. Portanto,
-  não interpretar diferenças web × app como efeito da personalização; uma análise estratificada
-  exige persistir essa atribuição de forma consistente.
+  de `n_minimo` volta nulo. Desde a `20261106_02`, `coortes[].por_plataforma` recorta `pre` e `pos`
+  (os mesmos indicadores de PR1 e PR2) por **estrato de plataforma do aluno**: `web`, `app`
+  (`ios`/`android`), `misto` ou `sem_cliente`, pelos lotes dele **anteriores ao corte**. A atribuição
+  é do aluno, não do evento, porque PR2 não carrega plataforma por linha; e é pré-tratamento, para a
+  personalização não mover o aluno de estrato. A conta é a mesma da janela (parâmetro
+  `p_plataforma`), então o estrato não diverge do total. Se algum estrato não vazio ficar abaixo de
+  `n_minimo`, nenhum é publicado: um só suprimido sairia por subtração. Continuam agregados a
+  diferença-em-diferenças, a série semanal e o nível braço da análise longitudinal, o que a RPC
+  declara em `limitacoes`. Não interpretar diferenças web × app como efeito da personalização.
 
 ## 4. O que ficou de fora
 
