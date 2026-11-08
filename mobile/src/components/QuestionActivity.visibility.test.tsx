@@ -24,6 +24,13 @@ mockModule('@/models/QuestaoAluno', { QuestaoAluno: {} });
 mockModule('@/utils/essayValidation', { validateEssayAnswerWithAi: async () => ({}) });
 // A segunda chance comprada fala com o Supabase. Este teste só olha o HTML.
 mockModule('@/services/loja/lojaService', { gastarSegundaChance: async () => ({ ok: false }) });
+// As RPCs da questão (#1065) também carregam o cliente do Supabase, que exige a URL no
+// ambiente e derruba o arquivo no CI. As funções puras vêm do `.core` de verdade.
+mockModule('@/services/questaoNoBanco', {
+  ...require('@/services/questaoNoBanco.core'),
+  responderQuestao: async () => { throw new Error('fora do teste'); },
+  revelarGabarito: async () => { throw new Error('fora do teste'); },
+});
 const { default: QuestionActivity } = require('./QuestionActivity');
 const question = { id: 2, enunciado: 'Qual alternativa?', alternativas: ['Alpha', 'Beta'], resposta_correta: 'Beta' };
 
@@ -32,9 +39,18 @@ test('questão nova em atividade concluída não mostra gabarito nem resposta he
   assert.doesNotMatch(html, /Gabarito:|Sua ultima resposta:|Ver respostas anteriores/);
   assert.match(html, /Qual alternativa/);
 });
-test('revisão de questão realmente respondida permite consultar gabarito', () => {
+test('revisão de questão personalizada realmente respondida permite consultar gabarito', () => {
+  // A personalizada (id negativo, sem linha em `questoes`) ainda traz o gabarito no payload.
+  const local = { ...question, id: -2, isPersonalizedLocal: true, resposta_aluno: 'Alpha' };
+  const html = renderToString(<QuestionActivity reviewMode atividade={{ id: 5, status: 'concluido', questoes: [local] }} />);
+  assert.match(html, /Gabarito: (<!-- -->)?Beta/);
+});
+test('questão da turma não usa o gabarito que vier no payload: ele só chega pelo banco', () => {
+  // #1065: o gabarito da turma vem de `revelarGabarito`, num efeito que o `renderToString`
+  // não roda. Mesmo com `resposta_correta` no objeto, o primeiro desenho não o mostra.
   const html = renderToString(<QuestionActivity reviewMode atividade={{ id: 5, status: 'concluido', questoes: [{ ...question, resposta_aluno: 'Alpha' }] }} />);
-  assert.match(html, /Gabarito:/);
+  assert.doesNotMatch(html, /Gabarito:/);
+  assert.match(html, /Sua ultima resposta:/);
 });
 test('nova tentativa reabre só a questão errada, sem a resposta antiga nem trava', () => {
   const atividade = {
