@@ -1,4 +1,5 @@
 import { getProfileArtwork } from "@/constants/designAssets";
+import type { IconeDaAcao } from "@/services/acaoDaNotificacao";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { iconeDaNotificacao } from "@/utils/iconeNotificacao";
 import { coresDoDetalheDaNotificacao } from "@/utils/notificacaoDetalheCores";
@@ -22,6 +23,11 @@ type Props = {
   onExcluir: () => void;
   /** Silenciar o tipo desta notificação (#149). Ausente: o tipo não pode ser silenciado. */
   onSilenciar?: () => void;
+  /**
+   * Ir ver aquilo de que a notificação fala ("Ver material", "Ver ranking"…). Ausente: a
+   * notificação não aponta para um lugar conhecido, e o botão não aparece.
+   */
+  acao?: { rotulo: string; icone: IconeDaAcao; onPress: () => void } | null;
   /** Alvos do guia da seção (cabeçalho, mensagem e ações). */
   cabecalhoRef?: React.Ref<View>;
   corpoRef?: React.Ref<View>;
@@ -45,6 +51,7 @@ export function NotificacaoDetalheView({
   onMarcarNaoLida,
   onExcluir,
   onSilenciar,
+  acao,
   cabecalhoRef,
   corpoRef,
   acoesRef,
@@ -54,7 +61,10 @@ export function NotificacaoDetalheView({
 
   return (
     <View style={s.tela}>
-      <ScrollView contentContainerStyle={s.conteudo} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[s.conteudo, acao ? s.conteudoComAcao : null]}
+        showsVerticalScrollIndicator={false}
+      >
         <View
           ref={cabecalhoRef}
           collapsable={false}
@@ -129,6 +139,20 @@ export function NotificacaoDetalheView({
         collapsable={false}
         style={[s.rodape, { backgroundColor: c.fundo, borderTopColor: c.borda }]}
       >
+        {acao ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={acao.onPress}
+            style={({ pressed }) => [
+              s.botao,
+              s.acaoPrincipal,
+              { backgroundColor: c.acaoFundo, borderColor: c.acaoFundo, opacity: pressed ? 0.85 : 1 },
+            ]}
+          >
+            <MaterialCommunityIcons name={acao.icone} size={18} color={c.acaoTexto} />
+            <Text style={[s.botaoTexto, { color: c.acaoTexto }]}>{acao.rotulo}</Text>
+          </Pressable>
+        ) : null}
         <View style={s.rodapeLinha}>
           {lida ? (
             <Pressable
@@ -194,6 +218,8 @@ const s = StyleSheet.create({
     paddingBottom: 120,
     gap: 12,
   },
+  // O botão de ação soma uma linha ao rodapé fixo.
+  conteudoComAcao: { paddingBottom: 180 },
   cartao: { borderWidth: 1, borderRadius: 14, overflow: "hidden" },
   arte: { height: 84 },
   arteImagem: { width: "100%", height: "100%" },
@@ -256,6 +282,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
   },
   botaoLargo: { flex: 1 },
+  acaoPrincipal: { width: "100%", maxWidth: 600, alignSelf: "center", marginBottom: 10 },
   botaoCompacto: { paddingHorizontal: 18 },
   botaoTexto: {
     flexShrink: 1,

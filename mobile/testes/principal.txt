@@ -32,6 +32,7 @@ src/services/focoLocal.test.ts
 src/services/personalizacao/TrailupApiProvider.loading.test.ts
 src/services/progressoOutbox.test.ts
 src/utils/visitaDoTopico.test.ts
+src/services/acaoDaNotificacao.test.ts
 src/services/destinoDoToque.test.ts
 src/services/pushNotifications.test.ts
 src/services/rankMetadata.test.ts

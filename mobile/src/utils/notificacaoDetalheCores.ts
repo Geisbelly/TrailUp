@@ -34,6 +34,9 @@ export function coresDoDetalheDaNotificacao(palette: ProfileShellPalette, lida: 
     seloFundo: lida ? "transparent" : palette.accent,
     seloBorda: lida ? palette.borderStrong : palette.accent,
     seloTexto: lida ? palette.textMuted : palette.background,
+    // Botão de ação ("Ver material"): cheio na cor do perfil, como o selo "Nova".
+    acaoFundo: palette.accent,
+    acaoTexto: palette.background,
     perigoTexto: PERIGO_NOTIFICACAO.texto,
     perigoBorda: palette.border,
   };
