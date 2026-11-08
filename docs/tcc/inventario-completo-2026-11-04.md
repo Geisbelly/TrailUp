@@ -62,6 +62,24 @@ Base: `main` do Lab em `58331902` e banco `xrebtkmdewolzmpsdwgh`, ambos em 04/11
     - guarda só contagens, nunca o texto.
 13. **Integração LTI 1.3:** só levantamento (`docs/architecture/lti-1.3.md`, #146), **nada implementado**.
 
+## Depois da varredura (até 08/11/2026)
+
+As tabelas abaixo continuam sendo o retrato de 04/11. Esta seção registra só as peças que mudaram o que o inventário descreve, sem reextrair tudo.
+
+- **Banco em 08/11** (revisão `20261108_02`): 189 tabelas, 705 funções, 149 gatilhos, 292 políticas e 21 rotinas `pg_cron`.
+- **O guia não entrega a resposta (#1059):**
+  - `app/services/contexto_chat_materia.py` monta o contexto do chat com as questões (enunciado e alternativas, sem marcar a certa), as questões do quiz gerado e a frente dos cards;
+  - `montar_gabarito_protegido` junta as respostas aceitas e o verso dos cards, e `gabarito_na_resposta` procura a resposta inteira (12 caracteres ou mais) ou um trecho de 8 palavras;
+  - `app/agent/graph/guardrails.py` ganhou `checar_vazamento_de_gabarito`, que roda antes de `checar_grounding_chat`, e o juiz (`mentor_grounding_check.txt`) recebe o gabarito;
+  - `buscar_questoes_com_gabarito_topico` (`app/repositories/conteudo_classe.py`) lê o gabarito só para as guardas.
+- **Dissertativa sem revelar a resposta (#1060):** `validate-essay-answer-ai/protecaoDaResposta.ts` troca o comentário e os pontos que repetiriam a resposta esperada. A nota fica como veio, e o texto do próprio aluno não conta como vazamento.
+- **Questão corrigida no banco (#1064, #1065):**
+  - a migration `20261108_01` reescreve `questao_responder` (a v2 corrige, pontua e grava; a anterior não era chamada por ninguém), cria `questao_revelar_gabarito` e tira o EXECUTE de `fn_questao_confere` do cliente, que servia de oráculo;
+  - a dissertativa lê a resposta esperada no servidor (`questao_correcao_ia_contexto`, só `service_role`), em vez de recebê-la do app;
+  - no app, `mobile/src/services/questaoNoBanco.ts` (com `questaoNoBanco.core.ts`) responde pelas RPCs, e `QuestionActivity` não lê mais o gabarito da questão da turma;
+  - a coluna ainda fica aberta para o app instalado, e fechá-la é a fase 3 (`docs/analises/2026-11-08-gabarito-fora-do-app-do-aluno.md`).
+- **Push (#1066, #1067):** a migration `20261108_02` lê os recibos da Expo e desativa o token do Expo Go. `mobile/app.config.js` liga `android.googleServicesFile` ao Firebase no build.
+
 ---
 
 ## 1. API (`api/app`): todos os módulos
