@@ -16,6 +16,7 @@ import { gastarSegundaChance } from '@/services/loja/lojaService';
 import { mensagemDeUso, podeResponderComCompra } from '@/services/loja/usoItem';
 // Do .core: o tentativasAtividade.ts carrega o cliente do Supabase.
 import { linhasDoRetorno, mensagemDaRecusa, retornoDesde } from '@/services/tentativasAtividade.core';
+import { fatorDaRegra, questaoDoBanco, responderQuestao, revelarGabarito, type RespostaCorrigida } from '@/services/questaoNoBanco';
 import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayValidation';
 import { Ionicons } from '@expo/vector-icons';
 import { useTempoVisivel } from '@/hooks/trilha/useTempoVisivel';
@@ -499,10 +500,16 @@ export default function QuestionActivity({
     () => isDissertativaType(atividade?.tipo) || isDissertativaType(questao?.tipo),
     [atividade?.tipo, questao?.tipo]
   );
-  const acceptedAnswers = useMemo(
-    () => getAcceptedAnswers(questao?.resposta_correta),
-    [questao?.resposta_correta]
-  );
+  // Questão da turma: o banco corrige, e o gabarito só chega quando o app o mostraria
+  // (`20261108_01`). A personalizada local (id negativo) segue corrigida aqui, com o gabarito dela.
+  const daTurma = questaoDoBanco(questao?.id, isPersonalizedLocal);
+  const [gabaritosDoBanco, setGabaritosDoBanco] = useState<Record<number, string | null>>({});
+  const gabaritoCarregado =
+    daTurma && Object.prototype.hasOwnProperty.call(gabaritosDoBanco, Number(questao?.id));
+  const gabaritoBruto: unknown = daTurma
+    ? gabaritosDoBanco[Number(questao?.id)] ?? null
+    : questao?.resposta_correta;
+  const acceptedAnswers = useMemo(() => getAcceptedAnswers(gabaritoBruto), [gabaritoBruto]);
   const activityMediaBlocks = useMemo(
     () => buildMediaBlocks(atividade, `atividade-media-${atividade?.id ?? 'atividade'}`),
     [atividade]
@@ -674,7 +681,7 @@ export default function QuestionActivity({
         prev[questaoIndex] === respostaTxt ? prev : { ...prev, [questaoIndex]: respostaTxt }
       );
       if (atividadeConcluidaPersistida) {
-        const acertou = checkResposta(respostaTxt, -1);
+        const acertou = daTurma ? questao?.correta_aluno === true : checkResposta(respostaTxt, -1);
         setStas((prev) => ({ ...prev, [questaoIndex]: acertou ? 'certo' : 'errado' }));
       }
       return;
@@ -697,11 +704,13 @@ export default function QuestionActivity({
     if (idx >= 0) {
       setSelecionados((prev) => ({ ...prev, [questaoIndex]: idx }));
       if (atividadeConcluidaPersistida) {
-        const acertou = checkResposta(alternativas[idx], idx);
+        const acertou = daTurma ? questao?.correta_aluno === true : checkResposta(alternativas[idx], idx);
         setStas((prev) => ({ ...prev, [questaoIndex]: acertou ? 'certo' : 'errado' }));
       }
     }
   }, [
+    daTurma,
+    questao?.correta_aluno,
     respondidaAntes,
     respostaAnterior,
     alternativas,
@@ -720,6 +729,38 @@ export default function QuestionActivity({
     }
   }, [confirmados, stas, respondidaAntes, questaoIndex]);
 
+  const jaTemTentativa = respondidaAntes || !!confirmados[questaoIndex];
+  const respostasVisiveis = canShowQuestionAnswer({
+    attempted: respondidaAntes,
+    confirmed: !!confirmados[questaoIndex],
+    retrying: reResponder,
+    immediate: isImediato,
+    requested: mostrarResposta,
+    reviewing: reviewMode && atividadeConcluidaPersistida,
+  });
+  const mostrarRespostaAluno = respostasVisiveis && (respostaAnterior != null || questao?.resposta_aluno);
+  const podeVerGabarito = respostasVisiveis;
+  // Antes do `return` sem questão: é hook. Gabarito visível que ainda não chegou (revisão, "ver gabarito" no modo pensante): pede ao
+  // banco, que grava a revelação. Falha vira "sem gabarito" para não repetir o pedido.
+  const questaoIdDaTurma = daTurma ? Number(questao?.id) : null;
+  const jaRespondeuEsta = respondidaAntes || !!confirmados[questaoIndex];
+  useEffect(() => {
+    if (questaoIdDaTurma == null || isDissertativaActivity || !podeVerGabarito) return;
+    if (gabaritoCarregado || !jaRespondeuEsta) return;
+    let vivo = true;
+    revelarGabarito(questaoIdDaTurma)
+      .then((r) => {
+        if (vivo) setGabaritosDoBanco((prev) => ({ ...prev, [questaoIdDaTurma]: r.respostaCorreta }));
+      })
+      .catch((err) => {
+        console.warn('[QuestionActivity] Falha ao buscar o gabarito:', err);
+        if (vivo) setGabaritosDoBanco((prev) => ({ ...prev, [questaoIdDaTurma]: null }));
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [questaoIdDaTurma, isDissertativaActivity, podeVerGabarito, gabaritoCarregado, jaRespondeuEsta]);
+
   if (!questao) {
     return (
       <View style={{ padding: 12 }}>
@@ -733,17 +774,6 @@ export default function QuestionActivity({
   const bloqueioEdicaoPersistida = !reResponder && (
     (atividadeConcluidaPersistida && respondidaAntes) || !!confirmados[questaoIndex]
   );
-  const jaTemTentativa = respondidaAntes || !!confirmados[questaoIndex];
-  const respostasVisiveis = canShowQuestionAnswer({
-    attempted: respondidaAntes,
-    confirmed: !!confirmados[questaoIndex],
-    retrying: reResponder,
-    immediate: isImediato,
-    requested: mostrarResposta,
-    reviewing: reviewMode && atividadeConcluidaPersistida,
-  });
-  const mostrarRespostaAluno = respostasVisiveis && (respostaAnterior != null || questao?.resposta_aluno);
-  const podeVerGabarito = respostasVisiveis;
   const selectedOption = selecionados[questaoIndex] ?? null;
   const statusAtual = respostasVisiveis ? stas[questaoIndex] : null;
   const viuRespostaAntes = !!viuRespostas[questaoIndex];
@@ -777,10 +807,10 @@ export default function QuestionActivity({
       ? acceptedAnswers.length > 0
         ? acceptedAnswers.join(' ou ')
         : null
-      : questao?.resposta_correta != null
+      : gabaritoBruto != null
       ? isTrueFalseActivity
-        ? formatTrueFalseLabel(questao.resposta_correta)
-        : String(questao.resposta_correta)
+        ? formatTrueFalseLabel(gabaritoBruto)
+        : String(gabaritoBruto)
       : null;
 
   return (
@@ -1144,7 +1174,54 @@ export default function QuestionActivity({
           let acertou: boolean;
           let acertosPercentBase = 100;
           let resultadoIA: EssayValidationResult | null = null;
-          if (isDissertativaActivity && respostaDigitada) {
+          // Questão da turma: o banco corrige, pontua e grava (`20261108_01`). A dissertativa vai
+          // à IA com o id (a resposta esperada fica no servidor); sem a IA, a mesma RPC compara
+          // o texto com a tolerância de sempre.
+          let corrigida: RespostaCorrigida | null = null;
+          if (daTurma) {
+            const questaoId = Number(questao.id);
+            if (isDissertativaActivity && respostaDigitada) {
+              setValidandoIA(true);
+              try {
+                resultadoIA = await validateEssayAnswerWithAi({
+                  questaoId,
+                  tempoGastoSeg,
+                  enunciado: String(questao?.enunciado ?? ''),
+                  respostaAluno: respostaDigitada,
+                });
+                corrigida = resultadoIA.registro;
+              } catch (err) {
+                console.warn('[QuestionActivity] Falha ao corrigir a dissertativa por IA, corrigindo no banco:', err);
+                resultadoIA = null;
+              } finally {
+                setValidandoIA(false);
+              }
+              setFeedbackIA((prev) => ({ ...prev, [questaoIndex]: corrigida ? resultadoIA : null }));
+              if (!corrigida) resultadoIA = null;
+            }
+            if (!corrigida) {
+              try {
+                corrigida = await responderQuestao({ questaoId, resposta: respostaSelecionada, tempoGastoSeg });
+              } catch (error) {
+                // Depois do prazo o banco recusa a resposta (20261102_04): tentar de novo não adianta.
+                setModalInfo(
+                  mensagemDaRecusa(error as { message?: unknown; code?: unknown } | null) ?? {
+                    titulo: 'Resposta não salva',
+                    descricao: 'Não foi possível salvar sua resposta. Confirme novamente para tentar sincronizar.',
+                  }
+                );
+                setModalVisivel(true);
+                console.warn('[QuestaoAluno] Falha ao responder pelo banco:', error);
+                return;
+              }
+            }
+            acertou = corrigida.correta;
+            acertosPercentBase = corrigida.acertosPercentual;
+            const gabaritoRecebido = corrigida.respostaCorreta;
+            if (corrigida.gabaritoLiberado) {
+              setGabaritosDoBanco((prev) => ({ ...prev, [questaoId]: gabaritoRecebido }));
+            }
+          } else if (isDissertativaActivity && respostaDigitada) {
             setValidandoIA(true);
             try {
               resultadoIA = await validateEssayAnswerWithAi({
@@ -1169,7 +1246,13 @@ export default function QuestionActivity({
             acertosPercentBase = acertou ? 100 : 0;
           }
 
-          const acertosPercent = acertosPercentBase <= 0
+          // O banco já aplicou o multiplicador; aqui só a questão personalizada local.
+          // `viuAntes` e `repetiu` decidem também os pontos e a mensagem, mais abaixo.
+          const viuAntes = corrigida ? corrigida.regra === 'viu_gabarito' : viuRespostaAntes;
+          const repetiu = corrigida ? corrigida.regra === 'resposta_repetida' : reResponder;
+          const acertosPercent = corrigida
+            ? Math.round(corrigida.acertosPercentual)
+            : acertosPercentBase <= 0
             ? 0
             : viuRespostaAntes
             ? Math.round(acertosPercentBase * 0.2)
@@ -1265,15 +1348,17 @@ export default function QuestionActivity({
           // Do not mutate atividade.status here. The parent uses the persisted
           // status to distinguish completion from review; setting it early made
           // every first answer look like a review and skipped the database write.
-          const multiplicador = acertou
-            ? viuRespostaAntes
-              ? 0.2
-              : reResponder
-              ? 0.5
-              : refazendoEsta
-              ? fatorRefeita
-              : 1
-            : 0;
+          const multiplicador = !acertou
+            ? 0
+            : corrigida
+            ? fatorDaRegra(corrigida.regra, fatorRefeita)
+            : viuRespostaAntes
+            ? 0.2
+            : reResponder
+            ? 0.5
+            : refazendoEsta
+            ? fatorRefeita
+            : 1;
           const pontosBrutos = Math.max(
             0,
             Math.round(
@@ -1282,8 +1367,8 @@ export default function QuestionActivity({
             )
           );
           const gatilhoTimeout = timedOut;
-          const gatilhoRespostaRevelada = viuRespostaAntes;
-          const gatilhoReTentativa = reResponder;
+          const gatilhoRespostaRevelada = viuAntes;
+          const gatilhoReTentativa = repetiu;
           const gatilhoErro = !atividadeCorreta;
           // Sobrando uma alternativa, acertar nao demonstra nada: e' eliminacao.
           // O botao de nova tentativa some nesse caso; isto aqui e' a rede de
@@ -1345,7 +1430,7 @@ export default function QuestionActivity({
           if (acertou) {
             const mensagemBase = !atividadeCompleta
               ? 'Sua resposta foi registrada. Avance para as proximas questoes para concluir a atividade.'
-              : viuRespostaAntes
+              : viuAntes
               ? `Você já tinha visto o gabarito. Pontuação reduzida para ${pontosGanhos || 0} pontos (20%).`
               : timedOut
               ? // O tempo não tira nota desde a fase 2 da #136: só o bônus de XP fica de fora.
@@ -1412,7 +1497,16 @@ export default function QuestionActivity({
           }
           // Persist the answer before asking the parent to complete the activity.
           // A failed write must remain retryable, not just log in the background.
-          if (!isPersonalizedLocal && usuario?.id && questao?.id) {
+          if (corrigida) {
+            // A RPC já gravou: só o estado local da trilha acompanha.
+            if (topicoId != null) {
+              await registrarRespostaQuestao({
+                topicoId: Number(topicoId), atividadeId: Number(atividade.id), questaoId: Number(questao.id),
+                resposta: respostaSelecionada, correta: acertou, acertosPercentual: acertosPercent,
+                tempoGastoSeg, jaGravada: { tentativa: corrigida.tentativa },
+              });
+            }
+          } else if (!isPersonalizedLocal && usuario?.id && questao?.id) {
             try {
               if (topicoId != null) {
                 await registrarRespostaQuestao({

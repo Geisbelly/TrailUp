@@ -1,12 +1,23 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
+  ANDROID_FORA_DO_DEV,
   conferirEnvDoBuild,
   mensagemDaConferencia,
   FORA_DO_DEV,
   SEMPRE,
 } from "./envDoBuild";
+
+type MontarConfig = ((contexto: { config: Record<string, unknown> }) => Record<string, unknown>) & {
+  resolverGoogleServices: (ambiente: Record<string, string | undefined>, raiz: string) => string | null;
+};
+const montarConfig = createRequire(__filename)("../../app.config.js") as MontarConfig;
+const { resolverGoogleServices } = montarConfig;
 
 /**
  * As `EXPO_PUBLIC_*` entram no bundle em tempo de BUILD. Medido no repositório: `eas.json` não
@@ -88,4 +99,90 @@ test("sem profile no ambiente, assume development", () => {
   const c = conferirEnvDoBuild({ ...COMPLETO, EXPO_PUBLIC_APITRAIUP_URL: "" });
   assert.equal(c.profile, "development");
   assert.equal(c.ok, true);
+});
+
+test("android de distribuicao exige o google-services.json; ios e development nao", () => {
+  // Medido em 08/11 no 1.0.7: sem o arquivo o Firebase nao inicializa, o push token nao existe
+  // e todo login Android chega sem token. O build saia normal.
+  for (const profile of ["preview", "production", "productionAAB"]) {
+    const android = conferirEnvDoBuild({ ...COMPLETO, EAS_BUILD_PLATFORM: "android" }, profile);
+    assert.deepEqual(android.faltando, [...ANDROID_FORA_DO_DEV], profile);
+    assert.equal(android.ok, false, profile);
+
+    const comArquivo = conferirEnvDoBuild(
+      { ...COMPLETO, EAS_BUILD_PLATFORM: "android", GOOGLE_SERVICES_JSON: "/tmp/eas/google-services.json" },
+      profile,
+    );
+    assert.equal(comArquivo.ok, true, profile);
+
+    assert.equal(conferirEnvDoBuild({ ...COMPLETO, EAS_BUILD_PLATFORM: "ios" }, profile).ok, true, profile);
+  }
+  const dev = conferirEnvDoBuild({ ...COMPLETO, EAS_BUILD_PLATFORM: "android" }, "development");
+  assert.equal(dev.ok, true, "development nao pode ser barrado por isso");
+});
+
+test("a mensagem do firebase diz como criar a variavel de arquivo", () => {
+  const msg = mensagemDaConferencia(
+    conferirEnvDoBuild({ ...COMPLETO, EAS_BUILD_PLATFORM: "android" }, "production"),
+  );
+  assert.ok(msg.includes("GOOGLE_SERVICES_JSON: ausente"));
+  assert.ok(msg.includes("--type file"));
+  // A falta da URL da API nao cita o Firebase: a dica so aparece quando e' ela que falta.
+  const semApi = mensagemDaConferencia(
+    conferirEnvDoBuild({ ...COMPLETO, EXPO_PUBLIC_APITRAIUP_URL: "" }, "production"),
+  );
+  assert.ok(!semApi.includes("Firebase"));
+});
+
+test("app.config.js liga o arquivo do Firebase ao Android e nao inventa caminho", () => {
+  const raiz = mkdtempSync(join(tmpdir(), "trailup-config-"));
+  try {
+    assert.equal(resolverGoogleServices({}, raiz), null);
+    assert.equal(resolverGoogleServices({ GOOGLE_SERVICES_JSON: "  " }, raiz), null);
+    assert.equal(
+      resolverGoogleServices({ GOOGLE_SERVICES_JSON: "/eas/arquivo.json" }, raiz),
+      "/eas/arquivo.json",
+    );
+    writeFileSync(join(raiz, "google-services.json"), "{}");
+    assert.equal(resolverGoogleServices({}, raiz), "./google-services.json");
+    // A variavel do EAS vence o arquivo local.
+    assert.equal(resolverGoogleServices({ GOOGLE_SERVICES_JSON: "/eas/x.json" }, raiz), "/eas/x.json");
+  } finally {
+    rmSync(raiz, { recursive: true, force: true });
+  }
+
+  // O resto do app.json passa intacto.
+  const anterior = process.env.GOOGLE_SERVICES_JSON;
+  process.env.GOOGLE_SERVICES_JSON = "/eas/arquivo.json";
+  try {
+    const config = montarConfig({ config: { name: "TrailUp", android: { package: "com.seuprojeto.trailup" } } });
+    assert.deepEqual(config, {
+      name: "TrailUp",
+      web: {},
+      experiments: {},
+      android: { package: "com.seuprojeto.trailup", googleServicesFile: "/eas/arquivo.json" },
+    });
+  } finally {
+    if (anterior === undefined) delete process.env.GOOGLE_SERVICES_JSON;
+    else process.env.GOOGLE_SERVICES_JSON = anterior;
+  }
+});
+
+test("app.config.js continua publicando o app do aluno em /aluno na Vercel", () => {
+  // O espelho tinha o app.config.js so' com isto (10df7819); o Firebase entrou junto, sem tirar.
+  const salvo = { base: process.env.EXPO_WEB_BASE_URL, saida: process.env.EXPO_WEB_OUTPUT };
+  process.env.EXPO_WEB_BASE_URL = "/aluno";
+  process.env.EXPO_WEB_OUTPUT = "single";
+  try {
+    const config = montarConfig({
+      config: { web: { output: "static" }, experiments: { typedRoutes: true }, android: { package: "p" } },
+    });
+    assert.deepEqual(config.web, { output: "single" });
+    assert.deepEqual(config.experiments, { typedRoutes: true, baseUrl: "/aluno" });
+  } finally {
+    for (const [nome, valor] of [["EXPO_WEB_BASE_URL", salvo.base], ["EXPO_WEB_OUTPUT", salvo.saida]] as const) {
+      if (valor === undefined) delete process.env[nome];
+      else process.env[nome] = valor;
+    }
+  }
 });

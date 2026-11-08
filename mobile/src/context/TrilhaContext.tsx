@@ -611,6 +611,11 @@ type RegistrarRespostaQuestaoParams = {
   correta: boolean | null
   acertosPercentual?: number
   tempoGastoSeg?: number
+  /**
+   * A resposta já foi gravada pelo banco (`questao_responder`, `20261108_01`): só o estado local
+   * acompanha. Sem isto, grava direto em `questao_aluno` (questão sem RPC, app antigo).
+   */
+  jaGravada?: { tentativa: number | null }
 }
 
 type EnsurePersonalizationResult = PersonalizedTopicPayload | null
@@ -2299,23 +2304,28 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     correta,
     acertosPercentual = 0,
     tempoGastoSeg,
+    jaGravada,
   }: RegistrarRespostaQuestaoParams) => {
     if (!classeAtual || !usuario) return;
 
     let persistedAttempt: { tentativa?: number } | null = null;
-    try {
-      persistedAttempt = await QuestaoAluno.registrarResposta({
-        alunoId: usuario.id,
-        atividadeId,
-        questaoId,
-        resposta,
-        correta,
-        acertos_percentual: acertosPercentual,
-        tempo_gasto_seg: tempoGastoSeg,
-      });
-    } catch (err) {
-      console.warn('[TrilhaContext] Erro ao salvar resposta da questao:', err);
-      throw err;
+    if (jaGravada) {
+      persistedAttempt = jaGravada.tentativa != null ? { tentativa: jaGravada.tentativa } : null;
+    } else {
+      try {
+        persistedAttempt = await QuestaoAluno.registrarResposta({
+          alunoId: usuario.id,
+          atividadeId,
+          questaoId,
+          resposta,
+          correta,
+          acertos_percentual: acertosPercentual,
+          tempo_gasto_seg: tempoGastoSeg,
+        });
+      } catch (err) {
+        console.warn('[TrilhaContext] Erro ao salvar resposta da questao:', err);
+        throw err;
+      }
     }
 
     const targetClasseId = classeAtual.classe_id;

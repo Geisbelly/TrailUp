@@ -10,6 +10,8 @@ web-build/
 expo-env.d.ts
 
 # Native
+# Firebase do Android: vem da variável de arquivo GOOGLE_SERVICES_JSON do EAS (app.config.js).
+google-services.json
 .kotlin/
 *.orig.*
 *.jks

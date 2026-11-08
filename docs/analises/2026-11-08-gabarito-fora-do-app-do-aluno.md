@@ -1,6 +1,7 @@
 # Gabarito fora do app do aluno: mapa e proposta
 
-**Data:** 08/11/2026. **Estado:** proposta, nada implementado. Nenhuma migration foi aplicada.
+**Data:** 08/11/2026. **Estado:** fases 1 e 2 escritas (`20261108_01`, a edge function e o app), sem
+aplicar em produção. Fase 3 por fazer.
 **Origem:** a PR #1059 tirou a resposta do chat do guia. Este documento trata do outro caminho: o app
 do aluno recebe o gabarito antes de responder, para corrigir no aparelho.
 
@@ -119,6 +120,27 @@ A correção iria por uma RPC irmã. Fica registrado aqui para que não volte ab
 
 O app instalado corrige com o gabarito. Se ele sumir, toda objetiva vira "errada", e a dissertativa
 sem gabarito cai na comparação local, que aceita qualquer texto. Por isso, a ordem é esta:
+
+A fase 1 assumiu duas das decisões abaixo: Levenshtein em plpgsql, sem instalar extensão, e
+`mostrar_gabarito_ao_errar` no padrão do app (mostrar). Ver a docstring da `20261108_01`.
+
+A fase 2 (`mobile/src/services/questaoNoBanco.ts`) ficou assim:
+
+- `QuestionActivity` corrige a questão da turma por `questao_responder` e usa o percentual e a
+  regra que o banco devolveu (`fatorDaRegra` repete os fatores só para os pontos da atividade).
+  O gabarito exibido é o que a RPC liberou, ou o de `questao_revelar_gabarito` no "ver gabarito".
+- A dissertativa vai à edge function com `questaoId` e sem `respostaProfessor`; o `registro` que
+  volta é a resposta já gravada. Sem registro, cai em `questao_responder`.
+- `registrarRespostaQuestao` recebe `jaGravada` e não insere de novo em `questao_aluno`; o resto
+  (progresso, eventos, tentativa) segue igual.
+- `Classe.ts` não lê mais `questao_resposta_correta` da view. A view continua mandando a coluna
+  até a fase 3, para o app instalado.
+- A questão personalizada local (id negativo, sem linha em `questoes`) continua corrigida no
+  aparelho: o gabarito dela nasce no próprio material.
+- O app aceita o retorno da `questao_responder` de antes da migration (sem `acertos_percentual`,
+  vale 100/0), para o deploy da web não depender da ordem em relação à API.
+- A nota da atividade ainda é a soma que o app manda a `atividade_responder_tentativa`, agora
+  feita com os percentuais do banco. Somar no servidor é a fase 3.
 
 | Fase | O que muda | Quebra quem? |
 | --- | --- | --- |

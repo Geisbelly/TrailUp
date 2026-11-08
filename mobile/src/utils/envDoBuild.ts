@@ -31,6 +31,17 @@ export const SEMPRE = ["EXPO_PUBLIC_SUPABASE_URL", "EXPO_PUBLIC_SUPABASE_ANON_KE
 /** Necessária fora do `development`, onde o Metro cobre. */
 export const FORA_DO_DEV = ["EXPO_PUBLIC_APITRAIUP_URL"] as const;
 
+/**
+ * Android fora do `development`: o `google-services.json` do Firebase, como variável de ARQUIVO
+ * (`eas env:create --type file`), que `app.config.js` liga ao build.
+ *
+ * Sem ele o Firebase não inicializa, `getExpoPushTokenAsync` lança e o app manda `token: null`
+ * no login: o build sai normal e nenhum push remoto chega ao aluno. Medido em 08/11: nenhum
+ * build do TrailUp teve o arquivo, e todo login Android dos últimos 30 dias chegou sem token.
+ * O iOS não usa Firebase: lá o push depende da credencial APNs no EAS (`eas credentials`).
+ */
+export const ANDROID_FORA_DO_DEV = ["GOOGLE_SERVICES_JSON"] as const;
+
 export type Conferencia = {
   profile: string;
   exigidas: string[];
@@ -44,8 +55,14 @@ const ABSOLUTA = /^https?:\/\/[^\s/]+/i;
 export function conferirEnvDoBuild(
   ambiente: Record<string, string | undefined>,
   profile = ambiente.EAS_BUILD_PROFILE ?? "development",
+  plataforma = ambiente.EAS_BUILD_PLATFORM ?? "",
 ): Conferencia {
-  const exigidas = [...SEMPRE, ...(profile === "development" ? [] : FORA_DO_DEV)];
+  const distribuicao = profile !== "development";
+  const exigidas = [
+    ...SEMPRE,
+    ...(distribuicao ? FORA_DO_DEV : []),
+    ...(distribuicao && plataforma === "android" ? ANDROID_FORA_DO_DEV : []),
+  ];
 
   const faltando: string[] = [];
   const invalidas: { nome: string; motivo: string }[] = [];
@@ -82,5 +99,14 @@ export function mensagemDaConferencia(c: Conferencia): string {
     "Sem elas o build GERA normalmente e falha em silêncio no aparelho: o app cai no",
     "acesso direto ao Supabase e a análise de telemetria nunca roda (#96, #97).",
   );
+  if (c.faltando.includes("GOOGLE_SERVICES_JSON")) {
+    linhas.push(
+      "",
+      "GOOGLE_SERVICES_JSON é o google-services.json do Firebase, como variável de ARQUIVO:",
+      "  eas env:create --name GOOGLE_SERVICES_JSON --type file --value ./google-services.json",
+      "Sem ele nenhum aluno Android recebe push. A chave FCM V1 do servidor também tem de",
+      "estar no EAS (eas credentials), senão o envio volta InvalidCredentials.",
+    );
+  }
   return linhas.join("\n");
 }

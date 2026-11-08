@@ -443,7 +443,9 @@ export class Classe {
             row.questao_enunciado,
             row.questao_tipo ?? null,
             row.questao_alternativas ?? null,
-            row.questao_resposta_correta ?? null,
+            // O gabarito não vem mais para o app (`20261108_01`): quem corrige é `questao_responder`,
+            // e ele só chega pelas RPCs quando o app o mostra. A view ainda o traz até o corte.
+            null,
             questaoMidiaUrl,
             {
               resposta_aluno: (row as any).questao_resposta_aluno ?? null,

@@ -59,6 +59,10 @@ estáveis há meses:
 `fn_trilha_by_classe`, `questao_gabarito_do_aluno` e toda a família
 `fn_questao_*` / `fn_questoes_*` (10 funções).
 
+> **Atualização (2026-11-08):** `fn_questao_confere` e `questao_responder` (esta não estava na
+> contagem) têm fonte no git desde a `20261108_01`. O downgrade dela traz o corpo de produção de
+> 07/11.
+
 ### Divergência recente (16) — é aqui que dói
 
 Funcionalidade que entrou em produção sem passar pelo git:

@@ -641,6 +641,18 @@ Cada perfil carrega:
   **Limite conhecido:** a pontuação ainda é a que o app calcula, porque o gabarito
   continua no aparelho. A RPC só limita os valores. A escrita direta do app em
   `atividade_aluno` é fechada pela fase 5 (`20261102_04`, item abaixo).
+- **Questão corrigida no banco** (`20261108_01`, fases 1 e 2 de
+  `docs/analises/2026-11-08-gabarito-fora-do-app-do-aluno.md`). `questao_responder` corrige,
+  pontua com o multiplicador do app e só devolve o gabarito quando o app o mostraria. Ao devolver
+  depois de um erro, grava a revelação. `questao_revelar_gabarito` é o "ver gabarito". A
+  dissertativa manda `questaoId` à edge function, que lê a resposta esperada e grava a nota pela
+  chave de serviço. `fn_questao_confere` não tem mais EXECUTE para o cliente, porque era oráculo.
+  - **O app novo responde só pelas RPCs** (`mobile/src/services/questaoNoBanco.ts`) e não lê
+    `questao_resposta_correta`; a questão personalizada local (id negativo) continua no aparelho.
+  - **O app instalado ainda lê o gabarito e grava a resposta direto.** Fechar a coluna é a fase
+    3, só depois de `app_versao_minima`. Antes disso, o app 1.0.x marca toda objetiva como errada.
+  - **A conta do multiplicador mora em `fn_questao_registrar_resposta`.** Mudou a regra no app,
+    mude lá também.
 - **E-mail sai do banco por um Google Apps Script** (`20261101_14`, no lugar da
   Brevo). Isso vale para o contato do app, o contato do site e o aviso de conta
   inativa:
@@ -687,6 +699,15 @@ Cada perfil carrega:
   `pg_net` → Expo, e `pg_cron` varre a cada 5min. A **rotina diária é
   notificação local** agendada no aparelho: dispara com o app fechado sem
   servidor. Ver `docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md`.
+  **Ticket `ok` da Expo não é entrega** (`20261108_02`): o aviso de app
+  desinstalado (`DeviceNotRegistered`) vem no *recibo*, uns 15 min depois. O
+  mesmo cron de conciliação pede os recibos (`notificacoes_push_tickets`) e só
+  esse erro desativa o token; `InvalidCredentials` é credencial do projeto
+  (FCM/APNs) e não desativa aparelho. Até a `_02`, só o ticket era lido e o
+  token de quem desinstalou ficava ativo para sempre.
+  Token Android anterior a 27/08 é do **Expo Go** (nenhum build teve Firebase
+  até a #1067): o Expo Go mostra o push sem o TrailUp instalado e o recibo
+  volta `ok`. A `_02` os desativa (`desativado_motivo = 'expo_go'`).
   **Horário e texto da revisão diária são do banco** (`20261102_01`): o job
   `notificacoes_recalcular_rotinas` (pg_cron, diário) põe a rotina 30 min antes
   do horário habitual (`notificacoes_horario_preferido`, dias distintos em
