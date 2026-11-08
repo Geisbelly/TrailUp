@@ -79,7 +79,8 @@
 <ul>
 <li>O pipeline de análise tem <strong>nomes</strong> de algoritmos de ML, mas os estágios são regras. As exceções são a emoção por imagem e o M2. O diagrama 4.2 e o 7.1 marcam o que é regra.</li>
 <li>O RAG está <strong>implementado e não indexado</strong>. Ele aparece tracejado nos diagramas.</li>
-<li><code>agente_emocao</code>, dentro do grafo, usa <code>MockEmocaoAdapter</code>. A emoção que vale é a do estágio 1 do pipeline.</li>
+<li><code>agente_emocao</code> usa <code>LocalVisionEmotionAdapter</code> somente com <code>EMOTION_MODEL_PROVIDER=local_vision</code>; sem frame, modelo configurado ou resultado visual, informa emoção indisponível. Eventos e telemetria não são proxies de emoção.</li>
+<li>As transições de missão, desafio de guilda e relação social (6.8) seguem os rótulos dos <code>CHECK</code>. Elas não foram auditadas função por função.</li>
 <li><code>missao_aluno.status = 'expirada'</code> existe no <code>CHECK</code>, e nenhuma função grava esse valor.</li>
 <li>Vários fluxos estão prontos e sem uso real: em 05/11/2026 a produção tinha zero diagnósticos, fundos, desafios, partidas de Elo e coortes. Os diagramas descrevem o comportamento implementado, não uso medido.</li>
 </ul>
@@ -130,4 +131,4 @@
 </tr>
 </tbody>
 </table></div>
-<nav class="nav-paginas"><a href="rotas.html"><span class="k">← anterior</span><span class="t">Rotas dos serviços</span></a><a class="prox" href="arquitetura.html"><span class="k">próxima →</span><span class="t">Arquitetura</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#imagens">Imagens</a></li><li><a href="#o-que-estes-diagramas-não-afirmam">O que estes diagramas não afirmam</a></li><li><a href="#correções-em-relação-aos-documentos-anteriores">Correções em relação aos documentos anteriores</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>af371249</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
+<nav class="nav-paginas"><a href="rotas.html"><span class="k">← anterior</span><span class="t">Rotas dos serviços</span></a><a class="prox" href="arquitetura.html"><span class="k">próxima →</span><span class="t">Arquitetura</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#imagens">Imagens</a></li><li><a href="#o-que-estes-diagramas-não-afirmam">O que estes diagramas não afirmam</a></li><li><a href="#correções-em-relação-aos-documentos-anteriores">Correções em relação aos documentos anteriores</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>f708d9c7</code> em 08/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>

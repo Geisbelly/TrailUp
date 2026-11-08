@@ -92,6 +92,29 @@
 </li>
 <li><strong>Integração LTI 1.3:</strong> só levantamento (<code>docs/architecture/lti-1.3.md</code>, #146), <strong>nada implementado</strong>.</li>
 </ol>
+<h2 id="depois-da-varredura-até-08112026">Depois da varredura (até 08/11/2026)</h2>
+<p>As tabelas abaixo continuam sendo o retrato de 04/11. Esta seção registra só as peças que mudaram o que o inventário descreve, sem reextrair tudo.</p>
+<ul>
+<li><strong>Banco em 08/11</strong> (revisão <code>20261108_02</code>): 189 tabelas, 705 funções, 149 gatilhos, 292 políticas e 21 rotinas <code>pg_cron</code>.</li>
+<li><strong>O guia não entrega a resposta (#1059):</strong>
+<ul>
+<li><code>app/services/contexto_chat_materia.py</code> monta o contexto do chat com as questões (enunciado e alternativas, sem marcar a certa), as questões do quiz gerado e a frente dos cards;</li>
+<li><code>montar_gabarito_protegido</code> junta as respostas aceitas e o verso dos cards, e <code>gabarito_na_resposta</code> procura a resposta inteira (12 caracteres ou mais) ou um trecho de 8 palavras;</li>
+<li><code>app/agent/graph/guardrails.py</code> ganhou <code>checar_vazamento_de_gabarito</code>, que roda antes de <code>checar_grounding_chat</code>, e o juiz (<code>mentor_grounding_check.txt</code>) recebe o gabarito;</li>
+<li><code>buscar_questoes_com_gabarito_topico</code> (<code>app/repositories/conteudo_classe.py</code>) lê o gabarito só para as guardas.</li>
+</ul>
+</li>
+<li><strong>Dissertativa sem revelar a resposta (#1060):</strong> <code>validate-essay-answer-ai/protecaoDaResposta.ts</code> troca o comentário e os pontos que repetiriam a resposta esperada. A nota fica como veio, e o texto do próprio aluno não conta como vazamento.</li>
+<li><strong>Questão corrigida no banco (#1064, #1065):</strong>
+<ul>
+<li>a migration <code>20261108_01</code> reescreve <code>questao_responder</code> (a v2 corrige, pontua e grava; a anterior não era chamada por ninguém), cria <code>questao_revelar_gabarito</code> e tira o EXECUTE de <code>fn_questao_confere</code> do cliente, que servia de oráculo;</li>
+<li>a dissertativa lê a resposta esperada no servidor (<code>questao_correcao_ia_contexto</code>, só <code>service_role</code>), em vez de recebê-la do app;</li>
+<li>no app, <code>mobile/src/services/questaoNoBanco.ts</code> (com <code>questaoNoBanco.core.ts</code>) responde pelas RPCs, e <code>QuestionActivity</code> não lê mais o gabarito da questão da turma;</li>
+<li>a coluna ainda fica aberta para o app instalado, e fechá-la é a fase 3 (<code>docs/analises/2026-11-08-gabarito-fora-do-app-do-aluno.md</code>).</li>
+</ul>
+</li>
+<li><strong>Push (#1066, #1067):</strong> a migration <code>20261108_02</code> lê os recibos da Expo e desativa o token do Expo Go. <code>mobile/app.config.js</code> liga <code>android.googleServicesFile</code> ao Firebase no build.</li>
+</ul>
 <hr />
 <h2 id="1-api-apiapp-todos-os-módulos">1. API (<code>api/app</code>): todos os módulos</h2>
 <p>Colunas: arquivo, linhas, descrição.</p>
@@ -1820,4 +1843,4 @@
 </tr>
 </tbody>
 </table></div>
-<nav class="nav-paginas"><a href="visao-geral.html"><span class="k">← anterior</span><span class="t">Visão geral do sistema</span></a><a class="prox" href="rotas.html"><span class="k">próxima →</span><span class="t">Rotas dos serviços</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#o-que-esta-varredura-acrescentou-ao-dossiê">O que esta varredura acrescentou ao dossiê</a></li><li><a href="#1-api-apiapp-todos-os-módulos">1. API (api/app): todos os módulos</a></li><li><a href="#2-microservice-e-brainhexpdf-arquivos-de-código">2. Microservice e BrainHexPDF: arquivos de código</a></li><li><a href="#3-app-do-aluno-mobilesrc">3. App do aluno (mobile/src)</a></li><li><a href="#4-console-do-professor-frontendsrccomponentsconsole">4. Console do professor (frontend/src/components/console)</a></li><li><a href="#5-banco-de-dados-produção">5. Banco de dados (produção)</a></li><li><a href="#6-documentação-processo-e-infraestrutura">6. Documentação, processo e infraestrutura</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>af371249</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
+<nav class="nav-paginas"><a href="visao-geral.html"><span class="k">← anterior</span><span class="t">Visão geral do sistema</span></a><a class="prox" href="rotas.html"><span class="k">próxima →</span><span class="t">Rotas dos serviços</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#o-que-esta-varredura-acrescentou-ao-dossiê">O que esta varredura acrescentou ao dossiê</a></li><li><a href="#depois-da-varredura-até-08112026">Depois da varredura (até 08/11/2026)</a></li><li><a href="#1-api-apiapp-todos-os-módulos">1. API (api/app): todos os módulos</a></li><li><a href="#2-microservice-e-brainhexpdf-arquivos-de-código">2. Microservice e BrainHexPDF: arquivos de código</a></li><li><a href="#3-app-do-aluno-mobilesrc">3. App do aluno (mobile/src)</a></li><li><a href="#4-console-do-professor-frontendsrccomponentsconsole">4. Console do professor (frontend/src/components/console)</a></li><li><a href="#5-banco-de-dados-produção">5. Banco de dados (produção)</a></li><li><a href="#6-documentação-processo-e-infraestrutura">6. Documentação, processo e infraestrutura</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>f708d9c7</code> em 08/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
