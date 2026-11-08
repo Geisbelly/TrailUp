@@ -14,6 +14,12 @@ export class Notificacao {
   public status: string;
   public read: boolean;
   public created_at: string | null;
+  /**
+   * O `contexto` (jsonb) que o banco grava com a notificação: ids do tópico, conteúdo,
+   * atividade, rank ou remetente. É dele que sai o botão "ir ver" do detalhe
+   * (`services/acaoDaNotificacao.ts`). Linhas antigas vêm com `{}`.
+   */
+  public contexto: Record<string, unknown> | null;
 
   private constructor(data: {
     id: number;
@@ -25,6 +31,7 @@ export class Notificacao {
     status: string;
     read: boolean;
     created_at: string | null;
+    contexto?: Record<string, unknown> | null;
   }) {
     this.id = data.id;
     this.aluno_id = data.aluno_id ?? null;
@@ -35,6 +42,7 @@ export class Notificacao {
     this.status = data.status ?? 'enviada';
     this.read = data.read;
     this.created_at = data.created_at ?? null;
+    this.contexto = data.contexto && typeof data.contexto === 'object' ? data.contexto : null;
   }
 
   /** 🔄 Constrói a partir de uma linha do banco */
@@ -49,6 +57,7 @@ export class Notificacao {
       status: row.status,
       read:row.read,
       created_at: row.created_at,
+      contexto: row.contexto,
     });
   }
 
@@ -157,6 +166,7 @@ export class Notificacao {
       status: this.status,
       read: this.read,
       created_at: this.created_at,
+      contexto: this.contexto,
     };
   }
 }
