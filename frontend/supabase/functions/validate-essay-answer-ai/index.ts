@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
+import { protegerAvaliacao } from "./protecaoDaResposta.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -328,6 +329,11 @@ Regras obrigatorias:
 - correta deve ser true somente se a resposta atingir nivel satisfatorio (normalmente >= 60%).
 - feedback deve ser objetivo e acionavel.
 - pontos_fortes e pontos_melhoria com 1 a 5 itens cada.
+- feedback, pontos_fortes, pontos_melhoria e observacao sao lidos pelo ALUNO, que pode tentar de novo.
+  NUNCA copie, cite, resuma nem parafraseie a RESPOSTA ESPERADA, nem diga palavra por palavra o que
+  faltou escrever. Diga QUAL conceito ou parte do enunciado ficou fraco, aponte o que revisar no
+  conteudo e, se ajudar, faca uma pergunta que oriente o raciocinio. Pode citar o que o proprio aluno
+  escreveu. O texto e conferido antes de chegar ao aluno: trecho da resposta esperada e trocado.
 - Retorne SOMENTE JSON valido (sem markdown).`;
 
     const call = await callGemini({
@@ -344,13 +350,21 @@ Regras obrigatorias:
         {
           error: "invalid_ai_response",
           finish_reason: call.finishReason,
-          raw: call.text,
+          // Sem o texto cru do modelo: ele pode trazer a resposta esperada, e esta resposta vai
+          // ao app do aluno.
         },
         500,
       );
     }
 
-    return jsonResponse(normalizeEvaluation(parsed, notaEstabelecida));
+    const { avaliacao, trocados } = protegerAvaliacao(
+      normalizeEvaluation(parsed, notaEstabelecida),
+      respostaProfessor,
+      respostaAluno,
+    );
+    // Conta, sem texto: mede quanto o prompt sozinho deixaria passar.
+    if (trocados > 0) console.warn(`validate-essay-answer-ai: ${trocados} campo(s) trocado(s) por revelar a resposta esperada`);
+    return jsonResponse(avaliacao);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return jsonResponse({ error: message }, 500);
