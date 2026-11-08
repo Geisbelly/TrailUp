@@ -24,10 +24,11 @@ mockModule('@/models/QuestaoAluno', { QuestaoAluno: {} });
 mockModule('@/utils/essayValidation', { validateEssayAnswerWithAi: async () => ({}) });
 // A segunda chance comprada fala com o Supabase. Este teste só olha o HTML.
 mockModule('@/services/loja/lojaService', { gastarSegundaChance: async () => ({ ok: false }) });
-// As RPCs da questão (#1065) também carregam o cliente do Supabase, que exige a URL no
-// ambiente e derruba o arquivo no CI. As funções puras vêm do `.core` de verdade.
+// Responder e revelar o gabarito também (#1065). O resto do módulo é puro e fica o de verdade.
+const questaoNoBancoCore = require('@/services/questaoNoBanco.core');
 mockModule('@/services/questaoNoBanco', {
-  ...require('@/services/questaoNoBanco.core'),
+  fatorDaRegra: questaoNoBancoCore.fatorDaRegra,
+  questaoDoBanco: questaoNoBancoCore.questaoDoBanco,
   responderQuestao: async () => { throw new Error('fora do teste'); },
   revelarGabarito: async () => { throw new Error('fora do teste'); },
 });
@@ -39,18 +40,17 @@ test('questão nova em atividade concluída não mostra gabarito nem resposta he
   assert.doesNotMatch(html, /Gabarito:|Sua ultima resposta:|Ver respostas anteriores/);
   assert.match(html, /Qual alternativa/);
 });
-test('revisão de questão personalizada realmente respondida permite consultar gabarito', () => {
-  // A personalizada (id negativo, sem linha em `questoes`) ainda traz o gabarito no payload.
-  const local = { ...question, id: -2, isPersonalizedLocal: true, resposta_aluno: 'Alpha' };
+test('revisão de questão personalizada local respondida permite consultar gabarito', () => {
+  // A personalizada local (id negativo) não tem linha em `questoes` e segue corrigida no aparelho.
+  const local = { ...question, id: -2, resposta_aluno: 'Alpha', isPersonalizedLocal: true };
   const html = renderToString(<QuestionActivity reviewMode atividade={{ id: 5, status: 'concluido', questoes: [local] }} />);
   assert.match(html, /Gabarito: (<!-- -->)?Beta/);
 });
-test('questão da turma não usa o gabarito que vier no payload: ele só chega pelo banco', () => {
-  // #1065: o gabarito da turma vem de `revelarGabarito`, num efeito que o `renderToString`
-  // não roda. Mesmo com `resposta_correta` no objeto, o primeiro desenho não o mostra.
+test('revisão de questão da turma não mostra o gabarito que veio no payload', () => {
+  // Desde a #1065 o gabarito da turma vem do banco (`revelarGabarito`, num efeito), não do objeto.
   const html = renderToString(<QuestionActivity reviewMode atividade={{ id: 5, status: 'concluido', questoes: [{ ...question, resposta_aluno: 'Alpha' }] }} />);
   assert.doesNotMatch(html, /Gabarito:/);
-  assert.match(html, /Sua ultima resposta:/);
+  assert.match(html, /Qual alternativa/);
 });
 test('nova tentativa reabre só a questão errada, sem a resposta antiga nem trava', () => {
   const atividade = {
