@@ -51,6 +51,7 @@ src/services/telemetriaApi.persistence.test.ts
 src/services/telemetriaCliente.core.test.ts
 src/services/faixaXp.core.test.ts
 src/services/tentativasAtividade.core.test.ts
+src/services/questaoNoBanco.core.test.ts
 src/services/telemetriaFallback.test.ts
 src/services/telemetriaOutbox.concurrent.test.ts
 src/services/telemetriaOutbox.test.ts

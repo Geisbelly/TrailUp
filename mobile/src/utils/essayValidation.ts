@@ -5,8 +5,15 @@
 // funcao, mesmo contrato, chamada agora tambem no fluxo ao vivo do aluno,
 // no lugar de comparacao de texto/similaridade pra perguntas abertas.
 import { supabase } from "@/database/supabase";
+import { lerRespostaCorrigida, type RespostaCorrigida } from "@/services/questaoNoBanco.core";
 
 export interface EssayValidationInput {
+  /**
+   * Questão da turma (`20261108_01`): a função lê enunciado e resposta esperada no banco e grava
+   * a nota. Com ele, `respostaProfessor` não é enviado: o aluno não tem mais a resposta esperada.
+   */
+  questaoId?: number | null;
+  tempoGastoSeg?: number | null;
   enunciado: string;
   respostaAluno: string;
   respostaProfessor?: string | null;
@@ -22,6 +29,8 @@ export interface EssayValidationResult {
   feedback: string;
   pontosFortes: string[];
   pontosMelhoria: string[];
+  /** O que o banco gravou (só com `questaoId`): correta e percentual com o multiplicador. */
+  registro: RespostaCorrigida | null;
 }
 
 function asString(value: unknown): string {
@@ -54,6 +63,7 @@ function normalizeResult(raw: unknown): EssayValidationResult {
       asString(row.feedback) || "Resposta corrigida por IA. Confira os pontos fortes e de melhoria.",
     pontosFortes: normalizeList(row.pontos_fortes, "Demonstrou entendimento parcial do enunciado."),
     pontosMelhoria: normalizeList(row.pontos_melhoria, "Aprofunde a argumentacao com base no conteudo."),
+    registro: row.registro && typeof row.registro === "object" ? lerRespostaCorrigida(row.registro) : null,
   };
 }
 
@@ -65,11 +75,13 @@ function normalizeResult(raw: unknown): EssayValidationResult {
 export async function validateEssayAnswerWithAi(
   input: EssayValidationInput
 ): Promise<EssayValidationResult> {
+  const daTurma = input.questaoId != null && input.questaoId > 0;
   const { data, error } = await supabase.functions.invoke("validate-essay-answer-ai", {
     body: {
+      ...(daTurma ? { questaoId: input.questaoId, tempoGastoSeg: input.tempoGastoSeg ?? null } : {}),
       enunciado: input.enunciado,
       respostaAluno: input.respostaAluno,
-      respostaProfessor: input.respostaProfessor ?? "",
+      respostaProfessor: daTurma ? "" : input.respostaProfessor ?? "",
       conteudoBase: input.conteudoBase ?? "",
       ...(input.notaEstabelecida != null ? { notaEstabelecida: input.notaEstabelecida } : {}),
       topicoNome: input.topicoNome ?? "",
