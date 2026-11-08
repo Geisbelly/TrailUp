@@ -45,7 +45,7 @@
 </tr>
 <tr>
 <td>Banco</td>
-<td>171 tabelas · 27 views · 612 funções · 144 gatilhos · 286 políticas de RLS · 16 rotinas agendadas (<code>pg_cron</code>)</td>
+<td>171 tabelas · 27 views · 612 funções · 144 gatilhos · 286 políticas de RLS · 16 rotinas agendadas (<code>pg_cron</code>). Em 08/11, na revisão <code>20261108_02</code>: 189 tabelas · 705 funções · 149 gatilhos · 292 políticas · 21 rotinas</td>
 <td>[banco]</td>
 </tr>
 <tr>
@@ -233,6 +233,13 @@
 <li><strong>Turma retida pelo estudo:</strong> só rodam emoção, perfil e intervenção (<code>RETIDA_SPECIALIST_NODES</code>), para não contaminar a comparação.</li>
 <li><strong>Persistência:</strong> o estado tem checkpoint no Postgres (<code>langgraph-checkpoint-postgres</code>).</li>
 <li><strong>Memória do aluno:</strong> o histórico de estado mental (<code>aluno_mental_state_history</code>) volta ao grafo. Uma recorrência é 3 estados negativos iguais entre os 5 últimos registros. Ela alimenta o tema de suporte (<code>agente_ui</code>) e o alerta ao professor (<code>agente_intervencao</code>).</li>
+<li><strong>O guia ajuda sem entregar a resposta (07/11, #1059):</strong> o chat da matéria recebe o conteúdo, os enunciados e as alternativas das questões (sem marcar a certa) e a frente dos cards. O gabarito e o verso dos cards só chegam às guardas, que barram a resposta antes de ela sair:
+<ul>
+<li>uma checagem determinística (<code>checar_vazamento_de_gabarito</code>) procura a resposta inteira ou um trecho de 8 palavras dela;</li>
+<li>depois, o juiz de <em>grounding</em> (<code>mentor_grounding_check.txt</code>) julga com o gabarito à vista;</li>
+<li>a correção da dissertativa (<code>validate-essay-answer-ai</code>, #1060) troca o comentário que repetiria a resposta esperada, e a nota não muda.</li>
+</ul>
+</li>
 </ul>
 <h3 id="53-pipeline-de-análise-da-telemetria-linear_analysis_pipelinepy">5.3 Pipeline de análise da telemetria (<code>linear_analysis_pipeline.py</code>)</h3>
 <p>Tem seis estágios em sequência: emoção, leitura, interação, desempenho, atenção e decisão.</p>
@@ -493,7 +500,7 @@
 <li>Toda view nasce com <code>security_invoker = on</code>.</li>
 </ul>
 </li>
-<li><strong>16 rotinas <code>pg_cron</code></strong> [banco]:
+<li><strong>16 rotinas <code>pg_cron</code></strong> em 04/11, 21 em 08/11 [banco]:
 <ul>
 <li>missão diária e o texto dela;</li>
 <li>eventos de turma, a cada minuto;</li>
@@ -519,6 +526,8 @@
 </li>
 <li><strong>Progresso:</strong> um gatilho calcula o percentual do tópico (<code>trailup_recalcular_topico_aluno</code>), e nenhum cliente grava esse valor. O denominador é o material personalizado; o do professor é opcional e dá bônus.</li>
 <li><strong>Operações em transação no banco:</strong> duplicar turma, tópico e atividade.</li>
+<li><strong>Questão da turma corrigida no banco (08/11, #1064 e #1065):</strong> o app novo responde pelas RPCs <code>questao_responder</code> e <code>questao_revelar_gabarito</code> e não lê mais o gabarito. A questão personalizada local continua corrigida no aparelho. O app instalado (1.0.x) ainda lê o gabarito; fechar a coluna é a fase 3, que espera a versão mínima do app.</li>
+<li><strong>Recibos de push (08/11, #1066):</strong> o banco lê os recibos da Expo e desativa o token que não entrega mais. O build Android passa a ligar o Firebase (#1067), o que só vale a partir do próximo build.</li>
 </ul>
 <hr />
 <h2 id="12-privacidade-lgpd-e-ética">12. Privacidade, LGPD e ética</h2>
@@ -639,6 +648,14 @@
 <td>&quot;resultados mostram melhora de aprendizagem&quot;</td>
 <td>não há amostra para isso; relatar viabilidade técnica</td>
 </tr>
+<tr>
+<td>&quot;o aluno não tem acesso ao gabarito&quot;</td>
+<td>o app novo corrige no banco e não lê o gabarito; o app instalado ainda lê, até a fase 3 (08/11)</td>
+</tr>
+<tr>
+<td>&quot;o guia nunca dá a resposta&quot;</td>
+<td>duas guardas barram a resposta (texto e juiz de modelo); é redução de risco medida em teste, não garantia</td>
+</tr>
 </tbody>
 </table></div>
 <p><strong>O que os capítulos 01 a 11 desta pasta dizem que já mudou:</strong></p>
@@ -651,4 +668,4 @@
 <li>não registram que os estágios da análise são heurísticos.</li>
 </ul>
 <p>Revise-os a partir deste documento.</p>
-<nav class="nav-paginas"><span></span><a class="prox" href="inventario.html"><span class="k">próxima →</span><span class="t">Inventário completo</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#1-o-sistema-em-números">1. O sistema em números</a></li><li><a href="#2-arquitetura">2. Arquitetura</a></li><li><a href="#3-app-do-aluno-mobile">3. App do aluno (mobile/)</a></li><li><a href="#4-console-do-professor-frontend">4. Console do professor (frontend/)</a></li><li><a href="#5-api-e-inteligência-artificial-api">5. API e inteligência artificial (api/)</a></li><li><a href="#6-geração-do-material-personalizado">6. Geração do material personalizado</a></li><li><a href="#7-perfis-brainhex">7. Perfis BrainHex</a></li><li><a href="#8-evidence-base-e-rag">8. Evidence Base e RAG</a></li><li><a href="#9-telemetria-e-métricas">9. Telemetria e métricas</a></li><li><a href="#10-gamificação">10. Gamificação</a></li><li><a href="#11-banco-de-dados-e-automações">11. Banco de dados e automações</a></li><li><a href="#12-privacidade-lgpd-e-ética">12. Privacidade, LGPD e ética</a></li><li><a href="#13-qualidade-e-processo">13. Qualidade e processo</a></li><li><a href="#14-os-dados-de-produção-e-o-que-eles-permitem">14. Os dados de produção e o que eles permitem</a></li><li><a href="#15-o-que-não-afirmar-na-monografia">15. O que não afirmar na monografia</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>af371249</code> em 05/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
+<nav class="nav-paginas"><span></span><a class="prox" href="inventario.html"><span class="k">próxima →</span><span class="t">Inventário completo</span></a></nav></article><nav class="toc" aria-label="Nesta página"><div class="eyebrow">Nesta página</div><ol><li><a href="#1-o-sistema-em-números">1. O sistema em números</a></li><li><a href="#2-arquitetura">2. Arquitetura</a></li><li><a href="#3-app-do-aluno-mobile">3. App do aluno (mobile/)</a></li><li><a href="#4-console-do-professor-frontend">4. Console do professor (frontend/)</a></li><li><a href="#5-api-e-inteligência-artificial-api">5. API e inteligência artificial (api/)</a></li><li><a href="#6-geração-do-material-personalizado">6. Geração do material personalizado</a></li><li><a href="#7-perfis-brainhex">7. Perfis BrainHex</a></li><li><a href="#8-evidence-base-e-rag">8. Evidence Base e RAG</a></li><li><a href="#9-telemetria-e-métricas">9. Telemetria e métricas</a></li><li><a href="#10-gamificação">10. Gamificação</a></li><li><a href="#11-banco-de-dados-e-automações">11. Banco de dados e automações</a></li><li><a href="#12-privacidade-lgpd-e-ética">12. Privacidade, LGPD e ética</a></li><li><a href="#13-qualidade-e-processo">13. Qualidade e processo</a></li><li><a href="#14-os-dados-de-produção-e-o-que-eles-permitem">14. Os dados de produção e o que eles permitem</a></li><li><a href="#15-o-que-não-afirmar-na-monografia">15. O que não afirmar na monografia</a></li></ol></nav><footer class="rodape"><span>Gerado de <code>f708d9c7</code> em 08/11/2026 por <code>scripts/site_docs/construir.py</code>.</span><span>Código: <a href="https://github.com/Geisbelly/TrailUp" target="_blank" rel="noopener">Geisbelly/TrailUp</a></span></footer></main></div><script type="module" src="../assets/site.js"></script></body></html>
