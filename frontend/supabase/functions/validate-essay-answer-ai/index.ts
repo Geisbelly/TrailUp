@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 import { protegerAvaliacao } from "./protecaoDaResposta.ts";
+import { lerContexto, lerQuestaoId, lerTempo, respostaDoErroDaRpc } from "./correcaoPeloServidor.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -18,6 +19,10 @@ const MAX_TEXT_CHARS = 5000;
 type JsonObject = Record<string, unknown>;
 
 interface RequestBody {
+  // Com questaoId (app a partir da fase 2, `20261108_01`): enunciado e resposta esperada vêm do
+  // banco, e a nota da IA é gravada aqui. Sem ele, o contrato antigo (console e app 1.0.x).
+  questaoId?: unknown;
+  tempoGastoSeg?: unknown;
   enunciado?: unknown;
   respostaAluno?: unknown;
   respostaProfessor?: unknown;
@@ -66,7 +71,7 @@ function jsonResponse(payload: unknown, status = 200): Response {
 // o token pertença a um usuario de fato logado, nao so a chave publica anon.
 type AuthClient = ReturnType<typeof createClient>;
 
-async function requireAuthenticatedUser(req: Request): Promise<AuthClient | null> {
+async function requireAuthenticatedUser(req: Request): Promise<{ client: AuthClient; userId: string } | null> {
   const authHeader = req.headers.get("Authorization") ?? "";
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -76,7 +81,7 @@ async function requireAuthenticatedUser(req: Request): Promise<AuthClient | null
     global: { headers: { Authorization: authHeader } },
   });
   const { data, error } = await authClient.auth.getUser();
-  return !error && Boolean(data?.user) ? authClient : null;
+  return !error && data?.user?.id ? { client: authClient, userId: data.user.id } : null;
 }
 
 // #195: adulto confirmado (menor === false) segue no Gemini. Menor, data de
@@ -277,26 +282,51 @@ function iaIndisponivel(): Response {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
-  const authClient = await requireAuthenticatedUser(req);
-  if (!authClient) {
+  const sessao = await requireAuthenticatedUser(req);
+  if (!sessao) {
     return jsonResponse({ error: "unauthorized" }, 401);
   }
+  const authClient = sessao.client;
 
   try {
     const body = (await req.json()) as RequestBody;
-    const enunciado = asString(body.enunciado).substring(0, MAX_TEXT_CHARS);
+    const questaoId = lerQuestaoId(body.questaoId);
+    let enunciado = asString(body.enunciado).substring(0, MAX_TEXT_CHARS);
     const respostaAluno = asString(body.respostaAluno).substring(0, MAX_TEXT_CHARS);
-    const respostaProfessor = asString(body.respostaProfessor).substring(0, MAX_TEXT_CHARS);
+    let respostaProfessor = asString(body.respostaProfessor).substring(0, MAX_TEXT_CHARS);
     const conteudoBase = asString(body.conteudoBase).substring(0, MAX_CONTENT_CHARS);
-    const notaInformada = parseOptionalPositiveNumber(body.notaEstabelecida);
-    const notaEstabelecida = round2(clamp(notaInformada ?? 100, 0.1, 1000));
+    let notaInformada = parseOptionalPositiveNumber(body.notaEstabelecida);
 
-    if (!enunciado) return jsonResponse({ error: "missing_enunciado" }, 400);
     if (!respostaAluno) return jsonResponse({ error: "missing_resposta_aluno" }, 400);
+    if (!questaoId && !enunciado) return jsonResponse({ error: "missing_enunciado" }, 400);
 
     if (!(await alunoEhAdultoConfirmado(authClient))) return iaIndisponivel();
     const key = Deno.env.get("GEMINI_API_KEY");
     if (!key) return jsonResponse({ error: "GEMINI_API_KEY not set" }, 500);
+
+    // Com questaoId, o que o app mandou de enunciado e resposta esperada não vale: a questão é
+    // lida pela chave de serviço, que também confere matrícula e prazo antes de gastar cota.
+    let servico: ReturnType<typeof createClient> | null = null;
+    if (questaoId) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const chaveServico = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      if (!supabaseUrl || !chaveServico) return jsonResponse({ error: "SUPABASE_SERVICE_ROLE_KEY not set" }, 500);
+      servico = createClient(supabaseUrl, chaveServico, { auth: { persistSession: false } });
+      const { data, error } = await servico.rpc("questao_correcao_ia_contexto", {
+        p_aluno: sessao.userId,
+        p_questao_id: questaoId,
+      });
+      if (error) {
+        const falha = respostaDoErroDaRpc(error.message);
+        return jsonResponse({ error: falha.error }, falha.status);
+      }
+      const contexto = lerContexto(data);
+      enunciado = contexto.enunciado.substring(0, MAX_TEXT_CHARS);
+      respostaProfessor = contexto.respostaEsperada.substring(0, MAX_TEXT_CHARS);
+      notaInformada = parseOptionalPositiveNumber(contexto.notaEstabelecida);
+      if (!enunciado) return jsonResponse({ error: "missing_enunciado" }, 400);
+    }
+    const notaEstabelecida = round2(clamp(notaInformada ?? 100, 0.1, 1000));
 
     const contextBlock = buildContextBlock({
       materiaNome: asString(body.materiaNome),
@@ -364,7 +394,23 @@ Regras obrigatorias:
     );
     // Conta, sem texto: mede quanto o prompt sozinho deixaria passar.
     if (trocados > 0) console.warn(`validate-essay-answer-ai: ${trocados} campo(s) trocado(s) por revelar a resposta esperada`);
-    return jsonResponse(avaliacao);
+    if (!questaoId || !servico) return jsonResponse(avaliacao);
+
+    // A nota da IA é gravada aqui, com o multiplicador do banco (viu o gabarito, respondeu de
+    // novo, nova tentativa). O app usa `registro`, não recalcula.
+    const { data: registro, error: erroDoRegistro } = await servico.rpc("questao_registrar_correcao_ia", {
+      p_aluno: sessao.userId,
+      p_questao_id: questaoId,
+      p_resposta: respostaAluno,
+      p_correta: avaliacao.correta,
+      p_percentual: avaliacao.percentual,
+      p_tempo_gasto_seg: lerTempo(body.tempoGastoSeg),
+    });
+    if (erroDoRegistro) {
+      const falha = respostaDoErroDaRpc(erroDoRegistro.message);
+      return jsonResponse({ error: falha.error }, falha.status);
+    }
+    return jsonResponse({ ...avaliacao, registro });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return jsonResponse({ error: message }, 500);

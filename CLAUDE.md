@@ -641,6 +641,16 @@ Cada perfil carrega:
   **Limite conhecido:** a pontuação ainda é a que o app calcula, porque o gabarito
   continua no aparelho. A RPC só limita os valores. A escrita direta do app em
   `atividade_aluno` é fechada pela fase 5 (`20261102_04`, item abaixo).
+- **Questão corrigida no banco** (`20261108_01`, fase 1 de
+  `docs/analises/2026-11-08-gabarito-fora-do-app-do-aluno.md`). `questao_responder` corrige,
+  pontua com o multiplicador do app e só devolve o gabarito quando o app o mostraria. Ao devolver
+  depois de um erro, grava a revelação. `questao_revelar_gabarito` é o "ver gabarito". A
+  dissertativa manda `questaoId` à edge function, que lê a resposta esperada e grava a nota pela
+  chave de serviço. `fn_questao_confere` não tem mais EXECUTE para o cliente, porque era oráculo.
+  - **O app instalado ainda lê o gabarito e grava a resposta direto.** Fechar a coluna é a fase
+    3, só depois de `app_versao_minima`. Antes disso, o app 1.0.x marca toda objetiva como errada.
+  - **A conta do multiplicador mora em `fn_questao_registrar_resposta`.** Mudou a regra no app,
+    mude lá também.
 - **E-mail sai do banco por um Google Apps Script** (`20261101_14`, no lugar da
   Brevo). Isso vale para o contato do app, o contato do site e o aviso de conta
   inativa:

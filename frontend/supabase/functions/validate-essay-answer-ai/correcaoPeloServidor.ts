@@ -1,0 +1,56 @@
+// Correção da dissertativa com a resposta esperada lida no servidor (`20261108_01`).
+//
+// Com `questaoId`, a função não recebe mais a resposta esperada do app: lê a questão pela chave
+// de serviço (`questao_correcao_ia_contexto`, que confere matrícula e prazo) e grava a nota da IA
+// (`questao_registrar_correcao_ia`). Sem `questaoId` vale o contrato antigo: o console do professor
+// e o app 1.0.x mandam `respostaProfessor`. Ver docs/analises/2026-11-08-gabarito-fora-do-app-do-aluno.md.
+//
+// Puro, para o vitest do frontend.
+
+export interface ContextoDaQuestao {
+  enunciado: string;
+  respostaEsperada: string;
+  notaEstabelecida: unknown;
+}
+
+/** `questaoId` do corpo: inteiro positivo, ou null (fluxo antigo). */
+export function lerQuestaoId(valor: unknown): number | null {
+  const numero = typeof valor === "string" && valor.trim() !== "" ? Number(valor) : valor;
+  return typeof numero === "number" && Number.isSafeInteger(numero) && numero > 0 ? numero : null;
+}
+
+/** O que `questao_correcao_ia_contexto` devolve, sem confiar na forma. */
+export function lerContexto(bruto: unknown): ContextoDaQuestao {
+  const linha = bruto && typeof bruto === "object" ? (bruto as Record<string, unknown>) : {};
+  const texto = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+  return {
+    enunciado: texto(linha.enunciado),
+    respostaEsperada: texto(linha.resposta_esperada),
+    notaEstabelecida: linha.nota_estabelecida ?? null,
+  };
+}
+
+// As exceções das RPCs (`RAISE EXCEPTION '<codigo>'`) viram status HTTP. O app traduz
+// `prazo_expirado` como na resposta da objetiva.
+const STATUS_DO_ERRO: Record<string, number> = {
+  questao_sem_sessao: 401,
+  questao_sem_permissao: 403,
+  questao_inexistente: 404,
+  questao_nao_dissertativa: 400,
+  prazo_expirado: 409,
+};
+
+export function respostaDoErroDaRpc(mensagem: unknown): { status: number; error: string } {
+  const texto = typeof mensagem === "string" ? mensagem : "";
+  for (const [codigo, status] of Object.entries(STATUS_DO_ERRO)) {
+    if (texto.includes(codigo)) return { status, error: codigo };
+  }
+  return { status: 500, error: "falha_no_banco" };
+}
+
+/** Segundos na questão, como `questao_responder` aceita: inteiro de 0 a 3600, ou null. */
+export function lerTempo(valor: unknown): number | null {
+  const numero = Number(valor);
+  if (valor === null || valor === undefined || !Number.isFinite(numero)) return null;
+  return Math.min(3600, Math.max(0, Math.round(numero)));
+}

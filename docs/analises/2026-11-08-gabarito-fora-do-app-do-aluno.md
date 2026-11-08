@@ -1,6 +1,7 @@
 # Gabarito fora do app do aluno: mapa e proposta
 
-**Data:** 08/11/2026. **Estado:** proposta, nada implementado. Nenhuma migration foi aplicada.
+**Data:** 08/11/2026. **Estado:** fase 1 escrita (`20261108_01` e a edge function), sem aplicar em
+produção. Fases 2 e 3 por fazer.
 **Origem:** a PR #1059 tirou a resposta do chat do guia. Este documento trata do outro caminho: o app
 do aluno recebe o gabarito antes de responder, para corrigir no aparelho.
 
@@ -119,6 +120,9 @@ A correção iria por uma RPC irmã. Fica registrado aqui para que não volte ab
 
 O app instalado corrige com o gabarito. Se ele sumir, toda objetiva vira "errada", e a dissertativa
 sem gabarito cai na comparação local, que aceita qualquer texto. Por isso, a ordem é esta:
+
+A fase 1 assumiu duas das decisões abaixo: Levenshtein em plpgsql, sem instalar extensão, e
+`mostrar_gabarito_ao_errar` no padrão do app (mostrar). Ver a docstring da `20261108_01`.
 
 | Fase | O que muda | Quebra quem? |
 | --- | --- | --- |
