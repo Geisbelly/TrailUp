@@ -699,6 +699,15 @@ Cada perfil carrega:
   `pg_net` → Expo, e `pg_cron` varre a cada 5min. A **rotina diária é
   notificação local** agendada no aparelho: dispara com o app fechado sem
   servidor. Ver `docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md`.
+  **Ticket `ok` da Expo não é entrega** (`20261108_02`): o aviso de app
+  desinstalado (`DeviceNotRegistered`) vem no *recibo*, uns 15 min depois. O
+  mesmo cron de conciliação pede os recibos (`notificacoes_push_tickets`) e só
+  esse erro desativa o token; `InvalidCredentials` é credencial do projeto
+  (FCM/APNs) e não desativa aparelho. Até a `_02`, só o ticket era lido e o
+  token de quem desinstalou ficava ativo para sempre.
+  Token Android anterior a 27/08 é do **Expo Go** (nenhum build teve Firebase
+  até a #1067): o Expo Go mostra o push sem o TrailUp instalado e o recibo
+  volta `ok`. A `_02` os desativa (`desativado_motivo = 'expo_go'`).
   **Horário e texto da revisão diária são do banco** (`20261102_01`): o job
   `notificacoes_recalcular_rotinas` (pg_cron, diário) põe a rotina 30 min antes
   do horário habitual (`notificacoes_horario_preferido`, dias distintos em
