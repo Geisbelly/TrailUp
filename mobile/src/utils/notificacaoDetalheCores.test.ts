@@ -58,6 +58,7 @@ for (const perfil of PERFIS) {
         ["rótulo MENSAGEM", c.textoSutil, c.cartao, 4.5],
         ["ícone do tipo", c.icone, c.iconeFundo, 4.5],
         ["selo", c.seloTexto, c.seloFundo, 4.5],
+        ["botão de ação", c.acaoTexto, c.acaoFundo, 4.5],
         ["botão não lida", c.texto, c.cartao, 7],
         ["botão excluir", c.perigoTexto, c.fundo, 4.5],
         ["botão excluir pressionado", c.perigoTexto, c.cartao, 4.5],

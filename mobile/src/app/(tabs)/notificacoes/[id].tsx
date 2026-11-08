@@ -4,16 +4,19 @@ import {
   SectionGuideButton,
   SectionGuideStep,
 } from "@/components/SectionGuideButton";
+import { useConquistaRank } from "@/context/ConquistaRankContext";
 import { useDialog } from "@/context/DialogContext";
 import { useNotifications } from "@/context/NotificacaoContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { useLoading } from "@/context/LoadingContext";
+import { useTrilha } from "@/context/TrilhaContext";
+import { acaoDaNotificacao, topicosDasTurmas } from "@/services/acaoDaNotificacao";
 import { Notificacao } from "@/models/Notificacoes";
 import { podeSilenciar, silenciarTipo, TIPOS_SILENCIAVEIS } from "@/services/notificacoesDb";
 import { formatAbsoluteFrom, formatSmartTime } from "@/utils/Formatacoes";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { getProfileGuideEmphasis } from "@/utils/profileSectionGuide";
-import { Stack, router, useLocalSearchParams } from "expo-router";
+import { Href, Stack, router, useLocalSearchParams } from "expo-router";
 import React from "react";
 import { StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,6 +28,8 @@ export default function NotificacaoDetalhe() {
   const { showConfirm, showDialog } = useDialog();
   const { usuario } = useUsuario();
   const { setLoading: setGlobalLoading } = useLoading();
+  const { classes, classeAtual, selecionarClasse } = useTrilha();
+  const { ranking } = useConquistaRank();
   const palette = React.useMemo(
     () => getProfileShellPalette(perfilVisualDoAluno(usuario)),
     [usuario]
@@ -64,6 +69,23 @@ export default function NotificacaoDetalhe() {
       mounted = false;
     };
   }, [fromCtx, id, setGlobalLoading]);
+
+  // Para onde a notificação aponta, se o app conhece o lugar (ver `acaoDaNotificacao`).
+  const acao = React.useMemo(() => {
+    if (!item) return null;
+    return acaoDaNotificacao(item, {
+      topicos: topicosDasTurmas(classes),
+      rankIds: (ranking?.ranks ?? []).map((r) => Number(r.info.rank_id)),
+    });
+  }, [classes, item, ranking?.ranks]);
+
+  const onAcao = React.useCallback(() => {
+    if (!acao) return;
+    // Tópico de outra turma: escolher a turma antes, senão o `ClassSelectionGate` manda ao mapa.
+    if (acao.classeId !== null && acao.classeId !== classeAtual?.classe_id) selecionarClasse(acao.classeId);
+    if (acao.modo === "navigate") router.navigate(acao.rota as Href);
+    else router.push(acao.rota as Href);
+  }, [acao, classeAtual?.classe_id, selecionarClasse]);
 
   const isRead = !!(item?.read ?? item?.status === "lida");
   const when = item?.horario_envio ?? item?.created_at ?? null;
@@ -106,13 +128,15 @@ export default function NotificacaoDetalhe() {
         id: "notification-detail-actions",
         target: "notification_detail_actions",
         title: "Ações disponíveis",
-        description: isRead
-          ? "Você pode marcar novamente como não lida para devolver o aviso ao filtro de pendentes, ou excluir definitivamente a notificação."
-          : "Ao abrir, a notificação é registrada como lida. Você também pode excluí-la definitivamente pelo botão disponível.",
+        description:
+          (acao ? `“${acao.rotulo}” leva direto ao que a notificação avisa. ` : "") +
+          (isRead
+            ? "Você pode marcar novamente como não lida para devolver o aviso ao filtro de pendentes, ou excluir definitivamente a notificação."
+            : "Ao abrir, a notificação é registrada como lida. Você também pode excluí-la definitivamente pelo botão disponível."),
         icon: "gesture-tap-button",
       },
     ],
-    [isRead, profileEmphasis, when],
+    [acao, isRead, profileEmphasis, when],
   );
   const detailGuideTargets = React.useMemo(
     () => ({
@@ -228,6 +252,7 @@ export default function NotificacaoDetalhe() {
           onMarcarNaoLida={onMarkUnread}
           onExcluir={onDelete}
           onSilenciar={tipoSilenciavel ? onSilenciar : undefined}
+          acao={acao ? { rotulo: acao.rotulo, icone: acao.icone, onPress: onAcao } : null}
           cabecalhoRef={headerGuideRef}
           corpoRef={bodyGuideRef}
           acoesRef={actionsGuideRef}
