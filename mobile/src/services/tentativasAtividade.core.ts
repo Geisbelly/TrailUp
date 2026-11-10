@@ -12,8 +12,12 @@ export type TentativaAberta = {
   tentativaId: number;
   numero: number;
   cronometrada: boolean;
+  /** Já inclui as pausas (`20261110_05`): o tempo efetivo é `limiteSeg - pausadoSeg`. */
   limiteSeg: number | null;
   iniciadaEm: string;
+  /** Desde quando está pausada, pelo relógio do servidor; `null` = correndo. */
+  pausadaEm: string | null;
+  pausadoSeg: number;
   /** Relógio do servidor menos o do aparelho, em ms: para a contagem não depender do aparelho. */
   desvioMs: number;
   prazo: string | null;
@@ -137,9 +141,52 @@ export function lerTentativa(dado: unknown, agoraLocalMs: number): TentativaAber
     cronometrada: d.cronometrada === true,
     limiteSeg: numero(d.limite_seg),
     iniciadaEm,
+    pausadaEm: texto(d.pausada_em),
+    pausadoSeg: numero(d.pausado_seg) ?? 0,
     desvioMs: Number.isFinite(agoraServidor) ? agoraServidor - agoraLocalMs : 0,
     prazo: texto(d.prazo),
     restantes: numero(d.restantes),
+  };
+}
+
+/**
+ * O relógio que `atividade_pausar_tentativa` / `_retomar_tentativa` devolvem (`20261110_05`), por
+ * cima da tentativa que o app já tem. Resposta de outra tentativa, ou ilegível, não muda nada.
+ */
+export function aplicarRelogio(t: TentativaAberta, dado: unknown, agoraLocalMs: number): TentativaAberta {
+  const d = objeto(dado);
+  if (!d || numero(d.tentativa_id) !== t.tentativaId) return t;
+  const agoraServidor = Date.parse(String(d.agora ?? ""));
+  return {
+    ...t,
+    cronometrada: d.cronometrada === true,
+    limiteSeg: numero(d.limite_seg),
+    iniciadaEm: texto(d.iniciada_em) ?? t.iniciadaEm,
+    pausadaEm: texto(d.pausada_em),
+    pausadoSeg: numero(d.pausado_seg) ?? t.pausadoSeg,
+    desvioMs: Number.isFinite(agoraServidor) ? agoraServidor - agoraLocalMs : t.desvioMs,
+  };
+}
+
+/**
+ * Pausa no aparelho, na hora em que o aluno sai: o relógio da tela para mesmo que a RPC demore ou
+ * falhe. Já pausada, ou sem cronômetro, fica como está.
+ */
+export function pausarNoAparelho(t: TentativaAberta, agoraLocalMs: number): TentativaAberta {
+  if (!t.cronometrada || t.limiteSeg == null || t.pausadaEm) return t;
+  return { ...t, pausadaEm: new Date(agoraLocalMs + t.desvioMs).toISOString() };
+}
+
+/** Retoma no aparelho com a mesma conta do banco: a pausa entra no limite e em `pausadoSeg`. */
+export function retomarNoAparelho(t: TentativaAberta, agoraLocalMs: number): TentativaAberta {
+  if (!t.pausadaEm) return t;
+  const desde = Date.parse(t.pausadaEm);
+  const pausa = Number.isFinite(desde) ? Math.max(0, Math.floor((agoraLocalMs + t.desvioMs - desde) / 1000)) : 0;
+  return {
+    ...t,
+    pausadaEm: null,
+    pausadoSeg: t.pausadoSeg + pausa,
+    limiteSeg: t.limiteSeg == null ? null : t.limiteSeg + pausa,
   };
 }
 
@@ -164,12 +211,16 @@ export function lerRetorno(dado: unknown): RetornoTentativa | null {
 /**
  * Segundos que faltam pelo relógio do servidor; `null` sem cronômetro. Nunca
  * negativo: zero é "acabou o tempo", e a nota continua valendo (só o bônus sai).
+ * As pausas já estão em `limiteSeg`; a pausa em curso para o relógio.
  */
 export function segundosRestantes(t: TentativaAberta, agoraLocalMs: number): number | null {
   if (!t.cronometrada || t.limiteSeg == null) return null;
   const inicio = Date.parse(t.iniciadaEm);
   if (!Number.isFinite(inicio)) return null;
-  const decorrido = (agoraLocalMs + t.desvioMs - inicio) / 1000;
+  // Pausada, o relógio parou em `pausadaEm`: o tempo fora não conta.
+  const pausa = t.pausadaEm ? Date.parse(t.pausadaEm) : NaN;
+  const agora = Number.isFinite(pausa) ? pausa : agoraLocalMs + t.desvioMs;
+  const decorrido = (agora - inicio) / 1000;
   return Math.max(0, Math.ceil(t.limiteSeg - decorrido));
 }
 

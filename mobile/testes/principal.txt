@@ -204,3 +204,5 @@ src/utils/textoRico/coresDoCodigo.test.ts
 src/components/textoRico/TextoRico.tela.test.tsx
 src/utils/textoRico/formatoTexto.test.ts
 src/utils/textoRico/respostaRica.test.ts
+src/utils/memoriaDoCronometro.test.ts
+src/utils/envioDaResposta.test.ts

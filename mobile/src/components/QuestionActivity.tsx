@@ -18,6 +18,7 @@ import { mensagemDeUso, podeResponderComCompra } from '@/services/loja/usoItem';
 import { linhasDoRetorno, mensagemDaRecusa, retornoDesde } from '@/services/tentativasAtividade.core';
 import { fatorDaRegra, questaoDoBanco, responderQuestao, revelarGabarito, type RespostaCorrigida } from '@/services/questaoNoBanco';
 import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayValidation';
+import { LIMITE_DO_ENVIO_MS, comLimiteDeTempo, enviarUmaVez, mensagemDaFalhaNaConclusao, mensagemDaFalhaNoEnvio } from '@/utils/envioDaResposta';
 import { Ionicons } from '@expo/vector-icons';
 import { useTempoVisivel } from '@/hooks/trilha/useTempoVisivel';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -570,6 +571,9 @@ export default function QuestionActivity({
   const [timeoutLocked, setTimeoutLocked] = useState<Record<number, boolean>>({});
   const [mostrarResposta, setMostrarResposta] = useQuestionFlag(questaoIndex);
   const [validandoIA, setValidandoIA] = useState(false);
+  // Um envio por vez: toque duplo gravava duas respostas, e a segunda valia metade.
+  const enviandoRef = useRef(false);
+  const [enviando, setEnviando] = useState(false);
   const [, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
   const [avisoCompra, setAvisoCompra] = useState<string | null>(null);
   const [gastandoCompra, setGastandoCompra] = useState(false);
@@ -1186,8 +1190,8 @@ export default function QuestionActivity({
       ))}
 
       <TouchableOpacity
-        disabled={!podeConfirmar || validandoIA}
-        onPress={async () => {
+        disabled={!podeConfirmar || validandoIA || enviando}
+        onPress={() => void enviarUmaVez(enviandoRef, async () => {
           const escolhido = selecionados[questaoIndex];
           const respostaDigitada = respostaTextoAtual.trim();
           if (!podeConfirmar || validandoIA) return;
@@ -1236,14 +1240,16 @@ export default function QuestionActivity({
             }
             if (!corrigida) {
               try {
-                corrigida = await responderQuestao({ questaoId, resposta: respostaSelecionada, tempoGastoSeg });
+                corrigida = await comLimiteDeTempo(
+                  responderQuestao({ questaoId, resposta: respostaSelecionada, tempoGastoSeg }),
+                  LIMITE_DO_ENVIO_MS,
+                  'questao_responder',
+                );
               } catch (error) {
                 // Depois do prazo o banco recusa a resposta (20261102_04): tentar de novo não adianta.
                 setModalInfo(
-                  mensagemDaRecusa(error as { message?: unknown; code?: unknown } | null) ?? {
-                    titulo: 'Resposta não salva',
-                    descricao: 'Não foi possível salvar sua resposta. Confirme novamente para tentar sincronizar.',
-                  }
+                  mensagemDaRecusa(error as { message?: unknown; code?: unknown } | null) ??
+                    mensagemDaFalhaNoEnvio(error)
                 );
                 setModalVisivel(true);
                 console.warn('[QuestaoAluno] Falha ao responder pelo banco:', error);
@@ -1535,58 +1541,77 @@ export default function QuestionActivity({
           // Persist the answer before asking the parent to complete the activity.
           // A failed write must remain retryable, not just log in the background.
           if (corrigida) {
-            // A RPC já gravou: só o estado local da trilha acompanha.
+            // A RPC já gravou: só o estado local da trilha acompanha. Falhar aqui não desfaz a
+            // resposta, então segue para a conclusão em vez de parar sem aviso.
             if (topicoId != null) {
-              await registrarRespostaQuestao({
-                topicoId: Number(topicoId), atividadeId: Number(atividade.id), questaoId: Number(questao.id),
-                resposta: respostaSelecionada, correta: acertou, acertosPercentual: acertosPercent,
-                tempoGastoSeg, jaGravada: { tentativa: corrigida.tentativa },
-              });
+              try {
+                await registrarRespostaQuestao({
+                  topicoId: Number(topicoId), atividadeId: Number(atividade.id), questaoId: Number(questao.id),
+                  resposta: respostaSelecionada, correta: acertou, acertosPercentual: acertosPercent,
+                  tempoGastoSeg, jaGravada: { tentativa: corrigida.tentativa },
+                });
+              } catch (error) {
+                console.warn('[QuestaoAluno] Resposta gravada, mas o estado local não acompanhou:', error);
+              }
             }
           } else if (!isPersonalizedLocal && usuario?.id && questao?.id) {
             try {
               if (topicoId != null) {
-                await registrarRespostaQuestao({
+                await comLimiteDeTempo(registrarRespostaQuestao({
                   topicoId: Number(topicoId), atividadeId: Number(atividade.id), questaoId: Number(questao.id),
                   resposta: respostaSelecionada, correta: acertou, acertosPercentual: acertosPercent,
                   tempoGastoSeg,
-                });
+                }), LIMITE_DO_ENVIO_MS, 'registrarRespostaQuestao');
               } else {
-                await QuestaoAluno.registrarResposta({
+                await comLimiteDeTempo(QuestaoAluno.registrarResposta({
                   alunoId: usuario.id, atividadeId: Number(atividade.id), questaoId: Number(questao.id),
                   resposta: respostaSelecionada, correta: acertou, acertos_percentual: acertosPercent,
                   tempo_gasto_seg: tempoGastoSeg,
-                });
+                }), LIMITE_DO_ENVIO_MS, 'QuestaoAluno.registrarResposta');
               }
             } catch (error) {
               setConfirmados((prev) => ({ ...prev, [questaoIndex]: false }));
               // Depois do prazo o banco recusa a resposta (20261102_04): tentar de novo não adianta.
               setModalInfo(
-                mensagemDaRecusa(error as { message?: unknown; code?: unknown } | null) ?? {
-                  titulo: 'Resposta não salva',
-                  descricao: 'Não foi possível salvar sua resposta. Confirme novamente para tentar sincronizar.',
-                }
+                mensagemDaRecusa(error as { message?: unknown; code?: unknown } | null) ??
+                  mensagemDaFalhaNoEnvio(error)
               );
+              setModalVisivel(true);
               console.warn('[QuestaoAluno] Falha ao salvar resposta:', error);
               return;
             }
           }
           const pedidoEm = Date.now();
-          await onComplete?.({
-            correto: atividadeCorreta,
-            acertosPercentual: atividadeCompleta ? acertoMedioAtividade : acertosPercent,
-            questaoId: questao?.id ? Number(questao.id) : undefined,
-            atividadeId: atividade?.id ? Number(atividade.id) : undefined,
-            resposta: respostaSelecionada,
-            tentativa: (questao as any)?.ultima_tentativa ?? undefined,
-            timedOut,
-            scorePenaltyPct,
-            scoreAwarded: pontosGanhos,
-            pontuacaoMaxima: Number(atividade?.pontuacao_maxima ?? pontosBase ?? 0),
-            avaliacaoMetadata,
-            completed: atividadeCompleta,
-            questionIndex: questaoIndex,
-          })
+          try {
+            await onComplete?.({
+              correto: atividadeCorreta,
+              acertosPercentual: atividadeCompleta ? acertoMedioAtividade : acertosPercent,
+              questaoId: questao?.id ? Number(questao.id) : undefined,
+              atividadeId: atividade?.id ? Number(atividade.id) : undefined,
+              resposta: respostaSelecionada,
+              tentativa: (questao as any)?.ultima_tentativa ?? undefined,
+              timedOut,
+              scorePenaltyPct,
+              scoreAwarded: pontosGanhos,
+              pontuacaoMaxima: Number(atividade?.pontuacao_maxima ?? pontosBase ?? 0),
+              avaliacaoMetadata,
+              completed: atividadeCompleta,
+              questionIndex: questaoIndex,
+            })
+          } catch (error) {
+            // A resposta já está gravada; quem falhou foi concluir a atividade (rede, prazo,
+            // tentativa). Antes isso sumia como promessa rejeitada e o toque parecia não fazer nada.
+            console.warn('[QuestionActivity] Falha ao concluir a atividade:', error);
+            const recusa = mensagemDaRecusa(error as { message?: unknown; code?: unknown } | null);
+            setModalInfo((atual) => ({
+              ...atual,
+              descricao: [atual.descricao, recusa?.descricao ?? mensagemDaFalhaNaConclusao(error)]
+                .filter(Boolean)
+                .join('\n\n'),
+            }));
+            setModalVisivel(true);
+            return;
+          }
           // O veredito do servidor (#136): no tempo, bônus de XP, última tentativa. Chega
           // depois que o modal já abriu, então entra no fim do texto dele.
           const retorno = atividade?.id ? retornoDesde(Number(atividade.id), pedidoEm) : null;
@@ -1598,21 +1623,28 @@ export default function QuestionActivity({
             }));
           }
 
-        }}
+        }, setEnviando).catch((error) => {
+          // Rede de segurança: nenhuma falha do envio fica sem aviso.
+          console.warn('[QuestionActivity] Falha ao confirmar a resposta:', error);
+          setModalInfo(mensagemDaFalhaNoEnvio(error));
+          setModalVisivel(true);
+        })}
         style={{
           marginTop: 14,
           padding: 12,
           borderRadius: 10,
-          backgroundColor: podeConfirmar && !validandoIA ? profilePalette.accent : profilePalette.inactive,
+          backgroundColor: podeConfirmar && !validandoIA && !enviando ? profilePalette.accent : profilePalette.inactive,
           alignItems: 'center',
-          opacity: podeConfirmar && !validandoIA ? 1 : 0.5,
+          opacity: podeConfirmar && !validandoIA && !enviando ? 1 : 0.5,
         }}
         accessibilityRole="button"
-        accessibilityState={{ disabled: !podeConfirmar || validandoIA }}
+        accessibilityState={{ disabled: !podeConfirmar || validandoIA || enviando, busy: enviando }}
       >
         <Text style={{ color: '#fff', fontWeight: '700' }}>
           {validandoIA
             ? 'Validando resposta com IA...'
+            : enviando
+            ? 'Enviando resposta...'
             : blockedByTimeout
             ? 'Tempo encerrado para esta tentativa'
             : 'Confirmar resposta'}

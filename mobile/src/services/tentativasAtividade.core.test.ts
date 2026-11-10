@@ -3,6 +3,9 @@ import { test } from "node:test";
 
 import {
   ACERTO_MINIMO_DO_BONUS,
+  aplicarRelogio,
+  pausarNoAparelho,
+  retomarNoAparelho,
   MENSAGEM_DA_RECUSA,
   TentativaRecusada,
   guardarRetorno,
@@ -29,7 +32,8 @@ test("lerTentativa: o desvio é relógio do servidor menos o do aparelho", () =>
     local
   );
   assert.deepEqual(t, {
-    tentativaId: 7, numero: 2, cronometrada: true, limiteSeg: 120, iniciadaEm: INICIO, desvioMs: 30_000, prazo: null, restantes: 1,
+    tentativaId: 7, numero: 2, cronometrada: true, limiteSeg: 120, iniciadaEm: INICIO, pausadaEm: null, pausadoSeg: 0,
+    desvioMs: 30_000, prazo: null, restantes: 1,
   });
 });
 
@@ -165,4 +169,55 @@ test("questoesParaRefazer: só as que o aluno não acertou", () => {
 test("rotuloDasRestantes: singular e plural", () => {
   assert.equal(rotuloDasRestantes(1), "Resta 1 tentativa");
   assert.equal(rotuloDasRestantes(3), "Restam 3 tentativas");
+});
+
+// ── Pausa (20261110_05) ─────────────────────────────────────────────────────────────────────
+
+const T0 = Date.parse(INICIO);
+const aberta = () =>
+  lerTentativa({ tentativa_id: 1, cronometrada: true, limite_seg: 120, iniciada_em: INICIO, agora: INICIO }, T0)!;
+
+test("sair da atividade para o relógio e voltar continua de onde parou, sem zerar", () => {
+  const pausada = pausarNoAparelho(aberta(), T0 + 30_000); // 30 s respondendo
+  assert.equal(segundosRestantes(pausada, T0 + 30_000), 90);
+  assert.equal(segundosRestantes(pausada, T0 + 630_000), 90); // 10 min fora: parado
+  const retomada = retomarNoAparelho(pausada, T0 + 630_000);
+  assert.deepEqual([retomada.pausadaEm, retomada.pausadoSeg, retomada.limiteSeg], [null, 600, 720]);
+  assert.equal(segundosRestantes(retomada, T0 + 630_000), 90);
+  assert.equal(segundosRestantes(retomada, T0 + 640_000), 80);
+});
+
+test("pausar duas vezes guarda a primeira saída, e retomar sem pausa não mexe", () => {
+  const uma = pausarNoAparelho(aberta(), T0 + 10_000);
+  assert.equal(pausarNoAparelho(uma, T0 + 50_000), uma);
+  const t = aberta();
+  assert.equal(retomarNoAparelho(t, T0 + 50_000), t);
+});
+
+test("sem cronômetro não há o que pausar", () => {
+  const t = lerTentativa({ tentativa_id: 1, cronometrada: false, limite_seg: null, iniciada_em: INICIO, agora: INICIO }, T0)!;
+  assert.equal(pausarNoAparelho(t, T0 + 1000), t);
+});
+
+test("a resposta do banco substitui a conta do aparelho, e a de outra tentativa é ignorada", () => {
+  const t = pausarNoAparelho(aberta(), T0 + 30_000);
+  const pausadaNoBanco = "2026-11-01T12:00:31.000Z";
+  const doBanco = aplicarRelogio(
+    t,
+    { tentativa_id: 1, cronometrada: true, limite_seg: 120, iniciada_em: INICIO, pausada_em: pausadaNoBanco, pausado_seg: 0, agora: pausadaNoBanco },
+    T0 + 31_000,
+  );
+  assert.equal(doBanco.pausadaEm, pausadaNoBanco);
+  assert.equal(segundosRestantes(doBanco, T0 + 99_000), 89);
+  assert.equal(aplicarRelogio(t, { tentativa_id: 2, limite_seg: 5 }, T0), t);
+  assert.equal(aplicarRelogio(t, null, T0), t);
+});
+
+test("reabrir a atividade pausada lê a pausa do banco e o relógio fica parado", () => {
+  const t = lerTentativa(
+    { tentativa_id: 1, cronometrada: true, limite_seg: 150, iniciada_em: INICIO, pausada_em: "2026-11-01T12:01:00.000Z", pausado_seg: 30, agora: "2026-11-01T12:30:00.000Z" },
+    T0 + 1_800_000,
+  )!;
+  // 150 de limite, dos quais 30 eram pausa; pausada aos 60 s de parede: faltam 90.
+  assert.equal(segundosRestantes(t, T0 + 1_800_000), 90);
 });
