@@ -11,6 +11,41 @@ export interface ContextoDaQuestao {
   enunciado: string;
   respostaEsperada: string;
   notaEstabelecida: unknown;
+  /** `dissertativa` ou `codigo` (`20261110_02`); vazio na RPC antiga. */
+  tipo: string;
+  /** Linguagem do código, de `config_resposta.linguagem`; vazio se ausente ou estranha. */
+  linguagem: string;
+  /** Critérios do professor (`questao_gabarito.criterios`), uma linha cada. */
+  criterios: string[];
+}
+
+const MAX_CRITERIOS = 20;
+const MAX_CHARS_CRITERIO = 300;
+// Vai cru para o prompt: só um nome curto de linguagem passa (python, c++, c#, javascript...).
+const LINGUAGEM_VALIDA = /^[a-z0-9+#.\- ]{1,30}$/;
+
+function lerCriterios(valor: unknown): string[] {
+  const itens = Array.isArray(valor) ? valor : typeof valor === "string" ? valor.split(/\r?\n/) : [];
+  const textos = itens.map((item) => {
+    if (typeof item === "string") return item;
+    if (item && typeof item === "object") {
+      const objeto = item as Record<string, unknown>;
+      const texto = objeto.texto ?? objeto.descricao;
+      return typeof texto === "string" ? texto : "";
+    }
+    return "";
+  });
+  return textos
+    .map((t) => t.replace(/\s+/g, " ").trim().slice(0, MAX_CHARS_CRITERIO))
+    .filter((t) => t !== "")
+    .slice(0, MAX_CRITERIOS);
+}
+
+function lerLinguagem(config: unknown): string {
+  if (!config || typeof config !== "object") return "";
+  const bruta = (config as Record<string, unknown>).linguagem;
+  const linguagem = typeof bruta === "string" ? bruta.trim().toLowerCase() : "";
+  return LINGUAGEM_VALIDA.test(linguagem) ? linguagem : "";
 }
 
 /** `questaoId` do corpo: inteiro positivo, ou null (fluxo antigo). */
@@ -27,6 +62,9 @@ export function lerContexto(bruto: unknown): ContextoDaQuestao {
     enunciado: texto(linha.enunciado),
     respostaEsperada: texto(linha.resposta_esperada),
     notaEstabelecida: linha.nota_estabelecida ?? null,
+    tipo: texto(linha.tipo),
+    linguagem: lerLinguagem(linha.config_resposta),
+    criterios: lerCriterios(linha.criterios),
   };
 }
 
