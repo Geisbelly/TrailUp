@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { comGabarito } from "@/lib/gabaritoDoProfessor";
 import { createRequestGuard } from "@/lib/requestGuard";
 import type { EventoDoApp, SessaoDeTopico, TopicoDaTrilha } from "./jornada";
 
@@ -109,7 +110,10 @@ export function useJornadaDoAluno(alunoId: string, classeId: number) {
       ]);
       const atividadeIds = atividades.map((a) => a.id);
       const questoes = atividadeIds.length
-        ? await ler<QuestaoDaTrilha>(de("questoes").select("id, atividade_id, enunciado, resposta_correta").in("atividade_id", atividadeIds))
+        ? // O gabarito vem do espelho: desde a `20261110_02`, nem o professor lê `questoes.resposta_correta`.
+          await comGabarito(
+            await ler<Omit<QuestaoDaTrilha, "resposta_correta">>(de("questoes").select("id, atividade_id, enunciado").in("atividade_id", atividadeIds)),
+          )
         : [];
       return { eventos, sessoes, topicos, atividades, questoes, conteudos };
     })()
