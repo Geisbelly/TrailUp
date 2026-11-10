@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Clock, ExternalLink, Eye, EyeOff, Link2, Loader2, Upload, X } from "lucide-react";
 import { cn, formatFileSize } from "@/lib/utils";
+import { pareceCaminhoDeArquivo } from "@/lib/conteudosStorage";
 import {
   PROFESSOR_UPLOAD_ACCEPT,
   PROFESSOR_UPLOAD_MAX_BYTES,
@@ -53,8 +54,10 @@ function parseStorageDisplayName(pathOrUrl: string): string {
 }
 
 function isStoragePath(value: string): boolean {
-  return !!value && !value.startsWith("http://") && !value.startsWith("https://");
+  return pareceCaminhoDeArquivo(value);
 }
+
+const ehLink = (value: string) => /^https?:\/\//i.test(value.trim());
 
 type Props = {
   topicId: number | null | undefined;
@@ -157,8 +160,12 @@ export function ContentFileUpload({
   const darkInput =
     "bg-input border-border text-foreground focus:border-ring placeholder:text-muted-foreground hover:border-border/80 transition-colors";
 
+  // Valor que não é arquivo nem link: texto gravado no lugar do arquivo (a
+  // trilha da IA fazia isso com o roteiro da mídia sugerida). Não vira cartão
+  // de arquivo, que tentaria assinar a frase no bucket e levaria 400.
+  const textoNoLugarDoArquivo = value && !isStoragePath(value) && !ehLink(value) ? value.trim() : "";
   const savedFiles: Array<{ pathOrUrl: string; name: string }> = [];
-  if (value) savedFiles.push({ pathOrUrl: value, name: parseStorageDisplayName(value) });
+  if (value && !textoNoLugarDoArquivo) savedFiles.push({ pathOrUrl: value, name: parseStorageDisplayName(value) });
   extraFiles.forEach((file) => savedFiles.push({ pathOrUrl: file.path, name: file.name }));
 
   const totalPending = pendingFiles.length;
@@ -166,6 +173,15 @@ export function ContentFileUpload({
 
   return (
     <div className="space-y-3">
+      {textoNoLugarDoArquivo && (
+        <div className="rounded-lg border border-border/80 bg-card p-3">
+          <p className="text-xs font-medium text-foreground">Este conteúdo guarda um texto, não um arquivo</p>
+          <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">{textoNoLugarDoArquivo}</p>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Para editar o texto, troque o formato para Texto / Artigo. Para anexar um arquivo, envie abaixo.
+          </p>
+        </div>
+      )}
       {totalPending > 0 && (
         <div className="space-y-1.5">
           {pendingFiles.map((file, idx) => (

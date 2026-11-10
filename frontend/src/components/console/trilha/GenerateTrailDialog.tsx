@@ -20,8 +20,8 @@ const PASSOS = ["Configurar", "Gerar", "Processando", "Resultado", "Revisar", "A
 // Qual rótulo do indicador cada tela acende (o "Gerar" é o instante do envio das fontes).
 const PASSO_ATIVO: Record<Step, number> = { configurar: 0, processando: 2, resultado: 3, revisar: 4, ajustar: 5, aplicando: 4 };
 import { formatoDaQuestao, tipoDaQuestaoDoFormato } from "./formatoDaQuestao";
-import type { AiAtividade, AiTopico, MediaType } from "./proposta";
-import { contagemDaProposta, removerDaProposta, semAtividades, substituirNaProposta } from "./proposta";
+import type { AiAtividade, AiTopico } from "./proposta";
+import { contagemDaProposta, conteudoDaMidia, removerDaProposta, semAtividades, substituirNaProposta } from "./proposta";
 import { completarTopicos, gerarTrilhaEmEtapas, semMaterialAinda, type ProgressoDaTrilha, type ResultadoDaTrilha } from "./gerarTrilhaEmEtapas";
 import { apagarRascunho, carregarRascunho, criarGravador, quandoFoiSalvo, salvarRascunho, type RascunhoDaTrilha } from "./rascunhoDaTrilha";
 
@@ -57,8 +57,6 @@ const sourceType = (name: string) => {
   if (["ppt", "pptx"].includes(ext)) return "apresentacao";
   return "texto";
 };
-const mediaToContentType = (tipo: MediaType): "video" | "link" | "arquivo" =>
-  tipo === "video" ? "video" : tipo === "audio" ? "arquivo" : "arquivo";
 
 async function readStagedText(staged: StagedFile[]) {
   const parts: string[] = [];
@@ -433,10 +431,10 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
           const local = contentMap.get((c.ref || `content:${i + 1}`).trim()) ?? primary;
           for (const a of c.atividades ?? []) await createActivity(a, contentMap.get(a.conteudo_ref ?? "") ?? local);
           for (const m of c.midias ?? []) {
-            const payload = m.url || m.roteiro || m.transcricao || m.descricao;
-            if (!payload) continue;
             const mediaPath = m.sourceRef && uploadedFiles.has(m.sourceRef) ? uploadedFiles.get(m.sourceRef) : null;
-            await supabase.from("conteudos").insert({ topico_id: topicId, titulo: `${c.titulo} - ${m.titulo}`, tipo: mediaToContentType(m.tipo), conteudo: payload, ordem: order, metadata: { ai_generated_media: true, media_tipo: m.tipo, media_storage_path: mediaPath } });
+            const linha = conteudoDaMidia(m, mediaPath);
+            if (!linha) continue;
+            await supabase.from("conteudos").insert({ topico_id: topicId, titulo: `${c.titulo} - ${m.titulo}`, tipo: linha.tipo, conteudo: linha.conteudo, ordem: order, metadata: { ai_generated_media: true, media_tipo: m.tipo, media_storage_path: mediaPath ?? null } });
             order += 1;
           }
         }
