@@ -5,6 +5,7 @@ import {
   assinaturaDe,
   CHAVE_DO_ESTADO,
   criarColetor,
+  descreverErro,
   eRuido,
   gerarUuid,
   limparTexto,
@@ -65,6 +66,34 @@ describe("limpeza", () => {
   it("ruído sem informação não conta", () => {
     expect(eRuido({ nome: "Error", mensagem: "Script error." })).toBe(true);
     expect(eRuido({ nome: "TypeError", mensagem: "x is not a function" })).toBe(false);
+  });
+
+  it("erro do Supabase é objeto comum e chega com mensagem, não como Desconhecido", () => {
+    expect(descreverErro({ message: "tentativa_ja_respondida", code: "P0001", details: null, hint: null })).toEqual({
+      nome: "Supabase",
+      mensagem: "tentativa_ja_respondida",
+    });
+    expect(descreverErro({ name: "AuthApiError", message: "Invalid Refresh Token" })).toEqual({
+      nome: "AuthApiError",
+      mensagem: "Invalid Refresh Token",
+    });
+    expect(descreverErro({ sem: "mensagem" })).toEqual({ nome: "Desconhecido", mensagem: null });
+  });
+
+  it("falha tratada separa por lugar; os outros tipos não mudam de assinatura", () => {
+    const coletor = criarColetor({
+      superficie: "console", versao: "x", plataforma: "web", formato: "desktop",
+      armazenamento: { ler: () => null, gravar: () => undefined },
+      enviar: async () => true, podeEnviar: () => true, novoId: () => "s", destinoCritico: () => false,
+    });
+    const recusa = { message: "sem_permissao" };
+    coletor.registrarErro(recusa, "tratado", "a/um");
+    coletor.registrarErro(recusa, "tratado", "b/dois");
+    coletor.registrarErro(recusa, "erro", "/x");
+    coletor.registrarErro(recusa, "erro", "/y");
+    const erros = coletor.fotografia().erros;
+    expect(erros.map((e) => [e.tipo, e.rota, e.vezes])).toEqual([["tratado", "a/um", 1], ["tratado", "b/dois", 1], ["erro", "/x", 2]]);
+    expect(erros[2].assinatura).toBe(assinaturaDe(["Supabase", "sem_permissao", "erro"]));
   });
 });
 

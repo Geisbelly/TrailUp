@@ -22,3 +22,16 @@ export function destinoCriticoDoAluno(destino: string, metodo: string): boolean 
   if (destino === "topico_aluno") return true;
   return metodo !== "GET" && ESCRITA_CRITICA.has(destino);
 }
+
+/**
+ * Falha que a tela já pegou e mostrou como aviso. Escreve o mesmo `console.warn` de antes e conta no
+ * coletor como `tratado`, com `onde` no lugar da rota (`questao/confirmar`, `arena/responder`). Sem isto,
+ * todo `catch` que avisa o aluno some da medição: o coletor só via o que escapava.
+ *
+ * `onde` é um nome fixo do código, nunca texto do aluno. A mensagem passa pela mesma limpeza dos outros
+ * erros no aparelho e de novo no banco.
+ */
+export function avisarFalha(onde: string, texto: string, erro: unknown): void {
+  console.warn(texto, erro);
+  coletorAtivo?.registrarErro(erro, "tratado", onde);
+}

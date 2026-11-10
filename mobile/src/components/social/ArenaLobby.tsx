@@ -16,6 +16,7 @@ import {
   type NovoDesafio,
 } from "@/services/social/arenaModel";
 import { criarDesafioNaArena } from "@/services/social/guildService";
+import { avisarFalha } from "@/services/saude/medicao";
 
 type Icone = React.ComponentProps<typeof MaterialCommunityIcons>["name"];
 
@@ -125,6 +126,7 @@ export function ArenaLobby({ visible, inicio, classeId, meuId, colegas, guilds, 
       onCriado("Desafio enviado. O convite fica aberto por cerca de 24 h; vale quando o adversário aceitar.");
       onClose();
     } catch (error) {
+      avisarFalha("arena/criar", "[Arena] Falha ao criar o desafio:", error);
       setErro(mensagemDaArena(error));
     } finally {
       setEnviando(false);
