@@ -16,6 +16,8 @@ import { parseOptionalPositiveScore } from "@/lib/question-score";
 import { tentativasDoFormulario, TENTATIVAS_MAXIMAS, TENTATIVAS_PADRAO } from "./atividades";
 import { deleteTopicCascade } from "./classDeletion";
 import type { Atividade, CardItem, Conteudo, Questao, Topico } from "./types";
+import type { FormatoTexto } from "@/lib/textoRico/formatoTexto";
+import { alternativasRepetidas } from "@/lib/textoRico/respostaRica";
 
 const ERRO_TENTATIVAS = `Tentativas por aluno: um número inteiro de 1 a ${TENTATIVAS_MAXIMAS}, ou vazio para o padrão (${TENTATIVAS_PADRAO}).`;
 
@@ -227,6 +229,7 @@ export function useTopicCrud({
     tipo: string;
     data_entrega: string;
     tentativas_max: string;
+    formato_texto?: FormatoTexto;
   }, topicoId?: number, selectedContentId?: number | null, activityLinks?: Record<number, number[]>) => {
     const topicId = topicoId ?? editingTopic?.id;
     if (!topicId) return;
@@ -248,6 +251,7 @@ export function useTopicCrud({
         tipo: activityForm.tipo || null,
         data_entrega: activityForm.data_entrega || null,
         tentativas_max: tentativas.valor,
+        formato_texto: activityForm.formato_texto,
       });
 
       if (selectedContentId && activityLinks) {
@@ -283,6 +287,7 @@ export function useTopicCrud({
     nota_estabelecida?: number | string | null;
     midia_url?: string;
     dificuldade?: string | null;
+    formato_texto?: FormatoTexto;
   }, questionOptions: string[]) => {
     if (!questionForm.enunciado || !questionForm.atividade_id) {
       toast.error("Informe enunciado e selecione a atividade.");
@@ -310,8 +315,15 @@ export function useTopicCrud({
         nota_estabelecida: scoreParsed.value,
         midia_url: questionForm.midia_url || null,
         dificuldade: questionForm.dificuldade ?? null,
+        formato_texto: questionForm.formato_texto,
       });
       toast.success("Questão salva!");
+      // `normalizeQuestionPayload` junta alternativas iguais em silêncio. Na questão rica isso muda
+      // a letra das que vêm depois, e o app grava a letra (spec A): o professor precisa saber.
+      const repetidas = questionForm.formato_texto === "rico" ? alternativasRepetidas(alternativas) : [];
+      if (repetidas.length > 0) {
+        toast.warning(`Alternativas iguais foram unidas numa só: ${repetidas.join(", ")}. Confira a ordem e a correta.`);
+      }
       return id;
     } catch (error) {
       console.error("Erro ao salvar questão:", error);
@@ -347,6 +359,7 @@ export function useTopicCrud({
     titulo: string;
     descricao: string;
     imagem_url: string;
+    formato_texto?: FormatoTexto;
   }) => {
     try {
       const id = await saveCard({
@@ -356,6 +369,7 @@ export function useTopicCrud({
         titulo: cardForm.titulo,
         descricao: cardForm.descricao,
         imagem_url: cardForm.imagem_url,
+        formato_texto: cardForm.formato_texto,
       });
       toast.success("Card salvo!");
       return id;

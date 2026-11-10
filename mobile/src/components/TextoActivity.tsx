@@ -7,6 +7,7 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import React, { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { TextoRico } from '@/components/textoRico/TextoRico';
 
 type Props = {
   atividade: any;
@@ -69,9 +70,13 @@ export default function TextoActivity({ atividade }: Props) {
       <Text style={[styles.title, { color: palette.text }]}>{atividade.titulo}</Text>
 
       {atividade.descricao || atividade.conteudo ? (
-        <Text style={[styles.description, { color: palette.textMuted }]}>
-          {atividade.descricao ?? atividade.conteudo}
-        </Text>
+        // A marca de texto rico vale para a descrição; o `conteudo` de reserva é sempre texto.
+        <TextoRico
+          texto={atividade.descricao ?? atividade.conteudo}
+          formato={atividade.descricao ? atividade.formato_texto : 'texto'}
+          estilo={{ ...styles.description, color: palette.textMuted }}
+          paleta={palette}
+        />
       ) : null}
 
       {mediaBlocks.length > 0 ? (

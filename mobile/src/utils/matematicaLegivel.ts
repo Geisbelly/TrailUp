@@ -41,6 +41,26 @@ const SIMBOLOS: readonly (readonly [RegExp, string])[] = [
   [/\\to\b/g, "→"],
 ];
 
+const INDICES: Record<string, string> = {
+  "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄",
+  "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
+};
+
+/**
+ * `\ce{2CH4 + 3O2 -> 2CO}` -> `2CH₄ + 3O₂ → 2CO`. Índice só depois de letra ou parêntese: o
+ * coeficiente na frente da molécula continua número comum.
+ */
+function quimicaLegivel(formula: string): string {
+  return formula
+    .replace(/<=>/g, "⇌")
+    .replace(/<->/g, "↔")
+    .replace(/->/g, "→")
+    .replace(/<-/g, "←")
+    .replace(/([A-Za-z)\]])(\d+)/g, (_, antes: string, digitos: string) =>
+      antes + [...digitos].map((d) => INDICES[d] ?? d).join(""),
+    );
+}
+
 const EXPOENTES: Record<string, string> = {
   "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
   "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
@@ -54,6 +74,9 @@ export function corpoDaFormula(bruto: string): string {
   // gerador produz, e tentar mais sem um parser de verdade erraria calado.
   texto = texto.replace(/\\d?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "$1/$2");
   texto = texto.replace(/\\sqrt\s*\{([^{}]*)\}/g, "√$1");
+  // Química (mhchem) antes do resto: o miolo de `\ce{}` não é TeX, é a notação do mhchem.
+  texto = texto.replace(/\\ce\s*\{([^{}]*)\}/g, (_, miolo: string) => quimicaLegivel(miolo));
+  texto = texto.replace(/\\pu\s*\{([^{}]*)\}/g, "$1");
   texto = texto.replace(/\\text\s*\{([^{}]*)\}/g, "$1");
   texto = texto.replace(/\\mathrm\s*\{([^{}]*)\}/g, "$1");
 

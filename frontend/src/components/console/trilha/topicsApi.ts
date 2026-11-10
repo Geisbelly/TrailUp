@@ -3,6 +3,8 @@ import { prazoLocalParaBanco } from "@/lib/prazoDaAtividade";
 import { nivelParaOBanco } from "./dificuldadeDaQuestao";
 import { normalizeOptionalPositiveScore } from "@/lib/question-score";
 import { deleteContentCascade } from "./classDeletion";
+import type { FormatoTexto } from "@/lib/textoRico/formatoTexto";
+
 import { formatoDaQuestao, tipoDaQuestaoDoFormato } from "./formatoDaQuestao";
 import type { FormatoDaQuestao, TipoDaQuestao } from "./formatoDaQuestao";
 import type { Atividade, AtividadeConteudo, CardItem, Conteudo, Materia, Classe, Topico, Questao } from "./types";
@@ -46,11 +48,12 @@ export async function fetchContents(topicId: number) {
 export async function fetchActivities(topicId: number) {
   const { data, error } = await supabase
     .from("atividades")
-    .select("id, topico_id, titulo, descricao, tipo, data_entrega, tentativas_max")
+    // `formato_texto` entra em `20261108_03` (spec A) e o `types.ts` gerado ainda não a conhece.
+    .select("id, topico_id, titulo, descricao, tipo, data_entrega, tentativas_max, formato_texto" as never)
     .eq("topico_id", topicId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data as Atividade[]) ?? [];
+  return (data as unknown as Atividade[]) ?? [];
 }
 
 export async function fetchActivityLinks(topicId: number) {
@@ -75,13 +78,13 @@ export async function fetchCards(topicId: number) {
   const idsFilter = contentIds.join(",");
   const { data, error } = await supabase
     .from("cards")
-    .select("id, conteudo_id, conteudo_origem_id, titulo, descricao, imagem_url")
+    .select("id, conteudo_id, conteudo_origem_id, titulo, descricao, imagem_url, formato_texto" as never)
     .or(`conteudo_id.in.(${idsFilter}),conteudo_origem_id.in.(${idsFilter})`)
     .order("id", { ascending: true });
   if (error) throw error;
 
   const dedup = new Map<number, CardItem>();
-  for (const card of ((data as CardItem[] | null) ?? [])) {
+  for (const card of ((data as unknown as CardItem[] | null) ?? [])) {
     dedup.set(card.id, card);
   }
   return Array.from(dedup.values());
@@ -94,7 +97,7 @@ export async function fetchQuestions(atividadeId: number) {
     // `types.ts` gerado não a conhece e o construtor tipado recusa a coluna — mesmo cast que
     // a fase 2 usou para `missoes`. Some quando os tipos forem regerados.
     .select(
-      "id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida, midia_url, dificuldade" as never,
+      "id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida, midia_url, dificuldade, formato_texto" as never,
     )
     .eq("atividade_id", atividadeId)
     .order("created_at", { ascending: true });
@@ -189,10 +192,13 @@ export async function saveActivity(params: {
   pontuacao_maxima?: number | null;
   /** Tentativas por aluno (#136). `null` vira o padrão no banco; `undefined` não mexe na coluna, como a pontuação. */
   tentativas_max?: number | null;
+  /** Spec A. `undefined` não mexe na coluna, como a pontuação. */
+  formato_texto?: FormatoTexto;
 }) {
   // Atividade sem pontuação informada não mexe na coluna (editar o título não pode zerá-la).
   const pontuacao = params.pontuacao_maxima === undefined ? {} : { pontuacao_maxima: params.pontuacao_maxima };
   const tentativas = params.tentativas_max === undefined ? {} : { tentativas_max: params.tentativas_max };
+  const formato = colunaDoFormato(params.formato_texto);
 
   // PRAZO: converter aqui, e não em cada formulário (issue #177).
   //
@@ -215,7 +221,8 @@ export async function saveActivity(params: {
         data_entrega: prazo,
         ...pontuacao,
         ...tentativas,
-      })
+        ...formato,
+      } as never)
       .eq("id", params.id);
     if (error) throw error;
     return params.id;
@@ -231,7 +238,8 @@ export async function saveActivity(params: {
       data_entrega: prazo,
       ...pontuacao,
       ...tentativas,
-    })
+      ...formato,
+    } as never)
     .select("id")
     .single();
   if (error) throw error;
@@ -253,7 +261,10 @@ export async function saveQuestion(params: {
   nota_estabelecida?: number | null;
   midia_url?: string | null;
   dificuldade?: string | null;
+  /** Spec A. Vale para enunciado, alternativas e gabarito; `undefined` não mexe na coluna. */
+  formato_texto?: FormatoTexto;
 }) {
+  const formato = colunaDoFormato(params.formato_texto);
   if (params.id) {
     const { error } = await supabase
       .from("questoes")
@@ -267,7 +278,8 @@ export async function saveQuestion(params: {
         // `nivelParaOBanco` porque o formulário manda "" para "não marcada", e `''` viola
         // `questoes_dificuldade_check` (NULL ou um dos três níveis).
         dificuldade: nivelParaOBanco(params.dificuldade),
-      })
+        ...formato,
+      } as never)
       .eq("id", params.id);
     if (error) throw error;
     return params.id;
@@ -283,7 +295,8 @@ export async function saveQuestion(params: {
       nota_estabelecida: normalizeOptionalPositiveScore(params.nota_estabelecida),
       midia_url: params.midia_url ?? null,
       dificuldade: nivelParaOBanco(params.dificuldade),
-    })
+      ...formato,
+    } as never)
     .select("id")
     .single();
   if (error) throw error;
@@ -315,7 +328,10 @@ export async function saveCard(params: {
   titulo: string;
   descricao?: string;
   imagem_url?: string;
+  /** Spec A. `undefined` não mexe na coluna. */
+  formato_texto?: FormatoTexto;
 }) {
+  const formato = colunaDoFormato(params.formato_texto);
   if (params.id) {
     const { error } = await supabase
       .from("cards")
@@ -325,7 +341,8 @@ export async function saveCard(params: {
         titulo: params.titulo,
         descricao: params.descricao || null,
         imagem_url: params.imagem_url || null,
-      })
+        ...formato,
+      } as never)
       .eq("id", params.id);
     if (error) throw error;
     return params.id;
@@ -338,7 +355,8 @@ export async function saveCard(params: {
       titulo: params.titulo,
       descricao: params.descricao || null,
       imagem_url: params.imagem_url || null,
-    })
+      ...formato,
+    } as never)
     .select("id")
     .single();
   if (error) throw error;
@@ -360,13 +378,27 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Texto rico só leva `trim`: achatar os espaços desmancharia a indentação do código e as quebras
+ * de linha do markdown (spec A). Texto comum continua achatado, como sempre foi.
+ */
+function normalizarTexto(value: string, formato: FormatoTexto | undefined): string {
+  return formato === "rico" ? value.trim() : normalizeWhitespace(value);
+}
+
+/** `formato_texto` só vai na escrita quando foi informado: `undefined` não mexe na coluna. */
+function colunaDoFormato(formato: FormatoTexto | undefined): { formato_texto?: FormatoTexto } {
+  return formato === undefined ? {} : { formato_texto: formato };
+}
+
 const normalizeActivityType = formatoDaQuestao;
 const questionTypeFromActivityType = tipoDaQuestaoDoFormato;
 
 function normalizeAlternatives(
   questionType: NormalizedQuestionType,
   alternativas: string[] | null,
-  respostaCorreta: string
+  respostaCorreta: string,
+  formato?: FormatoTexto,
 ): { alternativas: string[] | null; respostaCorreta: string } {
   if (questionType === "verdadeiro_falso") {
     const resposta = ["Verdadeiro", "Falso"].includes(respostaCorreta) ? respostaCorreta : "Verdadeiro";
@@ -375,10 +407,10 @@ function normalizeAlternatives(
 
   if (questionType === "multipla") {
     const base = (Array.isArray(alternativas) ? alternativas : [])
-      .map((alt) => normalizeWhitespace(String(alt)))
+      .map((alt) => normalizarTexto(String(alt), formato))
       .filter(Boolean);
     const dedup = Array.from(new Set(base));
-    const answer = normalizeWhitespace(respostaCorreta);
+    const answer = normalizarTexto(respostaCorreta, formato);
     if (answer && !dedup.includes(answer)) dedup.unshift(answer);
     while (dedup.length < 2) dedup.push(`Alternativa ${dedup.length + 1}`);
     return {
@@ -389,7 +421,7 @@ function normalizeAlternatives(
 
   return {
     alternativas: null,
-    respostaCorreta: normalizeWhitespace(respostaCorreta) || "Resposta aberta",
+    respostaCorreta: normalizarTexto(respostaCorreta, formato) || "Resposta aberta",
   };
 }
 
@@ -397,7 +429,7 @@ function normalizeAlternatives(
 export async function saveAiSuggestionsBatch(params: {
   topico_id: number;
   conteudo_id: number;
-  cards: Array<{ titulo: string; descricao: string }>;
+  cards: Array<{ titulo: string; descricao: string; formato_texto?: FormatoTexto }>;
   atividades: Array<{
     titulo: string;
     enunciado: string;
@@ -405,6 +437,8 @@ export async function saveAiSuggestionsBatch(params: {
     alternativas: string[] | null;
     resposta_correta: string;
     nota_estabelecida?: number | null;
+    /** Spec A: rico só leva `trim` (código mantém a indentação), e a marca vai para a atividade e a questão. */
+    formato_texto?: FormatoTexto;
   }>;
 }) {
   const cardsPayload = params.cards
@@ -412,8 +446,9 @@ export async function saveAiSuggestionsBatch(params: {
       conteudo_id: params.conteudo_id,
       conteudo_origem_id: null,
       titulo: normalizeWhitespace(card.titulo || "") || null,
-      descricao: normalizeWhitespace(card.descricao || "") || null,
+      descricao: normalizarTexto(card.descricao || "", card.formato_texto) || null,
       imagem_url: null,
+      ...colunaDoFormato(card.formato_texto === "rico" ? "rico" : undefined),
     }))
     .filter((card) => Boolean(card.titulo && card.descricao));
   const uniqueCards = Array.from(
@@ -428,9 +463,10 @@ export async function saveAiSuggestionsBatch(params: {
   const normalizedActivities = params.atividades
     .map((atividade) => ({
       titulo: normalizeWhitespace(atividade.titulo || ""),
-      enunciado: normalizeWhitespace(atividade.enunciado || ""),
+      enunciado: normalizarTexto(atividade.enunciado || "", atividade.formato_texto),
       activityType: normalizeActivityType(atividade.tipo),
-      respostaRaw: normalizeWhitespace(atividade.resposta_correta || ""),
+      respostaRaw: normalizarTexto(atividade.resposta_correta || "", atividade.formato_texto),
+      formato: atividade.formato_texto === "rico" ? ("rico" as const) : undefined,
       alternativasRaw: atividade.alternativas ?? null,
       notaEstabelecida: normalizeOptionalPositiveScore(atividade.nota_estabelecida),
     }))
@@ -439,7 +475,8 @@ export async function saveAiSuggestionsBatch(params: {
       const normalizedQuestion = normalizeAlternatives(
         questionType,
         atividade.alternativasRaw,
-        atividade.respostaRaw
+        atividade.respostaRaw,
+        atividade.formato,
       );
       return {
         titulo: atividade.titulo,
@@ -449,6 +486,7 @@ export async function saveAiSuggestionsBatch(params: {
         alternativas: normalizedQuestion.alternativas,
         resposta_correta: normalizedQuestion.respostaCorreta,
         nota_estabelecida: atividade.notaEstabelecida,
+        formato: atividade.formato,
       };
     })
     .filter((atividade) => Boolean(atividade.titulo && atividade.enunciado && atividade.resposta_correta));
@@ -462,7 +500,7 @@ export async function saveAiSuggestionsBatch(params: {
   );
 
   if (uniqueCards.length > 0) {
-    const { error: cardsError } = await supabase.from("cards").insert(uniqueCards);
+    const { error: cardsError } = await supabase.from("cards").insert(uniqueCards as never);
     if (cardsError) throw cardsError;
   }
 
@@ -483,7 +521,8 @@ export async function saveAiSuggestionsBatch(params: {
         titulo: atividade.titulo,
         descricao: atividade.enunciado,
         tipo: atividade.activityType,
-      }))
+        ...colunaDoFormato(atividade.formato),
+      })) as never
     )
     .select("id");
   if (activitiesError) throw activitiesError;
@@ -508,6 +547,7 @@ export async function saveAiSuggestionsBatch(params: {
       alternativas: atividade?.alternativas ?? null,
       resposta_correta: atividade?.resposta_correta ?? "",
       nota_estabelecida: normalizeOptionalPositiveScore(atividade?.nota_estabelecida),
+      ...colunaDoFormato(atividade?.formato),
     };
   });
 
@@ -517,7 +557,7 @@ export async function saveAiSuggestionsBatch(params: {
   }));
 
   const [{ error: questionsError }, { error: linksError }] = await Promise.all([
-    supabase.from("questoes").insert(questionRows),
+    supabase.from("questoes").insert(questionRows as never),
     supabase.from("atividade_conteudos").insert(linkRows),
   ]);
   if (questionsError) throw questionsError;
@@ -604,7 +644,7 @@ export async function duplicateActivity(atividadeId: number, conteudoId: number)
 export async function duplicateCard(cardId: number): Promise<number> {
   const { data, error } = await supabase
     .from("cards" as never)
-    .select("conteudo_id, conteudo_origem_id, titulo, descricao, imagem_url, cor, ordem")
+    .select("conteudo_id, conteudo_origem_id, titulo, descricao, imagem_url, cor, ordem, formato_texto")
     .eq("id", cardId)
     .single();
   if (error) throw error;
@@ -616,6 +656,7 @@ export async function duplicateCard(cardId: number): Promise<number> {
     imagem_url: string | null;
     cor: string | null;
     ordem: number | null;
+    formato_texto?: FormatoTexto;
   };
   const { data: novo, error: erroInsert } = await supabase
     .from("cards" as never)

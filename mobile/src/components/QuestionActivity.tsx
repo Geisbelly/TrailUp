@@ -24,6 +24,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { shadowStyle } from "@/utils/webShadow";
+import { TextoRico } from '@/components/textoRico/TextoRico';
+import { formatoDoTexto } from '@/utils/textoRico/formatoTexto';
+import { alternativaDaResposta, letraDaAlternativa, textoRicoLegivel } from '@/utils/textoRico/respostaRica';
 
 const IS_WEB = Platform.OS === "web";
 
@@ -571,7 +574,8 @@ export default function QuestionActivity({
   const [avisoCompra, setAvisoCompra] = useState<string | null>(null);
   const [gastandoCompra, setGastandoCompra] = useState(false);
   const [modalVisivel, setModalVisivel] = useState(false);
-  const [modalInfo, setModalInfo] = useState<{ titulo: string; descricao: string; pontos?: number; acerto?: boolean }>({
+  // `rico`: a descrição leva gabarito e explicação de questão rica, e é desenhada como tal.
+  const [modalInfo, setModalInfo] = useState<{ titulo: string; descricao: string; pontos?: number; acerto?: boolean; rico?: boolean }>({
     titulo: '',
     descricao: '',
     pontos: 0,
@@ -792,12 +796,18 @@ export default function QuestionActivity({
     (isFillBlankActivity || isDissertativaActivity
       ? respostaTextoAtual.trim().length > 0
       : selecionados[questaoIndex] != null);
+  // Questão rica (spec A): enunciado, alternativas, gabarito e explicação em markdown com fórmula e
+  // código. Na múltipla, o app manda a LETRA e o banco confere pela posição (`20261108_03`).
+  const rica = formatoDoTexto(questao?.formato_texto) === 'rico';
+  const multiplaRica = rica && !isTrueFalseActivity && !isFillBlankActivity && !isDissertativaActivity;
   const respostaAnteriorExibida =
     respostaAnterior != null
       ? isTrueFalseActivity
         ? formatTrueFalseLabel(respostaAnterior)
         : isFillBlankActivity
         ? String(respostaAnterior)
+        : multiplaRica
+        ? alternativaDaResposta(respostaAnterior, alternativas)
         : String(respostaAnterior)
       : null;
   const gabaritoExibido =
@@ -821,9 +831,20 @@ export default function QuestionActivity({
       nestedScrollEnabled
       showsVerticalScrollIndicator={false}
     >
-      <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8, color: profilePalette.text }}>
-        {isFillBlankActivity ? 'Complete a lacuna do texto' : questao.enunciado}
-      </Text>
+      {rica && !isFillBlankActivity ? (
+        <View style={{ marginBottom: 8 }}>
+          <TextoRico
+            texto={questao.enunciado}
+            formato="rico"
+            estilo={{ fontSize: 20, fontWeight: 'bold', color: profilePalette.text }}
+            paleta={profilePalette}
+          />
+        </View>
+      ) : (
+        <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8, color: profilePalette.text }}>
+          {isFillBlankActivity ? 'Complete a lacuna do texto' : questao.enunciado}
+        </Text>
+      )}
 
       <Text style={{ color: profilePalette.textSubtle, fontFamily: FontFamily.interMedium, marginBottom: 4 }}>
         Questão {questaoIndex + 1} de {questoes.length}
@@ -914,16 +935,17 @@ export default function QuestionActivity({
               borderColor: profilePalette.border,
             }}
           >
-            <Text
-              style={{
+            <TextoRico
+              texto={fillBlankPrompt}
+              formato={rica ? 'rico' : 'texto'}
+              estilo={{
                 color: profilePalette.text,
                 fontFamily: FontFamily.interMedium,
                 fontSize: 16,
                 lineHeight: 24,
               }}
-            >
-              {fillBlankPrompt}
-            </Text>
+              paleta={profilePalette}
+            />
           </View>
 
           <View
@@ -1078,7 +1100,7 @@ export default function QuestionActivity({
           })()}
           accessibilityRole="radio"
           accessibilityState={{ checked: selectedOption === i }}
-          accessibilityLabel={alt}
+          accessibilityLabel={rica ? textoRicoLegivel(alt) : alt}
         >
           {isTrueFalseActivity ? (
             <View
@@ -1133,9 +1155,18 @@ export default function QuestionActivity({
           ) : null}
 
           <View style={{ flex: 1, gap: isTrueFalseActivity ? 2 : 0 }}>
-            <Text style={{ color: profilePalette.text, fontFamily: FontFamily.interMedium }}>
-              {alt}
-            </Text>
+            {rica && !isTrueFalseActivity ? (
+              <TextoRico
+                texto={String(alt ?? '')}
+                formato="rico"
+                estilo={{ color: profilePalette.text, fontFamily: FontFamily.interMedium, fontSize: 14 }}
+                paleta={profilePalette}
+              />
+            ) : (
+              <Text style={{ color: profilePalette.text, fontFamily: FontFamily.interMedium }}>
+                {alt}
+              </Text>
+            )}
 
             {isTrueFalseActivity ? (
               <Text
@@ -1163,6 +1194,10 @@ export default function QuestionActivity({
 
           const respostaSelecionada = isFillBlankActivity || isDissertativaActivity
             ? respostaDigitada
+            : multiplaRica
+            ? escolhido != null && escolhido >= 0 && escolhido < alternativas.length
+              ? letraDaAlternativa(escolhido)
+              : ''
             : String(alternativas[escolhido ?? -1] ?? '');
           const tempoGastoSeg = segundosNaQuestao();
 
@@ -1443,6 +1478,7 @@ export default function QuestionActivity({
                 : mensagemBase,
               pontos: atividadeCompleta ? pontosGanhos : 0,
               acerto: true,
+              rico: rica,
             });
           } else {
             const gabaritoTxt =
@@ -1455,6 +1491,7 @@ export default function QuestionActivity({
                 ? 'Modo pensante ativo: mostramos apenas se está certo ou errado. Quer ver o gabarito ou tentar novamente? A nova tentativa vale metade da pontuação.'
                 : `${gabaritoTxt}${gabaritoTxt && explicacao ? '\n\n' : ''}${explicacao || 'Revise o conteudo e tente novamente.'}`,
               acerto: false,
+              rico: rica,
             });
           }
           setModalVisivel(true);
@@ -1615,15 +1652,37 @@ export default function QuestionActivity({
       )}
 
       {mostrarRespostaAluno && respostaAnteriorExibida != null && (
-        <Text style={{ marginTop: 6, color: profilePalette.textMuted, fontFamily: FontFamily.interMedium }}>
-          Sua ultima resposta: {respostaAnteriorExibida}
-        </Text>
+        rica ? (
+          <View style={{ marginTop: 6 }}>
+            <TextoRico
+              texto={`Sua ultima resposta: ${respostaAnteriorExibida}`}
+              formato="rico"
+              estilo={{ color: profilePalette.textMuted, fontFamily: FontFamily.interMedium, fontSize: 14 }}
+              paleta={profilePalette}
+            />
+          </View>
+        ) : (
+          <Text style={{ marginTop: 6, color: profilePalette.textMuted, fontFamily: FontFamily.interMedium }}>
+            Sua ultima resposta: {respostaAnteriorExibida}
+          </Text>
+        )
       )}
 
       {podeVerGabarito && gabaritoExibido != null && (
-        <Text style={{ marginTop: 6, color: profilePalette.textMuted, fontFamily: FontFamily.interMedium }}>
-          Gabarito: {gabaritoExibido}
-        </Text>
+        rica ? (
+          <View style={{ marginTop: 6 }}>
+            <TextoRico
+              texto={`Gabarito: ${gabaritoExibido}`}
+              formato="rico"
+              estilo={{ color: profilePalette.textMuted, fontFamily: FontFamily.interMedium, fontSize: 14 }}
+              paleta={profilePalette}
+            />
+          </View>
+        ) : (
+          <Text style={{ marginTop: 6, color: profilePalette.textMuted, fontFamily: FontFamily.interMedium }}>
+            Gabarito: {gabaritoExibido}
+          </Text>
+        )
       )}
 
       {jaTemTentativa && isPensante && !respostasVisiveis && (
@@ -1834,17 +1893,18 @@ export default function QuestionActivity({
                 {modalInfo.titulo}
               </Text>
             </View>
-            <Text
-              style={{
+            <TextoRico
+              texto={modalInfo.descricao}
+              formato={modalInfo.rico ? 'rico' : 'texto'}
+              estilo={{
                 color: profilePalette.text,
                 fontFamily: FontFamily.interMedium,
                 fontSize: 14,
                 lineHeight: 20,
                 textAlign: desktop ? 'center' : undefined,
               }}
-            >
-              {modalInfo.descricao}
-            </Text>
+              paleta={profilePalette}
+            />
             {modalInfo.pontos ? (
               <Text style={{ marginTop: 10, color: profilePalette.accent, fontFamily: FontFamily.interMedium, textAlign: desktop ? 'center' : undefined }}>
                 Pontos: +{modalInfo.pontos}

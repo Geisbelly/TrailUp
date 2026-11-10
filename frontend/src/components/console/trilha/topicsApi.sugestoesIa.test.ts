@@ -160,3 +160,26 @@ describe("saveAiSuggestionsBatch — erros", () => {
     await expect(saveAiSuggestionsBatch({ ...base, cards: [], atividades: [quiz] })).rejects.toThrow("l");
   });
 });
+
+describe("saveAiSuggestionsBatch — texto rico (spec A)", () => {
+  const codigo = "Qual a saída?\n\n```python\nfor i in range(2):\n    print(i)\n```";
+
+  it("no rico, a indentação do código sobrevive e a marca vai para a atividade e a questão", async () => {
+    sb.idsDasAtividades = [101];
+    await saveAiSuggestionsBatch({
+      ...base,
+      cards: [{ titulo: "Laço", descricao: "  ```sql\nSELECT *\n  FROM aluno\n```  ", formato_texto: "rico" }],
+      atividades: [{ ...quiz, enunciado: `  ${codigo}  `, alternativas: ["0\n1", "1\n2"], resposta_correta: "0\n1", formato_texto: "rico" }],
+    });
+    expect(linhasDe("cards")[0]).toMatchObject({ descricao: "```sql\nSELECT *\n  FROM aluno\n```", formato_texto: "rico" });
+    expect(linhasDe("atividades")[0]).toMatchObject({ descricao: codigo, formato_texto: "rico" });
+    expect(linhasDe("questoes")[0]).toMatchObject({ alternativas: ["0\n1", "1\n2"], resposta_correta: "0\n1", formato_texto: "rico" });
+  });
+
+  it("no texto, tudo é achatado como sempre, e a coluna não é escrita", async () => {
+    sb.idsDasAtividades = [101];
+    await saveAiSuggestionsBatch({ ...base, cards: [], atividades: [{ ...quiz, enunciado: codigo }] });
+    expect(linhasDe("atividades")[0]).toEqual({ topico_id: 4, titulo: "Quiz", descricao: codigo.replace(/\s+/g, " "), tipo: "quiz" });
+    expect(linhasDe("questoes")[0]).not.toHaveProperty("formato_texto");
+  });
+});
