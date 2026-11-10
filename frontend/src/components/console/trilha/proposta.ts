@@ -78,3 +78,49 @@ export const removerDaProposta = (topicos: AiTopico[], ordem: number): AiTopico[
 /** Troca o conteúdo de um tópico preservando o lugar dele no grafo (ordem, next, depende). */
 export const substituirNaProposta = (topicos: AiTopico[], ordem: number, novo: AiTopico): AiTopico[] =>
   topicos.map((t) => (t.ordem === ordem ? { ...novo, ordem: t.ordem, next: t.next, depende: t.depende } : t));
+
+const ROTULO_DA_MIDIA: Record<MediaType, string> = {
+  video: "Vídeo sugerido",
+  audio: "Áudio sugerido",
+  pdf: "PDF sugerido",
+  documento: "Documento sugerido",
+  apresentacao: "Apresentação sugerida",
+};
+
+/**
+ * Como a mídia sugerida pela IA vira linha em `conteudos`.
+ *
+ * Antes, toda mídia que não fosse vídeo virava `tipo: "arquivo"` com o
+ * roteiro (ou a descrição) no campo `conteudo`. Mas `arquivo` guarda o
+ * CAMINHO do objeto no bucket: o console assinava a frase como objeto e o
+ * Storage devolvia 400, e o professor via um "arquivo" que não existia.
+ *
+ * - arquivo que o professor enviou e a IA citou → `arquivo` com o caminho;
+ * - link de verdade → `video` (vídeo) ou `link`;
+ * - só texto (o caso comum: a IA sugere, não produz a mídia) → `texto`, com
+ *   o roteiro em Markdown, que é o que o professor tem em mãos para gravar.
+ */
+export function conteudoDaMidia(
+  midia: AiMidia,
+  caminhoEnviado: string | null | undefined,
+): { tipo: "arquivo" | "video" | "link" | "texto"; conteudo: string } | null {
+  if (caminhoEnviado?.trim()) return { tipo: "arquivo", conteudo: caminhoEnviado.trim() };
+  const url = midia.url?.trim() ?? "";
+  if (/^https?:\/\//i.test(url)) return { tipo: midia.tipo === "video" ? "video" : "link", conteudo: url };
+
+  const partes: string[] = [];
+  const vistos = new Set<string>();
+  const juntar = (titulo: string | null, texto: string | null | undefined) => {
+    const limpo = texto?.trim();
+    if (!limpo || vistos.has(limpo)) return;
+    vistos.add(limpo);
+    partes.push(titulo ? `### ${titulo}\n\n${limpo}` : limpo);
+  };
+  juntar(null, midia.descricao);
+  juntar("Roteiro", midia.roteiro);
+  juntar("Transcrição", midia.transcricao);
+  // URL que não é link (a IA às vezes escreve o nome do arquivo ali): vira texto também.
+  juntar(null, url);
+  if (partes.length === 0) return null;
+  return { tipo: "texto", conteudo: [`**${ROTULO_DA_MIDIA[midia.tipo] ?? "Mídia sugerida"}**`, ...partes].join("\n\n") };
+}
