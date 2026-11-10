@@ -35,6 +35,9 @@ Datas aproximadas a partir de `modifiedTime` do Drive (convertidas para BRT) + s
 | 2026-10-29–31 | Métricas F0–F5 (fila de análise da telemetria no banco, tempo ativo, views versionadas); Insights e intervenção; risco de reprovação | #701–#741 |
 | **2026-11-01 ~01:30–03:47** | **Incidente:** API em 502 por migration aplicada antes de o código chegar ao espelho | [[10-Incidentes/api-fora-por-migration-2026-11-01]] |
 | 2026-11-01 | Nota média e modelo de evasão no banco; alteração do professor avisada; tentativas pelo relógio do servidor (#136, fases 1–2); falas do boss; e-mail pelo Apps Script; issues #12, #15 e #172 fechadas; syncs do espelho #201–#205 | #749–#763 · [[05-PRs-Repos/ultimo-sync-main]] |
+| 2026-11-06 | Áudio só na voz do Guardião e um de cada vez; tempo de estudo soma os lotes e tela desligada não conta; `generate-content-ai` troca de chave e de modelo quando a cota do Gemini acaba; conta de demonstração escolhe o perfil | #1027–#1044 |
+| 2026-11-07 | Guia apoia com as questões e os cards sem entregar a resposta, e o Guardian barra o vazamento (#1059); correção de dissertativa sem revelar a resposta esperada (#1060); PR1 e PR2 por plataforma (#1046); diagnóstico do tópico em tela própria | #1046–#1060 |
+| 2026-11-08 | Questão da turma corrigida no banco, sem o app ler o gabarito (#1064, #1065); push lê os recibos da Expo e desliga o token do Expo Go (#1066); configuração do build Android liga o Firebase (#1067); syncs do espelho #313 e #314 | #1061–#1069 |
 
 ## Fases lógicas
 
@@ -57,5 +60,8 @@ Datas aproximadas a partir de `modifiedTime` do Drive (convertidas para BRT) + s
 16. **04–05/11** — gateway passa a exigir link assinado e a #632 fecha; leitura de servidor corrigida (#974); gateway reaberto por minutos por deploy de branch antiga; 1.0.7 com build pronto, fora da loja
 17. **05/11** — monitor de disponibilidade no banco, com e-mail real conferido e meta de 24 horas (#981, #1004); saúde dos clientes (#992); rotas do BrainHexPDF com segredo (#983); administração do dono no banco (#997); duelo no evento (#995, #996, #1003). Quatro colisões de revisão do Alembic no mesmo dia, todas pegas antes de chegar à produção (#963, #988, #993, #999), com o CI parado
 18. **05/11** — molduras por desafios difíceis (#1011), XP de conteúdo pelo banco (#1008) e diagnóstico antes do tópico (#1010); página pública de gamificação e personalização, com paleta, biblioteca de elementos e evidências dos PRs
+19. **06/11** — áudio só na voz do Guardião e um de cada vez (#1031, #1039); tempo de estudo soma os lotes, e tela desligada não conta (#1032, #1054); a geração alterna chaves e modelos do Gemini (#1043)
+20. **07/11** — o guia ajuda sem dar a resposta: o chat recebe as questões (sem o gabarito) e a frente dos cards, e o Guardian confere a resposta contra o gabarito antes de ela sair (#1059); a correção de dissertativa não revela a resposta esperada (#1060)
+21. **08/11** — gabarito fora do app: a questão da turma é corrigida por RPC no banco, e o app novo não lê mais o gabarito (#1064, #1065; a fase 3, fechar a coluna, espera a versão mínima do app); recibos de push da Expo e Firebase no build Android (#1066, #1067)
 
 ← [[00-Home]] · [[05-PRs-Repos/ultimo-sync-main]] · [[10-Incidentes/perda-dados-console-2026-10-01]] · [[10-Incidentes/api-fora-por-migration-2026-11-01]] · [[10-Incidentes/gateway-reaberto-por-deploy-2026-11-05]]

@@ -21,7 +21,7 @@ Os capítulos `01` a `11` desta pasta são de abril de 2026 e estão desatualiza
 | Arquivos de teste | API 338 · microservice 44 · console 143 · app 200 | [código] |
 | Migrations de banco | 307 (Alembic, de `20260405_01` a `20261104_06`) | [código] |
 | Histórico do monorepo | 882 commits desde 25/08/2026 · 777 PRs mesclados · 145 issues (136 fechadas) | [código] e GitHub |
-| Banco | 171 tabelas · 27 views · 612 funções · 144 gatilhos · 286 políticas de RLS · 16 rotinas agendadas (`pg_cron`) | [banco] |
+| Banco | 171 tabelas · 27 views · 612 funções · 144 gatilhos · 286 políticas de RLS · 16 rotinas agendadas (`pg_cron`). Em 08/11, na revisão `20261108_02`: 189 tabelas · 705 funções · 149 gatilhos · 292 políticas · 21 rotinas | [banco] |
 | Edge Functions | 6: `generate-content-ai`, `validate-essay-answer-ai`, `storage-redirect`, `storage-upload-url`, `pesquisa-arquivar`, `personalize_path` | [banco] |
 
 O desenvolvimento ocupou cerca de 716 horas em 137 dias com commit (set/2025 a nov/2026), segundo o levantamento de custos feito para o resumo da JIC 2026 (pausa de até 2 h entre commits, faixa de 613 a 1.009 h). A conta inclui os repositórios anteriores ao monorepo.
@@ -155,6 +155,10 @@ flowchart TD
 - **Turma retida pelo estudo:** só rodam emoção, perfil e intervenção (`RETIDA_SPECIALIST_NODES`), para não contaminar a comparação.
 - **Persistência:** o estado tem checkpoint no Postgres (`langgraph-checkpoint-postgres`).
 - **Memória do aluno:** o histórico de estado mental (`aluno_mental_state_history`) volta ao grafo. Uma recorrência é 3 estados negativos iguais entre os 5 últimos registros. Ela alimenta o tema de suporte (`agente_ui`) e o alerta ao professor (`agente_intervencao`).
+- **O guia ajuda sem entregar a resposta (07/11, #1059):** o chat da matéria recebe o conteúdo, os enunciados e as alternativas das questões (sem marcar a certa) e a frente dos cards. O gabarito e o verso dos cards só chegam às guardas, que barram a resposta antes de ela sair:
+  - uma checagem determinística (`checar_vazamento_de_gabarito`) procura a resposta inteira ou um trecho de 8 palavras dela;
+  - depois, o juiz de *grounding* (`mentor_grounding_check.txt`) julga com o gabarito à vista;
+  - a correção da dissertativa (`validate-essay-answer-ai`, #1060) troca o comentário que repetiria a resposta esperada, e a nota não muda.
 
 ### 5.3 Pipeline de análise da telemetria (`linear_analysis_pipeline.py`)
 
@@ -335,7 +339,7 @@ Em produção ainda não há evento de turma nem guilda criados: 0 de cada. [ban
   - Funções auxiliares `SECURITY DEFINER` evitam recursão de RLS: `app_classes_do_professor()`, `app_alunos_do_professor()`, `app_colegas_de_turma()`.
   - Tabela nova já nasce com RLS ligada, por um event trigger.
   - Toda view nasce com `security_invoker = on`.
-- **16 rotinas `pg_cron`** [banco]:
+- **16 rotinas `pg_cron`** em 04/11, 21 em 08/11 [banco]:
   - missão diária e o texto dela;
   - eventos de turma, a cada minuto;
   - desafios de guilda;
@@ -355,6 +359,8 @@ Em produção ainda não há evento de turma nem guilda criados: 0 de cada. [ban
   - Em produção há 431 notificações entregues.
 - **Progresso:** um gatilho calcula o percentual do tópico (`trailup_recalcular_topico_aluno`), e nenhum cliente grava esse valor. O denominador é o material personalizado; o do professor é opcional e dá bônus.
 - **Operações em transação no banco:** duplicar turma, tópico e atividade.
+- **Questão da turma corrigida no banco (08/11, #1064 e #1065):** o app novo responde pelas RPCs `questao_responder` e `questao_revelar_gabarito` e não lê mais o gabarito. A questão personalizada local continua corrigida no aparelho. O app instalado (1.0.x) ainda lê o gabarito; fechar a coluna é a fase 3, que espera a versão mínima do app.
+- **Recibos de push (08/11, #1066):** o banco lê os recibos da Expo e desativa o token que não entrega mais. O build Android passa a ligar o Firebase (#1067), o que só vale a partir do próximo build.
 
 ---
 
@@ -429,6 +435,8 @@ Em produção ainda não há evento de turma nem guilda criados: 0 de cada. [ban
 | "dados não são usados para treino" | Gemini no plano gratuito; o Google pode usar os dados para melhorar produtos |
 | "API hospedada no Render" | Dokploy, em VPS própria |
 | "resultados mostram melhora de aprendizagem" | não há amostra para isso; relatar viabilidade técnica |
+| "o aluno não tem acesso ao gabarito" | o app novo corrige no banco e não lê o gabarito; o app instalado ainda lê, até a fase 3 (08/11) |
+| "o guia nunca dá a resposta" | duas guardas barram a resposta (texto e juiz de modelo); é redução de risco medida em teste, não garantia |
 
 **O que os capítulos 01 a 11 desta pasta dizem que já mudou:**
 - falam do Render, que não é usado;

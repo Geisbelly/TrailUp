@@ -874,6 +874,21 @@ anteriores do Guardião; `personalizacao.chat.falas_sem_assinatura` no log mostr
 > (`mobile/src/components/ia/historicoDoGuia.ts`). Devolver o texto da tela invalida a assinatura em
 > silêncio: a fala só some do contexto.
 
+**O guia ajuda, mas não entrega a resposta** (#1059). O modelo do chat recebe o conteúdo, os
+enunciados e as alternativas das questões (sem marcar a certa) e a frente dos cards
+(`app/services/contexto_chat_materia.py`). O gabarito e o verso dos cards vão em
+`contexto["gabarito_protegido"]`, que **só as guardas leem**. A ordem é
+`[checar_vazamento_de_gabarito, checar_grounding_chat]`: a primeira é texto puro (resposta de 12
+caracteres ou mais, inteira, ou um trecho de 8 palavras) e não gasta cota; a segunda é o juiz, que
+recebe o gabarito antes da resposta. As duas leem o `reply` **e as seções**, que também chegam ao
+aluno. A violação do vazamento não é definitiva: o modelo tenta de novo, e a correção que ele
+recebe pede uma dica sem citar a resposta (citá-la a devolveria ao modelo que acabou de vazá-la).
+
+> Não ponha o gabarito no contexto do modelo "para ele saber o que não dizer". Modelo que vê a
+> resposta acaba dizendo, e o juiz sem gabarito não reconhece o vazamento. O mesmo princípio vale
+> na dissertativa: `validate-essay-answer-ai/protecaoDaResposta.ts` (#1060) troca comentário e
+> ponto que repetiriam a resposta esperada, mantém a nota e não conta o texto do próprio aluno.
+
 **Latência:** repetir só vale quando o modelo respondeu mal (schema, guardrail, resposta cortada).
 `ProvedorIndisponivelError` e recusa vão direto ao fallback, e o juiz de grounding fora do ar também:
 resposta que ninguém conferiu não chega ao aluno (`GuardrailViolation.definitiva`). `chat_prazo_total_seconds` limita a
