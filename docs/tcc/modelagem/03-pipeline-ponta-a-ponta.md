@@ -268,11 +268,12 @@ sequenceDiagram
   Al->>APP: mensagem
   APP->>API: mensagem + histórico (6) + escopo
   API->>API: portão de idade (403 para menor)
-  API->>DB: conteúdo do tópico, atividades, questões (sem gabarito)
+  API->>DB: conteúdo do tópico, questões e cards
+  API->>API: separa o gabarito e o verso dos cards (só as guardas veem)
   API->>LLM: mentor_personalizacao_chat.txt + guia_do_app
   LLM->>M: saída estruturada
   M-->>LLM: reply, destinos, ações
-  LLM->>LLM: guardrail checar_grounding_chat (fallback se violar)
+  LLM->>LLM: checar_vazamento_de_gabarito e checar_grounding_chat com o gabarito (fallback se violar)
   API->>DB: ia_decision_logs (conversa cifrada em repouso)
   API-->>APP: reply em seções + destinos válidos do app
 ```

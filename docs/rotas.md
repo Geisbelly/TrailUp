@@ -82,7 +82,7 @@ No Supabase, em `/functions/v1/<nome>`. O app ainda chama `personalize_path`, qu
 | `storage-upload-url` | Chave de serviço | URL assinada de upload no R2, para os serviços que geram arquivo. |
 | `validate-essay-answer-ai` | Login | App: confere a resposta dissertativa. |
 
-## Web (34)
+## Web (33)
 
 Vite e React, em `https://trailup.vercel.app`. Qualquer outro caminho cai na página 404.
 
