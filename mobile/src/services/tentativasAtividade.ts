@@ -72,12 +72,12 @@ export function garantirTentativa(atividadeId: number): Promise<TentativaAberta 
  * Falha de rede não volta para quem chama: a tela já parou, e o banco recebe a retomada depois.
  */
 export function pausarTentativa(atividadeId: number): TentativaAberta | null {
-  return mudarRelogio(atividadeId, pausarNoAparelho, "atividade_pausar_tentativa");
+  return mudarRelogio(atividadeId, pausarNoAparelho, (id) => supabase.rpc("atividade_pausar_tentativa", { p_tentativa: id }));
 }
 
 /** O aluno voltou: o relógio continua de onde parou, no aparelho e no banco. */
 export function retomarTentativa(atividadeId: number): TentativaAberta | null {
-  return mudarRelogio(atividadeId, retomarNoAparelho, "atividade_retomar_tentativa");
+  return mudarRelogio(atividadeId, retomarNoAparelho, (id) => supabase.rpc("atividade_retomar_tentativa", { p_tentativa: id }));
 }
 
 const ouvintesDoRelogio = new Set<(atividadeId: number, tentativa: TentativaAberta) => void>();
@@ -98,14 +98,16 @@ function publicar(atividadeId: number, tentativa: TentativaAberta) {
 function mudarRelogio(
   atividadeId: number,
   noAparelho: (t: TentativaAberta, agoraLocalMs: number) => TentativaAberta,
-  rpc: "atividade_pausar_tentativa" | "atividade_retomar_tentativa",
+  // A chamada vem pronta, com o nome LITERAL da RPC: `test_rpc_chamada_tem_migracao` só confere
+  // a migration do que consegue ler, e uma RPC com o nome numa variável é um ponto cego para ele.
+  chamarBanco: (tentativaId: TentativaAberta["tentativaId"]) => PromiseLike<{ data: unknown; error: unknown }>,
 ): TentativaAberta | null {
   const atual = abertas.get(atividadeId);
   if (!atual || !atual.cronometrada || atual.limiteSeg == null) return atual ?? null;
   const local = noAparelho(atual, Date.now());
   if (local === atual) return atual;
   publicar(atividadeId, local);
-  void supabase.rpc(rpc, { p_tentativa: atual.tentativaId }).then(
+  void chamarBanco(atual.tentativaId).then(
     ({ data, error }) => {
       // Sem a RPC (banco sem a migration) ou recusa: fica a conta do aparelho.
       if (error) return;
