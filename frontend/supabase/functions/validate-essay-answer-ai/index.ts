@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 import { protegerAvaliacao } from "./protecaoDaResposta.ts";
 import { lerContexto, lerQuestaoId, lerTempo, respostaDoErroDaRpc } from "./correcaoPeloServidor.ts";
+import { promptDeCodigo } from "./promptDeCodigo.ts";
+import { semCodigo } from "./semCodigo.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -296,6 +298,10 @@ serve(async (req) => {
     let respostaProfessor = asString(body.respostaProfessor).substring(0, MAX_TEXT_CHARS);
     const conteudoBase = asString(body.conteudoBase).substring(0, MAX_CONTENT_CHARS);
     let notaInformada = parseOptionalPositiveNumber(body.notaEstabelecida);
+    // Questão de código (`20261110_02`): o tipo vem só do banco, nunca do corpo.
+    let ehCodigo = false;
+    let linguagem = "";
+    let criterios: string[] = [];
 
     if (!respostaAluno) return jsonResponse({ error: "missing_resposta_aluno" }, 400);
     if (!questaoId && !enunciado) return jsonResponse({ error: "missing_enunciado" }, 400);
@@ -324,6 +330,9 @@ serve(async (req) => {
       enunciado = contexto.enunciado.substring(0, MAX_TEXT_CHARS);
       respostaProfessor = contexto.respostaEsperada.substring(0, MAX_TEXT_CHARS);
       notaInformada = parseOptionalPositiveNumber(contexto.notaEstabelecida);
+      ehCodigo = contexto.tipo === "codigo";
+      linguagem = contexto.linguagem;
+      criterios = contexto.criterios;
       if (!enunciado) return jsonResponse({ error: "missing_enunciado" }, 400);
     }
     const notaEstabelecida = round2(clamp(notaInformada ?? 100, 0.1, 1000));
@@ -336,7 +345,18 @@ serve(async (req) => {
       topicoDescricao: asString(body.topicoDescricao),
     });
 
-    const prompt = `Voce e um avaliador pedagogico rigoroso e justo.
+    const prompt = ehCodigo
+      ? promptDeCodigo({
+          notaEstabelecida,
+          contextBlock,
+          enunciado,
+          codigoReferencia: respostaProfessor,
+          linguagem,
+          criterios,
+          conteudoBase,
+          respostaAluno,
+        })
+      : `Voce e um avaliador pedagogico rigoroso e justo.
 Avaliacao de questao dissertativa com nota maxima ${notaEstabelecida.toFixed(2)}.
 ${contextBlock}
 
@@ -387,11 +407,12 @@ Regras obrigatorias:
       );
     }
 
-    const { avaliacao, trocados } = protegerAvaliacao(
-      normalizeEvaluation(parsed, notaEstabelecida),
-      respostaProfessor,
-      respostaAluno,
-    );
+    // Código: primeiro sai todo código do retorno (bloco e crase); depois a proteção de sempre pega
+    // a linha da referência escrita solta. Dissertativa segue só com a proteção.
+    const normalizada = normalizeEvaluation(parsed, notaEstabelecida);
+    const limpa = ehCodigo ? semCodigo(normalizada) : { avaliacao: normalizada, trocados: 0 };
+    if (limpa.trocados > 0) console.warn(`validate-essay-answer-ai: ${limpa.trocados} campo(s) sem o código escrito pela IA`);
+    const { avaliacao, trocados } = protegerAvaliacao(limpa.avaliacao, respostaProfessor, respostaAluno);
     // Conta, sem texto: mede quanto o prompt sozinho deixaria passar.
     if (trocados > 0) console.warn(`validate-essay-answer-ai: ${trocados} campo(s) trocado(s) por revelar a resposta esperada`);
     if (!questaoId || !servico) return jsonResponse(avaliacao);
