@@ -4,6 +4,7 @@ import {
   descricaoDosCriterios,
   diasDesde,
   faixaDoRisco,
+  motivoDoModelo,
   notaParaRisco,
   observacaoNotaEAbandono,
   type SinaisDoBanco,
@@ -53,6 +54,8 @@ describe("avaliarRisco", () => {
       criterio: "estagnacao",
       motivo: "Parado em Frações há 15 dias",
       comparacao: "abaixo da mediana da turma nesse tópico",
+      dias: 15,
+      topico: "Frações",
     });
   });
 
@@ -67,6 +70,26 @@ describe("avaliarRisco", () => {
       nivel: "critico",
       fatores: [{ criterio: "abandono", motivo: "Risco alto de abandono", comparacao: "turma: 12.5% em risco alto" }],
     });
+  });
+
+  it("faixa do modelo diz o que pesou, antes da taxa da turma", () => {
+    const r = avaliarRisco(
+      { sinais: { ...nada, riscoFaixa: "alto", riscoMotivo: "entregas_perdidas" }, nota: null },
+      { notaMedia: 7.4, taxaAbandonoPct: 12.5 },
+      hoje,
+    );
+    expect(r?.fatores[0]).toEqual({
+      criterio: "abandono",
+      motivo: "Risco alto de abandono",
+      comparacao: "pesou: atividades vencidas sem entrega · turma: 12.5% em risco alto",
+      motivoDoModelo: "entregas_perdidas",
+    });
+  });
+
+  it("motivo fora da lista vira sem motivo", () => {
+    expect(motivoDoModelo("score_0.9")).toBeNull();
+    expect(motivoDoModelo(null)).toBeNull();
+    expect(motivoDoModelo("uso_caiu")).toBe("uso_caiu");
   });
 
   it("faixa vinda da inatividade é crítico sem repetir o fato como 'risco de abandono'", () => {

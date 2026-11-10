@@ -1,6 +1,7 @@
 import { nomeExibidoDoPerfil } from "./perfilCores";
 import { PerfilAvatar } from "./PerfilVisual";
 import { descricaoDosCriterios, type Risco } from "./risco";
+import { fatorPrincipal, primeiroNome, sugestaoDoFator } from "./sugestaoDoRisco";
 
 export type AlunoEmRisco = {
   id: string;
@@ -58,7 +59,8 @@ export default function PrecisamDeAtencao<T extends AlunoEmRisco>({
         <div className="min-w-0">
           <h3 id="precisam-de-atencao" className="text-[19px] text-foreground">Precisam de atenção</h3>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
-            {alunos.length} de {totalDaTurma} {totalDaTurma === 1 ? "aluno" : "alunos"} com um sinal, cada um com o fato e a data. A média esconde estes casos.
+            {alunos.length} de {totalDaTurma} {totalDaTurma === 1 ? "aluno" : "alunos"} com um sinal, cada um com o fato, a data e o
+            que fazer pelo sinal que mais pesou. A média esconde estes casos.
           </p>
         </div>
         <p className="max-w-[360px] rounded-full border border-border bg-muted px-3.5 py-2 text-xs text-muted-foreground sm:ml-auto">
@@ -69,6 +71,7 @@ export default function PrecisamDeAtencao<T extends AlunoEmRisco>({
       <ul>
         {ordenados.map((aluno) => {
           const [principal, ...outros] = aluno.risco.fatores;
+          const acao = sugestaoDoFator(fatorPrincipal(aluno.risco), primeiroNome(aluno.nome));
           return (
             <li key={`${aluno.id}-${aluno.classe_id}`} className="border-t border-border">
               <button
@@ -91,6 +94,10 @@ export default function PrecisamDeAtencao<T extends AlunoEmRisco>({
                     {outros.length > 0 && `; ${outros.map((f) => f.motivo.toLowerCase()).join("; ")}`}
                   </div>
                   {principal.comparacao && <div className="mt-0.5 text-xs text-muted-foreground">{principal.comparacao}</div>}
+                  <div className="mt-1.5 text-[12.5px] text-foreground">
+                    <span className="font-semibold text-[hsl(var(--console-violet-text))]">O que fazer: </span>
+                    {acao}
+                  </div>
                 </div>
                 <span className="whitespace-nowrap text-xs font-bold text-[hsl(var(--console-violet-text))]">Abrir aluno</span>
               </button>
