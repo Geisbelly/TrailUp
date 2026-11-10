@@ -111,10 +111,67 @@ async def test_busca_evidencia_restringe_corpus_e_nao_envia_dados_individuais(mo
         "filters": [
             {"type": "eq", "key": "scope", "value": "publico"},
             {"type": "eq", "key": "corpus", "value": "regras-derivadas"},
+            {"type": "in", "key": "rd", "value": ["RD-04"]},
         ],
     }
     assert "nome do aluno" not in chamada["query"]
     assert chamada["query"] == "Evidências pedagógicas curadas e limitações para DAT-21, DAT-36"
+
+
+class _BuscaSemantica:
+    """Imita o Vector Store de produção (10/11): a consulta com códigos DAT não tem sentido
+    semântico, então a ordem sai de outra coisa e a regra pedida pode ficar fora do top-N. O
+    filtro por `rd`, quando vem, é respeitado, como na API da OpenAI."""
+
+    def __init__(self, ordem):
+        self.ordem = ordem
+        self.calls = []
+
+    async def __call__(self, **kwargs):
+        self.calls.append(kwargs)
+        regras = None
+        for filtro in kwargs["filters"].get("filters", []):
+            if filtro.get("type") == "in" and filtro.get("key") == "rd":
+                regras = set(filtro["value"])
+        candidatos = [a for a in self.ordem if regras is None or a["rd"] in regras]
+        return SimpleNamespace(
+            data=[
+                SimpleNamespace(file_id=f"file-{a['rd']}", attributes=dict(a))
+                for a in candidatos[: kwargs["max_num_results"]]
+            ]
+        )
+
+
+@pytest.mark.asyncio
+async def test_busca_evidencia_traz_toda_regra_pedida_mesmo_fora_do_top_n(monkeypatch):
+    # As 12 regras do corpus v1, com a RD-12 (DAT-45) por último na ordem "semântica".
+    corpus = [
+        {"scope": "publico", "corpus": "regras-derivadas", "rd": f"RD-{n:02d}", "fontes": f"DAT-{n + 20:02d}", "confianca": "média"}
+        for n in range(1, 12)
+    ]
+    corpus[6]["fontes"] = "DAT-34"  # RD-07
+    corpus.append({"scope": "publico", "corpus": "regras-derivadas", "rd": "RD-12", "fontes": "DAT-45", "confianca": "média"})
+    busca = _BuscaSemantica(corpus)
+    client = SimpleNamespace(vector_stores=SimpleNamespace(search=busca))
+
+    async def listar_do_corpus(_repo, *, vector_store_id, corpus):
+        return [
+            {"openai_file_id": f"file-{a['rd']}", "status": "completed", "attributes": a}
+            for a in busca.ordem
+        ]
+
+    monkeypatch.setattr(
+        "app.services.openai_rag.RagOpenAIFilesRepository.listar_do_corpus", listar_do_corpus
+    )
+    service = OpenAIRagService(_settings(), client=client)
+
+    citacoes = await service.buscar_evidencias_pedagogicas(
+        session=object(), fontes=["DAT-34", "DAT-45"], limite=8
+    )
+
+    assert sorted(c["regra"] for c in citacoes) == ["RD-07", "RD-12"]
+    filtros = busca.calls[0]["filters"]["filters"]
+    assert {"type": "in", "key": "rd", "value": ["RD-07", "RD-12"]} in filtros
 
 
 @pytest.mark.asyncio
