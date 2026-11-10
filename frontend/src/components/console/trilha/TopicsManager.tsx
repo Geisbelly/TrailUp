@@ -1,3 +1,6 @@
+import { ehFormatoNoServidor } from "./formatoDaQuestao";
+import type { FormatoTexto } from "@/lib/textoRico/formatoTexto";
+import { FORMULARIO_PADRAO, type FormularioDoGabarito } from "./gabaritoDoServidor";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type {
@@ -113,7 +116,18 @@ export default function TopicsManager() {
     imagem_url: "",
   });
   const [questions, setQuestions] = useState<Questao[]>([]);
-  const [questionForm, setQuestionForm] = useState({
+  const [questionForm, setQuestionForm] = useState<{
+    id: number;
+    atividade_id: string;
+    enunciado: string;
+    tipo: string;
+    resposta_correta: string;
+    nota_estabelecida: string;
+    midia_url: string;
+    dificuldade: string;
+    formato_texto?: FormatoTexto;
+    gabarito_servidor?: FormularioDoGabarito;
+  }>({
     id: 0,
     atividade_id: "",
     enunciado: "",
@@ -663,6 +677,9 @@ export default function TopicsManager() {
     const id = await saveQuestionHandler(
       {
         ...questionForm,
+        // O editor desenha pelo tipo da atividade. Para os tipos do spec B, salvar por ele também:
+        // senão a questão antiga (múltipla) mudada para código seguiria gravando como múltipla.
+        ...(ehFormatoNoServidor(activityForm.tipo) ? { tipo: activityForm.tipo } : {}),
         resposta_correta: questionForm.resposta_correta || "",
         nota_estabelecida: scoreParsed.value,
       },
@@ -679,6 +696,7 @@ export default function TopicsManager() {
         nota_estabelecida: "",
         midia_url: "",
         dificuldade: SEM_NIVEL,
+        gabarito_servidor: { ...FORMULARIO_PADRAO },
       });
       setQuestionOptions([""]);
     }

@@ -30,6 +30,11 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("@radix-ui")) return "vendor-radix";
           if (id.includes("@supabase")) return "vendor-supabase";
           if (id.includes("recharts") || id.includes("d3-")) return "vendor-charts";
+          // O mathjs (spec B) só carrega quando o professor abre um gabarito de numérica ou expressão
+          // (`import()` em conferenciaNoConsole.ts). No `vendor` ele iria para toda página.
+          if (/node_modules\/(mathjs|complex\.js|decimal\.js|fraction\.js|typed-function|escape-latex|javascript-natural-sort|seedrandom|tiny-emitter)\//.test(id)) {
+            return "vendor-mathjs";
+          }
           return "vendor";
         },
       },

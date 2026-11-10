@@ -18,6 +18,10 @@ import { deleteTopicCascade } from "./classDeletion";
 import type { Atividade, CardItem, Conteudo, Questao, Topico } from "./types";
 import type { FormatoTexto } from "@/lib/textoRico/formatoTexto";
 import { alternativasRepetidas } from "@/lib/textoRico/respostaRica";
+import { MENSAGEM_DO_AVISO, precisaAvisarAppDesatualizado } from "@/lib/avisoDeAppDesatualizado";
+import { ehFormatoNoServidor, formatoDaQuestao } from "./formatoDaQuestao";
+import { FORMULARIO_PADRAO, montarGabarito, type FormularioDoGabarito } from "./gabaritoDoServidor";
+import { saveGabaritoDoServidor } from "./topicsApi";
 
 const ERRO_TENTATIVAS = `Tentativas por aluno: um número inteiro de 1 a ${TENTATIVAS_MAXIMAS}, ou vazio para o padrão (${TENTATIVAS_PADRAO}).`;
 
@@ -52,7 +56,18 @@ export function useTopicCrud({
     if (raw === "verdadeiro_falso" || raw === "true_false" || raw === "vf") return "verdadeiro_falso";
     if (raw === "fill_blank" || raw === "lacuna" || raw === "completar") return "fill_blank";
     if (raw === "dissertativa" || raw === "essay" || raw === "questao" || raw === "texto") return "dissertativa";
+    // Spec B: sem isto, viravam dissertativa e o gabarito ia para `questoes.resposta_correta`.
+    if (raw === "codigo" || raw === "code") return "codigo";
+    if (raw === "numerica" || raw === "numeric") return "numerica";
+    if (raw === "expressao" || raw === "expression") return "expressao";
     return alternativasCount > 0 ? "multipla" : "dissertativa";
+  };
+
+  // Spec B, 4.3: salvar nunca é bloqueado; o aviso diz o efeito para quem tem o app antigo.
+  const avisarAppDesatualizado = (motivo: keyof typeof MENSAGEM_DO_AVISO) => {
+    void precisaAvisarAppDesatualizado().then((avisar) => {
+      if (avisar) toast.warning(MENSAGEM_DO_AVISO[motivo], { duration: 8000 });
+    });
   };
 
   const normalizeQuestionPayload = (params: {
@@ -61,6 +76,11 @@ export function useTopicCrud({
     resposta: string | null;
   }) => {
     const tipo = normalizeQuestionTipo(params.tipo, params.alternativas.length);
+
+    // A esperada destes vai para `questao_gabarito`; em `questoes` o CHECK exige NULL.
+    if (tipo === "codigo" || tipo === "numerica" || tipo === "expressao") {
+      return { tipo, alternativas: null, resposta: null };
+    }
 
     if (tipo === "verdadeiro_falso") {
       const resposta = params.resposta === "Falso" ? "Falso" : "Verdadeiro";
@@ -253,6 +273,8 @@ export function useTopicCrud({
         tentativas_max: tentativas.valor,
         formato_texto: activityForm.formato_texto,
       });
+      if (ehFormatoNoServidor(activityForm.tipo)) avisarAppDesatualizado("tipo");
+      else if (activityForm.formato_texto === "rico") avisarAppDesatualizado("rico");
 
       if (selectedContentId && activityLinks) {
         const alreadyLinked = activityLinks[selectedContentId]?.includes(activityId);
@@ -288,6 +310,7 @@ export function useTopicCrud({
     midia_url?: string;
     dificuldade?: string | null;
     formato_texto?: FormatoTexto;
+    gabarito_servidor?: FormularioDoGabarito;
   }, questionOptions: string[]) => {
     if (!questionForm.enunciado || !questionForm.atividade_id) {
       toast.error("Informe enunciado e selecione a atividade.");
@@ -304,6 +327,15 @@ export function useTopicCrud({
       toast.error("A nota da questao deve ser maior que 0 ou deixada em branco.");
       return;
     }
+    // Spec B: o gabarito é validado antes de qualquer escrita, para não deixar questão sem ele.
+    const formato = formatoDaQuestao(questionForm.tipo);
+    const montado = ehFormatoNoServidor(formato)
+      ? montarGabarito(formato, questionForm.gabarito_servidor ?? FORMULARIO_PADRAO)
+      : null;
+    if (montado && !montado.ok) {
+      toast.error(montado.erro);
+      return;
+    }
     try {
       const id = await saveQuestion({
         id: questionForm.id || undefined,
@@ -316,8 +348,19 @@ export function useTopicCrud({
         midia_url: questionForm.midia_url || null,
         dificuldade: questionForm.dificuldade ?? null,
         formato_texto: questionForm.formato_texto,
+        ...(montado?.ok ? { config_resposta: montado.gabarito.configResposta } : {}),
       });
+      if (montado?.ok) {
+        try {
+          await saveGabaritoDoServidor(id, montado.gabarito);
+        } catch (erro) {
+          console.error("Erro ao salvar o gabarito:", erro);
+          toast.error("A questão foi salva, mas o gabarito não. Abra a questão e salve de novo: sem ele, ninguém acerta.");
+          return id;
+        }
+      }
       toast.success("Questão salva!");
+      if (montado || questionForm.formato_texto === "rico") avisarAppDesatualizado(montado ? "tipo" : "rico");
       // `normalizeQuestionPayload` junta alternativas iguais em silêncio. Na questão rica isso muda
       // a letra das que vêm depois, e o app grava a letra (spec A): o professor precisa saber.
       const repetidas = questionForm.formato_texto === "rico" ? alternativasRepetidas(alternativas) : [];
@@ -457,8 +500,13 @@ export function useTopicCrud({
           resposta_correta: normalized.resposta,
           nota_estabelecida: scoreParsed.value,
         });
+        // A criação rápida não tem os campos do gabarito do spec B: a questão nasce sem ele.
+        if (normalized.resposta === null) {
+          toast.warning("Abra a atividade e escreva o gabarito da questão: sem ele, ninguém consegue acertar.", { duration: 8000 });
+        }
       }
       toast.success("Atividade criada!");
+      if (ehFormatoNoServidor(params.newActivityForm.tipo)) avisarAppDesatualizado("tipo");
       return atividadeId;
     } catch (error) {
       console.error("Erro ao criar atividade/questão:", error);

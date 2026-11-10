@@ -22,7 +22,12 @@ export type LinhaDaFila = {
   pontuacaoObtida: number | null;
   avaliadoEm: string | null;
   feedback: string | null;
+  /** Como desenhar resposta e gabarito (spec B). Ausente: texto simples, como sempre foi. */
+  forma?: FormaDaEntrega | null;
 };
+
+/** `codigo`: resposta e referência em bloco de código. `rico`: dissertativa com fórmula. */
+export type FormaDaEntrega = { tipo: "codigo" | "rico" | "texto"; linguagem: string | null };
 
 /** `revisar`: a IA deu nota e o professor ainda não conferiu. `sem_nota`: há resposta mas a IA não deu nota. */
 export type EstadoDaEntrega = "revisar" | "sem_nota" | "sem_entrega" | "corrigida";
