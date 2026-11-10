@@ -29,7 +29,38 @@ export type FaixaDoRisco = "alto" | "atencao" | "normal";
 export function faixaDoRisco(valor: string | null | undefined): FaixaDoRisco | null {
   return valor === "alto" || valor === "atencao" || valor === "normal" ? valor : null;
 }
-export type Fator = { criterio: Criterio; motivo: string; comparacao: string | null };
+/**
+ * O que pesou na faixa do modelo de evasão (20261110_01): a entrada que mais subiu o risco, em
+ * rótulo. Nunca o score (#195). null = a faixa não veio do modelo, ou nenhuma entrada se destacou.
+ */
+export type MotivoDoModelo = "entregas_perdidas" | "uso_caiu" | "entrega_atrasada" | "sem_nota" | "nota_baixa";
+const MOTIVOS_DO_MODELO: readonly MotivoDoModelo[] = ["entregas_perdidas", "uso_caiu", "entrega_atrasada", "sem_nota", "nota_baixa"];
+
+export function motivoDoModelo(valor: string | null | undefined): MotivoDoModelo | null {
+  return MOTIVOS_DO_MODELO.includes(valor as MotivoDoModelo) ? (valor as MotivoDoModelo) : null;
+}
+
+/** Como o professor lê cada motivo, depois de "pesou: ". */
+export const TEXTO_DO_MOTIVO: Record<MotivoDoModelo, string> = {
+  entregas_perdidas: "atividades vencidas sem entrega",
+  uso_caiu: "uso do app caiu nesta semana",
+  entrega_atrasada: "entregas feitas com atraso",
+  sem_nota: "ainda sem nota",
+  nota_baixa: "nota baixa",
+};
+
+/**
+ * Um sinal do aluno. `dias`, `topico` e `motivoDoModelo` são o fato por trás do texto, para a
+ * sugestão do que fazer citar o mesmo fato (sugestaoDoRisco.ts).
+ */
+export type Fator = {
+  criterio: Criterio;
+  motivo: string;
+  comparacao: string | null;
+  dias?: number;
+  topico?: string | null;
+  motivoDoModelo?: MotivoDoModelo | null;
+};
 export type Risco = { nivel: NivelDeRisco; fatores: Fator[] };
 
 /** O que o banco diz do aluno na turma (datas ISO); null = a view não trouxe linha. */
@@ -47,6 +78,8 @@ export type SinaisDoBanco = {
    * de inatividade (semana sem evento; 30 dias = alto, 7 = atenção). null = sem dado.
    */
   riscoOrigem: "modelo" | "inatividade" | null;
+  /** O que pesou na faixa do modelo (20261110_01); null = sem rótulo ou banco sem a migration. */
+  riscoMotivo?: MotivoDoModelo | null;
 };
 
 const DIA_MS = 86_400_000;
@@ -68,31 +101,40 @@ export function avaliarRisco(e: EntradaDeRisco, turma: ReferenciaDaTurma, hoje: 
         turma.taxaAbandonoPct === null || turma.taxaAbandonoPct === undefined
           ? null
           : `turma: ${Math.round(turma.taxaAbandonoPct * 10) / 10}% em risco alto`;
+      const pesou = s.riscoMotivo ? `pesou: ${TEXTO_DO_MOTIVO[s.riscoMotivo]}` : null;
       fatores.push({
         criterio: "abandono",
         motivo: s.riscoFaixa === "alto" ? "Risco alto de abandono" : "Risco de abandono em atenção",
-        comparacao: turmaTxt,
+        comparacao: [pesou, turmaTxt].filter(Boolean).join(" · ") || null,
+        motivoDoModelo: s.riscoMotivo ?? undefined,
       });
     }
     if (s.evadidoDesde) {
+      const dias = diasDesde(s.evadidoDesde, hoje);
       fatores.push({
         criterio: "evasao",
-        motivo: `Sem estudar há ${diasDesde(s.evadidoDesde, hoje)} dias`,
+        motivo: `Sem estudar há ${dias} dias`,
         comparacao: `última atividade em ${dataCurta(s.evadidoDesde)}`,
+        dias,
       });
     } else if (s.inativoDesde) {
+      const dias = diasDesde(s.inativoDesde, hoje);
       fatores.push({
         criterio: "inatividade",
-        motivo: `${diasDesde(s.inativoDesde, hoje)} dias sem estudar`,
+        motivo: `${dias} dias sem estudar`,
         comparacao: `última atividade em ${dataCurta(s.inativoDesde)}`,
+        dias,
       });
     }
     if (s.estagnadoDesde) {
       const onde = s.estagnadoTopico ? `em ${s.estagnadoTopico}` : "num tópico";
+      const dias = diasDesde(s.estagnadoDesde, hoje);
       fatores.push({
         criterio: "estagnacao",
-        motivo: `Parado ${onde} há ${diasDesde(s.estagnadoDesde, hoje)} dias`,
+        motivo: `Parado ${onde} há ${dias} dias`,
         comparacao: "abaixo da mediana da turma nesse tópico",
+        dias,
+        topico: s.estagnadoTopico,
       });
     }
   }

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { montarSerieEvolucao } from "./calculos";
+import { primeiroNome } from "../sugestaoDoRisco";
 import SinalDeAtencao from "./SinalDeAtencao";
 import type { AlunoAnalisado, EvolucaoAluno } from "./tipos";
 
@@ -82,7 +83,13 @@ export default function AbaVisaoGeral({
           )}
         </div>
         {aluno.risco && (
-          <SinalDeAtencao risco={aluno.risco} primeiroNome={aluno.nome.split(" ")[0]} onVerTrilha={onVerTrilha} />
+          <SinalDeAtencao
+            risco={aluno.risco}
+            alunoId={aluno.id}
+            classeId={aluno.classe_id}
+            primeiroNome={primeiroNome(aluno.nome)}
+            onVerTrilha={onVerTrilha}
+          />
         )}
       </div>
     </div>
