@@ -1,3 +1,4 @@
+import type { ConfigResposta } from '@/utils/textoRico/configResposta';
 import type { FormatoTexto } from '@/utils/textoRico/formatoTexto';
 
 export class Questao {
@@ -9,6 +10,8 @@ export class Questao {
   public mostrar_gabarito_ao_errar: boolean;
   /** `'rico'`: enunciado, alternativas e explicação em markdown com fórmula e código (spec A). */
   public formato_texto: FormatoTexto = 'texto';
+  /** `questoes.config_resposta` (spec B): linguagem, variáveis ou dimensão. Lido por `configsDaResposta`. */
+  public config_resposta: ConfigResposta | null = null;
 
   // Campos opcionais para renderizacao de midia vinculada
   public metadata: Record<string, unknown> | null;

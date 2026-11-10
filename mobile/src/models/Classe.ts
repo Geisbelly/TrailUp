@@ -4,6 +4,7 @@ import { buildClasseAcademicMetrics } from '@/utils/classeMetrics'
 import { mapClasseResumoRow } from '@/utils/classeResumo'
 import { carregarDetalhesDasTurmas } from '@/utils/detalheDasTurmas'
 import { idsComTextoRico } from '@/utils/textoRico/formatoTexto'
+import { configsDaResposta } from '@/utils/textoRico/configResposta'
 import { Atividade } from './Atividade'
 import { ClasseResumo } from './ClasseResumo'
 import { Conteudo } from './Conteudo'
@@ -564,9 +565,11 @@ export class Classe {
     if (atividadeMap.size > 0 || questaoList.length > 0) {
       // O tipo gerado do cliente é fundo demais para o TS casar com o mínimo que a função usa.
       const cliente = supabase as unknown as Parameters<typeof idsComTextoRico>[0]
-      const [atividadesRicas, questoesRicas] = await Promise.all([
+      // `config_resposta` (spec B, `20261110_02`) segue a mesma regra: consulta só dela.
+      const [atividadesRicas, questoesRicas, configs] = await Promise.all([
         idsComTextoRico(cliente, 'atividades', Array.from(atividadeMap.keys())),
         idsComTextoRico(cliente, 'questoes', questaoList.map((q) => q.id)),
+        configsDaResposta(cliente, questaoList.map((q) => q.id)),
       ])
       atividadesRicas.forEach((id) => {
         const atividade = atividadeMap.get(id)
@@ -574,6 +577,7 @@ export class Classe {
       })
       questaoList.forEach((q) => {
         if (questoesRicas.has(q.id)) q.formato_texto = 'rico'
+        q.config_resposta = configs.get(q.id) ?? null
       })
     }
 
