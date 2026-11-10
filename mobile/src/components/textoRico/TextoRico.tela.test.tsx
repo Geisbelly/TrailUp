@@ -84,7 +84,7 @@ test("cerca com linguagem vira código numerado e com a indentação de antes", 
       <>{ultimasRegras.fence({ key: "c", content: "def f(x):\n\treturn x\n", sourceInfo: "python" })}</>,
     ),
   );
-  assert.match(html, /data-rotulo="Código em python: def f\(x\):\n\treturn x\n"/);
+  assert.match(html, /data-rotulo="Código em Python: def f\(x\):\n\treturn x\n"/);
   assert.ok(html.includes("    "), "tabulação vira quatro espaços");
   assert.ok(html.includes(">def<"));
   assert.ok(html.includes(">return<"));

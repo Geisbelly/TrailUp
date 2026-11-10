@@ -11,7 +11,7 @@ import { ScrollView, Text, View } from "react-native";
 
 import type { ProfileShellPalette } from "@/utils/profileShellPalette";
 import { coresDoCodigo } from "@/utils/textoRico/coresDoCodigo";
-import { linguagemDoCodigo, tokensDoCodigo } from "@/utils/textoRico/tokensDoCodigo";
+import { nomeDaLinguagem, tokensDoCodigo } from "@/utils/textoRico/tokensDoCodigo";
 
 import { MONO } from "./Formula";
 
@@ -30,7 +30,8 @@ export function BlocoDeCodigo({ codigo, linguagem, paleta, tamanhoDaFonte = 14 }
   const cores = useMemo(() => coresDoCodigo(paleta), [paleta]);
   const alturaDaLinha = Math.round(tamanhoDaFonte * 1.5);
   const larguraDoNumero = String(linhas.length).length;
-  const rotulo = linguagemDoCodigo(linguagem) ? `Código em ${linguagem}` : "Código";
+  const nome = nomeDaLinguagem(linguagem);
+  const rotulo = nome ? `Código em ${nome}` : "Código";
 
   return (
     <View

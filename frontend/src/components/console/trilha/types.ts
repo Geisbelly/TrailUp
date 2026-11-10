@@ -1,3 +1,5 @@
+import type { FormatoTexto } from "@/lib/textoRico/formatoTexto";
+
 export interface Topico {
   id: number;
   classe_id: number;
@@ -85,6 +87,11 @@ export interface Atividade {
   data_entrega: string | null;
   /** Tentativas por aluno (#136). Nunca é `null` depois da `20261102_08`; antes, vale o padrão. */
   tentativas_max?: number | null;
+  /**
+   * `'rico'`: markdown com fórmula e código (spec A, `20261108_03`). Um formato por registro: o da
+   * questão vale para enunciado, alternativas e gabarito. Ausente é `'texto'`.
+   */
+  formato_texto?: FormatoTexto;
 }
 
 export interface Questao {
@@ -98,6 +105,11 @@ export interface Questao {
   midia_url?: string | null;
   /** `facil | media | dificil`, ou `null` para "não marcada" — ver dificuldadeDaQuestao.ts. */
   dificuldade?: string | null;
+  /**
+   * `'rico'`: markdown com fórmula e código (spec A, `20261108_03`). Um formato por registro: o da
+   * questão vale para enunciado, alternativas e gabarito. Ausente é `'texto'`.
+   */
+  formato_texto?: FormatoTexto;
 }
 
 export interface CardItem {
@@ -107,6 +119,11 @@ export interface CardItem {
   titulo: string | null;
   descricao: string | null;
   imagem_url: string | null;
+  /**
+   * `'rico'`: markdown com fórmula e código (spec A, `20261108_03`). Um formato por registro: o da
+   * questão vale para enunciado, alternativas e gabarito. Ausente é `'texto'`.
+   */
+  formato_texto?: FormatoTexto;
 }
 
 export interface AtividadeConteudo {

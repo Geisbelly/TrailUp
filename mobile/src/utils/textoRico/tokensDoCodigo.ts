@@ -3,7 +3,8 @@
  * `BlocoDeCodigo` colorir sem WebView (spec A, 08/11).
  *
  * Prism, só com as linguagens da spec B: Python, JavaScript, TypeScript, Java, C, C++, C#, SQL,
- * HTML e CSS. Linguagem fora da lista, ou bloco sem linguagem, vem sem cor: é texto monoespaçado,
+ * HTML e CSS. SQL em cinco sabores (genérico, MySQL, SQL Server, PostgreSQL e Oracle), pelo rótulo do
+ * bloco: ver `dialetosSql.ts`. Linguagem fora da lista, ou bloco sem linguagem, vem sem cor: é texto monoespaçado,
  * nunca um erro. O papel é reduzido a poucos nomes (`PapelDoTrecho`), porque o tema do app colore
  * por papel, não pelos ~40 tipos de token do Prism.
  *
@@ -13,6 +14,8 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 import type { Grammar, TokenStream } from "prismjs";
+
+import { registrarDialetosSql, type PrismComDialetos } from "./dialetosSql";
 
 export type PapelDoTrecho =
   | "comentario"
@@ -49,7 +52,24 @@ const APELIDOS: Record<string, string> = {
   cs: "csharp",
   csharp: "csharp",
   "c#": "csharp",
-  sql: "sql",
+  sql: "sql-generico",
+  sqlite: "sql-generico",
+  mysql: "sql-mysql",
+  mariadb: "sql-mysql",
+  tsql: "sql-tsql",
+  "t-sql": "sql-tsql",
+  "transact-sql": "sql-tsql",
+  mssql: "sql-tsql",
+  sqlserver: "sql-tsql",
+  "sql-server": "sql-tsql",
+  postgres: "sql-postgres",
+  postgresql: "sql-postgres",
+  psql: "sql-postgres",
+  pgsql: "sql-postgres",
+  plpgsql: "sql-postgres",
+  plsql: "plsql",
+  "pl/sql": "plsql",
+  oracle: "plsql",
   html: "markup",
   xml: "markup",
   markup: "markup",
@@ -59,7 +79,30 @@ const APELIDOS: Record<string, string> = {
 /** Nome da gramática do Prism para o rótulo do bloco cercado, ou `null` se não for suportada. */
 export function linguagemDoCodigo(rotulo: string | null | undefined): string | null {
   if (!rotulo) return null;
-  return APELIDOS[rotulo.trim().toLowerCase()] ?? null;
+  return APELIDOS[rotulo.trim().toLowerCase().replace(/[\s_]+/g, "")] ?? null;
+}
+
+const NOMES: Record<string, string> = {
+  python: "Python",
+  javascript: "JavaScript",
+  typescript: "TypeScript",
+  java: "Java",
+  c: "C",
+  cpp: "C++",
+  csharp: "C#",
+  "sql-generico": "SQL",
+  "sql-mysql": "MySQL",
+  "sql-tsql": "SQL Server",
+  "sql-postgres": "PostgreSQL",
+  plsql: "Oracle",
+  markup: "HTML",
+  css: "CSS",
+};
+
+/** Nome para gente ler (leitor de tela, seletor do console): `sqlserver` vira "SQL Server". */
+export function nomeDaLinguagem(rotulo: string | null | undefined): string | null {
+  const linguagem = linguagemDoCodigo(rotulo);
+  return linguagem ? NOMES[linguagem] ?? null : null;
 }
 
 type Prism = { languages: Record<string, Grammar>; tokenize: (codigo: string, gramatica: Grammar) => TokenStream };
@@ -82,6 +125,8 @@ function carregarPrism(): Prism {
   require("prismjs/components/prism-cpp");
   require("prismjs/components/prism-csharp");
   require("prismjs/components/prism-sql");
+  require("prismjs/components/prism-plsql");
+  registrarDialetosSql(nucleo as unknown as PrismComDialetos);
   return nucleo;
 }
 
@@ -116,6 +161,7 @@ const PAPEIS: Record<string, PapelDoTrecho> = {
   property: "atributo",
   decorator: "atributo",
   annotation: "atributo",
+  variable: "atributo",
 };
 
 function papelDe(tipo: string | undefined, alias: string | string[] | undefined): PapelDoTrecho | undefined {
