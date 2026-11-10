@@ -253,6 +253,46 @@ export async function deleteActivity(id: number) {
   if (error) throw error;
 }
 
+/**
+ * Spec B: grava a esperada e os critérios de código, numérica e expressão em `questao_gabarito`, a
+ * única casa deles. O espelho do banco pula esses tipos, então esta é a única função que escreve
+ * ali, e sempre depois de `saveQuestion` (que grava `resposta_correta: null`). Erro sobe: questão
+ * salva sem gabarito ficaria sem correção, e o aluno só descobriria ao responder.
+ */
+export async function saveGabaritoDoServidor(
+  questaoId: number,
+  gabarito: { respostaCorreta: string; criterios: unknown },
+): Promise<void> {
+  const { error } = await supabase
+    .from("questao_gabarito")
+    .upsert(
+      { questao_id: questaoId, resposta_correta: gabarito.respostaCorreta, criterios: gabarito.criterios ?? null } as never,
+      { onConflict: "questao_id" },
+    );
+  if (error) throw error;
+}
+
+/** O gabarito de uma questão de tipo novo, para abrir no editor. Erro sobe. */
+export async function fetchGabaritoDoServidor(
+  questaoId: number,
+): Promise<{ resposta_correta: string | null; criterios: unknown; config_resposta: unknown }> {
+  const gabarito = await supabase
+    .from("questao_gabarito")
+    .select("resposta_correta, criterios")
+    .eq("questao_id", questaoId)
+    .maybeSingle();
+  if (gabarito.error) throw gabarito.error;
+  const questao = await supabase.from("questoes").select("config_resposta").eq("id", questaoId).maybeSingle();
+  if (questao.error) throw questao.error;
+  const g = (gabarito.data ?? {}) as { resposta_correta?: string | null; criterios?: unknown };
+  const q = (questao.data ?? {}) as { config_resposta?: unknown };
+  return {
+    resposta_correta: g.resposta_correta ?? null,
+    criterios: g.criterios ?? null,
+    config_resposta: q.config_resposta ?? null,
+  };
+}
+
 export async function saveQuestion(params: {
   id?: number;
   atividade_id: number;
@@ -265,8 +305,13 @@ export async function saveQuestion(params: {
   dificuldade?: string | null;
   /** Spec A. Vale para enunciado, alternativas e gabarito; `undefined` não mexe na coluna. */
   formato_texto?: FormatoTexto;
+  /** Spec B: linguagem, variáveis ou dimensão (público). `undefined` não mexe na coluna. */
+  config_resposta?: Record<string, unknown> | null;
 }) {
-  const formato = colunaDoFormato(params.formato_texto);
+  const formato = {
+    ...colunaDoFormato(params.formato_texto),
+    ...(params.config_resposta !== undefined ? { config_resposta: params.config_resposta } : {}),
+  };
   if (params.id) {
     const { error } = await supabase
       .from("questoes")

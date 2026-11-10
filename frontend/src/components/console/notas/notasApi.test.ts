@@ -82,3 +82,30 @@ describe("traduzirErroDeNota", () => {
     expect(traduzirErroDeNota(null)).toBeTruthy();
   });
 });
+
+describe("formaPorAtividade (spec B)", () => {
+  it("código com a linguagem; dissertativa rica; o resto texto; código vence na mesma atividade", async () => {
+    const { formaPorAtividade } = await import("./notasApi");
+    const formas = formaPorAtividade([
+      { atividade_id: 1, tipo: "codigo", config_resposta: { linguagem: "python" } },
+      { atividade_id: 2, tipo: "dissertativa", formato_texto: "rico" },
+      { atividade_id: 3, tipo: "dissertativa", formato_texto: "texto" },
+      { atividade_id: "4", tipo: "dissertativa", formato_texto: "rico" },
+      { atividade_id: 4, tipo: "codigo", config_resposta: null },
+      { atividade_id: "x", tipo: "codigo" },
+    ]);
+    expect(Object.fromEntries(formas)).toEqual({
+      1: { tipo: "codigo", linguagem: "python" },
+      2: { tipo: "rico", linguagem: null },
+      3: { tipo: "texto", linguagem: null },
+      4: { tipo: "codigo", linguagem: null },
+    });
+  });
+
+  it("sem como ler a questão, a fila sai igual, em texto simples", async () => {
+    sb.rpc.mockResolvedValueOnce({ data: [doBanco()], error: null });
+    const [linha] = await listarFila(3);
+    expect(linha.forma).toBeNull();
+    expect(linha.resposta).toBe("texto");
+  });
+});

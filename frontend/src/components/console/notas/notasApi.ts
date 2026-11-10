@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { LinhaDaFila } from "./fila";
+import type { FormaDaEntrega, LinhaDaFila } from "./fila";
 
 // notas_fila() e avaliar_entrega() (migrations 20261016_04/05) ainda não estão nos tipos
 // gerados do Supabase, por isso a chamada passa por `as never`.
@@ -42,10 +42,50 @@ export function mapearLinha(l: LinhaDoBanco): LinhaDaFila {
   };
 }
 
+type QuestaoDaAtividade = { atividade_id: unknown; tipo: unknown; formato_texto?: unknown; config_resposta?: unknown };
+
+/** A forma da entrega de cada atividade, pela questão dela. Código vence texto rico. */
+export function formaPorAtividade(questoes: QuestaoDaAtividade[]): Map<number, FormaDaEntrega> {
+  const formas = new Map<number, FormaDaEntrega>();
+  for (const q of questoes) {
+    const id = Number(q.atividade_id);
+    if (!Number.isSafeInteger(id)) continue;
+    const config = q.config_resposta && typeof q.config_resposta === "object" ? (q.config_resposta as Record<string, unknown>) : {};
+    const linguagem = typeof config.linguagem === "string" && config.linguagem.trim() ? config.linguagem.trim() : null;
+    const forma: FormaDaEntrega =
+      q.tipo === "codigo"
+        ? { tipo: "codigo", linguagem }
+        : { tipo: q.formato_texto === "rico" ? "rico" : "texto", linguagem: null };
+    if (formas.get(id)?.tipo !== "codigo") formas.set(id, forma);
+  }
+  return formas;
+}
+
+/**
+ * `notas_fila` não diz o tipo da questão. Uma consulta à parte, que pode falhar sem levar a fila:
+ * num banco sem `config_resposta`/`formato_texto`, tudo sai como texto simples, como antes.
+ */
+async function lerFormas(atividadeIds: number[]): Promise<Map<number, FormaDaEntrega>> {
+  const ids = Array.from(new Set(atividadeIds.filter((id) => Number.isSafeInteger(id) && id > 0)));
+  if (ids.length === 0) return new Map();
+  try {
+    const { data, error } = await supabase
+      .from("questoes")
+      .select("atividade_id, tipo, formato_texto, config_resposta")
+      .in("atividade_id", ids);
+    if (error) return new Map();
+    return formaPorAtividade((data ?? []) as unknown as QuestaoDaAtividade[]);
+  } catch {
+    return new Map();
+  }
+}
+
 export async function listarFila(classeId: number): Promise<LinhaDaFila[]> {
   const { data, error } = await supabase.rpc("notas_fila" as never, { p_classe_id: classeId } as never);
   if (error) throw error;
-  return ((data ?? []) as unknown as LinhaDoBanco[]).map(mapearLinha);
+  const linhas = ((data ?? []) as unknown as LinhaDoBanco[]).map(mapearLinha);
+  const formas = await lerFormas(linhas.map((l) => l.atividadeId));
+  return linhas.map((l) => ({ ...l, forma: formas.get(l.atividadeId) ?? null }));
 }
 
 export async function avaliarEntrega(atividadeId: number, alunoId: string, nota: number, feedback: string): Promise<number> {

@@ -4,10 +4,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { estadoDaEntrega, type LinhaDaFila } from "./fila";
+import { BlocoDeCodigo } from "@/components/textoRico/BlocoDeCodigo";
+import { TextoRico } from "@/components/textoRico/TextoRico";
+import { estadoDaEntrega, type FormaDaEntrega, type LinhaDaFila } from "./fila";
 import { formatar, iniciais, mensagemDeImpacto, validarNota } from "./nota";
 
 const rotulo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
+
+/** Resposta e referência: código em bloco, dissertativa rica com fórmula, o resto como sempre. */
+export function TextoDaEntrega({ texto, forma, className }: { texto: string; forma?: FormaDaEntrega | null; className: string }) {
+  if (forma?.tipo === "codigo") {
+    return (
+      <div className="mt-2">
+        <BlocoDeCodigo codigo={texto} linguagem={forma.linguagem} />
+      </div>
+    );
+  }
+  if (forma?.tipo === "rico") {
+    return (
+      <div className={className}>
+        <TextoRico texto={texto} formato="rico" />
+      </div>
+    );
+  }
+  return <p className={className}>{texto}</p>;
+}
 
 /**
  * Painel de correção (protótipo V9): enunciado, resposta completa, gabarito de referência,
@@ -58,7 +79,7 @@ export function PainelDeCorrecao({
         <span aria-hidden="true" className="ml-2 flex h-9 w-9 items-center justify-center rounded-full bg-background text-xs font-extrabold">{iniciais(linha.alunoNome)}</span>
         <div className="min-w-0">
           <p className="truncate font-bold">{linha.alunoNome}</p>
-          <p className="truncate text-xs text-muted-foreground">{linha.titulo} · Dissertativa</p>
+          <p className="truncate text-xs text-muted-foreground">{linha.titulo} · {linha.forma?.tipo === "codigo" ? "Código" : "Dissertativa"}</p>
         </div>
         <p className="ml-auto text-xs text-muted-foreground">
           Pontuação máxima <strong className="text-foreground">{linha.pontuacaoMaxima !== null ? `${formatar(linha.pontuacaoMaxima)} pts` : "—"}</strong>
@@ -78,14 +99,14 @@ export function PainelDeCorrecao({
               O prazo venceu e o aluno não enviou resposta. Ainda é preciso decidir uma nota para esta entrega.
             </p>
           ) : (
-            <p className="mt-2 whitespace-pre-wrap rounded-[14px] bg-muted p-4 text-sm leading-relaxed">{linha.resposta}</p>
+            <TextoDaEntrega texto={linha.resposta ?? ""} forma={linha.forma} className="mt-2 whitespace-pre-wrap rounded-[14px] bg-muted p-4 text-sm leading-relaxed" />
           )}
         </div>
 
         {linha.gabarito && (
           <div>
             <h3 className={rotulo}>Gabarito de referência</h3>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{linha.gabarito}</p>
+            <TextoDaEntrega texto={linha.gabarito} forma={linha.forma} className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground" />
             <p className="mt-1 text-[11.5px] text-muted-foreground">Referência para orientar a correção — questão dissertativa não tem resposta certa/errada binária.</p>
           </div>
         )}
