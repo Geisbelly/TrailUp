@@ -206,3 +206,7 @@ src/utils/textoRico/formatoTexto.test.ts
 src/utils/textoRico/respostaRica.test.ts
 src/utils/memoriaDoCronometro.test.ts
 src/utils/envioDaResposta.test.ts
+src/utils/textoRico/editorDeResposta.test.ts
+src/utils/textoRico/configResposta.test.ts
+src/services/conferenciaNoServidor.core.test.ts
+src/components/resposta/editores.tela.test.tsx

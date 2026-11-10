@@ -35,6 +35,11 @@ mockModule('@/services/questaoNoBanco', {
   responderQuestao: async () => { throw new Error('fora do teste'); },
   revelarGabarito: async () => { throw new Error('fora do teste'); },
 });
+// Os editores do spec B têm o teste deles; aqui só importa qual abre e com que configuração.
+mockModule('@/components/resposta/EditorDeCodigo', { EditorDeCodigo: ({ linguagem, valor }: { linguagem: string | null; valor: string }) => <Host>{`editor-codigo:${linguagem}:${valor}`}</Host> });
+mockModule('@/components/resposta/EditorNumerico', { EditorNumerico: ({ dimensao }: { dimensao: string | null }) => <Host>{`editor-numerico:${dimensao}`}</Host> });
+mockModule('@/components/resposta/EditorDeExpressao', { EditorDeExpressao: ({ variaveis }: { variaveis: string[] }) => <Host>{`editor-expressao:${variaveis.join(',')}`}</Host> });
+mockModule('@/components/textoRico/BlocoDeCodigo', { BlocoDeCodigo: ({ codigo }: { codigo: string }) => <Host>{`bloco:${codigo}`}</Host> });
 const { default: QuestionActivity } = require('./QuestionActivity');
 const question = { id: 2, enunciado: 'Qual alternativa?', alternativas: ['Alpha', 'Beta'], resposta_correta: 'Beta' };
 
@@ -73,4 +78,43 @@ test('nova tentativa reabre só a questão errada, sem a resposta antiga nem tra
   // A questão certa não reabre.
   const certa = renderToString(<QuestionActivity initialQuestionIndex={0} questoesARefazer={[2]} atividade={atividade} />);
   assert.match(certa, /Ver respostas anteriores/);
+});
+
+test('tipo que o app não conhece continua caindo na múltipla escolha', () => {
+  // Trava o comportamento de antes do spec B: quem não é dos tipos conhecidos vira alternativas.
+  const html = renderToString(<QuestionActivity atividade={{ id: 5, questoes: [{ ...question, tipo: 'tipo_do_futuro' }] }} />);
+  assert.match(html, /Alpha/);
+  assert.match(html, /Beta/);
+  assert.doesNotMatch(html, /editor-/);
+});
+test('código, numérica e expressão abrem o editor deles, com a configuração e sem alternativas', () => {
+  const casos: [string, unknown, RegExp][] = [
+    ['codigo', { linguagem: 'python' }, /editor-codigo:python:/],
+    ['numerica', { dimensao: 'velocidade' }, /editor-numerico:velocidade/],
+    ['expressao', { variaveis: ['x', 'y'] }, /editor-expressao:x,y/],
+  ];
+  for (const [tipo, config_resposta, editor] of casos) {
+    const html = renderToString(<QuestionActivity atividade={{ id: 5, questoes: [{ ...question, tipo, config_resposta }] }} />);
+    assert.match(html, editor);
+    assert.doesNotMatch(html, /Alpha|Beta/);
+  }
+  // O tipo da atividade também vale, em inglês, quando a questão não diz.
+  const html = renderToString(<QuestionActivity atividade={{ id: 5, tipo: 'numeric', questoes: [{ ...question, tipo: null }] }} />);
+  assert.match(html, /editor-numerico:null/);
+});
+test('código respondido aparece em bloco de código na revisão, sem gabarito', () => {
+  const html = renderToString(
+    <QuestionActivity
+      reviewMode
+      atividade={{ id: 5, status: 'concluido', questoes: [{ ...question, id: -9, isPersonalizedLocal: true, tipo: 'codigo', resposta_aluno: 'print(1)', resposta_correta: 'print(2)' }] }}
+    />,
+  );
+  assert.match(html, /bloco:print\(1\)/);
+  assert.doesNotMatch(html, /Gabarito:/);
+});
+test('expressão respondida e o gabarito saem como fórmula', () => {
+  const local = { ...question, id: -8, isPersonalizedLocal: true, tipo: 'expressao', resposta_aluno: 'x^{2}', resposta_correta: 'x^2' };
+  const html = renderToString(<QuestionActivity reviewMode atividade={{ id: 5, status: 'concluido', questoes: [local] }} />);
+  assert.match(html, /Sua ultima resposta: \$x\^\{2\}\$/);
+  assert.match(html, /Gabarito: \$x\^2\$/);
 });
