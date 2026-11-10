@@ -1,0 +1,2 @@
+[functions.questao-conferir-resposta]
+verify_jwt = true
