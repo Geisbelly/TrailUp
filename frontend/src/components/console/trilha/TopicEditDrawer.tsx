@@ -30,6 +30,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CampoTextoRico } from "@/components/textoRico/CampoTextoRico";
+import { formatoDoTexto, type FormatoTexto } from "@/lib/textoRico/formatoTexto";
+import { matematicaLegivel } from "@/lib/textoRico/matematicaLegivel";
+import { letraDaAlternativa } from "@/lib/textoRico/respostaRica";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -115,8 +119,8 @@ type TopicEditDrawerProps = {
   
   // Atividades
   activities: Atividade[];
-  activityForm: { id: number; titulo: string; descricao: string; tipo: string; data_entrega: string; tentativas_max: string };
-  setActivityForm: Dispatch<SetStateAction<{ id: number; titulo: string; descricao: string; tipo: string; data_entrega: string; tentativas_max: string }>>;
+  activityForm: { id: number; titulo: string; descricao: string; tipo: string; data_entrega: string; tentativas_max: string; formato_texto?: FormatoTexto };
+  setActivityForm: Dispatch<SetStateAction<{ id: number; titulo: string; descricao: string; tipo: string; data_entrega: string; tentativas_max: string; formato_texto?: FormatoTexto }>>;
   handleSaveActivity: () => Promise<void>;
   selectedActivityId: string;
   setSelectedActivityId: Dispatch<SetStateAction<string>>;
@@ -131,8 +135,8 @@ type TopicEditDrawerProps = {
   
   // Questões
   questions: Questao[];
-  questionForm: { id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string; dificuldade: string };
-  setQuestionForm: Dispatch<SetStateAction<{ id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string; dificuldade: string }>>;
+  questionForm: { id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string; dificuldade: string; formato_texto?: FormatoTexto };
+  setQuestionForm: Dispatch<SetStateAction<{ id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string; dificuldade: string; formato_texto?: FormatoTexto }>>;
   questionOptions: string[];
   setQuestionOptions: Dispatch<SetStateAction<string[]>>;
   addNewActivityOption: () => void;
@@ -147,8 +151,8 @@ type TopicEditDrawerProps = {
   
   // Cards
   cards: CardItem[];
-  cardForm: { id: number; conteudo_id: string; conteudo_origem_id: string; titulo: string; descricao: string; imagem_url: string };
-  setCardForm: Dispatch<SetStateAction<{ id: number; conteudo_id: string; conteudo_origem_id: string; titulo: string; descricao: string; imagem_url: string }>>;
+  cardForm: { id: number; conteudo_id: string; conteudo_origem_id: string; titulo: string; descricao: string; imagem_url: string; formato_texto?: FormatoTexto };
+  setCardForm: Dispatch<SetStateAction<{ id: number; conteudo_id: string; conteudo_origem_id: string; titulo: string; descricao: string; imagem_url: string; formato_texto?: FormatoTexto }>>;
   handleSaveCard: () => void;
   handleDeleteCard: (id: number) => Promise<boolean>;
 };
@@ -649,6 +653,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           nota_estabelecida: scoreToInputString(q.nota_estabelecida),
           dificuldade: nivelParaOFormulario(q.dificuldade),
           midia_url: q.midia_url || "",
+          formato_texto: formatoDoTexto(q.formato_texto),
         });
         
         let opts = [""];
@@ -672,6 +677,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           nota_estabelecida: "",
           dificuldade: SEM_NIVEL,
           midia_url: "",
+          formato_texto: "texto",
         });
         
         if (defaultType === 'true_false') setQuestionOptions(["Verdadeiro", "Falso"]);
@@ -720,6 +726,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       titulo: "",
       descricao: "",
       imagem_url: "",
+      formato_texto: "texto",
     });
   };
 
@@ -731,6 +738,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       titulo: card.titulo || "",
       descricao: card.descricao || "",
       imagem_url: card.imagem_url || "",
+      formato_texto: formatoDoTexto(card.formato_texto),
     });
   };
 
@@ -1274,7 +1282,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                               </div>
                               <div className="col-span-2 space-y-1">
                                 <Label className={darkLabelClass}>Instruções / Descrição</Label>
-                                <Textarea value={activityForm.descricao || ""} onChange={e => setActivityForm({...activityForm, descricao: e.target.value})} className={`${darkInputClass} col-span-2`} placeholder="Descrição" rows={2}/>
+                                <CampoTextoRico valor={activityForm.descricao || ""} onChange={(v) => setActivityForm({ ...activityForm, descricao: v })} formato={formatoDoTexto(activityForm.formato_texto)} onFormatoChange={(f) => setActivityForm({ ...activityForm, formato_texto: f })} classeDoCampo={darkInputClass} placeholder="Descrição" rows={2} aria-label="Instruções / Descrição" />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className={darkLabelClass}>Prazo de entrega (opcional)</Label>
@@ -1320,7 +1328,11 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                     <Label className={darkLabelClass}>
                                         {activityForm.tipo === 'fill_blank' ? "Frase com Lacuna (Use _ para a lacuna)" : "Enunciado / Pergunta"}
                                     </Label>
-                                    <Textarea value={questionForm.enunciado || ""} onChange={e => setQuestionForm({...questionForm, enunciado: e.target.value})} className={`${darkInputClass} text-sm min-h-[60px]`} placeholder="Digite a pergunta..."/>
+                                    {activityForm.tipo === 'fill_blank' ? (
+                                      <Textarea value={questionForm.enunciado || ""} onChange={e => setQuestionForm({...questionForm, enunciado: e.target.value})} className={`${darkInputClass} text-sm min-h-[60px]`} placeholder="Digite a pergunta..."/>
+                                    ) : (
+                                      <CampoTextoRico valor={questionForm.enunciado || ""} onChange={(v) => setQuestionForm({ ...questionForm, enunciado: v })} formato={formatoDoTexto(questionForm.formato_texto)} onFormatoChange={(f) => setQuestionForm({ ...questionForm, formato_texto: f })} classeDoCampo={`${darkInputClass} text-sm min-h-[60px]`} placeholder="Digite a pergunta..." rows={3} aria-label="Enunciado" />
+                                    )}
                                 </div>
                                 
                                 {/* 1. QUIZ (Multipla Escolha) */}
@@ -1329,7 +1341,11 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                         <Label className={darkLabelClass}>Alternativas</Label>
                                         {questionOptions.map((opt, i) => (
                                         <div key={i} className="flex gap-2 items-center">
-                                            <Input value={opt || ""} onChange={e => props.updateQuestionOption(i, e.target.value)} className={`${darkInputClass} h-8 text-xs`} placeholder={`Opção ${i+1}`}/>
+                                            {formatoDoTexto(questionForm.formato_texto) === "rico" ? (
+                                              <CampoTextoRico compacto className="flex-1" valor={opt || ""} onChange={(v) => { if (questionForm.resposta_correta === opt && opt !== "") setQuestionForm({ ...questionForm, resposta_correta: v }); props.updateQuestionOption(i, v); }} formato="rico" onFormatoChange={(f) => setQuestionForm({ ...questionForm, formato_texto: f })} classeDoCampo={`${darkInputClass} text-xs`} placeholder={`Opção ${i+1}`} rows={1} aria-label={`Alternativa ${letraDaAlternativa(i)}`} />
+                                            ) : (
+                                              <Input value={opt || ""} onChange={e => props.updateQuestionOption(i, e.target.value)} className={`${darkInputClass} h-8 text-xs`} placeholder={`Opção ${i+1}`}/>
+                                            )}
                                             <button onClick={() => setQuestionForm({...questionForm, resposta_correta: opt})} className={`w-5 h-5 flex items-center justify-center rounded-full border ${questionForm.resposta_correta === opt && opt !== "" ? "bg-green-500 border-green-500 text-foreground" : "border-border text-transparent hover:border-slate-400"}`} title="Marcar Correta">
                                                 <CheckSquare size={12} fill="currentColor" />
                                             </button>
@@ -1372,11 +1388,15 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 {activityForm.tipo === 'essay' && (
                                     <div className="p-3 bg-muted/50 rounded border border-border text-xs text-muted-foreground">
                                         <p>Em atividades dissertativas, o aluno escreverá um texto livre. Você pode usar o campo abaixo para salvar um gabarito ou guia de correção (opcional, não visível ao aluno).</p>
-                                        <Textarea 
-                                            value={questionForm.resposta_correta || ""} 
-                                            onChange={e => setQuestionForm({...questionForm, resposta_correta: e.target.value})} 
-                                            className={`${darkInputClass} mt-2`} 
+                                        <CampoTextoRico
+                                            className="mt-2"
+                                            valor={questionForm.resposta_correta || ""}
+                                            onChange={(v) => setQuestionForm({ ...questionForm, resposta_correta: v })}
+                                            formato={formatoDoTexto(questionForm.formato_texto)}
+                                            onFormatoChange={(f) => setQuestionForm({ ...questionForm, formato_texto: f })}
+                                            classeDoCampo={darkInputClass}
                                             placeholder="Gabarito ou palavras-chave esperadas..."
+                                            aria-label="Gabarito"
                                         />
                                     </div>
                                 )}
@@ -1518,7 +1538,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                         <div className="min-w-0">
                                           <p className="font-semibold text-sm text-foreground truncate">{c.titulo || "(Sem título)"}</p>
                                           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                                            {c.descricao || "Sem descrição."}
+                                            {(formatoDoTexto(c.formato_texto) === "rico" ? matematicaLegivel(c.descricao || "") : c.descricao) || "Sem descrição."}
                                           </p>
                                         </div>
                                         <div className="flex gap-1 shrink-0">
@@ -1738,12 +1758,15 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                               value={cardForm.titulo || ""}
                               onChange={(e) => setCardForm({ ...cardForm, titulo: e.target.value })}
                             />
-                            <Textarea
-                              className={darkInputClass}
+                            <CampoTextoRico
+                              classeDoCampo={darkInputClass}
                               placeholder="Verso (Resposta)"
-                              value={cardForm.descricao || ""}
-                              onChange={(e) => setCardForm({ ...cardForm, descricao: e.target.value })}
+                              valor={cardForm.descricao || ""}
+                              onChange={(v) => setCardForm({ ...cardForm, descricao: v })}
+                              formato={formatoDoTexto(cardForm.formato_texto)}
+                              onFormatoChange={(f) => setCardForm({ ...cardForm, formato_texto: f })}
                               rows={4}
+                              aria-label="Verso do card"
                             />
                             <Input
                               className={darkInputClass}

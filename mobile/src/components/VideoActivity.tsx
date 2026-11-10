@@ -8,6 +8,7 @@ import VideoPlayer from "./funcionais/VideoPlayer";
 import { normalizeContentBlock } from "@/utils/contentBlocks";
 import type { ContentBlock } from "@/interfaces/componentes_simples/IContentBlock";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { TextoRico } from '@/components/textoRico/TextoRico';
 
 type Props = {
   atividade: any;
@@ -51,14 +52,13 @@ export default function VideoActivity({ atividade }: Props) {
           {atividade?.titulo}
         </Text>
         {atividade?.descricao || atividade?.conteudo ? (
-          <Text
-            style={{
-              color: palette.textMuted,
-              lineHeight: 20,
-            }}
-          >
-            {atividade.descricao ?? atividade.conteudo}
-          </Text>
+          // A marca de texto rico vale para a descrição; o `conteudo` de reserva é sempre texto.
+          <TextoRico
+            texto={atividade.descricao ?? atividade.conteudo}
+            formato={atividade.descricao ? atividade.formato_texto : 'texto'}
+            estilo={{ color: palette.textMuted, lineHeight: 20, fontSize: 14 }}
+            paleta={palette}
+          />
         ) : null}
       </View>
 

@@ -11,6 +11,10 @@ mockModule('react-native', { Platform: { OS: 'ios', select: (o: Record<string, u
   Modal: ({ visible, children }: { visible: boolean; children: React.ReactNode }) => visible ? <div>{children}</div> : null });
 mockModule('@expo/vector-icons', { Ionicons: () => null });
 mockModule('@/components/ContentRenderer', { ContentRenderer: () => null });
+// O `TextoRico` de verdade puxa o `react-native-markdown-display`, que tem JSX dentro de `.js` e o
+// tsx deste grupo não transforma. Aqui só importa o texto que chega à tela; o desenho do rico tem o
+// teste dele (`TextoRico.tela.test.tsx`).
+mockModule('@/components/textoRico/TextoRico', { TextoRico: ({ texto }: { texto?: string | null }) => <Host>{texto ?? ''}</Host> });
 mockModule('@/constants/profileImages', { getGuardianFaceImage: () => null });
 mockModule('@/context/MetricasContext', { useMetricas: () => ({ recordAppEvent: () => undefined }) });
 mockModule('@/context/TrilhaContext', { useTrilha: () => ({ registrarRespostaQuestao: async () => undefined }) });

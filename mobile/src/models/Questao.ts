@@ -1,3 +1,5 @@
+import type { FormatoTexto } from '@/utils/textoRico/formatoTexto';
+
 export class Questao {
   public resposta_aluno: string | null;
   public correta_aluno: boolean | null;
@@ -5,6 +7,8 @@ export class Questao {
   public acertos_percentual: number | null;
   public tempo_gasto_seg: number | null;
   public mostrar_gabarito_ao_errar: boolean;
+  /** `'rico'`: enunciado, alternativas e explicação em markdown com fórmula e código (spec A). */
+  public formato_texto: FormatoTexto = 'texto';
 
   // Campos opcionais para renderizacao de midia vinculada
   public metadata: Record<string, unknown> | null;

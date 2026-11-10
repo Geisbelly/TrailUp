@@ -1,0 +1,16 @@
+[
+  { "nome": "parênteses viram cifrão", "entrada": "Calcule \\(\\frac{a}{b}\\) agora", "saida": "Calcule $\\frac{a}{b}$ agora" },
+  { "nome": "colchetes viram cifrão duplo", "entrada": "Veja:\n\\[E = mc^2\\]", "saida": "Veja:\n$$E = mc^2$$" },
+  { "nome": "cifrão de fórmula fica", "entrada": "Se $x^2 = 4$, então", "saida": "Se $x^2 = 4$, então" },
+  { "nome": "variável nua", "entrada": "o valor de $x$ é", "saida": "o valor de $x$ é" },
+  { "nome": "dinheiro escapa", "entrada": "custa R$ 1.200,00 e R$ 50", "saida": "custa R\\$ 1.200,00 e R\\$ 50" },
+  { "nome": "dois preços sem R", "entrada": "de $ 10 por $ 20", "saida": "de \\$ 10 por \\$ 20" },
+  { "nome": "prosa entre cifrões escapa", "entrada": "paguei $5 e depois  mais $8", "saida": "paguei \\$5 e depois  mais \\$8" },
+  { "nome": "química", "entrada": "Balanceie \\(\\ce{H2 + O2 -> H2O}\\)", "saida": "Balanceie $\\ce{H2 + O2 -> H2O}$" },
+  { "nome": "cifrão já escapado fica", "entrada": "custa \\$ 3", "saida": "custa \\$ 3" },
+  { "nome": "código cercado intocado", "entrada": "```python\nprint('$x$', \"\\(y\\)\")\n```", "saida": "```python\nprint('$x$', \"\\(y\\)\")\n```" },
+  { "nome": "código inline intocado", "entrada": "use `$PATH` e $y$", "saida": "use `$PATH` e $y$" },
+  { "nome": "cifrão duplo de prosa escapa", "entrada": "$$ caro $$", "saida": "\\$\\$ caro \\$\\$" },
+  { "nome": "fórmula com cifrão escapado dentro", "entrada": "\\(\\text{custa } \\$5\\)", "saida": "$\\text{custa } \\$5$" },
+  { "nome": "texto sem nada", "entrada": "Só texto, com *ênfase*.", "saida": "Só texto, com *ênfase*." }
+]
