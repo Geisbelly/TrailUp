@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Layers, Palette, UserSearch, Users, FileText, Music, FileImage, NotebookPen, RefreshCw, Sparkles, AlertTriangle, Check, ScrollText } from "lucide-react";
+import { Loader2, Layers, Palette, UserSearch, Users, FileText, Music, FileImage, NotebookPen, RefreshCw, Sparkles, AlertTriangle, Check, ScrollText, ShieldCheck } from "lucide-react";
 import { COR_DO_PERFIL, NOME_DO_PERFIL } from "../dashboard/perfilCores";
 import type { BrainHexProfileKey } from "@/features/signup/brainhex";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +36,7 @@ import {
 } from "./statusBadge";
 import { SugestaoMaterialCard } from "./SugestaoMaterialCard";
 import { ArcoNarrativoCard } from "./ArcoNarrativoCard";
+import { AprovacaoPersonalizacoes } from "./AprovacaoPersonalizacoes";
 import {
   limitarPercentual,
   resolverGeracaoFormato,
@@ -197,6 +198,9 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
   const gerarTudoAtivo = Boolean(gerarTudoJob && ACTIVE_JOB_STATUSES.has(gerarTudoJob.status));
   const [gerarTudoEnfileirando, setGerarTudoEnfileirando] = useState(false);
   const [umGerarTudoPorVez] = useState(() => criarUmPedidoPorVez(setGerarTudoEnfileirando));
+  // Aba controlada: o aviso de material esperando aprovação leva direto para ela.
+  const [aba, setAba] = useState("por-perfil");
+  const [pendentesDeAprovacao, setPendentesDeAprovacao] = useState(0);
 
   // Carrega classes do professor
   useEffect(() => {
@@ -321,6 +325,11 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     setPorPerfilLoading(false);
     setPorPerfilError(null);
   }, []);
+
+  const verMaterialDoTopico = useCallback((id: number) => {
+    if (String(id) !== topicoId) handleTopicoChange(String(id));
+    setAba("por-perfil");
+  }, [topicoId, handleTopicoChange]);
 
   // Cada conteudo do topico possui sete variacoes BrainHex independentes.
   useEffect(() => {
@@ -802,8 +811,31 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="por-perfil" className="space-y-4">
+      {pendentesDeAprovacao > 0 && aba !== "aprovacao" && (
+        <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-warning/50 bg-card px-4 py-3 text-sm">
+          <span className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-warning" aria-hidden="true" />
+            {pendentesDeAprovacao === 1
+              ? "1 material personalizado espera a sua aprovação. Os alunos só o veem depois que você aprovar."
+              : `${pendentesDeAprovacao} materiais personalizados esperam a sua aprovação. Os alunos só os veem depois que você aprovar.`}
+          </span>
+          <Button size="sm" className="rounded-full font-bold" onClick={() => setAba("aprovacao")}>
+            Revisar e aprovar
+          </Button>
+        </div>
+      )}
+
+      <Tabs value={aba} onValueChange={setAba} className="space-y-4">
         <TabsList className="flex h-auto w-fit max-w-full flex-wrap justify-start gap-1 rounded-full border bg-card p-1.5">
+          <TabsTrigger value="aprovacao" className={ABA}>
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            Aprovação
+            {pendentesDeAprovacao > 0 && (
+              <Badge className="ml-2 h-5 rounded-full px-1.5 text-[11px]" aria-label={`${pendentesDeAprovacao} esperando aprovação`}>
+                {pendentesDeAprovacao}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="por-perfil" className={ABA}>
             <Layers className="h-4 w-4 mr-2" />
             Por perfil
@@ -825,6 +857,16 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
             História
           </TabsTrigger>
         </TabsList>
+
+        {/* Aprovação: o aluno só vê o material personalizado que o professor aprovar (20261110_09). */}
+        <TabsContent value="aprovacao" className="space-y-4 data-[state=inactive]:hidden" forceMount>
+          <AprovacaoPersonalizacoes
+            classeId={classeId ? Number(classeId) : null}
+            topicos={topicos}
+            onVerMaterial={verMaterialDoTopico}
+            onResumo={setPendentesDeAprovacao}
+          />
+        </TabsContent>
 
         {/* Visao 1: material lado a lado pelos 7 perfis */}
         <TabsContent value="por-perfil" className="space-y-4">

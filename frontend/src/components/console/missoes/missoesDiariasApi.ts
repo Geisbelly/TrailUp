@@ -59,7 +59,9 @@ export async function lerMissoesDiarias(classeId: number, dia?: string): Promise
     .select("topico_id, conteudo_id" as never)
     .eq("classe_id" as never, classeId as never)
     .is("aluno_id" as never, null as never)
-    .eq("status" as never, "pronto" as never);
+    .eq("status" as never, "pronto" as never)
+    // Disponível é o que o aluno vê: material personalizado só depois da aprovação (20261110_09).
+    .eq("aprovacao" as never, "aprovado" as never);
   if (erroConteudos) throw erroConteudos;
   const chavesConteudos = new Set(((conteudos ?? []) as unknown as { topico_id: number; conteudo_id: number | null }[])
     .map((item) => `${item.topico_id}:${item.conteudo_id ?? "sem-id"}`));
