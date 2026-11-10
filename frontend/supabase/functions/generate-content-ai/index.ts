@@ -8,6 +8,7 @@ import {
   type RespostaGemini,
 } from "./rotacaoGemini.ts";
 import { limiteAposCorte, limiteDoDetalhe, usoDeTokens } from "./limiteDeSaida.ts";
+import { limitesDoEsqueleto, MAX_TOPICOS, quantidadeDeTopicos, regrasDaQuantidade } from "./quantidadeDeTopicos.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -151,7 +152,8 @@ interface RequestBody {
   contents?: ContentItem[];
   sources?: AiSourceInput[];
   trailDescription?: string;
-  numTopics?: number;
+  /** Quantidade de topicos escolhida pelo professor; ausente ou nulo = automatico. */
+  numTopics?: number | null;
   topicNames?: string[];
   syllabus?: string;
   fileContents?: string;
@@ -378,9 +380,14 @@ function ensureObjectArray(value: unknown): JsonRecord[] {
   return value.filter((item): item is JsonRecord => Boolean(item) && typeof item === "object");
 }
 
+function countSkeletonTopics(payload: unknown): number {
+  const topicos = (payload as JsonRecord | null)?.topicos;
+  return Array.isArray(topicos) ? topicos.length : 0;
+}
+
 function normalizeTrailSkeleton(
   payload: unknown,
-  desiredTopics: number,
+  desiredTopics: number | null,
   topicNames: string[] = [],
 ): TrailSkeletonTopic[] {
   const rawTopics = Array.isArray((payload as JsonRecord)?.topicos)
@@ -390,8 +397,11 @@ function normalizeTrailSkeleton(
   const fallbackNames = topicNames.filter((item) => item.trim().length > 0);
   const topics: TrailSkeletonTopic[] = [];
 
-  const maxTopics = clampInt(desiredTopics, 1, 20);
-  const source = rawTopics.length > 0 ? rawTopics.slice(0, maxTopics) : Array.from({ length: maxTopics }, () => ({}));
+  const maxTopics = desiredTopics === null ? MAX_TOPICOS : clampInt(desiredTopics, 1, MAX_TOPICOS);
+  // Sem resposta util: com quantidade escolhida, monta os nomes pelo que o
+  // professor listou; no automatico nao ha o que montar (vira erro abaixo).
+  const source =
+    rawTopics.length > 0 ? rawTopics.slice(0, maxTopics) : Array.from({ length: desiredTopics === null ? 0 : maxTopics }, () => ({}));
 
   source.forEach((item, index) => {
     const record = (item && typeof item === "object" ? (item as JsonRecord) : {}) as JsonRecord;
@@ -566,6 +576,15 @@ const TRAIL_SKELETON_SCHEMA: JsonRecord = {
     },
   },
 };
+
+/** O esquema do esqueleto com o tamanho do array travado na quantidade pedida. */
+function skeletonSchema(desiredTopics: number | null): JsonRecord {
+  const topicos = (TRAIL_SKELETON_SCHEMA.properties as JsonRecord).topicos as JsonRecord;
+  return {
+    ...TRAIL_SKELETON_SCHEMA,
+    properties: { topicos: { ...topicos, ...limitesDoEsqueleto(desiredTopics) } },
+  };
+}
 
 const TRAIL_DETAIL_SCHEMA: JsonRecord = {
   type: "OBJECT",
@@ -776,7 +795,8 @@ type TrailContext = {
   sourceBlock: string;
   sourceGuard: string;
   topicNames: string[];
-  desiredTopics: number;
+  /** null = automatico: o modelo escolhe pelo material. */
+  desiredTopics: number | null;
   totalSignals: number;
 };
 
@@ -793,11 +813,8 @@ function buildTrailContext(body: RequestBody, sources: AiSourceInput[]): TrailCo
   }
 
   const topicNames = body.topicNames?.map((item) => item.trim()).filter(Boolean) ?? [];
-  const desiredTopics = clampInt(
-    fileNames.length > 0 ? fileNames.length : body.numTopics ?? Math.max(topicNames.length, 5),
-    1,
-    20,
-  );
+  // O numero do professor vale sempre; arquivos nao o trocam mais (ver quantidadeDeTopicos.ts).
+  const desiredTopics = quantidadeDeTopicos(body.numTopics, topicNames);
   const sourceGuard = sourceBlock
     ? "Use somente o material fornecido. Nao invente conceitos fora das fontes."
     : "Sem fontes externas: use apenas a descricao do curso para construir uma trilha coerente.";
@@ -818,7 +835,7 @@ Idioma obrigatorio: portugues brasileiro.
 ${sourceGuard}
 
 Disciplina/curso: "${trailDescription}"
-Topicos desejados: ${desiredTopics}
+Quantidade de topicos: ${desiredTopics === null ? "automatica (escolha pelo material)" : desiredTopics}
 ${topicNames.length > 0 ? `Topicos sugeridos pelo professor:\n${topicNames.map((name, idx) => `${idx + 1}. ${name}`).join("\n")}\n` : ""}
 ${fileNames.length > 0 ? `Arquivos enviados pelo professor:\n${fileNames.map((name, idx) => `${idx + 1}. ${name}`).join("\n")}\n` : ""}
 ${body.syllabus?.trim() ? `Ementa complementar:\n${body.syllabus.trim().substring(0, 2500)}\n` : ""}
@@ -839,7 +856,7 @@ Retorne SOMENTE JSON valido com:
 }
 
 Regras:
-- Gere exatamente ${desiredTopics} topicos quando houver material suficiente.
+${regrasDaQuantidade(desiredTopics, fileNames.length).join("\n")}
 - Se houver arquivos, distribua em "arquivos_relacionados" sem repetir desnecessariamente.
 - Evite ciclos em depende/next.
 - Organize do basico ao avancado.`;
@@ -848,11 +865,35 @@ Regras:
     key,
     prompt: skeletonPrompt,
     maxOutputTokens: 8192,
-    responseSchema: TRAIL_SKELETON_SCHEMA,
+    responseSchema: skeletonSchema(desiredTopics),
     deadline,
   });
 
-  return normalizeTrailSkeleton(skeletonResult.parsed, desiredTopics, topicNames);
+  let parsed = skeletonResult.parsed;
+  const veio = countSkeletonTopics(parsed);
+  // O esquema ja trava o tamanho, mas modelo de reserva as vezes ignora: uma
+  // volta pedindo o numero de novo antes de cortar (perderia assunto) ou
+  // completar com nome generico.
+  const temTempo = deadline === undefined || deadline - Date.now() >= TRAIL_DETAIL_RETRY_MIN_REMAINING_MS;
+  if (desiredTopics !== null && veio !== desiredTopics && temTempo) {
+    try {
+      const novo = await callGeminiJson({
+        key,
+        prompt: `${skeletonPrompt}
+
+ATENCAO: a resposta anterior trouxe ${veio} topicos, mas o professor pediu ${desiredTopics}. Refaca com exatamente ${desiredTopics} topicos, agrupando ou dividindo os assuntos.`,
+        maxOutputTokens: 8192,
+        responseSchema: skeletonSchema(desiredTopics),
+        deadline,
+      });
+      const veioDeNovo = countSkeletonTopics(novo.parsed);
+      if (Math.abs(veioDeNovo - desiredTopics) < Math.abs(veio - desiredTopics)) parsed = novo.parsed;
+    } catch (error) {
+      console.warn(`trail-skeleton: nova tentativa pela quantidade falhou: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  return normalizeTrailSkeleton(parsed, desiredTopics, topicNames);
 }
 
 // So tenta o detalhe de novo se ainda sobra isso do orcamento da requisicao.

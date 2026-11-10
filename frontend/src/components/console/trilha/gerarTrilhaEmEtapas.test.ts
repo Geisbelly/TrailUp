@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { gerarTrilhaEmEtapas, type TopicoDoEsqueleto } from "./gerarTrilhaEmEtapas";
+import { completarTopicos, gerarTrilhaEmEtapas, type TopicoDoEsqueleto } from "./gerarTrilhaEmEtapas";
+import type { AiTopico } from "./proposta";
 
 const esqueleto: TopicoDoEsqueleto[] = [1, 2, 3].map((ordem) => ({
   nome: `Tópico ${ordem}`,
@@ -140,5 +141,53 @@ describe("gerarTrilhaEmEtapas", () => {
       { feitos: 2, total: 3 },
       { feitos: 3, total: 3 },
     ]);
+  });
+
+  it("entrega a proposta para o rascunho: o esqueleto primeiro, depois cada tópico", async () => {
+    const { invocar } = funcaoFalsa();
+    const retratos: AiTopico[][] = [];
+    await gerarTrilhaEmEtapas({ invocar, corpo: {}, concorrencia: 1, aoAtualizar: (t) => retratos.push(t) });
+    const comMaterial = retratos.map((r) => r.filter((t) => t.conteudos.length > 0).length);
+    expect(comMaterial).toEqual([0, 1, 2, 3]);
+    expect(retratos.every((r) => r.length === 3)).toBe(true);
+  });
+
+  it("quando nenhum tópico vem, o esqueleto já foi entregue ao rascunho antes do erro", async () => {
+    const { invocar } = funcaoFalsa(() => true);
+    const retratos: AiTopico[][] = [];
+    await expect(gerarTrilhaEmEtapas({ invocar, corpo: {}, aoAtualizar: (t) => retratos.push(t) })).rejects.toThrow("ai_timeout");
+    expect(retratos[0].map((t) => t.nome)).toEqual(["Tópico 1", "Tópico 2", "Tópico 3"]);
+  });
+});
+
+describe("completarTopicos", () => {
+  const proposta = (): AiTopico[] => [
+    { ...topicoDetalhado(esqueleto[0]) },
+    { nome: "Tópico 2", descricao: "Descrição 2", ordem: 2, depende: [1], next: [3], conteudos: [], arquivos_relacionados: ["b.pdf"] },
+    { ...topicoDetalhado(esqueleto[2]) },
+  ];
+
+  it("pede só o que está sem material, com a posição e os arquivos dele, e mantém o resto", async () => {
+    const { invocar, chamadas } = funcaoFalsa();
+    const { topicos, semMaterial } = await completarTopicos({ invocar, corpo: { trailDescription: "Física" }, topicos: proposta() });
+    expect(chamadas).toHaveLength(1);
+    expect(chamadas[0]).toMatchObject({ mode: "trail-topic", topicIndex: 1, totalTopics: 3, trailDescription: "Física" });
+    expect((chamadas[0].topic as TopicoDoEsqueleto).arquivos_relacionados).toEqual(["b.pdf"]);
+    expect(topicos.every((t) => t.conteudos.length === 1)).toBe(true);
+    expect(semMaterial).toEqual([]);
+  });
+
+  it("falhando de novo, não lança: devolve a proposta e aponta o que faltou", async () => {
+    const { invocar } = funcaoFalsa(() => true);
+    const { topicos, semMaterial } = await completarTopicos({ invocar, corpo: {}, topicos: proposta() });
+    expect(topicos.map((t) => t.conteudos.length)).toEqual([1, 0, 1]);
+    expect(semMaterial.map((t) => t.ordem)).toEqual([2]);
+  });
+
+  it("sem nada faltando, não chama a IA", async () => {
+    const { invocar } = funcaoFalsa();
+    const cheia = proposta().map((t) => (t.conteudos.length ? t : topicoDetalhado(esqueleto[1])));
+    await completarTopicos({ invocar, corpo: {}, topicos: cheia });
+    expect(invocar).not.toHaveBeenCalled();
   });
 });
