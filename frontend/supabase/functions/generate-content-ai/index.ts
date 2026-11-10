@@ -7,6 +7,7 @@ import {
   PrazoDoGeminiEsgotado,
   type RespostaGemini,
 } from "./rotacaoGemini.ts";
+import { limiteAposCorte, limiteDoDetalhe, usoDeTokens } from "./limiteDeSaida.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -474,55 +475,70 @@ async function callGeminiJson(options: GeminiCallOptions): Promise<{ parsed: unk
 
   let lastError: AiStructuredError | null = null;
 
-  for (const attempt of attemptConfigs) {
-    const { res, apiData } = await fetchGemini(options.key, {
-      contents: [{ parts: [{ text: options.prompt }] }],
-      generationConfig: {
-        maxOutputTokens: options.maxOutputTokens,
-        responseMimeType: "application/json",
-        ...(attempt.useSchema && options.responseSchema ? { responseSchema: options.responseSchema } : {}),
-      },
-    }, options.deadline);
-    if (!res.ok) {
-      const reason = String((apiData as JsonRecord)?.error ? JSON.stringify((apiData as JsonRecord).error) : "");
-      const schemaIssue =
-        attempt.useSchema &&
-        (reason.toLowerCase().includes("responseschema") ||
-          reason.toLowerCase().includes("schema") ||
-          reason.toLowerCase().includes("generationconfig"));
+  tentativas: for (const attempt of attemptConfigs) {
+    let maxOutputTokens = options.maxOutputTokens;
+    for (;;) {
+      const { res, apiData } = await fetchGemini(options.key, {
+        contents: [{ parts: [{ text: options.prompt }] }],
+        generationConfig: {
+          maxOutputTokens,
+          responseMimeType: "application/json",
+          ...(attempt.useSchema && options.responseSchema ? { responseSchema: options.responseSchema } : {}),
+        },
+      }, options.deadline);
+      if (!res.ok) {
+        const reason = String((apiData as JsonRecord)?.error ? JSON.stringify((apiData as JsonRecord).error) : "");
+        const schemaIssue =
+          attempt.useSchema &&
+          (reason.toLowerCase().includes("responseschema") ||
+            reason.toLowerCase().includes("schema") ||
+            reason.toLowerCase().includes("generationconfig"));
 
-      const err = geminiHttpError(res.status, apiData);
-      lastError = err;
-      if (schemaIssue) continue;
-      throw err;
-    }
+        const err = geminiHttpError(res.status, apiData);
+        lastError = err;
+        if (schemaIssue) continue tentativas;
+        throw err;
+      }
 
-    const candidate = ((apiData as JsonRecord)?.candidates as JsonRecord[] | undefined)?.[0];
-    const finishReason = String(candidate?.finishReason ?? candidate?.finish_reason ?? "").toUpperCase();
-    const rawText = String(
-      ((candidate?.content as JsonRecord | undefined)?.parts as JsonRecord[] | undefined)?.[0]?.text ?? "{}",
-    );
-
-    if (finishReason === "MAX_TOKENS") {
-      throw new AiStructuredError(
-        "Resposta da IA truncada por limite de tokens. Reduza o volume da entrada ou gere em mais etapas.",
-        "ai_truncated",
-        422,
-        { finishReason },
+      const candidate = ((apiData as JsonRecord)?.candidates as JsonRecord[] | undefined)?.[0];
+      const finishReason = String(candidate?.finishReason ?? candidate?.finish_reason ?? "").toUpperCase();
+      const rawText = String(
+        ((candidate?.content as JsonRecord | undefined)?.parts as JsonRecord[] | undefined)?.[0]?.text ?? "{}",
       );
-    }
 
-    const parsed = parseGeminiJson(rawText);
-    if (!parsed) {
-      throw new AiStructuredError(
-        "Resposta da IA invalida: JSON incompleto ou malformado.",
-        "ai_invalid_json",
-        422,
-        { raw: rawText.substring(0, 2000) },
-      );
-    }
+      if (finishReason === "MAX_TOKENS") {
+        // O raciocinio do modelo sai do mesmo orcamento: cortar no meio do JSON
+        // nao e entrada grande demais, e falta de folga. Uma volta com o dobro.
+        const uso = usoDeTokens(apiData);
+        const proximo = limiteAposCorte(maxOutputTokens);
+        console.warn(
+          `gemini: resposta cortada em ${maxOutputTokens} tokens (raciocinio ${uso.raciocinio ?? "?"}, resposta ${uso.resposta ?? "?"})` +
+            (proximo ? `; repetindo com ${proximo}` : ""),
+        );
+        if (proximo !== null) {
+          maxOutputTokens = proximo;
+          continue;
+        }
+        throw new AiStructuredError(
+          "A resposta da IA ficou longa demais e foi cortada. Tente de novo; se repetir, peca menos topicos ou menos conteudo.",
+          "ai_truncated",
+          422,
+          { finishReason, maxOutputTokens, uso },
+        );
+      }
 
-    return { parsed, rawText, finishReason };
+      const parsed = parseGeminiJson(rawText);
+      if (!parsed) {
+        throw new AiStructuredError(
+          "Resposta da IA invalida: JSON incompleto ou malformado.",
+          "ai_invalid_json",
+          422,
+          { raw: rawText.substring(0, 2000) },
+        );
+      }
+
+      return { parsed, rawText, finishReason };
+    }
   }
 
   throw lastError ?? new AiStructuredError("Falha inesperada ao chamar o Gemini.", "gemini_unexpected", 502);
@@ -831,7 +847,7 @@ Regras:
   const skeletonResult = await callGeminiJson({
     key,
     prompt: skeletonPrompt,
-    maxOutputTokens: 4096,
+    maxOutputTokens: 8192,
     responseSchema: TRAIL_SKELETON_SCHEMA,
     deadline,
   });
@@ -934,7 +950,7 @@ Regras obrigatorias:
       const detailResult = await callGeminiJson({
         key,
         prompt: detailPrompt,
-        maxOutputTokens: 4096,
+        maxOutputTokens: limiteDoDetalhe(contentTarget),
         responseSchema: TRAIL_DETAIL_SCHEMA,
         deadline,
       });
