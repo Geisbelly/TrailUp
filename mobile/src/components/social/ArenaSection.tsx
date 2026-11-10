@@ -20,6 +20,7 @@ import {
   type ModoDaArena,
 } from "@/services/social/arenaModel";
 import { carregarArena, responderConviteDaArena } from "@/services/social/guildService";
+import { avisarFalha } from "@/services/saude/medicao";
 
 type Props = {
   classeId: number;
@@ -81,6 +82,7 @@ export function ArenaSection({ classeId, meuId, people, guilds, accent, profile,
     try {
       setLista(await carregarArena(classeId));
     } catch (error) {
+      avisarFalha("arena/listar", "[Arena] Falha ao listar:", error);
       setAviso(mensagemDaArena(error));
     } finally {
       setCarregando(false);
@@ -113,6 +115,7 @@ export function ArenaSection({ classeId, meuId, people, guilds, accent, profile,
       await recarregar();
       if (aceitar) setJogando(d.id);
     } catch (error) {
+      avisarFalha("arena/convite", "[Arena] Falha ao responder o convite:", error);
       setAviso(mensagemDaArena(error));
     } finally {
       setOcupado(null);

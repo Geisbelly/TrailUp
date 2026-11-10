@@ -7,7 +7,8 @@
 // `cliente_saude_registrar` (migration 20261105_14).
 
 export type Superficie = "console" | "web_aluno" | "app";
-export type TipoDeErro = "erro" | "promessa" | "tela" | "fatal";
+// `tratado`: o que o cliente já pegou e mostrou como aviso (`avisarFalha`). Não dispara e-mail.
+export type TipoDeErro = "erro" | "promessa" | "tela" | "fatal" | "tratado";
 export type Vital = "lcp_ms" | "inp_ms" | "cls" | "inicio_ms";
 
 export type ErroAgregado = {
@@ -123,6 +124,13 @@ export type DescricaoDoErro = { nome: string; mensagem: string | null };
 export function descreverErro(erro: unknown): DescricaoDoErro {
   if (erro instanceof Error) return { nome: limparTexto(erro.name, 60) ?? "Error", mensagem: limparTexto(erro.message) };
   if (typeof erro === "string") return { nome: "Error", mensagem: limparTexto(erro) };
+  // O erro do Supabase (`PostgrestError`, `AuthError` serializado) é objeto comum, não `Error`: sem isto
+  // toda RPC recusada chegava como `Desconhecido`, sem mensagem. O código (`P0001`, `42501`) não entra no
+  // nome: a limpeza troca 4 dígitos por `<n>`, aqui e no banco. A mensagem já diz o que houve.
+  if (eObjeto(erro) && typeof erro.message === "string") {
+    const nome = typeof erro.name === "string" && erro.name ? erro.name : "Supabase";
+    return { nome: limparTexto(nome, 60) ?? "Supabase", mensagem: limparTexto(erro.message) };
+  }
   return { nome: "Desconhecido", mensagem: null };
 }
 
@@ -195,7 +203,9 @@ export function criarColetor(deps: DepsDoColetor) {
       const descricao = descreverErro(erro);
       if (eRuido(descricao)) return;
       const rotaLimpa = normalizarRota(rota);
-      const assinatura = assinaturaDe([descricao.nome, descricao.mensagem, tipo]);
+      // Na falha tratada a rota é o lugar do código (`questao/confirmar`): a mesma recusa em dois lugares são
+      // dois problemas. Nos outros tipos a assinatura fica como era, para não partir o que já foi contado.
+      const assinatura = assinaturaDe(tipo === "tratado" ? [descricao.nome, descricao.mensagem, tipo, rotaLimpa] : [descricao.nome, descricao.mensagem, tipo]);
       estado.sessao.erros += 1;
       const existente = estado.erros.find((e) => e.assinatura === assinatura);
       if (existente) existente.vezes += 1;

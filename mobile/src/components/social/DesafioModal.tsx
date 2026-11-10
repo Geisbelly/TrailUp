@@ -14,6 +14,7 @@ import {
   type RespostaDoDesafio,
 } from "@/services/social/desafioModel";
 import { mensagemDaArena, rotuloDoElo } from "@/services/social/arenaModel";
+import { avisarFalha } from "@/services/saude/medicao";
 
 type Props = {
   visible: boolean;
@@ -69,7 +70,7 @@ export function DesafioModal({ visible, desafioId, accent, profile, onClose, onE
       abertaEm.current = Date.now();
       return d;
     } catch (error) {
-      console.warn("[Desafio] Falha ao carregar:", error);
+      avisarFalha("arena/carregar", "[Desafio] Falha ao carregar:", error);
       setAviso("Não foi possível abrir o desafio.");
       return null;
     } finally {
@@ -120,6 +121,7 @@ export function DesafioModal({ visible, desafioId, accent, profile, onClose, onE
         await aplicarRespostaCooperativa(r);
       }
     } catch (error) {
+      avisarFalha(desafio.competitivo ? "arena/responder" : "desafio/responder", "[Desafio] Falha ao responder:", error);
       // A mensagem usa a suposição da tela de propósito: no erro não há retorno para consultar,
       // e os códigos dos dois caminhos não se confundem.
       if (desafio.competitivo) {

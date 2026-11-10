@@ -28,6 +28,7 @@ import { shadowStyle } from "@/utils/webShadow";
 import { TextoRico } from '@/components/textoRico/TextoRico';
 import { formatoDoTexto } from '@/utils/textoRico/formatoTexto';
 import { alternativaDaResposta, letraDaAlternativa, textoRicoLegivel } from '@/utils/textoRico/respostaRica';
+import { avisarFalha } from '@/services/saude/medicao';
 
 const IS_WEB = Platform.OS === "web";
 
@@ -761,7 +762,7 @@ export default function QuestionActivity({
         if (vivo) setGabaritosDoBanco((prev) => ({ ...prev, [questaoIdDaTurma]: r.respostaCorreta }));
       })
       .catch((err) => {
-        console.warn('[QuestionActivity] Falha ao buscar o gabarito:', err);
+        avisarFalha("questao/gabarito", '[QuestionActivity] Falha ao buscar o gabarito:', err);
         if (vivo) setGabaritosDoBanco((prev) => ({ ...prev, [questaoIdDaTurma]: null }));
       });
     return () => {
@@ -1230,7 +1231,7 @@ export default function QuestionActivity({
                 });
                 corrigida = resultadoIA.registro;
               } catch (err) {
-                console.warn('[QuestionActivity] Falha ao corrigir a dissertativa por IA, corrigindo no banco:', err);
+                avisarFalha("questao/dissertativa-ia", '[QuestionActivity] Falha ao corrigir a dissertativa por IA, corrigindo no banco:', err);
                 resultadoIA = null;
               } finally {
                 setValidandoIA(false);
@@ -1252,7 +1253,7 @@ export default function QuestionActivity({
                     mensagemDaFalhaNoEnvio(error)
                 );
                 setModalVisivel(true);
-                console.warn('[QuestaoAluno] Falha ao responder pelo banco:', error);
+                avisarFalha("questao/responder", '[QuestaoAluno] Falha ao responder pelo banco:', error);
                 return;
               }
             }
@@ -1273,7 +1274,7 @@ export default function QuestionActivity({
               acertou = resultadoIA.correta;
               acertosPercentBase = resultadoIA.percentual;
             } catch (err) {
-              console.warn('[QuestionActivity] Falha ao validar resposta dissertativa por IA, usando comparacao local:', err);
+              avisarFalha("questao/dissertativa-validar", '[QuestionActivity] Falha ao validar resposta dissertativa por IA, usando comparacao local:', err);
               acertou = checkResposta(respostaSelecionada, -1);
               acertosPercentBase = acertou ? 100 : 0;
             } finally {
@@ -1551,7 +1552,7 @@ export default function QuestionActivity({
                   tempoGastoSeg, jaGravada: { tentativa: corrigida.tentativa },
                 });
               } catch (error) {
-                console.warn('[QuestaoAluno] Resposta gravada, mas o estado local não acompanhou:', error);
+                avisarFalha("questao/estado-local", '[QuestaoAluno] Resposta gravada, mas o estado local não acompanhou:', error);
               }
             }
           } else if (!isPersonalizedLocal && usuario?.id && questao?.id) {
@@ -1577,7 +1578,7 @@ export default function QuestionActivity({
                   mensagemDaFalhaNoEnvio(error)
               );
               setModalVisivel(true);
-              console.warn('[QuestaoAluno] Falha ao salvar resposta:', error);
+              avisarFalha("questao/salvar", '[QuestaoAluno] Falha ao salvar resposta:', error);
               return;
             }
           }
@@ -1601,7 +1602,7 @@ export default function QuestionActivity({
           } catch (error) {
             // A resposta já está gravada; quem falhou foi concluir a atividade (rede, prazo,
             // tentativa). Antes isso sumia como promessa rejeitada e o toque parecia não fazer nada.
-            console.warn('[QuestionActivity] Falha ao concluir a atividade:', error);
+            avisarFalha("atividade/concluir", '[QuestionActivity] Falha ao concluir a atividade:', error);
             const recusa = mensagemDaRecusa(error as { message?: unknown; code?: unknown } | null);
             setModalInfo((atual) => ({
               ...atual,
@@ -1625,7 +1626,7 @@ export default function QuestionActivity({
 
         }, setEnviando).catch((error) => {
           // Rede de segurança: nenhuma falha do envio fica sem aviso.
-          console.warn('[QuestionActivity] Falha ao confirmar a resposta:', error);
+          avisarFalha("questao/confirmar", '[QuestionActivity] Falha ao confirmar a resposta:', error);
           setModalInfo(mensagemDaFalhaNoEnvio(error));
           setModalVisivel(true);
         })}
