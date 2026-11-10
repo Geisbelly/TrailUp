@@ -202,3 +202,18 @@ export function mensagemDoErro(erro: unknown): string {
   }
   return typeof message === "string" && message ? message : "Não foi possível registrar a decisão.";
 }
+
+/**
+ * Estado de aprovação de cada perfil no tópico (e conteúdo, se escolhido) da aba "Por perfil".
+ * Perfil sem registro não aparece: não há o que aprovar.
+ */
+export function estadoPorPerfil(
+  registros: RegistroAprovacao[],
+  topicoId: number | null,
+  conteudoId?: number | null,
+): Record<string, EstadoDoGrupo> {
+  const doRecorte = registros.filter(
+    (r) => r.topicoId === topicoId && (conteudoId == null || r.conteudoId === conteudoId),
+  );
+  return Object.fromEntries(agruparPorTopicoEPerfil(doRecorte).map((g) => [g.perfil, g.estado]));
+}

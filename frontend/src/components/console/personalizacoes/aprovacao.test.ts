@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   agruparPorTopicoEPerfil,
+  estadoPorPerfil,
   itensParaDecidir,
   mapearRegistroAprovacao,
   mensagemDoErro,
@@ -136,5 +137,28 @@ describe("mensagemDoErro", () => {
     expect(mensagemDoErro({ code: "22023", message: "Material ainda em geracao" })).toContain("sendo gerado");
     expect(mensagemDoErro({ message: "falhou" })).toBe("falhou");
     expect(mensagemDoErro(null)).toBe("Não foi possível registrar a decisão.");
+  });
+});
+
+describe("estadoPorPerfil", () => {
+  const lote = [
+    registro({ id: 1, perfil: "seeker", conteudoId: 100 }),
+    registro({ id: 2, perfil: "seeker", conteudoId: 101, aprovacao: "aprovado" }),
+    registro({ id: 3, perfil: "achiever", conteudoId: 100, aprovacao: "aprovado" }),
+    registro({ id: 4, perfil: "mastermind", topicoId: 11, aprovacao: "recusado" }),
+  ];
+
+  it("recorta pelo tópico e pelo conteúdo escolhidos", () => {
+    expect(estadoPorPerfil(lote, 10, 100)).toEqual({ seeker: "pendente", achiever: "aprovado" });
+    expect(estadoPorPerfil(lote, 10, 101)).toEqual({ seeker: "aprovado" });
+  });
+
+  it("sem conteúdo escolhido, olha o tópico inteiro", () => {
+    expect(estadoPorPerfil(lote, 10)).toEqual({ seeker: "pendente", achiever: "aprovado" });
+    expect(estadoPorPerfil(lote, 11, null)).toEqual({ mastermind: "recusado" });
+  });
+
+  it("perfil sem registro não tem selo", () => {
+    expect(estadoPorPerfil(lote, 99)).toEqual({});
   });
 });
