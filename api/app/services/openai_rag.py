@@ -118,14 +118,33 @@ class OpenAIRagService:
         fontes_solicitadas = sorted(set(fontes_solicitadas).intersection(fontes_catalogadas))
         if not fontes_solicitadas:
             return []
+        # A consulta leva só códigos DAT, que não têm sentido semântico: com o filtro só do corpus,
+        # a ordem saía de outra coisa e a regra pedida podia ficar fora do top-N (medido em
+        # produção, 10/11: DAT-34 e DAT-45 trouxeram só a RD-07). O catálogo já diz quais regras
+        # citam as fontes pedidas; a busca fica restrita a elas.
+        regras_alvo = sorted(
+            {
+                str(atributos["rd"])
+                for atributos in arquivos_permitidos.values()
+                if set(fontes_solicitadas).intersection(
+                    fonte.strip() for fonte in str(atributos.get("fontes") or "").split(",")
+                )
+            }
+        )
         inicio = time.perf_counter()
         try:
             resposta = await self._get_client().vector_stores.search(
                 vector_store_id=str(self.vector_store_id),
                 query="Evidências pedagógicas curadas e limitações para "
                 + ", ".join(fontes_solicitadas),
-                filters=dict(_FILTRO_REGRAS_DERIVADAS),
-                max_num_results=max(1, min(limite, 10)),
+                filters={
+                    "type": "and",
+                    "filters": [
+                        *_FILTRO_REGRAS_DERIVADAS["filters"],
+                        {"type": "in", "key": "rd", "value": regras_alvo},
+                    ],
+                },
+                max_num_results=max(1, min(max(limite, len(regras_alvo)), 10)),
             )
         except Exception as exc:
             self._registrar_retrieval_direto(
