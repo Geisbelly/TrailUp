@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatoDaQuestao, tipoDaQuestaoDoFormato } from "./formatoDaQuestao";
+import { ehFormatoNoServidor, formatoDaQuestao, tipoDaQuestaoDoFormato } from "./formatoDaQuestao";
 
 describe("formatoDaQuestao", () => {
   it.each([
@@ -16,6 +16,12 @@ describe("formatoDaQuestao", () => {
     ["dissertativa", "essay"],
     ["questao", "essay"],
     ["texto", "essay"],
+    ["code", "code"],
+    ["codigo", "code"],
+    ["numeric", "numeric"],
+    ["numerica", "numeric"],
+    ["expression", "expression"],
+    ["expressao", "expression"],
   ])("%s → %s", (entrada, esperado) => {
     expect(formatoDaQuestao(entrada)).toBe(esperado);
   });
@@ -38,6 +44,9 @@ describe("tipoDaQuestaoDoFormato", () => {
     ["true_false", "verdadeiro_falso"],
     ["fill_blank", "fill_blank"],
     ["essay", "dissertativa"],
+    ["code", "codigo"],
+    ["numeric", "numerica"],
+    ["expression", "expressao"],
   ] as const)("%s → %s", (formato, esperado) => {
     expect(tipoDaQuestaoDoFormato(formato)).toBe(esperado);
   });
@@ -49,5 +58,26 @@ describe("tipoDaQuestaoDoFormato", () => {
     const formato = formatoDaQuestao("dissertativa");
     expect(formato).toBe("essay");
     expect(tipoDaQuestaoDoFormato(formato)).toBe("dissertativa");
+  });
+});
+
+describe("tipos corrigidos no servidor (spec B)", () => {
+  it("ida e volta: atividades.tipo → questoes.tipo → atividades.tipo", () => {
+    for (const formato of ["code", "numeric", "expression"] as const) {
+      expect(formatoDaQuestao(tipoDaQuestaoDoFormato(formato))).toBe(formato);
+    }
+  });
+
+  it("só os três novos têm o gabarito fora de questoes", () => {
+    expect(["quiz", "true_false", "fill_blank", "essay", "code", "numeric", "expression"].filter(ehFormatoNoServidor)).toEqual([
+      "code",
+      "numeric",
+      "expression",
+    ]);
+  });
+
+  it("apelido parecido não vira tipo novo: o padrão continua dissertação", () => {
+    expect(formatoDaQuestao("código")).toBe("essay");
+    expect(formatoDaQuestao("numero")).toBe("essay");
   });
 });

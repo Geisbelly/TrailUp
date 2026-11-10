@@ -94,9 +94,10 @@ function normalizarNumero(entrada: string): string {
   return t.replace(/\s+/g, " ");
 }
 
-type Valor = { numero: number; unidade: Unidade | null };
+export type Valor = { numero: number; unidade: Unidade | null };
 
-function lerValor(math: MathJs, entrada: string): Valor | null {
+/** Exportada para a prévia do console (`src/lib/conferenciaNoConsole.ts`): o que o professor vê é o que a edge lê. */
+export function lerValor(math: MathJs, entrada: string): Valor | null {
   const t = normalizarNumero(entrada);
   if (!t || t.length > LIMITE_DA_RESPOSTA) return null;
   if (NUMERO.test(t)) return { numero: Number(t), unidade: null };

@@ -39,7 +39,11 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { formatFileSize } from "@/lib/utils";
 import { fonteDoTopico } from "./fonteDoTopico";
-import { formatoDaQuestao } from "./formatoDaQuestao";
+import { ehFormatoNoServidor, formatoDaQuestao } from "./formatoDaQuestao";
+import { EditorDoGabaritoDoServidor } from "./EditorDoGabaritoDoServidor";
+import { FORMULARIO_PADRAO, formularioDoGabarito, type FormularioDoGabarito } from "./gabaritoDoServidor";
+import { fetchGabaritoDoServidor } from "./topicsApi";
+import { ROTULO_DO_TIPO, TIPOS_DE_QUESTAO } from "./tiposDeAtividade";
 import { prazoDaAtividade, rotuloDasTentativas, rotuloDoTipoDeAtividade, tentativasParaFormulario, TENTATIVAS_MAXIMAS, TENTATIVAS_PADRAO } from "./atividades";
 import { prazoBancoParaLocal } from "@/lib/prazoDaAtividade";
 import { duplicateActivity, duplicateCard } from "./topicsApi";
@@ -135,8 +139,8 @@ type TopicEditDrawerProps = {
   
   // Questões
   questions: Questao[];
-  questionForm: { id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string; dificuldade: string; formato_texto?: FormatoTexto };
-  setQuestionForm: Dispatch<SetStateAction<{ id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string; dificuldade: string; formato_texto?: FormatoTexto }>>;
+  questionForm: { id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string; dificuldade: string; formato_texto?: FormatoTexto; gabarito_servidor?: FormularioDoGabarito };
+  setQuestionForm: Dispatch<SetStateAction<{ id: number; atividade_id: string; enunciado: string; tipo: string; resposta_correta: string; nota_estabelecida: string; midia_url: string; dificuldade: string; formato_texto?: FormatoTexto; gabarito_servidor?: FormularioDoGabarito }>>;
   questionOptions: string[];
   setQuestionOptions: Dispatch<SetStateAction<string[]>>;
   addNewActivityOption: () => void;
@@ -638,6 +642,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     }
   }, [contents.length, setIsCreating, setContentForm]);
 
+  const [carregandoGabarito, setCarregandoGabarito] = useState(false);
   // Efeito para carregar questão existente ao selecionar atividade
   useEffect(() => {
     if (selectedActivityId) {
@@ -655,6 +660,21 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           midia_url: q.midia_url || "",
           formato_texto: formatoDoTexto(q.formato_texto),
         });
+        // Spec B: o gabarito destes tipos mora em `questao_gabarito`, com critérios e config.
+        if (ehFormatoNoServidor(resolvedType)) {
+          setCarregandoGabarito(true);
+          fetchGabaritoDoServidor(q.id)
+            .then((linha) =>
+              setQuestionForm((atual) =>
+                atual.id === q.id ? { ...atual, gabarito_servidor: formularioDoGabarito(resolvedType, linha) } : atual,
+              ),
+            )
+            .catch((erro) => {
+              console.error("Erro ao ler o gabarito da questão:", erro);
+              toast.error("Não foi possível ler o gabarito desta questão. Não salve antes de recarregar.");
+            })
+            .finally(() => setCarregandoGabarito(false));
+        }
         
         let opts = [""];
         try {
@@ -678,6 +698,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           dificuldade: SEM_NIVEL,
           midia_url: "",
           formato_texto: "texto",
+          gabarito_servidor: { ...FORMULARIO_PADRAO },
         });
         
         if (defaultType === 'true_false') setQuestionOptions(["Verdadeiro", "Falso"]);
@@ -1224,6 +1245,9 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                         <SelectItem value="fill_blank">Completar</SelectItem>
                                         <SelectItem value="true_false">V/F</SelectItem>
                                         <SelectItem value="essay">Dissertação</SelectItem>
+                                        {TIPOS_DE_QUESTAO.filter(ehFormatoNoServidor).map((t) => (
+                                          <SelectItem key={t} value={t}>{ROTULO_DO_TIPO[t]}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                                 <Input
@@ -1277,6 +1301,9 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                         <SelectItem value="fill_blank">Completar</SelectItem>
                                         <SelectItem value="true_false">Verdadeiro/Falso</SelectItem>
                                         <SelectItem value="essay">Dissertação</SelectItem>
+                                        {TIPOS_DE_QUESTAO.filter(ehFormatoNoServidor).map((t) => (
+                                          <SelectItem key={t} value={t}>{ROTULO_DO_TIPO[t]}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                               </div>
@@ -1401,6 +1428,18 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                     </div>
                                 )}
 
+                                {/* 5. CÓDIGO, NUMÉRICA E EXPRESSÃO (spec B): gabarito só no servidor */}
+                                {ehFormatoNoServidor(activityForm.tipo) && (
+                                    <EditorDoGabaritoDoServidor
+                                        formato={activityForm.tipo}
+                                        valor={questionForm.gabarito_servidor}
+                                        onChange={(g) => setQuestionForm({ ...questionForm, gabarito_servidor: g })}
+                                        carregando={carregandoGabarito}
+                                        classeDoCampo={darkInputClass}
+                                        classeDoRotulo={darkLabelClass}
+                                    />
+                                )}
+
                                 <div>
                                   <Label className={darkLabelClass}>
                                     Dificuldade{" "}
@@ -1475,7 +1514,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                                 </div>
 
                                 <div className="flex justify-end pt-2">
-                                  <Button size="sm" onClick={handleSaveQuestionWithSync} className="bg-primary h-8 text-xs px-4">
+                                  <Button size="sm" onClick={handleSaveQuestionWithSync} disabled={carregandoGabarito} className="bg-primary h-8 text-xs px-4">
                                     {questionForm.id ? "Atualizar Questão" : "Salvar Questão"}
                                   </Button>
                                 </div>
