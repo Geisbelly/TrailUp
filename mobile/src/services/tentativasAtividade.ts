@@ -16,7 +16,10 @@ import { supabase } from "@/database/supabase";
 
 import {
   TentativaRecusada,
+  aplicarRelogio,
   guardarRetorno,
+  pausarNoAparelho,
+  retomarNoAparelho,
   lerRetorno,
   lerSituacao,
   lerTentativa,
@@ -61,6 +64,60 @@ export function garantirTentativa(atividadeId: number): Promise<TentativaAberta 
 
   emAndamento.set(atividadeId, pedido);
   return pedido;
+}
+
+/**
+ * O aluno saiu da atividade (outro bloco, outra tela, app em segundo plano): o relógio para
+ * (`20261110_05`). Para no aparelho na hora e avisa o banco, que desconta a pausa do "no tempo".
+ * Falha de rede não volta para quem chama: a tela já parou, e o banco recebe a retomada depois.
+ */
+export function pausarTentativa(atividadeId: number): TentativaAberta | null {
+  return mudarRelogio(atividadeId, pausarNoAparelho, "atividade_pausar_tentativa");
+}
+
+/** O aluno voltou: o relógio continua de onde parou, no aparelho e no banco. */
+export function retomarTentativa(atividadeId: number): TentativaAberta | null {
+  return mudarRelogio(atividadeId, retomarNoAparelho, "atividade_retomar_tentativa");
+}
+
+const ouvintesDoRelogio = new Set<(atividadeId: number, tentativa: TentativaAberta) => void>();
+
+/** Avisa quando o relógio de uma tentativa muda (pausa, retomada, resposta do banco). */
+export function ouvirRelogio(ouvinte: (atividadeId: number, tentativa: TentativaAberta) => void): () => void {
+  ouvintesDoRelogio.add(ouvinte);
+  return () => {
+    ouvintesDoRelogio.delete(ouvinte);
+  };
+}
+
+function publicar(atividadeId: number, tentativa: TentativaAberta) {
+  abertas.set(atividadeId, tentativa);
+  for (const ouvinte of ouvintesDoRelogio) ouvinte(atividadeId, tentativa);
+}
+
+function mudarRelogio(
+  atividadeId: number,
+  noAparelho: (t: TentativaAberta, agoraLocalMs: number) => TentativaAberta,
+  rpc: "atividade_pausar_tentativa" | "atividade_retomar_tentativa",
+): TentativaAberta | null {
+  const atual = abertas.get(atividadeId);
+  if (!atual || !atual.cronometrada || atual.limiteSeg == null) return atual ?? null;
+  const local = noAparelho(atual, Date.now());
+  if (local === atual) return atual;
+  publicar(atividadeId, local);
+  void supabase.rpc(rpc, { p_tentativa: atual.tentativaId }).then(
+    ({ data, error }) => {
+      // Sem a RPC (banco sem a migration) ou recusa: fica a conta do aparelho.
+      if (error) return;
+      const vigente = abertas.get(atividadeId);
+      if (!vigente || vigente.tentativaId !== atual.tentativaId) return;
+      // Chegou fora de ordem (o aluno já saiu ou voltou de novo): a do aparelho é mais nova.
+      if (Boolean(vigente.pausadaEm) !== Boolean(local.pausadaEm)) return;
+      publicar(atividadeId, aplicarRelogio(vigente, data, Date.now()));
+    },
+    () => {},
+  );
+  return local;
 }
 
 export async function responderTentativa(
