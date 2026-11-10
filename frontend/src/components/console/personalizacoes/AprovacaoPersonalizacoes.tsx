@@ -55,18 +55,38 @@ function corDoPerfil(perfil: string): string | undefined {
   return COR_DO_PERFIL[perfil as BrainHexProfileKey]?.marca;
 }
 
+/** Selo do estado de aprovação; com `onClick`, leva à aba Aprovação. */
+export function SeloAprovacao({ estado, onClick }: { estado: EstadoDoGrupo; onClick?: () => void }) {
+  const visual = ESTADO_VISUAL[estado];
+  const selo = (
+    <Badge variant="outline" className={`gap-1 whitespace-nowrap ${visual.classe}`}>
+      <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+      {visual.rotulo}
+    </Badge>
+  );
+  if (!onClick) return selo;
+  return (
+    <button type="button" onClick={onClick} className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={`${visual.rotulo}: abrir a aba Aprovação`}>
+      {selo}
+    </button>
+  );
+}
+
 export function AprovacaoPersonalizacoes({
   classeId,
   topicos,
   onVerMaterial,
-  onResumo,
+  onRegistros,
+  atualizarEm,
 }: {
   classeId: number | null;
   topicos: Topico[];
   /** Abre o material do tópico na aba "Por perfil" para o professor conferir antes de decidir. */
   onVerMaterial?: (topicoId: number) => void;
-  /** Avisa a seção de quantos esperam decisão (o selo da aba). */
-  onResumo?: (pendentes: number) => void;
+  /** Entrega à seção o que foi lido (selo da aba e selo de cada perfil em "Por perfil"). */
+  onRegistros?: (registros: RegistroAprovacao[]) => void;
+  /** Muda quando a seção recarrega o material: a aprovação é relida junto (regerar volta a pendente). */
+  atualizarEm?: unknown;
 }) {
   const [registros, setRegistros] = useState<RegistroAprovacao[]>([]);
   const [carregando, setCarregando] = useState(false);
@@ -96,7 +116,7 @@ export function AprovacaoPersonalizacoes({
 
   useEffect(() => {
     void carregar();
-  }, [carregar]);
+  }, [carregar, atualizarEm]);
 
   const nomeDoTopico = useMemo(() => {
     const mapa = new Map(topicos.map((t) => [t.id, t.nome || `Tópico ${t.id}`] as const));
@@ -110,8 +130,8 @@ export function AprovacaoPersonalizacoes({
   const resumo = useMemo(() => resumir(registros), [registros]);
 
   useEffect(() => {
-    onResumo?.(resumo.pendentes);
-  }, [onResumo, resumo.pendentes]);
+    onRegistros?.(registros);
+  }, [onRegistros, registros]);
 
   const gruposPorTopico = useMemo(() => {
     const mapa = new Map<number | null, GrupoAprovacao[]>();

@@ -36,7 +36,8 @@ import {
 } from "./statusBadge";
 import { SugestaoMaterialCard } from "./SugestaoMaterialCard";
 import { ArcoNarrativoCard } from "./ArcoNarrativoCard";
-import { AprovacaoPersonalizacoes } from "./AprovacaoPersonalizacoes";
+import { AprovacaoPersonalizacoes, SeloAprovacao } from "./AprovacaoPersonalizacoes";
+import { estadoPorPerfil, resumir, type EstadoDoGrupo, type RegistroAprovacao } from "./aprovacao";
 import {
   limitarPercentual,
   resolverGeracaoFormato,
@@ -200,7 +201,9 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
   const [umGerarTudoPorVez] = useState(() => criarUmPedidoPorVez(setGerarTudoEnfileirando));
   // Aba controlada: o aviso de material esperando aprovação leva direto para ela.
   const [aba, setAba] = useState("por-perfil");
-  const [pendentesDeAprovacao, setPendentesDeAprovacao] = useState(0);
+  const [registrosAprovacao, setRegistrosAprovacao] = useState<RegistroAprovacao[]>([]);
+  const pendentesDeAprovacao = useMemo(() => resumir(registrosAprovacao).pendentes, [registrosAprovacao]);
+  const abrirAprovacao = useCallback(() => setAba("aprovacao"), []);
 
   // Carrega classes do professor
   useEffect(() => {
@@ -645,6 +648,11 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
     () => conteudos.find((item) => String(item.id) === conteudoId) ?? null,
     [conteudoId, conteudos]
   );
+  // Selo de aprovação de cada perfil na aba "Por perfil", no recorte tópico (+ conteúdo) escolhido.
+  const aprovacaoDoPerfil = useMemo(
+    () => estadoPorPerfil(registrosAprovacao, topicoId ? Number(topicoId) : null, conteudoId ? Number(conteudoId) : null),
+    [registrosAprovacao, topicoId, conteudoId],
+  );
 
   const perfilDoAluno = useMemo(() => {
     if (!alunoSelecionado || !porPerfil) return null;
@@ -864,7 +872,8 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
             classeId={classeId ? Number(classeId) : null}
             topicos={topicos}
             onVerMaterial={verMaterialDoTopico}
-            onResumo={setPendentesDeAprovacao}
+            onRegistros={setRegistrosAprovacao}
+            atualizarEm={carregadoEm}
           />
         </TabsContent>
 
@@ -913,6 +922,8 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
                   topicoId={Number(topicoId)}
                   conteudoId={conteudoId ? Number(conteudoId) : undefined}
                   conteudoTitulo={porPerfil.conteudo_titulo || conteudoSelecionado?.titulo || "Conteúdo selecionado"}
+                  aprovacaoDoPerfil={aprovacaoDoPerfil}
+                  onAbrirAprovacao={abrirAprovacao}
                   resolveToken={resolveToken}
                   onRegenerated={() => void loadPorPerfil({ silent: true, queueIfBusy: true })}
                 />
@@ -925,6 +936,8 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
                       classeId={Number(classeId)}
                       topicoId={Number(topicoId)}
                       conteudoId={conteudoId ? Number(conteudoId) : undefined}
+                      aprovacao={aprovacaoDoPerfil[item.perfil]}
+                      onAbrirAprovacao={abrirAprovacao}
                       resolveToken={resolveToken}
                       onRegenerated={() => void loadPorPerfil({ silent: true, queueIfBusy: true })}
                     />
@@ -1307,6 +1320,8 @@ function PerfisTabela({
   topicoId,
   conteudoId,
   conteudoTitulo,
+  aprovacaoDoPerfil,
+  onAbrirAprovacao,
   resolveToken,
   onRegenerated,
 }: {
@@ -1315,6 +1330,8 @@ function PerfisTabela({
   topicoId: number;
   conteudoId?: number;
   conteudoTitulo: string;
+  aprovacaoDoPerfil: Record<string, EstadoDoGrupo>;
+  onAbrirAprovacao: () => void;
   resolveToken: () => Promise<string>;
   onRegenerated: () => void;
 }) {
@@ -1350,6 +1367,8 @@ function PerfisTabela({
                 classeId={classeId}
                 topicoId={topicoId}
                 conteudoId={conteudoId}
+                aprovacao={aprovacaoDoPerfil[item.perfil]}
+                onAbrirAprovacao={onAbrirAprovacao}
                 resolveToken={resolveToken}
                 onRegenerated={onRegenerated}
               />
@@ -1366,6 +1385,8 @@ function PerfilLinha({
   classeId,
   topicoId,
   conteudoId,
+  aprovacao,
+  onAbrirAprovacao,
   resolveToken,
   onRegenerated,
 }: {
@@ -1373,6 +1394,9 @@ function PerfilLinha({
   classeId: number;
   topicoId: number;
   conteudoId?: number;
+  /** Estado de aprovação do material deste perfil; ausente quando não há registro. */
+  aprovacao?: EstadoDoGrupo;
+  onAbrirAprovacao?: () => void;
   resolveToken: () => Promise<string>;
   onRegenerated: () => void;
 }) {
@@ -1429,6 +1453,11 @@ function PerfilLinha({
           {geracaoAtiva && <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />}
           {statusBadge.label}
         </span>
+        {aprovacao && (
+          <div className="mt-1.5">
+            <SeloAprovacao estado={aprovacao} onClick={onAbrirAprovacao} />
+          </div>
+        )}
         {erro && (
           <p className="mt-1.5 max-w-[220px] text-[11px] text-destructive" role="alert">
             {erro}
@@ -1550,6 +1579,8 @@ function PerfilMaterialCard({
   classeId,
   topicoId,
   conteudoId,
+  aprovacao,
+  onAbrirAprovacao,
   resolveToken,
   onRegenerated,
 }: {
@@ -1557,6 +1588,9 @@ function PerfilMaterialCard({
   classeId: number;
   topicoId: number;
   conteudoId?: number;
+  /** Estado de aprovação do material deste perfil; ausente quando não há registro. */
+  aprovacao?: EstadoDoGrupo;
+  onAbrirAprovacao?: () => void;
   resolveToken: () => Promise<string>;
   onRegenerated: () => void;
 }) {
@@ -1625,6 +1659,11 @@ function PerfilMaterialCard({
         <CardDescription>
           <span className="capitalize">{item.perfil}</span> · {item.total_alunos} aluno(s) com este perfil
         </CardDescription>
+        {aprovacao && (
+          <div>
+            <SeloAprovacao estado={aprovacao} onClick={onAbrirAprovacao} />
+          </div>
+        )}
         <div className="flex items-center gap-2 pt-1">
           <Button variant="outline" size="sm" onClick={() => void handleGerar()} disabled={manualJobAtivo || enfileirando}>
             {manualJobAtivo
