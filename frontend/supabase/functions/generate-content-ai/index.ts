@@ -43,7 +43,26 @@ function geminiModels(): string[] {
 // chamadores fazem cast explicito ao navegar candidates[0].content.parts.
 type GeminiResult = { res: Response; apiData: JsonRecord };
 
-async function fetchGemini(rawKeys: string, body: unknown): Promise<GeminiResult> {
+// Teto de tempo de UMA requisicao a esta funcao. O Supabase mata o worker
+// em 150 s de relogio no plano Free (546 WORKER_LIMIT, sem corpo) e o
+// gateway desiste antes disso (504). Parar em 120 s deixa a funcao devolver
+// um erro legivel em vez de morrer calada. Nao e por chamada ao Gemini: e o
+// orcamento da requisicao inteira, que todas as tentativas dividem.
+const REQUEST_BUDGET_MS = 120 * 1000;
+
+function aiTimeoutError(): AiStructuredError {
+  return new AiStructuredError(
+    "A IA demorou demais para responder. Tente de novo em instantes.",
+    "ai_timeout",
+    504,
+  );
+}
+
+function isAbortTimeout(error: unknown): boolean {
+  return error instanceof DOMException && (error.name === "TimeoutError" || error.name === "AbortError");
+}
+
+async function fetchGemini(rawKeys: string, body: unknown, deadline?: number): Promise<GeminiResult> {
   const keys = splitList(rawKeys);
   if (keys.length === 0) keys.push(rawKeys);
   const payload = JSON.stringify(body);
@@ -59,6 +78,8 @@ async function fetchGemini(rawKeys: string, body: unknown): Promise<GeminiResult
   let last: GeminiResult | null = null;
   let lastNetworkError: unknown = null;
   for (const pair of order) {
+    const remaining = deadline === undefined ? undefined : deadline - Date.now();
+    if (remaining !== undefined && remaining <= 0) throw aiTimeoutError();
     let res: Response;
     try {
       // Chave no header, nao na URL (#195): URL vai parar em log.
@@ -68,9 +89,12 @@ async function fetchGemini(rawKeys: string, body: unknown): Promise<GeminiResult
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": pair.key },
           body: payload,
+          ...(remaining !== undefined ? { signal: AbortSignal.timeout(remaining) } : {}),
         },
       );
     } catch (error) {
+      // Estourou o orcamento: outra chave nao vai caber no tempo que sobrou.
+      if (isAbortTimeout(error)) throw aiTimeoutError();
       lastNetworkError = error;
       continue;
     }
@@ -151,7 +175,11 @@ interface TrailSkeletonTopic {
 
 
 interface RequestBody {
-  mode?: "all" | "content" | "description" | "trail";
+  mode?: "all" | "content" | "description" | "trail" | "trail-skeleton" | "trail-topic";
+  /** trail-topic: o topico do esqueleto a detalhar, a posicao dele e o total. */
+  topic?: unknown;
+  topicIndex?: number;
+  totalTopics?: number;
   topicName?: string;
   topicDescription?: string;
   contents?: ContentItem[];
@@ -175,6 +203,8 @@ type GeminiCallOptions = {
   prompt: string;
   maxOutputTokens: number;
   responseSchema?: JsonRecord;
+  /** Instante (Date.now()) em que a requisicao tem de parar de chamar o Gemini. */
+  deadline?: number;
 };
 
 const textDecoder = new TextDecoder("utf-8");
@@ -487,7 +517,7 @@ async function callGeminiJson(options: GeminiCallOptions): Promise<{ parsed: unk
         responseMimeType: "application/json",
         ...(attempt.useSchema && options.responseSchema ? { responseSchema: options.responseSchema } : {}),
       },
-    });
+    }, options.deadline);
     if (!res.ok) {
       const reason = String((apiData as JsonRecord)?.error ? JSON.stringify((apiData as JsonRecord).error) : "");
       const schemaIssue =
@@ -759,11 +789,17 @@ function normalizeTrailDetails(
   return normalized;
 }
 
-async function generateTrailTwoSteps(
-  body: RequestBody,
-  sources: AiSourceInput[],
-  key: string,
-): Promise<JsonRecord> {
+type TrailContext = {
+  trailDescription: string | undefined;
+  fileNames: string[];
+  sourceBlock: string;
+  sourceGuard: string;
+  topicNames: string[];
+  desiredTopics: number;
+  totalSignals: number;
+};
+
+function buildTrailContext(body: RequestBody, sources: AiSourceInput[]): TrailContext {
   const trailDescription = body.trailDescription?.trim() || body.topicDescription?.trim() || body.topicName;
   const fileNames = (body.fileNames ?? []).map((item) => item.trim()).filter(Boolean);
   const sourceBlock = buildSourceBlock(sources, body.fileContents, fileNames);
@@ -784,7 +820,18 @@ async function generateTrailTwoSteps(
   const sourceGuard = sourceBlock
     ? "Use somente o material fornecido. Nao invente conceitos fora das fontes."
     : "Sem fontes externas: use apenas a descricao do curso para construir uma trilha coerente.";
+  const totalSignals = Math.max(fileNames.length, sources.length, body.fileContents?.trim() ? 1 : 0, 1);
 
+  return { trailDescription, fileNames, sourceBlock, sourceGuard, topicNames, desiredTopics, totalSignals };
+}
+
+async function generateTrailSkeleton(
+  ctx: TrailContext,
+  body: RequestBody,
+  key: string,
+  deadline?: number,
+): Promise<TrailSkeletonTopic[]> {
+  const { trailDescription, fileNames, sourceBlock, sourceGuard, topicNames, desiredTopics } = ctx;
   const skeletonPrompt = `Voce e especialista em design instrucional.
 Idioma obrigatorio: portugues brasileiro.
 ${sourceGuard}
@@ -821,21 +868,33 @@ Regras:
     prompt: skeletonPrompt,
     maxOutputTokens: 4096,
     responseSchema: TRAIL_SKELETON_SCHEMA,
+    deadline,
   });
 
-  const skeleton = normalizeTrailSkeleton(skeletonResult.parsed, desiredTopics, topicNames);
-  const totalSignals = Math.max(fileNames.length, sources.length, body.fileContents?.trim() ? 1 : 0, 1);
+  return normalizeTrailSkeleton(skeletonResult.parsed, desiredTopics, topicNames);
+}
 
-  const detailedTopics: JsonRecord[] = [];
-  for (let index = 0; index < skeleton.length; index += 1) {
-    const topic = skeleton[index];
-    const contentTarget = computeContentTarget(index, skeleton.length, totalSignals, topic.arquivos_relacionados.length);
-    const relatedFilesHint =
-      topic.arquivos_relacionados.length > 0
-        ? `Arquivos prioritarios para este topico: ${topic.arquivos_relacionados.join(", ")}`
-        : "Sem arquivo dedicado: use as fontes gerais.";
+// So tenta o detalhe de novo se ainda sobra isso do orcamento da requisicao.
+// Com menos, a nova tentativa tende a ser cortada no meio: melhor devolver o
+// erro agora e deixar o console repetir o topico numa requisicao nova.
+const TRAIL_DETAIL_RETRY_MIN_REMAINING_MS = 45 * 1000;
 
-    const detailPrompt = `Voce e especialista em conteudo didatico multimidia.
+async function generateTrailTopicDetail(
+  ctx: TrailContext,
+  topic: TrailSkeletonTopic,
+  index: number,
+  totalTopics: number,
+  key: string,
+  deadline?: number,
+): Promise<JsonRecord> {
+  const { sourceBlock, sourceGuard, totalSignals } = ctx;
+  const contentTarget = computeContentTarget(index, totalTopics, totalSignals, topic.arquivos_relacionados.length);
+  const relatedFilesHint =
+    topic.arquivos_relacionados.length > 0
+      ? `Arquivos prioritarios para este topico: ${topic.arquivos_relacionados.join(", ")}`
+      : "Sem arquivo dedicado: use as fontes gerais.";
+
+  const detailPrompt = `Voce e especialista em conteudo didatico multimidia.
 Idioma obrigatorio: portugues brasileiro.
 ${sourceGuard}
 
@@ -850,47 +909,47 @@ ${sourceBlock}
 
 Retorne SOMENTE JSON valido com:
 {
-  "conteudos": [
-    {
-      "ref": "content:1",
-      "titulo": "Titulo do conteudo",
-      "tipo": "texto",
-      "conteudo": "Texto em markdown",
-      "sourceRef": "legacy:1",
-      "cards": [
-        {
-          "titulo": "Pergunta ou conceito",
-          "descricao": "Resposta",
-          "conteudo_ref": "content:1",
-          "conteudo_origem_ref": "content:1",
-          "reaproveitado": false,
-          "vinculado_ao_conteudo": true
-        }
-      ],
-      "atividades": [
-        {
-          "titulo": "Atividade",
-          "enunciado": "Enunciado",
-          "tipo": "quiz",
-          "alternativas": ["A", "B", "C", "D"],
-          "resposta_correta": "A",
-          "conteudo_ref": "content:1"
-        }
-      ],
-      "midias": [
-        {
-          "tipo": "video",
-          "titulo": "Nome da midia",
-          "descricao": "Descricao",
-          "roteiro": "Roteiro curto",
-          "transcricao": "Transcricao opcional",
-          "url": "",
-          "formato_arquivo": "mp4",
-          "sourceRef": "legacy:1"
-        }
-      ]
-    }
-  ]
+"conteudos": [
+  {
+    "ref": "content:1",
+    "titulo": "Titulo do conteudo",
+    "tipo": "texto",
+    "conteudo": "Texto em markdown",
+    "sourceRef": "legacy:1",
+    "cards": [
+      {
+        "titulo": "Pergunta ou conceito",
+        "descricao": "Resposta",
+        "conteudo_ref": "content:1",
+        "conteudo_origem_ref": "content:1",
+        "reaproveitado": false,
+        "vinculado_ao_conteudo": true
+      }
+    ],
+    "atividades": [
+      {
+        "titulo": "Atividade",
+        "enunciado": "Enunciado",
+        "tipo": "quiz",
+        "alternativas": ["A", "B", "C", "D"],
+        "resposta_correta": "A",
+        "conteudo_ref": "content:1"
+      }
+    ],
+    "midias": [
+      {
+        "tipo": "video",
+        "titulo": "Nome da midia",
+        "descricao": "Descricao",
+        "roteiro": "Roteiro curto",
+        "transcricao": "Transcricao opcional",
+        "url": "",
+        "formato_arquivo": "mp4",
+        "sourceRef": "legacy:1"
+      }
+    ]
+  }
+]
 }
 
 Regras obrigatorias:
@@ -903,63 +962,103 @@ Regras obrigatorias:
 - Se nao for reaproveitado, conteudo_origem_ref deve ser igual a conteudo_ref.
 - Nao inclua markdown fora do JSON.`;
 
-    let detailPayload: unknown | null = null;
-    let lastDetailError: unknown = null;
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      try {
-        const detailResult = await callGeminiJson({
-          key,
-          prompt: detailPrompt,
-          maxOutputTokens: 4096,
-          responseSchema: TRAIL_DETAIL_SCHEMA,
-        });
-        detailPayload = detailResult.parsed;
-        break;
-      } catch (error) {
-        lastDetailError = error;
-        if (attempt >= 3) break;
-      }
+  let detailPayload: unknown | null = null;
+  let lastDetailError: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const detailResult = await callGeminiJson({
+        key,
+        prompt: detailPrompt,
+        maxOutputTokens: 4096,
+        responseSchema: TRAIL_DETAIL_SCHEMA,
+        deadline,
+      });
+      detailPayload = detailResult.parsed;
+      break;
+    } catch (error) {
+      lastDetailError = error;
+      if (attempt >= 3) break;
+      // Estourou o tempo, ou nao sobra tempo para outra volta inteira.
+      if (error instanceof AiStructuredError && error.code === "ai_timeout") break;
+      if (deadline !== undefined && deadline - Date.now() < TRAIL_DETAIL_RETRY_MIN_REMAINING_MS) break;
     }
-
-    if (!detailPayload) {
-      if (lastDetailError instanceof AiStructuredError) {
-        throw new AiStructuredError(
-          `Falha ao gerar detalhes do topico "${topic.nome}". ${lastDetailError.message}`,
-          lastDetailError.code,
-          lastDetailError.status,
-          lastDetailError.details,
-        );
-      }
-      throw new AiStructuredError(`Falha ao gerar detalhes do topico "${topic.nome}".`, "trail_detail_failed");
-    }
-
-    const normalizedContents = normalizeTrailDetails(detailPayload, topic, contentTarget);
-    const topicCards = normalizedContents.flatMap((content) =>
-      ensureObjectArray((content as JsonRecord).cards).map((card) => ({
-        ...card,
-        conteudo_ref: (card as JsonRecord).conteudo_ref ?? (content as JsonRecord).ref ?? null,
-      })),
-    );
-    const topicActivities = normalizedContents.flatMap((content) =>
-      ensureObjectArray((content as JsonRecord).atividades).map((atividade) => ({
-        ...atividade,
-        conteudo_ref: (atividade as JsonRecord).conteudo_ref ?? (content as JsonRecord).ref ?? null,
-      })),
-    );
-
-    detailedTopics.push({
-      nome: topic.nome,
-      descricao: topic.descricao,
-      ordem: topic.ordem,
-      depende: topic.depende,
-      next: topic.next,
-      conteudos: normalizedContents,
-      cards: topicCards,
-      atividades: topicActivities,
-    });
   }
 
+  if (!detailPayload) {
+    if (lastDetailError instanceof AiStructuredError) {
+      throw new AiStructuredError(
+        `Falha ao gerar detalhes do topico "${topic.nome}". ${lastDetailError.message}`,
+        lastDetailError.code,
+        lastDetailError.status,
+        lastDetailError.details,
+      );
+    }
+    throw new AiStructuredError(`Falha ao gerar detalhes do topico "${topic.nome}".`, "trail_detail_failed");
+  }
+
+  const normalizedContents = normalizeTrailDetails(detailPayload, topic, contentTarget);
+  const topicCards = normalizedContents.flatMap((content) =>
+    ensureObjectArray((content as JsonRecord).cards).map((card) => ({
+      ...card,
+      conteudo_ref: (card as JsonRecord).conteudo_ref ?? (content as JsonRecord).ref ?? null,
+    })),
+  );
+  const topicActivities = normalizedContents.flatMap((content) =>
+    ensureObjectArray((content as JsonRecord).atividades).map((atividade) => ({
+      ...atividade,
+      conteudo_ref: (atividade as JsonRecord).conteudo_ref ?? (content as JsonRecord).ref ?? null,
+    })),
+  );
+
+  return {
+    nome: topic.nome,
+    descricao: topic.descricao,
+    ordem: topic.ordem,
+    depende: topic.depende,
+    next: topic.next,
+    conteudos: normalizedContents,
+    cards: topicCards,
+    atividades: topicActivities,
+  };
+}
+
+/**
+ * Modo "trail" antigo: esqueleto + todos os topicos numa requisicao so. Com
+ * 6 topicos ja passava dos 150 s do worker (504/546). O console agora usa
+ * "trail-skeleton" + um "trail-topic" por topico; este fica para a
+ * regeracao de um topico ("Pedir ajuste", 2 chamadas) e para build antigo.
+ */
+async function generateTrailTwoSteps(
+  body: RequestBody,
+  sources: AiSourceInput[],
+  key: string,
+  deadline?: number,
+): Promise<JsonRecord> {
+  const ctx = buildTrailContext(body, sources);
+  const skeleton = await generateTrailSkeleton(ctx, body, key, deadline);
+  const detailedTopics: JsonRecord[] = [];
+  for (let index = 0; index < skeleton.length; index += 1) {
+    detailedTopics.push(await generateTrailTopicDetail(ctx, skeleton[index], index, skeleton.length, key, deadline));
+  }
   return { topicos: detailedTopics };
+}
+
+function asTrailSkeletonTopic(value: unknown): TrailSkeletonTopic | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as JsonRecord;
+  const nome = String(raw.nome ?? "").trim();
+  const ordem = Number(raw.ordem);
+  if (!nome || !Number.isFinite(ordem)) return null;
+  return {
+    nome,
+    descricao: String(raw.descricao ?? "").trim(),
+    ordem: Math.trunc(ordem),
+    depende: toIntArray(raw.depende),
+    next: toIntArray(raw.next),
+    arquivos_relacionados: Array.isArray(raw.arquivos_relacionados)
+      ? raw.arquivos_relacionados.map((item) => String(item ?? "").trim()).filter(Boolean)
+      : [],
+  };
 }
 
 function buildStandardPrompt(body: RequestBody, sources: AiSourceInput[]): string {
@@ -1561,6 +1660,8 @@ function normalizeAtividades(raw: unknown, topicName: string): { items: AiAtivid
 }
 
 serve(async (req) => {
+  // Conta desde a chegada: autenticacao e leitura do corpo tambem gastam o relogio do worker.
+  const startedAt = Date.now();
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: CORS });
   }
@@ -1585,10 +1686,34 @@ serve(async (req) => {
       );
     }
 
-    // Geracao de trilha completa em duas etapas (esqueleto + detalhes + midias)
+    const deadline = startedAt + REQUEST_BUDGET_MS;
+
+    // Trilha em etapas, uma requisicao por etapa: o esqueleto e depois cada
+    // topico. Tudo numa requisicao so estourava o tempo do worker.
+    if (mode === "trail-skeleton") {
+      const sources = normalizeSources(body);
+      const ctx = buildTrailContext(body, sources);
+      const topicos = await generateTrailSkeleton(ctx, body, key, deadline);
+      return jsonResponse({ topicos });
+    }
+
+    if (mode === "trail-topic") {
+      const topic = asTrailSkeletonTopic(body.topic);
+      if (!topic) {
+        throw new AiStructuredError("Topico do esqueleto ausente ou invalido.", "trail_topic_invalid", 400);
+      }
+      const totalTopics = clampInt(Number(body.totalTopics) || 1, 1, 20);
+      const topicIndex = clampInt(Number(body.topicIndex) || 0, 0, totalTopics - 1);
+      const sources = normalizeSources(body);
+      const ctx = buildTrailContext(body, sources);
+      const topico = await generateTrailTopicDetail(ctx, topic, topicIndex, totalTopics, key, deadline);
+      return jsonResponse({ topico });
+    }
+
+    // Trilha inteira numa requisicao (legado; ver generateTrailTwoSteps)
     if (mode === "trail") {
       const sources = normalizeSources(body);
-      const payload = await generateTrailTwoSteps(body, sources, key);
+      const payload = await generateTrailTwoSteps(body, sources, key, deadline);
       return jsonResponse(payload);
     }
 

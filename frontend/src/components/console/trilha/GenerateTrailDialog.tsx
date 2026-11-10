@@ -22,6 +22,7 @@ const PASSO_ATIVO: Record<Step, number> = { configurar: 0, processando: 2, resul
 import { formatoDaQuestao, tipoDaQuestaoDoFormato } from "./formatoDaQuestao";
 import type { AiAtividade, AiTopico, MediaType } from "./proposta";
 import { contagemDaProposta, removerDaProposta, semAtividades, substituirNaProposta } from "./proposta";
+import { gerarTrilhaEmEtapas, type ProgressoDaTrilha } from "./gerarTrilhaEmEtapas";
 
 type Props = {
   open: boolean;
@@ -54,14 +55,6 @@ const sourceType = (name: string) => {
 };
 const mediaToContentType = (tipo: MediaType): "video" | "link" | "arquivo" =>
   tipo === "video" ? "video" : tipo === "audio" ? "arquivo" : "arquivo";
-
-async function fileToBase64(file: File) {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  return btoa(binary);
-}
 
 async function readStagedText(staged: StagedFile[]) {
   const parts: string[] = [];
@@ -99,6 +92,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [stagedFileContents, setStagedFileContents] = useState("");
   const [preview, setPreview] = useState<AiTopico[]>([]);
+  const [progresso, setProgresso] = useState<ProgressoDaTrilha | null>(null);
 
   const allFileNames = [...initialFileNames, ...stagedFiles.map((s) => s.file.name)];
   const allFileContents = [initialFileContents, stagedFileContents].filter(Boolean).join("\n\n");
@@ -121,6 +115,9 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     await refreshStagedText(next);
   };
 
+  // Sem o arquivo em base64: a função só lê texto de .txt/.md, e esse texto já
+  // vai em `texto`. O base64 de um PDF ou vídeo ia junto em toda requisição —
+  // e a trilha agora faz uma por tópico — sem a função nunca usá-lo.
   const buildSources = async () => Promise.all(stagedFiles.map(async ({ file }, index) => {
     const text = /\.(txt|md)$/i.test(file.name) ? (await file.text()).substring(0, 15000) : null;
     return {
@@ -130,7 +127,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
       conteudo: text,
       texto: text,
       markdown: /\.md$/i.test(file.name) ? text : null,
-      files: [{ name: file.name, mimeType: inferMime(file.name), base64: await fileToBase64(file) }],
+      files: [{ name: file.name, mimeType: inferMime(file.name) }],
     };
   }));
 
@@ -171,9 +168,13 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const close = () => { if (step === "aplicando" || step === "processando") return; reset(); onOpenChange(false); };
 
   // Gerar NÃO apaga nada: a proposta só existe na tela até o professor aplicar.
-  const callTrail = async (body: Record<string, unknown>) => {
+  const invokeAi = async (body: Record<string, unknown>) => {
     const { data, error } = await supabase.functions.invoke("generate-content-ai", { body });
     if (error) throw new Error(await formatSupabaseFunctionError(error));
+    return data as unknown;
+  };
+  const callTrail = async (body: Record<string, unknown>) => {
+    const data = (await invokeAi(body)) as { topicos?: unknown } | null;
     if (!Array.isArray(data?.topicos)) throw new Error("Resposta invalida da IA.");
     return data.topicos as AiTopico[];
   };
@@ -182,18 +183,36 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     if (!description.trim()) return toast.error("Descreva o que a turma precisa aprender.");
     setStep("processando");
     setIsGenerating(true);
+    setProgresso(null);
     try {
       const topicNames = topicNamesRaw.split("\n").map((line) => line.trim()).filter(Boolean);
-      const topicos = await callTrail({
-        mode: "trail", topicName: description, topicDescription: description, contents: [], sources: await buildSources(),
-        trailDescription: description, numTopics, topicNames, syllabus, fileContents: allFileContents || undefined, fileNames: allFileNames.length ? allFileNames : undefined,
+      // Esqueleto e cada tópico em requisições separadas: tudo numa só passava
+      // do tempo do worker da edge function (504/546). Ver gerarTrilhaEmEtapas.
+      const { topicos, semMaterial } = await gerarTrilhaEmEtapas({
+        invocar: invokeAi,
+        corpo: {
+          topicName: description, topicDescription: description, contents: [], sources: await buildSources(),
+          trailDescription: description, numTopics, topicNames, syllabus, fileContents: allFileContents || undefined, fileNames: allFileNames.length ? allFileNames : undefined,
+        },
+        aoProgredir: setProgresso,
       });
       setPreview(topicos);
       setStep("resultado");
+      if (semMaterial.length > 0) {
+        const nomes = semMaterial.map((t) => `“${t.nome}”`).join(", ");
+        toast.warning(
+          semMaterial.length === 1
+            ? `O tópico ${nomes} ficou sem material. Use “Pedir ajuste” nele para gerar de novo.`
+            : `Os tópicos ${nomes} ficaram sem material. Use “Pedir ajuste” em cada um para gerar de novo.`,
+        );
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao gerar trilha.");
       setStep("configurar");
-    } finally { setIsGenerating(false); }
+    } finally {
+      setIsGenerating(false);
+      setProgresso(null);
+    }
   };
 
   // "Pedir ajuste": regera SÓ este item pelo mesmo modo "trail" (1 tópico, com o nome dele e a instrução),
@@ -469,7 +488,13 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
           {step === "processando" && (
             <div className="flex flex-col items-center gap-4 py-16 text-center" role="status">
               <Loader2 className="h-10 w-10 animate-spin text-primary" aria-hidden="true" />
-              <p className="text-sm font-bold">{isUploadingFiles ? "Enviando arquivos…" : "Gerando a proposta…"}</p>
+              <p className="text-sm font-bold">
+                {isUploadingFiles
+                  ? "Enviando arquivos…"
+                  : progresso
+                    ? `Gerando o material dos tópicos… ${progresso.feitos} de ${progresso.total}`
+                    : "Montando os tópicos…"}
+              </p>
               <p className="max-w-sm text-[12.5px] text-muted-foreground">A IA está montando os tópicos, a ordem e o material inicial a partir do que você descreveu. Pode levar alguns instantes.</p>
             </div>
           )}
