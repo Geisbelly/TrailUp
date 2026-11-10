@@ -62,6 +62,14 @@ estáveis há meses:
 > **Atualização (2026-11-08):** `fn_questao_confere` e `questao_responder` (esta não estava na
 > contagem) têm fonte no git desde a `20261108_01`. O downgrade dela traz o corpo de produção de
 > 07/11.
+>
+> **Atualização (2026-11-10):** a `20261110_02` (respostas em código, numérica e expressão)
+> versiona mais quatro peças, a partir do corpo de produção lido em 10/11:
+> `fn_questoes_espelha_gabarito` e o gatilho `trg_questoes_espelha_gabarito` (o espelho passa a
+> pular `codigo`, `numerica` e `expressao`), `questao_gabarito_do_aluno` (passa a não devolver a
+> esperada da dissertativa e do código) e o CHECK `atividades_tipo_conhecido` de `atividades`
+> (que não era função e não estava neste inventário). A tabela `questao_gabarito` e a policy
+> `questao_gabarito_professor` continuam só em produção.
 
 ### Divergência recente (16) — é aqui que dói
 

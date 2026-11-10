@@ -113,6 +113,11 @@ CRIA_POR_TEMPLATE: dict[str, tuple[str, ...]] = {
     # (`_da_producao`). Os CREATE literais estao no arquivo, entao o parser ja os ve: a tupla
     # vazia e a decisao registrada de que aqui nao ha nada escondido.
     "20261021_19_arena_volta.py": (),
+    # Mesmo caso: `_funcao` interpola o nome so para RECORTAR uma funcao do texto de origem
+    # (`20261108_01`) e troca-la. As funcoes novas (`fn_questao_corrigida_por_ia`, as duas RPCs do
+    # servidor) e as versionadas aqui (espelho, `questao_gabarito_do_aluno`) estao em CREATE
+    # literal; o resto vem do texto das migrations de origem, que ja as criam.
+    "20261110_02_respostas_ricas.py": (),
 }
 
 # RPCs que o app chama e que NENHUMA migracao cria. Entrada aqui e divida
