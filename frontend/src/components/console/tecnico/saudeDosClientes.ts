@@ -118,7 +118,7 @@ export function lerSaudeDosClientes(dado: unknown): SaudeDosClientes | null {
 const SUPERFICIES: Record<string, string> = { console: "Console do professor", web_aluno: "Web do aluno", app: "App do aluno" };
 export const rotuloDaSuperficie = (id: string) => SUPERFICIES[id] ?? id;
 
-const TIPOS: Record<string, string> = { tela: "Tela derrubada", fatal: "Fatal", promessa: "Promessa", erro: "Erro" };
+const TIPOS: Record<string, string> = { tela: "Tela derrubada", fatal: "Fatal", promessa: "Promessa", erro: "Erro", tratado: "Falha avisada" };
 export const rotuloDoTipo = (tipo: string) => TIPOS[tipo] ?? tipo;
 
 const FORMATOS: Record<string, string> = { celular: "Celular", desktop: "Computador", sem_dado: "Sem dado" };

@@ -112,6 +112,7 @@ import {
   type Conteudo,
 } from "@/utils/trilhaBlocks";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { avisarFalha } from "@/services/saude/medicao";
 
 /* --------------------------
    WebView loader (lazy, platform-aware)
@@ -447,7 +448,7 @@ export default function TrilhaConteudoScreen() {
 
     ensureTopicoPersonalizado(topicoId)
       .catch((err) => {
-        console.warn("[TrilhaConteudo] Falha ao carregar personalização:", err);
+        avisarFalha("trilha/personalizacao", "[TrilhaConteudo] Falha ao carregar personalização:", err);
       })
       .finally(() => {
         // Compara o TOPICO em vez de usar um `ativo` local: este efeito
@@ -969,7 +970,7 @@ export default function TrilhaConteudoScreen() {
           return;
         }
         // Rede: a resposta abre a tentativa de novo ao ser enviada.
-        console.warn("[TrilhaConteudo] Tentativa não aberta no servidor:", err);
+        avisarFalha("tentativa/abrir", "[TrilhaConteudo] Tentativa não aberta no servidor:", err);
       });
     return () => {
       ativo = false;
@@ -1447,7 +1448,7 @@ export default function TrilhaConteudoScreen() {
         });
         void reloadRanking();
       } catch (err) {
-        console.warn("[TrilhaConteudo] Erro ao marcar conteudo:", err);
+        avisarFalha("conteudo/marcar", "[TrilhaConteudo] Erro ao marcar conteudo:", err);
       }
     },
     [
@@ -1504,7 +1505,7 @@ export default function TrilhaConteudoScreen() {
         }
         await refreshTopico(topicoId);
       } catch (err) {
-        console.warn("[TrilhaConteudo] Erro ao aplicar pulo de conteudo:", err);
+        avisarFalha("conteudo/pular", "[TrilhaConteudo] Erro ao aplicar pulo de conteudo:", err);
       }
     },
     [
@@ -1626,7 +1627,7 @@ export default function TrilhaConteudoScreen() {
           await registrarEvento(eventoTipo, eventoReferencia, valorEvento);
           void reloadRanking();
         } catch (error) {
-          console.warn("[TrilhaConteudo] Falha ao registrar evento da atividade:", error);
+          avisarFalha("atividade/evento", "[TrilhaConteudo] Falha ao registrar evento da atividade:", error);
           recordAppEvent({
             eventGroup: "performance",
             eventName: "activity_event_register_failed",
@@ -1735,7 +1736,7 @@ export default function TrilhaConteudoScreen() {
           return next;
         });
       } catch (err) {
-        console.error("[TrilhaConteudo] Erro ao processar atividade:", err);
+        avisarFalha("atividade/processar", "[TrilhaConteudo] Erro ao processar atividade:", err);
         if (err instanceof TentativaRecusada) {
           // O banco recusou (prazo, tentativas): repetir não adianta, então diz o porquê.
           showDialog({
@@ -2259,7 +2260,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                       try {
                         await registrarEvento("topico_iniciado", `topico:${topicoId}`, null);
                       } catch (error) {
-                        console.warn("[TrilhaConteudo] Falha ao registrar evento de topico iniciado:", error);
+                        avisarFalha("topico/evento-iniciado", "[TrilhaConteudo] Falha ao registrar evento de topico iniciado:", error);
                       }
                     }
                   }

@@ -7,6 +7,7 @@ import {
 import { Aluno } from "@/models/Aluno";
 import { perfisSelecionaveisDoAluno } from "@/utils/brainHex";
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { avisarFalha } from "@/services/saude/medicao";
 
 type SessionLike = {
   user?: {
@@ -320,7 +321,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           void ensureCurrentInBackground(uid, reqId);
         }
       } catch (err) {
-        console.warn("[UserContext] Erro ao sincronizar sessao:", err);
+        avisarFalha("sessao/sincronizar", "[UserContext] Erro ao sincronizar sessao:", err);
         const isTimeout = /excedeu/i.test(String((err as Error)?.message ?? ""));
         if (mountedRef.current && reqId === requestIdRef.current) {
           // Mantem sessao autenticada quando o problema e timeout de hidratacao do perfil.
@@ -391,7 +392,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       signOutRemoto: () => supabase.auth.signOut(),
       limparSessaoLocal: removerSessaoLocal,
       aoFalhar: (erro) => {
-        console.warn("[UserContext] Falha ao encerrar a sessao remota:", erro);
+        avisarFalha("sessao/encerrar", "[UserContext] Falha ao encerrar a sessao remota:", erro);
       },
     });
 

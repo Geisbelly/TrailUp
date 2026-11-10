@@ -83,6 +83,7 @@ import { resolveGraphNodeAccess } from '@/utils/graphNodeAccess';
 import { buildGraphFromTopicos, isTopicoUnlockedLocal } from '@/utils/topicoGraph';
 import { progressoCanonicoTopico } from '@/utils/topicoProgress';
 import { buildPersonalizedProgressSeed, seedPersonalizedProgress } from '@/utils/personalizedProgressSeed';
+import { avisarFalha } from '@/services/saude/medicao';
 
 type Visual = 'mapa' | 'arvore' | 'lista'
 
@@ -1248,7 +1249,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (err) {
       if (personalizationScopeRef.current === hydrationKey) personalizationHydratedClassRef.current = null
-      console.warn('[TrilhaContext] Erro ao hidratar personalizacoes:', err)
+      avisarFalha("personalizacao/hidratar", '[TrilhaContext] Erro ao hidratar personalizacoes:', err)
     }
   }, [activeProfileKey, aplicarSugestoesMaterial, buildPayloadForTopico, classeAtual, lerSugestoesMaterial, maybeRequestMissingMediaForRecord, persistPersonalizedTopicsCache, personalizacaoProvider, usuario?.id])
 
@@ -1332,7 +1333,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         return payload
       } catch (err) {
         personalizationAttemptedRef.current.delete(key)
-        console.warn('[TrilhaContext] Erro ao garantir personalizacao:', err)
+        avisarFalha("personalizacao/garantir", '[TrilhaContext] Erro ao garantir personalizacao:', err)
         try {
           const jobs = await personalizacaoProvider.listarJobsPersistidosAluno({
             alunoId: usuario.id,
@@ -1413,10 +1414,10 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         })
         data = edgeResult.data ?? null
         if (edgeResult.error) {
-          console.warn('[TrilhaContext] Erro na Edge Function personalize_path:', edgeResult.error)
+          avisarFalha("trilha/grafo-edge", '[TrilhaContext] Erro na Edge Function personalize_path:', edgeResult.error)
         }
       } catch (edgeError) {
-        console.warn('[TrilhaContext] Falha ao invocar Edge personalize_path:', edgeError)
+        avisarFalha("trilha/grafo-edge-chamada", '[TrilhaContext] Falha ao invocar Edge personalize_path:', edgeError)
       }
 
       const { data: dbThemeRaw, error: dbThemeError } = await supabase
@@ -1426,7 +1427,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         .maybeSingle()
 
       if (dbThemeError) {
-        console.warn('[TrilhaContext] Falha ao carregar classe_mapa_tema:', dbThemeError)
+        avisarFalha("trilha/tema", '[TrilhaContext] Falha ao carregar classe_mapa_tema:', dbThemeError)
       }
 
       const latestClasse = classeAtualRef.current
@@ -1504,7 +1505,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!latestClasse || requestedScope !== personalizationScopeRef.current) return
       classeAtual = latestClasse
       personalizedTopics = personalizedTopicsRef.current
-      console.warn('[TrilhaContext] Erro ao buscar grafo, usando fallback:', e)
+      avisarFalha("trilha/grafo", '[TrilhaContext] Erro ao buscar grafo, usando fallback:', e)
       const { nodes, unlocked } = buildGraphFromTopicos(
         classeAtual!,
         topicosPendentesPersonalizadosRef.current,
@@ -1581,7 +1582,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
                 resumo: resumo ?? current.resumo,
               }))
             } catch (error) {
-              console.warn('[TrilhaContext] Falha ao sincronizar progresso remoto:', error)
+              avisarFalha("sync/progresso-remoto", '[TrilhaContext] Falha ao sincronizar progresso remoto:', error)
             }
           })()
         }, 500)
@@ -1659,7 +1660,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       if (cancelado) return
       if (personalizacoesError) {
         // Sem rede: o que veio do cache continua valendo, não zera.
-        console.warn('[TrilhaContext] Falha ao buscar personalizacao ativa:', personalizacoesError)
+        avisarFalha("personalizacao/ativa", '[TrilhaContext] Falha ao buscar personalizacao ativa:', personalizacoesError)
         return
       }
 
@@ -1689,7 +1690,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       if (cancelado) return
       if (error) {
         // Idem: sem rede, o progresso hidratado do cache continua valendo.
-        console.warn('[TrilhaContext] Falha ao buscar progresso personalizado:', error)
+        avisarFalha("personalizacao/progresso", '[TrilhaContext] Falha ao buscar progresso personalizado:', error)
         return
       }
 
@@ -1835,7 +1836,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
 
       console.log('[TrilhaContext] Tópico atualizado com sucesso');
     } catch (err) {
-      console.warn('[TrilhaContext] Erro ao atualizar tópico:', err);
+      avisarFalha("topico/atualizar", '[TrilhaContext] Erro ao atualizar tópico:', err);
     }
   }, [syncClasseLocally]);
 
@@ -1859,7 +1860,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         resumo: resumoCanonico,
       }))
     } catch (err) {
-      console.warn('[TrilhaContext] Erro ao atualizar progresso da classe:', err);
+      avisarFalha("classe/progresso", '[TrilhaContext] Erro ao atualizar progresso da classe:', err);
     }
   }, [syncClasseLocally]);
 
@@ -1887,7 +1888,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
           await atualizarProgressoClasse();
         } catch (error) {
           progressSeedRef.current.delete(seedKey);
-          console.warn('[TrilhaContext] Falha ao registrar passos do percurso:', error);
+          avisarFalha("percurso/passos", '[TrilhaContext] Falha ao registrar passos do percurso:', error);
         }
       }
     })();
@@ -1905,7 +1906,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       syncClasseLocally(cloneClasse(classeAtual, { topicos: [...classeAtual.topicos] }));
       await refreshTopico(topicoId);
     } catch (err) {
-      console.error('[TrilhaContext] Erro ao marcar tópico iniciado:', err);
+      avisarFalha("topico/iniciado", '[TrilhaContext] Erro ao marcar tópico iniciado:', err);
       throw err;
     }
   }, [classeAtual, usuario, refreshTopico, syncClasseLocally]);
@@ -1928,7 +1929,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         throw new Error('Ainda existem etapas sem conclusão confirmada no Supabase. Revise as atividades pendentes e tente novamente.');
       }
     } catch (err) {
-      console.error('[TrilhaContext] Erro ao marcar tópico concluído:', err);
+      avisarFalha("topico/concluido", '[TrilhaContext] Erro ao marcar tópico concluído:', err);
       throw err;
     }
   }, [classeAtual, usuario, atualizarProgressoClasse, refreshTopico]);
@@ -1959,7 +1960,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       // Sincronização remota com delay para evitar race com índice do Supabase
       setTimeout(() => void refreshTopico(topicoId), 500);
     } catch (err) {
-      console.error('[TrilhaContext] Erro ao marcar conteúdo visto:', err);
+      avisarFalha("conteudo/visto", '[TrilhaContext] Erro ao marcar conteúdo visto:', err);
       throw err;
     }
   }, [classeAtual, usuario, atualizarProgressoClasse, refreshTopico, syncClasseLocally]);
@@ -1995,7 +1996,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       await atualizarProgressoClasse();
       await refreshTopico(topicoId);
     } catch (err) {
-      console.error('[TrilhaContext] Erro ao registrar atividade:', err);
+      avisarFalha("atividade/registrar", '[TrilhaContext] Erro ao registrar atividade:', err);
       throw err;
     }
   }, [classeAtual, usuario, atualizarProgressoClasse, refreshTopico]);
@@ -2024,7 +2025,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       await conteudo.registrarVisita(usuario.id)
       await atualizarProgressoClasse()
     } catch (err) {
-      console.warn('[TrilhaContext] Erro ao registrar tempo do conteúdo:', err)
+      avisarFalha("tempo/conteudo", '[TrilhaContext] Erro ao registrar tempo do conteúdo:', err)
     }
   }, [classeAtual, usuario, atualizarProgressoClasse])
 
@@ -2050,7 +2051,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       await atividade.registrarVisita(usuario.id)
       await atualizarProgressoClasse()
     } catch (err) {
-      console.warn('[TrilhaContext] Erro ao registrar tempo da atividade:', err)
+      avisarFalha("tempo/atividade", '[TrilhaContext] Erro ao registrar tempo da atividade:', err)
     }
   }, [classeAtual, usuario, atualizarProgressoClasse])
 
@@ -2089,7 +2090,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       await refreshTopico(topicoId)
       await atualizarProgressoClasse()
     } catch (err) {
-      console.warn('[TrilhaContext] Erro ao registrar tempo do topico:', err)
+      avisarFalha("tempo/topico", '[TrilhaContext] Erro ao registrar tempo do topico:', err)
     }
   }, [atualizarProgressoClasse, classeAtual, refreshTopico, usuario])
 
@@ -2273,7 +2274,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
             '[TrilhaContext] RLS bloqueando gravacao em personalizacao_item_progresso. Ajuste policy no Supabase para auth.uid() = aluno_id.'
           )
         } else {
-          console.warn('[TrilhaContext] Falha ao salvar progresso personalizado direto no Supabase:', directErr)
+          avisarFalha("sync/progresso-direto", '[TrilhaContext] Falha ao salvar progresso personalizado direto no Supabase:', directErr)
         }
       }
 
@@ -2289,7 +2290,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         await enfileirarProgressoItem({ ...progressoPayload, aluno_id: usuario.id })
       } catch (erroFila) {
-        console.warn('[TrilhaContext] Falha ao enfileirar progresso personalizado:', erroFila)
+        avisarFalha("sync/progresso-fila", '[TrilhaContext] Falha ao enfileirar progresso personalizado:', erroFila)
       }
 
       throw directErr
@@ -2323,7 +2324,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
           tempo_gasto_seg: tempoGastoSeg,
         });
       } catch (err) {
-        console.warn('[TrilhaContext] Erro ao salvar resposta da questao:', err);
+        avisarFalha("questao/salvar-resposta", '[TrilhaContext] Erro ao salvar resposta da questao:', err);
         throw err;
       }
     }
