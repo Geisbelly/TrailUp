@@ -16,7 +16,7 @@ import { gastarSegundaChance } from '@/services/loja/lojaService';
 import { mensagemDeUso, podeResponderComCompra } from '@/services/loja/usoItem';
 // Do .core: o tentativasAtividade.ts carrega o cliente do Supabase.
 import { linhasDoRetorno, mensagemDaRecusa, retornoDesde } from '@/services/tentativasAtividade.core';
-import { fatorDaRegra, questaoDoBanco, responderQuestao, revelarGabarito, type RespostaCorrigida } from '@/services/questaoNoBanco';
+import { conferirNoServidor, fatorDaRegra, questaoDoBanco, responderQuestao, revelarGabarito, type RespostaCorrigida } from '@/services/questaoNoBanco';
 import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayValidation';
 import { LIMITE_DO_ENVIO_MS, comLimiteDeTempo, enviarUmaVez, mensagemDaFalhaNaConclusao, mensagemDaFalhaNoEnvio } from '@/utils/envioDaResposta';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,9 +26,16 @@ import { Image, Modal, ScrollView, Text, TextInput, TouchableOpacity, View, Plat
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { shadowStyle } from "@/utils/webShadow";
 import { TextoRico } from '@/components/textoRico/TextoRico';
+import { BlocoDeCodigo } from '@/components/textoRico/BlocoDeCodigo';
 import { formatoDoTexto } from '@/utils/textoRico/formatoTexto';
 import { alternativaDaResposta, letraDaAlternativa, textoRicoLegivel } from '@/utils/textoRico/respostaRica';
 import { avisarFalha } from '@/services/saude/medicao';
+import { formaDaResposta, previaDaExpressao } from '@/utils/textoRico/editorDeResposta';
+import { lerConfigResposta } from '@/utils/textoRico/configResposta';
+import { codigoDoErroDaEdge, mensagemDoErroDaEdge, textoDoMotivo, type MotivoDaConferencia } from '@/services/conferenciaNoServidor.core';
+import { EditorDeCodigo } from '@/components/resposta/EditorDeCodigo';
+import { EditorNumerico } from '@/components/resposta/EditorNumerico';
+import { EditorDeExpressao } from '@/components/resposta/EditorDeExpressao';
 
 const IS_WEB = Platform.OS === "web";
 
@@ -493,18 +500,26 @@ export default function QuestionActivity({
     () => getProfileShellPalette(perfilNome || null),
     [perfilNome]
   );
+  // Código, numérica e expressão (spec B): editor próprio, corrigidos no servidor. Quando a questão
+  // é de um desses, os outros tipos não valem, nem que a atividade diga outra coisa.
+  const forma = useMemo(() => formaDaResposta(questao?.tipo, atividade?.tipo), [atividade?.tipo, questao?.tipo]);
+  const configResposta = useMemo(() => lerConfigResposta(questao?.config_resposta), [questao?.config_resposta]);
   const isTrueFalseActivity = useMemo(
-    () => isTrueFalseType(atividade?.tipo) || isTrueFalseType(questao?.tipo),
-    [atividade?.tipo, questao?.tipo]
+    () => !forma && (isTrueFalseType(atividade?.tipo) || isTrueFalseType(questao?.tipo)),
+    [atividade?.tipo, forma, questao?.tipo]
   );
   const isFillBlankActivity = useMemo(
-    () => isFillBlankType(atividade?.tipo) || isFillBlankType(questao?.tipo),
-    [atividade?.tipo, questao?.tipo]
+    () => !forma && (isFillBlankType(atividade?.tipo) || isFillBlankType(questao?.tipo)),
+    [atividade?.tipo, forma, questao?.tipo]
   );
   const isDissertativaActivity = useMemo(
-    () => isDissertativaType(atividade?.tipo) || isDissertativaType(questao?.tipo),
-    [atividade?.tipo, questao?.tipo]
+    () => !forma && (isDissertativaType(atividade?.tipo) || isDissertativaType(questao?.tipo)),
+    [atividade?.tipo, forma, questao?.tipo]
   );
+  // A resposta é texto digitado, não uma alternativa escolhida.
+  const respostaPorTexto = isFillBlankActivity || isDissertativaActivity || forma != null;
+  // Sem gabarito para revelar: a IA avalia contra critérios, e o código de referência não é resposta.
+  const corrigidaPorIa = isDissertativaActivity || forma === 'codigo';
   // Questão da turma: o banco corrige, e o gabarito só chega quando o app o mostraria
   // (`20261108_01`). A personalizada local (id negativo) segue corrigida aqui, com o gabarito dela.
   const daTurma = questaoDoBanco(questao?.id, isPersonalizedLocal);
@@ -542,7 +557,7 @@ export default function QuestionActivity({
       return ['Verdadeiro', 'Falso'];
     }
 
-    if (isFillBlankActivity) {
+    if (isFillBlankActivity || forma) {
       return [];
     }
 
@@ -557,7 +572,7 @@ export default function QuestionActivity({
       }
     }
     return [];
-  }, [isFillBlankActivity, isTrueFalseActivity, questao?.alternativas]);
+  }, [forma, isFillBlankActivity, isTrueFalseActivity, questao?.alternativas]);
   const [selecionados, setSelecionados] = useState<Record<number, number | null>>({});
   const [respostasTexto, setRespostasTexto] = useState<Record<number, string>>({});
   const [stas, setStas] = useState<Record<number, 'certo' | 'errado' | null>>({});
@@ -654,7 +669,7 @@ export default function QuestionActivity({
     const correto = questao?.resposta_correta
     if (correto == null) return false
 
-    if (isFillBlankActivity) {
+    if (isFillBlankActivity || forma === 'numerica' || forma === 'expressao') {
       const respostaDigitada = normalizeStrictAnswerValue(alt);
       const respostasCorretas = acceptedAnswers
         .map((answer) => normalizeStrictAnswerValue(answer))
@@ -679,12 +694,12 @@ export default function QuestionActivity({
     const letra = String.fromCharCode(65 + idx) // A, B, C...
     if (norm(letra) === norm(correto)) return true
     return false
-  }, [acceptedAnswers, isDissertativaActivity, isFillBlankActivity, isTrueFalseActivity, questao?.resposta_correta])
+  }, [acceptedAnswers, forma, isDissertativaActivity, isFillBlankActivity, isTrueFalseActivity, questao?.resposta_correta])
 
   useEffect(() => {
     if (reResponder || !respondidaAntes || respostaAnterior == null) return;
 
-    if (isDissertativaActivity || isFillBlankActivity) {
+    if (respostaPorTexto) {
       const respostaTxt = String(respostaAnterior);
       setRespostasTexto((prev) =>
         prev[questaoIndex] === respostaTxt ? prev : { ...prev, [questaoIndex]: respostaTxt }
@@ -724,8 +739,7 @@ export default function QuestionActivity({
     respostaAnterior,
     alternativas,
     checkResposta,
-    isDissertativaActivity,
-    isFillBlankActivity,
+    respostaPorTexto,
     isTrueFalseActivity,
     questaoIndex,
     atividadeConcluidaPersistida,
@@ -754,7 +768,7 @@ export default function QuestionActivity({
   const questaoIdDaTurma = daTurma ? Number(questao?.id) : null;
   const jaRespondeuEsta = respondidaAntes || !!confirmados[questaoIndex];
   useEffect(() => {
-    if (questaoIdDaTurma == null || isDissertativaActivity || !podeVerGabarito) return;
+    if (questaoIdDaTurma == null || corrigidaPorIa || !podeVerGabarito) return;
     if (gabaritoCarregado || !jaRespondeuEsta) return;
     let vivo = true;
     revelarGabarito(questaoIdDaTurma)
@@ -768,7 +782,7 @@ export default function QuestionActivity({
     return () => {
       vivo = false;
     };
-  }, [questaoIdDaTurma, isDissertativaActivity, podeVerGabarito, gabaritoCarregado, jaRespondeuEsta]);
+  }, [questaoIdDaTurma, corrigidaPorIa, podeVerGabarito, gabaritoCarregado, jaRespondeuEsta]);
 
   if (!questao) {
     return (
@@ -798,18 +812,20 @@ export default function QuestionActivity({
   const podeConfirmar =
     !blockedByTimeout &&
     !bloqueioEdicaoPersistida &&
-    (isFillBlankActivity || isDissertativaActivity
+    (respostaPorTexto
       ? respostaTextoAtual.trim().length > 0
       : selecionados[questaoIndex] != null);
   // Questão rica (spec A): enunciado, alternativas, gabarito e explicação em markdown com fórmula e
   // código. Na múltipla, o app manda a LETRA e o banco confere pela posição (`20261108_03`).
   const rica = formatoDoTexto(questao?.formato_texto) === 'rico';
-  const multiplaRica = rica && !isTrueFalseActivity && !isFillBlankActivity && !isDissertativaActivity;
+  const multiplaRica = rica && !isTrueFalseActivity && !respostaPorTexto;
   const respostaAnteriorExibida =
     respostaAnterior != null
       ? isTrueFalseActivity
         ? formatTrueFalseLabel(respostaAnterior)
-        : isFillBlankActivity
+        : forma === 'expressao'
+        ? previaDaExpressao(String(respostaAnterior))
+        : isFillBlankActivity || forma
         ? String(respostaAnterior)
         : multiplaRica
         ? alternativaDaResposta(respostaAnterior, alternativas)
@@ -818,6 +834,8 @@ export default function QuestionActivity({
   const gabaritoExibido =
     isDissertativaActivity
       ? "Avaliação manual"
+      : forma === 'codigo'
+      ? null
       : isFillBlankActivity
       ? acceptedAnswers.length > 0
         ? acceptedAnswers.join(' ou ')
@@ -825,8 +843,12 @@ export default function QuestionActivity({
       : gabaritoBruto != null
       ? isTrueFalseActivity
         ? formatTrueFalseLabel(gabaritoBruto)
+        : forma === 'expressao'
+        ? previaDaExpressao(String(gabaritoBruto))
         : String(gabaritoBruto)
       : null;
+  // A expressão é LaTeX: resposta e gabarito saem desenhados, mesmo em questão sem a marca de rica.
+  const exibicaoRica = rica || forma === 'expressao';
 
   return (
     <ScrollView
@@ -1050,7 +1072,34 @@ export default function QuestionActivity({
         </View>
       )}
 
-      {!isFillBlankActivity && !isDissertativaActivity && alternativas.map((alt, i) => (
+      {forma ? (
+        <View
+          style={{
+            marginTop: 6,
+            padding: 16,
+            borderRadius: 14,
+            backgroundColor: profilePalette.surface,
+            borderWidth: 1,
+            borderColor: profilePalette.border,
+          }}
+        >
+          {(() => {
+            const aoMudar = (text: string) => {
+              if (bloqueioEdicaoPersistida) return;
+              setRespostasTexto((prev) => ({ ...prev, [questaoIndex]: text }));
+              setStas((prev) => ({ ...prev, [questaoIndex]: null }));
+              setConfirmados((prev) => ({ ...prev, [questaoIndex]: false }));
+              setTimeoutLocked((prev) => ({ ...prev, [questaoIndex]: false }));
+            };
+            const comum = { valor: respostaTextoAtual, onChange: aoMudar, editavel: !bloqueioEdicaoPersistida, paleta: profilePalette };
+            if (forma === 'codigo') return <EditorDeCodigo {...comum} linguagem={configResposta.linguagem} />;
+            if (forma === 'numerica') return <EditorNumerico {...comum} dimensao={configResposta.dimensao} />;
+            return <EditorDeExpressao {...comum} variaveis={configResposta.variaveis} />;
+          })()}
+        </View>
+      ) : null}
+
+      {!respostaPorTexto && alternativas.map((alt, i) => (
         <TouchableOpacity
           key={i}
           onPress={() => {
@@ -1197,7 +1246,10 @@ export default function QuestionActivity({
           const respostaDigitada = respostaTextoAtual.trim();
           if (!podeConfirmar || validandoIA) return;
 
-          const respostaSelecionada = isFillBlankActivity || isDissertativaActivity
+          // O código vai como foi escrito: recuo e linha em branco fazem parte da resposta.
+          const respostaSelecionada = forma === 'codigo'
+            ? respostaTextoAtual.replace(/\s+$/, '')
+            : respostaPorTexto
             ? respostaDigitada
             : multiplaRica
             ? escolhido != null && escolhido >= 0 && escolhido < alternativas.length
@@ -1218,7 +1270,49 @@ export default function QuestionActivity({
           // à IA com o id (a resposta esperada fica no servidor); sem a IA, a mesma RPC compara
           // o texto com a tolerância de sempre.
           let corrigida: RespostaCorrigida | null = null;
-          if (daTurma) {
+          let motivoDaConferencia: MotivoDaConferencia | null = null;
+          if (daTurma && forma) {
+            // Spec B: só o servidor corrige, e `questao_responder` recusa estes tipos. Sem a edge,
+            // a resposta não foi gravada, e o aluno fica sabendo em vez de ver um "errado" inventado.
+            const questaoId = Number(questao.id);
+            setValidandoIA(forma === 'codigo');
+            try {
+              if (forma === 'codigo') {
+                resultadoIA = await validateEssayAnswerWithAi({
+                  questaoId,
+                  tempoGastoSeg,
+                  enunciado: String(questao?.enunciado ?? ''),
+                  respostaAluno: respostaSelecionada,
+                });
+                if (!resultadoIA.registro) throw new Error('correcao_sem_registro');
+                corrigida = resultadoIA.registro;
+                setFeedbackIA((prev) => ({ ...prev, [questaoIndex]: resultadoIA }));
+              } else {
+                const conferida = await comLimiteDeTempo(
+                  conferirNoServidor({ questaoId, resposta: respostaSelecionada, tempoGastoSeg }),
+                  LIMITE_DO_ENVIO_MS,
+                  'questao_conferir_resposta',
+                );
+                motivoDaConferencia = conferida.motivo;
+                corrigida = conferida;
+              }
+            } catch (error) {
+              const codigo =
+                (error as { codigoDaEdge?: string | null } | null)?.codigoDaEdge ?? (await codigoDoErroDaEdge(error));
+              setModalInfo(mensagemDoErroDaEdge(codigo) ?? mensagemDaFalhaNoEnvio(error));
+              setModalVisivel(true);
+              avisarFalha("questao/servidor", '[QuestionActivity] Falha ao corrigir no servidor:', error);
+              return;
+            } finally {
+              setValidandoIA(false);
+            }
+            acertou = corrigida.correta;
+            acertosPercentBase = corrigida.acertosPercentual;
+            const gabaritoRecebido = corrigida.respostaCorreta;
+            if (corrigida.gabaritoLiberado) {
+              setGabaritosDoBanco((prev) => ({ ...prev, [questaoId]: gabaritoRecebido }));
+            }
+          } else if (daTurma) {
             const questaoId = Number(questao.id);
             if (isDissertativaActivity && respostaDigitada) {
               setValidandoIA(true);
@@ -1263,7 +1357,7 @@ export default function QuestionActivity({
             if (corrigida.gabaritoLiberado) {
               setGabaritosDoBanco((prev) => ({ ...prev, [questaoId]: gabaritoRecebido }));
             }
-          } else if (isDissertativaActivity && respostaDigitada) {
+          } else if ((isDissertativaActivity || forma === 'codigo') && respostaDigitada) {
             setValidandoIA(true);
             try {
               resultadoIA = await validateEssayAnswerWithAi({
@@ -1282,7 +1376,7 @@ export default function QuestionActivity({
             }
             setFeedbackIA((prev) => ({ ...prev, [questaoIndex]: resultadoIA }));
           } else {
-            acertou = isFillBlankActivity
+            acertou = respostaPorTexto
               ? checkResposta(respostaSelecionada, -1)
               : checkResposta(alternativas[escolhido ?? -1], escolhido ?? -1);
             acertosPercentBase = acertou ? 100 : 0;
@@ -1305,7 +1399,7 @@ export default function QuestionActivity({
             : Math.round(acertosPercentBase);
           setStas((prev) => ({ ...prev, [questaoIndex]: acertou ? 'certo' : 'errado' }));
           setConfirmados((prev) => ({ ...prev, [questaoIndex]: true }));
-          if (!isFillBlankActivity && !isDissertativaActivity && escolhido != null && escolhido >= 0) {
+          if (!respostaPorTexto && escolhido != null && escolhido >= 0) {
             setOpcoesTentadas((prev) => {
               const atual = prev[questaoIndex] ?? [];
               return atual.includes(escolhido)
@@ -1313,7 +1407,7 @@ export default function QuestionActivity({
                 : { ...prev, [questaoIndex]: [...atual, escolhido] };
             });
           }
-          if (isFillBlankActivity || isDissertativaActivity) {
+          if (respostaPorTexto) {
             setRespostasTexto((prev) => ({ ...prev, [questaoIndex]: respostaSelecionada }));
           }
           setReResponder(false)
@@ -1488,17 +1582,20 @@ export default function QuestionActivity({
               rico: rica,
             });
           } else {
-            const gabaritoTxt =
-              gabaritoExibido != null && isImediato
-                ? `Gabarito: ${gabaritoExibido}`
-                : '';
+            const gabaritoTxt = [
+              textoDoMotivo(motivoDaConferencia),
+              gabaritoExibido != null && isImediato ? `Gabarito: ${gabaritoExibido}` : null,
+            ]
+              .filter(Boolean)
+              .join('\n\n');
             setModalInfo({
               titulo: isPensante ? 'Quer tentar de novo?' : 'Revise e tente de novo',
               descricao: isPensante
                 ? 'Modo pensante ativo: mostramos apenas se está certo ou errado. Quer ver o gabarito ou tentar novamente? A nova tentativa vale metade da pontuação.'
                 : `${gabaritoTxt}${gabaritoTxt && explicacao ? '\n\n' : ''}${explicacao || 'Revise o conteudo e tente novamente.'}`,
               acerto: false,
-              rico: rica,
+              // Expressão é questão nova, escrita em LaTeX: o gabarito sai desenhado.
+              rico: rica || forma === 'expressao',
             });
           }
           setModalVisivel(true);
@@ -1685,7 +1782,12 @@ export default function QuestionActivity({
       )}
 
       {mostrarRespostaAluno && respostaAnteriorExibida != null && (
-        rica ? (
+        forma === 'codigo' ? (
+          <View style={{ marginTop: 6 }}>
+            <Text style={{ color: profilePalette.textMuted, fontFamily: FontFamily.interMedium }}>Sua ultima resposta:</Text>
+            <BlocoDeCodigo codigo={respostaAnteriorExibida} linguagem={configResposta.linguagem} paleta={profilePalette} />
+          </View>
+        ) : exibicaoRica ? (
           <View style={{ marginTop: 6 }}>
             <TextoRico
               texto={`Sua ultima resposta: ${respostaAnteriorExibida}`}
@@ -1702,7 +1804,7 @@ export default function QuestionActivity({
       )}
 
       {podeVerGabarito && gabaritoExibido != null && (
-        rica ? (
+        exibicaoRica ? (
           <View style={{ marginTop: 6 }}>
             <TextoRico
               texto={`Gabarito: ${gabaritoExibido}`}
