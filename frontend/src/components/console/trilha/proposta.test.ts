@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { contagemDaProposta, removerDaProposta, semAtividades, substituirNaProposta, type AiTopico } from "./proposta";
+import { contagemDaProposta, conteudoDaMidia, removerDaProposta, semAtividades, substituirNaProposta, type AiTopico } from "./proposta";
 
 const ativ = { titulo: "a", enunciado: "e", tipo: "multipla", alternativas: null, resposta_correta: "A" };
 const topico = (ordem: number, extra: Partial<AiTopico> = {}): AiTopico => ({
@@ -47,5 +47,47 @@ describe("substituirNaProposta", () => {
     const r = substituirNaProposta(base, 2, novo);
     expect(r[1]).toMatchObject({ nome: "Novo", ordem: 2, next: [], depende: [1] });
     expect(r[0].nome).toBe("T1");
+  });
+});
+
+describe("conteudoDaMidia", () => {
+  const midia = (extra: Partial<Parameters<typeof conteudoDaMidia>[0]> = {}) => ({
+    tipo: "pdf" as const,
+    titulo: "Resumo",
+    descricao: "Discutir arquiteturas primário-secundário e estratégias de alta disponibilidade.",
+    ...extra,
+  });
+
+  it("só texto vira conteúdo de texto, nunca arquivo com a frase no lugar do caminho", () => {
+    const r = conteudoDaMidia(midia({ roteiro: "1. Abrir com uma pergunta" }), null);
+    expect(r?.tipo).toBe("texto");
+    expect(r?.conteudo).toBe(
+      "**PDF sugerido**\n\nDiscutir arquiteturas primário-secundário e estratégias de alta disponibilidade.\n\n### Roteiro\n\n1. Abrir com uma pergunta",
+    );
+  });
+
+  it("arquivo enviado pelo professor fica como arquivo, com o caminho", () => {
+    expect(conteudoDaMidia(midia(), "uuid/classes/1/materials/1_a.pdf")).toEqual({
+      tipo: "arquivo",
+      conteudo: "uuid/classes/1/materials/1_a.pdf",
+    });
+  });
+
+  it("link de verdade vira vídeo ou link; URL que não é link vira texto", () => {
+    expect(conteudoDaMidia(midia({ tipo: "video", url: "https://youtu.be/abcdefghijk" }), null)).toEqual({
+      tipo: "video",
+      conteudo: "https://youtu.be/abcdefghijk",
+    });
+    expect(conteudoDaMidia(midia({ url: "https://exemplo.invalid/a.pdf" }), null)?.tipo).toBe("link");
+    expect(conteudoDaMidia(midia({ descricao: "", url: "aula.pdf" }), null)).toEqual({
+      tipo: "texto",
+      conteudo: "**PDF sugerido**\n\naula.pdf",
+    });
+  });
+
+  it("sem nada para mostrar, não grava; roteiro igual à descrição não repete", () => {
+    expect(conteudoDaMidia(midia({ descricao: "  " }), null)).toBeNull();
+    const r = conteudoDaMidia(midia({ tipo: "audio", descricao: "x", roteiro: "x" }), null);
+    expect(r?.conteudo).toBe("**Áudio sugerido**\n\nx");
   });
 });

@@ -13,7 +13,10 @@ export function useUrlDoConteudo(valor: string | null | undefined): string | nul
     let ativo = true;
     const caminho = caminhoNoBucketConteudos(valor);
     if (!caminho) {
-      setUrl(valor ? String(valor) : null);
+      // Sem caminho no bucket: só link externo vira URL. Texto solto (uma
+      // frase gravada no lugar do arquivo) não é endereço de nada.
+      const texto = String(valor ?? "").trim();
+      setUrl(/^https?:\/\//i.test(texto) ? texto : null);
       return;
     }
     setUrl(null);
