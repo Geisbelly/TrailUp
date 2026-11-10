@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
+import {
+  chamarGeminiComRotacao,
+  GeminiInalcancavel,
+  novoEstadoDaRotacao,
+  PrazoDoGeminiEsgotado,
+  type RespostaGemini,
+} from "./rotacaoGemini.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -11,14 +18,10 @@ const GEMINI_PRIMARY_MODEL = "gemini-3.6-flash";
 // "lite" da mesma serie ainda costumam responder. Sobrescreva com
 // GEMINI_FALLBACK_MODELS (separados por virgula) sem precisar de deploy.
 const GEMINI_DEFAULT_FALLBACK_MODELS = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite"];
-// Status em que vale tentar outra chave/modelo: cota (429), credito
-// pre-pago esgotado (402), chave sem permissao (403) e sobrecarga (500/503).
-// O 402 caia no "Gemini API error" 502 sem tentar mais nada.
-const GEMINI_ROTATE_STATUSES = new Set([402, 403, 429, 500, 503]);
-// Par (chave, modelo) que esgotou fica de fora por um tempo nesta instancia,
-// pra nao gastar ida e volta em chave morta a cada pedido.
-const GEMINI_EXHAUSTED_COOLDOWN_MS = 10 * 60 * 1000;
-const geminiExhaustedUntil = new Map<string, number>();
+// Chave esgotada e modelo sobrecarregado ficam de fora por um tempo nesta
+// instancia, pra nao gastar ida e volta neles a cada pedido. Qual falha pula
+// o que esta em rotacaoGemini.ts.
+const geminiRotacao = novoEstadoDaRotacao();
 
 function splitList(raw: string | undefined | null): string[] {
   return String(raw ?? "")
@@ -35,9 +38,9 @@ function geminiModels(): string[] {
 
 /**
  * Chama o Gemini percorrendo todas as chaves de GEMINI_API_KEY (aceita
- * varias, separadas por virgula ou ponto e virgula, como na API) e, se
- * todas esgotarem, os modelos de reserva. Devolve a primeira resposta que
- * nao seja de cota/credito; se todas forem, devolve a ultima.
+ * varias, separadas por virgula ou ponto e virgula, como na API) e os
+ * modelos de reserva. Devolve a primeira resposta que nao seja de cota,
+ * credito ou sobrecarga; se todas forem, devolve a ultima.
  */
 // Sem `any`: o eslint do frontend (no-explicit-any) varre esta pasta. Os dois
 // chamadores fazem cast explicito ao navegar candidates[0].content.parts.
@@ -58,71 +61,33 @@ function aiTimeoutError(): AiStructuredError {
   );
 }
 
-function isAbortTimeout(error: unknown): boolean {
-  return error instanceof DOMException && (error.name === "TimeoutError" || error.name === "AbortError");
-}
-
 async function fetchGemini(rawKeys: string, body: unknown, deadline?: number): Promise<GeminiResult> {
   const keys = splitList(rawKeys);
   if (keys.length === 0) keys.push(rawKeys);
-  const payload = JSON.stringify(body);
-  const now = Date.now();
-  const pairs: Array<{ key: string; keyIndex: number; model: string; id: string }> = [];
-  for (const model of geminiModels()) {
-    keys.forEach((key, keyIndex) => pairs.push({ key, keyIndex, model, id: `${key}|${model}` }));
-  }
-  const fresh = pairs.filter((pair) => (geminiExhaustedUntil.get(pair.id) ?? 0) <= now);
-  // Se tudo estiver em cooldown, tenta mesmo assim: a cota pode ter voltado.
-  const order = fresh.length ? fresh : pairs;
-
-  let last: GeminiResult | null = null;
-  let lastNetworkError: unknown = null;
-  for (const pair of order) {
-    const remaining = deadline === undefined ? undefined : deadline - Date.now();
-    if (remaining !== undefined && remaining <= 0) throw aiTimeoutError();
-    let res: Response;
-    try {
-      // Chave no header, nao na URL (#195): URL vai parar em log.
-      res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${pair.model}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": pair.key },
-          body: payload,
-          ...(remaining !== undefined ? { signal: AbortSignal.timeout(remaining) } : {}),
-        },
+  try {
+    const resposta: RespostaGemini = await chamarGeminiComRotacao({
+      chaves: keys,
+      modelos: geminiModels(),
+      modeloPrincipal: GEMINI_PRIMARY_MODEL,
+      corpo: JSON.stringify(body),
+      estado: geminiRotacao,
+      prazo: deadline,
+      fetch,
+      log: { info: (msg) => console.log(msg), warn: (msg) => console.warn(msg) },
+    });
+    return resposta as GeminiResult;
+  } catch (error) {
+    if (error instanceof PrazoDoGeminiEsgotado) throw aiTimeoutError();
+    if (error instanceof GeminiInalcancavel) {
+      throw new AiStructuredError(
+        "Nao foi possivel conectar ao Gemini.",
+        "gemini_network_error",
+        502,
+        { cause: error.causa instanceof Error ? error.causa.message : String(error.causa) },
       );
-    } catch (error) {
-      // Estourou o orcamento: outra chave nao vai caber no tempo que sobrou.
-      if (isAbortTimeout(error)) throw aiTimeoutError();
-      lastNetworkError = error;
-      continue;
     }
-    const apiData = (await res.json().catch(() => ({
-      error: { message: "Resposta nao JSON do Gemini." },
-    }))) as JsonRecord;
-    if (res.ok) {
-      if (pair.model !== GEMINI_PRIMARY_MODEL || pair.keyIndex !== 0) {
-        console.log(`gemini: respondeu com chave #${pair.keyIndex} e modelo ${pair.model}`);
-      }
-      return { res, apiData };
-    }
-    last = { res, apiData };
-    if (!GEMINI_ROTATE_STATUSES.has(res.status)) return last;
-    const status = (apiData?.error as JsonRecord | undefined)?.status;
-    console.warn(`gemini: chave #${pair.keyIndex} modelo ${pair.model} -> ${res.status} ${status ?? ""}`);
-    if (res.status === 402 || res.status === 403 || res.status === 429) {
-      geminiExhaustedUntil.set(pair.id, Date.now() + GEMINI_EXHAUSTED_COOLDOWN_MS);
-    }
+    throw error;
   }
-
-  if (last) return last;
-  throw new AiStructuredError(
-    "Nao foi possivel conectar ao Gemini.",
-    "gemini_network_error",
-    502,
-    { cause: lastNetworkError instanceof Error ? lastNetworkError.message : String(lastNetworkError) },
-  );
 }
 
 function geminiHttpError(status: number, apiData: JsonRecord): AiStructuredError {
