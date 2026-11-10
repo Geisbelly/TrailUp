@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { comGabarito } from "@/lib/gabaritoDoProfessor";
 import { prazoLocalParaBanco } from "@/lib/prazoDaAtividade";
 import { nivelParaOBanco } from "./dificuldadeDaQuestao";
 import { normalizeOptionalPositiveScore } from "@/lib/question-score";
@@ -97,12 +98,13 @@ export async function fetchQuestions(atividadeId: number) {
     // `types.ts` gerado não a conhece e o construtor tipado recusa a coluna — mesmo cast que
     // a fase 2 usou para `missoes`. Some quando os tipos forem regerados.
     .select(
-      "id, atividade_id, enunciado, tipo, alternativas, resposta_correta, nota_estabelecida, midia_url, dificuldade, formato_texto" as never,
+      "id, atividade_id, enunciado, tipo, alternativas, nota_estabelecida, midia_url, dificuldade, formato_texto" as never,
     )
     .eq("atividade_id", atividadeId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data as unknown as Questao[]) ?? [];
+  // O gabarito vem do espelho: desde a `20261110_02`, nem o professor lê `questoes.resposta_correta`.
+  return (await comGabarito((data as unknown as Omit<Questao, "resposta_correta">[]) ?? [])) as Questao[];
 }
 
 // ===== Mutations ======================================================

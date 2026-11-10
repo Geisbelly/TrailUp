@@ -10,7 +10,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     from: (tabela: string) => {
       sb.chamadas.push(["from", tabela]);
       const q: Record<string, unknown> = {};
-      for (const m of ["select", "eq", "or", "order"]) {
+      for (const m of ["select", "eq", "or", "order", "in"]) {
         q[m] = (...args: unknown[]) => (sb.chamadas.push([tabela, m, ...args]), q);
       }
       q.then = (resolve: (v: unknown) => unknown) =>
@@ -67,8 +67,33 @@ describe("fetchActivities / fetchQuestions / fetchActivityLinks", () => {
 
   it("questões da atividade, em ordem de criação", async () => {
     sb.respostas.questoes = { data: [{ id: 5 }], error: null };
-    await expect(fetchQuestions(2)).resolves.toEqual([{ id: 5 }]);
+    await expect(fetchQuestions(2)).resolves.toEqual([{ id: 5, resposta_correta: null }]);
     expect(sb.chamadas).toContainEqual(["questoes", "eq", "atividade_id", 2]);
+  });
+
+  it("o gabarito vem do espelho, não de questoes (20261110_02)", async () => {
+    sb.respostas.questoes = { data: [{ id: 5 }, { id: 6 }], error: null };
+    sb.respostas.questao_gabarito = { data: [{ questao_id: 6, resposta_correta: "B" }], error: null };
+    await expect(fetchQuestions(2)).resolves.toEqual([
+      { id: 5, resposta_correta: null },
+      { id: 6, resposta_correta: "B" },
+    ]);
+    const colunas = sb.chamadas.find((c) => c[0] === "questoes" && c[1] === "select")?.[2] as string;
+    expect(colunas).not.toContain("resposta_correta");
+    expect(sb.chamadas).toContainEqual(["questao_gabarito", "in", "questao_id", [5, 6]]);
+  });
+
+  it("atividade sem questão não lê o espelho", async () => {
+    sb.respostas.questoes = { data: [], error: null };
+    await expect(fetchQuestions(2)).resolves.toEqual([]);
+    expect(sb.chamadas.some((c) => c[1] === "questao_gabarito")).toBe(false);
+  });
+
+  it("erro ao ler o espelho sobe, em vez de mostrar gabarito vazio", async () => {
+    const erro = new Error("rls");
+    sb.respostas.questoes = { data: [{ id: 5 }], error: null };
+    sb.respostas.questao_gabarito = { data: null, error: erro };
+    await expect(fetchQuestions(2)).rejects.toBe(erro);
   });
 
   it("vínculos filtram pelo tópico da atividade e sem dados viram lista vazia", async () => {
