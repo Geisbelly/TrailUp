@@ -195,3 +195,11 @@ src/utils/linkDoGateway.test.ts
 src/utils/destinosDoGuia.test.ts
 src/services/saude/medicao.test.ts
 src/services/diagnostico/diagnosticoModel.test.ts
+src/utils/textoRico/prepararTextoRico.test.ts
+src/utils/textoRico/formulaParaSvg.test.ts
+src/utils/textoRico/tokensDoCodigo.test.ts
+src/utils/textoRico/markdownItFormula.test.ts
+src/utils/textoRico/coresDoCodigo.test.ts
+src/components/textoRico/TextoRico.tela.test.tsx
+src/utils/textoRico/formatoTexto.test.ts
+src/utils/textoRico/respostaRica.test.ts

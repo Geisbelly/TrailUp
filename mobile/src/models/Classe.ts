@@ -3,6 +3,7 @@ import { getSessionSafe, supabase } from '@/database/supabase'
 import { buildClasseAcademicMetrics } from '@/utils/classeMetrics'
 import { mapClasseResumoRow } from '@/utils/classeResumo'
 import { carregarDetalhesDasTurmas } from '@/utils/detalheDasTurmas'
+import { idsComTextoRico } from '@/utils/textoRico/formatoTexto'
 import { Atividade } from './Atividade'
 import { ClasseResumo } from './ClasseResumo'
 import { Conteudo } from './Conteudo'
@@ -556,6 +557,24 @@ export class Classe {
       } catch (err) {
         console.warn('[Classe] Erro ao hidratar metadata das atividades:', err)
       }
+    }
+
+    // A marca de texto rico vem em consultas só dela: sem a migration `20261108_03` a coluna não
+    // existe, e ela não pode levar junto a leitura do metadata nem a da view (ver formatoTexto.ts).
+    if (atividadeMap.size > 0 || questaoList.length > 0) {
+      // O tipo gerado do cliente é fundo demais para o TS casar com o mínimo que a função usa.
+      const cliente = supabase as unknown as Parameters<typeof idsComTextoRico>[0]
+      const [atividadesRicas, questoesRicas] = await Promise.all([
+        idsComTextoRico(cliente, 'atividades', Array.from(atividadeMap.keys())),
+        idsComTextoRico(cliente, 'questoes', questaoList.map((q) => q.id)),
+      ])
+      atividadesRicas.forEach((id) => {
+        const atividade = atividadeMap.get(id)
+        if (atividade) atividade.formato_texto = 'rico'
+      })
+      questaoList.forEach((q) => {
+        if (questoesRicas.has(q.id)) q.formato_texto = 'rico'
+      })
     }
 
     if (questaoList.length) {

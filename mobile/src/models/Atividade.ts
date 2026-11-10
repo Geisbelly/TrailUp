@@ -1,3 +1,4 @@
+import type { FormatoTexto } from '@/utils/textoRico/formatoTexto';
 import { supabase } from "@/database/supabase";
 import { clampPercent, normalizeNonNegativeNumber } from "@/utils/dataValidation";
 import { responderTentativa } from "@/services/tentativasAtividade";
@@ -38,6 +39,8 @@ export class Atividade {
   public mostrar_gabarito_ao_errar: boolean | null = null;
   public tempo_gasto_min: number | null = null;
   public metadata: Record<string, unknown> | null = null;
+  /** `'rico'`: a descrição em markdown com fórmula e código (spec A). */
+  public formato_texto: FormatoTexto = 'texto';
   public pontuacao_obtida: number | null = null;
   public pontuacao_maxima_avaliada: number | null = null;
 

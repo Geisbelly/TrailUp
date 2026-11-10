@@ -39,6 +39,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
+import { TextoRico } from '@/components/textoRico/TextoRico';
 
 type Props = {
   topico: any;
@@ -1607,9 +1608,12 @@ export default function PersonalizedTopicView({
                   ]}
                 >
                   {currentStep.activity.descricao ? (
-                    <Text style={[styles.activityDescription, { color: profilePalette.textMuted }]}>
-                      {currentStep.activity.descricao}
-                    </Text>
+                    <TextoRico
+                      texto={currentStep.activity.descricao}
+                      formato={(currentStep.activity as { formato_texto?: unknown }).formato_texto as string | undefined}
+                      estilo={{ ...styles.activityDescription, color: profilePalette.textMuted }}
+                      paleta={profilePalette}
+                    />
                   ) : null}
                   <ActivityRenderer
                     atividade={currentStep.activity}

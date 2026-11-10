@@ -90,3 +90,11 @@ test("varias formulas na mesma linha", () => {
     "se x = 2 entao y = x² vale 4",
   );
 });
+
+test("química do mhchem vira legível, com índice e seta (texto rico, spec A)", () => {
+  assert.equal(corpoDaFormula("\\ce{CH4}"), "CH₄");
+  assert.equal(corpoDaFormula("\\ce{2CH4 + 3O2 -> 2CO + 4H2O}"), "2CH₄ + 3O₂ → 2CO + 4H₂O");
+  assert.equal(corpoDaFormula("\\ce{N2 + 3H2 <=> 2NH3}"), "N₂ + 3H₂ ⇌ 2NH₃");
+  assert.equal(corpoDaFormula("\\ce{Ca(OH)2}"), "Ca(OH)₂");
+  assert.equal(corpoDaFormula("\\pu{9,8 m/s}"), "9,8 m/s");
+});

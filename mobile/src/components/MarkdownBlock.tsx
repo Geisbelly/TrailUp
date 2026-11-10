@@ -24,7 +24,9 @@ import FitImage from "react-native-fit-image";
 import { SvgXml } from "react-native-svg";
 import { decodeInlineSvgDataUri } from "@/utils/inlineSvgDataUri";
 import { conteudoDeBloco, liberarImagensEmbutidas } from "@/utils/markdownDataUri";
-import { matematicaLegivel } from "@/utils/matematicaLegivel";
+import { cercaComoCodigo, regrasDeTextoRico } from "@/components/textoRico/regrasDeTextoRico";
+import { markdownItFormula } from "@/utils/textoRico/markdownItFormula";
+import { prepararTextoRico } from "@/utils/textoRico/prepararTextoRico";
 import tinycolor from "tinycolor2";
 import { resolveMediaUrl } from "@/utils/mediaPayload";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
@@ -34,8 +36,11 @@ import { perfilVisualDoAluno } from "@/utils/brainHex";
 // nova a cada render refaria o parse do material inteiro toda vez.
 // `typographer: true` e' o mesmo default da biblioteca — so a politica de data
 // URI muda, para o diagrama em SVG nao ser descartado no parser
-// (ver utils/markdownDataUri.ts).
-const parserComDiagramas = liberarImagensEmbutidas(new MarkdownIt({ typographer: true }));
+// (ver utils/markdownDataUri.ts). `markdownItFormula` dá os tokens de fórmula (spec A, 08/11).
+const parserComDiagramas = markdownItFormula(liberarImagensEmbutidas(new MarkdownIt({ typographer: true })));
+
+// Fórmula e código no tamanho do corpo do material no celular (ver `mdStyles`).
+const TAMANHO_DO_CORPO = 15;
 
 type Props = {
   payload: any;
@@ -65,7 +70,10 @@ function criarMarkdownRules(palette: ReturnType<typeof getProfileShellPalette>) 
     backgroundColor: tinycolor(palette.accent).setAlpha(0.06).toRgbString(),
   };
 
+  const opcoesDoTextoRico = { paleta: palette, cor: palette.text, tamanhoDaFonte: TAMANHO_DO_CORPO };
+
   return {
+  ...regrasDeTextoRico(opcoesDoTextoRico),
   image: (
     node: any,
     children: any,
@@ -113,7 +121,9 @@ function criarMarkdownRules(palette: ReturnType<typeof getProfileShellPalette>) 
   //
   // `flexGrow: 1` no conteudo mantem a moldura ocupando a largura toda quando o
   // bloco e' estreito; quando e' largo, rola em vez de quebrar.
-  fence: (node: any, _children: any, _parent: any, estilos: any) => (
+  // Cerca com linguagem conhecida vira código com realce; a sem linguagem segue como antes,
+  // porque carrega também o diagrama em ASCII.
+  fence: (node: any, _children: any, _parent: any, estilos: any) => cercaComoCodigo(node, opcoesDoTextoRico) ?? (
     <ScrollView
       key={node.key}
       horizontal
@@ -244,12 +254,13 @@ export function MarkdownBlock({ payload }: Props) {
 
   const pages = useMemo(() => {
     if (!markdownPronto) return [];
-    // O gerador entrega fórmula em LaTeX e este renderizador não faz matemática: sem isto o
-    // aluno lê `$x$` e `$$ax + b = 0$$` literalmente (#522). A conversão é na LEITURA porque
-    // também conserta o material JÁ gravado, que um ajuste de prompt não alcançaria.
-    const legivel = matematicaLegivel(markdownPronto);
-    const parts = splitByH2(legivel);
-    return parts.length > 1 ? parts : [legivel];
+    // O gerador entrega fórmula em LaTeX (#522). Desde o texto rico (spec A, 08/11) ela é
+    // desenhada de verdade: `prepararTextoRico` acerta os delimitadores e escapa o cifrão de
+    // dinheiro, e as regras de fórmula desenham o resto. Na LEITURA, como antes, para o material
+    // JÁ gravado também valer. `matematicaLegivel` segue como rótulo e reserva da fórmula.
+    const pronto = prepararTextoRico(markdownPronto);
+    const parts = splitByH2(pronto);
+    return parts.length > 1 ? parts : [pronto];
   }, [markdownPronto]);
 
   const currentPage = pages[pageIndex] ?? "";
