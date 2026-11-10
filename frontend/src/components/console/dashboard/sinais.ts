@@ -1,4 +1,4 @@
-import { faixaDoRisco, type SinaisDoBanco } from "./risco";
+import { faixaDoRisco, motivoDoModelo, type SinaisDoBanco } from "./risco";
 
 /** Uma linha de vw_metricas_engajamento_aluno_classe com as colunas dos sinais (F5, 20261031_05). */
 export type LinhaEngajamento = {
@@ -13,7 +13,18 @@ export type LinhaEngajamento = {
   /** Faixa do modelo de evasão do core (20261031_08): alto, atencao, normal ou "sem dados". */
   risco_abandono_faixa?: string | null;
   risco_abandono_origem?: string | null;
+  /** O que pesou na faixa do modelo (20261110_01); ausente em banco sem a migration. */
+  risco_abandono_motivo?: string | null;
 };
+
+/**
+ * O banco ainda não tem a coluna do motivo (migration 20261110_01 não aplicada). Só ela: outra coluna
+ * faltando é erro de verdade e não deve ser escondida pela segunda leitura.
+ */
+export function faltaColunaDoMotivo(erro: { code?: string; message?: string } | null | undefined): boolean {
+  if (!erro) return false;
+  return (erro.code === "42703" || erro.code === "PGRST204") && /risco_abandono_motivo/.test(erro.message ?? "");
+}
 
 export const chaveAlunoTurma = (alunoId: string, classeId: number) => `${alunoId}:${classeId}`;
 
@@ -31,6 +42,7 @@ export function juntarSinais(engajamento: LinhaEngajamento[], nomesDosTopicos: M
       riscoFaixa: faixaDoRisco(l.risco_abandono_faixa),
       riscoOrigem:
         l.risco_abandono_origem === "modelo" || l.risco_abandono_origem === "inatividade" ? l.risco_abandono_origem : null,
+      riscoMotivo: motivoDoModelo(l.risco_abandono_motivo),
     });
   }
   return sinais;

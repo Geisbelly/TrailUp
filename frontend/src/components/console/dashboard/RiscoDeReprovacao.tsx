@@ -1,4 +1,5 @@
 import { resumirRisco } from "./riscoReprovacao";
+import { primeiroNome, sugestaoDoFatorDeReprovacao } from "./sugestaoDoRisco";
 import type { EstadoDoRisco } from "./useRiscoDeReprovacao";
 
 type AlunoDaTurma = { id: string; nome: string };
@@ -28,7 +29,8 @@ export default function RiscoDeReprovacao<T extends AlunoDaTurma>({
       <h3 id="risco-de-reprovacao" className="text-lg text-foreground">Risco de reprovação</h3>
       <p className="mt-1 text-[12.5px] text-muted-foreground">
         Alunos que juntam dois ou mais sinais: queda de uso, acerto baixo, faltas, prazos perdidos ou o mesmo estado
-        difícil em vários ciclos. Só você vê. É um ponto de partida para uma conversa de apoio, não um rótulo.
+        difícil em vários ciclos. Só você vê. É um ponto de partida para uma conversa de apoio, não um rótulo. Cada sinal
+        traz uma sugestão do que fazer, pela regra do sinal.
       </p>
 
       {turmaUnica === null ? (
@@ -52,6 +54,7 @@ export default function RiscoDeReprovacao<T extends AlunoDaTurma>({
           <ul className="mt-4 flex flex-col gap-3">
             {resumo.sinalizados.map((r) => {
               const aluno = alunoPorId.get(r.aluno_id);
+              const nome = aluno ? primeiroNome(aluno.nome) : "o aluno";
               return (
                 <li key={r.aluno_id} className="rounded-2xl border border-border px-4 py-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -70,10 +73,21 @@ export default function RiscoDeReprovacao<T extends AlunoDaTurma>({
                       {r.fatores.length} {r.fatores.length === 1 ? "sinal" : "sinais"}
                     </span>
                   </div>
-                  <ul className="mt-1.5 list-disc pl-5 text-[13px] text-foreground">
-                    {r.fatores.map((f) => (
-                      <li key={f.fator}>{f.texto}</li>
-                    ))}
+                  <ul className="mt-1.5 flex list-disc flex-col gap-1.5 pl-5 text-[13px] text-foreground">
+                    {r.fatores.map((f) => {
+                      const acao = sugestaoDoFatorDeReprovacao(f, nome);
+                      return (
+                        <li key={f.fator}>
+                          {f.texto}
+                          {acao && (
+                            <span className="mt-0.5 block text-[12.5px]">
+                              <span className="font-semibold text-[hsl(var(--console-violet-text))]">O que fazer: </span>
+                              {acao}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </li>
               );
