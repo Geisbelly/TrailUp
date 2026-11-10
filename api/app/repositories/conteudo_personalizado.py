@@ -864,6 +864,29 @@ class ConteudoPersonalizadoRepository:
         )
         return record is not None
 
+    async def ids_aprovados(self, ids: list[int]) -> set[int]:
+        """Quais destes registros o professor aprovou (`20261110_09`).
+
+        A API lê como `postgres`, por cima da RLS: o que vai para o ALUNO precisa deste filtro,
+        que repete a policy `conteudo_personalizado_aprovado_sel`. Sem a coluna (banco antes
+        da migração, que o `lifespan` aplica ao subir), nada muda: todos passam.
+        """
+        unicos = sorted({int(i) for i in ids})
+        if not unicos:
+            return set()
+        if not await self._table_has_column("aprovacao"):
+            return set(unicos)
+        result = await self.session.execute(
+            text(
+                """
+                SELECT id FROM conteudo_personalizado
+                 WHERE id = ANY(CAST(:ids AS BIGINT[])) AND aprovacao = 'aprovado'
+                """
+            ),
+            {"ids": unicos},
+        )
+        return {int(row[0]) for row in result.all()}
+
     async def buscar_por_id(self, record_id: int) -> dict[str, Any] | None:
         has_ai_patch = await self._table_has_column("ai_patch")
         has_classe_id = await self._table_has_column("classe_id")

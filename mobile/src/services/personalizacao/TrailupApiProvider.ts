@@ -903,7 +903,15 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
         // `old` — nesse caso preferimos notificar (falso positivo raro) a
         // perder silenciosamente um evento relevante (falso negativo).
         const isDeleteWithoutIdentity = payload.eventType === "DELETE" && oldAlunoId === undefined;
-        if (isDeleteWithoutIdentity || newAlunoId === params.alunoId || oldAlunoId === params.alunoId) {
+        // Material-base da turma (aluno_id nulo) é de todos. Desde 20261110_09 a RLS só o entrega
+        // ao aluno aprovado, então este evento é "o professor aprovou": vale recarregar.
+        const isBaseDaTurma = newAlunoId === null;
+        if (
+          isDeleteWithoutIdentity ||
+          isBaseDaTurma ||
+          newAlunoId === params.alunoId ||
+          oldAlunoId === params.alunoId
+        ) {
           params.onChange();
         }
       }

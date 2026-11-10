@@ -1475,6 +1475,9 @@ async def personalizar(
             **_summarize_personalizacao_record(record),
         },
     )
+    # Quem pede é o aluno: gerar segue normal, mas o material só sai depois da aprovação.
+    if not await _so_aprovados(session, [record]):
+        record = _sem_material(record)
     return _to_response(record)
 
 
@@ -2850,7 +2853,12 @@ async def obter_personalizacao_media_status(
 
     aluno_id = str(record.get("aluno_id") or "")
     if user.is_aluno and (user.aluno_id or user.user_id) == aluno_id:
-        pass
+        # Material não aprovado não existe para o aluno, como na RLS (`20261110_09`).
+        if not await _so_aprovados(session, [record]):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Personalizacao nao encontrada.",
+            )
     elif user.is_professor:
         if not user.professor_liberado:
             raise HTTPException(
@@ -3115,6 +3123,7 @@ async def listar_personalizacoes(
         # A API lê como service_role, por cima da RLS: a trava do estudo (#13) tem de ser
         # repetida aqui para o aluno. O professor continua vendo o material da turma.
         records = await _sem_turmas_retidas(session, records)
+        records = await _so_aprovados(session, records)
     itens = [_to_response(r) for r in records]
     return PersonalizacaoListResponse(
         aluno_id=aluno_id,
@@ -3163,6 +3172,34 @@ def _itens_da_sugestao(ordem: Any) -> list[SugestaoMaterialItem]:
             )
         )
     return itens
+
+
+async def _so_aprovados(session: AsyncSession, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """O aluno só recebe material que o professor aprovou (`20261110_09`).
+
+    A API lê por cima da RLS; este filtro repete, para o aluno, a policy restritiva
+    `conteudo_personalizado_aprovado_sel`. O professor continua vendo tudo da turma.
+    """
+    ids = [int(r["id"]) for r in records if r.get("id") is not None]
+    if not ids:
+        return records
+    aprovados = await ConteudoPersonalizadoRepository(session).ids_aprovados(ids)
+    return [r for r in records if r.get("id") is not None and int(r["id"]) in aprovados]
+
+
+def _sem_material(record: dict[str, Any]) -> dict[str, Any]:
+    """O registro sem o material: o pedido do aluno é aceito, mas o que a IA gerou espera o professor."""
+    plano = record.get("plano") if isinstance(record.get("plano"), dict) else {}
+    return {
+        **record,
+        "materiais": {},
+        "formatos_gerados": [],
+        "plano": {
+            chave: plano[chave]
+            for chave in ("perfil_dominante", "brainhex_profile_key")
+            if chave in plano
+        },
+    }
 
 
 async def _sem_turmas_retidas(session: AsyncSession, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
