@@ -89,9 +89,11 @@ import {
   MENSAGEM_DA_RECUSA,
   TentativaRecusada,
   garantirTentativa,
+  ouvirRelogio,
   tentativaAberta,
   type TentativaAberta,
 } from "@/services/tentativasAtividade";
+import { usePausaDaTentativa } from "@/hooks/trilha/usePausaDaTentativa";
 import { bagFormatForBlockType, materialDraft, normalizeBagContentId, type BagDraft } from "@/services/bag/bagModel";
 import { useAviso } from "@/hooks/useAviso";
 import { textoDeErro } from "@/utils/textoDeErro";
@@ -973,6 +975,19 @@ export default function TrilhaConteudoScreen() {
       ativo = false;
     };
   }, [atividadeParaTentativa, showDialog]);
+  // Pausar e retomar mudam o relógio da tentativa: o chip acompanha.
+  useEffect(
+    () =>
+      ouvirRelogio((atividadeId, tentativa) =>
+        setTentativasDoServidor((prev) => ({ ...prev, [atividadeId]: tentativa }))
+      ),
+    []
+  );
+  usePausaDaTentativa(
+    atividadeParaTentativa,
+    atividadeParaTentativa != null ? tentativasDoServidor[atividadeParaTentativa]?.tentativaId ?? null : null,
+    isScreenFocused
+  );
   // O servidor disse que esta tentativa não é cronometrada (perfil sem cronômetro ou
   // o aluno desligou): o contador local não aparece.
   const tentativaSemCronometro =
@@ -1101,6 +1116,12 @@ export default function TrilhaConteudoScreen() {
               elapsedStartAtMs={moduleSessionStartedAtRef.current}
               active={isOverlayTimerActive}
               onTimeoutAction={handleOverlayTimerTimeout}
+              atividadeId={atualBlock?.kind === "atividade" ? Number(atualBlock.atividade.id) : null}
+              tentativa={
+                atualBlock?.kind === "atividade"
+                  ? tentativasDoServidor[Number(atualBlock.atividade.id)] ?? null
+                  : null
+              }
             />
           </View>
           <ModuleHeaderGuideButton
@@ -1121,6 +1142,7 @@ export default function TrilhaConteudoScreen() {
         </View>
     );
   }, [
+    atualBlock,
     currentOverlayItemKey,
     currentOverlayTimerFeature,
     guideTargetRefs,
@@ -1130,6 +1152,7 @@ export default function TrilhaConteudoScreen() {
     personalizedTopic,
     progressoVisual.concluidos,
     progressoVisual.total,
+    tentativasDoServidor,
     topico?.nome,
     topicoId,
     usuario?.perfis,

@@ -18,6 +18,8 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { criarTempoCorrido, cronometroDeveContar } from "@/utils/presencaDeEstudo";
+import { criarMemoriaDoCronometro } from "@/utils/memoriaDoCronometro";
+import { segundosRestantes, type TentativaAberta } from "@/services/tentativasAtividade.core";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
@@ -27,6 +29,8 @@ import { shadowStyle } from "@/utils/webShadow";
 
 const IS_WEB = Platform.OS === "web";
 const SOMBRA_CHIP = { offset: { width: 0, height: 2 }, opacity: 0.5, radius: 18 };
+// Fora do componente: sair da atividade desmonta ou desativa o chip, e voltar não pode zerar.
+const memoria = criarMemoriaDoCronometro();
 
 type BattleScope = Extract<IAFeatureSelectorScope, { scope: "topic" | "item" }>;
 type TimerFeature = Extract<IAFeatureKey, "activity_timer" | "reading_timer">;
@@ -40,6 +44,11 @@ type Props = {
   onTimeoutAction?: (action: IATimerTimeoutAction | null) => void;
   compact?: boolean;
   atividadeId?: number | null;
+  /**
+   * A tentativa aberta no servidor (`20261101_13`). Com cronômetro, o chip mostra o relógio do
+   * banco: a duração é a soma das questões, e a pausa ao sair já vem descontada (`20261110_05`).
+   */
+  tentativa?: TentativaAberta | null;
 };
 
 function pickTimerFeatureOrder(preferredTimerFeature?: TimerFeature | null): TimerFeature[] {
@@ -63,6 +72,7 @@ export function IAHeaderTimer({
   onTimeoutAction,
   compact = false,
   atividadeId = null,
+  tentativa = null,
 }: Props) {
   const { resolveFeature, emitSignal } = useIA();
   // O foco é lido AQUI, e não recebido por prop, porque é este componente que
@@ -138,12 +148,20 @@ export function IAHeaderTimer({
       parar();
     };
   }, [atividadeId, isElapsedMode, usuario?.id]);
-  const duration = durationBase + (isElapsedMode ? 0 : Math.max(0, minutosExtras) * 60);
+  const extrasSeg = isElapsedMode ? 0 : Math.max(0, minutosExtras) * 60;
+  const relogioDoServidor =
+    !isElapsedMode && tentativa?.cronometrada === true && tentativa.limiteSeg != null ? tentativa : null;
+  const duration = relogioDoServidor
+    ? Math.max(0, relogioDoServidor.limiteSeg! - relogioDoServidor.pausadoSeg) + extrasSeg
+    : durationBase + extrasSeg;
+  const lerDoServidor = () =>
+    relogioDoServidor ? (segundosRestantes(relogioDoServidor, Date.now()) ?? 0) + extrasSeg : null;
   const [secondsLeft, setSecondsLeft] = useState(duration);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const warningSentRef = useRef(false);
   const timeoutSentRef = useRef(false);
   const pendingResetRef = useRef(false);
+  const escopoDosAvisosRef = useRef<string | null>(null);
   const [isAppActive, setIsAppActive] = useState(AppState.currentState === "active");
   const tempoNoModuloRef = useRef(criarTempoCorrido());
   const moduloAtualRef = useRef(elapsedStartAtMs);
@@ -159,6 +177,7 @@ export function IAHeaderTimer({
     if (timerSelection.scope.scope === "topic") return `topic:${timerSelection.scope.topicoId}`;
     return `item:${timerSelection.scope.itemKey}`;
   }, [timerSelection]);
+  const chaveDaMemoria = `${usuario?.id ?? "-"}:${scopeKey}`;
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
@@ -206,24 +225,42 @@ export function IAHeaderTimer({
   useEffect(() => {
     if (!active) {
       pendingResetRef.current = false;
+      escopoDosAvisosRef.current = null;
       setSecondsLeft(0);
       warningSentRef.current = false;
       timeoutSentRef.current = false;
       return;
     }
     pendingResetRef.current = true;
-    setSecondsLeft(duration);
-    warningSentRef.current = false;
-    timeoutSentRef.current = false;
-  }, [active, duration, scopeKey, timerSelection?.featureKey]);
+    // Voltar à atividade continua de onde parou: pelo relógio do banco quando há tentativa, senão
+    // pelo que este aparelho já gastou no escopo. Nunca da duração cheia de novo.
+    const restante = lerDoServidor() ?? memoria.restante(chaveDaMemoria, duration);
+    setSecondsLeft(restante);
+    // Pausar e retomar trocam a tentativa, mas não o escopo: o aviso já dado não se repete.
+    if (escopoDosAvisosRef.current !== chaveDaMemoria) {
+      escopoDosAvisosRef.current = chaveDaMemoria;
+      warningSentRef.current = false;
+      timeoutSentRef.current = restante <= 0;
+    }
+    // `lerDoServidor` muda a cada render; o que importa está em `relogioDoServidor`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, duration, chaveDaMemoria, relogioDoServidor, timerSelection?.featureKey]);
 
   // ── Countdown ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isTimerRunning || !timerSelection?.resolved.enabled || !timerSelection.resolved.timer) return;
     if (timerSelection.resolved.timer.autoStart === false || isElapsedMode || secondsLeft <= 0) return;
-    const timer = setInterval(() => setSecondsLeft((prev) => Math.max(0, prev - 1)), 1000);
+    const timer = setInterval(() => {
+      const doServidor = lerDoServidor();
+      setSecondsLeft((prev) => {
+        const proximo = doServidor ?? Math.max(0, prev - 1);
+        if (doServidor == null) memoria.guardar(chaveDaMemoria, duration, proximo);
+        return proximo;
+      });
+    }, 1000);
     return () => clearInterval(timer);
-  }, [isTimerRunning, isElapsedMode, secondsLeft, timerSelection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chaveDaMemoria, duration, isTimerRunning, isElapsedMode, relogioDoServidor, secondsLeft, timerSelection]);
 
   // ── Elapsed ──────────────────────────────────────────────────────────────
   // Corre em todo bloco do módulo. Nos de atividade o chip mostra a contagem
