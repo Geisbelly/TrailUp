@@ -7383,6 +7383,41 @@ export type Database = {
           },
         ]
       }
+      trilha_rascunho: {
+        Row: {
+          atualizado_por: string | null
+          classe_id: number
+          created_at: string
+          pedido: Json
+          topicos: Json
+          updated_at: string
+        }
+        Insert: {
+          atualizado_por?: string | null
+          classe_id: number
+          created_at?: string
+          pedido?: Json
+          topicos?: Json
+          updated_at?: string
+        }
+        Update: {
+          atualizado_por?: string | null
+          classe_id?: number
+          created_at?: string
+          pedido?: Json
+          topicos?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trilha_rascunho_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: true
+            referencedRelation: "classe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       vw_aluno_classe_detalhado: {

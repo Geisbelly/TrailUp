@@ -42,6 +42,8 @@ export type AiTopico = {
   conteudos: AiConteudo[];
   cards?: AiCard[];
   atividades?: AiAtividade[];
+  /** Arquivos do esqueleto para este tópico; usado ao gerar de novo o material que faltou. */
+  arquivos_relacionados?: string[];
 };
 
 export const contagemDaProposta = (topicos: AiTopico[]) => {
