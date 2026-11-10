@@ -10,6 +10,11 @@ import type { AiTopico } from "./proposta";
  * plano Free): o gateway devolvia 504 e o worker morria com 546
  * (`WORKER_LIMIT`), sem corpo, e o professor perdia a trilha inteira.
  * Dividido, cada requisição carrega um pedaço que cabe no tempo.
+ *
+ * `aoAtualizar` entrega a proposta como está depois do esqueleto e de cada
+ * tópico: é o que o console grava no rascunho, para um erro no meio não jogar
+ * fora o que já veio. `completarTopicos` gera de novo só os tópicos que
+ * ficaram sem material, a partir desse rascunho.
  */
 
 /** Tópico do esqueleto, como a função devolve em `trail-skeleton`. */
@@ -30,7 +35,7 @@ export type ResultadoDaTrilha = {
   semMaterial: Array<{ nome: string; ordem: number; erro: string }>;
 };
 
-type Opcoes = {
+type Comum = {
   /** Chama a edge function com o corpo dado e devolve o `data` (ou lança com a mensagem já legível). */
   invocar: (corpo: Record<string, unknown>) => Promise<unknown>;
   /** O corpo comum a todas as etapas: descrição, fontes, número de tópicos etc. */
@@ -44,6 +49,8 @@ type Opcoes = {
   /** Tentativas por tópico; cada uma é uma requisição nova, com o tempo inteiro de novo. */
   tentativasPorTopico?: number;
   aoProgredir?: (progresso: ProgressoDaTrilha) => void;
+  /** A proposta inteira, como está, depois de cada etapa concluída. */
+  aoAtualizar?: (topicos: AiTopico[]) => void;
 };
 
 const ehRegistro = (valor: unknown): valor is Record<string, unknown> =>
@@ -73,25 +80,44 @@ const topicoVazio = (t: TopicoDoEsqueleto): AiTopico => ({
   conteudos: [],
   cards: [],
   atividades: [],
+  // Guardado para "gerar o que falta" pedir o tópico com os mesmos arquivos.
+  arquivos_relacionados: t.arquivos_relacionados ?? [],
 });
 
-export async function gerarTrilhaEmEtapas({
-  invocar,
-  corpo,
-  concorrencia = 2,
-  tentativasPorTopico = 2,
-  aoProgredir,
-}: Opcoes): Promise<ResultadoDaTrilha> {
-  const esqueleto = lerEsqueleto(await invocar({ ...corpo, mode: "trail-skeleton" }));
-  const total = esqueleto.length;
+/** O tópico ainda não tem material: é o que "gerar o que falta" pede de novo. */
+export const semMaterialAinda = (t: AiTopico) => (t.conteudos?.length ?? 0) === 0;
+
+const comoEsqueleto = (t: AiTopico): TopicoDoEsqueleto => ({
+  nome: t.nome,
+  descricao: t.descricao,
+  ordem: t.ordem,
+  depende: t.depende ?? [],
+  next: t.next ?? [],
+  arquivos_relacionados: t.arquivos_relacionados ?? [],
+});
+
+/**
+ * Pede o material dos tópicos em `indices`, `concorrencia` por vez, sobre a
+ * proposta `base`. Devolve a proposta nova e os que continuaram sem material.
+ */
+async function detalhar(
+  base: AiTopico[],
+  indices: number[],
+  { invocar, corpo, concorrencia = 2, tentativasPorTopico = 2, aoProgredir, aoAtualizar }: Comum,
+): Promise<ResultadoDaTrilha> {
+  const topicos = [...base];
+  const total = indices.length;
+  const falhas = new Map<number, string>();
   let feitos = 0;
   aoProgredir?.({ feitos, total });
 
-  const detalhar = async (topico: TopicoDoEsqueleto, indice: number) => {
+  const detalharUm = async (indice: number) => {
+    const alvo = comoEsqueleto(topicos[indice]);
     let ultimoErro: unknown = null;
     for (let tentativa = 1; tentativa <= Math.max(1, tentativasPorTopico); tentativa += 1) {
       try {
-        return { ok: true as const, topico: lerTopico(await invocar({ ...corpo, mode: "trail-topic", topic: topico, topicIndex: indice, totalTopics: total })) };
+        const data = await invocar({ ...corpo, mode: "trail-topic", topic: alvo, topicIndex: indice, totalTopics: topicos.length });
+        return { ok: true as const, topico: lerTopico(data) };
       } catch (erro) {
         ultimoErro = erro;
       }
@@ -99,35 +125,55 @@ export async function gerarTrilhaEmEtapas({
     return { ok: false as const, erro: mensagemDe(ultimoErro) };
   };
 
-  const resultados: Array<Awaited<ReturnType<typeof detalhar>>> = new Array(total);
   let proximo = 0;
   const trabalhador = async () => {
     while (proximo < total) {
-      const indice = proximo;
+      const indice = indices[proximo];
       proximo += 1;
-      resultados[indice] = await detalhar(esqueleto[indice], indice);
+      const r = await detalharUm(indice);
+      if (r.ok) topicos[indice] = r.topico;
+      else falhas.set(indice, r.erro);
       feitos += 1;
       aoProgredir?.({ feitos, total });
+      aoAtualizar?.([...topicos]);
     }
   };
   await Promise.all(Array.from({ length: Math.min(Math.max(1, concorrencia), total) }, trabalhador));
 
-  // Nenhum tópico veio: é falha da geração (cota, rede), não da proposta.
-  // Devolver uma trilha só de nomes esconderia o erro atrás de uma tela "pronta".
-  if (resultados.every((r) => !r.ok)) {
-    const primeiro = resultados.find((r) => !r.ok);
-    throw new Error(primeiro && !primeiro.ok ? primeiro.erro : "Erro ao gerar trilha.");
-  }
-
-  const topicos: AiTopico[] = [];
-  const semMaterial: ResultadoDaTrilha["semMaterial"] = [];
-  resultados.forEach((r, i) => {
-    if (r.ok) {
-      topicos.push(r.topico);
-      return;
-    }
-    topicos.push(topicoVazio(esqueleto[i]));
-    semMaterial.push({ nome: esqueleto[i].nome, ordem: esqueleto[i].ordem, erro: r.erro });
-  });
+  const semMaterial = indices
+    .filter((i) => falhas.has(i))
+    .map((i) => ({ nome: topicos[i].nome, ordem: topicos[i].ordem, erro: falhas.get(i) ?? "Erro ao gerar o tópico." }));
   return { topicos, semMaterial };
+}
+
+export async function gerarTrilhaEmEtapas(opcoes: Comum): Promise<ResultadoDaTrilha> {
+  const esqueleto = lerEsqueleto(await opcoes.invocar({ ...opcoes.corpo, mode: "trail-skeleton" }));
+  const base = esqueleto.map(topicoVazio);
+  // O esqueleto já é trabalho feito: vai para o rascunho antes de qualquer tópico.
+  opcoes.aoAtualizar?.([...base]);
+
+  const resultado = await detalhar(
+    base,
+    base.map((_, i) => i),
+    opcoes,
+  );
+
+  // Nenhum tópico veio: é falha da geração (cota, rede), não da proposta.
+  // Devolver uma trilha só de nomes esconderia o erro atrás de uma tela
+  // "pronta". O esqueleto continua no rascunho, para gerar o que falta depois.
+  if (resultado.semMaterial.length === base.length) {
+    throw new Error(resultado.semMaterial[0]?.erro ?? "Erro ao gerar trilha.");
+  }
+  return resultado;
+}
+
+/**
+ * Gera só os tópicos que ainda não têm material (de um rascunho, ou os que
+ * falharam), mantendo os outros como estão. Não lança quando falham: a
+ * proposta continua de pé, e `semMaterial` diz o que faltou.
+ */
+export async function completarTopicos(opcoes: Comum & { topicos: AiTopico[] }): Promise<ResultadoDaTrilha> {
+  const indices = opcoes.topicos.map((t, i) => (semMaterialAinda(t) ? i : -1)).filter((i) => i >= 0);
+  if (indices.length === 0) return { topicos: [...opcoes.topicos], semMaterial: [] };
+  return detalhar(opcoes.topicos, indices, opcoes);
 }

@@ -7,6 +7,8 @@ import {
   PrazoDoGeminiEsgotado,
   type RespostaGemini,
 } from "./rotacaoGemini.ts";
+import { limiteAposCorte, limiteDoDetalhe, usoDeTokens } from "./limiteDeSaida.ts";
+import { limitesDoEsqueleto, MAX_TOPICOS, quantidadeDeTopicos, regrasDaQuantidade } from "./quantidadeDeTopicos.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -150,7 +152,8 @@ interface RequestBody {
   contents?: ContentItem[];
   sources?: AiSourceInput[];
   trailDescription?: string;
-  numTopics?: number;
+  /** Quantidade de topicos escolhida pelo professor; ausente ou nulo = automatico. */
+  numTopics?: number | null;
   topicNames?: string[];
   syllabus?: string;
   fileContents?: string;
@@ -377,9 +380,14 @@ function ensureObjectArray(value: unknown): JsonRecord[] {
   return value.filter((item): item is JsonRecord => Boolean(item) && typeof item === "object");
 }
 
+function countSkeletonTopics(payload: unknown): number {
+  const topicos = (payload as JsonRecord | null)?.topicos;
+  return Array.isArray(topicos) ? topicos.length : 0;
+}
+
 function normalizeTrailSkeleton(
   payload: unknown,
-  desiredTopics: number,
+  desiredTopics: number | null,
   topicNames: string[] = [],
 ): TrailSkeletonTopic[] {
   const rawTopics = Array.isArray((payload as JsonRecord)?.topicos)
@@ -389,8 +397,11 @@ function normalizeTrailSkeleton(
   const fallbackNames = topicNames.filter((item) => item.trim().length > 0);
   const topics: TrailSkeletonTopic[] = [];
 
-  const maxTopics = clampInt(desiredTopics, 1, 20);
-  const source = rawTopics.length > 0 ? rawTopics.slice(0, maxTopics) : Array.from({ length: maxTopics }, () => ({}));
+  const maxTopics = desiredTopics === null ? MAX_TOPICOS : clampInt(desiredTopics, 1, MAX_TOPICOS);
+  // Sem resposta util: com quantidade escolhida, monta os nomes pelo que o
+  // professor listou; no automatico nao ha o que montar (vira erro abaixo).
+  const source =
+    rawTopics.length > 0 ? rawTopics.slice(0, maxTopics) : Array.from({ length: desiredTopics === null ? 0 : maxTopics }, () => ({}));
 
   source.forEach((item, index) => {
     const record = (item && typeof item === "object" ? (item as JsonRecord) : {}) as JsonRecord;
@@ -474,55 +485,70 @@ async function callGeminiJson(options: GeminiCallOptions): Promise<{ parsed: unk
 
   let lastError: AiStructuredError | null = null;
 
-  for (const attempt of attemptConfigs) {
-    const { res, apiData } = await fetchGemini(options.key, {
-      contents: [{ parts: [{ text: options.prompt }] }],
-      generationConfig: {
-        maxOutputTokens: options.maxOutputTokens,
-        responseMimeType: "application/json",
-        ...(attempt.useSchema && options.responseSchema ? { responseSchema: options.responseSchema } : {}),
-      },
-    }, options.deadline);
-    if (!res.ok) {
-      const reason = String((apiData as JsonRecord)?.error ? JSON.stringify((apiData as JsonRecord).error) : "");
-      const schemaIssue =
-        attempt.useSchema &&
-        (reason.toLowerCase().includes("responseschema") ||
-          reason.toLowerCase().includes("schema") ||
-          reason.toLowerCase().includes("generationconfig"));
+  tentativas: for (const attempt of attemptConfigs) {
+    let maxOutputTokens = options.maxOutputTokens;
+    for (;;) {
+      const { res, apiData } = await fetchGemini(options.key, {
+        contents: [{ parts: [{ text: options.prompt }] }],
+        generationConfig: {
+          maxOutputTokens,
+          responseMimeType: "application/json",
+          ...(attempt.useSchema && options.responseSchema ? { responseSchema: options.responseSchema } : {}),
+        },
+      }, options.deadline);
+      if (!res.ok) {
+        const reason = String((apiData as JsonRecord)?.error ? JSON.stringify((apiData as JsonRecord).error) : "");
+        const schemaIssue =
+          attempt.useSchema &&
+          (reason.toLowerCase().includes("responseschema") ||
+            reason.toLowerCase().includes("schema") ||
+            reason.toLowerCase().includes("generationconfig"));
 
-      const err = geminiHttpError(res.status, apiData);
-      lastError = err;
-      if (schemaIssue) continue;
-      throw err;
-    }
+        const err = geminiHttpError(res.status, apiData);
+        lastError = err;
+        if (schemaIssue) continue tentativas;
+        throw err;
+      }
 
-    const candidate = ((apiData as JsonRecord)?.candidates as JsonRecord[] | undefined)?.[0];
-    const finishReason = String(candidate?.finishReason ?? candidate?.finish_reason ?? "").toUpperCase();
-    const rawText = String(
-      ((candidate?.content as JsonRecord | undefined)?.parts as JsonRecord[] | undefined)?.[0]?.text ?? "{}",
-    );
-
-    if (finishReason === "MAX_TOKENS") {
-      throw new AiStructuredError(
-        "Resposta da IA truncada por limite de tokens. Reduza o volume da entrada ou gere em mais etapas.",
-        "ai_truncated",
-        422,
-        { finishReason },
+      const candidate = ((apiData as JsonRecord)?.candidates as JsonRecord[] | undefined)?.[0];
+      const finishReason = String(candidate?.finishReason ?? candidate?.finish_reason ?? "").toUpperCase();
+      const rawText = String(
+        ((candidate?.content as JsonRecord | undefined)?.parts as JsonRecord[] | undefined)?.[0]?.text ?? "{}",
       );
-    }
 
-    const parsed = parseGeminiJson(rawText);
-    if (!parsed) {
-      throw new AiStructuredError(
-        "Resposta da IA invalida: JSON incompleto ou malformado.",
-        "ai_invalid_json",
-        422,
-        { raw: rawText.substring(0, 2000) },
-      );
-    }
+      if (finishReason === "MAX_TOKENS") {
+        // O raciocinio do modelo sai do mesmo orcamento: cortar no meio do JSON
+        // nao e entrada grande demais, e falta de folga. Uma volta com o dobro.
+        const uso = usoDeTokens(apiData);
+        const proximo = limiteAposCorte(maxOutputTokens);
+        console.warn(
+          `gemini: resposta cortada em ${maxOutputTokens} tokens (raciocinio ${uso.raciocinio ?? "?"}, resposta ${uso.resposta ?? "?"})` +
+            (proximo ? `; repetindo com ${proximo}` : ""),
+        );
+        if (proximo !== null) {
+          maxOutputTokens = proximo;
+          continue;
+        }
+        throw new AiStructuredError(
+          "A resposta da IA ficou longa demais e foi cortada. Tente de novo; se repetir, peca menos topicos ou menos conteudo.",
+          "ai_truncated",
+          422,
+          { finishReason, maxOutputTokens, uso },
+        );
+      }
 
-    return { parsed, rawText, finishReason };
+      const parsed = parseGeminiJson(rawText);
+      if (!parsed) {
+        throw new AiStructuredError(
+          "Resposta da IA invalida: JSON incompleto ou malformado.",
+          "ai_invalid_json",
+          422,
+          { raw: rawText.substring(0, 2000) },
+        );
+      }
+
+      return { parsed, rawText, finishReason };
+    }
   }
 
   throw lastError ?? new AiStructuredError("Falha inesperada ao chamar o Gemini.", "gemini_unexpected", 502);
@@ -550,6 +576,15 @@ const TRAIL_SKELETON_SCHEMA: JsonRecord = {
     },
   },
 };
+
+/** O esquema do esqueleto com o tamanho do array travado na quantidade pedida. */
+function skeletonSchema(desiredTopics: number | null): JsonRecord {
+  const topicos = (TRAIL_SKELETON_SCHEMA.properties as JsonRecord).topicos as JsonRecord;
+  return {
+    ...TRAIL_SKELETON_SCHEMA,
+    properties: { topicos: { ...topicos, ...limitesDoEsqueleto(desiredTopics) } },
+  };
+}
 
 const TRAIL_DETAIL_SCHEMA: JsonRecord = {
   type: "OBJECT",
@@ -760,7 +795,8 @@ type TrailContext = {
   sourceBlock: string;
   sourceGuard: string;
   topicNames: string[];
-  desiredTopics: number;
+  /** null = automatico: o modelo escolhe pelo material. */
+  desiredTopics: number | null;
   totalSignals: number;
 };
 
@@ -777,11 +813,8 @@ function buildTrailContext(body: RequestBody, sources: AiSourceInput[]): TrailCo
   }
 
   const topicNames = body.topicNames?.map((item) => item.trim()).filter(Boolean) ?? [];
-  const desiredTopics = clampInt(
-    fileNames.length > 0 ? fileNames.length : body.numTopics ?? Math.max(topicNames.length, 5),
-    1,
-    20,
-  );
+  // O numero do professor vale sempre; arquivos nao o trocam mais (ver quantidadeDeTopicos.ts).
+  const desiredTopics = quantidadeDeTopicos(body.numTopics, topicNames);
   const sourceGuard = sourceBlock
     ? "Use somente o material fornecido. Nao invente conceitos fora das fontes."
     : "Sem fontes externas: use apenas a descricao do curso para construir uma trilha coerente.";
@@ -802,7 +835,7 @@ Idioma obrigatorio: portugues brasileiro.
 ${sourceGuard}
 
 Disciplina/curso: "${trailDescription}"
-Topicos desejados: ${desiredTopics}
+Quantidade de topicos: ${desiredTopics === null ? "automatica (escolha pelo material)" : desiredTopics}
 ${topicNames.length > 0 ? `Topicos sugeridos pelo professor:\n${topicNames.map((name, idx) => `${idx + 1}. ${name}`).join("\n")}\n` : ""}
 ${fileNames.length > 0 ? `Arquivos enviados pelo professor:\n${fileNames.map((name, idx) => `${idx + 1}. ${name}`).join("\n")}\n` : ""}
 ${body.syllabus?.trim() ? `Ementa complementar:\n${body.syllabus.trim().substring(0, 2500)}\n` : ""}
@@ -823,7 +856,7 @@ Retorne SOMENTE JSON valido com:
 }
 
 Regras:
-- Gere exatamente ${desiredTopics} topicos quando houver material suficiente.
+${regrasDaQuantidade(desiredTopics, fileNames.length).join("\n")}
 - Se houver arquivos, distribua em "arquivos_relacionados" sem repetir desnecessariamente.
 - Evite ciclos em depende/next.
 - Organize do basico ao avancado.`;
@@ -831,12 +864,36 @@ Regras:
   const skeletonResult = await callGeminiJson({
     key,
     prompt: skeletonPrompt,
-    maxOutputTokens: 4096,
-    responseSchema: TRAIL_SKELETON_SCHEMA,
+    maxOutputTokens: 8192,
+    responseSchema: skeletonSchema(desiredTopics),
     deadline,
   });
 
-  return normalizeTrailSkeleton(skeletonResult.parsed, desiredTopics, topicNames);
+  let parsed = skeletonResult.parsed;
+  const veio = countSkeletonTopics(parsed);
+  // O esquema ja trava o tamanho, mas modelo de reserva as vezes ignora: uma
+  // volta pedindo o numero de novo antes de cortar (perderia assunto) ou
+  // completar com nome generico.
+  const temTempo = deadline === undefined || deadline - Date.now() >= TRAIL_DETAIL_RETRY_MIN_REMAINING_MS;
+  if (desiredTopics !== null && veio !== desiredTopics && temTempo) {
+    try {
+      const novo = await callGeminiJson({
+        key,
+        prompt: `${skeletonPrompt}
+
+ATENCAO: a resposta anterior trouxe ${veio} topicos, mas o professor pediu ${desiredTopics}. Refaca com exatamente ${desiredTopics} topicos, agrupando ou dividindo os assuntos.`,
+        maxOutputTokens: 8192,
+        responseSchema: skeletonSchema(desiredTopics),
+        deadline,
+      });
+      const veioDeNovo = countSkeletonTopics(novo.parsed);
+      if (Math.abs(veioDeNovo - desiredTopics) < Math.abs(veio - desiredTopics)) parsed = novo.parsed;
+    } catch (error) {
+      console.warn(`trail-skeleton: nova tentativa pela quantidade falhou: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  return normalizeTrailSkeleton(parsed, desiredTopics, topicNames);
 }
 
 // So tenta o detalhe de novo se ainda sobra isso do orcamento da requisicao.
@@ -934,7 +991,7 @@ Regras obrigatorias:
       const detailResult = await callGeminiJson({
         key,
         prompt: detailPrompt,
-        maxOutputTokens: 4096,
+        maxOutputTokens: limiteDoDetalhe(contentTarget),
         responseSchema: TRAIL_DETAIL_SCHEMA,
         deadline,
       });

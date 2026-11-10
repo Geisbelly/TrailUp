@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatSupabaseFunctionError } from "@/lib/supabaseFunctionError";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Wand2, Loader2, ArrowRight, CheckCircle2, X, Upload, FileText, AlertTriangle } from "lucide-react";
+import { Wand2, Loader2, ArrowRight, CheckCircle2, X, Upload, FileText, AlertTriangle, History } from "lucide-react";
 import type { Topico, StagedFile } from "./types";
 import { formatFileSize } from "@/lib/utils";
 import { deleteTopicCascade } from "./classDeletion";
@@ -22,7 +22,11 @@ const PASSO_ATIVO: Record<Step, number> = { configurar: 0, processando: 2, resul
 import { formatoDaQuestao, tipoDaQuestaoDoFormato } from "./formatoDaQuestao";
 import type { AiAtividade, AiTopico, MediaType } from "./proposta";
 import { contagemDaProposta, removerDaProposta, semAtividades, substituirNaProposta } from "./proposta";
-import { gerarTrilhaEmEtapas, type ProgressoDaTrilha } from "./gerarTrilhaEmEtapas";
+import { completarTopicos, gerarTrilhaEmEtapas, semMaterialAinda, type ProgressoDaTrilha, type ResultadoDaTrilha } from "./gerarTrilhaEmEtapas";
+import { apagarRascunho, carregarRascunho, criarGravador, quandoFoiSalvo, salvarRascunho, type RascunhoDaTrilha } from "./rascunhoDaTrilha";
+
+/** Teto de tópicos que a função aceita (`MAX_TOPICOS` em quantidadeDeTopicos.ts). */
+const MAX_TOPICOS = 20;
 
 type Props = {
   open: boolean;
@@ -86,13 +90,35 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const [confirmouSubstituir, setConfirmouSubstituir] = useState(false);
   const [creatingStatus, setCreatingStatus] = useState("");
   const [description, setDescription] = useState(initialDescription);
-  const [numTopics, setNumTopics] = useState(6);
+  // null = automático: a IA escolhe pelo material (ou pelos nomes listados).
+  const [numTopics, setNumTopics] = useState<number | null>(null);
   const [topicNamesRaw, setTopicNamesRaw] = useState("");
   const [syllabus, setSyllabus] = useState("");
   const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
   const [stagedFileContents, setStagedFileContents] = useState("");
   const [preview, setPreview] = useState<AiTopico[]>([]);
   const [progresso, setProgresso] = useState<ProgressoDaTrilha | null>(null);
+  // O corpo do pedido que gerou a proposta na tela: vai no rascunho e é reusado
+  // para gerar o que falta e para os ajustes (os arquivos em si não voltam).
+  const [pedidoAtual, setPedidoAtual] = useState<Record<string, unknown> | null>(null);
+  const [rascunho, setRascunho] = useState<RascunhoDaTrilha | null>(null);
+
+  // Rascunho automático: toda mudança na proposta vai para `trilha_rascunho`,
+  // em fila e só a mais nova. Ver rascunhoDaTrilha.ts.
+  const gravador = useMemo(
+    () => criarGravador((r: { pedido: Record<string, unknown>; topicos: AiTopico[] }) => salvarRascunho(classeId, r)),
+    [classeId],
+  );
+  useEffect(() => {
+    if (!open || !pedidoAtual || preview.length === 0) return;
+    void gravador.agendar({ pedido: pedidoAtual, topicos: preview });
+  }, [open, pedidoAtual, preview, gravador]);
+  useEffect(() => {
+    if (!open) return;
+    let vivo = true;
+    void carregarRascunho(classeId).then((r) => { if (vivo) setRascunho(r); });
+    return () => { vivo = false; };
+  }, [open, classeId]);
 
   const allFileNames = [...initialFileNames, ...stagedFiles.map((s) => s.file.name)];
   const allFileContents = [initialFileContents, stagedFileContents].filter(Boolean).join("\n\n");
@@ -152,7 +178,9 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     setStep("configurar");
     setPreview([]);
     setDescription(initialDescription);
-    setNumTopics(6);
+    setNumTopics(null);
+    setPedidoAtual(null);
+    setRascunho(null);
     setTopicNamesRaw("");
     setSyllabus("");
     setStagedFiles([]);
@@ -179,39 +207,110 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     return data.topicos as AiTopico[];
   };
 
+  const avisarSemMaterial = (semMaterial: ResultadoDaTrilha["semMaterial"]) => {
+    if (semMaterial.length === 0) return;
+    const nomes = semMaterial.map((t) => `“${t.nome}”`).join(", ");
+    toast.warning(
+      semMaterial.length === 1
+        ? `O tópico ${nomes} ficou sem material. Use “Gerar o que falta” ou “Pedir ajuste” nele.`
+        : `Os tópicos ${nomes} ficaram sem material. Use “Gerar o que falta” para tentar de novo.`,
+    );
+  };
+
   const handleGenerate = async () => {
     if (!description.trim()) return toast.error("Descreva o que a turma precisa aprender.");
     setStep("processando");
     setIsGenerating(true);
     setProgresso(null);
+    let ultimoRetrato: AiTopico[] = [];
+    let corpo: Record<string, unknown> | null = null;
     try {
       const topicNames = topicNamesRaw.split("\n").map((line) => line.trim()).filter(Boolean);
+      corpo = {
+        topicName: description, topicDescription: description, contents: [], sources: await buildSources(),
+        trailDescription: description, numTopics, topicNames, syllabus, fileContents: allFileContents || undefined, fileNames: allFileNames.length ? allFileNames : undefined,
+      };
+      // Gerar de novo substitui o rascunho da turma: a proposta nova começa vazia.
+      setPreview([]);
+      setPedidoAtual(corpo);
       // Esqueleto e cada tópico em requisições separadas: tudo numa só passava
       // do tempo do worker da edge function (504/546). Ver gerarTrilhaEmEtapas.
       const { topicos, semMaterial } = await gerarTrilhaEmEtapas({
         invocar: invokeAi,
-        corpo: {
-          topicName: description, topicDescription: description, contents: [], sources: await buildSources(),
-          trailDescription: description, numTopics, topicNames, syllabus, fileContents: allFileContents || undefined, fileNames: allFileNames.length ? allFileNames : undefined,
-        },
+        corpo,
         aoProgredir: setProgresso,
+        // Cada etapa pronta vai para o rascunho (pelo efeito do `preview`).
+        aoAtualizar: (retrato) => {
+          ultimoRetrato = retrato;
+          setPreview(retrato);
+        },
       });
       setPreview(topicos);
+      setRascunho(null);
       setStep("resultado");
-      if (semMaterial.length > 0) {
-        const nomes = semMaterial.map((t) => `“${t.nome}”`).join(", ");
-        toast.warning(
-          semMaterial.length === 1
-            ? `O tópico ${nomes} ficou sem material. Use “Pedir ajuste” nele para gerar de novo.`
-            : `Os tópicos ${nomes} ficaram sem material. Use “Pedir ajuste” em cada um para gerar de novo.`,
-        );
-      }
+      avisarSemMaterial(semMaterial);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao gerar trilha.");
+      const mensagem = e instanceof Error ? e.message : "Erro ao gerar trilha.";
+      if (corpo && ultimoRetrato.length > 0) {
+        // O que já veio (ao menos o esqueleto) ficou no rascunho: o professor retoma dali.
+        setRascunho({ pedido: corpo, topicos: ultimoRetrato, atualizadoEm: new Date().toISOString() });
+        toast.error(`${mensagem} O que já foi gerado ficou salvo no rascunho.`);
+      } else {
+        toast.error(mensagem);
+      }
+      setPreview([]);
+      setPedidoAtual(null);
       setStep("configurar");
     } finally {
       setIsGenerating(false);
       setProgresso(null);
+    }
+  };
+
+  const retomarRascunho = () => {
+    if (!rascunho) return;
+    const { pedido, topicos } = rascunho;
+    setPedidoAtual(pedido);
+    setPreview(topicos);
+    if (typeof pedido.trailDescription === "string") setDescription(pedido.trailDescription);
+    setNumTopics(typeof pedido.numTopics === "number" ? pedido.numTopics : null);
+    setTopicNamesRaw(Array.isArray(pedido.topicNames) ? pedido.topicNames.map(String).join("\n") : "");
+    setSyllabus(typeof pedido.syllabus === "string" ? pedido.syllabus : "");
+    setRascunho(null);
+    setStep("resultado");
+  };
+
+  const descartarRascunho = async () => {
+    gravador.cancelar();
+    await gravador.esperar();
+    await apagarRascunho(classeId);
+    setRascunho(null);
+    toast.success("Rascunho descartado.");
+  };
+
+  const faltando = preview.filter(semMaterialAinda).length;
+  const handleCompletar = async () => {
+    if (!pedidoAtual || faltando === 0) return;
+    setStep("processando");
+    setIsGenerating(true);
+    setProgresso(null);
+    try {
+      const { topicos, semMaterial } = await completarTopicos({
+        invocar: invokeAi,
+        corpo: pedidoAtual,
+        topicos: preview,
+        aoProgredir: setProgresso,
+        aoAtualizar: setPreview,
+      });
+      setPreview(topicos);
+      if (semMaterial.length === 0) toast.success("Material gerado para todos os tópicos.");
+      else avisarSemMaterial(semMaterial);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao gerar o que falta.");
+    } finally {
+      setIsGenerating(false);
+      setProgresso(null);
+      setStep("resultado");
     }
   };
 
@@ -223,10 +322,16 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     if (!ajusteTexto.trim()) return toast.error("Descreva o que mudar neste tópico.");
     setIsAdjusting(true);
     try {
+      // Retomado de um rascunho, os arquivos não estão mais na tela: as fontes vêm do pedido guardado.
+      const base = pedidoAtual ?? {
+        contents: [], sources: await buildSources(), syllabus,
+        fileContents: allFileContents || undefined, fileNames: allFileNames.length ? allFileNames : undefined,
+      };
       const [novo] = await callTrail({
-        mode: "trail", topicName: alvo.nome, topicDescription: alvo.descricao, contents: [], sources: await buildSources(),
+        ...base,
+        mode: "trail", topicName: alvo.nome, topicDescription: alvo.descricao,
         trailDescription: `${description}\n\nGere apenas o tópico "${alvo.nome}". Ajuste pedido pelo professor: ${ajusteTexto.trim()}`,
-        numTopics: 1, topicNames: [alvo.nome], syllabus, fileContents: allFileContents || undefined, fileNames: allFileNames.length ? allFileNames : undefined,
+        numTopics: 1, topicNames: [alvo.nome],
       });
       if (!novo) throw new Error("A IA não devolveu o tópico ajustado.");
       setPreview((atual) => substituirNaProposta(atual, alvo.ordem, novo));
@@ -349,6 +454,10 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
           toast.warning("A trilha nova foi criada, mas alguns tópicos antigos não puderam ser removidos.");
         }
       }
+      // Aplicada, a trilha não precisa mais do rascunho. Nada pendente pode recriá-lo depois.
+      gravador.cancelar();
+      await gravador.esperar();
+      await apagarRascunho(classeId);
       onCreated(out);
       close();
     } catch (e) {
@@ -377,9 +486,13 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         <span aria-hidden="true" className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary/20 text-[13px] font-extrabold text-primary">{t.ordem}</span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold">{t.nome}</p>
-          <p className="mt-0.5 text-[11.5px] text-muted-foreground">
-            {c.conteudos} {c.conteudos === 1 ? "conteúdo" : "conteúdos"} · {c.cards} cards · {c.atividades} {c.atividades === 1 ? "atividade" : "atividades"}
-          </p>
+          {semMaterialAinda(t) ? (
+            <p className="mt-0.5 text-[11.5px] font-semibold text-warning">Sem material ainda</p>
+          ) : (
+            <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+              {c.conteudos} {c.conteudos === 1 ? "conteúdo" : "conteúdos"} · {c.cards} cards · {c.atividades} {c.atividades === 1 ? "atividade" : "atividades"}
+            </p>
+          )}
         </div>
         {acoes}
       </li>
@@ -394,7 +507,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
           <div>
             <DialogTitle className="text-xl">Gerar trilha com IA</DialogTitle>
             <DialogDescription className="mt-1 text-[12.5px]">
-              Descreva o plano de ensino. A IA propõe os tópicos e a ordem — você revisa antes de aplicar. Nada é publicado nem apagado sem a sua confirmação.
+              Descreva o plano de ensino. A IA propõe os tópicos e a ordem — você revisa antes de aplicar. Nada é publicado nem apagado sem a sua confirmação, e o que for gerado fica salvo como rascunho até lá.
             </DialogDescription>
           </div>
         </div>
@@ -418,6 +531,26 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         <ScrollArea className="flex-1 overflow-y-auto pr-1">
           {step === "configurar" && (
             <div className="space-y-5 py-2">
+              {rascunho && (
+                <div className="flex flex-wrap items-center gap-3 rounded-[14px] border border-primary/40 bg-primary/10 px-4 py-3">
+                  <History className="h-4 w-4 flex-none text-primary" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-bold">Há uma trilha gerada que não foi aplicada{rascunho.atualizadoEm ? ` (salva ${quandoFoiSalvo(rascunho.atualizadoEm)})` : ""}</p>
+                    <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                      {rascunho.topicos.length} {rascunho.topicos.length === 1 ? "tópico" : "tópicos"}
+                      {(() => {
+                        const n = rascunho.topicos.filter(semMaterialAinda).length;
+                        return n > 0 ? `, ${n} ainda sem material` : ", todos com material";
+                      })()}
+                      . Gerar uma nova substitui este rascunho.
+                    </p>
+                  </div>
+                  <span className="flex gap-1.5">
+                    <Button size="sm" className="rounded-full font-bold" onClick={retomarRascunho}>Retomar</Button>
+                    <Button size="sm" variant="ghost" className="rounded-full" onClick={() => void descartarRascunho()}>Descartar</Button>
+                  </span>
+                </div>
+              )}
               <div>
                 <Label htmlFor="trilha-descricao" className={rotuloCampo}>O que a turma precisa aprender *</Label>
                 <Textarea id="trilha-descricao" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="rounded-[14px] bg-background" placeholder="Ex.: semestre de mecânica clássica para engenharia, da cinemática até trabalho e energia, com ênfase em resolução de problemas…" />
@@ -453,13 +586,32 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
               </div>
 
               <div className="grid gap-5 sm:grid-cols-2">
-                <div role="radiogroup" aria-label="Quantidade de tópicos">
-                  <span className={rotuloCampo}>Quantidade de tópicos</span>
-                  <div className="flex flex-wrap gap-2">
-                    {[4, 6, 8, 12].map((n) => (
-                      <button key={n} type="button" role="radio" aria-checked={numTopics === n} onClick={() => setNumTopics(n)} className={`rounded-full border px-4 py-1.5 text-[12.5px] font-semibold ${numTopics === n ? "border-primary bg-primary/20" : "border-border text-muted-foreground hover:text-foreground"}`}>{n}</button>
-                    ))}
+                <div role="group" aria-labelledby="trilha-quantidade-rotulo">
+                  <span id="trilha-quantidade-rotulo" className={rotuloCampo}>Quantidade de tópicos</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" aria-pressed={numTopics === null} onClick={() => setNumTopics(null)} className={`rounded-full border px-4 py-1.5 text-[12.5px] font-semibold ${numTopics === null ? "border-primary bg-primary/20" : "border-border text-muted-foreground hover:text-foreground"}`}>Automático</button>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      max={MAX_TOPICOS}
+                      aria-label={`Número de tópicos, de 1 a ${MAX_TOPICOS}`}
+                      placeholder="nº"
+                      value={numTopics ?? ""}
+                      onChange={(e) => {
+                        const valor = e.target.value.trim();
+                        if (!valor) return setNumTopics(null);
+                        const n = Math.round(Number(valor));
+                        if (Number.isFinite(n)) setNumTopics(Math.min(MAX_TOPICOS, Math.max(1, n)));
+                      }}
+                      className={`w-20 rounded-full border bg-background px-4 py-1.5 text-[12.5px] font-semibold ${numTopics !== null ? "border-primary" : "border-border"}`}
+                    />
                   </div>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    {numTopics === null
+                      ? "A IA escolhe pelo material (ou pelos nomes que você listar)."
+                      : `A IA monta exatamente ${numTopics} ${numTopics === 1 ? "tópico" : "tópicos"} e adapta o material a ${numTopics === 1 ? "ele" : "eles"}.`}
+                  </p>
                 </div>
                 <div role="radiogroup" aria-label="Já gerar atividades?">
                   <span className={rotuloCampo}>Já gerar atividades?</span>
@@ -505,6 +657,13 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
                 <CheckCircle2 className="h-4 w-4 flex-none text-success" aria-hidden="true" />
                 Proposta gerada: {totais.topicos} tópicos, {totais.conteudos} conteúdos{gerarAtividades ? ` e ${totais.atividades} atividades iniciais` : ""}.
               </div>
+              {faltando > 0 && (
+                <div className="flex items-start gap-3 rounded-[14px] border border-warning/40 bg-warning/10 px-4 py-3 text-[12.5px]">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 flex-none text-warning" aria-hidden="true" />
+                  <span>{faltando === 1 ? "1 tópico ficou" : `${faltando} tópicos ficaram`} sem material. “Gerar o que falta” tenta só {faltando === 1 ? "ele" : "eles"} de novo; o resto fica como está.</span>
+                </div>
+              )}
+              <p className="text-[11.5px] text-muted-foreground">A proposta fica salva como rascunho desta turma até você aplicar. Se fechar agora, ela continua aqui.</p>
               <ul className="space-y-2">{preview.map((t) => itemDaProposta(t))}</ul>
             </div>
           )}
@@ -561,7 +720,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
 
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t pt-4">
           <Button variant="ghost" className="rounded-full" onClick={close} disabled={ocupado}>
-            {step === "resultado" ? "Descartar" : "Cancelar"}
+            {step === "resultado" || step === "revisar" ? "Fechar" : "Cancelar"}
           </Button>
           {step === "configurar" && (
             <Button className="rounded-full font-bold" onClick={() => void handleGenerate()} disabled={isGenerating || isUploadingFiles || !description.trim()}>
@@ -569,7 +728,14 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
             </Button>
           )}
           {step === "resultado" && (
-            <Button className="rounded-full font-bold" onClick={() => void abrirAplicar()}>Revisar <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></Button>
+            <div className="flex gap-2">
+              {faltando > 0 && pedidoAtual && (
+                <Button variant="outline" className="rounded-full" onClick={() => void handleCompletar()} disabled={isGenerating}>
+                  <Wand2 className="mr-2 h-4 w-4" aria-hidden="true" />Gerar o que falta ({faltando})
+                </Button>
+              )}
+              <Button className="rounded-full font-bold" onClick={() => void abrirAplicar()}>Revisar <ArrowRight className="ml-2 h-4 w-4" aria-hidden="true" /></Button>
+            </div>
           )}
           {step === "revisar" && (
             <div className="flex gap-2">
