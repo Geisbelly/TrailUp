@@ -30,6 +30,7 @@ src/services/loja/storeTheme.test.ts
 src/services/notificacoesDb.test.ts
 src/services/focoLocal.test.ts
 src/services/personalizacao/TrailupApiProvider.loading.test.ts
+src/services/personalizacao/TrailupApiProvider.realtime.test.ts
 src/services/progressoOutbox.test.ts
 src/utils/visitaDoTopico.test.ts
 src/services/acaoDaNotificacao.test.ts
@@ -209,3 +210,4 @@ src/utils/textoRico/editorDeResposta.test.ts
 src/utils/textoRico/configResposta.test.ts
 src/services/conferenciaNoServidor.core.test.ts
 src/components/resposta/editores.tela.test.tsx
+src/utils/personalizacaoAprovada.test.ts

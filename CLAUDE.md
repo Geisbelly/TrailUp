@@ -165,9 +165,9 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
    opcional e vale bônus.** O percentual do tópico sai de
    `trailup_recalcular_topico_aluno` (trigger sobre `conteudo_aluno`,
    `atividade_aluno` e `personalizacao_item_progresso`), e o denominador é só o
-   material personalizado. Quando ele ainda não foi gerado, o conteúdo do
-   professor volta a ser o percurso — senão o aluno que concluiu tudo o que
-   existe veria 0%.
+   material personalizado **aprovado pelo professor** (`20261110_09`). Quando ele
+   ainda não foi gerado, ou ainda não foi aprovado, o conteúdo do professor volta
+   a ser o percurso — senão o aluno que concluiu tudo o que existe veria 0%.
 
    **Nenhum cliente escreve `percentual_concluido` nem `status` em
    `topico_aluno`.** Havia quatro gravadores fazendo isso, todos com a conta
@@ -353,6 +353,27 @@ Cada perfil carrega:
   > `editado`. Sem isso, com o reuso entre professores, uma linha adulterada serviria
   > material a outra turma. Refinar à mão (`regenerar/documento`, `regenerar/slide`)
   > marca `editado` também: não serve de origem.
+
+  > **O aluno só vê material que o professor aprovou** (`20261110_09`). Colunas
+  > `aprovacao` (`pendente`|`aprovado`|`recusado`), `aprovacao_por`, `aprovacao_em`,
+  > `aprovacao_motivo` e `conteudo_versao`. Todo INSERT nasce `pendente`, e o gatilho
+  > `trg_conteudo_personalizado_aprovacao` devolve para `pendente` (e sobe a versão)
+  > quando `materiais`, `plano` ou `source_hash` mudam — **ignorando as chaves de
+  > controle que começam com `_`** (`_geracao_falhas` do worker). Chave de controle
+  > nova em `materiais` precisa desse prefixo, senão cada retentativa derruba a
+  > aprovação. Só o professor dono (JWT) muda o estado: a API e o worker escrevem
+  > sem JWT e o gatilho mantém o estado antigo em silêncio — **nenhum caminho de
+  > geração aprova sozinho**. O console decide pela RPC `personalizacao_decidir`
+  > (Supabase direto, com a versão que o professor viu; versão velha = `40001`).
+  >
+  > A barreira é uma policy **RESTRICTIVE** (`conteudo_personalizado_aprovado_sel`),
+  > não uma reescrita das permissivas: ela compõe com `estudo_trava_sel` e com o que
+  > outra frente acrescentar. `cards_personalizados` herda pela restritiva
+  > `cards_personalizados_aprovado_sel`. A API lê por cima da RLS, então as rotas que
+  > entregam material ao aluno repetem o filtro (`_so_aprovados` em
+  > `api/v1/personalizacao.py`). O progresso (`trailup_progresso_percurso`) só conta
+  > material aprovado, e o aviso "Material novo para você" sai na aprovação, não na
+  > geração.
 
 - `cards_personalizados`, `atividades_personalizadas`, `questoes_personalizadas` — artefatos desnormalizados (com `ativo`/`obsoleto_em`).
 - `fontes_personalizacao` — fontes do professor (upload/link), `visibilidade` `classe|aluno`.

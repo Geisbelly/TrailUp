@@ -84,6 +84,7 @@ import { buildGraphFromTopicos, isTopicoUnlockedLocal } from '@/utils/topicoGrap
 import { progressoCanonicoTopico } from '@/utils/topicoProgress';
 import { buildPersonalizedProgressSeed, seedPersonalizedProgress } from '@/utils/personalizedProgressSeed';
 import { avisarFalha } from '@/services/saude/medicao';
+import { respostaCompleta, semTopicosSemMaterial } from '@/utils/personalizacaoAprovada';
 
 type Visual = 'mapa' | 'arvore' | 'lista'
 
@@ -1196,10 +1197,11 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       // Uma consulta por turma, em paralelo com a personalização, para a ordem
       // aconselhada estar no mapa quando o payload chegar (ver `aplicarSugestoesMaterial`).
       const sugestoesPromise = lerSugestoesMaterial(usuario.id, classeAtual.classe_id)
+      const limiteDaTurma = Math.max(20, expectedContentCount * 2)
       const response = await personalizacaoProvider.listarPersonalizacoesPersistidasPerfil({
         classeId: classeAtual.classe_id,
         brainhexProfileKey: activeProfileKey,
-        limit: Math.max(20, expectedContentCount * 2),
+        limit: limiteDaTurma,
       })
       const sugestoes = await sugestoesPromise
       if (personalizationScopeRef.current !== hydrationKey) return
@@ -1238,8 +1240,22 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         void prefetchPersonalizedPayload(payload)
       }
 
-      if (Object.keys(byTopico).length) {
+      // Material recusado ou regerado (de volta a pendente) some da RLS; com a lista inteira em
+      // mãos, o tópico que ficou sem registro sai da tela e do cache (20261110_09).
+      const completa = respostaCompleta(response?.itens?.length ?? 0, limiteDaTurma)
+      if (completa) {
+        const comMaterial = new Set(Object.keys(byTopico).map(Number))
+        setPersonalizedTopics((prev) =>
+          semTopicosSemMaterial(
+            { ...prev, ...byTopico },
+            classeAtual.topicos.map((topico) => topico.id),
+            comMaterial,
+          )
+        )
+      } else if (Object.keys(byTopico).length) {
         setPersonalizedTopics((prev) => ({ ...prev, ...byTopico }))
+      }
+      if (completa || Object.keys(byTopico).length) {
         await persistPersonalizedTopicsCache(
           usuario.id,
           classeAtual.classe_id,
@@ -1308,7 +1324,12 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
           listResponse?.itens ?? [],
           topico.conteudos ?? []
         )
-        if (!records.length) return null
+        if (!records.length) {
+          // Nada aprovado para este tópico (20261110_09): o que estava na tela sai, e o aluno
+          // segue pelo material do professor.
+          setPersonalizedTopics((prev) => semTopicosSemMaterial(prev, [topicoId], new Set()))
+          return null
+        }
 
         const payloads = records.map((record) => {
           maybeRequestMissingMediaForRecord(record, topico)
