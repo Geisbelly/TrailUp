@@ -448,8 +448,11 @@ def test_fallback_perfil_boosts_survivor_for_low_media_acertos_percentage() -> N
 
     result = _fallback_perfil(state)
 
-    survivor = next(item for item in result["perfis"] if item["perfil"] == "Survivor")
-    assert survivor["afinidade"] == 30.0
+    # Achiever 50, Survivor 10+20, Mastermind 10+10, demais 10: Survivor sobe para segundo.
+    # A afinidade sai em percentual (soma 100), não em pontos somados.
+    ordem = [item["perfil"] for item in result["perfis"]]
+    assert ordem[:3] == ["Achiever", "Survivor", "Mastermind"]
+    assert sum(item["afinidade"] for item in result["perfis"]) == 100
 
 
 def test_fallback_trilha_reinforces_for_low_media_acertos_percentage() -> None:

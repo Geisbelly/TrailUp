@@ -1808,3 +1808,18 @@ async def test_claim_missao_diaria_travada_tem_janela_propria() -> None:
     assert "make_interval(mins => :stale_missao_diaria_min)" in processing_clause
     assert params["stale_missao_diaria_min"] == 5
     assert params["stale_processing_min"] == 53
+
+
+@pytest.mark.asyncio
+async def test_perfil_repository_grava_socialiser_na_linha_de_socializer() -> None:
+    # `perfil.nome` em produção é `socializer`; o modelo e o código antigo escreviam `Socialiser`,
+    # e a linha era pulada em silêncio.
+    session = RecordingSession([[SimpleNamespace(id=19, nome="socializer")]])
+
+    await PerfilRepository(session).atualizar_afinidades(
+        "aluno-1",
+        PerfilUpdate(perfis=[PerfilScore(perfil="Socialiser", afinidade=30)]),
+    )
+
+    inserts = [params for sql, params in session.calls if "INSERT INTO aluno_perfil" in sql]
+    assert inserts == [{"aluno_id": "aluno-1", "perfil_id": 19, "afinidade": 30}]
