@@ -610,8 +610,14 @@ Cada perfil carrega:
   recalcula as matrículas da turma (gatilho por comando), e o `pg_cron`
   `trailup_topicos_agendados` passa o agendado vencido para `publicado` e
   recalcula — sem ele, quem tinha 100% continuaria com 100% depois do tópico abrir.
-  RPCs `SECURITY DEFINER` que leem material por id **não** passam por essa RLS e
-  ficaram para auditoria à parte.
+  RPCs `SECURITY DEFINER` que leem material por id **não** passam por essa RLS:
+  cada uma tem portão próprio (`20261110_11`) — `fn_questao_acesso` (responder,
+  conferência, correção) e `atividade_iniciar_tentativa` recusam com
+  `topico_nao_publicado`; `fn_questao_liberada_para` (arena, guilda, chat) e os
+  cards personalizados de `bag_listar` filtram. Arena, guilda e Bag já pediam
+  material começado ou visto, então o furo era tópico despublicado depois de
+  aberto ou id adivinhado. **RPC DEFINER nova que lê material por id precisa do
+  mesmo portão**; a RLS não a cobre.
 - `alteracao_professor` + `alteracao_aluno` — o professor mudou um conteúdo ou
   uma atividade que algum aluno já viu ou fez (`20261101_12`). **O banco
   registra** (gatilho nas quatro tabelas do editor e em `questao_gabarito`, só
