@@ -1,0 +1,156 @@
+# Aberturas e fechamentos de capítulos instrucionais: perguntas, problemas, teses, checklists, convites e pontes
+
+> Notas de pesquisa para avaliar pedagogicamente os dispositivos de abertura e fechamento da assinatura editorial do TrailUp (Seeker: pergunta intrigante + convite à exploração autônoma; Survivor: problema real com risco + checklist aplicável; Mastermind: tese conceitual + síntese e próximos passos; sem assinatura: cena temática + ponte para a próxima lição). Conteúdo-alvo: busca binária em Python, erros de fronteira (`inicio < fim` vs `inicio <= fim`; `inicio = meio` vs `meio + 1`) e custo (11 vs 1.024 comparações).
+>
+> **Convenção de fonte.** Itens marcados com **[verificado]** tiveram título, periódico e/ou achado conferidos em buscas desta sessão (resumos, registros de editora ou repositórios). Itens marcados com **[DOI de referência, não aberto]** são referências clássicas citadas a partir do conhecimento prévio da literatura, com DOI padrão; o achado descrito é o amplamente reportado, mas o texto não foi reaberto nesta sessão. Ao levar para o texto do TCC, conferir esses na fonte.
+
+## 1. Perguntas de abertura, curiosidade e teoria da lacuna de informação
+
+### Takeaway
+Curiosidade epistêmica (lacuna de informação percebida) melhora a memória do que é respondido e, em menor grau, do material incidental próximo; mas o efeito depende de a pergunta ser **respondível pelo próprio texto, de dificuldade intermediária e resolvida logo**. Pergunta retórica, sem lacuna real ou jamais respondida, não tem respaldo empírico de ganho.
+
+### Cited Findings
+- Loewenstein (1994) define curiosidade como reação a uma **lacuna de informação** percebida entre o que se sabe e o que se quer saber; a curiosidade exige algum conhecimento prévio (sem saber nada, não se percebe a lacuna) e aumenta quando a pessoa sente que está perto da resposta. Loewenstein, G. (1994). The psychology of curiosity: A review and reinterpretation. *Psychological Bulletin*, 116(1), 75–98. — [DOI 10.1037/0033-2909.116.1.75](https://doi.org/10.1037/0033-2909.116.1.75) **[DOI de referência, não aberto]**
+- Kang, Hsu, Krajbich, Loewenstein, McClure, Wang & Camerer (2009): com perguntas de trivia em fMRI, a curiosidade ativou regiões do caudado ligadas à antecipação de recompensa; participantes gastavam recursos escassos (fichas, tempo de espera) para saber respostas quando mais curiosos; a curiosidade aumentou a atividade em áreas de memória após palpite **errado**, e maior curiosidade previu melhor recordação de respostas surpreendentes 1–2 semanas depois. A curiosidade é máxima em confiança intermediária (curva em U invertido em função da confiança no próprio palpite). *Psychological Science*, 20(8), 963–973. — [PubMed 19619181](https://pubmed.ncbi.nlm.nih.gov/19619181/); [texto completo (CMU)](https://www.cmu.edu/dietrich/sds/docs/loewenstein/WickCandleLearning.pdf) **[verificado]**
+- Gruber, Gelman & Ranganath (2014): estados de alta curiosidade melhoraram a memória para a resposta e também para material **incidental** (rostos) apresentado durante a espera, em teste imediato e após um dia; efeito ligado ao circuito dopaminérgico mesencéfalo–hipocampo. *Neuron*, 84(2), 486–496. — [DOI 10.1016/j.neuron.2014.08.060](https://doi.org/10.1016/j.neuron.2014.08.060); [PMC4252494](https://pmc.ncbi.nlm.nih.gov/articles/PMC4252494) **[verificado]**
+- Ressalva: o efeito incidental (rostos) foi **pequeno**, e a tarefa (trivia escolhida por gerar curiosidade) pode não capturar curiosidade espontânea em sala. — [Mapping Ignorance (comentário crítico)](https://mappingignorance.org/?p=1937) **[verificado; fonte secundária]**
+
+### Inferences
+- A abertura do Seeker ("pergunta intrigante") só tem respaldo se for uma pergunta **de lacuna** — por exemplo, "com 1.024 itens, quantas comparações bastam no pior caso?" — que o aluno consiga arriscar um palpite (confiança intermediária) e que o capítulo **responda explicitamente** (11). O resultado de Kang et al. sugere que palpitar errado e depois ver a resposta é justamente onde a memória se beneficia.
+- Pergunta retórica genérica ("Você já se perguntou como o computador encontra coisas?") não cria lacuna específica; a teoria não prevê ganho e a literatura não testa esse formato como benefício.
+- Os estudos são de laboratório com trivia, não de capítulos didáticos de programação; a transposição é inferência.
+
+### Gaps
+- Não encontrei meta-análise específica sobre "pergunta de abertura" em textos didáticos medindo retenção; o mais próximo é a literatura de pré-perguntas (seção 2).
+- Não encontrei estudos de curiosidade com conteúdo de programação.
+
+## 2. Pré-perguntas / efeito de pré-teste e perguntas adjuntas
+
+### Takeaway
+Fazer perguntas **antes** do estudo melhora de forma robusta a retenção do que foi perguntado; o benefício para o que **não** foi perguntado é fraco, inconsistente e às vezes nulo. Perguntas adjuntas de ordem superior tendem a generalizar mais que as factuais.
+
+### Cited Findings
+- Pan & Carpenter (2023), revisão em *Educational Psychology Review* 35:97: pré-perguntas e pré-testes "frequentemente" ajudam a aprender, mas a magnitude varia com o procedimento e com a forma de medir; propõem um modelo de três estágios com mudança no comportamento de estudo posterior; pedem mais pesquisa sobre moderadores e prática em sala. — [DOI 10.1007/s10648-023-09814-5](https://link.springer.com/doi/10.1007/s10648-023-09814-5) **[verificado (resumo)]**
+- Carpenter & Toftness (2017), *JARMAC* 6, 104–109: com vídeo curto (Ilha de Páscoa, 85 estudantes), pré-perguntas melhoraram tanto o material perguntado quanto o **não perguntado**; os autores argumentam que vídeo é mais difícil de "pular para a resposta" do que texto. — [Learning Scientists](https://www.learningscientists.org/blog/2017/11/2-1); [BPS Research Digest](https://www.bps.org.uk/research-digest/heres-simple-way-boost-your-learning-videos-prequestion) **[verificado; secundárias]**
+- Limites: em sala, Carpenter e colegas encontraram desempenho igual ao controle no material não perguntado; St. Hilaire & Carpenter (2020) acharam benefício principalmente específico ao material relacionado às pré-perguntas; Toftness, Carpenter, Lauber & Mickes (2018) apontaram que o estudo de 2017 tinha só duas pré-perguntas simples e um vídeo de ~2 min, pouco representativo de aula real. — [Toftness et al., JARMAC (Royal Holloway)](https://pure.royalholloway.ac.uk/files/30437641/JARMAC_Toftness_et_al.pdf); [Hausman & Rhodes (2018), "When pretesting fails to enhance learning"](https://hausman.sites.ucsc.edu/files/2023/02/Hausman.Rhodes.2018b-When-Pretesting-Fails-to-Enhance-Learning.pdf) **[verificado]**
+- Richland, Kornell & Kao (2009): tentar responder (e errar) perguntas antes de ler um texto melhorou a retenção posterior em comparação com estudar por mais tempo, mesmo quando as tentativas eram malsucedidas. *Journal of Experimental Psychology: Applied*, 15(3), 243–257. — [DOI 10.1037/a0016496](https://doi.org/10.1037/a0016496) **[DOI de referência, não aberto]**
+- Hamaker (1986), *Review of Educational Research* 56(2), 212–242: perguntas adjuntas de qualquer nível cognitivo têm efeito forte em itens de teste **repetidos** e mais fraco em itens **relacionados**; perguntas de ordem superior melhoram itens repetidos, relacionados e não relacionados de ordem superior, e possivelmente itens factuais não relacionados; o efeito depende de 13 variáveis de desenho (extensão do texto, densidade e formato das perguntas, formato do teste). — [Bangert-Drowns et al. 1991 (cita Hamaker)](https://www.gwern.net/docs/spaced-repetition/1991-bangertdrowns.pdf); [notas Matuschak](https://notes.andymatuschak.org/z4m9Gat7zi9YUmZzQRR7pwt) **[verificado; secundárias]**
+- Rothkopf (anos 1960, "mathemagenic behaviors") é a origem da linha: perguntas inseridas no texto moldam o que o leitor processa; perguntas *antes* do trecho focalizam a atenção no alvo, perguntas *depois* tendem a beneficiar mais amplamente. Rothkopf, E. Z. (1966). Learning from written instructive materials. *American Educational Research Journal*, 3(4), 241–249. — [DOI 10.3102/00028312003004241](https://doi.org/10.3102/00028312003004241) **[DOI de referência, não aberto]**
+
+### Inferences
+- A pergunta de abertura do Seeker funciona, na prática, como uma pré-pergunta: deve mirar o **conceito central** que se quer reter (por exemplo, a condição de parada `inicio <= fim`), porque o benefício é sobretudo específico ao alvo. Uma pergunta "temática" que não toca o ponto crítico desperdiça o efeito.
+- Texto lido no app permite pular até a resposta (o que, segundo Carpenter & Toftness, enfraquece o efeito); no **áudio narrado**, que não se "escaneia", a pré-pergunta pode render mais — inferência a partir do argumento de vídeo × texto, não testada para áudio.
+
+### Gaps
+- Não verifiquei o tamanho de efeito agregado em Pan & Carpenter (2023) nem eventuais meta-análises quantitativas posteriores; o resumo não traz número.
+
+## 3. Organizadores prévios e aberturas com tese; aberturas por problema / instrução ancorada
+
+### Takeaway
+Organizadores prévios (o "quadro conceitual primeiro", próximo da tese do Mastermind) têm efeito positivo, mas **pequeno**, e funcionam quando de fato relacionam o novo ao que o aluno já sabe — não quando apenas resumem. Aberturas por problema autêntico (Survivor) têm base teórica na instrução ancorada; a evidência mais forte de "problema antes da explicação" vem da falha produtiva (seção 7), com condições.
+
+### Cited Findings
+- Luiten, Ames & Ackerson (1980), *American Educational Research Journal* 17, 211–218: meta-análise de 135 estudos publicados e não publicados; organizadores prévios facilitaram aprendizagem e retenção; moderadores examinados: série, disciplina, modo de apresentação, nível de habilidade. — [Springer (citação)](https://link.springer.com/article/10.1007/BF02296573); [CORE](https://core.ac.uk/download/144155196.pdf) **[verificado (escopo); tamanho de efeito agregado não recuperado]**
+- No mesmo trabalho, o tamanho de efeito de organizadores **aurais** foi cerca do dobro do de organizadores escritos; e organizadores funcionaram para todos os níveis de habilidade, sem vantagem especial para alunos de baixa habilidade (Luiten et al., 1980; Stone, 1983). — [ITDL Journal](https://itdl.org/Journal/Jun_09/article01.htm) **[verificado; secundária]**
+- Mayer (1979) concluiu que organizadores prévios influenciam a aprendizagem significativa sobretudo quando o material é pouco organizado ou o aprendiz não tem conhecimento prévio relevante, e quando o teste mede transferência, não recordação literal. Mayer, R. E. (1979). Can advance organizers influence meaningful learning? *Review of Educational Research*, 49(2), 371–383. — [DOI 10.3102/00346543049002371](https://doi.org/10.3102/00346543049002371) **[DOI de referência, não aberto]**
+- Instrução ancorada (Cognition and Technology Group at Vanderbilt, 1990): situar a instrução num problema realista e rico ("âncora") para dar sentido e uso ao conhecimento e evitar conhecimento inerte. *Educational Researcher*, 19(6), 2–10. — [DOI 10.3102/0013189X019006002](https://doi.org/10.3102/0013189X019006002) **[DOI de referência, não aberto]**
+
+### Inferences
+- A tese conceitual do Mastermind ("busca binária é dividir o espaço de busca pela metade a cada passo; por isso o custo é logarítmico") é um organizador expositivo legítimo; o ganho esperado é modesto e maior em transferência. Ele deve ser **subsunçor** (mais geral que o detalhe que vem), não um resumo do capítulo.
+- A abertura do Survivor ("problema real com risco claro") é coerente com a instrução ancorada **se** o risco for o erro de fronteira de verdade (laço infinito com `inicio = meio`; item não encontrado com `inicio < fim`). Risco inventado ou dramatizado sem ligação com o código vira detalhe sedutor (ver abaixo).
+- **Cena temática** (abertura sem assinatura): a literatura de *seductive details* (detalhes interessantes mas irrelevantes) mostra prejuízo médio à aprendizagem. Rey (2012), *Educational Research Review* 7(3), 216–237, meta-análise: detalhes sedutores prejudicam retenção e transferência — [DOI 10.1016/j.edurev.2012.05.003](https://doi.org/10.1016/j.edurev.2012.05.003); Sundararajan & Adesope (2020), *Educational Psychology Review* 32, 707–734, meta-análise: efeito negativo pequeno a moderado — [DOI 10.1007/s10648-020-09522-4](https://doi.org/10.1007/s10648-020-09522-4) **[DOIs de referência, não abertos; números exatos não conferidos nesta sessão]**. Uma cena temática só escapa desse efeito se carregar o conteúdo (por exemplo, a cena É a busca num conjunto ordenado).
+
+### Gaps
+- Não recuperei o tamanho de efeito médio de Luiten et al. (1980) nem verifiquei a crítica posterior (Barnes & Clawson, 1975; Kozlow) que contestou os organizadores; o efeito é historicamente **contestado**.
+- Não encontrei estudo de organizador prévio com conteúdo de programação.
+
+## 4. Fechamentos: prática de recuperação, estratégias generativas, resumos dados × gerados
+
+### Takeaway
+Para o fechamento, a evidência mais forte favorece **recuperação ativa** (o aluno responde/reconstrói sem olhar) e **autoexplicação** sobre ler um resumo pronto. Resumo fornecido é eficiente para revisão, mas não substitui geração; resumir pelo próprio aluno só ajuda bem quando há treino. Checklist lido passivamente é, funcionalmente, um resumo fornecido.
+
+### Cited Findings
+- Roediger & Karpicke (2006): estudar e depois testar-se produz melhor retenção tardia (dias) do que reestudar, embora reestudar pareça melhor no teste imediato. *Psychological Science*, 17(3), 249–255. — [DOI 10.1111/j.1467-9280.2006.01693.x](https://doi.org/10.1111/j.1467-9280.2006.01693.x) **[DOI de referência, não aberto]**
+- Meta-análises do efeito de teste: Rowland (2014), *Psychological Bulletin* 140(6), 1432–1463, g ≈ 0,50 para teste × reestudo — [DOI 10.1037/a0037559](https://doi.org/10.1037/a0037559); Adesope, Trevisan & Sundararajan (2017), *Review of Educational Research* 87(3), 659–701, g ≈ 0,61 — [DOI 10.3102/0034654316689306](https://doi.org/10.3102/0034654316689306) **[DOIs de referência, não abertos; valores de g do conhecimento prévio, conferir]**
+- Fiorella & Mayer (2016), *Educational Psychology Review* 28(4), 717–741: oito estratégias generativas — resumir, mapear, desenhar, imaginar, autotestar, autoexplicar, ensinar, encenar — cada uma com condições de contorno e recomendações práticas. — [DOI 10.1007/s10648-015-9348-9](https://link.springer.com/doi/10.1007/s10648-015-9348-9) **[verificado (escopo); tamanhos de efeito não recuperados]**
+- Dunlosky et al. (2013) classificaram prática de testes e prática distribuída como de "alta utilidade", autoexplicação e interrogação elaborativa como "moderada", e **resumir** e **reler** como "baixa utilidade" (resumir ajuda pouco sem treino). *Psychological Science in the Public Interest*, 14(1), 4–58. — [DOI 10.1177/1529100612453266](https://doi.org/10.1177/1529100612453266) **[DOI de referência, não aberto]**
+- Bisra, Liu, Nesbit, Salimi & Winne (2018), meta-análise de autoexplicação induzida: efeito médio g ≈ 0,55. *Educational Psychology Review*, 30, 703–725. — [DOI 10.1007/s10648-018-9434-x](https://doi.org/10.1007/s10648-018-9434-x) **[DOI de referência, não aberto; conferir valor]**
+
+### Inferences
+- Os três fechamentos com assinatura (checklist, convite à exploração, síntese conceitual) e o sem assinatura (ponte para a próxima lição) são **todos passivos** se só lidos. A versão de maior respaldo transformaria qualquer um deles em recuperação: "sem rolar para cima, qual condição do `while` evita perder o último elemento?"; "trace `buscar([1,3,5], 5)` e diga os valores de `inicio`, `fim` e `meio` a cada passo".
+- A síntese do Mastermind é um resumo fornecido; útil como revisão, mas a evidência sugere que pedir ao aluno para **gerar** a síntese (ou completar lacunas dela) renderia mais.
+- A "ponte para a próxima lição" não tem literatura própria que eu tenha encontrado; funcionaria, no máximo, como organizador prévio da próxima unidade ou como gatilho de curiosidade (lacuna aberta), sem efeito sobre a retenção do capítulo atual.
+- No áudio, recuperação exige pausa/espera; um script narrado precisa de instrução explícita de pausa.
+
+### Gaps
+- Não encontrei estudo comparando diretamente checklist × resumo × prompt de autoexplicação como fechamento de capítulo.
+- Não verifiquei nesta sessão os valores exatos de g de Rowland, Adesope e Bisra.
+
+## 5. Checklists em aprendizagem/programação; itens inventados e persistência de desinformação
+
+### Takeaway
+Não há evidência sólida de que um checklist ao final de um texto, por si só, produza transferência em programação; a evidência adjacente mais forte é a de **rótulos de subobjetivos** em exemplos resolvidos, que organizam o procedimento e melhoram a resolução de problemas novos. Itens de checklist **inventados** (não presentes na fonte) são um risco real: informação errada apresentada como regra tende a persistir mesmo após correção (efeito de influência continuada).
+
+### Cited Findings
+- Margulieux & Catrambone (2016), *Learning and Instruction*: aprendizes com rótulos de subobjetivo no texto **e** no exemplo resolvem problemas novos melhor; rótulos no texto ajudam a articular o procedimento, rótulos no exemplo ajudam a aplicá-lo; funcionam por agrupar visualmente os passos, organizar a informação nova e induzir autoexplicação. — [eScholarship](https://escholarship.org/content/qt672863cw/qt672863cw.pdf?t=sggz8h); [GSU ScholarWorks](https://scholarworks.gsu.edu/ltd_facpub/4) **[verificado (resumos)]**
+- Margulieux, Catrambone et al. (Cognitive Science Society, 2015): exemplos resolvidos com subobjetivos rotulados foram igualmente eficazes entre domínios; instruções procedimentais rotuladas ajudaram mais em procedimentos complexos. — [eScholarship](https://escholarship.org/content/qt35z8842x/qt35z8842x.pdf) **[verificado (resumo)]**
+- Estudo de um semestre (Margulieux, Morrison & Decker, *International Journal of STEM Education*, 2020): subobjetivos melhoraram consistentemente quizzes formativos aplicados até uma semana após o procedimento, mas **não** as provas somativas. — [DOAJ](https://doaj.org/article/9a2c85d66fd54ec9ab019e9a510bbf17); [NSF PAR](https://par.nsf.gov/biblio/10171487) **[verificado (resumo)]**
+- Lewandowsky, Ecker, Seifert, Schwarz & Cook (2012), *Psychological Science in the Public Interest* 13(3), 106–131: retratações de desinformação são pouco eficazes na atualização da memória e podem até aumentar a crença errada; é mais fácil aceitar uma informação do que avaliar sua veracidade; correções funcionam melhor quando oferecem uma explicação alternativa que preencha a lacuna, são simples e breves e focam no correto, não no incorreto. — [DOI 10.1177/1529100612451018](https://doi.org/10.1177/1529100612451018); [APS](https://www.psychologicalscience.org/?p=76530) **[verificado (resumo)]**
+- Ressalva sobre "backfire": revisões posteriores consideram o efeito bumerangue raro e não replicável de forma consistente, mas mantêm a **influência continuada** como robusta. Ecker et al. (2022). The psychological drivers of misinformation belief and its resistance to correction. *Nature Reviews Psychology*, 1, 13–29. — [DOI 10.1038/s44159-021-00006-y](https://doi.org/10.1038/s44159-021-00006-y) **[DOI de referência, não aberto]**
+
+### Inferences
+- Um checklist do Survivor com itens fiéis à fonte ("a condição é `inicio <= fim`"; "atualize com `meio + 1` / `meio - 1`"; "a lista precisa estar ordenada") se aproxima de rótulos de subobjetivo — mas o ganho medido de subobjetivos vem de rotular os **passos dentro do exemplo**, não de uma lista solta no fim. Melhor desenho: os itens do checklist aparecerem como rótulos no próprio código/exemplo e reaparecerem no fim.
+- Os dois itens **inventados** pelo modelo são o problema mais grave do ponto de vista de evidência: um checklist é formato de alta autoridade ("faça sempre isto"), aprendido como regra; pela literatura de influência continuada, corrigir depois tem eficácia limitada. Se o item inventado for apenas redundante, o custo é carga extrínseca; se for tecnicamente errado ou não suportado pelo material do professor, é desinformação didática. Recomenda-se exigir rastreabilidade de cada item à fonte (ou à lista de erros previstos) e descartar itens sem âncora.
+- Os efeitos de subobjetivos em quiz mas não em prova (2020) sugerem cautela ao prometer transferência ampla de um checklist.
+
+### Gaps
+- Não encontrei (nesta sessão) estudo experimental sobre checklists de *code review* ou depuração como material de fechamento para iniciantes; a literatura de checklists em engenharia de software é de inspeção profissional, não de aprendizagem.
+- Não há estudo que eu conheça sobre itens alucinados por LLM em material didático e sua persistência; a aplicação da influência continuada é inferência.
+
+## 6. Ensino de concepções erradas em programação: erros de fronteira, textos de refutação, exemplos errados, rastreamento
+
+### Takeaway
+Para os dois erros clássicos de busca binária, a evidência apoia **(a)** texto de refutação (nomear a concepção errada, refutá-la e dar a explicação correta), **(b)** exemplos errados com explicação — eficazes sobretudo para quem já tem algum conhecimento prévio — e **(c)** exercícios de **rastreamento** (prever estado das variáveis), que são habilidade de base para escrever código. Exemplos errados têm efeito médio pequeno e dependem do desenho da explicação.
+
+### Cited Findings
+- Tippett (2010), *International Journal of Science and Mathematics Education*: revisão de ~20 anos de textos de refutação em ciências e leitura; ler texto de refutação em vez de texto expositivo tradicional tem maior probabilidade de produzir mudança conceitual; não se encontrou relação desenvolvimental. — [DOI 10.1007/s10763-010-9203-x](https://link.springer.com/doi/10.1007/s10763-010-9203-x) **[verificado (resumo); autoria inferida pelo DOI e por citação em Sinatra & Broughton 2011]**
+- Schroeder & Kucera (2022), *Educational Psychology Review* 34, 957–987: meta-análise de 44 comparações (n = 3.869), efeito positivo moderado do texto de refutação, g = 0,41 (p < 0,001). — [DOI 10.1007/s10648-021-09656-z](https://link.springer.com/content/pdf/10.1007/s10648-021-09656-z.pdf) **[verificado]**
+- Guzzetti et al. (1993) já haviam reunido meta-analiticamente intervenções de mudança conceitual baseadas em texto, com vantagem para refutação. Guzzetti, B. J., Snyder, T. E., Glass, G. V., & Gamas, W. S. (1993). Promoting conceptual change in science: A comparative meta-analysis of instructional interventions from reading education and science education. *Reading Research Quarterly*, 28(2), 116–159. — [DOI 10.2307/747886](https://doi.org/10.2307/747886) **[DOI de referência, não aberto]**
+- Große & Renkl (2007), *Learning and Instruction* 17(6), 612–634: interação aptidão-tratamento — soluções corretas e incorretas juntas favoreceram a transferência distante para quem tinha bom conhecimento prévio; quem tinha pouco conhecimento prévio foi melhor só com soluções corretas; destacar o erro ajudou a transferência próxima dos alunos com pouco conhecimento prévio, não a distante. — [DOI 10.1016/j.learninstruc.2007.09.008](https://doi.org/10.1016/j.learninstruc.2007.09.008); [Scilit](https://www.scilit.net/publications/57b18aa152ce305a85b9827f7216b4c6) **[verificado (resumo)]**
+- Alemdag, Eichelmann & Narciss (2025), meta-análise em *Review of Educational Research* (42 artigos, 177 tamanhos de efeito): exemplos errados × exemplos corretos ou resolução de problemas — efeito significativo porém fraco, g = 0,136; o desenho da atividade de explicação do erro modera: prompts de autoexplicação ou explicações instrucionais ajudam mais que nenhuma explicação. — [TU Dresden](https://fis.tu-dresden.de/portal/en/publications/a-framework-for-learning-from-erroneous-examples-and-metaanalysis-of-empirical-research(113f115d-59d4-43c3-b1c8-52c3c97b0b40).html); [Leibniz-IPN](https://www.leibniz-ipn.de/en/research/publications/a-framework-for-learning-from-erroneous-examples-and-meta-analysis-of-empirical-research) **[verificado (resumo)]**
+- Em meta-análise de exemplos resolvidos em matemática (g ≈ 0,48), estudos só com exemplos **corretos** tiveram efeitos maiores que estudos só com incorretos ou com corretos + incorretos. — [Springer, s10648-023-09745-1](https://link.springer.com/content/pdf/10.1007/s10648-023-09745-1.pdf) **[verificado (trecho); autoria não conferida]**
+- Xie, Loksa, Nelson, Davidson, Dong, Kwik, Tan, Hwa, Li & Ko (2019), *Computer Science Education* 29(2–3), 205–253: teoria de quatro habilidades aprendidas em sequência — **rastrear** (prever mudanças de estado e saídas), escrever sintaxe, compreender *templates*, escrever código com *templates*; ensinar incrementalmente melhorou a conclusão de exercícios, reduziu a taxa de erro e melhorou o pós-teste. — [DOI 10.1080/08993408.2019.1565235](https://informahealthcare.com/doi/abs/10.1080/08993408.2019.1565235); [PDF (UW)](https://faculty.washington.edu/ajko/papers/Xie2019IntroCSTheoryOfInstruction.pdf) **[verificado]**
+- Lister et al. (2004), grupo de trabalho ITiCSE multinacional: muitos iniciantes não conseguem rastrear de forma confiável trechos curtos de código (incluindo laços e índices de arrays) ao fim do primeiro curso, o que sugere que a dificuldade de escrever vem em parte de não saber ler/rastrear. *SIGCSE Bulletin*, 36(4), 119–150. — [DOI 10.1145/1041624.1041673](https://doi.org/10.1145/1041624.1041673) **[DOI de referência, não aberto]**
+- Qian & Lehman (2017), revisão de concepções erradas e dificuldades em programação introdutória (incluindo laços, condições e variáveis), *ACM Transactions on Computing Education* 18(1). — [DOI 10.1145/3077618](https://doi.org/10.1145/3077618) **[DOI de referência, não aberto]**
+
+### Inferences
+- A abertura do Survivor (risco) e a apresentação dos dois erros de fronteira podem ser desenhadas como **texto de refutação**: "É comum escrever `while inicio < fim`; parece certo, mas quando `inicio == fim` ainda resta um elemento a verificar — e ele é perdido." Isso tem respaldo moderado (g ≈ 0,41).
+- Mostrar o código errado tem ganho pequeno em média e é arriscado para iniciantes sem conhecimento prévio (Große & Renkl); mitigação com respaldo: **destacar** o erro e pedir/fornecer explicação, e sempre mostrar a versão correta ao lado. Pela recomendação de Lewandowsky et al., a versão correta deve receber mais destaque que a errada.
+- Um exercício de **rastreamento** (tabela `inicio | fim | meio` passo a passo, inclusive o caso em que `inicio = meio` entra em laço infinito) é provavelmente o dispositivo de fechamento com maior respaldo para este conteúdo, seja qual for o perfil.
+- O contraste 11 × 1.024 comparações é um bom item de pré-pergunta/lacuna (seções 1–2) e de verificação no fim.
+
+### Gaps
+- Não encontrei estudo específico sobre o ensino dos erros de fronteira da busca binária (off-by-one) com texto de refutação; a evidência é de ciências e matemática, com programação via revisões de concepções erradas.
+- Não verifiquei a literatura de McLaren et al. sobre exemplos errados (estudos com decimais, ~2016) nesta sessão.
+
+## 7. Convites à "exploração autônoma" no fim: exploração pouco guiada × guiada; falha produtiva
+
+### Takeaway
+Exploração sem orientação é menos eficaz que instrução explícita para iniciantes; descoberta **apoiada** supera outras formas. A falha produtiva mostra vantagem de "resolver antes, instrução depois", mas com problemas bem desenhados e instrução de consolidação em seguida — não é exploração livre no final. Um convite aberto no fim do capítulo, sem tarefa definida e sem feedback, não tem respaldo de ganho de aprendizagem (pode ter valor motivacional, não medido aqui).
+
+### Cited Findings
+- Kirschner, Sweller & Clark (2006): orientação mínima (descoberta, investigação, aprendizagem por problemas sem orientação) é menos eficaz e eficiente que orientação forte para iniciantes, por conflitar com a arquitetura cognitiva (memória de trabalho limitada); a vantagem da orientação diminui com expertise. *Educational Psychologist*, 41(2), 75–86. — [DOI 10.1207/s15326985ep4102_1](https://doi.org/10.1207/s15326985ep4102_1) **[DOI de referência, não aberto]**
+- Alfieri, Brooks, Aldrich & Tenenbaum (2011), *Journal of Educational Psychology* 103(1), 1–18, duas meta-análises com 164 estudos: descoberta **não assistida** perdeu para instrução explícita (d = −0,38); descoberta **aprimorada** (com apoio, feedback, explicação) superou outras formas de instrução (d = 0,30); domínios incluem matemática, habilidades de computador e resolução de problemas. — [PDF (Utrecht)](https://www.fisme.science.uu.nl/publicaties/literatuur/2011_alfieri_discovery_learning.pdf); [Texas LD Center](https://texasldcenter.org/?p=364) **[verificado]**
+- Sinha & Kapur (2021), *Review of Educational Research*: meta-análise de 53 estudos e 166 comparações entre resolver-depois-instrução (PS-I) e instrução-depois-resolver (I-PS); após correção de viés de publicação, efeito favorável a PS-I, g = 0,87 (a revisão anterior de 2019, com 12 artigos, reportava 0,43). — [DOI 10.3102/00346543211019105](https://www.x-mol.com/paper/1406031499744456704) **[verificado (resumo); g=0,87 refere-se a subconjunto com alta fidelidade ao desenho de falha produtiva segundo relatos — conferir na fonte]**
+- Kapur (2008), origem da falha produtiva: grupos que resolveram problemas mal estruturados sem apoio "falharam" na tarefa, mas depois transferiram melhor para problemas bem estruturados. *Cognition and Instruction*, 26(3), 379–424. — [DOI 10.1080/07370000802212669](https://doi.org/10.1080/07370000802212669) **[DOI de referência, não aberto]**
+
+### Inferences
+- O convite do Seeker à exploração autônoma, colocado **no fim** e **sem tarefa**, não corresponde nem à descoberta apoiada nem à falha produtiva (que põem o problema **antes** da instrução e são seguidas de consolidação). Respaldo empírico: baixo.
+- Uma versão defensável: "explore" vira tarefa concreta com critério de verificação e feedback — "mude a condição para `inicio < fim` e rode `buscar([2,4,6], 6)`: o que acontece? Por quê?" Isso é descoberta guiada + exemplo errado autogerado + rastreamento, todos com algum respaldo.
+- Se o perfil Seeker for valorizado pela exploração, a evidência sugere mover a exploração para **antes** da explicação (estilo PS-I), com problema bem desenhado, em vez de deixá-la como apêndice opcional.
+- Nota de fundo: a personalização por "perfil de jogador" não substitui essas condições; a literatura de estilos de aprendizagem (fora deste escopo) não sustenta adaptar o método ao estilo declarado — tema de outra nota.
+
+### Gaps
+- Não encontrei estudo sobre "convites finais à exploração" como dispositivo textual isolado.
+- Não verifiquei se o g = 0,87 de Sinha & Kapur é o efeito global ou de um subconjunto; os relatos secundários divergem e o resumo acessado não esclarece.
+- O debate Kirschner/Sweller/Clark × Kapur/Hmelo-Silver é **contestado**; a leitura conciliadora (orientação forte para iniciantes; exploração estruturada antes de instrução pode ajudar transferência) é a mais aceita, mas não é consenso.

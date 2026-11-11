@@ -28,6 +28,10 @@ REGRAS OBRIGATORIAS:
 - activity_timer e reading_timer sao apenas UX local e nao alteram nota oficial.
 - mentor_character nao e chat livre.
 - Preserve o shape do fallback_contract quando estiver em duvida.
+- perfis_representativos traz os perfis BrainHex do aluno que contam, com peso (somam 1).
+  Trate o aluno como mistura, nao como o primeiro perfil: ritmo dos timers e tom do mentor
+  devem refletir os pesos. O fallback_contract ja pondera timers e boss por esses pesos.
+  Nao troque o preset nem o id do boss por causa dos pesos.
 
 FORMATO ESPERADO:
 {

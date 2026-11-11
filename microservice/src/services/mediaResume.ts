@@ -21,6 +21,7 @@
 // que o claim nao toca.
 
 import type { MaterialEntry, MaterialPart } from "./supabaseService";
+import type { RelatorioDeFidelidade } from "./fidelityGuard";
 import type { AudioJunctionPart } from "../utils/audioJunction";
 import { classifyTtsFailure, isDailyQuotaError, rootCause } from "./ttsRecovery";
 import { summarizeAudioFailures, type AudioPartFailure } from "../utils/audioFailure";
@@ -284,6 +285,8 @@ export function buildMarkdownMaterialEntry(params: {
   generationKey: string;
   bucket: string;
   checkpoint?: boolean;
+  /** Relatório da barreira de fidelidade; sem ele (texto retomado de antes da barreira), a chave não aparece. */
+  fidelidade?: RelatorioDeFidelidade;
 }): MaterialEntry {
   const allOk = params.partes.length > 0 && params.partes.every((parte) => parte.arquivo_url);
   return {
@@ -294,6 +297,7 @@ export function buildMarkdownMaterialEntry(params: {
       generation_key: params.generationKey,
       updated_at: now(),
       ...(params.partes[0]?.arquivo_url ? { bucket: params.bucket } : {}),
+      ...(params.fidelidade ? { fidelidade: params.fidelidade } : {}),
     },
     arquivo_url: params.partes[0]?.arquivo_url ?? null,
     storage_path: params.partes[0]?.storage_path ?? null,

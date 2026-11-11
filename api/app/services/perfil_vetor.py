@@ -98,3 +98,21 @@ def tem_sinal(perfis: Iterable[Any] | None, alvo: Any, *, limiar: float = LIMIAR
 def tem_algum_sinal(perfis: Iterable[Any] | None, alvos: Iterable[Any], *, limiar: float = LIMIAR_REPRESENTATIVO) -> bool:
     lista = list(perfis or [])
     return any(tem_sinal(lista, alvo, limiar=limiar) for alvo in alvos)
+
+
+def pesos_representativos(perfis: Iterable[Any] | None) -> list[tuple[str, float]]:
+    """Os perfis representativos, na ordem, com a afinidade renormalizada para somar 1.
+
+    É o vetor que a camada leve pondera: o perfil fora da regra de representativo não entra,
+    e o aluno sem sinal nenhum conta inteiro como `PERFIL_PADRAO`.
+    """
+    ordem = ordenar(perfis)
+    representativos = [
+        (chave, afinidade)
+        for posicao, (chave, afinidade) in enumerate(ordem)
+        if (posicao <= POSICAO_SECUNDARIA and afinidade > 0) or afinidade >= LIMIAR_REPRESENTATIVO
+    ]
+    total = sum(afinidade for _, afinidade in representativos)
+    if total <= 0:
+        return [(PERFIL_PADRAO, 1.0)]
+    return [(chave, afinidade / total) for chave, afinidade in representativos]

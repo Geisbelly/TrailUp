@@ -34,6 +34,7 @@ import {
   type PresentationVersions,
 } from "./src/services/mediaResume";
 import { settleWithConcurrency } from "./src/lib/boundedConcurrency";
+import type { RelatorioDeFidelidade } from "./src/services/fidelityGuard";
 import {
   deriveImagesForMedia,
   extractAttachmentsFromMarkdown,
@@ -1144,6 +1145,8 @@ export async function runPipeline(
   let textParts: Array<{ ordem: number; titulo: string; markdown: string }> | null = null;
   let markdownPartes: MaterialPart[] = [];
   let writeMarkdown = false;
+  // Relatório da barreira de fidelidade do texto. Na retomada, o do checkpoint: o texto é o mesmo.
+  let fidelidade: RelatorioDeFidelidade | undefined;
   let audioPlan: AudioPartPlan[] = [];
   let audioScriptError: unknown = null;
   let imageAttachments: Array<{ data: string; mimeType: string; name: string; url: string; sourceText?: string; sourceOrder?: number }> = [];
@@ -1160,6 +1163,7 @@ export async function runPipeline(
     markdownPartes = resume.markdownPartes;
     // Texto do checkpoint (pending): vira completed no merge final.
     writeMarkdown = !resume.markdownDone;
+    fidelidade = existingMateriais?.markdown?.metadata?.fidelidade;
     if (resume.storedAudio && !resume.audioDone) {
       audioPlan = resume.storedAudio;
     } else if (!resume.audioDone) {
@@ -1215,6 +1219,7 @@ export async function runPipeline(
     // verdade) nunca viravam imageAttachments e o pipeline inteiro caia pro
     // fallback de IA/SVG generico. Anexos avulsos (acima) sempre vem
     // primeiro na lista.
+    fidelidade = resultado.metadata.fidelidade;
     if (resultado.extractedMedia && resultado.extractedMedia.length > 0) {
       imageAttachments = [
         ...imageAttachments,
@@ -1291,6 +1296,7 @@ export async function runPipeline(
           generationKey: fence.generationKey,
           bucket,
           checkpoint: true,
+          fidelidade,
         }),
       };
       if (audioPlan.length > 0) {
@@ -1461,6 +1467,7 @@ export async function runPipeline(
       firstMarkdown,
       generationKey: fence.generationKey,
       bucket,
+      fidelidade,
     });
   }
   if (audioPlan.length > 0) {
@@ -1875,7 +1882,7 @@ export function buildApp(opts: AppOptions = {}): express.Application {
       if (!result.chapters || result.chapters.length === 0) {
         return res.status(502).json({ error: "geração não retornou capítulos por bloco" });
       }
-      res.json({ success: true, chapters: result.chapters });
+      res.json({ success: true, chapters: result.chapters, fidelidade: result.metadata.fidelidade });
     } catch (error: any) {
       req.log.error("generate/block erro", { err: error });
       res.status(500).json({ error: error?.message || "Falha ao gerar capítulos por bloco" });

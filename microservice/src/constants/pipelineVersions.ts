@@ -12,7 +12,8 @@
  * Alterações incompatíveis no pipeline ou no renderizador de apresentações
  * devem incrementar estas versões antes do deploy.
  */
-export const MEDIA_PIPELINE_VERSION = "2026-09-27.1" as const;
+// 2026-11-11.1: prompt com guia, cena curta e assinatura do perfil; barreira de fidelidade.
+export const MEDIA_PIPELINE_VERSION = "2026-11-11.1" as const;
 export const PRESENTATION_ENGINE_VERSION = "brainhexpdf-v1" as const;
 export const PRESENTATION_SCHEMA_VERSION = "presentation-material-v3" as const;
 // v4 = deck HTML da #863 (cor do perfil, claro/escuro, ajustes de leitura).

@@ -169,3 +169,12 @@ test("imageUrlsFromMarkdown: na ordem, sem repetir e sem o SVG de diagrama gerad
   const md = "![a](https://img/1)\n![b](data:image/svg+xml;base64,AAA)\n![c](https://img/2)\n![d](https://img/1)";
   assert.deepEqual(imageUrlsFromMarkdown(md), ["https://img/1", "https://img/2"]);
 });
+
+test("o relatório da barreira vai para metadata.fidelidade do texto; sem ele, a chave não aparece", () => {
+  const partes = markdownPronto.partes;
+  const fidelidade = { versao: "fidelidade-v1", achados: [] };
+  const com = buildMarkdownMaterialEntry({ partes, firstMarkdown: "x", generationKey: KEY, bucket: "b", fidelidade });
+  assert.deepEqual((com.metadata as Record<string, unknown>).fidelidade, fidelidade);
+  const sem = buildMarkdownMaterialEntry({ partes, firstMarkdown: "x", generationKey: KEY, bucket: "b" });
+  assert.ok(!("fidelidade" in sem.metadata));
+});
