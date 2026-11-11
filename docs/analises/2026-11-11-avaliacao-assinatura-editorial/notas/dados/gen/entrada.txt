@@ -1,0 +1,59 @@
+IDS OBRIGATORIOS, NESTA ORDEM: ["b1","b2"]
+Gere um capitulo PROPRIO para CADA um dos 2 bloco(s) abaixo (um markdown e um audioScript por blockId) - cubra 100% dos conceitos de cada bloco individualmente, com extensao proporcional ao conteudo_aprofundado daquele bloco especifico.
+
+[
+  {
+    "id": "b1",
+    "ordem": 1,
+    "tema": "Algoritmos de busca",
+    "topico": "Busca binária",
+    "objetivos": [
+      "Explicar por que a busca linear fica lenta em listas grandes",
+      "Descrever a ideia da busca binária e a condição de a lista estar ordenada"
+    ],
+    "conteudo_base": "Na busca linear, o algoritmo compara o valor procurado com cada elemento da lista, do primeiro ao último. Em uma lista com n elementos, no pior caso são feitas n comparações. A busca binária só funciona em listas ordenadas: ela compara o valor procurado com o elemento do meio e descarta a metade em que o valor não pode estar.",
+    "conteudo_aprofundado": "Se a lista tem 1.000.000 de elementos, a busca linear pode precisar de 1.000.000 de comparações. A busca binária mantém dois índices, inicio e fim, que delimitam o trecho onde o valor ainda pode estar. A cada passo calcula meio = (inicio + fim) // 2. Se lista[meio] for igual ao alvo, a busca termina. Se o alvo for maior, o trecho passa a começar em meio + 1; se for menor, passa a terminar em meio - 1. Como cada comparação descarta metade do trecho, 1.000.000 de elementos se reduzem a 1 em cerca de 20 passos. Se a lista não estiver ordenada, descartar uma metade pode jogar fora justamente o elemento procurado, e o resultado fica errado.",
+    "conceitos_chave": [
+      "busca linear",
+      "busca binária",
+      "lista ordenada",
+      "índices inicio e fim",
+      "elemento do meio"
+    ],
+    "exemplos_contextos": [
+      "Procurar uma palavra no dicionário abrindo no meio",
+      "Procurar o número 37 na lista [3, 8, 15, 21, 37, 42, 56]"
+    ],
+    "ponte_proximo_bloco": "Com a ideia entendida, o próximo passo é escrever o algoritmo e medir quantos passos ele custa.",
+    "source_ids": [
+      "fonte-sintetica-1"
+    ]
+  },
+  {
+    "id": "b2",
+    "ordem": 2,
+    "tema": "Algoritmos de busca",
+    "topico": "Busca binária",
+    "objetivos": [
+      "Implementar a busca binária iterativa",
+      "Relacionar o número de passos com log2(n) e comparar com a busca linear"
+    ],
+    "conteudo_base": "A versão iterativa usa um laço enquanto inicio <= fim. Quando o trecho fica vazio (inicio > fim), o valor não está na lista e a função devolve -1. O número máximo de passos cresce com log2(n), por isso se diz que a busca binária é O(log n), enquanto a busca linear é O(n).",
+    "conteudo_aprofundado": "Implementação em Python:\n\ndef busca_binaria(lista, alvo):\n    inicio, fim = 0, len(lista) - 1\n    while inicio <= fim:\n        meio = (inicio + fim) // 2\n        if lista[meio] == alvo:\n            return meio\n        if lista[meio] < alvo:\n            inicio = meio + 1\n        else:\n            fim = meio - 1\n    return -1\n\nErros comuns: usar inicio < fim em vez de inicio <= fim (o último elemento do trecho nunca é testado) e atualizar inicio = meio em vez de meio + 1 (o laço pode não terminar). Para n = 1.024 a busca binária faz no máximo 11 comparações; a linear pode fazer 1.024. Dobrar o tamanho da lista acrescenta só um passo à busca binária. O custo de ordenar a lista antes (O(n log n)) só compensa quando se fazem muitas buscas na mesma lista.",
+    "conceitos_chave": [
+      "laço while inicio <= fim",
+      "retorno -1",
+      "O(log n)",
+      "O(n)",
+      "erros de limite"
+    ],
+    "exemplos_contextos": [
+      "Rastrear busca_binaria([3, 8, 15, 21, 37, 42, 56], 37) passo a passo",
+      "Comparar 11 e 1.024 comparações para n = 1.024"
+    ],
+    "ponte_proximo_bloco": "Na próxima aula: como ordenar a lista para poder usar a busca binária.",
+    "source_ids": [
+      "fonte-sintetica-1"
+    ]
+  }
+]

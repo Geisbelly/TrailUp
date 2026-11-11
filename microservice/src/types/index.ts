@@ -40,6 +40,8 @@ export interface SlideContent {
   sourceIds: string[];
 }
 
+import type { RelatorioDeFidelidade } from "../services/fidelityGuard";
+
 export interface ProcessedContent {
   markdown: string;
   audioScript: string;
@@ -57,6 +59,9 @@ export interface ProcessedContent {
     content_generation_provider?: "gemini" | "openai" | "mixed";
     content_generation_models?: string[];
     content_generation_fallback_count?: number;
+    /** Relatório da barreira de fidelidade (fidelityGuard.ts): sempre presente no modo
+     * block_batches, com `achados: []` quando nada foi achado. */
+    fidelidade?: RelatorioDeFidelidade;
   };
   slideImages?: string[];
   audioBase64?: string | null;

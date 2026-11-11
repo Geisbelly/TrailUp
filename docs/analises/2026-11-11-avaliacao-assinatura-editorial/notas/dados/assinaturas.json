@@ -1,0 +1,135 @@
+{
+  "Seeker": {
+    "tom_voz": "curioso e exploratório",
+    "ritmo": "medio",
+    "abertura_estilo": "pergunta instigante",
+    "convencimento_estilo": "descoberta guiada por pistas",
+    "progressao_narrativa": "descoberta",
+    "fechamento_estilo": "convite à exploração autônoma",
+    "narrativa_preferencial": "descoberta",
+    "marcadores_linguisticos": [
+      "explorar",
+      "descobrir",
+      "mapear",
+      "pistas"
+    ],
+    "proibicoes_estilo": [
+      "tom burocrático",
+      "excesso de jargão sem contexto"
+    ]
+  },
+  "Survivor": {
+    "tom_voz": "pragmático e seguro",
+    "ritmo": "medio-lento",
+    "abertura_estilo": "problema real com risco claro",
+    "convencimento_estilo": "redução de risco com passos concretos",
+    "progressao_narrativa": "fluxo/processo",
+    "fechamento_estilo": "checklist aplicável",
+    "narrativa_preferencial": "fluxo_processo",
+    "marcadores_linguisticos": [
+      "evite falhas",
+      "mitigar",
+      "passo a passo",
+      "resiliência"
+    ],
+    "proibicoes_estilo": [
+      "promessas vagas",
+      "metáforas desconectadas"
+    ]
+  },
+  "Daredevil": {
+    "tom_voz": "energético e desafiador",
+    "ritmo": "dinamico",
+    "abertura_estilo": "gancho de ação imediata",
+    "convencimento_estilo": "desafio + recompensa prática",
+    "progressao_narrativa": "luta/superação",
+    "fechamento_estilo": "missão curta de execução",
+    "narrativa_preferencial": "luta_superacao",
+    "marcadores_linguisticos": [
+      "desafio",
+      "missão",
+      "ação",
+      "superação"
+    ],
+    "proibicoes_estilo": [
+      "explicação excessivamente lenta",
+      "abertura morna"
+    ]
+  },
+  "Mastermind": {
+    "tom_voz": "analítico e preciso",
+    "ritmo": "medio",
+    "abertura_estilo": "tese conceitual",
+    "convencimento_estilo": "lógica e evidência",
+    "progressao_narrativa": "didática/analítica",
+    "fechamento_estilo": "síntese conceitual com próximos passos",
+    "narrativa_preferencial": "didatica_analitica",
+    "marcadores_linguisticos": [
+      "hipótese",
+      "evidência",
+      "trade-off",
+      "modelo"
+    ],
+    "proibicoes_estilo": [
+      "sensacionalismo",
+      "saltos sem justificativa"
+    ]
+  },
+  "Conqueror": {
+    "tom_voz": "assertivo e orientado a resultado",
+    "ritmo": "dinamico",
+    "abertura_estilo": "meta explícita e impacto",
+    "convencimento_estilo": "performance e resultado mensurável",
+    "progressao_narrativa": "conquista",
+    "fechamento_estilo": "chamada para execução",
+    "narrativa_preferencial": "conquista",
+    "marcadores_linguisticos": [
+      "meta",
+      "impacto",
+      "resultado",
+      "execução"
+    ],
+    "proibicoes_estilo": [
+      "abordagem dispersa",
+      "falta de objetividade"
+    ]
+  },
+  "Socialiser": {
+    "tom_voz": "humano e colaborativo",
+    "ritmo": "medio",
+    "abertura_estilo": "história com personagem ou situação social",
+    "convencimento_estilo": "empatia e colaboração",
+    "progressao_narrativa": "transformação",
+    "fechamento_estilo": "convite para compartilhar e aplicar em grupo",
+    "narrativa_preferencial": "transformacao",
+    "marcadores_linguisticos": [
+      "colaboração",
+      "compartilhar",
+      "comunidade",
+      "juntos"
+    ],
+    "proibicoes_estilo": [
+      "tom impessoal extremo",
+      "isolamento de contexto"
+    ]
+  },
+  "Achiever": {
+    "tom_voz": "objetivo e progressivo",
+    "ritmo": "medio",
+    "abertura_estilo": "objetivo mensurável",
+    "convencimento_estilo": "progresso incremental e ganho concreto",
+    "progressao_narrativa": "conquista",
+    "fechamento_estilo": "próximo marco de evolução",
+    "narrativa_preferencial": "fluxo_processo",
+    "marcadores_linguisticos": [
+      "progresso",
+      "marco",
+      "evolução",
+      "resultado"
+    ],
+    "proibicoes_estilo": [
+      "promessas abstratas",
+      "falta de aplicabilidade"
+    ]
+  }
+}

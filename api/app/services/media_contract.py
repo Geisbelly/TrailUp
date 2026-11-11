@@ -6,7 +6,8 @@ e do design de apresentação também são validadas antes de disparar qualquer
 geração, evitando que um deploy antigo produza ou preserve o layout legado.
 """
 
-MEDIA_PIPELINE_VERSION = "2026-09-27.1"
+# 2026-11-11.1: prompt com guia, cena curta e assinatura do perfil; barreira de fidelidade.
+MEDIA_PIPELINE_VERSION = "2026-11-11.1"
 PRESENTATION_ENGINE_VERSION = "brainhexpdf-v1"
 # v4 = deck HTML da #863. Espelho de microservice/src/constants/pipelineVersions.ts:
 # o health do microservice tem de devolver o mesmo valor, senao a API recusa gerar.

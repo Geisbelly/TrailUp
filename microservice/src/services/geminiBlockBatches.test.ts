@@ -719,3 +719,46 @@ test("snapCutToBoundary prefere parágrafo, depois frase, depois espaço", () =>
   assert.equal(snapCutToBoundary("Uma frase. Outra frase longa", 14, 20), "Uma frase. ".length);
   assert.equal(snapCutToBoundary("palavragrande outra", 5, 20), "palavragrande ".length);
 });
+
+// Spec 2026-11-11-assinatura-meio-termo-e-barreira: o relatório da barreira sai sempre no
+// metadata do conteúdo consolidado, com a lista vazia quando nada foi achado.
+test("consolidateBlockBatchGenerations junta os achados da barreira de cada lote", () => {
+  const blocks = [block(1), block(2), block(3), block(4)];
+  const batches = partitionContentBlocks(blocks, 2);
+  const markers = ["PRIMEIRO", "SEGUNDO", "TERCEIRO", "QUARTO"];
+  const gerar = () => batches.map((batch, index) =>
+    validateBlockBatchGeneration(
+      batch,
+      { chapters: batch.map((b, i) => chapter(b.id, markers[index * 2 + i])), confidence: 1 },
+      index + 1,
+    )
+  );
+  const achado = {
+    blockId: "bloco-01", campo: "markdown" as const, tipo: "numero_fora_da_fonte" as const,
+    trecho: "4.096", acao: "registrado" as const,
+  };
+  const comAchado = gerar();
+  comAchado[0].achados = [achado];
+  comAchado[1].achados = [];
+  const opcoes = { batchSize: 2, concurrency: 2, family: "presentation", filesCount: 0 };
+  assert.deepEqual(
+    consolidateBlockBatchGenerations(blocks, comAchado, opcoes).metadata.fidelidade,
+    { versao: "fidelidade-v1", achados: [achado] },
+  );
+  assert.deepEqual(
+    consolidateBlockBatchGenerations(blocks, gerar(), opcoes).metadata.fidelidade,
+    { versao: "fidelidade-v1", achados: [] },
+  );
+});
+
+test("a barreira roda depois do lote aceito, nunca dentro de validateResult", async () => {
+  const { readFileSync } = await import("node:fs");
+  const fonte = readFileSync(new URL("./geminiService.ts", import.meta.url), "utf-8");
+  const inicio = fonte.indexOf("export async function processMediaWithGemini(");
+  const corpo = fonte.slice(inicio, fonte.indexOf("\nexport ", inicio + 10));
+  const validateResult = corpo.slice(corpo.indexOf("validateResult:"), corpo.indexOf("geminiFallbackModels:"));
+  assert.ok(!validateResult.includes("guardarFidelidade"), "barreira dentro de validateResult");
+  const aceito = corpo.indexOf("const validated = validateBlockBatchGeneration(");
+  assert.ok(aceito > 0);
+  assert.ok(corpo.indexOf("guardarFidelidade(", aceito) > aceito, "barreira não roda no lote aceito");
+});
