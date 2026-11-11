@@ -12,6 +12,10 @@ describe("limiteDoDetalhe", () => {
     expect(new Set(limites).size).toBe(4);
   });
 
+  it("cada conteúdo tem folga para uma aula de até 800 palavras, cards e atividade", () => {
+    expect(limiteDoDetalhe(2) - limiteDoDetalhe(1)).toBeGreaterThanOrEqual(4096);
+  });
+
   it("valor estranho vale como um conteúdo e nada passa do teto", () => {
     expect(limiteDoDetalhe(0)).toBe(limiteDoDetalhe(1));
     expect(limiteDoDetalhe(Number.NaN)).toBe(limiteDoDetalhe(1));

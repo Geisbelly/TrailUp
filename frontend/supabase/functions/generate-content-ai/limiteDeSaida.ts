@@ -17,8 +17,12 @@
 /** Teto de saída que a função pede. Bem abaixo do máximo dos modelos flash. */
 export const TETO_DE_SAIDA = 32768;
 
-/** Por conteúdo do tópico: texto, 2 cards, 1 atividade e ao menos 1 mídia. */
-const SAIDA_POR_CONTEUDO = 2048;
+/**
+ * Por conteúdo do tópico: a aula (350 a 800 palavras, ~1.300 tokens no topo),
+ * 2 cards, 1 atividade e a parte do raciocínio que cabe a ele. Com 2048 o texto
+ * saía de um parágrafo.
+ */
+const SAIDA_POR_CONTEUDO = 4096;
 /** Fixo do detalhe: o objeto do tópico e a folga para o raciocínio do modelo. */
 const SAIDA_BASE_DO_DETALHE = 6144;
 
