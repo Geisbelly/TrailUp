@@ -82,3 +82,54 @@ test('perfil solicitado desconhecido é rejeitado antes da leitura', async () =>
   await assert.rejects(provider([{ ...material, brainhex_profile_key: 'inventado' }])
     .listarPersonalizacoesPersistidasPerfil({ ...params, brainhexProfileKey: 'inventado' }), /Perfil/);
 });
+
+// Fase 2 (mistura por conteúdo): a rota precisa do material de vários perfis de uma vez.
+test('vários perfis: traz os registros de cada um e marca o perfil em que foram lidos', async () => {
+  const seeker = { ...material, id: 11, brainhex_profile_key: 'seeker' };
+  const survivor = { ...material, id: 12, brainhex_profile_key: 'survivor' };
+  const mastermind = { ...material, id: 13, brainhex_profile_key: 'mastermind' };
+  // Legado: o perfil só aparece no plano.
+  const legado = { ...material, id: 14, brainhex_profile_key: null, plano: { perfil_dominante: 'survivor' } };
+  const result = await provider([seeker, survivor, mastermind, legado]).listarPersonalizacoesPersistidasPerfis({
+    classeId: 54,
+    topicoId: 131,
+    brainhexProfileKeys: ['seeker', 'survivor'],
+  });
+  assert.deepEqual(
+    result.itens.map((item: any) => [item.id, item.brainhex_profile_key]).sort(),
+    [
+      [11, 'seeker'],
+      [12, 'survivor'],
+      [14, 'survivor'],
+    ],
+  );
+  assert.equal(result.total, 3);
+});
+
+test('vários perfis: perfil inválido rejeita como na leitura de um perfil', async () => {
+  await assert.rejects(
+    provider([material]).listarPersonalizacoesPersistidasPerfis({ classeId: 54, brainhexProfileKeys: ['inventado'] }),
+    /Perfil/,
+  );
+});
+
+test('vários perfis: falha num perfil da rota não esconde o do perfil ativo (o primeiro)', async () => {
+  const p = provider([{ ...material, id: 11, brainhex_profile_key: 'seeker' }]);
+  const original = p.listarPersonalizacoesPersistidasPerfil.bind(p);
+  p.listarPersonalizacoesPersistidasPerfil = async (params: any) => {
+    if (params.brainhexProfileKey === 'survivor') throw new Error('rede');
+    return original(params);
+  };
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const result = await p.listarPersonalizacoesPersistidasPerfis({ classeId: 54, brainhexProfileKeys: ['seeker', 'survivor'] });
+    assert.deepEqual(result.itens.map((item: any) => item.id), [11]);
+    await assert.rejects(
+      p.listarPersonalizacoesPersistidasPerfis({ classeId: 54, brainhexProfileKeys: ['survivor', 'seeker'] }),
+      /rede/,
+    );
+  } finally {
+    console.warn = warn;
+  }
+});

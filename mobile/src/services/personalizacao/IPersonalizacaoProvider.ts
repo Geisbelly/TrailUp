@@ -30,6 +30,11 @@ export interface IPersonalizacaoProvider {
     params: ListarPersonalizacoesPerfilParams
   ): Promise<PersonalizacaoListResponse>;
 
+  /** O mesmo, para vários perfis de uma vez; cada item volta com o perfil em que foi lido. */
+  listarPersonalizacoesPersistidasPerfis(
+    params: Omit<ListarPersonalizacoesPerfilParams, "brainhexProfileKey"> & { brainhexProfileKeys: string[] }
+  ): Promise<PersonalizacaoListResponse>;
+
   /**
    * Ordem aconselhada de consumo do material do aluno num tópico (GET HTTP).
    *
