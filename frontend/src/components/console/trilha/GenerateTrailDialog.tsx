@@ -24,6 +24,20 @@ import type { AiAtividade, AiTopico } from "./proposta";
 import { contagemDaProposta, conteudoDaMidia, removerDaProposta, semAtividades, substituirNaProposta } from "./proposta";
 import { completarTopicos, gerarTrilhaEmEtapas, semMaterialAinda, type ProgressoDaTrilha, type ResultadoDaTrilha } from "./gerarTrilhaEmEtapas";
 import { apagarRascunho, carregarRascunho, criarGravador, quandoFoiSalvo, salvarRascunho, type RascunhoDaTrilha } from "./rascunhoDaTrilha";
+import { anexosDoPedido, prepararAnexos, type AnexoParaIa } from "./arquivosParaIa";
+import { comMemoria, trocarFiguras, type RefDeFigura } from "./figurasDaTrilha";
+
+/**
+ * Os arquivos como a IA os leu na geração que está na tela, e o `File` de
+ * cada id (A1, A2…), para virar figura ao aplicar. Fica em memória: não vai
+ * para o rascunho (PDF em base64 não cabe lá). Rascunho retomado sem os
+ * arquivos gera sem eles, e os marcadores de figura somem ao aplicar.
+ */
+type MaterialDaGeracao = { anexos: AnexoParaIa[]; arquivos: Map<string, File> };
+
+const pdfNoNavegador = () => import("./pdfNoNavegador");
+
+const bytesDeBase64 = (base64: string) => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
 /** Teto de tópicos que a função aceita (`MAX_TOPICOS` em quantidadeDeTopicos.ts). */
 const MAX_TOPICOS = 20;
@@ -100,6 +114,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   // para gerar o que falta e para os ajustes (os arquivos em si não voltam).
   const [pedidoAtual, setPedidoAtual] = useState<Record<string, unknown> | null>(null);
   const [rascunho, setRascunho] = useState<RascunhoDaTrilha | null>(null);
+  const materialRef = useRef<MaterialDaGeracao | null>(null);
 
   // Rascunho automático: toda mudança na proposta vai para `trilha_rascunho`,
   // em fila e só a mais nova. Ver rascunhoDaTrilha.ts.
@@ -172,7 +187,50 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     }
   };
 
+  /** Lê PDF, PPTX e DOCX para a IA (ver arquivosParaIa.ts). Os ids seguem a ordem da lista. */
+  const lerMaterial = async (): Promise<MaterialDaGeracao | null> => {
+    const arquivos = stagedFiles.map((s) => s.file);
+    if (!arquivos.some((f) => /\.(pdf|pptx|docx)$/i.test(f.name))) return null;
+    const { lerTextoDoPdf } = await pdfNoNavegador();
+    const anexos = await prepararAnexos(arquivos, lerTextoDoPdf);
+    return { anexos, arquivos: new Map(arquivos.map((f, i) => [`A${i + 1}`, f])) };
+  };
+  const anexosPara = (material: MaterialDaGeracao | null) =>
+    material ? (alvo: { arquivos_relacionados?: string[] } | null) => anexosDoPedido(material.anexos, alvo?.arquivos_relacionados) : undefined;
+
+  /**
+   * A figura `ref` como imagem no bucket `conteudos`, na pasta do professor
+   * (a mesma dos arquivos da trilha). Devolve a URL que vai no markdown, ou
+   * null se o arquivo não está mais aqui.
+   */
+  const urlDaFigura = (material: MaterialDaGeracao | null, userId: string) =>
+    comMemoria(async (ref: RefDeFigura) => {
+      const arquivo = material?.arquivos.get(ref.anexo);
+      if (!material || !arquivo) return null;
+      let imagem: Blob | null = null;
+      if (ref.tipo === "pagina") {
+        const { paginaDoPdfComoPng } = await pdfNoNavegador();
+        imagem = await paginaDoPdfComoPng(new Uint8Array(await arquivo.arrayBuffer()), ref.pagina);
+      } else {
+        const achada = material.anexos.find((a) => a.id === ref.anexo)?.imagens?.find((i) => i.id === ref.ref);
+        if (achada) imagem = new Blob([bytesDeBase64(achada.base64)], { type: achada.mimeType });
+      }
+      if (!imagem) return null;
+      const ext = imagem.type === "image/jpeg" ? "jpg" : (imagem.type.split("/")[1] ?? "png");
+      const base = arquivo.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60);
+      const path = `${userId}/classes/${classeId}/materials/figuras/${Date.now()}_${base}_${ref.ref.replace("#", "-")}.${ext}`;
+      const { error } = await supabase.storage.from("conteudos").upload(path, imagem, { contentType: imagem.type, upsert: true });
+      if (error) {
+        console.warn(`[trilha] figura ${ref.ref} não subiu:`, error);
+        return null;
+      }
+      // URL pública do bucket: é a forma que o app e o console já assinam dentro
+      // do texto, e que trailup_fechar_buckets_privados() reescreve ao fechar.
+      return supabase.storage.from("conteudos").getPublicUrl(path).data.publicUrl;
+    });
+
   const reset = () => {
+    materialRef.current = null;
     setStep("configurar");
     setPreview([]);
     setDescription(initialDescription);
@@ -224,6 +282,8 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     let corpo: Record<string, unknown> | null = null;
     try {
       const topicNames = topicNamesRaw.split("\n").map((line) => line.trim()).filter(Boolean);
+      const material = await lerMaterial();
+      materialRef.current = material;
       corpo = {
         topicName: description, topicDescription: description, contents: [], sources: await buildSources(),
         trailDescription: description, numTopics, topicNames, syllabus, fileContents: allFileContents || undefined, fileNames: allFileNames.length ? allFileNames : undefined,
@@ -236,6 +296,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
       const { topicos, semMaterial } = await gerarTrilhaEmEtapas({
         invocar: invokeAi,
         corpo,
+        anexosPara: anexosPara(material),
         aoProgredir: setProgresso,
         // Cada etapa pronta vai para o rascunho (pelo efeito do `preview`).
         aoAtualizar: (retrato) => {
@@ -297,6 +358,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         invocar: invokeAi,
         corpo: pedidoAtual,
         topicos: preview,
+        anexosPara: anexosPara(materialRef.current),
         aoProgredir: setProgresso,
         aoAtualizar: setPreview,
       });
@@ -330,6 +392,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         mode: "trail", topicName: alvo.nome, topicDescription: alvo.descricao,
         trailDescription: `${description}\n\nGere apenas o tópico "${alvo.nome}". Ajuste pedido pelo professor: ${ajusteTexto.trim()}`,
         numTopics: 1, topicNames: [alvo.nome],
+        ...(materialRef.current ? { anexos: anexosDoPedido(materialRef.current.anexos, alvo.arquivos_relacionados) } : {}),
       });
       if (!novo) throw new Error("A IA não devolveu o tópico ajustado.");
       setPreview((atual) => substituirNaProposta(atual, alvo.ordem, novo));
@@ -365,6 +428,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     try {
       setCreatingStatus("Enviando arquivos...");
       const uploadedFiles = await uploadStagedFiles();
+      const figuraDe = urlDaFigura(materialRef.current, user?.id ?? "");
       setCreatingStatus("Criando topicos...");
       for (const t of plano) {
         const { data, error } = await supabase.from("topicos").insert({ classe_id: classeId, nome: t.nome, descricao: t.descricao, ordem: t.ordem, next: [], depende: [] }).select("id").single();
@@ -391,8 +455,10 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         for (let i = 0; i < (t.conteudos ?? []).length; i += 1) {
           const c = t.conteudos[i];
           const ref = (c.ref || `content:${i + 1}`).trim();
+          if (c.conteudo?.includes("{{figura:")) setCreatingStatus(`Preparando as figuras de “${c.titulo}”...`);
+          const texto = await trocarFiguras(c.conteudo ?? "", figuraDe);
           const { data, error } = await supabase.from("conteudos").insert({
-            topico_id: topicId, titulo: c.titulo, tipo: c.tipo || "texto", conteudo: c.conteudo, ordem: order, metadata: { ai_source_ref: c.sourceRef ?? null, ai_midias: c.midias ?? [] },
+            topico_id: topicId, titulo: c.titulo, tipo: c.tipo || "texto", conteudo: texto, ordem: order, metadata: { ai_source_ref: c.sourceRef ?? null, ai_midias: c.midias ?? [] },
           }).select("id").single();
           if (error) throw error;
           contentMap.set(ref, (data as { id: number }).id);
