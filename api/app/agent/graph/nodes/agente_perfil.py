@@ -1,52 +1,141 @@
+import math
 from typing import Any
 
 from app.core.settings import Settings
 from app.schemas.perfil import PerfilScore, PerfilUpdate
 from app.services.llm import JsonLLMService, StructuredOutputError
 
+# Os 7 perfis, na grafia que o banco guarda (`perfil.nome`, em minúsculas) e com o rótulo
+# que este nó devolve. O repositório cruza por `lower()`, então o rótulo casa com a linha.
+PERFIS_CANONICOS: dict[str, str] = {
+    "seeker": "Seeker",
+    "survivor": "Survivor",
+    "daredevil": "Daredevil",
+    "mastermind": "Mastermind",
+    "conqueror": "Conqueror",
+    "socializer": "Socializer",
+    "achiever": "Achiever",
+}
+
+# Grafia britânica que o prompt e partes da API usavam. `socialiser` não casa com
+# `socializer` no banco, e a afinidade do Socializador era pulada em silêncio.
+_ALIAS_PERFIL = {"socialiser": "socializer"}
+
+# Valor de um perfil que o vetor do aluno não tem (aluno sem linha, ou resposta parcial).
+_AFINIDADE_AUSENTE = 10.0
+
+
+def _chave_do_perfil(nome: Any) -> str | None:
+    chave = str(nome or "").strip().lower()
+    chave = _ALIAS_PERFIL.get(chave, chave)
+    return chave if chave in PERFIS_CANONICOS else None
+
+
+def _vetor_parcial(perfis: list[Any] | None) -> dict[str, float]:
+    """Afinidades nas chaves do banco. Nome fora dos 7 é descartado; repetido, o maior vence."""
+    vetor: dict[str, float] = {}
+    for item in perfis or []:
+        if isinstance(item, PerfilScore):
+            nome, bruto = item.perfil, item.afinidade
+        else:
+            nome, bruto = item.get("perfil") or item.get("nome"), item.get("afinidade")
+        chave = _chave_do_perfil(nome)
+        if chave is None:
+            continue
+        try:
+            valor = max(0.0, float(bruto or 0.0))
+        except (TypeError, ValueError):
+            valor = 0.0
+        vetor[chave] = max(vetor.get(chave, 0.0), valor)
+    return vetor
+
+
+def _vetor_canonico(perfis: list[Any] | None) -> dict[str, float]:
+    """Vetor completo do aluno: os 7 perfis, com o default só onde falta linha."""
+    vetor = _vetor_parcial(perfis)
+    for chave in PERFIS_CANONICOS:
+        vetor.setdefault(chave, _AFINIDADE_AUSENTE)
+    return vetor
+
+
+def _em_percentual(vetor: dict[str, float]) -> dict[str, int]:
+    """7 inteiros de 1 a 100 somando 100 — o contrato que o cadastro grava em `aluno_perfil`.
+
+    Proporcional (não softmax: os pontos aqui já estão na escala de afinidade). Reserva 1 para
+    cada perfil antes de repartir o resto por maior resto, como `afinidadeEmPercentual` no
+    cadastro; o desempate do resto é pelo nome, para ser determinístico.
+    """
+    chaves = sorted(PERFIS_CANONICOS)
+    total = sum(vetor.get(k, 0.0) for k in chaves)
+    pesos = {k: (vetor.get(k, 0.0) / total if total > 0 else 1 / len(chaves)) for k in chaves}
+    livre = 100 - len(chaves)
+    exatos = {k: pesos[k] * livre for k in chaves}
+    base = {k: 1 + math.floor(exatos[k]) for k in chaves}
+    sobra = 100 - sum(base.values())
+    por_resto = sorted(chaves, key=lambda k: (-(exatos[k] - math.floor(exatos[k])), k))
+    for chave in por_resto[:sobra]:
+        base[chave] += 1
+    return base
+
+
+def _perfis_no_contrato(vetor: dict[str, float]) -> list[dict[str, Any]]:
+    ordenado = sorted(_em_percentual(vetor).items(), key=lambda item: (-item[1], item[0]))
+    return [
+        PerfilScore(perfil=PERFIS_CANONICOS[chave], afinidade=valor).model_dump()
+        for chave, valor in ordenado
+    ]
+
 
 def _fallback_perfil(state: dict[str, Any]) -> dict[str, Any]:
-    existing = {perfil["perfil"]: float(perfil.get("afinidade", 0)) for perfil in state.get("perfil_brainhex", [])}
-    for perfil in ["Seeker", "Conqueror", "Daredevil", "Mastermind", "Socialiser", "Achiever", "Survivor"]:
-        existing.setdefault(perfil, 10.0)
+    existing = _vetor_canonico(state.get("perfil_brainhex", []))
 
     desempenho = state.get("desempenho_recente", {})
     eventos = {evento.get("tipo", "").lower() for evento in state.get("eventos_novos", [])}
 
     if float(desempenho.get("media_acertos", 0)) < 50:
-        existing["Survivor"] += 20
-        existing["Mastermind"] += 10
+        existing["survivor"] += 20
+        existing["mastermind"] += 10
     if "atividade_concluida" in eventos:
-        existing["Achiever"] += 25
-        existing["Conqueror"] += 10
+        existing["achiever"] += 25
+        existing["conqueror"] += 10
     if "video_explorado" in eventos or "conteudo_aberto" in eventos:
-        existing["Seeker"] += 15
+        existing["seeker"] += 15
     if "inatividade" in eventos:
-        existing["Survivor"] += 15
+        existing["survivor"] += 15
     if "forum_interacao" in eventos:
-        existing["Socialiser"] += 15
+        existing["socializer"] += 15
 
-    dominante = max(existing.items(), key=lambda item: item[1])[0]
+    perfis = _perfis_no_contrato(existing)
+    dominante = perfis[0]["perfil"]
     suggested_mode = {
         "Achiever": "imediato",
         "Conqueror": "imediato",
         "Mastermind": "analitico",
         "Seeker": "exploratorio",
-        "Socialiser": "exploratorio",
+        "Socializer": "exploratorio",
         "Survivor": "imediato",
         "Daredevil": "exploratorio",
     }.get(dominante, "imediato")
 
-    perfis = [
-        PerfilScore(perfil=nome, afinidade=max(0, min(score, 100))).model_dump()
-        for nome, score in sorted(existing.items(), key=lambda item: item[1], reverse=True)
-    ]
     return {
         "perfis": perfis,
         "modo_operacao_sugerido": suggested_mode,
         "modo_resposta": "imediato" if suggested_mode == "imediato" else None,
         "justificativa": f"perfil dominante inferido: {dominante}",
     }
+
+
+def _no_contrato(perfil_update: PerfilUpdate, state: dict[str, Any]) -> PerfilUpdate:
+    """Completa a resposta do modelo com o vetor atual e normaliza para somar 100.
+
+    O modelo pode citar só parte dos perfis e responder em qualquer escala. Gravar isso direto
+    deixava o vetor fora do contrato do cadastro, e o limiar de 20% (perfil representativo)
+    passava a significar outra coisa.
+    """
+    vetor = _vetor_canonico(state.get("perfil_brainhex", []))
+    vetor.update(_vetor_parcial(perfil_update.perfis))
+    perfis = [PerfilScore.model_validate(item) for item in _perfis_no_contrato(vetor)]
+    return perfil_update.model_copy(update={"perfis": perfis})
 
 
 async def agente_perfil(state: dict[str, Any], settings: Settings) -> dict[str, Any]:
@@ -62,6 +151,7 @@ async def agente_perfil(state: dict[str, Any], settings: Settings) -> dict[str, 
             },
             schema=PerfilUpdate,
         )
+        perfil_update = _no_contrato(perfil_update, state)
     except StructuredOutputError:
         perfil_update = PerfilUpdate.model_validate(_fallback_perfil(state))
     return {
@@ -69,4 +159,3 @@ async def agente_perfil(state: dict[str, Any], settings: Settings) -> dict[str, 
         "completed_nodes": ["agente_perfil"],
         "messages": [perfil_update.justificativa or "perfil atualizado"],
     }
-

@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.perfil import PerfilUpdate
 
+_ALIAS_PERFIL = {"socialiser": "socializer"}
+
 
 class PerfilRepository:
     def __init__(self, session: AsyncSession) -> None:
@@ -39,7 +41,9 @@ class PerfilRepository:
         perfil_map = {row.nome.lower(): row.id for row in perfis_result}
 
         for perfil in perfil_update.perfis:
-            perfil_id = perfil_map.get(perfil.perfil.lower())
+            nome = perfil.perfil.strip().lower()
+            # `perfil.nome` é `socializer`; a grafia britânica caía fora do mapa em silêncio.
+            perfil_id = perfil_map.get(_ALIAS_PERFIL.get(nome, nome))
             if perfil_id is None:
                 continue
 
