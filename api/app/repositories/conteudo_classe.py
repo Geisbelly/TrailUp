@@ -62,6 +62,10 @@ class ConteudoClasseRepository:
         Aluno sem linha em `aluno_perfil` conta como `mastermind` e nao tem
         secundario (`perfil_secundario` = None); aluno com uma linha so tambem
         fica sem secundario.
+
+        `perfis_representativos` vem de `app_perfis_representativos` (a regra do
+        app: afinidade >= 20, ou > 0 entre os 2 primeiros) e e' o que decide as
+        bases da turma: o aluno pode escolher qualquer um deles como perfil ativo.
         """
         result = await self.session.execute(
             text(
@@ -88,7 +92,9 @@ class ConteudoClasseRepository:
                   at.aluno_id,
                   po.perfil_nome,
                   po.afinidade,
-                  ps.perfil_nome AS perfil_secundario_nome
+                  ps.perfil_nome AS perfil_secundario_nome,
+                  -- Regra unica do vetor (20261111_01): os perfis que o aluno pode ver.
+                  public.app_perfis_representativos(at.aluno_id) AS perfis_representativos
                 FROM alunos_turma at
                 LEFT JOIN perfis_ordenados po
                   ON po.aluno_id = at.aluno_id
@@ -118,6 +124,16 @@ class ConteudoClasseRepository:
                         else None
                     ),
                     "afinidade": float(row.get("afinidade") or 0),
+                    # None so' quando a linha nao traz a coluna; sem perfil, o banco manda '{}'.
+                    "perfis_representativos": (
+                        None
+                        if row.get("perfis_representativos") is None
+                        else [
+                            self._normalize_profile_key(str(nome))
+                            for nome in row.get("perfis_representativos")
+                            if nome
+                        ]
+                    ),
                 }
             )
         return alunos

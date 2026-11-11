@@ -174,6 +174,18 @@ def _has_any_profile_signal(context: dict[str, Any], targets: Iterable[str]) -> 
     return perfil_vetor.tem_algum_sinal(context.get("perfil_brainhex"), targets)
 
 
+def _profile_weights(context: dict[str, Any]) -> dict[str, float]:
+    """Rótulo -> peso dos perfis representativos (somam 1); sem sinal, o padrão inteiro."""
+    return {
+        perfil_vetor.PERFIS_CANONICOS[chave]: peso
+        for chave, peso in perfil_vetor.pesos_representativos(context.get("perfil_brainhex"))
+    }
+
+
+def _weighted(weights: dict[str, float], value_for: Any) -> float:
+    return sum(peso * value_for(perfil) for perfil, peso in weights.items())
+
+
 def _mode_name(context: dict[str, Any]) -> str:
     aluno = context.get("aluno", {})
     return str(aluno.get("modo_operacao") or aluno.get("modo_resposta") or "imediato").lower()
@@ -249,24 +261,45 @@ def _infer_mental_state(context: dict[str, Any], plano: dict[str, Any]) -> IAMen
     )
 
 
-def _base_timer_pressure(mental_state: str, dominant_profile: str, mode_name: str) -> tuple[str, int]:
+# Folga do cronômetro por perfil. Cada perfil representativo entra com o seu peso: antes só o 1º
+# contava, e 51/49 Survivor/Conqueror e 49/51 recebiam extremos opostos (35 x 12).
+_SLACK_SOFT = 35
+_SLACK_ASSERTIVE = 12
+_SLACK_STEADY = 22
+_ESTADOS_DE_EMBALO = {"focused", "confident", "motivated"}
+
+
+def _profile_slack(perfil: str, mental_state: str) -> int:
+    if perfil == "Survivor":
+        return _SLACK_SOFT
+    if perfil in {"Conqueror", "Achiever"} and mental_state in _ESTADOS_DE_EMBALO:
+        return _SLACK_ASSERTIVE
+    return _SLACK_STEADY
+
+
+def _base_timer_pressure(mental_state: str, profile_weights: dict[str, float], mode_name: str) -> tuple[str, int]:
     if mental_state in {"anxious", "overwhelmed", "frustrated"}:
         return "soft", 45
-    if dominant_profile == "Survivor" or mode_name in {"cauteloso", "acolhimento"}:
-        return "soft", 35
-    if dominant_profile in {"Conqueror", "Achiever"} and mental_state in {"focused", "confident", "motivated"}:
-        return "assertive", 12
-    return "steady", 22
+    if mode_name in {"cauteloso", "acolhimento"}:
+        return "soft", _SLACK_SOFT
+    slack = round(_weighted(profile_weights, lambda perfil: _profile_slack(perfil, mental_state)))
+    # Os cortes ficam no meio de cada faixa (perfil único dá o mesmo rótulo de antes) e são
+    # estritos: no empate exato fica "steady", porque "assertive" encerra a tentativa local.
+    if slack > (_SLACK_SOFT + _SLACK_STEADY) / 2:
+        return "soft", slack
+    if slack < (_SLACK_ASSERTIVE + _SLACK_STEADY) / 2:
+        return "assertive", slack
+    return "steady", slack
 
 
 def _reading_timer(
     *,
     content: dict[str, Any],
     mental_state: str,
-    dominant_profile: str,
+    profile_weights: dict[str, float],
     mode_name: str,
 ) -> IATimerConfig:
-    urgency, slack = _base_timer_pressure(mental_state, dominant_profile, mode_name)
+    urgency, slack = _base_timer_pressure(mental_state, profile_weights, mode_name)
     body = str(content.get("conteudo") or "")
     duration = max(60, min(420, 90 + (len(body) // 40) + slack))
     warning = max(20, duration - max(25, duration // 5))
@@ -284,10 +317,10 @@ def _activity_timer(
     *,
     atividade: dict[str, Any],
     mental_state: str,
-    dominant_profile: str,
+    profile_weights: dict[str, float],
     mode_name: str,
 ) -> IATimerConfig:
-    urgency, slack = _base_timer_pressure(mental_state, dominant_profile, mode_name)
+    urgency, slack = _base_timer_pressure(mental_state, profile_weights, mode_name)
     max_score = int(atividade.get("pontuacao_maxima") or 10)
     duration = max(45, min(900, 120 + (max_score * 8) + slack))
     warning = max(20, duration - max(30, duration // 4))
@@ -306,12 +339,28 @@ def _activity_timer(
     )
 
 
-def _battle_timing(mental_state: str, dominant_profile: str) -> IABattleTiming:
+_TIMING_LONGO = (110, 75, 250, 650)  # Conqueror e Achiever: encontro mais longo e mais rápido de entrar
+_TIMING_PADRAO = (95, 68, 300, 700)
+
+
+def _battle_timing(mental_state: str, profile_weights: dict[str, float]) -> IABattleTiming:
     if mental_state in {"anxious", "overwhelmed", "frustrated"}:
         return IABattleTiming(encounter_duration_sec=80, warning_at_sec=60, intro_delay_ms=350, defeat_delay_ms=800)
-    if dominant_profile in {"Conqueror", "Achiever"}:
-        return IABattleTiming(encounter_duration_sec=110, warning_at_sec=75, intro_delay_ms=250, defeat_delay_ms=650)
-    return IABattleTiming(encounter_duration_sec=95, warning_at_sec=68, intro_delay_ms=300, defeat_delay_ms=700)
+
+    def campo(indice: int) -> int:
+        return round(
+            _weighted(
+                profile_weights,
+                lambda perfil: (_TIMING_LONGO if perfil in {"Conqueror", "Achiever"} else _TIMING_PADRAO)[indice],
+            )
+        )
+
+    return IABattleTiming(
+        encounter_duration_sec=campo(0),
+        warning_at_sec=campo(1),
+        intro_delay_ms=campo(2),
+        defeat_delay_ms=campo(3),
+    )
 
 
 def _build_enemy(
@@ -399,6 +448,7 @@ def _fallback_patch(
     emit_legacy_topic_battle: bool,
 ) -> IAPersonalizationPatch:
     dominant_profile = _dominant_profile(context)
+    profile_weights = _profile_weights(context)
     mode_name = _mode_name(context)
     mental = _infer_mental_state(context, plano)
     timer_signal_enabled = _has_any_profile_signal(context, perfil_vetor.PERFIS_COM_CRONOMETRO)
@@ -435,7 +485,7 @@ def _fallback_patch(
                     timer=_reading_timer(
                         content=content,
                         mental_state=mental.kind,
-                        dominant_profile=dominant_profile,
+                        profile_weights=profile_weights,
                         mode_name=mode_name,
                     ),
                 )
@@ -481,7 +531,7 @@ def _fallback_patch(
                                 "hp_max_calculado": hp_max,
                             },
                             persist_key=f"{aluno_id}:{topico.get('id') if topico else 'sem-topico'}:{item_key}:{ciclo_id}:{enemy.id}",
-                            timing=_battle_timing(mental.kind, dominant_profile),
+                            timing=_battle_timing(mental.kind, profile_weights),
                             source_item_key=item_key,
                         ),
                     )
@@ -508,7 +558,7 @@ def _fallback_patch(
                     timer=_activity_timer(
                         atividade=atividade,
                         mental_state=mental.kind,
-                        dominant_profile=dominant_profile,
+                        profile_weights=profile_weights,
                         mode_name=mode_name,
                     ),
                 )
@@ -702,6 +752,11 @@ def _payload_for_llm(
         "emit_legacy_topic_battle": emit_legacy_topic_battle,
         "plano": plano,
         "fallback_contract": fallback_patch.model_dump(mode="json", by_alias=True),
+        # Por último de propósito: é o que muda de um aluno para outro, e o cache de prompt do
+        # Gemini reaproveita só o prefixo idêntico.
+        "perfis_representativos": [
+            {"perfil": perfil, "peso": round(peso, 3)} for perfil, peso in _profile_weights(context).items()
+        ],
     }
 
 

@@ -23,7 +23,7 @@ test("com arco, a história entra e a assinatura do perfil continua", () => {
     // O guia do perfil segue narrando, e as regras de voz e fidelidade continuam no prompt.
     assert.ok(instrucao.includes(`Quem narra continua sendo ${BRAIN_HEX_CONFIG[perfil].guideName}`));
     assert.ok(instrucao.includes(`operando sob o arquétipo ${BRAIN_HEX_CONFIG[perfil].label}`));
-    assert.ok(instrucao.includes("MERGULHO TEMÁTICO"));
+    assert.ok(instrucao.includes("ASSINATURA EDITORIAL DO PERFIL"));
     assert.ok(instrucao.includes("Fidelidade Absoluta"));
   }
 });

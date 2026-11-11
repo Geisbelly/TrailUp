@@ -272,9 +272,22 @@ Cada perfil carrega:
 - **Assinatura editorial** (tom de voz, ritmo, abertura, progressão narrativa,
   marcadores linguísticos, proibições) — `api/app/services/personalizacao.py`
   (`_BRAINHEX_EDITORIAL_SIGNATURES`). Injetada via `perfil_editorial` nos prompts
-  Python (`gerador_conteudo.txt`, `pipeline_midia_etapas.txt`) e replicada no
-  prompt do microservice (`geminiService.ts`) — ambos os caminhos aplicam a
-  assinatura do perfil, não só o microservice (Fase 1 concluída).
+  Python (`gerador_conteudo.txt`, `pipeline_midia_etapas.txt`). O microservice
+  lê uma **cópia** em `microservice/src/constants/editorialSignatures.json`
+  (`buildEditorialSignatureSection` em `geminiService.ts`); a igualdade com o
+  dicionário Python é teste (`api/tests/test_assinatura_editorial_paridade.py`),
+  então mudar um lado sem o outro quebra o CI. Os marcadores linguísticos entram
+  como vocabulário **opcional**: forçá-los gerou metáfora que contradiz o
+  conceito no piloto de 11/11.
+  > **Barreira de fidelidade** (`microservice/src/services/fidelityGuard.ts`):
+  > roda em cada capítulo **depois** do lote aceito, nunca em `validateResult`
+  > (lá um achado faria a cascata gerar de novo e gastar cota). Cerca código do
+  > material que veio solto e tira item de checklist que cita código que o
+  > material não tem; o resto (número, generalização, código fora da fonte,
+  > desafio sem resposta) é registrado em `materiais.markdown.metadata.fidelidade`
+  > e o texto sai assim mesmo. Não pega afirmação errada em prosa — isso exige um
+  > segundo passe de modelo. Ver
+  > `docs/superpowers/specs/2026-11-11-assinatura-meio-termo-e-barreira-design.md`.
 - **Voz TTS** — `GUARDIAN_VOICE_PROFILES` em
   `microservice/src/constants/guardianVoices.ts` (Gemini TTS ativo). Além do
   preset, cada Guardião possui direção de idade, sexo, origem cultural e

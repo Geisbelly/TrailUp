@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { RelatorioDeFidelidade } from "./fidelityGuard";
 import {
   baixarTextoPeloGateway,
   FuncaoDeUploadNaoPublicada,
@@ -195,6 +196,8 @@ export interface MaterialEntry {
     engine_variant?: "immersive";
     error_stage?: "validate" | "generate" | "render" | "upload" | "network" | "unknown";
     error?: string;
+    /** Só no texto: achados da barreira de fidelidade (fidelityGuard.ts). */
+    fidelidade?: RelatorioDeFidelidade;
   };
   arquivo_url: string | null;
   storage_path: string | null;
