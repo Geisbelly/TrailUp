@@ -25,15 +25,32 @@ export async function fetchClassesAndMaterias(professorId: string | undefined) {
   return { classes: (classesData as Classe[]) ?? [], materias: (materiasData as Materia[]) ?? [] };
 }
 
+const COLUNAS_DO_TOPICO = "id, classe_id, nome, descricao, ordem, next, depende, created_at";
+
 export async function fetchTopicsByClasses(classIds: number[]) {
   if (classIds.length === 0) return [] as Topico[];
-  const { data, error } = await supabase
-    .from("topicos")
-    .select("id, classe_id, nome, descricao, ordem, next, depende, created_at")
-    .in("classe_id", classIds)
-    .order("ordem", { ascending: true });
+  const consultar = (colunas: string) =>
+    supabase.from("topicos").select(colunas).in("classe_id", classIds).order("ordem", { ascending: true });
+  let { data, error } = await consultar(`${COLUNAS_DO_TOPICO}, publicacao, publicar_em`);
+  // 42703: o banco ainda não tem a `20261110_10` (o console pode subir antes da API, que é
+  // quem aplica a migration). Sem as colunas, todo tópico é visível: lê como antes.
+  if (error?.code === "42703") ({ data, error } = await consultar(COLUNAS_DO_TOPICO));
   if (error) throw error;
-  return (data as Topico[]) ?? [];
+  return (data as unknown as Topico[]) ?? [];
+}
+
+/**
+ * Muda a visibilidade de um ou mais tópicos (rascunho, publicar agora, agendar). Direto no
+ * Supabase: a RLS de posse só deixa o professor dono escrever, e mudar visibilidade não
+ * regera a personalização (o gatilho de class-delta não olha estas colunas).
+ */
+export async function definirPublicacao(
+  topicoIds: number[],
+  alteracao: { publicacao: "rascunho" | "publicado" | "agendado"; publicar_em: string | null },
+) {
+  if (topicoIds.length === 0) return;
+  const { error } = await supabase.from("topicos").update(alteracao).in("id", topicoIds);
+  if (error) throw error;
 }
 
 export async function fetchContents(topicId: number) {

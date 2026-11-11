@@ -1,17 +1,14 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { DesktopSidebar } from "@/components/web/DesktopSidebar";
+import { EsqueletoDasTurmas } from "@/components/carregamento/EsqueletoDasTurmas";
 import { DesktopTopBar } from "@/components/web/DesktopTopBar";
 import { ProfessorDaTurma } from "@/components/social/ProfessorDaTurma";
 import { ProfessorProfileModal } from "@/components/social/ProfessorProfileModal";
 import { FONTE_TITULO_TRILHA, useFonteCinzel } from "@/components/web/fonteCinzel";
 import { getProfileArtwork } from "@/constants/designAssets";
 import { getGuardianFaceImage } from "@/constants/profileImages";
-import { usePortoes } from "@/context/PortoesContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
 import type { Classe } from "@/models/Classe";
@@ -32,25 +29,17 @@ type Props = {
   onRetryTurma: (classeId: number) => Promise<void>;
 };
 
-// A barra lateral é a da barra de abas; antes da escolha não há abas montadas, então
-// ela recebe uma navegação vazia: a Trilha aparece marcada e os itens não abrem nada
-// (o portão continua mostrando esta tela). Configurações e Sair seguem funcionando.
-const SEM_ABAS = {
-  state: { index: 0, routes: [{ key: "index", name: "index" }] },
-  navigation: { emit: () => ({ defaultPrevented: true }), navigate: () => undefined },
-  descriptors: {},
-} as unknown as BottomTabBarProps;
-
 /**
  * Escolha de turma na web em tela larga (#346, protótipo v4, estado "Escolha de
- * turma" de 03-trilha.html): dentro da moldura (barra superior e lateral), sobre
- * o cenário do perfil, com as turmas em cartões lado a lado.
+ * turma" de 03-trilha.html): sobre o cenário do perfil, com as turmas em cartões lado a lado.
+ *
+ * Sem a barra lateral: antes da escolha nenhuma aba abre (o portão continua mostrando esta
+ * tela), e uma lateral cheia de itens que não respondem dizia ao aluno o contrário. A barra
+ * superior fica só com a identidade do aluno e o "Sair da conta".
  */
 export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelect, onRetry, onRetryTurma }: Props) {
   useFonteCinzel();
-  const insets = useSafeAreaInsets();
   const { usuario } = useUsuario();
-  const { aberturas } = usePortoes();
   const palette = getProfileShellPalette(perfil);
   const [saindo, setSaindo] = useState(false);
   const [perfilDaTurma, setPerfilDaTurma] = useState<number | null>(null);
@@ -82,9 +71,14 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
 
   return (
     <View style={[s.tela, { backgroundColor: palette.background }]}>
-      <DesktopTopBar palette={palette} nome={usuario?.nome ?? "Aluno"} perfilAtivo={perfil} foto={foto} />
+      <DesktopTopBar
+        palette={palette}
+        nome={usuario?.nome ?? "Aluno"}
+        perfilAtivo={perfil}
+        foto={foto}
+        antesDaTurma={{ saindo, onSair: () => void sair() }}
+      />
       <View style={s.corpo}>
-        <DesktopSidebar {...SEM_ABAS} insets={insets} palette={palette} aberturas={aberturas} onBloqueado={() => undefined} />
         <View style={s.area}>
           <View accessible={false} style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}>
             <Image source={getProfileArtwork(perfil, "trail")} resizeMode="cover" style={s.cenario} />
@@ -92,9 +86,10 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
           </View>
           <ScrollView contentContainerStyle={s.conteudo}>
             {carregando ? (
-              <View style={s.carregando} accessibilityLiveRegion="polite">
-                <ActivityIndicator size="large" color={palette.accent} />
+              <View style={s.escolha}>
+                <Text accessibilityRole="header" style={[s.titulo, { color: palette.text }]}>Escolha sua turma</Text>
                 <Text style={[s.subtitulo, { color: palette.textMuted }]}>Buscando suas turmas…</Text>
+                <EsqueletoDasTurmas palette={palette} variante="grade" />
               </View>
             ) : erro ? (
               centro(
@@ -118,27 +113,6 @@ export function EscolhaTurmaDesktop({ classes, carregando, erro, perfil, onSelec
                   <View style={s.linhaBotoes}>
                     <Pressable accessibilityRole="button" onPress={() => void onRetry()} style={[s.botao, { borderColor: palette.borderStrong }]}>
                       <Text style={[s.botaoTexto, { color: palette.text }]}>Atualizar turmas</Text>
-                    </Pressable>
-                    {/* Fundo, ícone e texto na cor principal, como no celular (#780): só com contorno e texto apagado, o "Sair" parecia texto solto. */}
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Sair da conta"
-                      disabled={saindo}
-                      onPress={() => void sair()}
-                      style={({ hovered, pressed }: { hovered?: boolean; pressed: boolean }) => [
-                        s.botao,
-                        s.botaoSair,
-                        {
-                          borderColor: palette.borderStrong,
-                          backgroundColor: hovered || pressed ? palette.surfaceElevated : palette.background,
-                          opacity: saindo ? 0.6 : 1,
-                        },
-                      ]}
-                    >
-                      {saindo
-                        ? <ActivityIndicator size="small" color={palette.textMuted} />
-                        : <MaterialCommunityIcons name="logout" size={16} color={palette.text} />}
-                      <Text style={[s.botaoTexto, { color: palette.text }]}>{saindo ? "Saindo…" : "Sair da conta"}</Text>
                     </Pressable>
                   </View>
                 </>,
@@ -242,7 +216,6 @@ const s = StyleSheet.create({
   area: { flex: 1, minWidth: 0 },
   cenario: { width: "100%", height: "100%" },
   conteudo: { flexGrow: 1, alignItems: "center", justifyContent: "center", padding: 40 },
-  carregando: { alignItems: "center", gap: 16 },
   escolha: { alignItems: "center", gap: 6, width: "100%", maxWidth: 1000 },
   titulo: { fontFamily: FONTE_TITULO_TRILHA, fontSize: 32, textAlign: "center" },
   subtitulo: { fontFamily: FontFamily.interMedium, fontSize: 15, lineHeight: 22, textAlign: "center" },
@@ -258,7 +231,6 @@ const s = StyleSheet.create({
   botaoCartao: { marginTop: 6 },
   avisoTurma: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 6 },
   avisoTurmaTexto: { flex: 1 },
-  botaoSair: { flexDirection: "row", gap: 8 },
   botaoTexto: { fontFamily: FontFamily.interMedium, fontSize: 13.5, fontWeight: "700" },
   atualizar: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 18, padding: 6 },
   atualizarTexto: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700" },

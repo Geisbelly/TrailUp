@@ -38,6 +38,7 @@ mockModule("@react-navigation/native", { useIsFocused: () => true });
 mockModule("expo-router", { router: { push: (href: string) => pushes.push(href) } });
 mockModule("@/components/ProfileEmblem", { ProfileEmblem: () => null });
 mockModule("@/components/missoes/RastreadorDeMissoes", { RastreadorDeMissoes: () => null });
+mockModule("@/hooks/useTopicosEmBreve", { useTopicosEmBreve: () => [] });
 mockModule("@/services/missoes/missaoModel", { perfilDaMissao: () => null });
 mockModule("@/components/trilhas/ArvoreView", {
   TrilhaArvoreSimple: ({ onSelecionarTopico }: { onSelecionarTopico: (id: string) => void }) => {

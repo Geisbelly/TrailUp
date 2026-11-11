@@ -11,6 +11,7 @@ import { porcentagemDaTurma } from "@/utils/progressoDaTurma";
 import { ProfessorDaTurma } from "@/components/social/ProfessorDaTurma";
 import { ProfessorProfileModal } from "@/components/social/ProfessorProfileModal";
 import { rotuloDaTurma } from "@/utils/rotuloDaTurma";
+import { EsqueletoDasTurmas } from "@/components/carregamento/EsqueletoDasTurmas";
 
 type Props = {
   classes: Classe[];
@@ -75,10 +76,7 @@ export default function SelecionarTurmaScreen({ classes, carregando, erro, perfi
         </View>
 
         {carregando ? (
-          <View style={styles.feedback} accessibilityLiveRegion="polite">
-            <ActivityIndicator size="large" color={palette.accent} />
-            <Text style={[styles.description, { color: palette.textMuted }]}>Buscando suas turmas…</Text>
-          </View>
+          <EsqueletoDasTurmas palette={palette} variante="lista" />
         ) : erro ? (
           <View style={[styles.feedback, styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
             <Text accessibilityRole="alert" style={[styles.cardTitle, { color: palette.text }]}>Não foi possível carregar suas turmas</Text>

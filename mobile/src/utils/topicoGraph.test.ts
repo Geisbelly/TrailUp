@@ -56,3 +56,12 @@ test('status concluído sem percentual é aceito; projeção ausente continua de
   assert.equal(progressoCanonicoTopico({ status: 'concluído' }), 100);
   assert.equal(progressoCanonicoTopico({ percentual_concluido: null }), null);
 });
+
+test('tópico oculto ao aluno não vira aresta, mas continua trancando quem depende dele', () => {
+  // 2 é rascunho: a RLS não o devolve. 1 aponta para ele por `next`, 3 depende dele.
+  const topics = [{ ...topic(1, 100), next: [2] }, topic(3, 0, [2])];
+  const graph = buildGraphFromTopicos({ topicos: topics });
+  const ids = new Set(graph.nodes.map((node) => node.id));
+  for (const node of graph.nodes) for (const to of node.next ?? []) assert.ok(ids.has(to), `aresta para ${to}`);
+  assert.equal(graph.nodes.find((node) => node.id === '3')?.locked, true);
+});

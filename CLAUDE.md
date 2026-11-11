@@ -595,6 +595,23 @@ Cada perfil carrega:
   como sempre. Turma retida pelo estudo recebe `retido` e a policy `RESTRICTIVE` a esconde. O nível chega
   ao grafo em `diagnosticos_topico` (declarado em `TrailUpState`), só dos respondidos; **os nós ainda não o
   usam para decidir nada**, e por isso o texto do app descreve o ponto de partida sem prometer adaptação.
+- **Visibilidade do tópico** (`topicos.publicacao`: `rascunho|publicado|agendado`,
+  `publicar_em`; `20261110_10`). Tópico novo nasce `rascunho` (trilha da IA e
+  duplicar também); o que já existia ficou `publicado`. Quem vê é decidido **na
+  leitura**, por `app_topico_liberado` contra `now()`: o agendado aparece no minuto
+  marcado sem depender de nada rodar. Esconder só `topicos` não basta — as policies
+  das filhas sobem a cadeia por helpers `SECURITY DEFINER` e o material vazaria —,
+  então há uma policy **RESTRICTIVE** de SELECT no tópico e em toda tabela que
+  carrega material dele (conteúdos, atividades, questões, cards, mídias, o
+  personalizado…), compondo com a da aprovação do personalizado sem que uma apague
+  a outra. O aluno vê só "em breve" pela RPC `topicos_em_breve`, que devolve **só a
+  data**, nunca nome ou id. Percentual e nota da matrícula contam só tópico
+  liberado (filtro trocado no texto vivo das duas funções); mudar a visibilidade
+  recalcula as matrículas da turma (gatilho por comando), e o `pg_cron`
+  `trailup_topicos_agendados` passa o agendado vencido para `publicado` e
+  recalcula — sem ele, quem tinha 100% continuaria com 100% depois do tópico abrir.
+  RPCs `SECURITY DEFINER` que leem material por id **não** passam por essa RLS e
+  ficaram para auditoria à parte.
 - `alteracao_professor` + `alteracao_aluno` — o professor mudou um conteúdo ou
   uma atividade que algum aluno já viu ou fez (`20261101_12`). **O banco
   registra** (gatilho nas quatro tabelas do editor e em `questao_gabarito`, só
