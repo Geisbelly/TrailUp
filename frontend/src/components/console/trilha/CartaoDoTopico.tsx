@@ -1,4 +1,6 @@
-import { Copy, Pencil, Trash2 } from "lucide-react";
+import { Copy, Eye, Pencil, Trash2 } from "lucide-react";
+import { SeloDaPublicacao } from "./VisibilidadeDoTopico";
+import type { ComPublicacao } from "./publicacaoDoTopico";
 
 /**
  * Cartão de tópico do mapa (protótipo V9, Trilhas). Só desenha: o arraste, os
@@ -12,7 +14,9 @@ export function CartaoDoTopico({
   descricao,
   dependeDe,
   proximos,
+  publicacao,
   onEditar,
+  onVisibilidade,
   onDuplicar,
   onExcluir,
 }: {
@@ -21,7 +25,9 @@ export function CartaoDoTopico({
   descricao: string | null;
   dependeDe: string[];
   proximos: string[];
+  publicacao: ComPublicacao;
   onEditar: () => void;
+  onVisibilidade: () => void;
   onDuplicar: () => void;
   onExcluir: () => void;
 }) {
@@ -58,6 +64,9 @@ export function CartaoDoTopico({
         <div className="min-w-0 flex-1 pr-6">
           <p className="line-clamp-2 text-sm font-bold leading-tight">{nome}</p>
           {descricao && <p className="mt-0.5 line-clamp-1 text-[10.5px] text-muted-foreground">{descricao}</p>}
+          <div className="mt-1.5">
+            <SeloDaPublicacao topico={publicacao} />
+          </div>
         </div>
       </div>
 
@@ -90,6 +99,7 @@ export function CartaoDoTopico({
           Editar tópico
         </button>
         <span className="ml-auto flex gap-1.5">
+          {acao("Visibilidade", Eye, onVisibilidade)}
           {acao("Duplicar tópico", Copy, onDuplicar)}
           {acao("Excluir tópico", Trash2, onExcluir, true)}
         </span>

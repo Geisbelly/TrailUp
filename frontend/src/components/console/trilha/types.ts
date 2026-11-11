@@ -9,6 +9,9 @@ export interface Topico {
   next: number[];
   depende: number[];
   created_at: string | null;
+  /** Visibilidade para o aluno (`20261110_10`). Ausente num banco sem a migration = publicado. */
+  publicacao?: "rascunho" | "publicado" | "agendado" | null;
+  publicar_em?: string | null;
 }
 
 export interface Classe {

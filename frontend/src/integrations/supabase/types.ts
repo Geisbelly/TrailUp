@@ -7110,6 +7110,8 @@ export type Database = {
           next: Json | null
           nome: string
           ordem: number | null
+          publicacao: string
+          publicar_em: string | null
         }
         Insert: {
           classe_id: number
@@ -7120,6 +7122,8 @@ export type Database = {
           next?: Json | null
           nome: string
           ordem?: number | null
+          publicacao?: string
+          publicar_em?: string | null
         }
         Update: {
           classe_id?: number
@@ -7130,6 +7134,8 @@ export type Database = {
           next?: Json | null
           nome?: string
           ordem?: number | null
+          publicacao?: string
+          publicar_em?: string | null
         }
         Relationships: [
           {

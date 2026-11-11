@@ -442,7 +442,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
       }
 
       const out: Topico[] = plano.map((t) => ({ id: map.get(t.ordem)!, classe_id: classeId, nome: t.nome, descricao: t.descricao, ordem: t.ordem, next: t.next.map((o) => map.get(o)!).filter(Boolean), depende: t.depende.map((o) => map.get(o)!).filter(Boolean), created_at: null }));
-      toast.success(`Trilha criada: ${out.length} topicos, ${plano.reduce((s, t) => s + (t.conteudos?.length ?? 0), 0)} conteudos, ${plano.reduce((s, t) => s + countCards(t), 0)} cards, ${plano.reduce((s, t) => s + countActivities(t), 0)} atividades, ${plano.reduce((s, t) => s + countMedia(t), 0)} midias.`);
+      toast.success(`Trilha criada: ${out.length} topicos, ${plano.reduce((s, t) => s + (t.conteudos?.length ?? 0), 0)} conteudos, ${plano.reduce((s, t) => s + countCards(t), 0)} cards, ${plano.reduce((s, t) => s + countActivities(t), 0)} atividades, ${plano.reduce((s, t) => s + countMedia(t), 0)} midias. Os tópicos nasceram como rascunho: revise e publique para a turma ver.`, { duration: 8000 });
       if (antigos.length > 0) {
         setCreatingStatus("Removendo a trilha anterior...");
         try {
