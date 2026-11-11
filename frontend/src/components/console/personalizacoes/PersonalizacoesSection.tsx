@@ -36,6 +36,7 @@ import {
 } from "./statusBadge";
 import { SugestaoMaterialCard } from "./SugestaoMaterialCard";
 import { ArcoNarrativoCard } from "./ArcoNarrativoCard";
+import { DiversidadeDaTurmaCard } from "./DiversidadeDaTurmaCard";
 import { AprovacaoPersonalizacoes, SeloAprovacao } from "./AprovacaoPersonalizacoes";
 import { estadoPorPerfil, resumir, type EstadoDoGrupo, type RegistroAprovacao } from "./aprovacao";
 import {
@@ -1099,7 +1100,10 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
               </CardContent>
             </Card>
           ) : (
-            <GrupoResumo resumo={grupoResumo} />
+            <>
+              <GrupoResumo resumo={grupoResumo} />
+              <DiversidadeDaTurmaCard classeId={Number(classeId) || null} />
+            </>
           )}
         </TabsContent>
 

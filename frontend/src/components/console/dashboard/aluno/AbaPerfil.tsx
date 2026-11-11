@@ -1,12 +1,25 @@
 import { PROFILES } from "@/features/signup/brainhex";
 import { PROFILE_WORLDS } from "@/lib/design-art";
 import { chaveDoPerfil, COR_DO_PERFIL, NOME_DO_PERFIL, nomeExibidoDoPerfil } from "../perfilCores";
+import { alunoDaDiversidade } from "../diversidade";
+import { useDiversidadeDaTurma } from "../useDiversidadeDaTurma";
 import type { Aluno } from "./tipos";
+
+function decimal(valor: number): string {
+  return valor.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+}
 
 export default function AbaPerfil({ aluno }: { aluno: Aluno }) {
   const perfis = [...aluno.perfis].sort((a, b) => b.afinidade - a.afinidade);
   const chaveDominante = chaveDoPerfil(aluno.perfilDominante);
   const mundo = chaveDominante ? PROFILE_WORLDS.find((w) => w.key === chaveDominante) : undefined;
+  // Misto pela regra do banco (classe_diversidade_perfis): sem a leitura, o card fica como era.
+  const diversidade = useDiversidadeDaTurma(aluno.classe_id);
+  const doAluno = alunoDaDiversidade(diversidade, aluno.id);
+  const misto =
+    doAluno?.misto && doAluno.primeiro && doAluno.segundo && doAluno.margem !== null
+      ? { primeiro: doAluno.primeiro, segundo: doAluno.segundo, margem: doAluno.margem }
+      : null;
 
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[1.3fr_1fr]">
@@ -54,8 +67,31 @@ export default function AbaPerfil({ aluno }: { aluno: Aluno }) {
       </div>
 
       <div className="flex flex-col items-center rounded-[20px] border border-border bg-card px-7 py-[26px] text-center">
-        <div className="console-eyebrow">Perfil dominante</div>
-        {chaveDominante && mundo ? (
+        <div className="console-eyebrow">{misto ? "Perfil misto" : "Perfil dominante"}</div>
+        {misto ? (
+          <>
+            <div className="my-4 flex items-center justify-center gap-2">
+              {[misto.primeiro, misto.segundo].map((chave) => {
+                const emblema = PROFILE_WORLDS.find((w) => w.key === chave)?.emblem;
+                return emblema ? (
+                  <img key={chave} src={emblema} alt="" width={56} height={56} className="h-14 w-14 object-contain" />
+                ) : null;
+              })}
+            </div>
+            <h3 className="text-[22px] text-foreground">
+              <span style={{ color: COR_DO_PERFIL[misto.primeiro].texto }}>{NOME_DO_PERFIL[misto.primeiro]}</span>
+              {" + "}
+              <span style={{ color: COR_DO_PERFIL[misto.segundo].texto }}>{NOME_DO_PERFIL[misto.segundo]}</span>
+            </h3>
+            <p className="mt-1 text-[13px] font-semibold text-muted-foreground">
+              {decimal(misto.margem)} {misto.margem === 1 ? "ponto" : "pontos"} entre os dois
+            </p>
+            <p className="mt-3 text-[12.5px] leading-relaxed text-foreground/90">
+              Abaixo de {decimal(diversidade?.margemMisto ?? 10)} pontos, nenhum dos dois perfis fala sozinho pelo aluno.
+              Tratar o 1º como o perfil dele esconde o 2º, que pesa quase o mesmo no questionário.
+            </p>
+          </>
+        ) : chaveDominante && mundo ? (
           <>
             <img src={mundo.emblem} alt="" width={72} height={72} className="my-4 h-[72px] w-[72px] object-contain" />
             <h3 className="text-[22px] text-foreground">{NOME_DO_PERFIL[chaveDominante]}</h3>
