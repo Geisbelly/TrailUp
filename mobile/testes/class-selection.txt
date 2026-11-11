@@ -1,3 +1,4 @@
 src/utils/classSelection.test.ts
 src/components/ClassSelectionGate.test.tsx
 src/utils/detalheDasTurmas.test.ts
+src/components/web/EscolhaTurmaDesktop.tela.test.tsx
