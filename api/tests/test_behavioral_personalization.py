@@ -171,3 +171,55 @@ async def test_behavioral_personalization_keeps_reading_timer_and_battle_timing_
     assert battle_mode.battle is not None
     assert battle_mode.battle.timing is not None
     assert battle_mode.battle.timing.encounter_duration_sec != reading_timer.timer.duration_sec
+
+
+def _patch_do_conteudo(patch, conteudo_id=501):
+    itens = patch.items[f"content:{conteudo_id}"]
+    return {item.key: item for item in itens}
+
+
+async def _patch_com(perfis):
+    return await build_behavioral_personalization(
+        aluno_id="aluno-1",
+        ciclo_id="ciclo-perfil",
+        context=_base_context(perfil_brainhex=perfis),
+        plano={"nivel": "avancado"},
+        topico={"id": 12, "nome": "Geometria"},
+        conteudos=[{"id": 501, "titulo": "Area", "tipo": "texto", "conteudo": "area " * 80}],
+        atividades=[],
+        questoes=[],
+        cards=[],
+        settings=Settings(openai_api_key=None, gemini_api_key=None),
+    )
+
+
+@pytest.mark.asyncio
+async def test_nome_minusculo_do_banco_escolhe_o_preset_do_perfil() -> None:
+    # `ContextRepository` devolve `perfil.nome` em minúsculas. A comparação com "Survivor"
+    # nunca batia e todo aluno recebia o preset de Achiever.
+    patch = await _patch_com([{"perfil": "survivor", "afinidade": 60}, {"perfil": "achiever", "afinidade": 20}])
+
+    batalha = _patch_do_conteudo(patch)["battle_mode"].battle
+    assert batalha.enemy.visual.preset == "sentinel"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("perfil", ["conqueror", "daredevil"])
+async def test_batalha_liga_para_qualquer_perfil_de_batalha(perfil) -> None:
+    patch = await _patch_com([{"perfil": perfil, "afinidade": 60}, {"perfil": "seeker", "afinidade": 20}])
+
+    assert _patch_do_conteudo(patch)["battle_mode"].enabled is True
+
+
+@pytest.mark.asyncio
+async def test_batalha_desligada_sem_perfil_de_batalha() -> None:
+    patch = await _patch_com([{"perfil": "seeker", "afinidade": 60}, {"perfil": "socializer", "afinidade": 20}])
+
+    assert _patch_do_conteudo(patch)["battle_mode"].enabled is False
+
+
+@pytest.mark.asyncio
+async def test_cronometro_de_leitura_liga_para_daredevil() -> None:
+    patch = await _patch_com([{"perfil": "daredevil", "afinidade": 60}, {"perfil": "seeker", "afinidade": 20}])
+
+    assert "reading_timer" in _patch_do_conteudo(patch)

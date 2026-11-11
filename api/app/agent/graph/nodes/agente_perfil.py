@@ -3,32 +3,17 @@ from typing import Any
 
 from app.core.settings import Settings
 from app.schemas.perfil import PerfilScore, PerfilUpdate
+from app.services import perfil_vetor
 from app.services.llm import JsonLLMService, StructuredOutputError
 
-# Os 7 perfis, na grafia que o banco guarda (`perfil.nome`, em minúsculas) e com o rótulo
-# que este nó devolve. O repositório cruza por `lower()`, então o rótulo casa com a linha.
-PERFIS_CANONICOS: dict[str, str] = {
-    "seeker": "Seeker",
-    "survivor": "Survivor",
-    "daredevil": "Daredevil",
-    "mastermind": "Mastermind",
-    "conqueror": "Conqueror",
-    "socializer": "Socializer",
-    "achiever": "Achiever",
-}
-
-# Grafia britânica que o prompt e partes da API usavam. `socialiser` não casa com
-# `socializer` no banco, e a afinidade do Socializador era pulada em silêncio.
-_ALIAS_PERFIL = {"socialiser": "socializer"}
+# Nomes canônicos e alias `socialiser` -> `socializer`: a regra única de `perfil_vetor`.
+PERFIS_CANONICOS = perfil_vetor.PERFIS_CANONICOS
 
 # Valor de um perfil que o vetor do aluno não tem (aluno sem linha, ou resposta parcial).
 _AFINIDADE_AUSENTE = 10.0
 
 
-def _chave_do_perfil(nome: Any) -> str | None:
-    chave = str(nome or "").strip().lower()
-    chave = _ALIAS_PERFIL.get(chave, chave)
-    return chave if chave in PERFIS_CANONICOS else None
+_chave_do_perfil = perfil_vetor.chave_do_perfil
 
 
 def _vetor_parcial(perfis: list[Any] | None) -> dict[str, float]:
