@@ -30,3 +30,20 @@ export function semTopicosSemMaterial<T>(
 export function respostaCompleta(itensRecebidos: number, limitePedido: number): boolean {
   return itensRecebidos < limitePedido;
 }
+
+/**
+ * A mesma regra com a leitura por vários perfis, que faz uma consulta por perfil com o mesmo
+ * limite: a lista só é completa se nenhum perfil bateu no limite. Somar os perfis contra o limite
+ * de um faria a lista quase nunca ser completa, e o tópico recusado ficaria na tela.
+ */
+export function respostaCompletaPorPerfil(
+  itens: object[],
+  limitePedido: number,
+): boolean {
+  const porPerfil = new Map<string, number>();
+  for (const item of itens) {
+    const perfil = String((item as { brainhex_profile_key?: unknown })?.brainhex_profile_key ?? '');
+    porPerfil.set(perfil, (porPerfil.get(perfil) ?? 0) + 1);
+  }
+  return [...porPerfil.values()].every((n) => respostaCompleta(n, limitePedido));
+}

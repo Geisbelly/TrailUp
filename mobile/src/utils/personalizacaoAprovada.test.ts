@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { respostaCompleta, semTopicosSemMaterial } from "./personalizacaoAprovada";
+import { respostaCompleta, respostaCompletaPorPerfil, semTopicosSemMaterial } from "./personalizacaoAprovada";
 
 test("tópico consultado sem material aprovado sai da tela", () => {
   const atual = { 10: "a", 11: "b", 12: "c" };
@@ -24,4 +24,12 @@ test("só a lista que veio abaixo do limite é completa", () => {
   assert.equal(respostaCompleta(3, 20), true);
   assert.equal(respostaCompleta(0, 20), true);
   assert.equal(respostaCompleta(20, 20), false);
+});
+
+// Com a mistura, a leitura é uma por perfil, cada uma com o mesmo limite.
+test("vários perfis: completa só se cada perfil veio abaixo do limite", () => {
+  const de = (perfil: string, n: number) => Array.from({ length: n }, () => ({ brainhex_profile_key: perfil }));
+  assert.equal(respostaCompletaPorPerfil([...de("seeker", 10), ...de("survivor", 10)], 20), true);
+  assert.equal(respostaCompletaPorPerfil([...de("seeker", 20), ...de("survivor", 1)], 20), false);
+  assert.equal(respostaCompletaPorPerfil([], 20), true);
 });
