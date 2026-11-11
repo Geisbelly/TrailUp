@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Iterable
 
 from pydantic import ValidationError
 
@@ -19,6 +19,7 @@ from app.schemas.ia_patch import (
     IATimerConfig,
     IATriggerSignal,
 )
+from app.services import perfil_vetor
 from app.services.llm import JsonLLMService
 
 _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
@@ -82,7 +83,7 @@ _PROFILE_PRESETS: dict[str, dict[str, Any]] = {
         "intro": "Aceleracao sem controle favorece o sabotador. Domine o ritmo.",
         "defeat": "O caos perdeu tracao. O risco virou progresso.",
     },
-    "Socialiser": {
+    "Socializer": {
         "archetype": "toxic-demagogue",
         "preset": "parade",
         "badge": "Demagogo",
@@ -160,55 +161,17 @@ _BATTLE_DAMAGE_ON_STREAK_BONUS = 0
 
 
 def _dominant_profile(context: dict[str, Any]) -> str:
-    perfis = context.get("perfil_brainhex", [])
-    if not perfis:
-        return "Achiever"
-    dominant = max(perfis, key=lambda item: item.get("afinidade", 0))
-    return str(dominant.get("perfil") or dominant.get("nome") or "Achiever")
+    # Rótulo capitalizado: é a chave de `_PROFILE_PRESETS` e das comparações abaixo. O banco manda
+    # o nome em minúsculas, e comparar direto fazia todo aluno cair no preset de Achiever.
+    return perfil_vetor.PERFIS_CANONICOS[perfil_vetor.dominante(context.get("perfil_brainhex"))]
 
 
-def _ordered_profiles(context: dict[str, Any]) -> list[dict[str, Any]]:
-    perfis = context.get("perfil_brainhex", []) or []
-    normalized: list[dict[str, Any]] = []
-    for index, item in enumerate(perfis):
-        profile = str(item.get("perfil") or item.get("nome") or "").strip()
-        if not profile:
-            continue
-        normalized.append(
-            {
-                "index": index,
-                "perfil": profile,
-                "afinidade": float(item.get("afinidade") or 0.0),
-            }
-        )
-    return sorted(normalized, key=lambda item: (-item["afinidade"], item["index"]))
+def _has_profile_signal(context: dict[str, Any], target: str) -> bool:
+    return perfil_vetor.tem_sinal(context.get("perfil_brainhex"), target)
 
 
-def _has_profile_signal(
-    context: dict[str, Any],
-    target: str,
-    *,
-    minimum_affinity: float = 20.0,
-) -> bool:
-    normalized_target = target.strip().lower()
-    ordered = _ordered_profiles(context)
-    if not ordered:
-        return False
-
-    for index, item in enumerate(ordered):
-        if str(item["perfil"]).strip().lower() != normalized_target:
-            continue
-        return index in {0, 1} or float(item["afinidade"]) >= minimum_affinity
-    return False
-
-
-def _has_any_profile_signal(
-    context: dict[str, Any],
-    targets: set[str],
-    *,
-    minimum_affinity: float = 20.0,
-) -> bool:
-    return any(_has_profile_signal(context, target, minimum_affinity=minimum_affinity) for target in targets)
+def _has_any_profile_signal(context: dict[str, Any], targets: Iterable[str]) -> bool:
+    return perfil_vetor.tem_algum_sinal(context.get("perfil_brainhex"), targets)
 
 
 def _mode_name(context: dict[str, Any]) -> str:
@@ -416,7 +379,9 @@ def _is_battle_enabled(mental_state: str, dominant_profile: str, context: dict[s
         return False
     if dominant_profile == "Survivor" and mental_state in {"tired", "frustrated"}:
         return False
-    return _has_profile_signal(context, "Survivor")
+    # Qualquer perfil de batalha representativo liga, como `BATTLE_PROFILES` no app e as falas
+    # do boss (`boss_falas`), que existem para os três.
+    return _has_any_profile_signal(context, perfil_vetor.PERFIS_COM_BATALHA)
 
 
 def _fallback_patch(
@@ -436,10 +401,7 @@ def _fallback_patch(
     dominant_profile = _dominant_profile(context)
     mode_name = _mode_name(context)
     mental = _infer_mental_state(context, plano)
-    timer_signal_enabled = _has_any_profile_signal(
-        context,
-        {"Survivor", "Mastermind", "Achiever", "Conqueror"},
-    )
+    timer_signal_enabled = _has_any_profile_signal(context, perfil_vetor.PERFIS_COM_CRONOMETRO)
 
     items: dict[str, list[IAFeaturePatch]] = {}
     focus_content = next((item for item in conteudos if int(item["id"]) == conteudo_boss_foco_id), None)

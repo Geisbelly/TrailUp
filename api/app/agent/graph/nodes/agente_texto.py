@@ -2,6 +2,7 @@ from typing import Any
 
 from app.core.settings import Settings
 from app.schemas.texto_gerado import TextoGerado
+from app.services import perfil_vetor
 from app.services.llm import JsonLLMService, StructuredOutputError
 from app.services.pseudonimizacao import PLACEHOLDER_NOME, restaurar_nome
 
@@ -10,7 +11,7 @@ def _fallback_texto(state: dict[str, Any]) -> dict[str, Any]:
     ui = state.get("ui_config") or {}
     tipo = ui.get("tipo_modal") or "motivacional_push"
     perfis = state.get("perfil_brainhex", [])
-    perfil_dom = max(perfis, key=lambda item: item.get("afinidade", 0))["perfil"] if perfis else "Achiever"
+    perfil_dom = perfil_vetor.PERFIS_CANONICOS[perfil_vetor.dominante(perfis)]
     emocao = (state.get("emocao_atual") or {}).get("emocao_primaria")
 
     templates = {

@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.core.settings import Settings
+from app.services import perfil_vetor
 from app.services.media_agents import gerar_audio_gemini_tts, gerar_imagem_slide
 from app.services.slides_pdf import gerar_pdf_slides
 from app.services.storage import SupabaseStorage
@@ -86,13 +87,8 @@ def _normalize_profile_key(value: Any) -> str:
 
 def _dominant_profile_theme(state: dict[str, Any]) -> dict[str, Any]:
     perfis = state.get("perfil_brainhex")
-    if isinstance(perfis, list) and perfis:
-        dominant = max(
-            (item for item in perfis if isinstance(item, dict)),
-            key=lambda item: float(item.get("afinidade") or 0.0),
-            default={},
-        )
-        key = _normalize_profile_key(dominant.get("perfil") or dominant.get("nome"))
+    if isinstance(perfis, list) and perfil_vetor.ordenar(perfis):
+        key = _normalize_profile_key(perfil_vetor.dominante(perfis))
         if key:
             return dict(_PROFILE_THEME_MAP.get(key, _DEFAULT_PROFILE_THEME))
 

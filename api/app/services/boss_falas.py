@@ -49,6 +49,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import Settings
 from app.repositories.conteudo_classe import ConteudoClasseRepository
+from app.services import perfil_vetor
 from app.services.llm import JsonLLMService
 from app.services.reuso_personalizacao import LeitorDeImpressoes, normalizar_texto, texto_comparavel
 
@@ -69,7 +70,7 @@ PERFIS = ("seeker", "survivor", "daredevil", "mastermind", "conqueror", "sociali
 # Só estes perfis enfrentam boss no app (`BATTLE_PROFILES` em
 # `mobile/src/utils/brainHexCapabilities.ts`; `test_boss_falas.py` confere a paridade). Gerar
 # para os outros quatro seria pagar o modelo por falas que ninguém vê.
-PERFIS_COM_BATALHA = frozenset({"survivor", "daredevil", "conqueror"})
+PERFIS_COM_BATALHA = perfil_vetor.PERFIS_COM_BATALHA  # a lista mora em perfil_vetor
 
 # Momento -> (mínimo, máximo) de falas guardadas. Abaixo do mínimo o boss inteiro é descartado:
 # metade de um conjunto de falas deixaria o app misturando a voz gerada com a fixa.
