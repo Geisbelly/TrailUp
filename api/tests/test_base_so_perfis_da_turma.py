@@ -219,8 +219,10 @@ async def test_repositorio_devolve_principal_e_secundario_e_sem_perfil_vira_mast
     alunos = await ConteudoClasseRepository(sessao).listar_alunos_classe_com_perfil_dominante(7)
 
     assert alunos == [
-        {"aluno_id": "a1", "perfil_dominante": "seeker", "perfil_secundario": "socializer", "afinidade": 40.0},
-        {"aluno_id": "a2", "perfil_dominante": "mastermind", "perfil_secundario": None, "afinidade": 0.0},
+        {"aluno_id": "a1", "perfil_dominante": "seeker", "perfil_secundario": "socializer", "afinidade": 40.0,
+         "perfis_representativos": None},
+        {"aluno_id": "a2", "perfil_dominante": "mastermind", "perfil_secundario": None, "afinidade": 0.0,
+         "perfis_representativos": None},
     ]
     sql = sessao.sql[0]
     # Secundario e' o 2o da MESMA ordenacao do principal.

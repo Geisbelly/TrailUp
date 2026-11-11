@@ -201,7 +201,7 @@ _MOTIVO_TURMA_SEM_ALUNO = "turma_sem_alunos_matriculados"
 
 
 def _perfis_presentes_na_turma(alunos_da_classe: list[dict[str, Any]]) -> list[str]:
-    """Perfis que algum aluno da turma tem como principal OU secundario.
+    """Perfis que algum aluno da turma tem como principal ou como representativo.
 
     Principal e secundario vem de `listar_alunos_classe_com_perfil_dominante`
     (1o e 2o de `afinidade DESC NULLS LAST, nome ASC`). Aluno sem
@@ -213,6 +213,12 @@ def _perfis_presentes_na_turma(alunos_da_classe: list[dict[str, Any]]) -> list[s
     presentes: set[str] = set()
     for aluno in alunos_da_classe or []:
         presentes.add(_normalize_profile_key(aluno.get("perfil_dominante")))
+        representativos = aluno.get("perfis_representativos")
+        if representativos is not None:
+            # Todo perfil que o aluno pode escolher como ativo, e so' esses: o 3o com
+            # afinidade >= 20 entra (antes ficava sem base), o 2o com afinidade 0 sai.
+            presentes.update(_normalize_profile_key(perfil) for perfil in representativos)
+            continue
         secundario = aluno.get("perfil_secundario")
         if secundario:
             presentes.add(_normalize_profile_key(secundario))
