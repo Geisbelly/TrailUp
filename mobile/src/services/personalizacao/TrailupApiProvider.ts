@@ -582,6 +582,41 @@ export class TrailupApiProvider implements IPersonalizacaoProvider {
     } satisfies PersonalizacaoListResponse;
   }
 
+  /**
+   * O material persistido de vários perfis (rota por conteúdo, `utils/rotaDeMaterial.ts`). Uma
+   * leitura por perfil, em paralelo, com a mesma regra de `listarPersonalizacoesPersistidasPerfil`:
+   * o perfil de registro legado está no plano, e um filtro no servidor o perderia; e os cards de
+   * cada perfil só se juntam aos registros do mesmo perfil. Cada item volta com
+   * `brainhex_profile_key` = o perfil em que foi lido.
+   */
+  async listarPersonalizacoesPersistidasPerfis(
+    params: Omit<ListarPersonalizacoesPerfilParams, "brainhexProfileKey"> & { brainhexProfileKeys: string[] }
+  ): Promise<PersonalizacaoListResponse> {
+    const { brainhexProfileKeys, ...resto } = params;
+    const perfis = [...new Set(brainhexProfileKeys)];
+    // O primeiro perfil é o ativo: sem ele a trilha não tem o que mostrar, então a falha dele
+    // derruba a leitura. A de outro perfil da rota só tira aquele perfil da mistura.
+    const resultados = await Promise.allSettled(
+      perfis.map((perfil) =>
+        this.listarPersonalizacoesPersistidasPerfil({ ...resto, brainhexProfileKey: perfil }).then((resposta) => ({
+          perfil: this.normalizeBrainhexProfileKey(perfil),
+          resposta,
+        }))
+      )
+    );
+    const primeiro = resultados[0];
+    if (primeiro?.status === "rejected") throw primeiro.reason;
+    const respostas = resultados.flatMap((resultado, indice) => {
+      if (resultado.status === "fulfilled") return [resultado.value];
+      console.warn("[personalizacao] perfil da rota fora desta leitura:", perfis[indice], resultado.reason);
+      return [];
+    });
+    const itens = respostas.flatMap(({ perfil, resposta }) =>
+      (resposta?.itens ?? []).map((item) => ({ ...item, brainhex_profile_key: perfil }) as PersonalizacaoRecord)
+    );
+    return { aluno_id: "", total: itens.length, itens } satisfies PersonalizacaoListResponse;
+  }
+
   async obterSugestaoMaterial(
     params: ObterSugestaoMaterialParams
   ): Promise<SugestaoMaterialResponse | null> {

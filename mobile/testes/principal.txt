@@ -69,6 +69,9 @@ src/utils/conquistaProgress.test.ts
 src/utils/consentimentoVigente.test.ts
 src/utils/consentimentoResponsavel.test.ts
 src/utils/bossFalas.test.ts
+src/utils/rotaDeMaterial.test.ts
+src/utils/rotaDoTopicoResolver.test.ts
+src/services/personalizacao/misturaMaterial.test.ts
 src/utils/bossFalasPorVetor.test.ts
 src/utils/contentBossVisual.test.ts
 src/utils/bossPerfilPalette.test.ts

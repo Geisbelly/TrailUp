@@ -68,6 +68,9 @@ import {
 import { inferModoApresentacao } from '@/utils/presentationOrder';
 import { mesclarSugestoes, type SugestaoMaterial } from '@/utils/materialSuggestion';
 import { perfilVisualDoAluno } from '@/utils/brainHex';
+import { lerConfigDaMistura, lerConteudosIniciados, registrarExposicao, type ExposicaoLinha } from '@/services/personalizacao/misturaMaterial';
+import { assinaturaDosPerfis, chaveDoPerfilDaRota, pesosDaRota, type ChaveDaMistura } from '@/utils/rotaDeMaterial';
+import { perfilDoRegistroCarimbado, podePedirMidiaDoRegistro, resolverRegistrosDoTopico } from '@/utils/rotaDoTopicoResolver';
 import { houveVisita, payloadDeVisitaDoTopico } from '@/utils/visitaDoTopico';
 import { buildSupabasePublicStorageUrl, looksLikeStorageObjectPath } from '@/utils/supabaseStorage';
 import {
@@ -84,7 +87,7 @@ import { buildGraphFromTopicos, isTopicoUnlockedLocal } from '@/utils/topicoGrap
 import { progressoCanonicoTopico } from '@/utils/topicoProgress';
 import { buildPersonalizedProgressSeed, seedPersonalizedProgress } from '@/utils/personalizedProgressSeed';
 import { avisarFalha } from '@/services/saude/medicao';
-import { respostaCompleta, semTopicosSemMaterial } from '@/utils/personalizacaoAprovada';
+import { respostaCompleta, respostaCompletaPorPerfil, semTopicosSemMaterial } from '@/utils/personalizacaoAprovada';
 
 type Visual = 'mapa' | 'arvore' | 'lista'
 
@@ -104,10 +107,20 @@ function pickVisual(perfil: BrainHexProfile): Visual {
   }
 }
 
+function registrosParaIniciados(itens: Record<string, any>[]) {
+  return itens
+    .map((item) => ({
+      id: Number(item?.id),
+      conteudo_id: Number(item?.conteudo_id) > 0 ? Number(item.conteudo_id) : null,
+      perfil: perfilDoRegistroCarimbado(item),
+    }))
+    .filter((item) => Number.isInteger(item.id) && item.id > 0)
+}
+
 function buildPersonalizacaoCacheKey(
   alunoId: string,
   classeId: number,
-  profile: BrainHexProfile,
+  profile: string,
 ) {
   return `@trailup/personalizacao-v4/${alunoId}/${classeId}/${profile}`
 }
@@ -122,7 +135,7 @@ function buildSugestoesMaterialCacheKey(alunoId: string, classeId: number) {
 function buildProgressoItensCacheKey(
   alunoId: string,
   classeId: number,
-  profile: BrainHexProfile,
+  profile: string,
 ) {
   return `@trailup/progresso-itens-v1/${alunoId}/${classeId}/${profile}`
 }
@@ -720,7 +733,31 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const perfil = useMemo(() => perfilVisualDoAluno(usuario), [usuario])
   const visual: Visual = pickVisual(perfil)
   const activeProfileKey = perfil
-  const personalizationScope = `${usuario?.id ?? ''}:${classeAtual?.classe_id ?? ''}:${activeProfileKey}`
+
+  // Mistura de material por conteúdo (spec 2026-11-11-mistura-de-material-por-conteudo): `null`
+  // até a chave chegar de `app_config`. Desligada, nada abaixo muda — as chaves e as leituras são
+  // as de antes. Ligada, a trilha lê o material dos perfis representativos e a rota de cada tópico
+  // decide de qual perfil vem cada conteúdo.
+  const [misturaConfig, setMisturaConfig] = useState<{ chave: ChaveDaMistura; bonus: number } | null>(null)
+  const misturaLigada = misturaConfig?.chave === 'alternancia'
+  // `usuario.perfis` é um array novo a cada evento de sessão (inclusive `TOKEN_REFRESHED`). As
+  // dependências usam a assinatura por valor; os carregadores leem o array pela ref.
+  const perfisDoAlunoRef = useRef(usuario?.perfis)
+  perfisDoAlunoRef.current = usuario?.perfis
+  const perfisDoAlunoAssinatura = assinaturaDosPerfis(usuario?.perfis)
+  const pesosDaMistura = useMemo(
+    () => pesosDaRota(perfisDoAlunoRef.current, activeProfileKey, misturaConfig?.bonus ?? 0.5),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a assinatura é a identidade de `usuario.perfis`
+    [activeProfileKey, misturaConfig?.bonus, perfisDoAlunoAssinatura],
+  )
+  // O ativo sempre entra na leitura: registro legado (sem conteúdo) e conteúdo que nenhum
+  // representativo cobre continuam saindo dele, como antes.
+  const perfisDaMistura = useMemo(
+    () => [...new Set<BrainHexProfile>([activeProfileKey, ...pesosDaMistura.map((p) => p.perfil)])],
+    [activeProfileKey, pesosDaMistura],
+  )
+  const perfilDaRotaChave = chaveDoPerfilDaRota(misturaConfig?.chave ?? 'desligada', activeProfileKey, pesosDaMistura)
+  const personalizationScope = `${usuario?.id ?? ''}:${classeAtual?.classe_id ?? ''}:${perfilDaRotaChave}`
   const personalizationScopeRef = useRef(personalizationScope)
   personalizationScopeRef.current = personalizationScope
 
@@ -846,7 +883,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const persistPersonalizedTopicsCache = useCallback(async (
     alunoId: string,
     classeId: number,
-    profile: BrainHexProfile,
+    profile: string,
     payloads: Record<number, PersonalizedTopicPayload>
   ) => {
     try {
@@ -862,7 +899,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const persistProgressoItensCache = useCallback(async (
     alunoId: string,
     classeId: number,
-    profile: BrainHexProfile,
+    profile: string,
     linhas: LinhaProgressoItem[]
   ) => {
     try {
@@ -874,6 +911,21 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       console.warn('[TrilhaContext] Erro ao salvar cache de progresso personalizado:', err)
     }
   }, [])
+
+  // A chave da mistura, uma vez por aluno. Com teto de espera: sem rede, a trilha não pode ficar
+  // parada esperando `app_config` — cai na desligada, que é o comportamento de antes.
+  useEffect(() => {
+    if (!usuario?.id) return
+    let ativo = true
+    const desligada = { chave: 'desligada' as ChaveDaMistura, bonus: 0.5 }
+    const teto = new Promise<typeof desligada>((resolve) => setTimeout(() => resolve(desligada), 4000))
+    void Promise.race([lerConfigDaMistura(supabase), teto]).then((config) => {
+      if (ativo) setMisturaConfig((atual) => (atual && atual.chave === config.chave && atual.bonus === config.bonus ? atual : config))
+    })
+    return () => {
+      ativo = false
+    }
+  }, [usuario?.id])
 
   useEffect(() => {
     personalizationHydratedClassRef.current = null
@@ -930,6 +982,8 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const classeId = classeAtual?.classe_id
+    // Não espera a chave: antes dela, `perfilDaRotaChave` é o perfil puro (a chave de hoje). Se
+    // ela chegar ligada, a chave do cache muda e este efeito relê com a nova.
     if (!classeId || !usuario?.id) return
 
     let ativo = true
@@ -939,7 +993,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         // mapa no mesmo render em que o payload em cache deixa o tópico pronto,
         // senão a tela congelaria a ordem sem ela.
         const [raw, rawSugestoes] = await Promise.all([
-          AsyncStorage.getItem(buildPersonalizacaoCacheKey(usuario.id, classeId, perfil)),
+          AsyncStorage.getItem(buildPersonalizacaoCacheKey(usuario.id, classeId, perfilDaRotaChave)),
           AsyncStorage.getItem(buildSugestoesMaterialCacheKey(usuario.id, classeId)).catch(() => null),
         ])
         if (!ativo) return
@@ -973,7 +1027,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       ativo = false
     }
-  }, [classeAtual?.classe_id, perfil, usuario?.id])
+  }, [classeAtual?.classe_id, perfilDaRotaChave, usuario?.id])
 
   const syncClasseLocally = useCallback((sourceClasse: Classe) => {
     const nextResumo = buildClasseResumoFallback(sourceClasse, sourceClasse.resumo)
@@ -1137,6 +1191,8 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   const maybeRequestMissingMediaForRecord = useCallback(
     (record: Record<string, any>, topico: Topico) => {
       if (!usuario?.id || !classeAtual || !personalizacaoProvider.hasApiConfigured()) return;
+      // A API gera a mídia para o perfil dominante: registro de outro perfil da rota não pede.
+      if (!podePedirMidiaDoRegistro(record, activeProfileKey)) return;
 
       // API só usa 'processando_midias' (em andamento) e 'pronto'/'partial'/'failed' (terminais)
       // para o status do registro — nunca 'pending'/'processing'.
@@ -1184,8 +1240,8 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const hydratePersonalizedTopics = useCallback(async () => {
-    if (!classeAtual || !usuario?.id) return
-    const hydrationKey = `${usuario.id}:${classeAtual.classe_id}:${activeProfileKey}`
+    if (!classeAtual || !usuario?.id || !misturaConfig) return
+    const hydrationKey = `${usuario.id}:${classeAtual.classe_id}:${perfilDaRotaChave}`
     if (personalizationHydratedClassRef.current === hydrationKey) return
     personalizationHydratedClassRef.current = hydrationKey
 
@@ -1198,11 +1254,25 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       // aconselhada estar no mapa quando o payload chegar (ver `aplicarSugestoesMaterial`).
       const sugestoesPromise = lerSugestoesMaterial(usuario.id, classeAtual.classe_id)
       const limiteDaTurma = Math.max(20, expectedContentCount * 2)
-      const response = await personalizacaoProvider.listarPersonalizacoesPersistidasPerfil({
-        classeId: classeAtual.classe_id,
-        brainhexProfileKey: activeProfileKey,
-        limit: limiteDaTurma,
-      })
+      const response = misturaLigada
+        ? await personalizacaoProvider.listarPersonalizacoesPersistidasPerfis({
+            classeId: classeAtual.classe_id,
+            brainhexProfileKeys: perfisDaMistura,
+            limit: limiteDaTurma,
+          })
+        : await personalizacaoProvider.listarPersonalizacoesPersistidasPerfil({
+            classeId: classeAtual.classe_id,
+            brainhexProfileKey: activeProfileKey,
+            limit: limiteDaTurma,
+          })
+      const iniciados = misturaLigada
+        ? await lerConteudosIniciados(
+            supabase,
+            usuario.id,
+            classeAtual.classe_id,
+            registrosParaIniciados(response?.itens ?? []),
+          )
+        : new Map<number, BrainHexProfile>()
       const sugestoes = await sugestoesPromise
       if (personalizationScopeRef.current !== hydrationKey) return
       aplicarSugestoesMaterial(usuario.id, classeAtual.classe_id, sugestoes)
@@ -1221,9 +1291,24 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         recordsByTopico.set(topicoId, records)
       }
 
+      const exposicoes: ExposicaoLinha[] = []
       for (const topico of classeAtual.topicos) {
+        const daRota = misturaLigada
+          ? resolverRegistrosDoTopico({
+              registros: recordsByTopico.get(topico.id) ?? [],
+              topico,
+              alunoId: usuario.id,
+              classeId: classeAtual.classe_id,
+              perfilAtivo: activeProfileKey,
+              perfis: perfisDoAlunoRef.current,
+              config: misturaConfig,
+              iniciados,
+              perfilDoRegistro: perfilDoRegistroCarimbado,
+            })
+          : null
+        if (daRota) exposicoes.push(...daRota.exposicoes)
         const records = orderPersonalizationRecordsByTeacherContent(
-          recordsByTopico.get(topico.id) ?? [],
+          daRota?.registros ?? recordsByTopico.get(topico.id) ?? [],
           topico.conteudos ?? []
         )
         if (!records.length) continue
@@ -1235,14 +1320,18 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         const payload = aggregatePersonalizedTopicPayloads(payloads)
         if (!payload) continue
 
-        personalizationAttemptedRef.current.add(`${usuario.id}:${classeAtual.classe_id}:${activeProfileKey}:${topico.id}`)
+        personalizationAttemptedRef.current.add(`${usuario.id}:${classeAtual.classe_id}:${perfilDaRotaChave}:${topico.id}`)
         byTopico[topico.id] = payload
         void prefetchPersonalizedPayload(payload)
       }
+      // Sem esperar: a exposição é registro para a análise, não condição para o material aparecer.
+      if (exposicoes.length) void registrarExposicao(supabase, exposicoes)
 
       // Material recusado ou regerado (de volta a pendente) some da RLS; com a lista inteira em
       // mãos, o tópico que ficou sem registro sai da tela e do cache (20261110_09).
-      const completa = respostaCompleta(response?.itens?.length ?? 0, limiteDaTurma)
+      const completa = misturaLigada
+        ? respostaCompletaPorPerfil(response?.itens ?? [], limiteDaTurma)
+        : respostaCompleta(response?.itens?.length ?? 0, limiteDaTurma)
       if (completa) {
         const comMaterial = new Set(Object.keys(byTopico).map(Number))
         setPersonalizedTopics((prev) =>
@@ -1259,7 +1348,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         await persistPersonalizedTopicsCache(
           usuario.id,
           classeAtual.classe_id,
-          activeProfileKey,
+          perfilDaRotaChave,
           byTopico,
         )
       }
@@ -1267,7 +1356,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       if (personalizationScopeRef.current === hydrationKey) personalizationHydratedClassRef.current = null
       avisarFalha("personalizacao/hidratar", '[TrilhaContext] Erro ao hidratar personalizacoes:', err)
     }
-  }, [activeProfileKey, aplicarSugestoesMaterial, buildPayloadForTopico, classeAtual, lerSugestoesMaterial, maybeRequestMissingMediaForRecord, persistPersonalizedTopicsCache, personalizacaoProvider, usuario?.id])
+  }, [activeProfileKey, aplicarSugestoesMaterial, buildPayloadForTopico, classeAtual, lerSugestoesMaterial, maybeRequestMissingMediaForRecord, misturaConfig, misturaLigada, perfilDaRotaChave, perfisDaMistura, persistPersonalizedTopicsCache, personalizacaoProvider, usuario?.id])
 
   const ensureTopicoPersonalizado = useCallback(async (
     topicoId: number,
@@ -1280,7 +1369,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     const topico = classeAtual.topicos.find((item) => item.id === topicoId)
     if (!topico) return null
 
-    const key = `${usuario.id}:${classeAtual.classe_id}:${activeProfileKey}:${topicoId}`
+    const key = `${usuario.id}:${classeAtual.classe_id}:${perfilDaRotaChave}:${topicoId}`
     const triggerCycleId = options.triggerCycleId ?? null
     if (
       forceRefresh &&
@@ -1310,18 +1399,48 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         personalizationAttemptedRef.current.add(key)
         const sugestoesPromise = lerSugestoesMaterial(usuario.id, classeAtual.classe_id, topicoId)
-        const listResponse = await personalizacaoProvider.listarPersonalizacoesPersistidasPerfil({
-          classeId: classeAtual.classe_id,
-          topicoId,
-          brainhexProfileKey: activeProfileKey,
-          limit: Math.max(10, (topico.conteudos?.length ?? 0) * 2),
-        })
+        const limiteDoTopico = Math.max(10, (topico.conteudos?.length ?? 0) * 2)
+        // Antes da chave chegar (`misturaConfig` nulo), lê como desligada: quando ela chega ligada,
+        // o escopo muda e o resultado daqui é descartado pela checagem de escopo abaixo.
+        const listResponse = misturaLigada
+          ? await personalizacaoProvider.listarPersonalizacoesPersistidasPerfis({
+              classeId: classeAtual.classe_id,
+              topicoId,
+              brainhexProfileKeys: perfisDaMistura,
+              limit: limiteDoTopico,
+            })
+          : await personalizacaoProvider.listarPersonalizacoesPersistidasPerfil({
+              classeId: classeAtual.classe_id,
+              topicoId,
+              brainhexProfileKey: activeProfileKey,
+              limit: limiteDoTopico,
+            })
+        const itens = listResponse?.itens ?? []
+        const daRota = misturaLigada && misturaConfig
+          ? resolverRegistrosDoTopico({
+              registros: itens,
+              topico,
+              alunoId: usuario.id,
+              classeId: classeAtual.classe_id,
+              perfilAtivo: activeProfileKey,
+              perfis: perfisDoAlunoRef.current,
+              config: misturaConfig,
+              iniciados: await lerConteudosIniciados(
+                supabase,
+                usuario.id,
+                classeAtual.classe_id,
+                registrosParaIniciados(itens),
+              ),
+              perfilDoRegistro: perfilDoRegistroCarimbado,
+            })
+          : null
         const sugestoes = await sugestoesPromise
         if (personalizationScopeRef.current !== personalizationScope) return null
         aplicarSugestoesMaterial(usuario.id, classeAtual.classe_id, sugestoes)
+        if (daRota?.exposicoes.length) void registrarExposicao(supabase, daRota.exposicoes)
 
         const records = orderPersonalizationRecordsByTeacherContent(
-          listResponse?.itens ?? [],
+          daRota?.registros ?? itens,
           topico.conteudos ?? []
         )
         if (!records.length) {
@@ -1343,7 +1462,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         if (!payload) return null
 
         setPersonalizedTopics((prev) => ({ ...prev, [topicoId]: payload }))
-        await persistPersonalizedTopicsCache(usuario.id, classeAtual.classe_id, activeProfileKey, {
+        await persistPersonalizedTopicsCache(usuario.id, classeAtual.classe_id, perfilDaRotaChave, {
           [topicoId]: payload,
         })
         void prefetchPersonalizedPayload(payload)
@@ -1384,6 +1503,10 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     activeProfileKey,
     lerSugestoesMaterial,
     maybeRequestMissingMediaForRecord,
+    misturaConfig,
+    misturaLigada,
+    perfilDaRotaChave,
+    perfisDaMistura,
     persistPersonalizedTopicsCache,
     personalizedTopics,
     personalizationScope,
@@ -1650,7 +1773,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       setProgressoItens([])
       return
     }
-
     let cancelado = false
     let hidratados: LinhaProgressoItem[] = []
     ;(async () => {
@@ -1659,7 +1781,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       // rede responder (ou de nunca voltar a mostrar nada, se ela não vier).
       try {
         const raw = await AsyncStorage.getItem(
-          buildProgressoItensCacheKey(alunoId, classeId, activeProfileKey)
+          buildProgressoItensCacheKey(alunoId, classeId, perfilDaRotaChave)
         )
         if (cancelado) return
         const parsed = raw ? JSON.parse(raw) : []
@@ -1669,14 +1791,20 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         console.warn('[TrilhaContext] Erro ao carregar cache local de progresso personalizado:', err)
       }
 
+      // A rede espera a chave da mistura (o cache acima, não): ligada, o progresso é o dos
+      // registros de todos os perfis da rota. Quando ela chega, este efeito roda de novo.
+      if (!misturaConfig) return
+
       // A jornada pode usar material-base compartilhado e gerações parciais
       // com arquivos utilizáveis, assim como a projeção canônica do banco.
-      const { data: personalizacoesAtivas, error: personalizacoesError } = await supabase
+      const consultaAtivas = supabase
         .from('conteudo_personalizado')
         .select('id')
         .or(`aluno_id.eq.${alunoId},aluno_id.is.null`)
         .eq('classe_id', classeId)
-        .eq('brainhex_profile_key', activeProfileKey)
+      const { data: personalizacoesAtivas, error: personalizacoesError } = misturaLigada
+        ? await consultaAtivas.in('brainhex_profile_key', perfisDaMistura)
+        : await consultaAtivas.eq('brainhex_profile_key', activeProfileKey)
 
       if (cancelado) return
       if (personalizacoesError) {
@@ -1695,7 +1823,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         // uma classe/perfil anterior) realmente não vale mais.
         setProgressoItens([])
         setSlideBonusKeys(new Set())
-        await persistProgressoItensCache(alunoId, classeId, activeProfileKey, [])
+        await persistProgressoItensCache(alunoId, classeId, perfilDaRotaChave, [])
         return
       }
 
@@ -1721,7 +1849,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       // pode apagá-la.
       const linhas = mesclarLinhasProgresso(hidratados, remoto)
       setProgressoItens(linhas)
-      await persistProgressoItensCache(alunoId, classeId, activeProfileKey, linhas)
+      await persistProgressoItensCache(alunoId, classeId, perfilDaRotaChave, linhas)
 
       const keys = new Set<string>()
       for (const row of linhas) {
@@ -1734,7 +1862,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => {
       cancelado = true
     }
-  }, [activeProfileKey, classeAtual?.classe_id, persistProgressoItensCache, usuario?.id])
+  }, [activeProfileKey, classeAtual?.classe_id, misturaConfig, misturaLigada, perfilDaRotaChave, perfisDaMistura, persistProgressoItensCache, usuario?.id])
 
   // O caso que a fila existe para cobrir: o app foi morto ou perdeu rede com
   // progresso pendente. A tentativa acontece na abertura seguinte, antes de
@@ -2274,7 +2402,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         proximasLinhas = aplicarEventoProgresso(previous, evento)
         return proximasLinhas
       })
-      await persistProgressoItensCache(usuario.id, classeAtual.classe_id, activeProfileKey, proximasLinhas)
+      await persistProgressoItensCache(usuario.id, classeAtual.classe_id, perfilDaRotaChave, proximasLinhas)
       // A gravação voltou a funcionar: escoa o que ficou para trás na fila.
       void drenarProgressoOutbox((p) => personalizacaoProvider.salvarProgressoPersonalizadoDiretoSupabase(p))
         .catch(() => undefined)
@@ -2307,7 +2435,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         proximasLinhas = aplicarEventoProgresso(previous, evento)
         return proximasLinhas
       })
-      await persistProgressoItensCache(usuario.id, classeAtual.classe_id, activeProfileKey, proximasLinhas)
+      await persistProgressoItensCache(usuario.id, classeAtual.classe_id, perfilDaRotaChave, proximasLinhas)
       try {
         await enfileirarProgressoItem({ ...progressoPayload, aluno_id: usuario.id })
       } catch (erroFila) {
@@ -2316,7 +2444,7 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
 
       throw directErr
     }
-  }, [activeProfileKey, atualizarProgressoClasse, classeAtual, persistProgressoItensCache, personalizedTopics, personalizacaoProvider, refreshTopico, usuario?.id])
+  }, [atualizarProgressoClasse, classeAtual, perfilDaRotaChave, persistProgressoItensCache, personalizedTopics, personalizacaoProvider, refreshTopico, usuario?.id])
 
   const registrarRespostaQuestao = useCallback(async ({
     topicoId,
