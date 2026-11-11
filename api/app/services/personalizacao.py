@@ -24,6 +24,7 @@ from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepositor
 from app.repositories.materiais import MateriaisRepository
 from app.repositories.personalizacao_jobs import PersonalizacaoJobsRepository
 from app.schemas.geracao_estruturada import CardsGerados, PlanoGerado
+from app.services import perfil_vetor
 from app.services.behavioral_personalization import build_behavioral_personalization
 from app.services.gemini_http import gemini_generate
 from app.services.llm import JsonLLMService, load_prompt
@@ -470,9 +471,9 @@ def _is_meaningful_source_text(value: str | None) -> bool:
 
 
 def _perfil_dominante(perfil_brainhex: list[dict[str, Any]]) -> str:
-    if not perfil_brainhex:
-        return "Achiever"
-    return max(perfil_brainhex, key=lambda p: p.get("afinidade", 0)).get("perfil", "Achiever")
+    # Regra única (`perfil_vetor`): desempate pelo nome e vetor zerado = mastermind, como o app e o
+    # SQL. O `max()` antigo devolvia o 1º da lista, e o padrão era Achiever.
+    return perfil_vetor.PERFIS_CANONICOS[perfil_vetor.dominante(perfil_brainhex)]
 
 
 def _normalize_profile_label(value: Any) -> str | None:
