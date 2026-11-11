@@ -49,6 +49,12 @@ type Comum = {
   /** Tentativas por tópico; cada uma é uma requisição nova, com o tempo inteiro de novo. */
   tentativasPorTopico?: number;
   aoProgredir?: (progresso: ProgressoDaTrilha) => void;
+  /**
+   * Os arquivos que vão junto de cada pedido (`null` = esqueleto). Ficam fora
+   * de `corpo` de propósito: o corpo vai para o rascunho, e PDF em base64 não
+   * cabe lá.
+   */
+  anexosPara?: (alvo: TopicoDoEsqueleto | null) => unknown[] | undefined;
   /** A proposta inteira, como está, depois de cada etapa concluída. */
   aoAtualizar?: (topicos: AiTopico[]) => void;
 };
@@ -66,6 +72,11 @@ function lerTopico(data: unknown): AiTopico {
   const topico = ehRegistro(data) ? data.topico : undefined;
   if (!ehRegistro(topico) || !Array.isArray(topico.conteudos)) throw new Error("Resposta invalida da IA.");
   return topico as unknown as AiTopico;
+}
+
+/** O corpo da etapa com os anexos dela, se houver. */
+function comAnexos(corpo: Record<string, unknown>, anexos: unknown[] | undefined): Record<string, unknown> {
+  return anexos && anexos.length > 0 ? { ...corpo, anexos } : corpo;
 }
 
 const mensagemDe = (erro: unknown) => (erro instanceof Error && erro.message ? erro.message : "Erro ao gerar o tópico.");
@@ -103,7 +114,7 @@ const comoEsqueleto = (t: AiTopico): TopicoDoEsqueleto => ({
 async function detalhar(
   base: AiTopico[],
   indices: number[],
-  { invocar, corpo, concorrencia = 2, tentativasPorTopico = 2, aoProgredir, aoAtualizar }: Comum,
+  { invocar, corpo, concorrencia = 2, tentativasPorTopico = 2, aoProgredir, aoAtualizar, anexosPara }: Comum,
 ): Promise<ResultadoDaTrilha> {
   const topicos = [...base];
   const total = indices.length;
@@ -113,10 +124,13 @@ async function detalhar(
 
   const detalharUm = async (indice: number) => {
     const alvo = comoEsqueleto(topicos[indice]);
+    const anexos = anexosPara?.(alvo);
     let ultimoErro: unknown = null;
     for (let tentativa = 1; tentativa <= Math.max(1, tentativasPorTopico); tentativa += 1) {
       try {
-        const data = await invocar({ ...corpo, mode: "trail-topic", topic: alvo, topicIndex: indice, totalTopics: topicos.length });
+        const data = await invocar(
+          comAnexos({ ...corpo, mode: "trail-topic", topic: alvo, topicIndex: indice, totalTopics: topicos.length }, anexos),
+        );
         return { ok: true as const, topico: lerTopico(data) };
       } catch (erro) {
         ultimoErro = erro;
@@ -147,7 +161,9 @@ async function detalhar(
 }
 
 export async function gerarTrilhaEmEtapas(opcoes: Comum): Promise<ResultadoDaTrilha> {
-  const esqueleto = lerEsqueleto(await opcoes.invocar({ ...opcoes.corpo, mode: "trail-skeleton" }));
+  const esqueleto = lerEsqueleto(
+    await opcoes.invocar(comAnexos({ ...opcoes.corpo, mode: "trail-skeleton" }, opcoes.anexosPara?.(null))),
+  );
   const base = esqueleto.map(topicoVazio);
   // O esqueleto já é trabalho feito: vai para o rascunho antes de qualquer tópico.
   opcoes.aoAtualizar?.([...base]);

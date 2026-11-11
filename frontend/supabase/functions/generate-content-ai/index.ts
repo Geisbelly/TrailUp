@@ -8,6 +8,14 @@ import {
   type RespostaGemini,
 } from "./rotacaoGemini.ts";
 import { limiteAposCorte, limiteDoDetalhe, usoDeTokens } from "./limiteDeSaida.ts";
+import {
+  instrucaoDeFiguras,
+  lerAnexos,
+  limparMarcadoresDeFigura,
+  montarPartesDosAnexos,
+  type ParteGemini,
+  type PartesDosAnexos,
+} from "./anexosDaTrilha.ts";
 import { limitesDoEsqueleto, MAX_TOPICOS, quantidadeDeTopicos, regrasDaQuantidade } from "./quantidadeDeTopicos.ts";
 
 const CORS = {
@@ -158,6 +166,8 @@ interface RequestBody {
   syllabus?: string;
   fileContents?: string;
   fileNames?: string[];
+  /** Arquivos do professor como o Gemini os le (ver anexosDaTrilha.ts). */
+  anexos?: unknown;
   // Contexto pedagogico usado nos modos description/content
   materiaNome?: string;
   materiaDescricao?: string;
@@ -171,6 +181,8 @@ type GeminiCallOptions = {
   prompt: string;
   maxOutputTokens: number;
   responseSchema?: JsonRecord;
+  /** Arquivos (PDF, imagens, texto extraido) que vao antes do prompt. */
+  partes?: ParteGemini[];
   /** Instante (Date.now()) em que a requisicao tem de parar de chamar o Gemini. */
   deadline?: number;
 };
@@ -489,7 +501,7 @@ async function callGeminiJson(options: GeminiCallOptions): Promise<{ parsed: unk
     let maxOutputTokens = options.maxOutputTokens;
     for (;;) {
       const { res, apiData } = await fetchGemini(options.key, {
-        contents: [{ parts: [{ text: options.prompt }] }],
+        contents: [{ parts: [...(options.partes ?? []), { text: options.prompt }] }],
         generationConfig: {
           maxOutputTokens,
           responseMimeType: "application/json",
@@ -636,7 +648,6 @@ const TRAIL_DETAIL_SCHEMA: JsonRecord = {
           },
           midias: {
             type: "ARRAY",
-            minItems: 1,
             items: {
               type: "OBJECT",
               required: ["tipo", "titulo", "descricao"],
@@ -662,6 +673,7 @@ function normalizeTrailDetails(
   payload: unknown,
   topic: TrailSkeletonTopic,
   contentTarget: number,
+  material: { arquivos: Map<string, string>; figuras: PartesDosAnexos["figuras"] },
 ): JsonRecord[] {
   const contentRecords = ensureObjectArray((payload as JsonRecord)?.conteudos);
 
@@ -676,7 +688,7 @@ function normalizeTrailDetails(
     const ref = String(record.ref ?? `content:${index + 1}`).trim() || `content:${index + 1}`;
     const titulo = String(record.titulo ?? `Conteudo ${index + 1}`).trim() || `Conteudo ${index + 1}`;
     const tipo = String(record.tipo ?? "texto").trim() || "texto";
-    const conteudo = String(record.conteudo ?? "").trim();
+    const conteudo = limparMarcadoresDeFigura(String(record.conteudo ?? "").trim(), material.figuras);
 
     const cards = ensureObjectArray(record.cards).map((card, cardIndex) => {
       const conteudoRef = String(card.conteudo_ref ?? ref).trim() || ref;
@@ -747,32 +759,21 @@ function normalizeTrailDetails(
             },
           ];
 
-    const midias = ensureObjectArray(record.midias).map((midia, mediaIndex) => ({
-      tipo: normalizeMediaType(midia.tipo),
-      titulo: String(midia.titulo ?? `Midia ${mediaIndex + 1}`).trim() || `Midia ${mediaIndex + 1}`,
-      descricao: String(midia.descricao ?? "Material complementar.").trim(),
-      roteiro: String(midia.roteiro ?? "").trim() || null,
-      transcricao: String(midia.transcricao ?? "").trim() || null,
-      url: String(midia.url ?? "").trim() || null,
-      formato_arquivo: String(midia.formato_arquivo ?? "").trim() || null,
-      sourceRef: String(midia.sourceRef ?? "").trim() || null,
-    }));
-
-    const mediaOutput =
-      midias.length > 0
-        ? midias
-        : [
-            {
-              tipo: "documento",
-              titulo: `Resumo de ${titulo}`,
-              descricao: "Documento de apoio com os principais pontos deste conteudo.",
-              roteiro: null,
-              transcricao: null,
-              url: null,
-              formato_arquivo: "md",
-              sourceRef: null,
-            },
-          ];
+    // Midia so existe se aponta para um arquivo que o professor mandou ou para
+    // um link. Antes o esquema exigia uma por conteudo e, sem arquivo, vinha um
+    // "Resumo de ..." inventado que o console gravava como material vazio.
+    const midias = ensureObjectArray(record.midias)
+      .map((midia, mediaIndex) => ({
+        tipo: normalizeMediaType(midia.tipo),
+        titulo: String(midia.titulo ?? `Midia ${mediaIndex + 1}`).trim() || `Midia ${mediaIndex + 1}`,
+        descricao: String(midia.descricao ?? "Material complementar.").trim(),
+        roteiro: String(midia.roteiro ?? "").trim() || null,
+        transcricao: String(midia.transcricao ?? "").trim() || null,
+        url: String(midia.url ?? "").trim() || null,
+        formato_arquivo: String(midia.formato_arquivo ?? "").trim() || null,
+        sourceRef: material.arquivos.get(String(midia.sourceRef ?? "").trim()) ?? null,
+      }))
+      .filter((midia) => midia.sourceRef !== null || /^https?:\/\//i.test(midia.url ?? ""));
 
     return {
       ref,
@@ -782,7 +783,7 @@ function normalizeTrailDetails(
       sourceRef: String(record.sourceRef ?? "").trim() || null,
       cards: cardOutput,
       atividades: atividadeOutput,
-      midias: mediaOutput,
+      midias,
     };
   });
 
@@ -798,29 +799,51 @@ type TrailContext = {
   /** null = automatico: o modelo escolhe pelo material. */
   desiredTopics: number | null;
   totalSignals: number;
+  /** Os arquivos como partes do pedido ao Gemini (PDF inteiro, imagens, texto). */
+  material: PartesDosAnexos;
+  /**
+   * sourceRef de midia aceito -> nome exato do arquivo do professor. Vale o
+   * nome e a referencia da fonte (`upload:N`), que o modelo as vezes usa.
+   */
+  arquivos: Map<string, string>;
 };
 
 function buildTrailContext(body: RequestBody, sources: AiSourceInput[]): TrailContext {
   const trailDescription = body.trailDescription?.trim() || body.topicDescription?.trim() || body.topicName;
   const fileNames = (body.fileNames ?? []).map((item) => item.trim()).filter(Boolean);
   const sourceBlock = buildSourceBlock(sources, body.fileContents, fileNames);
+  const anexos = lerAnexos(body.anexos);
+  const material = montarPartesDosAnexos(anexos);
+  const temMaterial = Boolean(sourceBlock) || material.partes.length > 0;
 
-  if (!sourceBlock && sources.length > 0) {
+  if (!temMaterial && sources.length > 0) {
     throw new AiStructuredError(
       "Nao foi possivel extrair texto util das fontes enviadas. Envie texto, markdown ou material com texto legivel.",
       "source_extraction_failed",
     );
   }
+  if (material.omitidos.length > 0) {
+    console.warn(`trilha: arquivos que nao couberam no pedido: ${material.omitidos.join(", ")}`);
+  }
 
   const topicNames = body.topicNames?.map((item) => item.trim()).filter(Boolean) ?? [];
   // O numero do professor vale sempre; arquivos nao o trocam mais (ver quantidadeDeTopicos.ts).
   const desiredTopics = quantidadeDeTopicos(body.numTopics, topicNames);
-  const sourceGuard = sourceBlock
+  const sourceGuard = material.partes.length > 0
+    ? "Os arquivos do professor vem anexados antes destas instrucoes: leia-os por inteiro (texto, tabelas, figuras, codigo). " +
+      "Construa tudo a partir deles; nao invente conceitos que nao estejam no material."
+    : sourceBlock
     ? "Use somente o material fornecido. Nao invente conceitos fora das fontes."
     : "Sem fontes externas: use apenas a descricao do curso para construir uma trilha coerente.";
-  const totalSignals = Math.max(fileNames.length, sources.length, body.fileContents?.trim() ? 1 : 0, 1);
+  const totalSignals = Math.max(fileNames.length, sources.length, anexos.length, body.fileContents?.trim() ? 1 : 0, 1);
+  const nomes = new Set([...fileNames, ...anexos.map((anexo) => anexo.nome)]);
+  const arquivos = new Map([...nomes].map((nome) => [nome, nome] as [string, string]));
+  for (const source of sources) {
+    const nome = source.files?.[0]?.name ?? source.titulo;
+    if (source.sourceRef && nomes.has(nome)) arquivos.set(source.sourceRef, nome);
+  }
 
-  return { trailDescription, fileNames, sourceBlock, sourceGuard, topicNames, desiredTopics, totalSignals };
+  return { trailDescription, fileNames, sourceBlock, sourceGuard, topicNames, desiredTopics, totalSignals, material, arquivos };
 }
 
 async function generateTrailSkeleton(
@@ -857,7 +880,8 @@ Retorne SOMENTE JSON valido com:
 
 Regras:
 ${regrasDaQuantidade(desiredTopics, fileNames.length).join("\n")}
-- Se houver arquivos, distribua em "arquivos_relacionados" sem repetir desnecessariamente.
+- Se houver arquivos, distribua em "arquivos_relacionados" (nome exato do arquivo) os que cada topico usa; um arquivo pode servir a mais de um topico quando o assunto dele se divide.
+- A descricao de cada topico diz o que ele cobre do material (conceitos, exemplos), em 1 a 2 frases.
 - Evite ciclos em depende/next.
 - Organize do basico ao avancado.`;
 
@@ -866,6 +890,7 @@ ${regrasDaQuantidade(desiredTopics, fileNames.length).join("\n")}
     prompt: skeletonPrompt,
     maxOutputTokens: 8192,
     responseSchema: skeletonSchema(desiredTopics),
+    partes: ctx.material.partes,
     deadline,
   });
 
@@ -884,6 +909,7 @@ ${regrasDaQuantidade(desiredTopics, fileNames.length).join("\n")}
 ATENCAO: a resposta anterior trouxe ${veio} topicos, mas o professor pediu ${desiredTopics}. Refaca com exatamente ${desiredTopics} topicos, agrupando ou dividindo os assuntos.`,
         maxOutputTokens: 8192,
         responseSchema: skeletonSchema(desiredTopics),
+        partes: ctx.material.partes,
         deadline,
       });
       const veioDeNovo = countSkeletonTopics(novo.parsed);
@@ -909,7 +935,7 @@ async function generateTrailTopicDetail(
   key: string,
   deadline?: number,
 ): Promise<JsonRecord> {
-  const { sourceBlock, sourceGuard, totalSignals } = ctx;
+  const { sourceBlock, sourceGuard, totalSignals, material, arquivos } = ctx;
   const contentTarget = computeContentTarget(index, totalTopics, totalSignals, topic.arquivos_relacionados.length);
   const relatedFilesHint =
     topic.arquivos_relacionados.length > 0
@@ -928,6 +954,7 @@ Topico atual:
 - ${relatedFilesHint}
 
 ${sourceBlock}
+${instrucaoDeFiguras(material.figuras)}
 
 Retorne SOMENTE JSON valido com:
 {
@@ -936,8 +963,8 @@ Retorne SOMENTE JSON valido com:
     "ref": "content:1",
     "titulo": "Titulo do conteudo",
     "tipo": "texto",
-    "conteudo": "Texto em markdown",
-    "sourceRef": "legacy:1",
+    "conteudo": "## Subtitulo\n\nParagrafos explicando o assunto com o que esta no material...",
+    "sourceRef": "nome-exato-do-arquivo.pdf",
     "cards": [
       {
         "titulo": "Pergunta ou conceito",
@@ -960,14 +987,12 @@ Retorne SOMENTE JSON valido com:
     ],
     "midias": [
       {
-        "tipo": "video",
-        "titulo": "Nome da midia",
-        "descricao": "Descricao",
-        "roteiro": "Roteiro curto",
-        "transcricao": "Transcricao opcional",
+        "tipo": "pdf",
+        "titulo": "Slides da aula",
+        "descricao": "O que o aluno encontra neste arquivo",
         "url": "",
-        "formato_arquivo": "mp4",
-        "sourceRef": "legacy:1"
+        "formato_arquivo": "pdf",
+        "sourceRef": "nome-exato-do-arquivo.pdf"
       }
     ]
   }
@@ -976,7 +1001,11 @@ Retorne SOMENTE JSON valido com:
 
 Regras obrigatorias:
 - Gere exatamente ${contentTarget} conteudos para este topico.
-- Para CADA conteudo, gere 2 cards, 1 atividade e pelo menos 1 midia.
+- O campo "conteudo" e a aula que o aluno vai ler: texto completo em markdown, de 350 a 800 palavras, com subtitulos (##), paragrafos que explicam, definicoes, exemplos e, quando o material tiver, trechos de codigo, comandos ou tabelas.
+- Ensine o que esta nos arquivos: use as definicoes, exemplos, nomes, comandos e numeros do proprio material. Nao resuma em uma frase nem descreva o arquivo ("este material aborda..."): explique o assunto.
+- Conteudos do mesmo topico nao se repetem: divida o assunto entre eles.
+- Para CADA conteudo, gere 2 cards e 1 atividade sobre o que o texto ensinou.
+- "midias" lista so arquivos do professor que o aluno deve abrir junto deste conteudo, com "sourceRef" igual ao nome exato do arquivo, ou links que estao no material. Sem isso, "midias": []. Nunca invente midia, roteiro ou arquivo.
 - Tipos de atividade permitidos: quiz, questao, texto, true_false, fill_blank.
 - Tipos de midia permitidos: video, audio, pdf, documento, apresentacao.
 - Todo card precisa de conteudo_ref.
@@ -993,6 +1022,7 @@ Regras obrigatorias:
         prompt: detailPrompt,
         maxOutputTokens: limiteDoDetalhe(contentTarget),
         responseSchema: TRAIL_DETAIL_SCHEMA,
+        partes: material.partes,
         deadline,
       });
       detailPayload = detailResult.parsed;
@@ -1018,7 +1048,7 @@ Regras obrigatorias:
     throw new AiStructuredError(`Falha ao gerar detalhes do topico "${topic.nome}".`, "trail_detail_failed");
   }
 
-  const normalizedContents = normalizeTrailDetails(detailPayload, topic, contentTarget);
+  const normalizedContents = normalizeTrailDetails(detailPayload, topic, contentTarget, { arquivos, figuras: material.figuras });
   const topicCards = normalizedContents.flatMap((content) =>
     ensureObjectArray((content as JsonRecord).cards).map((card) => ({
       ...card,

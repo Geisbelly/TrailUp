@@ -191,3 +191,30 @@ describe("completarTopicos", () => {
     expect(invocar).not.toHaveBeenCalled();
   });
 });
+
+describe("anexos por etapa", () => {
+  it("o esqueleto leva todos, cada tópico os seus, e o corpo guardado não muda", async () => {
+    const { invocar, chamadas } = funcaoFalsa();
+    const corpo: Corpo = { trailDescription: "BD" };
+    const anexosPara = vi.fn((alvo: TopicoDoEsqueleto | null) => (alvo ? [{ id: `A${alvo.ordem}` }] : [{ id: "A1" }, { id: "A2" }, { id: "A3" }]));
+    await gerarTrilhaEmEtapas({ invocar, corpo, anexosPara });
+
+    expect(chamadas[0].anexos).toHaveLength(3);
+    const porTopico = chamadas.filter((c) => c.mode === "trail-topic");
+    expect(porTopico.map((c) => (c.anexos as Array<{ id: string }>)[0].id).sort()).toEqual(["A1", "A2", "A3"]);
+    expect(corpo).toEqual({ trailDescription: "BD" });
+  });
+
+  it("sem anexosPara o pedido não ganha a chave", async () => {
+    const { invocar, chamadas } = funcaoFalsa();
+    await gerarTrilhaEmEtapas({ invocar, corpo: {} });
+    expect(chamadas.every((c) => !("anexos" in c))).toBe(true);
+  });
+
+  it("completarTopicos também manda os anexos do tópico", async () => {
+    const { invocar, chamadas } = funcaoFalsa();
+    const topicos = esqueleto.map((t) => ({ ...t, conteudos: [], cards: [], atividades: [] })) as unknown as AiTopico[];
+    await completarTopicos({ invocar, corpo: {}, topicos, anexosPara: (alvo) => (alvo ? [{ id: "X" }] : undefined) });
+    expect(chamadas.every((c) => Array.isArray(c.anexos))).toBe(true);
+  });
+});
