@@ -30,7 +30,10 @@ export function buildGraphFromTopicos(classe: { topicos: GraphTopic[] }, pendent
   const parents = new Map<string, Set<string>>();
   const connect = (from: string, to: string) => {
     const parent = byId.get(from);
-    if (parent && !parent.next?.includes(to)) parent.next!.push(to);
+    // Tópico que o aluno não vê (rascunho ou agendado, filtrado pela RLS) não vira aresta: o
+    // desenho não tem nó para ela. Como pré-requisito ele continua contando, e quem depende
+    // dele fica trancado até o professor publicá-lo.
+    if (parent && byId.has(to) && !parent.next?.includes(to)) parent.next!.push(to);
     const required = parents.get(to) ?? new Set<string>();
     required.add(from);
     parents.set(to, required);

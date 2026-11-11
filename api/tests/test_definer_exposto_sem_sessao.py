@@ -70,6 +70,15 @@ SESSAO = ("auth.uid()", "auth.jwt()")
 # Linha nova aqui e decisao de produto, nao conveniencia: diga o que protege o
 # dado, ou revogue o EXECUTE.
 SEM_SESSAO_POR_DECISAO: dict[str, str] = {
+    "app_conteudos_ocultos_para_mim": (
+        "Delega a sessao, sem parametro: so devolve conteudos dos topicos de "
+        "`app_topicos_ocultos_para_mim()`, que filtra por `classe_aluno.aluno_id = auth.uid()` "
+        "(e tira as turmas em que a sessao e o professor). Nao ha id de entrada para trocar: "
+        "a resposta e sempre a da propria sessao (20261110_10)."
+    ),
+    "app_atividades_ocultas_para_mim": (
+        "Mesma delegacao de `app_conteudos_ocultos_para_mim`, para atividades (20261110_10)."
+    ),
     "aluno_ver_professor_da_turma": (
         "Delega a sessao: so devolve linha se a turma estiver em `app_minhas_classes()`, resolvida "
         "pelo `auth.uid()`, e o resto do corpo parte dessa turma. Fora dela, NULL; medido em "

@@ -48,7 +48,9 @@ import { useTopicGraph } from "./useTopicGraph";
 import { useTopicDataLoaders } from "./useTopicDataLoaders";
 import { useTopicCrud } from "./useTopicCrud";
 import { PARAMETRO_DA_TURMA, turmaInicialDaTrilha } from "./turmaDaUrl";
-import { updateContentOrder } from "./topicsApi";
+import { definirPublicacao, updateContentOrder } from "./topicsApi";
+import { ConfirmarPublicarTodos, VisibilidadeDoTopico } from "./VisibilidadeDoTopico";
+import { ocultosDoAluno, type AlteracaoDaPublicacao } from "./publicacaoDoTopico";
 import {
   enqueueManualRetryJob,
   isPersonalizacaoJobActive,
@@ -291,6 +293,22 @@ export default function TopicsManager() {
   const [iaAberta, setIaAberta] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
   const [excluindoTopico, setExcluindoTopico] = useState(false);
+  const [topicoDaVisibilidade, setTopicoDaVisibilidade] = useState<Topico | null>(null);
+  const [publicarTodosAberto, setPublicarTodosAberto] = useState(false);
+  const [publicandoTodos, setPublicandoTodos] = useState(false);
+
+  const salvarVisibilidade = async (alteracao: AlteracaoDaPublicacao) => {
+    if (!topicoDaVisibilidade) return;
+    await definirPublicacao([topicoDaVisibilidade.id], alteracao);
+    toast.success(
+      alteracao.publicacao === "publicado"
+        ? "Tópico publicado para a turma."
+        : alteracao.publicacao === "agendado"
+          ? "Tópico agendado."
+          : "Tópico voltou para rascunho: o aluno não vê mais o material.",
+    );
+    await loadData();
+  };
 
   const handleDuplicarTopico = async () => {
     if (!topicoParaDuplicar) return;
@@ -302,7 +320,7 @@ export default function TopicsManager() {
       toast.error("Não foi possível duplicar o tópico.");
       return;
     }
-    toast.success("Tópico duplicado.");
+    toast.success("Tópico duplicado. A cópia nasce como rascunho: publique quando quiser.");
     setTopicoParaDuplicar(null);
     await loadData();
     refreshJobsSoon();
@@ -419,6 +437,25 @@ export default function TopicsManager() {
     if (!selectedClassFilter) return [];
     return topicos.filter((t) => t.classe_id.toString() === selectedClassFilter);
   }, [selectedClassFilter, topicos]);
+
+  const ocultosDaTurma = useMemo(() => ocultosDoAluno(topicsForSelected), [topicsForSelected]);
+
+  const handlePublicarTodos = async () => {
+    setPublicandoTodos(true);
+    try {
+      await definirPublicacao(
+        ocultosDaTurma.map((t) => t.id),
+        { publicacao: "publicado", publicar_em: null },
+      );
+      toast.success("Tópicos publicados para a turma.");
+      setPublicarTodosAberto(false);
+      await loadData();
+    } catch {
+      toast.error("Não foi possível publicar os tópicos.");
+    } finally {
+      setPublicandoTodos(false);
+    }
+  };
 
   const edges = useMemo(() => {
     const list: { from: number; to: number; type: "next" | "depende" }[] = [];
@@ -1097,6 +1134,11 @@ export default function TopicsManager() {
               ?
             </span>
             {statusGeracoes}
+            {ocultosDaTurma.length > 0 && (
+              <Button size="sm" variant="outline" className="rounded-full font-semibold" onClick={() => setPublicarTodosAberto(true)}>
+                Publicar {ocultosDaTurma.length} {ocultosDaTurma.length === 1 ? "tópico oculto" : "tópicos ocultos"}
+              </Button>
+            )}
             <div className="ml-auto flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-2">
                 <span aria-hidden="true" className="h-0 w-6 border-t-2 border-primary" />
@@ -1252,6 +1294,8 @@ export default function TopicsManager() {
                       dependeDe={depNames}
                       proximos={nextNames}
                       onEditar={() => navigate(`/console/trilha/${topic.id}/editar`)}
+                      publicacao={topic}
+                      onVisibilidade={() => setTopicoDaVisibilidade(topic)}
                       onDuplicar={() => setTopicoParaDuplicar(topic)}
                       onExcluir={() => setTopicoParaExcluir(topic)}
                     />
@@ -1286,6 +1330,19 @@ export default function TopicsManager() {
         />
       )}
       <ConfirmarLigacao mensagem={conflitoPendente?.mensagem ?? null} onConfirmar={confirmarConflito} onCancelar={cancelarConflito} />
+      <VisibilidadeDoTopico
+        topico={topicoDaVisibilidade}
+        aberto={topicoDaVisibilidade !== null}
+        onSalvar={salvarVisibilidade}
+        onFechar={() => setTopicoDaVisibilidade(null)}
+      />
+      <ConfirmarPublicarTodos
+        quantos={ocultosDaTurma.length}
+        aberto={publicarTodosAberto}
+        publicando={publicandoTodos}
+        onConfirmar={() => void handlePublicarTodos()}
+        onCancelar={() => setPublicarTodosAberto(false)}
+      />
       <ConfirmarDuplicarTopico
         nome={topicoParaDuplicar?.nome ?? ""}
         aberto={topicoParaDuplicar !== null}

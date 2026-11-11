@@ -27,9 +27,11 @@ import { ALTURA_FOLHA_RECOLHIDA, FolhaTopicoTrilha } from "./FolhaTopicoTrilha";
 import { BASE_DOS_FLUTUANTES } from "./flutuantesDaTrilha";
 import { ListaCelular } from "./ListaCelular";
 import { TrilhaLinearList } from "./ListaSimplesView";
+import { AvisoEmBreve } from "./AvisoEmBreve";
 import { MapaMosaicoCelular } from "./MapaMosaicoCelular";
 import { TrilhaMapaHeroStable } from "./MapaViewStable";
 import { GuideTargetRefs, ModuleHeaderGuideButton } from "./ModuleHeaderTitle";
+import { useTopicosEmBreve } from "@/hooks/useTopicosEmBreve";
 
 export const TrilhaBase: React.FC<{
   chatGuideTargetRef?: React.RefObject<View | null>;
@@ -45,6 +47,7 @@ export const TrilhaBase: React.FC<{
     perfil,
     grafo,
   } = useTrilha();
+  const emBreve = useTopicosEmBreve();
   const { pushMentorCue, resolveFeature } = useIA();
   // Toque no nó: o primeiro seleciona e mostra o botão na folha; o segundo, no mesmo nó, abre.
   const [selecionado, setSelecionado] = useState<string | null>(null);
@@ -201,6 +204,7 @@ export const TrilhaBase: React.FC<{
           </View>
         }
       />
+      <AvisoEmBreve lista={emBreve} palette={palette} />
       <View
         ref={visual === "arvore" ? journeyGuideTargetRef : undefined}
         collapsable={false}

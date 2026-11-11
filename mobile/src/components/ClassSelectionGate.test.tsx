@@ -45,6 +45,8 @@ mockModule("@/constants/designAssets", { getProfileArtwork: () => null });
 // A versão de tela larga (#346) fica fora deste teste: o portão aqui é o do celular.
 mockModule("@/hooks/useDesktopWeb", { useDesktopWeb: () => false });
 mockModule("@/components/web/EscolhaTurmaDesktop", { EscolhaTurmaDesktop: () => null });
+// O esqueleto anima (Animated); aqui basta saber que ele aparece no lugar da lista.
+mockModule("@/components/carregamento/EsqueletoDasTurmas", { EsqueletoDasTurmas: () => <span>esqueleto das turmas</span> });
 mockModule("@/database/supabase", { supabase: { auth: { signOut: async ({ scope }: { scope: string }) => { logoutScope = scope; return { error: null }; } } } });
 mockModule("expo-router", {
   usePathname: () => pathname,
@@ -109,7 +111,7 @@ test("matrícula única também aguarda confirmação do aluno", () => {
 test("carregamento não mostra vazio nem permite entrar prematuramente", () => {
   loading = true;
   const html = render();
-  assert.match(html, /Buscando suas turmas/);
+  assert.match(html, /esqueleto das turmas/);
   assert.doesNotMatch(html, /ainda não está/);
   assert.equal(buttons.filter((button) => button.label.startsWith("Entrar em")).length, 0);
   assert.equal(childMounts, 0);

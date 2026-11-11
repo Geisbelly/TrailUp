@@ -26,6 +26,8 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { calcularProgressoTrilha } from "@/utils/progressoTrilha";
 import { registrarAlvoTour } from "@/utils/tourTargets";
 import { FONTE_TITULO_TRILHA, useFonteCinzel } from "@/components/web/fonteCinzel";
+import { AvisoEmBreve } from "@/components/trilhas/AvisoEmBreve";
+import { useTopicosEmBreve } from "@/hooks/useTopicosEmBreve";
 
 /**
  * Trilha na web em tela larga (#346, protótipo v4, `03-trilha.html`): o cartão
@@ -38,6 +40,7 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
     useTrilha();
   const { usuario } = useUsuario();
   useFonteCinzel();
+  const emBreve = useTopicosEmBreve();
   const atualId = useTrailResumeTopic();
   const isFocused = useIsFocused();
   const palette = getProfileShellPalette(perfil);
@@ -141,6 +144,7 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
           <Text style={[s.vazioTexto, s.vazioNota, { color: palette.textSubtle }]}>
             Quando a trilha da turma for publicada, ela aparece aqui.
           </Text>
+          <AvisoEmBreve lista={emBreve} palette={palette} style={s.emBreveNoVazio} />
         </View>
       </View>
     );
@@ -215,6 +219,8 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
           />
         </View>
 
+        <AvisoEmBreve lista={emBreve} palette={palette} style={s.emBreve} />
+
         <View
           ref={visual === "arvore" ? jornadaRef : undefined}
           collapsable={false}
@@ -278,6 +284,8 @@ const s = StyleSheet.create({
   tela: { flex: 1, flexDirection: "row" },
   cenario: { width: "100%", height: "100%" },
   esquerda: { flex: 1, minWidth: 0, paddingLeft: 32, paddingTop: 28, paddingBottom: 28, gap: 20 },
+  emBreve: { marginHorizontal: 0, marginTop: 0, alignSelf: "flex-start", maxWidth: 560 },
+  emBreveNoVazio: { marginHorizontal: 0, marginTop: 12, alignSelf: "stretch" },
   hud: { height: 88, borderRadius: 20, borderWidth: 1, paddingLeft: 18, paddingRight: 20, flexDirection: "row", alignItems: "center", gap: 18 },
   hudTitulo: { flex: 1, minWidth: 0, gap: 2 },
   eyebrow: { fontFamily: FontFamily.interMedium, fontSize: 10.5, fontWeight: "700", letterSpacing: 1.1 },
