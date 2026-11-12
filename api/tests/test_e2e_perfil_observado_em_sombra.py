@@ -31,7 +31,7 @@ def _sql(fn: str = "upgrade") -> str:
 
 
 def test_encadeamento() -> None:
-    assert f5.modulo(MIGRATION).down_revision == "20261111_03"
+    assert f5.modulo(MIGRATION).down_revision == "20261111_04"
 
 
 def test_nunca_escreve_no_vetor_do_questionario() -> None:
