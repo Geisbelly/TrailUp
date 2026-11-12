@@ -217,3 +217,4 @@ src/services/conferenciaNoServidor.core.test.ts
 src/components/resposta/editores.tela.test.tsx
 src/utils/personalizacaoAprovada.test.ts
 src/utils/topicosEmBreve.test.ts
+src/utils/chavesDoCacheDaRota.test.ts
