@@ -9,6 +9,13 @@ A decisão de 04/11/2026 é que **a monografia precisa do RAG funcionando**: o t
 
 Inventário do resto do sistema: [`docs/tcc/inventario-completo-2026-11-04.md`](../tcc/inventario-completo-2026-11-04.md).
 
+**Atualização de 10 a 12/11/2026.** Os passos 1 a 6 do plano (seção 6) foram feitos:
+- em 10/11 o corpus v1 foi indexado (#1077): as 12 regras derivadas, todas `completed` em `rag_openai_files`;
+- a avaliação no golden set (30 perguntas, k = 3) deu recall@3 0,87, acerto@3 0,97 e MRR 0,89, uma medida pequena, de 12 arquivos;
+- a busca direta da sugestão de material foi corrigida para trazer toda regra pedida (#1078).
+
+As tabelas abaixo continuam sendo o retrato de 04/11. Até 12/11 não há busca registrada em produção depois da indexação: as 5 de `ia_decision_logs` são de 06 e 07/11. O que falta é o uso em aula e o teste com e sem RAG (#949), que espera a turma real.
+
 ---
 
 ## 1. Resumo: o que impede o RAG de funcionar

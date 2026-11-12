@@ -61,7 +61,9 @@ stateDiagram-v2
   pronto --> pronto: regeração in place (sobe materiais.*.revisao)
 ```
 
-Produção: 4 `pronto`, 13 `failed`.
+Produção: 4 `pronto`, 13 `failed`. Em 12/11: 4 `pronto`, 14 `failed`.
+
+**Aprovação, ortogonal ao status** (`conteudo_personalizado.aprovacao`, `20261110_09`, 10/11): todo registro nasce `pendente` e volta a `pendente` quando o material muda (`materiais`, `plano` ou `source_hash`, ou a entrada em `processando_midias`), subindo `conteudo_versao`. Só o professor dono decide, `pendente` → `aprovado` ou `recusado`, pela RPC `personalizacao_decidir`, que recusa a decisão se a versão mudou desde que ele viu. Material em `processando_midias` não pode ser aprovado. O aluno só lê o `aprovado`. Em 12/11, os 18 registros estavam `aprovado`, todos pela migração, que deu esse estado ao legado.
 
 O gatilho `trg_conteudo_personalizado_novo_material` avisa o aluno quando o tópico termina para o perfil dele, inclusive se o último conteúdo falhou.
 
@@ -194,7 +196,7 @@ stateDiagram-v2
   completed --> [*]: DELETE da linha → retencao_fila_externa apaga na OpenAI
 ```
 
-Produção: nenhuma linha. O corpus ainda não foi indexado.
+Produção em 04/11: nenhuma linha. Em 10/11 o corpus v1 foi indexado: 12 linhas, todas `completed` (#1077).
 
 ## 6.10 Diagnóstico do tópico (`diagnostico_topico`)
 

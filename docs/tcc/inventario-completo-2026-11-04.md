@@ -62,7 +62,7 @@ Base: `main` do Lab em `58331902` e banco `xrebtkmdewolzmpsdwgh`, ambos em 04/11
     - guarda só contagens, nunca o texto.
 13. **Integração LTI 1.3:** só levantamento (`docs/architecture/lti-1.3.md`, #146), **nada implementado**.
 
-## Depois da varredura (até 08/11/2026)
+## Depois da varredura (até 12/11/2026)
 
 As tabelas abaixo continuam sendo o retrato de 04/11. Esta seção registra só as peças que mudaram o que o inventário descreve, sem reextrair tudo.
 
@@ -79,6 +79,37 @@ As tabelas abaixo continuam sendo o retrato de 04/11. Esta seção registra só 
   - no app, `mobile/src/services/questaoNoBanco.ts` (com `questaoNoBanco.core.ts`) responde pelas RPCs, e `QuestionActivity` não lê mais o gabarito da questão da turma;
   - a coluna ainda fica aberta para o app instalado, e fechá-la é a fase 3 (`docs/analises/2026-11-08-gabarito-fora-do-app-do-aluno.md`).
 - **Push (#1066, #1067):** a migration `20261108_02` lê os recibos da Expo e desativa o token do Expo Go. `mobile/app.config.js` liga `android.googleServicesFile` ao Firebase no build.
+
+### De 09 a 12/11/2026
+
+- **Banco em 12/11** (revisão `20261111_05`): 192 tabelas, 27 views, 734 funções, 152 gatilhos, 311 políticas e 23 rotinas `pg_cron`. Edge Functions publicadas: 7.
+- **Texto rico (spec A, #1072, #1074, #1075):**
+  - `20261108_03` cria `formato_texto` (`texto` | `rico`) em `questoes`, `atividades` e `cards`, e `fn_questao_posicao_rica` confere a múltipla rica pela posição;
+  - no app, `mobile/src/components/textoRico/` (`TextoRico`, `Formula`, `BlocoDeCodigo`), com MathJax 4 em SVG;
+  - no console, `frontend/src/components/textoRico/` (`CampoTextoRico`, com prévia).
+- **Respostas em código, numérica e expressão (spec B, #1083 a #1096):**
+  - `20261110_02` cria os tipos, `questoes.config_resposta`, `questao_gabarito.criterios`, `questao_conferencia_contexto` e `questao_registrar_correcao_servidor` (as duas só `service_role`), e `fn_questao_corrigida_por_ia`;
+  - Edge Function nova `questao-conferir-resposta` (mathjs 15.2.0);
+  - `validate-essay-answer-ai` ganhou o prompt de código (`promptDeCodigo.ts`);
+  - o console lê o gabarito de `questao_gabarito` (#1081).
+- **Notas e cronômetro:** `20261110_03` deixa na fila de correção só o que o professor corrige (#1087); `20261110_05` tira o tempo das questões e pausa ao sair da atividade (#1089).
+- **Arena (#1091):** `20261110_06` corrige o desafio pelo banco e só sorteia questão que o banco corrige na hora. A evidência é o duelo inteiro rodando sobre as 50 funções da arena copiadas de produção (`api/tests/fixtures/arena_prod_20261110.sql`).
+- **Saúde dos clientes (#1092):** `20261110_07` grava a falha que o app já trata, com a mensagem do Supabase, em `cliente_erro`.
+- **Trilha da IA (#1093, #1095, #1097, #1098, #1113):**
+  - a `generate-content-ai` faz um pedido por tópico, pula para o modelo reserva no 503 e lê os anexos (`anexosDaTrilha.ts`);
+  - `20261110_08` cria `trilha_rascunho`, uma linha por turma;
+  - no console, `arquivosParaIa.ts`, `figurasDaTrilha.ts` e `pdfNoNavegador.ts`.
+- **Aprovação do material personalizado (#1100, #1101):** `20261110_09` acrescenta `aprovacao`, `aprovacao_por`, `aprovacao_em`, `aprovacao_motivo` e `conteudo_versao` a `conteudo_personalizado`, com o gatilho `trg_conteudo_personalizado_aprovacao`, a RPC `personalizacao_decidir` e as policies RESTRICTIVE `conteudo_personalizado_aprovado_sel` e `cards_personalizados_aprovado_sel`.
+- **Visibilidade do tópico (#1102, #1104):** `20261110_10` cria `topicos.publicacao` (`rascunho` | `publicado` | `agendado`) e `publicar_em`; `20261110_11` põe os portões nas funções `SECURITY DEFINER` que leem material.
+- **Diversidade de perfis (#1105 a #1118):**
+  - API: `app/services/perfil_vetor.py` (#1106) e o cronômetro e o boss ponderados (#1109);
+  - `20261111_01`: `app_vetor_perfil`, `app_perfis_representativos` e `app_perfil_dominante`;
+  - `20261111_02`: mistura de material, com a chave `mistura_material`, o progresso por perfis representativos e `personalizacao_exposicao`;
+  - `20261111_03`: `classe_diversidade_perfis` (console, `frontend/src/components/console/dashboard/diversidade.ts`);
+  - `20261111_04`: `notificacoes_peso_perfil` com `perfil_peso_modo`;
+  - `20261111_05`: `aluno_perfil_observado` e `fn_perfil_observado_recalcular`, com a rotina `trailup_perfil_observado` às 06:20 UTC;
+  - app: `mobile/src/utils/rotaDeMaterial.ts`, `bossFalasPorVetor.ts` e `chavesDoCacheDaRota.ts`.
+- **Microservice (#1108):** a assinatura do perfil abre com uma cena curta do próprio exemplo, no lugar da ambientação mística, e há uma barreira de fidelidade ao conteúdo.
 
 ---
 

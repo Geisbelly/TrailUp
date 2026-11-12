@@ -94,7 +94,7 @@ flowchart TD
   V -->|falha| F[StructuredOutputError → fallback do chamador]
 ```
 
-- **Quem pode usar o RAG** (`use_rag`): chat do Guardião, `agente_intervencao` e `agente_notificacao`. O corpus v1, com as 12 regras derivadas, está na PR #948 e ainda não foi indexado.
+- **Quem pode usar o RAG** (`use_rag`): chat do Guardião, `agente_intervencao` e `agente_notificacao`. O corpus v1, com as 12 regras derivadas (PR #948), foi indexado em 10/11 (#1077), e a busca foi medida no golden set: recall@3 0,87, acerto@3 0,97, MRR 0,89. Até 12/11 não há busca registrada em produção depois da indexação.
 - **Guardrails:** o chat passa por `checar_vazamento_de_gabarito` e depois por `checar_grounding_chat` (#1059, 07/11). O modelo do chat vê os enunciados, as alternativas sem marcar a certa e a frente dos cards; o gabarito e o verso (`gabarito_protegido`) só vão às guardas. A primeira, determinística, barra a resposta inteira ou um trecho de 8 palavras dela; o juiz recebe o gabarito e reprova a resposta que o entrega. Quando uma guarda reprova, o chamador usa `fallback_factory` e a violação é auditada.
 
 ## 4.4 Onde o modelo é chamado

@@ -17,7 +17,7 @@ A saída é o `docs/` do branch do Pages no espelho (`Geisbelly/TrailUp`):
 `index.html` na raiz, as páginas em `documentacao/` e o tema em `assets/`.
 Os relatórios semanais (`sprint/`) já estão lá e não são tocados.
 
-Os números do banco (tabelas, rotinas) são os remedidos em 08/11/2026; o histórico (commits, PRs por semana) sai do git na hora.
+Os números do banco (tabelas, rotinas) são os remedidos em 12/11/2026; o histórico (commits, PRs por semana) sai do git na hora.
 """
 
 from __future__ import annotations
@@ -121,7 +121,7 @@ PAGINAS: list[Pagina] = [
            "Onde a orientação a objetos é decisão de projeto: o pipeline, os serviços de IA e o app.",
            ["docs/tcc/modelagem/07-classes.md"]),
     Pagina("rag", "RAG no sistema", "Evidência e RAG",
-           "Onde a busca na Evidence Base entra, o que falta para ligá-la e como será avaliada.",
+           "Onde a busca na Evidence Base entra, como foi ligada em 10/11 e como será avaliada.",
            ["docs/rag/mapa-do-rag-no-sistema.md"]),
     Pagina("rag-teste", "Teste com e sem RAG", "Evidência e RAG",
            "Plano de teste em massa para medir o efeito da busca, com critério de decisão fixado antes.",
@@ -139,10 +139,10 @@ PAGINAS: list[Pagina] = [
            ["docs/tcc/artigos/2026-jic-da-tipologia-a-trilha.md"]),
 ]
 
-# Linhas medidas na varredura de 04/11/2026 (docs/tcc/sistema-para-a-monografia-2026-11-04.md); o banco foi remedido em 08/11.
+# Linhas medidas na varredura de 04/11/2026 (docs/tcc/sistema-para-a-monografia-2026-11-04.md); o banco foi remedido em 12/11.
 # Contagem no schema public: tabelas (relkind r/p), funções (pg_proc, todas), gatilhos (sem os internos),
 # pg_policies e cron.job. Só leitura, numa transação READ ONLY.
-BANCO = {"tabelas": 189, "funcoes": 705, "gatilhos": 149, "policies": 292, "cron": 21}  # remedido em 08/11/2026, revisão 20261108_02
+BANCO = {"tabelas": 192, "funcoes": 734, "gatilhos": 152, "policies": 311, "cron": 23}  # remedido em 12/11/2026, revisão 20261111_05
 LINHAS_POR_SERVICO = [  # sem testes, medido em 04/11/2026
     ("App do aluno", 93567), ("Console web", 59024), ("API", 46413),
     ("BrainHexPDF", 26845), ("Microservice", 12506),
@@ -177,6 +177,9 @@ MARCOS = [  # docs/segundo-cerebro/02-Timeline/timeline.md e histórico de PRs d
     ("06/11/2026", "Áudio, tempo de estudo e cota", "Áudio só na voz do Guardião e um de cada vez; tempo de estudo soma os lotes, e tela desligada não conta; a geração troca de chave e de modelo quando a cota do Gemini acaba."),
     ("07/11/2026", "Guia que não entrega a resposta", "O guia usa as questões e os cards para dar dicas sem revelar o gabarito, e o Guardian barra o vazamento; a correção da dissertativa também não mostra a resposta esperada; PR1 e PR2 separados por plataforma de uso."),
     ("08/11/2026", "Gabarito fora do app", "A questão da turma é corrigida no banco, e o app novo não lê mais o gabarito; o push lê os recibos da Expo, e a configuração do build Android liga o Firebase, que entra no próximo build."),
+    ("10/11/2026", "Fórmula, código e respostas novas", "O professor escreve fórmula, química e código, e o aluno responde com código, número e expressão. Numérica e expressão são conferidas sem IA; o código, pela IA, sem devolver a resposta esperada. O RAG ganha o corpus: 12 regras indexadas e a busca medida."),
+    ("10/11/2026", "O professor decide o que o aluno vê", "O material personalizado espera a aprovação do professor, e o tópico novo nasce em rascunho, com publicação na hora ou agendada. A trilha da IA é gerada tópico a tópico, salva como rascunho e lê os arquivos do professor."),
+    ("11/11/2026", "Diversidade de perfis", "Uma regra só para o vetor BrainHex no app, na API e no banco; cronômetro, boss e notificações pesados pelo vetor; mistura de material por conteúdo, pronta e desligada; diversidade da turma no console; vetor observado pelo uso, em sombra."),
 ]
 
 
@@ -570,7 +573,7 @@ def inicio_html(saida: Path, ref_curta: str, hoje: str, n_commits: int, n_migrat
         '<a class="btn" href="documentacao/historico.html">Histórico</a></div></section>'
         f'<section class="bloco" id="acessar"><h2>Acessar o TrailUp</h2><div class="cards">{acessos}</div></section>'
         f'<section class="bloco"><h2>Em números</h2><div class="ficha">{ficha}</div>'
-        f'<p class="fine">Banco medido em produção em 08/11/2026; commits e migrations contados na geração ({hoje}).</p></section>'
+        f'<p class="fine">Banco medido em produção em 12/11/2026; commits e migrations contados na geração ({hoje}).</p></section>'
         '<section class="bloco"><h2>Os sete Guardiões</h2><p class="lede">Cada perfil BrainHex tem um guia, com voz, tom, ritmo e cor '
         'próprios. <a href="documentacao/guardioes.html">Ver a ficha de cada um →</a></p>'
         f'<div class="perfis">{perfis}</div></section>'
