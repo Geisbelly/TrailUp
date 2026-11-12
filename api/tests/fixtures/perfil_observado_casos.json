@@ -1,0 +1,67 @@
+{
+  "_sobre": "Casos do vetor observado em sombra (20261111_05). Rodam no SQL (api/tests/test_e2e_perfil_observado_em_sombra.py) e no TypeScript (frontend/src/features/signup/perfilObservadoParidade.test.ts). acertos null = tentativa nao respondida. Tempos em minutos.",
+  "casos": [
+    {
+      "nome": "errou duas, insistiu numa",
+      "tentativas": [
+        {"atividade": 1, "numero": 1, "acertos": 50},
+        {"atividade": 1, "numero": 2, "acertos": 100},
+        {"atividade": 2, "numero": 1, "acertos": 40},
+        {"atividade": 3, "numero": 1, "acertos": 100}
+      ],
+      "conteudo_min": [30, 10],
+      "atividade_min": [20],
+      "esperado": {
+        "survivor": {"valor": 0, "n": 2},
+        "mastermind": {"valor": 0.3333333333333333, "n": 60}
+      }
+    },
+    {
+      "nome": "nunca errou e so fez atividade",
+      "tentativas": [
+        {"atividade": 1, "numero": 1, "acertos": 100}
+      ],
+      "conteudo_min": [],
+      "atividade_min": [5],
+      "esperado": {
+        "survivor": null,
+        "mastermind": {"valor": -1, "n": 5}
+      }
+    },
+    {
+      "nome": "voltou depois do erro sem responder ainda",
+      "tentativas": [
+        {"atividade": 1, "numero": 1, "acertos": 30},
+        {"atividade": 1, "numero": 2, "acertos": null}
+      ],
+      "conteudo_min": [0.4],
+      "atividade_min": [],
+      "esperado": {
+        "survivor": {"valor": 1, "n": 1},
+        "mastermind": {"valor": 1, "n": 1}
+      }
+    },
+    {
+      "nome": "sem dado nenhum",
+      "tentativas": [],
+      "conteudo_min": [0],
+      "atividade_min": [],
+      "esperado": {
+        "survivor": null,
+        "mastermind": null
+      }
+    },
+    {
+      "nome": "tentativa sem resposta nao conta como erro",
+      "tentativas": [
+        {"atividade": 1, "numero": 1, "acertos": null}
+      ],
+      "conteudo_min": [2.5],
+      "atividade_min": [2.5],
+      "esperado": {
+        "survivor": null,
+        "mastermind": {"valor": 0, "n": 5}
+      }
+    }
+  ]
+}
