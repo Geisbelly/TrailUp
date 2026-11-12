@@ -70,6 +70,7 @@ import { mesclarSugestoes, type SugestaoMaterial } from '@/utils/materialSuggest
 import { perfilVisualDoAluno } from '@/utils/brainHex';
 import { lerConfigDaMistura, lerConteudosIniciados, registrarExposicao, type ExposicaoLinha } from '@/services/personalizacao/misturaMaterial';
 import { assinaturaDosPerfis, chaveDoPerfilDaRota, pesosDaRota, type ChaveDaMistura } from '@/utils/rotaDeMaterial';
+import { chavesDaRotaParaApagar } from '@/utils/chavesDoCacheDaRota';
 import { perfilDoRegistroCarimbado, podePedirMidiaDoRegistro, resolverRegistrosDoTopico } from '@/utils/rotaDoTopicoResolver';
 import { houveVisita, payloadDeVisitaDoTopico } from '@/utils/visitaDoTopico';
 import { buildSupabasePublicStorageUrl, looksLikeStorageObjectPath } from '@/utils/supabaseStorage';
@@ -117,12 +118,16 @@ function registrosParaIniciados(itens: Record<string, any>[]) {
     .filter((item) => Number.isInteger(item.id) && item.id > 0)
 }
 
+function buildPersonalizacaoCacheBase(alunoId: string, classeId: number) {
+  return `@trailup/personalizacao-v4/${alunoId}/${classeId}/`
+}
+
 function buildPersonalizacaoCacheKey(
   alunoId: string,
   classeId: number,
   profile: string,
 ) {
-  return `@trailup/personalizacao-v4/${alunoId}/${classeId}/${profile}`
+  return `${buildPersonalizacaoCacheBase(alunoId, classeId)}${profile}`
 }
 
 // Ordem aconselhada de material por tópico. É do aluno na turma, não do perfil
@@ -132,12 +137,35 @@ function buildSugestoesMaterialCacheKey(alunoId: string, classeId: number) {
   return `@trailup/sugestao-material-v1/${alunoId}/${classeId}`
 }
 
+function buildProgressoItensCacheBase(alunoId: string, classeId: number) {
+  return `@trailup/progresso-itens-v1/${alunoId}/${classeId}/`
+}
+
 function buildProgressoItensCacheKey(
   alunoId: string,
   classeId: number,
   profile: string,
 ) {
-  return `@trailup/progresso-itens-v1/${alunoId}/${classeId}/${profile}`
+  return `${buildProgressoItensCacheBase(alunoId, classeId)}${profile}`
+}
+
+// Chaves já conferidas nesta sessão: a limpeza lê todas as chaves do aparelho, e o cache é gravado
+// a cada tópico hidratado. Uma vez por chave atual basta.
+const rotasJaLimpas = new Set<string>()
+
+/**
+ * Apaga as chaves de rotas anteriores da mesma turma (`chavesDaRotaParaApagar`). Sem esperar e sem
+ * falhar: é arrumação, e o cache atual já foi gravado.
+ */
+async function limparRotasVelhasDoCache(base: string, atual: string) {
+  if (rotasJaLimpas.has(atual)) return
+  rotasJaLimpas.add(atual)
+  try {
+    const velhas = chavesDaRotaParaApagar(await AsyncStorage.getAllKeys(), base, atual)
+    if (velhas.length > 0) await AsyncStorage.multiRemove(velhas)
+  } catch (err) {
+    console.warn('[TrilhaContext] Erro ao limpar cache de rotas anteriores:', err)
+  }
 }
 
 const PREFETCHABLE_TYPES = new Set([
@@ -887,10 +915,9 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     payloads: Record<number, PersonalizedTopicPayload>
   ) => {
     try {
-      await AsyncStorage.setItem(
-        buildPersonalizacaoCacheKey(alunoId, classeId, profile),
-        JSON.stringify(payloads)
-      )
+      const chave = buildPersonalizacaoCacheKey(alunoId, classeId, profile)
+      await AsyncStorage.setItem(chave, JSON.stringify(payloads))
+      void limparRotasVelhasDoCache(buildPersonalizacaoCacheBase(alunoId, classeId), chave)
     } catch (err) {
       console.warn('[TrilhaContext] Erro ao salvar cache de personalizacao:', err)
     }
@@ -903,10 +930,9 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     linhas: LinhaProgressoItem[]
   ) => {
     try {
-      await AsyncStorage.setItem(
-        buildProgressoItensCacheKey(alunoId, classeId, profile),
-        JSON.stringify(linhas)
-      )
+      const chave = buildProgressoItensCacheKey(alunoId, classeId, profile)
+      await AsyncStorage.setItem(chave, JSON.stringify(linhas))
+      void limparRotasVelhasDoCache(buildProgressoItensCacheBase(alunoId, classeId), chave)
     } catch (err) {
       console.warn('[TrilhaContext] Erro ao salvar cache de progresso personalizado:', err)
     }
