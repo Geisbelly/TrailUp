@@ -20,8 +20,10 @@ def _banco():
 
 
 def _motivo(c, *args) -> str | None:
+    # A taxa precisa do cast: 0.5 sai do psycopg como float8, e float8 -> numeric não é conversão
+    # implícita, então o Postgres não acha a função (com inteiro, que vira smallint, ele acha).
     return c.execute(
-        "SELECT public.trailup_motivo_risco_evasao(%s, %s, %s, %s, %s, %s, %s, %s, %s)", args
+        "SELECT public.trailup_motivo_risco_evasao(%s, %s, %s, %s, %s, %s, %s, %s::numeric, %s)", args
     ).fetchone()[0]
 
 

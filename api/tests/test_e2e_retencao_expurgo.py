@@ -56,7 +56,10 @@ class _Coletor:
         self.sql: list[str] = []
 
     def execute(self, sql: str) -> None:
-        self.sql.append(sql)
+        # `op.execute` passa a string por `text()`, que desfaz o escape `\:` (usado para o `:`
+        # literal não virar bind). Sem repetir isso aqui, `(?\:public|...)` da 20261024_07 chega
+        # ao Postgres como regex inválida e todo teste que semeia conteúdo quebra no INSERT.
+        self.sql.append(sql.replace("\\:", ":"))
 
 
 def _sql_de(modulo, fn: str) -> list[str]:

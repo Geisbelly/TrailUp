@@ -25,7 +25,8 @@ import {
   type TermosDoAluno,
   type TermosDoProfessor,
 } from "./administracao";
-import { CampoDeBusca, CLASSE_SELECT, Estado, useEscrita, useLeitura, Vazio } from "./comum";
+import { CampoDeBusca, CLASSE_SELECT, Estado, Vazio } from "./comum";
+import { useEscrita, useLeitura } from "./leituraEscrita";
 
 type Publico = "alunos" | "professores";
 type TipoRevogavel = "responsavel" | "pesquisa" | "professor";

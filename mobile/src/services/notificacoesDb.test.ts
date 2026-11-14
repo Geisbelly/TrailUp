@@ -51,7 +51,7 @@ test('does not hide permission errors for an authenticated session', async () =>
 });
 
 test('focus and mute RPCs send the database parameter names', async () => {
-  const sent: Array<[string, unknown]> = [];
+  const sent: [string, unknown][] = [];
   const exports = {};
   runInNewContext(compiled, {
     exports,

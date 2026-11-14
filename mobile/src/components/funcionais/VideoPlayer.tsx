@@ -97,6 +97,12 @@ export default function VideoPlayer({
     } catch {}
   }, [player]);
   usePausarAoSairDaTela(pausarVideo);
+  // O player do momento, para quem não pode depender dele: a carga da posição salva abaixo
+  // rodaria de novo a cada troca de player e zeraria a retomada antes de o seek acontecer.
+  const playerRef = useRef(player);
+  useEffect(() => {
+    playerRef.current = player;
+  }, [player]);
   // A retomada é aplicada UMA vez por player: `currentTime` antes do carregamento é ignorado,
   // então o seek espera o status `readyToPlay`.
   const retomadaAplicadaRef = useRef(false);
@@ -106,6 +112,14 @@ export default function VideoPlayer({
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const resumePositionRef = useRef(0);
   const lastPersistedAtRef = useRef(0);
+  // Última posição que foi para o armazenamento (-1: nenhuma ainda). Com o vídeo parado, o
+  // `timeUpdate` continua chegando com a mesma posição, e sem isto cada um virava uma gravação.
+  const ultimaPosicaoGravadaRef = useRef(-1);
+  // O vídeo tocou até o fim e ninguém deu play nem moveu a barra desde então. O relógio de
+  // `timeUpdate` do `expo-video` não para quando o vídeo para: logo depois do `playToEnd` ele
+  // manda a posição FINAL, e gravá-la desfazia o zero que o fim acabou de gravar — o aluno
+  // reabria o vídeo já terminado, no último quadro.
+  const terminouRef = useRef(false);
   const progressWidthRef = useRef(1);
   const [positionMs, setPositionMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
@@ -122,18 +136,22 @@ export default function VideoPlayer({
   const persistPosition = useCallback((positionMillis: number) => {
     const safePosition = Math.max(0, Math.round(positionMillis));
     resumePositionRef.current = safePosition;
+    ultimaPosicaoGravadaRef.current = safePosition;
     void saveContentResume(resumeStorageKey, { positionMillis: safePosition });
   }, [resumeStorageKey]);
 
   useEffect(() => {
     let active = true;
     resumePositionRef.current = 0;
+    ultimaPosicaoGravadaRef.current = -1;
+    terminouRef.current = false;
     void loadContentResume(resumeStorageKey).then((saved) => {
       if (!active) return;
       const restored = Math.max(0, saved?.positionMillis ?? 0);
       resumePositionRef.current = restored;
       setPositionMs(restored);
-      if (player && retomadaAplicadaRef.current) player.currentTime = segundosDeMillis(restored);
+      const atual = playerRef.current;
+      if (atual && retomadaAplicadaRef.current) atual.currentTime = segundosDeMillis(restored);
     });
     return () => { active = false; };
   }, [resumeStorageKey]);
@@ -182,6 +200,7 @@ export default function VideoPlayer({
 
   const seekBy = async (deltaMs: number) => {
     if (!player) return;
+    terminouRef.current = false;
     try {
       // `seekBy` do `expo-video` recebe SEGUNDOS e já clampa nos limites da mídia — não há mais
       // `getStatusAsync` para consultar antes.
@@ -218,9 +237,14 @@ export default function VideoPlayer({
         const posicao = millisDeSegundos(currentTime);
         setPositionMs(posicao);
         setDurationMs(millisDeSegundos(player.duration));
+        // Depois do fim a barra segue mostrando o último quadro, mas a retomada fica no zero.
+        if (terminouRef.current) return;
         resumePositionRef.current = posicao;
         const now = Date.now();
-        if (!player.playing || now - lastPersistedAtRef.current >= 2000) {
+        const gravar = player.playing
+          ? now - lastPersistedAtRef.current >= 2000
+          : Math.round(posicao) !== ultimaPosicaoGravadaRef.current;
+        if (gravar) {
           lastPersistedAtRef.current = now;
           persistPosition(posicao);
         }
@@ -228,6 +252,7 @@ export default function VideoPlayer({
       player.addListener("playingChange", ({ isPlaying: tocando }) => {
         setIsPlaying(tocando);
         if (tocando) {
+          terminouRef.current = false;
           setAssistido(false);
           assumirReproducao(dono);
         } else {
@@ -235,6 +260,7 @@ export default function VideoPlayer({
         }
       }),
       player.addListener("playToEnd", () => {
+        terminouRef.current = true;
         persistPosition(0);
         setAssistido(true);
       }),
@@ -261,9 +287,10 @@ export default function VideoPlayer({
     setPositionMs(next);
     resumePositionRef.current = next;
     if (!commit || !player) return;
+    terminouRef.current = false;
     player.currentTime = segundosDeMillis(next);
     persistPosition(next);
-  }, [durationMs, persistPosition]);
+  }, [durationMs, persistPosition, player]);
 
   function formatTime(ms: number) {
     const totalSec = Math.floor(ms / 1000);
