@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { filtrarAlunos, lerAcessos, nomeDoAluno, todasAsTurmas, turmasPorAluno, type FiltroDeAluno, type PessoaAluno, type TurmaDoAluno } from "./administracao";
-import { CampoDeBusca, CLASSE_SELECT, Estado, useEscrita, useLeitura, Vazio, type Escrever } from "./comum";
+import { CampoDeBusca, CLASSE_SELECT, Estado, Vazio } from "./comum";
+import { useEscrita, useLeitura, type Escrever } from "./leituraEscrita";
 
 function LinhaDoAluno({ a, turmas, todas, ocupado, escrever }: { a: PessoaAluno; turmas: TurmaDoAluno[]; todas: TurmaDoAluno[]; ocupado: boolean; escrever: Escrever }) {
   const [turma, setTurma] = useState("");

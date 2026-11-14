@@ -1,71 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Loader2, Search } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { createRequestGuard } from "@/lib/requestGuard";
 import { cn } from "@/lib/utils";
 import { buscarAlunos, type AlunoCandidato } from "../turmas/matriculas";
 
 export const CLASSE_SELECT = "h-9 max-w-full rounded-lg border border-border bg-background px-2 text-[12.5px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
-
-async function chamar(funcao: string, argumentos: Record<string, unknown> = {}): Promise<unknown> {
-  const { data, error } = await supabase.rpc(funcao as never, argumentos as never);
-  if (error) throw new Error(error.code === "42501" ? "Sem permissão." : error.message || "Falha ao falar com o banco.");
-  return data;
-}
-
-/** Lê direto do banco, como o painel técnico: a tela não pode cair junto com a API. */
-export function useLeitura<T>(funcao: string, argumentos: Record<string, unknown>, ler: (dado: unknown) => T | null) {
-  const [dados, setDados] = useState<T | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
-  const guarda = useRef(createRequestGuard());
-  const chave = JSON.stringify(argumentos);
-
-  const carregar = useCallback(async () => {
-    const pedido = guarda.current.next();
-    try {
-      const lido = ler(await chamar(funcao, JSON.parse(chave)));
-      if (!pedido.isCurrent()) return;
-      if (!lido) return setErro("Resposta inesperada do banco.");
-      setDados(lido);
-      setErro(null);
-    } catch (e) {
-      if (pedido.isCurrent()) setErro(e instanceof Error ? e.message : "Falha ao ler.");
-    }
-  }, [funcao, chave, ler]);
-
-  useEffect(() => {
-    void carregar();
-  }, [carregar]);
-
-  return { dados, erro, carregar };
-}
-
-/** Roda uma escrita, relê e avisa. A frase de erro é a do banco. Devolve a resposta, ou null se falhou. */
-export function useEscrita(depois: () => Promise<void>) {
-  const [ocupado, setOcupado] = useState(false);
-  const escrever = useCallback(
-    async (funcao: string, argumentos: Record<string, unknown>, sucesso: string | ((resposta: unknown) => string)) => {
-      setOcupado(true);
-      try {
-        const resposta = await chamar(funcao, argumentos);
-        await depois();
-        toast.success(typeof sucesso === "string" ? sucesso : sucesso(resposta));
-        return resposta;
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Falha ao salvar.");
-        return null;
-      } finally {
-        setOcupado(false);
-      }
-    },
-    [depois],
-  );
-  return { ocupado, escrever };
-}
-
-export type Escrever = ReturnType<typeof useEscrita>["escrever"];
 
 export function Estado({ erro }: { erro: string | null }) {
   if (erro) return <p role="alert" className="text-[13px] text-destructive">Não foi possível carregar: {erro}</p>;

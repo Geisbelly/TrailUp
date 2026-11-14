@@ -949,6 +949,16 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
     };
   }, [bucketHint, sourceUrl]);
 
+  // Versionado pela revisao do material: a URL sozinha NAO muda quando o
+  // professor regenera (o caminho embute generation-<source_hash>, que a
+  // regeracao nao toca) e o cache nativo nunca revalida. A revisao vem no
+  // payload -- ver normalizeMediaBlocks em utils/personalization.ts.
+  //
+  // Calculado fora do efeito, e o efeito depende do TEXTO: o payload e um
+  // objeto novo a cada render do pai, e depender dele baixaria o arquivo de
+  // novo a cada render. Assim o efeito so roda de novo quando a revisao muda.
+  const nativeCacheKey = versionedCacheKey(sourceUrl?.trim() || resolvedUrl || "", payload);
+
   useEffect(() => {
     let ativo = true;
 
@@ -963,11 +973,7 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
       };
     }
 
-    // Versionado pela revisao do material: a URL sozinha NAO muda quando o
-    // professor regenera (o caminho embute generation-<source_hash>, que a
-    // regeracao nao toca) e o cache nativo nunca revalida. A revisao vem no
-    // payload -- ver normalizeMediaBlocks em utils/personalization.ts.
-    const cacheKey = versionedCacheKey(sourceUrl?.trim() || resolvedUrl, payload);
+    const cacheKey = nativeCacheKey;
     const extensionHint =
       getFileExtension(sourceUrl) ??
       getFileExtension(resolvedUrl) ??
@@ -1035,7 +1041,7 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
     return () => {
       ativo = false;
     };
-  }, [isNativeLocalReader, resolvedUrl, sourceUrl, tipo]);
+  }, [isNativeLocalReader, nativeCacheKey, resolvedUrl, sourceUrl, tipo]);
 
   // Busca o HTML do deck pra renderizar inline. Por uri o WebView receberia
   // text/plain (e como o Supabase serve .html) e mostraria o codigo-fonte.
