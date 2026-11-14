@@ -73,6 +73,8 @@ CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
   $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 
 CREATE TABLE public.alunos (id uuid PRIMARY KEY, nome text, apelido text);
+-- A `_06` registra `chat_leitura` na política de retenção; sem a tabela o upgrade aborta no INSERT.
+CREATE TABLE public.retencao_politica (tabela text, acao text, PRIMARY KEY (tabela, acao), categoria text, motivo text);
 CREATE TABLE public.social_relacionamentos (aluno_a_id uuid, aluno_b_id uuid, status text);
 CREATE TABLE public.guildas (id uuid PRIMARY KEY, classe_id bigint, nome text);
 CREATE TABLE public.guilda_membros (
