@@ -97,6 +97,12 @@ export default function VideoPlayer({
     } catch {}
   }, [player]);
   usePausarAoSairDaTela(pausarVideo);
+  // O player do momento, para quem não pode depender dele: a carga da posição salva abaixo
+  // rodaria de novo a cada troca de player e zeraria a retomada antes de o seek acontecer.
+  const playerRef = useRef(player);
+  useEffect(() => {
+    playerRef.current = player;
+  }, [player]);
   // A retomada é aplicada UMA vez por player: `currentTime` antes do carregamento é ignorado,
   // então o seek espera o status `readyToPlay`.
   const retomadaAplicadaRef = useRef(false);
@@ -133,7 +139,8 @@ export default function VideoPlayer({
       const restored = Math.max(0, saved?.positionMillis ?? 0);
       resumePositionRef.current = restored;
       setPositionMs(restored);
-      if (player && retomadaAplicadaRef.current) player.currentTime = segundosDeMillis(restored);
+      const atual = playerRef.current;
+      if (atual && retomadaAplicadaRef.current) atual.currentTime = segundosDeMillis(restored);
     });
     return () => { active = false; };
   }, [resumeStorageKey]);
@@ -263,7 +270,7 @@ export default function VideoPlayer({
     if (!commit || !player) return;
     player.currentTime = segundosDeMillis(next);
     persistPosition(next);
-  }, [durationMs, persistPosition]);
+  }, [durationMs, persistPosition, player]);
 
   function formatTime(ms: number) {
     const totalSec = Math.floor(ms / 1000);

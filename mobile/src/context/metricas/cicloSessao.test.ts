@@ -13,7 +13,7 @@ type Retrato = { sessaoId: string; motivo: string; eventos: string[] };
 function montar() {
   const sessao: { current: Sessao | null } = { current: null };
   const iniciados: Retrato[] = [];
-  const pendentes: Array<() => void> = [];
+  const pendentes: (() => void)[] = [];
   const timers = new Map<number, () => void>();
   let proximoTimer = 1;
   let lento = false;

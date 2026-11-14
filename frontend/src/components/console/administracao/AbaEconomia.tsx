@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { quando } from "../tecnico/disponibilidade";
 import { Numero, Secao, Tabela } from "../tecnico/pecasDoPainel";
 import { lerEconomia, resumirMudanca, type Economia } from "./administracao";
-import { CLASSE_SELECT, Estado, useLeitura } from "./comum";
+import { CLASSE_SELECT, Estado } from "./comum";
+import { useLeitura } from "./leituraEscrita";
 
 export default function AbaEconomia() {
   const [operacao, setOperacao] = useState("");

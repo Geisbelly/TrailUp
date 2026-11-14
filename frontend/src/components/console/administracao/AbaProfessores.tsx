@@ -14,7 +14,8 @@ import {
   type SituacaoDoProfessor,
   type TurmaAdmin,
 } from "./administracao";
-import { CampoDeBusca, CLASSE_SELECT, Estado, SeletorDeAluno, useEscrita, useLeitura, Vazio, type Escrever } from "./comum";
+import { CampoDeBusca, CLASSE_SELECT, Estado, SeletorDeAluno, Vazio } from "./comum";
+import { useEscrita, useLeitura, type Escrever } from "./leituraEscrita";
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 

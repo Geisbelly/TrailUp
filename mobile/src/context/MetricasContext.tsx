@@ -1,7 +1,6 @@
 import { useIA } from "@/context/IAContext";
 import { initialStudyContext } from '@/utils/studyContext';
 import {
-  accumulateContextTime,
   marcarLinhaDoTempo,
   registraNoConteudo,
   somarTimeMetrics,
