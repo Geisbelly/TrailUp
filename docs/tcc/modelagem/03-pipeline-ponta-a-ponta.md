@@ -81,6 +81,8 @@ sequenceDiagram
 - **Kinds de job:** `class_delta_sync`, `student_enrollment`, `class_theme_sync`, `full_class_sync`, `student_cleanup`, `manual_retry`, `manual_profile_generate`, `manual_profile_generate_all`. Os manuais furam o circuit breaker.
 - **Sem cota de TTS:** o alvo vai direto para `failed`. Reprocessar retoma só as partes de áudio que faltam.
 - **Fallback:** se o microservice não responder, o `MultiOutputPipeline` em Python gera o material.
+- **Quais perfis (11/11, `20261111_01`, #1107):** a base é gerada para os perfis que algum aluno da turma tem como representativo, pela regra única do vetor (`app_perfis_representativos`). Antes, era o 1º e o 2º de cada aluno, inclusive o 2º com afinidade 0, e nunca o 3º representativo.
+- **Antes de chegar ao aluno (10 e 11/11):** o material gerado nasce `pendente` e só aparece ao aluno depois que o professor aprova no console (`personalizacao_decidir`, #1100). Tópico novo nasce em rascunho e só é visto quando o professor publica (#1102). O aviso de material novo sai na aprovação, não no fim da geração.
 - **Código:**
   - `api/app/services/personalizacao_jobs.py`
   - `api/app/services/media_agents.py`

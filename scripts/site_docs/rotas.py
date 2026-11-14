@@ -86,7 +86,8 @@ BRAINHEXPDF = {
 
 EDGE = {
     "generate-content-ai": ("Console: gera a proposta de trilha e conteúdo.", "Login"),
-    "validate-essay-answer-ai": ("App: confere a resposta dissertativa.", "Login"),
+    "validate-essay-answer-ai": ("App: confere a resposta dissertativa e a de código, sem devolver a resposta esperada.", "Login"),
+    "questao-conferir-resposta": ("App: confere resposta numérica e expressão, com unidade, sem IA.", "Login"),
     "storage-redirect": ("Gateway de arquivos: redireciona para o R2.", "Link assinado ou sessão"),
     "storage-upload-url": ("URL assinada de upload no R2, para os serviços que geram arquivo.", "Chave de serviço"),
     "pesquisa-arquivar": ("Copia para o R2 a telemetria de quem consentiu. Chamada pelo `pg_cron`.", "Segredo do banco"),

@@ -267,6 +267,42 @@ volta ao dominante quando o perfil escolhido está fora dos representativos.
 > e a linha dela em `alunos` guarda `demo@trailup.app`. O #1044 pôs só o e-mail do login, e
 > logada a troca continuou com 2 perfis (#1055). Ao incluir uma conta, confira o e-mail na linha de `alunos`.
 
+**A regra do vetor é uma só, em três lugares com paridade testada** (roteiro de diversidade de
+perfis, 11/11): ordem por afinidade DESC (nulo conta 0) e nome ASC; representativo é afinidade ≥ 20
+**ou** afinidade > 0 entre os 2 primeiros; dominante é o 1º, e aluno sem linha em `aluno_perfil` é
+`mastermind`. No app, `mobile/src/utils/brainHex.ts`; na API, `app/services/perfil_vetor.py` (#1106,
+`pesos_representativos` renormaliza os pesos dos representativos); no banco, `app_vetor_perfil`,
+`app_perfis_representativos` e `app_perfil_dominante` (`20261111_01`, `SECURITY INVOKER`). Não
+escreva a regra de novo num quarto lugar: chame uma dessas. As exceções que ficaram de fora de
+propósito estão no docstring da `_01` (o 2º perfil das coortes usa `> 20`, que é definição do
+estudo #13).
+
+O que o roteiro faz com o vetor, fase a fase:
+- **Fila de base:** gera a base de todo perfil representativo da turma, não só do 1º e do 2º de
+  cada aluno (`_01`). Antes, o 3º representativo, que o aluno pode escolher como ativo, só via o
+  material do professor.
+- **Fase 1, console (#1114):** `classe_diversidade_perfis` (`20261111_03`) mostra quantos perfis
+  pesam na turma e o perfil misto de cada aluno. É leitura, não muda o que o aluno recebe.
+- **Fase 2, mistura de material por conteúdo (#1111, #1112):** a trilha pode montar o tópico
+  conteúdo a conteúdo, cada um vindo inteiro de um perfil representativo, na proporção do vetor.
+  A chave `mistura_material` (`app_config`, pública) **nasce `desligada`**, e com ela desligada (ou
+  em app antigo) nada muda. Ligar é decisão da autora, depois do build novo e da aprovação das
+  bases pelo professor. O progresso conta o manifesto de qualquer perfil representativo
+  (`trailup_progresso_percurso`), e cada exposição fica em `personalizacao_exposicao`. Com a
+  mistura ligada, a chave do cache da trilha no aparelho leva os pesos (`chaveDoPerfilDaRota`,
+  separados por `|`), e as chaves de rotas antigas da mesma turma são apagadas ao gravar (#1118).
+- **Fase 3, camada leve:** cronômetro e tempo do boss saem dos pesos, não do 1º perfil (#1109; antes,
+  51/49 e 49/51 caíam em extremos opostos). Cada boss fala com a voz de um perfil de batalha do
+  aluno, sorteado na proporção do vetor (`bossFalasPorVetor.ts`, #1110). Na ordem das
+  notificações, o peso do perfil sai dos representativos (`notificacoes_peso_perfil`, chave
+  `perfil_peso_modo` em `notificacoes_config`, #1115).
+- **Fase 4:** obsoleta.
+- **Fase 5, vetor observado em sombra (#1116):** `aluno_perfil_observado` guarda o que o uso diz
+  sobre um perfil (v1: Survivor por persistência depois do erro, Mastermind por proporção de
+  teoria), recalculado pelo `pg_cron` às 06:20 UTC. **Ninguém do produto lê**: a tabela não tem
+  policy, só `service_role` enxerga, e ela nunca escreve em `aluno_perfil`. Não combine com o
+  questionário nem mostre ao aluno ou ao professor sem decisão da autora.
+
 Cada perfil carrega:
 - **Cor-assinatura, ícone, guia/mentor, gradiente** — `microservice/src/constants/brainHex.ts` (fonte oficial); espelhos em mobile/frontend.
 - **Assinatura editorial** (tom de voz, ritmo, abertura, progressão narrativa,
@@ -581,6 +617,22 @@ Cada perfil carrega:
   `moldura_aluno`, e moldura com dono não sai: a recusa é `23503`, e o caminho é desligar a chave. **Só
   build novo mostra imagem do banco:** não há OTA, e o app antigo descarta código que não conhece e fica
   com o desenho do pacote nas que já existem.
+- **Trilha gerada pela IA no console** (edge `generate-content-ai`, modo `trail`). Quatro coisas
+  que não são óbvias:
+  - **Uma requisição por tópico** (#1093). Fazer o esqueleto e todos os tópicos num pedido só
+    passava dos 150 s de relógio do worker no plano Free: 504 no gateway e 546 (`WORKER_LIMIT`)
+    sem corpo, e o professor perdia a trilha inteira. Quem encadeia os pedidos é o console.
+  - **Gemini em 503 pula para o modelo reserva** (#1095), em vez de girar as chaves: a sobrecarga
+    é do modelo, não da cota. Os modelos 3.x gastam parte do orçamento de saída raciocinando, e o
+    detalhe do tópico cortava em `MAX_TOKENS` (422 `ai_truncated`, #1097).
+  - **`trilha_rascunho`** (`20261110_08`, #1098): uma linha por turma, gravada pelo console a cada
+    etapa, para um erro no meio não jogar fora a cota já gasta. É banco, não API. O professor dono
+    lê e escreve; o aluno não lê. Os anexos não entram no rascunho, ficam só em memória.
+  - **A IA lê os arquivos do professor** (#1113): PDF inteiro como `inlineData`, PPTX e DOCX pelo
+    texto e pelas imagens, até 10 MB por pedido. A mídia só fica se apontar para um arquivo do
+    professor ou para um link; antes, sem arquivo, o esquema obrigava a IA a inventar "Resumo de…".
+  Tópico gerado nasce em rascunho (visibilidade, abaixo) e o material personalizado espera a
+  aprovação do professor: nada que a IA gerou chega ao aluno sem uma decisão.
 - `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
   sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
   ou por aluno (estes vêm do `agente_intervencao`, quando um alerta de estudo
@@ -710,6 +762,31 @@ Cada perfil carrega:
     3, só depois de `app_versao_minima`. Antes disso, o app 1.0.x marca toda objetiva como errada.
   - **A conta do multiplicador mora em `fn_questao_registrar_resposta`.** Mudou a regra no app,
     mude lá também.
+  - **O console já lê o gabarito de `questao_gabarito`** (#1081), o espelho que o banco mantém
+    por `trg_questoes_espelha_gabarito`. É pré-requisito da fase 3: o corte tira de
+    `authenticated` o SELECT em `questoes.resposta_correta`, e o professor também é
+    `authenticated`. A migration do corte está na #1082, marcada para **não aplicar antes de
+    `app_versao_minima = 1.0.8`** (em 12/11 a chave estava vazia em produção).
+- **Respostas em código, numérica e expressão** (spec B, `20261110_02`, #1083–#1085, #1094,
+  #1096). Os tipos novos nascem **sem passar por `questoes.resposta_correta`**: o console grava a
+  esperada direto em `questao_gabarito` (a única policy é a do professor), o CHECK
+  `questoes_gabarito_fora_dos_tipos_novos` barra o caminho antigo e o espelho pula esses tipos.
+  Por isso eles não esperam a fase 3. `questoes.config_resposta` é só o que o aluno precisa para
+  responder; `questao_gabarito.criterios` (tolerância, domínio, critérios do código) o aluno não lê.
+  - **Numérica e expressão são conferidas sem IA**, na edge `questao-conferir-resposta`, com
+    `mathjs` **15.2.0** fixo na edge e no teste do frontend: versões diferentes podem dar
+    respostas diferentes. `questao_responder` recusa os três tipos (`questao_corrigida_no_servidor`)
+    antes de comparar texto, ou `10,0 m/s` daria errado contra `10 m/s`.
+  - **Código é corrigido pela IA**, na mesma `validate-essay-answer-ai`, com prompt próprio, e a
+    resposta nunca devolve o código de referência. `fn_questao_corrigida_por_ia` (dissertativa ou
+    código) decide onde a esperada pode sair.
+  - O tipo vale de `questoes.tipo` com a grafia exata (`codigo`, `numerica`, `expressao`), sem
+    apelidos. Fora da lista, o console grava dissertação.
+- **Texto rico** (spec A, `20261108_03`, #1072, #1074, #1075): `formato_texto` (`texto` | `rico`,
+  padrão `texto`) em `questoes`, `atividades` e `cards`. Só o que é `rico` vira markdown com
+  fórmula (MathJax 4 em SVG, química pelo mhchem) e código; o resto desenha o mesmo `Text` de antes.
+  Em questão `rico`, a múltipla é conferida **pela posição** (`fn_questao_posicao_rica`), porque a
+  normalização de texto faria `\(a+b\)` empatar com `\(a-b\)`.
 - **E-mail sai do banco por um Google Apps Script** (`20261101_14`, no lugar da
   Brevo). Isso vale para o contato do app, o contato do site e o aviso de conta
   inativa:

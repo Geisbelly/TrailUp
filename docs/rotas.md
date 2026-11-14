@@ -70,7 +70,7 @@ Render das apresentações, em `https://slides.trailup.promora.dev.br`. Aqui est
 | `GET /api/v1/docs` | Aberta | Documentação do serviço. |
 | `POST /api/v1/render-and-store` | Segredo do serviço | Gera o deck, monta o HTML e sobe o arquivo. |
 
-## Edge Functions (5)
+## Edge Functions (6)
 
 No Supabase, em `/functions/v1/<nome>`. O app ainda chama `personalize_path`, que está publicada sem fonte neste repositório.
 
@@ -78,9 +78,10 @@ No Supabase, em `/functions/v1/<nome>`. O app ainda chama `personalize_path`, qu
 | --- | --- | --- |
 | `generate-content-ai` | Login | Console: gera a proposta de trilha e conteúdo. |
 | `pesquisa-arquivar` | Segredo do banco | Copia para o R2 a telemetria de quem consentiu. Chamada pelo `pg_cron`. |
+| `questao-conferir-resposta` | Login | App: confere resposta numérica e expressão, com unidade, sem IA. |
 | `storage-redirect` | Link assinado ou sessão | Gateway de arquivos: redireciona para o R2. |
 | `storage-upload-url` | Chave de serviço | URL assinada de upload no R2, para os serviços que geram arquivo. |
-| `validate-essay-answer-ai` | Login | App: confere a resposta dissertativa. |
+| `validate-essay-answer-ai` | Login | App: confere a resposta dissertativa e a de código, sem devolver a resposta esperada. |
 
 ## Web (33)
 
