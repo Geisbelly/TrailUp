@@ -2,7 +2,7 @@
 
 **Issue:** [#218](https://github.com/BitStudioLabs/trail-up/issues/218)
 **Contrato de metadados:** [pipeline do corpus, seção #73](./pipeline-corpus.md#73--curadoria-pedagógica)
-**Atualizado em:** 2026-11-02
+**Atualizado em:** 2026-11-13
 
 Estas regras são sínteses originais, não transcrições dos documentos. Cada uma conserva a fonte, a população estudada e o limite de aplicação. `confianca` representa a força da evidência para a regra descrita, não a qualidade geral do documento. As populações dos estudos não são automaticamente equivalentes aos universitários brasileiros do TrailUp.
 
@@ -107,7 +107,7 @@ Não mapear estas regras a perfis BrainHex: a Evidence Base não demonstra que u
 - `tipo`: derivado
 - `fonte`: DAT-03, Monterrat et al. (2015), modelo de jogador para gamificação adaptativa. [Referência](https://doi.org/10.1007/978-3-319-19773-9_30)
 - **Regra:** preferências por elementos de jogo podem orientar opções de interface reversíveis; medir separadamente participação, tempo de uso e aprendizagem.
-- **Limite:** no experimento, recursos combinados ao perfil aumentaram o tempo de uso frente aos recursos contra-adaptados, mas a avaliação de aprendizagem não demonstrou ganho. O primeiro experimento também encontrou concordância apenas moderada entre especialistas.
+- **Limite:** o estudo avaliou se o modelo de jogador prevê as preferências pelos elementos de jogo, e a versão construída por especialistas previu. Prever preferência não é evidência de ganho de aprendizagem. Num estudo posterior do mesmo grupo, com 59 estudantes dos anos finais do ensino fundamental, a adaptação por perfil não aumentou o engajamento como os autores esperavam (Monterrat; Lavoué; George, 2017, *Simulation & Gaming* 48(5):625–656). O primeiro experimento também encontrou concordância apenas moderada entre especialistas.
 
 ### RD-10 — Não converter tipologia de jogador em promessa de ganho pedagógico
 

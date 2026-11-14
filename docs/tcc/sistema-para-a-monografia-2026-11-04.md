@@ -21,8 +21,8 @@ Os capítulos `01` a `11` desta pasta são de abril de 2026 e estão desatualiza
 | Arquivos de teste | API 338 · microservice 44 · console 143 · app 200 | [código] |
 | Migrations de banco | 307 (Alembic, de `20260405_01` a `20261104_06`) | [código] |
 | Histórico do monorepo | 882 commits desde 25/08/2026 · 777 PRs mesclados · 145 issues (136 fechadas) | [código] e GitHub |
-| Banco | 171 tabelas · 27 views · 612 funções · 144 gatilhos · 286 políticas de RLS · 16 rotinas agendadas (`pg_cron`). Em 08/11, na revisão `20261108_02`: 189 tabelas · 705 funções · 149 gatilhos · 292 políticas · 21 rotinas | [banco] |
-| Edge Functions | 6: `generate-content-ai`, `validate-essay-answer-ai`, `storage-redirect`, `storage-upload-url`, `pesquisa-arquivar`, `personalize_path` | [banco] |
+| Banco | 171 tabelas · 27 views · 612 funções · 144 gatilhos · 286 políticas de RLS · 16 rotinas agendadas (`pg_cron`). Em 08/11, na revisão `20261108_02`: 189 tabelas · 705 funções · 149 gatilhos · 292 políticas · 21 rotinas. Em 12/11, na revisão `20261111_05`: 192 tabelas · 27 views · 734 funções · 152 gatilhos · 311 políticas · 23 rotinas | [banco] |
+| Edge Functions | 6: `generate-content-ai`, `validate-essay-answer-ai`, `storage-redirect`, `storage-upload-url`, `pesquisa-arquivar`, `personalize_path`. Em 12/11 são 7: entrou `questao-conferir-resposta` (numérica e expressão, sem IA) | [banco] |
 
 O desenvolvimento ocupou cerca de 716 horas em 137 dias com commit (set/2025 a nov/2026), segundo o levantamento de custos feito para o resumo da JIC 2026 (pausa de até 2 h entre commits, faixa de 613 a 1.009 h). A conta inclui os repositórios anteriores ao monorepo.
 
@@ -230,6 +230,11 @@ A deduplicação usa `source_hash`, que inclui a versão do pipeline.
 - Para a monografia, o pipeline é **funcional, mas instável no plano gratuito**.
 - Não afirme taxa de sucesso maior que a medida.
 
+**Depois de 04/11:**
+- **O professor aprova antes de o aluno ver (10/11, #1100 e #1101).** Todo material personalizado nasce `pendente`, e volta a `pendente` quando muda. Só o professor dono da turma aprova ou recusa, no console; a API e o worker não aprovam. Uma policy RESTRICTIVE esconde do aluno o que não foi aprovado. Os registros que já existiam entraram aprovados pela migração, para nenhum aluno perder material no deploy.
+- **Medido em 12/11** [banco]: 18 registros, **4 prontos e 14 com falha**, os 18 aprovados pela migração. Nenhum passou ainda por uma decisão do professor.
+- **A trilha da IA no console** (#1093, #1098, #1113) é gerada um tópico por requisição, fica salva como rascunho a cada etapa e lê o PDF, o PPTX e o DOCX do professor. O tópico gerado nasce em rascunho e só aparece ao aluno quando o professor publica (#1102).
+
 ---
 
 ## 7. Perfis BrainHex
@@ -246,6 +251,15 @@ A deduplicação usa `source_hash`, que inclui a versão do pipeline.
 - **Como hipótese:** o motor de sugestão diz ao aluno que ordenar os formatos pelo perfil é hipótese. A avaliação da literatura não achou evidência de que aprender no formato "preferido" melhore o resultado (DAT-14, DAT-35, DAT-40). O único achado a favor é de tempo de uso (DAT-03). Todos os formatos ficam disponíveis para todos. [código: `evidencias_pedagogicas.py`]
 
 Distribuição dos perfis dominantes em produção [banco], 6 alunos com perfil: Daredevil 2, Achiever 1, Conqueror 1, Mastermind 1, Seeker 1.
+
+**Diversidade de perfis (11 e 12/11, #1105 a #1118).** O sistema passou a tratar o aluno pelo vetor de perfis, não só pelo dominante:
+- **Uma regra só para o vetor**, no app, na API e no banco, com paridade testada. Representativo é o perfil com afinidade ≥ 20, ou com afinidade > 0 entre os dois primeiros. Antes, a API comparava o nome do perfil em maiúsculas com o banco em minúsculas, e todo aluno caía no preset do Achiever no boss e no cronômetro (#1106). O agente de perfil também gravava os 7 percentuais sem somar 100 (#1105).
+- **Camada leve ponderada:** cronômetro, tempo do boss e peso do perfil na ordem das notificações saem dos perfis representativos, na proporção das afinidades (#1109, #1115). Cada boss fala com a voz de um perfil de batalha do aluno, sorteado na mesma proporção (#1110).
+- **Mistura de material por conteúdo** (#1111, #1112): cada conteúdo do tópico pode vir inteiro de um perfil representativo diferente, na proporção do vetor, e cada exposição fica registrada. **Está desligada em produção** (`mistura_material = desligada`, 12/11) e só será ligada pela autora.
+- **Diversidade da turma no console** (#1114): quantos perfis pesam na turma e o perfil misto de cada aluno. É leitura para o professor.
+- **Vetor observado em sombra** (#1116): dois indicadores de uso (persistência depois do erro, para o Survivor; proporção de teoria, para o Mastermind), recalculados uma vez por dia. Ninguém do produto lê esse vetor, e ele nunca altera o do questionário.
+
+Medido em 12/11 [banco]: dos 7 alunos, 5 têm 2 perfis representativos, 1 tem 1 e 1 não tem perfil. Dominantes: Achiever 3, Daredevil 2, Conqueror 1. A mudança desde 04/11 vem em parte do conserto do agente de perfil (#1105).
 
 ---
 
@@ -265,6 +279,14 @@ Distribuição dos perfis dominantes em produção [banco], 6 alunos com perfil:
 - A OpenAI está sem crédito, e o corpus licenciado não foi indexado. A ordem planejada é: inventário (#70) → triagem (#71) → extração (#72) → curadoria (#73) → indexação → golden set (#75) → medição (#67). Ela parou antes da indexação.
 
 **Conclusão para o capítulo 6:** o RAG está **implementado e instrumentado, mas não operacional**. Não há resultado de recuperação para relatar.
+
+**Atualização de 10 a 12/11** [banco e código]:
+- **O corpus v1 foi indexado em 10/11** (#1077): as 12 regras derivadas (RD-01 a RD-12), todas com estado `completed` em `rag_openai_files`. O custo foi só na conta OpenAI do RAG.
+- **Recuperação medida no golden set** (30 perguntas, k = 3): recall@3 0,87, acerto@3 0,97 e MRR 0,89. É uma medida pequena, com 12 arquivos, e mede a busca, não a resposta.
+- **A busca direta pela sugestão de material** foi corrigida em 10/11 (#1078): a consulta só com códigos de fonte trazia regras fora de ordem, e agora filtra pelo catálogo.
+- **Uso em produção:** 5 buscas registradas, todas em 06 e 07/11, antes da indexação. Até 12/11, nenhuma busca depois dela. O teste com e sem RAG (#949) espera a turma real.
+
+**Conclusão atualizada:** o RAG está indexado e com a recuperação medida, mas **sem uso medido em aula**.
 
 ### 8.3 O que existe no lugar
 - **Avaliação da literatura** (`docs/rag/avaliacao-documentos.md`): os 47 documentos da planilha, cada um com um destino:
@@ -339,7 +361,7 @@ Em produção ainda não há evento de turma nem guilda criados: 0 de cada. [ban
   - Funções auxiliares `SECURITY DEFINER` evitam recursão de RLS: `app_classes_do_professor()`, `app_alunos_do_professor()`, `app_colegas_de_turma()`.
   - Tabela nova já nasce com RLS ligada, por um event trigger.
   - Toda view nasce com `security_invoker = on`.
-- **16 rotinas `pg_cron`** em 04/11, 21 em 08/11 [banco]:
+- **16 rotinas `pg_cron`** em 04/11, 21 em 08/11 e 23 em 12/11 [banco]:
   - missão diária e o texto dela;
   - eventos de turma, a cada minuto;
   - desafios de guilda;
@@ -361,6 +383,10 @@ Em produção ainda não há evento de turma nem guilda criados: 0 de cada. [ban
 - **Operações em transação no banco:** duplicar turma, tópico e atividade.
 - **Questão da turma corrigida no banco (08/11, #1064 e #1065):** o app novo responde pelas RPCs `questao_responder` e `questao_revelar_gabarito` e não lê mais o gabarito. A questão personalizada local continua corrigida no aparelho. O app instalado (1.0.x) ainda lê o gabarito; fechar a coluna é a fase 3, que espera a versão mínima do app.
 - **Recibos de push (08/11, #1066):** o banco lê os recibos da Expo e desativa o token que não entrega mais. O build Android passa a ligar o Firebase (#1067), o que só vale a partir do próximo build.
+- **Respostas em código, numérica e expressão (10/11, spec B, #1083 a #1096):** o gabarito desses tipos nasce fora de `questoes`, numa tabela que o aluno não lê. Numérica e expressão são conferidas sem IA, por uma Edge Function, com unidade e notação química. Código é corrigido pela IA, que não devolve o código de referência. Em 12/11 não há nenhuma questão desses tipos em produção.
+- **Texto rico (09 e 10/11, #1072, #1074, #1075):** fórmula, química e código no console e no app, só no que o professor marca como rico. Em 12/11 nenhuma questão está marcada.
+- **Visibilidade do tópico (11/11, #1102, #1104):** rascunho, publicado ou agendado. Tópico novo nasce rascunho; os existentes ficaram publicados. Policies RESTRICTIVE escondem o tópico do aluno, e as funções `SECURITY DEFINER` que leem material também conferem a publicação, porque não passam pela RLS.
+- **Fase 3 do gabarito ainda não aplicada:** a migration que tira do aluno a leitura de `questoes.resposta_correta` (#1082) espera `app_versao_minima = 1.0.8`, que em 12/11 está vazia. O app 1.0.8 já tem a versão (#1079).
 
 ---
 
@@ -437,6 +463,11 @@ Em produção ainda não há evento de turma nem guilda criados: 0 de cada. [ban
 | "resultados mostram melhora de aprendizagem" | não há amostra para isso; relatar viabilidade técnica |
 | "o aluno não tem acesso ao gabarito" | o app novo corrige no banco e não lê o gabarito; o app instalado ainda lê, até a fase 3 (08/11) |
 | "o guia nunca dá a resposta" | duas guardas barram a resposta (texto e juiz de modelo); é redução de risco medida em teste, não garantia |
+| "o RAG está em uso" (12/11) | o corpus v1 (12 regras) foi indexado em 10/11 e a busca foi medida no golden set; não há busca registrada em produção depois da indexação |
+| "o sistema descobre o perfil do aluno pelo comportamento" | o vetor observado existe em sombra, com 2 indicadores; o produto não o usa, e o perfil vem só do questionário (12/11) |
+| "o aluno recebe material de vários perfis" | a mistura por conteúdo está pronta e desligada em produção (12/11); hoje o aluno recebe o material do perfil ativo |
+| "o professor revisou todo o material personalizado" | o material novo espera a aprovação dele (10/11); os 18 registros existentes entraram aprovados pela migração, sem revisão |
+| "a IA corrige as respostas numéricas" | numérica e expressão são conferidas sem IA; só o código passa pela IA (10/11) |
 
 **O que os capítulos 01 a 11 desta pasta dizem que já mudou:**
 - falam do Render, que não é usado;
@@ -462,6 +493,8 @@ No Resumo, em 4.10, em 7.3 e no Apêndice G, a monografia diz que a avaliação 
 2. **Reformular a avaliação sem RAG em produção.** A evidência já entra no sistema como texto derivado: regras do motor de sugestão com fonte e grau de confiança (seção 8.3). O experimento avaliaria a personalização fundamentada em evidência, e o RAG passa a trabalho futuro ou a uma avaliação offline contra o golden set.
 
 As duas são defensáveis. A segunda cabe no prazo com o sistema como está.
+
+**Decisão e andamento:** em 04/11 a autora escolheu a primeira ("precisamos da RAG"). Em 10/11 o corpus v1 foi indexado e a busca foi medida no golden set (seção 8.2). O que ainda falta para a avaliação em sala é o uso real: o teste com e sem RAG (#949) usa o conteúdo da turma e espera a turma.
 
 ### 16.2 Seção por seção
 

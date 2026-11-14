@@ -2,7 +2,7 @@
 
 **Issue de origem:** [#218](https://github.com/BitStudioLabs/trail-up/issues/218)
 **Fontes:** [avaliação dos documentos](./avaliacao-documentos.md) · [regras derivadas](./regras-derivadas.md) · [pipeline](./pipeline-corpus.md#75--golden-set)
-**Atualizado em:** 2026-11-02
+**Atualizado em:** 2026-11-13
 
 Este arquivo transforma os oito casos iniciais em 30 perguntas de referência. `respondível=sim` significa que a resposta pode ser fundamentada nas fontes indicadas. `respondível=não` significa que o comportamento esperado é reconhecer que o conjunto não sustenta uma conclusão. Os IDs DAT são referências bibliográficas; para avaliar retrieval, cada fonte aceitável precisa ser vinculada ao trecho ou chunk efetivamente indexado.
 
@@ -30,7 +30,7 @@ Este arquivo transforma os oito casos iniciais em 30 perguntas de referência. `
 | GS-20 | O perfil Mastermind aprende melhor lendo? | Não há base para afirmar isso. Disponibilizar formatos diferentes não justifica associar formato a perfil. | DAT-09, DAT-40 | sim |
 | GS-21 | Se o aluno escolhe vídeos, isso prova que aprende melhor por vídeo? | Não. Preferência declarada não demonstra que combinar ensino e preferência melhora o resultado. | DAT-40 | sim |
 | GS-22 | Podemos oferecer áudio, texto e vídeo para o mesmo conteúdo? | Sim, como opções de acesso e expressão para atender objetivos e reduzir barreiras, sem prescrever cada formato por um perfil. | DAT-09 | sim |
-| GS-23 | A gamificação adaptada pelo BrainHex melhora a aprendizagem? | Não está demonstrado pelas fontes avaliadas. Um estudo observou mais tempo de uso com recursos adaptados, mas isso não equivale a ganho de aprendizagem; outro mediu preferências em storyboards. | DAT-03, DAT-41 | sim |
+| GS-23 | A gamificação adaptada pelo BrainHex melhora a aprendizagem? | Não está demonstrado pelas fontes avaliadas. Um estudo mostra que o modelo de jogador prevê preferências por elementos de jogo, o que não equivale a ganho de aprendizagem; outro mediu preferências em storyboards e não achou padrão consistente. | DAT-03, DAT-41 | sim |
 | GS-24 | Se um perfil preferiu uma mecânica de jogo, devo impô-la a todos com esse perfil? | Não. As evidências são limitadas e variam entre pessoas e elementos; manter escolhas opcionais e reversíveis é mais prudente. | DAT-03, DAT-41 | sim |
 | GS-25 | O tempo maior no aplicativo prova que o aluno aprendeu mais? | Não. Tempo de uso é uma medida de comportamento/engajamento; aprendizagem precisa de medida própria. | DAT-03, DAT-45 | sim |
 | GS-26 | Cliques e tempo conectado bastam para dizer que o aluno está engajado cognitivamente? | Não. Logs tendem a registrar sobretudo comportamento observável e não representam sozinhos todas as dimensões do engajamento. | DAT-45 | sim |

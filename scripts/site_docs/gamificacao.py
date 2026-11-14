@@ -95,6 +95,9 @@ PERSONALIZACAO = [
     ("Pele da interface", "Cor, emblema, moldura, arena, forma da trilha e título das folhas seguem o perfil. Lugar e tamanho dos controles não mudam.", "#796, #824, #828, #930"),
     ("Capacidades", "Cronômetro e batalha só para alguns perfis. Todos conversam com o Guardião, mas só maiores de 18 anos confirmados têm a IA liberada.", "#951, #933"),
     ("Ordem aconselhada", "O motor sugere a ordem do material e registra cada decisão. É conselho: nada fica bloqueado por causa dela.", "#804"),
+    ("O vetor, não só o dominante", "Uma regra só decide os perfis representativos no app, na API e no banco. Cronômetro, tempo do boss, falas do boss e o peso nas notificações seguem a proporção desses perfis.", "#1106, #1107, #1109, #1110, #1115"),
+    ("Mistura por conteúdo", "Cada conteúdo do tópico pode vir inteiro de um perfil representativo diferente, na proporção do vetor. Está pronta e desligada: quem liga é a autora.", "#1111, #1112"),
+    ("Aprovação do professor", "O material personalizado só chega ao aluno depois que o professor aprova, e volta a esperar quando muda.", "#1100, #1101"),
 ]
 
 NAO_AFIRMA = [
@@ -106,6 +109,9 @@ NAO_AFIRMA = [
     "<b>O questionário BrainHex é autoral</b>, sem validação local.",
     "<b>Desafios de precisão dependem do app novo.</b> Eles leem <code>atividade_tentativas</code>, vazia em 05/11. O percentual ainda sai do aparelho, então a conquista é cosmética de propósito.",
     "<b>“Vencer boss” não existe como desafio:</b> o banco guarda as falas, não o resultado da batalha.",
+    "<b>A mistura de material está desligada</b> em produção (12/11/2026). Hoje o aluno recebe o material do perfil ativo.",
+    "<b>O vetor observado pelo uso fica em sombra.</b> São dois indicadores, que o produto não lê; o perfil vem só do questionário.",
+    "<b>A aprovação ainda não foi exercida.</b> Os 18 registros de material personalizado entraram aprovados pela migração, sem revisão do professor (12/11/2026).",
 ]
 
 EVIDENCIAS = [
