@@ -832,8 +832,13 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
     !isDeckHtml && (tipo === "pdf" || tipo === "documento" || tipo === "apresentacao");
   const podeTelaCheia =
     tipo === "pdf" || tipo === "documento" || tipo === "apresentacao" || isDeckHtml;
-  const [, setDeckErro] = useState<string | null>(null);
-  const [resolvingUrl, setResolvingUrl] = useState(false);
+  const [deckErro, setDeckErro] = useState<string | null>(null);
+  // Muda quando o aluno pede para tentar de novo: e' so' o que refaz a busca do deck.
+  const [deckTentativa, setDeckTentativa] = useState(0);
+  // Nasce `true` quando ha' URL: ate' o efeito de resolucao terminar, `resolvedUrl` e' a URL CRUA
+  // do material, ainda sem a assinatura do gateway. Com `false` aqui, a busca do deck disparava
+  // no primeiro render com essa URL e o gateway respondia 401 em toda abertura.
+  const [resolvingUrl, setResolvingUrl] = useState(Boolean(sourceUrl));
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [nativeLoading, setNativeLoading] = useState(false);
   const [nativeError, setNativeError] = useState<string | null>(null);
@@ -1051,6 +1056,13 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
       setDeckErro(null);
       return;
     }
+    // A URL ainda esta' sendo resolvida (assinatura do gateway): buscar agora seria buscar o link
+    // cru. O deck de antes sai da tela para nao aparecer no lugar do material novo.
+    if (resolvingUrl) {
+      setDeckHtml(null);
+      setDeckErro(null);
+      return;
+    }
 
     let ativo = true;
     setDeckErro(null);
@@ -1061,14 +1073,21 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
         const html = await resposta.text();
         if (ativo) setDeckHtml(html);
       } catch {
-        if (ativo) setDeckErro("Não foi possível carregar a apresentação.");
+        if (ativo) {
+          setDeckHtml(null);
+          setDeckErro("Não foi possível carregar a apresentação.");
+        }
       }
     })();
 
     return () => {
       ativo = false;
     };
-  }, [isDeckHtml, resolvedUrl]);
+  }, [deckTentativa, isDeckHtml, resolvedUrl, resolvingUrl]);
+
+  // Deck sem o HTML em maos (carregando ou falhou). Nesse estado o quadro NAO pode cair para a
+  // `uri`: o Storage serve `.html` como text/plain, e o aluno via um quadro vazio sem saber por que.
+  const deckSemHtml = isDeckHtml && !effectiveUseNative && !deckHtml;
 
   const viewer = useMemo<ViewerSource | null>(() => {
     if (effectiveUseNative) {
@@ -1442,6 +1461,34 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
       ? "Leitura do documento"
       : "Visualização do arquivo";
 
+  const renderDeckPendente = (height: number) => (
+    <View
+      style={[
+        styles.loadingBox,
+        { minHeight: height, marginTop: 0, borderColor: palette.border, backgroundColor: palette.surface },
+      ]}
+    >
+      {deckErro ? (
+        <>
+          <Text style={[styles.loadingText, { color: palette.textMuted }]}>{deckErro}</Text>
+          <Pressable
+            onPress={() => setDeckTentativa((n) => n + 1)}
+            accessibilityRole="button"
+            accessibilityLabel="Tentar carregar a apresentação de novo"
+            style={[styles.deckRetryButton, { borderColor: palette.borderStrong }]}
+          >
+            <Text style={[styles.deckRetryText, { color: palette.accent }]}>Tentar de novo</Text>
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <ActivityIndicator size="small" color={palette.accent} />
+          <Text style={[styles.loadingText, { color: palette.textMuted }]}>Carregando apresentação...</Text>
+        </>
+      )}
+    </View>
+  );
+
   if (!effectiveUseNative && resolvingUrl && !viewer) {
     return (
       <View
@@ -1545,6 +1592,10 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
       >
         {effectiveUseNative ? (
           renderNativeViewer()
+        ) : deckSemHtml ? (
+          renderDeckPendente(
+            viewer?.height ?? getViewerHeight(tipo, displayMode, false, windowHeight, windowWidth)
+          )
         ) : (
           <WebContentFrame
             key={frameKey}
@@ -1566,7 +1617,7 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
             dele abre a tela cheia, que e a superficie de leitura de verdade.
             Vem DEPOIS do frame de proposito -- irmao posterior fica por cima e
             e quem recebe o toque. */}
-        {isDeckHtml && !effectiveUseNative ? (
+        {isDeckHtml && !effectiveUseNative && !deckSemHtml ? (
           <Pressable
             onPress={() => setFullscreenVisible(true)}
             accessibilityRole="button"
@@ -1631,6 +1682,10 @@ export function DocumentBlock({ tipo, payload, WebView, onDeckProgressEvent, pro
           <View style={styles.fullscreenViewerShell}>
             {effectiveUseNative ? (
               renderNativeViewer(true)
+            ) : deckSemHtml ? (
+              renderDeckPendente(
+                fullscreenViewer?.height ?? getViewerHeight(tipo, displayMode, true, windowHeight, windowWidth)
+              )
             ) : fullscreenViewer ? (
               <WebContentFrame
                 key={fullscreenFrameKey}
@@ -1811,6 +1866,18 @@ const styles = StyleSheet.create({
   loadingText: {
     fontFamily: FontFamily.interMedium,
     color: Color.colorAliceblue300,
+  },
+  deckRetryButton: {
+    minHeight: 44,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  deckRetryText: {
+    fontFamily: FontFamily.interMedium,
+    fontSize: 14,
   },
   warningText: {
     fontFamily: FontFamily.interMedium,
