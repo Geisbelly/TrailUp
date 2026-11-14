@@ -9,9 +9,11 @@ formato da #73, para que possam subir ao Vector Store sem reescrita quando o cor
 Duas regras de honestidade que valem mais do que o catálogo parecer completo:
 
 * **Casar formato com perfil BrainHex é hipótese.** A avaliação não achou evidência de que
-  aprender no formato "preferido" melhore o resultado (DAT-14, DAT-35, DAT-40); o único resultado
-  a favor é de tempo de uso (DAT-03), e há resultado sem efeito (DAT-41). O peso por perfil
-  continua sendo o ponto de partida do motor, mas a sugestão diz que é hipótese.
+  aprender no formato "preferido" melhore o resultado (DAT-14, DAT-35, DAT-40). Do lado do
+  perfil, um estudo mostra só que o modelo de jogador prevê preferências por elementos de jogo,
+  sem medir aprendizagem (DAT-03), e outro não achou padrão consistente (DAT-41). O peso por
+  perfil continua sendo o ponto de partida do motor, mas o console do professor mostra a
+  sugestão como hipótese (o app do aluno aplica a ordem e não exibe a confiança).
 * **Telemetria mede engajamento comportamental, não emoção nem atenção** (DAT-45, DAT-04). Por
   isso a emoção do aluno não reordena material: não existe regra do corpus que ligue emoção a
   formato.
