@@ -10,7 +10,8 @@ import { Secao } from "../tecnico/pecasDoPainel";
 import { FormDaMoldura } from "./FormDaMoldura";
 import { apagarImagemDaMoldura } from "./imagemDaMoldura";
 import { comoLiberaARara, filtrarMolduras, imagemDaMoldura, lerMolduras, precoParaGravar, type AcaoAdmin, type FiltroDeOrigem, type MolduraAdmin, type Molduras } from "./administracao";
-import { CampoDeBusca, CLASSE_SELECT, Estado, useEscrita, useLeitura, Vazio, type Escrever } from "./comum";
+import { CampoDeBusca, CLASSE_SELECT, Estado, Vazio } from "./comum";
+import { useEscrita, useLeitura, type Escrever } from "./leituraEscrita";
 
 const ORIGENS: { value: FiltroDeOrigem; label: string }[] = [
   { value: "todas", label: "Todas" },

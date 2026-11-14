@@ -56,7 +56,7 @@ function carregar({ os, href }: Cenario) {
   authListener = null;
   listenerRegistrations = 0;
 
-  const replaceState: Array<{ title: string; url: string }> = [];
+  const replaceState: { title: string; url: string }[] = [];
   if (href) {
     const url = new URL(href);
     globals.window = {

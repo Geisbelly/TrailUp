@@ -1896,7 +1896,9 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     void drenarProgressoOutbox((p) => personalizacaoProvider.salvarProgressoPersonalizadoDiretoSupabase(p))
       .catch(() => undefined)
-  }, [])
+    // O provider é o mesmo objeto a vida inteira do app (singleton do contexto): a dependência
+    // não faz o efeito rodar de novo.
+  }, [personalizacaoProvider])
 
   // A conclusão personalizada é salva em uma tabela separada da projeção da
   // trilha. Recalcular a lista de pendências precisa refletir no grafo atual;
