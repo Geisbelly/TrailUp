@@ -75,3 +75,47 @@ test('focus and mute RPCs send the database parameter names', async () => {
   assert.equal(service.podeSilenciar('chat'), false);
   assert.equal(service.podeSilenciar('toString'), false);
 });
+
+function loadServiceComRespostas(respostas: { error: unknown }[]) {
+  const sent: [string, unknown][] = [];
+  const exports = {};
+  runInNewContext(compiled, {
+    exports,
+    console: { warn: () => undefined },
+    require: () => ({ supabase: {
+      auth: { getSession: async () => ({ data: { session: { user: { id: 'aluno' } } }, error: null }) },
+      rpc: async (fn: string, args: unknown) => {
+        sent.push([fn, args]);
+        return { data: null, ...(respostas.shift() ?? { error: null }) };
+      },
+    } }),
+  });
+  return { service: exports as typeof import('./notificacoesDb'), sent };
+}
+
+test('heartbeat tells the database how much of it was on the trail', async () => {
+  const { service, sent } = loadServiceComRespostas([]);
+  await service.enviarHeartbeat({ segundos: 60, timezone: 'UTC', sessaoId: 3, segundosNaTrilha: 45, naTrilha: true });
+  assert.deepEqual(JSON.parse(JSON.stringify(sent)), [
+    ['notificacoes_heartbeat', {
+      p_segundos: 60, p_timezone: 'UTC', p_sessao_id: 3, p_segundos_trilha: 45, p_na_trilha: true,
+    }],
+  ]);
+});
+
+test('heartbeat falls back to the old signature while the migration is not in the database', async () => {
+  const { service, sent } = loadServiceComRespostas([{ error: { code: 'PGRST202', message: 'not found' } }]);
+  await service.enviarHeartbeat({ segundos: 60, timezone: 'UTC', segundosNaTrilha: 60, naTrilha: true });
+  assert.deepEqual(JSON.parse(JSON.stringify(sent)), [
+    ['notificacoes_heartbeat', {
+      p_segundos: 60, p_timezone: 'UTC', p_sessao_id: null, p_segundos_trilha: 60, p_na_trilha: true,
+    }],
+    ['notificacoes_heartbeat', { p_segundos: 60, p_timezone: 'UTC', p_sessao_id: null }],
+  ]);
+});
+
+test('heartbeat does not retry on other errors', async () => {
+  const { service, sent } = loadServiceComRespostas([{ error: { code: '42501', message: 'permission denied' } }]);
+  assert.equal(await service.enviarHeartbeat({ segundos: 60, timezone: 'UTC' }), null);
+  assert.equal(sent.length, 1);
+});

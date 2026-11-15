@@ -849,6 +849,11 @@ Cada perfil carrega:
   `pg_net` → Expo, e `pg_cron` varre a cada 5min. A **rotina diária é
   notificação local** agendada no aparelho: dispara com o app fechado sem
   servidor. Ver `docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md`.
+  **Gatilho `tempo_uso` (pausa saudável) é da trilha** (`20261115_02`): mede
+  `aluno_atividade_diaria.tempo_trilha_seg`, não `tempo_uso_seg`, e só sai na
+  batida com `p_na_trilha` verdadeiro. Adiado, continua `tempo_uso` (nunca vira
+  `horario`, que a varredura entregaria em qualquer tela), e o foco não o
+  converte em `fim_foco`. `tempo_uso_seg` segue sendo o tempo do app inteiro.
   **Ticket `ok` da Expo não é entrega** (`20261108_02`): o aviso de app
   desinstalado (`DeviceNotRegistered`) vem no *recibo*, uns 15 min depois. O
   mesmo cron de conciliação pede os recibos (`notificacoes_push_tickets`) e só
