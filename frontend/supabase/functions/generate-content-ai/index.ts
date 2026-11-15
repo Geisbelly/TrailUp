@@ -363,6 +363,15 @@ function buildSourceBlock(sources: AiSourceInput[], fileContents?: string, fileN
   return `\n\n${materialParts.filter(Boolean).join("\n")}`;
 }
 
+/**
+ * Regra comum aos prompts que geram atividade. O modelo chamava o mesmo conceito por dois nomes
+ * (o card dizia "anomalia de insercao" e a lacuna so aceitava "inclusao"), e o aluno que usava o
+ * nome do card errava. A lacuna e corrigida contra cada forma separada por "|" (app e
+ * `fn_questao_respostas_aceitas` no banco), entao os sinonimos vao no proprio gabarito.
+ */
+const REGRAS_DE_TERMOS = `- Use o mesmo nome para o mesmo conceito em todos os cards e atividades: o termo que o material usa. Se o material usa dois nomes para a mesma coisa (ex.: "anomalia de inserção" e "anomalia de inclusão"), escolha um e mantenha-o em tudo.
+- Para tipo "fill_blank", "resposta_correta" lista TODAS as formas aceitas, separadas por " | ": o termo escolhido e os sinônimos que o material usa para ele (ex.: "inserção | inclusão"). O aluno digita a resposta, e uma forma correta que não estiver listada pode ser corrigida como errada.`;
+
 function normalizeActivityType(value: unknown): "quiz" | "questao" | "texto" | "true_false" | "fill_blank" {
   const normalized = String(value ?? "")
     .trim()
@@ -1015,6 +1024,7 @@ Regras obrigatorias:
 - Para CADA conteudo, gere 2 cards e 1 atividade sobre o que o texto ensinou.
 - "midias" lista so arquivos do professor que o aluno deve abrir junto deste conteudo, com "sourceRef" igual ao nome exato do arquivo, ou links que estao no material. Sem isso, "midias": []. Nunca invente midia, roteiro ou arquivo.
 - Tipos de atividade permitidos: quiz, questao, texto, true_false, fill_blank.
+${REGRAS_DE_TERMOS}
 - Tipos de midia permitidos: video, audio, pdf, documento, apresentacao.
 - Todo card precisa de conteudo_ref.
 - Se o card for reaproveitado de outro conteudo do mesmo topico, marque reaproveitado=true e use conteudo_origem_ref diferente de conteudo_ref.
@@ -1195,7 +1205,8 @@ Regras:
 - Cards e atividades pertencem a um conteudo.
 - Todo card precisa conter conteudo_ref.
 - Se for reaproveitado, conteudo_origem_ref deve indicar o conteudo de origem.
-- Tipos de atividade permitidos: quiz, questao, texto, true_false, fill_blank.`;
+- Tipos de atividade permitidos: quiz, questao, texto, true_false, fill_blank.
+${REGRAS_DE_TERMOS}`;
 }
 
 function withLegacyCompatibility(payload: JsonRecord, mode: RequestBody["mode"]) {
@@ -1928,6 +1939,7 @@ Regras obrigatorias:
 - Para tipo "quiz", inclua alternativas (2-4) e resposta correta coerente entre as alternativas.
 - Para tipo "true_false", use alternativas ["Verdadeiro","Falso"] e resposta correta igual a uma delas.
 - Para tipo "fill_blank", nao inclua alternativas e use resposta curta e objetiva.
+${REGRAS_DE_TERMOS}
 - Para tipo "essay", nao inclua alternativas e use resposta orientadora dissertativa.
 - Use apenas estes tipos: "quiz", "true_false", "fill_blank", "essay".
 - Nao repita cards (titulo/descricao) nem atividades (titulo/enunciado/resposta) dentro do mesmo array.
