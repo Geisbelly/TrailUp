@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Wand2, Loader2, ArrowRight, CheckCircle2, X, Upload, FileText, AlertTriangle, History } from "lucide-react";
+import { Wand2, Loader2, ArrowRight, CheckCircle2, X, Upload, FileText, AlertTriangle, History, ChevronDown } from "lucide-react";
 import type { Topico, StagedFile } from "./types";
 import { formatFileSize } from "@/lib/utils";
 import { deleteTopicCascade } from "./classDeletion";
@@ -26,6 +26,10 @@ import { completarTopicos, gerarTrilhaEmEtapas, semMaterialAinda, type Progresso
 import { apagarRascunho, carregarRascunho, criarGravador, quandoFoiSalvo, salvarRascunho, type RascunhoDaTrilha } from "./rascunhoDaTrilha";
 import { anexosDoPedido, prepararAnexos, type AnexoParaIa } from "./arquivosParaIa";
 import { comMemoria, trocarFiguras, type RefDeFigura } from "./figurasDaTrilha";
+import { OrientacaoDaIa } from "./OrientacaoDaIa";
+import { ConteudosDaProposta } from "./ConteudosDaProposta";
+import { useOrientacaoDaIa } from "./useOrientacaoDaIa";
+import { existentesParaOPedido, perguntasDaProposta, semRepetidasNoTopico } from "./perguntasExistentes";
 
 /**
  * Os arquivos como a IA os leu na geração que está na tela, e o `File` de
@@ -90,6 +94,8 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<Step>("configurar");
+  // Tópico da proposta aberto na revisão (pela ordem): mostra os conteúdos gerados.
+  const [topicoAberto, setTopicoAberto] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -98,6 +104,8 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const [mostrarAvancado, setMostrarAvancado] = useState(false);
   const [ajusteOrdem, setAjusteOrdem] = useState<number | null>(null);
   const [ajusteTexto, setAjusteTexto] = useState("");
+  // Orientação da turma para a IA: vai em todo pedido (esqueleto, cada tópico, gerar o que falta e ajuste).
+  const orientacaoIa = useOrientacaoDaIa(open ? classeId : null);
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [confirmouSubstituir, setConfirmouSubstituir] = useState(false);
   const [creatingStatus, setCreatingStatus] = useState("");
@@ -232,6 +240,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const reset = () => {
     materialRef.current = null;
     setStep("configurar");
+    setTopicoAberto(null);
     setPreview([]);
     setDescription(initialDescription);
     setNumTopics(null);
@@ -252,8 +261,12 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const close = () => { if (step === "aplicando" || step === "processando") return; reset(); onOpenChange(false); };
 
   // Gerar NÃO apaga nada: a proposta só existe na tela até o professor aplicar.
+  // A orientação entra aqui, e não no `corpo`: o corpo vai para o rascunho, e
+  // retomar um rascunho tem de usar a orientação de agora, não a de quando ele foi salvo.
   const invokeAi = async (body: Record<string, unknown>) => {
-    const { data, error } = await supabase.functions.invoke("generate-content-ai", { body });
+    const { data, error } = await supabase.functions.invoke("generate-content-ai", {
+      body: { ...body, ...orientacaoIa.paraOPedido() },
+    });
     if (error) throw new Error(await formatSupabaseFunctionError(error));
     return data as unknown;
   };
@@ -278,6 +291,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     setStep("processando");
     setIsGenerating(true);
     setProgresso(null);
+    await orientacaoIa.garantirSalva();
     let ultimoRetrato: AiTopico[] = [];
     let corpo: Record<string, unknown> | null = null;
     try {
@@ -353,6 +367,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     setStep("processando");
     setIsGenerating(true);
     setProgresso(null);
+    await orientacaoIa.garantirSalva();
     try {
       const { topicos, semMaterial } = await completarTopicos({
         invocar: invokeAi,
@@ -381,6 +396,9 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     if (!alvo) return;
     if (!ajusteTexto.trim()) return toast.error("Descreva o que mudar neste tópico.");
     setIsAdjusting(true);
+    await orientacaoIa.garantirSalva();
+    // As perguntas dos outros tópicos: o tópico regerado não pode repeti-las.
+    const outros = perguntasDaProposta(preview, preview.indexOf(alvo));
     try {
       // Retomado de um rascunho, os arquivos não estão mais na tela: as fontes vêm do pedido guardado.
       const base = pedidoAtual ?? {
@@ -392,10 +410,11 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         mode: "trail", topicName: alvo.nome, topicDescription: alvo.descricao,
         trailDescription: `${description}\n\nGere apenas o tópico "${alvo.nome}". Ajuste pedido pelo professor: ${ajusteTexto.trim()}`,
         numTopics: 1, topicNames: [alvo.nome],
+        ...existentesParaOPedido(outros),
         ...(materialRef.current ? { anexos: anexosDoPedido(materialRef.current.anexos, alvo.arquivos_relacionados) } : {}),
       });
       if (!novo) throw new Error("A IA não devolveu o tópico ajustado.");
-      setPreview((atual) => substituirNaProposta(atual, alvo.ordem, novo));
+      setPreview((atual) => substituirNaProposta(atual, alvo.ordem, semRepetidasNoTopico(novo, outros)));
       setAjusteOrdem(null);
       setAjusteTexto("");
       setStep("revisar");
@@ -545,20 +564,47 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
 
   const itemDaProposta = (t: AiTopico, acoes?: React.ReactNode) => {
     const c = contagemDaProposta([t]);
+    const aberto = topicoAberto === t.ordem;
+    const temConteudo = (t.conteudos?.length ?? 0) > 0;
     return (
-      <li key={t.ordem} className="flex items-center gap-3.5 rounded-[14px] bg-muted px-4 py-3">
-        <span aria-hidden="true" className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary/20 text-[13px] font-extrabold text-primary">{t.ordem}</span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold">{t.nome}</p>
-          {semMaterialAinda(t) ? (
-            <p className="mt-0.5 text-[11.5px] font-semibold text-warning">Sem material ainda</p>
-          ) : (
-            <p className="mt-0.5 text-[11.5px] text-muted-foreground">
-              {c.conteudos} {c.conteudos === 1 ? "conteúdo" : "conteúdos"} · {c.cards} cards · {c.atividades} {c.atividades === 1 ? "atividade" : "atividades"}
-            </p>
+      <li key={t.ordem} className="rounded-[14px] bg-muted px-4 py-3">
+        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
+          <span aria-hidden="true" className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary/20 text-[13px] font-extrabold text-primary">{t.ordem}</span>
+          {/* Base de 10rem: em tela estreita os botões descem para a linha de baixo. */}
+          <div className="min-w-0 flex-1 basis-40">
+            <p className="truncate text-sm font-bold">{t.nome}</p>
+            {semMaterialAinda(t) ? (
+              <p className="mt-0.5 text-[11.5px] font-semibold text-warning">Sem material ainda</p>
+            ) : (
+              <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                {c.conteudos} {c.conteudos === 1 ? "conteúdo" : "conteúdos"} · {c.cards} cards · {c.atividades} {c.atividades === 1 ? "atividade" : "atividades"}
+              </p>
+            )}
+          </div>
+          <span className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
+          {temConteudo && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="rounded-full px-2.5 text-xs"
+              aria-expanded={aberto}
+              aria-controls={`proposta-topico-${t.ordem}`}
+              onClick={() => setTopicoAberto(aberto ? null : t.ordem)}
+            >
+              {aberto ? "Esconder" : "Ver conteúdos"}
+              <ChevronDown className={`ml-1 h-3.5 w-3.5 transition-transform ${aberto ? "rotate-180" : ""}`} aria-hidden="true" />
+            </Button>
           )}
+          {acoes}
+          </span>
         </div>
-        {acoes}
+        {aberto && temConteudo && (
+          <div id={`proposta-topico-${t.ordem}`} className="mt-3">
+            {t.descricao && <p className="mb-2 text-[12.5px] text-muted-foreground">{t.descricao}</p>}
+            <ConteudosDaProposta topico={t} />
+          </div>
+        )}
       </li>
     );
   };
@@ -592,7 +638,9 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
           })}
         </ol>
 
-        <ScrollArea className="flex-1 overflow-y-auto pr-1">
+        {/* O Viewport do Radix põe o conteúdo num `display: table`, que cresce até o filho mais
+            largo: um texto ou uma tabela larga da proposta empurrava o diálogo para fora da tela. */}
+        <ScrollArea className="flex-1 overflow-y-auto pr-1 [&>[data-radix-scroll-area-viewport]>div]:!block">
           {step === "configurar" && (
             <div className="space-y-5 py-2">
               {rascunho && (
@@ -687,6 +735,8 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
                 </div>
               </div>
 
+              <OrientacaoDaIa estado={orientacaoIa} onde="a trilha e as perguntas desta turma" />
+
               <div>
                 <button type="button" onClick={() => setMostrarAvancado((v) => !v)} aria-expanded={mostrarAvancado} className="text-xs font-semibold text-primary">
                   {mostrarAvancado ? "Ocultar opções avançadas" : "Opções avançadas (nomes dos tópicos, ementa)"}
@@ -770,6 +820,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
                 <Textarea id="trilha-ajuste" value={ajusteTexto} onChange={(e) => setAjusteTexto(e.target.value)} rows={4} className="rounded-[14px] bg-background" placeholder="Ex.: trocar o exemplo do carro por algo de esportes, e reduzir para 2 conteúdos em vez de 3." />
                 <p className="mt-2 text-[11.5px] text-muted-foreground">Só este tópico é regerado; os outros e a ordem não mudam.</p>
               </div>
+              <OrientacaoDaIa estado={orientacaoIa} onde="a trilha e as perguntas desta turma" />
             </div>
           )}
 

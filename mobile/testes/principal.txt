@@ -100,6 +100,7 @@ src/utils/posicaoBalaoTour.test.ts
 src/utils/destaqueTour.core.test.ts
 src/utils/prefetchPool.test.ts
 src/utils/presencaDeEstudo.test.ts
+src/utils/tempoNaTrilha.test.ts
 src/utils/profileArtworkTone.test.ts
 src/utils/profileFrameLayout.test.ts
 src/utils/profileSectionGuide.test.ts
