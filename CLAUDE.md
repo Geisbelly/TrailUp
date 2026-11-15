@@ -683,6 +683,16 @@ Cada perfil carrega:
   material começado ou visto, então o furo era tópico despublicado depois de
   aberto ou id adivinhado. **RPC DEFINER nova que lê material por id precisa do
   mesmo portão**; a RLS não a cobre.
+- `classe_orientacao_ia` — o que o professor pede e o que pede para **evitar** na IA, uma
+  linha por turma (`20261115_01`). Lê e escreve só o dono da turma, direto pelo Supabase; o
+  aluno não lê. A edge function `generate-content-ai` **não lê a tabela**: o console manda
+  `orientacao` no corpo de todo pedido (esqueleto, cada tópico, gerar o que falta, "Pedir
+  ajuste", descrição e sugestões de um conteúdo), junto de `existentes` — as perguntas que a IA
+  não pode repetir (as do tópico no banco e as da fila de revisão; na trilha, as dos outros
+  tópicos da proposta). A regra de "repetida" é uma só, em `repetidas.ts` da função, e o console
+  a importa de lá; a função filtra a saída, porque o modelo nem sempre obedece ao prompt. O
+  modo `content` não completa mais até 10 com card/atividade genéricos: eram o mesmo texto em
+  toda geração.
 - `alteracao_professor` + `alteracao_aluno` — o professor mudou um conteúdo ou
   uma atividade que algum aluno já viu ou fez (`20261101_12`). **O banco
   registra** (gatilho nas quatro tabelas do editor e em `questao_gabarito`, só
@@ -839,6 +849,11 @@ Cada perfil carrega:
   `pg_net` → Expo, e `pg_cron` varre a cada 5min. A **rotina diária é
   notificação local** agendada no aparelho: dispara com o app fechado sem
   servidor. Ver `docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md`.
+  **Gatilho `tempo_uso` (pausa saudável) é da trilha** (`20261115_02`): mede
+  `aluno_atividade_diaria.tempo_trilha_seg`, não `tempo_uso_seg`, e só sai na
+  batida com `p_na_trilha` verdadeiro. Adiado, continua `tempo_uso` (nunca vira
+  `horario`, que a varredura entregaria em qualquer tela), e o foco não o
+  converte em `fim_foco`. `tempo_uso_seg` segue sendo o tempo do app inteiro.
   **Ticket `ok` da Expo não é entrega** (`20261108_02`): o aviso de app
   desinstalado (`DeviceNotRegistered`) vem no *recibo*, uns 15 min depois. O
   mesmo cron de conciliação pede os recibos (`notificacoes_push_tickets`) e só

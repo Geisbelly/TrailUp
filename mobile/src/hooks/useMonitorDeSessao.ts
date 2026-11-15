@@ -1,4 +1,4 @@
-import { type Href, useRouter } from 'expo-router';
+import { type Href, useRouter, useSegments } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 
@@ -22,6 +22,8 @@ import {
   resolverVersaoApp,
 } from '@/services/pushNotifications';
 import { registrarAcaoDeMoldura } from "@/services/molduras";
+import { estaNaTrilhaDeEstudo } from '@/utils/presencaDeEstudo';
+import { criarRelogioDaTrilha } from '@/utils/tempoNaTrilha';
 
 /**
  * Monitora o login e o tempo de uso, e liga as notificações do SO.
@@ -31,8 +33,10 @@ import { registrarAcaoDeMoldura } from "@/services/molduras";
  *
  * 1. **login** → RPC no banco, que libera as pendentes com gatilho `login`
  *    (literalmente "as que aguardavam o login do usuário");
- * 2. **heartbeat** → soma o tempo de uso do dia, que alimenta o gatilho
- *    `tempo_uso`;
+ * 2. **heartbeat** → soma o tempo de uso do dia e, à parte, o tempo passado
+ *    num módulo da trilha. Só este alimenta o gatilho `tempo_uso` (a pausa
+ *    saudável), e o que tem esse gatilho só é entregue enquanto o aluno está
+ *    na trilha: antes a pausa contava o app inteiro e chegava em qualquer tela;
  * 3. **push token** → registra o aparelho, sem o que nada chega com o app
  *    fechado por decisão do servidor;
  * 4. **rotinas locais** → agenda no próprio aparelho o lembrete diário, que
@@ -53,16 +57,27 @@ const MIN_SEGUNDOS_PARA_ENVIAR = 5;
 export function useMonitorDeSessao() {
   const { usuario, autenticado } = useUsuario();
   const router = useRouter();
+  const segmentos = useSegments();
+  const naTrilha = estaNaTrilhaDeEstudo(segmentos as readonly string[]);
 
   const sessaoIdRef = useRef<number | null>(null);
   const pushTokenRef = useRef<string | null>(null);
   const ultimaBatidaRef = useRef<number>(Date.now());
   const alunoAtivoRef = useRef<string | null>(null);
+  const relogioDaTrilhaRef = useRef(criarRelogioDaTrilha());
+
+  useEffect(() => {
+    relogioDaTrilhaRef.current.definirNaTrilha(naTrilha, Date.now());
+  }, [naTrilha]);
 
   const enviarTempoAcumulado = useCallback(async () => {
     if (!alunoAtivoRef.current) return;
     const agora = Date.now();
     const segundos = Math.round((agora - ultimaBatidaRef.current) / 1000);
+    const segundosNaTrilha = Math.min(
+      segundos,
+      Math.round(relogioDaTrilhaRef.current.colher(agora) / 1000)
+    );
     // O relógio avança sempre, mesmo se a chamada falhar: reaproveitar o mesmo
     // intervalo numa próxima tentativa contaria o tempo duas vezes.
     ultimaBatidaRef.current = agora;
@@ -73,6 +88,11 @@ export function useMonitorDeSessao() {
       segundos,
       timezone: resolverTimezone(),
       sessaoId: sessaoIdRef.current,
+      segundosNaTrilha,
+      // Indo para segundo plano o estado já não é `active`: a batida de saída
+      // não entrega a pausa para quem acabou de fechar o app.
+      naTrilha:
+        relogioDaTrilhaRef.current.naTrilha() && AppState.currentState === 'active',
     });
   }, []);
 
@@ -145,8 +165,9 @@ export function useMonitorDeSessao() {
       if (estado === 'active') {
         // Zera o relógio ao voltar: tempo em background não é tempo de uso, e
         // contá-lo transformaria "deixei o app aberto a noite toda" em 8h de
-        // estudo.
+        // estudo. O mesmo vale para o tempo de trilha.
         ultimaBatidaRef.current = Date.now();
+        relogioDaTrilhaRef.current.retomar(ultimaBatidaRef.current);
         return;
       }
       void enviarTempoAcumulado();
