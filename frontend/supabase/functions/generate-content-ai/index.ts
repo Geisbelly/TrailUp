@@ -19,6 +19,14 @@ import {
 import { limitesDoEsqueleto, MAX_TOPICOS, quantidadeDeTopicos, regrasDaQuantidade } from "./quantidadeDeTopicos.ts";
 import { lerPaginaDoLink, linkPublicoSeguro, urlDoYouTube, type RelatoDoMaterial } from "./materialDoConteudo.ts";
 import { respostasDaLacuna } from "./respostasDaLacuna.ts";
+import { blocoDaOrientacao, orientacaoDoPedido, type Orientacao } from "./orientacao.ts";
+import {
+  blocoDosExistentes,
+  criarFiltroDeRepetidas,
+  existentesDoPedido,
+  type Existentes,
+  type FiltroDeRepetidas,
+} from "./repetidas.ts";
 
 /** Parte do pedido ao Gemini: texto, arquivo inline ou arquivo por URL (o vídeo do YouTube). */
 type ParteDoPedido = ParteGemini | { fileData: { fileUri: string; mimeType?: string } };
@@ -184,6 +192,13 @@ interface RequestBody {
   videoUrl?: string;
   /** Modo `content`: link externo do conteudo, que a funcao le. */
   linkUrl?: string;
+  /** Orientacao do professor da turma (`classe_orientacao_ia`): `{ pedir, evitar }`. Vale em todo modo. */
+  orientacao?: unknown;
+  /**
+   * Perguntas que ja existem e nao podem voltar: `{ questoes, cards }`. No modo
+   * `content`, as do topico; na trilha, as dos outros topicos da proposta.
+   */
+  existentes?: unknown;
 }
 type GeminiCallOptions = {
   key: string;
@@ -691,7 +706,12 @@ function normalizeTrailDetails(
   payload: unknown,
   topic: TrailSkeletonTopic,
   contentTarget: number,
-  material: { arquivos: Map<string, string>; figuras: PartesDosAnexos["figuras"] },
+  material: {
+    arquivos: Map<string, string>;
+    figuras: PartesDosAnexos["figuras"];
+    /** Barram o card e a atividade que repetem um existente ou um anterior do mesmo topico. */
+    filtros?: { cards: FiltroDeRepetidas; questoes: FiltroDeRepetidas };
+  },
 ): JsonRecord[] {
   const contentRecords = ensureObjectArray((payload as JsonRecord)?.conteudos);
 
@@ -708,7 +728,7 @@ function normalizeTrailDetails(
     const tipo = String(record.tipo ?? "texto").trim() || "texto";
     const conteudo = limparMarcadoresDeFigura(String(record.conteudo ?? "").trim(), material.figuras);
 
-    const cards = ensureObjectArray(record.cards).map((card, cardIndex) => {
+    const cards = ensureObjectArray(record.cards).filter((card) => material.filtros?.cards.aceitar(String(card.titulo ?? "")) ?? true).map((card, cardIndex) => {
       const conteudoRef = String(card.conteudo_ref ?? ref).trim() || ref;
       const origemRefRaw = String(card.conteudo_origem_ref ?? conteudoRef).trim() || conteudoRef;
       const reaproveitado = Boolean(card.reaproveitado) || origemRefRaw !== conteudoRef;
@@ -737,7 +757,7 @@ function normalizeTrailDetails(
             },
           ];
 
-    const atividades = ensureObjectArray(record.atividades).map((atividade, activityIndex) => {
+    const atividades = ensureObjectArray(record.atividades).filter((atividade) => material.filtros?.questoes.aceitar(String(atividade.enunciado ?? "")) ?? true).map((atividade, activityIndex) => {
       const tipoAtividade = normalizeActivityType(atividade.tipo);
       const alternativasRaw = Array.isArray(atividade.alternativas)
         ? (atividade.alternativas as unknown[]).map((item) => String(item))
@@ -770,7 +790,7 @@ function normalizeTrailDetails(
         : [
             {
               titulo: `Aplicacao de ${titulo}`,
-              enunciado: "Explique o conceito principal com suas palavras.",
+              enunciado: `Explique com suas palavras o que "${titulo}" ensina.`,
               tipo: "questao",
               alternativas: null,
               resposta_correta: "Resposta aberta alinhada ao conteudo.",
@@ -825,6 +845,9 @@ type TrailContext = {
    * nome e a referencia da fonte (`upload:N`), que o modelo as vezes usa.
    */
   arquivos: Map<string, string>;
+  orientacao: Orientacao;
+  /** Mutavel: no modo `trail`, cada topico pronto entra aqui para os seguintes nao o repetirem. */
+  existentes: Existentes;
 };
 
 function buildTrailContext(body: RequestBody, sources: AiSourceInput[]): TrailContext {
@@ -862,7 +885,19 @@ function buildTrailContext(body: RequestBody, sources: AiSourceInput[]): TrailCo
     if (source.sourceRef && nomes.has(nome)) arquivos.set(source.sourceRef, nome);
   }
 
-  return { trailDescription, fileNames, sourceBlock, sourceGuard, topicNames, desiredTopics, totalSignals, material, arquivos };
+  return {
+    trailDescription,
+    fileNames,
+    sourceBlock,
+    sourceGuard,
+    topicNames,
+    desiredTopics,
+    totalSignals,
+    material,
+    arquivos,
+    orientacao: orientacaoDoPedido(body.orientacao),
+    existentes: existentesDoPedido(body.existentes),
+  };
 }
 
 async function generateTrailSkeleton(
@@ -882,7 +917,7 @@ ${topicNames.length > 0 ? `Topicos sugeridos pelo professor:\n${topicNames.map((
 ${fileNames.length > 0 ? `Arquivos enviados pelo professor:\n${fileNames.map((name, idx) => `${idx + 1}. ${name}`).join("\n")}\n` : ""}
 ${body.syllabus?.trim() ? `Ementa complementar:\n${body.syllabus.trim().substring(0, 2500)}\n` : ""}
 ${sourceBlock}
-
+${blocoDaOrientacao(ctx.orientacao)}
 Retorne SOMENTE JSON valido com:
 {
   "topicos": [
@@ -974,7 +1009,7 @@ Topico atual:
 
 ${sourceBlock}
 ${instrucaoDeFiguras(material.figuras)}
-
+${blocoDaOrientacao(ctx.orientacao)}${blocoDosExistentes(ctx.existentes)}
 Retorne SOMENTE JSON valido com:
 {
 "conteudos": [
@@ -1024,6 +1059,7 @@ Regras obrigatorias:
 - Ensine o que esta nos arquivos: use as definicoes, exemplos, nomes, comandos e numeros do proprio material. Nao resuma em uma frase nem descreva o arquivo ("este material aborda..."): explique o assunto.
 - Conteudos do mesmo topico nao se repetem: divida o assunto entre eles.
 - Para CADA conteudo, gere 2 cards e 1 atividade sobre o que o texto ensinou.
+- Nenhuma pergunta (card ou atividade) se repete, nem com outras palavras, dentro do topico ou com as que ja existem.
 - "midias" lista so arquivos do professor que o aluno deve abrir junto deste conteudo, com "sourceRef" igual ao nome exato do arquivo, ou links que estao no material. Sem isso, "midias": []. Nunca invente midia, roteiro ou arquivo.
 - Tipos de atividade permitidos: quiz, questao, texto, true_false, fill_blank.
 ${REGRAS_DE_TERMOS}
@@ -1068,7 +1104,14 @@ ${REGRAS_DE_TERMOS}
     throw new AiStructuredError(`Falha ao gerar detalhes do topico "${topic.nome}".`, "trail_detail_failed");
   }
 
-  const normalizedContents = normalizeTrailDetails(detailPayload, topic, contentTarget, { arquivos, figuras: material.figuras });
+  const normalizedContents = normalizeTrailDetails(detailPayload, topic, contentTarget, {
+    arquivos,
+    figuras: material.figuras,
+    filtros: {
+      cards: criarFiltroDeRepetidas(ctx.existentes.cards),
+      questoes: criarFiltroDeRepetidas(ctx.existentes.questoes),
+    },
+  });
   const topicCards = normalizedContents.flatMap((content) =>
     ensureObjectArray((content as JsonRecord).cards).map((card) => ({
       ...card,
@@ -1110,7 +1153,10 @@ async function generateTrailTwoSteps(
   const skeleton = await generateTrailSkeleton(ctx, body, key, deadline);
   const detailedTopics: JsonRecord[] = [];
   for (let index = 0; index < skeleton.length; index += 1) {
-    detailedTopics.push(await generateTrailTopicDetail(ctx, skeleton[index], index, skeleton.length, key, deadline));
+    const topico = await generateTrailTopicDetail(ctx, skeleton[index], index, skeleton.length, key, deadline);
+    detailedTopics.push(topico);
+    ctx.existentes.cards.push(...ensureObjectArray(topico.cards).map((card) => String(card.titulo ?? "")));
+    ctx.existentes.questoes.push(...ensureObjectArray(topico.atividades).map((atividade) => String(atividade.enunciado ?? "")));
   }
   return { topicos: detailedTopics };
 }
@@ -1276,8 +1322,7 @@ const DESCRIPTION_SCHEMA = {
 // Sem schema, o Gemini tem liberdade para variar nomes de campo/estrutura
 // (ex.: "pergunta" em vez de "titulo"), o que normalizeCards/normalizeAtividades
 // descarta silenciosamente por nao bater com o formato esperado — resultando em
-// arrays vazios preenchidos so com fallbackCard/fallbackAtividade (conteudo
-// generico, nao baseado no material do professor) sem nenhum erro visivel.
+// arrays vazios sem nenhum erro visivel.
 const CONTENT_SCHEMA = {
   type: "OBJECT",
   required: ["cards", "atividades"],
@@ -1481,14 +1526,6 @@ async function callGemini(params: {
   return { text, finishReason };
 }
 
-function ensureMin<T>(items: T[], minItems: number, factory: (index: number) => T): T[] {
-  const next = [...items];
-  while (next.length < minItems) {
-    next.push(factory(next.length));
-  }
-  return next;
-}
-
 function stripLeadingIndex(value: string): string {
   if (!value) return "";
   let out = value.trim();
@@ -1530,103 +1567,6 @@ function dedupeBy<T>(items: T[], keyFactory: (item: T) => string): T[] {
   return output;
 }
 
-function pickDifficulty(index: number): "facil" | "intermediaria" | "avancada" {
-  if (index < 4) return "facil";
-  if (index < 7) return "intermediaria";
-  return "avancada";
-}
-
-function fallbackCard(index: number, topicName: string): AiCard {
-  const label = topicName || "conteudo selecionado";
-  const questionTemplates = [
-    `Qual e o conceito central de ${label}`,
-    `Como aplicar ${label} em um caso pratico`,
-    `Qual erro comum deve ser evitado ao estudar ${label}`,
-    `Qual diferenca principal aparece em ${label}`,
-    `Qual etapa inicial e essencial em ${label}`,
-    `Como validar o entendimento de ${label}`,
-    `Qual exemplo representa melhor ${label}`,
-    `Qual criterio define sucesso em ${label}`,
-    `Como explicar ${label} para iniciantes`,
-    `Qual relacao de ${label} com o objetivo do topico`,
-  ];
-  const answerTemplates = [
-    "A resposta destaca a definicao principal e seu objetivo de aprendizagem.",
-    "A aplicacao correta usa o conceito no contexto certo e com justificativa.",
-    "O erro comum e confundir termos proximos sem verificar o contexto do material.",
-    "A diferenca aparece no foco de uso, no criterio de avaliacao e no resultado esperado.",
-    "A etapa inicial e revisar os fundamentos antes de executar qualquer atividade.",
-    "A validacao ocorre ao resolver um caso e justificar a decisao com base no conteudo.",
-    "O melhor exemplo e o que mostra entrada, processo e saida de forma objetiva.",
-    "O sucesso e medido por coerencia conceitual e aplicacao pratica correta.",
-    "A explicacao para iniciantes deve usar linguagem simples e exemplo direto.",
-    "A relacao com o objetivo e garantir entendimento para aplicar o conteudo com autonomia.",
-  ];
-  const question = questionTemplates[index % questionTemplates.length];
-  const answer = answerTemplates[index % answerTemplates.length];
-  return {
-    titulo: `${question}?`,
-    descricao: answer,
-  };
-}
-
-function fallbackAtividade(index: number, topicName: string): AiAtividade {
-  const label = topicName || "conteudo";
-  const difficulty = pickDifficulty(index);
-  const easyTitles = [
-    "Reconhecimento conceitual",
-    "Compreensao inicial",
-    "Fundamentos do tema",
-    "Identificacao de conceitos",
-  ];
-  const midTitles = [
-    "Aplicacao guiada",
-    "Analise de contexto",
-    "Interpretacao de caso",
-  ];
-  const hardTitles = [
-    "Resolucao analitica",
-    "Sintese argumentativa",
-    "Transferencia de conhecimento",
-  ];
-
-  if (difficulty === "facil") {
-    return {
-      titulo: easyTitles[index % easyTitles.length],
-      enunciado: `Identifique o conceito central de ${label} e escolha a alternativa que melhor o representa.`,
-      tipo: "quiz",
-      alternativas: [
-        "Definicao correta do conceito",
-        "Exemplo fora do contexto",
-        "Informacao contraditoria",
-        "Conclusao sem base no material",
-      ],
-      resposta_correta: "Definicao correta do conceito",
-      nota_estabelecida: null,
-    };
-  }
-
-  if (difficulty === "intermediaria") {
-    return {
-      titulo: midTitles[index % midTitles.length],
-      enunciado: `Complete a lacuna com o termo adequado para aplicar ${label} em um caso pratico.`,
-      tipo: "fill_blank",
-      alternativas: null,
-      resposta_correta: "Termo tecnico correto",
-      nota_estabelecida: null,
-    };
-  }
-
-  return {
-    titulo: hardTitles[index % hardTitles.length],
-    enunciado: `Resolva um problema aplicado de ${label}, justificando cada decisao com base no material estudado.`,
-    tipo: "essay",
-    alternativas: null,
-    resposta_correta: "Resposta dissertativa orientada",
-    nota_estabelecida: null,
-  };
-}
-
 function normalizeDescription(raw: unknown): { descricao: string } {
   if (!raw || typeof raw !== "object") {
     return { descricao: "Resumo do topico em 2-3 frases com foco nos objetivos de aprendizagem." };
@@ -1638,7 +1578,15 @@ function normalizeDescription(raw: unknown): { descricao: string } {
   return { descricao };
 }
 
-function normalizeCards(raw: unknown, topicName: string): { items: AiCard[]; sourceUniqueCount: number } {
+/**
+ * Cards e atividades do modo `content`, sem repetidas: nem entre si, nem com as
+ * perguntas que o topico ja tem (`filtro`).
+ *
+ * Nao completa mais ate 10 com item generico ("Qual e o conceito central de
+ * ...?", "Reconhecimento conceitual"): era o mesmo texto em toda geracao, ou
+ * seja, pergunta repetida por construcao. Volta o que a IA gerou de novo.
+ */
+function normalizeCards(raw: unknown, filtro: FiltroDeRepetidas): { items: AiCard[]; repetidas: number } {
   const rows = Array.isArray(raw) ? raw : [];
   const parsed = rows
     .map((item) => {
@@ -1651,12 +1599,12 @@ function normalizeCards(raw: unknown, topicName: string): { items: AiCard[]; sou
     })
     .filter((item): item is AiCard => item !== null);
 
-  const unique = dedupeBy(parsed, (card) => `${normalizeKey(card.titulo)}|${normalizeKey(card.descricao)}`).slice(0, 30);
-  const filled = ensureMin(unique, 10, (index) => fallbackCard(index, topicName));
-  return { items: filled, sourceUniqueCount: unique.length };
+  const unique = dedupeBy(parsed, (card) => `${normalizeKey(card.titulo)}|${normalizeKey(card.descricao)}`);
+  const novos = unique.filter((card) => filtro.aceitar(card.titulo)).slice(0, 30);
+  return { items: novos, repetidas: unique.length - novos.length };
 }
 
-function normalizeAtividades(raw: unknown, topicName: string): { items: AiAtividade[]; sourceUniqueCount: number } {
+function normalizeAtividades(raw: unknown, filtro: FiltroDeRepetidas): { items: AiAtividade[]; repetidas: number } {
   const rows = Array.isArray(raw) ? raw : [];
   const allowed = new Set([
     "quiz",
@@ -1734,10 +1682,9 @@ function normalizeAtividades(raw: unknown, topicName: string): { items: AiAtivid
       `${normalizeKey(atividade.titulo)}|${normalizeKey(atividade.enunciado)}|${normalizeKey(
         atividade.resposta_correta,
       )}|${atividade.tipo}`,
-  ).slice(0, 20);
-
-  const filled = ensureMin(unique, 10, (index) => fallbackAtividade(index, topicName));
-  return { items: filled, sourceUniqueCount: unique.length };
+  );
+  const novas = unique.filter((atividade) => filtro.aceitar(atividade.enunciado)).slice(0, 20);
+  return { items: novas, repetidas: unique.length - novas.length };
 }
 
 serve(async (req) => {
@@ -1819,6 +1766,9 @@ serve(async (req) => {
       topicoDescricao,
     });
     const topicLabel = topicoNome || topicName;
+    const orientacaoBlock = blocoDaOrientacao(orientacaoDoPedido(body.orientacao));
+    const existentes = existentesDoPedido(body.existentes);
+    const existentesBlock = blocoDosExistentes(existentes);
 
     const contentLines = contents
       .map((content) => {
@@ -1838,7 +1788,7 @@ serve(async (req) => {
     if (mode === "description") {
       const prompt = `Voce e assistente pedagogico.
 ${contextBlock}
-${themeGuideBlock}
+${themeGuideBlock}${orientacaoBlock}
 Tarefa: gerar a descricao do topico de forma objetiva e acionavel.
 Topico alvo: "${topicLabel}"
 ${topicoDescricao ? `Descricao atual do topico: "${topicoDescricao}"` : ""}
@@ -1904,6 +1854,7 @@ Retorne JSON valido:
     let bestCards: AiCard[] | null = null;
     let bestAtividades: AiAtividade[] | null = null;
     let bestScore = -1;
+    let bestRepetidas = 0;
 
     for (let attempt = 0; attempt < tentativas; attempt += 1) {
       const partes: ParteDoPedido[] = [
@@ -1929,6 +1880,7 @@ Topico de trabalho: "${topicLabel}"
 ${topicoDescricao ? `Descricao do topico: "${topicoDescricao}"` : ""}
 Conteudo selecionado (base obrigatoria):
 ${contentLinesBlock}${materialBlock}${materialBlockAnexado}
+${orientacaoBlock}${existentesBlock}
 Identificador de variacao desta tentativa: ${nonce}
 
 Retorne JSON valido com:
@@ -1947,6 +1899,7 @@ ${REGRAS_DE_TERMOS}
 - Para tipo "essay", nao inclua alternativas e use resposta orientadora dissertativa.
 - Use apenas estes tipos: "quiz", "true_false", "fill_blank", "essay".
 - Nao repita cards (titulo/descricao) nem atividades (titulo/enunciado/resposta) dentro do mesmo array.
+- Nenhuma pergunta pode repetir, nem com outras palavras, uma que o topico ja tem.
 - Se detectar repeticao potencial, reescreva completamente o item.
 - Em cards: "titulo" deve ser PERGUNTA e "descricao" deve ser RESPOSTA.
 - Nao use indices, numeracao, prefixos como "Card 1", "Atividade 2", "Questao 3" em nenhum campo.
@@ -1994,25 +1947,35 @@ ${REGRAS_DE_TERMOS}
       }
 
       const row = parsed as Record<string, unknown>;
-      const cardsResult = normalizeCards(row.cards, topicLabel);
-      const atividadesResult = normalizeAtividades(row.atividades, topicLabel);
-      const score = cardsResult.sourceUniqueCount + atividadesResult.sourceUniqueCount;
+      // Filtro novo por tentativa: cada uma e um pacote inteiro, e so a melhor volta.
+      const cardsResult = normalizeCards(row.cards, criarFiltroDeRepetidas(existentes.cards));
+      const atividadesResult = normalizeAtividades(row.atividades, criarFiltroDeRepetidas(existentes.questoes));
+      const score = cardsResult.items.length + atividadesResult.items.length;
       if (score > bestScore) {
         bestScore = score;
         bestCards = cardsResult.items;
         bestAtividades = atividadesResult.items;
+        bestRepetidas = cardsResult.repetidas + atividadesResult.repetidas;
       }
 
-      if (cardsResult.sourceUniqueCount >= 10 && atividadesResult.sourceUniqueCount >= 10) {
+      if (cardsResult.items.length >= 10 && atividadesResult.items.length >= 10) {
         break;
       }
     }
 
-    // bestScore <= 0 significa que NENHUMA tentativa produziu um item real
-    // vindo da IA — sem isso, o endpoint devolvia 200 com cards/atividades
-    // 100% fallbackCard/fallbackAtividade (texto generico tipo "Reconhecimento
-    // conceitual"), indistinguivel de conteudo real gerado a partir do
-    // material do professor.
+    // bestScore <= 0 significa que NENHUMA tentativa produziu um item novo
+    // vindo da IA. Quando foi tudo repetida, o professor precisa saber que o
+    // topico ja cobre o que o material tem, nao que a IA falhou.
+    if ((bestCards?.length ?? 0) === 0 && (bestAtividades?.length ?? 0) === 0 && bestRepetidas > 0) {
+      return jsonResponse(
+        {
+          error: "ai_generation_only_repeated",
+          message:
+            "A IA so gerou perguntas que o topico ja tem. Mude a orientacao da IA ou o material e tente de novo.",
+        },
+        422,
+      );
+    }
     if (!bestCards || !bestAtividades || bestScore <= 0) {
       return jsonResponse(
         {
@@ -2028,6 +1991,8 @@ ${REGRAS_DE_TERMOS}
       cards: bestCards,
       atividades: bestAtividades,
       material: relato,
+      /** Perguntas que a IA gerou e a funcao descartou por repetirem as que ja existem. */
+      repetidas_descartadas: bestRepetidas,
     });
     }
 

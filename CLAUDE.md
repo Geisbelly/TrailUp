@@ -683,6 +683,16 @@ Cada perfil carrega:
   material começado ou visto, então o furo era tópico despublicado depois de
   aberto ou id adivinhado. **RPC DEFINER nova que lê material por id precisa do
   mesmo portão**; a RLS não a cobre.
+- `classe_orientacao_ia` — o que o professor pede e o que pede para **evitar** na IA, uma
+  linha por turma (`20261115_01`). Lê e escreve só o dono da turma, direto pelo Supabase; o
+  aluno não lê. A edge function `generate-content-ai` **não lê a tabela**: o console manda
+  `orientacao` no corpo de todo pedido (esqueleto, cada tópico, gerar o que falta, "Pedir
+  ajuste", descrição e sugestões de um conteúdo), junto de `existentes` — as perguntas que a IA
+  não pode repetir (as do tópico no banco e as da fila de revisão; na trilha, as dos outros
+  tópicos da proposta). A regra de "repetida" é uma só, em `repetidas.ts` da função, e o console
+  a importa de lá; a função filtra a saída, porque o modelo nem sempre obedece ao prompt. O
+  modo `content` não completa mais até 10 com card/atividade genéricos: eram o mesmo texto em
+  toda geração.
 - `alteracao_professor` + `alteracao_aluno` — o professor mudou um conteúdo ou
   uma atividade que algum aluno já viu ou fez (`20261101_12`). **O banco
   registra** (gatilho nas quatro tabelas do editor e em `questao_gabarito`, só

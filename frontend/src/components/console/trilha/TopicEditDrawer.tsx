@@ -51,6 +51,10 @@ import { duplicateActivity, duplicateCard } from "./topicsApi";
 import { useUrlDoConteudo } from "./useUrlDoConteudo";
 import { anexosDoPedido, prepararAnexos, type AnexoParaIa } from "./arquivosParaIa";
 import { arquivosParaAnexar, enderecosDoConteudo } from "./materialDoConteudoParaIa";
+import { OrientacaoDaIa } from "./OrientacaoDaIa";
+import { useOrientacaoDaIa } from "./useOrientacaoDaIa";
+import { existentesParaOPedido, juntarExistentes } from "./perguntasExistentes";
+import { perguntasDoTopicoNoBanco } from "./perguntasDoTopicoNoBanco";
 import {
   Plus,
   Pencil,
@@ -237,6 +241,8 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     if (!Number.isFinite(classeId) || classeId <= 0) return null;
     return classes.find((classe) => classe.id === classeId) ?? null;
   }, [classes, formData.classe_id, editingTopic?.classe_id]);
+  // Orientação da turma para a IA: vai na descrição e nas sugestões de cards e atividades.
+  const orientacaoIa = useOrientacaoDaIa(open ? (selectedClasse?.id ?? null) : null);
   const selectedMateria = useMemo(() => {
     if (!selectedClasse?.materia_id) return null;
     return materias.find((materia) => materia.id === selectedClasse.materia_id) ?? null;
@@ -341,6 +347,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       ...(topicoNome ? { topicoNome } : {}),
       ...(topicoDescricao ? { topicoDescricao } : {}),
       personalizacaoThemeGuide: buildPersonalizacaoThemeGuide(),
+      ...orientacaoIa.paraOPedido(),
     };
   };
 
@@ -358,6 +365,8 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     anexos?: AnexoParaIa[];
     videoUrl?: string;
     linkUrl?: string;
+    orientacao?: { pedir: string; evitar: string };
+    existentes?: { questoes: string[]; cards: string[] };
   }> => {
     // O conteúdo aberto no formulário usa o que está digitado (e os arquivos ainda não enviados);
     // qualquer outro da lista usa o que está salvo.
@@ -385,11 +394,18 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       registerStoredFile({ path, name: getReferenceName(path), size: 0 });
     }
 
-    const [pending, stored, anexos] = await Promise.all([
+    const [pending, stored, anexos, doBanco] = await Promise.all([
       doFormulario ? readPendingFileContents() : Promise.resolve({ fileContents: "", fileNames: [] as string[] }),
       readStoredFileContents(Array.from(storedFilesMap.values())),
       lerAnexosDoConteudo(Array.from(storedFilesMap.values()), doFormulario ? pendingFiles : []),
+      editingTopic ? perguntasDoTopicoNoBanco(editingTopic.id) : Promise.resolve(null),
     ]);
+    // O que o tópico já tem e o que ainda espera revisão na fila: a IA não pode repetir nenhum.
+    const naFila = filaDeSugestoes.map(({ sugestao }) => ({
+      questoes: sugestao.atividades.map((a) => a.enunciado),
+      cards: sugestao.cards.map((c) => c.titulo),
+    }));
+    const existentes = juntarExistentes(...naFila, doBanco, { cards: cards.map((c) => c.titulo) });
 
     const mergedFileContents = [stored.fileContents, pending.fileContents].filter(Boolean).join("\n\n");
     const mergedFileNames = [...stored.fileNames, ...pending.fileNames];
@@ -407,6 +423,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       ...(mergedFileContents ? { fileContents: mergedFileContents, fileNames: mergedFileNames } : {}),
       ...(anexos.length > 0 ? { anexos } : {}),
       ...enderecosDoConteudo(tipo, textBody),
+      ...existentesParaOPedido(existentes),
     };
   };
 
@@ -568,6 +585,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     if (gerandoIa.has(chave)) return;
     setGerandoIa((atual) => new Set(atual).add(chave));
     try {
+      await orientacaoIa.garantirSalva();
       const payload = await buildContentAiPayload(alvoId);
       if (!payload.topicName) {
         toast.error("Preencha ou selecione um conteúdo antes de gerar sugestões.");
@@ -592,6 +610,12 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         toast.info(`A IA não sugeriu nada para “${payload.topicName}”.`);
         return;
       }
+      const repetidas = sugestao.repetidas_descartadas ?? 0;
+      if (repetidas > 0) {
+        toast.info(
+          `${repetidas === 1 ? "Uma pergunta repetia" : `${repetidas} perguntas repetiam`} o que o tópico já tem e ${repetidas === 1 ? "ficou" : "ficaram"} de fora.`,
+        );
+      }
       setFilaDeSugestoes((fila) => [...fila, { conteudoId: alvoId, titulo: payload.topicName, sugestao }]);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao gerar sugestões.");
@@ -609,6 +633,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     if (!formData.nome) return;
     setIsGeneratingDescription(true);
     try {
+      await orientacaoIa.garantirSalva();
       const { fileContents, fileNames } = await readPendingFileContents();
       const { data, error } = await supabase.functions.invoke("generate-content-ai", {
         body: {
@@ -1133,6 +1158,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                   </div>
                 </div>
                 <Separator className="bg-muted" />
+                <OrientacaoDaIa estado={orientacaoIa} onde="as sugestões de cards e atividades desta turma" />
                 <div className="space-y-4">
                   <div className="flex items-center justify-between sticky top-0 bg-background z-10 py-2">
                     <h3 className={darkLabelClass}>Nós de Conteúdo</h3>
