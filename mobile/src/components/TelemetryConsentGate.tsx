@@ -1,4 +1,5 @@
 import {
+  adotarTelemetryConsentRecord,
   definirAlunoDoConsentimento,
   getTelemetryConsentRecord,
   setTelemetryConsentAccepted,
@@ -8,7 +9,11 @@ import {
 import { useUsuario } from "@/context/SessaoContext";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
-import { registrarConsentimentoTelemetriaNoServidor } from "@/services/consentimentoTelemetriaSupabase";
+import {
+  lerDecisaoDaContaNoServidor,
+  registrarConsentimentoTelemetriaNoServidor,
+} from "@/services/consentimentoTelemetriaSupabase";
+import { comPrazo, escolherDecisao } from "@/services/consentimentoRemoto";
 import {
   carregarEstadoConsentimento,
   limparEstadoConsentimento,
@@ -32,6 +37,9 @@ import { perfilVisualDoAluno } from "@/utils/brainHex";
 // O modulo da camera saiu daqui junto com o pedido de permissao: aceitar os
 // termos nao toca na camera. Quem carrega `expo-camera` e pede a permissao e
 // `MetricasContext.setCameraOptIn`, acionado pelo toggle explicito.
+
+// Quanto o Gate espera a decisao da conta antes de mostrar o termo.
+const PRAZO_DA_LEITURA_MS = 8000;
 
 export function TelemetryConsentGate() {
   // Este portão aparece DEPOIS do login, por cima do app, e era a única tela cheia que não
@@ -73,16 +81,31 @@ export function TelemetryConsentGate() {
     (async () => {
       // O aceite local e POR ALUNO (#195): troca a chave antes de ler.
       await definirAlunoDoConsentimento(alunoId);
-      const [record] = await Promise.all([
+      const [local, remota] = await Promise.all([
         getTelemetryConsentRecord(),
+        // O aceite e da CONTA: reinstalar, trocar de aparelho ou abrir a web
+        // noutro navegador nao pode pedir o termo de novo a quem ja decidiu.
+        // Rede lenta ou fora: vale `null` e o termo aparece, como antes.
+        comPrazo(
+          lerDecisaoDaContaNoServidor(alunoId, TELEMETRY_CONSENT_VERSION),
+          PRAZO_DA_LEITURA_MS
+        ),
         carregarEstadoConsentimento(),
       ]);
       if (!active) return;
-      setTermoPendente(!record || record.version !== TELEMETRY_CONSENT_VERSION);
+      const record = escolherDecisao(local, remota, TELEMETRY_CONSENT_VERSION);
+      if (record && record !== local) {
+        // Veio da conta: grava aqui para a coleta e o Perfil enxergarem. Nao
+        // reenvia ao servidor -- a linha e justamente de onde ela veio.
+        await adotarTelemetryConsentRecord(record);
+        if (!active) return;
+      }
+      setTermoPendente(!record);
       // Retentativa: o aceite pode ter sido gravado localmente sem a rede
       // responder. Repetir e inofensivo -- a tabela tem UNIQUE por
-      // (aluno, versao, decisao) e o 23505 volta como sucesso.
-      if (record) void registrarConsentimentoTelemetriaNoServidor(record);
+      // (aluno, versao, decisao) e o 23505 volta como sucesso. Vai a LOCAL,
+      // nunca a lida da conta: aquela linha ja esta la.
+      if (local) void registrarConsentimentoTelemetriaNoServidor(local);
     })()
       .catch((erro) => console.warn("[Consentimento] falha ao carregar:", erro))
       .finally(() => {
