@@ -2010,11 +2010,23 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{at.enunciado}</p>
-                        {at.alternativas && at.alternativas.length > 0 && (
+                        {at.alternativas && at.alternativas.length > 0 ? (
                           <p className="text-[10px] text-muted-foreground mt-1">
                             Alternativas: {at.alternativas.join(" · ")}{" -> "}<span className="text-success">{at.resposta_correta}</span>
                           </p>
-                        )}
+                        ) : at.resposta_correta ? (
+                          // Sem alternativas, o gabarito é o que decide a correção: a lacuna aceita
+                          // cada forma separada por "|", e a dissertativa é comparada com a resposta
+                          // esperada. O professor precisa ver isso antes de criar.
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {at.tipo === "fill_blank" ? "Aceita: " : "Resposta esperada: "}
+                            <span className="text-success">
+                              {at.tipo === "fill_blank"
+                                ? at.resposta_correta.split(/[|;\n]/).map((forma) => forma.trim()).filter(Boolean).join(" · ")
+                                : at.resposta_correta}
+                            </span>
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   ))}

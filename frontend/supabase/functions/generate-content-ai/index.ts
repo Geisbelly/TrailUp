@@ -18,6 +18,7 @@ import {
 } from "./anexosDaTrilha.ts";
 import { limitesDoEsqueleto, MAX_TOPICOS, quantidadeDeTopicos, regrasDaQuantidade } from "./quantidadeDeTopicos.ts";
 import { lerPaginaDoLink, linkPublicoSeguro, urlDoYouTube, type RelatoDoMaterial } from "./materialDoConteudo.ts";
+import { respostasDaLacuna } from "./respostasDaLacuna.ts";
 
 /** Parte do pedido ao Gemini: texto, arquivo inline ou arquivo por URL (o vídeo do YouTube). */
 type ParteDoPedido = ParteGemini | { fileData: { fileUri: string; mimeType?: string } };
@@ -370,7 +371,7 @@ function buildSourceBlock(sources: AiSourceInput[], fileContents?: string, fileN
  * `fn_questao_respostas_aceitas` no banco), entao os sinonimos vao no proprio gabarito.
  */
 const REGRAS_DE_TERMOS = `- Use o mesmo nome para o mesmo conceito em todos os cards e atividades: o termo que o material usa. Se o material usa dois nomes para a mesma coisa (ex.: "anomalia de inserção" e "anomalia de inclusão"), escolha um e mantenha-o em tudo.
-- Para tipo "fill_blank", "resposta_correta" lista TODAS as formas aceitas, separadas por " | ": o termo escolhido e os sinônimos que o material usa para ele (ex.: "inserção | inclusão"). O aluno digita a resposta, e uma forma correta que não estiver listada pode ser corrigida como errada.`;
+- Para tipo "fill_blank", "resposta_correta" lista TODAS as formas aceitas, separadas por " | ": o termo escolhido e os sinônimos que o material usa para ele (ex.: "inserção | inclusão"). Só entram nomes diferentes: não repita a mesma palavra mudando maiúscula, acento ou pontuação ("CONCAT | concat"), porque a correção já ignora isso. O aluno digita a resposta, e uma forma correta que não estiver listada pode ser corrigida como errada.`;
 
 function normalizeActivityType(value: unknown): "quiz" | "questao" | "texto" | "true_false" | "fill_blank" {
   const normalized = String(value ?? "")
@@ -750,7 +751,8 @@ function normalizeTrailDetails(
           ? ["Verdadeiro", "Falso"]
           : [];
 
-      const resposta = String(atividade.resposta_correta ?? alternativas[0] ?? "Revisar o conteudo.").trim();
+      const respostaBruta = String(atividade.resposta_correta ?? alternativas[0] ?? "Revisar o conteudo.").trim();
+      const resposta = tipoAtividade === "fill_blank" ? respostasDaLacuna(respostaBruta) || respostaBruta : respostaBruta;
 
       return {
         titulo: String(atividade.titulo ?? `Atividade ${activityIndex + 1}`).trim() || `Atividade ${activityIndex + 1}`,
@@ -1711,6 +1713,8 @@ function normalizeAtividades(raw: unknown, topicName: string): { items: AiAtivid
           ? alternativas.includes(resposta)
             ? resposta
             : alternativas[0]
+          : normalizedTipo === "fill_blank"
+          ? respostasDaLacuna(resposta) || resposta
           : resposta;
 
       return {
