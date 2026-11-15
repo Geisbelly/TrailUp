@@ -6,12 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Loader2, Layers, Palette, UserSearch, Users, FileText, Music, FileImage, NotebookPen, RefreshCw, Sparkles, AlertTriangle, Check, ScrollText, ShieldCheck } from "lucide-react";
-import { COR_DO_PERFIL, NOME_DO_PERFIL } from "../dashboard/perfilCores";
+import { COR_DO_PERFIL } from "../dashboard/perfilCores";
 import type { BrainHexProfileKey } from "@/features/signup/brainhex";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  enqueueManualGenerateAllJob,
   enqueueManualGenerateJob,
   fetchAdequacaoGrupo,
   fetchContextoDocente,
@@ -35,6 +34,8 @@ import {
   isGeracaoStatusAtivo,
 } from "./statusBadge";
 import { SugestaoMaterialCard } from "./SugestaoMaterialCard";
+import { GerarEmLoteDialog } from "./GerarEmLoteDialog";
+import { avisoDoLote, lerJobDoLote, type JobDoLote, type RespostaDoLote } from "./geracaoEmLote";
 import { ArcoNarrativoCard } from "./ArcoNarrativoCard";
 import { DiversidadeDaTurmaCard } from "./DiversidadeDaTurmaCard";
 import { AprovacaoPersonalizacoes, SeloAprovacao } from "./AprovacaoPersonalizacoes";
@@ -65,16 +66,6 @@ type TopicoRow = { id: number; classe_id: number; nome: string | null; ordem: nu
 type ConteudoRow = { id: number; topico_id: number; titulo: string | null; ordem: number | null };
 type AlunoRow = { id: string; nome: string | null; email: string | null; perfil_dominante: string; afinidade?: number };
 
-
-const BRAINHEX_PROFILE_KEYS = [
-  "seeker",
-  "survivor",
-  "daredevil",
-  "mastermind",
-  "conqueror",
-  "socializer",
-  "achiever",
-] as const;
 
 const ACTIVE_JOB_STATUSES = new Set(["pending", "processing", "partial"]);
 
@@ -194,12 +185,11 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
   const [buscaAluno, setBuscaAluno] = useState("");
   const [reprocessando, setReprocessando] = useState(false);
 
-  const [perfilParaGerarTudo, setPerfilParaGerarTudo] = useState<string>(BRAINHEX_PROFILE_KEYS[0]);
-  const [gerarTudoJob, setGerarTudoJob] = useState<PersonalizacaoJobResumo | null>(null);
-  const [gerarTudoError, setGerarTudoError] = useState<string | null>(null);
-  const gerarTudoAtivo = Boolean(gerarTudoJob && ACTIVE_JOB_STATUSES.has(gerarTudoJob.status));
-  const [gerarTudoEnfileirando, setGerarTudoEnfileirando] = useState(false);
-  const [umGerarTudoPorVez] = useState(() => criarUmPedidoPorVez(setGerarTudoEnfileirando));
+  // Geração em lote (turma, tópicos ou conteúdos × perfis): enfileira e acompanha pelo banco.
+  const [loteAberto, setLoteAberto] = useState(false);
+  const [loteJob, setLoteJob] = useState<JobDoLote | null>(null);
+  const [loteError, setLoteError] = useState<string | null>(null);
+  const loteAtivo = Boolean(loteJob && ACTIVE_JOB_STATUSES.has(loteJob.status));
   // Aba controlada: o aviso de material esperando aprovação leva direto para ela.
   const [aba, setAba] = useState("por-perfil");
   const [registrosAprovacao, setRegistrosAprovacao] = useState<RegistroAprovacao[]>([]);
@@ -485,20 +475,20 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
   }, []);
 
   useEffect(() => {
-    if (!gerarTudoJob || !ACTIVE_JOB_STATUSES.has(gerarTudoJob.status)) return;
+    if (!loteJob || !ACTIVE_JOB_STATUSES.has(loteJob.status)) return;
     let cancelled = false;
     const timer = window.setInterval(async () => {
       try {
-        const token = await resolveToken();
-        const updated = await fetchPersonalizacaoJobStatus(token, gerarTudoJob.id);
-        if (cancelled) return;
-        setGerarTudoJob(updated);
+        const updated = await lerJobDoLote(loteJob.id);
+        if (cancelled || !updated) return;
+        setLoteError(null);
+        setLoteJob(updated);
         if (!ACTIVE_JOB_STATUSES.has(updated.status)) {
           void loadPorPerfil({ silent: true, queueIfBusy: true });
         }
       } catch (error) {
         if (!cancelled) {
-          setGerarTudoError(error instanceof Error ? error.message : "Falha ao consultar progresso.");
+          setLoteError(error instanceof Error ? error.message : "Falha ao consultar progresso.");
         }
       }
     }, 3000);
@@ -506,23 +496,21 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [gerarTudoJob, resolveToken, loadPorPerfil]);
+  }, [loteJob, loadPorPerfil]);
 
-  const handleGerarTudo = () =>
-    umGerarTudoPorVez(async () => {
-      if (!classeId) return;
-      setGerarTudoError(null);
-      try {
-        const token = await resolveToken();
-        const job = await enqueueManualGenerateAllJob(token, {
-          classeId: Number(classeId),
-          perfil: perfilParaGerarTudo,
-        });
-        setGerarTudoJob(job);
-      } catch (error) {
-        setGerarTudoError(error instanceof Error ? error.message : "Falha ao enfileirar geração.");
-      }
+  const handleLoteEnfileirado = (resposta: RespostaDoLote) => {
+    setLoteError(null);
+    toast.success(avisoDoLote(resposta));
+    setLoteJob({
+      id: resposta.job_id,
+      kind: resposta.kind,
+      status: resposta.status,
+      total_targets: resposta.total_targets,
+      processed_targets: 0,
+      error_count: 0,
     });
+    void lerJobDoLote(resposta.job_id).then((job) => job && setLoteJob(job)).catch(() => undefined);
+  };
 
   // Busca contexto do aluno (visao 3)
   const loadContexto = useCallback(async () => {
@@ -786,39 +774,33 @@ export default function PersonalizacoesSection({ professorId }: { professorId?: 
           </Button>
 
           <div className="flex flex-wrap items-end gap-2 sm:border-l sm:pl-4 sm:ml-2">
-            <div className="space-y-1">
-              <p className={ROTULO}>Gerar tudo para o perfil</p>
-              <Select value={perfilParaGerarTudo} onValueChange={setPerfilParaGerarTudo}>
-                <SelectTrigger className="w-44 rounded-[14px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {BRAINHEX_PROFILE_KEYS.map((perfil) => (
-                    <SelectItem key={perfil} value={perfil}>
-                      <span className="flex items-center gap-2">
-                        <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full" style={{ background: COR_DO_PERFIL[perfil].marca }} />
-                        {NOME_DO_PERFIL[perfil]}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <Button
               className="rounded-full font-bold"
-              onClick={() => void handleGerarTudo()}
-              disabled={!classeId || gerarTudoAtivo || gerarTudoEnfileirando}
+              onClick={() => setLoteAberto(true)}
+              disabled={!classeId || topicos.length === 0 || loteAtivo}
             >
-              {gerarTudoAtivo
-                ? `Gerando ${gerarTudoJob!.processed_targets}/${gerarTudoJob!.total_targets}${
-                    gerarTudoJob!.error_count > 0 ? ` (${gerarTudoJob!.error_count} erro(s))` : ""
+              {loteAtivo
+                ? `Gerando ${loteJob!.processed_targets}/${loteJob!.total_targets}${
+                    loteJob!.error_count > 0 ? ` (${loteJob!.error_count} erro(s))` : ""
                   }`
-                : <><Sparkles className="mr-2 h-3.5 w-3.5" aria-hidden="true" />Gerar tudo</>}
+                : <><Sparkles className="mr-2 h-3.5 w-3.5" aria-hidden="true" />Gerar em lote</>}
             </Button>
           </div>
-          {gerarTudoError && <p className="w-full text-xs text-destructive">{gerarTudoError}</p>}
+          {loteError && <p className="w-full text-xs text-destructive">{loteError}</p>}
         </CardContent>
       </Card>
+
+      {classeId && (
+        <GerarEmLoteDialog
+          aberto={loteAberto}
+          onAbertoChange={setLoteAberto}
+          classeId={Number(classeId)}
+          topicos={topicos}
+          topicoInicial={topicoId ? Number(topicoId) : null}
+          conteudoInicial={conteudoId ? Number(conteudoId) : null}
+          onEnfileirado={handleLoteEnfileirado}
+        />
+      )}
 
       {pendentesDeAprovacao > 0 && aba !== "aprovacao" && (
         <div role="status" className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-warning/50 bg-card px-4 py-3 text-sm">
