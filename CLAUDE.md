@@ -475,6 +475,18 @@ Cada perfil carrega:
   `personalizacao_jobs` direto, autorizado por
   `personalizacao_jobs_professor_sel` (via `app_classes_do_professor()`).
 
+  **Gerar em lote é RPC** (`20261115_03`): `personalizacao_gerar_em_lote(classe,
+  tópicos, conteúdos, perfis)` cria o mesmo job manual que a API criava
+  (`manual_profile_generate_all` sem escopo, `manual_profile_generate` com
+  escopo), com a mesma trava, deduplicação e retomada de
+  `enqueue_personalizacao_job`. Perfis vazios = os da turma
+  (`personalizacao_perfis_da_turma`), e aí o payload vai com
+  `brainhex_profile_keys = []` para o worker seguir filtrando pela turma; o
+  console manda vazio quando a escolha é exatamente essa. Pedido sem nada da
+  turma ou sem perfil é recusado (`22023`), nunca vira job vazio. Dívida:
+  `/jobs/manual-generate` e `/jobs/manual-generate-all` continuam existindo e
+  deduplicam contra a RPC; não use como precedente.
+
   **Uma base por vez, entre jobs.** Coalescer no enfileiramento não basta:
   pedido manual, retry e class-delta criam jobs distintos com o mesmo alvo. O
   worker só marca um target `processing` se nenhum outro da mesma base
@@ -849,7 +861,7 @@ Cada perfil carrega:
   `pg_net` → Expo, e `pg_cron` varre a cada 5min. A **rotina diária é
   notificação local** agendada no aparelho: dispara com o app fechado sem
   servidor. Ver `docs/superpowers/specs/2026-08-26-notificacoes-via-banco-design.md`.
-  **Gatilho `tempo_uso` (pausa saudável) é da trilha** (`20261115_02`): mede
+  **Gatilho `tempo_uso` (pausa saudável) é da trilha** (`20261115_03`): mede
   `aluno_atividade_diaria.tempo_trilha_seg`, não `tempo_uso_seg`, e só sai na
   batida com `p_na_trilha` verdadeiro. Adiado, continua `tempo_uso` (nunca vira
   `horario`, que a varredura entregaria em qualquer tela), e o foco não o
