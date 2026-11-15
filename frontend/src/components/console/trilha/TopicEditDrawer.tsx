@@ -49,6 +49,8 @@ import { prazoDaAtividade, rotuloDasTentativas, rotuloDoTipoDeAtividade, tentati
 import { prazoBancoParaLocal } from "@/lib/prazoDaAtividade";
 import { duplicateActivity, duplicateCard } from "./topicsApi";
 import { useUrlDoConteudo } from "./useUrlDoConteudo";
+import { anexosDoPedido, prepararAnexos, type AnexoParaIa } from "./arquivosParaIa";
+import { arquivosParaAnexar, enderecosDoConteudo } from "./materialDoConteudoParaIa";
 import {
   Plus,
   Pencil,
@@ -353,6 +355,9 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     topicoNome?: string;
     topicoDescricao?: string;
     personalizacaoThemeGuide?: unknown;
+    anexos?: AnexoParaIa[];
+    videoUrl?: string;
+    linkUrl?: string;
   }> => {
     // O conteúdo aberto no formulário usa o que está digitado (e os arquivos ainda não enviados);
     // qualquer outro da lista usa o que está salvo.
@@ -380,9 +385,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       registerStoredFile({ path, name: getReferenceName(path), size: 0 });
     }
 
-    const [pending, stored] = await Promise.all([
+    const [pending, stored, anexos] = await Promise.all([
       doFormulario ? readPendingFileContents() : Promise.resolve({ fileContents: "", fileNames: [] as string[] }),
       readStoredFileContents(Array.from(storedFilesMap.values())),
+      lerAnexosDoConteudo(Array.from(storedFilesMap.values()), doFormulario ? pendingFiles : []),
     ]);
 
     const mergedFileContents = [stored.fileContents, pending.fileContents].filter(Boolean).join("\n\n");
@@ -399,7 +405,25 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       ],
       ...buildAiContextPayload(),
       ...(mergedFileContents ? { fileContents: mergedFileContents, fileNames: mergedFileNames } : {}),
+      ...(anexos.length > 0 ? { anexos } : {}),
+      ...enderecosDoConteudo(tipo, textBody),
     };
+  };
+
+  /** PDF, PPTX e DOCX do conteúdo, lidos como na trilha: o PDF vai inteiro (o Gemini lê), os outros como texto e imagens. */
+  const lerAnexosDoConteudo = async (salvos: ConteudoFile[], pendentes: File[]): Promise<AnexoParaIa[]> => {
+    const arquivos = await arquivosParaAnexar(salvos, pendentes, async (caminho) => {
+      if (isDirectUrl(caminho)) {
+        const resposta = await fetch(caminho);
+        return resposta.ok ? resposta.blob() : null;
+      }
+      const { data, error } = await supabase.storage.from("conteudos").download(caminho);
+      if (error) throw error;
+      return data;
+    });
+    if (arquivos.length === 0) return [];
+    const { lerTextoDoPdf } = await import("./pdfNoNavegador");
+    return anexosDoPedido(await prepararAnexos(arquivos, lerTextoDoPdf));
   };
 
   const uploadFile = async (file: File, topicId: number, userId: string): Promise<string | null> => {
@@ -557,6 +581,13 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       });
       if (error) throw new Error(await formatSupabaseFunctionError(error));
       const sugestao = data as AiSuggestion;
+      const naoLido = sugestao?.material?.naoLido ?? [];
+      if (naoLido.length > 0) {
+        toast.warning(
+          `A IA não conseguiu ler ${naoLido.length === 1 ? "um item do material" : `${naoLido.length} itens do material`} de “${payload.topicName}” (${naoLido.join(", ")}). As sugestões saíram do resto.`,
+          { duration: 9000 },
+        );
+      }
       if (!sugestao?.cards?.length && !sugestao?.atividades?.length) {
         toast.info(`A IA não sugeriu nada para “${payload.topicName}”.`);
         return;

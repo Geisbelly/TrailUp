@@ -17,6 +17,10 @@ import {
   type PartesDosAnexos,
 } from "./anexosDaTrilha.ts";
 import { limitesDoEsqueleto, MAX_TOPICOS, quantidadeDeTopicos, regrasDaQuantidade } from "./quantidadeDeTopicos.ts";
+import { lerPaginaDoLink, linkPublicoSeguro, urlDoYouTube, type RelatoDoMaterial } from "./materialDoConteudo.ts";
+
+/** Parte do pedido ao Gemini: texto, arquivo inline ou arquivo por URL (o vídeo do YouTube). */
+type ParteDoPedido = ParteGemini | { fileData: { fileUri: string; mimeType?: string } };
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -175,6 +179,10 @@ interface RequestBody {
   topicoNome?: string;
   topicoDescricao?: string;
   personalizacaoThemeGuide?: unknown;
+  /** Modo `content`: video do YouTube do conteudo, que o Gemini assiste. */
+  videoUrl?: string;
+  /** Modo `content`: link externo do conteudo, que a funcao le. */
+  linkUrl?: string;
 }
 type GeminiCallOptions = {
   key: string;
@@ -1431,15 +1439,21 @@ async function callGemini(params: {
   prompt: string;
   maxOutputTokens: number;
   responseSchema?: Record<string, unknown>;
+  /** Material antes do prompt (anexos, vídeo, página do link). */
+  partes?: ParteDoPedido[];
+  /** Vídeo em resolução baixa: ~100 tokens por segundo em vez de ~300, o que cabe no tier free. */
+  mediaResolution?: "MEDIA_RESOLUTION_LOW";
+  deadline?: number;
 }) {
   const { res: response, apiData } = await fetchGemini(params.key, {
-    contents: [{ parts: [{ text: params.prompt }] }],
+    contents: [{ parts: [...(params.partes ?? []), { text: params.prompt }] }],
     generationConfig: {
       maxOutputTokens: params.maxOutputTokens,
       responseMimeType: "application/json",
       ...(params.responseSchema ? { responseSchema: params.responseSchema } : {}),
+      ...(params.mediaResolution ? { mediaResolution: params.mediaResolution } : {}),
     },
-  });
+  }, params.deadline);
   if (!response.ok) {
     throw geminiHttpError(response.status, apiData);
   }
@@ -1797,6 +1811,10 @@ serve(async (req) => {
         if (content.tipo === "texto" && content.conteudo) {
           return `${header}: ${content.conteudo.substring(0, MAX_CONTENT_SNIPPET)}`;
         }
+        // Video e link: o endereco ajuda o modelo a situar o material anexado.
+        if ((content.tipo === "video" || content.tipo === "link") && content.conteudo && !content.conteudo.includes("<")) {
+          return `${header} (${content.conteudo.trim().substring(0, 300)})`;
+        }
         return header;
       })
       .join("\n");
@@ -1839,11 +1857,53 @@ Retorne JSON valido:
       return jsonResponse(normalizeDescription(parsed));
     }
 
+    // O material do conteudo vai junto do prompt: sem ele, video, link e PDF
+    // geravam questoes so a partir do titulo.
+    const relato: RelatoDoMaterial = { lido: [], naoLido: [] };
+    const partesDoMaterial: ParteDoPedido[] = [];
+    const anexosDoConteudo = lerAnexos(body.anexos);
+    if (anexosDoConteudo.length > 0) {
+      const montado = montarPartesDosAnexos(anexosDoConteudo);
+      partesDoMaterial.push(...montado.partes);
+      relato.lido.push(...anexosDoConteudo.map((a) => a.nome).filter((nome) => !montado.omitidos.includes(nome)));
+      relato.naoLido.push(...montado.omitidos);
+    }
+    const linkPedido = asString(body.linkUrl);
+    if (linkPedido) {
+      const link = linkPublicoSeguro(linkPedido);
+      const textoDaPagina = link ? await lerPaginaDoLink(link, deadline) : null;
+      if (link && textoDaPagina) {
+        partesDoMaterial.push({ text: `[Pagina do link ${link.href} (texto extraido)]\n${textoDaPagina}` });
+        relato.lido.push(link.href);
+      } else {
+        relato.naoLido.push(linkPedido);
+      }
+    }
+    const videoUrl = urlDoYouTube(body.videoUrl);
+    let usarVideo = Boolean(videoUrl);
+    // Com video ou PDF, cada tentativa reenvia o material inteiro: uma so,
+    // para caber na cota do tier free. So texto continua com a melhor de N.
+    const materialPesado = usarVideo || partesDoMaterial.some((parte) => "inlineData" in parte);
+    const tentativas = materialPesado ? 1 : CONTENT_GEN_ATTEMPTS;
+
     let bestCards: AiCard[] | null = null;
     let bestAtividades: AiAtividade[] | null = null;
     let bestScore = -1;
 
-    for (let attempt = 0; attempt < CONTENT_GEN_ATTEMPTS; attempt += 1) {
+    for (let attempt = 0; attempt < tentativas; attempt += 1) {
+      const partes: ParteDoPedido[] = [
+        ...(usarVideo && videoUrl ? [{ text: "[Video do conteudo (YouTube), a seguir]" }, { fileData: { fileUri: videoUrl } }] : []),
+        ...partesDoMaterial,
+      ];
+      const materialBlockAnexado = partes.length > 0
+        ? `\nO MATERIAL DESTE CONTEUDO ESTA ANEXADO A ESTE PEDIDO (${[
+          usarVideo ? "o video" : "",
+          anexosDoConteudo.length > 0 ? "os arquivos" : "",
+          relato.lido.some((item) => /^https?:/i.test(item)) ? "a pagina do link" : "",
+        ].filter(Boolean).join(", ")}).
+Baseie cards e atividades no que esta NELE: fatos, exemplos, termos, definicoes e a ordem em que e explicado.
+Nao gere questao sobre o que o material nao cobre e nao se limite ao titulo.`
+        : "";
       const nonce = crypto.randomUUID();
       const contentPrompt = `Voce e especialista em design instrucional.
 Gere um pacote de estudo para o conteudo selecionado.
@@ -1853,7 +1913,7 @@ ${themeGuideBlock}
 Topico de trabalho: "${topicLabel}"
 ${topicoDescricao ? `Descricao do topico: "${topicoDescricao}"` : ""}
 Conteudo selecionado (base obrigatoria):
-${contentLinesBlock}${materialBlock}
+${contentLinesBlock}${materialBlock}${materialBlockAnexado}
 Identificador de variacao desta tentativa: ${nonce}
 
 Retorne JSON valido com:
@@ -1877,12 +1937,31 @@ Regras obrigatorias:
 - Responda em portugues do Brasil.
 - Retorne SOMENTE JSON valido (sem markdown).`;
 
-      const call = await callGemini({
-        key,
-        prompt: contentPrompt,
-        maxOutputTokens: 9000,
-        responseSchema: CONTENT_SCHEMA as unknown as Record<string, unknown>,
-      });
+      let call: Awaited<ReturnType<typeof callGemini>>;
+      try {
+        call = await callGemini({
+          key,
+          prompt: contentPrompt,
+          maxOutputTokens: 9000,
+          responseSchema: CONTENT_SCHEMA as unknown as Record<string, unknown>,
+          partes,
+          ...(usarVideo ? { mediaResolution: "MEDIA_RESOLUTION_LOW" as const } : {}),
+          deadline,
+        });
+      } catch (erro) {
+        // Video privado, removido, longo demais ou recusado: segue sem ele, com
+        // o resto do material, e conta ao console que o video nao foi lido.
+        // Falta de cota nao entra aqui: sem o video daria o mesmo 429.
+        if (usarVideo && erro instanceof AiStructuredError && erro.code === "gemini_error") {
+          console.warn("gemini: video do conteudo recusado; seguindo sem ele", JSON.stringify(erro.details ?? {}).slice(0, 500));
+          usarVideo = false;
+          relato.naoLido.push(videoUrl ?? "video");
+          attempt -= 1;
+          continue;
+        }
+        throw erro;
+      }
+      if (usarVideo && videoUrl && !relato.lido.includes(videoUrl)) relato.lido.push(videoUrl);
       const parsed = parseGeminiJson(call.text);
       if (!parsed || typeof parsed !== "object") {
         if (attempt === CONTENT_GEN_ATTEMPTS - 1) {
@@ -1932,6 +2011,7 @@ Regras obrigatorias:
     return jsonResponse({
       cards: bestCards,
       atividades: bestAtividades,
+      material: relato,
     });
     }
 

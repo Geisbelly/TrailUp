@@ -70,6 +70,8 @@ export type TipoAtividade = "quiz" | "true_false" | "fill_blank" | "essay" | "qu
 
 export interface AiSuggestion {
   descricao?: string;
+  /** O que a IA leu do material do conteúdo e o que não deu para ler (vídeo privado, página bloqueada…). */
+  material?: { lido: string[]; naoLido: string[] };
   cards: Array<{ titulo: string; descricao: string }>;
   atividades: Array<{
     titulo: string;
