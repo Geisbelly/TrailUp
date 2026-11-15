@@ -92,12 +92,19 @@ def _coberto(host: str, conhecidos: set[str]) -> bool:
     return False
 
 
+# Teste de edge function (`*.test.ts`) não roda em produção nem envia dado a ninguém: os hosts
+# dele são exemplo (`exemplo.com`, `servidor.internal`, links de vídeo de mentira). Lê-los obrigava
+# a registrar como fornecedor o que só existe no dado do teste.
+def _e_teste(arq: Path) -> bool:
+    return ".test." in arq.name or ".spec." in arq.name
+
+
 def _arquivos():
     for pasta, exts in PASTAS:
         if not pasta.exists():
             continue
         for arq in sorted(pasta.rglob("*")):
-            if arq.suffix in exts and "node_modules" not in arq.parts:
+            if arq.suffix in exts and "node_modules" not in arq.parts and not _e_teste(arq):
                 yield arq
 
 
@@ -188,3 +195,9 @@ def test_contato_do_site_nao_tem_email_de_destino_no_frontend():
         "frontend/src/lib/contatoPublico.ts",
     ):
         assert not email.search((REPO / rel).read_text(encoding="utf-8")), rel
+
+
+def test_arquivo_de_teste_fica_fora_e_o_codigo_continua_lido():
+    lidos = {arq.name for arq in _arquivos()}
+    assert "materialDoConteudo.ts" in lidos
+    assert "materialDoConteudo.test.ts" not in lidos
