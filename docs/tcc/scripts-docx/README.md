@@ -11,6 +11,7 @@ usam. Os das rodadas anteriores continuam no cofre do artigo, fora do repositór
 | `lib.py` | Funções comuns: achar parágrafo, trocar trecho, inserir, apagar parágrafo e linha nova de tabela, tudo marcado |
 | `aplicar_revisao.py` | Itens 1 a 5 do parecer (correções obrigatórias) |
 | `aplicar_polimento_revisao.py` | Itens 8 e 10 do parecer (polimento) |
+| `aplicar_papel_professor.py` | Item 11 do parecer (papel do professor como validador do que a IA gera); cria um quadro e renumera os seguintes |
 | `aceitar2.py` | Gera o XML com todas as alterações aceitas, para a versão limpa |
 | `empacotar.py` | Monta o `.docx` a partir da pasta descompactada |
 | `dump.py` | Despeja o texto com índice de parágrafo, para comparar versões |

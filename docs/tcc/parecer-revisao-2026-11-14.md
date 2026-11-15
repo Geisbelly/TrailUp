@@ -44,6 +44,12 @@ sobre isso é a principal força, e a ausência de qualquer avaliação com usu�
 
 **[POLIMENTO] 10. Pequenos ajustes.** A linha de 8/11 do Quadro 35 está fora da ordem cronológica, como última linha. A §270 exclui o "experimento randomizado formal com grupo controle", e o capítulo 7 propõe uma turma de comparação: vale dizer que ela não é sorteada. Fica em P5.
 
+**[OBRIGATÓRIO] 11. O papel do professor como validador do que a IA gera está escondido no capítulo 5 (acrescentado em 15/11).** O sistema tem portões em cada etapa: a proposta de trilha só entra quando o professor a aplica, e o tópico aplicado nasce em rascunho. O material por perfil nasce pendente, e o banco o esconde do aluno até a aprovação. Missão da IA não chega ao aluno sem aprovação. A nota da IA na dissertativa fica na fila de correção até o professor confirmar. Tudo isso foi conferido nas migrações da `main`. O texto, porém, não diz isso no Resumo, na metodologia, nos resultados, na discussão nem na conclusão. Dois pontos tornam o item obrigatório:
+- a §462 diz que o sistema "não entrega ao aluno material gerado sem a aprovação do professor", mas as perguntas do diagnóstico, as respostas do Guardião, as falas do boss e o texto das notificações chegam ao aluno sem essa decisão;
+- o Quadro 10 e a §510 apresentam a correção por modelo como final, quando ela é uma sugestão que o professor revisa.
+
+Correção: um quadro com os pontos de decisão do professor no fim da 5.4, a lista honesta do que não passa por ele, e uma frase em cada lugar onde a banca forma o juízo. As propostas de redação estão em [`propostas-papel-do-professor-2026-11-15.md`](./propostas-papel-do-professor-2026-11-15.md). Volta a P4.
+
 ## O que foi aplicado em 15/11
 
 Os itens 1 a 5 entraram como alterações controladas, com o autor "Claude (revisão, 15/11/2026)", em
@@ -65,12 +71,42 @@ O polimento entrou no mesmo arquivo, com o autor "Claude (polimento da revisão,
 
 O item 6 continua com o orientador.
 
+O item 11 entrou em outro arquivo, com o autor "Claude (papel do professor, 15/11/2026)":
+`Monografia TrailUp - atualizada 2026-11-15 - papel do professor (com alterações).docx`, feito a partir da
+versão da revisão. Junto vai a versão `(limpa, só para leitura)`. O script é `scripts-docx/aplicar_papel_professor.py`.
+Todas as propostas de [`propostas-papel-do-professor-2026-11-15.md`](./propostas-papel-do-professor-2026-11-15.md) entraram, menos a medição sugerida da 4.8.
+
+- **Seção 5.4:**
+  - um Quadro 8 novo, com os pontos de decisão do professor;
+  - o parágrafo de entrada diz que a regra de aprovação é decisão de projeto da autora;
+  - um parágrafo depois do quadro lista o que chega ao aluno sem passar pelo professor;
+  - a §460 diz que a trilha proposta passa por duas decisões dele;
+  - a §462 fala em "material de estudo" e acrescenta que o sistema não fecha a nota de resposta aberta sem a confirmação do professor.
+- **Os quadros 8 a 37 viraram 9 a 38:** foram 30 legendas e 42 remissões no texto.
+- **Seção 5.7 (Quadro 11, antigo 10, e §510):** a nota do modelo fica na fila de correção. O [CONFERIR] foi resolvido no código:
+  - o aluno recebe o retorno do modelo na hora (`20261108_01`);
+  - a nota fica na fila até a decisão do professor (`20261016_04`, `_05`);
+  - as moedas da atividade só entram depois dessa decisão (`20261017_07`).
+- **Resumo e Abstract:** uma frase cada.
+- **Seção 1.5 (objetivo específico):** mudou. Depende do aval do orientador; dá para rejeitar a alteração no Word.
+- **Seção 1.6:** passa a dizer de quem é a validação.
+- **Seção 7.3:** o roteiro da entrevista docente passa a cobrir o tempo de revisão e o que o professor recusou.
+- **Quadro 22 (antigo 21):** uma linha nova, "Operação".
+- **Seção 8.2:** um parágrafo com os números de validação que já estavam no texto.
+- **Seção 8.5:** um parágrafo sobre os dois custos não medidos, o trabalho do professor e a aprovação por inércia.
+- **Capítulo 9:** o item k foi ampliado.
+- **Capítulo 10:** uma frase na segunda contribuição.
+- **Apêndice J:** uma linha nova no Quadro 36.
+
+A validação não encontrou termo da banlist, frase com mais de 45 palavras nem quadro fora de sequência. Os achados de citação e a remissão "4.10" vêm de antes desta rodada.
+
 ## A mudança que mais sobe a nota um nível
 
 Fazer qualquer avaliação com pessoas usando o sistema de 2026. A melhor opção é o piloto. Se ele não couber no prazo, serve uma sessão curta com o professor da turma e alguns alunos, com a SUS, que o capítulo 7 já prevê, e tarefas guiadas. Hoje, a única evidência de uso real é o teste de 2025, com 5 pessoas e sobre o protótipo. O capítulo 8 só tem dados de teste. Com uma avaliação, a segunda avaliação da DSR (§340) deixa de ser apenas proposta.
 
-## Três perguntas de banca
+## Perguntas de banca
 
 1. **Contribuição.** "A principal contribuição é a análise da literatura, mas a busca não foi registrada e a análise foi feita por IA. O que garante que outro pesquisador chegaria às mesmas 12 regras?"
 2. **Método.** "O estudo proposto compara uma turma com outra. Com duas turmas, o que a diferença-em-diferenças consegue separar do efeito do professor e da disciplina?" A §680 já reconhece o limite. A resposta precisa ser ensaiada.
 3. **Validade.** "No dia 12/11, a geração falhou em 14 de 18 conteúdos. Se o piloto acontecer assim, o que vai ser medido: a personalização ou a falta dela?"
+4. **Conteúdo gerado (acrescentada em 15/11).** "A IA gera texto, áudio, trilha e questões. Quem garante que o conteúdo está certo, e quanto custa ao professor garantir isso?" A resposta tem duas partes. A primeira é o quadro de portões do item 11. A segunda é o limite: a aprovação não prova leitura, e o tempo de revisão não foi medido.
