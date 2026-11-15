@@ -819,6 +819,12 @@ Cada perfil carrega:
   registra papel por `professor_registrar_termo_papel` (o dono passa da checagem de turma) e revoga por
   `admin_termo_revogar`. **Termo do aluno (`consentimento_telemetria`) não se revoga por lá, de
   propósito:** quem liga e desliga a coleta é o aparelho, e nada no banco lê essa tabela para decidir.
+  Mas o **app lê de volta**: o portão do termo (`TelemetryConsentGate`) busca a última decisão da conta
+  para a versão vigente e a adota quando o aparelho não tem uma (reinstalação, outro aparelho, outro
+  navegador) ou quando a da conta é mais nova. Antes ele só lia o `AsyncStorage`, e quem já tinha
+  aceitado via o termo de novo — uma conta aceitou a v6 treze vezes. A câmera volta desligada: a
+  permissão do sistema é de cada aparelho. Uma linha `rejected` gravada por fora, portanto, **passaria**
+  a desligar a coleta no próximo início do app: decida isso antes de abrir revogação por aqui.
   `admin_aluno_nascimento_corrigir` pode tirar um menor do modo restrito, então exige motivo e guarda a
   data anterior.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.

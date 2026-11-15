@@ -163,6 +163,16 @@ async function saveTelemetryConsentRecord(record: TelemetryConsentRecord) {
   });
 }
 
+/**
+ * Grava neste aparelho uma decisão que já existe na conta (lida de
+ * `consentimento_telemetria`). Não é decisão nova: o registro chega pronto,
+ * com o `updatedAt` de quando o aluno decidiu, e os assinantes (coleta, tela
+ * de Coleta e acessos) passam a vê-lo como se tivesse sido tomado aqui.
+ */
+export async function adotarTelemetryConsentRecord(record: TelemetryConsentRecord) {
+  await saveTelemetryConsentRecord(record);
+}
+
 export function subscribeTelemetryConsentChanges(listener: TelemetryConsentListener) {
   telemetryConsentListeners.add(listener);
   return () => {
