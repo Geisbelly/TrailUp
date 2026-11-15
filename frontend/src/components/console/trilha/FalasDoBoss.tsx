@@ -20,37 +20,37 @@ function LinhaDoPerfil({ fala, onAlterar }: { fala: FalaDoBoss; onAlterar: (ativ
   };
 
   return (
-    <li className={`rounded-lg border p-3 ${fala.ativa ? "border-slate-700 bg-slate-900" : "border-amber-700/60 bg-slate-900/60"}`}>
+    <li className={`rounded-lg border p-3 ${fala.ativa ? "border-border bg-background" : "border-warning/60 bg-background/60"}`}>
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-xs uppercase tracking-wide text-slate-400">{rotulo}</p>
-          <p className="truncate text-sm font-semibold text-slate-100">{fala.nome}</p>
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">{rotulo}</p>
+          <p className="truncate text-sm font-semibold text-foreground">{fala.nome}</p>
         </div>
-        <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-200">
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-foreground">
           <input
             type="checkbox"
             checked={fala.ativa}
             disabled={salvando}
             onChange={(e) => void alterar(e.target.checked)}
             aria-label={`Mostrar as falas de ${rotulo} aos alunos`}
-            className="h-4 w-4 accent-violet-400"
+            className="h-4 w-4 accent-primary"
           />
           {fala.ativa ? "Mostrando aos alunos" : "Desligada"}
         </label>
       </div>
       {!fala.ativa && (
-        <p className="mt-2 text-xs text-amber-200">
+        <p className="mt-2 text-xs text-warning">
           Os alunos deste perfil ouvem as falas fixas do app. Se a IA gerar um texto novo para este conteúdo, ela volta a ser mostrada.
         </p>
       )}
-      <details className="mt-2 text-xs text-slate-300">
-        <summary className="w-fit cursor-pointer rounded-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
+      <details className="mt-2 text-xs text-muted-foreground">
+        <summary className="w-fit cursor-pointer rounded-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
           Ler as {totalDeFalas(fala.falas)} falas
         </summary>
         <dl className="mt-2 space-y-2">
           {momentos.map((m) => (
             <div key={m.chave}>
-              <dt className="font-semibold text-slate-200">{m.rotulo}</dt>
+              <dt className="font-semibold text-foreground">{m.rotulo}</dt>
               <dd>
                 <ul className="list-disc space-y-0.5 pl-5">
                   {m.falas.map((texto, i) => (
@@ -77,29 +77,29 @@ export default function FalasDoBoss({ conteudoId }: { conteudoId: number | null 
 
   const resumo = resumoDasFalas(linhas);
   return (
-    <section aria-labelledby={`falas-boss-${conteudoId}`} className="space-y-3 rounded-xl border border-slate-600 bg-slate-950 p-4 text-slate-100">
+    <section aria-labelledby={`falas-boss-${conteudoId}`} className="space-y-3 border-t border-border pt-5">
       <div>
-        <h3 id={`falas-boss-${conteudoId}`} className="px-0 font-semibold">
+        <h3 id={`falas-boss-${conteudoId}`} className="text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
           Falas do boss geradas pela IA
         </h3>
-        <p className="mt-1 text-xs text-slate-300">
+        <p className="mt-1 text-xs text-muted-foreground">
           É o que o aluno ouve na batalha deste conteúdo, escrito pela IA no tom de cada perfil. Leia e desligue o que não quiser mostrar; nome e texto não são editáveis aqui.
         </p>
       </div>
       {estado.tipo === "carregando" ? (
         <div role="status" aria-live="polite" className="console-skeleton h-[64px]" />
       ) : estado.tipo === "erro" ? (
-        <p role="alert" className="text-xs text-red-300">
+        <p role="alert" className="text-xs text-destructive">
           Não foi possível carregar as falas do boss. Detalhe: {estado.detalhe}
         </p>
       ) : resumo.total === 0 ? (
-        <p className="text-xs text-slate-300">
+        <p className="text-xs text-muted-foreground">
           Ainda não há falas geradas para este conteúdo. Elas aparecem aqui depois que a geração da turma roda, para os perfis que têm batalha: Sobrevivente, Aventureiro e Conquistador.
         </p>
       ) : (
         <>
           {resumo.desligadas > 0 && (
-            <p className="text-xs text-amber-200">
+            <p className="text-xs text-warning">
               {resumo.desligadas === 1 ? "1 perfil está com as falas desligadas." : `${resumo.desligadas} perfis estão com as falas desligadas.`}
             </p>
           )}

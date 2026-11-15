@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { NIVEIS_DA_QUESTAO, SEM_NIVEL, nivelParaOFormulario } from "./dificuldadeDaQuestao";
-import { BossVisualPicker } from './BossVisualPicker';
-import FalasDoBoss from './FalasDoBoss';
+import { SecaoDoBoss } from "./SecaoDoBoss";
+import { PreviewDoLink, PreviewDoTexto, PreviewDoVideo } from "./PreviewDoConteudo";
+import { idDoYouTube } from "./videoDoConteudo";
 import type { Dispatch, SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -93,6 +94,8 @@ function MidiaDaQuestaoPreview({ valor }: { valor: string }) {
 }
 
 
+type SugestaoNaFila = { conteudoId: number | null; titulo: string; sugestao: AiSuggestion };
+
 type TopicEditDrawerProps = {
   open: boolean;
   editingTopic: Topico | null;
@@ -161,13 +164,6 @@ type TopicEditDrawerProps = {
   handleDeleteCard: (id: number) => Promise<boolean>;
 };
 
-function extractYouTubeId(url: string): string | null {
-  const m = url.match(
-    /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
-  );
-  return m?.[1] ?? null;
-}
-
 const TEXT_REFERENCE_PATTERN = /\.(txt|md|markdown|csv|json|ya?ml|xml)$/i;
 const FILE_REFERENCE_PATTERN = /\.(pdf|doc|docx|ppt|pptx|xls|xlsx|txt|md|markdown|csv|json|ya?ml|xml|jpg|jpeg|png|gif|webp|svg|mp3|wav|ogg|mp4|webm|mov)$/i;
 
@@ -219,15 +215,20 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [extraFiles, setExtraFiles] = useState<ConteudoFile[]>([]);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
-  const [isGeneratingContentAi, setIsGeneratingContentAi] = useState(false);
+  // Conteúdos com sugestão da IA em andamento ("novo" = o formulário de conteúdo ainda não salvo).
+  const [gerandoIa, setGerandoIa] = useState<Set<number | "novo">>(new Set());
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
-  const [aiDialogOpen, setAiDialogOpen] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion | null>(null);
+  // Fila de sugestões para revisar: o botão da IA em cada item da lista deixa gerar para vários
+  // conteúdos de uma vez, e o diálogo mostra uma por vez, na ordem em que chegaram.
+  const [filaDeSugestoes, setFilaDeSugestoes] = useState<SugestaoNaFila[]>([]);
+  const sugestaoAtual = filaDeSugestoes[0] ?? null;
+  const aiSuggestions = sugestaoAtual?.sugestao ?? null;
   const [selectedCards, setSelectedCards] = useState<Set<number>>(new Set());
   const [selectedAtividades, setSelectedAtividades] = useState<Set<number>>(new Set());
   const [isCreatingSuggestions, setIsCreatingSuggestions] = useState(false);
   const [isUploadingQuestionMedia, setIsUploadingQuestionMedia] = useState(false);
   const [isCardReuseEnabled, setIsCardReuseEnabled] = useState(false);
+  const [modoDoTexto, setModoDoTexto] = useState<"escrever" | "visualizar">("escrever");
   const questionMediaInputRef = useRef<HTMLInputElement | null>(null);
   const selectedClasse = useMemo(() => {
     const classeId = Number(formData.classe_id || editingTopic?.classe_id || 0);
@@ -341,7 +342,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     };
   };
 
-  const buildCurrentContentAiPayload = async (): Promise<{
+  const buildContentAiPayload = async (alvoId: number | null): Promise<{
     topicName: string;
     contents: Array<{ titulo: string; tipo: string; conteudo: string | null }>;
     fileContents?: string;
@@ -353,13 +354,16 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     topicoDescricao?: string;
     personalizacaoThemeGuide?: unknown;
   }> => {
-    const selectedContent = selectedContentId
-      ? (contents.find((content) => content.id === selectedContentId) ?? null)
+    // O conteúdo aberto no formulário usa o que está digitado (e os arquivos ainda não enviados);
+    // qualquer outro da lista usa o que está salvo.
+    const doFormulario = alvoId === null || (alvoId === selectedContentId && !isCreating);
+    const selectedContent = alvoId !== null
+      ? (contents.find((content) => content.id === alvoId) ?? null)
       : null;
 
-    const titulo = contentForm.titulo?.trim() || selectedContent?.titulo?.trim() || "";
-    const tipo = contentForm.tipo || selectedContent?.tipo || "texto";
-    const textBody = contentForm.conteudo?.trim() || selectedContent?.conteudo?.trim() || "";
+    const titulo = (doFormulario ? contentForm.titulo?.trim() : "") || selectedContent?.titulo?.trim() || "";
+    const tipo = (doFormulario ? contentForm.tipo : "") || selectedContent?.tipo || "texto";
+    const textBody = (doFormulario ? contentForm.conteudo?.trim() : "") || selectedContent?.conteudo?.trim() || "";
 
     const storedFilesMap = new Map<string, ConteudoFile>();
     const registerStoredFile = (file: ConteudoFile | null | undefined) => {
@@ -368,16 +372,16 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     };
 
     for (const file of selectedContent?.metadata?.files ?? []) registerStoredFile(file);
-    for (const file of extraFiles) registerStoredFile(file);
+    if (doFormulario) for (const file of extraFiles) registerStoredFile(file);
 
-    const primaryReference = contentForm.conteudo || selectedContent?.conteudo || null;
+    const primaryReference = (doFormulario ? contentForm.conteudo : "") || selectedContent?.conteudo || null;
     if (tipo === "arquivo" && isFileReference(primaryReference)) {
       const path = primaryReference.trim();
       registerStoredFile({ path, name: getReferenceName(path), size: 0 });
     }
 
     const [pending, stored] = await Promise.all([
-      readPendingFileContents(),
+      doFormulario ? readPendingFileContents() : Promise.resolve({ fileContents: "", fileNames: [] as string[] }),
       readStoredFileContents(Array.from(storedFilesMap.values())),
     ]);
 
@@ -521,19 +525,26 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     }
   };
 
-  const openAiDialog = (suggestion: AiSuggestion) => {
-    setAiSuggestions(suggestion);
-    setSelectedCards(new Set(suggestion.cards.map((_, i) => i)));
-    setSelectedAtividades(new Set(suggestion.atividades.map((_, i) => i)));
-    setAiDialogOpen(true);
-  };
+  // Cada sugestão que chega ao topo da fila abre com tudo marcado.
+  useEffect(() => {
+    if (!sugestaoAtual) return;
+    setSelectedCards(new Set(sugestaoAtual.sugestao.cards.map((_, i) => i)));
+    setSelectedAtividades(new Set(sugestaoAtual.sugestao.atividades.map((_, i) => i)));
+  }, [sugestaoAtual]);
 
-  /** Botão no formulário de conteúdo — analisa apenas o conteúdo atual */
-  const handleGenerateForCurrentContent = async () => {
+  const avancarFila = () => setFilaDeSugestoes((fila) => fila.slice(1));
+
+  /**
+   * Sugere cards e atividades para UM conteúdo: o aberto no formulário (`null` quando ainda não
+   * foi salvo) ou qualquer um da lista, pelo botão ao lado dele.
+   */
+  const handleGenerateForContent = async (alvoId: number | null) => {
     if (!editingTopic) return;
-    setIsGeneratingContentAi(true);
+    const chave = alvoId ?? "novo";
+    if (gerandoIa.has(chave)) return;
+    setGerandoIa((atual) => new Set(atual).add(chave));
     try {
-      const payload = await buildCurrentContentAiPayload();
+      const payload = await buildContentAiPayload(alvoId);
       if (!payload.topicName) {
         toast.error("Preencha ou selecione um conteúdo antes de gerar sugestões.");
         return;
@@ -545,11 +556,20 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         },
       });
       if (error) throw new Error(await formatSupabaseFunctionError(error));
-      openAiDialog(data as AiSuggestion);
+      const sugestao = data as AiSuggestion;
+      if (!sugestao?.cards?.length && !sugestao?.atividades?.length) {
+        toast.info(`A IA não sugeriu nada para “${payload.topicName}”.`);
+        return;
+      }
+      setFilaDeSugestoes((fila) => [...fila, { conteudoId: alvoId, titulo: payload.topicName, sugestao }]);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao gerar sugestões.");
     } finally {
-      setIsGeneratingContentAi(false);
+      setGerandoIa((atual) => {
+        const proximo = new Set(atual);
+        proximo.delete(chave);
+        return proximo;
+      });
     }
   };
 
@@ -582,9 +602,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
   };
 
   const handleApplySuggestions = async () => {
-    if (!aiSuggestions || !editingTopic?.id) return;
-    if (!selectedContentId) {
-      toast.error("Selecione um conteudo antes de aplicar sugestoes da IA.");
+    if (!aiSuggestions || !sugestaoAtual || !editingTopic?.id) return;
+    const conteudoAlvo = sugestaoAtual.conteudoId;
+    if (!conteudoAlvo) {
+      toast.error("Salve o conteúdo antes de aplicar as sugestões da IA.");
       return;
     }
 
@@ -607,7 +628,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
       const result = await saveAiSuggestionsBatch({
         topico_id: editingTopic.id,
-        conteudo_id: selectedContentId,
+        conteudo_id: conteudoAlvo,
         cards: cardsBatch,
         atividades: atividadesBatch.map((atividade) => ({
           titulo: atividade.titulo,
@@ -622,7 +643,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
       toast.success(
         `Sugestoes aplicadas: ${result.cardsCreated} cards, ${result.activitiesCreated} atividades e ${result.questionsCreated} questoes.`
       );
-      setAiDialogOpen(false);
+      avancarFila();
       await props.loadCards(editingTopic.id);
       await loadActivities(editingTopic.id);
       await loadActivityLinks(editingTopic.id);
@@ -848,9 +869,6 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         </div>
       </div>
       
-      <BossVisualPicker value={contentForm.boss_visual} onChange={(boss_visual) => setContentForm({ ...contentForm, boss_visual })} disabled={isSavingContent || isUploadingFile} />
-      <FalasDoBoss conteudoId={selectedContentId} />
-
       {contentForm.tipo === "arquivo" ? (
         <div>
           <Label className={darkLabelClass}>Arquivos ou URL</Label>
@@ -864,45 +882,68 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
             onPendingFilesChange={setPendingFiles}
           />
         </div>
-      ) : (
+      ) : contentForm.tipo === "texto" ? (
         <div>
-          <Label className={darkLabelClass}>
-            {contentForm.tipo === "texto"
-              ? "Material (Markdown)"
-              : contentForm.tipo === "video"
-              ? "URL do YouTube ou Iframe"
-              : "URL"}
-          </Label>
-          <div className="relative">
-            <Textarea
-              value={contentForm.conteudo || ""}
-              onChange={(e) => setContentForm({ ...contentForm, conteudo: e.target.value })}
-              className="bg-background border-border text-muted-foreground min-h-[400px] font-mono text-sm leading-relaxed p-4 focus:ring-1 focus:ring-primary/50 resize-y rounded-md"
-              placeholder={
-                contentForm.tipo === "texto"
-                  ? "# Digite seu conteúdo aqui..."
-                  : contentForm.tipo === "video"
-                  ? "https://www.youtube.com/watch?v=... ou <iframe ...>"
-                  : "https://example.com/recurso"
-              }
-            />
-            {contentForm.tipo === "texto" && (
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+            <Label className={darkLabelClass} style={{ marginBottom: 0 }}>Material (Markdown)</Label>
+            <div role="group" aria-label="Modo do material" className="flex rounded-full border border-border bg-background p-0.5 text-xs">
+              {(["escrever", "visualizar"] as const).map((modo) => (
+                <button
+                  key={modo}
+                  type="button"
+                  aria-pressed={modoDoTexto === modo}
+                  onClick={() => setModoDoTexto(modo)}
+                  className={`rounded-full px-3 py-1 font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${modoDoTexto === modo ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {modo === "escrever" ? "Escrever" : "Pré-visualizar"}
+                </button>
+              ))}
+            </div>
+          </div>
+          {modoDoTexto === "escrever" ? (
+            <div className="relative">
+              <Textarea
+                value={contentForm.conteudo || ""}
+                onChange={(e) => setContentForm({ ...contentForm, conteudo: e.target.value })}
+                className="bg-background border-border text-muted-foreground min-h-[400px] font-mono text-sm leading-relaxed p-4 focus:ring-1 focus:ring-primary/50 resize-y rounded-md"
+                placeholder="# Digite seu conteúdo aqui..."
+              />
               <div className="absolute bottom-3 right-3 text-[10px] text-muted-foreground bg-card px-2 py-1 rounded border border-border">
                 Markdown Suportado
               </div>
-            )}
-            {contentForm.tipo === "video" && (() => {
-              const ytId = extractYouTubeId(contentForm.conteudo || "");
-              const alreadyEmbed =
-                (contentForm.conteudo || "").includes("youtube.com/embed") ||
-                (contentForm.conteudo || "").includes("<iframe");
-              if (!ytId || alreadyEmbed) return null;
-              return (
+            </div>
+          ) : (
+            <PreviewDoTexto valor={contentForm.conteudo || ""} />
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <Label className={darkLabelClass} style={{ marginBottom: 0 }}>
+            {contentForm.tipo === "video" ? "Link do vídeo (YouTube, Vimeo, .mp4) ou iframe" : "URL"}
+          </Label>
+          <Textarea
+            value={contentForm.conteudo || ""}
+            onChange={(e) => setContentForm({ ...contentForm, conteudo: e.target.value })}
+            rows={2}
+            className="bg-background border-border text-muted-foreground min-h-[72px] font-mono text-sm leading-relaxed p-4 focus:ring-1 focus:ring-primary/50 resize-y rounded-md"
+            placeholder={
+              contentForm.tipo === "video"
+                ? "https://www.youtube.com/watch?v=... ou <iframe ...>"
+                : "https://example.com/recurso"
+            }
+          />
+          {contentForm.tipo === "video" && (() => {
+            const valor = contentForm.conteudo || "";
+            const ytId = idDoYouTube(valor);
+            const alreadyEmbed = valor.includes("youtube.com/embed") || valor.includes("<iframe");
+            if (!ytId || alreadyEmbed) return null;
+            return (
+              <div className="flex justify-end">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="absolute bottom-3 right-3 h-7 text-[11px] border-primary/30 text-primary hover:text-primary hover:bg-primary/20 bg-card"
+                  className="h-7 text-[11px] border-primary/30 text-primary hover:text-primary hover:bg-primary/20 bg-card"
                   onClick={() =>
                     setContentForm({
                       ...contentForm,
@@ -913,43 +954,36 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                   <Wand2 className="w-3 h-3 mr-1" />
                   Converter para Embed
                 </Button>
-              );
-            })()}
-          </div>
+              </div>
+            );
+          })()}
+          {contentForm.tipo === "video" ? (
+            <PreviewDoVideo valor={contentForm.conteudo || ""} titulo={contentForm.titulo || ""} />
+          ) : /^https?:\/\//i.test((contentForm.conteudo || "").trim()) ? (
+            <PreviewDoLink url={(contentForm.conteudo || "").trim()} />
+          ) : null}
         </div>
       )}
 
-      {contentForm.tipo === "link" && /^https?:\/\//i.test((contentForm.conteudo || "").trim()) && (() => {
-        const url = (contentForm.conteudo || "").trim();
-        let dominio = "";
-        try { dominio = new URL(url).hostname.replace(/^www\./, ""); } catch { return null; }
-        return (
-          <div>
-            <Label className={darkLabelClass}>Pré-visualização</Label>
-            <div className="flex items-center gap-4 rounded-[14px] border bg-muted p-4">
-              <span aria-hidden="true" className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-primary/20 text-sm font-extrabold uppercase text-primary">{dominio.charAt(0)}</span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{dominio}</p>
-                <p className="truncate text-xs text-muted-foreground">{url}</p>
-              </div>
-              <Button type="button" variant="outline" size="sm" className="rounded-full" onClick={() => window.open(url, "_blank", "noopener,noreferrer")}>
-                Abrir página externa
-              </Button>
-            </div>
-          </div>
-        );
-      })()}
+      <SecaoDoBoss
+        // Trocar de conteúdo recolhe de novo a seção.
+        key={isCreating ? "novo" : (selectedContentId ?? "novo")}
+        conteudoId={selectedContentId}
+        value={contentForm.boss_visual}
+        onChange={(boss_visual) => setContentForm({ ...contentForm, boss_visual })}
+        disabled={isSavingContent || isUploadingFile}
+      />
 
       <div className="flex flex-wrap items-center justify-between pt-4 border-t border-border gap-3">
         <Button
           type="button"
           variant="outline"
           size="sm"
-          onClick={handleGenerateForCurrentContent}
-          disabled={isGeneratingContentAi || !contentForm.titulo}
+          onClick={() => void handleGenerateForContent(isCreating ? null : selectedContentId)}
+          disabled={gerandoIa.has(isCreating ? "novo" : (selectedContentId ?? "novo")) || !contentForm.titulo}
           className="h-9 text-xs border-primary/30 text-primary hover:text-primary hover:bg-primary/20 hover:border-primary/50 shrink-0"
         >
-          {isGeneratingContentAi ? (
+          {gerandoIa.has(isCreating ? "novo" : (selectedContentId ?? "novo")) ? (
             <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Gerando...</>
           ) : (
             <><Wand2 className="w-3.5 h-3.5 mr-1.5" /> Sugerir Cards & Atividades</>
@@ -1094,7 +1128,7 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                         `}
                       >
                         <div className="mr-3 text-muted-foreground group-hover:text-muted-foreground flex flex-col items-center justify-center w-6"><span className="text-[9px] text-muted-foreground font-mono mb-1">{idx + 1}</span><GripVertical size={14}/></div>
-                        <div className="flex-1 min-w-0 py-1">
+                        <div className="flex-1 min-w-0 py-1 pr-[72px]">
                           <p className={`text-sm font-medium truncate ${selectedContentId === c.id ? "text-primary" : "text-muted-foreground"}`}>{c.titulo || "(Sem título)"}</p>
                           <div className="flex items-center gap-2 mt-1.5">
                             <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground bg-background px-1.5 py-0.5 rounded border border-border">{c.tipo}</span>
@@ -1102,7 +1136,21 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                           </div>
                         </div>
                         {selectedContentId === c.id && (<div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary to-primary/60"></div>)}
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground  absolute right-2" onClick={(e) => { e.stopPropagation(); void handleDeleteContentWithSync(c.id); }}><Trash2 size={14} /></Button>
+                        <div className="absolute right-2 flex items-center gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-primary/70 hover:text-primary hover:bg-primary/15"
+                            disabled={gerandoIa.has(c.id) || !c.titulo}
+                            title={gerandoIa.has(c.id) ? "Gerando sugestões…" : "Sugerir cards e atividades com IA"}
+                            aria-label={`Sugerir cards e atividades com IA para ${c.titulo || "este conteúdo"}`}
+                            draggable={false}
+                            onClick={(e) => { e.stopPropagation(); void handleGenerateForContent(c.id); }}
+                          >
+                            {gerandoIa.has(c.id) ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" aria-label={`Excluir ${c.titulo || "este conteúdo"}`} onClick={(e) => { e.stopPropagation(); void handleDeleteContentWithSync(c.id); }}><Trash2 size={14} /></Button>
+                        </div>
                       </div>
                     ))}
                     {contents.length === 0 && (<div className="text-center py-10 px-4 border border-dashed border-border rounded-lg"><p className="text-sm text-muted-foreground">Nenhum conteúdo criado.</p></div>)}
@@ -1852,14 +1900,15 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     </div>
 
     {/* -- AI Suggestions Dialog -- */}
-    <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+    <Dialog open={sugestaoAtual !== null} onOpenChange={(aberto) => { if (!aberto && !isCreatingSuggestions) avancarFila(); }}>
       <DialogContent className="max-w-2xl w-full bg-background border-border text-foreground max-h-[90vh] flex flex-col overflow-hidden">
         <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
           <Wand2 className="w-5 h-5 text-primary" />
           Cards e Atividades Sugeridas
         </DialogTitle>
         <DialogDescription className="text-muted-foreground text-sm">
-          Sugestões para o conteúdo selecionado. Selecione em lote o que deseja criar.
+          Sugestões para “{sugestaoAtual?.titulo ?? "o conteúdo"}”. Selecione em lote o que deseja criar.
+          {filaDeSugestoes.length > 1 && ` Mais ${filaDeSugestoes.length - 1} ${filaDeSugestoes.length - 1 === 1 ? "conteúdo espera" : "conteúdos esperam"} revisão depois deste.`}
         </DialogDescription>
 
         <ScrollArea className="flex-1 pr-2 overflow-y-auto">
@@ -1945,8 +1994,8 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         </ScrollArea>
 
         <div className="flex justify-end gap-3 pt-4 border-t border-border shrink-0">
-          <Button variant="ghost" onClick={() => setAiDialogOpen(false)} className="text-muted-foreground hover:text-foreground">
-            Cancelar
+          <Button variant="ghost" onClick={avancarFila} disabled={isCreatingSuggestions} className="text-muted-foreground hover:text-foreground">
+            {filaDeSugestoes.length > 1 ? "Pular" : "Cancelar"}
           </Button>
           <Button
             onClick={handleApplySuggestions}
