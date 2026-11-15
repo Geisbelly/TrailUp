@@ -26,6 +26,9 @@ import { completarTopicos, gerarTrilhaEmEtapas, semMaterialAinda, type Progresso
 import { apagarRascunho, carregarRascunho, criarGravador, quandoFoiSalvo, salvarRascunho, type RascunhoDaTrilha } from "./rascunhoDaTrilha";
 import { anexosDoPedido, prepararAnexos, type AnexoParaIa } from "./arquivosParaIa";
 import { comMemoria, trocarFiguras, type RefDeFigura } from "./figurasDaTrilha";
+import { OrientacaoDaIa } from "./OrientacaoDaIa";
+import { useOrientacaoDaIa } from "./useOrientacaoDaIa";
+import { existentesParaOPedido, perguntasDaProposta, semRepetidasNoTopico } from "./perguntasExistentes";
 
 /**
  * Os arquivos como a IA os leu na geração que está na tela, e o `File` de
@@ -98,6 +101,8 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const [mostrarAvancado, setMostrarAvancado] = useState(false);
   const [ajusteOrdem, setAjusteOrdem] = useState<number | null>(null);
   const [ajusteTexto, setAjusteTexto] = useState("");
+  // Orientação da turma para a IA: vai em todo pedido (esqueleto, cada tópico, gerar o que falta e ajuste).
+  const orientacaoIa = useOrientacaoDaIa(open ? classeId : null);
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [confirmouSubstituir, setConfirmouSubstituir] = useState(false);
   const [creatingStatus, setCreatingStatus] = useState("");
@@ -252,8 +257,12 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const close = () => { if (step === "aplicando" || step === "processando") return; reset(); onOpenChange(false); };
 
   // Gerar NÃO apaga nada: a proposta só existe na tela até o professor aplicar.
+  // A orientação entra aqui, e não no `corpo`: o corpo vai para o rascunho, e
+  // retomar um rascunho tem de usar a orientação de agora, não a de quando ele foi salvo.
   const invokeAi = async (body: Record<string, unknown>) => {
-    const { data, error } = await supabase.functions.invoke("generate-content-ai", { body });
+    const { data, error } = await supabase.functions.invoke("generate-content-ai", {
+      body: { ...body, ...orientacaoIa.paraOPedido() },
+    });
     if (error) throw new Error(await formatSupabaseFunctionError(error));
     return data as unknown;
   };
@@ -278,6 +287,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     setStep("processando");
     setIsGenerating(true);
     setProgresso(null);
+    await orientacaoIa.garantirSalva();
     let ultimoRetrato: AiTopico[] = [];
     let corpo: Record<string, unknown> | null = null;
     try {
@@ -353,6 +363,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     setStep("processando");
     setIsGenerating(true);
     setProgresso(null);
+    await orientacaoIa.garantirSalva();
     try {
       const { topicos, semMaterial } = await completarTopicos({
         invocar: invokeAi,
@@ -381,6 +392,9 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
     if (!alvo) return;
     if (!ajusteTexto.trim()) return toast.error("Descreva o que mudar neste tópico.");
     setIsAdjusting(true);
+    await orientacaoIa.garantirSalva();
+    // As perguntas dos outros tópicos: o tópico regerado não pode repeti-las.
+    const outros = perguntasDaProposta(preview, preview.indexOf(alvo));
     try {
       // Retomado de um rascunho, os arquivos não estão mais na tela: as fontes vêm do pedido guardado.
       const base = pedidoAtual ?? {
@@ -392,10 +406,11 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
         mode: "trail", topicName: alvo.nome, topicDescription: alvo.descricao,
         trailDescription: `${description}\n\nGere apenas o tópico "${alvo.nome}". Ajuste pedido pelo professor: ${ajusteTexto.trim()}`,
         numTopics: 1, topicNames: [alvo.nome],
+        ...existentesParaOPedido(outros),
         ...(materialRef.current ? { anexos: anexosDoPedido(materialRef.current.anexos, alvo.arquivos_relacionados) } : {}),
       });
       if (!novo) throw new Error("A IA não devolveu o tópico ajustado.");
-      setPreview((atual) => substituirNaProposta(atual, alvo.ordem, novo));
+      setPreview((atual) => substituirNaProposta(atual, alvo.ordem, semRepetidasNoTopico(novo, outros)));
       setAjusteOrdem(null);
       setAjusteTexto("");
       setStep("revisar");
@@ -687,6 +702,8 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
                 </div>
               </div>
 
+              <OrientacaoDaIa estado={orientacaoIa} onde="a trilha e as perguntas desta turma" />
+
               <div>
                 <button type="button" onClick={() => setMostrarAvancado((v) => !v)} aria-expanded={mostrarAvancado} className="text-xs font-semibold text-primary">
                   {mostrarAvancado ? "Ocultar opções avançadas" : "Opções avançadas (nomes dos tópicos, ementa)"}
@@ -770,6 +787,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
                 <Textarea id="trilha-ajuste" value={ajusteTexto} onChange={(e) => setAjusteTexto(e.target.value)} rows={4} className="rounded-[14px] bg-background" placeholder="Ex.: trocar o exemplo do carro por algo de esportes, e reduzir para 2 conteúdos em vez de 3." />
                 <p className="mt-2 text-[11.5px] text-muted-foreground">Só este tópico é regerado; os outros e a ordem não mudam.</p>
               </div>
+              <OrientacaoDaIa estado={orientacaoIa} onde="a trilha e as perguntas desta turma" />
             </div>
           )}
 

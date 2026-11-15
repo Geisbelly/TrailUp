@@ -72,6 +72,8 @@ export interface AiSuggestion {
   descricao?: string;
   /** O que a IA leu do material do conteúdo e o que não deu para ler (vídeo privado, página bloqueada…). */
   material?: { lido: string[]; naoLido: string[] };
+  /** Perguntas que a IA gerou e a função tirou por repetirem as que o tópico já tem. */
+  repetidas_descartadas?: number;
   cards: Array<{ titulo: string; descricao: string }>;
   atividades: Array<{
     titulo: string;

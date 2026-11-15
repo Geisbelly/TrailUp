@@ -1,4 +1,5 @@
 import type { AiTopico } from "./proposta";
+import { existentesParaOPedido, perguntasDaProposta, semRepetidasNoTopico } from "./perguntasExistentes";
 
 /**
  * Gera a trilha em várias requisições à edge function `generate-content-ai`:
@@ -128,8 +129,20 @@ async function detalhar(
     let ultimoErro: unknown = null;
     for (let tentativa = 1; tentativa <= Math.max(1, tentativasPorTopico); tentativa += 1) {
       try {
+        // As perguntas dos tópicos já prontos vão no pedido, para este não as repetir.
+        const outros = perguntasDaProposta(topicos, indice);
         const data = await invocar(
-          comAnexos({ ...corpo, mode: "trail-topic", topic: alvo, topicIndex: indice, totalTopics: topicos.length }, anexos),
+          comAnexos(
+            {
+              ...corpo,
+              mode: "trail-topic",
+              topic: alvo,
+              topicIndex: indice,
+              totalTopics: topicos.length,
+              ...existentesParaOPedido(outros),
+            },
+            anexos,
+          ),
         );
         return { ok: true as const, topico: lerTopico(data) };
       } catch (erro) {
@@ -145,7 +158,8 @@ async function detalhar(
       const indice = indices[proximo];
       proximo += 1;
       const r = await detalharUm(indice);
-      if (r.ok) topicos[indice] = r.topico;
+      // De novo na chegada: o tópico gerado ao mesmo tempo que este não estava no pedido.
+      if (r.ok) topicos[indice] = semRepetidasNoTopico(r.topico, perguntasDaProposta(topicos, indice));
       else falhas.set(indice, r.erro);
       feitos += 1;
       aoProgredir?.({ feitos, total });

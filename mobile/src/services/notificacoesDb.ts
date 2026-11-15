@@ -23,6 +23,8 @@ export type LoginResultado = {
 
 export type HeartbeatResultado = {
   tempo_uso_seg: number;
+  /** Ausente no banco anterior à migração 20261115_02. */
+  tempo_trilha_seg?: number;
   pendentes_criadas: number;
   entregues: number;
 };
@@ -53,14 +55,23 @@ export type RotinaNotificacao = {
  * Um erro de rede ou uma RPC indisponível viram `null` e um aviso no console,
  * nunca uma exceção que sobe para a UI.
  */
-async function chamar<T>(fn: string, args: Record<string, unknown>): Promise<T | null> {
+async function chamar<T>(
+  fn: string,
+  args: Record<string, unknown>,
+  argsDoBancoAntigo?: Record<string, unknown>
+): Promise<T | null> {
   try {
     // O cleanup do monitor pode ocorrer depois de SIGNED_OUT. Não chamar
     // RPCs restritas a authenticated com a sessão já encerrada.
     const { data: auth, error: authError } = await supabase.auth.getSession();
     if (authError) throw authError;
     if (!auth.session) return null;
-    const { data, error } = await supabase.rpc(fn, args);
+    let { data, error } = await supabase.rpc(fn, args);
+    // PGRST202: o banco ainda não tem a assinatura nova (app atualizado antes da
+    // migração). Repete com os argumentos de antes, para não perder a chamada.
+    if (error?.code === 'PGRST202' && argsDoBancoAntigo) {
+      ({ data, error } = await supabase.rpc(fn, argsDoBancoAntigo));
+    }
     if (error) {
       console.warn(`[notificacoesDb] ${fn} falhou:`, error.message);
       return null;
@@ -111,16 +122,36 @@ export function registrarLogin(params: {
   });
 }
 
+/**
+ * A batida do tempo de uso.
+ *
+ * `segundosNaTrilha` é a parte de `segundos` passada num módulo da trilha, e
+ * `naTrilha` diz se o aluno está lá agora, com o app em primeiro plano. A pausa
+ * saudável (e todo o resto com gatilho `tempo_uso`) conta só o tempo de trilha
+ * e só é entregue com `naTrilha` verdadeiro (migração 20261115_02): antes ela
+ * contava o app inteiro e chegava em qualquer tela.
+ */
 export function enviarHeartbeat(params: {
   segundos: number;
   timezone: string;
   sessaoId?: number | null;
+  segundosNaTrilha?: number;
+  naTrilha?: boolean;
 }) {
-  return chamar<HeartbeatResultado>('notificacoes_heartbeat', {
+  const base = {
     p_segundos: params.segundos,
     p_timezone: params.timezone,
     p_sessao_id: params.sessaoId ?? null,
-  });
+  };
+  return chamar<HeartbeatResultado>(
+    'notificacoes_heartbeat',
+    {
+      ...base,
+      p_segundos_trilha: params.segundosNaTrilha ?? 0,
+      p_na_trilha: params.naTrilha ?? false,
+    },
+    base
+  );
 }
 
 export function encerrarSessao() {
