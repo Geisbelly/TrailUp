@@ -51,7 +51,7 @@ Legenda: **M** = pode incluir dado de menor de 18 · **S** = dado sensível ou d
 | 13 | **gTTS** (endpoint não oficial do Google Tradutor) | **Removido em 06/11/2026:** nenhum dado sai mais por aqui. O áudio é só do Gemini, na voz do Guardião. | — | — | — | — | — | — | — | — | — |
 | 14 | **Google Fonts** | IP | — | ID (IP) | Fontes | EUA | — | — | — | Fazer self-host | `fonts.googleapis.com` |
 | 15 | **LangSmith** (tracing) | Estado do grafo, se ligado | M, S | ID | Depuração | EUA | — | — | **Travado em produção no código** (#618) | Confirmar `APP_ENV` em produção | `api/app/core/tracing.py` |
-| — | `esm.sh`, `deno.land`, `picsum.photos` | Sem dado pessoal (imports de código; texto de prompt de imagem) | AN | AN | — | — | — | — | Fora do registro | — | — |
+| — | `esm.sh`, `deno.land`, `picsum.photos`; páginas dos links que o professor cadastra no conteúdo | Sem dado pessoal (imports de código; texto de prompt de imagem; a `generate-content-ai` só faz GET da página pública, sem dado de aluno, e recusa rede interna) | AN | AN | — | — | — | — | Fora do registro | — | — |
 
 Não há Sentry nem SDK de analytics no mobile, no frontend, no microservice nem no brainhexpdf (conferido nos `package.json`).
 
@@ -113,6 +113,7 @@ Um host por linha, entre crases. `*.` vale para qualquer subdomínio.
 - `script.googleusercontent.com`: resposta do Apps Script, conferida pelo aviso de conta inativa (linha 8)
 - `api.brevo.com`: Brevo, provedor anterior da linha 8; só em migrations antigas (o banco não chama mais)
 - `fonts.googleapis.com`: Google Fonts (linha 14)
+- `www.youtube.com`: link canônico do vídeo do YouTube que o professor cadastrou, enviado ao Gemini (linha 4) no "Sugerir cards e atividades" para o modelo assistir; a função não chama o YouTube e o link não tem dado pessoal
 - `api.smith.langchain.com`: LangSmith (linha 15)
 - `esm.sh`: imports de código das edge functions (sem dado pessoal)
 - `deno.land`: imports de código das edge functions (sem dado pessoal)
