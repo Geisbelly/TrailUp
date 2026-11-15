@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Wand2, Loader2, ArrowRight, CheckCircle2, X, Upload, FileText, AlertTriangle, History } from "lucide-react";
+import { Wand2, Loader2, ArrowRight, CheckCircle2, X, Upload, FileText, AlertTriangle, History, ChevronDown } from "lucide-react";
 import type { Topico, StagedFile } from "./types";
 import { formatFileSize } from "@/lib/utils";
 import { deleteTopicCascade } from "./classDeletion";
@@ -27,6 +27,7 @@ import { apagarRascunho, carregarRascunho, criarGravador, quandoFoiSalvo, salvar
 import { anexosDoPedido, prepararAnexos, type AnexoParaIa } from "./arquivosParaIa";
 import { comMemoria, trocarFiguras, type RefDeFigura } from "./figurasDaTrilha";
 import { OrientacaoDaIa } from "./OrientacaoDaIa";
+import { ConteudosDaProposta } from "./ConteudosDaProposta";
 import { useOrientacaoDaIa } from "./useOrientacaoDaIa";
 import { existentesParaOPedido, perguntasDaProposta, semRepetidasNoTopico } from "./perguntasExistentes";
 
@@ -93,6 +94,8 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<Step>("configurar");
+  // Tópico da proposta aberto na revisão (pela ordem): mostra os conteúdos gerados.
+  const [topicoAberto, setTopicoAberto] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -237,6 +240,7 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
   const reset = () => {
     materialRef.current = null;
     setStep("configurar");
+    setTopicoAberto(null);
     setPreview([]);
     setDescription(initialDescription);
     setNumTopics(null);
@@ -560,20 +564,47 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
 
   const itemDaProposta = (t: AiTopico, acoes?: React.ReactNode) => {
     const c = contagemDaProposta([t]);
+    const aberto = topicoAberto === t.ordem;
+    const temConteudo = (t.conteudos?.length ?? 0) > 0;
     return (
-      <li key={t.ordem} className="flex items-center gap-3.5 rounded-[14px] bg-muted px-4 py-3">
-        <span aria-hidden="true" className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary/20 text-[13px] font-extrabold text-primary">{t.ordem}</span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold">{t.nome}</p>
-          {semMaterialAinda(t) ? (
-            <p className="mt-0.5 text-[11.5px] font-semibold text-warning">Sem material ainda</p>
-          ) : (
-            <p className="mt-0.5 text-[11.5px] text-muted-foreground">
-              {c.conteudos} {c.conteudos === 1 ? "conteúdo" : "conteúdos"} · {c.cards} cards · {c.atividades} {c.atividades === 1 ? "atividade" : "atividades"}
-            </p>
+      <li key={t.ordem} className="rounded-[14px] bg-muted px-4 py-3">
+        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2">
+          <span aria-hidden="true" className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-primary/20 text-[13px] font-extrabold text-primary">{t.ordem}</span>
+          {/* Base de 10rem: em tela estreita os botões descem para a linha de baixo. */}
+          <div className="min-w-0 flex-1 basis-40">
+            <p className="truncate text-sm font-bold">{t.nome}</p>
+            {semMaterialAinda(t) ? (
+              <p className="mt-0.5 text-[11.5px] font-semibold text-warning">Sem material ainda</p>
+            ) : (
+              <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                {c.conteudos} {c.conteudos === 1 ? "conteúdo" : "conteúdos"} · {c.cards} cards · {c.atividades} {c.atividades === 1 ? "atividade" : "atividades"}
+              </p>
+            )}
+          </div>
+          <span className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1.5">
+          {temConteudo && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="rounded-full px-2.5 text-xs"
+              aria-expanded={aberto}
+              aria-controls={`proposta-topico-${t.ordem}`}
+              onClick={() => setTopicoAberto(aberto ? null : t.ordem)}
+            >
+              {aberto ? "Esconder" : "Ver conteúdos"}
+              <ChevronDown className={`ml-1 h-3.5 w-3.5 transition-transform ${aberto ? "rotate-180" : ""}`} aria-hidden="true" />
+            </Button>
           )}
+          {acoes}
+          </span>
         </div>
-        {acoes}
+        {aberto && temConteudo && (
+          <div id={`proposta-topico-${t.ordem}`} className="mt-3">
+            {t.descricao && <p className="mb-2 text-[12.5px] text-muted-foreground">{t.descricao}</p>}
+            <ConteudosDaProposta topico={t} />
+          </div>
+        )}
       </li>
     );
   };
@@ -607,7 +638,9 @@ export function GenerateTrailDialog({ open, onOpenChange, classeId, onCreated, i
           })}
         </ol>
 
-        <ScrollArea className="flex-1 overflow-y-auto pr-1">
+        {/* O Viewport do Radix põe o conteúdo num `display: table`, que cresce até o filho mais
+            largo: um texto ou uma tabela larga da proposta empurrava o diálogo para fora da tela. */}
+        <ScrollArea className="flex-1 overflow-y-auto pr-1 [&>[data-radix-scroll-area-viewport]>div]:!block">
           {step === "configurar" && (
             <div className="space-y-5 py-2">
               {rascunho && (
