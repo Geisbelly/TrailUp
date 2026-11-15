@@ -1,7 +1,7 @@
 # Gabarito fora do app do aluno: mapa e proposta
 
-**Data:** 08/11/2026. **Estado:** fases 1 e 2 escritas (`20261108_01`, a edge function e o app), sem
-aplicar em produção. Fase 3 por fazer.
+**Data:** 08/11/2026. **Estado:** fases 1 e 2 escritas (`20261108_01`, a edge function e o app).
+Fase 3 escrita em 10/11 (`20261110_03`), para aplicar só depois de `app_versao_minima` >= 1.0.8.
 **Origem:** a PR #1059 tirou a resposta do chat do guia. Este documento trata do outro caminho: o app
 do aluno recebe o gabarito antes de responder, para corrigir no aparelho.
 

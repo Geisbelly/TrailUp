@@ -71,7 +71,7 @@ describe("fetchActivities / fetchQuestions / fetchActivityLinks", () => {
     expect(sb.chamadas).toContainEqual(["questoes", "eq", "atividade_id", 2]);
   });
 
-  it("o gabarito vem do espelho, não de questoes (20261110_02)", async () => {
+  it("o gabarito vem do espelho, não de questoes (20261110_03)", async () => {
     sb.respostas.questoes = { data: [{ id: 5 }, { id: 6 }], error: null };
     sb.respostas.questao_gabarito = { data: [{ questao_id: 6, resposta_correta: "B" }], error: null };
     await expect(fetchQuestions(2)).resolves.toEqual([
