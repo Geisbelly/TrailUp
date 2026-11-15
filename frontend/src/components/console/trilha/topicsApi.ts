@@ -120,7 +120,7 @@ export async function fetchQuestions(atividadeId: number) {
     .eq("atividade_id", atividadeId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  // O gabarito vem do espelho: desde a `20261110_02`, nem o professor lê `questoes.resposta_correta`.
+  // O gabarito vem do espelho: desde a `20261110_03`, nem o professor lê `questoes.resposta_correta`.
   return (await comGabarito((data as unknown as Omit<Questao, "resposta_correta">[]) ?? [])) as Questao[];
 }
 

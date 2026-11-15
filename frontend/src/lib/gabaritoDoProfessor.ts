@@ -1,6 +1,6 @@
 /**
  * O gabarito que o console mostra ao professor vem de `questao_gabarito` (corte da fase 3,
- * `20261110_02`). Desde o corte, `authenticated` não lê `questoes.resposta_correta`, e o professor
+ * `20261110_04`). Desde o corte, `authenticated` não lê `questoes.resposta_correta`, e o professor
  * também é `authenticated`. `questao_gabarito` é o espelho mantido pelo banco
  * (`trg_questoes_espelha_gabarito`) e só o professor da turma tem policy nele.
  *

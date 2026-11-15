@@ -110,7 +110,7 @@ export function useJornadaDoAluno(alunoId: string, classeId: number) {
       ]);
       const atividadeIds = atividades.map((a) => a.id);
       const questoes = atividadeIds.length
-        ? // O gabarito vem do espelho: desde a `20261110_02`, nem o professor lê `questoes.resposta_correta`.
+        ? // O gabarito vem do espelho: desde a `20261110_03`, nem o professor lê `questoes.resposta_correta`.
           await comGabarito(
             await ler<Omit<QuestaoDaTrilha, "resposta_correta">>(de("questoes").select("id, atividade_id, enunciado").in("atividade_id", atividadeIds)),
           )
