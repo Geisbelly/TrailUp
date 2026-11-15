@@ -1333,6 +1333,13 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   policy de SELECT **e** a tabela na publicação `supabase_realtime` (ver
   `20261003_04`). Faltando qualquer um dos dois, o canal assina, o
   `.subscribe()` não reclama e evento nenhum chega — nunca.
+- **`questoes` tem SELECT por coluna, sem `resposta_correta`** (corte do gabarito,
+  `20261110_03`). Vale para o professor também, que é `authenticated`: o console lê o
+  gabarito de `questao_gabarito` (`frontend/src/lib/gabaritoDoProfessor.ts`), e a escrita
+  continua em `questoes`. `select("*")` em `questoes` falha inteiro com `42501`. **Coluna
+  nova em `questoes` nasce ilegível para o cliente:** a migration que a cria dá
+  `GRANT SELECT (coluna) ON public.questoes TO authenticated`. `questao_aluno` não aceita
+  escrita do cliente: só as RPCs `SECURITY DEFINER` gravam.
 - **View sem `security_invoker` ignora RLS.** Ela roda com os privilégios do
   dono (`postgres`), então as policies das tabelas base **não se aplicam** —
   era um segundo bypass, paralelo ao das policies, e por ele dava para ler
