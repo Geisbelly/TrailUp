@@ -164,6 +164,15 @@ A imunidade a lote duplicado vem da chave única
 `(lote_id, scope, entry_key)`, preenchida pelo trigger
 `telemetria_resolver_entidade` — não da forma da conta.
 
+**"Sessão" tem dois sentidos, e eles não se trocam.** `telemetria_sessoes` é uma linha por
+abertura de tela de estudo: é o que `vw_metricas_sessoes_aluno_dia` conta e o denominador da I16.
+A **sessão de estudo** é outra coisa: um período contínuo do aluno numa turma, cortado por 30 min
+sem lote de estudo (o corte do Firebase/GA4). Ela não é gravada, é calculada em
+`vw_metricas_sessoes_estudo` (`20261115_04`) a partir do escopo `topic`. Quem quer "quantas vezes o
+aluno sentou para estudar" usa a segunda; a primeira responde "quantas telas ele abriu". A RPC
+`metricas_continuidade_turma` devolve a sessão de estudo, o funil de ativação e os estados de
+retenção por semana da turma.
+
 ## 8. Como reproduzir as medições
 
 ```sql
