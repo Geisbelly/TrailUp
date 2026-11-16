@@ -68,6 +68,14 @@ class TelemetriaTimeMetricEntryPayload(BaseModel):
     touch_count: int = 0
     scroll_distance_px: float = 0
     max_depth_px: float = 0
+    # Cobertura do material (20261116_01): só no escopo `material`, só de build novo. Opcionais
+    # para o app antigo continuar validando; o repositório descarta o que não for número >= 0.
+    conteudo_altura_px: float | None = None
+    janela_altura_px: float | None = None
+    midia_duracao_seg: float | None = None
+    midia_posicao_max_seg: float | None = None
+    slides_vistos: int | None = None
+    slides_total: int | None = None
 
 
 def _entradas_aproveitaveis(valor: Any) -> Any:

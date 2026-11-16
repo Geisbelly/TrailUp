@@ -19,6 +19,7 @@ import {
   type EstadoDeReproducao,
 } from "@/utils/estadoDeAudio";
 import { criarControleDeAudio, tocandoSegundoOStatus } from "@/utils/controleDeAudio";
+import { coberturaDoAudio, informarCobertura } from "@/utils/coberturaDoMaterial";
 import { usePausarAoSairDaTela } from "@/hooks/usePausarAoSairDaTela";
 import React,{ useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -188,6 +189,11 @@ export default function AudioPlayer({
         sound.addListener("playbackStatusUpdate", (nextStatus) => {
           const normalized = estadoDeAudio(nextStatus);
           setPlayback(normalized);
+          if (nextStatus.isLoaded) {
+            informarCobertura(
+              coberturaDoAudio({ ...normalized, terminou: Boolean(nextStatus.didJustFinish) })
+            );
+          }
           if (nextStatus.isLoaded && nextStatus.didJustFinish) {
             fonteRef.current.persistPosition(0);
             controleDoSom.terminou();
