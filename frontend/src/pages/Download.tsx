@@ -4,8 +4,11 @@ import { DESIGN_ART } from "@/lib/design-art";
 
 const DOWNLOAD_CONFIG = {
   playStoreUrl: "https://play.google.com/apps/test/com.seuprojeto.trailup/20",
-  apkUrl: "https://github.com/geisbelly/brainhex-navigator/releases/download/APK_AAB/trailup_1_0_2.apk",
-  aabUrl: "https://github.com/geisbelly/brainhex-navigator/releases/download/APK_AAB/trailup_1_0_2.aab",
+  // Release PÚBLICO no espelho: o brainhex-navigator é privado e o link de lá dava 404 sem login.
+  // A versão daqui não pode ficar abaixo de `app_config.app_versao_minima` (hoje 1.0.8), senão
+  // quem instala por este link cai direto na tela de atualizar.
+  apkUrl: "https://github.com/Geisbelly/TrailUp/releases/download/app-v1.0.9/trailup_1_0_9.apk",
+  aabUrl: "https://github.com/Geisbelly/TrailUp/releases/download/app-v1.0.9/trailup_1_0_9.aab",
 };
 
 export default function Download() {
