@@ -20,6 +20,14 @@ import type {
   TelemetryTouchSample,
   TelemetryTouchTarget,
 } from "@/interfaces/telemetria/TelemetryContracts";
+// Relativo, e não `@/`: este é import de valor, e o teste roda fora do bundler.
+import {
+  COBERTURA_VAZIA,
+  fundirCobertura,
+  serializarCobertura,
+  type CoberturaDoMaterial,
+  type CoberturaInformada,
+} from "../../utils/coberturaDoMaterial";
 
 export type TimeMetricEntryAccumulator = {
   key: string;
@@ -36,6 +44,8 @@ export type TimeMetricEntryAccumulator = {
   touchCount: number;
   scrollDistancePx: number;
   maxDepthPx: number;
+  /** Só no escopo `material`. Nos outros fica vazia e não sai no envio. */
+  cobertura: CoberturaDoMaterial;
 };
 
 export type TimeMetricsAccumulator = {
@@ -142,6 +152,8 @@ export function restoreUnsentBatch(old: BatchAccumulator, current: BatchAccumula
           idleMs: previous.idleMs + value.idleMs, touchCount: previous.touchCount + value.touchCount,
           scrollDistancePx: previous.scrollDistancePx + value.scrollDistancePx,
           maxDepthPx: Math.max(previous.maxDepthPx, value.maxDepthPx),
+          // Acumulado do componente, não delta: o maior dos dois, nunca a soma.
+          cobertura: fundirCobertura(previous.cobertura, value.cobertura),
         } : { ...value };
       }
     }
@@ -175,7 +187,30 @@ export function buildTimeMetricEntry(seed: SeedEntrada): TimeMetricEntryAccumula
     touchCount: 0,
     scrollDistancePx: 0,
     maxDepthPx: 0,
+    cobertura: { ...COBERTURA_VAZIA },
   };
+}
+
+/**
+ * COBERTURA. Grava no material aberto o que o player, o deck ou a rolagem informaram. Fora de um
+ * material, ou com o estudo parado, nada entra: não há a quem atribuir.
+ */
+export function registrarCobertura(
+  batch: BatchAccumulator,
+  context: CurrentStudyContext,
+  informe: CoberturaInformada
+) {
+  if (context.studyState !== "active" || !context.materialKey) return;
+  const entry = getOrCreateTimeMetricEntry(batch.timeMetrics.materials, {
+    key: context.materialKey,
+    topicoId: context.topicoId,
+    conteudoId: context.conteudoId,
+    atividadeId: context.atividadeId,
+    itemKey: context.itemKey,
+    materialKey: context.materialKey,
+    materialType: context.materialType,
+  });
+  entry.cobertura = fundirCobertura(entry.cobertura, informe);
 }
 
 export function getOrCreateTimeMetricEntry(
@@ -431,6 +466,7 @@ export function serializeTimeMetricEntries(
       touch_count: entry.touchCount,
       scroll_distance_px: Math.round(entry.scrollDistancePx),
       max_depth_px: Math.round(entry.maxDepthPx),
+      ...serializarCobertura(entry.cobertura),
     }))
     .sort((left, right) => {
       if (right.active_sec !== left.active_sec) {

@@ -51,6 +51,14 @@ export type TelemetryTimeMetricEntry = {
   touch_count: number;
   scroll_distance_px: number;
   max_depth_px: number;
+  // Cobertura do material (20261116_01): só no escopo `material`, e só quando medida. Ausente
+  // quer dizer "não mediu", nunca "percorreu zero".
+  conteudo_altura_px?: number | null;
+  janela_altura_px?: number | null;
+  midia_duracao_seg?: number | null;
+  midia_posicao_max_seg?: number | null;
+  slides_vistos?: number | null;
+  slides_total?: number | null;
 };
 
 export type TelemetryTimeMetrics = {
@@ -202,4 +210,8 @@ export type UpdateStudyContextParams = {
 
 export type ScrollTelemetryMetrics = {
   y: number;
+  /** Altura do conteúdo rolável (`contentSize.height`), para a cobertura do texto. */
+  contentHeight?: number;
+  /** Altura da janela visível (`layoutMeasurement.height`). */
+  viewportHeight?: number;
 };

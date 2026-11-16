@@ -64,7 +64,13 @@ export function useTelemetryHandlers(args: {
 
   const handleTelemetryScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      recordScroll({ y: event.nativeEvent.contentOffset.y });
+      const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+      recordScroll({
+        y: contentOffset.y,
+        // Para a cobertura do texto (20261116_01). Na web o evento pode vir sem os dois.
+        contentHeight: contentSize?.height,
+        viewportHeight: layoutMeasurement?.height,
+      });
     },
     [recordScroll]
   );

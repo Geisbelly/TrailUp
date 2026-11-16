@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import math
 from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
@@ -15,6 +16,16 @@ from app.services.r2_storage import enviar_para_r2, ler_config_r2
 
 logger = logging.getLogger(__name__)
 
+# Cobertura do material (20261116_01): (coluna, é inteiro). O caminho direto do app grava as mesmas
+# seis (`buildMetricRowsForScope` em `mobile/src/services/telemetriaApi.ts`).
+COLUNAS_DE_COBERTURA: tuple[tuple[str, bool], ...] = (
+    ("conteudo_altura_px", False),
+    ("janela_altura_px", False),
+    ("midia_duracao_seg", False),
+    ("midia_posicao_max_seg", False),
+    ("slides_vistos", True),
+    ("slides_total", True),
+)
 
 
 def _id_do_professor(valor: Any) -> int | None:
@@ -54,6 +65,32 @@ class TelemetriaRepository:
             return float(value)
         except (TypeError, ValueError):
             return default
+
+    @staticmethod
+    def _medida_opcional(value: Any, inteiro: bool = False) -> float | int | None:
+        """Medida de cobertura (20261116_01): número finito >= 0, ou nulo.
+
+        Nulo, e não zero, quando não veio ou veio estranha: zero diria "percorreu nada", e o que
+        aconteceu foi "não mediu". E nunca levanta: medida ruim não pode custar o lote.
+        """
+        if value is None or isinstance(value, bool):
+            return None
+        try:
+            numero = float(value)
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(numero) or numero < 0:
+            return None
+        return int(round(numero)) if inteiro else numero
+
+    @classmethod
+    def _cobertura_da_entrada(cls, scope: str, entry: dict[str, Any]) -> dict[str, float | int | None]:
+        """As seis medidas de cobertura, só no escopo `material`; nos outros, todas nulas."""
+        material = scope == "material"
+        return {
+            nome: cls._medida_opcional(entry.get(nome), inteiro=inteiro) if material else None
+            for nome, inteiro in COLUNAS_DE_COBERTURA
+        }
 
     @staticmethod
     def _coerce_int(value: Any, default: int = 0) -> int:
@@ -639,6 +676,12 @@ class TelemetriaRepository:
                           touch_count,
                           scroll_distance_px,
                           max_depth_px,
+                          conteudo_altura_px,
+                          janela_altura_px,
+                          midia_duracao_seg,
+                          midia_posicao_max_seg,
+                          slides_vistos,
+                          slides_total,
                           captured_at
                         )
                         VALUES (
@@ -661,6 +704,12 @@ class TelemetriaRepository:
                           :touch_count,
                           :scroll_distance_px,
                           :max_depth_px,
+                          CAST(:conteudo_altura_px AS numeric),
+                          CAST(:janela_altura_px AS numeric),
+                          CAST(:midia_duracao_seg AS numeric),
+                          CAST(:midia_posicao_max_seg AS numeric),
+                          CAST(:slides_vistos AS integer),
+                          CAST(:slides_total AS integer),
                           :captured_at
                         )
                         -- Mesma identidade usada pelo fallback Supabase.
@@ -688,6 +737,7 @@ class TelemetriaRepository:
                         "touch_count": max(0, self._coerce_int(entry.get("touch_count"), 0)),
                         "scroll_distance_px": max(0.0, self._coerce_float(entry.get("scroll_distance_px"), 0.0)),
                         "max_depth_px": max(0.0, self._coerce_float(entry.get("max_depth_px"), 0.0)),
+                        **self._cobertura_da_entrada(scope, entry),
                         "captured_at": captured_at_value,
                     },
                 )

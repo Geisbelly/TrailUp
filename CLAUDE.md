@@ -212,6 +212,11 @@ Estas decisões são **fixas**; sigam-nas ao corrigir/estender.
      (`_status_do_target_apos_falha`). "Reprocessar falhas" depois da virada (à
      meia-noite do Pacífico) retoma só as partes que faltam. Uma chave com 402
      sai do rodízio por 6 h; o 429 do dia pausa a chave até a virada.
+     **"Sem cota" exige TODAS as chaves sem cota do dia ou com 402**
+     (`erroDeTodasAsChavesEmPausa`): uma em pausa de minutos faz o erro levar o
+     motivo dela, e o modelo de reserva sem cota não esconde a pausa curta do
+     principal. Antes valia o motivo da 1ª chave da lista, e em 16/11 o áudio da
+     turma 70 ficou para o dia seguinte com duas chaves com cota.
    - **A nova tentativa reaproveita `plano.content_enrichment`** em vez de
      enriquecer de novo.
    - **O alvo procura a linha do próprio dono.** `buscar_mais_recente_por_perfil(dono=...)`:

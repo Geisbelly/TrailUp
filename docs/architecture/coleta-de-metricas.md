@@ -164,6 +164,31 @@ A imunidade a lote duplicado vem da chave única
 `(lote_id, scope, entry_key)`, preenchida pelo trigger
 `telemetria_resolver_entidade` — não da forma da conta.
 
+**"Sessão" tem dois sentidos, e eles não se trocam.** `telemetria_sessoes` é uma linha por
+abertura de tela de estudo: é o que `vw_metricas_sessoes_aluno_dia` conta e o denominador da I16.
+A **sessão de estudo** é outra coisa: um período contínuo do aluno numa turma, cortado por 30 min
+sem lote de estudo (o corte do Firebase/GA4). Ela não é gravada, é calculada em
+`vw_metricas_sessoes_estudo` (`20261115_04`) a partir do escopo `topic`. Quem quer "quantas vezes o
+aluno sentou para estudar" usa a segunda; a primeira responde "quantas telas ele abriu". A RPC
+`metricas_continuidade_turma` devolve a sessão de estudo, o funil de ativação e os estados de
+retenção por semana da turma.
+
+**`material_tipo` é o tipo do bloco no app, não o formato da sugestão.** O motor de sugestão fala
+em `markdown`, `audio`, `apresentacao`, `cards` e `pdf`; a telemetria grava o tipo do bloco
+principal (`texto`, `apresentacao-slides`, `embed`, `documento`…). Quem cruza os dois traduz, como
+`metricas_aderencia_sugestao` faz (`20261115_06`, o mesmo mapa de `bagFormatForBlockType` mais
+`cards`). E a tradução não é perfeita: apresentação exportada em PDF chega como `pdf`.
+
+**Cobertura do material não se soma entre lotes** (`20261116_01`). No escopo `material`, o build
+novo manda seis medidas opcionais: alturas do conteúdo e da janela (texto), duração e maior posição
+tocando (áudio), slides vistos e total (deck nativo). Ao contrário do tempo, cada lote leva o
+**acumulado do componente**, e a conta é o máximo entre os lotes — é o que
+`vw_metricas_cobertura_material` faz. Medida ausente é "não mediu": a coluna fica nula e a fração
+também, nunca zero. Quem mede é o componente (`AudioPlayer`, `PresentationSlidesBlock`, a rolagem
+da trilha), que só informa em `mobile/src/utils/coberturaDoMaterial.ts`; quem grava no material
+aberto é o `MetricasContext`. O deck em HTML do BrainHexPDF não informa o slide atual, então a
+cobertura dele fica nula.
+
 ## 8. Como reproduzir as medições
 
 ```sql

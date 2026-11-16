@@ -260,6 +260,10 @@ const _geminiKeyBlockedUntil = new Map<string, number>();
 // Erro que pôs cada chave × modelo em pausa: quando todas estão em pausa, é
 // ele que sobe (com o "PerDay" que diz se a cota é a do dia).
 const _geminiKeyCooldownReason = new Map<string, string>();
+// Pausas (chave × modelo) postas pela cota do DIA. As outras são curtas (cota
+// por minuto, servidor sobrecarregado) e passam em minutos: o erro de "todas em
+// pausa" precisa saber a diferença, senão uma pausa curta vira "sem cota hoje".
+const _geminiKeyCooldownDiaria = new Set<string>();
 const _geminiKeyBlockedReason = new Map<string, string>();
 let _geminiKeyIndex = 0;
 const GEMINI_KEY_BILLING_BLOCK_MS = 6 * 60 * 60 * 1_000;
@@ -368,6 +372,7 @@ export function resetGeminiKeyRotationForTests(): void {
   _geminiKeyCooldownUntil.clear();
   _geminiKeyBlockedUntil.clear();
   _geminiKeyCooldownReason.clear();
+  _geminiKeyCooldownDiaria.clear();
   _geminiKeyBlockedReason.clear();
 }
 
@@ -490,8 +495,10 @@ export function rotateGeminiKeyAfterFailure(error: unknown, model: string, faile
   );
   if (isGeminiDailyQuotaError(error)) {
     _geminiKeyCooldownUntil.set(cooldownKey(failedKey, model), Date.now() + msUntilNextPacificMidnight());
+    _geminiKeyCooldownDiaria.add(cooldownKey(failedKey, model));
     return keys.length > 1 && pickAvailableGeminiKey(keys, model) !== null;
   }
+  _geminiKeyCooldownDiaria.delete(cooldownKey(failedKey, model));
   // Registra o cooldown mesmo com 1 chave so: mesmo sem outra chave pra
   // tentar AGORA, essa marca evita que uma proxima chamada nesse mesmo
   // modelo bata de novo numa cota ja sabidamente esgotada — ela cai direto
@@ -499,6 +506,45 @@ export function rotateGeminiKeyAfterFailure(error: unknown, model: string, faile
   // chamada real.
   _geminiKeyCooldownUntil.set(cooldownKey(failedKey, model), Date.now() + GEMINI_KEY_QUOTA_COOLDOWN_MS);
   return keys.length > 1 && pickAvailableGeminiKey(keys, model) !== null;
+}
+
+/** Cota por minuto ou servidor sobrecarregado: passa em minutos, ao contrário da cota do dia e do 402. */
+function ehPausaCurta(error: unknown): boolean {
+  return (isGeminiQuotaOrRateLimitError(error) || isGeminiTransientUnavailableError(error))
+    && !isGeminiDailyQuotaError(error)
+    && !isGeminiBillingError(error);
+}
+
+/**
+ * Erro de "todas as chaves em pausa" para `model`, com o motivo de UMA delas.
+ *
+ * O motivo decide o que vem depois: `isDailyQuotaError` procura "PerDay" no
+ * texto, e com ele o TTS não tenta de novo e o alvo sai com `[sem_cota_tts]`,
+ * esperando a virada do dia. Por isso o motivo só pode ser de cota do dia (ou
+ * 402) quando TODAS as chaves estão assim. Basta uma em pausa curta (cota por
+ * minuto, 503) para o erro levar o motivo dela: a pausa passa em minutos.
+ *
+ * Antes valia o motivo da primeira chave da lista. Em 16/11 a 1ª tinha gastado
+ * a cota do dia, a 3ª e a 4ª estavam em pausa curta, e o áudio do seeker e do
+ * survivor da turma 70 ficou para o dia seguinte com cota sobrando.
+ */
+export function erroDeTodasAsChavesEmPausa(keys: string[], model: string): Error {
+  const agora = Date.now();
+  const pausas = keys.map((key) => {
+    if ((_geminiKeyBlockedUntil.get(key) ?? 0) > agora) {
+      return { longa: true, motivo: _geminiKeyBlockedReason.get(key) };
+    }
+    const chave = cooldownKey(key, model);
+    return { longa: _geminiKeyCooldownDiaria.has(chave), motivo: _geminiKeyCooldownReason.get(chave) };
+  });
+  const curta = pausas.find((pausa) => !pausa.longa);
+  const motivo = curta
+    ? curta.motivo ?? "pausa curta (cota por minuto ou servidor sobrecarregado)"
+    : pausas.map((pausa) => pausa.motivo).find(Boolean);
+  return new Error(
+    `429 RESOURCE_EXHAUSTED: todas as chaves do Gemini em pausa para ${model}`
+    + (motivo ? ` — ${motivo}` : ""),
+  );
 }
 
 /**
@@ -514,7 +560,7 @@ export function rotateGeminiKeyAfterFailure(error: unknown, model: string, faile
  * FAMÍLIA do modelo (texto/TTS/imagem não são intercambiáveis) — default pro
  * texto pois é o caminho de maior volume (markdown/audioScript/slides).
  */
-async function generateGeminiContent(
+export async function generateGeminiContent(
   params: Parameters<GoogleGenAI["models"]["generateContent"]>[0],
   fallbackModels: string[] = resolveGeminiTextFallbackModels(),
 ): ReturnType<GoogleGenAI["models"]["generateContent"]> {
@@ -526,6 +572,10 @@ async function generateGeminiContent(
   const maxAttemptsPerModel = Math.max(geminiApiKeys().length, 1);
 
   let lastError: unknown;
+  // A primeira pausa curta vista em QUALQUER modelo. O erro final é o do último
+  // modelo tentado (o de reserva), e se ele esgotou a cota do dia isso não pode
+  // esconder que o principal só estava em pausa de minutos.
+  let pausaCurta: unknown;
   for (const model of candidateModels) {
     const currentParams = model === primaryModel ? params : { ...params, model };
     for (let attempt = 0; attempt < maxAttemptsPerModel; attempt += 1) {
@@ -534,17 +584,8 @@ async function generateGeminiContent(
         // Todas as chaves em pausa de cota (ou fora do rodízio) para este
         // modelo: chamar de novo só traria outro 429. Vai para o próximo
         // modelo com o motivo que pôs as chaves em pausa.
-        const reason = keys
-          .map((key) => (
-            (_geminiKeyBlockedUntil.get(key) ?? 0) > Date.now()
-              ? _geminiKeyBlockedReason.get(key)
-              : _geminiKeyCooldownReason.get(cooldownKey(key, model))
-          ))
-          .find(Boolean);
-        lastError = new Error(
-          `429 RESOURCE_EXHAUSTED: todas as chaves do Gemini em pausa para ${model}`
-          + (reason ? ` — ${reason}` : ""),
-        );
+        lastError = erroDeTodasAsChavesEmPausa(keys, model);
+        pausaCurta ??= ehPausaCurta(lastError) ? lastError : undefined;
         break;
       }
       const { client, key } = getAi(model);
@@ -554,6 +595,7 @@ async function generateGeminiContent(
         return response;
       } catch (error) {
         lastError = error;
+        pausaCurta ??= ehPausaCurta(error) ? error : undefined;
         if (rotateGeminiKeyAfterFailure(error, model, key)) {
           continue; // outra chave disponivel pra esse mesmo modelo
         }
@@ -568,7 +610,7 @@ async function generateGeminiContent(
       }
     }
   }
-  throw lastError;
+  throw pausaCurta !== undefined && !ehPausaCurta(lastError) ? pausaCurta : lastError;
 }
 
 // --- 1. Ingestion & Extraction Modules ---

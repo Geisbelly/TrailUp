@@ -10,6 +10,7 @@ import {
   EMPTY_STUDY_CONTEXT,
   getOrCreateTimeMetricEntry,
   markContextVisit,
+  registrarCobertura,
   roundSeconds,
   serializeTimeMetricEntries,
   type BatchAccumulator,
@@ -18,6 +19,7 @@ import {
 import { criarCicloSessao, type CicloSessao } from "@/context/metricas/cicloSessao";
 import { decidirTransicaoAppState, eventoDeFim, podeCapturarQuadro } from "@/context/metricas/fimDeSessao";
 import { haReproducaoEmCurso } from "@/utils/controleDeAudio";
+import { ouvirCobertura } from "@/utils/coberturaDoMaterial";
 import { IATriggerSignal } from "@/interfaces/personalizacao/IAContracts";
 import {
   BeginStudySessionParams,
@@ -1169,6 +1171,13 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
       batch.lastScrollY = y;
       batch.maxDepthPx = Math.max(batch.maxDepthPx, y);
       registerContextScroll(batch, currentContextRef.current, delta, y);
+      // Cobertura do texto: sem as alturas, a rolagem não diz que fração foi percorrida.
+      if (metrics.contentHeight != null || metrics.viewportHeight != null) {
+        registrarCobertura(batch, currentContextRef.current, {
+          conteudoAlturaPx: metrics.contentHeight,
+          janelaAlturaPx: metrics.viewportHeight,
+        });
+      }
       if (delta > 0) {
         recordAppEvent({
           eventGroup: "interaction",
@@ -1279,6 +1288,17 @@ export function MetricasProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void loadConsentState();
   }, [loadConsentState]);
+
+  // Posição do áudio e slides do deck: quem mede é o componente, quem grava no material aberto é
+  // aqui. Mesma regra da rolagem: sem consentimento de uso, nada entra.
+  useEffect(() => {
+    if (!telemetryPreferences.usageEnabled) return;
+    return ouvirCobertura((informe) => {
+      const batch = batchRef.current;
+      if (!batch) return;
+      registrarCobertura(batch, currentContextRef.current, informe);
+    });
+  }, [telemetryPreferences.usageEnabled]);
 
   // Estado do servidor mudou (data informada, responsavel aceitou ou revogou):
   // reaplica o registro local por cima dele. Revogacao para a coleta na hora.

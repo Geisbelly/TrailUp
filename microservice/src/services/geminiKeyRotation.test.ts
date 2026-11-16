@@ -12,8 +12,11 @@ import {
   extractTtsAudioData,
   msUntilNextPacificMidnight,
   executeWithModelFallback,
+  erroDeTodasAsChavesEmPausa,
+  generateGeminiContent,
 } from "./geminiService";
-import { TtsNoAudioError } from "./ttsRecovery";
+import { TtsNoAudioError, classifyTtsFailure, isDailyQuotaError } from "./ttsRecovery";
+import { audioFailedOnlyForQuota } from "./mediaResume";
 
 const PRIMARY_MODEL = "gemini-3.6-flash";
 const FALLBACK_MODEL = "gemini-2.5-flash-lite";
@@ -320,6 +323,77 @@ test("regeneração do professor usa o rodízio compartilhado: chave sem cota fi
     process.env.GEMINI_API_KEY = previousKey;
     if (previousOpenAi === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = previousOpenAi;
+    resetGeminiKeyRotationForTests();
+  }
+});
+
+const ERRO_429_MINUTO = new Error(
+  '{"error":{"code":429,"message":"Quota exceeded","details":[{"quotaId":"GenerateRequestsPerMinutePerProjectPerModel-FreeTier"}]}}',
+);
+
+test("todas em pausa com uma só em pausa curta: o erro não diz cota do dia", () => {
+  // 16/11: a 1ª chave tinha gastado a cota do dia e as outras estavam em pausa
+  // de minutos. O erro levava o motivo da 1ª, o TTS não tentava de novo e o
+  // alvo saía com [sem_cota_tts] até o dia seguinte, com cota sobrando.
+  withGeminiApiKeys("key-1,key-2", () => {
+    rotateGeminiKeyAfterFailure(ERRO_429_DIA, PRIMARY_MODEL, "key-1");
+    rotateGeminiKeyAfterFailure(ERRO_429_MINUTO, PRIMARY_MODEL, "key-2");
+    const erro = erroDeTodasAsChavesEmPausa(["key-1", "key-2"], PRIMARY_MODEL);
+    assert.equal(classifyTtsFailure(erro), "quota");
+    assert.equal(isDailyQuotaError(erro), false);
+    assert.equal(audioFailedOnlyForQuota([erro]), false);
+  });
+});
+
+test("todas em pausa pela cota do dia ou pelo 402: o erro continua dizendo sem cota hoje", () => {
+  withGeminiApiKeys("key-1,key-2,key-3", () => {
+    rotateGeminiKeyAfterFailure(ERRO_429_DIA, PRIMARY_MODEL, "key-1");
+    rotateGeminiKeyAfterFailure(ERRO_402, PRIMARY_MODEL, "key-2");
+    rotateGeminiKeyAfterFailure(ERRO_429_DIA, PRIMARY_MODEL, "key-3");
+    const erro = erroDeTodasAsChavesEmPausa(["key-1", "key-2", "key-3"], PRIMARY_MODEL);
+    assert.equal(audioFailedOnlyForQuota([erro]), true);
+  });
+});
+
+test("pausa curta depois da cota do dia na mesma chave deixa de contar como do dia", () => {
+  withGeminiApiKeys("key-1", () => {
+    rotateGeminiKeyAfterFailure(ERRO_429_DIA, PRIMARY_MODEL, "key-1");
+    rotateGeminiKeyAfterFailure(ERRO_429_MINUTO, PRIMARY_MODEL, "key-1");
+    assert.equal(isDailyQuotaError(erroDeTodasAsChavesEmPausa(["key-1"], PRIMARY_MODEL)), false);
+  });
+});
+
+test("modelo de reserva sem cota do dia não esconde a pausa curta do principal", async () => {
+  // O erro final era o do último modelo tentado. Com o principal em pausa de
+  // minutos e o de reserva sem cota do dia, o áudio também ia para o dia seguinte.
+  const previousKey = process.env.GEMINI_API_KEY;
+  const originalFetch = globalThis.fetch;
+  process.env.GEMINI_API_KEY = "key-1,key-2";
+  resetGeminiKeyRotationForTests();
+  const corpo = (quotaId: string) => JSON.stringify({
+    error: { code: 429, status: "RESOURCE_EXHAUSTED", message: "Quota exceeded", details: [{ quotaId }] },
+  });
+  globalThis.fetch = (async (input: unknown, init?: { headers?: unknown }) => {
+    const url = String(input instanceof Request ? input.url : input);
+    const headers = new Headers((init?.headers ?? (input instanceof Request ? input.headers : undefined)) as HeadersInit);
+    const key = headers.get("x-goog-api-key") ?? "";
+    const quotaId = url.includes("tts-principal") && key === "key-2"
+      ? "GenerateRequestsPerMinutePerProjectPerModel-FreeTier"
+      : "GenerateRequestsPerDayPerProjectPerModel-FreeTier";
+    return new Response(corpo(quotaId), { status: 429, headers: { "Content-Type": "application/json" } });
+  }) as typeof fetch;
+  try {
+    await assert.rejects(
+      generateGeminiContent({ model: "tts-principal", contents: [{ parts: [{ text: "Oi." }] }] }, ["tts-reserva"]),
+      (erro: unknown) => {
+        assert.equal(classifyTtsFailure(erro), "quota");
+        assert.equal(isDailyQuotaError(erro), false);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+    process.env.GEMINI_API_KEY = previousKey;
     resetGeminiKeyRotationForTests();
   }
 });
