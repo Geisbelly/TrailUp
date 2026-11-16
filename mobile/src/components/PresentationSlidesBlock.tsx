@@ -9,7 +9,8 @@ import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { buildContentResumeKey, loadContentResume, saveContentResume } from "@/utils/contentResume";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { coberturaDosSlides, informarCobertura } from "@/utils/coberturaDoMaterial";
 import {
   Image,
   Modal,
@@ -86,6 +87,17 @@ export default function PresentationSlidesBlock({ payload: rawPayload, progressK
     if (!resumeLoaded) return;
     void saveContentResume(storageKey, { slide: index });
   }, [index, resumeLoaded, storageKey]);
+
+  // Cobertura (20261116_01): slide só conta como visto com o deck aberto, não pela retomada.
+  const vistosRef = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    vistosRef.current = new Set();
+  }, [storageKey]);
+  useEffect(() => {
+    if (!visible || slides.length === 0) return;
+    vistosRef.current.add(index);
+    informarCobertura(coberturaDosSlides(vistosRef.current, slides.length));
+  }, [index, slides.length, visible]);
 
   if (slides.length === 0) return null;
 

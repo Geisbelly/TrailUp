@@ -10,6 +10,7 @@ import {
 } from "@/services/telemetriaFallback";
 import { lerClienteDoApp } from "@/services/telemetriaCliente";
 import { sanitizarCameraParaBanco } from "@/services/telemetriaPayload";
+import { colunasDeCobertura, semColunasDeCobertura } from "@/utils/coberturaDoMaterial";
 import {
   normalizeNonNegativeNumber,
   normalizePositiveInteger,
@@ -273,6 +274,7 @@ function buildMetricRowsForScope(params: {
     touch_count: Math.max(0, Math.round(normalizeMetricNumber(entry.touch_count))),
     scroll_distance_px: normalizeMetricNumber(entry.scroll_distance_px),
     max_depth_px: normalizeMetricNumber(entry.max_depth_px),
+    ...(scope === "material" ? colunasDeCobertura(entry) : {}),
     captured_at: payload.captured_at,
     created_at: new Date().toISOString(),
   }));
@@ -454,12 +456,17 @@ async function persistTelemetryBatchDirect(
     // mais frequencia que a gravacao falha). Com `insert` cru, o reenvio ou
     // duplicava o tempo do aluno, ou -- com a chave unica em vigor -- estourava
     // e prendia o lote na cabeca da fila.
-    const { error: metricsError } = await supabase
-      .from("telemetria_time_metric_entries")
-      .upsert(metricRows, {
+    const gravarMetricas = (linhas: Record<string, unknown>[]) =>
+      supabase.from("telemetria_time_metric_entries").upsert(linhas, {
         onConflict: "lote_id,scope,entry_key",
         ignoreDuplicates: true,
       });
+    let { error: metricsError } = await gravarMetricas(metricRows);
+    if (metricsError && colunaInexistente(metricsError)) {
+      // Build novo contra banco que ainda nao tem a 20261116_01: regrava uma vez sem as
+      // colunas de cobertura. O tempo do aluno nao pode se perder por causa delas.
+      ({ error: metricsError } = await gravarMetricas(metricRows.map(semColunasDeCobertura)));
+    }
 
     if (metricsError) {
       const rawMessage = String((metricsError as any)?.message ?? "").toLowerCase();
