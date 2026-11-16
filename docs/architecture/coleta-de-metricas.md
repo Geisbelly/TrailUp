@@ -173,6 +173,12 @@ aluno sentou para estudar" usa a segunda; a primeira responde "quantas telas ele
 `metricas_continuidade_turma` devolve a sessão de estudo, o funil de ativação e os estados de
 retenção por semana da turma.
 
+**`material_tipo` é o tipo do bloco no app, não o formato da sugestão.** O motor de sugestão fala
+em `markdown`, `audio`, `apresentacao`, `cards` e `pdf`; a telemetria grava o tipo do bloco
+principal (`texto`, `apresentacao-slides`, `embed`, `documento`…). Quem cruza os dois traduz, como
+`metricas_aderencia_sugestao` faz (`20261115_06`, o mesmo mapa de `bagFormatForBlockType` mais
+`cards`). E a tradução não é perfeita: apresentação exportada em PDF chega como `pdf`.
+
 ## 8. Como reproduzir as medições
 
 ```sql
