@@ -26,9 +26,9 @@ DEFINIDA_EM = {
 }
 
 
-def test_vem_depois_da_20261115_06_e_e_a_unica_cabeca() -> None:
+def test_vem_depois_da_20261116_01_e_e_a_unica_cabeca() -> None:
     scripts = ScriptDirectory.from_config(_offline_alembic_config())
-    assert scripts.get_revision("20261116_02").down_revision == "20261115_06"
+    assert scripts.get_revision("20261116_02").down_revision == "20261116_01"
     assert len(scripts.get_heads()) == 1
 
 

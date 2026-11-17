@@ -56,14 +56,14 @@ histórico olha no máximo 24 h (`fn_painel_tecnico`) e 60 min (`fn_monitor_varr
   `net._http_response`, sem junção por `id`. Ficam para outra medição.
 
 Revision ID: 20261116_02
-Revises: 20261115_06
+Revises: 20261116_01
 Create Date: 2026-11-16
 """
 
 from alembic import op
 
 revision = "20261116_02"
-down_revision = "20261115_06"
+down_revision = "20261116_01"
 branch_labels = None
 depends_on = None
 
