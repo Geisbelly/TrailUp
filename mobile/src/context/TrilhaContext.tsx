@@ -73,6 +73,11 @@ import { assinaturaDosPerfis, chaveDoPerfilDaRota, pesosDaRota, type ChaveDaMist
 import { chavesDaRotaParaApagar } from '@/utils/chavesDoCacheDaRota';
 import { perfilDoRegistroCarimbado, podePedirMidiaDoRegistro, resolverRegistrosDoTopico } from '@/utils/rotaDoTopicoResolver';
 import { houveVisita, payloadDeVisitaDoTopico } from '@/utils/visitaDoTopico';
+import {
+  chaveRecargaClasse,
+  chaveRecargaTopico,
+  criarLimitadorDeRecarga,
+} from '@/utils/recargaPorTempo';
 import { buildSupabasePublicStorageUrl, looksLikeStorageObjectPath } from '@/utils/supabaseStorage';
 import {
   clampPercent,
@@ -2178,6 +2183,16 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [classeAtual, usuario, atualizarProgressoClasse, refreshTopico]);
 
+  // O relógio de estudo grava a visita a cada 60 s; reler a turma a cada
+  // gravação derrubou a produção em 17/11 (ver `recargaPorTempo.ts`). As
+  // ações que mudam status ou percentual continuam relendo na hora.
+  const limitarRecargaPorTempoRef = useRef(criarLimitadorDeRecarga())
+
+  const recarregarProgressoPorTempo = useCallback(async (classe: Classe, alunoId: string) => {
+    if (!limitarRecargaPorTempoRef.current(chaveRecargaClasse(alunoId, classe.classe_id), Date.now())) return
+    await atualizarProgressoClasse()
+  }, [atualizarProgressoClasse])
+
   const registrarTempoConteudo = useCallback(async (
     topicoId: number,
     conteudoId: number,
@@ -2200,11 +2215,11 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       // uma base que podia estar velha, e a escrita que falhava so virava
       // `console.warn` -- o intervalo se perdia para sempre.
       await conteudo.registrarVisita(usuario.id)
-      await atualizarProgressoClasse()
+      await recarregarProgressoPorTempo(classeAtual, usuario.id)
     } catch (err) {
       avisarFalha("tempo/conteudo", '[TrilhaContext] Erro ao registrar tempo do conteúdo:', err)
     }
-  }, [classeAtual, usuario, atualizarProgressoClasse])
+  }, [classeAtual, usuario, recarregarProgressoPorTempo])
 
   const registrarTempoAtividade = useCallback(async (
     topicoId: number,
@@ -2226,11 +2241,11 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       // Idem conteudo: o tempo vem da telemetria. E este caminho ainda
       // zerava `acertos_percentual` de quebra.
       await atividade.registrarVisita(usuario.id)
-      await atualizarProgressoClasse()
+      await recarregarProgressoPorTempo(classeAtual, usuario.id)
     } catch (err) {
       avisarFalha("tempo/atividade", '[TrilhaContext] Erro ao registrar tempo da atividade:', err)
     }
-  }, [classeAtual, usuario, atualizarProgressoClasse])
+  }, [classeAtual, usuario, recarregarProgressoPorTempo])
 
   const registrarTempoTopico = useCallback(async (
     topicoId: number,
@@ -2264,12 +2279,19 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         )
 
       if (error) throw error
-      await refreshTopico(topicoId)
-      await atualizarProgressoClasse()
+      // `refreshTopico` relê a turma inteira (`Classe.loadDetalhado`), não só
+      // este tópico: é a recarga mais pesada do ciclo.
+      if (limitarRecargaPorTempoRef.current(
+        chaveRecargaTopico(usuario.id, classeAtual.classe_id, topicoId),
+        Date.now(),
+      )) {
+        await refreshTopico(topicoId)
+      }
+      await recarregarProgressoPorTempo(classeAtual, usuario.id)
     } catch (err) {
       avisarFalha("tempo/topico", '[TrilhaContext] Erro ao registrar tempo do topico:', err)
     }
-  }, [atualizarProgressoClasse, classeAtual, refreshTopico, usuario])
+  }, [classeAtual, recarregarProgressoPorTempo, refreshTopico, usuario])
 
   const registrarSessaoConteudo = useCallback(async (
     topicoId: number,
