@@ -60,6 +60,45 @@ export function paraBase64(bytes: Uint8Array): string {
   return btoa(binario);
 }
 
+export type Dimensoes = { largura: number; altura: number };
+
+/** Largura e altura lidas do cabeçalho (PNG, JPEG, GIF), sem decodificar. */
+export function dimensoesDaImagem(b: Uint8Array): Dimensoes | null {
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  if (b.length >= 24 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) {
+    return { largura: dv.getUint32(16), altura: dv.getUint32(20) };
+  }
+  if (b.length >= 10 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) {
+    return { largura: dv.getUint16(6, true), altura: dv.getUint16(8, true) };
+  }
+  if (b.length >= 4 && b[0] === 0xff && b[1] === 0xd8) {
+    let i = 2;
+    while (i + 9 < b.length) {
+      if (b[i] !== 0xff) return null;
+      const marca = b[i + 1];
+      // SOF0..SOF15, menos DHT (C4), JPG (C8) e DAC (CC), carregam o tamanho.
+      if (marca >= 0xc0 && marca <= 0xcf && marca !== 0xc4 && marca !== 0xc8 && marca !== 0xcc) {
+        return { largura: dv.getUint16(i + 7), altura: dv.getUint16(i + 5) };
+      }
+      i += 2 + dv.getUint16(i + 2);
+    }
+  }
+  return null;
+}
+
+/**
+ * Ícone, logo ou marcador de slide: quase quadrada e com o maior lado abaixo
+ * de 400 px. Medido na aula de NoSQL da turma 70: os ícones dos 5Vs (384×384) e
+ * o logo do Redis (308×260) viravam figura do texto; um print de código
+ * estreito (363×142) passa, porque não é quadrado. Logo grande o filtro não
+ * pega — o prompt pede ao modelo que não use.
+ */
+export function pareceIcone({ largura, altura }: Dimensoes): boolean {
+  if (largura <= 0 || altura <= 0) return false;
+  const proporcao = largura / altura;
+  return Math.max(largura, altura) < 400 && proporcao >= 0.75 && proporcao <= 1.34;
+}
+
 export function bytesDoBase64(base64: string): number {
   const preenchimento = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
   return Math.max(0, Math.floor((base64.length * 3) / 4) - preenchimento);
@@ -123,6 +162,8 @@ async function coletarImagem(
   if (!mimeType || !arquivo) return null;
   const bytes = await arquivo.async("uint8array");
   if (bytes.length < IMAGEM_MIN_BYTES || bytes.length > IMAGEM_MAX_BYTES) return null;
+  const dimensoes = dimensoesDaImagem(bytes);
+  if (dimensoes && pareceIcone(dimensoes)) return null;
   const idImagem = `${id}#i${imagens.length + 1}`;
   imagens.push({ id: idImagem, mimeType, base64: paraBase64(bytes) });
   vistas.set(caminho, idImagem);

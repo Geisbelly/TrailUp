@@ -166,14 +166,16 @@ export function montarPartesDosAnexos(
 export function instrucaoDeFiguras(figuras: PartesDosAnexos["figuras"]): string {
   if (figuras.pdfs.length === 0 && figuras.imagens.length === 0) return "";
   const linhas = [
-    "Figuras do material: quando uma figura, diagrama, tabela ou trecho de codigo do material ajudar a explicar, " +
-      "insira no texto do conteudo, numa linha sozinha, o marcador {{figura:REF|legenda curta}}.",
-    `- No maximo ${MAX_FIGURAS_POR_CONTEUDO} figuras por conteudo, e so as que o texto explica.`,
+    "Figuras do material: quando um diagrama, esquema, tabela, gráfico ou print de código ou de ferramenta do material " +
+      "ajudar a explicar, insira no texto do conteúdo o marcador {{figura:REF|legenda curta}}.",
+    "- O marcador fica numa linha só dele, depois do parágrafo que explica a figura — nunca no meio de uma frase.",
+    "- Só figura que ensina o conteúdo. Nunca logotipo, marca de produto, ícone decorativo, foto ilustrativa ou capa de slide.",
+    `- No máximo ${MAX_FIGURAS_POR_CONTEUDO} figuras por conteúdo, e só as que o texto explica.`,
   ];
   for (const pdf of figuras.pdfs) {
     linhas.push(
-      `- Pagina N do PDF ${pdf.id}: REF = ${pdf.id}#pN${pdf.paginas ? ` (N de 1 a ${pdf.paginas})` : ""}. ` +
-        "Use a pagina onde a figura aparece.",
+      `- Página N do PDF ${pdf.id}: REF = ${pdf.id}#pN${pdf.paginas ? ` (N de 1 a ${pdf.paginas})` : ""}. ` +
+        "Use a página onde a figura aparece.",
     );
   }
   if (figuras.imagens.length > 0) {
@@ -201,5 +203,41 @@ export function limparMarcadoresDeFigura(conteudo: string, figuras: PartesDosAne
     usadas += 1;
     return marcador.replace(refBruta, ref);
   });
-  return limpo.replace(/\n{3,}/g, "\n\n").trim();
+  return figurasEmParagrafoProprio(limpo.replace(/\n{3,}/g, "\n\n").trim());
+}
+
+const SO_MARCADORES = /^(?:\s*\{\{figura:[^}]*\}\})+\s*$/;
+
+/**
+ * O modelo cola a figura no meio da frase ("redes sociais {{figura:...}}.")
+ * mesmo quando o prompt pede linha sozinha; virando imagem markdown, ela fica
+ * presa no parágrafo. Cada figura que está junto de texto sai dali e vira um
+ * parágrafo próprio logo depois do parágrafo em que foi citada. Linha que já é
+ * só figura e bloco de código ficam como estão.
+ */
+function figurasEmParagrafoProprio(texto: string): string {
+  const paragrafos = texto.split(/\n{2,}/);
+  const saida: string[] = [];
+  let dentroDeCodigo = false;
+  for (const paragrafo of paragrafos) {
+    const cercas = (paragrafo.match(/^```/gm) ?? []).length;
+    if (dentroDeCodigo || paragrafo.trimStart().startsWith("```")) {
+      saida.push(paragrafo);
+      if (cercas % 2 === 1) dentroDeCodigo = !dentroDeCodigo;
+      continue;
+    }
+    const soltas: string[] = [];
+    const linhas = paragrafo.split("\n").map((linha) => {
+      if (SO_MARCADORES.test(linha) || !linha.includes("{{figura:")) return linha;
+      const semFigura = linha.replace(/[ \t]*(\{\{figura:[^}]*\}\})/g, (_, marcador: string) => {
+        soltas.push(marcador);
+        return "";
+      });
+      return semFigura.replace(/ +([.,;:!?])/g, "$1").replace(/ {2,}/g, " ").trim();
+    });
+    const restante = linhas.filter((linha) => linha !== "").join("\n");
+    if (restante !== "") saida.push(restante);
+    saida.push(...soltas);
+  }
+  return saida.join("\n\n");
 }
