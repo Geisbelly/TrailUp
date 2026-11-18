@@ -3,10 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import {
   anexosDoPedido,
   bytesDoBase64,
+  dimensoesDaImagem,
   lerDocx,
   lerPptx,
   paraBase64,
   PDF_INTEIRO_ATE_BYTES,
+  pareceIcone,
   prepararAnexos,
   type AnexoParaIa,
 } from "./arquivosParaIa";
@@ -64,6 +66,67 @@ describe("lerPptx", () => {
     expect(imagens.map((i) => i.id)).toEqual(["A2#i1"]);
     expect(imagens[0].mimeType).toBe("image/png");
     expect(texto.match(/\[imagem A2#i1\]/g)).toHaveLength(2);
+  });
+});
+
+/** PNG de `largura`×`altura` com só o cabeçalho certo, preenchido até `bytes`. */
+function png(largura: number, altura: number, bytes = 10_000): Uint8Array {
+  const b = new Uint8Array(bytes).fill(9);
+  b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52]);
+  new DataView(b.buffer).setUint32(16, largura);
+  new DataView(b.buffer).setUint32(20, altura);
+  return b;
+}
+
+/** JPEG com um APP0 antes do SOF0, como os de câmera e de print. */
+function jpeg(largura: number, altura: number): Uint8Array {
+  const b = new Uint8Array(10_000).fill(9);
+  b.set([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x4a, 0x46]);
+  b.set([0xff, 0xc0, 0x00, 0x11, 0x08, altura >> 8, altura & 255, largura >> 8, largura & 255], 8);
+  return b;
+}
+
+describe("dimensoesDaImagem", () => {
+  it("lê PNG, JPEG e GIF pelo cabeçalho", () => {
+    expect(dimensoesDaImagem(png(850, 510))).toEqual({ largura: 850, altura: 510 });
+    expect(dimensoesDaImagem(jpeg(1280, 720))).toEqual({ largura: 1280, altura: 720 });
+    const gif = new Uint8Array(20);
+    gif.set([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x2c, 0x01, 0xc8, 0x00]);
+    expect(dimensoesDaImagem(gif)).toEqual({ largura: 300, altura: 200 });
+  });
+  it("formato que não reconhece devolve null", () => {
+    expect(dimensoesDaImagem(imagem(10_000))).toBeNull();
+  });
+});
+
+// Medidas reais da aula de NoSQL da turma 70: os ícones dos 5Vs (384×384) e o
+// logo do Redis (308×260) viraram figura; o print de código (363×142) e o
+// diagrama (850×510) são o que vale mostrar.
+describe("pareceIcone", () => {
+  it("quase quadrada e pequena é ícone", () => {
+    expect(pareceIcone({ largura: 384, altura: 384 })).toBe(true);
+    expect(pareceIcone({ largura: 308, altura: 260 })).toBe(true);
+  });
+  it("print de código estreito e diagrama grande não são", () => {
+    expect(pareceIcone({ largura: 363, altura: 142 })).toBe(false);
+    expect(pareceIcone({ largura: 850, altura: 510 })).toBe(false);
+    expect(pareceIcone({ largura: 485, altura: 525 })).toBe(false);
+  });
+});
+
+describe("lerPptx descarta ícones", () => {
+  it("o ícone 384×384 sai e o print de código fica", async () => {
+    const zip = new JSZip();
+    zip.file("ppt/slides/slide1.xml", `<p:sld><a:t>5Vs</a:t><a:blip r:embed="rId1"/><a:blip r:embed="rId2"/></p:sld>`);
+    zip.file(
+      "ppt/slides/_rels/slide1.xml.rels",
+      `<Relationships><Relationship Id="rId1" Target="../media/icone.png"/><Relationship Id="rId2" Target="../media/codigo.png"/></Relationships>`,
+    );
+    zip.file("ppt/media/icone.png", png(384, 384, 6_676));
+    zip.file("ppt/media/codigo.png", png(363, 142, 7_189));
+    const { imagens } = await lerPptx(await zip.generateAsync({ type: "uint8array" }), "A1");
+    expect(imagens).toHaveLength(1);
+    expect(imagens[0].base64).toBe(paraBase64(png(363, 142, 7_189)));
   });
 });
 

@@ -385,6 +385,13 @@ function buildSourceBlock(sources: AiSourceInput[], fileContents?: string, fileN
  * nome do card errava. A lacuna e corrigida contra cada forma separada por "|" (app e
  * `fn_questao_respostas_aceitas` no banco), entao os sinonimos vao no proprio gabarito.
  */
+/**
+ * O prompt sem acento ensinava o modelo a escrever sem acento: na turma 70,
+ * 2 dos 23 textos saíram com "nao", "informacoes", "O que e". A exigência
+ * fica escrita, e escrita com acento.
+ */
+const IDIOMA = "Idioma obrigatório: português do Brasil, com acentuação e pontuação corretas (não, são, função, informações). Texto sem acento é erro.";
+
 const REGRAS_DE_TERMOS = `- Use o mesmo nome para o mesmo conceito em todos os cards e atividades: o termo que o material usa. Se o material usa dois nomes para a mesma coisa (ex.: "anomalia de inserção" e "anomalia de inclusão"), escolha um e mantenha-o em tudo.
 - Para tipo "fill_blank", "resposta_correta" lista TODAS as formas aceitas, separadas por " | ": o termo escolhido e os sinônimos que o material usa para ele (ex.: "inserção | inclusão"). Só entram nomes diferentes: não repita a mesma palavra mudando maiúscula, acento ou pontuação ("CONCAT | concat"), porque a correção já ignora isso. O aluno digita a resposta, e uma forma correta que não estiver listada pode ser corrigida como errada.`;
 
@@ -908,7 +915,7 @@ async function generateTrailSkeleton(
 ): Promise<TrailSkeletonTopic[]> {
   const { trailDescription, fileNames, sourceBlock, sourceGuard, topicNames, desiredTopics } = ctx;
   const skeletonPrompt = `Voce e especialista em design instrucional.
-Idioma obrigatorio: portugues brasileiro.
+${IDIOMA}
 ${sourceGuard}
 
 Disciplina/curso: "${trailDescription}"
@@ -996,15 +1003,15 @@ async function generateTrailTopicDetail(
       ? `Arquivos prioritarios para este topico: ${topic.arquivos_relacionados.join(", ")}`
       : "Sem arquivo dedicado: use as fontes gerais.";
 
-  const detailPrompt = `Voce e especialista em conteudo didatico multimidia.
-Idioma obrigatorio: portugues brasileiro.
+  const detailPrompt = `Você é especialista em conteúdo didático multimídia.
+${IDIOMA}
 ${sourceGuard}
 
-Topico atual:
+Tópico atual:
 - Nome: ${topic.nome}
-- Descricao: ${topic.descricao}
+- Descrição: ${topic.descricao}
 - Ordem: ${topic.ordem}
-- Conteudos alvo para este topico: ${contentTarget}
+- Conteúdos alvo para este tópico: ${contentTarget}
 - ${relatedFilesHint}
 
 ${sourceBlock}
@@ -1015,9 +1022,9 @@ Retorne SOMENTE JSON valido com:
 "conteudos": [
   {
     "ref": "content:1",
-    "titulo": "Titulo do conteudo",
+    "titulo": "Título do conteúdo",
     "tipo": "texto",
-    "conteudo": "## Subtitulo\n\nParagrafos explicando o assunto com o que esta no material...",
+    "conteudo": "## Subtítulo\n\nParágrafos que explicam o assunto com o que está no material...",
     "sourceRef": "nome-exato-do-arquivo.pdf",
     "cards": [
       {
@@ -1053,14 +1060,15 @@ Retorne SOMENTE JSON valido com:
 ]
 }
 
-Regras obrigatorias:
-- Gere exatamente ${contentTarget} conteudos para este topico.
-- O campo "conteudo" e a aula que o aluno vai ler: texto completo em markdown, de 350 a 800 palavras, com subtitulos (##), paragrafos que explicam, definicoes, exemplos e, quando o material tiver, trechos de codigo, comandos ou tabelas.
-- Ensine o que esta nos arquivos: use as definicoes, exemplos, nomes, comandos e numeros do proprio material. Nao resuma em uma frase nem descreva o arquivo ("este material aborda..."): explique o assunto.
-- Conteudos do mesmo topico nao se repetem: divida o assunto entre eles.
-- Para CADA conteudo, gere 2 cards e 1 atividade sobre o que o texto ensinou.
-- Nenhuma pergunta (card ou atividade) se repete, nem com outras palavras, dentro do topico ou com as que ja existem.
-- "midias" lista so arquivos do professor que o aluno deve abrir junto deste conteudo, com "sourceRef" igual ao nome exato do arquivo, ou links que estao no material. Sem isso, "midias": []. Nunca invente midia, roteiro ou arquivo.
+Regras obrigatórias:
+- Gere exatamente ${contentTarget} conteúdos para este tópico.
+- O campo "conteudo" é a aula que o aluno vai ler: texto completo em markdown, de 350 a 800 palavras, com subtítulos (##), parágrafos que explicam, definições, exemplos e, quando o material tiver, trechos de código, comandos ou tabelas.
+- Escreva com todos os acentos ("não", "são", "função", "informações", "é") em títulos, textos, cards e atividades.
+- Ensine o que está nos arquivos: use as definições, exemplos, nomes, comandos e números do próprio material. Não resuma em uma frase nem descreva o arquivo ("este material aborda..."): explique o assunto.
+- Conteúdos do mesmo tópico não se repetem: divida o assunto entre eles.
+- Para CADA conteúdo, gere 2 cards e 1 atividade sobre o que o texto ensinou.
+- Nenhuma pergunta (card ou atividade) se repete, nem com outras palavras, dentro do tópico ou com as que já existem.
+- "midias" lista só arquivos do professor que o aluno deve abrir junto deste conteúdo, com "sourceRef" igual ao nome exato do arquivo, ou links que estão no material. Sem isso, "midias": []. Nunca invente mídia, roteiro ou arquivo.
 - Tipos de atividade permitidos: quiz, questao, texto, true_false, fill_blank.
 ${REGRAS_DE_TERMOS}
 - Tipos de midia permitidos: video, audio, pdf, documento, apresentacao.
@@ -1195,7 +1203,7 @@ function buildStandardPrompt(body: RequestBody, sources: AiSourceInput[]): strin
 
   if (mode === "description") {
     return `Voce e um assistente pedagogico.
-Idioma obrigatorio: portugues brasileiro.
+${IDIOMA}
 ${sourceGuard}
 
 Topico: "${body.topicName}"
@@ -1209,7 +1217,7 @@ Retorne SOMENTE JSON valido:
   }
 
   return `Voce e um assistente pedagogico.
-Idioma obrigatorio: portugues brasileiro.
+${IDIOMA}
 ${sourceGuard}
 
 Topico: "${body.topicName}"
@@ -1903,7 +1911,7 @@ ${REGRAS_DE_TERMOS}
 - Se detectar repeticao potencial, reescreva completamente o item.
 - Em cards: "titulo" deve ser PERGUNTA e "descricao" deve ser RESPOSTA.
 - Nao use indices, numeracao, prefixos como "Card 1", "Atividade 2", "Questao 3" em nenhum campo.
-- Responda em portugues do Brasil.
+- ${IDIOMA}
 - Retorne SOMENTE JSON valido (sem markdown).`;
 
       let call: Awaited<ReturnType<typeof callGemini>>;

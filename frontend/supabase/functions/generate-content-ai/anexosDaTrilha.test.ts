@@ -106,6 +106,12 @@ describe("instrucaoDeFiguras", () => {
     expect(t).toContain("A2#i1");
     expect(t).toContain("{{figura:REF|legenda curta}}");
   });
+  it("pede figura que ensina e proíbe logo e ícone", () => {
+    const t = instrucaoDeFiguras({ pdfs: [], imagens: ["A2#i1"] });
+    expect(t).toMatch(/nunca logotipo/i);
+    expect(t).toMatch(/ícone/);
+    expect(t).toMatch(/depois do parágrafo/);
+  });
 });
 
 describe("limparMarcadoresDeFigura", () => {
@@ -138,5 +144,30 @@ describe("limparMarcadoresDeFigura", () => {
   it("PDF sem contagem de páginas aceita qualquer página positiva", () => {
     const limpo = limparMarcadoresDeFigura("{{figura: A1#p40 |x}}", { pdfs: [{ id: "A1" }], imagens: [] });
     expect(limpo).toBe("{{figura:A1#p40|x}}");
+  });
+
+  // Turma 70: o modelo colou a figura antes do ponto ("redes sociais ![...](...).")
+  // mesmo com o prompt pedindo linha sozinha. A figura sai da frase e vira um
+  // parágrafo próprio logo depois do parágrafo em que foi citada.
+  it("figura no meio da frase vai para depois do parágrafo", () => {
+    const t = "Redes sociais {{figura:A2#i1|Fontes}}. Mais texto.\n\nOutro parágrafo.";
+    expect(limparMarcadoresDeFigura(t, figuras)).toBe(
+      "Redes sociais. Mais texto.\n\n{{figura:A2#i1|Fontes}}\n\nOutro parágrafo.",
+    );
+  });
+
+  it("duas figuras coladas no texto viram dois parágrafos, na ordem", () => {
+    const t = "Os 5Vs {{figura:A1#p2|a}} e o valor {{figura:A1#p3|b}}.";
+    expect(limparMarcadoresDeFigura(t, figuras)).toBe("Os 5Vs e o valor.\n\n{{figura:A1#p2|a}}\n\n{{figura:A1#p3|b}}");
+  });
+
+  it("figura já sozinha na linha fica onde está", () => {
+    const t = "## Seção\n\nTexto antes.\n\n{{figura:A1#p2|Diagrama}}\n\nTexto depois.";
+    expect(limparMarcadoresDeFigura(t, figuras)).toBe(t);
+  });
+
+  it("não mexe em bloco de código", () => {
+    const t = "```sql\nSELECT '{{figura:A1#p2|x}}';\n```";
+    expect(limparMarcadoresDeFigura(t, figuras)).toBe(t);
   });
 });
