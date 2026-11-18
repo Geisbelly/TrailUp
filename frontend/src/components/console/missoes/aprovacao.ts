@@ -51,9 +51,14 @@ export function rotuloDaOrigem(origem: OrigemDaMissao): string {
   return "Sua";
 }
 
-/** Missões do sistema são geradas pelo banco; missões do professor e propostas da IA são editáveis. */
-export function podeEditar(m: { origem: string }): boolean {
-  return m.origem !== "sistema";
+/**
+ * Missões do sistema são geradas pelo banco; missões do professor e propostas da IA são editáveis.
+ * A missão-desafio não: o texto e a resposta vêm da RPC (`missao_desafio_criar`), o gabarito fica em
+ * outra tabela e o formulário comum regravaria critério e escopo, que a guarda congela. No cartão,
+ * o professor só desativa e troca os perfis.
+ */
+export function podeEditar(m: { origem: string; desafio?: unknown }): boolean {
+  return m.origem !== "sistema" && m.desafio == null;
 }
 
 /** Aprovar e recusar só fazem sentido enquanto a missão espera. */

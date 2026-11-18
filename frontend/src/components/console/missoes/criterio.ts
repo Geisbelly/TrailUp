@@ -147,6 +147,8 @@ export function rotuloDoCriterio(criterio: unknown): string {
   const c = criterio as Record<string, unknown>;
   const metrica = String(c.metrica ?? "");
   if (metrica === "atividade_especifica") return "Concluir a atividade";
+  // Missão-desafio (#1149): fecha pela RPC que confere a resposta, não pelo avaliador.
+  if (metrica === "desafio") return "Resolver o desafio";
   // A diária que sai da trilha (`20261103_05`): o nome do item está no texto da missão.
   if (metrica === "item_no_dia") return c.item === "atividade" ? "Atividade da trilha, hoje" : "Conteúdo da trilha, hoje";
   // Métricas de delta da fase 5b — o formulário do professor não as oferece, mas a diária usa.

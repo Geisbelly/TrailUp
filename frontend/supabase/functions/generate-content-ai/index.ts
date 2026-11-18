@@ -20,6 +20,7 @@ import { limitesDoEsqueleto, MAX_TOPICOS, quantidadeDeTopicos, regrasDaQuantidad
 import { lerPaginaDoLink, linkPublicoSeguro, urlDoYouTube, type RelatoDoMaterial } from "./materialDoConteudo.ts";
 import { respostasDaLacuna } from "./respostasDaLacuna.ts";
 import { blocoDaOrientacao, orientacaoDoPedido, type Orientacao } from "./orientacao.ts";
+import { DESAFIOS_COMPLETOS, DESAFIOS_SCHEMA, normalizarDesafios, promptDeDesafios, type DesafiosNormalizados } from "./desafios.ts";
 import {
   blocoDosExistentes,
   criarFiltroDeRepetidas,
@@ -163,7 +164,7 @@ interface TrailSkeletonTopic {
 
 
 interface RequestBody {
-  mode?: "all" | "content" | "description" | "trail" | "trail-skeleton" | "trail-topic";
+  mode?: "all" | "content" | "description" | "desafios" | "trail" | "trail-skeleton" | "trail-topic";
   /** trail-topic: o topico do esqueleto a detalhar, a posicao dele e o total. */
   topic?: unknown;
   topicIndex?: number;
@@ -1753,8 +1754,9 @@ serve(async (req) => {
       return jsonResponse(payload);
     }
 
-    // Modo description/content: contexto pedagogico + guia de tema + melhor de N tentativas
-    if (mode === "description" || mode === "content") {
+    // Modo description/content: contexto pedagogico + guia de tema + melhor de N tentativas.
+    // `desafios` usa o mesmo contexto e o mesmo material do `content` (ramo logo abaixo).
+    if (mode === "description" || mode === "content" || mode === "desafios") {
     const topicName = asString(body.topicName);
     const contents = asContentItems(body.contents);
     const fileContents = asString(body.fileContents);
@@ -1858,6 +1860,91 @@ Retorne JSON valido:
     // para caber na cota do tier free. So texto continua com a melhor de N.
     const materialPesado = usarVideo || partesDoMaterial.some((parte) => "inlineData" in parte);
     const tentativas = materialPesado ? 1 : CONTENT_GEN_ATTEMPTS;
+
+    // Modo desafios: 2 de logica e 2 cruzadinhas por conteudo, num pedido separado do de cards e
+    // atividades (falhar aqui nao derruba os cards). So propoe: quem grava e missao_desafio_criar,
+    // quando o professor aplica. A grade e o filtro do que o banco recusaria estao em desafios.ts.
+    if (mode === "desafios") {
+      let melhor: DesafiosNormalizados | null = null;
+      let ultimaChamada: Awaited<ReturnType<typeof callGemini>> | null = null;
+      for (let attempt = 0; attempt < tentativas; attempt += 1) {
+        const partes: ParteDoPedido[] = [
+          ...(usarVideo && videoUrl ? [{ text: "[Video do conteudo (YouTube), a seguir]" }, { fileData: { fileUri: videoUrl } }] : []),
+          ...partesDoMaterial,
+        ];
+        const avisoDoAnexo = partes.length > 0
+          ? `\nO MATERIAL DESTE CONTEÚDO ESTÁ ANEXADO A ESTE PEDIDO (${[
+            usarVideo ? "o vídeo" : "",
+            anexosDoConteudo.length > 0 ? "os arquivos" : "",
+            relato.lido.some((item) => /^https?:/i.test(item)) ? "a página do link" : "",
+          ].filter(Boolean).join(", ")}).
+Baseie os desafios no que está NELE: fatos, exemplos, termos e definições. Não se limite ao título.`
+          : "";
+        const prompt = promptDeDesafios({
+          contexto: `${contextBlock}\n${themeGuideBlock}`,
+          topico: topicLabel,
+          descricaoDoTopico: topicoDescricao,
+          conteudos: contentLinesBlock,
+          material: `${materialBlock}${avisoDoAnexo}`,
+          orientacao: orientacaoBlock,
+          existentes: existentesBlock,
+          regrasDeTermos: REGRAS_DE_TERMOS,
+          idioma: IDIOMA,
+          variacao: crypto.randomUUID(),
+        });
+
+        let call: Awaited<ReturnType<typeof callGemini>>;
+        try {
+          call = await callGemini({
+            key,
+            prompt,
+            maxOutputTokens: 8192,
+            responseSchema: DESAFIOS_SCHEMA as unknown as Record<string, unknown>,
+            partes,
+            ...(usarVideo ? { mediaResolution: "MEDIA_RESOLUTION_LOW" as const } : {}),
+            deadline,
+          });
+        } catch (erro) {
+          // Como no `content`: video recusado segue sem ele; falta de cota sobe.
+          if (usarVideo && erro instanceof AiStructuredError && erro.code === "gemini_error") {
+            console.warn("gemini: video do conteudo recusado nos desafios; seguindo sem ele", JSON.stringify(erro.details ?? {}).slice(0, 500));
+            usarVideo = false;
+            attempt -= 1;
+            continue;
+          }
+          // Prazo ou cota numa tentativa extra: a proposta que ja veio vale mais que o erro.
+          if (melhor) break;
+          throw erro;
+        }
+        ultimaChamada = call;
+        const parsed = parseGeminiJson(call.text);
+        if (!parsed || typeof parsed !== "object") continue;
+
+        // Filtro novo por tentativa: cada uma e uma proposta inteira, e so a melhor volta.
+        // `topicName` aqui e o titulo do conteudo (TopicEditDrawer), o mesmo que missao_desafio_criar
+        // poe no titulo da missao: a resposta que ele escreve esta a vista do aluno.
+        const resultado = normalizarDesafios(
+          parsed,
+          criarFiltroDeRepetidas([...existentes.questoes, ...existentes.cards]),
+          topicName || contents[0]?.titulo || "",
+        );
+        if (!melhor || resultado.desafios.length > melhor.desafios.length) melhor = resultado;
+        if (melhor.desafios.length >= DESAFIOS_COMPLETOS) break;
+      }
+
+      if (!melhor) {
+        return jsonResponse(
+          {
+            error: "invalid_ai_response",
+            message: "Não foi possível gerar desafios a partir deste material. Tente de novo.",
+            finish_reason: ultimaChamada?.finishReason ?? null,
+            raw: ultimaChamada?.text ?? "",
+          },
+          502,
+        );
+      }
+      return jsonResponse(melhor);
+    }
 
     let bestCards: AiCard[] | null = null;
     let bestAtividades: AiAtividade[] | null = null;

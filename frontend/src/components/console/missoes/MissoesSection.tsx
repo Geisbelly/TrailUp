@@ -17,12 +17,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina } from "../comum/PaginaDoConsole";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
-import { CartaoDaMissao } from "./CartaoDaMissao";
+import { CartaoDaMissao, type TrocaDePerfil } from "./CartaoDaMissao";
 import { FormularioDaMissao, type DadosDaTurma } from "./FormularioDaMissao";
 import { FORMULARIO_DE_MISSAO_VAZIO, prazoParaCampo, type FormularioDeMissao, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
 import { CHAVE_DO_ALVO, definicaoDaMetrica } from "./criterio";
 import { MOTIVO_MAX, separarPorDecisao, validarMotivoDeRecusa } from "./aprovacao";
-import { decidirMissao, duplicarMissao, excluirMissao, listarMissoes, salvarMissao, type Missao } from "./missoesApi";
+import {
+  alternarDesafio,
+  decidirMissao,
+  duplicarMissao,
+  excluirMissao,
+  listarMissoes,
+  salvarMissao,
+  trocarPerfisDoDesafio,
+  type Missao,
+} from "./missoesApi";
 import { atualizarTextoMissaoDiaria, excluirMissaoDiaria, lerMissoesDiarias, type ResumoDasMissoesDiarias } from "./missoesDiariasApi";
 import { PainelMissoesDiarias } from "./PainelMissoesDiarias";
 
@@ -76,6 +85,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
   const [estadoDiario, setEstadoDiario] = useState<"carregando" | "ok" | "erro">("carregando");
   const [erroDiario, setErroDiario] = useState("");
   const [decidindo, setDecidindo] = useState<number | null>(null);
+  const [alternando, setAlternando] = useState<string | null>(null);
   const [recusando, setRecusando] = useState<Missao | null>(null);
   const [motivo, setMotivo] = useState("");
   const [erroDoMotivo, setErroDoMotivo] = useState<string | null>(null);
@@ -210,6 +220,34 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     }
   };
 
+  // Desafio: liga ou desliga o grupo inteiro (todas as linhas de perfil), num UPDATE só.
+  const alternarDesafioDaTurma = async (m: Missao) => {
+    if (!turmaId || !m.desafioGrupo) return;
+    setAlternando(m.desafioGrupo);
+    try {
+      await alternarDesafio(m.desafioGrupo, !m.ativa);
+      toast.success(m.ativa ? "Desafio desativado. Nenhum aluno vai vê-lo." : "Desafio reativado.");
+      await carregar(turmaId);
+    } catch (e) {
+      toast.error(mensagem(e, m.ativa ? "Não foi possível desativar o desafio." : "Não foi possível reativar o desafio."));
+    } finally {
+      setAlternando(null);
+    }
+  };
+
+  // Recarrega também na falha: uma troca pode ter passado antes da que o banco recusou. O recarregar
+  // remonta a lista, então o erro vai no toast, não no cartão.
+  const trocarPerfisDaTurma = async (trocas: TrocaDePerfil[]) => {
+    if (!turmaId) return;
+    try {
+      await trocarPerfisDoDesafio(trocas);
+      toast.success("Perfis do desafio atualizados.");
+    } catch (e) {
+      toast.error(mensagem(e, "Não foi possível trocar os perfis do desafio."));
+    }
+    await carregar(turmaId);
+  };
+
   const salvarTextoMissaoDiaria = async (id: number, titulo: string, descricao: string, criterio: Record<string, unknown>) => {
     if (!turmaId) throw new Error("Selecione uma turma para editar a missão.");
     await atualizarTextoMissaoDiaria({ classeId: turmaId, missaoId: id, titulo, descricao, criterio });
@@ -234,6 +272,9 @@ export default function MissoesSection({ professorId }: { professorId?: string }
       onAprovar={() => void aprovar(m)}
       onRecusar={() => abrirRecusa(m)}
       decidindo={decidindo === m.id}
+      onAlternarDesafio={() => void alternarDesafioDaTurma(m)}
+      onTrocarPerfis={trocarPerfisDaTurma}
+      alternando={m.desafioGrupo != null && alternando === m.desafioGrupo}
     />
   );
 

@@ -55,6 +55,18 @@ import { OrientacaoDaIa } from "./OrientacaoDaIa";
 import { useOrientacaoDaIa } from "./useOrientacaoDaIa";
 import { existentesParaOPedido, juntarExistentes } from "./perguntasExistentes";
 import { perguntasDoTopicoNoBanco } from "./perguntasDoTopicoNoBanco";
+import { FuncaoSemDesafiosError, criarDesafios, desafiosAplicadosDoConteudo, gerarDesafios, type PerfilBrainHex } from "./desafiosApi";
+import {
+  avisoDosDesafios,
+  existentesDosDesafios,
+  filaDepoisDoAplicar,
+  itemDaFila,
+  loteDoAplicar,
+  mensagensDosDesafiosCriados,
+  textosDosDesafios,
+  type SugestaoNaFila,
+} from "./desafiosNaRevisao";
+import { ListaDeDesafios } from "./ListaDeDesafios";
 import {
   Plus,
   Pencil,
@@ -99,8 +111,6 @@ function MidiaDaQuestaoPreview({ valor }: { valor: string }) {
   return <img src={url} alt="preview" className="mt-2 max-h-28 rounded border border-border object-contain" />;
 }
 
-
-type SugestaoNaFila = { conteudoId: number | null; titulo: string; sugestao: AiSuggestion };
 
 type TopicEditDrawerProps = {
   open: boolean;
@@ -228,9 +238,18 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
   // conteúdos de uma vez, e o diálogo mostra uma por vez, na ordem em que chegaram.
   const [filaDeSugestoes, setFilaDeSugestoes] = useState<SugestaoNaFila[]>([]);
   const sugestaoAtual = filaDeSugestoes[0] ?? null;
+  // A fila de agora, para o pedido de desafios não ler a de quando o clique começou.
+  const filaRef = useRef(filaDeSugestoes);
+  useEffect(() => {
+    filaRef.current = filaDeSugestoes;
+  }, [filaDeSugestoes]);
+  // A edge publicada não gera desafios: não gastar outra chamada ao Gemini nesta sessão.
+  const edgeSemDesafiosRef = useRef(false);
   const aiSuggestions = sugestaoAtual?.sugestao ?? null;
   const [selectedCards, setSelectedCards] = useState<Set<number>>(new Set());
   const [selectedAtividades, setSelectedAtividades] = useState<Set<number>>(new Set());
+  const [selectedDesafios, setSelectedDesafios] = useState<Set<number>>(new Set());
+  const [perfisDosDesafios, setPerfisDosDesafios] = useState<PerfilBrainHex[][]>([]);
   const [isCreatingSuggestions, setIsCreatingSuggestions] = useState(false);
   const [isUploadingQuestionMedia, setIsUploadingQuestionMedia] = useState(false);
   const [isCardReuseEnabled, setIsCardReuseEnabled] = useState(false);
@@ -571,6 +590,9 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
     if (!sugestaoAtual) return;
     setSelectedCards(new Set(sugestaoAtual.sugestao.cards.map((_, i) => i)));
     setSelectedAtividades(new Set(sugestaoAtual.sugestao.atividades.map((_, i) => i)));
+    const desafios = sugestaoAtual.sugestao.desafios ?? [];
+    setSelectedDesafios(new Set(desafios.map((_, i) => i)));
+    setPerfisDosDesafios(desafios.map((d) => [...d.perfis]));
   }, [sugestaoAtual]);
 
   const avancarFila = () => setFilaDeSugestoes((fila) => fila.slice(1));
@@ -578,6 +600,10 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
   /**
    * Sugere cards e atividades para UM conteúdo: o aberto no formulário (`null` quando ainda não
    * foi salvo) ou qualquer um da lista, pelo botão ao lado dele.
+   *
+   * No mesmo clique, e em paralelo, pede os desafios de lógica e cruzadinha (`mode: "desafios"`),
+   * só para conteúdo salvo: o desafio vira missão presa ao `conteudo_id`. Um pedido não derruba o
+   * outro.
    */
   const handleGenerateForContent = async (alvoId: number | null) => {
     if (!editingTopic) return;
@@ -591,32 +617,70 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
         toast.error("Preencha ou selecione um conteúdo antes de gerar sugestões.");
         return;
       }
-      const { data, error } = await supabase.functions.invoke("generate-content-ai", {
-        body: {
-          mode: "content",
-          ...payload,
-        },
-      });
-      if (error) throw new Error(await formatSupabaseFunctionError(error));
-      const sugestao = data as AiSuggestion;
-      const naoLido = sugestao?.material?.naoLido ?? [];
-      if (naoLido.length > 0) {
-        toast.warning(
-          `A IA não conseguiu ler ${naoLido.length === 1 ? "um item do material" : `${naoLido.length} itens do material`} de “${payload.topicName}” (${naoLido.join(", ")}). As sugestões saíram do resto.`,
-          { duration: 9000 },
+      if (alvoId === null) toast.info("Salve o conteúdo para gerar desafios.");
+
+      const pedirConteudo = async (): Promise<AiSuggestion> => {
+        const { data, error } = await supabase.functions.invoke("generate-content-ai", {
+          body: {
+            mode: "content",
+            ...payload,
+          },
+        });
+        if (error) throw new Error(await formatSupabaseFunctionError(error));
+        return data as AiSuggestion;
+      };
+      // O que a IA não pode repetir nos desafios: os já aplicados ao conteúdo (em `missoes`) e os
+      // que esperam revisão na fila, além do que o tópico já tem.
+      const pedirDesafios = async (conteudoId: number) => {
+        if (edgeSemDesafiosRef.current) throw new FuncaoSemDesafiosError();
+        const aplicados = await desafiosAplicadosDoConteudo(conteudoId);
+        const naFila = textosDosDesafios(
+          filaRef.current.flatMap(({ sugestao }) => (sugestao.desafios ?? []).map((d) => d.desafio)),
         );
+        const existentes = existentesDosDesafios(payload.existentes, aplicados, naFila);
+        return gerarDesafios({ ...payload, ...existentesParaOPedido(existentes) });
+      };
+
+      // Conteúdo não salvo não pede desafios: o resultado vazio, sem descarte, não gera aviso.
+      const [doConteudo, dosDesafios] = await Promise.allSettled([
+        pedirConteudo(),
+        alvoId === null ? Promise.resolve({ desafios: [], descartados: 0 }) : pedirDesafios(alvoId),
+      ]);
+
+      if (dosDesafios.status === "rejected" && dosDesafios.reason instanceof FuncaoSemDesafiosError) {
+        edgeSemDesafiosRef.current = true;
       }
-      if (!sugestao?.cards?.length && !sugestao?.atividades?.length) {
-        toast.info(`A IA não sugeriu nada para “${payload.topicName}”.`);
+
+      if (doConteudo.status === "fulfilled") {
+        const sugestao = doConteudo.value;
+        const naoLido = sugestao?.material?.naoLido ?? [];
+        if (naoLido.length > 0) {
+          toast.warning(
+            `A IA não conseguiu ler ${naoLido.length === 1 ? "um item do material" : `${naoLido.length} itens do material`} de “${payload.topicName}” (${naoLido.join(", ")}). As sugestões saíram do resto.`,
+            { duration: 9000 },
+          );
+        }
+        const repetidas = sugestao?.repetidas_descartadas ?? 0;
+        if (repetidas > 0) {
+          toast.info(
+            `${repetidas === 1 ? "Uma pergunta repetia" : `${repetidas} perguntas repetiam`} o que o tópico já tem e ${repetidas === 1 ? "ficou" : "ficaram"} de fora.`,
+          );
+        }
+      } else {
+        toast.error(doConteudo.reason instanceof Error ? doConteudo.reason.message : "Erro ao gerar sugestões.");
+      }
+      const item = itemDaFila(alvoId, payload.topicName, doConteudo, dosDesafios);
+      const haCardsOuAtividades = Boolean(item && (item.sugestao.cards.length > 0 || item.sugestao.atividades.length > 0));
+      const aviso = avisoDosDesafios(dosDesafios, haCardsOuAtividades);
+      if (aviso) {
+        toast[aviso.tipo](aviso.texto, { ...(aviso.descricao ? { description: aviso.descricao } : {}), duration: 9000 });
+      }
+
+      if (!item) {
+        if (doConteudo.status === "fulfilled") toast.info(`A IA não sugeriu nada para “${payload.topicName}”.`);
         return;
       }
-      const repetidas = sugestao.repetidas_descartadas ?? 0;
-      if (repetidas > 0) {
-        toast.info(
-          `${repetidas === 1 ? "Uma pergunta repetia" : `${repetidas} perguntas repetiam`} o que o tópico já tem e ${repetidas === 1 ? "ficou" : "ficaram"} de fora.`,
-        );
-      }
-      setFilaDeSugestoes((fila) => [...fila, { conteudoId: alvoId, titulo: payload.topicName, sugestao }]);
+      setFilaDeSugestoes((fila) => [...fila, item]);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Erro ao gerar sugestões.");
     } finally {
@@ -667,42 +731,54 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
 
     setIsCreatingSuggestions(true);
     try {
-      const orderedCards = Array.from(selectedCards).sort((a, b) => a - b);
-      const orderedAtividades = Array.from(selectedAtividades).sort((a, b) => a - b);
+      const { cards: cardsBatch, atividades: atividadesBatch, desafios: desafiosBatch } = loteDoAplicar(
+        aiSuggestions,
+        { cards: selectedCards, atividades: selectedAtividades, desafios: selectedDesafios },
+        perfisDosDesafios,
+      );
 
-      const cardsBatch = orderedCards
-        .map((idx) => aiSuggestions.cards[idx])
-        .filter((card): card is AiSuggestion["cards"][number] => Boolean(card));
-      const atividadesBatch = orderedAtividades
-        .map((idx) => aiSuggestions.atividades[idx])
-        .filter((atividade): atividade is AiSuggestion["atividades"][number] => Boolean(atividade));
-
-      if (cardsBatch.length === 0 && atividadesBatch.length === 0) {
-        toast.error("Selecione ao menos 1 card ou 1 atividade para aplicar.");
+      if (cardsBatch.length === 0 && atividadesBatch.length === 0 && desafiosBatch.length === 0) {
+        toast.error("Selecione ao menos 1 card, 1 atividade ou 1 desafio para aplicar.");
         return;
       }
 
-      const result = await saveAiSuggestionsBatch({
-        topico_id: editingTopic.id,
-        conteudo_id: conteudoAlvo,
-        cards: cardsBatch,
-        atividades: atividadesBatch.map((atividade) => ({
-          titulo: atividade.titulo,
-          enunciado: atividade.enunciado,
-          tipo: atividade.tipo,
-          alternativas: atividade.alternativas ?? null,
-          resposta_correta: atividade.resposta_correta,
-          nota_estabelecida: normalizeOptionalPositiveScore(atividade.nota_estabelecida),
-        })),
-      });
+      if (cardsBatch.length > 0 || atividadesBatch.length > 0) {
+        const result = await saveAiSuggestionsBatch({
+          topico_id: editingTopic.id,
+          conteudo_id: conteudoAlvo,
+          cards: cardsBatch,
+          atividades: atividadesBatch.map((atividade) => ({
+            titulo: atividade.titulo,
+            enunciado: atividade.enunciado,
+            tipo: atividade.tipo,
+            alternativas: atividade.alternativas ?? null,
+            resposta_correta: atividade.resposta_correta,
+            nota_estabelecida: normalizeOptionalPositiveScore(atividade.nota_estabelecida),
+          })),
+        });
 
-      toast.success(
-        `Sugestoes aplicadas: ${result.cardsCreated} cards, ${result.activitiesCreated} atividades e ${result.questionsCreated} questoes.`
-      );
-      avancarFila();
-      await props.loadCards(editingTopic.id);
-      await loadActivities(editingTopic.id);
-      await loadActivityLinks(editingTopic.id);
+        toast.success(
+          `Sugestoes aplicadas: ${result.cardsCreated} cards, ${result.activitiesCreated} atividades e ${result.questionsCreated} questoes.`
+        );
+      }
+
+      // Uma RPC por desafio: a recusa de um não impede os outros, e o motivo vem do banco. O que o
+      // banco recusou fica na fila, sozinho, para o professor tentar de novo ou pular.
+      let recusados: number[] = [];
+      if (desafiosBatch.length > 0) {
+        const resultado = await criarDesafios(conteudoAlvo, desafiosBatch);
+        recusados = resultado.recusados;
+        const mensagens = mensagensDosDesafiosCriados(resultado);
+        if (mensagens.sucesso) toast.success(mensagens.sucesso);
+        if (mensagens.falha) toast.error(mensagens.falha, { description: mensagens.detalhes, duration: 12000 });
+      }
+
+      setFilaDeSugestoes((fila) => filaDepoisDoAplicar(fila, desafiosBatch, recusados));
+      if (cardsBatch.length > 0 || atividadesBatch.length > 0) {
+        await props.loadCards(editingTopic.id);
+        await loadActivities(editingTopic.id);
+        await loadActivityLinks(editingTopic.id);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Erro ao criar sugestoes.";
       toast.error(msg);
@@ -2058,6 +2134,26 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                   ))}
                 </div>
               </div>
+
+              {/* Desafios (missão): pedido separado, só com o conteúdo salvo */}
+              {sugestaoAtual?.conteudoId === null ? (
+                <p className="text-xs text-muted-foreground">Salve o conteúdo para gerar desafios.</p>
+              ) : (
+                <ListaDeDesafios
+                  desafios={aiSuggestions.desafios ?? []}
+                  selecionados={selectedDesafios}
+                  perfis={perfisDosDesafios}
+                  onAlternar={(idx) => {
+                    const next = new Set(selectedDesafios);
+                    if (next.has(idx)) next.delete(idx);
+                    else next.add(idx);
+                    setSelectedDesafios(next);
+                  }}
+                  onPerfis={(idx, perfis) =>
+                    setPerfisDosDesafios((atual) => atual.map((p, i) => (i === idx ? perfis : p)))
+                  }
+                />
+              )}
             </div>
           )}
         </ScrollArea>
@@ -2068,13 +2164,13 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
           </Button>
           <Button
             onClick={handleApplySuggestions}
-            disabled={isCreatingSuggestions || (selectedCards.size === 0 && selectedAtividades.size === 0)}
+            disabled={isCreatingSuggestions || (selectedCards.size === 0 && selectedAtividades.size === 0 && selectedDesafios.size === 0)}
             className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {isCreatingSuggestions ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Criando...</>
             ) : (
-              `Criar ${selectedCards.size + selectedAtividades.size} selecionado${selectedCards.size + selectedAtividades.size !== 1 ? "s" : ""}`
+              `Criar ${selectedCards.size + selectedAtividades.size + selectedDesafios.size} selecionado${selectedCards.size + selectedAtividades.size + selectedDesafios.size !== 1 ? "s" : ""}`
             )}
           </Button>
         </div>

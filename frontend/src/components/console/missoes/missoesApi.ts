@@ -14,7 +14,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { saveActivity } from "../trilha/topicsApi";
 import { aprovacaoDe, escopoDe, type EscopoDaMissao } from "./aprovacao";
 import { rotuloDoCriterio } from "./criterio";
-import { comCriterioDaAtividade, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
+import { agruparDesafios, comCriterioDaAtividade, faltaColunaDoDesafio, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
+
+/** Uma linha do grupo de um desafio: o mesmo quebra-cabeça, um perfil por linha. */
+export type LinhaDoDesafio = { id: number; perfilAlvo: string; ativa: boolean };
 
 export type Missao = {
   id: number;
@@ -44,6 +47,17 @@ export type Missao = {
   moedas: number;
   entregues: number;
   total: number;
+  /**
+   * `null` = missão comum. Preenchido só pela RPC `missao_desafio_criar` (#1149): o quebra-cabeça
+   * público, sem a resposta. Antes da migration a coluna não existe e tudo é missão comum.
+   */
+  desafio: Record<string, unknown> | null;
+  desafioGrupo: string | null;
+  conteudoId: number | null;
+  /** No desafio, os perfis das linhas do grupo, na ordem dos 7. Na missão comum, vazio. */
+  perfis: string[];
+  /** No desafio, uma por perfil (`agruparDesafios` junta). Na missão comum, vazio. */
+  linhasDoDesafio: LinhaDoDesafio[];
 };
 
 type LinhaDeMissao = {
@@ -60,6 +74,10 @@ type LinhaDeMissao = {
   atividade_origem_id: number | null;
   escopo?: string | null;
   motivo_recusa?: string | null;
+  /** Ausentes quando o banco ainda não tem a #1149. */
+  desafio?: unknown;
+  desafio_grupo?: string | null;
+  conteudo_id?: number | null;
 };
 
 type LinhaDaAtividade = {
@@ -103,6 +121,8 @@ export function mapearMissao(
   total: number,
 ): Missao {
   const topico = Array.isArray(atividade?.topicos) ? atividade?.topicos[0] : atividade?.topicos;
+  const desafio = m.desafio && typeof m.desafio === "object" && !Array.isArray(m.desafio) ? (m.desafio as Record<string, unknown>) : null;
+  const perfil = m.perfil_alvo ?? null;
   return {
     id: m.id,
     classeId: Number(m.classe_id ?? 0),
@@ -125,19 +145,33 @@ export function mapearMissao(
     moedas: moedasDe(atividade?.metadata),
     entregues,
     total,
+    desafio,
+    desafioGrupo: desafio ? (m.desafio_grupo ?? null) : null,
+    conteudoId: desafio ? (m.conteudo_id ?? null) : null,
+    perfis: desafio && perfil ? [perfil] : [],
+    linhasDoDesafio: desafio && perfil ? [{ id: m.id, perfilAlvo: perfil, ativa: m.ativa }] : [],
   };
 }
 
+const COLUNAS_DA_MISSAO =
+  "id, classe_id, perfil_alvo, titulo, descricao, janela_fim, criterio, origem, aprovacao, motivo_recusa, escopo, ativa, atividade_origem_id";
+const COLUNAS_DO_DESAFIO = "desafio, desafio_grupo, conteudo_id";
+
 export async function listarMissoes(classeId: number): Promise<Missao[]> {
-  const { data, error } = await supabase
-    .from("missoes" as never)
-    .select("id, classe_id, perfil_alvo, titulo, descricao, janela_fim, criterio, origem, aprovacao, motivo_recusa, escopo, ativa, atividade_origem_id")
-    .eq("classe_id", classeId)
-    // A diária do sistema (com `dia`) tem painel próprio, `missoes_diarias_resumo`. Sem este
-    // filtro, cada coorte de cada dia viraria um cartão aqui — com um "Editar" que o gatilho
-    // ignora em silêncio, porque ela não é do professor.
-    .is("dia", null)
-    .order("criado_em", { ascending: false });
+  const consultar = (colunas: string) =>
+    supabase
+      .from("missoes" as never)
+      .select(colunas)
+      .eq("classe_id", classeId)
+      // A diária do sistema (com `dia`) tem painel próprio, `missoes_diarias_resumo`. Sem este
+      // filtro, cada coorte de cada dia viraria um cartão aqui — com um "Editar" que o gatilho
+      // ignora em silêncio, porque ela não é do professor.
+      .is("dia", null)
+      .order("criado_em", { ascending: false });
+  let { data, error } = await consultar(`${COLUNAS_DA_MISSAO}, ${COLUNAS_DO_DESAFIO}`);
+  // O console sai do espelho e pode chegar antes da #1149: sem as colunas, lê como antes, e toda
+  // missão é comum. Mesmo padrão de `fetchTopicsByClasses`.
+  if (faltaColunaDoDesafio(error)) ({ data, error } = await consultar(COLUNAS_DA_MISSAO));
   if (error) throw error;
   const missoes = (data ?? []) as unknown as LinhaDeMissao[];
   if (missoes.length === 0) return [];
@@ -165,12 +199,14 @@ export async function listarMissoes(classeId: number): Promise<Missao[]> {
   const contagem = contarEntregas((entregas.data ?? []) as unknown as LinhaDeEntrega[]);
   const total = alunos.count ?? 0;
 
-  return missoes.map((m) =>
-    mapearMissao(
-      m,
-      m.atividade_origem_id == null ? null : (porAtividade.get(m.atividade_origem_id) ?? null),
-      m.atividade_origem_id == null ? 0 : (contagem.get(m.atividade_origem_id) ?? 0),
-      total,
+  return agruparDesafios(
+    missoes.map((m) =>
+      mapearMissao(
+        m,
+        m.atividade_origem_id == null ? null : (porAtividade.get(m.atividade_origem_id) ?? null),
+        m.atividade_origem_id == null ? 0 : (contagem.get(m.atividade_origem_id) ?? 0),
+        total,
+      ),
     ),
   );
 }
@@ -354,6 +390,31 @@ export async function decidirMissao(id: number, aprovar: boolean, motivo?: strin
     )
     .eq("id", id);
   if (error) throw error;
+}
+
+/**
+ * Liga ou desliga o desafio inteiro: todas as linhas do grupo, num UPDATE só. `ativa` é das
+ * colunas que a guarda deixa o professor mudar numa missão-desafio.
+ */
+export async function alternarDesafio(desafioGrupo: string, ativa: boolean): Promise<void> {
+  const { error } = await supabase.from("missoes" as never).update({ ativa } as never).eq("desafio_grupo", desafioGrupo);
+  if (error) throw error;
+}
+
+/**
+ * Troca o perfil das linhas que já existem, uma por vez (`trocasDePerfil` monta a lista sem
+ * estado repetido no meio). Acrescentar ou tirar perfil fica fora da v1: criaria ou apagaria linha
+ * do grupo, e a linha nova precisaria do gabarito, que só a RPC grava.
+ */
+export async function trocarPerfisDoDesafio(trocas: { id: number; perfil: string }[]): Promise<void> {
+  for (const t of trocas) {
+    const { error } = await supabase.from("missoes" as never).update({ perfil_alvo: t.perfil } as never).eq("id", t.id);
+    if ((error as { code?: string } | null)?.code === "23505") {
+      // Quem chama (`MissoesSection.trocarPerfisDaTurma`) mostra o aviso e já recarrega a lista.
+      throw new Error("Outra linha deste desafio já tem esse perfil. A lista foi atualizada; escolha outro.");
+    }
+    if (error) throw error;
+  }
 }
 
 /** Liga ou desliga a missão sem apagá-la. */

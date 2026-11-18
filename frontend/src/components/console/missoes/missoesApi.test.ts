@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type Resp = { data?: unknown; error?: unknown; count?: number | null };
 const sb = vi.hoisted(() => ({
-  respostas: {} as Record<string, Resp>,
+  /** Uma lista é uma fila: cada consulta à tabela leva a próxima resposta. */
+  respostas: {} as Record<string, Resp | Resp[]>,
   chamadas: [] as unknown[][],
   rpc: vi.fn(),
   saveActivity: vi.fn(),
@@ -16,8 +17,11 @@ vi.mock("@/integrations/supabase/client", () => ({
       for (const m of ["select", "eq", "in", "is", "order", "delete", "update", "insert", "maybeSingle", "single"]) {
         q[m] = (...args: unknown[]) => (sb.chamadas.push([tabela, m, ...args]), q);
       }
-      q.then = (resolve: (v: unknown) => unknown) =>
-        Promise.resolve(sb.respostas[tabela] ?? { data: [], error: null, count: 0 }).then(resolve);
+      q.then = (resolve: (v: unknown) => unknown) => {
+        const r = sb.respostas[tabela];
+        const v = Array.isArray(r) ? r.shift() : r;
+        return Promise.resolve(v ?? { data: [], error: null, count: 0 }).then(resolve);
+      };
       return q;
     },
   },
@@ -25,6 +29,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 vi.mock("../trilha/topicsApi", () => ({ saveActivity: sb.saveActivity }));
 
 import {
+  alternarDesafio,
   contarEntregas,
   decidirMissao,
   duplicarMissao,
@@ -35,6 +40,7 @@ import {
   mapearMissao,
   moedasDe,
   salvarMissao,
+  trocarPerfisDoDesafio,
 } from "./missoesApi";
 import type { Missao } from "./missoesApi";
 
@@ -94,7 +100,30 @@ const missaoDeEntrega: Missao = {
   moedas: 0,
   entregues: 0,
   total: 0,
+  desafio: null,
+  desafioGrupo: null,
+  conteudoId: null,
+  perfis: [],
+  linhasDoDesafio: [],
 };
+
+const linhaDeDesafio = (id: number, grupo: string, perfil: string, extra: Record<string, unknown> = {}) => ({
+  id,
+  titulo: "Cruzadinha: Frações",
+  descricao: "Uma cruzadinha com 6 palavras.",
+  janela_fim: null,
+  criterio: { metrica: "desafio" },
+  origem: "ia",
+  aprovacao: "aprovada",
+  escopo: "aluno",
+  perfil_alvo: perfil,
+  ativa: true,
+  atividade_origem_id: null,
+  desafio: { tipo: "cruzadinha", palavras: [] },
+  desafio_grupo: grupo,
+  conteudo_id: 30,
+  ...extra,
+});
 
 beforeEach(() => {
   sb.respostas = {};
@@ -221,6 +250,82 @@ describe("listarMissoes", () => {
       classe_aluno: { data: null, error: { message: "d" } },
     };
     await expect(listarMissoes(7)).rejects.toThrow("d");
+  });
+});
+
+describe("listarMissoes com desafios", () => {
+  it("pede desafio, desafio_grupo e conteudo_id, e mostra o desafio uma vez por grupo", async () => {
+    sb.respostas = {
+      missoes: { data: [linhaDeDesafio(10, "g1", "seeker"), linhaDeMeta(2), linhaDeDesafio(11, "g1", "mastermind")], error: null },
+      classe_aluno: { data: null, error: null, count: 4 },
+    };
+    const r = await listarMissoes(7);
+    const select = sb.chamadas.find((c) => c[0] === "missoes" && c[1] === "select");
+    for (const coluna of ["desafio", "desafio_grupo", "conteudo_id"]) expect(String(select![2])).toContain(coluna);
+    expect(r.map((m) => m.id)).toEqual([10, 2]);
+    expect(r[0]).toMatchObject({ desafioGrupo: "g1", conteudoId: 30, perfis: ["seeker", "mastermind"] });
+    expect(r[0].desafio).toMatchObject({ tipo: "cruzadinha" });
+    expect(r[1]).toMatchObject({ desafio: null, desafioGrupo: null, perfis: [] });
+  });
+
+  it("banco sem a #1149 (42703): repete a leitura sem as colunas novas e tudo vira missão comum", async () => {
+    sb.respostas = {
+      missoes: [
+        { data: null, error: { code: "42703", message: 'column missoes.desafio does not exist' } },
+        { data: [linhaDeMeta(2)], error: null },
+      ],
+      classe_aluno: { data: null, error: null, count: 4 },
+    };
+    const r = await listarMissoes(7);
+    const selects = sb.chamadas.filter((c) => c[0] === "missoes" && c[1] === "select").map((c) => String(c[2]));
+    expect(selects).toHaveLength(2);
+    expect(selects[0]).toContain("desafio_grupo");
+    expect(selects[1]).not.toMatch(/desafio|conteudo_id/);
+    // A segunda leitura mantém os filtros da primeira.
+    expect(sb.chamadas.filter((c) => c[0] === "missoes" && c[1] === "is" && c[2] === "dia")).toHaveLength(2);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ id: 2, desafio: null, desafioGrupo: null, conteudoId: null });
+  });
+
+  it("PGRST204 também cai na leitura antiga; outro erro sobe", async () => {
+    sb.respostas = { missoes: [{ data: null, error: { code: "PGRST204", message: "x" } }, { data: [], error: null }] };
+    await expect(listarMissoes(7)).resolves.toEqual([]);
+    for (const [code, message] of [["42501", "sem permissão"], ["PGRST100", "erro de sintaxe na consulta"]]) {
+      sb.respostas = { missoes: [{ data: null, error: { code, message } }, { data: [], error: null }] };
+      await expect(listarMissoes(7)).rejects.toThrow(message);
+    }
+  });
+});
+
+describe("alternarDesafio", () => {
+  it("desativa todas as linhas do grupo, pelo grupo", async () => {
+    await alternarDesafio("g1", false);
+    expect(sb.chamadas).toContainEqual(["missoes", "update", { ativa: false }]);
+    expect(sb.chamadas).toContainEqual(["missoes", "eq", "desafio_grupo", "g1"]);
+    expect(sb.chamadas.some((c) => c[1] === "insert" || c[1] === "delete")).toBe(false);
+  });
+
+  it("propaga o erro do banco", async () => {
+    sb.respostas = { missoes: { data: null, error: { message: "não deu" } } };
+    await expect(alternarDesafio("g1", true)).rejects.toThrow("não deu");
+  });
+});
+
+describe("trocarPerfisDoDesafio", () => {
+  it("muda perfil_alvo só nas linhas que já existem, sem inserir nem apagar", async () => {
+    await trocarPerfisDoDesafio([{ id: 10, perfil: "seeker" }, { id: 11, perfil: "survivor" }]);
+    const updates = sb.chamadas.filter((c) => c[1] === "update");
+    expect(updates).toEqual([["missoes", "update", { perfil_alvo: "seeker" }], ["missoes", "update", { perfil_alvo: "survivor" }]]);
+    expect(sb.chamadas).toContainEqual(["missoes", "eq", "id", 10]);
+    expect(sb.chamadas).toContainEqual(["missoes", "eq", "id", 11]);
+    expect(sb.chamadas.some((c) => c[1] === "insert" || c[1] === "delete")).toBe(false);
+  });
+
+  it("23505 (outra linha do grupo já tem o perfil) vira mensagem em português", async () => {
+    sb.respostas = { missoes: { data: null, error: { code: "23505", message: "duplicate key value violates unique constraint" } } };
+    await expect(trocarPerfisDoDesafio([{ id: 10, perfil: "seeker" }])).rejects.toThrow(
+      new Error("Outra linha deste desafio já tem esse perfil. A lista foi atualizada; escolha outro."),
+    );
   });
 });
 
