@@ -650,6 +650,26 @@ Cada perfil carrega:
     professor ou para um link; antes, sem arquivo, o esquema obrigava a IA a inventar "Resumo de…".
   Tópico gerado nasce em rascunho (visibilidade, abaixo) e o material personalizado espera a
   aprovação do professor: nada que a IA gerou chega ao aluno sem uma decisão.
+- `chat_guia_registros` — **o que cada pergunta ao Guia era, nunca o que o aluno escreveu**
+  (`20261118_01`). Uma linha por pergunta: `intencao`, `assunto`, `conceitos` e `dificuldade`.
+  - **Quem classifica é o modelo, na mesma chamada que responde** (campo `registro` de
+    `MentorChatLLMResult`, obrigatório no schema): nenhuma chamada nem cota a mais. Navegação sem
+    modelo grava `origem = 'regra'`, e a resposta de reserva grava `reserva` sem classificar nada.
+  - **O mascarador é a segunda barreira** (`app/services/mascaramento_chat.py`): tira nome e apelido do
+    aluno e dos colegas da turma (sem diferenciar acento), e-mail, telefone, CPF, link, @usuário e
+    número longo. Conceito que contém nome sai inteiro. Efeito aceito: um conceito igual ao nome de um
+    colega ("Luz", "Rosa") também sai.
+  - **Volta ao Guia como `memoria_do_guia`**, perto do fim do payload (ordem é cache): conceitos com
+    dificuldade, dúvidas recentes do tópico, pedidos de resposta e, com **3 alunos ou mais**, os
+    conceitos em que a turma trava. Com menos, "a turma trava em X" apontaria uma pessoa. A leitura
+    nunca levanta: falha vira memória vazia (log `chat_guia.`).
+  - **Ler é banco:** o aluno lê as próprias linhas e o professor as das turmas dele. O cliente não
+    escreve. Para métricas, as views `vw_chat_guia_aluno_topico` (com o acerto nas tentativas **antes e
+    depois** da primeira conversa no tópico, que é coincidência no tempo e não efeito do chat),
+    `vw_chat_guia_conceitos_turma` e `vw_chat_guia_turma_topico`, todas `security_invoker`.
+  - A gravação vai numa transação própria, depois do `ia_decision_logs`: falhar não leva o log nem a
+    resposta. Prazo de 395 dias (730 com pesquisa). O texto cru continua em `ia_decision_logs`, com o
+    prazo da `20261003_09`.
 - `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
   sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
   ou por aluno (estes vêm do `agente_intervencao`, quando um alerta de estudo
@@ -1032,7 +1052,7 @@ Cada perfil carrega:
 
 ## Guardrails dos chats (mentor do aluno e Lumi do professor)
 
-Os dois recebem `historico` do cliente a cada pergunta, e a conversa não é gravada. Esse texto entra
+Os dois recebem `historico` do cliente a cada pergunta, e a conversa não é gravada (do mentor fica só a classificação mascarada de cada pergunta, em `chat_guia_registros`). Esse texto entra
 limpo e limitado (`app/schemas/entrada_chat.py`). O mentor **corta** em vez de recusar, porque o app
 instalado não limita o campo; a Lumi recusa com 422, porque o console já limita.
 
