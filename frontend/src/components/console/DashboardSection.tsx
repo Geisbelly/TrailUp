@@ -44,15 +44,18 @@ import SegmentedPills from "./dashboard/SegmentedPills";
 import AbaConteudo from "./dashboard/AbaConteudo";
 import AbaEvolucao from "./dashboard/AbaEvolucao";
 import AbaInsights from "./dashboard/AbaInsights";
+import AbaGuia from "./dashboard/AbaGuia";
 
-type AbaDaTurma = "visao" | "evolucao" | "conteudo" | "insights";
+type AbaDaTurma = "visao" | "evolucao" | "conteudo" | "insights" | "guia";
 
 const ABAS_DA_TURMA: { value: AbaDaTurma; label: string }[] = [
   { value: "visao", label: "Visão geral" },
   { value: "evolucao", label: "Evolução" },
   { value: "conteudo", label: "Conteúdo" },
   { value: "insights", label: "Insights" },
+  { value: "guia", label: "Guia" },
 ];
+const ABAS_NA_URL = new Set<string>(ABAS_DA_TURMA.map((a) => a.value).filter((v) => v !== "visao"));
 
 export default function DashboardSection() {
   const { user, session } = useAuth();
@@ -83,7 +86,7 @@ export default function DashboardSection() {
   // Mesmo padrão do aluno: a aba vive na URL (?aba=conteudo) e o voltar do
   // navegador volta para a aba anterior.
   const abaNaUrl = searchParams.get("aba");
-  const abaDaTurma: AbaDaTurma = abaNaUrl === "conteudo" || abaNaUrl === "evolucao" || abaNaUrl === "insights" ? abaNaUrl : "visao";
+  const abaDaTurma: AbaDaTurma = abaNaUrl && ABAS_NA_URL.has(abaNaUrl) ? (abaNaUrl as AbaDaTurma) : "visao";
   const trocarAba = (aba: AbaDaTurma) => {
     const proximo = new URLSearchParams(searchParams);
     if (aba === "visao") proximo.delete("aba");
@@ -648,6 +651,16 @@ export default function DashboardSection() {
 
             {abaDaTurma === "insights" && (
               <AbaInsights
+                classIds={classScopeIds}
+                alunos={alunosDaTurma}
+                mostrarTurma={selectedClassFilter === TODAS_AS_TURMAS}
+                nomeDaTurma={nomeDaTurma}
+                onAbrirAluno={abrirAluno}
+              />
+            )}
+
+            {abaDaTurma === "guia" && (
+              <AbaGuia
                 classIds={classScopeIds}
                 alunos={alunosDaTurma}
                 mostrarTurma={selectedClassFilter === TODAS_AS_TURMAS}

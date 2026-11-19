@@ -666,7 +666,9 @@ Cada perfil carrega:
   - **Ler é banco:** o aluno lê as próprias linhas e o professor as das turmas dele. O cliente não
     escreve. Para métricas, as views `vw_chat_guia_aluno_topico` (com o acerto nas tentativas **antes e
     depois** da primeira conversa no tópico, que é coincidência no tempo e não efeito do chat),
-    `vw_chat_guia_conceitos_turma` e `vw_chat_guia_turma_topico`, todas `security_invoker`.
+    `vw_chat_guia_conceitos_turma` e `vw_chat_guia_turma_topico`, todas `security_invoker`. A aba
+    **Guia** do painel da turma (`dashboard/AbaGuia.tsx`) lê as três direto do Supabase, e o texto
+    dela nunca chama o antes e depois de efeito do Guia.
   - A gravação vai numa transação própria, depois do `ia_decision_logs`: falhar não leva o log nem a
     resposta. Prazo de 395 dias (730 com pesquisa). O texto cru continua em `ia_decision_logs`, com o
     prazo da `20261003_09`.
