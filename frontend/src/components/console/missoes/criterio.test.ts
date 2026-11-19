@@ -72,6 +72,9 @@ describe("rotuloDoCriterio", () => {
     expect(rotuloDoCriterio({ metrica: "minutos_totais", minutos: 45 })).toBe("Minutos de estudo: 45 minutos");
     expect(rotuloDoCriterio({ metrica: "acertos_percentual", percentual: 80 })).toBe("Percentual de acertos: 80%");
   });
+  it("desafio: o critério é resolver, não um nome técnico", () => {
+    expect(rotuloDoCriterio({ metrica: "desafio" })).toBe("Resolver o desafio");
+  });
   it("meta sem o alvo esperado não inventa número", () => {
     // Se a chave estiver errada, o cartão mostra só o rótulo — e o professor percebe.
     expect(rotuloDoCriterio({ metrica: "minutos_totais", minimo: 45 })).toBe("Minutos de estudo");
