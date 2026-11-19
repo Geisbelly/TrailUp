@@ -76,3 +76,12 @@ describe("validarMotivoDeRecusa", () => {
     expect(validarMotivoDeRecusa("a".repeat(MOTIVO_MAX + 1)).ok).toBe(false);
   });
 });
+
+describe("podeEditar e o desafio", () => {
+  it("podeEditar é falso para missão com desafio", () => {
+    // O desafio é da IA e tem gabarito à parte: o formulário comum regravaria critério e texto.
+    expect(podeEditar({ origem: "ia", desafio: { tipo: "logica" } })).toBe(false);
+    expect(podeEditar({ origem: "ia", desafio: null })).toBe(true);
+    expect(podeEditar({ origem: "professor" })).toBe(true);
+  });
+});

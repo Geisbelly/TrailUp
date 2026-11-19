@@ -18,6 +18,7 @@
 // caminho `meta` não pede tópico — era a limitação que o comentário antigo registrava.
 
 import type { EscopoDaMissao } from "./aprovacao";
+import type { LinhaDoDesafio, Missao } from "./missoesApi";
 import { PROFILE_LABEL, type BrainHexProfileKey } from "@/features/signup/brainhex";
 import { criterioDeEntrega, criterioDeMeta, definicaoDaMetrica, metricaSomaEmGuilda, type MetricaDeMissao } from "./criterio";
 
@@ -261,4 +262,136 @@ export function resumoDeEntregas(entregues: number, total: number): string {
 /** 0–100; turma sem aluno dá 0 em vez de dividir por zero. */
 export function percentualDeEntrega(entregues: number, total: number): number {
   return total > 0 ? Math.min(100, Math.round((entregues / total) * 100)) : 0;
+}
+
+// --- Missão-desafio (#1149) -----------------------------------------------------------------
+//
+// `missao_desafio_criar` grava o mesmo quebra-cabeça numa linha por perfil, todas com o mesmo
+// `desafio_grupo` (índice único `(desafio_grupo, perfil_alvo)`). Para o professor é um desafio
+// só, então a aba Missões mostra um cartão por grupo, com os perfis das linhas.
+
+/**
+ * O banco ainda não tem as colunas do desafio (#1149 não aplicada): a leitura repete sem elas.
+ * 42703 é a coluna que o Postgres não conhece (no `select` e no `.is("desafio", null)`), e PGRST204
+ * a que o cache de schema do PostgREST não tem. PGRST100 (erro de sintaxe da consulta) fica de fora:
+ * a coluna desconhecida não o produz, e repetir sem o filtro esconderia um erro de verdade.
+ */
+export function faltaColunaDoDesafio(erro: { code?: string } | null | undefined): boolean {
+  return erro?.code === "42703" || erro?.code === "PGRST204";
+}
+
+const ORDEM_DOS_PERFIS = PERFIS_DA_MISSAO.map((p) => p.chave as string);
+const posicaoDoPerfil = (perfil: string) => {
+  const i = ORDEM_DOS_PERFIS.indexOf(perfil);
+  return i < 0 ? ORDEM_DOS_PERFIS.length : i;
+};
+
+/**
+ * Uma entrada por `desafio_grupo`, no lugar da primeira linha do grupo; as missões comuns passam
+ * como vieram. O grupo está ativo enquanto alguma linha estiver: "Desativar" desliga todas, e
+ * só então o cartão diz "Desativada".
+ */
+export function agruparDesafios(missoes: Missao[]): Missao[] {
+  const grupos = new Map<string, Missao[]>();
+  for (const m of missoes) {
+    if (m.desafio == null || !m.desafioGrupo) continue;
+    const lista = grupos.get(m.desafioGrupo) ?? [];
+    lista.push(m);
+    grupos.set(m.desafioGrupo, lista);
+  }
+  if (grupos.size === 0) return missoes;
+
+  const saida: Missao[] = [];
+  for (const m of missoes) {
+    if (m.desafio == null || !m.desafioGrupo) {
+      saida.push(m);
+      continue;
+    }
+    const linhasDoGrupo = grupos.get(m.desafioGrupo);
+    if (!linhasDoGrupo || linhasDoGrupo[0] !== m) continue;
+    const linhas: LinhaDoDesafio[] = linhasDoGrupo
+      .flatMap((l) => l.linhasDoDesafio)
+      .sort((a, b) => posicaoDoPerfil(a.perfilAlvo) - posicaoDoPerfil(b.perfilAlvo));
+    saida.push({
+      ...m,
+      ativa: linhas.some((l) => l.ativa),
+      perfis: linhas.map((l) => l.perfilAlvo),
+      linhasDoDesafio: linhas,
+    });
+  }
+  return saida;
+}
+
+/** "Lógica · múltipla escolha", "Lógica · resposta curta" ou "Cruzadinha". */
+export function rotuloDoTipoDoDesafio(desafio: unknown): string {
+  const d = desafio && typeof desafio === "object" ? (desafio as Record<string, unknown>) : null;
+  if (d?.tipo === "cruzadinha") return "Cruzadinha";
+  if (d?.tipo === "logica") {
+    if (d.formato === "multipla") return "Lógica · múltipla escolha";
+    if (d.formato === "curta") return "Lógica · resposta curta";
+    return "Lógica";
+  }
+  return "Desafio";
+}
+
+/** Quantas pistas da cruzadinha entram no resumo do cartão. */
+const PISTAS_NO_RESUMO = 3;
+
+/**
+ * O que distingue dois desafios do mesmo tipo no mesmo conteúdo, que têm o mesmo título (a RPC o
+ * monta com o do conteúdo): o enunciado da lógica, ou as primeiras pistas da cruzadinha pela
+ * numeração da grade. Lê só esses campos de `missoes.desafio`, o formato público que o aluno vê:
+ * nem as alternativas nem campo a mais entram, e o gabarito nem chega ao console por aqui.
+ */
+export function resumoDoDesafio(desafio: unknown): string {
+  const d = desafio && typeof desafio === "object" && !Array.isArray(desafio) ? (desafio as Record<string, unknown>) : null;
+  const umaLinha = (valor: unknown) => (typeof valor === "string" ? valor.replace(/\s+/g, " ").trim() : "");
+  if (d?.tipo === "logica") return umaLinha(d.enunciado);
+  if (d?.tipo !== "cruzadinha" || !Array.isArray(d.palavras)) return "";
+  const pistas = d.palavras
+    .filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
+    .map((p) => ({ numero: typeof p.numero === "number" ? p.numero : Number.MAX_SAFE_INTEGER, direcao: String(p.direcao ?? ""), pista: umaLinha(p.pista) }))
+    .filter((p) => p.pista)
+    .sort((a, b) => a.numero - b.numero || a.direcao.localeCompare(b.direcao))
+    .slice(0, PISTAS_NO_RESUMO)
+    .map((p) => p.pista);
+  return pistas.length > 0 ? `Pistas: ${pistas.join(" · ")}` : "";
+}
+
+/**
+ * Perfis que a linha pode receber: o dela e os que nenhuma outra linha do grupo tem, nem salvo nem
+ * no rascunho. Excluir também o salvo das outras é o que deixa os UPDATEs em qualquer ordem: o
+ * índice único `(desafio_grupo, perfil_alvo)` nunca vê dois iguais no meio do caminho.
+ */
+export function opcoesDePerfilDaLinha(linhas: LinhaDoDesafio[], rascunho: Record<number, string>, linhaId: number): string[] {
+  const ocupados = new Set<string>();
+  for (const l of linhas) {
+    if (l.id === linhaId) continue;
+    ocupados.add(l.perfilAlvo);
+    if (rascunho[l.id]) ocupados.add(rascunho[l.id]);
+  }
+  return ORDEM_DOS_PERFIS.filter((p) => !ocupados.has(p));
+}
+
+/**
+ * O que o rascunho muda: um UPDATE de `perfil_alvo` por linha que mudou, sem inserir nem apagar
+ * linha. Lança com a mensagem para a tela quando o banco recusaria (23505).
+ */
+export function trocasDePerfil(linhas: LinhaDoDesafio[], rascunho: Record<number, string>): { id: number; perfil: string }[] {
+  const final = linhas.map((l) => ({ id: l.id, antes: l.perfilAlvo, depois: (rascunho[l.id] ?? l.perfilAlvo).trim().toLowerCase() }));
+  for (const f of final) {
+    if (!ORDEM_DOS_PERFIS.includes(f.depois)) throw new Error("Escolha um perfil da lista.");
+  }
+  const vistos = new Set<string>();
+  for (const f of final) {
+    if (vistos.has(f.depois)) throw new Error("Duas linhas do desafio ficariam com o mesmo perfil.");
+    vistos.add(f.depois);
+  }
+  const mudancas = final.filter((f) => f.depois !== f.antes);
+  for (const f of mudancas) {
+    if (final.some((o) => o.id !== f.id && o.antes === f.depois)) {
+      throw new Error("Para trocar dois perfis entre si, troque um de cada vez: primeiro para um perfil livre.");
+    }
+  }
+  return mudancas.map((f) => ({ id: f.id, perfil: f.depois }));
 }

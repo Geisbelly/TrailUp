@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { faltaColunaDoDesafio } from "../missoes/missao";
 import { decidirMissao } from "../missoes/missoesApi";
 import {
   JANELA_DE_APROVACAO_DIAS,
@@ -17,6 +18,24 @@ const COLUNAS_DA_MISSAO = "id, classe_id, titulo, descricao, criterio, base_ia, 
 const COLUNAS_DO_PEDIDO = "id, classe_id, topico_id, quantidade, status, tentativas, gerados, ultimo_erro, created_at, finalizado_em";
 
 type ErroDoBanco = { code?: string; message?: string };
+
+/**
+ * Lê `missoes` sem as missões-desafio (#1149). Elas nascem `origem = 'ia'` e `aprovada` pela RPC
+ * `missao_desafio_criar`, sem pedido nem decisão: entrariam na fila e inflariam a taxa. O banco já
+ * as deixa fora de `missoes_ia_log`; aqui a leitura vem direto de `missoes`.
+ *
+ * Antes da migration a coluna `desafio` não existe e o filtro daria 42703, e o painel sumiria
+ * (`eMigracaoPendente`). Então repete sem o filtro: sem a coluna, não há desafio para tirar.
+ */
+async function semDesafios<R extends { error: unknown }>(consultar: (filtrar: boolean) => PromiseLike<R>): Promise<R> {
+  const r = await consultar(true);
+  return faltaColunaDoDesafio(r.error as ErroDoBanco | null) ? consultar(false) : r;
+}
+
+/** `.is("desafio", null)` só quando o banco tem a coluna. Genérica para manter o tipo do builder do supabase-js. */
+function filtrarDesafio<Q extends { is: (coluna: string, valor: null) => Q }>(q: Q, filtrar: boolean): Q {
+  return filtrar ? q.is("desafio", null) : q;
+}
 
 export async function buscarLimites(): Promise<{ limites: LimitesDeMissoesIa | null; erro: ErroDoBanco | null }> {
   const { data, error } = await supabase.rpc("missao_ia_limites" as never);
@@ -49,14 +68,13 @@ export async function listarPedidos(classIds: number[]): Promise<{ pedidos: Pedi
 /** As da IA que esperam decisão, de qualquer pedido: uma pendente perdida é uma missão que ninguém vê. */
 export async function listarPendentes(classIds: number[]): Promise<{ missoes: MissaoSugerida[]; erro: ErroDoBanco | null }> {
   if (classIds.length === 0) return { missoes: [], erro: null };
-  const { data, error } = await supabase
-    .from("missoes" as never)
-    .select(COLUNAS_DA_MISSAO)
-    .in("classe_id", classIds)
-    .eq("origem", "ia")
-    .eq("aprovacao", "pendente")
-    .order("criado_em", { ascending: false })
-    .limit(100);
+  const { data, error } = await semDesafios((filtrar) =>
+    filtrarDesafio(supabase.from("missoes" as never).select(COLUNAS_DA_MISSAO).in("classe_id", classIds), filtrar)
+      .eq("origem", "ia")
+      .eq("aprovacao", "pendente")
+      .order("criado_em", { ascending: false })
+      .limit(100),
+  );
   return { missoes: error ? [] : ((data ?? []) as unknown as MissaoSugerida[]), erro: error };
 }
 
@@ -64,14 +82,13 @@ export async function listarPendentes(classIds: number[]): Promise<{ missoes: Mi
 export async function listarDecididas(classIds: number[]): Promise<{ missoes: MissaoSugerida[]; erro: ErroDoBanco | null }> {
   if (classIds.length === 0) return { missoes: [], erro: null };
   const desde = new Date(Date.now() - JANELA_DE_APROVACAO_DIAS * 86_400_000).toISOString();
-  const { data, error } = await supabase
-    .from("missoes" as never)
-    .select(COLUNAS_DA_MISSAO)
-    .in("classe_id", classIds)
-    .eq("origem", "ia")
-    .in("aprovacao", ["aprovada", "recusada"])
-    .gte("atualizado_em", desde)
-    .order("atualizado_em", { ascending: false });
+  const { data, error } = await semDesafios((filtrar) =>
+    filtrarDesafio(supabase.from("missoes" as never).select(COLUNAS_DA_MISSAO).in("classe_id", classIds), filtrar)
+      .eq("origem", "ia")
+      .in("aprovacao", ["aprovada", "recusada"])
+      .gte("atualizado_em", desde)
+      .order("atualizado_em", { ascending: false }),
+  );
   return { missoes: error ? [] : ((data ?? []) as unknown as MissaoSugerida[]), erro: error };
 }
 
@@ -99,12 +116,19 @@ export async function listarHistorico(classIds: number[]): Promise<{ itens: Hist
 /** Aprovar e recusar são UPDATE direto: não dependem da API estar acordada. */
 export const decidirSugestao = decidirMissao;
 
+/**
+ * Conta por GET com `.limit(1)`, não por HEAD: no postgrest-js 2.86 o HEAD não tem corpo, e o erro
+ * chega como `{ message: "" }`, sem `code`. O 42703 do banco sem a #1149 ficava invisível para
+ * `semDesafios`, a leitura não se repetia e a contagem virava 0 em silêncio. O GET traz o corpo do
+ * erro, e o `count: "exact"` vem do `Content-Range`, que não depende do limite.
+ */
 export async function contarPendentesDeMissao(): Promise<number> {
-  const { count, error } = await supabase
-    .from("missoes" as never)
-    .select("id", { count: "exact", head: true })
-    .eq("origem", "ia")
-    .eq("aprovacao", "pendente");
+  const { count, error } = await semDesafios((filtrar) =>
+    filtrarDesafio(supabase.from("missoes" as never).select("id", { count: "exact" }), filtrar)
+      .eq("origem", "ia")
+      .eq("aprovacao", "pendente")
+      .limit(1),
+  );
   return error ? 0 : (count ?? 0);
 }
 

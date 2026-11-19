@@ -1,9 +1,21 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, ClipboardCheck, Copy, ListChecks, Pencil, Trash2, X } from "lucide-react";
+import { Check, ClipboardCheck, Copy, ListChecks, Pencil, Power, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { aguardaDecisao, origemDe, podeEditar, rotuloDaOrigem, rotuloDoEscopo } from "./aprovacao";
-import { percentualDeEntrega, resumoDeEntregas, rotuloDoPerfil, rotuloDoPrazo } from "./missao";
-import type { Missao } from "./missoesApi";
+import {
+  opcoesDePerfilDaLinha,
+  percentualDeEntrega,
+  resumoDeEntregas,
+  resumoDoDesafio,
+  rotuloDoPerfil,
+  rotuloDoPrazo,
+  rotuloDoTipoDoDesafio,
+  trocasDePerfil,
+} from "./missao";
+import type { LinhaDoDesafio, Missao } from "./missoesApi";
+
+export type TrocaDePerfil = { id: number; perfil: string };
 
 /**
  * Cartão da lista de missões.
@@ -14,6 +26,10 @@ import type { Missao } from "./missoesApi";
  *
  * Propostas da IA e missões do professor podem ser editadas; as missões do sistema têm painel
  * próprio. Pendente ganha Aprovar e Recusar quando quem monta passa os dois callbacks.
+ *
+ * A missão-desafio (#1149) chega aqui já agrupada (`agruparDesafios`): um cartão por grupo, com o
+ * selo "Desafio" e os perfis. Ela não se edita, não se duplica e não se exclui por aqui; o
+ * professor desativa o grupo inteiro e troca o perfil das linhas que existem.
  */
 export function CartaoDaMissao({
   missao,
@@ -23,6 +39,9 @@ export function CartaoDaMissao({
   onAprovar,
   onRecusar,
   decidindo = false,
+  onAlternarDesafio,
+  onTrocarPerfis,
+  alternando = false,
 }: {
   missao: Missao;
   onEditar: () => void;
@@ -31,7 +50,18 @@ export function CartaoDaMissao({
   onAprovar?: () => void;
   onRecusar?: () => void;
   decidindo?: boolean;
+  /** Só no desafio: liga ou desliga todas as linhas do grupo. */
+  onAlternarDesafio?: () => void;
+  /**
+   * Só no desafio: troca o perfil das linhas que já existem. Quem monta mostra o aviso (de sucesso
+   * ou de erro) e recarrega a lista; a promessa não rejeita, e o cartão só fecha a edição.
+   */
+  onTrocarPerfis?: (trocas: TrocaDePerfil[]) => Promise<void>;
+  alternando?: boolean;
 }) {
+  if (missao.desafio != null) {
+    return <CartaoDoDesafio missao={missao} onAlternar={onAlternarDesafio} onTrocarPerfis={onTrocarPerfis} alternando={alternando} />;
+  }
   const editavel = podeEditar(missao);
   const decidir = aguardaDecisao(missao) && onAprovar && onRecusar;
   const pct = percentualDeEntrega(missao.entregues, missao.total);
@@ -168,5 +198,179 @@ export function CartaoDaMissao({
         </>
       )}
     </li>
+  );
+}
+
+const SELO = "rounded-full px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-wide";
+const ROTULO = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
+
+function CartaoDoDesafio({
+  missao,
+  onAlternar,
+  onTrocarPerfis,
+  alternando,
+}: {
+  missao: Missao;
+  onAlternar?: () => void;
+  onTrocarPerfis?: (trocas: TrocaDePerfil[]) => Promise<void>;
+  alternando: boolean;
+}) {
+  // Dois desafios do mesmo tipo no mesmo conteúdo têm o mesmo título: o resumo é o que os separa.
+  const resumo = resumoDoDesafio(missao.desafio);
+  return (
+    <li className="rounded-[20px] border bg-card p-5">
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="max-w-full break-words sm:truncate text-[16.5px] font-bold">{missao.titulo}</h3>
+            <span className={`${SELO} bg-violet-500/15 text-violet-700 dark:text-violet-300`}>Desafio</span>
+            {!missao.ativa && <span className={`${SELO} bg-muted text-muted-foreground`}>Desativada</span>}
+          </div>
+          <p className="mt-1 text-[12.5px] text-muted-foreground">{rotuloDoTipoDoDesafio(missao.desafio)}</p>
+        </div>
+        {onAlternar && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full"
+            onClick={onAlternar}
+            disabled={alternando}
+            aria-label={`${missao.ativa ? "Desativar" : "Reativar"} ${missao.titulo}`}
+          >
+            <Power className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+            {alternando ? "Aguarde…" : missao.ativa ? "Desativar" : "Reativar"}
+          </Button>
+        )}
+      </div>
+
+      {resumo && <p className="mt-3 line-clamp-2 text-[13px] font-medium">{resumo}</p>}
+      {missao.objetivo && <p className="mt-2 line-clamp-2 text-[13px] text-muted-foreground">{missao.objetivo}</p>}
+      <p className="mt-2 text-[11.5px] text-muted-foreground">
+        O texto e a resposta são da IA e não se editam. Você pode desativar o desafio ou trocar os perfis; acrescentar perfil ainda não dá.
+      </p>
+
+      <dl className="mt-4 grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(110px,1fr))]">
+        <div>
+          <dt className={ROTULO}>Quem cumpre</dt>
+          <dd className="mt-1 text-sm font-semibold">{rotuloDoEscopo(missao.escopo)}</dd>
+        </div>
+        <div>
+          <dt className={ROTULO}>Prazo</dt>
+          <dd className="mt-1 text-sm font-semibold">{rotuloDoPrazo(missao.prazo)}</dd>
+        </div>
+        <div>
+          <dt className={ROTULO}>Recompensa</dt>
+          <dd className="mt-1 text-sm font-semibold">Moedas e pontos, para quem acertar</dd>
+        </div>
+      </dl>
+
+      <PerfisDoDesafio key={missao.linhasDoDesafio.map((l) => `${l.id}:${l.perfilAlvo}`).join(",")} titulo={missao.titulo} linhas={missao.linhasDoDesafio} onTrocar={onTrocarPerfis} />
+    </li>
+  );
+}
+
+function PerfisDoDesafio({
+  titulo,
+  linhas,
+  onTrocar,
+}: {
+  titulo: string;
+  linhas: LinhaDoDesafio[];
+  onTrocar?: (trocas: TrocaDePerfil[]) => Promise<void>;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [rascunho, setRascunho] = useState<Record<number, string>>({});
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const cancelar = () => {
+    setEditando(false);
+    setRascunho({});
+    setErro(null);
+  };
+
+  const salvar = async () => {
+    if (!onTrocar) return;
+    let trocas: TrocaDePerfil[];
+    try {
+      trocas = trocasDePerfil(linhas, rascunho);
+    } catch (e) {
+      setErro((e as Error).message);
+      return;
+    }
+    if (trocas.length === 0) {
+      cancelar();
+      return;
+    }
+    setSalvando(true);
+    setErro(null);
+    // `onTrocar` não rejeita: o erro do banco vira aviso na seção, que recarrega a lista.
+    try {
+      await onTrocar(trocas);
+      cancelar();
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  return (
+    <div className="mt-4">
+      <p className={ROTULO}>Perfis</p>
+      {!editando ? (
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          {linhas.map((l) => (
+            <span key={l.id} className={`${SELO} bg-primary/15 text-primary`}>
+              {rotuloDoPerfil(l.perfilAlvo)}
+            </span>
+          ))}
+          {onTrocar && (
+            <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setEditando(true)} aria-label={`Trocar perfis de ${titulo}`}>
+              <Pencil className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              Trocar perfis
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="mt-1.5 space-y-2">
+          {linhas.map((l, i) => (
+            <label key={l.id} className="flex flex-wrap items-center gap-2 text-[13px]">
+              <span className="w-16 text-muted-foreground">Perfil {i + 1}</span>
+              <select
+                value={rascunho[l.id] ?? l.perfilAlvo}
+                onChange={(e) => {
+                  setRascunho((r) => ({ ...r, [l.id]: e.target.value }));
+                  setErro(null);
+                }}
+                disabled={salvando}
+                aria-label={`Perfil ${i + 1} de ${titulo}`}
+                className="h-9 rounded-[12px] border bg-background px-2 text-[13px] appearance-auto"
+              >
+                {opcoesDePerfilDaLinha(linhas, rascunho, l.id).map((p) => (
+                  <option key={p} value={p}>
+                    {rotuloDoPerfil(p)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+          <p className="text-[11.5px] text-muted-foreground">
+            Cada perfil aparece uma vez. Para trocar dois perfis entre si, passe um deles por um perfil livre primeiro.
+          </p>
+          {erro && (
+            <p role="alert" className="text-xs text-destructive">
+              {erro}
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" className="rounded-full font-bold" onClick={() => void salvar()} disabled={salvando}>
+              {salvando ? "Salvando…" : "Salvar perfis"}
+            </Button>
+            <Button size="sm" variant="outline" className="rounded-full" onClick={cancelar} disabled={salvando}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

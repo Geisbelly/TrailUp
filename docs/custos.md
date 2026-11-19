@@ -8,7 +8,7 @@ números publicados na v7, em [`analises/custos-jic-2026/`](analises/custos-jic-
 projeta planos pagos; este documento registra o que acontece de fato. Os R$ 435 de parte fixa são
 projeção, não gasto.
 
-Última atualização: 06/11/2026.
+Última atualização: 18/11/2026.
 
 ## O que é pago hoje
 
@@ -39,6 +39,14 @@ O tier free não cobra em dinheiro, mas tem teto:
 - **Faixa do chat:** `GEMINI_CHAVES_RESERVADAS_CHAT` está em `0`. Para ligar sem tirar capacidade da
   fila, crie uma 5ª chave em projeto novo, ponha no fim de `GEMINI_API_KEY` só na API e use `1`.
 - **Espaço do Supabase:** o plano Free tem 500 MB, e o banco estava em 77,6 MB em 05/11/2026. O monitor guarda 35 dias de `monitor_sonda`, então ela cresce até parar perto de 151 mil linhas (ver a decisão abaixo).
+- **Desafios por conteúdo (modo `desafios` da edge `generate-content-ai`):** o clique em sugestões
+  de um conteúdo no editor de trilha pede, em paralelo, o modo `content` (cards e atividades) e o
+  `desafios` (2 de lógica e 2 cruzadinhas). É uma chamada de Gemini a mais por clique. Com material
+  só em texto, cada modo faz até `CONTENT_GEN_ATTEMPTS` = 3 tentativas (para antes, quando a
+  resposta já vem completa); com PDF, imagem de anexo ou vídeo, faz 1. O pior caso por clique passa
+  de 3 para 6 chamadas com texto, e de 1 para 2 com material pesado. Vídeo recusado pelo Gemini
+  custa mais uma, sem ele, em cada modo. O rodízio de chaves e o modelo reserva do 503 contam à
+  parte: cada chamada pode virar mais de uma requisição.
 - **E-mail:** o Apps Script envia para 100 destinatários por dia, divididos com o contato e o aviso de conta inativa. O monitor tem teto de 10 por dia (`emails_por_dia`).
 - **Dados:** no tier free, o Google pode usar o que é enviado. Ver
   [`lgpd/transferencias-internacionais.md`](lgpd/transferencias-internacionais.md).
@@ -51,6 +59,7 @@ O tier free não cobra em dinheiro, mas tem teto:
 | `personalizacao_job_targets.uso_modelo` | Geração de mídia do microservice, com Gemini, OpenAI, deck e caracteres da voz, somando as tentativas | Chamadas da API, como o enriquecimento |
 | `ia_decision_logs` com `provider = 'regra'` | Perguntas respondidas sem modelo | Consumo em tokens |
 | Logs do microservice, linha `[gemini-diag]` | Amostra crua do `usageMetadata` | Histórico, some com o log |
+| Edge `generate-content-ai` (trilha, sugestões e desafios do console) | **PENDENTE**: não grava em `ia_uso_llm` nem em outra tabela; só o log da função | Tokens, tentativas e cota gasta por clique |
 | OpenAI Vector Store `vector_stores.search` (#66) | RAG nas citações das sugestões: latência, limite e resultados no log da API | Não registra tokens nem valor faturado; custo segue **PENDENTE** até conferir a fatura da conta RAG |
 
 As duas primeiras fontes não se somam por engano: o microservice não grava em `ia_uso_llm`.
@@ -90,6 +99,7 @@ Guardião custa essa chamada mais o juiz de grounding.
 
 | Data | Decisão | Efeito | Estado |
 |---|---|---|---|
+| 18/11/2026 | Desafios de lógica e cruzadinha sugeridos por conteúdo, no mesmo clique das sugestões | Até 3 chamadas a mais por clique com texto, 1 com material pesado; ver os limites acima. Sem medição: a edge não registra uso | Em revisão |
 | 05/11/2026 | Monitor 24 horas, com sonda de 1 min nos três alvos (#1004) | Nenhuma chamada de modelo. `monitor_sonda` chega a ~151 mil linhas em 35 dias. Na proporção medida (243 linhas em 123 kB, 05/11/2026) seriam até ~76 MB; a amostra é pequena e tende a superestimar | No ar |
 | 05/11/2026 | Payload com o que é fixo primeiro (#971) | Cache de 1.900 de ~5.285 tokens no Guardião, medido | No ar |
 | 05/11/2026 | Pergunta de navegação sem modelo (#973) | Duas chamadas a menos por pergunta; volume desconhecido | No ar, sem medir |
