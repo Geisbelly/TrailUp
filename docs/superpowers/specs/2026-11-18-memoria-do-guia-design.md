@@ -69,5 +69,6 @@ A restrição era guardar o contexto útil **sem dado pessoal**, com o que for s
 
 ## Em aberto
 
-- Aba no console (Insights ou Personalizações) lendo as três views.
+- ~~Aba no console lendo as três views.~~ Feita (19/11): aba **Guia** no painel da turma, ao lado de
+  Insights, com onde a turma trava, perguntas por tópico e a lista por aluno (quem travou primeiro).
 - Medir os tokens a mais em `ia_uso_llm` depois do deploy (`docs/custos.md` está PENDENTE).
