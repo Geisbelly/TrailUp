@@ -15,6 +15,7 @@ from app.agent.graph.guardrails import checar_grounding_chat, checar_vazamento_d
 from app.api.deps import ensure_professor_access, get_current_user, get_session, require_professor
 from app.core.settings import get_settings
 from app.repositories.access import AccessRepository
+from app.repositories.chat_guia_registros import ChatGuiaRegistrosRepository
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.context import ContextRepository
@@ -73,6 +74,14 @@ from app.services.contexto_chat_materia import montar_conteudo_materia, montar_g
 from app.services.group_analysis import GroupAnalysisService
 from app.services.guia_do_app import guia_do_app, montar_resposta_do_guia
 from app.services.llm import JsonLLMService, load_prompt
+from app.services.mascaramento_chat import (
+    RegistroDoChat,
+    nomes_para_mascarar,
+    normalizar_registro,
+    registro_de_navegacao,
+    resumir_memoria,
+    resumir_turma,
+)
 from app.services.material_revisao import incrementar_revisao
 from app.services.media_agents import (
     regenerar_documento_brainhex,
@@ -1632,11 +1641,36 @@ async def conversar_com_mentor_personalizacao(
     if falas_sem_assinatura:
         # Mostra quantos ainda usam app que não assina e estão conversando sem contexto.
         logger.info("personalizacao.chat.falas_sem_assinatura=%s", falas_sem_assinatura)
+    registros_do_chat = ChatGuiaRegistrosRepository(session)
+    # Para o mascarador do registro (20261118_01): o aluno e os colegas da turma.
+    nomes_a_mascarar: set[str] = set()
+    usou_reserva: list[bool] = []
+
+    def _reserva_do_chat() -> dict:
+        usou_reserva.append(True)
+        return dict(fallback)
+
     mentor_result = resposta_sem_modelo(payload.mensagem)
     if mentor_result is not None:
         # Fica no log para medir quantas perguntas nem chegam ao modelo.
         provedor_do_chat, modelo_do_chat = "regra", "respostas_do_guia"
     else:
+        # O que as conversas anteriores deixaram (sem o texto delas) e onde a turma trava no tópico.
+        # Leitura que falha volta vazia: o Guia responde como numa primeira conversa.
+        memoria_do_guia = resumir_memoria(
+            await registros_do_chat.recentes_do_aluno(aluno_id=aluno_id, classe_id=int(payload.classe_id)),
+            payload.topico_id,
+        )
+        dificuldades_da_turma = resumir_turma(
+            await registros_do_chat.dificuldades_da_turma(
+                classe_id=int(payload.classe_id), topico_id=payload.topico_id
+            )
+        )
+        if dificuldades_da_turma:
+            memoria_do_guia["dificuldades_da_turma_neste_topico"] = dificuldades_da_turma
+        nomes_a_mascarar = nomes_para_mascarar(
+            [aluno_ctx, *await registros_do_chat.nomes_da_turma(int(payload.classe_id))]
+        )
         async with rota_ia_para_alunos(session, [aluno_id]):
             provedor_do_chat = settings.llm_provider
             modelo_do_chat = (
@@ -1677,6 +1711,8 @@ async def conversar_com_mentor_personalizacao(
                     "perfil_brainhex": context.get("perfil_brainhex", [])[:4],
                     "metricas_aluno": _build_student_metrics_summary(context, para_llm=True),
                     "leituras_adaptativas": _build_student_reading_summary(context),
+                    # Muda a cada pergunta: fica perto do fim, onde não derruba o cache do começo.
+                    "memoria_do_guia": memoria_do_guia,
                     "escopo": payload.escopo,
                     "historico": [{k: _sem_nome(v) for k, v in fala.items()} for fala in historico_do_chat],
                     "mensagem": _sem_nome(payload.mensagem),
@@ -1684,7 +1720,7 @@ async def conversar_com_mentor_personalizacao(
                 schema=MentorChatLLMResult,
                 # Guardian: primeiro a copia literal do gabarito (sem modelo), depois o juiz.
                 guardrails=[checar_vazamento_de_gabarito, checar_grounding_chat],
-                fallback_factory=lambda: dict(fallback),
+                fallback_factory=_reserva_do_chat,
                 contexto={
                     "llm": llm,
                     # O juiz ve o mesmo recorte que o modelo: o que ele nao ve, ele reprova.
@@ -1753,6 +1789,31 @@ async def conversar_com_mentor_personalizacao(
     except Exception as exc:  # pragma: no cover
         await session.rollback()
         logger.warning("Falha ao persistir ia_decision_logs do chat: %s", exc)
+
+    # O que a pergunta era, sem o texto dela (20261118_01). Em transação própria: tabela ausente ou
+    # gravação que falha não pode levar junto o ia_decision_logs acima, nem a resposta do aluno.
+    if provedor_do_chat == "regra":
+        registro_do_chat, origem_do_registro = registro_de_navegacao(response.destinos), "regra"
+    elif usou_reserva:
+        registro_do_chat, origem_do_registro = RegistroDoChat(intencao="outro", assunto=None), "reserva"
+    else:
+        registro_do_chat = normalizar_registro(mentor_result.registro, nomes_a_mascarar)
+        origem_do_registro = "modelo"
+    try:
+        await registros_do_chat.gravar(
+            registro_do_chat,
+            aluno_id=aluno_id,
+            classe_id=int(payload.classe_id),
+            topico_id=payload.topico_id,
+            conteudo_id=payload.conteudo_id,
+            escopo=payload.escopo,
+            origem=origem_do_registro,
+            guardrail=bool(intervencoes_chat),
+        )
+        await session.commit()
+    except Exception as exc:  # pragma: no cover
+        await session.rollback()
+        logger.warning("chat_guia.gravar_falhou: %s", type(exc).__name__)
 
     logger.info(
         "personalizacao.chat.output=%s",

@@ -100,6 +100,7 @@ Guardião custa essa chamada mais o juiz de grounding.
 | Data | Decisão | Efeito | Estado |
 |---|---|---|---|
 | 18/11/2026 | Desafios de lógica e cruzadinha sugeridos por conteúdo, no mesmo clique das sugestões | Até 3 chamadas a mais por clique com texto, 1 com material pesado; ver os limites acima. Sem medição: a edge não registra uso | Em revisão |
+| 18/11/2026 | Memória do Guia e registro de cada pergunta (`chat_guia_registros`) | Nenhuma chamada nova: o modelo classifica a pergunta na mesma resposta. A entrada cresce com `memoria_do_guia` (até 5 conceitos, 3 assuntos e contadores, perto do fim do payload) e a saída ganha o objeto `registro`. Tokens a mais: PENDENTE, sem medir. Três leituras indexadas no banco por pergunta | No PR, sem medir |
 | 05/11/2026 | Monitor 24 horas, com sonda de 1 min nos três alvos (#1004) | Nenhuma chamada de modelo. `monitor_sonda` chega a ~151 mil linhas em 35 dias. Na proporção medida (243 linhas em 123 kB, 05/11/2026) seriam até ~76 MB; a amostra é pequena e tende a superestimar | No ar |
 | 05/11/2026 | Payload com o que é fixo primeiro (#971) | Cache de 1.900 de ~5.285 tokens no Guardião, medido | No ar |
 | 05/11/2026 | Pergunta de navegação sem modelo (#973) | Duas chamadas a menos por pergunta; volume desconhecido | No ar, sem medir |
