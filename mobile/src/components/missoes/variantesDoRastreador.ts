@@ -148,3 +148,13 @@ export function prazoApertado(prazo: string | null, agora: Date = new Date()): b
   const falta = new Date(prazo).getTime() - agora.getTime();
   return Number.isFinite(falta) && falta > 0 && falta <= JANELA_DO_PULSO_MS;
 }
+
+/**
+ * O selo da missão-desafio, por tipo. Os dois só querem dizer "desafio de lógica" e "cruzadinha":
+ * `puzzle` já é o emblema do Mastermind e `robot-outline` a missão sugerida (CLAUDE.md, "Um ícone,
+ * um significado"). O teste ao lado falha se aparecerem fora das missões.
+ */
+export const ICONE_DO_DESAFIO = {
+  logica: "head-question-outline",
+  cruzadinha: "alphabetical-variant",
+} as const;

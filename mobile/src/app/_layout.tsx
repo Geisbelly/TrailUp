@@ -11,6 +11,7 @@ import { PortoesProvider } from "@/context/PortoesContext";
 import { consumeSupabaseUrlAuthError, getSessionSafe, supabase } from "@/database/supabase";
 import { iniciarSaude, marcarInicio, registrarErroDeTela } from "@/services/saude";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { estaNaAreaLogada } from "@/utils/areaLogada";
 import { consumePendingRoute, setPendingRoute } from "@/utils/pendingRoute";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
 import { preloadIconFontsWithSwap } from "@/utils/preloadIconFonts";
@@ -106,7 +107,8 @@ function VerificacaoDeRota() {
 
   const currentGroup = segments[0];
   const inAuthGroup = currentGroup === "(auth)";
-  const inTabsGroup = currentGroup === "(tabs)";
+  // As abas e a tela da missão-desafio, que mora na pilha raiz (`app/desafio/[id].tsx`).
+  const inTabsGroup = estaNaAreaLogada(currentGroup);
 
   if (autenticado && inTabsGroup) return null;
   if (!autenticado && inAuthGroup) return null;
@@ -177,6 +179,10 @@ export default function RootLayout() {
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="(auth)" />
+                {/* Fora das abas de propósito: o "Resolver" do rastreador (Trilha) e o da aba
+                    Social abrem a mesma tela, e dentro da Social o push passava por cima do
+                    cadeado da aba. A âncora "(tabs)" deixa as abas embaixo num link direto. */}
+                <Stack.Screen name="desafio/[id]" options={{ headerShown: true, title: "Missão", headerBackTitle: "Voltar" }} />
               </Stack>
               <TelemetryConsentGate />
               {/* Por ultimo: a versao minima (#195) fica por cima de tudo, ate do consentimento. */}

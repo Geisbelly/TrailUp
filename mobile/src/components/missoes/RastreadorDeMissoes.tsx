@@ -14,15 +14,20 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { getBrainHexGuideName } from "@/constants/profileImages";
-import { rotuloDoEscopo } from "@/services/missoes/missaoModel";
+import { useUsuario } from "@/context/SessaoContext";
+import { useDesafiosResolvidos } from "@/hooks/useDesafiosResolvidos";
+import { comDesafiosResolvidos } from "@/services/missoes/desafiosResolvidos";
+import { rotuloDaOrigem, rotuloDoEscopo } from "@/services/missoes/missaoModel";
 import {
   carregarMissoesDoRastreador,
+  chaveDosDesafios,
   comDestino,
   montarRastreador,
   percentualDaMissao,
   prazoDaMissao,
   rotaDoDestino,
   rotuloDaRecompensa,
+  type ContextoDosDesafios,
   type MissaoComExtras,
   type MissaoNoRastreador,
   type TopicoDoRastreador,
@@ -31,7 +36,7 @@ import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 
 import { BotaoDoRastreador } from "./BotaoDoRastreador";
-import { comGuia, varianteDoRastreador, type VarianteDoRastreador } from "./variantesDoRastreador";
+import { ICONE_DO_DESAFIO, comGuia, varianteDoRastreador, type VarianteDoRastreador } from "./variantesDoRastreador";
 
 // Cores de estado fixas, como as do selo de prazo: não derivam do accent do perfil (AAA).
 const ATENCAO = "#F5B544";
@@ -45,6 +50,8 @@ type Props = {
   topicos: readonly TopicoDoRastreador[];
   /** O tópico de retomada (`useTrailResumeTopic`). */
   atualId: string | null;
+  /** `usuario.perfis`, cru: os desafios do tópico da vez saem dos perfis representativos. */
+  perfis: ContextoDosDesafios["perfis"];
   palette: ProfileShellPalette;
   /** Distância do pé da tela. Na Trilha, a mesma do lançador do mentor: os dois ficam alinhados. */
   base: number;
@@ -78,6 +85,7 @@ export function RastreadorDeMissoes({
   perfilDaMissao,
   topicos,
   atualId,
+  perfis,
   palette,
   base,
   perfil,
@@ -90,11 +98,17 @@ export function RastreadorDeMissoes({
   const [erro, setErro] = useState(false);
   const pedido = useRef(0);
 
+  // A Trilha monta `topicos` de novo a cada render (toque no mapa, folha aberta): a lista só relê
+  // quando muda o que a leitura dos desafios usa, senão seria uma consulta por toque.
+  const chaveDesafios = chaveDosDesafios({ topicos, atualId, perfis });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a chave é a identidade do contexto
+  const desafios = useMemo<ContextoDosDesafios>(() => ({ topicos, atualId, perfis }), [chaveDesafios]);
+
   const carregar = useCallback(async () => {
     const meu = ++pedido.current;
     setCarregando(true);
     try {
-      const lista = await carregarMissoesDoRastreador(classeId, perfilDaMissao);
+      const lista = await carregarMissoesDoRastreador(classeId, perfilDaMissao, desafios);
       if (meu !== pedido.current) return;
       setMissoes(lista);
       setErro(false);
@@ -105,7 +119,7 @@ export function RastreadorDeMissoes({
     } finally {
       if (meu === pedido.current) setCarregando(false);
     }
-  }, [classeId, perfilDaMissao]);
+  }, [classeId, desafios, perfilDaMissao]);
 
   useFocusEffect(
     useCallback(() => {
@@ -113,9 +127,13 @@ export function RastreadorDeMissoes({
     }, [carregar]),
   );
 
+  // O desafio resolvido na tela dele sai do botão na hora da volta, antes da releitura do foco
+  // responder (`desafiosResolvidos`).
+  const { usuario } = useUsuario();
+  const resolvidos = useDesafiosResolvidos(usuario?.id);
   const lista = useMemo(
-    () => (missoes ? comDestino(missoes, topicos, atualId) : null),
-    [atualId, missoes, topicos],
+    () => (missoes ? comDestino(comDesafiosResolvidos(missoes, resolvidos), topicos, atualId) : null),
+    [atualId, missoes, resolvidos, topicos],
   );
 
   const ir = useCallback(
@@ -328,9 +346,22 @@ function CartaoDeMissao({
   const prazo = emAberto ? prazoDaMissao(m.prazo) : null;
   const corPrazo = prazo?.urgencia === "critica" ? CRITICA : prazo?.urgencia === "atencao" ? ATENCAO : palette.textMuted;
   const recompensa = rotuloDaRecompensa(m.recompensa);
-  const origem = m.origem === "professor" ? "Do professor" : "Do dia";
+  const rotuloOrigem = rotuloDaOrigem(m.origem);
+  const origem = rotuloOrigem.charAt(0).toUpperCase() + rotuloOrigem.slice(1);
   const meta = [origem, rotuloDoEscopo(m.escopo), m.criterioRotulo].filter(Boolean).join(" · ");
   const bloqueado = m.destino?.tipo === "bloqueado";
+  const desafio = m.destino?.tipo === "desafio";
+  const icone = cumprida
+    ? "check-circle"
+    : expirada
+      ? "timer-sand-complete"
+      : m.desafio
+        ? ICONE_DO_DESAFIO[m.desafio.tipo]
+        : m.origem === "professor"
+          ? "school"
+          : m.origem === "ia"
+            ? "robot-outline"
+            : "calendar-today";
 
   return (
     <View
@@ -350,7 +381,7 @@ function CartaoDeMissao({
       ) : null}
       <View style={s.cartaoTopo}>
         <MaterialCommunityIcons
-          name={cumprida ? "check-circle" : expirada ? "timer-sand-complete" : m.origem === "professor" ? "school" : "calendar-today"}
+          name={icone}
           size={20}
           color={cumprida ? SUCESSO : expirada ? palette.textSubtle : palette.accent}
         />
@@ -395,7 +426,11 @@ function CartaoDeMissao({
             hitSlop={6}
             accessibilityRole="button"
             accessibilityLabel={
-              bloqueado ? `Ver o que falta para abrir o tópico da missão ${m.titulo}` : `Ir para a missão ${m.titulo}`
+              bloqueado
+                ? `Ver o que falta para abrir o tópico da missão ${m.titulo}`
+                : desafio
+                  ? `Resolver ${m.titulo}`
+                  : `Ir para a missão ${m.titulo}`
             }
             style={({ pressed }) => [
               s.ir,
@@ -411,7 +446,7 @@ function CartaoDeMissao({
               color={bloqueado ? palette.text : palette.background}
             />
             <Text style={[s.irTexto, { color: bloqueado ? palette.text : palette.background }]}>
-              {bloqueado ? "Ver" : "Ir"}
+              {bloqueado ? "Ver" : desafio ? "Resolver" : "Ir"}
             </Text>
           </Pressable>
         ) : null}

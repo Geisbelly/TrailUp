@@ -220,10 +220,18 @@ turma.
     perfil no servidor (`.in('perfil_alvo', perfisRepresentativos)`);
   - um desafio por grupo; o desafio nunca tira missão comum do limite.
 - **Destino no rastreador:** a missão-desafio abre a tela do desafio. A Social ganha "Resolver".
-- **Tela `missao/[id]`:**
+- **Tela `/desafio/[id]`** (`mobile/src/app/desafio/[id].tsx`, na pilha raiz, fora das abas, com
+  cabeçalho e "voltar"). Não fica dentro da aba Social: o "Resolver" do rastreador da Trilha
+  empurrava a rota da Social e passava por cima do cadeado da aba, que mora no `tabPress`, e a pilha
+  da Social ficava só com o desafio, sem "voltar".
   - **Lógica:** alternativas ou campo curto, e "Conferir".
   - **Cruzadinha:** grade numerada, pistas, toque na célula escolhe a palavra, teclado e
-    "Conferir". O parcial fica salvo no aparelho, pelo id do grupo. Concluída vira só leitura.
+    "Conferir". Concluída vira só leitura.
+  - **Rascunho:** o parcial fica salvo no aparelho com a chave `desafio:<alunoId>:<grupo>`. O aluno
+    entra na chave porque nada limpa o AsyncStorage no logout: num aparelho compartilhado, com a
+    chave só do grupo, a resposta de um aluno aparecia para o outro, que levava o prêmio por ela. O
+    grupo continua na chave para trocar de perfil ativo não perder o parcial. Sair da tela grava o
+    que estava pendente.
   - Acertou: tela de prêmio. Errou: "ainda não", e na cruzadinha quantas palavras estão certas.
   - Limite atingido: "tente de novo daqui a pouco".
 - **Exibição da recompensa:** mostrar os pontos de `eventos_pontuacao` (o que o banco paga), e não

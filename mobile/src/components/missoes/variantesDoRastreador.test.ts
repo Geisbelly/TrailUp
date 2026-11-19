@@ -4,7 +4,7 @@ import { dirname, join, relative } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { comGuia, prazoApertado, segmentosDosFeitos, varianteDoRastreador } from "./variantesDoRastreador";
+import { ICONE_DO_DESAFIO, comGuia, prazoApertado, segmentosDosFeitos, varianteDoRastreador } from "./variantesDoRastreador";
 
 const PERFIS = ["seeker", "survivor", "daredevil", "mastermind", "conqueror", "socializer", "achiever"] as const;
 
@@ -36,6 +36,15 @@ describe("variantesDoRastreador", () => {
     assert.equal(comGuia(v.tituloDaFolha, "Mateo e Zuri"), "Pedidos de Mateo e Zuri");
     assert.equal(comGuia(v.rotulo, "Mateo e Zuri", true), "PEDIDO DE MATEO E ZURI");
     assert.equal(comGuia("Desafios", "Ember"), "Desafios");
+  });
+});
+
+describe("ICONE_DO_DESAFIO", () => {
+  it("lógica e cruzadinha têm selo próprio, que não é o de nenhum perfil nem o da sugerida", () => {
+    const icones: string[] = Object.values(ICONE_DO_DESAFIO);
+    assert.equal(new Set(icones).size, 2);
+    const emblemas = PERFIS.map((p) => varianteDoRastreador(p).emblema);
+    for (const i of icones) assert.ok(!emblemas.includes(i) && i !== "robot-outline", i);
   });
 });
 
@@ -88,7 +97,9 @@ describe("um ícone, um significado (CLAUDE.md)", () => {
     "gift-open-outline", // recompensa
     "calendar-clock", // prazo
     "school", // missão do professor
+    "robot-outline", // missão sugerida
     "timer-sand-complete", // missão expirada
+    ...Object.values(ICONE_DO_DESAFIO), // selo do desafio de lógica e da cruzadinha
   ];
 
   it("a varredura enxerga o app (controle: a bússola do mapa é achada)", () => {

@@ -8,6 +8,7 @@ import {
   perfilDaMissao,
   perfisRepresentativos,
   rotuloCriterio,
+  rotuloDaOrigem,
   rotuloDoEscopo,
   rotuloDoPrazo,
   statusDe,
@@ -64,6 +65,11 @@ describe("rotuloCriterio", () => {
     assert.equal(rotuloCriterio({ metrica: "atividade_especifica", atividade_id: 7 }), "entregar a atividade");
   });
 
+  it("o desafio tem rótulo próprio, nunca a chave crua da métrica", () => {
+    // "Desafio" sozinho já é a métrica de atividades e o título da Ember (CLAUDE.md).
+    assert.equal(rotuloCriterio({ metrica: "desafio" }), "Resolver o desafio");
+  });
+
   it("missão de guilda com alvo por membro diz isso no rótulo (#154)", () => {
     assert.equal(rotuloCriterio({ metrica: "atividades_concluidas", minimo: 10 }, true), "10 atividade(s) por membro");
     assert.equal(rotuloCriterio({ metrica: "atividades_concluidas", minimo: 10 }), "10 atividade(s)");
@@ -112,6 +118,15 @@ describe("ordenarMissoes", () => {
   const m = (over: Partial<MissaoDoAluno>): MissaoDoAluno => ({
     id: 1, titulo: "t", descricao: "", progresso: 0, status: "pendente", criterioRotulo: "",
     metrica: "", atividadeId: null, pedeAtividade: false, origem: "sistema", escopo: "aluno", prazo: null, dia: null, slot: null, ...over,
+  });
+
+  it("ordenarMissoes não põe ia junto da diária", () => {
+    const r = ordenarMissoes([
+      m({ id: 3, origem: "ia", prazo: "2026-10-20T00:00:00Z" }),
+      m({ id: 1, origem: "sistema", slot: 1 }),
+      m({ id: 2, origem: "professor", prazo: "2026-10-21T00:00:00Z" }),
+    ]);
+    assert.deepEqual(r.map((x) => x.id), [1, 3, 2]);
   });
 
   it("a diária vem primeiro, por slot", () => {
@@ -195,7 +210,17 @@ describe("montarMissoes", () => {
   });
 
   it("origem desconhecida cai em sistema", () => {
-    assert.equal(montarMissoes([linha({ origem: "ia" })], [], { agora: AGORA })[0].origem, "sistema");
+    assert.equal(montarMissoes([linha({ origem: "qualquer" })], [], { agora: AGORA })[0].origem, "sistema");
+  });
+
+  it("montarMissoes mantém origem ia", () => {
+    const ia = linha({ id: 8, origem: "ia", dia: null, slot: null });
+    assert.equal(montarMissoes([ia], [], { agora: AGORA })[0].origem, "ia");
+  });
+
+  it("missão ia com prazo vencido sai, como a do professor", () => {
+    const vencida = linha({ id: 9, origem: "ia", dia: null, slot: null, janela_fim: "2026-10-18T00:00:00Z" });
+    assert.deepEqual(montarMissoes([vencida], [], { agora: AGORA }), []);
   });
 });
 
@@ -317,5 +342,13 @@ describe("item_no_dia (diária que sai da trilha)", () => {
   it("rótulo diz o que fazer", () => {
     assert.equal(rotuloCriterio(atividade), "fazer a atividade");
     assert.equal(rotuloCriterio(conteudo), "concluir o conteúdo");
+  });
+});
+
+describe("rotuloDaOrigem", () => {
+  it("diz de onde veio a missão", () => {
+    assert.equal(rotuloDaOrigem("ia"), "sugerida");
+    assert.equal(rotuloDaOrigem("professor"), "do professor");
+    assert.equal(rotuloDaOrigem("sistema"), "do dia");
   });
 });
