@@ -13,7 +13,17 @@
  * `perfil_alvo`.
  */
 
-export type OrigemDaMissao = "sistema" | "professor";
+/**
+ * `ia` é a missão que a IA sugeriu e o professor aprovou: a RLS (`missoes_aluno_sel`) só a entrega
+ * depois da aprovação, então aqui ela vale como a do professor — tem prazo, não tem `dia`.
+ */
+export type OrigemDaMissao = "sistema" | "professor" | "ia";
+
+/**
+ * Quantas missões comuns a leitura traz (`.limit` de `carregarMissoesDoAluno`). Os desafios vêm
+ * numa consulta à parte, com o limite deles, e não disputam estas vagas.
+ */
+export const LIMITE_DE_MISSOES = 30;
 export type EscopoDaMissao = "aluno" | "turma" | "guilda";
 /** `expirada` é do banco (`missao_aluno.status`): a janela fechou sem a missão ser cumprida. */
 export type StatusDaMissao = "pendente" | "em_andamento" | "concluida" | "expirada";
@@ -105,6 +115,9 @@ function rotuloDoAlvo(criterio: unknown): string {
   if (metrica === "trilha_percentual") return `${Number(c?.percentual) || "?"}% da trilha`;
   if (metrica === "atividade_especifica") return "entregar a atividade";
   if (metrica === "item_no_dia") return c?.item === "atividade" ? "fazer a atividade" : "concluir o conteúdo";
+  // A missão-desafio (`20261117_02`) se cumpre no "Conferir". "Desafio" sozinho já é a métrica de
+  // atividades e o título da Ember (CLAUDE.md), então nunca a chave crua.
+  if (metrica === "desafio") return "Resolver o desafio";
   return metrica || "missão";
 }
 
@@ -142,7 +155,7 @@ export function rotuloDoPrazo(prazo: string | null, agora: Date = new Date()): s
  * A ordem da lista.
  *
  * A diária vem primeiro, por `slot` — é o que o aluno abre o app para ver. Depois a do
- * professor, pelo prazo mais próximo.
+ * professor e a sugerida pela IA (mesmo peso), pelo prazo mais próximo.
  *
  * **O cuidado que o plano apontou:** a lista era ordenada por `dia`, e missão de professor
  * **não tem `dia`**. Ordenar por uma chave nula joga todas juntas numa ordem arbitrária que
@@ -167,6 +180,13 @@ export function ordenarMissoes(missoes: MissaoDoAluno[]): MissaoDoAluno[] {
   });
 }
 
+/** De onde veio a missão, em minúsculas ("do dia", "do professor", "sugerida"). */
+export function rotuloDaOrigem(origem: OrigemDaMissao): string {
+  if (origem === "professor") return "do professor";
+  if (origem === "ia") return "sugerida";
+  return "do dia";
+}
+
 export function rotuloDoEscopo(escopo: EscopoDaMissao): string {
   if (escopo === "guilda") return "da guilda";
   if (escopo === "turma") return "da turma";
@@ -184,10 +204,10 @@ type PerfilComAfinidade = { nome?: string | null; afinidade?: number | null };
  *     afinidade >= 20  OU  (afinidade > 0 E está entre os 2 primeiros)
  *     ordem: afinidade DESC, nome ASC
  *
- * O desempate por nome importa: `resolveRepresentativeBrainHexProfiles` (utils/brainHex) usa a
- * mesma regra, mas desempata pela ordem em que as linhas chegaram, e o banco não garante essa
- * ordem entre afinidades iguais. Aqui o desempate é o do SQL, para a tela e o gatilho
- * concordarem sobre qual missão é do aluno.
+ * O desempate por nome importa: o banco não garante a ordem das linhas entre afinidades iguais.
+ * `resolveRepresentativeBrainHexProfiles` (utils/brainHex) também desempata por nome ASC hoje,
+ * então as duas concordam; esta continua aqui porque é a do recorte da missão do dia, com a mesma
+ * conta do SQL, para a tela e o gatilho concordarem sobre qual missão é do aluno.
  */
 export function perfisRepresentativos(perfis: PerfilComAfinidade[] | null | undefined): string[] {
   if (!Array.isArray(perfis)) return [];
@@ -223,7 +243,7 @@ export function perfilDaMissao(
   return representativos[0] ?? null;
 }
 
-type LinhaMissao = {
+export type LinhaMissao = {
   id: number;
   titulo: string | null;
   descricao: string | null;
@@ -239,7 +259,7 @@ type LinhaMissao = {
   alvo_por_membro?: boolean | null;
 };
 
-type LinhaProgresso = { missao_id: number; status: string | null; progresso: number | null };
+export type LinhaProgresso = { missao_id: number; status: string | null; progresso: number | null };
 
 export function montarMissoes(
   linhas: LinhaMissao[],
@@ -272,16 +292,16 @@ export function montarMissoes(
         metrica: String((m.criterio as Record<string, unknown> | null)?.metrica ?? ""),
         atividadeId: atividadeDoCriterio(m.criterio),
         pedeAtividade: pedeAtividade(m.criterio),
-        origem: m.origem === "professor" ? "professor" : "sistema",
+        origem: m.origem === "professor" ? "professor" : m.origem === "ia" ? "ia" : "sistema",
         escopo: m.escopo === "guilda" ? "guilda" : m.escopo === "aluno" ? "aluno" : "turma",
         prazo: m.janela_fim,
         dia: m.dia,
         slot: m.slot === null || m.slot === undefined ? null : Number(m.slot),
       };
     })
-    // A do professor só aparece dentro da janela. A diária já vem filtrada pelo `dia`, e a
+    // A do professor (e a sugerida pela IA) só aparece dentro da janela. A diária já vem filtrada pelo `dia`, e a
     // janela dela (meia-noite a meia-noite) seria redundante — mas não atrapalha.
-    .filter((m) => (m.origem === "professor" ? vigente({ prazo: m.prazo }, agora) : true));
+    .filter((m) => (m.origem !== "sistema" ? vigente({ prazo: m.prazo }, agora) : true));
 
   return ordenarMissoes(montadas);
 }
