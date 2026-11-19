@@ -13,6 +13,9 @@ import {
   rotaDoDestino,
   rotuloDaRecompensa,
   topicoDaVez,
+  topicosDoGrafo,
+  conteudosDosDesafios,
+  topicosDosDesafios,
   type MissaoComExtras,
   type TopicoDoRastreador,
 } from "./rastreadorDeMissoes.core";
@@ -27,6 +30,7 @@ const T = (over: Partial<TopicoDoRastreador> & { id: number }): TopicoDoRastread
   completed: false,
   sequence: over.id,
   atividadeIds: [],
+  conteudoIds: [],
   ...over,
 });
 
@@ -140,6 +144,66 @@ describe("destinoDaMissao", () => {
   it("sem trilha, sem destino", () => {
     assert.equal(destinoDaMissao({ atividadeId: null, pedeAtividade: false }, [], null), null);
   });
+
+  it("destino de missão com desafio é a tela do desafio", () => {
+    const desafio = { tipo: "logica", enunciado: "Quanto é 2+2?", formato: "curta" } as const;
+    const destino = destinoDaMissao({ id: 7, atividadeId: null, pedeAtividade: false, desafio }, topicos, null);
+    assert.deepEqual(destino, { tipo: "desafio", missaoId: 7 });
+    // Pilha raiz, fora das abas: o "Resolver" do rastreador não passa por cima do cadeado da aba
+    // Social (que mora no `tabPress`) e o "voltar" volta para onde o aluno estava.
+    assert.equal(rotaDoDestino(destino!), "/desafio/7");
+    // Na lista do rastreador, o desafio não conta como "no tópico onde o aluno está".
+    const [comD] = comDestino([M({ id: 7, desafio })], topicos, "10");
+    assert.deepEqual(comD.destino, { tipo: "desafio", missaoId: 7 });
+    assert.deepEqual(
+      montarRastreador([comD, ...comDestino([M({ id: 8 })], topicos, "10")], "10", AGORA).abertas.map((m) => m.id),
+      [8, 7],
+    );
+  });
+});
+
+describe("topicosDosDesafios", () => {
+  it("o tópico da vez e o de sequence imediatamente menor", () => {
+    const trilha = [T({ id: 1, sequence: 1, completed: true }), T({ id: 2, sequence: 2, completed: true }), T({ id: 3, sequence: 3 })];
+    assert.deepEqual(topicosDosDesafios(trilha, "3"), [3, 2]);
+    // O de retomada concluído: a vez passa ao próximo, e o anterior é o de antes dele.
+    assert.deepEqual(topicosDosDesafios(trilha, "1"), [3, 2]);
+    // Primeiro tópico: não tem anterior.
+    assert.deepEqual(topicosDosDesafios([T({ id: 1, sequence: 1 }), T({ id: 2, sequence: 2 })], "1"), [1]);
+    // Anterior selado não entra.
+    assert.deepEqual(topicosDosDesafios([T({ id: 1, sequence: 1, locked: true }), T({ id: 2, sequence: 2 })], "2"), [2]);
+    assert.deepEqual(topicosDosDesafios([], null), []);
+  });
+});
+
+describe("conteudosDosDesafios", () => {
+  it("os conteúdos do tópico da vez e do anterior, que a turma já carregou", () => {
+    const trilha = [
+      T({ id: 1, sequence: 1, completed: true, conteudoIds: [10, 11] }),
+      T({ id: 2, sequence: 2, completed: true, conteudoIds: [20] }),
+      T({ id: 3, sequence: 3, conteudoIds: [30, 31] }),
+    ];
+    assert.deepEqual(conteudosDosDesafios(trilha, "3"), [30, 31, 20]);
+    assert.deepEqual(conteudosDosDesafios([], null), []);
+  });
+});
+
+describe("topicosDoGrafo", () => {
+  it("o bloqueio vem do grafo e as atividades e os conteúdos do professor, da turma", () => {
+    const nos = [
+      { id: "7", locked: false, completed: true, sequence: 1 },
+      { id: "8", locked: true, completed: false, sequence: 2 },
+    ];
+    const topicos = [
+      { id: 7, atividades: [{ id: 70 }, { id: "71" }], conteudos: [{ id: 700 }, { id: "701" }] },
+      { id: 9, atividades: [{ id: 90 }] },
+    ];
+    assert.deepEqual(topicosDoGrafo(nos, topicos), [
+      { id: 7, locked: false, completed: true, sequence: 1, atividadeIds: [70, 71], conteudoIds: [700, 701] },
+      { id: 8, locked: true, completed: false, sequence: 2, atividadeIds: [], conteudoIds: [] },
+    ]);
+    assert.deepEqual(topicosDoGrafo([], topicos), []);
+  });
 });
 
 describe("rotaDoDestino", () => {
@@ -228,10 +292,23 @@ describe("percentualDaMissao", () => {
 describe("recompensa", () => {
   const globais = [{ tipo: "missao_concluida", pontos: 20, moedas: 5 }];
 
-  it("a turma sobrepõe o global; NULL herda", () => {
+  it("pontos só do global: os da turma não têm efeito no banco", () => {
+    // `fn_pontos_do_evento(text)` não lê a turma (20260909_05; 20261021_06:25-28).
     assert.deepEqual(resolverRecompensa("missao_concluida", globais, [{ tipo: "missao_concluida", pontos: 50, moedas: null }]), {
-      pontos: 50,
+      pontos: 20,
       moedas: 5,
+    });
+  });
+
+  it("moedas: a turma sobrepõe o global; NULL herda", () => {
+    // `fn_moedas_do_evento(tipo, classe)` lê `eventos_pontuacao_classe` (20260912_02).
+    assert.deepEqual(resolverRecompensa("missao_concluida", globais, [{ tipo: "missao_concluida", pontos: null, moedas: 9 }]), {
+      pontos: 20,
+      moedas: 9,
+    });
+    assert.deepEqual(resolverRecompensa("desafio_logica", [{ tipo: "desafio_logica", pontos: 10, moedas: 2 }], []), {
+      pontos: 10,
+      moedas: 2,
     });
   });
 

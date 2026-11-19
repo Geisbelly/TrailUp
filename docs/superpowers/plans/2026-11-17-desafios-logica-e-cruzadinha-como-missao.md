@@ -472,7 +472,7 @@ O que os testes das tarefas mais facilmente deixariam passar:
 **Files:**
 - Create: `mobile/src/services/missoes/desafio.core.ts` + `desafio.core.test.ts` (tipos, `respostaDaGrade`, `palavraDaCelula`, `proximaCelula`, `estaCompleta`)
 - Create: `mobile/src/services/missoes/desafios.ts` (leitura e RPC)
-- Modify: `missoesDoDia.ts` (`desafio IS NULL` na consulta comum; nova `carregarDesafiosDoTopico`), `rastreadorDeMissoes.core.ts` (`DestinoDaMissao` ganha `{ tipo: "desafio"; missaoId: number }`; `rotaDoDestino` leva a `/social/desafio/[id]`), `rastreadorDeMissoes.ts` (recompensa de `eventos_pontuacao`, não da turma)
+- Modify: `missoesDoDia.ts` (`desafio IS NULL` na consulta comum; nova `carregarDesafiosDoTopico`), `rastreadorDeMissoes.core.ts` (`DestinoDaMissao` ganha `{ tipo: "desafio"; missaoId: number }`; `rotaDoDestino` leva a `/desafio/[id]`, na pilha raiz; ver a nota da Tarefa 11), `rastreadorDeMissoes.ts` (recompensa de `eventos_pontuacao`, não da turma)
 - Modify: `mobile/testes/principal.txt` (os testes novos)
 
 **Interfaces:**
@@ -501,6 +501,12 @@ O que os testes das tarefas mais facilmente deixariam passar:
 - [ ] **Passo 5: commit** `feat(mobile): lê os desafios do tópico da vez como missão`.
 
 ### Task 11: tela do desafio
+
+> **Nota (revisão final, 19/11):** duas coisas desta tarefa mudaram depois da execução, e o texto
+> abaixo fica como estava. A tela foi para a pilha raiz, `mobile/src/app/desafio/[id].tsx` (rota
+> `/desafio/[id]`): dentro da aba Social, o "Resolver" do rastreador passava por cima do cadeado
+> da aba e a deixava sem "voltar". E a chave do rascunho é `desafio:<alunoId>:<grupo>`, não
+> `desafio:<desafio_grupo>`: sem o aluno, a resposta vazava entre alunos no mesmo aparelho.
 
 **Files:**
 - Create: `mobile/src/app/(tabs)/social/desafio/[id].tsx`

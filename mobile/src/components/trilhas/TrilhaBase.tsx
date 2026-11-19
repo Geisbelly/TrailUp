@@ -17,7 +17,7 @@ import { router } from "expo-router";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { RastreadorDeMissoes } from "@/components/missoes/RastreadorDeMissoes";
 import { perfilDaMissao } from "@/services/missoes/missaoModel";
-import type { TopicoDoRastreador } from "@/services/missoes/rastreadorDeMissoes";
+import { topicosDoGrafo } from "@/services/missoes/rastreadorDeMissoes.core";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, StyleSheet, View, useWindowDimensions } from "react-native";
 import { ArvoreCelular } from "./ArvoreCelular";
@@ -139,13 +139,7 @@ export const TrilhaBase: React.FC<{
   const justificativa = idFolha ? String(personalizedTopics?.[Number(idFolha)]?.planMeta?.justification ?? "").trim() : "";
   const guiaDisponivel = resolveFeature({ scope: "session" }, "mentor_character").enabled;
   // O rastreador precisa do bloqueio (grafo) e das atividades do professor (classe) de cada tópico.
-  const topicosDoRastreador: TopicoDoRastreador[] = nos.map((n) => ({
-    id: Number(n.id),
-    locked: n.locked,
-    completed: n.completed,
-    sequence: n.sequence,
-    atividadeIds: (topicoDe(n.id)?.atividades ?? []).map((a) => Number(a.id)),
-  }));
+  const topicosDoRastreador = topicosDoGrafo(nos, classeAtual?.topicos ?? []);
   const tocarNo = (id: string) => {
     const no = nos.find((n) => String(n.id) === String(id));
     const acao = aoTocarNoCelular(no, selecionado);
@@ -278,6 +272,7 @@ export const TrilhaBase: React.FC<{
       <RastreadorDeMissoes
         classeId={classeAtual.classe_id}
         perfilDaMissao={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)}
+        perfis={usuario?.perfis}
         topicos={topicosDoRastreador}
         atualId={currentTopicId}
         palette={palette}

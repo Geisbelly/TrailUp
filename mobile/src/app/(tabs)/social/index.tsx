@@ -12,6 +12,8 @@ import { GuildSection } from "@/components/social/GuildSection";
 import { MissoesDoDia } from "@/components/missoes/MissoesDoDia";
 import { EventoDaTurma } from "@/components/eventos/EventoDaTurma";
 import { perfilDaMissao } from "@/services/missoes/missaoModel";
+import { topicosDoGrafo } from "@/services/missoes/rastreadorDeMissoes.core";
+import { useTrailResumeTopic } from "@/hooks/useTrailResume";
 import { GuildChatModal, type GuildShareOption } from "@/components/social/GuildChatModal";
 import { AbasDoSocial, SocialHubDestaque, SocialStories, TituloDoBloco, type ResumoDoSocial } from "@/components/social/SocialHub";
 import { abaDaAncora, abaDaArea, abasDoSocial, blocosDaArena, ordemDasAreas, type AbaDoSocial, type AncoraDoSocial, type AreaDoSocial } from "@/services/social/socialDestaque";
@@ -62,10 +64,20 @@ export default function SocialScreen() {
   // Web em tela larga (#346, protótipo v4): cabeçalho como o da Loja, pílulas, lista em grade e coluna lateral.
   const desktop = useDesktopWeb();
   const { usuario, autenticado } = useUsuario();
-  const { classeAtual } = useTrilha();
+  const { classeAtual, grafo } = useTrilha();
   const classeId = Number(classeAtual?.classe_id ?? 0);
   const [fallbackClasseId, setFallbackClasseId] = useState(0);
   const activeClasseId = classeId > 0 ? classeId : fallbackClasseId;
+  // Os desafios das missões vêm do tópico da vez, e a trilha que diz qual é já está carregada no
+  // contexto: nada de reler a trilha aqui. Sem grafo da mesma turma, a lista vem sem desafio.
+  const atualId = useTrailResumeTopic();
+  const desafiosDasMissoes = useMemo(
+    () =>
+      classeId > 0 && classeId === activeClasseId && grafo.nodes.length > 0
+        ? { topicos: topicosDoGrafo(grafo.nodes, classeAtual?.topicos ?? []), atualId, perfis: usuario?.perfis }
+        : undefined,
+    [activeClasseId, atualId, classeAtual?.topicos, classeId, grafo.nodes, usuario?.perfis],
+  );
   const profile = perfilVisualDoAluno(usuario);
   const palette = getProfileShellPalette(profile);
   // Hub (rede social de jogo): a área que mais combina com o perfil abre a aba (`socialDestaque.ts`).
@@ -385,7 +397,7 @@ export default function SocialScreen() {
                     <View key="evento" {...ancora("evento")} style={styles.blocoCelular}>
                       <TituloDoBloco ancora="evento" titulo="Evento e missões" palette={palette} atalho={atalho} />
                       <EventoDaTurma classeId={activeClasseId} palette={palette} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
-                      <MissoesDoDia classeId={activeClasseId} perfil={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)} accent={palette.accent} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
+                      <MissoesDoDia classeId={activeClasseId} perfil={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)} desafios={desafiosDasMissoes} accent={palette.accent} textoSobreAccent={palette.background} textColor={palette.text} mutedColor={palette.textMuted} surfaceColor={palette.surfaceElevated} borderColor={palette.border} />
                     </View>
                   ) : (
                     <View key="arena" {...ancora("arena")} style={styles.blocoCelular}>
@@ -428,7 +440,9 @@ export default function SocialScreen() {
             <MissoesDoDia
               classeId={activeClasseId}
               perfil={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)}
+              desafios={desafiosDasMissoes}
               accent={palette.accent}
+              textoSobreAccent={palette.background}
               textColor={palette.text}
               mutedColor={palette.textMuted}
               surfaceColor={palette.surfaceElevated}

@@ -35,6 +35,7 @@ src/services/personalizacao/TrailupApiProvider.realtime.test.ts
 src/services/progressoOutbox.test.ts
 src/utils/visitaDoTopico.test.ts
 src/utils/recargaPorTempo.test.ts
+src/utils/areaLogada.test.ts
 src/services/acaoDaNotificacao.test.ts
 src/services/destinoDoToque.test.ts
 src/services/pushNotifications.test.ts
@@ -163,6 +164,11 @@ src/utils/eixosDoDesafio.test.ts
 src/services/eventos/eventoModel.test.ts
 src/services/missoes/missaoModel.test.ts
 src/services/missoes/rastreadorDeMissoes.core.test.ts
+src/services/missoes/desafio.core.test.ts
+src/services/missoes/desafios.test.ts
+src/services/missoes/rascunhoDoDesafio.test.ts
+src/services/missoes/desafiosResolvidos.test.ts
+src/services/missoes/gravacaoAdiada.test.ts
 src/components/missoes/variantesDoRastreador.test.ts
 src/utils/estadoDeAudio.test.ts
 src/components/funcionais/VideoPlayer.youtube.test.tsx

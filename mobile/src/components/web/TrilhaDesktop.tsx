@@ -18,7 +18,7 @@ import { useUsuario } from "@/context/SessaoContext";
 import { useTrilha } from "@/context/TrilhaContext";
 import { useTrailResumeTopic } from "@/hooks/useTrailResume";
 import { perfilDaMissao } from "@/services/missoes/missaoModel";
-import type { TopicoDoRastreador } from "@/services/missoes/rastreadorDeMissoes";
+import { topicosDoGrafo } from "@/services/missoes/rastreadorDeMissoes.core";
 import { FontFamily } from "@/styles/GlobalStyle";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { aoClicarNo, estadoDoTopico, montarPainelTopico, rotaDoTopico, topicoInicial } from "@/utils/painelTopicoTrilha";
@@ -105,13 +105,7 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
       abrir: true,
     });
   // O rastreador precisa do bloqueio (grafo) e das atividades do professor (classe) de cada tópico.
-  const topicosDoRastreador: TopicoDoRastreador[] = nos.map((n) => ({
-    id: Number(n.id),
-    locked: n.locked,
-    completed: n.completed,
-    sequence: n.sequence,
-    atividadeIds: (topicoDe(n.id)?.atividades ?? []).map((a) => Number(a.id)),
-  }));
+  const topicosDoRastreador = topicosDoGrafo(nos, classeAtual?.topicos ?? []);
   // No mapa, cada tópico é um país do tema da turma (sem tema, o próprio título).
   const paises = todos.map((t) => ({
     id: t.id,
@@ -268,6 +262,7 @@ export function TrilhaDesktop({ chatGuideTargetRef }: { chatGuideTargetRef?: Rea
       <RastreadorDeMissoes
         classeId={classeAtual.classe_id}
         perfilDaMissao={perfilDaMissao(usuario?.perfis, usuario?.perfilAtivo)}
+        perfis={usuario?.perfis}
         topicos={topicosDoRastreador}
         atualId={atualId}
         palette={palette}

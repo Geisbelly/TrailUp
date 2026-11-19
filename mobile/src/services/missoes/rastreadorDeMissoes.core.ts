@@ -11,6 +11,7 @@
  */
 import type { Href } from "expo-router";
 
+import type { DesafioPublico } from "./desafio.core";
 import type { MissaoDoAluno } from "./missaoModel";
 
 /** O que o rastreador precisa saber de cada tópico da trilha. Vem do grafo + `classeAtual`. */
@@ -21,7 +22,38 @@ export type TopicoDoRastreador = {
   sequence: number;
   /** Ids das atividades DO PROFESSOR no tópico — é o que `criterio.atividade_id` aponta. */
   atividadeIds: readonly number[];
+  /** Ids dos conteúdos do professor no tópico — é o que `missoes.conteudo_id` do desafio aponta. */
+  conteudoIds: readonly number[];
 };
+
+/**
+ * Os tópicos do rastreador a partir do que a Trilha já tem carregado: o bloqueio e a ordem vêm do
+ * grafo (`useTrilha().grafo.nodes`) e as atividades e os conteúdos do professor, da turma
+ * (`classeAtual.topicos`, lidos de `vw_aluno_classe_detalhado`). A Trilha e a aba Social usam o
+ * mesmo mapeamento, e a Social não relê a trilha: ler a trilha de novo a cada navegação já
+ * derrubou o banco. Os conteúdos daqui são o que os desafios do tópico da vez consultam, sem uma
+ * leitura a mais de `conteudos`.
+ */
+export function topicosDoGrafo(
+  nos: readonly { id: string | number; locked: boolean; completed: boolean; sequence: number }[],
+  topicos: readonly {
+    id: string | number;
+    atividades?: readonly { id: string | number }[] | null;
+    conteudos?: readonly { id: string | number }[] | null;
+  }[],
+): TopicoDoRastreador[] {
+  return nos.map((n) => {
+    const t = topicos.find((x) => String(x.id) === String(n.id));
+    return {
+      id: Number(n.id),
+      locked: n.locked,
+      completed: n.completed,
+      sequence: n.sequence,
+      atividadeIds: (t?.atividades ?? []).map((a) => Number(a.id)),
+      conteudoIds: (t?.conteudos ?? []).map((c) => Number(c.id)).filter((id) => Number.isInteger(id) && id > 0),
+    };
+  });
+}
 
 export type DestinoDaMissao =
   /** Missão-entrega: abre o tópico já na atividade. */
@@ -29,13 +61,18 @@ export type DestinoDaMissao =
   /** Missão-meta (minutos, tópicos, atividades, acerto...): abre o tópico da vez, onde está o próximo passo. */
   | { tipo: "topico"; topicoId: number }
   /** O alvo existe, mas o tópico ainda está selado: o "Ir" mostra o tópico no mapa e o que falta. */
-  | { tipo: "bloqueado"; topicoId: number };
+  | { tipo: "bloqueado"; topicoId: number }
+  /** Missão-desafio: abre a tela do desafio. Ela não se cumpre na trilha, só no "Conferir". */
+  | { tipo: "desafio"; missaoId: number };
 
 /** A missão como sai da leitura: a da aba Social, com categoria e recompensa. */
 export type MissaoComExtras = MissaoDoAluno & {
   /** `missoes.categoria`. Sem a coluna (ou sem resposta), vale o default do banco. */
   categoria: "principal" | "secundaria";
   recompensa: Recompensa | null;
+  /** Só na missão-desafio (`carregarDesafiosDoTopico`). */
+  desafio?: DesafioPublico;
+  desafioGrupo?: string;
 };
 
 /** O destino é calculado na tela, não na leitura: muda quando o aluno avança na trilha. */
@@ -81,10 +118,11 @@ export function topicoDaVez(
  * próximo passo é melhor que um botão que não vai a lugar algum.
  */
 export function destinoDaMissao(
-  missao: Pick<MissaoDoAluno, "atividadeId" | "pedeAtividade">,
+  missao: Pick<MissaoDoAluno, "atividadeId" | "pedeAtividade"> & { id?: number; desafio?: DesafioPublico | null },
   topicos: readonly TopicoDoRastreador[],
   atualId: string | number | null | undefined,
 ): DestinoDaMissao | null {
+  if (missao.desafio && missao.id != null) return { tipo: "desafio", missaoId: missao.id };
   if (missao.atividadeId != null) {
     const dono = topicos.find((t) => t.atividadeIds.some((id) => Number(id) === missao.atividadeId));
     if (dono) {
@@ -113,9 +151,44 @@ export function comDestino(
   return missoes.map((m) => ({ ...m, destino: destinoDaMissao(m, topicos, atualId) }));
 }
 
-/** Rota do destino. A atividade vai como `?atividade=`, que a tela do tópico usa para abrir nela. */
+/**
+ * Os tópicos de onde vêm os desafios do aluno: o da vez (`topicoDaVez`) e o de `sequence`
+ * imediatamente menor, se não estiver selado. O desafio é sobre o que ele está estudando ou acabou
+ * de estudar, não sobre a trilha inteira.
+ */
+export function topicosDosDesafios(
+  topicos: readonly TopicoDoRastreador[],
+  atualId: string | number | null | undefined,
+): number[] {
+  const vez = topicoDaVez(topicos, atualId);
+  if (!vez) return [];
+  const anterior = [...topicos]
+    .filter((t) => t.sequence < vez.sequence)
+    .sort((a, b) => b.sequence - a.sequence)[0];
+  return anterior && !anterior.locked ? [vez.id, anterior.id] : [vez.id];
+}
+
+/**
+ * Os conteúdos dos tópicos de `topicosDosDesafios`, na mesma ordem: é o filtro `conteudo_id` da
+ * leitura dos desafios. Vêm da turma já carregada (`topicosDoGrafo`), não de uma consulta.
+ */
+export function conteudosDosDesafios(
+  topicos: readonly TopicoDoRastreador[],
+  atualId: string | number | null | undefined,
+): number[] {
+  const porId = new Map(topicos.map((t) => [t.id, t]));
+  return topicosDosDesafios(topicos, atualId).flatMap((id) => [...(porId.get(id)?.conteudoIds ?? [])]);
+}
+
+/**
+ * Rota do destino. A atividade vai como `?atividade=`, que a tela do tópico usa para abrir nela; o
+ * desafio vai à tela dele, na pilha raiz (`app/desafio/[id].tsx`), fora das abas: dentro da aba
+ * Social, o `router.push` do rastreador passava por cima do cadeado dela (que mora no `tabPress`)
+ * e deixava a pilha da Social só com o desafio, sem "voltar".
+ */
 export function rotaDoDestino(destino: DestinoDaMissao): Href | null {
   if (destino.tipo === "bloqueado") return null;
+  if (destino.tipo === "desafio") return `/desafio/${encodeURIComponent(String(destino.missaoId))}` as Href;
   const base = `/(tabs)/trilha/${encodeURIComponent(String(destino.topicoId))}`;
   return (destino.tipo === "atividade" ? `${base}?atividade=${destino.atividadeId}` : base) as Href;
 }
@@ -169,7 +242,7 @@ export function ordenarParaRastreador(
   const posicao = new Map(missoes.map((m, i) => [m.id, i]));
   const dia = (m: MissaoNoRastreador) => diasAtePrazo(m.prazo, agora) ?? Number.POSITIVE_INFINITY;
   const aqui = (m: MissaoNoRastreador) =>
-    atualId != null && m.destino != null && String(m.destino.topicoId) === String(atualId) ? 0 : 1;
+    atualId != null && m.destino != null && "topicoId" in m.destino && String(m.destino.topicoId) === String(atualId) ? 0 : 1;
   return missoes
     .filter(missaoEmAberto)
     .sort((a, b) => {
@@ -203,11 +276,16 @@ export function percentualDaMissao(m: Pick<MissaoDoAluno, "progresso" | "status"
 type LinhaDePontuacao = { tipo: string; pontos?: number | string | null; moedas?: number | string | null };
 
 /**
- * Quanto a missão paga, por `recompensa_tipo` — a chave de `eventos_pontuacao`.
+ * Quanto a missão paga, por `recompensa_tipo` — a chave de `eventos_pontuacao`. O que o banco paga,
+ * e não o que a tabela da turma diz:
  *
- * Mesma regra de `fn_pontos_do_evento`/`fn_moedas_do_evento`: a turma sobrepõe o global e NULL
- * herda (ver `resolverGanhoMoedas`). Zero nos dois é "sem recompensa", e o selo some: dizer
- * "+0" seria pior que não dizer nada.
+ * - **pontos:** só o global. `fn_pontos_do_evento(text)` não lê a turma, e
+ *   `eventos_pontuacao_classe.pontos` não tem efeito (`20261021_06:25-28`). Mostrar o da turma
+ *   prometia pontos que o rank não somava;
+ * - **moedas:** a turma sobrepõe o global e NULL herda, como em `fn_moedas_do_evento(tipo, classe)`
+ *   (`20260912_02`), que desde a `20261117_01` recebe a turma do prêmio de missão.
+ *
+ * Zero nos dois é "sem recompensa", e o selo some: dizer "+0" seria pior que não dizer nada.
  */
 export function resolverRecompensa(
   tipo: string | null | undefined,
@@ -218,7 +296,7 @@ export function resolverRecompensa(
   const num = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
   const g = globais.find((l) => l.tipo === tipo);
   const t = daTurma.find((l) => l.tipo === tipo);
-  const pontos = num(t?.pontos) ?? num(g?.pontos) ?? 0;
+  const pontos = num(g?.pontos) ?? 0;
   const moedas = num(t?.moedas) ?? num(g?.moedas) ?? 0;
   const r = { pontos: Number.isFinite(pontos) ? pontos : 0, moedas: Number.isFinite(moedas) ? moedas : 0 };
   return r.pontos > 0 || r.moedas > 0 ? r : null;
