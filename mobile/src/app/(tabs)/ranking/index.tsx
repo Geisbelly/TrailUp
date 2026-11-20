@@ -1,5 +1,6 @@
 import { HallBackground } from "@/components/HallTheme";
 import { RankEstadoVazio } from "@/components/ranking/RankEstadoVazio";
+import { ExplicacaoDaMetrica } from "@/components/metricas/ExplicacaoDaMetrica";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { RankDetalhe } from "@/app/(tabs)/ranking/[id]";
 import { RankingDesktop } from "@/components/web/RankingDesktop";
@@ -85,10 +86,18 @@ function RankingCelular() {
               })}
             </View>
             {rankAberto ? (
-              <Text style={[s.descricaoCelular, { color: palette.textMuted }]}>
-                <Text style={{ color: palette.text, fontWeight: "700" }}>{rankAberto.info.nome_rank}</Text>
-                {rankAberto.info.descricao ? ` · ${rankAberto.info.descricao}` : ""}
-              </Text>
+              // O detalhe abaixo vem sem o próprio título (`semBarraDeVolta`), então a explicação de
+              // como a posição é contada fica aqui, ao lado do nome do ranking.
+              <View style={s.descricaoComExplicacao}>
+                <Text style={[s.descricaoCelular, s.descricaoTexto, { color: palette.textMuted }]}>
+                  <Text style={{ color: palette.text, fontWeight: "700" }}>{rankAberto.info.nome_rank}</Text>
+                  {rankAberto.info.descricao ? ` · ${rankAberto.info.descricao}` : ""}
+                </Text>
+                <ExplicacaoDaMetrica
+                  chave="aluno.ranking"
+                  cores={{ texto: palette.text, suave: palette.textMuted, fundo: palette.surface, borda: palette.border, destaque: palette.accent }}
+                />
+              </View>
             ) : null}
             {idAberto !== null ? <RankDetalhe rankId={idAberto} semBarraDeVolta /> : null}
           </>
@@ -158,4 +167,6 @@ const s = StyleSheet.create({
   aba: { flex: 1, minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderWidth: 1, borderRadius: 8, paddingHorizontal: 6 },
   abaTexto: { fontFamily: FontFamily.interMedium, fontSize: 13, fontWeight: "700" },
   descricaoCelular: { fontSize: 13, lineHeight: 19, paddingHorizontal: 18, paddingVertical: 10 },
+  descricaoComExplicacao: { flexDirection: "row", alignItems: "center", paddingRight: 18 },
+  descricaoTexto: { flex: 1 },
 });

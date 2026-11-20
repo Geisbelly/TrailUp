@@ -1,6 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import { TEXTO_DO_ESTADO } from "./disponibilidade";
 import type { EstadoDosGargalos } from "./useGargalosDePersonalizacao";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 /**
  * Gargalos de personalização (#15): por formato do material-base, quantos estão prontos, na fila ou
@@ -26,7 +27,10 @@ export default function GargalosDePersonalizacao({ estado }: { estado: EstadoDos
 
   return (
     <section aria-labelledby="gargalos-de-personalizacao" className="min-w-0 rounded-[20px] border border-border bg-card px-[26px] py-6">
-      <h3 id="gargalos-de-personalizacao" className="text-lg text-foreground">Gargalos de personalização</h3>
+      <div className="flex items-center gap-1">
+        <h3 id="gargalos-de-personalizacao" className="text-lg text-foreground">Gargalos de personalização</h3>
+        <ExplicacaoDaMetrica chave="prof.gargalos_personalizacao" />
+      </div>
       <p className="mt-1 text-[12.5px] text-muted-foreground">
         Material-base por formato, somando todos os tópicos e perfis da turma. Para tentar de novo, use "Reprocessar
         falhas" na aba Personalizações.

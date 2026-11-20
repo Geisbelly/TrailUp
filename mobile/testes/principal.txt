@@ -227,3 +227,6 @@ src/components/resposta/editores.tela.test.tsx
 src/utils/personalizacaoAprovada.test.ts
 src/utils/topicosEmBreve.test.ts
 src/utils/chavesDoCacheDaRota.test.ts
+src/services/metricas/explicacoes.test.ts
+src/components/perfil/explicacoesNosPaineis.test.ts
+src/components/metricas/coresDaExplicacao.test.ts

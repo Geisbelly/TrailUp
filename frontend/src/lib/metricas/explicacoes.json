@@ -1,0 +1,425 @@
+{
+  "prof.tempo_ativo": {
+    "nome": "Tempo ativo médio",
+    "selo": "medido",
+    "oQueMede": "Quanto tempo, em média, cada aluno passou interagindo com o material dos tópicos desta turma, somando tudo desde a matrícula.",
+    "comoColeta": "O app conta como ativo os 15 segundos depois de cada toque ou rolagem e todo o tempo em que um áudio ou vídeo está tocando. Com o app em segundo plano ou o aparelho dormindo, nada conta.",
+    "atualiza": "O app envia o que contou a cada minuto de estudo; o card mostra o que já chegou ao banco.",
+    "limites": [
+      "A média é só entre os alunos que já têm tempo registrado: quem nunca estudou não entra como zero.",
+      "Não tem janela: é o acumulado da turma, não o da semana."
+    ],
+    "naoSignifica": "Não é o tempo com o app aberto (esse é o tempo médio de uso) nem o tempo do cronômetro de estudo.",
+    "referencia": "vw_metricas_turma_geral_classe.tempo_ativo_medio_seg <- vw_metricas_engajamento_aluno_classe <- vw_metricas_sessoes_aluno_dia (scope topic); mobile context/metricas/acumuladorLote.ts (IDLE_THRESHOLD_MS 15000); MetricasContext BATCH_INTERVAL_MS 60000"
+  },
+  "prof.total_alunos": {
+    "nome": "Total de alunos",
+    "selo": "medido",
+    "oQueMede": "Quantos alunos estão matriculados na turma escolhida (ou em todas as suas turmas, se nenhuma estiver selecionada).",
+    "comoColeta": "Contagem das matrículas da turma no banco. A busca por nome só filtra a tabela de alunos e não muda este número.",
+    "atualiza": "Ao abrir ou recarregar o painel.",
+    "naoSignifica": "Não diz quantos alunos estão estudando: aluno matriculado que nunca abriu o app também conta.",
+    "referencia": "DashboardSection.tsx (classe_aluno por classe_id; alunosDaTurma.length)"
+  },
+  "prof.media_notas": {
+    "nome": "Média de notas",
+    "selo": "regra",
+    "oQueMede": "A média, de 0 a 10, das notas dos alunos da turma que já têm nota.",
+    "comoColeta": "O banco calcula a nota de cada aluno: pontos obtidos ÷ pontos possíveis nas atividades dos tópicos publicados, vezes 10. Atividade com prazo vencido e sem entrega vale 0 até o professor corrigir; numa revisão pedida, vale a maior nota.",
+    "atualiza": "Cada vez que uma atividade é entregue ou corrigida.",
+    "limites": [
+      "Aluno sem nenhuma atividade avaliável ainda não tem nota e fica fora da média."
+    ],
+    "naoSignifica": "Não é a nota final da disciplina nem uma média por atividade: atividade que vale mais pontos pesa mais.",
+    "referencia": "trailup_recalcular_nota_classe_aluno; trg_classe_aluno_nota_pelo_banco; DashboardSection.tsx mediaDosPreenchidos(notaMedia)"
+  },
+  "prof.conclusao_media": {
+    "nome": "Conclusão média",
+    "selo": "regra",
+    "oQueMede": "Quanto do percurso da trilha, em média, os alunos da turma já concluíram.",
+    "comoColeta": "O banco conta, para cada aluno, os itens concluídos sobre o total do percurso nos tópicos publicados. O percurso é o material personalizado; enquanto ele não foi gerado, vale o material do professor.",
+    "atualiza": "A cada conteúdo, atividade ou item personalizado concluído.",
+    "limites": [
+      "A média é entre todos os matriculados: quem nunca começou entra como 0%."
+    ],
+    "naoSignifica": "Não mede quanto o aluno aprendeu, só quanto do caminho ele percorreu.",
+    "referencia": "trailup_recalcular_classe_aluno (classe_aluno.porcentagemConcluida); DashboardSection.tsx mediaConclusao (divide por totalAlunos)"
+  },
+  "prof.taxa_acertos": {
+    "nome": "Taxa de acertos",
+    "selo": "regra",
+    "oQueMede": "A média do percentual de acertos guardado na matrícula de cada aluno.",
+    "comoColeta": "O valor é gravado na matrícula pela API quando o progresso do material personalizado é salvo (média de acertos dos itens). O console tira a média só entre os alunos que têm esse valor.",
+    "atualiza": "Quando o app salva o progresso de um item personalizado.",
+    "limites": [
+      "Aluno sem esse valor fica fora da média; sem nenhum, o card mostra sem dado.",
+      "A meta exibida no card é provisória, não um critério pedagógico."
+    ],
+    "naoSignifica": "Não é a nota e não inclui as atividades do professor corrigidas pelo banco.",
+    "referencia": "api/app/repositories/personalizacao_progresso.py atualizar_classe_aluno_snapshot (rota upsert_progresso_personalizado); DashboardSection.tsx mediaAcertos; metas.ts META_ACERTOS_PCT"
+  },
+  "prof.risco_abandono": {
+    "nome": "Abandono médio",
+    "selo": "estimativa",
+    "oQueMede": "A parcela dos alunos com dado que estão na faixa alta de risco de abandonar a trilha.",
+    "comoColeta": "Um modelo de evasão combina, por aluno: cliques da semana contra as 4 anteriores, semanas sem clicar, semanas desde a matrícula, nota e atividades entregues, perdidas ou atrasadas. Sem nada pendente ou avaliável, vale só o tempo parado: mais de 30 dias é alto.",
+    "atualiza": "A cada leitura do painel, com os dados do momento.",
+    "limites": [
+      "Aluno que nunca estudou não tem faixa e fica fora da conta.",
+      "O modelo não foi validado com alunos desta plataforma."
+    ],
+    "naoSignifica": "Não é abandono que aconteceu: é a faixa alta de uma estimativa.",
+    "referencia": "vw_metricas_turma_geral_classe.taxa_risco_abandono_pct <- vw_metricas_engajamento_aluno_classe.risco_abandono_faixa (trailup_risco_evasao, trailup_faixa_risco); 20261031_08"
+  },
+  "prof.retorno_semanal": {
+    "nome": "Retorno semanal",
+    "selo": "regra",
+    "oQueMede": "Dos alunos que estudaram numa semana, quantos voltaram a estudar na semana seguinte.",
+    "comoColeta": "Olha as últimas 8 semanas completas (segunda a domingo, horário de Brasília). Estudar na semana é ter algum tempo ativo num tópico. Cada par de semanas seguidas conta: quem estudou na primeira entra na base e, se estudou também na segunda, conta como retorno.",
+    "atualiza": "Muda quando uma semana se completa, na virada de domingo para segunda.",
+    "limites": [
+      "A semana em andamento não entra."
+    ],
+    "naoSignifica": "Não é frequência às aulas nem quantos alunos abriram o app.",
+    "referencia": "vw_metricas_turma_geral_classe (CTEs semanas, ativo_semana, retorno) -> retorno_semanal_pct"
+  },
+  "prof.chat_apos_erro": {
+    "nome": "Chat após erro",
+    "selo": "regra",
+    "oQueMede": "Das mensagens que a turma mandou ao chat, quantas foram logo depois de errar uma questão.",
+    "comoColeta": "O app marca cada mensagem de chat com o contexto em que ela foi enviada; esta é a fração das marcadas como depois de um erro sobre todas as mensagens da turma.",
+    "atualiza": "Com os eventos que o app envia durante o estudo.",
+    "limites": [
+      "Sem nenhuma mensagem de chat na turma, o número aparece como 0%."
+    ],
+    "naoSignifica": "Não é a parcela de alunos que pediram ajuda, nem diz se a ajuda resolveu.",
+    "referencia": "vw_metricas_turma_geral_classe CTE chat_after_error (telemetria_eventos_app chat_message, trigger_context = after_error) -> uso_chat_apos_erro_pct"
+  },
+  "prof.tempo_uso": {
+    "nome": "Tempo médio de uso",
+    "selo": "medido",
+    "oQueMede": "Quanto tempo, em média, cada aluno ficou com o app aberto nesta turma, somando todas as sessões desde a matrícula.",
+    "comoColeta": "Cada sessão vai da abertura ao fechamento do app (ou ao último envio de dados, se ele foi fechado sem avisar).",
+    "atualiza": "Quando a sessão termina ou o app envia dados, a cada minuto.",
+    "limites": [
+      "A média é só entre os alunos que já abriram o app."
+    ],
+    "naoSignifica": "Não é tempo de estudo: inclui o tempo parado e fora do material. O tempo de estudo é o tempo ativo.",
+    "referencia": "vw_metricas_turma_geral_classe.tempo_medio_uso_seg <- vw_metricas_engajamento_aluno_classe.tempo_total_uso_seg <- vw_metricas_sessoes_aluno_dia.tempo_sessao_seg"
+  },
+  "prof.precisam_atencao": {
+    "nome": "Precisam de atenção",
+    "selo": "estimativa",
+    "oQueMede": "Alunos com pelo menos um sinal de alerta, com o fato, a data e o sinal que mais pesou.",
+    "comoColeta": "Crítico vem só do modelo de evasão (faixa alta). Atenção vem do modelo ou de fatos com data: 7 dias sem estudar, 30 dias sem estudar, 14 dias parado num tópico abaixo da mediana da turma ou nota abaixo de 5. Um fato não soma com outro para virar crítico.",
+    "atualiza": "A cada leitura do painel, com os dados do momento.",
+    "limites": [
+      "Aluno sem dado (nunca estudou, recusou a coleta ou está em modo restrito) não aparece aqui.",
+      "O modelo de evasão não foi validado com alunos desta plataforma."
+    ],
+    "naoSignifica": "Não é diagnóstico nem previsão certa: é um convite para olhar o aluno de perto.",
+    "referencia": "dashboard/risco.ts (NOTA_MINIMA 5, DIAS_INATIVO 7, DIAS_ESTAGNADO 14, DIAS_EVADIDO 30); vw_metricas_engajamento_aluno_classe (inativo_desde, evadido_desde, estagnado_*, risco_abandono_faixa)"
+  },
+  "prof.abandono_por_perfil": {
+    "nome": "Abandono por perfil",
+    "selo": "estimativa",
+    "oQueMede": "Por perfil BrainHex, a parcela dos alunos com dado na faixa alta de risco de abandonar nas próximas 4 semanas.",
+    "comoColeta": "É o mesmo modelo de evasão do card Abandono médio, separado por perfil. O seletor escolhe quem entra em cada perfil: só o perfil dominante, só o segundo, ou todo perfil com afinidade de 20% ou mais. Com várias turmas, a conta pondera pelo tamanho de cada uma.",
+    "atualiza": "A cada leitura do painel.",
+    "limites": [
+      "No modo de afinidade, o mesmo aluno pode contar em mais de um perfil.",
+      "O modelo não foi validado com alunos desta plataforma."
+    ],
+    "naoSignifica": "Não mostra que um perfil abandona mais por ser daquele perfil: a turma é pequena e a estimativa não separa causa.",
+    "referencia": "graficos.ts abandonoPorPerfil; vw_metricas_turma_perfil_classe.taxa_risco_abandono_pct (segmento majoritario|segundo|afinidade_20_plus)"
+  },
+  "prof.distribuicao_notas": {
+    "nome": "Distribuição de notas",
+    "selo": "regra",
+    "oQueMede": "Quantos alunos estão em cada faixa de nota: abaixo de 5, de 5 a 7 e 7 ou mais.",
+    "comoColeta": "Usa a nota de 0 a 10 que o banco calcula para cada matrícula (pontos obtidos ÷ pontos possíveis nas atividades dos tópicos publicados).",
+    "atualiza": "Cada vez que uma atividade é entregue ou corrigida.",
+    "limites": [
+      "Aluno sem nota ainda fica fora do gráfico."
+    ],
+    "naoSignifica": "Não é a nota final da disciplina nem compara alunos de turmas diferentes.",
+    "referencia": "vw_metricas_distribuicao_turma_classe (metrica nota_media: <5 baixa, <7 media, senão alta); graficos.ts distribuicaoDeNotas ignora sem_dado"
+  },
+  "prof.inatividade": {
+    "nome": "Inatividade por perfil",
+    "selo": "medido",
+    "oQueMede": "Por perfil BrainHex, a parcela dos alunos que estão há 7 dias ou mais sem estudar.",
+    "comoColeta": "Estudar é ter algum tempo ativo num tópico (toque, rolagem ou mídia tocando). Conta a data do último registro desses, por aluno. O seletor escolhe quem entra em cada perfil, como no gráfico de abandono.",
+    "atualiza": "A cada leitura do painel.",
+    "limites": [
+      "Perfil com menos alunos que o mínimo do catálogo (5, se a leitura falhar) fica oculto.",
+      "Aluno que nunca estudou não conta como inativo: ele não tem data de última atividade."
+    ],
+    "naoSignifica": "Não diz por que o aluno parou nem que ele saiu da disciplina.",
+    "referencia": "graficos.ts inatividadePorPerfil; vw_metricas_turma_perfil_classe.alunos_inativos <- vw_metricas_engajamento_aluno_classe.inativo_desde (ultima_atividade_em < now() - 7 days); useNMinimo"
+  },
+  "prof.abandono_por_etapa": {
+    "nome": "Abandono por etapa",
+    "selo": "regra",
+    "oQueMede": "Por tópico da trilha: tempo ativo por aluno, alunos ativos, quantos iniciaram, quantos concluíram e quantos estão parados.",
+    "comoColeta": "Parado é quem começou o tópico, não concluiu, está abaixo da mediana da turma nele e não avança há 14 dias. O tempo ativo é o da janela escolhida no topo do painel.",
+    "atualiza": "A cada leitura do painel, para a janela escolhida.",
+    "limites": [
+      "Só para uma turma por vez.",
+      "Célula com menos alunos que o mínimo do catálogo volta vazia."
+    ],
+    "naoSignifica": "Parado não é desistente: pode ser só um ritmo mais lento.",
+    "referencia": "RPC metricas_engajamento_turma (por_topico), useKpisPorTopico, porTopico.ts; catálogo prof.abandono_por_etapa"
+  },
+  "prof.risco_reprovacao": {
+    "nome": "Risco de reprovação",
+    "selo": "regra",
+    "oQueMede": "Alunos que juntam dois ou mais sinais de dificuldade ao mesmo tempo.",
+    "comoColeta": "O banco confere, por aluno: uso da última semana caiu pela metade frente às 3 anteriores; acerto abaixo de 50% em pelo menos 5 questões dos últimos 30 dias; presença abaixo de 50% das aulas dos últimos 28 dias; 2 ou mais prazos perdidos; e o mesmo estado difícil repetido.",
+    "atualiza": "A cada leitura do painel.",
+    "limites": [
+      "Os limites vêm da configuração do banco e podem ser ajustados.",
+      "Só para uma turma por vez, e só o professor vê."
+    ],
+    "naoSignifica": "Não é previsão de nota final: é um ponto de partida para uma conversa de apoio.",
+    "referencia": "RPC professor_risco_reprovacao_turma (app_config risco_reprovacao_*: min_fatores 2, queda_pct 50, queda_base_min 3, acertos_min_pct 50, acertos_min_respostas 5, presenca_min_pct 50, presenca_min_aulas 2, prazos_perdidos 2)"
+  },
+  "prof.gargalos_personalizacao": {
+    "nome": "Gargalos de personalização",
+    "selo": "medido",
+    "oQueMede": "Por formato do material-base (texto, áudio, apresentação), quantos estão prontos, na fila ou gerando, e quantos falharam.",
+    "comoColeta": "Conta os materiais-base da turma, gerados por tópico, conteúdo e perfil BrainHex, pelo status que o gerador grava em cada formato.",
+    "atualiza": "A cada leitura do painel.",
+    "naoSignifica": "Não diz se o material é bom, só se ele existe.",
+    "referencia": "dashboard/gargalos.ts (normalizeMediaStatus sobre conteudo_personalizado.materiais), useGargalosDePersonalizacao"
+  },
+  "prof.fila_personalizacao": {
+    "nome": "Fila de personalização",
+    "selo": "medido",
+    "oQueMede": "Os pedidos de geração de material da turma na janela escolhida: quantos, quanto demoraram, onde falharam e quanto precisou ser refeito.",
+    "comoColeta": "O banco agrega os pedidos da fila de personalização e os seus alvos, e decide os sinais de alerta comparando com a meta de cada número.",
+    "atualiza": "A cada leitura do painel, para a janela escolhida.",
+    "limites": [
+      "Só para uma turma por vez."
+    ],
+    "naoSignifica": "Não mede o aprendizado dos alunos: é a saúde da geração de material.",
+    "referencia": "RPC personalizacao_kpis_operacionais (20261102_12), kpisOperacionais.ts, useKpisOperacionais"
+  },
+  "prof.evolucao": {
+    "nome": "Evolução da turma",
+    "selo": "regra",
+    "oQueMede": "Semana a semana, nas últimas 10 semanas: quantas respostas a turma entregou (barras) e quanto delas estava certo (linha).",
+    "comoColeta": "Cada resposta a uma atividade da turma, enviada por aluno matriculado, fica registrada com a data no banco. Acertos = respostas certas ÷ respostas enviadas na semana.",
+    "atualiza": "A cada resposta enviada. A semana corrente ainda está em andamento.",
+    "limites": [
+      "Semana sem nenhuma resposta fica sem ponto de acerto, em vez de 0%.",
+      "Nota e progresso não aparecem aqui: o banco não guarda o histórico deles semana a semana."
+    ],
+    "naoSignifica": "Uma semana com mais acerto não prova que a turma aprendeu mais: as atividades mudam de uma semana para outra.",
+    "referencia": "dashboard/evolucao.ts (SEMANAS_DA_SERIE 10; eventos_aluno respostas), useEvolucaoDaTurma"
+  },
+  "prof.mudancas_relevantes": {
+    "nome": "Mudanças relevantes",
+    "selo": "medido",
+    "oQueMede": "O que mudou na trilha e no material no mesmo período do gráfico: tópicos criados e gerações de material concluídas.",
+    "comoColeta": "Lista os registros com data do próprio sistema: criação de tópicos e pedidos de personalização concluídos. Gerações do mesmo tipo e tópico no mesmo dia viram uma linha só.",
+    "atualiza": "A cada leitura da aba.",
+    "naoSignifica": "Não diz que uma mudança causou a variação do gráfico: as duas só aconteceram no mesmo período.",
+    "referencia": "dashboard/evolucao.ts (eventos datados: personalizacao_jobs concluídos, topicos.created_at)"
+  },
+  "prof.conteudo_por_topico": {
+    "nome": "Conteúdo por tópico",
+    "selo": "regra",
+    "oQueMede": "Para cada conteúdo da trilha: quantos alunos da turma abriram (consumo), quantos concluíram e, se houver atividade ligada a ele, quanto a turma errou.",
+    "comoColeta": "Abriu é ter começado o conteúdo do professor ou qualquer item personalizado dele. Concluiu vem do status do conteúdo. O erro é 100% menos a média de acerto das atividades concluídas ligadas ao conteúdo.",
+    "atualiza": "A cada leitura da aba.",
+    "limites": [
+      "Erro abaixo de 15% conta como baixo e de 40% ou mais como alto.",
+      "Conteúdo sem atividade ligada não tem erro."
+    ],
+    "naoSignifica": "Consumo baixo não quer dizer que o conteúdo é ruim: pode ser só um tópico que a turma ainda não alcançou.",
+    "referencia": "dashboard/conteudo.ts metricasPorConteudo, erroMedio, ERRO_ALTO_PCT 40, ERRO_BAIXO_PCT 15; useConteudoDaTurma"
+  },
+  "prof.insights": {
+    "nome": "Insights da turma",
+    "selo": "estimativa",
+    "oQueMede": "Observações e sugestões sobre a turma escritas pela IA, e a parcela das sugestões que você aceitou.",
+    "comoColeta": "Quando você pede para atualizar, a API manda à IA um resumo dos dados da turma e grava o que ela escreveu, em lote. Aceitar ou ignorar fica registrado. A taxa é aceitas ÷ respondidas nos últimos 30 dias.",
+    "atualiza": "Só quando alguém pede uma nova geração, com intervalo mínimo de 5 minutos.",
+    "limites": [
+      "Sem modelo de linguagem disponível, nada é gerado: não existe insight de reserva.",
+      "Pendente não entra na taxa de aceitação."
+    ],
+    "naoSignifica": "Não é diagnóstico nem conclusão verificada: é uma leitura da IA para você conferir.",
+    "referencia": "dashboard/insights.ts (loteMaisRecentePorTurma, taxa de aceitação 30 dias); POST /api/v1/insights/turma/{classe_id}/gerar; tabela intervencoes (20260929_01)"
+  },
+  "prof.alertas_por_aluno": {
+    "nome": "Alertas por aluno",
+    "selo": "estimativa",
+    "oQueMede": "Alunos que registraram o mesmo estado difícil (frustrado, ansioso, sobrecarregado ou cansado) em vários ciclos de estudo seguidos.",
+    "comoColeta": "A cada ciclo de estudo, regras automáticas estimam o estado do aluno a partir da telemetria e do desempenho. Se o mesmo estado aparece em 3 dos 5 últimos registros, nasce um alerta, no máximo um por aluno e estado a cada 7 dias.",
+    "atualiza": "Durante o estudo do aluno, a cada ciclo de análise.",
+    "limites": [
+      "O estado é inferido por uma heurística, não declarado pelo aluno nem validado com alunos."
+    ],
+    "naoSignifica": "Não é avaliação psicológica: é um sinal para uma conversa.",
+    "referencia": "dashboard/insights.ts (alertas sem geracao_id); api agente_intervencao, memoria_aluno _JANELA_RECORRENCIA 5, _detectar_recorrencia (3 de 5); api/app/services/behavioral_personalization.py _infer_mental_state (regras)"
+  },
+  "prof.guia_conceitos": {
+    "nome": "Onde a turma trava",
+    "selo": "estimativa",
+    "oQueMede": "Os conceitos que mais apareceram em perguntas ao Guia marcadas com dificuldade.",
+    "comoColeta": "Ao responder, a IA do Guia classifica cada pergunta (intenção, assunto, conceitos e dificuldade). Só essa classificação é guardada, nunca o texto que o aluno escreveu.",
+    "atualiza": "A cada pergunta feita ao Guia.",
+    "limites": [
+      "A dificuldade é a leitura da IA sobre a pergunta, não uma medida da resposta do aluno."
+    ],
+    "naoSignifica": "Não é a lista dos conceitos que a turma não sabe: só mostra quem perguntou.",
+    "referencia": "dashboard/guia.ts conceitosDificeis; views do chat_guia_registros (20261118_01); api/app/schemas/mentor_chat.py (dificuldade nenhuma|alguma|travado)"
+  },
+  "prof.guia_topicos": {
+    "nome": "Perguntas por tópico",
+    "selo": "estimativa",
+    "oQueMede": "Por tópico, quantas perguntas foram feitas ao Guia, por quantos alunos, e quantas eram dúvida de matéria ou pedido da resposta pronta.",
+    "comoColeta": "A contagem de perguntas é direta. O tipo de cada uma (dúvida, pedido de resposta, navegação e outros) é a classificação que a IA do Guia faz ao responder.",
+    "atualiza": "A cada pergunta feita ao Guia.",
+    "naoSignifica": "Muitas perguntas num tópico não quer dizer que ele está mal explicado: pode ser só o tópico que mais gente estudou.",
+    "referencia": "dashboard/guia.ts topicosNaOrdem, normalizarTurmaTopico; api/app/schemas/mentor_chat.py (intencao)"
+  },
+  "prof.guia_por_aluno": {
+    "nome": "Guia por aluno",
+    "selo": "estimativa",
+    "oQueMede": "Por aluno e tópico: perguntas ao Guia, quantas com dificuldade ou travado, pedidos da resposta pronta e o acerto antes e depois da primeira conversa.",
+    "comoColeta": "Travado e dificuldade são a classificação da IA. O acerto antes e depois vem das tentativas do aluno no tópico, separadas pela hora da primeira conversa com o Guia.",
+    "atualiza": "A cada pergunta ou tentativa.",
+    "limites": [
+      "Com poucas tentativas de um dos lados, o antes e depois quase não diz nada."
+    ],
+    "naoSignifica": "O acerto antes e depois mostra o que aconteceu no tempo; não prova que o Guia ajudou.",
+    "referencia": "dashboard/guia.ts alunosParaOlhar, textoAntesDepois"
+  },
+  "aluno.nota": {
+    "nome": "Nota média do aluno",
+    "selo": "regra",
+    "oQueMede": "A nota do aluno na turma, de 0 a 10.",
+    "comoColeta": "O banco soma os pontos obtidos e divide pelos pontos possíveis nas atividades dos tópicos publicados, vezes 10. Atividade com prazo vencido e sem entrega vale 0 até você corrigir; numa revisão pedida, vale a maior nota.",
+    "atualiza": "Cada vez que uma atividade é entregue ou corrigida.",
+    "limites": [
+      "Sem nenhuma atividade avaliável, aparece um traço em vez de nota."
+    ],
+    "naoSignifica": "Não é a nota final da disciplina: atividade que vale mais pontos pesa mais.",
+    "referencia": "trailup_recalcular_nota_classe_aluno -> classe_aluno.notaMedia; CabecalhoAluno.tsx"
+  },
+  "aluno.progresso": {
+    "nome": "Trilha concluída",
+    "selo": "regra",
+    "oQueMede": "Quanto do percurso da trilha o aluno já concluiu.",
+    "comoColeta": "O banco conta os itens concluídos sobre o total do percurso nos tópicos publicados. O percurso é o material personalizado do aluno; enquanto ele não foi gerado, vale o material do professor, que depois conta como bônus.",
+    "atualiza": "A cada conteúdo, atividade ou item personalizado concluído.",
+    "naoSignifica": "Não mede quanto o aluno aprendeu, só quanto do caminho ele percorreu.",
+    "referencia": "trailup_recalcular_classe_aluno -> classe_aluno.porcentagemConcluida; trailup_recalcular_topico_aluno"
+  },
+  "aluno.acertos": {
+    "nome": "Acertos do aluno",
+    "selo": "regra",
+    "oQueMede": "O percentual de acertos guardado na matrícula do aluno.",
+    "comoColeta": "É gravado pela API quando o progresso do material personalizado é salvo, como a média de acertos dos itens.",
+    "atualiza": "Quando o app salva o progresso de um item personalizado.",
+    "limites": [
+      "Sem esse valor, aparece um traço."
+    ],
+    "naoSignifica": "Não é a nota e não inclui as atividades do professor corrigidas pelo banco.",
+    "referencia": "classe_aluno.acertosPercentual <- api personalizacao_progresso.py atualizar_classe_aluno_snapshot"
+  },
+  "prof.risco_aluno": {
+    "nome": "Risco de abandono do aluno",
+    "selo": "estimativa",
+    "oQueMede": "A faixa de risco de o aluno abandonar a trilha nas próximas 4 semanas: alto, atenção ou normal.",
+    "comoColeta": "Um modelo de evasão combina cliques da semana contra as 4 anteriores, semanas sem clicar, semanas desde a matrícula, nota e atividades entregues, perdidas ou atrasadas. Sem nada pendente ou avaliável, vale só o tempo parado (30 dias é alto, 7 é atenção).",
+    "atualiza": "A cada leitura do painel.",
+    "limites": [
+      "O modelo não foi validado com alunos desta plataforma."
+    ],
+    "naoSignifica": "Não diz que o aluno vai abandonar: é uma estimativa para orientar uma conversa.",
+    "referencia": "vw_metricas_engajamento_aluno_classe.risco_abandono_faixa (trailup_risco_evasao, trailup_faixa_risco)"
+  },
+  "aluno.ultimo_estudo": {
+    "nome": "Último estudo",
+    "selo": "medido",
+    "oQueMede": "Quando o aluno estudou pela última vez nesta turma.",
+    "comoColeta": "É a data do último registro de tempo ativo num tópico (toque, rolagem ou mídia tocando), enviado pelo app.",
+    "atualiza": "A cada envio do app, cerca de um minuto depois de estudar.",
+    "naoSignifica": "Não conta abrir o app sem estudar nem conversar com o Guia fora de um tópico.",
+    "referencia": "vw_metricas_engajamento_aluno_classe.ultima_atividade_em (scope topic, active_sec > 0)"
+  },
+  "aluno.tempo_total": {
+    "nome": "Tempo ativo do aluno",
+    "selo": "medido",
+    "oQueMede": "Quanto tempo o aluno passou interagindo com o material dos tópicos desta turma, somando tudo.",
+    "comoColeta": "O app conta como ativo os 15 segundos depois de cada toque ou rolagem e todo o tempo com áudio ou vídeo tocando. Com o app em segundo plano ou o aparelho dormindo, nada conta. O banco soma por tópico.",
+    "atualiza": "A cada envio do app, cerca de um minuto.",
+    "naoSignifica": "Não é o tempo com o material aberto (essa é a presença) nem o tempo do cronômetro de estudo.",
+    "referencia": "classe_aluno.tempoGastoMin = soma de topico_aluno.tempo_gasto_min (trailup_tempo_telemetria_min, active_sec scope topic); acumuladorLote.ts"
+  },
+  "prof.presenca_aluno": {
+    "nome": "Presença",
+    "selo": "medido",
+    "oQueMede": "Quanto tempo o aluno ficou com o material dos tópicos aberto na tela, mesmo parado.",
+    "comoColeta": "Soma o tempo de tela aberta que o app registra em cada tópico, sem exigir toque. É sempre maior ou igual ao tempo ativo.",
+    "atualiza": "A cada envio do app, cerca de um minuto.",
+    "limites": [
+      "Sem nenhum registro, o campo some, em vez de mostrar zero."
+    ],
+    "naoSignifica": "Não é tempo de estudo: o aluno pode ter deixado a tela aberta e saído.",
+    "referencia": "dashboard/presencaPorAluno.ts (vw_telemetria_tempo_topico_aluno, dwell_sec scope topic)"
+  },
+  "aluno.afinidades": {
+    "nome": "Afinidade entre os perfis",
+    "selo": "regra",
+    "oQueMede": "O quanto o aluno se parece com cada um dos 7 perfis BrainHex, de 0 a 100%.",
+    "comoColeta": "Sai do questionário BrainHex que o aluno responde no cadastro. O perfil dominante é o de maior afinidade.",
+    "atualiza": "Só quando o aluno responde o questionário de novo.",
+    "naoSignifica": "Não é um diagnóstico de personalidade nem de capacidade: é a preferência de jogo que o próprio aluno declarou.",
+    "referencia": "aluno_perfil.afinidade (frontend/src/features/signup/brainhex.ts); AbaPerfil.tsx"
+  },
+  "prof.evolucao_aluno": {
+    "nome": "Evolução do aluno",
+    "selo": "regra",
+    "oQueMede": "Dia a dia, os acertos do aluno nas questões, ao lado da nota, do progresso e da nota média da turma.",
+    "comoColeta": "Acertos do dia = respostas certas ÷ tentativas nas questões daquele dia. Entram os dias em que o aluno respondeu questão ou teve tempo ativo.",
+    "atualiza": "A cada resposta ou envio do app.",
+    "limites": [
+      "Nota e progresso em cada dia são o valor de hoje repetido: o banco não guarda o histórico deles.",
+      "Dia com tempo ativo mas sem questão aparece com 0% de acerto."
+    ],
+    "naoSignifica": "A linha de nota e de progresso não mostra como elas mudaram com o tempo.",
+    "referencia": "vw_metricas_evolucao_desempenho_aluno_dia (nota_media_desempenho e progresso_trilha_pct = classe_aluno atual; taxa_acertos_pct COALESCE 0); aluno/calculos.ts montarSerieEvolucao"
+  },
+  "prof.consumo_personalizado": {
+    "nome": "Consumo do material personalizado",
+    "selo": "medido",
+    "oQueMede": "Quanto do material personalizado do aluno já foi concluído, quantas personalizações e itens ele tem e o tempo nelas.",
+    "comoColeta": "Conta os itens personalizados com status concluído ou 100%, sobre todos os itens do aluno, a partir do progresso que o app grava por item.",
+    "atualiza": "Quando o app salva o progresso de um item.",
+    "naoSignifica": "Não inclui o material do professor nem diz se o aluno entendeu o conteúdo.",
+    "referencia": "dashboard/aluno/calculos.ts consumoTotal, itemConcluido (personalizacao_item_progresso)"
+  },
+  "prof.tentativas": {
+    "nome": "Tentativas por atividade",
+    "selo": "medido",
+    "oQueMede": "Por atividade, quantas tentativas o aluno fez, quando começou e entregou cada uma, e o resultado.",
+    "comoColeta": "Cada tentativa é registrada pelo banco, com início e entrega pelo relógio do servidor, não do aparelho. O cronômetro mostra a escolha do aluno ou o padrão do perfil.",
+    "atualiza": "A cada tentativa iniciada ou entregue.",
+    "naoSignifica": "O tempo da tentativa não entra na nota e não é o tempo de estudo do aluno.",
+    "referencia": "dashboard/aluno/tentativas.ts (atividade_tentativas, aluno_cronometro, fn_cronometro_ligado)"
+  },
+  "prof.ranking": {
+    "nome": "Posições do ranking",
+    "selo": "regra",
+    "oQueMede": "A posição de cada aluno da turma no critério deste ranking.",
+    "comoColeta": "Os pontos dependem do critério: XP somado no período, tempo ativo, percentual da trilha concluída, acertos, ranqueada, missões ou elo. O banco ordena a turma e calcula as posições.",
+    "atualiza": "Em tempo real enquanto o período está aberto; ao fechar, as posições ficam congeladas.",
+    "naoSignifica": "Não é avaliação nem nota. No app, o aluno vê só as primeiras posições da turma e a própria.",
+    "referencia": "vw_rank_posicoes_por_classe_todas (CASE rt.criterio), vw_rank_posicoes_por_classe; RanksSection.tsx"
+  }
+}

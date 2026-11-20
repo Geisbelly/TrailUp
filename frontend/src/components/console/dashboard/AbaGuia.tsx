@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 import { alunosParaOlhar, conceitosDificeis, nomeDoTopico, resumir, textoAntesDepois, topicosNaOrdem } from "./guia";
 import { useGuiaDaTurma } from "./useGuiaDaTurma";
 import type { Aluno } from "./aluno/tipos";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
+import type { ChaveMetrica } from "@/lib/metricas/explicacoes";
 
 const alunosTxt = (n: number) => `${n} ${n === 1 ? "aluno" : "alunos"}`;
 const LIMITE_DE_ALUNOS = 30;
@@ -17,13 +19,28 @@ function Kpi({ rotulo, valor, nota, alerta }: { rotulo: string; valor: number; n
   );
 }
 
-function Secao({ id, titulo, subtitulo, children }: { id: string; titulo: string; subtitulo: string; children: ReactNode }) {
+function Secao({
+  id,
+  titulo,
+  subtitulo,
+  explicacao,
+  children,
+}: {
+  id: string;
+  titulo: string;
+  subtitulo: string;
+  explicacao: ChaveMetrica;
+  children: ReactNode;
+}) {
   return (
     <section aria-labelledby={id} className="overflow-hidden rounded-[20px] border border-border bg-card">
       <div className="px-[26px] pb-4 pt-[22px]">
-        <h3 id={id} className="text-lg text-foreground">
-          {titulo}
-        </h3>
+        <div className="flex items-center gap-1">
+          <h3 id={id} className="text-lg text-foreground">
+            {titulo}
+          </h3>
+          <ExplicacaoDaMetrica chave={explicacao} />
+        </div>
         <p className="mt-1 text-[12.5px] text-muted-foreground">{subtitulo}</p>
       </div>
       {children}
@@ -121,7 +138,7 @@ export default function AbaGuia({
         />
       </div>
 
-      <Secao id="guia-conceitos" titulo="Onde a turma trava" subtitulo="Conceitos que apareceram em perguntas com dificuldade, do mais citado ao menos citado">
+      <Secao id="guia-conceitos" explicacao="prof.guia_conceitos" titulo="Onde a turma trava" subtitulo="Conceitos que apareceram em perguntas com dificuldade, do mais citado ao menos citado">
         {conceitos.length === 0 ? (
           <p className="px-[26px] pb-6 text-sm text-muted-foreground">Nenhuma pergunta com dificuldade ainda.</p>
         ) : (
@@ -159,7 +176,7 @@ export default function AbaGuia({
         )}
       </Secao>
 
-      <Secao id="guia-topicos" titulo="Perguntas por tópico" subtitulo="Na ordem da trilha. Perguntas feitas fora de um tópico ficam por último">
+      <Secao id="guia-topicos" explicacao="prof.guia_topicos" titulo="Perguntas por tópico" subtitulo="Na ordem da trilha. Perguntas feitas fora de um tópico ficam por último">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] table-fixed border-collapse text-left">
             <colgroup>
@@ -197,6 +214,7 @@ export default function AbaGuia({
 
       <Secao
         id="guia-alunos"
+        explicacao="prof.guia_por_aluno"
         titulo="Por aluno"
         subtitulo="Quem travou aparece primeiro. O acerto antes e depois da primeira conversa no tópico mostra o que aconteceu no tempo, não prova que o Guia ajudou"
       >

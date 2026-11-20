@@ -2,6 +2,8 @@ import { ChevronLeft } from "lucide-react";
 import { PerfilAvatar, PerfilChip } from "../PerfilVisual";
 import { rotuloDaUltimaAtividade } from "../ultimaAtividade";
 import type { AlunoAnalisado } from "./tipos";
+import ExplicacaoDaMetrica from "../../comum/ExplicacaoDaMetrica";
+import type { ChaveMetrica } from "@/lib/metricas/explicacoes";
 
 const ROTULO_DO_RISCO = { alto: "crítico", atencao: "atenção", normal: "saudável" } as const;
 
@@ -25,16 +27,17 @@ export default function CabecalhoAluno({
   rotuloVoltar: string;
   onVoltar: () => void;
 }) {
-  const numeros: { rotulo: string; valor: string; nota?: string }[] = [
-    { rotulo: "Nota média", valor: aluno.temNota ? aluno.notaMedia.toFixed(1) : "—" },
-    { rotulo: "Trilha concluída", valor: `${aluno.porcentagemConcluida.toFixed(0)}%` },
-    { rotulo: "Acertos", valor: aluno.temAcertos ? `${aluno.acertosPercentual.toFixed(0)}%` : "—" },
+  const numeros: { rotulo: string; explicacao: ChaveMetrica; valor: string; nota?: string }[] = [
+    { rotulo: "Nota média", explicacao: "aluno.nota", valor: aluno.temNota ? aluno.notaMedia.toFixed(1) : "—" },
+    { rotulo: "Trilha concluída", explicacao: "aluno.progresso", valor: `${aluno.porcentagemConcluida.toFixed(0)}%` },
+    { rotulo: "Acertos", explicacao: "aluno.acertos", valor: aluno.temAcertos ? `${aluno.acertosPercentual.toFixed(0)}%` : "—" },
     ...(aluno.riscoFaixa === null
       ? []
       : [
           {
             // Faixa do modelo de evasão do core (F5); a taxa antiga media "ainda não terminou".
             rotulo: "Abandono",
+            explicacao: "prof.risco_aluno" as const,
             valor: ROTULO_DO_RISCO[aluno.riscoFaixa],
             nota:
               taxaAbandonoDaTurmaPct === null
@@ -42,16 +45,17 @@ export default function CabecalhoAluno({
                 : `turma: ${Math.round(taxaAbandonoDaTurmaPct * 10) / 10}% em risco alto`,
           },
         ]),
-    { rotulo: "Último estudo", valor: rotuloDaUltimaAtividade(aluno.ultimaAtividadeEm, new Date()) },
+    { rotulo: "Último estudo", explicacao: "aluno.ultimo_estudo", valor: rotuloDaUltimaAtividade(aluno.ultimaAtividadeEm, new Date()) },
     // "Tempo total" era o rotulo de um numero que conta so' o tempo ATIVO:
     // material aberto e parado ficava de fora, e num topico medido em producao
     // isso era 6,40 min contra 35,38 de presenca. Dois numeros, dois nomes.
-    { rotulo: "Tempo ativo", valor: formatarTempo(aluno.tempoGastoMin) },
+    { rotulo: "Tempo ativo", explicacao: "aluno.tempo_total", valor: formatarTempo(aluno.tempoGastoMin) },
     ...(aluno.tempoPresencaMin === null
       ? []
       : [
           {
             rotulo: "Presença",
+            explicacao: "prof.presenca_aluno" as const,
             valor: formatarTempo(aluno.tempoPresencaMin),
             nota: "com o material aberto",
           },
@@ -88,7 +92,10 @@ export default function CabecalhoAluno({
         <dl className="mt-[22px] flex flex-wrap gap-x-[34px] gap-y-4">
           {numeros.map((n) => (
             <div key={n.rotulo}>
-              <dt className="console-label-sm !text-[11px]">{n.rotulo}</dt>
+              <dt className="flex items-center gap-0.5">
+                <span className="console-label-sm !text-[11px]">{n.rotulo}</span>
+                <ExplicacaoDaMetrica chave={n.explicacao} />
+              </dt>
               <dd className="mt-1.5 text-2xl font-extrabold text-foreground">{n.valor}</dd>
               {n.nota && <dd className="mt-0.5 text-[11px] text-muted-foreground">{n.nota}</dd>}
             </div>

@@ -1,5 +1,6 @@
 import { CHAVE, estadoDoCard, TEXTO_DO_ESTADO, type Disponibilidade } from "./disponibilidade";
 import type { KpisPorTopico } from "./useKpisPorTopico";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 const minutos = (seg: number | null) => (seg === null ? "—" : `${Math.round(seg / 60)} min`);
 
@@ -28,7 +29,10 @@ export default function AbandonoPorEtapa({
 
   return (
     <section aria-labelledby="abandono-por-etapa" className="min-w-0 rounded-[20px] border border-border bg-card px-[26px] py-6">
-      <h3 id="abandono-por-etapa" className="text-lg text-foreground">Abandono por etapa</h3>
+      <div className="flex items-center gap-1">
+        <h3 id="abandono-por-etapa" className="text-lg text-foreground">Abandono por etapa</h3>
+        <ExplicacaoDaMetrica chave="prof.abandono_por_etapa" />
+      </div>
       <p className="mt-1 text-[12.5px] text-muted-foreground">
         Por tópico: quem iniciou, quem concluiu e quem está parado há 14 dias abaixo da mediana da turma. Tempo ativo na
         janela escolhida no topo.
