@@ -11,6 +11,7 @@ import {
   textoDoGatilho,
 } from "./kpisOperacionais";
 import type { EstadoDosKpisOperacionais } from "./useKpisOperacionais";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 const TH = "px-3 py-2 font-semibold";
 const TD = "px-3 py-2.5 text-foreground";
@@ -50,7 +51,10 @@ export default function FilaDePersonalizacao({
 
   return (
     <section aria-labelledby="fila-de-personalizacao" className="min-w-0 rounded-[20px] border border-border bg-card px-[26px] py-6">
-      <h3 id="fila-de-personalizacao" className="text-lg text-foreground">Fila de personalização</h3>
+      <div className="flex items-center gap-1">
+        <h3 id="fila-de-personalizacao" className="text-lg text-foreground">Fila de personalização</h3>
+        <ExplicacaoDaMetrica chave="prof.fila_personalizacao" />
+      </div>
       <p className="mt-1 text-[12.5px] text-muted-foreground">
         Pedidos de geração criados na janela escolhida no topo: quanto demoraram para terminar, onde falharam e quanto
         precisou ser refeito. O tempo conta de quando o pedido entrou na fila até terminar; pedido ainda aberto fica fora

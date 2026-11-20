@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Cell, Pie, PieChart } from "recharts";
 import type { TurmaDistribuicao } from "../useTurmaKpis";
 import { distribuicaoDeNotas, type TomDaFaixa } from "./graficos";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 // style em vez do atributo `fill`: var() só resolve dentro de CSS.
 const corDoTom = (tom: TomDaFaixa | null) => (tom ? `hsl(var(--${tom}))` : "hsl(var(--muted-foreground))");
@@ -22,7 +23,10 @@ export default function DistribuicaoNotas({
 
   return (
     <div className="min-w-0 rounded-[20px] border border-border bg-card px-[26px] py-6">
-      <h3 className="text-lg text-foreground">Distribuição de notas</h3>
+      <div className="flex items-center gap-1">
+        <h3 className="text-lg text-foreground">Distribuição de notas</h3>
+        <ExplicacaoDaMetrica chave="prof.distribuicao_notas" />
+      </div>
       <p className="mt-1 text-[12.5px] text-muted-foreground">
         {total > 0 ? `${total} ${total === 1 ? "aluno" : "alunos"} por faixa de nota` : "Alunos por faixa de nota"}
       </p>

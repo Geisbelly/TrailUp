@@ -4,6 +4,7 @@ import type { TurmaPerfilMetricas } from "../useTurmaKpis";
 import { inatividadePorPerfil, type SegmentoPerfil } from "./graficos";
 import { COR_DO_PERFIL } from "./perfilCores";
 import SegmentedPills from "./SegmentedPills";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 const SEGMENTOS: { value: SegmentoPerfil; label: string }[] = [
   { value: "majoritario", label: "Majoritário" },
@@ -53,7 +54,10 @@ export default function InatividadePorPerfil({
     <div className="min-w-0 rounded-[20px] border border-border bg-card px-[26px] pb-5 pt-6">
       <div className="flex flex-wrap items-start gap-4">
         <div className="min-w-0">
-          <h3 className="text-lg text-foreground">Inatividade por perfil</h3>
+          <div className="flex items-center gap-1">
+            <h3 className="text-lg text-foreground">Inatividade por perfil</h3>
+            <ExplicacaoDaMetrica chave="prof.inatividade" />
+          </div>
           <p className="mt-1 text-[12.5px] text-muted-foreground">
             Alunos há 7 dias ou mais sem estudar, por perfil BrainHex. Perfil com menos de {nMinimo} alunos fica oculto.
           </p>

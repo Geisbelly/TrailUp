@@ -4,6 +4,7 @@ import { ChipDeRisco } from "../PrecisamDeAtencao";
 import type { Risco } from "../risco";
 import { sugestaoDoFator } from "../sugestaoDoRisco";
 import { useSugestoesDaIAParaAluno } from "./useSugestoesDaIAParaAluno";
+import ExplicacaoDaMetrica from "../../comum/ExplicacaoDaMetrica";
 
 export default function SinalDeAtencao({
   risco,
@@ -24,9 +25,12 @@ export default function SinalDeAtencao({
     <section aria-labelledby="sinal-de-atencao" className="rounded-2xl border border-destructive/50 bg-card px-[22px] py-5">
       <div className="flex flex-wrap items-center gap-2.5">
         <AlertTriangle className="h-[15px] w-[15px] text-destructive" aria-hidden="true" />
-        <h3 id="sinal-de-atencao" className="font-sans text-[13.5px] font-bold text-foreground">
-          Sinal de atenção
-        </h3>
+        <div className="flex items-center gap-1">
+          <h3 id="sinal-de-atencao" className="font-sans text-[13.5px] font-bold text-foreground">
+            Sinal de atenção
+          </h3>
+          <ExplicacaoDaMetrica chave="prof.precisam_atencao" />
+        </div>
         <ChipDeRisco nivel={risco.nivel} />
       </div>
       <p className="mt-1.5 text-[11.5px] leading-relaxed text-muted-foreground">

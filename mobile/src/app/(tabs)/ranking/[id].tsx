@@ -39,6 +39,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ExplicacaoDaMetrica } from "@/components/metricas/ExplicacaoDaMetrica";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { shadowStyle } from "@/utils/webShadow";
 
@@ -184,6 +185,10 @@ export function RankDetalhe({
   }, [classeId]);
 
   const scoreLabel = rotuloDoCriterio(rank?.info.criterio);
+  const coresDaExplicacao = useMemo(
+    () => ({ texto: palette.text, suave: palette.textMuted, fundo: palette.surface, borda: palette.border, destaque: palette.accent }),
+    [palette],
+  );
   // Barra "Sua posição": quanto falta para passar o colega logo acima (ou que você lidera).
   const resumoPosicao = resumirMinhaPosicao(rank?.posicoes ?? [], usuario?.id, rank?.info.criterio ?? null);
   // Turma que ainda não pontuou: a view traz todo matriculado com zero, todos empatados em 1º.
@@ -299,9 +304,12 @@ export function RankDetalhe({
                       <Text style={[s.eyebrow, { color: palette.accent }]}>
                         {embutido ? "CATEGORIA" : "SALA DE HONRA"}
                       </Text>
-                      <Text style={[s.title, { color: palette.text }]}>
-                        {rank.info.nome_rank}
-                      </Text>
+                      <View style={s.tituloComExplicacao}>
+                        <Text style={[s.title, s.tituloTexto, { color: palette.text }]}>
+                          {rank.info.nome_rank}
+                        </Text>
+                        <ExplicacaoDaMetrica chave="aluno.ranking" cores={coresDaExplicacao} />
+                      </View>
                       {rank.info.descricao ? (
                         <Text
                           style={[s.subtitle, { color: palette.textMuted }]}
@@ -598,6 +606,8 @@ export function RankDetalhe({
 }
 
 const s = StyleSheet.create({
+  tituloComExplicacao: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tituloTexto: { flexShrink: 1 },
   screen: { flex: 1 },
   topbar: {
     minHeight: 56,

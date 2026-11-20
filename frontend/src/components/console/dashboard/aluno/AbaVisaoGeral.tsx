@@ -4,6 +4,7 @@ import { montarSerieEvolucao } from "./calculos";
 import { primeiroNome } from "../sugestaoDoRisco";
 import SinalDeAtencao from "./SinalDeAtencao";
 import type { AlunoAnalisado, EvolucaoAluno } from "./tipos";
+import ExplicacaoDaMetrica from "../../comum/ExplicacaoDaMetrica";
 
 // Cores de série já elevadas para >= 7:1 contra o card, porque o recharts
 // reaproveita a cor da linha no texto da legenda.
@@ -28,7 +29,10 @@ export default function AbaVisaoGeral({
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[2fr_1fr]">
       <div className="min-w-0 rounded-[20px] border border-border bg-card px-[26px] py-6">
-        <h3 className="text-lg text-foreground">Evolução do aluno</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="text-lg text-foreground">Evolução do aluno</h3>
+          <ExplicacaoDaMetrica chave="prof.evolucao_aluno" />
+        </div>
         <p className="mt-1 text-[12.5px] text-muted-foreground">
           Acertos e progresso (%) à esquerda, nota (0–10) à direita, dia a dia
           {temTurma ? " · tracejado: nota média da turma" : ""}

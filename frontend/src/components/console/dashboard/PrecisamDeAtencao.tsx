@@ -2,6 +2,7 @@ import { nomeExibidoDoPerfil } from "./perfilCores";
 import { PerfilAvatar } from "./PerfilVisual";
 import { descricaoDosCriterios, type Risco } from "./risco";
 import { fatorPrincipal, primeiroNome, sugestaoDoFator } from "./sugestaoDoRisco";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 export type AlunoEmRisco = {
   id: string;
@@ -57,7 +58,10 @@ export default function PrecisamDeAtencao<T extends AlunoEmRisco>({
           {alunos.length}
         </div>
         <div className="min-w-0">
-          <h3 id="precisam-de-atencao" className="text-[19px] text-foreground">Precisam de atenção</h3>
+          <div className="flex items-center gap-1">
+            <h3 id="precisam-de-atencao" className="text-[19px] text-foreground">Precisam de atenção</h3>
+            <ExplicacaoDaMetrica chave="prof.precisam_atencao" />
+          </div>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
             {alunos.length} de {totalDaTurma} {totalDaTurma === 1 ? "aluno" : "alunos"} com um sinal, cada um com o fato, a data e o
             que fazer pelo sinal que mais pesou. A média esconde estes casos.

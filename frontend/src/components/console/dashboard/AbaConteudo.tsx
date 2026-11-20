@@ -12,6 +12,7 @@ import {
   type MetricaDeConteudo,
 } from "./conteudo";
 import { useConteudoDaTurma } from "./useConteudoDaTurma";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 const COR_DO_ERRO: Record<FaixaDeErro, string> = {
   baixo: "hsl(var(--success))",
@@ -167,7 +168,10 @@ export default function AbaConteudo({
 
       <section aria-labelledby="conteudo-por-topico" className="overflow-hidden rounded-[20px] border border-border bg-card">
         <div className="px-[26px] pb-4 pt-[22px]">
-          <h3 id="conteudo-por-topico" className="text-lg text-foreground">Conteúdo por tópico</h3>
+          <div className="flex items-center gap-1">
+            <h3 id="conteudo-por-topico" className="text-lg text-foreground">Conteúdo por tópico</h3>
+            <ExplicacaoDaMetrica chave="prof.conteudo_por_topico" />
+          </div>
           <p className="mt-1 text-[12.5px] text-muted-foreground">
             Consumo, {temErro ? "dificuldade e " : ""}conclusão de cada conteúdo da trilha
           </p>

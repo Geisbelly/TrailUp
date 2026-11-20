@@ -135,13 +135,12 @@ async def _run_analysis_na_rota(
         logger.warning("Falha ao montar overrides M2: %s", exc)
         state["m2_overrides"] = None
 
-    await EventoRepository(session).log(
+    await EventoRepository(session).log_marcador(
         aluno_id=aluno_id,
         tipo="ciclo_iniciado",
         referencia=state["ciclo_id"],
         valor=float(classe_id),
     )
-    await session.commit()
 
     orchestrator = build_linear_analysis_orchestrator(request.app.state.settings)
     result = await orchestrator.run(
