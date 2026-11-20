@@ -2,6 +2,7 @@ import { estadoDoCronometro, formatarDuracao, textoDaOrigem, textoDasTentativas 
 import type { RegraDoCronometro, ResumoDaAtividade } from "./tentativas";
 import type { Aluno } from "./tipos";
 import { useTentativasDoAluno } from "./useTentativasDoAluno";
+import ExplicacaoDaMetrica from "../../comum/ExplicacaoDaMetrica";
 
 const fmt = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
 
@@ -74,7 +75,10 @@ export default function AbaTentativas({ aluno }: { aluno: Aluno }) {
       </div>
 
       <div className="min-w-0 rounded-[20px] border border-border bg-card px-7 py-[26px]">
-        <h3 className="text-lg text-foreground">Tentativas por atividade</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="text-lg text-foreground">Tentativas por atividade</h3>
+          <ExplicacaoDaMetrica chave="prof.tentativas" />
+        </div>
         <p className="mt-1 text-[12.5px] text-muted-foreground">Da atividade mexida por último para a mais antiga</p>
         {dados.atividades.length === 0 ? (
           <p className="mt-6 text-sm text-muted-foreground">O aluno ainda não começou nenhuma atividade pelo app novo.</p>

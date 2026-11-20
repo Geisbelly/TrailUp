@@ -1,6 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import { AlertCircle, Check, Clock, MessageSquare, Repeat, Timer } from "lucide-react";
+import type { ChaveMetrica } from "@/lib/metricas/explicacoes";
 import type { TurmaResumo } from "@/lib/turmaResumo";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 import { CHAVE, estadoDoCard, TEXTO_DO_ESTADO, type ChaveDoCatalogo, type Disponibilidade, type EstadoDoCard } from "./disponibilidade";
 import { fraseDoTom, META_ACERTOS_PCT, tomDaMetrica, type TomMetrica } from "./metas";
 
@@ -14,6 +16,7 @@ const COR_DO_TOM: Record<TomMetrica, string> = {
 type KpiSecundario = {
   label: string;
   icon: LucideIcon;
+  explicacao: ChaveMetrica;
   valor: number | null;
   casas: number;
   unidade: string;
@@ -29,7 +32,10 @@ function KpiSecundarioCard({ kpi }: { kpi: KpiSecundario }) {
   return (
     <div className="rounded-2xl border border-border bg-card px-5 py-[18px]">
       <div className="flex items-center justify-between gap-3">
-        <div className="console-label-sm">{kpi.label}</div>
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="console-label-sm">{kpi.label}</div>
+          <ExplicacaoDaMetrica chave={kpi.explicacao} />
+        </div>
         <Icon className="h-[15px] w-[15px] shrink-0" style={{ color: kpi.estado === "valor" ? cor : undefined }} strokeWidth={2} aria-hidden="true" />
       </div>
       {kpi.estado !== "valor" || kpi.valor === null ? (
@@ -89,6 +95,7 @@ export default function KpisSecundarios({
   const kpis: KpiSecundario[] = [
     {
       label: "Taxa de acertos",
+      explicacao: "prof.taxa_acertos",
       icon: Check,
       valor: mediaAcertos,
       casas: 0,
@@ -101,6 +108,7 @@ export default function KpisSecundarios({
     {
       // Taxa de abandono pelo modelo de evasão do core (F5): % dos alunos com dado em risco alto.
       label: "Abandono médio",
+      explicacao: "prof.risco_abandono",
       icon: AlertCircle,
       valor: abandono.valor,
       casas: 1,
@@ -114,6 +122,7 @@ export default function KpisSecundarios({
     },
     {
       label: "Retorno semanal",
+      explicacao: "prof.retorno_semanal",
       icon: Repeat,
       valor: retorno.valor,
       casas: 0,
@@ -125,6 +134,7 @@ export default function KpisSecundarios({
     },
     {
       label: "Chat após erro",
+      explicacao: "prof.chat_apos_erro",
       icon: MessageSquare,
       valor: chat.valor,
       casas: 1,
@@ -137,6 +147,7 @@ export default function KpisSecundarios({
     {
       // App aberto, por aluno. Sem o fan-out da view antiga (F5, I16).
       label: "Tempo médio de uso",
+      explicacao: "prof.tempo_uso",
       icon: Timer,
       valor: tempoUso.valor,
       casas: 1,
@@ -148,6 +159,7 @@ export default function KpisSecundarios({
     {
       // D-1: tempo de estudo é tempo ativo, ao lado do tempo de uso.
       label: "Tempo ativo médio",
+      explicacao: "prof.tempo_ativo",
       icon: Clock,
       valor: tempoAtivo.valor,
       casas: 1,

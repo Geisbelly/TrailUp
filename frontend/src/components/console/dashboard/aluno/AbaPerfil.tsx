@@ -4,6 +4,7 @@ import { chaveDoPerfil, COR_DO_PERFIL, NOME_DO_PERFIL, nomeExibidoDoPerfil } fro
 import { alunoDaDiversidade } from "../diversidade";
 import { useDiversidadeDaTurma } from "../useDiversidadeDaTurma";
 import type { Aluno } from "./tipos";
+import ExplicacaoDaMetrica from "../../comum/ExplicacaoDaMetrica";
 
 function decimal(valor: number): string {
   return valor.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
@@ -24,7 +25,10 @@ export default function AbaPerfil({ aluno }: { aluno: Aluno }) {
   return (
     <div className="grid items-start gap-5 lg:grid-cols-[1.3fr_1fr]">
       <div className="rounded-[20px] border border-border bg-card px-7 py-[26px]">
-        <h3 className="text-lg text-foreground">Afinidade entre os 7 perfis</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="text-lg text-foreground">Afinidade entre os 7 perfis</h3>
+          <ExplicacaoDaMetrica chave="aluno.afinidades" />
+        </div>
         <p className="mt-1 text-[12.5px] text-muted-foreground">Vetor BrainHex do questionário inicial (0–100% por perfil)</p>
         {perfis.length === 0 ? (
           <p className="mt-6 text-sm text-muted-foreground">O aluno ainda não respondeu o questionário BrainHex.</p>

@@ -66,13 +66,12 @@ async def analisar_stream(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
-    await EventoRepository(session).log(
+    await EventoRepository(session).log_marcador(
         aluno_id=user.aluno_id or user.user_id,
         tipo="ciclo_iniciado",
         referencia=state["ciclo_id"],
         valor=float(payload.classe_id),
     )
-    await session.commit()
 
     config = build_analysis_graph_config(
         request,

@@ -11,6 +11,7 @@ import {
 } from "./evolucao";
 import { useEvolucaoDaTurma } from "./useEvolucaoDaTurma";
 import type { Matricula } from "./conteudo";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 const COR_DO_DELTA: Record<Delta["tom"], string> = {
   bom: "hsl(var(--success))",
@@ -127,7 +128,10 @@ export default function AbaEvolucao({
       <section aria-labelledby="evolucao-da-turma" className="min-w-0 rounded-[20px] border border-border bg-card px-[26px] py-6">
         <div className="flex flex-wrap items-start gap-4">
           <div>
-            <h3 id="evolucao-da-turma" className="text-lg text-foreground">Evolução da turma</h3>
+            <div className="flex items-center gap-1">
+              <h3 id="evolucao-da-turma" className="text-lg text-foreground">Evolução da turma</h3>
+              <ExplicacaoDaMetrica chave="prof.evolucao" />
+            </div>
             <p className="mt-1 text-[12.5px] text-muted-foreground">Semana a semana · últimas {SEMANAS_DA_SERIE} semanas, começando na segunda · a de {semanaEmAndamento} está em andamento</p>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground sm:ml-auto">
@@ -182,7 +186,10 @@ export default function AbaEvolucao({
 
       {mudancas.length > 0 && (
         <section aria-labelledby="mudancas-relevantes" className="rounded-[20px] border border-border bg-card px-[26px] py-6">
-          <h3 id="mudancas-relevantes" className="text-lg text-foreground">Mudanças relevantes</h3>
+          <div className="flex items-center gap-1">
+            <h3 id="mudancas-relevantes" className="text-lg text-foreground">Mudanças relevantes</h3>
+            <ExplicacaoDaMetrica chave="prof.mudancas_relevantes" />
+          </div>
           <p className="mt-1 text-[12.5px] text-muted-foreground">Alterações na trilha e no material no mesmo período, registradas pelo sistema</p>
           <ul className="mt-5 flex flex-col gap-2.5">
             {mudancas.map((m, i) => (

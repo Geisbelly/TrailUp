@@ -40,6 +40,17 @@ describe("tokens de texto do console (WCAG AAA, 7:1)", () => {
   }
 });
 
+describe("explicação das métricas (popover e chip do selo, AAA)", () => {
+  const popover = token("popover");
+  it("--foreground e --muted-foreground sobre o popover", () => {
+    expect(contraste(token("foreground"), popover)).toBeGreaterThanOrEqual(7);
+    expect(contraste(token("muted-foreground"), popover)).toBeGreaterThanOrEqual(7);
+  });
+  it("chip do selo: --foreground sobre --muted", () => {
+    expect(contraste(token("foreground"), token("muted"))).toBeGreaterThanOrEqual(7);
+  });
+});
+
 describe("gráficos por perfil: a informação não depende só da cor", () => {
   for (const perfil of PERFIS_EM_ORDEM) {
     it(`${perfil}: rótulo AAA e forma distinguível do fundo`, () => {

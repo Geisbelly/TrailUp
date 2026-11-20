@@ -8,6 +8,8 @@ import { BrainHexProfile, getBrainHexConfig, normalizeBrainHexProfile } from "@/
 import { FontFamily } from "@/styles/GlobalStyle";
 import { MetricsThemeResolved, getMetricsThemeOption } from "@/utils/profileMetricThemes";
 import { ProfileMetricsViewModel } from "./profileMetricsViewModel";
+import { ExplicacaoDaMetrica, type CoresDaExplicacao } from "@/components/metricas/ExplicacaoDaMetrica";
+import { CHAVE_DO_CAMPO, CHAVE_DO_GRAFICO, type ChaveMetrica } from "@/services/metricas/explicacoes";
 import { formatStudyMinutes as formatMinutes } from '@/utils/studyTimeFormat';
 import { buildProfileShellPaletteFromAccent } from "@/utils/profileShellTheme";
 
@@ -113,6 +115,29 @@ function nomeDoPerfil(nome: string) {
   return normalizeBrainHexProfile(nome) ? getBrainHexConfig(nome).label : nome;
 }
 
+function coresDoPainel(palette: ThemePalette): CoresDaExplicacao {
+  return { texto: palette.text, suave: palette.muted, fundo: palette.cardAlt, borda: palette.border, destaque: palette.accent };
+}
+
+/** Rótulo de uma métrica com o ícone que explica como ela é coletada. Sem chave, só o texto. */
+function RotuloComExplicacao({
+  explicacao,
+  palette,
+  children,
+}: {
+  explicacao?: ChaveMetrica;
+  palette: ThemePalette;
+  children: React.ReactNode;
+}) {
+  if (!explicacao) return <>{children}</>;
+  return (
+    <View style={s.rotuloComExplicacao}>
+      <View style={s.rotuloComExplicacaoTexto}>{children}</View>
+      <ExplicacaoDaMetrica chave={explicacao} cores={coresDoPainel(palette)} />
+    </View>
+  );
+}
+
 function SurfaceCard({ children, palette, targetRef, meia }: { children: React.ReactNode; palette: ThemePalette; targetRef?: React.RefObject<View | null>; meia?: boolean }) {
   const larga = useMetricasLargas();
   return (
@@ -135,11 +160,13 @@ function SectionTitle({
   subtitle,
   icon,
   palette,
+  explicacao,
 }: {
   title: string;
   subtitle?: string;
   icon?: keyof typeof MaterialCommunityIcons.glyphMap;
   palette: ThemePalette;
+  explicacao?: ChaveMetrica;
 }) {
   // Tela larga (protótipo v4): título sem serifa e sem o ícone redondo.
   const larga = useMetricasLargas();
@@ -150,6 +177,7 @@ function SectionTitle({
         <View style={s.tituloCelularLinha}>
           {icon ? <MaterialCommunityIcons name={icon} size={20} color={palette.accent} /> : null}
           <Text style={[s.tituloCelular, { color: palette.text }]}>{title}</Text>
+          {explicacao ? <ExplicacaoDaMetrica chave={explicacao} cores={coresDoPainel(palette)} /> : null}
         </View>
         {subtitle ? <Text style={[s.subtituloCelular, { color: palette.subtle }]}>{subtitle}</Text> : null}
       </View>
@@ -159,6 +187,7 @@ function SectionTitle({
     <View style={s.sectionTitleWrap}>
       <View style={s.sectionTitleRow}>
         <Text style={[s.sectionTitle, s.sectionTitleLargo, { color: palette.text }]}>{title}</Text>
+        {explicacao ? <View style={s.iconeDoTitulo}><ExplicacaoDaMetrica chave={explicacao} cores={coresDoPainel(palette)} /></View> : null}
       </View>
       {subtitle ? <Text style={[s.sectionSubtitle, { color: palette.muted }]}>{subtitle}</Text> : null}
     </View>
@@ -199,6 +228,7 @@ function StatTile({
   palette,
   accent,
   targetRef,
+  explicacao,
 }: {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   label: string;
@@ -207,6 +237,7 @@ function StatTile({
   palette: ThemePalette;
   accent: string;
   targetRef?: React.RefObject<View | null>;
+  explicacao?: ChaveMetrica;
 }) {
   const larga = useMetricasLargas();
   if (!larga) {
@@ -215,7 +246,9 @@ function StatTile({
       <View ref={targetRef} collapsable={false} style={[s.kpiCelular, { backgroundColor: palette.tile }]}>
         <MaterialCommunityIcons name={icon} size={20} color={accent} />
         <View style={s.kpiCelularTexto}>
-          <Text style={[s.kpiCelularRotulo, { color: palette.subtle }]} numberOfLines={2}>{label}</Text>
+          <RotuloComExplicacao explicacao={explicacao} palette={palette}>
+            <Text style={[s.kpiCelularRotulo, { color: palette.subtle }]} numberOfLines={2}>{label}</Text>
+          </RotuloComExplicacao>
           <Text style={[s.kpiCelularValor, { color: palette.text }]} numberOfLines={1}>{value}</Text>
           {helper ? <Text style={[s.kpiCelularAjuda, { color: palette.subtle }]} numberOfLines={2}>{helper}</Text> : null}
         </View>
@@ -227,7 +260,9 @@ function StatTile({
       <View style={[s.statIconWrap, { backgroundColor: tinycolor(accent).setAlpha(0.18).toRgbString() }]}>
         <MaterialCommunityIcons name={icon} size={18} color={accent} />
       </View>
-      <Text style={[s.statLabel, { color: palette.muted }]}>{label}</Text>
+      <RotuloComExplicacao explicacao={explicacao} palette={palette}>
+        <Text style={[s.statLabel, { color: palette.muted }]}>{label}</Text>
+      </RotuloComExplicacao>
       <Text style={[s.statValue, s.statValueLargo, { color: palette.text }]}>{value}</Text>
       {helper ? <Text style={[s.statHelper, { color: palette.muted }]}>{helper}</Text> : null}
     </View>
@@ -240,19 +275,23 @@ function ProgressLine({
   total,
   accent,
   palette,
+  explicacao,
 }: {
   label: string;
   current: number;
   total: number;
   accent: string;
   palette: ThemePalette;
+  explicacao?: ChaveMetrica;
 }) {
   const larga = useMetricasLargas();
   const pct = total > 0 ? Math.max(0, Math.min(100, (current / total) * 100)) : 0;
   return (
     <View style={[s.progressLine, !larga && s.linhaCelular]}>
       <View style={[s.progressLineHeader, !larga && s.linhaCelularTopo]}>
-        <Text style={[s.progressLineLabel, !larga && s.linhaCelularRotulo, { color: palette.text }]}>{label}</Text>
+        <RotuloComExplicacao explicacao={explicacao} palette={palette}>
+          <Text style={[s.progressLineLabel, !larga && s.linhaCelularRotulo, { color: palette.text }]}>{label}</Text>
+        </RotuloComExplicacao>
         <Text style={[s.progressLineValue, !larga && s.linhaCelularValor, { color: larga ? palette.muted : palette.text }]}>
           {current}/{total}
         </Text>
@@ -285,7 +324,7 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
 
   return (
     <SurfaceCard palette={palette} targetRef={targetRef}>
-      <SectionTitle
+      <SectionTitle explicacao={CHAVE_DO_CAMPO.analysisSummary}
         title="Leitura adaptativa"
         subtitle="Última interpretação da IA durante sua sessão de estudo."
         icon="radar"
@@ -295,6 +334,7 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
         <View style={chipDestaque}>
           <MaterialCommunityIcons name="emoticon-outline" size={tamanhoIconeChip} color={accent} />
           <Text style={[s.chipText, !larga && s.chipTextCelular, { color: larga ? palette.text : accent }]}>{vm.emotionLabel}</Text>
+          <ExplicacaoDaMetrica chave={CHAVE_DO_CAMPO.emotionLabel} cores={coresDoPainel(palette)} />
         </View>
         <View style={chipNeutro}>
           <MaterialCommunityIcons
@@ -431,7 +471,7 @@ function formatMinutesTimer(totalMin?: number | null) {
   return `${min}min ${sec}s`;
 }
 
-function KpiPill({ label, value, palette, painel, trio }: { label: string; value: React.ReactNode; palette: ThemePalette; painel?: boolean; trio?: boolean }) {
+function KpiPill({ label, value, palette, painel, trio, explicacao }: { label: string; value: React.ReactNode; palette: ThemePalette; painel?: boolean; trio?: boolean; explicacao?: ChaveMetrica }) {
   const larga = useMetricasLargas();
   return (
     <View
@@ -441,7 +481,9 @@ function KpiPill({ label, value, palette, painel, trio }: { label: string; value
           : [painel ? s.metricPanel : s.kpiPill, s.caixaCelular, trio && s.kpiTrio, { backgroundColor: palette.tile }]
       }
     >
-      <Text style={[s.kpiLabel, { color: larga ? palette.muted : palette.subtle }]}>{label}</Text>
+      <RotuloComExplicacao explicacao={explicacao} palette={palette}>
+        <Text style={[s.kpiLabel, { color: larga ? palette.muted : palette.subtle }]}>{label}</Text>
+      </RotuloComExplicacao>
       <Text style={[s.kpiValue, !larga && s.kpiValueCelular, { color: palette.text }]}>{value}</Text>
     </View>
   );
@@ -1040,7 +1082,7 @@ function TopicBarChart({
 function AffinityBoard({ vm, palette, accent, targetRef }: { vm: ProfileMetricsViewModel; palette: ThemePalette; accent: string; targetRef?: React.RefObject<View | null> }) {
   return (
     <SurfaceCard palette={palette} targetRef={targetRef}>
-      <SectionTitle
+      <SectionTitle explicacao={CHAVE_DO_CAMPO.afinidades}
         title="Perfil de aprendizagem"
         subtitle="Afinidades BrainHex detectadas para orientar a experiência."
         icon="brain"
@@ -1088,17 +1130,17 @@ function TempoEstudoSection({ vm, palette, accent, targetRef }: { vm: ProfileMet
 
       {vm.temTempoAcumulado ? (
         <View style={s.statRow}>
-          <StatTile icon="timer-outline" label="Tópicos (total)" value={formatMinutes(vm.tempoTopicoAcumuladoMin)} palette={palette} accent={accent} />
-          <StatTile icon="book-open-outline" label="Conteúdos (total)" value={formatMinutes(vm.tempoConteudoAcumuladoMin)} palette={palette} accent={accent} />
-          <StatTile icon="pencil-outline" label="Atividades (total)" value={formatMinutes(vm.tempoAtividadeAcumuladoMin)} palette={palette} accent={accent} />
+          <StatTile icon="timer-outline" label="Tópicos (total)" explicacao={CHAVE_DO_CAMPO.tempoTopicoAcumuladoMin} value={formatMinutes(vm.tempoTopicoAcumuladoMin)} palette={palette} accent={accent} />
+          <StatTile icon="book-open-outline" label="Conteúdos (total)" explicacao={CHAVE_DO_CAMPO.tempoConteudoAcumuladoMin} value={formatMinutes(vm.tempoConteudoAcumuladoMin)} palette={palette} accent={accent} />
+          <StatTile icon="pencil-outline" label="Atividades (total)" explicacao={CHAVE_DO_CAMPO.tempoAtividadeAcumuladoMin} value={formatMinutes(vm.tempoAtividadeAcumuladoMin)} palette={palette} accent={accent} />
         </View>
       ) : null}
 
       {vm.hasSessionMetrics ? (
         <View style={s.statRow}>
-          <StatTile icon="timer-outline" label="Tópicos (recente)" value={formatSeconds(vm.tempoTopico)} palette={palette} accent={accent} />
-          <StatTile icon="book-open-outline" label="Conteúdos (recente)" value={formatSeconds(vm.tempoConteudo)} palette={palette} accent={accent} />
-          <StatTile icon="pencil-outline" label="Atividades (recente)" value={formatSeconds(vm.tempoAtividade)} palette={palette} accent={accent} />
+          <StatTile icon="timer-outline" label="Tópicos (recente)" explicacao={CHAVE_DO_CAMPO.tempoTopico} value={formatSeconds(vm.tempoTopico)} palette={palette} accent={accent} />
+          <StatTile icon="book-open-outline" label="Conteúdos (recente)" explicacao={CHAVE_DO_CAMPO.tempoConteudo} value={formatSeconds(vm.tempoConteudo)} palette={palette} accent={accent} />
+          <StatTile icon="pencil-outline" label="Atividades (recente)" explicacao={CHAVE_DO_CAMPO.tempoAtividade} value={formatSeconds(vm.tempoAtividade)} palette={palette} accent={accent} />
         </View>
       ) : null}
     </SurfaceCard>
@@ -1111,7 +1153,7 @@ function BossSection({ vm, palette, accent, targetRef }: { vm: ProfileMetricsVie
     <SurfaceCard palette={palette} targetRef={targetRef}>
       <SectionTitle title="Boss" icon="sword-cross" palette={palette} />
       <View style={s.statRow}>
-        <StatTile icon="sword-cross" label="Dano causado ao boss" value={String(vm.danoTotal)} palette={palette} accent={accent} />
+        <StatTile icon="sword-cross" label="Dano causado ao boss" explicacao={CHAVE_DO_CAMPO.danoTotal} value={String(vm.danoTotal)} palette={palette} accent={accent} />
       </View>
     </SurfaceCard>
   );
@@ -1123,7 +1165,7 @@ function MelhorTempoSection({ vm, palette, accent, targetRef }: { vm: ProfileMet
     <SurfaceCard palette={palette} targetRef={targetRef}>
       <SectionTitle title="Melhor tempo" icon="timer-sand" palette={palette} />
       <View style={s.statRow}>
-        <StatTile icon="timer-sand" label="Melhor tempo em atividade" value={formatMinutesTimer(vm.melhorTempoMin)} palette={palette} accent={accent} />
+        <StatTile icon="timer-sand" label="Melhor tempo em atividade" explicacao={CHAVE_DO_CAMPO.melhorTempoMin} value={formatMinutesTimer(vm.melhorTempoMin)} palette={palette} accent={accent} />
       </View>
     </SurfaceCard>
   );
@@ -1163,18 +1205,18 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
           {vm.materiaNome ? `Classe atual: ${vm.materiaNome}. ${copy.subtitle}` : copy.subtitle}
         </Text>
         <View style={[s.statGrid, larga ? s.statGridLargo : s.statGridCelular]}>
-          <StatTile targetRef={guideRef(guideRefs, "arena-precision")} icon="crosshairs-gps" label="Precisão" value={formatPercent(vm.acertos)} helper="desempenho nas respostas" palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "arena-position")} icon="trophy-outline" label="Posição" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem rank"} helper="melhor marca na classe" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "arena-precision")} icon="crosshairs-gps" label="Precisão" explicacao={CHAVE_DO_CAMPO.acertos} value={formatPercent(vm.acertos)} helper="desempenho nas respostas" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "arena-position")} icon="trophy-outline" label="Posição" explicacao={CHAVE_DO_CAMPO.melhorPosicao} value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem rank"} helper="melhor marca na classe" palette={palette} accent={accent} />
           <StatTile
             icon="clock-outline"
-            label="Tempo ativo"
+            label="Tempo ativo" explicacao={CHAVE_DO_CAMPO.sessionActiveSec}
             value={formatSeconds(vm.sessionActiveSec)}
             helper={vm.hasSessionMetrics ? "desde que abriu o app" : vm.presencaResumo}
             palette={palette}
             accent={accent}
             targetRef={guideRef(guideRefs, "arena-active-time")}
           />
-          <StatTile targetRef={guideRef(guideRefs, "arena-campaign")} icon="flag-outline" label="Campanha" value={formatPercent(vm.progresso)} helper={vm.missaoResumo} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "arena-campaign")} icon="flag-outline" label="Campanha" explicacao={CHAVE_DO_CAMPO.progresso} value={formatPercent(vm.progresso)} helper={vm.missaoResumo} palette={palette} accent={accent} />
         </View>
       </LinearGradient>
 
@@ -1197,14 +1239,14 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
             <SectionTitle title={copy.mission} subtitle="Visão rápida da campanha atual." icon="sword-cross" palette={palette} />
             {larga ? null : (
             <View style={s.tripleRow}>
-              <KpiPill trio label="Concluídos" value={vm.concluidos} palette={palette} />
-              <KpiPill trio label="Em andamento" value={vm.emAndamento} palette={palette} />
-              <KpiPill trio label="Conquistas" value={vm.totalConquistas} palette={palette} />
+              <KpiPill trio label="Concluídos" explicacao={CHAVE_DO_CAMPO.concluidos} value={vm.concluidos} palette={palette} />
+              <KpiPill trio label="Em andamento" explicacao={CHAVE_DO_CAMPO.emAndamento} value={vm.emAndamento} palette={palette} />
+              <KpiPill trio label="Conquistas" explicacao={CHAVE_DO_CAMPO.totalConquistas} value={vm.totalConquistas} palette={palette} />
             </View>
             )}
-            <ProgressLine label="Tópicos dominados" current={vm.concluidos} total={vm.totalTopicos} accent={accent} palette={palette} />
-            <ProgressLine label="Conteúdos explorados" current={vm.conteudosConcluidos} total={vm.totalConteudos} accent={accent} palette={palette} />
-            <ProgressLine label="Atividades concluídas" current={vm.atividadesConcluidas} total={vm.totalAtividades} accent={accent} palette={palette} />
+            <ProgressLine label="Tópicos dominados" explicacao={CHAVE_DO_CAMPO.concluidos} current={vm.concluidos} total={vm.totalTopicos} accent={accent} palette={palette} />
+            <ProgressLine label="Conteúdos explorados" explicacao={CHAVE_DO_CAMPO.conteudosConcluidos} current={vm.conteudosConcluidos} total={vm.totalConteudos} accent={accent} palette={palette} />
+            <ProgressLine label="Atividades concluídas" explicacao={CHAVE_DO_CAMPO.atividadesConcluidas} current={vm.atividadesConcluidas} total={vm.totalAtividades} accent={accent} palette={palette} />
           </SurfaceCard>
           {larga ? null : (
           <SurfaceCard palette={palette}>
@@ -1216,7 +1258,7 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
           </SurfaceCard>
           )}
           <SurfaceCard meia palette={palette} targetRef={guideRef(guideRefs, "arena-radar")}>
-            <SectionTitle title="Inteligência de combate" subtitle="Visão tática do desempenho nos 5 eixos." icon="radar" palette={palette} />
+            <SectionTitle explicacao={CHAVE_DO_GRAFICO.radar} title="Inteligência de combate" subtitle="Visão tática do desempenho nos 5 eixos." icon="radar" palette={palette} />
             <View style={s.chartCenter}>
               <RadarChart
                 axes={[
@@ -1235,7 +1277,7 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
           </View>
           {larga ? null : (
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "arena-week")}>
-            <SectionTitle title="Pulso da semana" subtitle="Atividade registrada nos últimos 7 dias." icon="chart-bar" palette={palette} />
+            <SectionTitle explicacao={CHAVE_DO_CAMPO.semanaDiaria} title="Pulso da semana" subtitle="Atividade registrada nos últimos 7 dias." icon="chart-bar" palette={palette} />
             <View style={s.chartCenter}>
               <WeeklyBars data={vm.semanaDiaria} accent={accent} palette={palette} />
             </View>
@@ -1246,9 +1288,9 @@ function ArenaDashboard({ profile, vm, palette, accent, themeBadge, guideRefs }:
               <SectionTitle title="Operação em tempo real" subtitle="Eficiência e intensidade da última sessão de estudo." icon="timer-outline" palette={palette} />
               <EngagementBar activeSec={vm.sessionActiveSec} idleSec={vm.sessionIdleSec} accent={accent} palette={palette} />
               <View style={s.tripleRow}>
-                <KpiPill trio label="Eficiência" value={`${Math.round(vm.sessionEngajamento)}%`} palette={palette} />
-                <KpiPill trio label="Ações" value={String(vm.touchTotal)} palette={palette} />
-                <KpiPill trio label="Tópicos" value={String(vm.topicosVisitados)} palette={palette} />
+                <KpiPill trio label="Eficiência" explicacao={CHAVE_DO_CAMPO.sessionEngajamento} value={`${Math.round(vm.sessionEngajamento)}%`} palette={palette} />
+                <KpiPill trio label="Ações" explicacao={CHAVE_DO_CAMPO.touchTotal} value={String(vm.touchTotal)} palette={palette} />
+                <KpiPill trio label="Tópicos" explicacao={CHAVE_DO_CAMPO.topicosVisitados} value={String(vm.topicosVisitados)} palette={palette} />
               </View>
             </SurfaceCard>
           )}
@@ -1278,10 +1320,10 @@ function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
           {vm.materiaNome ? `Classe atual: ${vm.materiaNome}. O foco aqui é transformar estudo em metas claras.` : "O foco aqui é transformar estudo em metas claras, mensuráveis e motivadoras."}
         </Text>
         <View style={[s.statGrid, larga ? s.statGridLargo : s.statGridCelular]}>
-          <StatTile targetRef={guideRef(guideRefs, "goals-main")} icon="target" label="Meta principal" value={formatPercent(vm.progresso)} helper="progresso da trilha" palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "goals-achievements")} icon="check-decagram-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="recompensas desbloqueadas" palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "goals-invested-time")} icon="clock-outline" label="Tempo investido" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "goals-accuracy")} icon="chart-donut" label="Taxa de acerto" value={formatPercent(vm.acertos)} helper="qualidade das respostas" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "goals-main")} icon="target" label="Meta principal" explicacao={CHAVE_DO_CAMPO.progresso} value={formatPercent(vm.progresso)} helper="progresso da trilha" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "goals-achievements")} icon="check-decagram-outline" label="Conquistas" explicacao={CHAVE_DO_CAMPO.totalConquistas} value={String(vm.totalConquistas)} helper="recompensas desbloqueadas" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "goals-invested-time")} icon="clock-outline" label="Tempo investido" explicacao={CHAVE_DO_CAMPO.tempo} value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "goals-accuracy")} icon="chart-donut" label="Taxa de acerto" explicacao={CHAVE_DO_CAMPO.acertos} value={formatPercent(vm.acertos)} helper="qualidade das respostas" palette={palette} accent={accent} />
         </View>
       </LinearGradient>
 
@@ -1326,7 +1368,7 @@ function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
           </SurfaceCard>
           {vm.temTempoAcumulado && (
             <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "goals-time")}>
-              <SectionTitle title="Tempo investido por tipo" subtitle="Tempo acumulado na turma, sem somar escopos sobrepostos." icon="clock-check-outline" palette={palette} />
+              <SectionTitle explicacao={CHAVE_DO_CAMPO.tempoTopicoAcumuladoMin} title="Tempo investido por tipo" subtitle="Tempo acumulado na turma, sem somar escopos sobrepostos." icon="clock-check-outline" palette={palette} />
               <View style={s.chartWrap}>
                 <TimeDistributionBars tempoTopico={Math.round(vm.tempoTopicoAcumuladoMin * 60)} tempoConteudo={Math.round(vm.tempoConteudoAcumuladoMin * 60)} tempoAtividade={Math.round(vm.tempoAtividadeAcumuladoMin * 60)} accent={accent} palette={palette} />
               </View>
@@ -1341,9 +1383,9 @@ function GoalsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
             <SectionTitle title="Próximo marco" subtitle="Uma meta por vez, com clareza do que falta." icon="flag-outline" palette={palette} />
             <Text style={[s.storyHeadline, { color: palette.text }]}>{vm.proximoMarco}</Text>
             <View style={s.tripleRow}>
-              <KpiPill trio label="Exploração" value={formatPercent(vm.taxaExploracao)} palette={palette} />
-              <KpiPill trio label="Conteúdo" value={formatPercent(vm.taxaConteudo)} palette={palette} />
-              <KpiPill trio label="Atividades" value={formatPercent(vm.taxaAtividade)} palette={palette} />
+              <KpiPill trio label="Exploração" explicacao={CHAVE_DO_CAMPO.taxaExploracao} value={formatPercent(vm.taxaExploracao)} palette={palette} />
+              <KpiPill trio label="Conteúdo" explicacao={CHAVE_DO_CAMPO.taxaConteudo} value={formatPercent(vm.taxaConteudo)} palette={palette} />
+              <KpiPill trio label="Atividades" explicacao={CHAVE_DO_CAMPO.taxaAtividade} value={formatPercent(vm.taxaAtividade)} palette={palette} />
             </View>
           </SurfaceCard>
           <AffinityBoard vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "goals-affinity")} />
@@ -1367,10 +1409,10 @@ function MysteryDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashbo
             : "O painel mostra o quanto do território acadêmico você já descobriu e o que ainda está oculto."}
         </Text>
         <View style={[s.statGrid, larga ? s.statGridLargo : s.statGridCelular]}>
-          <StatTile targetRef={guideRef(guideRefs, "mystery-revealed")} icon="compass-outline" label="Mapa revelado" value={formatPercent(vm.taxaExploracao)} helper={`${vm.topicosDescobertos}/${vm.totalTopicos} tópicos vistos`} palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "mystery-content")} icon="book-open-page-variant-outline" label="Arquivos lidos" value={String(vm.conteudosConcluidos)} helper={`${vm.totalConteudos} no total`} palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "mystery-challenges")} icon="help-circle-outline" label="Desafios resolvidos" value={String(vm.atividadesConcluidas)} helper={`${vm.totalAtividades} registrados`} palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "mystery-relics")} icon="star-circle-outline" label="Relíquias" value={String(vm.totalConquistas)} helper="marcos colecionados" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "mystery-revealed")} icon="compass-outline" label="Mapa revelado" explicacao={CHAVE_DO_CAMPO.taxaExploracao} value={formatPercent(vm.taxaExploracao)} helper={`${vm.topicosDescobertos}/${vm.totalTopicos} tópicos vistos`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "mystery-content")} icon="book-open-page-variant-outline" label="Arquivos lidos" explicacao={CHAVE_DO_CAMPO.conteudosConcluidos} value={String(vm.conteudosConcluidos)} helper={`${vm.totalConteudos} no total`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "mystery-challenges")} icon="help-circle-outline" label="Desafios resolvidos" explicacao={CHAVE_DO_CAMPO.atividadesConcluidas} value={String(vm.atividadesConcluidas)} helper={`${vm.totalAtividades} registrados`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "mystery-relics")} icon="star-circle-outline" label="Relíquias" explicacao={CHAVE_DO_CAMPO.totalConquistas} value={String(vm.totalConquistas)} helper="marcos colecionados" palette={palette} accent={accent} />
         </View>
       </LinearGradient>
 
@@ -1389,12 +1431,12 @@ function MysteryDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashbo
           <MelhorTempoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "best-time")} />
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "mystery-map")}>
             <SectionTitle title="Mapa da trilha" subtitle="O quanto do percurso já foi desvendado." icon="map" palette={palette} />
-            <ProgressLine label="Tópicos descobertos" current={vm.topicosDescobertos} total={vm.totalTopicos} accent={accent} palette={palette} />
-            <ProgressLine label="Conteúdos revelados" current={vm.conteudosConcluidos} total={vm.totalConteudos} accent={accent} palette={palette} />
-            <ProgressLine label="Desafios superados" current={vm.atividadesConcluidas} total={vm.totalAtividades} accent={accent} palette={palette} />
+            <ProgressLine label="Tópicos descobertos" explicacao={CHAVE_DO_CAMPO.topicosDescobertos} current={vm.topicosDescobertos} total={vm.totalTopicos} accent={accent} palette={palette} />
+            <ProgressLine label="Conteúdos revelados" explicacao={CHAVE_DO_CAMPO.conteudosConcluidos} current={vm.conteudosConcluidos} total={vm.totalConteudos} accent={accent} palette={palette} />
+            <ProgressLine label="Desafios superados" explicacao={CHAVE_DO_CAMPO.atividadesConcluidas} current={vm.atividadesConcluidas} total={vm.totalAtividades} accent={accent} palette={palette} />
           </SurfaceCard>
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "mystery-discovery")}>
-            <SectionTitle title="Mapa de descoberta" subtitle="Setores do território acadêmico revelados." icon="compass-outline" palette={palette} />
+            <SectionTitle explicacao={CHAVE_DO_CAMPO.topicosDescobertos} title="Mapa de descoberta" subtitle="Setores do território acadêmico revelados." icon="compass-outline" palette={palette} />
             <View style={s.chartCenter}>
               <DiscoveryRadial
                 total={vm.totalTopicos}
@@ -1408,9 +1450,9 @@ function MysteryDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashbo
             <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "mystery-traces")}>
               <SectionTitle title="Rastros da exploração" subtitle="Intensidade e profundidade da última sessão." icon="foot-print" palette={palette} />
               <View style={s.tripleRow}>
-                <KpiPill trio label="Tópicos visitados" value={String(vm.topicosVisitados)} palette={palette} />
-                <KpiPill trio label="Profundidade" value={`${Math.round(vm.scrollTotal / 100)}m`} palette={palette} />
-                <KpiPill trio label="Ativo" value={formatSeconds(vm.sessionActiveSec)} palette={palette} />
+                <KpiPill trio label="Tópicos visitados" explicacao={CHAVE_DO_CAMPO.topicosVisitados} value={String(vm.topicosVisitados)} palette={palette} />
+                <KpiPill trio label="Profundidade" explicacao={CHAVE_DO_CAMPO.scrollTotal} value={`${Math.round(vm.scrollTotal / 100)}m`} palette={palette} />
+                <KpiPill trio label="Ativo" explicacao={CHAVE_DO_CAMPO.sessionActiveSec} value={formatSeconds(vm.sessionActiveSec)} palette={palette} />
               </View>
               {vm.materialFocadoTipo ? (
                 <Text style={[s.storyBody, { color: palette.muted }]}>
@@ -1447,10 +1489,10 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
             : "Este modo organiza tudo com foco em clareza, leitura rápida e acompanhamento consistente."}
         </Text>
         <View style={[s.statGrid, larga ? s.statGridLargo : s.statGridCelular]}>
-          <StatTile targetRef={guideRef(guideRefs, "analytics-progress")} icon="chart-donut" label="Progresso" value={formatPercent(vm.progresso)} helper={`${vm.concluidos}/${vm.totalTopicos} tópicos`} palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "analytics-accuracy")} icon="target" label="Acertos" value={formatPercent(vm.acertos)} helper="média da turma atual" palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "analytics-time")} icon="clock-outline" label="Tempo de estudo" value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "analytics-achievements")} icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper={vm.melhorPosicao?.posicao != null ? `melhor posição #${vm.melhorPosicao.posicao}` : "sem posição em ranking"} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "analytics-progress")} icon="chart-donut" label="Progresso" explicacao={CHAVE_DO_CAMPO.progresso} value={formatPercent(vm.progresso)} helper={`${vm.concluidos}/${vm.totalTopicos} tópicos`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "analytics-accuracy")} icon="target" label="Acertos" explicacao={CHAVE_DO_CAMPO.acertos} value={formatPercent(vm.acertos)} helper="média da turma atual" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "analytics-time")} icon="clock-outline" label="Tempo de estudo" explicacao={CHAVE_DO_CAMPO.tempo} value={formatMinutes(vm.tempo)} helper={`${formatMinutes(vm.tempoMedio)} por atividade`} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "analytics-achievements")} icon="trophy-outline" label="Conquistas" explicacao={CHAVE_DO_CAMPO.totalConquistas} value={String(vm.totalConquistas)} helper={vm.melhorPosicao?.posicao != null ? `melhor posição #${vm.melhorPosicao.posicao}` : "sem posição em ranking"} palette={palette} accent={accent} />
         </View>
       </LinearGradient>
 
@@ -1468,7 +1510,7 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
           <BossSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "boss")} />
           <MelhorTempoSection vm={vm} palette={palette} accent={accent} targetRef={guideRef(guideRefs, "best-time")} />
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "analytics-journey")}>
-            <SectionTitle title="Jornada da classe" subtitle="Distribuição atual do seu avanço na trilha." icon="chart-box-outline" palette={palette} />
+            <SectionTitle explicacao={CHAVE_DO_CAMPO.concluidos} title="Jornada da classe" subtitle="Distribuição atual do seu avanço na trilha." icon="chart-box-outline" palette={palette} />
             <View style={s.chartWrap}>
               <TopicBarChart
                 concluidos={vm.concluidos}
@@ -1479,11 +1521,11 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
                 palette={palette}
               />
             </View>
-            <ProgressLine label="Conteúdos" current={vm.conteudosConcluidos} total={vm.totalConteudos} accent={accent} palette={palette} />
-            <ProgressLine label="Atividades" current={vm.atividadesConcluidas} total={vm.totalAtividades} accent={accent} palette={palette} />
+            <ProgressLine label="Conteúdos" explicacao={CHAVE_DO_CAMPO.conteudosConcluidos} current={vm.conteudosConcluidos} total={vm.totalConteudos} accent={accent} palette={palette} />
+            <ProgressLine label="Atividades" explicacao={CHAVE_DO_CAMPO.atividadesConcluidas} current={vm.atividadesConcluidas} total={vm.totalAtividades} accent={accent} palette={palette} />
           </SurfaceCard>
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "analytics-affinity")}>
-            <SectionTitle title="Radar de afinidades" subtitle="Perfil BrainHex em visão de teia comparativa." icon="spider-web" palette={palette} />
+            <SectionTitle explicacao={CHAVE_DO_CAMPO.afinidades} title="Radar de afinidades" subtitle="Perfil BrainHex em visão de teia comparativa." icon="spider-web" palette={palette} />
             {vm.afinidades.length >= 3 ? (
               <View style={s.chartCenter}>
                 <RadarChart
@@ -1511,8 +1553,8 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "analytics-recent")}>
             <SectionTitle title="Engajamento recente" subtitle="Recorte dos últimos registros do aluno." icon="pulse" palette={palette} />
             <View style={s.doubleRow}>
-              <KpiPill painel label="Dias ativos" value={vm.diasAtivos} palette={palette} />
-              <KpiPill painel label="Últimos 7 dias" value={vm.eventosRecentes} palette={palette} />
+              <KpiPill painel label="Dias ativos" explicacao={CHAVE_DO_CAMPO.diasAtivos} value={vm.diasAtivos} palette={palette} />
+              <KpiPill painel label="Últimos 7 dias" explicacao={CHAVE_DO_CAMPO.eventosRecentes} value={vm.eventosRecentes} palette={palette} />
             </View>
             <Text style={[s.sectionSubtitle, { color: palette.muted }]}>Último registro: {formatLastEvent(vm.ultimoEvento)}</Text>
           </SurfaceCard>
@@ -1524,8 +1566,8 @@ function AnalyticsDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dash
                 <TimeDistributionBars tempoTopico={vm.tempoTopico} tempoConteudo={vm.tempoConteudo} tempoAtividade={vm.tempoAtividade} accent={accent} palette={palette} />
               </View>
               <View style={s.doubleRow}>
-                <KpiPill painel label="Interações" value={vm.touchTotal} palette={palette} />
-                <KpiPill painel label="Engajamento" value={`${Math.round(vm.sessionEngajamento)}%`} palette={palette} />
+                <KpiPill painel label="Interações" explicacao={CHAVE_DO_CAMPO.touchTotal} value={vm.touchTotal} palette={palette} />
+                <KpiPill painel label="Engajamento" explicacao={CHAVE_DO_CAMPO.sessionEngajamento} value={`${Math.round(vm.sessionEngajamento)}%`} palette={palette} />
               </View>
             </SurfaceCard>
           )}
@@ -1550,10 +1592,10 @@ function SquadDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
             : "O foco é mostrar como você aparece, participa e cresce ao longo da trilha."}
         </Text>
         <View style={[s.statGrid, larga ? s.statGridLargo : s.statGridCelular]}>
-          <StatTile targetRef={guideRef(guideRefs, "squad-presence-hero")} icon="account-group-outline" label="Presença" value={`${vm.diasAtivos} dias`} helper={vm.presencaResumo} palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "squad-ranking")} icon="podium" label="Ranking" value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem posição"} helper="melhor colocação" palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "squad-achievements")} icon="trophy-outline" label="Conquistas" value={String(vm.totalConquistas)} helper="emblemas e marcos" palette={palette} accent={accent} />
-          <StatTile targetRef={guideRef(guideRefs, "squad-movement")} icon="pulse" label="Movimento" value={String(vm.eventosRecentes)} helper="ações recentes" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "squad-presence-hero")} icon="account-group-outline" label="Presença" explicacao={CHAVE_DO_CAMPO.diasAtivos} value={`${vm.diasAtivos} dias`} helper={vm.presencaResumo} palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "squad-ranking")} icon="podium" label="Ranking" explicacao={CHAVE_DO_CAMPO.melhorPosicao} value={vm.melhorPosicao?.posicao ? `#${vm.melhorPosicao.posicao}` : "Sem posição"} helper="melhor colocação" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "squad-achievements")} icon="trophy-outline" label="Conquistas" explicacao={CHAVE_DO_CAMPO.totalConquistas} value={String(vm.totalConquistas)} helper="emblemas e marcos" palette={palette} accent={accent} />
+          <StatTile targetRef={guideRef(guideRefs, "squad-movement")} icon="pulse" label="Movimento" explicacao={CHAVE_DO_CAMPO.eventosRecentes} value={String(vm.eventosRecentes)} helper="ações recentes" palette={palette} accent={accent} />
         </View>
       </LinearGradient>
 
@@ -1573,16 +1615,16 @@ function SquadDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "squad-energy")}>
             <SectionTitle title="Energia do grupo" subtitle="Indicadores que valorizam presença e constância." icon="star-circle-outline" palette={palette} />
             <View style={s.tripleRow}>
-              <KpiPill trio label="Progresso" value={formatPercent(vm.progresso)} palette={palette} />
-              <KpiPill trio label="Acertos" value={formatPercent(vm.acertos)} palette={palette} />
-              <KpiPill trio label="Tempo" value={formatMinutes(vm.tempo)} palette={palette} />
+              <KpiPill trio label="Progresso" explicacao={CHAVE_DO_CAMPO.progresso} value={formatPercent(vm.progresso)} palette={palette} />
+              <KpiPill trio label="Acertos" explicacao={CHAVE_DO_CAMPO.acertos} value={formatPercent(vm.acertos)} palette={palette} />
+              <KpiPill trio label="Tempo" explicacao={CHAVE_DO_CAMPO.tempo} value={formatMinutes(vm.tempo)} palette={palette} />
             </View>
             <Text style={[s.storyBody, { color: palette.muted }]}>
               Último pulso registrado em {formatLastEvent(vm.ultimoEvento)}. O painel valoriza continuidade e visibilidade dentro da turma.
             </Text>
           </SurfaceCard>
           <SurfaceCard palette={palette} targetRef={guideRef(guideRefs, "squad-presence")}>
-            <SectionTitle title="Presença na semana" subtitle="Dias com atividade nos últimos 7 dias." icon="calendar-week" palette={palette} />
+            <SectionTitle explicacao={CHAVE_DO_CAMPO.semanaDiaria} title="Presença na semana" subtitle="Dias com atividade nos últimos 7 dias." icon="calendar-week" palette={palette} />
             <View style={s.chartCenter}>
               <PresenceGrid data={vm.semanaDiaria} accent={accent} palette={palette} />
             </View>
@@ -1592,9 +1634,9 @@ function SquadDashboard({ vm, palette, accent, themeBadge, guideRefs }: Dashboar
               <SectionTitle title="Energia da sessão" subtitle="Qualidade do tempo de presença mais recente." icon="lightning-bolt-circle" palette={palette} />
               <EngagementBar activeSec={vm.sessionActiveSec} idleSec={vm.sessionIdleSec} accent={accent} palette={palette} />
               <View style={s.tripleRow}>
-                <KpiPill trio label="Tempo ativo" value={formatSeconds(vm.sessionActiveSec)} palette={palette} />
-                <KpiPill trio label="Interações" value={String(vm.touchTotal)} palette={palette} />
-                <KpiPill trio label="Engajamento" value={`${Math.round(vm.sessionEngajamento)}%`} palette={palette} />
+                <KpiPill trio label="Tempo ativo" explicacao={CHAVE_DO_CAMPO.sessionActiveSec} value={formatSeconds(vm.sessionActiveSec)} palette={palette} />
+                <KpiPill trio label="Interações" explicacao={CHAVE_DO_CAMPO.touchTotal} value={String(vm.touchTotal)} palette={palette} />
+                <KpiPill trio label="Engajamento" explicacao={CHAVE_DO_CAMPO.sessionEngajamento} value={`${Math.round(vm.sessionEngajamento)}%`} palette={palette} />
               </View>
             </SurfaceCard>
           )}
@@ -1743,6 +1785,9 @@ const s = StyleSheet.create({
   // `.kpi` do protótipo: duas colunas, ícone ao lado, fundo do app a 55%.
   kpiCelular: { flexBasis: "45%", flexGrow: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 8, padding: 10, borderRadius: 10 },
   kpiCelularTexto: { flex: 1, minWidth: 0 },
+  rotuloComExplicacao: { flexDirection: "row", alignItems: "center", gap: 6 },
+  rotuloComExplicacaoTexto: { flexShrink: 1 },
+  iconeDoTitulo: { marginLeft: 8 },
   kpiCelularRotulo: { fontFamily: FontFamily.interMedium, fontSize: 11.5, lineHeight: 15 },
   kpiCelularValor: { fontFamily: FontFamily.interMedium, fontWeight: "700", fontSize: 16, lineHeight: 21 },
   kpiCelularAjuda: { fontFamily: FontFamily.interMedium, fontSize: 11, lineHeight: 14, marginTop: 1 },

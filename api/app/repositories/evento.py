@@ -1,5 +1,10 @@
+import logging
+
 from sqlalchemy import String, bindparam, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 
 class EventoRepository:
@@ -84,3 +89,30 @@ class EventoRepository:
                 "valor": valor,
             },
         )
+
+    async def log_marcador(
+        self,
+        aluno_id: str,
+        tipo: str,
+        referencia: str | int | None = None,
+        valor: float | None = None,
+    ) -> bool:
+        """Grava e confirma um evento que só MARCA o andamento (ex.: `ciclo_iniciado`).
+
+        Falha vira aviso, não exceção: a análise não depende da linha. Os gatilhos de
+        `eventos_aluno` (conquistas, missões, moedas) rodam nesse INSERT, e um erro neles já
+        abortou toda análise de um aluno (prêmio de conquista repetido, `20261120_01`).
+        """
+        try:
+            await self.log(aluno_id=aluno_id, tipo=tipo, referencia=referencia, valor=valor)
+            await self.session.commit()
+            return True
+        except SQLAlchemyError as exc:
+            await self.session.rollback()
+            logger.warning(
+                "Falha ao gravar evento marcador: aluno_id=%s tipo=%s erro=%s",
+                aluno_id,
+                tipo,
+                exc.__class__.__name__,
+            )
+            return False
