@@ -11,6 +11,7 @@ import { AppState, type AppStateStatus } from "react-native";
 
 import { useUsuario } from "@/context/SessaoContext";
 import { supabase } from "@/database/supabase";
+import { criarDetectorDeTrocaDeStatus, type EventoDeProgresso } from "@/utils/ecoRealtime";
 import {
   avaliarPortoes,
   cerimoniasPendentes,
@@ -126,17 +127,25 @@ export const PortoesProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (estado === "active") setVersao((v) => v + 1);
     };
     const appStateSubscription = AppState.addEventListener("change", atualizarAoVoltar);
+    // A visita que o app grava a cada minuto volta como evento com o mesmo
+    // `status`; reler `vw_portoes_do_aluno` por isso era uma consulta por
+    // minuto à toa. O portão só muda quando o status de alguma linha muda.
+    const trocouStatus = criarDetectorDeTrocaDeStatus();
     const channel = supabase
       .channel(`portoes-progresso-${alunoId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "conteudo_aluno", filter: `aluno_id=eq.${alunoId}` },
-        () => setVersao((v) => v + 1),
+        (evento: EventoDeProgresso) => {
+          if (trocouStatus("conteudo_aluno", evento)) setVersao((v) => v + 1);
+        },
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "topico_aluno", filter: `aluno_id=eq.${alunoId}` },
-        () => setVersao((v) => v + 1),
+        (evento: EventoDeProgresso) => {
+          if (trocouStatus("topico_aluno", evento)) setVersao((v) => v + 1);
+        },
       )
       .subscribe();
 
