@@ -334,7 +334,9 @@ function AnalysisPanel({ vm, palette, accent, targetRef }: { vm: ProfileMetricsV
         <View style={chipDestaque}>
           <MaterialCommunityIcons name="emoticon-outline" size={tamanhoIconeChip} color={accent} />
           <Text style={[s.chipText, !larga && s.chipTextCelular, { color: larga ? palette.text : accent }]}>{vm.emotionLabel}</Text>
-          <ExplicacaoDaMetrica chave={CHAVE_DO_CAMPO.emotionLabel} cores={coresDoPainel(palette)} />
+          <View style={s.iconeDoChip}>
+            <ExplicacaoDaMetrica chave={CHAVE_DO_CAMPO.emotionLabel} cores={coresDoPainel(palette)} />
+          </View>
         </View>
         <View style={chipNeutro}>
           <MaterialCommunityIcons
@@ -1834,6 +1836,7 @@ const s = StyleSheet.create({
   chipRow: { flexDirection: "row", flexWrap: "wrap", marginBottom: 10 },
   chip: { flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, marginRight: 8, marginBottom: 8 },
   chipText: { marginLeft: 8, fontFamily: FontFamily.interMedium, fontSize: 12 },
+  iconeDoChip: { marginLeft: 8 },
   chipCelular: { paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, marginRight: 6, marginBottom: 6 },
   chipTextCelular: { marginLeft: 5, fontSize: 11.5, fontWeight: "600" },
   chipTextCelularSolto: { fontSize: 11.5, fontWeight: "600" },
