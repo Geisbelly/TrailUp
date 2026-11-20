@@ -37,6 +37,7 @@ import {
   type ErrosDoRanking,
   type Posicao,
 } from "./rankings/rankings";
+import ExplicacaoDaMetrica from "./comum/ExplicacaoDaMetrica";
 
 interface RankTipo {
   id: number;
@@ -597,7 +598,10 @@ export default function RanksSection() {
               <div className="flex flex-wrap items-center gap-3 border-b bg-muted px-6 py-5">
                 <div className="min-w-0">
                   <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] text-primary">Posições · critério {criterioSelecionado}</p>
-                  <h3 className="mt-1.5 text-[22px] font-bold">{titulo(selecionado)}</h3>
+                  <div className="flex items-center gap-1">
+                    <h3 className="mt-1.5 text-[22px] font-bold">{titulo(selecionado)}</h3>
+                    <ExplicacaoDaMetrica chave="prof.ranking" />
+                  </div>
                 </div>
                 <div className="ml-auto flex flex-wrap items-center gap-2">
                   {!estaAberto(selecionado) && (

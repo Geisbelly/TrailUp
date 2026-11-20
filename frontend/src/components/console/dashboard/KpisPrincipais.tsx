@@ -1,9 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 import { Target, TrendingUp, Users } from "lucide-react";
+import type { ChaveMetrica } from "@/lib/metricas/explicacoes";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 type KpiPrincipal = {
   label: string;
   icon: LucideIcon;
+  explicacao: ChaveMetrica;
   valor: string | null;
   unidade: string;
   progresso?: number;
@@ -14,7 +17,10 @@ function KpiPrincipalCard({ kpi }: { kpi: KpiPrincipal }) {
   return (
     <div className="rounded-[20px] border border-border bg-card px-[26px] py-6">
       <div className="flex items-start justify-between gap-3">
-        <div className="console-label">{kpi.label}</div>
+        <div className="flex min-w-0 items-center gap-1">
+          <div className="console-label">{kpi.label}</div>
+          <ExplicacaoDaMetrica chave={kpi.explicacao} />
+        </div>
         <Icon className="h-[18px] w-[18px] shrink-0 text-[hsl(var(--console-violet-text))]" strokeWidth={1.6} aria-hidden="true" />
       </div>
       {kpi.valor === null ? (
@@ -55,11 +61,12 @@ export default function KpisPrincipais({
   temDados: boolean;
 }) {
   const kpis: KpiPrincipal[] = [
-    { label: "Total de alunos", icon: Users, valor: String(totalAlunos), unidade: "com acesso liberado" },
-    { label: "Média de notas", icon: Target, valor: mediaNotas === null ? null : mediaNotas.toFixed(1), unidade: "de 10" },
+    { label: "Total de alunos", icon: Users, explicacao: "prof.total_alunos", valor: String(totalAlunos), unidade: "com acesso liberado" },
+    { label: "Média de notas", icon: Target, explicacao: "prof.media_notas", valor: mediaNotas === null ? null : mediaNotas.toFixed(1), unidade: "de 10" },
     {
       label: "Conclusão média",
       icon: TrendingUp,
+      explicacao: "prof.conclusao_media",
       valor: temDados ? `${mediaConclusao.toFixed(0)}%` : null,
       unidade: "da trilha",
       progresso: temDados ? mediaConclusao : undefined,

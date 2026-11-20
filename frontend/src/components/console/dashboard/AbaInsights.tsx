@@ -15,6 +15,7 @@ import { useInsightsDaTurma } from "./useInsightsDaTurma";
 import CartaoDeInsight, { botaoDoInsight } from "./CartaoDeInsight";
 import SecaoAlteracoesDaTrilha from "./SecaoAlteracoesDaTrilha";
 import type { Aluno } from "./aluno/tipos";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 const FILTROS: { value: EscopoDoFiltro; label: string }[] = [
   { value: "tudo", label: "Tudo" },
@@ -82,6 +83,7 @@ export default function AbaInsights({
           {gerando ? "Gerando novas sínteses…" : formatarGeradoHa(geradoEm(lote), agora)}
         </div>
         <div className="text-[11.5px] text-muted-foreground">{textoDaAceitacao(taxa)}</div>
+        <ExplicacaoDaMetrica chave="prof.insights" />
         <button
           type="button"
           disabled={gerando}
@@ -115,9 +117,12 @@ export default function AbaInsights({
       {filtro !== "turma" && alertas.length > 0 && (
         <section aria-labelledby="alertas-por-aluno" className="flex flex-col gap-3">
           <div>
-            <h3 id="alertas-por-aluno" className="text-base font-bold text-foreground">
-              Alertas por aluno ({alertas.length})
-            </h3>
+            <div className="flex items-center gap-1">
+              <h3 id="alertas-por-aluno" className="text-base font-bold text-foreground">
+                Alertas por aluno ({alertas.length})
+              </h3>
+              <ExplicacaoDaMetrica chave="prof.alertas_por_aluno" />
+            </div>
             <p className="mt-1 text-[12.5px] text-muted-foreground">
               Quando um aluno registra o mesmo estado difícil em vários ciclos de estudo seguidos. Surgem durante o
               estudo, não pelo botão "Atualizar agora".

@@ -192,6 +192,9 @@ function buildNextMilestone(
   return "Trilha concluída. Hora de manter o ritmo.";
 }
 
+export const LEITURA_FALHOU =
+  "A última leitura da IA não foi concluída. O que você estudou continua registrado; a próxima sessão tenta de novo.";
+
 function buildAnalysisView(lastAnalysis: TelemetryAnalysisResponse | null, emotionLabel: string) {
   const emotionRecord =
     lastAnalysis?.emocao_atual &&
@@ -247,7 +250,9 @@ function buildAnalysisView(lastAnalysis: TelemetryAnalysisResponse | null, emoti
     ["frustrado", "ansioso", "cansado", "tired", "overwhelmed"].includes(emotionKey)
       ? "A sessão mostrou sinais de desgaste. Vale reduzir a pressão e trabalhar em blocos curtos."
       : null,
-    ...collectStringValues(lastAnalysis?.erros).map((item) => `Falha registrada: ${item}`),
+    // O texto de `erros` é técnico (exceção do banco, SQL com o id do aluno): não vai para a tela.
+    // O aluno só precisa saber que a leitura não saiu e que o estudo dele não se perdeu.
+    collectStringValues(lastAnalysis?.erros).length > 0 ? LEITURA_FALHOU : null,
   ]);
 
   const recommendations = uniqueCompact([

@@ -1,0 +1,247 @@
+{
+  "aluno.progresso": {
+    "nome": "Progresso da trilha",
+    "selo": "regra",
+    "oQueMede": "Quanto do percurso da turma você já concluiu.",
+    "comoColeta": "O banco conta os itens que você concluiu sobre o total do percurso. O percurso é o seu material personalizado; enquanto ele não existe, vale o material do professor.",
+    "atualiza": "A cada conteúdo, atividade ou item personalizado concluído.",
+    "naoSignifica": "Não mede quanto você aprendeu, só quanto do caminho já percorreu.",
+    "referencia": "classe_aluno.porcentagemConcluida (trailup_recalcular_classe_aluno) via buildClasseResumoFallback; profileMetricsViewModel.ts progresso"
+  },
+  "aluno.acertos": {
+    "nome": "Taxa de acerto",
+    "selo": "regra",
+    "oQueMede": "A média dos seus acertos nas atividades desta turma.",
+    "comoColeta": "Para cada atividade, o app usa o percentual de acerto salvo ou, sem ele, as questões que você acertou. Depois tira a média entre as atividades.",
+    "atualiza": "Quando uma atividade é entregue ou corrigida.",
+    "limites": [
+      "Atividade sem nenhuma resposta não entra na média.",
+      "Sem atividades na turma, vale o número guardado na sua matrícula."
+    ],
+    "naoSignifica": "Não é a sua nota: a nota pesa os pontos de cada atividade.",
+    "referencia": "classeMetrics.ts resolveAtividadeAcertos + acertosPercentual; fallback classe_aluno.acertosPercentual"
+  },
+  "aluno.tempo_total": {
+    "nome": "Tempo de estudo",
+    "selo": "medido",
+    "oQueMede": "O tempo em que você esteve interagindo com o material desta turma, somando todos os dias.",
+    "comoColeta": "Conta como ativo os 15 segundos depois de cada toque ou rolagem e todo o tempo com áudio ou vídeo tocando. Com o app em segundo plano ou a tela apagada, nada conta.",
+    "atualiza": "O app envia a cada minuto, mais ou menos.",
+    "limites": [
+      "O tempo de conteúdos e atividades já está dentro do tempo dos tópicos: não some os três."
+    ],
+    "naoSignifica": "Não é o tempo com o app aberto nem o do cronômetro de estudo.",
+    "referencia": "classe_aluno.tempoGastoMin / topico_aluno.tempo_gasto_min (trailup_tempo_telemetria_min, active_sec scope topic); acumuladorLote.ts"
+  },
+  "aluno.tempo_sessao": {
+    "nome": "Tempo ativo recente",
+    "selo": "medido",
+    "oQueMede": "O tempo ativo desde que você abriu o app desta vez.",
+    "comoColeta": "A mesma conta do tempo de estudo (toque, rolagem ou mídia tocando), somada só desde que o app abriu.",
+    "atualiza": "Na hora, enquanto você estuda.",
+    "limites": [
+      "Fechar o app ou sair da conta zera este número."
+    ],
+    "naoSignifica": "Não é um tempo a mais: ele já está incluído no tempo de estudo total.",
+    "referencia": "MetricasContext.tsx timeMetricsRecentes (somarTimeMetrics dos lotes fechados + lote atual); general.batch_active_sec"
+  },
+  "aluno.engajamento_sessao": {
+    "nome": "Engajamento recente",
+    "selo": "regra",
+    "oQueMede": "Quanto do tempo com o material aberto, desde que você abriu o app, foi tempo ativo.",
+    "comoColeta": "É o tempo ativo dividido pelo tempo ativo mais o tempo parado com o material na tela.",
+    "atualiza": "Na hora, enquanto você estuda.",
+    "naoSignifica": "Não mede atenção nem concentração: ler sem tocar na tela por mais de 15 segundos conta como parado.",
+    "referencia": "profileMetricsViewModel.ts sessionEngajamento = batch_active_sec / (batch_active_sec + batch_idle_sec)"
+  },
+  "aluno.interacoes_sessao": {
+    "nome": "Interações recentes",
+    "selo": "medido",
+    "oQueMede": "Quantos toques você deu e quanto rolou a tela desde que abriu o app.",
+    "comoColeta": "O app conta cada toque e soma a distância rolada no material.",
+    "atualiza": "Na hora, enquanto você estuda.",
+    "naoSignifica": "Mais toques não quer dizer estudo melhor.",
+    "referencia": "TelemetryTimeMetrics.general.touch_count, scroll_distance_px (timeMetricsRecentes)"
+  },
+  "aluno.topicos_visitados": {
+    "nome": "Tópicos visitados agora",
+    "selo": "medido",
+    "oQueMede": "Quantos tópicos você abriu desde que abriu o app.",
+    "comoColeta": "O app conta os tópicos com pelo menos uma visita registrada nesta sessão.",
+    "atualiza": "Na hora, ao abrir um tópico.",
+    "naoSignifica": "Não é o total de tópicos que você já conheceu na turma.",
+    "referencia": "profileMetricsViewModel.ts topicosVisitados (timeMetricsRecentes.topics visits > 0)"
+  },
+  "aluno.dias_ativos": {
+    "nome": "Dias ativos",
+    "selo": "medido",
+    "oQueMede": "Em quantos dos últimos 7 dias você estudou.",
+    "comoColeta": "Conta o dia que tem algum registro de estudo: abrir tópico, conteúdo ou atividade, responder questão, avançar no material, tempo ativo ou presença em aula.",
+    "atualiza": "Quando você volta à tela do Perfil.",
+    "limites": [
+      "Só olha a última semana, então nunca passa de 7.",
+      "Entrar no app sem estudar não conta."
+    ],
+    "naoSignifica": "Não diz quanto tempo você estudou em cada dia.",
+    "referencia": "services/studyPresence.ts (SOURCES) + utils/studyPresence.ts summarizeStudyDates (dias_ativos, semana_diaria)"
+  },
+  "aluno.registros_recentes": {
+    "nome": "Movimento da semana",
+    "selo": "medido",
+    "oQueMede": "Quantos registros de estudo você fez nos últimos 7 dias.",
+    "comoColeta": "Soma os mesmos registros dos dias ativos: abrir material, responder questão, avançar no material, tempo ativo e presença em aula.",
+    "atualiza": "Quando você volta à tela do Perfil.",
+    "naoSignifica": "Não é uma pontuação: um registro pode ser uma questão ou um minuto de leitura.",
+    "referencia": "utils/studyPresence.ts summarizeStudyDates registros_recentes"
+  },
+  "aluno.sequencia": {
+    "nome": "Sequência de dias",
+    "selo": "regra",
+    "oQueMede": "Quantos dias seguidos você estudou, até hoje.",
+    "comoColeta": "Conta para trás os dias com estudo, sem pular nenhum. Se hoje você ainda não estudou, a conta começa em ontem.",
+    "atualiza": "Quando você volta à tela do Perfil.",
+    "limites": [
+      "Só olha os últimos 7 dias, então a sequência nunca passa de 7."
+    ],
+    "naoSignifica": "Não é um recorde: um dia sem estudo zera a contagem.",
+    "referencia": "utils/sequenciaDias.ts sequenciaDeDias(semana_diaria); app/(tabs)/perfil/index.tsx"
+  },
+  "aluno.ultimo_estudo": {
+    "nome": "Último registro",
+    "selo": "medido",
+    "oQueMede": "Quando foi o seu último registro de estudo.",
+    "comoColeta": "É o mais recente entre os registros que contam para os dias ativos.",
+    "atualiza": "Quando você volta à tela do Perfil.",
+    "naoSignifica": "Não conta entrar no app sem estudar.",
+    "referencia": "utils/studyPresence.ts ultimo_registro"
+  },
+  "aluno.topicos_concluidos": {
+    "nome": "Tópicos concluídos",
+    "selo": "medido",
+    "oQueMede": "Quantos tópicos da turma você concluiu, quantos estão em andamento e quantos faltam.",
+    "comoColeta": "O banco marca cada tópico como concluído ou em andamento pelo que você fez nele.",
+    "atualiza": "A cada item concluído.",
+    "naoSignifica": "Não diz quanto falta dentro de cada tópico.",
+    "referencia": "classeMetrics.ts topicosConcluidos/topicosEmAndamento (topico_aluno.status, trailup_recalcular_topico_aluno)"
+  },
+  "aluno.exploracao": {
+    "nome": "Mapa revelado",
+    "selo": "regra",
+    "oQueMede": "Quantos tópicos da turma você já começou, em percentual.",
+    "comoColeta": "Soma os tópicos concluídos e em andamento e divide pelo total de tópicos.",
+    "atualiza": "Quando você começa ou conclui um tópico.",
+    "naoSignifica": "Começar um tópico não quer dizer que você o terminou.",
+    "referencia": "profileMetricsViewModel.ts topicosDescobertos, taxaExploracao"
+  },
+  "aluno.conteudos_concluidos": {
+    "nome": "Conteúdos concluídos",
+    "selo": "medido",
+    "oQueMede": "Quantos conteúdos você concluiu, contando o material do professor e o personalizado.",
+    "comoColeta": "O app junta os dois sem contar duas vezes o mesmo conteúdo.",
+    "atualiza": "A cada conteúdo concluído.",
+    "naoSignifica": "Não diz se você entendeu o conteúdo.",
+    "referencia": "utils/progressoPersonalizado.ts unificarContadores (conteudosConcluidos)"
+  },
+  "aluno.atividades_concluidas": {
+    "nome": "Atividades concluídas",
+    "selo": "medido",
+    "oQueMede": "Quantas atividades e desafios você concluiu, incluindo os quizzes do material personalizado.",
+    "comoColeta": "O app junta as atividades do professor e as do material personalizado, sem contar duas vezes.",
+    "atualiza": "A cada atividade concluída.",
+    "naoSignifica": "Não diz se você acertou: só que concluiu.",
+    "referencia": "utils/progressoPersonalizado.ts unificarContadores (atividadesConcluidas)"
+  },
+  "aluno.conquistas": {
+    "nome": "Conquistas",
+    "selo": "medido",
+    "oQueMede": "Quantas conquistas você já desbloqueou.",
+    "comoColeta": "O app conta as conquistas registradas para você.",
+    "atualiza": "Quando você desbloqueia uma conquista nova.",
+    "naoSignifica": "Não é a sua nota nem a sua posição no ranking.",
+    "referencia": "profileMetricsViewModel.ts totalConquistas = conquistas.length"
+  },
+  "aluno.ranking": {
+    "nome": "Posição no ranking",
+    "selo": "regra",
+    "oQueMede": "A sua posição na turma no critério do ranking.",
+    "comoColeta": "Cada ranking tem um critério: XP no período, tempo ativo, trilha concluída, acertos, ranqueada, missões ou elo. O banco ordena a turma e calcula as posições.",
+    "atualiza": "Quando alguém da turma ganha pontos no critério.",
+    "limites": [
+      "No Perfil aparece a sua melhor posição entre todos os rankings da turma."
+    ],
+    "naoSignifica": "Não é a sua nota: é uma comparação com os colegas num critério só.",
+    "referencia": "vw_rank_posicoes_por_classe; profileMetricsViewModel.ts melhorPosicao; app/(tabs)/ranking/[id].tsx"
+  },
+  "aluno.faixa_xp": {
+    "nome": "Faixa de XP",
+    "selo": "regra",
+    "oQueMede": "O seu nível de XP nesta turma e quanto falta para o próximo.",
+    "comoColeta": "O XP é a soma dos pontos que você ganhou na turma. O banco compara com o piso de cada faixa para achar o seu nível.",
+    "atualiza": "Quando você ganha ou perde pontos.",
+    "limites": [
+      "É por turma: em outra turma você tem outro XP."
+    ],
+    "naoSignifica": "O XP não entra na sua nota.",
+    "referencia": "aluno_faixa_xp (sum eventos_aluno.valor, fn_faixa_xp, xp_faixa) 20261102_10; services/faixaXp.core.ts"
+  },
+  "aluno.afinidades": {
+    "nome": "Afinidade com os perfis",
+    "selo": "regra",
+    "oQueMede": "O quanto você se parece com cada um dos 7 perfis BrainHex, de 0 a 100%.",
+    "comoColeta": "Sai das suas respostas ao questionário BrainHex do cadastro. O seu perfil principal é o de maior afinidade.",
+    "atualiza": "Só quando você responde o questionário de novo.",
+    "naoSignifica": "Não é um teste de personalidade nem de capacidade: é o jeito de jogar que você mesmo escolheu.",
+    "referencia": "aluno_perfil.afinidade (quiz de signup); profileMetricsViewModel.ts afinidades"
+  },
+  "aluno.radar": {
+    "nome": "Radar de desempenho",
+    "selo": "regra",
+    "oQueMede": "Cinco números lado a lado: acertos, progresso, exploração, atividades concluídas e presença.",
+    "comoColeta": "Cada eixo usa a sua métrica, de 0 a 100%. A presença é os dias ativos da semana divididos por 7.",
+    "atualiza": "Junto com cada uma das métricas.",
+    "naoSignifica": "A área do desenho não é uma nota geral.",
+    "referencia": "ProfileMetricsViews.tsx RadarChart axes (acertos, progresso, taxaExploracao, taxaAtividade, diasAtivos/7)"
+  },
+  "aluno.dano_boss": {
+    "nome": "Dano no boss",
+    "selo": "medido",
+    "oQueMede": "Quanto dano você já causou aos bosses desta turma.",
+    "comoColeta": "O app soma o dano registrado em cada batalha.",
+    "atualiza": "A cada acerto numa batalha.",
+    "naoSignifica": "Não é a sua nota nas atividades.",
+    "referencia": "profileMetricsViewModel.ts danoTotal (battleStates totalDamage)"
+  },
+  "aluno.melhor_tempo": {
+    "nome": "Melhor tempo em atividade",
+    "selo": "medido",
+    "oQueMede": "O menor tempo ativo que você levou numa atividade concluída.",
+    "comoColeta": "Entre as atividades concluídas com tempo registrado, o app pega a mais rápida.",
+    "atualiza": "Quando você conclui uma atividade.",
+    "naoSignifica": "Não é o tempo da tentativa e não entra na nota.",
+    "referencia": "profileMetricsViewModel.ts melhorTempoMin (atividade_aluno.tempo_gasto_min das concluídas)"
+  },
+  "aluno.emocao": {
+    "nome": "Leitura do seu estado",
+    "selo": "estimativa",
+    "oQueMede": "Como o sistema acha que você estava na última sessão, pela sua expressão: focado, cansado, ansioso, frustrado ou neutro.",
+    "comoColeta": "Um modelo de visão olha as imagens da câmera, e só se você ligar a coleta visual. Com a câmera desligada, não há leitura.",
+    "atualiza": "Depois que o app envia os dados de uma sessão.",
+    "limites": [
+      "O modelo ainda não foi conferido com alunos."
+    ],
+    "naoSignifica": "Não é um diagnóstico: é um palpite para adaptar o material.",
+    "referencia": "services/emotion_vision.py LocalVisionEmotionAnalyzer (EMOTION_MODEL_PROVIDER, padrão unavailable); agente_emocao; profileMetricsViewModel.ts getEmotionLabel"
+  },
+  "aluno.leitura_adaptativa": {
+    "nome": "Leitura adaptativa",
+    "selo": "estimativa",
+    "oQueMede": "O que o sistema concluiu da sua última sessão e o que ele vai ajustar no material.",
+    "comoColeta": "A análise junta o seu estado, o ritmo de leitura, as interações e o desempenho da sessão.",
+    "atualiza": "Depois que o app envia os dados de uma sessão.",
+    "limites": [
+      "Essas conclusões ainda não foram conferidas com alunos."
+    ],
+    "naoSignifica": "Não é uma avaliação sua: serve para escolher o próximo material.",
+    "referencia": "TelemetryAnalysisResponse (linear_analysis_pipeline.py); profileMetricsViewModel.ts buildAnalysisView"
+  }
+}

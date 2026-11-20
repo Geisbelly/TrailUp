@@ -3,6 +3,7 @@ import { nomeExibidoDoPerfil } from "../perfilCores";
 import { PerfilChip } from "../PerfilVisual";
 import { consumoTotal, itemConcluido } from "./calculos";
 import type { Aluno, Personalizacao, ProgressoItem } from "./tipos";
+import ExplicacaoDaMetrica from "../../comum/ExplicacaoDaMetrica";
 
 const dataHora = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR") : "Sem data");
 
@@ -96,7 +97,10 @@ export default function AbaPersonalizacao({
 
         <div className="flex flex-col gap-5">
           <section className="rounded-[20px] border border-border bg-card px-6 py-[22px]">
-            <h3 className="text-base text-foreground">Consumo total</h3>
+            <div className="flex items-center gap-1">
+              <h3 className="text-base text-foreground">Consumo total</h3>
+              <ExplicacaoDaMetrica chave="prof.consumo_personalizado" />
+            </div>
             {consumo.percentual === null ? (
               <p className="mt-3 text-sm text-muted-foreground">Ainda não há itens personalizados registrados para este aluno.</p>
             ) : (

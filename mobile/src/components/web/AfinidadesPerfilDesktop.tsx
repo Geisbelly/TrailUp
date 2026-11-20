@@ -7,6 +7,8 @@ import { ProfileArtwork } from "@/components/ProfileArtwork";
 import { profileEmblems } from "@/constants/designAssets";
 import type { BrainHexProfile } from "@/constants/brainHexProfiles";
 import { getBrainHexConfig } from "@/constants/profileImages";
+import { ExplicacaoDaMetrica } from "@/components/metricas/ExplicacaoDaMetrica";
+import type { ChaveMetrica } from "@/services/metricas/explicacoes";
 import { FontFamily } from "@/styles/GlobalStyle";
 import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 
@@ -41,11 +43,12 @@ export function AfinidadesPerfilDesktop({
 }) {
   const total = afinidades.reduce((soma, a) => soma + Math.max(0, a.afinidade), 0);
   const legenda = afinidades.map((a) => `${getBrainHexConfig(a.perfil).label} ${Math.round(a.afinidade)}%`);
-  const numeros: [string, string][] = [
-    ["Turma", turma || "—"],
-    ["Sequência", sequencia >= 7 ? "7+ dias" : `${sequencia} ${sequencia === 1 ? "dia" : "dias"}`],
-    ["Posição no rank", posicao ? `${posicao}º` : "—"],
+  const numeros: [string, string, ChaveMetrica | null][] = [
+    ["Turma", turma || "—", null],
+    ["Sequência", sequencia >= 7 ? "7+ dias" : `${sequencia} ${sequencia === 1 ? "dia" : "dias"}`, "aluno.sequencia"],
+    ["Posição no rank", posicao ? `${posicao}º` : "—", "aluno.ranking"],
   ];
+  const cores = { texto: palette.text, suave: palette.textMuted, fundo: palette.surface, borda: palette.border, destaque: palette.accent };
 
   return (
     <View style={s.bloco}>
@@ -110,9 +113,12 @@ export function AfinidadesPerfilDesktop({
       ) : null}
 
       <View style={s.numeros}>
-        {numeros.map(([rotulo, valor]) => (
+        {numeros.map(([rotulo, valor, chave]) => (
           <View key={rotulo} style={[s.numero, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text style={[s.numeroRotulo, { color: palette.text }]}>{rotulo}</Text>
+            <View style={s.numeroTopo}>
+              <Text style={[s.numeroRotulo, { color: palette.text }]}>{rotulo}</Text>
+              {chave ? <ExplicacaoDaMetrica chave={chave} cores={cores} /> : null}
+            </View>
             <Text style={[s.numeroValor, { color: palette.accent }]} numberOfLines={1}>{valor}</Text>
           </View>
         ))}
@@ -122,6 +128,7 @@ export function AfinidadesPerfilDesktop({
 }
 
 const s = StyleSheet.create({
+  numeroTopo: { flexDirection: "row", alignItems: "center", gap: 6 },
   bloco: { marginTop: 18 },
   rotulo: { fontFamily: FontFamily.interMedium, fontSize: 13, marginBottom: 8 },
   lista: { gap: 8 },

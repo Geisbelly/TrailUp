@@ -1,6 +1,7 @@
 import { resumirRisco } from "./riscoReprovacao";
 import { primeiroNome, sugestaoDoFatorDeReprovacao } from "./sugestaoDoRisco";
 import type { EstadoDoRisco } from "./useRiscoDeReprovacao";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 type AlunoDaTurma = { id: string; nome: string };
 
@@ -26,7 +27,10 @@ export default function RiscoDeReprovacao<T extends AlunoDaTurma>({
 
   return (
     <section aria-labelledby="risco-de-reprovacao" className="min-w-0 rounded-[20px] border border-border bg-card px-[26px] py-6">
-      <h3 id="risco-de-reprovacao" className="text-lg text-foreground">Risco de reprovação</h3>
+      <div className="flex items-center gap-1">
+        <h3 id="risco-de-reprovacao" className="text-lg text-foreground">Risco de reprovação</h3>
+        <ExplicacaoDaMetrica chave="prof.risco_reprovacao" />
+      </div>
       <p className="mt-1 text-[12.5px] text-muted-foreground">
         Alunos que juntam dois ou mais sinais: queda de uso, acerto baixo, faltas, prazos perdidos ou o mesmo estado
         difícil em vários ciclos. Só você vê. É um ponto de partida para uma conversa de apoio, não um rótulo. Cada sinal

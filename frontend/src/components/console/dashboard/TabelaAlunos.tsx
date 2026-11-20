@@ -9,6 +9,7 @@ import { PerfilAvatar, PerfilChip } from "./PerfilVisual";
 import type { FaixaDoRisco } from "./risco";
 import { rotuloDaUltimaAtividade } from "./ultimaAtividade";
 import { filtrarPorPerfil, paginar, perfisPresentes, TODOS_OS_PERFIS } from "./tabela";
+import ExplicacaoDaMetrica from "../comum/ExplicacaoDaMetrica";
 
 export type AlunoDaTabela = {
   id: string;
@@ -115,10 +116,30 @@ export default function TabelaAlunos<T extends AlunoDaTabela>({
               <th scope="col" className={th}>Aluno</th>
               {mostrarClasse && <th scope="col" className={th}>Turma</th>}
               <th scope="col" className={th}>Perfil dominante</th>
-              <th scope="col" className={th}>Nota</th>
-              <th scope="col" className={th}>Progresso na trilha</th>
-              <th scope="col" className={th}>Acertos</th>
-              {mostrarAbandono && <th scope="col" className={th}>Abandono</th>}
+              <th scope="col" className={th}>
+                <span className="inline-flex items-center gap-0.5">
+                  Nota
+                  <ExplicacaoDaMetrica chave="prof.media_notas" />
+                </span>
+              </th>
+              <th scope="col" className={th}>
+                <span className="inline-flex items-center gap-0.5">
+                  Progresso na trilha
+                  <ExplicacaoDaMetrica chave="prof.conclusao_media" />
+                </span>
+              </th>
+              <th scope="col" className={th}>
+                <span className="inline-flex items-center gap-0.5">
+                  Acertos
+                  <ExplicacaoDaMetrica chave="prof.taxa_acertos" />
+                </span>
+              </th>
+              {mostrarAbandono && <th scope="col" className={th}>
+                <span className="inline-flex items-center gap-0.5">
+                  Abandono
+                  <ExplicacaoDaMetrica chave="prof.risco_abandono" />
+                </span>
+              </th>}
               <th scope="col" className={th}>Última atividade</th>
               <th scope="col" className={th}><span className="sr-only">Abrir</span></th>
             </tr>
