@@ -84,3 +84,13 @@ test("a explicação da faixa fica fora do bloco acessível agrupado, senão o l
   const fimDoAgrupado = faixa.indexOf("</View>\n      <ExplicacaoDaMetrica", raiz);
   assert.ok(agrupado > 0 && icone > 0 && fimDoAgrupado > 0 && icone > fimDoAgrupado);
 });
+
+test("no chip da emoção o ícone de informação tem respiro do texto, como o ícone de emoção à esquerda", () => {
+  // O `chipText` só tem margem à esquerda (para o ícone de emoção); sem isto o "i" colava no texto.
+  assert.match(paineis, /<View style=\{s\.iconeDoChip\}>\s*<ExplicacaoDaMetrica chave=\{CHAVE_DO_CAMPO\.emotionLabel\}/);
+  const estilo = paineis.match(/^ {2}iconeDoChip: \{([^}]*)\}/m);
+  assert.ok(estilo, "estilo iconeDoChip ausente");
+  const margem = Number(estilo[1].match(/marginLeft: (\d+)/)?.[1]);
+  const doTexto = Number(paineis.match(/^ {2}chipText: \{[^}]*marginLeft: (\d+)/m)?.[1]);
+  assert.equal(margem, doTexto);
+});
