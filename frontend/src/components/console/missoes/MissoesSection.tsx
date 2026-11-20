@@ -21,9 +21,10 @@ import { CartaoDaMissao, type TrocaDePerfil } from "./CartaoDaMissao";
 import { FormularioDaMissao, type DadosDaTurma } from "./FormularioDaMissao";
 import { FORMULARIO_DE_MISSAO_VAZIO, prazoParaCampo, type FormularioDeMissao, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
 import { CHAVE_DO_ALVO, definicaoDaMetrica } from "./criterio";
-import { MOTIVO_MAX, separarPorDecisao, validarMotivoDeRecusa } from "./aprovacao";
+import { MOTIVO_MAX, separarPorDecisao, validarMotivoDeRecusa, validarMotivoOpcional } from "./aprovacao";
 import {
   alternarDesafio,
+  decidirDesafio,
   decidirMissao,
   duplicarMissao,
   excluirMissao,
@@ -184,8 +185,15 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     if (!turmaId) return;
     setDecidindo(m.id);
     try {
-      await decidirMissao(m.id, true);
-      toast.success("Missão aprovada. Ela passa a valer para os alunos.");
+      if (m.desafio != null && m.desafioGrupo) {
+        // O grupo inteiro (uma linha por perfil) numa transação. 0 = alguém já tinha decidido.
+        const mudou = await decidirDesafio(m.desafioGrupo, true);
+        if (mudou > 0) toast.success("Desafio aprovado. Ele passa a valer para os alunos dos perfis escolhidos.");
+        else toast.info("Este desafio já tinha sido decidido. A lista foi atualizada.");
+      } else {
+        await decidirMissao(m.id, true);
+        toast.success("Missão aprovada. Ela passa a valer para os alunos.");
+      }
       await carregar(turmaId);
     } catch (e) {
       toast.error(mensagem(e, "Não foi possível aprovar a missão."));
@@ -200,17 +208,26 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     setRecusando(m);
   };
 
+  // O desafio gerado sozinho aceita recusa sem motivo (o banco grava "Recusado pelo professor").
+  const recusandoDesafio = recusando?.desafio != null && !!recusando?.desafioGrupo;
+
   const recusar = async () => {
     if (!recusando || !turmaId) return;
-    const v = validarMotivoDeRecusa(motivo);
+    const v = recusandoDesafio ? validarMotivoOpcional(motivo) : validarMotivoDeRecusa(motivo);
     if ("erro" in v) {
       setErroDoMotivo(v.erro);
       return;
     }
     setDecidindo(recusando.id);
     try {
-      await decidirMissao(recusando.id, false, v.motivo);
-      toast.success("Missão recusada. Nenhum aluno vai vê-la.");
+      if (recusandoDesafio) {
+        const mudou = await decidirDesafio(recusando.desafioGrupo as string, false, v.motivo ?? undefined);
+        if (mudou > 0) toast.success("Desafio recusado. Nenhum aluno vai vê-lo, e ele não é gerado de novo.");
+        else toast.info("Este desafio já tinha sido decidido. A lista foi atualizada.");
+      } else {
+        await decidirMissao(recusando.id, false, v.motivo ?? undefined);
+        toast.success("Missão recusada. Nenhum aluno vai vê-la.");
+      }
       setRecusando(null);
       await carregar(turmaId);
     } catch (e) {
@@ -332,7 +349,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
             <section aria-labelledby="missoes-pendentes" className="space-y-3">
               <div>
                 <h2 id="missoes-pendentes" className="text-[15px] font-bold">Aguardam sua aprovação ({pendentes.length})</h2>
-                <p className="text-[12.5px] text-muted-foreground">Propostas que nenhum aluno vê enquanto você não aprovar.</p>
+                <p className="text-[12.5px] text-muted-foreground">Propostas e desafios gerados pela IA que nenhum aluno vê enquanto você não aprovar.</p>
               </div>
               <ul className="space-y-3">{pendentes.map(cartao)}</ul>
             </section>
@@ -348,19 +365,21 @@ export default function MissoesSection({ professorId }: { professorId?: string }
       <AlertDialog open={recusando !== null} onOpenChange={(v) => !v && decidindo === null && setRecusando(null)}>
         <AlertDialogContent className="max-w-[460px] rounded-[20px] bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-[19px]">Recusar missão</AlertDialogTitle>
+            <AlertDialogTitle className="text-[19px]">{recusandoDesafio ? "Recusar desafio" : "Recusar missão"}</AlertDialogTitle>
             <AlertDialogDescription className="text-left text-[13px] leading-relaxed">
-              {`“${recusando?.titulo ?? ""}” não chega aos alunos. O motivo fica registrado junto da missão.`}
+              {recusandoDesafio
+                ? `“${recusando?.titulo ?? ""}” não chega aos alunos de nenhum perfil e não é gerado de novo. O motivo é opcional.`
+                : `“${recusando?.titulo ?? ""}” não chega aos alunos. O motivo fica registrado junto da missão.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div>
             <Textarea
-              aria-label="Motivo da recusa"
+              aria-label={recusandoDesafio ? "Motivo da recusa (opcional)" : "Motivo da recusa"}
               rows={3}
               maxLength={MOTIVO_MAX}
               value={motivo}
               onChange={(e) => { setMotivo(e.target.value); setErroDoMotivo(null); }}
-              placeholder="Ex.: fora do conteúdo desta turma"
+              placeholder={recusandoDesafio ? "Opcional. Ex.: a resposta está errada" : "Ex.: fora do conteúdo desta turma"}
               aria-invalid={!!erroDoMotivo}
               className="rounded-[14px] bg-background"
             />
@@ -373,7 +392,7 @@ export default function MissoesSection({ professorId }: { professorId?: string }
               onClick={(e) => { e.preventDefault(); void recusar(); }}
               className="rounded-full bg-destructive font-bold text-destructive-foreground hover:bg-destructive/90"
             >
-              {decidindo !== null ? "Aguarde…" : "Recusar missão"}
+              {decidindo !== null ? "Aguarde…" : recusandoDesafio ? "Recusar desafio" : "Recusar missão"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

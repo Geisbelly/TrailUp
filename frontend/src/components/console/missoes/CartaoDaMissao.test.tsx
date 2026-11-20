@@ -55,7 +55,7 @@ const desafio: Missao = {
 };
 
 const nada = () => {};
-const desenhar = (missao: Missao) =>
+const desenhar = (missao: Missao, extra: Record<string, unknown> = {}) =>
   renderToStaticMarkup(
     createElement(CartaoDaMissao, {
       missao,
@@ -64,6 +64,7 @@ const desenhar = (missao: Missao) =>
       onExcluir: nada,
       onAlternarDesafio: nada,
       onTrocarPerfis: async () => {},
+      ...extra,
     }),
   );
 
@@ -124,5 +125,44 @@ describe("CartaoDaMissao com desafio", () => {
     expect(html).toContain("Excluir Meta da semana");
     expect(html).not.toContain(">Desafio<");
     expect(html).not.toContain("Trocar perfis");
+  });
+});
+
+describe("CartaoDaMissao com desafio esperando aprovação", () => {
+  const pendente: Missao = {
+    ...desafio,
+    aprovacao: "pendente",
+    desafio: { tipo: "logica", formato: "multipla", enunciado: "Quanto é 1/2 + 1/4?", alternativas: ["3/4", "1/6"] },
+    respostaDoDesafio: { aceitas: ["3/4"] },
+  };
+
+  it("mostra os selos, o enunciado inteiro, as alternativas, a resposta e os botões", () => {
+    const html = desenhar(pendente, { onAprovar: nada, onRecusar: nada });
+    expect(html).toContain(">Desafio<");
+    expect(html).toContain("Esperando aprovação");
+    expect(html).toContain("Quanto é 1/2 + 1/4?");
+    expect(html).toContain("1/6");
+    expect(html).toContain("Resposta");
+    expect(html).toContain("3/4");
+    expect(html).toContain("Aprovar Desafio de lógica: Frações");
+    expect(html).toContain("Recusar Desafio de lógica: Frações");
+    expect(html).toContain("Trocar perfis");
+  });
+
+  it("sem gabarito lido, diz que não conseguiu mostrar a resposta", () => {
+    const html = desenhar({ ...pendente, respostaDoDesafio: null }, { onAprovar: nada, onRecusar: nada });
+    expect(html).toMatch(/Não foi possível ler a resposta/);
+  });
+
+  it("aprovado não tem selo de espera nem botões de decidir", () => {
+    const html = desenhar(desafio, { onAprovar: nada, onRecusar: nada });
+    expect(html).not.toContain("Esperando aprovação");
+    expect(html).not.toContain("Aprovar Desafio");
+  });
+
+  it("recusado mostra o selo e o motivo", () => {
+    const html = desenhar({ ...desafio, aprovacao: "recusada", motivoRecusa: "Recusado pelo professor" });
+    expect(html).toContain("Recusado");
+    expect(html).toContain("Motivo da recusa: Recusado pelo professor");
   });
 });

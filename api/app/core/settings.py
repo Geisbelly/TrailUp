@@ -261,6 +261,15 @@ class Settings(BaseSettings):
     missoes_ia_trava_seconds: int = 600
     # Restringe o worker a estas turmas, como PERSONALIZACAO_JOBS_CLASSE_IDS (#652).
     missoes_ia_classe_ids: list[int] = []
+    # Desafios gerados automaticamente (20261120_03): o banco escolhe o conteudo parado e este laco
+    # pede os desafios a edge generate-content-ai com a chave de servico. Ritmo e teto ficam em app_config.
+    desafios_auto_enabled: bool = True
+    desafios_auto_trava_seconds: int = 600
+    desafios_auto_timeout_seconds: int = 150
+    # Edge que recusa o servidor ou nao responde (401/403/404/503/timeout): espera sem contar tentativa.
+    desafios_auto_espera_indisponivel_min: int = 60
+    # Restringe o worker a estas turmas, como PERSONALIZACAO_JOBS_CLASSE_IDS (#652).
+    desafios_auto_classe_ids: list[int] = []
     # Diagnostico antes do topico (20261105_22, #137): o aluno pede pelo banco e este laco escreve as perguntas.
     diagnostico_enabled: bool = True
     diagnostico_interval_seconds: int = 30
