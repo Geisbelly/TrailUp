@@ -44,3 +44,18 @@ test('tempo recente soma os itens do mesmo escopo, não tira a média', () => {
   assert.equal(vm.tempoAtividade, 60);
   assert.equal(vm.tempo, 1, 'escopos inclusivos não são somados ao total persistido');
 });
+
+test('erro da análise não chega cru à tela do aluno', () => {
+  const { LEITURA_FALHOU } = require('./profileMetricsViewModel') as typeof import('./profileMetricsViewModel');
+  const vm = build({ ...input(), lastAnalysis: { erros: [
+    '(sqlalchemy.dialects.postgresql.asyncpg.UniqueViolationError) duplicate key value violates unique constraint "eventos_aluno_creditado_unico" [SQL: INSERT INTO eventos_aluno ...]',
+    'outro erro',
+  ] } as any });
+  assert.deepEqual(vm.analysisWarnings, [LEITURA_FALHOU]);
+  assert.ok(!vm.analysisWarnings.some((aviso) => /sql|unique|eventos_aluno/i.test(aviso)));
+});
+
+test('sem erro na análise, nenhum aviso de falha', () => {
+  const vm = build({ ...input(), lastAnalysis: { erros: [] } as any });
+  assert.deepEqual(vm.analysisWarnings, []);
+});
