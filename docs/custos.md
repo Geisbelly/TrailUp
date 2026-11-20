@@ -65,7 +65,7 @@ O tier free não cobra em dinheiro, mas tem teto:
 | `personalizacao_job_targets.uso_modelo` | Geração de mídia do microservice, com Gemini, OpenAI, deck e caracteres da voz, somando as tentativas | Chamadas da API, como o enriquecimento |
 | `ia_decision_logs` com `provider = 'regra'` | Perguntas respondidas sem modelo | Consumo em tokens |
 | Logs do microservice, linha `[gemini-diag]` | Amostra crua do `usageMetadata` | Histórico, some com o log |
-| Edge `generate-content-ai` (trilha, sugestões e desafios do console) | **PENDENTE**: não grava em `ia_uso_llm` nem em outra tabela; só o log da função | Tokens, tentativas e cota gasta por clique |
+| Edge `generate-content-ai` (trilha, sugestões e desafios do console e do `desafios_auto_loop`) | **PENDENTE**: não grava em `ia_uso_llm` nem em outra tabela; só o log da função | Tokens, tentativas e cota gasta por clique |
 | OpenAI Vector Store `vector_stores.search` (#66) | RAG nas citações das sugestões: latência, limite e resultados no log da API | Não registra tokens nem valor faturado; custo segue **PENDENTE** até conferir a fatura da conta RAG |
 
 As duas primeiras fontes não se somam por engano: o microservice não grava em `ia_uso_llm`.
@@ -105,6 +105,7 @@ Guardião custa essa chamada mais o juiz de grounding.
 
 | Data | Decisão | Efeito | Estado |
 |---|---|---|---|
+| 20/11/2026 | Desafios gerados sozinhos para os conteúdos parados (`desafios_auto_loop` → edge `generate-content-ai`, modo `desafios`, mesmas chaves Gemini da edge) | Teto de `desafios_auto_por_dia` (20) conteúdos reivindicados por dia, contado desde a meia-noite do Pacífico; uma tentativa por pedido, com o rodízio de chaves e modelo em 429/503 à parte. 429, 401 e falha de rede também ocupam vaga do dia, porque a vaga é a reivindicação. O conteúdo que volta de uma espera no mesmo dia é pedido de novo sem vaga nova; o ritmo (`desafios_auto_por_passada` = 2 a cada `desafios_auto_intervalo_seg` = 600 s) é o que limita esses pedidos. Chamadas ao modelo por pedido e tokens: PENDENTE, sem medir (a edge não registra uso) | No PR, sem medir |
 | 18/11/2026 | Desafios de lógica e cruzadinha sugeridos por conteúdo, no mesmo clique das sugestões | Até 3 chamadas a mais por clique com texto, 1 com material pesado; ver os limites acima. Sem medição: a edge não registra uso | Em revisão |
 | 18/11/2026 | Memória do Guia e registro de cada pergunta (`chat_guia_registros`) | Nenhuma chamada nova: o modelo classifica a pergunta na mesma resposta. A entrada cresce com `memoria_do_guia` (até 5 conceitos, 3 assuntos e contadores, perto do fim do payload) e a saída ganha o objeto `registro`. Tokens a mais: PENDENTE, sem medir. Três leituras indexadas no banco por pergunta | No PR, sem medir |
 | 05/11/2026 | Monitor 24 horas, com sonda de 1 min nos três alvos (#1004) | Nenhuma chamada de modelo. `monitor_sonda` chega a ~151 mil linhas em 35 dias. Na proporção medida (243 linhas em 123 kB, 05/11/2026) seriam até ~76 MB; a amostra é pequena e tende a superestimar | No ar |

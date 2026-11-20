@@ -88,3 +88,13 @@ export function validarMotivoDeRecusa(motivo: string): { ok: true; motivo: strin
   if (limpo.length > MOTIVO_MAX) return { ok: false, erro: `No máximo ${MOTIVO_MAX} caracteres.` };
   return { ok: true, motivo: limpo };
 }
+
+/**
+ * Recusar o desafio gerado sozinho aceita motivo vazio: a RPC `missao_desafio_decidir` grava
+ * "Recusado pelo professor" para cumprir o CHECK. O teto é o mesmo das outras recusas.
+ */
+export function validarMotivoOpcional(motivo: string): { ok: true; motivo: string | null } | { ok: false; erro: string } {
+  const limpo = motivo.trim();
+  if (limpo.length > MOTIVO_MAX) return { ok: false, erro: `No máximo ${MOTIVO_MAX} caracteres.` };
+  return { ok: true, motivo: limpo || null };
+}

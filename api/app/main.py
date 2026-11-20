@@ -20,6 +20,7 @@ from app.services import uso_llm
 from app.services.alteracao_professor import alteracao_professor_loop
 from app.services.analise_fila import analise_fila_loop
 from app.services.checkpoint_retention import checkpoint_retention_loop, run_checkpoint_retention_once
+from app.services.desafios_auto import desafios_auto_loop
 from app.services.diagnostico_topico import diagnostico_loop
 from app.services.missoes_ia import missoes_ia_loop
 from app.services.personalizacao_jobs import personalizacao_jobs_loop
@@ -108,6 +109,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if app_settings.missoes_ia_enabled and database_url.startswith("postgres"):
             missoes_ia_task = asyncio.create_task(missoes_ia_loop(app))
         app.state.missoes_ia_task = missoes_ia_task
+        desafios_auto_task = None
+        if app_settings.desafios_auto_enabled and database_url.startswith("postgres"):
+            desafios_auto_task = asyncio.create_task(desafios_auto_loop(app))
+        app.state.desafios_auto_task = desafios_auto_task
         diagnostico_task = None
         if app_settings.diagnostico_enabled and database_url.startswith("postgres"):
             diagnostico_task = asyncio.create_task(diagnostico_loop(app))
@@ -120,6 +125,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 diagnostico_task.cancel()
                 try:
                     await diagnostico_task
+                except asyncio.CancelledError:
+                    pass
+            if desafios_auto_task is not None:
+                desafios_auto_task.cancel()
+                try:
+                    await desafios_auto_task
                 except asyncio.CancelledError:
                     pass
             if missoes_ia_task is not None:

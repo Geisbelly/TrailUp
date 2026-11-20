@@ -6,6 +6,7 @@ import { aguardaDecisao, origemDe, podeEditar, rotuloDaOrigem, rotuloDoEscopo } 
 import {
   opcoesDePerfilDaLinha,
   percentualDeEntrega,
+  respostaDoDesafio,
   resumoDeEntregas,
   resumoDoDesafio,
   rotuloDoPerfil,
@@ -29,7 +30,9 @@ export type TrocaDePerfil = { id: number; perfil: string };
  *
  * A missão-desafio (#1149) chega aqui já agrupada (`agruparDesafios`): um cartão por grupo, com o
  * selo "Desafio" e os perfis. Ela não se edita, não se duplica e não se exclui por aqui; o
- * professor desativa o grupo inteiro e troca o perfil das linhas que existem.
+ * professor desativa o grupo inteiro e troca o perfil das linhas que existem. O desafio que o
+ * servidor gerou sozinho (`20261120_03`) chega pendente: o cartão mostra o enunciado inteiro e a
+ * resposta, e Aprovar e Recusar valem para o grupo todo.
  */
 export function CartaoDaMissao({
   missao,
@@ -60,7 +63,17 @@ export function CartaoDaMissao({
   alternando?: boolean;
 }) {
   if (missao.desafio != null) {
-    return <CartaoDoDesafio missao={missao} onAlternar={onAlternarDesafio} onTrocarPerfis={onTrocarPerfis} alternando={alternando} />;
+    return (
+      <CartaoDoDesafio
+        missao={missao}
+        onAlternar={onAlternarDesafio}
+        onTrocarPerfis={onTrocarPerfis}
+        alternando={alternando}
+        onAprovar={onAprovar}
+        onRecusar={onRecusar}
+        decidindo={decidindo}
+      />
+    );
   }
   const editavel = podeEditar(missao);
   const decidir = aguardaDecisao(missao) && onAprovar && onRecusar;
@@ -209,14 +222,22 @@ function CartaoDoDesafio({
   onAlternar,
   onTrocarPerfis,
   alternando,
+  onAprovar,
+  onRecusar,
+  decidindo,
 }: {
   missao: Missao;
   onAlternar?: () => void;
   onTrocarPerfis?: (trocas: TrocaDePerfil[]) => Promise<void>;
   alternando: boolean;
+  onAprovar?: () => void;
+  onRecusar?: () => void;
+  decidindo: boolean;
 }) {
   // Dois desafios do mesmo tipo no mesmo conteúdo têm o mesmo título: o resumo é o que os separa.
   const resumo = resumoDoDesafio(missao.desafio);
+  const pendente = aguardaDecisao(missao);
+  const decidir = pendente && onAprovar && onRecusar;
   return (
     <li className="rounded-[20px] border bg-card p-5">
       <div className="flex flex-wrap items-start gap-3">
@@ -224,6 +245,8 @@ function CartaoDoDesafio({
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="max-w-full break-words sm:truncate text-[16.5px] font-bold">{missao.titulo}</h3>
             <span className={`${SELO} bg-violet-500/15 text-violet-700 dark:text-violet-300`}>Desafio</span>
+            {pendente && <span className={`${SELO} bg-amber-500/20 text-amber-700 dark:text-amber-400`}>Esperando aprovação</span>}
+            {missao.aprovacao === "recusada" && <span className={`${SELO} bg-destructive/15 text-destructive`}>Recusado</span>}
             {!missao.ativa && <span className={`${SELO} bg-muted text-muted-foreground`}>Desativada</span>}
           </div>
           <p className="mt-1 text-[12.5px] text-muted-foreground">{rotuloDoTipoDoDesafio(missao.desafio)}</p>
@@ -243,9 +266,17 @@ function CartaoDoDesafio({
         )}
       </div>
 
-      {resumo && <p className="mt-3 line-clamp-2 text-[13px] font-medium">{resumo}</p>}
+      {pendente ? (
+        <ParaConferir desafio={missao.desafio} resposta={missao.respostaDoDesafio} />
+      ) : (
+        resumo && <p className="mt-3 line-clamp-2 text-[13px] font-medium">{resumo}</p>
+      )}
       {missao.objetivo && <p className="mt-2 line-clamp-2 text-[13px] text-muted-foreground">{missao.objetivo}</p>}
+      {missao.aprovacao === "recusada" && missao.motivoRecusa && (
+        <p className="mt-2 text-[12.5px] text-destructive">Motivo da recusa: {missao.motivoRecusa}</p>
+      )}
       <p className="mt-2 text-[11.5px] text-muted-foreground">
+        {pendente && "Gerado pela IA a partir do conteúdo. Nenhum aluno vê enquanto você não aprovar. "}
         O texto e a resposta são da IA e não se editam. Você pode desativar o desafio ou trocar os perfis; acrescentar perfil ainda não dá.
       </p>
 
@@ -265,7 +296,58 @@ function CartaoDoDesafio({
       </dl>
 
       <PerfisDoDesafio key={missao.linhasDoDesafio.map((l) => `${l.id}:${l.perfilAlvo}`).join(",")} titulo={missao.titulo} linhas={missao.linhasDoDesafio} onTrocar={onTrocarPerfis} />
+
+      {decidir && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button size="sm" className="rounded-full font-bold" onClick={onAprovar} disabled={decidindo} aria-label={`Aprovar ${missao.titulo}`}>
+            <Check className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+            Aprovar
+          </Button>
+          <Button size="sm" variant="outline" className="rounded-full" onClick={onRecusar} disabled={decidindo} aria-label={`Recusar ${missao.titulo}`}>
+            <X className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+            Recusar
+          </Button>
+        </div>
+      )}
     </li>
+  );
+}
+
+/**
+ * O que o professor confere antes de aprovar: o enunciado inteiro (com as alternativas) ou as
+ * pistas, e a resposta lida de `missao_desafio_gabarito`.
+ */
+function ParaConferir({ desafio, resposta }: { desafio: unknown; resposta: unknown }) {
+  const d = desafio && typeof desafio === "object" && !Array.isArray(desafio) ? (desafio as Record<string, unknown>) : null;
+  const logica = d?.tipo === "logica";
+  const alternativas = logica && Array.isArray(d?.alternativas) ? d.alternativas.filter((a): a is string => typeof a === "string") : [];
+  const respostas = respostaDoDesafio(desafio, resposta);
+  return (
+    <div className="mt-3 space-y-3 rounded-[14px] bg-muted/50 p-3">
+      {logica && typeof d?.enunciado === "string" && <p className="whitespace-pre-line text-[13px] font-medium">{d.enunciado}</p>}
+      {alternativas.length > 0 && (
+        <div>
+          <p className={ROTULO}>Alternativas</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[13px]">
+            {alternativas.map((a, i) => (
+              <li key={i}>{a}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div>
+        <p className={ROTULO}>{logica ? "Resposta" : "Respostas da cruzadinha"}</p>
+        {respostas.length > 0 ? (
+          <ul className="mt-1 space-y-0.5 text-[13px] font-semibold">
+            {respostas.map((r, i) => (
+              <li key={i}>{r}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1 text-[12.5px] text-muted-foreground">Não foi possível ler a resposta agora. Recarregue a página antes de aprovar.</p>
+        )}
+      </div>
+    </div>
   );
 }
 

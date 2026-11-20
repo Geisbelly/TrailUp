@@ -996,6 +996,25 @@ Cada perfil carrega:
   de acréscimo: proposta, aprovação e recusa com o motivo; a taxa de aprovação sai dele e **não realimenta
   o prompt**. Fora de escopo: editar antes de aprovar (`trg_missoes_guarda` congela o texto da missão que
   não é do professor, em silêncio), missão de entrega e prazo.
+- **Desafios gerados sozinhos (`20261120_03`) — o banco decide quem entra, a API só repassa.** Conteúdo
+  de tópico liberado, parado há `desafios_auto_carencia_min` (60), com material e sem desafio nenhum (em
+  qualquer estado: recusar não regera), de professor com `geracao_automatica` e turma com aluno, ganha 2
+  de lógica e 2 cruzadinhas. As regras, a carência e o teto do dia (`desafios_auto_por_dia`, contado desde
+  a meia-noite de `America/Los_Angeles`, a virada da cota do Gemini) moram em
+  `fn_desafios_auto_reivindicar`; `desafios_auto_loop` (`app/services/desafios_auto.py`) só pede o
+  material a `fn_desafios_auto_contexto`, chama a edge e devolve a resposta inteira a
+  `fn_missao_desafio_registrar_auto`. `desafios_auto_tentativas` **não tem policy de propósito**: só as
+  funções `SECURITY DEFINER` a leem. O desafio automático nasce **`pendente`** e o professor decide o
+  grupo inteiro por `missao_desafio_decidir` (recusar sem motivo grava "Recusado pelo professor", porque o
+  CHECK exige motivo). A trava consultiva do conteúdo é a mesma de `missao_desafio_criar`: o botão e o
+  laço não gravam dois grupos. `missao_ia_pedir` e `fn_missao_ia_contexto` ignoram desafios
+  (`desafio IS NULL`), senão 8 linhas pendentes travariam o teto da #151. `conteudos.atualizado_em` é do
+  banco (gatilho; o cliente não escolhe) e ignora `ordem`: reordenar não reinicia a carência. A edge
+  `generate-content-ai` aceita a chave de serviço **só no modo `desafios`**, pela conferência de
+  `storage-upload-url/pedido.ts`; a chave tem de ser a service_role JWT legada, porque o `verify_jwt` da
+  função recusa o que não é JWT. Erros: limite por minuto espera 15 min, cota do dia pausa o laço até a
+  virada, edge recusando o servidor ou sem resposta espera 60 min, e nenhum desses conta falha; o resto
+  conta falha, espera 2^n h e para na 3ª.
   
 - **`boss_falas` — a IA escreve, o professor pode tirar do ar** (`20261102_19`). Nome e falas do boss
   são gerados em lote por conteúdo × perfil e o app os mostra ao aluno (inclusive menor) direto. O

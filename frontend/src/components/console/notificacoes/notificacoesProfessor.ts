@@ -4,8 +4,14 @@
 
 import { consolePathForView, type ConsoleView } from "@/pages/consoleSections";
 
-export type TipoDeNotificacao = "recomendacao_ia" | "entrega_para_avaliar" | "geracao_falhou" | "evento_encerrado" | "gatilho_tecnico";
-export type DestinoDeNotificacao = "recomendacoes" | "notas" | "personalizacoes" | "eventos" | "tecnico";
+export type TipoDeNotificacao =
+  | "recomendacao_ia"
+  | "entrega_para_avaliar"
+  | "geracao_falhou"
+  | "evento_encerrado"
+  | "gatilho_tecnico"
+  | "desafio_para_aprovar";
+export type DestinoDeNotificacao = "recomendacoes" | "notas" | "personalizacoes" | "eventos" | "tecnico" | "missoes";
 
 export type NotificacaoDoProfessor = {
   id: number;
@@ -30,6 +36,8 @@ const VIEW_DO_DESTINO: Record<DestinoDeNotificacao, ConsoleView> = {
   eventos: "eventos",
   // Aviso do painel técnico (20261102_23): só chega ao dono, que é quem vê a aba.
   tecnico: "tecnico",
+  // Desafios gerados sozinhos esperando aprovação (20261120_03): o professor decide na aba Missões.
+  missoes: "missoes",
 };
 
 export function caminhoDaNotificacao(n: Pick<NotificacaoDoProfessor, "destino">): string {

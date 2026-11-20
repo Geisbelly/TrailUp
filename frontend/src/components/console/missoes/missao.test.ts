@@ -8,6 +8,7 @@ import {
   percentualDeEntrega,
   prazoParaCampo,
   resumoDeEntregas,
+  respostaDoDesafio,
   resumoDoDesafio,
   rotuloDoPrazo,
   rotuloDoTipoDoDesafio,
@@ -15,6 +16,7 @@ import {
   validarMissao,
   type FormularioDeMissao,
 } from "./missao";
+import { separarPorDecisao, validarMotivoOpcional } from "./aprovacao";
 import type { Missao } from "./missoesApi";
 
 const base = (extra: Partial<FormularioDeMissao> = {}): FormularioDeMissao => ({
@@ -365,5 +367,64 @@ describe("faltaColunaDoDesafio", () => {
     // PGRST100 é erro de sintaxe da consulta, não coluna que falta: repetir sem o filtro o esconderia.
     expect(faltaColunaDoDesafio({ code: "PGRST100" })).toBe(false);
     expect(faltaColunaDoDesafio(null)).toBe(false);
+  });
+});
+
+describe("desafio gerado sozinho esperando aprovação", () => {
+  it("agruparDesafios leva a aprovação e o motivo do grupo", () => {
+    const [g] = agruparDesafios([
+      linhaDoDesafio(10, "g", "seeker", { aprovacao: "recusada", motivoRecusa: "fora do conteúdo" }),
+      linhaDoDesafio(11, "g", "mastermind", { aprovacao: "recusada", motivoRecusa: "fora do conteúdo" }),
+    ]);
+    expect(g).toMatchObject({ aprovacao: "recusada", motivoRecusa: "fora do conteúdo" });
+  });
+
+  it("separarPorDecisao põe o grupo pendente uma vez entre os que esperam", () => {
+    const lista = agruparDesafios([
+      comum(1),
+      linhaDoDesafio(10, "g", "mastermind", { aprovacao: "pendente" }),
+      linhaDoDesafio(11, "g", "achiever", { aprovacao: "pendente" }),
+      comum(2, { origem: "ia", aprovacao: "pendente" }),
+    ]);
+    const { pendentes, demais } = separarPorDecisao(lista);
+    expect(pendentes.map((m) => m.id)).toEqual([10, 2]);
+    expect(pendentes[0].perfis).toEqual(["mastermind", "achiever"]);
+    expect(demais.map((m) => m.id)).toEqual([1]);
+  });
+
+  it("uma linha pendente que sobrou deixa o grupo inteiro esperando", () => {
+    const [g] = agruparDesafios([linhaDoDesafio(10, "g", "seeker"), linhaDoDesafio(11, "g", "mastermind", { aprovacao: "pendente" })]);
+    expect(g.aprovacao).toBe("pendente");
+  });
+
+  it("desafio aprovado não aparece como pendente", () => {
+    const lista = agruparDesafios([linhaDoDesafio(10, "g", "seeker"), linhaDoDesafio(11, "g", "mastermind")]);
+    const { pendentes, demais } = separarPorDecisao(lista);
+    expect(pendentes).toEqual([]);
+    expect(demais.map((m) => m.id)).toEqual([10]);
+  });
+
+  it("respostaDoDesafio: lógica lista as aceitas; cruzadinha casa palavra com pista pela numeração", () => {
+    expect(respostaDoDesafio({ tipo: "logica", formato: "curta" }, { aceitas: ["3/4", "0,75"] })).toEqual(["3/4", "0,75"]);
+    expect(
+      respostaDoDesafio(
+        {
+          tipo: "cruzadinha",
+          palavras: [
+            { numero: 2, direcao: "v", pista: "Parte de baixo" },
+            { numero: 1, direcao: "h", pista: "Parte de cima" },
+          ],
+        },
+        { palavras: { "2v": "DENOMINADOR", "1h": "NUMERADOR" } },
+      ),
+    ).toEqual(["1 horizontal (Parte de cima): NUMERADOR", "2 vertical (Parte de baixo): DENOMINADOR"]);
+    expect(respostaDoDesafio({ tipo: "logica" }, null)).toEqual([]);
+    expect(respostaDoDesafio({ tipo: "logica" }, { aceitas: "x" })).toEqual([]);
+  });
+
+  it("motivo da recusa do desafio é opcional, mas tem teto", () => {
+    expect(validarMotivoOpcional("   ")).toEqual({ ok: true, motivo: null });
+    expect(validarMotivoOpcional(" fora ")).toEqual({ ok: true, motivo: "fora" });
+    expect(validarMotivoOpcional("x".repeat(501)).ok).toBe(false);
   });
 });
