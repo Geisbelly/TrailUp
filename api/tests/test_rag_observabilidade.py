@@ -283,6 +283,10 @@ def test_chat_do_mentor_grava_a_busca_em_ia_decision_logs(app, settings, aluno_u
 
     monkeypatch.setattr(IADecisionLogRepository, "log", fake_log)
     monkeypatch.setattr(settings, "openai_rag_enabled", True)
+    # O chat usa o RAG só se ele estiver configurado de verdade (chave e vector store), 20/11.
+    from app.services.openai_rag import OpenAIRagService
+
+    monkeypatch.setattr(OpenAIRagService, "is_configured", lambda self: True)
     with TestClient(app) as client:
         r = client.post(
             "/api/v1/personalizar/chat",

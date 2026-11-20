@@ -1084,7 +1084,10 @@ recebe pede uma dica sem citar a resposta (citá-la a devolveria ao modelo que a
 > ponto que repetiriam a resposta esperada, mantém a nota e não conta o texto do próprio aluno.
 
 **Latência:** repetir só vale quando o modelo respondeu mal (schema, guardrail, resposta cortada).
-`ProvedorIndisponivelError` e recusa vão direto ao fallback, e o juiz de grounding fora do ar também:
+O RAG fora do ar não é fallback: o chat do Guia pede `sem_rag_se_falhar` e responde pelo Gemini
+(de 06/11 a 20/11, todo RAG voltou 429 e toda pergunta recebeu a reserva), e um 429 pausa o RAG no
+processo (`openai_rag.rag_em_pausa`). Os nós do grafo já tentam sem RAG por conta própria e não usam
+a flag. `ProvedorIndisponivelError` e recusa vão direto ao fallback, e o juiz de grounding fora do ar também:
 resposta que ninguém conferiu não chega ao aluno (`GuardrailViolation.definitiva`). `chat_prazo_total_seconds` limita a
 resposta inteira, juiz e rodízio de chaves inclusive: um 503 percorre 4 chaves × 6 modelos, e sem o
 teto o console desistia aos 75 s.

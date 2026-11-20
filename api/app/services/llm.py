@@ -315,7 +315,12 @@ class JsonLLMService:
         model: str | None = None,
         provider: str | None = None,
         use_rag: bool = False,
+        sem_rag_se_falhar: bool = False,
     ) -> T:
+        """`sem_rag_se_falhar`: RAG fora do ar (429, rede, pausa) responde pelo provedor comum,
+        sem a busca. É para quem tem alguém esperando e não tenta de novo sem RAG por conta
+        própria (o chat do Guia). Os nós do grafo já fazem `[True, False]`, e com isto
+        chamariam o modelo duas vezes. A chave do RAG continua só no RAG."""
         if rota_de_menor_ativa():
             # #195: IA so para adulto confirmado. Vem antes do RAG: a busca
             # tambem chama modelo e leva a pergunta do aluno.
@@ -323,13 +328,20 @@ class JsonLLMService:
         if use_rag:
             from app.services.openai_rag import OpenAIRagService
 
-            response = await OpenAIRagService(self.settings).invoke_structured(
-                prompt_name=prompt_name,
-                payload=payload,
-                schema=schema,
-                model=model,
-            )
-            return response  # type: ignore[return-value]
+            try:
+                response = await OpenAIRagService(self.settings).invoke_structured(
+                    prompt_name=prompt_name,
+                    payload=payload,
+                    schema=schema,
+                    model=model,
+                )
+                return response  # type: ignore[return-value]
+            except ProvedorIndisponivelError:
+                if not sem_rag_se_falhar:
+                    raise
+                logger.info("llm.rag_indisponivel: %s segue sem RAG", prompt_name)
+                # O modelo pedido era o do RAG (OpenAI); o provedor comum usa o dele.
+                model = None
 
         normalized_payload = dict(payload)
         normalized_payload.setdefault("idioma", "português brasileiro")
