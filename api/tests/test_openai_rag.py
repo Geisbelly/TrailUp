@@ -609,3 +609,122 @@ def test_chave_do_rag_nao_vira_a_chave_do_uso_comum():
     settings = _settings(openai_rag_api_key="chave-rag", openai_api_key="")
     assert not settings.openai_api_key
     assert JsonLLMService(settings)._get_client("modelo", provider="openai") is None
+
+
+# --- Pausa depois de um 429 e resposta sem RAG (20/11) ---------------------------------------
+import httpx2  # noqa: E402
+from openai import RateLimitError  # noqa: E402
+
+from app.services import openai_rag as openai_rag_mod  # noqa: E402
+from app.services.llm import ProvedorIndisponivelError  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _sem_pausa_do_rag():
+    openai_rag_mod.zerar_pausa_do_rag()
+    yield
+    openai_rag_mod.zerar_pausa_do_rag()
+
+
+def _erro_429(code: str | None) -> RateLimitError:
+    resposta = httpx2.Response(429, request=httpx2.Request("POST", "https://api.openai.com/v1/responses"))
+    return RateLimitError("limite", response=resposta, body={"code": code} if code else None)
+
+
+class _Respostas429:
+    def __init__(self, code: str | None):
+        self.code = code
+        self.calls = 0
+
+    async def create(self, **kwargs):
+        self.calls += 1
+        raise _erro_429(self.code)
+
+
+@pytest.mark.asyncio
+async def test_sem_cota_pausa_o_rag_e_a_proxima_pergunta_nem_chama_a_openai():
+    respostas = _Respostas429("insufficient_quota")
+    service = OpenAIRagService(_settings(), client=SimpleNamespace(responses=respostas))
+
+    with pytest.raises(ProvedorIndisponivelError):
+        await _invocar(service)
+    # A pausa é do processo: um serviço novo (cada chamada cria o seu) também respeita.
+    outro = OpenAIRagService(_settings(), client=SimpleNamespace(responses=respostas))
+    with pytest.raises(ProvedorIndisponivelError, match="pausa"):
+        await _invocar(outro)
+
+    assert respostas.calls == 1
+    assert openai_rag_mod._rag_em_pausa_ate - openai_rag_mod.time.monotonic() > 3000
+
+
+@pytest.mark.asyncio
+async def test_limite_de_ritmo_pausa_so_um_minuto():
+    service = OpenAIRagService(_settings(), client=SimpleNamespace(responses=_Respostas429("rate_limit_exceeded")))
+
+    with pytest.raises(ProvedorIndisponivelError):
+        await _invocar(service)
+
+    assert openai_rag_mod.rag_em_pausa()
+    assert openai_rag_mod._rag_em_pausa_ate - openai_rag_mod.time.monotonic() <= 60
+
+
+@pytest.mark.asyncio
+async def test_outro_erro_nao_pausa_o_rag():
+    class Quebrado:
+        async def create(self, **kwargs):
+            raise RuntimeError("rede")
+
+    service = OpenAIRagService(_settings(), client=SimpleNamespace(responses=Quebrado()))
+    with pytest.raises(ProvedorIndisponivelError):
+        await _invocar(service)
+
+    assert not openai_rag_mod.rag_em_pausa()
+
+
+@pytest.mark.asyncio
+async def test_rag_fora_do_ar_responde_pelo_gemini_quando_pedido(monkeypatch):
+    respostas = _Respostas429("insufficient_quota")
+    monkeypatch.setattr(OpenAIRagService, "_get_client", lambda self: SimpleNamespace(responses=respostas))
+    pedidos_gemini = []
+
+    async def _gemini(self, *, messages, primary_model, structured_schema):
+        pedidos_gemini.append(primary_model)
+        return {"reply": "pelo gemini"}
+
+    monkeypatch.setattr(JsonLLMService, "_ainvoke_gemini_with_rotation", _gemini)
+    llm = JsonLLMService(_settings(llm_provider="gemini", gemini_api_key="g-key"))
+
+    resultado = await llm.ainvoke_structured(
+        prompt_name="mentor_personalizacao_chat.txt",
+        payload={"mensagem": "resumo do conteúdo"},
+        schema=_Answer,
+        use_rag=True,
+        sem_rag_se_falhar=True,
+    )
+
+    assert resultado.reply == "pelo gemini"
+    assert respostas.calls == 1
+    # O modelo do RAG (OpenAI) não vai para o Gemini.
+    assert pedidos_gemini and not str(pedidos_gemini[0]).startswith("gpt")
+
+
+@pytest.mark.asyncio
+async def test_sem_o_pedido_o_erro_do_rag_continua_subindo(monkeypatch):
+    """Os nós do grafo tentam sem RAG por conta própria: aqui não pode haver segunda chamada."""
+    monkeypatch.setattr(
+        OpenAIRagService, "_get_client", lambda self: SimpleNamespace(responses=_Respostas429("insufficient_quota"))
+    )
+
+    async def _gemini_proibido(*args, **kwargs):
+        raise AssertionError("Gemini chamado sem sem_rag_se_falhar")
+
+    monkeypatch.setattr(JsonLLMService, "_ainvoke_gemini_with_rotation", _gemini_proibido)
+    llm = JsonLLMService(_settings(llm_provider="gemini", gemini_api_key="g-key"))
+
+    with pytest.raises(ProvedorIndisponivelError):
+        await llm.ainvoke_structured(
+            prompt_name="notificacao_personalizada.txt",
+            payload={},
+            schema=_Answer,
+            use_rag=True,
+        )

@@ -88,6 +88,7 @@ from app.services.media_agents import (
     regenerar_slide_brainhex,
 )
 from app.services.media_generation_jobs import criar_ciclo_media_generation
+from app.services.openai_rag import OpenAIRagService
 from app.services.personalizacao import (
     _build_profile_editorial_context,
     _infer_source_type,
@@ -1732,7 +1733,13 @@ async def conversar_com_mentor_personalizacao(
                 },
                 on_violation=_auditar_chat,
                 prazo_total=settings.chat_prazo_total_seconds,
-                use_rag=bool(request.app.state.settings.openai_rag_enabled),
+                # `is_configured`, não só a chave de ligar: sem vector store ou sem chave, toda
+                # pergunta gastava as duas tentativas no RAG e caía na reserva.
+                use_rag=OpenAIRagService(request.app.state.settings).is_configured(),
+                # RAG fora do ar não é motivo para o aluno receber a reserva: o Guia responde pelo
+                # Gemini, com o mesmo conteúdo e os mesmos guardas. De 06/11 a 20/11 toda pergunta
+                # bateu no 429 do RAG e voltou a resposta genérica.
+                sem_rag_se_falhar=True,
             )
 
     resposta_do_guia = montar_resposta_do_guia(
