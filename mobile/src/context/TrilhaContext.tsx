@@ -78,6 +78,12 @@ import {
   chaveRecargaTopico,
   criarLimitadorDeRecarga,
 } from '@/utils/recargaPorTempo';
+import {
+  estadoLocalDoEvento,
+  eventoMudaProgresso,
+  type EventoDeProgresso,
+  type TabelaDeProgresso,
+} from '@/utils/ecoRealtime';
 import { buildSupabasePublicStorageUrl, looksLikeStorageObjectPath } from '@/utils/supabaseStorage';
 import {
   clampPercent,
@@ -823,6 +829,12 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
   // salvo) no seu useCallback — caso contrario cada marcacao de progresso recria fetchGraphData
   // e realimenta o useEffect que o dispara, num loop que nunca deixa o grafo/progresso estabilizar.
   const classeAtualRef = useRef<Classe | null>(null)
+  // O relógio de estudo grava a visita a cada 60 s; reler a turma a cada
+  // gravação derrubou a produção em 17/11 (ver `recargaPorTempo.ts`). As
+  // ações que mudam status ou percentual continuam relendo na hora.
+  const limitarRecargaPorTempoRef = useRef(criarLimitadorDeRecarga())
+  // Divide a janela com o eco do Realtime (`ecoRealtime.ts`): visita e eco
+  // do mesmo minuto contam uma recarga só.
   const classesRef = useRef<Classe[]>([])
   useEffect(() => { classesRef.current = classes }, [classes])
   const personalizedTopicsRef = useRef<Record<number, PersonalizedTopicPayload>>({})
@@ -1763,22 +1775,35 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         }, 500)
       }
 
+      // A visita que o próprio app grava a cada minuto volta aqui como evento.
+      // Se `status` e `percentual_concluido` chegam iguais aos da tela, é eco:
+      // relê no máximo na janela do limitador, não a cada evento.
+      const aoMudarProgresso = (tabela: TabelaDeProgresso) => (evento: EventoDeProgresso) => {
+        const atual = classeAtualRef.current
+        const local = estadoLocalDoEvento(tabela, evento.new, atual?.topicos ?? [])
+        if (!eventoMudaProgresso(evento, local) &&
+            !limitarRecargaPorTempoRef.current(chaveRecargaClasse(userId, classeAtual.classe_id), Date.now())) {
+          return
+        }
+        refreshCanonicalGraph()
+      }
+
       channel = supabase
         .channel('rt_trilha')
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'conteudo_aluno', filter: `aluno_id=eq.${userId}` },
-          refreshCanonicalGraph
+          aoMudarProgresso('conteudo_aluno')
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'atividade_aluno', filter: `aluno_id=eq.${userId}` },
-          refreshCanonicalGraph
+          aoMudarProgresso('atividade_aluno')
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'topico_aluno', filter: `aluno_id=eq.${userId}` },
-          refreshCanonicalGraph
+          aoMudarProgresso('topico_aluno')
         )
         .on(
           'postgres_changes',
@@ -2182,11 +2207,6 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
       throw err;
     }
   }, [classeAtual, usuario, atualizarProgressoClasse, refreshTopico]);
-
-  // O relógio de estudo grava a visita a cada 60 s; reler a turma a cada
-  // gravação derrubou a produção em 17/11 (ver `recargaPorTempo.ts`). As
-  // ações que mudam status ou percentual continuam relendo na hora.
-  const limitarRecargaPorTempoRef = useRef(criarLimitadorDeRecarga())
 
   const recarregarProgressoPorTempo = useCallback(async (classe: Classe, alunoId: string) => {
     if (!limitarRecargaPorTempoRef.current(chaveRecargaClasse(alunoId, classe.classe_id), Date.now())) return

@@ -36,6 +36,7 @@ src/services/personalizacao/TrailupApiProvider.realtime.test.ts
 src/services/progressoOutbox.test.ts
 src/utils/visitaDoTopico.test.ts
 src/utils/recargaPorTempo.test.ts
+src/utils/ecoRealtime.test.ts
 src/utils/areaLogada.test.ts
 src/services/acaoDaNotificacao.test.ts
 src/services/destinoDoToque.test.ts
