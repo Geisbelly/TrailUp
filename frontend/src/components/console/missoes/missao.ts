@@ -312,8 +312,14 @@ export function agruparDesafios(missoes: Missao[]): Missao[] {
     const linhas: LinhaDoDesafio[] = linhasDoGrupo
       .flatMap((l) => l.linhasDoDesafio)
       .sort((a, b) => posicaoDoPerfil(a.perfilAlvo) - posicaoDoPerfil(b.perfilAlvo));
+    // Todas as linhas do grupo mudam juntas (`missao_desafio_decidir`); se alguma ainda espera, o
+    // grupo inteiro espera, para o professor não perder uma linha que nenhum aluno vê.
+    const pendente = linhasDoGrupo.find((l) => l.aprovacao === "pendente");
+    const recusada = linhasDoGrupo.find((l) => l.aprovacao === "recusada" && l.motivoRecusa);
     saida.push({
       ...m,
+      aprovacao: pendente ? "pendente" : m.aprovacao,
+      motivoRecusa: m.motivoRecusa ?? recusada?.motivoRecusa ?? null,
       ativa: linhas.some((l) => l.ativa),
       perfis: linhas.map((l) => l.perfilAlvo),
       linhasDoDesafio: linhas,
@@ -332,6 +338,39 @@ export function rotuloDoTipoDoDesafio(desafio: unknown): string {
     return "Lógica";
   }
   return "Desafio";
+}
+
+const NOME_DA_DIRECAO: Record<string, string> = { h: "horizontal", v: "vertical" };
+
+/**
+ * A resposta do desafio para o professor conferir antes de aprovar, lida de
+ * `missao_desafio_gabarito.resposta` (só o professor dono lê). Lógica: `{aceitas: [...]}`.
+ * Cruzadinha: `{palavras: {"1h": "PALAVRA"}}`, com a chave `numero + direcao` das palavras públicas.
+ * Forma inesperada devolve lista vazia, e o cartão diz que não conseguiu mostrar.
+ */
+export function respostaDoDesafio(desafio: unknown, resposta: unknown): string[] {
+  const d = desafio && typeof desafio === "object" && !Array.isArray(desafio) ? (desafio as Record<string, unknown>) : null;
+  const r = resposta && typeof resposta === "object" && !Array.isArray(resposta) ? (resposta as Record<string, unknown>) : null;
+  if (!r) return [];
+  if (Array.isArray(r.aceitas)) return r.aceitas.filter((a): a is string => typeof a === "string" && a.trim() !== "");
+  if (!r.palavras || typeof r.palavras !== "object" || Array.isArray(r.palavras)) return [];
+  const certas = r.palavras as Record<string, unknown>;
+  const publicas = Array.isArray(d?.palavras)
+    ? d.palavras.filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
+    : [];
+  const pistaDe = new Map(publicas.map((p) => [`${p.numero}${p.direcao}`, String(p.pista ?? "").trim()]));
+  return Object.entries(certas)
+    .filter(([, palavra]) => typeof palavra === "string")
+    .map(([chave, palavra]) => {
+      const m = /^(\d+)([hv])$/.exec(chave);
+      return { numero: m ? Number(m[1]) : Number.MAX_SAFE_INTEGER, direcao: m?.[2] ?? "", chave, palavra: palavra as string };
+    })
+    .sort((a, b) => a.numero - b.numero || a.direcao.localeCompare(b.direcao))
+    .map((p) => {
+      const rotulo = p.direcao ? `${p.numero} ${NOME_DA_DIRECAO[p.direcao]}` : p.chave;
+      const pista = pistaDe.get(p.chave);
+      return `${rotulo}${pista ? ` (${pista})` : ""}: ${p.palavra}`;
+    });
 }
 
 /** Quantas pistas da cruzadinha entram no resumo do cartão. */

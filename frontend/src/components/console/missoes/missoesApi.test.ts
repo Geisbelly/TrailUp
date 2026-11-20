@@ -31,6 +31,7 @@ vi.mock("../trilha/topicsApi", () => ({ saveActivity: sb.saveActivity }));
 import {
   alternarDesafio,
   contarEntregas,
+  decidirDesafio,
   decidirMissao,
   duplicarMissao,
   excluirMissao,
@@ -529,6 +530,73 @@ describe("decidirMissao", () => {
     await decidirMissao(5, false, " fora do conteúdo ");
     const update = sb.chamadas.find((c) => c[0] === "missoes" && c[1] === "update");
     expect(update![2]).toEqual({ aprovacao: "recusada", motivo_recusa: "fora do conteúdo" });
+  });
+});
+
+describe("decidirDesafio", () => {
+  it("decidirDesafio chama a rpc com p_grupo, p_aprovar e p_motivo", async () => {
+    sb.rpc.mockResolvedValueOnce({ data: 2, error: null });
+    await expect(decidirDesafio("g1", true)).resolves.toBe(2);
+    expect(sb.rpc).toHaveBeenLastCalledWith("missao_desafio_decidir", { p_grupo: "g1", p_aprovar: true, p_motivo: null });
+
+    sb.rpc.mockResolvedValueOnce({ data: 2, error: null });
+    await decidirDesafio("g1", false, "  fora do conteúdo ");
+    expect(sb.rpc).toHaveBeenLastCalledWith("missao_desafio_decidir", { p_grupo: "g1", p_aprovar: false, p_motivo: "fora do conteúdo" });
+
+    // Sem motivo vai nulo: quem escolhe o texto de reserva é o banco ("Recusado pelo professor").
+    sb.rpc.mockResolvedValueOnce({ data: 2, error: null });
+    await decidirDesafio("g1", false, "   ");
+    expect(sb.rpc).toHaveBeenLastCalledWith("missao_desafio_decidir", { p_grupo: "g1", p_aprovar: false, p_motivo: null });
+    // Decidir é a RPC, nunca UPDATE direto: são várias linhas numa transação só.
+    expect(sb.chamadas.some((c) => c[0] === "missoes" && c[1] === "update")).toBe(false);
+  });
+
+  it("grupo já decidido devolve 0", async () => {
+    sb.rpc.mockResolvedValueOnce({ data: 0, error: null });
+    await expect(decidirDesafio("g1", true)).resolves.toBe(0);
+  });
+
+  it("decidirDesafio propaga o erro", async () => {
+    sb.rpc.mockResolvedValueOnce({ data: null, error: { code: "42501", message: "sem permissão" } });
+    await expect(decidirDesafio("g1", true)).rejects.toMatchObject({ message: "sem permissão" });
+  });
+});
+
+describe("listarMissoes com desafio pendente", () => {
+  it("lê a resposta do grupo pendente em missao_desafio_gabarito e a põe no cartão", async () => {
+    sb.respostas = {
+      missoes: {
+        data: [
+          linhaDeDesafio(10, "g1", "seeker", { aprovacao: "pendente" }),
+          linhaDeDesafio(11, "g1", "mastermind", { aprovacao: "pendente" }),
+          linhaDeDesafio(12, "g2", "seeker"),
+        ],
+        error: null,
+      },
+      missao_desafio_gabarito: { data: [{ desafio_grupo: "g1", resposta: { palavras: { "1h": "NUMERADOR" } } }], error: null },
+      classe_aluno: { data: null, error: null, count: 4 },
+    };
+    const r = await listarMissoes(7);
+    expect(r.map((m) => m.id)).toEqual([10, 12]);
+    expect(r[0]).toMatchObject({ aprovacao: "pendente", respostaDoDesafio: { palavras: { "1h": "NUMERADOR" } } });
+    // Só o grupo que espera decisão: o aprovado não precisa do gabarito na tela.
+    expect(sb.chamadas).toContainEqual(["missao_desafio_gabarito", "in", "desafio_grupo", ["g1"]]);
+  });
+
+  it("falha ao ler o gabarito não derruba a lista", async () => {
+    sb.respostas = {
+      missoes: { data: [linhaDeDesafio(10, "g1", "seeker", { aprovacao: "pendente" })], error: null },
+      missao_desafio_gabarito: { data: null, error: { message: "sem permissão" } },
+      classe_aluno: { data: null, error: null, count: 4 },
+    };
+    const r = await listarMissoes(7);
+    expect(r[0]).toMatchObject({ id: 10, aprovacao: "pendente", respostaDoDesafio: null });
+  });
+
+  it("sem desafio pendente não consulta o gabarito", async () => {
+    sb.respostas = { missoes: { data: [linhaDeDesafio(12, "g2", "seeker")], error: null }, classe_aluno: { data: null, error: null, count: 4 } };
+    await listarMissoes(7);
+    expect(sb.chamadas.some((c) => c[0] === "missao_desafio_gabarito")).toBe(false);
   });
 });
 

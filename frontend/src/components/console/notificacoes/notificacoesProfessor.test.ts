@@ -33,6 +33,10 @@ describe("caminhoDaNotificacao", () => {
     expect(caminhoDaNotificacao({ destino: "eventos" })).toBe("/console/eventos");
     expect(caminhoDaNotificacao({ destino: "tecnico" })).toBe("/console/tecnico");
   });
+  it("caminhoDaNotificacao com destino missoes abre a aba Missões", () => {
+    // Desafio gerado sozinho esperando aprovação (`desafio_para_aprovar`, 20261120_03).
+    expect(caminhoDaNotificacao({ destino: "missoes" })).toBe("/console/missoes");
+  });
   it("sem destino ou com destino de uma versão futura, cai na Visão geral", () => {
     expect(caminhoDaNotificacao({ destino: null })).toBe("/console");
     expect(caminhoDaNotificacao({ destino: "alguma_aba_nova" })).toBe("/console");

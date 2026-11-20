@@ -28,6 +28,8 @@ import {
   type Existentes,
   type FiltroDeRepetidas,
 } from "./repetidas.ts";
+import { autorizar, pareceChaveDeServico } from "./pedidoDoServidor.ts";
+import { criarConferenciaDeServico } from "../storage-upload-url/pedido.ts";
 
 /** Parte do pedido ao Gemini: texto, arquivo inline ou arquivo por URL (o vídeo do YouTube). */
 type ParteDoPedido = ParteGemini | { fileData: { fileUri: string; mimeType?: string } };
@@ -1696,6 +1698,13 @@ function normalizeAtividades(raw: unknown, filtro: FiltroDeRepetidas): { items: 
   return { items: novas, repetidas: unique.length - novas.length };
 }
 
+// Conferência da chave de serviço, a mesma de storage-redirect e storage-upload-url (ver
+// pedidoDoServidor.ts). No escopo do módulo porque o cache de 5 min vive com ela.
+const conferirServico = criarConferenciaDeServico(() => ({
+  chaveDeServico: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
+  supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
+}));
+
 serve(async (req) => {
   // Conta desde a chegada: autenticacao e leitura do corpo tambem gastam o relogio do worker.
   const startedAt = Date.now();
@@ -1703,12 +1712,31 @@ serve(async (req) => {
     return new Response("ok", { headers: CORS });
   }
 
-  if (!(await requireAuthenticatedUser(req))) {
+  // Com a chave de serviço no Authorization, o pedido é do servidor (worker da API) e só vale no
+  // modo `desafios`: o modo está no corpo, então ele é lido aqui, uma vez, e reaproveitado abaixo.
+  // Sem ela, o caminho do professor de sempre. Nem o header nem a chave vão para o log.
+  // Só token com cara de chave de serviço vai à conferência (que pode perguntar ao Auth admin): o
+  // JWT do professor segue direto para requireAuthenticatedUser, sem fetch a mais.
+  const authorization = req.headers.get("Authorization");
+  const servidor = pareceChaveDeServico(authorization) && (await conferirServico(authorization));
+  let corpoDoServidor: RequestBody | null = null;
+  if (servidor) {
+    try {
+      const lido: unknown = await req.json();
+      corpoDoServidor = lido && typeof lido === "object" && !Array.isArray(lido) ? (lido as RequestBody) : null;
+    } catch {
+      corpoDoServidor = null;
+    }
+    const modoPedido = corpoDoServidor ? asString(corpoDoServidor.mode) || "all" : "";
+    if (!corpoDoServidor || autorizar({ servidor: true, usuario: false, mode: modoPedido }) !== "ok") {
+      return jsonResponse({ error: "unauthorized" }, 401);
+    }
+  } else if (!(await requireAuthenticatedUser(req))) {
     return jsonResponse({ error: "unauthorized" }, 401);
   }
 
   try {
-    const body = (await req.json()) as RequestBody;
+    const body = corpoDoServidor ?? ((await req.json()) as RequestBody);
     const mode = asString(body.mode) || "all";
     const key = Deno.env.get("GEMINI_API_KEY");
 
@@ -1859,7 +1887,8 @@ Retorne JSON valido:
     // Com video ou PDF, cada tentativa reenvia o material inteiro: uma so,
     // para caber na cota do tier free. So texto continua com a melhor de N.
     const materialPesado = usarVideo || partesDoMaterial.some((parte) => "inlineData" in parte);
-    const tentativas = materialPesado ? 1 : CONTENT_GEN_ATTEMPTS;
+    // Pedido do servidor: uma tentativa só, para o teto diário do worker contar gerações.
+    const tentativas = servidor || materialPesado ? 1 : CONTENT_GEN_ATTEMPTS;
 
     // Modo desafios: 2 de logica e 2 cruzadinhas por conteudo, num pedido separado do de cards e
     // atividades (falhar aqui nao derruba os cards). So propoe: quem grava e missao_desafio_criar,

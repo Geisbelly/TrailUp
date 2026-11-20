@@ -58,6 +58,11 @@ export type Missao = {
   perfis: string[];
   /** No desafio, uma por perfil (`agruparDesafios` junta). Na missão comum, vazio. */
   linhasDoDesafio: LinhaDoDesafio[];
+  /**
+   * Só no desafio pendente: `missao_desafio_gabarito.resposta`, para o professor conferir antes de
+   * aprovar. `null` quando a leitura falhou; ausente nos demais.
+   */
+  respostaDoDesafio?: unknown;
 };
 
 type LinhaDeMissao = {
@@ -199,7 +204,7 @@ export async function listarMissoes(classeId: number): Promise<Missao[]> {
   const contagem = contarEntregas((entregas.data ?? []) as unknown as LinhaDeEntrega[]);
   const total = alunos.count ?? 0;
 
-  return agruparDesafios(
+  const lista = agruparDesafios(
     missoes.map((m) =>
       mapearMissao(
         m,
@@ -208,6 +213,25 @@ export async function listarMissoes(classeId: number): Promise<Missao[]> {
         total,
       ),
     ),
+  );
+  return comRespostaDosPendentes(lista);
+}
+
+/**
+ * Lê a resposta dos desafios que esperam aprovação (o professor precisa conferir antes de aprovar).
+ * Só os pendentes: o gabarito não é segredo para o dono, mas o aprovado não precisa dele na tela.
+ * Falhar aqui não derruba a lista: o cartão diz que não conseguiu mostrar a resposta.
+ */
+async function comRespostaDosPendentes(lista: Missao[]): Promise<Missao[]> {
+  const grupos = lista.filter((m) => m.desafio != null && m.desafioGrupo && m.aprovacao === "pendente").map((m) => m.desafioGrupo as string);
+  if (grupos.length === 0) return lista;
+  const { data, error } = await supabase.from("missao_desafio_gabarito" as never).select("desafio_grupo, resposta").in("desafio_grupo", grupos);
+  if (error) console.error("Não foi possível ler a resposta dos desafios pendentes:", error);
+  const porGrupo = new Map(
+    error ? [] : ((data ?? []) as unknown as { desafio_grupo: string; resposta: unknown }[]).map((g) => [g.desafio_grupo, g.resposta]),
+  );
+  return lista.map((m) =>
+    m.desafioGrupo && grupos.includes(m.desafioGrupo) ? { ...m, respostaDoDesafio: porGrupo.get(m.desafioGrupo) ?? null } : m,
   );
 }
 
@@ -390,6 +414,22 @@ export async function decidirMissao(id: number, aprovar: boolean, motivo?: strin
     )
     .eq("id", id);
   if (error) throw error;
+}
+
+/**
+ * Aprova ou recusa o desafio gerado sozinho: todas as linhas do grupo, numa transação, pela RPC
+ * `missao_desafio_decidir` (`20261120_03`), que confere o professor dono (42501). Sem motivo vai
+ * nulo, e o banco grava "Recusado pelo professor". Devolve quantas linhas mudaram: 0 é grupo que
+ * já estava decidido.
+ */
+export async function decidirDesafio(grupo: string, aprovar: boolean, motivo?: string): Promise<number> {
+  const { data, error } = await supabase.rpc("missao_desafio_decidir" as never, {
+    p_grupo: grupo,
+    p_aprovar: aprovar,
+    p_motivo: aprovar ? null : (motivo ?? "").trim() || null,
+  } as never);
+  if (error) throw error;
+  return Number(data ?? 0);
 }
 
 /**

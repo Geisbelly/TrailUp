@@ -40,7 +40,10 @@ def _resolvido(texto: str) -> str:
 def test_encadeia_na_cabeca_da_main():
     assert M.down_revision == "20261120_01"
     outras = [p.name for p in VERSOES.glob("*.py") if p.name != Path(M.__file__).name]
-    assert not any(f'down_revision = "{M.revision}"' in (VERSOES / n).read_text(encoding="utf-8") for n in outras)
+    # Nenhuma outra migration com a mesma revisão. "Ninguém vem depois dela" deixou de valer quando a
+    # 20261120_03 (desafios gerados sozinhos) encadeou aqui.
+    mesma = f'\nrevision = "{M.revision}"'
+    assert not any(mesma in (VERSOES / n).read_text(encoding="utf-8") for n in outras)
 
 
 def test_todo_tipo_tem_os_sete_perfis():
