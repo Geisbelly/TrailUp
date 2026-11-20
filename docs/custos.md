@@ -8,7 +8,7 @@ números publicados na v7, em [`analises/custos-jic-2026/`](analises/custos-jic-
 projeta planos pagos; este documento registra o que acontece de fato. Os R$ 435 de parte fixa são
 projeção, não gasto.
 
-Última atualização: 18/11/2026.
+Última atualização: 20/11/2026.
 
 ## O que é pago hoje
 
@@ -36,6 +36,12 @@ O tier free não cobra em dinheiro, mas tem teto:
 
 - **Cota do Gemini:** quando acaba, a fila para e o chat cai na resposta de reserva. Nova tentativa
   gasta a mesma cota diária. Um `402` é sinal de chave fora do tier free: avise, não contorne.
+- **Cota do RAG (OpenAI):** de 06/11 a 20/11/2026, toda chamada ao RAG voltou `RateLimitError` em
+  `ia_uso_llm` (51 da notificação em 06/11 e 6 do chat), cada uma depois de ~19 s. Desde 20/11, o chat
+  responde pelo Gemini quando o RAG falha: é uma chamada de Gemini a mais por pergunta enquanto o
+  RAG estiver fora, e o juiz continua igual. Um `429` também pausa o RAG no processo da API, por 1 h
+  sem cota (`insufficient_quota`) e por 60 s no limite de ritmo, e nesse tempo nenhuma chamada sai
+  para a OpenAI. Se é falta de crédito, só a fatura da conta RAG confirma: **PENDENTE**.
 - **Faixa do chat:** `GEMINI_CHAVES_RESERVADAS_CHAT` está em `0`. Para ligar sem tirar capacidade da
   fila, crie uma 5ª chave em projeto novo, ponha no fim de `GEMINI_API_KEY` só na API e use `1`.
 - **Espaço do Supabase:** o plano Free tem 500 MB, e o banco estava em 77,6 MB em 05/11/2026. O monitor guarda 35 dias de `monitor_sonda`, então ela cresce até parar perto de 151 mil linhas (ver a decisão abaixo).

@@ -15,7 +15,7 @@ import re
 import time
 from typing import Any, Iterable
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, RateLimitError
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,6 +47,33 @@ _FILTRO_REGRAS_DERIVADAS = {
 }
 _FONTE_DAT = re.compile(r"^DAT-\d{2}$")
 _REGRA_DERIVADA = re.compile(r"^RD-(?:0[1-9]|1[0-2])$")
+
+# Pausa depois de um 429 (20/11). Desde 06/11 toda chamada ao RAG voltava RateLimitError, cada uma
+# depois de ~19 s, e o aluno esperava isso no chat a cada pergunta antes de cair na resposta de
+# reserva. Sem cota (`insufficient_quota`) não volta em minutos; o 429 de ritmo volta.
+# É do processo, não da instância: cada chamada cria um `OpenAIRagService` novo.
+_PAUSA_SEM_COTA_S = 3600.0
+_PAUSA_LIMITE_DE_RITMO_S = 60.0
+_rag_em_pausa_ate = 0.0
+
+
+def rag_em_pausa() -> bool:
+    return time.monotonic() < _rag_em_pausa_ate
+
+
+def _pausar_rag_depois_de(exc: BaseException) -> None:
+    global _rag_em_pausa_ate
+    if not isinstance(exc, RateLimitError):
+        return
+    pausa = _PAUSA_SEM_COTA_S if getattr(exc, "code", None) == "insufficient_quota" else _PAUSA_LIMITE_DE_RITMO_S
+    _rag_em_pausa_ate = max(_rag_em_pausa_ate, time.monotonic() + pausa)
+    logger.warning("openai_rag.pausa: %s por %.0f s", getattr(exc, "code", None) or "rate_limit", pausa)
+
+
+def zerar_pausa_do_rag() -> None:
+    """Para os testes: a pausa é estado do processo."""
+    global _rag_em_pausa_ate
+    _rag_em_pausa_ate = 0.0
 
 
 class OpenAIRagService:
@@ -254,6 +281,9 @@ class OpenAIRagService:
     ) -> BaseModel:
         if not self.is_configured():
             raise StructuredOutputError("OpenAI RAG nao esta configurado")
+        if rag_em_pausa():
+            # Nenhuma chamada sai, então nada vai para ia_uso_llm.
+            raise ProvedorIndisponivelError("OpenAI RAG em pausa depois de um 429")
 
         normalized_payload = dict(payload)
         normalized_payload.setdefault("idioma", "português brasileiro")
@@ -294,6 +324,7 @@ class OpenAIRagService:
                     },
                 )
             except Exception as exc:
+                _pausar_rag_depois_de(exc)
                 self._registrar(None, inicio, prompt_name, modelo, exc)
                 uso_llm.registrar(
                     prompt=prompt_name,

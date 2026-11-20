@@ -158,6 +158,47 @@ def test_resposta_de_reserva_registra_sem_classificar(app, monkeypatch) -> None:
     assert (registro.intencao, registro.assunto, registro.conceitos) == ("outro", None, [])
 
 
+def test_rag_sem_cota_responde_pelo_gemini_e_classifica(app, monkeypatch) -> None:
+    """20/11: de 06/11 em diante todo RAG voltou 429, e toda pergunta recebia a reserva genérica.
+    Agora o Guia responde pelo Gemini, o juiz confere, e o registro sai com origem `modelo`."""
+    from app.services.openai_rag import OpenAIRagService
+
+    # Sem o fake de `ainvoke_structured`: o caminho de verdade, só com a rede trocada.
+    original = JsonLLMService.__dict__["ainvoke_structured"]
+    _preparar(app, monkeypatch)
+    monkeypatch.setattr(JsonLLMService, "ainvoke_structured", original)
+    monkeypatch.setattr(OpenAIRagService, "is_configured", lambda self: True)
+    chamadas_rag: list[str] = []
+
+    async def _rag_sem_cota(self, *, prompt_name, **_kwargs):
+        chamadas_rag.append(prompt_name)
+        raise ProvedorIndisponivelError("OpenAI RAG sem resposta: RateLimitError")
+
+    monkeypatch.setattr(OpenAIRagService, "invoke_structured", _rag_sem_cota)
+    pedidos_gemini: list[str] = []
+
+    async def _gemini(self, *, messages, primary_model, structured_schema):
+        titulo = structured_schema.get("title")
+        pedidos_gemini.append(titulo)
+        if titulo == "MentorChatLLMResult":
+            return dict(RESPOSTA)
+        return {"viola": False, "motivo": ""}
+
+    monkeypatch.setattr(JsonLLMService, "_ainvoke_gemini_with_rotation", _gemini)
+    gravar = AsyncMock()
+    monkeypatch.setattr(ChatGuiaRegistrosRepository, "gravar", gravar)
+
+    with TestClient(app) as client:
+        resposta = client.post("/api/v1/personalizar/chat", json=_pedido("me dá um resumo do conteúdo"))
+
+    assert resposta.status_code == 200, resposta.text
+    assert resposta.json()["reply"] == RESPOSTA["reply"]
+    assert chamadas_rag == ["mentor_personalizacao_chat.txt"]
+    assert pedidos_gemini[0] == "MentorChatLLMResult" and len(pedidos_gemini) == 2
+    assert gravar.await_args.kwargs["origem"] == "modelo"
+    assert gravar.await_args.args[0].intencao == "duvida_materia"
+
+
 def test_falha_ao_gravar_nao_derruba_a_resposta(app, monkeypatch) -> None:
     _preparar(app, monkeypatch, gravar=AsyncMock(side_effect=RuntimeError("tabela ausente")))
 
