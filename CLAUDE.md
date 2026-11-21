@@ -1034,8 +1034,13 @@ Cada perfil carrega:
   `verify_jwt = false` (deploy com `--no-verify-jwt`; a CLI não lê o `config.toml` da pasta dela), então
   quem autoriza é só a função: `requireAuthenticatedUser` para o professor e a conferência para o
   servidor. Erros: limite por minuto espera 15 min, cota do dia pausa o laço até a
-  virada, edge recusando o servidor ou sem resposta espera 60 min, e nenhum desses conta falha; o resto
-  conta falha, espera 2^n h e para na 3ª.
+  virada, e edge recusando o servidor ou inalcançável espera 60 min, assim como a **pane do Gemini**
+  (502 `gemini_error` com o Gemini em 401/403/404/500/503, 400 `API_KEY_INVALID`,
+  `gemini_network_error`, 500 sem `code`); nenhum desses conta falha, porque vale para todo conteúdo e
+  três passadas assim tirariam a fila inteira da lista para sempre. O resto conta falha, espera 2^n h e
+  para na 3ª, inclusive a resposta que não volta depois de o pedido chegar (`ReadTimeout`): a edge pode
+  ter gastado o Gemini. Seis passadas paradas sem culpa do conteúdo, sem resposta boa no meio, viram
+  `ERROR` no log.
   
 - **`boss_falas` — a IA escreve, o professor pode tirar do ar** (`20261102_19`). Nome e falas do boss
   são gerados em lote por conteúdo × perfil e o app os mostra ao aluno (inclusive menor) direto. O

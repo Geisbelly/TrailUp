@@ -203,7 +203,8 @@ continua exigindo usuário logado. O corpo é o mesmo do console, e a resposta t
 
 Pedido do servidor faz **uma tentativa só**: hoje, com material só de texto, o modo `desafios`
 tenta até 3 vezes (`CONTENT_GEN_ATTEMPTS`, `index.ts:1305` e `:1862`). O rodízio de chaves e de
-modelo em 429/503 continua. Assim o teto diário conta pedidos, e cada pedido é uma geração.
+modelo em 429/503 continua. Cada pedido é uma geração, mas o teto diário conta **conteúdos tentados
+no dia** (a reivindicação), não pedidos: é o que `docs/custos.md` registra.
 
 ### 6. O console aprova
 
