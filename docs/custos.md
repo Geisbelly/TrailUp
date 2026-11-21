@@ -44,7 +44,16 @@ O tier free não cobra em dinheiro, mas tem teto:
   para a OpenAI. Se é falta de crédito, só a fatura da conta RAG confirma: **PENDENTE**.
 - **Faixa do chat:** `GEMINI_CHAVES_RESERVADAS_CHAT` está em `0`. Para ligar sem tirar capacidade da
   fila, crie uma 5ª chave em projeto novo, ponha no fim de `GEMINI_API_KEY` só na API e use `1`.
-- **Espaço do Supabase:** o plano Free tem 500 MB, e o banco estava em 77,6 MB em 05/11/2026. O monitor guarda 35 dias de `monitor_sonda`, então ela cresce até parar perto de 151 mil linhas (ver a decisão abaixo).
+- **Espaço do Supabase:** o plano Free tem 500 MB, e o banco estava em 77,6 MB em 05/11/2026 e em 143 MB em 20/11/2026. O monitor guarda 35 dias de `monitor_sonda`, então ela cresce até parar perto de 151 mil linhas (ver a decisão abaixo).
+- **Egress do Supabase:** o plano Free tem 5 GB por ciclo (do dia 3 ao dia 3). No ciclo de
+  03/11/2026, chegou a 5,57 GB em 20/11, e o Supabase restringiu todos os serviços do projeto
+  (respostas 402) até o ciclo virar ou a organização mudar de plano. 99,5% era **Shared Pooler**,
+  uns 230 MB por dia mesmo sem uso: a API abria uma conexão nova com o pooler a cada sessão
+  (`NullPool`), e os laços de fundo abrem sessão a cada poucos segundos. No pooler, eram uns 68 mil
+  logins por dia. Desde o PR do pool de conexões, a API reaproveita a conexão
+  (`database_pool_*`, `app/db/session.py`) e guarda por processo o resultado das consultas a
+  `information_schema` (`app/db/schema_cache.py`). O consumo diário depois do deploy é
+  **PENDENTE**: confira em Usage → Egress do painel do Supabase.
 - **Desafios por conteúdo (modo `desafios` da edge `generate-content-ai`):** o clique em sugestões
   de um conteúdo no editor de trilha pede, em paralelo, o modo `content` (cards e atividades) e o
   `desafios` (2 de lógica e 2 cruzadinhas). É uma chamada de Gemini a mais por clique. Com material

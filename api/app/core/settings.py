@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     database_command_timeout_sec: int = 60
     database_connect_retry_attempts: int = 3
     database_connect_retry_delay_sec: float = 1.0
+    # Pool de conexoes quando a API fala com o Supavisor (pooler.supabase.com). Ver `app/db/session.py`.
+    database_pool_size: int = 5
+    database_pool_max_overflow: int = 5
+    database_pool_recycle_sec: int = 300
+    database_pool_timeout_sec: int = 30
     database_migrations_on_startup: bool = True
 
     supabase_url: str | None = Field(

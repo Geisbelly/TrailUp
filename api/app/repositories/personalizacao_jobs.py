@@ -5,6 +5,8 @@ from uuid import uuid4
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db import schema_cache
+
 # Kinds cujos targets sao 1 por (topico x conteudo x perfil) -- os mesmos que
 # `_build_targets` monta pelo caminho de base por perfil em
 # `services/personalizacao_jobs.py`. Um kind desses ficar de fora daqui nao
@@ -38,6 +40,10 @@ class PersonalizacaoJobsRepository:
         self._columns_cache: dict[tuple[str, str], bool] = {}
 
     async def _table_exists(self, table_name: str) -> bool:
+        chave = schema_cache.chave_tabela(table_name)
+        guardado = schema_cache.consultar(chave)
+        if guardado is not None:
+            return guardado
         result = await self.session.execute(
             text(
                 """
@@ -51,7 +57,9 @@ class PersonalizacaoJobsRepository:
             ),
             {"table_name": table_name},
         )
-        return bool(result.scalar())
+        existe = bool(result.scalar())
+        schema_cache.guardar(chave, existe)
+        return existe
 
     async def _jobs_exists(self) -> bool:
         if self._jobs_table_exists is None:
@@ -72,6 +80,11 @@ class PersonalizacaoJobsRepository:
         if isinstance(getattr(self.session, "responses", None), list):
             self._columns_cache[key] = True
             return True
+        chave = schema_cache.chave_coluna(table_name, column_name)
+        guardado = schema_cache.consultar(chave)
+        if guardado is not None:
+            self._columns_cache[key] = guardado
+            return guardado
         result = await self.session.execute(
             text(
                 """
@@ -95,6 +108,7 @@ class PersonalizacaoJobsRepository:
         else:
             exists = True
         self._columns_cache[key] = exists
+        schema_cache.guardar(chave, exists)
         return exists
 
     async def _jobs_has_media_snapshot(self) -> bool:
