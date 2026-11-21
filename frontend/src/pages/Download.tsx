@@ -7,8 +7,8 @@ const DOWNLOAD_CONFIG = {
   // Release PÚBLICO no espelho: o brainhex-navigator é privado e o link de lá dava 404 sem login.
   // A versão daqui não pode ficar abaixo de `app_config.app_versao_minima` (hoje 1.0.8), senão
   // quem instala por este link cai direto na tela de atualizar.
-  apkUrl: "https://github.com/Geisbelly/TrailUp/releases/download/app-v1.0.9/trailup_1_0_9.apk",
-  aabUrl: "https://github.com/Geisbelly/TrailUp/releases/download/app-v1.0.9/trailup_1_0_9.aab",
+  apkUrl: "https://github.com/Geisbelly/TrailUp/releases/download/app-v1.0.10/trailup_1_0_10.apk",
+  aabUrl: "https://github.com/Geisbelly/TrailUp/releases/download/app-v1.0.10/trailup_1_0_10.aab",
 };
 
 export default function Download() {
