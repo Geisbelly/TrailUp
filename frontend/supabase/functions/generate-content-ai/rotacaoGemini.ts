@@ -7,6 +7,11 @@
  *
  * - **402/403/429 são da chave** (cota, crédito, permissão): o par
  *   (chave, modelo) sai por um tempo e a próxima chave ainda vale.
+ * - **400 com `API_KEY_INVALID` também é da chave** (revogada, apagada,
+ *   digitada errado), mas vale para qualquer modelo: a chave sai de todos os
+ *   modelos por um tempo e não é tentada de novo neste pedido. Antes o 400
+ *   voltava na hora, e uma chave inválida na frente da lista derrubava todo
+ *   pedido com as outras chaves boas. Os outros 400 são do pedido e voltam.
  * - **500/503 são do modelo** (sobrecarga): trocar de chave não adianta. O
  *   modelo sai do resto deste pedido e, por um tempo curto, dos próximos.
  *   Medido em 10/11: o `gemini-3.6-flash` deu 503 nas chaves #0, #1 e #2 em
@@ -61,6 +66,16 @@ export const SOBRECARGA_COOLDOWN_MS = 2 * 60 * 1000;
  */
 export const LIMITE_POR_CHAMADA_MS = 45 * 1000;
 
+/** O 400 é de chave inválida? `error.details[]` traz o `ErrorInfo` com `reason`. */
+export const ehChaveInvalida = (status: number, apiData: Record<string, unknown> | undefined): boolean => {
+  if (status !== 400) return false;
+  const detalhes = (apiData?.error as Record<string, unknown> | undefined)?.details;
+  return (
+    Array.isArray(detalhes) &&
+    detalhes.some((item) => (item as Record<string, unknown> | null)?.reason === "API_KEY_INVALID")
+  );
+};
+
 const ehAbortoPorTempo = (erro: unknown) =>
   erro instanceof Error && (erro.name === "TimeoutError" || erro.name === "AbortError");
 
@@ -102,6 +117,7 @@ export async function chamarGeminiComRotacao({
   const ordem = disponiveis.length ? disponiveis : pares;
 
   const sobrecarregadosAgora = new Set<string>();
+  const chavesInvalidasAgora = new Set<string>();
   const marcarSobrecarga = (modelo: string) => {
     sobrecarregadosAgora.add(modelo);
     estado.sobrecarregadoAte.set(modelo, agora() + SOBRECARGA_COOLDOWN_MS);
@@ -110,7 +126,7 @@ export async function chamarGeminiComRotacao({
   let ultima: RespostaGemini | null = null;
   let ultimoErro: unknown = null;
   for (const par of ordem) {
-    if (sobrecarregadosAgora.has(par.modelo)) continue;
+    if (sobrecarregadosAgora.has(par.modelo) || chavesInvalidasAgora.has(par.chave)) continue;
     const resta = prazo === undefined ? undefined : prazo - agora();
     if (resta !== undefined && resta <= 0) throw new PrazoDoGeminiEsgotado();
     const limite = resta === undefined ? undefined : Math.min(resta, limitePorChamadaMs);
@@ -163,6 +179,13 @@ export async function chamarGeminiComRotacao({
     }
     ultima = { res, apiData };
     const motivo = (apiData?.error as Record<string, unknown> | undefined)?.status;
+    if (ehChaveInvalida(res.status, apiData)) {
+      log.warn(`gemini: chave #${par.indice} -> 400 API_KEY_INVALID; fora de todos os modelos`);
+      chavesInvalidasAgora.add(par.chave);
+      const ate = agora() + ESGOTADO_COOLDOWN_MS;
+      for (const modelo of modelos) estado.esgotadoAte.set(`${par.chave}|${modelo}`, ate);
+      continue;
+    }
     if (!STATUS_DA_CHAVE.has(res.status) && !STATUS_DO_MODELO.has(res.status)) return ultima;
     log.warn(`gemini: chave #${par.indice} modelo ${par.modelo} -> ${res.status} ${motivo ?? ""}`);
     if (STATUS_DA_CHAVE.has(res.status)) estado.esgotadoAte.set(par.id, agora() + ESGOTADO_COOLDOWN_MS);

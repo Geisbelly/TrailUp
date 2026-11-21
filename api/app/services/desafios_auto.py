@@ -12,12 +12,23 @@ decide `sem_desafio`).
 Com erro, o banco recebe só `"<status> <code>"`, nunca o material, e quanto esperar:
 - limite por minuto: 15 minutos, sem contar tentativa, e a passada para;
 - cota do dia (402 ou `quotaId` com `PerDay`): até a virada do Pacífico, e o laço dorme até lá;
-- edge que não aceita o servidor ou não responde (401, 403, 404, 503 ou nenhuma resposta: timeout e
-  rede): `desafios_auto_espera_indisponivel_min` (60), sem contar tentativa, e a passada para. O
-  defeito é de configuração ou de deploy, não do conteúdo: a API publica pelo sync do espelho e a edge
-  só ganha deploy manual depois, e nessa janela a edge antiga responde 401 a todo pedido do servidor.
-  Contar tentativa ali tiraria todo conteúdo da lista para sempre na terceira passada;
-- o resto (500, 502, 504, 546...): `NULL`, e o banco conta a tentativa (2^n horas; na terceira, para).
+- edge que não aceita o servidor ou que o pedido nem alcança (401, 403, 404, 503, rede ou conexão):
+  `desafios_auto_espera_indisponivel_min` (60), sem contar tentativa, e a passada para. O defeito é de
+  configuração ou de deploy, não do conteúdo: a API publica pelo sync do espelho e a edge só ganha
+  deploy manual depois, e nessa janela a edge antiga responde 401 a todo pedido do servidor. Contar
+  tentativa ali tiraria todo conteúdo da lista para sempre na terceira passada;
+- pane do Gemini (`pane`): a mesma espera, pelo mesmo motivo. É a 502 `gemini_error` com o Gemini
+  respondendo 401, 403, 404, 500 ou 503 (chave sem permissão, modelo retirado, Gemini fora depois do
+  rodízio), a 400 com `API_KEY_INVALID` (a rotação devolve o 400 sem tentar a próxima chave), a 502
+  `gemini_network_error` e a 500 sem `code` (exceção que a edge não tratou). Tudo isso vale para todo
+  conteúdo da fila;
+- o resto conta a tentativa (`NULL`; 2^n horas, e na terceira, para): o que é do próprio pedido (outro
+  400 do Gemini, 422 `ai_truncated`, 502 `invalid_ai_response`, 504 `ai_timeout`) e a resposta que não
+  volta depois de o pedido chegar (`ReadTimeout`, `ReadError`, `RemoteProtocolError`). Esta conta porque
+  a edge pode ter chamado o Gemini, e uma espera sem contar não teria limite.
+
+Uma pane que não passa não pode ficar só em aviso: a cada `ALARME_A_CADA` passadas paradas sem culpa
+do conteúdo, sem resposta boa da edge no meio, o laço registra em `ERROR`.
 
 Ao modelo vai o assunto do conteúdo (o que `fn_desafios_auto_contexto` monta). Nenhum dado de aluno.
 """
@@ -40,6 +51,11 @@ logger = logging.getLogger(__name__)
 
 RESULTADOS = ("gerado", "sem_desafio", "ja_tinha", "falhou", "esperando", "sumiu")
 ESPERA_POR_MINUTO_MIN = 15
+# Passadas paradas por edge ou Gemini fora, sem resposta boa no meio, até o primeiro ERROR, e depois a
+# cada tantas. Passada vazia não conta nem zera.
+ALARME_A_CADA = 6
+# Resultados em que a edge respondeu sem pane: zeram a contagem do alarme.
+_RESPOSTA_DA_EDGE = ("gerado", "sem_desafio", "ja_tinha", "falhou", "esperando")
 _PACIFICO = ZoneInfo("America/Los_Angeles")
 _CONFIG_PADRAO: dict[str, Any] = {
     "ligado": True,
@@ -61,11 +77,15 @@ _FALHOU = text(
     "SELECT public.fn_desafios_auto_falhou(CAST(:id AS bigint), CAST(:erro AS text), CAST(:espera AS integer))"
 )
 
-Classe = Literal["cota_do_dia", "por_minuto", "indisponivel", "outro"]
+Classe = Literal["cota_do_dia", "por_minuto", "indisponivel", "pane", "outro"]
 
 # Status em que a edge não chegou a atender o pedido: credencial, rota, função sem configurar ou
 # nenhuma resposta (0 = exceção do httpx antes de qualquer resposta).
 _INDISPONIVEL = frozenset({0, 401, 403, 404, 503})
+# Exceções do httpx depois de o pedido sair inteiro: a edge pode ter chamado o Gemini.
+_RESPOSTA_PERDIDA = frozenset({"ReadTimeout", "ReadError", "RemoteProtocolError"})
+# O que o Gemini respondeu à edge que vale para qualquer conteúdo (a edge devolve tudo como 502).
+_GEMINI_FORA = frozenset({401, 403, 404, 500, 503})
 
 
 def _json(bruto: Any) -> Any:
@@ -98,16 +118,58 @@ def _violacoes(corpo: Any) -> list[dict[str, Any]]:
     return violacoes
 
 
+def _razoes(corpo: Any) -> set[str]:
+    """`reason` dos `ErrorInfo` em `details.response.error.details[]` (ex.: `API_KEY_INVALID`)."""
+    if not isinstance(corpo, dict):
+        return set()
+    detalhes = corpo.get("details")
+    resposta = detalhes.get("response") if isinstance(detalhes, dict) else None
+    erro = resposta.get("error") if isinstance(resposta, dict) else None
+    itens = erro.get("details") if isinstance(erro, dict) else None
+    return {
+        str(item["reason"])
+        for item in (itens if isinstance(itens, list) else [])
+        if isinstance(item, dict) and item.get("reason")
+    }
+
+
+def _pane_do_gemini(status: int, corpo: Any) -> bool:
+    code = corpo.get("code") if isinstance(corpo, dict) else None
+    if status == 500 and not code:
+        return True
+    if status != 502:
+        return False
+    if code == "gemini_network_error":
+        return True
+    if code != "gemini_error":
+        return False
+    detalhes = corpo.get("details")
+    try:
+        upstream = int(detalhes.get("upstream_status")) if isinstance(detalhes, dict) else None
+    except (TypeError, ValueError):
+        upstream = None
+    if upstream in _GEMINI_FORA:
+        return True
+    return upstream == 400 and "API_KEY_INVALID" in _razoes(corpo)
+
+
 def classificar_erro(status: int, corpo: Any) -> Classe:
     """O que um erro da edge pede. A edge devolve 429 `gemini_rate_limit` tanto para o 429 quanto
     para o 402 do Gemini, então quem distingue é `details`. Sem como distinguir, é por minuto: a espera
     curta não conta tentativa, e o erro do lado seguro é não queimar o conteúdo.
 
-    `indisponivel` é a edge que não aceitou o servidor ou não respondeu (401, 403, 404, 503, ou 0 para
-    timeout e rede do cliente): o conteúdo não tem culpa e também não pode perder tentativa."""
-    if int(status) in _INDISPONIVEL:
+    `indisponivel` é a edge que não aceitou o servidor ou que o pedido não alcançou (401, 403, 404,
+    503, ou 0 para rede e conexão do cliente), e `pane` é o Gemini fora para todo pedido: nos dois, o
+    conteúdo não tem culpa e não pode perder tentativa. O 0 de um pedido que chegou e cuja resposta não
+    voltou é `outro`: a espera sem contar não teria limite."""
+    status = int(status)
+    if status == 0 and isinstance(corpo, dict) and corpo.get("code") in _RESPOSTA_PERDIDA:
+        return "outro"
+    if status in _INDISPONIVEL:
         return "indisponivel"
-    if int(status) != 429:
+    if _pane_do_gemini(status, corpo):
+        return "pane"
+    if status != 429:
         return "outro"
     detalhes = corpo.get("details") if isinstance(corpo, dict) else None
     if isinstance(detalhes, dict) and str(detalhes.get("upstream_status")) == "402":
@@ -204,11 +266,26 @@ async def _pedir_a_edge(
     return resposta.status_code, dados
 
 
+_CODIGO_EM_ERROR = re.compile(r"[a-z_]{3,60}")
+
+
 def _erro(status: int, corpo: Any) -> str:
-    """Só `"<status> <code>"`: nada do material nem da mensagem livre da edge chega ao banco."""
+    """Só `"<status> <code>"`: nada do material nem da mensagem livre da edge chega ao banco.
+
+    Sem `code`, vale o `error` quando ele é um código (a 502 `invalid_ai_response` só traz `error`);
+    frase livre em `error` fica de fora, porque pode levar o material."""
     code = corpo.get("code") if isinstance(corpo, dict) else None
+    if not code and isinstance(corpo, dict):
+        error = corpo.get("error")
+        if isinstance(error, str) and _CODIGO_EM_ERROR.fullmatch(error):
+            code = error
     code = re.sub(r"[^A-Za-z0-9_.-]", "", str(code or ""))[:60] or "sem_codigo"
     return f"{int(status)} {code}"
+
+
+def deve_alarmar(seguidas: int) -> bool:
+    """ERROR na `ALARME_A_CADA`-ésima passada seguida parada sem culpa do conteúdo, e a cada tantas."""
+    return seguidas > 0 and seguidas % ALARME_A_CADA == 0
 
 
 # ------------------------------------------------------------------------------------------ passada
@@ -251,7 +328,8 @@ async def processar_uma_vez(
 ) -> dict[str, int]:
     """Uma passada: até `por_passada` conteúdos, reivindicados um por vez.
 
-    Devolve a contagem por resultado e, quando a cota do dia acabou, `pausa_ate` (epoch da virada)."""
+    Devolve a contagem por resultado; quando a cota do dia acabou, `pausa_ate` (epoch da virada); e,
+    quando a passada parou por edge ou Gemini fora, `sem_culpa` = 1."""
     contagem: dict[str, int] = dict.fromkeys(RESULTADOS, 0)
     settings = app.state.settings
     credenciais = _credenciais(settings)
@@ -268,7 +346,7 @@ async def processar_uma_vez(
     limite = max(1, int(config.get("por_passada") or 1))
     trava = int(getattr(settings, "desafios_auto_trava_seconds", 600))
     espera_indisponivel = max(1, int(getattr(settings, "desafios_auto_espera_indisponivel_min", 60)))
-    timeout = float(getattr(settings, "desafios_auto_timeout_seconds", 150))
+    timeout = float(getattr(settings, "desafios_auto_timeout_seconds", 180))
     turmas = _turmas(settings)
 
     for _ in range(limite):
@@ -312,8 +390,6 @@ async def processar_uma_vez(
             status, corpo = 200, {"code": "sem_lista"}
         erro = _erro(status, corpo)
         classe = classificar_erro(status, corpo)
-        if classe != "indisponivel":
-            logger.warning("[desafios_auto] conteudo %s: %s (%s)", conteudo_id, erro, classe)
         if classe == "indisponivel":
             logger.warning(
                 "[desafios_auto] a edge nao aceitou o servidor ou nao respondeu (%s): confira o deploy da "
@@ -321,8 +397,19 @@ async def processar_uma_vez(
                 erro,
                 espera_indisponivel,
             )
+        elif classe == "pane":
+            logger.warning(
+                "[desafios_auto] o Gemini nao respondeu ou recusou a chave (%s): confira as chaves e o modelo "
+                "do Gemini na generate-content-ai; conteudo volta em %s min",
+                erro,
+                espera_indisponivel,
+            )
+        else:
+            logger.warning("[desafios_auto] conteudo %s: %s (%s)", conteudo_id, erro, classe)
+        if classe in ("indisponivel", "pane"):
             await _falhou(app, conteudo_id, erro, espera_indisponivel)
             contagem["esperando"] += 1
+            contagem["sem_culpa"] = 1
             break
         if classe == "por_minuto":
             await _falhou(app, conteudo_id, erro, ESPERA_POR_MINUTO_MIN)
@@ -352,6 +439,7 @@ async def desafios_auto_loop(app: Any) -> None:
         _origem_das_turmas(settings),
     )
     intervalo = int(_CONFIG_PADRAO["intervalo_seg"])
+    seguidas = 0
     async with httpx.AsyncClient() as cliente:
         while True:
             espera = intervalo
@@ -370,6 +458,18 @@ async def desafios_auto_loop(app: Any) -> None:
                         contagem = await processar_uma_vez(app, cliente, config=config)
                         if any(v for k, v in contagem.items() if k != "pausa_ate"):
                             logger.info("[desafios_auto] passada: %s", contagem)
+                        if contagem.get("sem_culpa"):
+                            seguidas += 1
+                        elif any(contagem.get(k) for k in _RESPOSTA_DA_EDGE):
+                            # Só uma resposta que não é pane zera; passada vazia (fila curta, todos
+                            # ainda esperando) não diz nada sobre a edge.
+                            seguidas = 0
+                        if deve_alarmar(seguidas):
+                            logger.error(
+                                "[desafios_auto] %s passadas seguidas paradas por edge ou Gemini fora: nenhum "
+                                "desafio sai enquanto isso durar; veja os avisos acima",
+                                seguidas,
+                            )
                         pausa_ate = contagem.get("pausa_ate")
                         if pausa_ate:
                             espera = max(1, int(pausa_ate - _agora().timestamp()))
@@ -384,6 +484,7 @@ __all__ = [
     "classificar_erro",
     "corpo_do_pedido",
     "desafios_auto_loop",
+    "deve_alarmar",
     "enderecos",
     "processar_uma_vez",
     "proxima_virada_do_pacifico",

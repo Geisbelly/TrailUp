@@ -270,8 +270,12 @@ class Settings(BaseSettings):
     # pede os desafios a edge generate-content-ai com a chave de servico. Ritmo e teto ficam em app_config.
     desafios_auto_enabled: bool = True
     desafios_auto_trava_seconds: int = 600
-    desafios_auto_timeout_seconds: int = 150
-    # Edge que recusa o servidor ou nao responde (401/403/404/503/timeout): espera sem contar tentativa.
+    # Acima dos 150 s em que o plano Free mata a edge (546; o orcamento dela e 120 s): a resposta da
+    # edge chega antes de o cliente desistir, e o erro guardado e o dela, nao um ReadTimeout.
+    desafios_auto_timeout_seconds: int = 180
+    # Edge que recusa o servidor ou que o pedido nao alcanca (401/403/404/503/rede) e pane do Gemini
+    # (502 gemini_error com 401/403/404/500/503, chave invalida, gemini_network_error): espera sem
+    # contar tentativa.
     desafios_auto_espera_indisponivel_min: int = 60
     # Restringe o worker a estas turmas, como PERSONALIZACAO_JOBS_CLASSE_IDS (#652).
     desafios_auto_classe_ids: list[int] = []
