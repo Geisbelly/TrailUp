@@ -1605,12 +1605,30 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
   `https://geisbelly.github.io/TrailUp/sprint/relatorio-semanal-AAAA-Www.html`
   (ex.: [W42](https://geisbelly.github.io/TrailUp/sprint/relatorio-semanal-2026-W42.html)),
   com `-apresentacao.html` e `.pdf` ao lado.
-- **Supabase:** projeto **TraiUp**, ref `xrebtkmdewolzmpsdwgh` (plano Free,
-  sem PITR nem backup diário baixável). Chaves e `DATABASE_URL` só no `.env`
-  — nunca em doc, commit ou chat.
-- **Repositórios:** `BitStudioLabs/trail-up` é o canônico (PRs aqui).
-  [`Geisbelly/TrailUp`](https://github.com/Geisbelly/TrailUp) é o espelho
-  (sync da `main`, CI badge e GitHub Pages dos relatórios) — não abrir trabalho lá.
+- **Dois ambientes, dois repositórios, dois bancos** (desde 2026-11-21):
+
+  | Ambiente | Repositório | Supabase |
+  | --- | --- | --- |
+  | **Testes / dev** | `BitStudioLabs/trail-up` (o Lab) | `xrebtkmdewolzmpsdwgh` ("TraiUp") |
+  | **Produção** | [`Geisbelly/TrailUp`](https://github.com/Geisbelly/TrailUp) | `liatqwotsiphjmnjenwu` (org TrailUp) |
+
+  O banco de produção guarda só dados reais (turmas em sala). **Teste roda no
+  dev, nunca no de produção.** Isso vale para pytest ou script contra banco,
+  migration em ensaio, conta de QA, Reflect, navegação no app ou no console e
+  carga ou rajada de requisições. Nada de criar aluno, turma ou conteúdo de
+  teste em produção.
+
+  No `api/.env` local, `DATABASE_URL` é o dev; `NOVO_DATABASE_URL` é produção e
+  só serve para leitura e para o que a Geisbelly pedir explicitamente. Os dois
+  projetos estão no plano Free, sem PITR nem backup diário baixável. Chaves e URLs
+  de banco ficam só no `.env`, nunca em doc, commit ou chat.
+
+  O dev está restrito por cota de egress até o ciclo virar em 03/12: REST, Auth,
+  Storage e edges respondem 402, e o Postgres direto funciona.
+- **Repositórios:** o Lab (`BitStudioLabs/trail-up`) é onde o trabalho acontece:
+  PRs aqui, nunca no `Geisbelly/TrailUp`. O `Geisbelly/TrailUp` recebe a `main`
+  do Lab por sync e é o que vai para produção. Ele também tem o CI badge e o
+  GitHub Pages dos relatórios.
 
   **O site no ar sai do espelho, não do Lab.** O Vercel de `trailup.vercel.app`
   publica a `main` do `Geisbelly/TrailUp`. PR mesclado no Lab **não aparece no ar**
@@ -1624,9 +1642,12 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
     resolvidos, e o que foi verificado;
   - o merge é da Geisbelly, como no Lab. Só depois do deploy conferir no ar.
 
-  Migration de PR do Lab costuma ser aplicada em produção antes de chegar ao
-  espelho. Enquanto o espelho estiver atrás, o banco está à frente do código no ar;
-  quanto mais tempo o sync demora, maior essa janela.
+  Migration de PR do Lab se ensaia no banco de **dev**. Em produção, ela entra
+  quando a API publicada do espelho sobe e roda `alembic upgrade head`; aplicar
+  à mão em produção só com pedido explícito. Até 21/11 produção e Lab dividiam o
+  banco, e a migration costumava chegar antes do código. Enquanto o espelho
+  estiver atrás, o banco fica à frente do código no ar, e quanto mais o sync
+  demora, maior essa janela.
 
   **E essa janela derruba a API.** A API roda `alembic upgrade head` ao subir
   (`database_migrations_on_startup`, ligado por padrão; `lifespan` de
@@ -1641,8 +1662,9 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
   - depois de todo merge com migration, conferir `alembic heads` na `main`. Duas
     PRs abertas ao mesmo tempo costumam pegar o mesmo número de revisão.
 - **Deploys:**
-  - **web:** `https://trailup.vercel.app`, publicada do **espelho** (acima). Não usar como alvo de regressão do console.
-  - **API:** Dokploy (VPS), em `https://api.trailup.promora.dev.br` (Let's Encrypt, #689). A evidência de 01/11 é que ela também publica do espelho. O `*.traefik.me` tem certificado autoassinado: o fetch do aparelho falha como erro de rede.
+  - **web:** `https://trailup.vercel.app`, publicada do **espelho** (acima), contra o banco de produção. Não usar como alvo de regressão do console.
+  - **API:** Dokploy (VPS), em `https://api.trailup.promora.dev.br` (Let's Encrypt, #689). Publica do espelho e, desde 21/11, usa o banco de produção; o `alembic upgrade head` dela roda contra produção. O `*.traefik.me` tem certificado autoassinado: o fetch do aparelho falha como erro de rede.
+  - **app:** os builds de loja do EAS (`production`, `productionAAB`) apontam para produção a partir da 1.0.11.
   - **local:** `npm run docker:up` (`:8080` / `:8000` / `:3000`).
 - **Mais docs do repo:** [`docs/README.md`](docs/README.md) (índice),
   [`docs/MANUAL.md`](docs/MANUAL.md),
