@@ -1011,8 +1011,10 @@ Cada perfil carrega:
   (`desafio IS NULL`), senão 8 linhas pendentes travariam o teto da #151. `conteudos.atualizado_em` é do
   banco (gatilho; o cliente não escolhe) e ignora `ordem`: reordenar não reinicia a carência. A edge
   `generate-content-ai` aceita a chave de serviço **só no modo `desafios`**, pela conferência de
-  `storage-upload-url/pedido.ts`; a chave tem de ser a service_role JWT legada, porque o `verify_jwt` da
-  função recusa o que não é JWT. Erros: limite por minuto espera 15 min, cota do dia pausa o laço até a
+  `storage-upload-url/pedido.ts`, que aceita a JWT legada e a `sb_secret_`. Em produção a função roda com
+  `verify_jwt = false` (deploy com `--no-verify-jwt`; a CLI não lê o `config.toml` da pasta dela), então
+  quem autoriza é só a função: `requireAuthenticatedUser` para o professor e a conferência para o
+  servidor. Erros: limite por minuto espera 15 min, cota do dia pausa o laço até a
   virada, edge recusando o servidor ou sem resposta espera 60 min, e nenhum desses conta falha; o resto
   conta falha, espera 2^n h e para na 3ª.
   
