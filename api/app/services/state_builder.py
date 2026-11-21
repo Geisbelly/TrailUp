@@ -1,9 +1,11 @@
 import logging
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.settings import get_settings
 from app.repositories.context import ContextRepository
 from app.schemas.api import AnalisarPayload
 from app.services.memoria_aluno import ler_memoria
@@ -69,6 +71,32 @@ async def _personalizacao_retida(context_repo: Any, *, classe_id: int | None) ->
     return bool(await buscar(classe_id=classe_id))
 
 
+async def _notificacao_diaria_liberada(
+    context_repo: Any, *, aluno_id: str, foco_estudo: dict | None, agora: datetime | None = None
+) -> bool:
+    """A IA escreve a notificação diária só uma vez a cada N horas, e só com tópico em andamento.
+
+    O grafo roda a cada lote de telemetria (um aluno mandou 156 num dia), então sem esta trava a
+    notificação diária viraria uma chamada de modelo por lote. Repositório sem o método (testes) ou
+    falha de leitura = não liberada: na dúvida, vale a rotina do banco, que já sai com o tópico.
+    """
+    settings = get_settings()
+    if not settings.notificacao_ia_diaria or not foco_estudo:
+        return False
+    buscar = getattr(context_repo, "fetch_ultima_notificacao_ia_em", None)
+    if buscar is None:
+        return False
+    try:
+        ultima = await buscar(aluno_id=aluno_id)
+    except Exception:
+        logger.warning("Falha ao ler a ultima notificacao da IA; notificacao diaria nao liberada", exc_info=True)
+        return False
+    if ultima is None:
+        return True
+    agora = agora or datetime.now(UTC)
+    return agora - ultima >= timedelta(hours=settings.notificacao_ia_intervalo_horas)
+
+
 async def build_initial_state(
     session: AsyncSession,
     aluno_id: str,
@@ -92,6 +120,9 @@ async def build_initial_state(
         topico_id=payload.topico_id or desempenho.get("topico_recente_id"),
     )
     personalizacao_retida = await _personalizacao_retida(context_repo, classe_id=payload.classe_id)
+    notificacao_diaria_liberada = await _notificacao_diaria_liberada(
+        context_repo, aluno_id=aluno_id, foco_estudo=foco_estudo
+    )
     arco_narrativo = await _arco_narrativo(context_repo, classe_id=payload.classe_id)
     diagnosticos_topico = await _diagnosticos(context_repo, aluno_id=aluno_id, classe_id=payload.classe_id)
     gerar_materiais = bool(
@@ -116,6 +147,7 @@ async def build_initial_state(
         "ia_descricao_atual": context["ia_descricao_atual"],
         "memoria_aluno": memoria.model_dump(mode="json"),
         "foco_estudo": foco_estudo,
+        "notificacao_diaria_liberada": notificacao_diaria_liberada,
         "personalizacao_retida": personalizacao_retida,
         "arco_narrativo_turma": arco_narrativo,
         "diagnosticos_topico": diagnosticos_topico,

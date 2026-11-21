@@ -122,6 +122,11 @@ export type MentorChatResponse = {
   /** Código de `tutoriaisDoGuia.ts`. */
   tutorial?: string | null;
   assinatura?: string | null;
+  /**
+   * O Guia pede ao aparelho para ligar o modo de cuidado (`ModoCuidadoDoGuia` da API). Ausente na
+   * API antiga: nada muda. `expira_em` é nulo sem consentimento; o app usa a duração local.
+   */
+  modo_cuidado?: { nivel: "desconforto" | "crise" | "risco"; expira_em: string | null } | null;
 };
 
 export type PersonalizacaoJobRecord = {

@@ -1,13 +1,20 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 
-import { registrarAceiteResponsavel } from "@/services/consentimentoResponsavelApi";
+import {
+  carregarEstadoConsentimento,
+  registrarAceiteResponsavel,
+  registrarCuidadoDoResponsavel,
+} from "@/services/consentimentoResponsavelApi";
+import { cuidadoDoResponsavelValido } from "@/services/consentimentoCuidado";
 import { FontFamily } from "@/styles/GlobalStyle";
 import {
+  CONSENTIMENTO_CUIDADO_VERSAO,
   CONSENTIMENTO_RESPONSAVEL_VERSAO,
   NENHUMA_FINALIDADE,
   RELACOES,
   aceiteResponsavelValido,
+  responsavelAutorizouCuidado,
   type EstadoConsentimento,
   type Finalidade,
   type Finalidades,
@@ -51,23 +58,57 @@ const ITENS: { chave: Finalidade; titulo: string; descricao: string }[] = [
   },
 ];
 
+// Modo de cuidado (20261121_01). Fica fora de `Finalidades` de propósito: a RPC
+// `responsavel_registrar_no_aparelho` só conhece as cinco de antes e descartaria esta chave. O
+// cuidado vai por `responsavel_registrar_cuidado`, que muda só ele.
+export const ITEM_CUIDADO_RESPONSAVEL = {
+  titulo: "Modo de cuidado",
+  descricao:
+    "Quando o uso do app mostra sinais de cansaço (muitos erros seguidos, muito tempo sem parar, " +
+    "atividade deixada no meio) ou quando o aluno conta ao Guia como está, o app alivia o estudo e " +
+    "sugere uma pausa. O professor da turma vê quando isso aconteceu e o que o app fez, por " +
+    "exemplo \"o app sugeriu uma pausa\" ou \"o Guia indicou o CVV 188\", mas nunca o que o aluno " +
+    "escreveu. Não muda nota nem prazo. O aluno também precisa concordar no Perfil.",
+} as const;
+
 export function ResponsavelConsentForm({
   palette,
   estado,
   onConcluido,
   onAdiar,
+  soItemNovo = false,
 }: {
   palette: ProfileShellPalette;
   estado: EstadoConsentimento;
   onConcluido: (estado: EstadoConsentimento) => void;
   onAdiar?: () => void;
+  /**
+   * Para quem já tem autorização geral vigente: mostra só o modo de cuidado e grava só ele
+   * (`responsavel_registrar_cuidado`), sem reescrever as outras finalidades.
+   */
+  soItemNovo?: boolean;
 }) {
+  if (soItemNovo) {
+    return <SoOItemNovo palette={palette} estado={estado} onConcluido={onConcluido} onAdiar={onAdiar} />;
+  }
+  return <FormularioCompleto palette={palette} estado={estado} onConcluido={onConcluido} onAdiar={onAdiar} />;
+}
+
+type PropsDoFormulario = {
+  palette: ProfileShellPalette;
+  estado: EstadoConsentimento;
+  onConcluido: (estado: EstadoConsentimento) => void;
+  onAdiar?: () => void;
+};
+
+function FormularioCompleto({ palette, estado, onConcluido, onAdiar }: PropsDoFormulario) {
   const vigente = estado.responsavel?.vigente === true;
   const [nome, setNome] = useState("");
   const [relacao, setRelacao] = useState<Relacao | null>(null);
   const [declaracao, setDeclaracao] = useState(false);
   // Tudo DESMARCADO por padrao: consentimento especifico e destacado (art. 14 §1).
   const [finalidades, setFinalidades] = useState<Finalidades>(NENHUMA_FINALIDADE);
+  const [cuidado, setCuidado] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
 
@@ -91,12 +132,22 @@ export function ResponsavelConsentForm({
     setSalvando(true);
     setErro(null);
     const r = await registrarAceiteResponsavel(params);
-    setSalvando(false);
     if (!r.ok) {
+      setSalvando(false);
       setErro(r.erro);
       return;
     }
-    onConcluido(r.estado);
+    // O cuidado vai depois, porque o banco o apoia na autorização geral que acabou de ser
+    // gravada. Falhar aqui não desfaz a autorização geral: o responsável decide o cuidado de
+    // novo em Perfil › Coleta e acessos.
+    let final = r.estado;
+    if (aceito && cuidado) {
+      const c = await registrarCuidadoDoResponsavel({ aceito: true, nome, relacao, declaracao });
+      if (c.ok) final = await carregarEstadoConsentimento().catch(() => r.estado);
+      else console.warn("[Consentimento] cuidado do responsavel nao gravado:", c.motivo);
+    }
+    setSalvando(false);
+    onConcluido(final);
   };
 
   return (
@@ -172,6 +223,13 @@ export function ResponsavelConsentForm({
           />
         </View>
       ))}
+      <View style={[styles.item, { borderColor: palette.border }]}>
+        <View style={styles.itemTexto}>
+          <Text style={[styles.itemTitulo, { color: palette.text }]}>{ITEM_CUIDADO_RESPONSAVEL.titulo}</Text>
+          <Text style={[styles.itemDescricao, { color: palette.textMuted }]}>{ITEM_CUIDADO_RESPONSAVEL.descricao}</Text>
+        </View>
+        <Switch value={cuidado} onValueChange={setCuidado} accessibilityLabel={ITEM_CUIDADO_RESPONSAVEL.titulo} />
+      </View>
 
       <Pressable
         onPress={() => setDeclaracao((v) => !v)}
@@ -216,6 +274,136 @@ export function ResponsavelConsentForm({
           style={[styles.button, styles.secondary, { borderColor: "#e5484d" }]}
         >
           <Text style={[styles.buttonText, { color: "#e5484d" }]}>Revogar a autorização</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Só o item novo: o responsável que já autorizou o resto decide só o modo de cuidado. Autorizar
+ * pede de novo nome, relação e a declaração (o banco exige); revogar não pede nada.
+ */
+function SoOItemNovo({ palette, estado, onConcluido, onAdiar }: PropsDoFormulario) {
+  const [nome, setNome] = useState("");
+  const [relacao, setRelacao] = useState<Relacao | null>(null);
+  const [declaracao, setDeclaracao] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const autorizado = responsavelAutorizouCuidado(estado);
+
+  const enviar = async (aceito: boolean) => {
+    const params = { aceito, nome, relacao, declaracao };
+    const invalido = cuidadoDoResponsavelValido(params);
+    if (invalido) {
+      setErro(invalido);
+      return;
+    }
+    setSalvando(true);
+    setErro(null);
+    const r = await registrarCuidadoDoResponsavel(params);
+    if (!r.ok) {
+      setSalvando(false);
+      setErro(r.erro);
+      return;
+    }
+    // A RPC do cuidado não devolve o estado geral: relê para o Perfil mostrar o novo.
+    const novo = await carregarEstadoConsentimento().catch(() => estado);
+    setSalvando(false);
+    onConcluido(novo);
+  };
+
+  return (
+    <View style={styles.wrap}>
+      <View style={[styles.faixa, { borderColor: DESTAQUE }]}>
+        <Text style={[styles.faixaTexto, { color: DESTAQUE }]}>PARA O RESPONSÁVEL PELO ALUNO</Text>
+      </View>
+      <Text style={[styles.title, { color: palette.text }]}>Um item novo na autorização</Text>
+      <Text style={[styles.body, { color: palette.textMuted }]}>
+        Entrou um item novo, o modo de cuidado. O que você já autorizou continua igual; aqui você
+        decide só este item. Entregue o aparelho ao responsável.
+      </Text>
+      <View style={[styles.box, { borderColor: palette.border, backgroundColor: palette.surface }]}>
+        <Text style={[styles.itemTitulo, { color: palette.text }]}>{ITEM_CUIDADO_RESPONSAVEL.titulo}</Text>
+        <Text style={[styles.itemDescricao, { color: palette.textMuted }]}>{ITEM_CUIDADO_RESPONSAVEL.descricao}</Text>
+      </View>
+
+      <Text style={[styles.label, { color: palette.text }]}>Nome completo do responsável</Text>
+      <TextInput
+        value={nome}
+        onChangeText={setNome}
+        placeholder="Nome do responsável"
+        placeholderTextColor={palette.textSubtle}
+        autoCapitalize="words"
+        maxLength={120}
+        accessibilityLabel="Nome completo do responsável"
+        style={[styles.input, { color: palette.text, borderColor: palette.borderStrong, backgroundColor: palette.surfaceElevated }]}
+      />
+
+      <Text style={[styles.label, { color: palette.text }]}>Relação com o aluno</Text>
+      <View style={styles.chips}>
+        {RELACOES.map((r) => {
+          const ativo = relacao === r.valor;
+          return (
+            <Pressable
+              key={r.valor}
+              onPress={() => setRelacao(r.valor)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: ativo }}
+              style={[
+                styles.chip,
+                { borderColor: ativo ? DESTAQUE : palette.border, backgroundColor: ativo ? palette.surfaceElevated : palette.surface },
+              ]}
+            >
+              <Text style={[styles.chipText, { color: ativo ? DESTAQUE : palette.textMuted }]}>{r.rotulo}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <Pressable
+        onPress={() => setDeclaracao((v) => !v)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: declaracao }}
+        style={styles.declaracao}
+      >
+        <View style={[styles.checkbox, { borderColor: DESTAQUE, backgroundColor: declaracao ? DESTAQUE : "transparent" }]} />
+        <Text style={[styles.body, styles.declaracaoTexto, { color: palette.text }]}>
+          Declaro que sou mãe, pai ou responsável legal por este aluno e que li este item
+          (versão {CONSENTIMENTO_CUIDADO_VERSAO}).
+        </Text>
+      </Pressable>
+
+      {erro ? <Text style={styles.erro}>{erro}</Text> : null}
+
+      <View style={styles.actions}>
+        {onAdiar ? (
+          <Pressable
+            onPress={onAdiar}
+            disabled={salvando}
+            accessibilityRole="button"
+            style={[styles.button, styles.secondary, { borderColor: palette.border, backgroundColor: palette.surfaceElevated }]}
+          >
+            <Text style={[styles.buttonText, { color: palette.text }]}>Agora não</Text>
+          </Pressable>
+        ) : null}
+        <Pressable
+          onPress={() => void enviar(true)}
+          disabled={salvando}
+          accessibilityRole="button"
+          style={[styles.button, { backgroundColor: DESTAQUE }, salvando ? styles.disabled : null]}
+        >
+          <Text style={[styles.buttonText, { color: "#1a1a1a" }]}>{salvando ? "Salvando..." : "Autorizar"}</Text>
+        </Pressable>
+      </View>
+      {autorizado ? (
+        <Pressable
+          onPress={() => void enviar(false)}
+          disabled={salvando}
+          accessibilityRole="button"
+          style={[styles.button, styles.secondary, { borderColor: "#e5484d" }]}
+        >
+          <Text style={[styles.buttonText, { color: "#e5484d" }]}>Revogar o modo de cuidado</Text>
         </Pressable>
       ) : null}
     </View>

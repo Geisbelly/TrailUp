@@ -9,6 +9,9 @@
 // do banco e a versão histórica preservada na migration original.
 export const CONSENTIMENTO_RESPONSAVEL_VERSAO = "2026-11-05-resp-v2";
 export const CONSENTIMENTO_PESQUISA_VERSAO = "2026-10-24-pesq-v1";
+// Termo do modo de cuidado: versão própria (`consentimento_cuidado_versao_vigente()`, 20261121_01).
+// Mudou o texto do item, sobe as duas juntas; o banco recusa versão diferente (22023).
+export const CONSENTIMENTO_CUIDADO_VERSAO = "2026-11-20-cuid-v1";
 
 export const FINALIDADES = ["camera", "telemetria", "emocional", "mentor", "pesquisa"] as const;
 export type Finalidade = (typeof FINALIDADES)[number];
@@ -86,6 +89,17 @@ export function lerEstadoConsentimento(raw: unknown): EstadoConsentimento {
       pesquisa: bool(fin.pesquisa),
     },
   };
+}
+
+/**
+ * O responsável marcou o modo de cuidado na autorização vigente. Só para a tela: a regra que vale
+ * é `aluno_meu_cuidado_permitido()`, que também confere a versão do item (`cuidado_versao`, que
+ * `aluno_meu_consentimento` não devolve). A chave fica fora de `Finalidades` de propósito.
+ */
+export function responsavelAutorizouCuidado(estado: EstadoConsentimento): boolean {
+  const r = estado.responsavel;
+  if (!r || r.vigente !== true || r.status !== "accepted") return false;
+  return (r.finalidades as Record<string, unknown> | null | undefined)?.cuidado === true;
 }
 
 export type PassoDoGate = "data_nascimento" | "responsavel" | "liberado";

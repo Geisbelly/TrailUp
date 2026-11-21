@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import StudentBasicsStep, { StudentBasics } from "./StudentBasicsStep";
+import { nomeCompletoLimpo, problemaDoNomeCompleto } from "@/features/signup/nomeCompleto";
 import StudentModeStep from "./StudentModeStep";
 import StudentPresentationStep from "./StudentPresentationStep";
 import BrainHexIntroStep from "./BrainHexIntroStep";
@@ -91,7 +92,7 @@ export function AlunoSignupWizard({
   const step = steps[stepIndex];
 
   const canNext = () => {
-    if (step === "basics") return basics.nome.trim().length >= 2 && basics.apelido.trim().length >= 2;
+    if (step === "basics") return problemaDoNomeCompleto(basics.nome) === null && basics.apelido.trim().length >= 2;
     if (step === "modo_operacao") return Boolean(modoOperacao);
     if (step === "modo_apresentacao") return Boolean(modoApresentacao);
     if (step === "brainhex_quiz") return isAllAnswered(brainhexAnswers);
@@ -101,7 +102,8 @@ export function AlunoSignupWizard({
 
   const next = () => {
     if (!canNext()) {
-      toast.error("Preencha os campos obrigatórios para continuar.");
+      const problemaDoNome = step === "basics" ? problemaDoNomeCompleto(basics.nome) : null;
+      toast.error(problemaDoNome ?? "Preencha os campos obrigatórios para continuar.");
       return;
     }
     setStepIndex((i) => Math.min(steps.length - 1, i + 1));
@@ -132,7 +134,7 @@ export function AlunoSignupWizard({
     }
 
     await onConfirm({
-      nome: basics.nome.trim(),
+      nome: nomeCompletoLimpo(basics.nome),
       apelido: basics.apelido.trim(),
       modoOperacao,
       modoApresentacao,

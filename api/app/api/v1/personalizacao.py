@@ -19,6 +19,7 @@ from app.repositories.chat_guia_registros import ChatGuiaRegistrosRepository
 from app.repositories.conteudo_classe import ConteudoClasseRepository
 from app.repositories.conteudo_personalizado import ConteudoPersonalizadoRepository
 from app.repositories.context import ContextRepository
+from app.repositories.cuidado import CuidadoRepository
 from app.repositories.estudo import EstudoRepository
 from app.repositories.evento import EventoRepository
 from app.repositories.fontes_personalizacao import FontesPersonalizacaoRepository
@@ -37,6 +38,7 @@ from app.schemas.personalizacao import (
     FontesPersonalizacaoUploadResponse,
     MentorChatPayload,
     MentorChatResponse,
+    ModoCuidadoDoGuia,
     PersonalizacaoContextoDocenteResponse,
     PersonalizacaoGeracaoFormatoStatus,
     PersonalizacaoGeracaoResumo,
@@ -76,6 +78,7 @@ from app.services.guia_do_app import guia_do_app, montar_resposta_do_guia
 from app.services.llm import JsonLLMService, load_prompt
 from app.services.mascaramento_chat import (
     RegistroDoChat,
+    nivel_de_bem_estar,
     nomes_para_mascarar,
     normalizar_registro,
     registro_de_navegacao,
@@ -114,6 +117,7 @@ from app.services.pseudonimizacao import (
 )
 from app.services.rag_observabilidade import gravar_buscas_rag, iniciar_coleta_rag
 from app.services.respostas_do_guia import resposta_sem_modelo
+from app.services.risco_no_chat import TEXTO_DO_CVV, garantir_cvv, sinal_de_risco
 from app.services.roteamento_ia import (
     MENSAGEM_IA_INDISPONIVEL,
     ROTA_MENOR,
@@ -1505,13 +1509,23 @@ async def conversar_com_mentor_personalizacao(
         )
 
     aluno_id = user.aluno_id or user.user_id
+    # Sinal de risco (CVV 188): vale antes das checagens de idade e de modo restrito e antes do
+    # atalho de navegacao. E informacao de seguranca, nao IA: sem modelo, sem cota.
+    em_risco = sinal_de_risco(payload.mensagem)
+
+    def _detalhe_da_barra(mensagem: str) -> dict[str, str]:
+        detalhe = modo_restrito.detalhe(mensagem)
+        if em_risco:
+            detalhe["mensagem"] = f"{mensagem}\n\n{TEXTO_DO_CVV}"
+        return detalhe
+
     # Modo restrito (#195): o mentor de IA fica desligado. 403 com codigo e
     # mensagem para o app mostrar, nunca 500, e antes de ler qualquer contexto.
     permitidas = await modo_restrito.finalidades_permitidas(session, aluno_id)
     if not permitidas["mentor"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=modo_restrito.detalhe(modo_restrito.MENSAGEM_MENTOR),
+            detail=_detalhe_da_barra(modo_restrito.MENSAGEM_MENTOR),
         )
     # #195: a IA e so para adulto confirmado. A autorizacao do responsavel libera
     # o mentor no modo restrito, mas nao a IA: menor recebe 403 com o motivo.
@@ -1520,7 +1534,7 @@ async def conversar_com_mentor_personalizacao(
     if await decidir_rota(session, [aluno_id]) == ROTA_MENOR:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=modo_restrito.detalhe(MENSAGEM_IA_INDISPONIVEL),
+            detail=_detalhe_da_barra(MENSAGEM_IA_INDISPONIVEL),
         )
     access_repo = AccessRepository(session)
     if not await access_repo.aluno_belongs_to_classe(aluno_id=str(aluno_id), classe_id=int(payload.classe_id)):
@@ -1651,7 +1665,8 @@ async def conversar_com_mentor_personalizacao(
         usou_reserva.append(True)
         return dict(fallback)
 
-    mentor_result = resposta_sem_modelo(payload.mensagem)
+    # Mensagem de risco nunca recebe so a resposta fixa de navegacao: vai ao modelo (ou a reserva).
+    mentor_result = None if em_risco else resposta_sem_modelo(payload.mensagem)
     if mentor_result is not None:
         # Fica no log para medir quantas perguntas nem chegam ao modelo.
         provedor_do_chat, modelo_do_chat = "regra", "respostas_do_guia"
@@ -1746,8 +1761,24 @@ async def conversar_com_mentor_personalizacao(
         mentor_result,
         lambda texto: restaurar_nome(texto, aluno_ctx.get("apelido") or aluno_ctx.get("nome")) or "",
     )
+    if em_risco:
+        # Texto final, antes da assinatura: o CVV vale na resposta do modelo e na de reserva, e as
+        # secoes tambem chegam ao aluno.
+        if resposta_do_guia["secoes"]:
+            ultima = resposta_do_guia["secoes"][-1]
+            ultima["texto"] = garantir_cvv(ultima["texto"])
+        resposta_do_guia["reply"] = garantir_cvv(resposta_do_guia["reply"])
     mentor_result = mentor_result.model_copy(update={"reply": resposta_do_guia["reply"]})
+    # Nivel de mal-estar: a barreira de texto vence o modelo, e a navegacao sem modelo e a resposta de
+    # reserva nao classificam nada. O nivel so vai ao modo de cuidado: fica fora do log e do registro.
+    if em_risco:
+        nivel_de_cuidado = "risco"
+    elif provedor_do_chat == "regra" or usou_reserva:
+        nivel_de_cuidado = "nenhum"
+    else:
+        nivel_de_cuidado = nivel_de_bem_estar(mentor_result.registro)
     result = mentor_result.model_dump(mode="json")
+    result.get("registro", {}).pop("bem_estar", None)
     tem_acao = bool(resposta_do_guia["destinos"] or resposta_do_guia["tutorial"])
     response = MentorChatResponse(
         scope=payload.escopo,
@@ -1756,6 +1787,9 @@ async def conversar_com_mentor_personalizacao(
         hinted_actions=[item.strip() for item in mentor_result.hinted_actions if item.strip()],
         assinatura=assinatura_chat.assinar(
             resposta_do_guia["reply"], segredo=settings.supabase_jwt_secret, usuario_id=aluno_id, canal="mentor"
+        ),
+        modo_cuidado=(
+            ModoCuidadoDoGuia(nivel=nivel_de_cuidado) if nivel_de_cuidado != "nenhum" else None  # type: ignore[arg-type]
         ),
         **resposta_do_guia,
     )
@@ -1822,6 +1856,15 @@ async def conversar_com_mentor_personalizacao(
         await session.rollback()
         logger.warning("chat_guia.gravar_falhou: %s", type(exc).__name__)
 
+    if response.modo_cuidado is not None:
+        response.modo_cuidado.expira_em = await _gravar_momento_de_cuidado(
+            session,
+            aluno_id=str(aluno_id),
+            classe_id=int(payload.classe_id),
+            topico_id=payload.topico_id,
+            nivel=response.modo_cuidado.nivel,
+        )
+
     logger.info(
         "personalizacao.chat.output=%s",
         {
@@ -1835,6 +1878,39 @@ async def conversar_com_mentor_personalizacao(
         },
     )
     return response
+
+
+async def _gravar_momento_de_cuidado(
+    session: AsyncSession, *, aluno_id: str, classe_id: int, topico_id: int | None, nivel: str
+) -> datetime | None:
+    """Grava o momento (so com consentimento) e devolve o `expira_em` do banco.
+
+    Nunca levanta: sem consentimento, recusa do banco (`intervalo`...) ou falha, devolve `None` e o
+    app usa a duracao local. Em transacao propria, depois do registro do chat. Sem texto no log."""
+    try:
+        cuidado = CuidadoRepository(session)
+        if not await cuidado.permitido(aluno_id):
+            return None
+        acoes = {
+            "pausa_sugerida": True,
+            "tecnica_oferecida": nivel in ("crise", "risco"),
+            "cvv_indicado": nivel == "risco",
+        }
+        retorno = await cuidado.registrar_pelo_guia(
+            aluno_id=aluno_id, classe_id=classe_id, topico_id=topico_id, nivel=nivel, acoes=acoes
+        )
+        if not retorno.get("ok"):
+            logger.info("cuidado.nao_gravado: %s", retorno.get("motivo"))
+            return None
+        expira_em = retorno.get("expira_em")
+        return datetime.fromisoformat(expira_em) if isinstance(expira_em, str) else expira_em
+    except Exception as exc:
+        try:
+            await session.rollback()
+        except Exception:  # pragma: no cover
+            pass
+        logger.warning("cuidado.gravar_falhou: %s", type(exc).__name__)
+        return None
 
 
 @router.post("/fontes", response_model=FontesPersonalizacaoUploadResponse, status_code=status.HTTP_201_CREATED)

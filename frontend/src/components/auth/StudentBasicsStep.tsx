@@ -1,6 +1,10 @@
+import { useState } from "react";
+
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, AtSign, Sparkles } from "lucide-react";
+
+import { problemaDoNomeCompleto } from "@/features/signup/nomeCompleto";
 
 export type StudentBasics = {
   nome: string;
@@ -14,6 +18,9 @@ export default function StudentBasicsStep({
   value: StudentBasics;
   onChange: (next: StudentBasics) => void;
 }) {
+  // O aviso só aparece depois que a pessoa sai do campo: no meio da digitação, todo nome é "só um nome".
+  const [saiuDoNome, setSaiuDoNome] = useState(false);
+  const problemaDoNome = saiuDoNome ? problemaDoNomeCompleto(value.nome) : null;
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
       <div className="text-center space-y-2 mb-6">
@@ -36,10 +43,19 @@ export default function StudentBasicsStep({
               id="aluno-nome"
               value={value.nome}
               onChange={(e) => onChange({ ...value, nome: e.target.value })}
+              onBlur={() => setSaiuDoNome(true)}
+              autoComplete="name"
+              aria-invalid={problemaDoNome ? true : undefined}
+              aria-describedby={problemaDoNome ? "aluno-nome-erro" : undefined}
               className="pl-10 h-11 bg-card/50 border-border text-foreground placeholder:text-muted-foreground focus:ring-primary/20 focus:border-primary/50 transition-all duration-300"
               placeholder="Digite seu nome real"
             />
           </div>
+          {problemaDoNome ? (
+            <p id="aluno-nome-erro" role="alert" className="text-[12px] text-red-400 ml-1">
+              {problemaDoNome}
+            </p>
+          ) : null}
         </div>
 
         {/* Campo Apelido */}

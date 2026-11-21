@@ -17,8 +17,23 @@ import { registrarAlvoTour } from "@/utils/tourTargets";
 import { useEmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 import { perfilVisualDoAluno } from "@/utils/brainHex";
 import { useEstadoConsentimento } from "@/hooks/useEstadoConsentimento";
-import { registrarConsentimentoPesquisa } from "@/services/consentimentoResponsavelApi";
-import { mensagemDoModo, type EstadoConsentimento } from "@/utils/consentimentoResponsavel";
+import {
+  lerMinhaDecisaoDeCuidado,
+  registrarConsentimentoCuidado,
+  registrarConsentimentoPesquisa,
+} from "@/services/consentimentoResponsavelApi";
+import {
+  situacaoDoCuidadoNoPerfil,
+  type LeituraDoCuidado,
+} from "@/services/consentimentoCuidado";
+import {
+  CONSENTIMENTO_CUIDADO_VERSAO,
+  mensagemDoModo,
+  responsavelAutorizouCuidado,
+  type EstadoConsentimento,
+} from "@/utils/consentimentoResponsavel";
+import { ICONE_DO_CUIDADO } from "@/components/cuidado/AvisoDeCuidado";
+import { RESUMO_ITEM_CUIDADO } from "@/components/consentimento/ItemNovoDoTermo";
 import { DataNascimentoForm } from "@/components/consentimento/DataNascimentoForm";
 import { ResponsavelConsentForm } from "@/components/consentimento/ResponsavelConsentForm";
 
@@ -93,6 +108,50 @@ export default function ColetaDadosScreen() {
   const [formResponsavelAberto, setFormResponsavelAberto] = useState(false);
   const [salvandoPesquisa, setSalvandoPesquisa] = useState(false);
   const [erroPesquisa, setErroPesquisa] = useState<string | null>(null);
+
+  // Modo de cuidado (20261121_01). Leitura que falha deixa `null` e o cartão não aparece: o
+  // aluno não fica diante de um interruptor que não sabe o próprio estado.
+  const alunoId = usuario?.id ?? null;
+  const [leituraCuidado, setLeituraCuidado] = useState<LeituraDoCuidado | null>(null);
+  const [salvandoCuidado, setSalvandoCuidado] = useState(false);
+  const [erroCuidado, setErroCuidado] = useState<string | null>(null);
+  const [formCuidadoAberto, setFormCuidadoAberto] = useState(false);
+  useEffect(() => {
+    setLeituraCuidado(null);
+    if (!alunoId) return;
+    let ativo = true;
+    void lerMinhaDecisaoDeCuidado(alunoId).then((leitura) => {
+      if (ativo) setLeituraCuidado(leitura);
+    });
+    return () => {
+      ativo = false;
+    };
+  }, [alunoId, estado]);
+  const situacaoCuidado = leituraCuidado
+    ? situacaoDoCuidadoNoPerfil({
+        menor: estado.menor,
+        leitura: leituraCuidado,
+        responsavelComAutorizacaoGeral: estado.responsavel?.vigente === true,
+        responsavelAutorizouCuidado: responsavelAutorizouCuidado(estado),
+      })
+    : null;
+
+  const alternarCuidado = async () => {
+    if (salvandoCuidado || !situacaoCuidado) return;
+    const aceito = !situacaoCuidado.ligado;
+    setSalvandoCuidado(true);
+    setErroCuidado(null);
+    const r = await registrarConsentimentoCuidado(aceito);
+    setSalvandoCuidado(false);
+    if (!r.ok) {
+      setErroCuidado(r.erro);
+      return;
+    }
+    setLeituraCuidado({
+      decisao: { status: aceito ? "accepted" : "rejected", versao: CONSENTIMENTO_CUIDADO_VERSAO },
+      permitido: r.permitido,
+    });
+  };
 
   const alternarPesquisa = async () => {
     if (salvandoPesquisa) return;
@@ -340,6 +399,57 @@ export default function ColetaDadosScreen() {
         </TouchableOpacity>
       </View>
 
+      {situacaoCuidado ? (
+        <View style={[styles.card, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
+          <TouchableOpacity
+            style={[styles.itemRow, { borderColor: palette.border }]}
+            activeOpacity={0.85}
+            onPress={() => void alternarCuidado()}
+            disabled={salvandoCuidado}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: situacaoCuidado.ligado, disabled: salvandoCuidado }}
+          >
+            <View style={styles.itemLeft}>
+              <View style={[styles.iconWrap, { backgroundColor: situacaoCuidado.ligado ? palette.accentMuted : palette.surface, borderColor: palette.border }]}>
+                <MaterialCommunityIcons name={ICONE_DO_CUIDADO} size={18} color={situacaoCuidado.ligado ? palette.accent : palette.textSubtle} />
+              </View>
+              <View style={styles.itemTextWrap}>
+                <Text style={[styles.itemTitle, { color: palette.text }]}>Modo de cuidado</Text>
+                <Text style={[styles.itemDescription, { color: palette.textMuted }]}>{RESUMO_ITEM_CUIDADO}</Text>
+                {situacaoCuidado.nota ? (
+                  <Text style={[styles.itemDescription, { color: palette.text }]}>{situacaoCuidado.nota}</Text>
+                ) : null}
+                {erroCuidado ? <Text style={[styles.itemDescription, { color: "#e5484d" }]}>{erroCuidado}</Text> : null}
+              </View>
+            </View>
+            <Interruptor ligado={situacaoCuidado.ligado} salvando={salvandoCuidado} palette={palette} />
+          </TouchableOpacity>
+          {/* Sem autorização geral, a tela completa (com o item do cuidado) já está no cartão do
+              responsável acima; aqui só o item novo, para quem já autorizou o resto. */}
+          {situacaoCuidado.telaDoResponsavel === "item_novo" ? (
+            <View style={styles.cuidadoResponsavel}>
+              {formCuidadoAberto ? (
+                <ResponsavelConsentForm
+                  palette={palette}
+                  estado={estado}
+                  soItemNovo
+                  onConcluido={() => setFormCuidadoAberto(false)}
+                  onAdiar={() => setFormCuidadoAberto(false)}
+                />
+              ) : (
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  onPress={() => setFormCuidadoAberto(true)}
+                  style={[styles.stateChip, { alignSelf: "flex-start", backgroundColor: palette.accent, borderColor: palette.borderStrong }]}
+                >
+                  <Text style={[styles.stateChipText, { color: "#fff" }]}>Abrir tela do responsável</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
       <View
         ref={cameraPermissionGuideRef}
         collapsable={false}
@@ -449,6 +559,11 @@ const styles = StyleSheet.create({
   stateChipText: {
     fontSize: 12,
     fontFamily: FontFamily.inikaBold,
+  },
+  cuidadoResponsavel: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 8,
   },
   infoBox: {
     borderWidth: 1,

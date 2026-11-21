@@ -161,6 +161,14 @@ class SecaoDoGuiaResposta(BaseModel):
     destino: str | None = None
 
 
+class ModoCuidadoDoGuia(BaseModel):
+    """O aparelho liga o modo de cuidado. `expira_em` vem do banco; sem consentimento fica nulo e o
+    app usa a duracao local."""
+
+    nivel: Literal["desconforto", "crise", "risco"]
+    expira_em: datetime | None = None
+
+
 class MentorChatResponse(BaseModel):
     # O texto inteiro, em linha: é o que volta como histórico (e o que um app antigo mostra).
     reply: str
@@ -175,6 +183,8 @@ class MentorChatResponse(BaseModel):
     tutorial: str | None = None
     # Prova de que `reply` saiu daqui. Volta no histórico junto com o `reply` intacto.
     assinatura: str | None = None
+    # Nulo quando o aluno nao deu sinal de mal-estar. App antigo ignora o campo.
+    modo_cuidado: ModoCuidadoDoGuia | None = None
 
 
 # ── Sub-schemas de artefatos ──────────────────────────────────────────────────

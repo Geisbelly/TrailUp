@@ -80,7 +80,14 @@ def _needs_notification(state: dict[str, Any], completed: set[str]) -> bool:
         return False
     emocao = state.get("emocao_atual") or {}
     tipos = {evento.get("tipo", "").lower() for evento in state.get("eventos_novos", [])}
-    return float(emocao.get("valencia", 0)) <= -0.4 or "inatividade" in tipos
+    # A notificação diária (motivo `engajamento`) entra pela trava do `state_builder`: uma por aluno a
+    # cada N horas, com tópico em andamento. Sem ela, a IA só escrevia com emoção negativa ou
+    # inatividade, e a última sugestão de produção era de 06/11 (medido em 20/11).
+    return (
+        float(emocao.get("valencia", 0)) <= -0.4
+        or "inatividade" in tipos
+        or bool(state.get("notificacao_diaria_liberada"))
+    )
 
 
 def _needs_intervencao(state: dict[str, Any], completed: set[str]) -> bool:
@@ -109,7 +116,11 @@ def _needs_texto(state: dict[str, Any], completed: set[str]) -> bool:
     if "agente_texto" in completed or state.get("textos_gerados"):
         return False
     ui_config = state.get("ui_config") or {}
-    return bool(ui_config.get("precisa_texto") or state.get("notificacao_payload"))
+    notificacao = state.get("notificacao_payload") or {}
+    # A notificação diária já sai pronta do agente_notificacao: o texto extra seria mais uma chamada
+    # de modelo por aluno por dia, sem leitor.
+    diaria = bool((notificacao.get("contexto") or {}).get("diaria"))
+    return bool(ui_config.get("precisa_texto") or (notificacao and not diaria))
 
 
 def compute_supervisor_next(state: dict[str, Any]) -> list[str]:
