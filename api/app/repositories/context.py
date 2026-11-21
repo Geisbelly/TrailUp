@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import text
@@ -252,6 +253,26 @@ class ContextRepository:
             }
             for linha in linhas
         ]
+
+    async def fetch_ultima_notificacao_ia_em(self, *, aluno_id: str) -> datetime | None:
+        """Quando a IA sugeriu a última notificação deste aluno, para a trava da notificação diária.
+
+        Conta toda sugestão do ciclo (`origem = 'ciclo'`), qualquer que seja o status: uma suprimida
+        também custou uma chamada de modelo.
+        """
+        async with self.session.begin_nested():
+            return (
+                await self.session.execute(
+                    text(
+                        """
+                        SELECT max(created_at)
+                        FROM notificacoes_ia
+                        WHERE aluno_id = :aluno_id AND origem = 'ciclo'
+                        """
+                    ),
+                    {"aluno_id": aluno_id},
+                )
+            ).scalar()
 
     async def fetch_foco_de_estudo(
         self, *, aluno_id: str, classe_id: int, topico_id: int | None

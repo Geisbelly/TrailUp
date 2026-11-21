@@ -9,6 +9,12 @@ Ordem de decisão (decisão de 01/11):
 3. **Regra:** modelo fora do ar, texto pronto no tom do perfil. Nunca fica sem notificação: o motivo
    (emoção negativa, inatividade) é dado, não opinião do modelo.
 
+**A notificação diária é a exceção** (motivo `engajamento`, 20/11). Ela entra pela trava do
+`state_builder` (`notificacao_diaria_liberada`: ligada nas configurações, com tópico em andamento, no
+máximo uma sugestão da IA por aluno a cada `notificacao_ia_intervalo_horas`). Não usa RAG, não passa
+pelo `agente_texto` e, sem texto do modelo, não sai: a rotina do banco já vai com o tópico
+(`20261120_02`), e o texto de regra só a repetiria.
+
 O horário que sai do modelo passa por uma guarda: nunca no passado, nunca a mais de 24 h e nunca
 entre 22h e 7h de Brasília. Ele vai para `notificacoes_ia.horario_sugerido`, e quem decide de fato é
 o banco (`notificacoes_ia_promover`, 20261102_01): suporte sai logo, lembrete vai para o horário
@@ -385,7 +391,10 @@ async def agente_notificacao(state: dict[str, Any], settings: Settings, agora: d
     origem = "regra"
     revisada = False
     recusa: list[str] = []
-    tentativas = [True, False] if OpenAIRagService(settings).is_configured() else [False]
+    # A diária (motivo `engajamento`, liberada pela trava do `state_builder`) não usa RAG: sai todo dia
+    # para cada aluno, e o RAG roda com a chave separada (OPENAI_RAG_API_KEY), que não é para isso.
+    diaria = motivo == "engajamento"
+    tentativas = [True, False] if not diaria and OpenAIRagService(settings).is_configured() else [False]
     for usar_rag in tentativas:
         candidata = await gerar(payload, usar_rag)
         if candidata is None:
@@ -403,6 +412,13 @@ async def agente_notificacao(state: dict[str, Any], settings: Settings, agora: d
             gerada, origem = candidata, ("rag" if usar_rag else "modelo")
         break
 
+    if gerada is None and diaria:
+        # Sem texto do modelo (fora do ar, recusado ou rota de menor), a diária não sai: o texto de
+        # regra repetiria a rotina do banco, que já vai com o tópico (20261120_02).
+        return {
+            "completed_nodes": ["agente_notificacao"],
+            "messages": ["notificacao diaria sem texto do modelo: fica a rotina do banco"],
+        }
     if gerada is None:
         notificacao = notificacao_da_regra(perfil["perfil_dominante"], motivo, agora, payload["foco"])
         if recusa:
@@ -411,6 +427,8 @@ async def agente_notificacao(state: dict[str, Any], settings: Settings, agora: d
         contexto: dict[str, Any] = {"motivo": motivo, "perfil": perfil["perfil_dominante"], "origem": origem}
         if revisada:
             contexto["revisado"] = True
+        if diaria:
+            contexto["diaria"] = True
         if payload["foco"]:
             contexto["topico"] = payload["foco"]["topico"]
         if gerada.evidencia:
