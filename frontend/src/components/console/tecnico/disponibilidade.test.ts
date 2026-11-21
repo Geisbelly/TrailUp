@@ -59,6 +59,7 @@ describe("rótulos e contas", () => {
 
   it("origem desconhecida aparece crua, sem sumir", () => {
     expect(rotuloDaOrigem("app_api", [])).toBe("App sem alcançar a API");
+    expect(rotuloDaOrigem("desafios_auto", [])).toBe("Desafios automáticos");
     expect(rotuloDaOrigem("api", [{ id: "api", nome: "API" }])).toBe("API");
     expect(rotuloDaOrigem("novo", [])).toBe("novo");
   });

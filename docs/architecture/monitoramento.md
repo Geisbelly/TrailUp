@@ -65,6 +65,18 @@ Erro em `tela` ou `fatal` que atinge 2 pessoas em 7 dias, na mesma versão, mand
 
 `inicio_ms` para na sessão resolvida, não na tela com dado. Serve para comparar versões, não para afirmar a meta de 3 s.
 
+## Desafios automáticos parados
+
+O `desafios_auto_loop` não perde tentativa quando o erro não é do conteúdo: edge recusando o servidor, Gemini fora, chave inválida ou rede. O conteúdo fica em `esperando` e volta em 60 min. Isso protege a fila, mas deixa a pane muda, porque nenhum conteúdo falha. Por isso o tick, a cada 10 min, chama `fn_monitor_sinal_desafios_auto()` (`20261121_05`).
+
+O sinal abre a degradação **Desafios automáticos** quando, na janela de `monitor_config.desafios_auto.janela_min` (120), ao menos `minimo` (2) conteúdos ficaram em `esperando` por erro que não é `429` e nenhum saiu `gerado` ou `sem_desafio`.
+
+- O `429` fica de fora: limite por minuto e cota do dia são esperas previstas no tier free.
+- `falhou` não abre nem fecha. É erro do próprio conteúdo e não prova que a edge voltou.
+- Sem nada tocado na janela (fila vazia, laço desligado, API fora), o sinal não muda. API fora já é queda do alvo `api`.
+
+O e-mail traz a contagem e o último erro, no formato `"<status> <code>"`, sem id nem texto de conteúdo. A causa mais provável é a edge sem deploy depois do sync que publicou a API.
+
 ## O que precisa estar configurado
 
 1. **Apps Script:** `apps_script_email_url` e `apps_script_email_segredo` no Vault, como já estão para o contato. Sem eles o aviso fica só no sino, e `monitor_alerta.erro` diz o motivo.
