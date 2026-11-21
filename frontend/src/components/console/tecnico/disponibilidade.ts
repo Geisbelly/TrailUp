@@ -243,6 +243,7 @@ const SINAIS: Record<string, string> = {
   banco_espaco: "Espaço do banco",
   banco_conexoes: "Conexões do banco",
   rotinas: "Rotinas do banco",
+  desafios_auto: "Desafios automáticos",
 };
 export function rotuloDaOrigem(alvoId: string, alvos: Pick<Alvo, "id" | "nome">[]): string {
   return alvos.find((a) => a.id === alvoId)?.nome ?? SINAIS[alvoId] ?? alvoId;

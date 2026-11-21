@@ -1040,7 +1040,9 @@ Cada perfil carrega:
   três passadas assim tirariam a fila inteira da lista para sempre. O resto conta falha, espera 2^n h e
   para na 3ª, inclusive a resposta que não volta depois de o pedido chegar (`ReadTimeout`): a edge pode
   ter gastado o Gemini. Seis passadas paradas sem culpa do conteúdo, sem resposta boa no meio, viram
-  `ERROR` no log.
+  `ERROR` no log. O aviso que chega a alguém é do monitor (`20261121_05`): conteúdos em `esperando` por
+  erro que não é `429` e nenhum desafio gerado na janela abrem a degradação `desafios_auto`, com e-mail
+  e sino. Só desafio gerado (ou `sem_desafio`) a fecha; `falhou` não prova que a edge voltou.
   
 - **`boss_falas` — a IA escreve, o professor pode tirar do ar** (`20261102_19`). Nome e falas do boss
   são gerados em lote por conteúdo × perfil e o app os mostra ao aluno (inclusive menor) direto. O
