@@ -117,6 +117,17 @@ def pytest_configure(config) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _schema_cache_limpo():
+    """O cache de "tabela/coluna existe?" vive no processo (`app/db/schema_cache.py`). Entre
+    testes ele faria um teste pular a consulta que o `FakeSession` do seguinte espera responder."""
+    from app.db import schema_cache
+
+    schema_cache.limpar()
+    yield
+    schema_cache.limpar()
+
+
+@pytest.fixture(autouse=True)
 def _modo_restrito_liberado(request, monkeypatch):
     """Os testes antigos falam com um `FakeSession` que nao responde nada, e o
     modo restrito e fail-closed: sem esta troca, todo aluno de teste ficaria

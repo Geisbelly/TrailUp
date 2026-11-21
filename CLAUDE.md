@@ -1492,6 +1492,16 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
   `pg_advisory_lock`, das 04:38 às ~04:43, sem migração nenhuma rodando). Use
   `pg_advisory_xact_lock` dentro da transação que precisa da trava, como faz
   `trava_de_migracao`.
+- **A API reaproveita a conexão com o pooler; não volte ao `NullPool`.** Com
+  `NullPool`, cada sessão abria uma conexão nova (TLS, autenticação e introspecção
+  de tipos do asyncpg), e os laços de fundo abrem sessão a cada poucos segundos:
+  eram uns 68 mil logins por dia e 230 MB de egress parado. Em 20/11 isso estourou
+  os 5 GB do plano Free, e o Supabase restringiu todos os serviços (402) até o ciclo
+  virar. O pool (`database_pool_*`) é seguro no modo transação porque os dois caches
+  de prepared statement ficam desligados (`statement_cache_size` e
+  `prepared_statement_cache_size` = 0). Pergunta a `information_schema` que se
+  repete por sessão passa por `app/db/schema_cache.py`, que guarda a resposta no
+  processo.
 - **`text()` do SQLAlchemy não aceita `:param::tipo`** — o `::` do Postgres
   colide com a sintaxe de bind e o parâmetro deixa de ser reconhecido (erro em
   tempo de execução, não de import). Use `CAST(:param AS TIPO)`. E parâmetro
