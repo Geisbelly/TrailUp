@@ -182,6 +182,31 @@ def test_classificar_401_403_404_0_e_503_sao_indisponivel(status: int) -> None:
     assert worker.classificar_erro(status, None) == "indisponivel"
 
 
+# O que a plataforma devolve com o projeto restrito (medido em 21/11, depois do deploy da v77).
+PROJETO_RESTRITO = {
+    "message": "Service for this project is restricted due to the following violations: exceed_egress_quota. "
+    "The project owner must upgrade their plan or remove spend caps to restore service."
+}
+
+
+def test_402_da_plataforma_e_indisponivel() -> None:
+    # A edge nunca devolve 402: o do Gemini ela converte em 429. Todo 402 na URL da função é a
+    # plataforma barrando o projeto (cota de egress, plano), e vale para todo conteúdo.
+    assert worker.classificar_erro(402, PROJETO_RESTRITO) == "indisponivel"
+    assert worker.classificar_erro(402, None) == "indisponivel"
+
+
+async def test_projeto_restrito_espera_sem_contar_falha_e_guarda_codigo_proprio() -> None:
+    banco: dict[str, Any] = {"fila": [11, 12]}
+    async with _Edge((402, PROJETO_RESTRITO)).cliente() as cliente:
+        contagem = await worker.processar_uma_vez(_app(banco), cliente)
+    (falha,) = _chamadas(banco, "fn_desafios_auto_falhou")
+    # A mensagem livre não vai ao banco; o código diz o que foi, para o aviso do monitor.
+    assert falha == {"id": 11, "erro": "402 projeto_restrito", "espera": 60}
+    assert contagem["esperando"] == 1 and contagem["falhou"] == 0 and contagem["sem_culpa"] == 1
+    assert banco["fila"] == [12]
+
+
 @pytest.mark.parametrize("status", [400, 422, 500, 502, 504, 546])
 def test_classificar_timeout_e_502_sao_outro(status: int) -> None:
     assert worker.classificar_erro(status, {"code": "gemini_error"}) == "outro"
