@@ -5,6 +5,8 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db import schema_cache
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,6 +24,12 @@ class ArtefatosPersonalizadosRepository:
             self._table_cache[table_name] = True
             return True
 
+        chave = schema_cache.chave_tabela(table_name)
+        guardado = schema_cache.consultar(chave)
+        if guardado is not None:
+            self._table_cache[table_name] = guardado
+            return guardado
+
         result = await self.session.execute(
             text(
                 """
@@ -37,6 +45,7 @@ class ArtefatosPersonalizadosRepository:
         )
         exists = bool(result.scalar()) if hasattr(result, "scalar") else True
         self._table_cache[table_name] = exists
+        schema_cache.guardar(chave, exists)
         return exists
 
     @staticmethod
