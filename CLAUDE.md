@@ -1341,18 +1341,23 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 - **RLS é a autorização, não defesa extra.** `anon` e `authenticated` têm GRANT
   de SELECT/INSERT/UPDATE/DELETE nas 84 tabelas — RLS é a única barreira. A
   posse está implementada (`20260826_08` a `20260826_10`):
-  - **anônimo lê exatamente cinco linhas, e nada mais.** Este texto já disse
-    "anônimo não lê nada — nem tabela nem view", e é o mesmo erro que o
-    parágrafo das views descreve: afirmação categórica errada faz alguém tratar
-    a exceção como defeito e "consertá-la".
+  - **anônimo lê só as chaves públicas de `app_config`, e nada mais.** Este
+    texto já disse "anônimo não lê nada — nem tabela nem view", e é o mesmo erro
+    que o parágrafo das views descreve: afirmação categórica errada faz alguém
+    tratar a exceção como defeito e "consertá-la". Também já disse "três" e
+    depois "cinco" linhas: o número cresce a cada chave pública nova, então
+    meça em vez de confiar nele.
 
     A exceção é `app_config`, pela policy `app_config_sel`
-    (`USING (publico)`, só `SELECT`, para `anon` e `authenticated`). Hoje são
-    cinco chaves públicas, todas parâmetro de UI: `prazo_atraso_fator`,
-    `presenca_aula_pontos` e `rank_limite_visivel`, que o cliente precisa antes
-    do login, e `cronometro_atividade_padrao_seg` e `cronometro_tolerancia_seg`,
-    que o console mostra ao professor (`20261101_15`, #136). O app já mostra a
-    duração na tela, e quem decide se a tentativa saiu no tempo é a RPC.
+    (`USING (publico)`, só `SELECT`, para `anon` e `authenticated`). Em
+    2026-11-21 eram **16 públicas de 93**, todas parâmetro de UI ou de app:
+    as de antes do login (`prazo_atraso_fator`, `presenca_aula_pontos`,
+    `rank_limite_visivel`, `app_versao_minima`, `app_atualizacao_url`), as do
+    cronômetro que o console mostra (`cronometro_atividade_padrao_seg`,
+    `cronometro_tolerancia_seg`, `20261101_15`, #136), as cinco `cuidado_*`,
+    `mistura_material` e `mistura_material_bonus_ativo`,
+    `conquistas_por_turma_max` e `personalizacao_kpi_slo`. Para conferir:
+    `SELECT chave FROM app_config WHERE publico`.
 
     **O que está `publico = false` é que importa:** `contato_envios_por_hora`,
     `credito_extra_maximo` e `conquista_recompensa_maxima` são tetos
@@ -1367,6 +1372,16 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
     por RLS e 38 nem chegam lá (`42501`, sem GRANT). Os 72 vazios não provam
     nada — a varredura só conclui onde existe dado, e a base de personalização
     está vazia hoje.
+
+  - **Restaurar dump não leva os GRANTs certos.** No projeto novo
+    (`liatqwotsiphjmnjenwu`, 21/11), o restore do `supabase db dump` deixou
+    cada tabela e função com os privilégios padrão do Supabase: `anon` com
+    EXECUTE nas 580 funções (inclusive `admin_*`) e acesso total a tabelas que
+    em produção eram só leitura ou por coluna (`questoes`, `intervencoes`).
+    Contar objetos não mostra isso — as contagens batiam. Ao montar banco a
+    partir de dump, compare as ACLs com `aclexplode` contra o original (tabela,
+    coluna, sequência, função) e aplique a diferença; GRANT por coluna só
+    aparece depois de revogar o da tabela.
 
   - **aluno** vê o próprio dado, os colegas da sua turma (o ranking depende
     disso) e o conteúdo das classes em que está matriculado; escreve só o que é
@@ -1590,12 +1605,30 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
   `https://geisbelly.github.io/TrailUp/sprint/relatorio-semanal-AAAA-Www.html`
   (ex.: [W42](https://geisbelly.github.io/TrailUp/sprint/relatorio-semanal-2026-W42.html)),
   com `-apresentacao.html` e `.pdf` ao lado.
-- **Supabase:** projeto **TraiUp**, ref `xrebtkmdewolzmpsdwgh` (plano Free,
-  sem PITR nem backup diário baixável). Chaves e `DATABASE_URL` só no `.env`
-  — nunca em doc, commit ou chat.
-- **Repositórios:** `BitStudioLabs/trail-up` é o canônico (PRs aqui).
-  [`Geisbelly/TrailUp`](https://github.com/Geisbelly/TrailUp) é o espelho
-  (sync da `main`, CI badge e GitHub Pages dos relatórios) — não abrir trabalho lá.
+- **Dois ambientes, dois repositórios, dois bancos** (desde 2026-11-21):
+
+  | Ambiente | Repositório | Supabase |
+  | --- | --- | --- |
+  | **Testes / dev** | `BitStudioLabs/trail-up` (o Lab) | `xrebtkmdewolzmpsdwgh` ("TraiUp") |
+  | **Produção** | [`Geisbelly/TrailUp`](https://github.com/Geisbelly/TrailUp) | `liatqwotsiphjmnjenwu` (org TrailUp) |
+
+  O banco de produção guarda só dados reais (turmas em sala). **Teste roda no
+  dev, nunca no de produção.** Isso vale para pytest ou script contra banco,
+  migration em ensaio, conta de QA, Reflect, navegação no app ou no console e
+  carga ou rajada de requisições. Nada de criar aluno, turma ou conteúdo de
+  teste em produção.
+
+  No `api/.env` local, `DATABASE_URL` é o dev; `NOVO_DATABASE_URL` é produção e
+  só serve para leitura e para o que a Geisbelly pedir explicitamente. Os dois
+  projetos estão no plano Free, sem PITR nem backup diário baixável. Chaves e URLs
+  de banco ficam só no `.env`, nunca em doc, commit ou chat.
+
+  O dev está restrito por cota de egress até o ciclo virar em 03/12: REST, Auth,
+  Storage e edges respondem 402, e o Postgres direto funciona.
+- **Repositórios:** o Lab (`BitStudioLabs/trail-up`) é onde o trabalho acontece:
+  PRs aqui, nunca no `Geisbelly/TrailUp`. O `Geisbelly/TrailUp` recebe a `main`
+  do Lab por sync e é o que vai para produção. Ele também tem o CI badge e o
+  GitHub Pages dos relatórios.
 
   **O site no ar sai do espelho, não do Lab.** O Vercel de `trailup.vercel.app`
   publica a `main` do `Geisbelly/TrailUp`. PR mesclado no Lab **não aparece no ar**
@@ -1609,9 +1642,12 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
     resolvidos, e o que foi verificado;
   - o merge é da Geisbelly, como no Lab. Só depois do deploy conferir no ar.
 
-  Migration de PR do Lab costuma ser aplicada em produção antes de chegar ao
-  espelho. Enquanto o espelho estiver atrás, o banco está à frente do código no ar;
-  quanto mais tempo o sync demora, maior essa janela.
+  Migration de PR do Lab se ensaia no banco de **dev**. Em produção, ela entra
+  quando a API publicada do espelho sobe e roda `alembic upgrade head`; aplicar
+  à mão em produção só com pedido explícito. Até 21/11 produção e Lab dividiam o
+  banco, e a migration costumava chegar antes do código. Enquanto o espelho
+  estiver atrás, o banco fica à frente do código no ar, e quanto mais o sync
+  demora, maior essa janela.
 
   **E essa janela derruba a API.** A API roda `alembic upgrade head` ao subir
   (`database_migrations_on_startup`, ligado por padrão; `lifespan` de
@@ -1626,8 +1662,9 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
   - depois de todo merge com migration, conferir `alembic heads` na `main`. Duas
     PRs abertas ao mesmo tempo costumam pegar o mesmo número de revisão.
 - **Deploys:**
-  - **web:** `https://trailup.vercel.app`, publicada do **espelho** (acima). Não usar como alvo de regressão do console.
-  - **API:** Dokploy (VPS), em `https://api.trailup.promora.dev.br` (Let's Encrypt, #689). A evidência de 01/11 é que ela também publica do espelho. O `*.traefik.me` tem certificado autoassinado: o fetch do aparelho falha como erro de rede.
+  - **web:** `https://trailup.vercel.app`, publicada do **espelho** (acima), contra o banco de produção. Não usar como alvo de regressão do console.
+  - **API:** Dokploy (VPS), em `https://api.trailup.promora.dev.br` (Let's Encrypt, #689). Publica do espelho e, desde 21/11, usa o banco de produção; o `alembic upgrade head` dela roda contra produção. O `*.traefik.me` tem certificado autoassinado: o fetch do aparelho falha como erro de rede.
+  - **app:** os builds de loja do EAS (`production`, `productionAAB`) apontam para produção a partir da 1.0.11.
   - **local:** `npm run docker:up` (`:8080` / `:8000` / `:3000`).
 - **Mais docs do repo:** [`docs/README.md`](docs/README.md) (índice),
   [`docs/MANUAL.md`](docs/MANUAL.md),
