@@ -189,6 +189,58 @@ def test_classificar_timeout_e_502_sao_outro(status: int) -> None:
     assert worker.classificar_erro(status, _gemini_429(upstream=402)) == "outro"
 
 
+def _gemini_erro(upstream: int, razao: str | None = None) -> dict[str, Any]:
+    """O 502 `gemini_error` da edge (`geminiHttpError`), com a resposta crua do Gemini em `details`."""
+    detalhes = [{"@type": "type.googleapis.com/google.rpc.ErrorInfo", "reason": razao}] if razao else []
+    return {
+        "error": "Gemini API error",
+        "code": "gemini_error",
+        "details": {
+            "upstream_status": upstream,
+            "response": {"error": {"code": upstream, "status": "X", "details": detalhes}},
+        },
+    }
+
+
+@pytest.mark.parametrize("upstream", [401, 403, 404, 500, 503])
+def test_gemini_fora_por_chave_modelo_ou_servidor_e_pane(upstream: int) -> None:
+    # Chave sem permissão, modelo retirado ou o Gemini fora depois do rodízio: vale para todo
+    # conteúdo, então não é culpa deste.
+    assert worker.classificar_erro(502, _gemini_erro(upstream)) == "pane"
+
+
+def test_chave_invalida_do_gemini_e_pane() -> None:
+    # A rotação devolve o 400 na hora, sem tentar a próxima chave: uma chave inválida na frente da
+    # lista derruba todo pedido.
+    assert worker.classificar_erro(502, _gemini_erro(400, "API_KEY_INVALID")) == "pane"
+
+
+def test_400_do_gemini_por_outro_motivo_e_do_conteudo() -> None:
+    # Pedido grande demais, argumento inválido: é este pedido, e contar tentativa para na 3ª.
+    assert worker.classificar_erro(502, _gemini_erro(400)) == "outro"
+    assert worker.classificar_erro(502, _gemini_erro(400, "INVALID_ARGUMENT")) == "outro"
+
+
+def test_rede_do_gemini_e_500_sem_codigo_sao_pane() -> None:
+    assert worker.classificar_erro(502, {"error": "x", "code": "gemini_network_error"}) == "pane"
+    # O `catch` final da edge: exceção que ninguém tratou, sem `code`.
+    assert worker.classificar_erro(500, {"error": "Unexpected error"}) == "pane"
+    assert worker.classificar_erro(500, None) == "pane"
+
+
+def test_falha_do_proprio_pedido_continua_contando() -> None:
+    assert worker.classificar_erro(502, {"error": "invalid_ai_response", "message": "x"}) == "outro"
+    assert worker.classificar_erro(422, {"error": "x", "code": "ai_truncated"}) == "outro"
+    assert worker.classificar_erro(504, {"error": "x", "code": "ai_timeout"}) == "outro"
+    assert worker.classificar_erro(500, {"error": "x", "code": "gemini_error"}) == "outro"
+
+
+@pytest.mark.parametrize("excecao", ["ReadTimeout", "ReadError", "RemoteProtocolError"])
+def test_pedido_que_chegou_e_nao_voltou_e_outro(excecao: str) -> None:
+    # O pedido chegou à edge, que pode ter chamado o Gemini: espera sem contar não tem limite.
+    assert worker.classificar_erro(0, {"code": excecao}) == "outro"
+
+
 # ------------------------------------------------------------------------------- virada do Pacífico
 def test_virada_do_pacifico_no_horario_de_verao_e_fora() -> None:
     # Julho: PDT (UTC-7). Meia-noite em Los Angeles é 07:00 UTC.
@@ -335,15 +387,81 @@ async def test_passada_timeout_conta_falha() -> None:
     assert contagem["falhou"] == 2
 
 
-async def test_timeout_do_cliente_espera_sem_contar_falha() -> None:
-    for excecao in (httpx.ReadTimeout("demorou"), httpx.ConnectError("sem rede")):
+async def test_edge_inalcancavel_espera_sem_contar_falha() -> None:
+    for excecao in (httpx.ConnectError("sem rede"), httpx.ConnectTimeout("sem rede"), httpx.PoolTimeout("cheio")):
         banco: dict[str, Any] = {"fila": [11, 12]}
         async with _Edge(excecao).cliente() as cliente:
             contagem = await worker.processar_uma_vez(_app(banco), cliente)
         (falha,) = _chamadas(banco, "fn_desafios_auto_falhou")
         assert falha == {"id": 11, "erro": f"0 {type(excecao).__name__}", "espera": 60}
         assert contagem["esperando"] == 1 and contagem["falhou"] == 0
+        assert contagem["sem_culpa"] == 1
         assert banco["fila"] == [12]
+
+
+async def test_resposta_que_nao_volta_conta_falha() -> None:
+    for excecao in (httpx.ReadTimeout("demorou"), httpx.RemoteProtocolError("cortou")):
+        banco: dict[str, Any] = {"fila": [11, 12]}
+        async with _Edge(excecao).cliente() as cliente:
+            contagem = await worker.processar_uma_vez(_app(banco), cliente)
+        falhas = _chamadas(banco, "fn_desafios_auto_falhou")
+        assert falhas[0] == {"id": 11, "erro": f"0 {type(excecao).__name__}", "espera": None}
+        assert contagem["falhou"] == 2 and contagem["esperando"] == 0
+
+
+async def test_pane_do_gemini_em_toda_chamada_nunca_e_falha_definitiva(caplog: pytest.LogCaptureFixture) -> None:
+    # Modelo retirado (404), chave inválida, Gemini fora: três dias assim queimavam ~20 conteúdos.
+    banco: dict[str, Any] = {}
+    edge = _Edge(
+        (502, _gemini_erro(404)),
+        (502, _gemini_erro(400, "API_KEY_INVALID")),
+        (502, {"error": "x", "code": "gemini_network_error"}),
+        (500, {"error": "Unexpected error"}),
+        (502, _gemini_erro(503)),
+    )
+    with caplog.at_level("WARNING"):
+        async with edge.cliente() as cliente:
+            for passada in range(6):
+                banco["fila"] = [900 + passada, 1900 + passada]
+                contagem = await worker.processar_uma_vez(_app(banco), cliente)
+                assert banco["fila"] == [1900 + passada]
+                assert contagem["esperando"] == 1 and contagem["falhou"] == 0 and contagem["sem_culpa"] == 1
+    falhas = _chamadas(banco, "fn_desafios_auto_falhou")
+    assert len(falhas) == 6 and all(f["espera"] == 60 for f in falhas)
+    assert falhas[0]["erro"] == "502 gemini_error" and falhas[3]["erro"] == "500 sem_codigo"
+    assert sum("o Gemini nao respondeu" in r.getMessage() for r in caplog.records) == 6
+
+
+def test_alarme_a_partir_da_sexta_passada_seguida_e_depois_a_cada_seis() -> None:
+    assert [n for n in range(1, 20) if worker.deve_alarmar(n)] == [6, 12, 18]
+
+
+async def test_laco_alarma_em_erro_quando_a_espera_nao_passa(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    passadas: list[int] = []
+
+    async def processar(_app: Any, _cliente: Any, *, config: Any = None) -> dict[str, int]:
+        passadas.append(1)
+        # Seis passadas paradas sem culpa com uma vazia no meio (a 3ª: fila curta, todos esperando),
+        # uma que gerou (a 8ª), e mais seis paradas.
+        n = len(passadas)
+        if n == 3:
+            return dict.fromkeys(worker.RESULTADOS, 0)
+        return {"esperando": 1, "sem_culpa": 1} if n != 8 else {"gerado": 1}
+
+    async def dormir(_: float) -> None:
+        if len(passadas) >= 14:
+            raise asyncio.CancelledError
+
+    monkeypatch.setattr(worker, "processar_uma_vez", processar)
+    monkeypatch.setattr(worker.asyncio, "sleep", dormir)
+    with caplog.at_level("WARNING"), pytest.raises(asyncio.CancelledError):
+        await worker.desafios_auto_loop(_app({}))
+    erros = [r for r in caplog.records if r.levelname == "ERROR"]
+    # A passada vazia não zera nem conta; a que gerou zera: a segunda sequência alarma na sexta de novo.
+    assert len(erros) == 2
+    assert all("6 passadas seguidas" in r.getMessage() for r in erros)
 
 
 async def test_edge_401_em_toda_chamada_nunca_e_falha_definitiva(caplog: pytest.LogCaptureFixture) -> None:
@@ -419,6 +537,23 @@ async def test_erro_guardado_nao_leva_material() -> None:
         await worker.processar_uma_vez(_app(banco), cliente)
     (falha,) = _chamadas(banco, "fn_desafios_auto_falhou")
     assert falha["erro"] == "546 sem_codigo" and falha["espera"] is None
+
+
+async def test_erro_guardado_usa_error_quando_falta_code() -> None:
+    # A 502 `invalid_ai_response` da edge só traz `error`: sem isso, a falha mais comum do conteúdo
+    # ficava "502 sem_codigo", igual a uma 502 do gateway.
+    banco: dict[str, Any] = {"fila": [11]}
+    edge = _Edge((502, {"error": "invalid_ai_response", "message": "Não foi possível: F = m.a", "raw": "F = m.a"}))
+    async with edge.cliente() as cliente:
+        await worker.processar_uma_vez(_app(banco), cliente)
+    (falha,) = _chamadas(banco, "fn_desafios_auto_falhou")
+    assert falha["erro"] == "502 invalid_ai_response"
+    # Frase livre em `error` não entra: pode levar o material.
+    banco = {"fila": [11]}
+    async with _Edge((502, {"error": "Resposta inválida: F = m.a"})).cliente() as cliente:
+        await worker.processar_uma_vez(_app(banco), cliente)
+    (falha,) = _chamadas(banco, "fn_desafios_auto_falhou")
+    assert falha["erro"] == "502 sem_codigo"
 
 
 async def test_conteudo_que_sumiu_nao_chama_a_edge() -> None:

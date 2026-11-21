@@ -50,7 +50,7 @@ PALAVRAS = t3.PALAVRAS
 PERFIS = ("seeker", "survivor", "daredevil", "mastermind", "conqueror", "socializer", "achiever")
 
 
-def _banco(com_migration: bool = True):
+def _banco(com_migration: bool = True, *depois: str):
     return f5.banco(
         *t1._cadeia(),
         *f5.sql_de(t3.M_T1),
@@ -71,6 +71,7 @@ def _banco(com_migration: bool = True):
         TABELA_COORTE,
         M_TRAVA.FUNCOES,
         *(f5.sql_de(M) if com_migration else []),
+        *depois,
     )
 
 

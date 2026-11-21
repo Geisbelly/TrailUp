@@ -14,7 +14,23 @@ const LITE = "gemini-3.1-flash-lite";
 const LITE2 = "gemini-3.5-flash-lite";
 const CHAVES = ["k0", "k1", "k2", "k3"];
 
-type Roteiro = (chave: string, modelo: string) => { status: number; ms?: number } | "timeout" | "rede";
+/** O 400 que o Gemini devolve para chave inválida (revogada, apagada, digitada errado). */
+const chaveInvalida = (razao = "API_KEY_INVALID") => ({
+  status: 400,
+  corpo: {
+    error: {
+      code: 400,
+      message: "API key not valid. Please pass a valid API key.",
+      status: "INVALID_ARGUMENT",
+      details: [{ "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason: razao, domain: "googleapis.com" }],
+    },
+  },
+});
+
+type Roteiro = (
+  chave: string,
+  modelo: string,
+) => { status: number; ms?: number; corpo?: unknown } | "timeout" | "rede";
 
 /**
  * Gemini falso com relógio próprio: cada chamada "leva" `ms` no relógio e
@@ -38,7 +54,9 @@ function geminiFalso(roteiro: Roteiro, inicio = 1_000_000) {
       throw new DOMException("Signal timed out.", "TimeoutError");
     }
     relogio += passo.ms ?? 1000;
-    const corpo = passo.status === 200 ? { candidates: [{ content: { parts: [{ text: "{}" }] } }] } : { error: { status: "X" } };
+    const corpo =
+      passo.corpo ??
+      (passo.status === 200 ? { candidates: [{ content: { parts: [{ text: "{}" }] } }] } : { error: { status: "X" } });
     return new Response(JSON.stringify(corpo), { status: passo.status });
   }) as unknown as typeof fetch;
 
@@ -142,6 +160,37 @@ describe("chamarGeminiComRotacao", () => {
     const r = await rodar(() => ({ status: 400 }));
     expect(r.ok && r.status).toBe(400);
     expect(r.chamadas).toHaveLength(1);
+  });
+
+  it("400 API_KEY_INVALID é da chave: a próxima chave vale, e a inválida sai de todos os modelos", async () => {
+    // Antes o 400 voltava na hora: uma chave inválida na frente da lista derrubava todo pedido.
+    const r = await rodar((c) => (c === "k0" ? chaveInvalida() : { status: 200 }));
+    expect(r.ok && r.status).toBe(200);
+    expect(r.chamadas).toEqual(["k0/gemini-3.6-flash", "k1/gemini-3.6-flash"]);
+    for (const m of [FLASH, LITE, LITE2]) expect(r.estado.esgotadoAte.has(`k0|${m}`)).toBe(true);
+    expect(r.estado.sobrecarregadoAte.size).toBe(0);
+
+    const segundo = await rodar(() => ({ status: 200 }), { estado: r.estado });
+    expect(segundo.chamadas).toEqual(["k1/gemini-3.6-flash"]);
+  });
+
+  it("chave inválida não é tentada de novo no modelo de reserva do mesmo pedido", async () => {
+    const r = await rodar((c, m) => (c === "k0" ? chaveInvalida() : m === FLASH ? { status: 503 } : { status: 200 }));
+    expect(r.ok && r.status).toBe(200);
+    expect(r.chamadas).toEqual(["k0/gemini-3.6-flash", "k1/gemini-3.6-flash", "k1/gemini-3.1-flash-lite"]);
+  });
+
+  it("todas as chaves inválidas: devolve o 400, uma chamada por chave", async () => {
+    const r = await rodar(() => chaveInvalida());
+    expect(r.ok && r.status).toBe(400);
+    expect(r.chamadas).toEqual(CHAVES.map((c) => `${c}/gemini-3.6-flash`));
+  });
+
+  it("400 por outro motivo continua do pedido: volta na hora", async () => {
+    const r = await rodar(() => chaveInvalida("FIELD_INVALID"));
+    expect(r.ok && r.status).toBe(400);
+    expect(r.chamadas).toHaveLength(1);
+    expect(r.estado.esgotadoAte.size).toBe(0);
   });
 
   it("todos sobrecarregados: devolve a última resposta, um pedido por modelo", async () => {
