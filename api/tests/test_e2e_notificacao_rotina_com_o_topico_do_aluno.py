@@ -19,8 +19,9 @@ M = f5.modulo("20261120_02_notificacao_rotina_com_o_topico_do_aluno.py")
 A, C = fala.A, fala.C
 
 
-def _banco():
-    return f5.banco(
+def _banco_args() -> list[str]:
+    """O SQL do banco deste e2e, para quem monta por cima (`20261121_03`)."""
+    return [
         *fala.p.h._motor(),
         *f5.sql_de(fala.p.M01),
         fala.p.ANTES,
@@ -31,7 +32,11 @@ def _banco():
         *f5.sql_de(fala.g.M),
         *f5.sql_de(fala.M),
         *f5.sql_de(M),
-    )
+    ]
+
+
+def _banco():
+    return f5.banco(*_banco_args())
 
 
 def _semear(c) -> None:

@@ -1,2 +1,6 @@
 [functions.generate-content-ai]
+# Produção roda com verify_jwt = false (v74 e v75, conferido em 20/11/2026), e o deploy usa
+# --no-verify-jwt para manter assim: a CLI não lê este arquivo. A autorização é da própria função
+# (requireAuthenticatedUser para o professor, pedidoDoServidor.ts para o servidor). Publicar sem a
+# flag ligaria o verify_jwt e mudaria o comportamento em produção.
 verify_jwt = true

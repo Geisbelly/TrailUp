@@ -154,7 +154,7 @@ export type IAResolvedFeatureState = {
   character?: IACharacterConfig | null;
   topicoId?: number | null;
   itemKey?: string | null;
-  disabledReason?: "user_preference" | "mental_state" | "runtime_safety" | null;
+  disabledReason?: "user_preference" | "mental_state" | "modo_cuidado" | "runtime_safety" | null;
 };
 
 export type IATriggerSignalType =

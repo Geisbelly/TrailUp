@@ -231,3 +231,10 @@ src/utils/chavesDoCacheDaRota.test.ts
 src/services/metricas/explicacoes.test.ts
 src/components/perfil/explicacoesNosPaineis.test.ts
 src/components/metricas/coresDaExplicacao.test.ts
+src/utils/sinaisDeSobrecarga.test.ts
+src/services/cuidadoNoBanco.test.ts
+src/context/ModoDeCuidadoContext.test.tsx
+src/components/cuidado/AvisoDeCuidado.test.tsx
+src/components/cuidado/TecnicasDeCalma.test.tsx
+src/components/consentimento/ItemNovoDoTermo.test.tsx
+src/components/ia/IAMentorPanel.cuidado.test.tsx

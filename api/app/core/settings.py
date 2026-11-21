@@ -333,6 +333,12 @@ class Settings(BaseSettings):
     personalizacao_max_context_sources: int = 400
     personalizacao_media_review_max_cycles: int = 3
     personalizacao_media_min_quality_score: float = 0.72
+    # Notificação diária escrita pela IA (motivo `engajamento`): no máximo uma por aluno a cada
+    # `notificacao_ia_intervalo_horas`, só com tópico em andamento, sem RAG. Desligue
+    # (NOTIFICACAO_IA_DIARIA=false) quando a cota do Gemini precisar ficar para outra coisa; a
+    # rotina do banco continua saindo, com o tópico (20261120_02).
+    notificacao_ia_diaria: bool = True
+    notificacao_ia_intervalo_horas: int = 20
     admin_panel_username: str = "admin"
     admin_panel_password: str
 

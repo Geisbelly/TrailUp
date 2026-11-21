@@ -68,6 +68,10 @@ class TrailUpState(TypedDict, total=False):
     # Tópico em andamento e próximo conteúdo, para o texto da notificação (#66).
     # Também montado por `build_initial_state`; mesma razão de estar declarado.
     foco_estudo: dict[str, Any] | None
+    # A IA pode escrever a notificação diária deste aluno agora (`state_builder`): ligada nas
+    # configurações, com tópico em andamento e sem sugestão da IA nas últimas N horas. Montado por
+    # `build_initial_state`; mesma razão de estar declarado.
+    notificacao_diaria_liberada: bool
     # Turma com a personalização retida pelo estudo (#13, 20261102_05): o grafo mede (emoção,
     # perfil, insight do professor) e não age no aluno. Montado por `build_initial_state`.
     personalizacao_retida: bool

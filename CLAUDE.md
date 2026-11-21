@@ -672,6 +672,25 @@ Cada perfil carrega:
   - A gravação vai numa transação própria, depois do `ia_decision_logs`: falhar não leva o log nem a
     resposta. Prazo de 395 dias (730 com pesquisa). O texto cru continua em `ia_decision_logs`, com o
     prazo da `20261003_09`.
+- `consentimento_cuidado` + `aluno_momento_cuidado` — modo de cuidado (`20261120_04`, `_02`;
+  spec `2026-11-20-modo-de-cuidado-design.md`): o app tira a pressão do estudo quando o uso sugere
+  sobrecarga ou o aluno diz ao Guia que não está bem. Regras que não são óbvias:
+  - **Versão própria do consentimento** (`consentimento_cuidado_versao_vigente()`, igual a
+    `CONSENTIMENTO_CUIDADO_VERSAO` no app). A pergunta é uma só, `aluno_cuidado_permitido(uuid)`;
+    menor precisa também de `finalidades ->> 'cuidado'` do responsável na mesma versão. Revogar
+    (aluno ou responsável) apaga os momentos. A prova sobrevive à conta, anonimizada, como os outros
+    consentimentos.
+  - **O professor não tem policy na tabela base.** Ele lê só por `cuidado_da_turma`, que confere a
+    posse e **não devolve `nivel`**. Policy de SELECT para o professor em `aluno_momento_cuidado`
+    vazaria o nível: não "conserte" a ausência.
+  - **`fn_cronometro_ligado` consulta o cuidado:** com momento de `expira_em` futuro, a tentativa
+    nova nasce sem cronômetro, sem tocar em `aluno_cronometro` (a escolha do aluno fica). A
+    tentativa já aberta mantém o prazo; só a tela esconde a contagem.
+  - **`chat_guia_registros` não guarda o nível.** `registro.bem_estar` sai na mesma chamada do Guia
+    e vai só para o modo de cuidado; `normalizar_registro` o descarta.
+  - **A barreira do CVV vem antes do modo restrito e do modelo** (`risco_no_chat.py`): é texto
+    fixo, informação de segurança, não IA. Vale com o modelo fora do ar e para quem a IA está
+    barrada. CVV e técnicas valem para todos, sem consentimento e sem gravar nada.
 - `intervencoes` — insights da turma (aba Insights do console, `20260929_01`):
   sugestões/observações que a IA escreve, em lotes (`geracao_id`), por turma
   ou por aluno (estes vêm do `agente_intervencao`, quando um alerta de estudo
@@ -1011,8 +1030,10 @@ Cada perfil carrega:
   (`desafio IS NULL`), senão 8 linhas pendentes travariam o teto da #151. `conteudos.atualizado_em` é do
   banco (gatilho; o cliente não escolhe) e ignora `ordem`: reordenar não reinicia a carência. A edge
   `generate-content-ai` aceita a chave de serviço **só no modo `desafios`**, pela conferência de
-  `storage-upload-url/pedido.ts`; a chave tem de ser a service_role JWT legada, porque o `verify_jwt` da
-  função recusa o que não é JWT. Erros: limite por minuto espera 15 min, cota do dia pausa o laço até a
+  `storage-upload-url/pedido.ts`, que aceita a JWT legada e a `sb_secret_`. Em produção a função roda com
+  `verify_jwt = false` (deploy com `--no-verify-jwt`; a CLI não lê o `config.toml` da pasta dela), então
+  quem autoriza é só a função: `requireAuthenticatedUser` para o professor e a conferência para o
+  servidor. Erros: limite por minuto espera 15 min, cota do dia pausa o laço até a
   virada, edge recusando o servidor ou sem resposta espera 60 min, e nenhum desses conta falha; o resto
   conta falha, espera 2^n h e para na 3ª.
   

@@ -7,6 +7,7 @@ import { ClassSelectionGate } from "@/components/ClassSelectionGate";
 import { bannerImages, brainHexConfig, brainHexImageMap, getProfileImageByString, normalizeBrainHexProfile } from "@/constants/profileImages";
 import { ConquistaRankProvider } from "@/context/ConquistaRankContext";
 import { IAProvider } from "@/context/IAContext";
+import { ModoDeCuidadoProvider } from "@/context/ModoDeCuidadoContext";
 import { NotificationsProvider, useNotifications } from "@/context/NotificacaoContext";
 import { TrilhaProvider } from "@/context/TrilhaContext";
 // 1. Importando MaterialCommunityIcons (mais criativo/detalhado)
@@ -142,6 +143,9 @@ export default function TabLayout() {
           <TrilhaProvider key={usuario?.id ?? "sem-aluno"}>
             <ClassSelectionGate>
             <ConquistaRankProvider>
+            {/* Modo de cuidado: precisa da IA (sinais) e da trilha (turma); o aviso e as
+                técnicas de calma se desenham por cima das abas. */}
+            <ModoDeCuidadoProvider>
               <ComMolduraDesktop
                 ativo={desktop}
                 topo={molduraDesktop ? (
@@ -324,6 +328,7 @@ export default function TabLayout() {
                 bloqueado
                 onClose={() => setPortaoBloqueado(null)}
               />
+            </ModoDeCuidadoProvider>
             </ConquistaRankProvider>
             </ClassSelectionGate>
             <ToastContainer />
