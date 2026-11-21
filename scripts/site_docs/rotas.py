@@ -91,6 +91,7 @@ EDGE = {
     "storage-redirect": ("Gateway de arquivos: redireciona para o R2.", "Link assinado ou sessão"),
     "storage-upload-url": ("URL assinada de upload no R2, para os serviços que geram arquivo.", "Chave de serviço"),
     "pesquisa-arquivar": ("Copia para o R2 a telemetria de quem consentiu. Chamada pelo `pg_cron`.", "Segredo do banco"),
+    "personalize_path": ("App: stub do grafo da trilha; devolve listas vazias e o app monta o grafo no aparelho.", "Aberta"),
 }
 
 WEB = {
@@ -274,8 +275,7 @@ def montar() -> str:
         tabela(("Rota", "Acesso", "Para quê"),
                [(f"`{r}`", acesso, texto) for r, (texto, acesso) in BRAINHEXPDF.items()]),
         f"## Edge Functions ({len(edge)})",
-        "No Supabase, em `/functions/v1/<nome>`. O app ainda chama `personalize_path`, que está "
-        "publicada sem fonte neste repositório.",
+        "No Supabase, em `/functions/v1/<nome>`.",
         tabela(("Função", "Acesso", "Para quê"),
                [(f"`{n}`", EDGE[n][1], EDGE[n][0]) for n in edge]),
         f"## Web ({len(web) + len(abas)})",

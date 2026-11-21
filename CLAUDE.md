@@ -1341,18 +1341,23 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 - **RLS é a autorização, não defesa extra.** `anon` e `authenticated` têm GRANT
   de SELECT/INSERT/UPDATE/DELETE nas 84 tabelas — RLS é a única barreira. A
   posse está implementada (`20260826_08` a `20260826_10`):
-  - **anônimo lê exatamente cinco linhas, e nada mais.** Este texto já disse
-    "anônimo não lê nada — nem tabela nem view", e é o mesmo erro que o
-    parágrafo das views descreve: afirmação categórica errada faz alguém tratar
-    a exceção como defeito e "consertá-la".
+  - **anônimo lê só as chaves públicas de `app_config`, e nada mais.** Este
+    texto já disse "anônimo não lê nada — nem tabela nem view", e é o mesmo erro
+    que o parágrafo das views descreve: afirmação categórica errada faz alguém
+    tratar a exceção como defeito e "consertá-la". Também já disse "três" e
+    depois "cinco" linhas: o número cresce a cada chave pública nova, então
+    meça em vez de confiar nele.
 
     A exceção é `app_config`, pela policy `app_config_sel`
-    (`USING (publico)`, só `SELECT`, para `anon` e `authenticated`). Hoje são
-    cinco chaves públicas, todas parâmetro de UI: `prazo_atraso_fator`,
-    `presenca_aula_pontos` e `rank_limite_visivel`, que o cliente precisa antes
-    do login, e `cronometro_atividade_padrao_seg` e `cronometro_tolerancia_seg`,
-    que o console mostra ao professor (`20261101_15`, #136). O app já mostra a
-    duração na tela, e quem decide se a tentativa saiu no tempo é a RPC.
+    (`USING (publico)`, só `SELECT`, para `anon` e `authenticated`). Em
+    2026-11-21 eram **16 públicas de 93**, todas parâmetro de UI ou de app:
+    as de antes do login (`prazo_atraso_fator`, `presenca_aula_pontos`,
+    `rank_limite_visivel`, `app_versao_minima`, `app_atualizacao_url`), as do
+    cronômetro que o console mostra (`cronometro_atividade_padrao_seg`,
+    `cronometro_tolerancia_seg`, `20261101_15`, #136), as cinco `cuidado_*`,
+    `mistura_material` e `mistura_material_bonus_ativo`,
+    `conquistas_por_turma_max` e `personalizacao_kpi_slo`. Para conferir:
+    `SELECT chave FROM app_config WHERE publico`.
 
     **O que está `publico = false` é que importa:** `contato_envios_por_hora`,
     `credito_extra_maximo` e `conquista_recompensa_maxima` são tetos
@@ -1367,6 +1372,16 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
     por RLS e 38 nem chegam lá (`42501`, sem GRANT). Os 72 vazios não provam
     nada — a varredura só conclui onde existe dado, e a base de personalização
     está vazia hoje.
+
+  - **Restaurar dump não leva os GRANTs certos.** No projeto novo
+    (`liatqwotsiphjmnjenwu`, 21/11), o restore do `supabase db dump` deixou
+    cada tabela e função com os privilégios padrão do Supabase: `anon` com
+    EXECUTE nas 580 funções (inclusive `admin_*`) e acesso total a tabelas que
+    em produção eram só leitura ou por coluna (`questoes`, `intervencoes`).
+    Contar objetos não mostra isso — as contagens batiam. Ao montar banco a
+    partir de dump, compare as ACLs com `aclexplode` contra o original (tabela,
+    coluna, sequência, função) e aplique a diferença; GRANT por coluna só
+    aparece depois de revogar o da tabela.
 
   - **aluno** vê o próprio dado, os colegas da sua turma (o ranking depende
     disso) e o conteúdo das classes em que está matriculado; escreve só o que é
