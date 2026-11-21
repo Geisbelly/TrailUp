@@ -11,8 +11,10 @@ decide `sem_desafio`).
 
 Com erro, o banco recebe só `"<status> <code>"`, nunca o material, e quanto esperar:
 - limite por minuto: 15 minutos, sem contar tentativa, e a passada para;
-- cota do dia (402 ou `quotaId` com `PerDay`): até a virada do Pacífico, e o laço dorme até lá;
-- edge que não aceita o servidor ou que o pedido nem alcança (401, 403, 404, 503, rede ou conexão):
+- cota do dia (429 com o Gemini em 402, ou `quotaId` com `PerDay`): até a virada do Pacífico, e o laço
+  dorme até lá;
+- edge que não aceita o servidor ou que o pedido nem alcança (401, 403, 404, 503, rede ou conexão,
+  e o 402 da plataforma com o projeto restrito, que a função nunca devolve por conta própria):
   `desafios_auto_espera_indisponivel_min` (60), sem contar tentativa, e a passada para. O defeito é de
   configuração ou de deploy, não do conteúdo: a API publica pelo sync do espelho e a edge só ganha
   deploy manual depois, e nessa janela a edge antiga responde 401 a todo pedido do servidor. Contar
@@ -79,9 +81,10 @@ _FALHOU = text(
 
 Classe = Literal["cota_do_dia", "por_minuto", "indisponivel", "pane", "outro"]
 
-# Status em que a edge não chegou a atender o pedido: credencial, rota, função sem configurar ou
-# nenhuma resposta (0 = exceção do httpx antes de qualquer resposta).
-_INDISPONIVEL = frozenset({0, 401, 403, 404, 503})
+# Status em que a edge não chegou a atender o pedido: credencial, rota, função sem configurar,
+# projeto restrito pela plataforma (402) ou nenhuma resposta (0 = exceção do httpx antes de qualquer
+# resposta). A edge nunca devolve 402: o 402 do Gemini ela converte em 429 `gemini_rate_limit`.
+_INDISPONIVEL = frozenset({0, 401, 402, 403, 404, 503})
 # Exceções do httpx depois de o pedido sair inteiro: a edge pode ter chamado o Gemini.
 _RESPOSTA_PERDIDA = frozenset({"ReadTimeout", "ReadError", "RemoteProtocolError"})
 # O que o Gemini respondeu à edge que vale para qualquer conteúdo (a edge devolve tudo como 502).
@@ -279,6 +282,9 @@ def _erro(status: int, corpo: Any) -> str:
         error = corpo.get("error")
         if isinstance(error, str) and _CODIGO_EM_ERROR.fullmatch(error):
             code = error
+    if not code and int(status) == 402:
+        # A plataforma barrando o projeto (cota de egress, plano): a mensagem dela é frase livre.
+        code = "projeto_restrito"
     code = re.sub(r"[^A-Za-z0-9_.-]", "", str(code or ""))[:60] or "sem_codigo"
     return f"{int(status)} {code}"
 

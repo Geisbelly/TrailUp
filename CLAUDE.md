@@ -1034,7 +1034,8 @@ Cada perfil carrega:
   `verify_jwt = false` (deploy com `--no-verify-jwt`; a CLI não lê o `config.toml` da pasta dela), então
   quem autoriza é só a função: `requireAuthenticatedUser` para o professor e a conferência para o
   servidor. Erros: limite por minuto espera 15 min, cota do dia pausa o laço até a
-  virada, e edge recusando o servidor ou inalcançável espera 60 min, assim como a **pane do Gemini**
+  virada, e edge recusando o servidor ou inalcançável espera 60 min (inclusive o 402 da plataforma com o
+  projeto restrito por cota, `402 projeto_restrito`: a função nunca devolve 402), assim como a **pane do Gemini**
   (502 `gemini_error` com o Gemini em 401/403/404/500/503, 400 `API_KEY_INVALID`,
   `gemini_network_error`, 500 sem `code`); nenhum desses conta falha, porque vale para todo conteúdo e
   três passadas assim tirariam a fila inteira da lista para sempre. O resto conta falha, espera 2^n h e
