@@ -127,6 +127,19 @@ class RegistroDoChat:
     dificuldade: str = "nenhuma"
 
 
+BEM_ESTAR = ("nenhum", "desconforto", "crise", "risco")
+
+
+def nivel_de_bem_estar(bruto: Any) -> str:
+    """O `bem_estar` que o modelo devolveu em `registro`, fora da lista = `nenhum`.
+
+    Fica separado de `normalizar_registro` de proposito: o nivel nao entra em `RegistroDoChat`
+    nem em `chat_guia_registros`, so no modo de cuidado."""
+    dados = bruto.model_dump() if hasattr(bruto, "model_dump") else (bruto if isinstance(bruto, Mapping) else {})
+    nivel = str(dados.get("bem_estar") or "").strip().lower()
+    return nivel if nivel in BEM_ESTAR else "nenhum"
+
+
 def normalizar_registro(bruto: Any, nomes: Iterable[str] = ()) -> RegistroDoChat:
     """O que o modelo devolveu em `registro`, dentro dos limites da tabela.
 
@@ -227,6 +240,7 @@ __all__ = [
     "VERSAO_REGISTRO",
     "mascarar",
     "nomes_para_mascarar",
+    "nivel_de_bem_estar",
     "normalizar_registro",
     "registro_de_navegacao",
     "resumir_memoria",

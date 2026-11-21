@@ -11,3 +11,7 @@ test("batalha pausada: só quando a leitura emocional desligou", () => {
   assert.equal(batalhaPausadaPeloEstado([{ enabled: true, disabledReason: null }]), false);
   assert.equal(batalhaPausadaPeloEstado([]), false);
 });
+
+test("batalha pausada também pelo modo de cuidado, com o mesmo texto neutro", () => {
+  assert.equal(batalhaPausadaPeloEstado([{ enabled: false, disabledReason: "modo_cuidado" }]), true);
+});

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import SegmentedPills from "../SegmentedPills";
+import AbaCuidado from "./AbaCuidado";
 import AbaPerfil from "./AbaPerfil";
 import AbaPersonalizacao from "./AbaPersonalizacao";
 import AbaTentativas from "./AbaTentativas";
@@ -8,7 +9,7 @@ import AbaVisaoGeral from "./AbaVisaoGeral";
 import CabecalhoAluno from "./CabecalhoAluno";
 import type { AlunoAnalisado, EvolucaoAluno, Personalizacao, ProgressoItem } from "./tipos";
 
-type Aba = "visao" | "perfil" | "trilha" | "tentativas" | "personalizacao";
+type Aba = "visao" | "perfil" | "trilha" | "tentativas" | "personalizacao" | "cuidado";
 
 const ABAS: { value: Aba; label: string }[] = [
   { value: "visao", label: "Visão geral" },
@@ -16,6 +17,7 @@ const ABAS: { value: Aba; label: string }[] = [
   { value: "trilha", label: "Trilha visual" },
   { value: "tentativas", label: "Tentativas" },
   { value: "personalizacao", label: "Personalização" },
+  { value: "cuidado", label: "Momentos de cuidado" },
 ];
 
 export default function DetalheAluno({
@@ -52,6 +54,7 @@ export default function DetalheAluno({
       {aba === "perfil" && <AbaPerfil aluno={aluno} />}
       {aba === "trilha" && <AbaTrilha aluno={aluno} />}
       {aba === "tentativas" && <AbaTentativas aluno={aluno} />}
+      {aba === "cuidado" && <AbaCuidado aluno={aluno} />}
       {aba === "personalizacao" && (
         <AbaPersonalizacao
           aluno={aluno}

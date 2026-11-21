@@ -35,7 +35,9 @@ import React, {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
+import { assinarModoDeCuidadoAtivo, modoDeCuidadoEstaAtivo } from "@/context/modoDeCuidado.core";
 
 type TopicPatchState = {
   topicoId: number;
@@ -552,6 +554,12 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
     () => getEffectiveMentalState(mentalState),
     [mentalState]
   );
+  // Quem liga é o `ModoDeCuidadoProvider`, montado dentro deste provider.
+  const modoDeCuidadoAtivo = useSyncExternalStore(
+    assinarModoDeCuidadoAtivo,
+    modoDeCuidadoEstaAtivo,
+    modoDeCuidadoEstaAtivo
+  );
   const profileDefaultPatches = useMemo(
     () => inferProfileDefaultPatches(profileName, guideName, modoNome),
     [guideName, modoNome, profileName]
@@ -878,6 +886,17 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
         resolved.disabledReason = "mental_state";
       }
 
+      // Modo de cuidado (spec 2026-11-20, seção 4): sem relógio e sem boss enquanto ele vale.
+      // Esconde também a contagem da tentativa já aberta; o prazo dela continua no servidor (#136).
+      if (
+        resolved.enabled &&
+        modoDeCuidadoAtivo &&
+        (key === "activity_timer" || key === "reading_timer" || key === "battle_mode")
+      ) {
+        resolved.enabled = false;
+        resolved.disabledReason = "modo_cuidado";
+      }
+
       const suppressedUntil =
         runtimeStates.suppressedUntil[buildScopeFeatureKey(scope, key)] ?? 0;
       if (resolved.enabled && suppressedUntil > getNow()) {
@@ -939,6 +958,7 @@ export function IAProvider({ children }: { children: React.ReactNode }) {
       featureRegistry,
       getTopicPatch,
       guideName,
+      modoDeCuidadoAtivo,
       profileCapabilities.hasBattle,
       profileCapabilities.hasChat,
       profileCapabilities.hasTimer,

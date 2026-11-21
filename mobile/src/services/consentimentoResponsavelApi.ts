@@ -16,6 +16,15 @@ import {
   type EstadoConsentimento,
   type ParametrosAceiteResponsavel,
 } from "@/utils/consentimentoResponsavel";
+import {
+  lerCuidadoPermitidoCom,
+  lerLeituraDoCuidado,
+  registrarConsentimentoCuidadoCom,
+  registrarCuidadoDoResponsavelCom,
+  type LeituraDoCuidado,
+  type ParametrosCuidadoDoResponsavel,
+  type ResultadoDoCuidado,
+} from "@/services/consentimentoCuidado";
 
 type Ouvinte = (estado: EstadoConsentimento) => void;
 
@@ -93,6 +102,24 @@ export function registrarAceiteResponsavel(params: ParametrosAceiteResponsavel) 
   return publicarResposta(
     supabase.rpc("responsavel_registrar_no_aparelho", argumentosAceiteResponsavel(params))
   );
+}
+
+// Modo de cuidado (20261120_04). A lógica mora em `consentimentoCuidado.ts`, com o cliente
+// injetado; aqui só se liga o Supabase. Nenhuma destas lança.
+export function lerMinhaDecisaoDeCuidado(alunoId: string): Promise<LeituraDoCuidado | null> {
+  return lerLeituraDoCuidado(supabase, alunoId);
+}
+
+export function lerCuidadoPermitido(): Promise<boolean> {
+  return lerCuidadoPermitidoCom(supabase);
+}
+
+export function registrarConsentimentoCuidado(aceito: boolean): Promise<ResultadoDoCuidado> {
+  return registrarConsentimentoCuidadoCom(supabase, aceito);
+}
+
+export function registrarCuidadoDoResponsavel(params: ParametrosCuidadoDoResponsavel): Promise<ResultadoDoCuidado> {
+  return registrarCuidadoDoResponsavelCom(supabase, params);
 }
 
 export function registrarConsentimentoPesquisa(aceito: boolean) {

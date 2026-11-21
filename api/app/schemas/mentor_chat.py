@@ -15,7 +15,7 @@ class RegistroDaConversa(BaseModel):
     (`mascaramento_chat.normalizar_registro`), em vez de reprovar a resposta inteira."""
 
     model_config = ConfigDict(
-        json_schema_extra={"required": ["intencao", "assunto", "conceitos", "dificuldade"]}
+        json_schema_extra={"required": ["intencao", "assunto", "conceitos", "dificuldade", "bem_estar"]}
     )
 
     # duvida_materia | pedido_resposta | navegacao_app | personalizacao | estrategia_estudo | desabafo | outro
@@ -25,6 +25,8 @@ class RegistroDaConversa(BaseModel):
     conceitos: list[str] = Field(default_factory=list)
     # nenhuma | alguma | travado
     dificuldade: str = "nenhuma"
+    # nenhum | desconforto | crise | risco. Vai so ao modo de cuidado: nunca a chat_guia_registros.
+    bem_estar: str = "nenhum"
 
 
 class MentorChatLLMResult(BaseModel):

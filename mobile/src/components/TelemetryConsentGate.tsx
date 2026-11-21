@@ -16,8 +16,11 @@ import {
 import { comPrazo, escolherDecisao } from "@/services/consentimentoRemoto";
 import {
   carregarEstadoConsentimento,
+  lerMinhaDecisaoDeCuidado,
   limparEstadoConsentimento,
 } from "@/services/consentimentoResponsavelApi";
+import { deveMostrarItemNovo, type LeituraDoCuidado } from "@/services/consentimentoCuidado";
+import { ItemNovoDoTermo } from "@/components/consentimento/ItemNovoDoTermo";
 import { useEstadoConsentimento } from "@/hooks/useEstadoConsentimento";
 import { proximoPasso } from "@/utils/consentimentoResponsavel";
 import { DataNascimentoForm } from "@/components/consentimento/DataNascimentoForm";
@@ -60,6 +63,12 @@ export function TelemetryConsentGate() {
   // restrito e o pedido volta na proxima vez (ou em Perfil > Coleta e acessos).
   const [adiouNascimento, setAdiouNascimento] = useState(false);
   const [adiouResponsavel, setAdiouResponsavel] = useState(false);
+  // Modo de cuidado (20261120_04): o item novo do termo, só ao adulto sem decisão na versão
+  // vigente. Leitura que falha fica `null` e o item não aparece; "Decidir depois" vale para esta
+  // abertura.
+  const [leituraCuidado, setLeituraCuidado] = useState<LeituraDoCuidado | null>(null);
+  const [itemCuidadoFechado, setItemCuidadoFechado] = useState(false);
+  const adulto = estado.menor === false;
 
   useEffect(() => {
     let active = true;
@@ -117,8 +126,23 @@ export function TelemetryConsentGate() {
     };
   }, [alunoId]);
 
+  // Lida à parte e só para o adulto, depois do resto: o termo e as outras etapas não esperam por
+  // ela, e sem resposta no prazo o item simplesmente não aparece.
+  useEffect(() => {
+    setLeituraCuidado(null);
+    setItemCuidadoFechado(false);
+    if (!alunoId || loading || !adulto) return;
+    let active = true;
+    void comPrazo(lerMinhaDecisaoDeCuidado(alunoId), PRAZO_DA_LEITURA_MS).then((leitura) => {
+      if (active) setLeituraCuidado(leitura);
+    });
+    return () => {
+      active = false;
+    };
+  }, [alunoId, loading, adulto]);
+
   const passo = proximoPasso(estado);
-  const etapa: "data_nascimento" | "responsavel" | "termo" | null = !alunoId
+  const etapa: "data_nascimento" | "responsavel" | "termo" | "cuidado" | null = !alunoId
     ? null
     : passo === "data_nascimento" && !adiouNascimento
     ? "data_nascimento"
@@ -126,6 +150,8 @@ export function TelemetryConsentGate() {
     ? "responsavel"
     : termoPendente
     ? "termo"
+    : !itemCuidadoFechado && deveMostrarItemNovo({ menor: estado.menor, leitura: leituraCuidado })
+    ? "cuidado"
     : null;
   const visible = etapa !== null;
 
@@ -167,6 +193,24 @@ export function TelemetryConsentGate() {
   };
 
   if (loading) return null;
+
+  if (etapa === "cuidado") {
+    return (
+      <Modal visible transparent animationType="fade" onRequestClose={() => setItemCuidadoFechado(true)}>
+        <View style={styles.backdrop}>
+          <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+              <ItemNovoDoTermo
+                palette={palette}
+                onDecidido={() => setItemCuidadoFechado(true)}
+                onAdiar={() => setItemCuidadoFechado(true)}
+              />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   if (etapa === "data_nascimento" || etapa === "responsavel") {
     return (

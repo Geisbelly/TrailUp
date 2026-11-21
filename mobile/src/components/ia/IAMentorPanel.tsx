@@ -2,6 +2,7 @@ import { OrnamentDivider } from "@/components/HallTheme";
 import { getBrainHexConfig, getBrainHexGuideName } from "@/constants/profileImages";
 import { useIA } from "@/context/IAContext";
 import { useMetricas } from "@/context/MetricasContext";
+import { useModoDeCuidado } from "@/context/ModoDeCuidadoContext";
 import { useUsuario } from "@/context/SessaoContext";
 import { usePersonalizacaoProvider } from "@/services/personalizacao/PersonalizacaoProviderContext";
 import { FontFamily } from "@/styles/GlobalStyle";
@@ -33,6 +34,7 @@ import { ModoRestritoError } from "@/utils/consentimentoResponsavel";
 import { shadowStyle } from "@/utils/webShadow";
 import { falaAssinadaDaResposta, falaParaHistorico, type FalaAssinada } from "./historicoDoGuia";
 import { painelAoLadoDoBotao } from "./ladoDoPainel";
+import { ligarCuidadoSeOGuiaPediu } from "./modoCuidadoDoGuia";
 
 const IS_WEB = Platform.OS === "web";
 const SOMBRA_CARD = { offset: { width: 0, height: 10 }, opacity: 0.28, radius: 20 };
@@ -231,6 +233,7 @@ export function IAMentorPanel({
     resolveFeature,
   } = useIA();
   const { recordAppEvent } = useMetricas();
+  const { ligarPeloGuia } = useModoDeCuidado();
   const personalizacaoProvider = usePersonalizacaoProvider();
 
   const profileName = perfilVisualDoAluno(usuario);
@@ -552,6 +555,8 @@ export function IAMentorPanel({
         mensagem: text,
         historico: nextHistory.slice(-8).map(falaParaHistorico),
       });
+      // Antes de tudo o mais: o alívio liga mesmo se o texto da resposta vier vazio.
+      ligarCuidadoSeOGuiaPediu(response, ligarPeloGuia);
 
       const reply = normalizeMentorReplyTone(String(response?.reply ?? ""));
       if (!response || !reply) {
