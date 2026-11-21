@@ -25,15 +25,15 @@ continua escrevendo o texto (a linha suprimida fica com o texto que teria saído
 
 Nunca derruba quem escreve: falha vira `WARNING` e a revisão segue como antes.
 
-Revision ID: 20261120_06
-Revises: 20261120_03
+Revision ID: 20261121_03
+Revises: 20261121_02
 Create Date: 2026-11-20
 """
 
 from alembic import op
 
-revision = "20261120_06"
-down_revision = "20261120_03"
+revision = "20261121_03"
+down_revision = "20261121_02"
 branch_labels = None
 depends_on = None
 

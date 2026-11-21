@@ -9,7 +9,7 @@ import {
   type ClienteDoCuidado,
 } from "./cuidadoNoBanco";
 
-// Formato real das RPCs da `20261120_05`. Nenhuma função daqui lança: o alívio na tela nunca
+// Formato real das RPCs da `20261121_02`. Nenhuma função daqui lança: o alívio na tela nunca
 // cai porque a rede caiu.
 
 function cliente(rpc: (funcao: string, args?: Record<string, unknown>) => unknown, linhas?: unknown): ClienteDoCuidado {

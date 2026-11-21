@@ -1,4 +1,4 @@
-"""Modo de cuidado (`20261120_04`, `_02`): consentimento e momento gravado pelo Guia.
+"""Modo de cuidado (`20261121_01`, `_02`): consentimento e momento gravado pelo Guia.
 
 O banco decide (consentimento, intervalo, matricula, chaves permitidas); a API so chama as funcoes
 internas. Nada aqui recebe nem grava texto do aluno. `registrar_pelo_guia` roda em transacao propria

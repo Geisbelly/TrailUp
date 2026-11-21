@@ -104,7 +104,7 @@ export function registrarAceiteResponsavel(params: ParametrosAceiteResponsavel) 
   );
 }
 
-// Modo de cuidado (20261120_04). A lógica mora em `consentimentoCuidado.ts`, com o cliente
+// Modo de cuidado (20261121_01). A lógica mora em `consentimentoCuidado.ts`, com o cliente
 // injetado; aqui só se liga o Supabase. Nenhuma destas lança.
 export function lerMinhaDecisaoDeCuidado(alunoId: string): Promise<LeituraDoCuidado | null> {
   return lerLeituraDoCuidado(supabase, alunoId);

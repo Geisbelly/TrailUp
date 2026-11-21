@@ -115,7 +115,7 @@ const esperar = () => new Promise((r) => setImmediate(r));
 
 test("a versão do app é a mesma da migração", () => {
   const migracao = readFileSync(
-    resolve(__dirname, "../../../../api/alembic/versions/20261120_04_consentimento_cuidado.py"),
+    resolve(__dirname, "../../../../api/alembic/versions/20261121_01_consentimento_cuidado.py"),
     "utf8"
   );
   const m = /^VERSAO_CUIDADO = "([^"]+)"/m.exec(migracao);

@@ -7,7 +7,7 @@ import { normalizarMomento, rpcAusente, type MomentoDeCuidado } from "./cuidado"
 export type EstadoDoCuidado =
   | { tipo: "carregando" }
   | { tipo: "pronto" }
-  | { tipo: "indisponivel" } // migration 20261120_05 ainda não aplicada neste banco
+  | { tipo: "indisponivel" } // migration 20261121_02 ainda não aplicada neste banco
   | { tipo: "erro"; detalhe: string };
 
 export type DadosDoCuidado = { momentos: MomentoDeCuidado[]; topicos: Map<number, string> };

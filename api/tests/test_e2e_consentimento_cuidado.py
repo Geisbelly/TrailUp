@@ -1,8 +1,8 @@
-"""Ponta a ponta da `20261120_04` (consentimento do modo de cuidado) num Postgres de verdade.
+"""Ponta a ponta da `20261121_01` (consentimento do modo de cuidado) num Postgres de verdade.
 
 Roda so com `TRAILUP_E2E_CUIDADO_DATABASE_URL` apontando para um Postgres LOCAL (o usuario
 precisa poder `CREATE DATABASE`). Cada teste usa um banco descartavel: aplica a `20261024_02`
-(consentimento do responsavel, de que o cuidado depende) e depois a `20261120_04`, exatamente
+(consentimento do responsavel, de que o cuidado depende) e depois a `20261121_01`, exatamente
 como o `upgrade()` emite. Recusa banco hospedado. Uuids e nomes sinteticos.
 """
 
@@ -89,7 +89,7 @@ CREATE TABLE public.telemetria_lotes (id bigserial PRIMARY KEY, aluno_id uuid);
 CREATE TABLE public.telemetria_eventos_app (id bigserial PRIMARY KEY, aluno_id uuid);
 CREATE TABLE public.telemetria_time_metric_entries (id bigserial PRIMARY KEY, aluno_id uuid);
 
--- O que a 20261120_05 (momentos de cuidado) le: turma, tentativas, cronometro e configuracao.
+-- O que a 20261121_02 (momentos de cuidado) le: turma, tentativas, cronometro e configuracao.
 CREATE TABLE public.topicos (id bigint PRIMARY KEY, classe_id bigint NOT NULL);
 CREATE TABLE public.atividades (id bigint PRIMARY KEY, topico_id bigint);
 CREATE TABLE public.atividade_tentativas (
@@ -144,8 +144,8 @@ def _dsn_para(banco: str) -> str:
 @contextmanager
 def _banco():
     resp = _modulo("20261024_02_consentimento_do_responsavel.py")
-    cuid = _modulo("20261120_04_consentimento_cuidado.py")
-    momentos = _modulo("20261120_05_momentos_de_cuidado.py")
+    cuid = _modulo("20261121_01_consentimento_cuidado.py")
+    momentos = _modulo("20261121_02_momentos_de_cuidado.py")
     nome = f"tu_cuid_{uuid.uuid4().hex[:12]}"
     with psycopg.connect(DSN, autocommit=True) as adm:
         adm.execute(f"CREATE DATABASE {nome}")

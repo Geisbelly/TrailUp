@@ -1,4 +1,4 @@
-"""`20261120_06`: no dia em que a IA escreveu a notificação diária, a revisão diária não sai.
+"""`20261121_03`: no dia em que a IA escreveu a notificação diária, a revisão diária não sai.
 
 Mesmo banco do e2e da `20261120_02`, com a `_06` por cima. Aluno C (Conqueror, estudando Frações).
 Dados sintéticos.
@@ -13,7 +13,7 @@ from tests import test_e2e_notificacao_rotina_com_o_topico_do_aluno as rotina
 
 pytestmark = f5.e2e
 
-M = f5.modulo("20261120_06_revisao_diaria_cede_a_notificacao_da_ia.py")
+M = f5.modulo("20261121_03_revisao_diaria_cede_a_notificacao_da_ia.py")
 C = rotina.C
 
 

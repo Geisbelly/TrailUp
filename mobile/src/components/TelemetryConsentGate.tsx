@@ -63,7 +63,7 @@ export function TelemetryConsentGate() {
   // restrito e o pedido volta na proxima vez (ou em Perfil > Coleta e acessos).
   const [adiouNascimento, setAdiouNascimento] = useState(false);
   const [adiouResponsavel, setAdiouResponsavel] = useState(false);
-  // Modo de cuidado (20261120_04): o item novo do termo, só ao adulto sem decisão na versão
+  // Modo de cuidado (20261121_01): o item novo do termo, só ao adulto sem decisão na versão
   // vigente. Leitura que falha fica `null` e o item não aparece; "Decidir depois" vale para esta
   // abertura.
   const [leituraCuidado, setLeituraCuidado] = useState<LeituraDoCuidado | null>(null);

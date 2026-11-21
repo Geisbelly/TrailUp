@@ -1,6 +1,6 @@
 /**
  * O lado Supabase do modo de cuidado (spec `2026-11-20-modo-de-cuidado-design.md`, seções 3 a 5):
- * as RPCs `cuidado_registrar`, `cuidado_ativo` e `cuidado_responder` (`20261120_05`) e as chaves
+ * as RPCs `cuidado_registrar`, `cuidado_ativo` e `cuidado_responder` (`20261121_02`) e as chaves
  * `cuidado_*` de `app_config` (públicas: o app precisa delas antes de decidir).
  *
  * Direto no Supabase, sem a API: nada aqui tem modelo de linguagem (regra de fronteira). Nenhuma

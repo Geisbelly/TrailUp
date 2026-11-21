@@ -2,7 +2,7 @@
 
 O modo de cuidado acolhe o aluno em crise ou sobrecarregado. Esta migracao cria onde ele
 registra o que aconteceu, e as RPCs que a API, o app e o console chamam. Dado sensivel: so
-existe com o consentimento vigente (`aluno_cuidado_permitido`, `20261120_04`) e guarda numeros
+existe com o consentimento vigente (`aluno_cuidado_permitido`, `20261121_01`) e guarda numeros
 e codigos, nunca o texto do aluno.
 
 ## O que esta migracao cria
@@ -22,7 +22,7 @@ e codigos, nunca o texto do aluno.
    tempo, nao efeito).
 7. `fn_cronometro_ligado` -- parte do texto vivo em producao e devolve `false` enquanto ha
    momento valendo. `aluno_cronometro` nao e tocado: passado o cuidado, vale a escolha dele.
-8. `responsavel_registrar_cuidado` -- regravada a partir da `20261120_04`: quando o RESPONSAVEL
+8. `responsavel_registrar_cuidado` -- regravada a partir da `20261121_01`: quando o RESPONSAVEL
    revoga o cuidado, os momentos do aluno tambem sao apagados (como na revogacao do proprio aluno).
 9. Chaves de `app_config` (`cuidado_*`, publicas) e a linha em `retencao_politica` (180 dias,
    a pesquisa nao estende o prazo de dado sensivel).
@@ -44,8 +44,8 @@ e codigos, nunca o texto do aluno.
 
 Nada aqui foi aplicado em producao.
 
-Revision ID: 20261120_05
-Revises: 20261120_04
+Revision ID: 20261121_02
+Revises: 20261121_01
 Create Date: 2026-11-20
 """
 
@@ -56,8 +56,8 @@ from pathlib import Path
 
 from alembic import op
 
-revision = "20261120_05"
-down_revision = "20261120_04"
+revision = "20261121_02"
+down_revision = "20261121_01"
 branch_labels = None
 depends_on = None
 
@@ -140,7 +140,7 @@ TABELA_SQL = [
     "GRANT USAGE, SELECT ON SEQUENCE public.aluno_momento_cuidado_id_seq TO service_role",
     """
     COMMENT ON TABLE public.aluno_momento_cuidado IS
-      'Momentos de cuidado (20261120_05). So numeros e codigos, nunca o texto do aluno. Aluno le os '
+      'Momentos de cuidado (20261121_02). So numeros e codigos, nunca o texto do aluno. Aluno le os '
       'proprios; professor SEM policy aqui de proposito (cuidado_da_turma nao devolve o nivel); '
       'escrita so por RPC.'
     """,
@@ -178,7 +178,7 @@ AS $function$
 $function$;
 """
 
-# Regravada a partir da `20261120_04`; so muda o DELETE no ramo da revogacao.
+# Regravada a partir da `20261121_01`; so muda o DELETE no ramo da revogacao.
 RESPONSAVEL_SQL = """
 CREATE OR REPLACE FUNCTION public.responsavel_registrar_cuidado(
   p_aceito boolean,
@@ -573,10 +573,10 @@ $function$;
 
 
 def downgrade() -> None:
-    # Volta o cronometro ao texto de antes e a `responsavel_registrar_cuidado` ao da `20261120_04`
+    # Volta o cronometro ao texto de antes e a `responsavel_registrar_cuidado` ao da `20261121_01`
     # (que so apaga momentos se a tabela existir), e so depois derruba o que depende da tabela.
     op.execute(_CRONOMETRO_ANTERIOR)
-    anterior = Path(__file__).with_name("20261120_04_consentimento_cuidado.py")
+    anterior = Path(__file__).with_name("20261121_01_consentimento_cuidado.py")
     spec = importlib.util.spec_from_file_location("_cuidado_01", anterior)
     modulo = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modulo)

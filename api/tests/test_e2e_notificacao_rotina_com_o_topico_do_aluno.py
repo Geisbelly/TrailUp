@@ -20,7 +20,7 @@ A, C = fala.A, fala.C
 
 
 def _banco_args() -> list[str]:
-    """O SQL do banco deste e2e, para quem monta por cima (`20261120_06`)."""
+    """O SQL do banco deste e2e, para quem monta por cima (`20261121_03`)."""
     return [
         *fala.p.h._motor(),
         *f5.sql_de(fala.p.M01),

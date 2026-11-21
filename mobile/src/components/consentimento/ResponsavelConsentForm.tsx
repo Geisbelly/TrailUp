@@ -58,7 +58,7 @@ const ITENS: { chave: Finalidade; titulo: string; descricao: string }[] = [
   },
 ];
 
-// Modo de cuidado (20261120_04). Fica fora de `Finalidades` de propósito: a RPC
+// Modo de cuidado (20261121_01). Fica fora de `Finalidades` de propósito: a RPC
 // `responsavel_registrar_no_aparelho` só conhece as cinco de antes e descartaria esta chave. O
 // cuidado vai por `responsavel_registrar_cuidado`, que muda só ele.
 export const ITEM_CUIDADO_RESPONSAVEL = {

@@ -44,15 +44,15 @@ se menor, tambem o do responsavel. O desenho copia o ramo `pesquisa` de
 
 Nada aqui foi aplicado em producao.
 
-Revision ID: 20261120_04
-Revises: 20261120_03
+Revision ID: 20261121_01
+Revises: 20261120_05
 Create Date: 2026-11-20
 """
 
 from alembic import op
 
-revision = "20261120_04"
-down_revision = "20261120_03"
+revision = "20261121_01"
+down_revision = "20261120_05"
 branch_labels = None
 depends_on = None
 

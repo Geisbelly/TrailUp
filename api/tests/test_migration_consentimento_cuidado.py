@@ -1,4 +1,4 @@
-"""Estrutura da `20261120_04` (consentimento do modo de cuidado). O comportamento esta no e2e."""
+"""Estrutura da `20261121_01` (consentimento do modo de cuidado). O comportamento esta no e2e."""
 
 from __future__ import annotations
 
@@ -6,14 +6,14 @@ import re
 
 from tests import _f5_banco as f5
 
-M = f5.modulo("20261120_04_consentimento_cuidado.py")
+M = f5.modulo("20261121_01_consentimento_cuidado.py")
 UP = "\n".join(f5.sql_de(M))
 DOWN = "\n".join(f5.sql_de(M, "downgrade"))
 
 
-def test_encadeia_depois_da_20261120_03():
-    assert M.revision == "20261120_04"
-    assert M.down_revision == "20261120_03"
+def test_encadeia_depois_da_20261120_05():
+    assert M.revision == "20261121_01"
+    assert M.down_revision == "20261120_05"
 
 
 def test_versao_vigente():

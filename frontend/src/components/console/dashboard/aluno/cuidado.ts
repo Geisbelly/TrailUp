@@ -1,5 +1,5 @@
 /**
- * Textos da aba "Momentos de cuidado" (`cuidado_da_turma`, migração `20261120_05`).
+ * Textos da aba "Momentos de cuidado" (`cuidado_da_turma`, migração `20261121_02`).
  *
  * O professor vê o que ACONTECEU (origem, fatos de uso, o que o app e o Guia fizeram, se o aluno
  * pausou), nunca o que o aluno escreveu nem o nível que o Guia identificou: a RPC não devolve

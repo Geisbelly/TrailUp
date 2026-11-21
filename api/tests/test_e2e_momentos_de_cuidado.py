@@ -1,7 +1,7 @@
-"""Ponta a ponta da `20261120_05` (momentos de cuidado) num Postgres de verdade.
+"""Ponta a ponta da `20261121_02` (momentos de cuidado) num Postgres de verdade.
 
 Mesmo banco descartavel do e2e do consentimento (`TRAILUP_E2E_CUIDADO_DATABASE_URL`, Postgres
-LOCAL), com as migrations `20261024_02`, `20261120_04` e `20261120_05` aplicadas como o
+LOCAL), com as migrations `20261024_02`, `20261121_01` e `20261121_02` aplicadas como o
 `upgrade()` emite. As RPCs sao chamadas como `authenticated` com as claims do aluno.
 """
 

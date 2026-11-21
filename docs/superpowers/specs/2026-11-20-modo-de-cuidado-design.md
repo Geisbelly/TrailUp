@@ -1,8 +1,8 @@
 # Modo de cuidado: aluno em crise ou sobrecarregado
 
 Data: 20/11/2026. Estado: implementado no PR do modo de cuidado (branch `feat/modo-de-cuidado`),
-ainda não aplicado em produção. Migrations: `20261120_04_consentimento_cuidado` e
-`20261120_05_momentos_de_cuidado`. Antes do merge, a autora confirma os cinco valores de
+ainda não aplicado em produção. Migrations: `20261121_01_consentimento_cuidado` e
+`20261121_02_momentos_de_cuidado`. Antes do merge, a autora confirma os cinco valores de
 `app_config`, a lista de frases de risco (`api/app/services/risco_no_chat.py`), a frase do CVV e o
 texto do item novo do termo.
 

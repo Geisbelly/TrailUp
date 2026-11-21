@@ -9,7 +9,7 @@
 // do banco e a versão histórica preservada na migration original.
 export const CONSENTIMENTO_RESPONSAVEL_VERSAO = "2026-11-05-resp-v2";
 export const CONSENTIMENTO_PESQUISA_VERSAO = "2026-10-24-pesq-v1";
-// Termo do modo de cuidado: versão própria (`consentimento_cuidado_versao_vigente()`, 20261120_04).
+// Termo do modo de cuidado: versão própria (`consentimento_cuidado_versao_vigente()`, 20261121_01).
 // Mudou o texto do item, sobe as duas juntas; o banco recusa versão diferente (22023).
 export const CONSENTIMENTO_CUIDADO_VERSAO = "2026-11-20-cuid-v1";
 

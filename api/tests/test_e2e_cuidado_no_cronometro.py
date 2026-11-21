@@ -1,4 +1,4 @@
-"""`20261120_05` contra a função real que abre a tentativa (`atividade_iniciar_tentativa`, `20261101_13`).
+"""`20261121_02` contra a função real que abre a tentativa (`atividade_iniciar_tentativa`, `20261101_13`).
 
 O e2e dos momentos testa `fn_cronometro_ligado` sozinha, numa cópia mínima. Este liga o caminho
 de verdade: esqueleto de produção, a `20261101_13`, a `20261111_01` (vetor de perfil) e as duas
@@ -31,7 +31,7 @@ def _banco():
             "20261024_02_consentimento_do_responsavel.py",
         ),
         _ANONIMIZA,
-        *_sql("20261120_04_consentimento_cuidado.py", "20261120_05_momentos_de_cuidado.py"),
+        *_sql("20261121_01_consentimento_cuidado.py", "20261121_02_momentos_de_cuidado.py"),
     )
 
 

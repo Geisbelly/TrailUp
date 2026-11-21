@@ -109,7 +109,7 @@ export default function ColetaDadosScreen() {
   const [salvandoPesquisa, setSalvandoPesquisa] = useState(false);
   const [erroPesquisa, setErroPesquisa] = useState<string | null>(null);
 
-  // Modo de cuidado (20261120_04). Leitura que falha deixa `null` e o cartão não aparece: o
+  // Modo de cuidado (20261121_01). Leitura que falha deixa `null` e o cartão não aparece: o
   // aluno não fica diante de um interruptor que não sabe o próprio estado.
   const alunoId = usuario?.id ?? null;
   const [leituraCuidado, setLeituraCuidado] = useState<LeituraDoCuidado | null>(null);

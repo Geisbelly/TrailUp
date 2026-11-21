@@ -1,7 +1,7 @@
 /**
  * Consentimento do modo de cuidado (spec `2026-11-20-modo-de-cuidado-design.md`, seção 1).
  *
- * Fala com as RPCs da `20261120_04`: `aluno_registrar_consentimento_cuidado`,
+ * Fala com as RPCs da `20261121_01`: `aluno_registrar_consentimento_cuidado`,
  * `responsavel_registrar_cuidado` e `aluno_meu_cuidado_permitido`, e lê a última decisão do
  * aluno em `consentimento_cuidado` (policy `consentimento_cuidado_aluno_sel`). Direto no
  * Supabase: nada aqui tem modelo de linguagem.
