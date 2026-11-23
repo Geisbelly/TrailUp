@@ -32,7 +32,7 @@ O conteúdo segue a cartilha (`/pesquisa/professores`) e o módulo
 **Narração:**
 > Você não vai avaliar material feito especialmente para a pesquisa. Vai usar o sistema, como um
 > professor usaria, numa turma de demonstração, e dizer por escrito o que funciona e o que não
-> funciona. Pode testar com o conteúdo da turma ou com um conteúdo seu. Leva de uma hora a uma hora e quinze. Não precisa saber programar nem entender
+> funciona. Pode testar com o conteúdo da turma ou com um conteúdo seu. Leva cerca de uma hora. Não precisa saber programar nem entender
 > de inteligência artificial: o que interessa é a sua visão de especialista.
 
 ## Cena 3. Resultado negativo também é resultado (0:45–1:05)
@@ -41,7 +41,7 @@ O conteúdo segue a cartilha (`/pesquisa/professores`) e o módulo
 
 **Narração:**
 > Um ponto importante: quem está sendo avaliado é o sistema, não você. Uma tarefa difícil ou uma
-> sugestão errada da IA é exatamente o que a pesquisa precisa encontrar. Crítica franca ajuda; nota
+> métrica confusa é exatamente o que a pesquisa precisa encontrar. Crítica franca ajuda; nota
 > dada por gentileza atrapalha.
 
 ## Cena 4. As três etapas (1:05–1:45)
@@ -67,19 +67,23 @@ O conteúdo segue a cartilha (`/pesquisa/professores`) e o módulo
 
 ## Cena 5. O roteiro no console (1:45–2:40)
 
-**Tela:** gravação do console, uma aba por vez, com o código da tarefa no canto (T1…T8).
+**Tela:** gravação do console, uma aba por vez, com o código da tarefa no canto (T1…T6).
 
 **Narração:**
-> O roteiro tem dez tarefas. Oito são no console do professor.
+> O roteiro tem oito tarefas. Seis são no console do professor.
 >
 > Você conhece a turma, em Turmas, e explora a trilha, em Trilhas. Em Personalizações, vê o
 > material de cada perfil e, se quiser, pede uma geração por IA, inclusive sobre um conteúdo seu,
 > desde que sem dados de alunos reais. Ela pode demorar ou não sair,
 > porque o modelo tem limite diário gratuito; se isso acontecer, anote e siga em frente.
 >
-> Na Visão geral, procura um aluno que precisa de atenção. Em Recomendações, lê uma sugestão da IA
-> e decide o que faria com ela. Em Notas, abre a fila de correção. Depois passa por Economia,
+> Na Visão geral, lê as métricas da turma. Como a turma de demonstração ainda não tem alunos
+> estudando, os painéis aparecem com números de exemplo, marcados com um selo: o que você julga é se
+> entende cada painel e se a visualização é clara, não o número. Depois passa por Economia,
 > Missões, Eventos e Conquistas, e termina nos rankings e guildas.
+>
+> Esta rodada não avalia as sugestões da IA sobre alunos, a busca por aluno que precisa de atenção
+> nem a correção de entregas: isso depende de alunos com histórico, e fica para uma próxima rodada.
 >
 > Depois de cada tarefa, o formulário faz quatro perguntas rápidas: se você conseguiu, de 1 a 7 se
 > foi difícil ou fácil, quanto tempo levou mais ou menos e onde travou. Dizer que não conseguiu é
@@ -90,11 +94,9 @@ O conteúdo segue a cartilha (`/pesquisa/professores`) e o módulo
 | T1 Conhecer a turma | Turmas |
 | T2 Explorar a trilha | Trilhas |
 | T3 Ver e pedir uma personalização | Personalizações |
-| T4 Achar um aluno que precisa de atenção | Visão geral |
-| T5 Ler uma sugestão da IA | Recomendações |
-| T6 Corrigir uma entrega | Notas |
-| T7 Entender o jogo da turma | Economia, Missões, Eventos, Conquistas |
-| T8 Ver a competição | Rankings, Rank de batalhas, Guildas |
+| T4 Ler as métricas da turma | Visão geral (painéis com o selo de exemplo) |
+| T5 Entender o jogo da turma | Economia, Missões, Eventos, Conquistas |
+| T6 Ver a competição | Rankings, Rank de batalhas, Guildas |
 
 ## Cena 6. Pelo lado do aluno (2:40–3:00)
 
@@ -107,7 +109,7 @@ O conteúdo segue a cartilha (`/pesquisa/professores`) e o módulo
 ## Cena 7. O que você avalia (3:00–3:30)
 
 **Tela:** cartela com as etiquetas: Usabilidade · Carga de trabalho · Métricas do console ·
-Sugestões da IA · Material personalizado · Tela do aluno · Utilidade · Esforço e rotina.
+Material personalizado · Tela do aluno · Utilidade · Esforço e rotina.
 Gamificação e Dados dos alunos aparecem com a marca "opcional".
 
 **Narração:**
@@ -115,7 +117,7 @@ Gamificação e Dados dos alunos aparecem com a marca "opcional".
 > Começa pela usabilidade, com a escala brasileira validada, e pela carga de trabalho das tarefas.
 > Para as métricas, há um instrumento internacional de avaliação de painéis educacionais: se o
 > console deixaria você ciente da situação dos alunos, se estimularia a adaptar a sua prática, e
-> que ação você tomaria. Depois, se você entende e confia nas sugestões da IA, o que achou do
+> que ação você tomaria se aqueles números fossem da sua turma. Depois, o que achou do
 > material personalizado e da tela do aluno, a utilidade e o esforço na sua rotina. Gamificação e
 > dados dos alunos são opcionais. Se você não viu um recurso, marque "não observei". No fim, quatro
 > perguntas abertas, com as suas palavras.

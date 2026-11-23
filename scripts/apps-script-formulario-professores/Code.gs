@@ -106,13 +106,11 @@ const TAREFAS = [
   ['T1', 'Conhecer a turma', ['Em Turmas, abra a turma de demonstração.', 'Veja quem está matriculado e o perfil de cada aluno.']],
   ['T2', 'Explorar a trilha', ['Em Trilhas, abra a trilha da turma.', 'Entre num tópico e veja os conteúdos, as atividades e as questões.']],
   ['T3', 'Ver e pedir uma personalização', ['Em Personalizações, veja os perfis da turma e o material de um perfil.', 'Se quiser, peça uma geração por IA, sobre o conteúdo da turma ou sobre um conteúdo seu (ela pode levar alguns minutos ou não sair, por causa do limite gratuito do modelo).']],
-  ['T4', 'Achar um aluno que precisa de atenção', ['Na Visão geral, olhe os indicadores da turma.', 'Encontre um aluno com sinal de alerta e abra o detalhe dele.']],
-  ['T5', 'Ler uma sugestão da IA', ['Em Recomendações, leia um insight ou uma intervenção sugerida.', 'Decida se aceitaria, ignoraria ou deixaria para depois.']],
-  ['T6', 'Corrigir uma entrega', ['Em Notas, abra a fila e veja uma entrega de aluno.']],
-  ['T7', 'Entender o jogo da turma', ['Passe por Economia, Missões, Eventos e Conquistas.', 'Veja como as moedas, a loja, as missões e os eventos estão configurados.']],
-  ['T8', 'Ver a competição', ['Abra Rankings, Rank de batalhas e Guildas.']],
-  ['T9', 'Estudar como aluno', ['Entre com o seu acesso de aluno de teste.', 'Abra a trilha, um tópico e o material personalizado (texto, áudio ou apresentação).']],
-  ['T10', 'Ver o jogo pelo lado do aluno', ['Ainda como aluno, abra as missões, a loja e o ranking.']],
+  ['T4', 'Ler as métricas da turma', ['Na Visão geral, com a turma de demonstração selecionada, veja os painéis com o selo de exemplo.', 'Em cada métrica, abra a explicação (o ícone ao lado do nome) e diga para você mesmo o que ela mostra.']],
+  ['T5', 'Entender o jogo da turma', ['Passe por Economia, Missões, Eventos e Conquistas.', 'Veja como as moedas, a loja, as missões e os eventos estão configurados.']],
+  ['T6', 'Ver a competição', ['Abra Rankings, Rank de batalhas e Guildas.']],
+  ['T7', 'Estudar como aluno', ['Entre com o seu acesso de aluno de teste.', 'Abra a trilha, um tópico e o material personalizado (texto, áudio ou apresentação).']],
+  ['T8', 'Ver o jogo pelo lado do aluno', ['Ainda como aluno, abra as missões, a loja e o ranking.']],
 ];
 
 // Depois de cada tarefa: conclusão (autodeclarada), SEQ, tempo em faixas e onde travou.
@@ -126,7 +124,10 @@ const PERGUNTA_DA_TAREFA = 'Onde travou, o que confundiu ou o que faltou? (opcio
 
 const ACESSO = ACESSO_TCLE;
 
-const FRANQUEZA = 'A pesquisa se alimenta tanto de resultados negativos quanto de positivos. Uma tarefa difícil, uma métrica confusa ou uma sugestão errada da IA é exatamente o que precisa aparecer: é isso que mostra o que corrigir antes de o sistema chegar a alunos. Nota dada por gentileza atrapalha a pesquisa; crítica franca ajuda.';
+// O que esta rodada não avalia (dito na abertura da avaliação). Igual a FORA_DESTA_RODADA da cartilha.
+const FORA_DESTA_RODADA = 'Esta rodada avalia o TrailUp no formato base: as telas, as métricas e o material. Não avalia as sugestões da IA sobre alunos, a busca por aluno que precisa de atenção nem a correção de entregas, porque isso depende de alunos com histórico, e a turma de demonstração não tem. As métricas aparecem com valores de exemplo, marcados como tais: julgue se entende cada uma e se a visualização é clara, não o número.';
+
+const FRANQUEZA = 'A pesquisa se alimenta tanto de resultados negativos quanto de positivos. Uma tarefa difícil, uma métrica confusa ou um material gerado com erro é exatamente o que precisa aparecer: é isso que mostra o que corrigir antes de o sistema chegar a alunos. Nota dada por gentileza atrapalha a pesquisa; crítica franca ajuda.';
 
 // SUS, versão brasileira (Lourenço; Carmona; Lopes, 2022), Tabela 1.
 const EXTREMOS_SUS = ['Discordo fortemente', 'Concordo fortemente'];
@@ -171,7 +172,7 @@ const EXTREMOS_EFLA = ['Discordo totalmente', 'Concordo totalmente'];
 
 // Acionabilidade (Kasepalu et al., 2022).
 const ACIONABILIDADE = {
-  agiria: 'Com base nas métricas da Visão geral, eu tomaria alguma ação na turma.',
+  agiria: 'Se as métricas da Visão geral fossem da minha turma, eu tomaria alguma ação.',
   qualAcao: 'Que ação você tomaria, e para quem: a turma toda, alguns alunos, o planejamento do curso? Ou esperaria para ver? (opcional)',
   realidade: 'Quanto você acha que essas métricas refletiriam a realidade de uma turma de verdade?',
   extremosRealidade: ['0% (nada)', '100% (totalmente)'],
@@ -183,12 +184,13 @@ const METRICAS = [
   'Tempo ativo médio',
   'Retorno semanal',
   'Abandono médio',
-  'Sinais de alerta',
-  'Perfil BrainHex da turma',
+  'Abandono por perfil',
+  'Inatividade por perfil',
+  'Distribuição de notas',
 ];
 const COLUNAS_DAS_METRICAS = [
   'Entendi o que mostra',
-  'Confio no número',
+  'A visualização é clara',
   'Faria algo diferente na aula por causa dele',
 ];
 
@@ -218,18 +220,6 @@ const PERGUNTA_UEQS = 'Para você, a tela do aluno é:';
 // [titulo, opcional, itens[], pergunta aberta da página ou null, o que o bloco mede].
 // Origem de cada item: README.md.
 const BLOCOS = [
-  ['Sugestões da IA', false, [
-    'Entendi por que o sistema fez a sugestão para aquele aluno ou para a turma.',
-    'A explicação da sugestão tem detalhe suficiente.',
-    'A explicação é útil para eu decidir o que fazer.',
-    'A explicação deixa claro o quanto posso confiar na sugestão.',
-    'Confio nas sugestões do sistema.',
-    'As sugestões do sistema são confiáveis.',
-    'Desconfio das sugestões do sistema.',
-    'Eu levaria uma sugestão do sistema tão a sério quanto a de um colega professor.',
-    'Alguma sugestão me pareceu errada ou injusta com o aluno.',
-    'Eu conferiria os dados antes de agir a partir de uma sugestão.',
-  ], null, 'Se você entende por que a IA fez cada sugestão, se confia nela e se ela ajuda a decidir.'],
   ['Material personalizado', false, [
     'O conteúdo está correto, sem erros.',
     'O material está alinhado ao objetivo do tópico.',
@@ -382,7 +372,8 @@ function criarFormulario() {
     .setTitle('Antes de começar o roteiro')
     .setHelpText(
       'Abra o TrailUp em outra aba (' + CONFIG.sistemaUrl + ') e entre com o seu e-mail e a senha que a equipe enviou. ' +
-      'A turma é de demonstração, com alunos fictícios. Pode usar conteúdo seu, mas sem dados de alunos reais. O aluno é só o seu aluno de teste.\n\n' +
+      'A turma é de demonstração. Pode usar conteúdo seu, mas sem dados de alunos reais. O aluno é só o seu aluno de teste.\n\n' +
+      FORA_DESTA_RODADA + '\n\n' +
       'Faça cada tarefa no sistema e volte aqui para responder.\n\n' + FRANQUEZA);
 
   // 3. Uma página por tarefa: conclusão, SEQ, tempo e onde travou.
@@ -448,7 +439,7 @@ function criarFormulario() {
     .setLabels(ACIONABILIDADE.extremosRealidade[0], ACIONABILIDADE.extremosRealidade[1]);
   form.addCheckboxGridItem()
     .setTitle('Métricas, uma a uma')
-    .setHelpText('Para cada métrica, marque o que vale para ela. Pode marcar mais de uma, ou nenhuma.')
+    .setHelpText('Os valores da turma de demonstração são de exemplo: julgue o painel, não o número. Para cada métrica, marque o que vale para ela. Pode marcar mais de uma, ou nenhuma.')
     .setRows(METRICAS)
     .setColumns(COLUNAS_DAS_METRICAS);
   form.addParagraphTextItem().setTitle('Alguma métrica faltou, sobrou ou confundiu? Qual e por quê? (opcional)');

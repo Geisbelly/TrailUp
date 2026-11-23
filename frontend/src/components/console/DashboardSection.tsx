@@ -45,6 +45,8 @@ import AbaConteudo from "./dashboard/AbaConteudo";
 import AbaEvolucao from "./dashboard/AbaEvolucao";
 import AbaInsights from "./dashboard/AbaInsights";
 import AbaGuia from "./dashboard/AbaGuia";
+import PainelDeExemplo from "./dashboard/PainelDeExemplo";
+import { mostraExemplo } from "./dashboard/exemploDaPesquisa";
 
 type AbaDaTurma = "visao" | "evolucao" | "conteudo" | "insights" | "guia";
 
@@ -57,7 +59,11 @@ const ABAS_DA_TURMA: { value: AbaDaTurma; label: string }[] = [
 ];
 const ABAS_NA_URL = new Set<string>(ABAS_DA_TURMA.map((a) => a.value).filter((v) => v !== "visao"));
 
-export default function DashboardSection() {
+/**
+ * `classeDeExemplo`: a turma de demonstração de quem avalia o TrailUp na pesquisa com professores.
+ * Com ela sozinha em tela, a visão geral mostra as métricas com valores de exemplo (PainelDeExemplo).
+ */
+export default function DashboardSection({ classeDeExemplo = null }: { classeDeExemplo?: number | null } = {}) {
   const { user, session } = useAuth();
   const professorId = user?.id;
 
@@ -572,6 +578,8 @@ export default function DashboardSection() {
           <DashboardErro detalhe={loadError} onTentarNovamente={loadData} />
         ) : isLoading || !ultimaCarga ? (
           <DashboardCarregando />
+        ) : mostraExemplo(classeDeExemplo, classScopeIds) ? (
+          <PainelDeExemplo />
         ) : alunosDaTurma.length === 0 ? (
           <DashboardVazio semTurmas={classes.length === 0} />
         ) : (

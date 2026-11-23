@@ -905,6 +905,13 @@ Cada perfil carrega:
   outro. A senha só sai depois de o avaliador confirmar o e-mail e nunca é gravada. O link da
   avaliação não vai no bundle: `pesquisa_meu_acesso()` o entrega só ao avaliador e ao dono, e é
   ela que mostra a aba "Avaliar o TrailUp".
+
+  **A Visão geral da turma de demonstração mostra números de EXEMPLO** (`PainelDeExemplo`,
+  `exemploDaPesquisa.ts`): a rodada avalia o formato das métricas, não o dado, e não se cria aluno
+  fictício para preenchê-la. Vale só com essa turma sozinha em tela e só para o avaliador; os
+  valores são fixos, nunca gravados, e cada bloco leva o selo "Exemplo: valores ilustrativos". Não
+  "conserte" isso ligando a turma às views reais. A cópia publica os tópicos como a turma-modelo
+  (`20261123_02`), porque `duplicar_classe` faz tudo nascer `rascunho`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere
