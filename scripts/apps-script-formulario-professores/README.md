@@ -1,8 +1,8 @@
 # Formulário da pesquisa com professores
 
 Gera, no Google Forms, os formulários da avaliação do TrailUp por professores: inscrição, avaliação e atualização da forma de divulgação. O professor usa o
-sistema numa turma de demonstração, com alunos fictícios, seguindo um roteiro de 10 tarefas (8 no
-console e 2 na tela do aluno), e responde por escrito. **Ninguém avalia material gerado para a
+sistema numa turma de demonstração, sem alunos, seguindo um roteiro de 8 tarefas (6 no console e
+2 na tela do aluno), e responde por escrito. **Ninguém avalia material gerado para a
 pesquisa.** O professor pode testar com conteúdo próprio; do lado do aluno, por enquanto, só o
 aluno de teste dele. A cartilha fica no site, em `/pesquisa/professores`
 (`frontend/src/pages/PesquisaProfessores.tsx`), e o botão dela abre a inscrição.
@@ -85,28 +85,30 @@ validada" só para a SUS; "tradução livre de…" e "elaborado pelos autores" p
 tabela.
 
 **Triangulação:** a conclusão autodeclarada é conferida contra o que a tarefa deixa registrado na
-turma de demonstração. Hoje só a T3 deixa rastro: a geração pedida. Nenhum outro dado de uso entra (TCLE, seção 3).
+turma de demonstração. Hoje só a T3 deixa rastro: a geração pedida. Nenhum outro dado de uso entra (termo, seção 3).
 
 ## Antes de criar o de verdade
 
-**A coleta só começa depois da aprovação do CEP.** Até lá, crie só o rascunho.
+**Esta fase não passa pelo CEP.** É a validação com especialistas: docentes e pedagogos avaliam o
+sistema numa turma de demonstração, sem alunos, e a coleta abre com o aceite do orientador. A fase
+com alunos (fase 2) é que vai ao Comitê de Ética em Pesquisa. Por isso o termo é curto (cinco
+seções: sobre a avaliação, o que você faz, seus dados, participação voluntária e contato) e só
+cita o comitê para dizer que a fase com alunos passa por ele. Na monografia, não descreva esta fase como aprovada por CEP.
 
-1. Preencher em `CONFIG` o que está como `[PREENCHER ...]`: endereço do sistema, tempo estimado,
-   prazo de guarda, contatos, CEP e o link da cópia do TCLE.
+1. Preencher em `CONFIG` o que está como `[PREENCHER ...]`: o tempo estimado (no termo da
+   avaliação e no do piloto) e os e-mails de contato. O prazo de guarda é a entrega da versão final
+   do TCC. A cópia do termo é o próprio link da inscrição, que o mostra na primeira página.
 2. **Validade de conteúdo:** passar as traduções e os itens próprios por um painel-piloto de 3 a 5
    juízes que não entram na amostra, com o formulário de `criarFormularioDoPilotoIvc` (ver
    "Piloto de validade de conteúdo", abaixo). Cada juiz avalia clareza e pertinência de cada item numa escala
    de 4 pontos. Limiares: I-CVI = 1,00 com até 5 juízes (Lynn, 1986, DOI
    10.1097/00006199-198611000-00017) e S-CVI/Ave ≥ 0,90 (Polit; Beck, 2006, DOI 10.1002/nur.20147),
    o mesmo método da fase 1 (Alexandre; Coluci, 2011). O que não passar é reescrito ou sai. Este
-   piloto também mede o tempo real, que vai para o TCLE e a cartilha.
+   piloto também mede o tempo real, que vai para o termo e a cartilha.
 3. Montar a turma-modelo (trilha, missões, eventos e ranking; sem alunos), que a planilha copia
    para cada avaliador junto com os acessos de teste de professor e de aluno. As métricas da Visão
    geral aparecem nela com valores de exemplo, marcados como tais.
-4. O TCLE do script precisa ser idêntico ao aprovado. O pacote da fase 1 no CEP ainda descreve a
-   versão com juízes anônimos avaliando material gerado, e precisa ser refeito para este desenho:
-   participantes identificados, com sigilo, avaliando o uso do sistema. Com identificação, o
-   registro do consentimento e o risco de quebra de sigilo mudam no protocolo.
+4. O orientador confere o termo e o instrumento antes de `rascunho: false`.
 
 ## Piloto de validade de conteúdo
 
@@ -117,8 +119,8 @@ e as abertas. **A SUS fica de fora**, porque já é validada.
 
 - **Por item:** clareza e pertinência ao que a seção diz medir, de 1 a 4 (1 = não; 2 = precisa de
   grande revisão; 3 = precisa de pequena revisão; 4 = sim), mais um campo de sugestão por seção.
-- **Juízes:** 3 a 5, de fora da amostra, com termo próprio (`CONFIG.linkTcleIvc`), também dentro
-  do protocolo do CEP. O link vai só por e-mail.
+- **Juízes:** 3 a 5, de fora da amostra, com termo próprio (`CONFIG.termoPiloto`, na descrição do
+  formulário). O link vai só por e-mail.
 - **Conta:** I-CVI = proporção de juízes com 3 ou 4 (`calcularIcvi`), separado para clareza e para
   pertinência. Limiar `limiarDoIcvi`: 1,00 com até 5 juízes, 0,78 de 6 a 10 (Lynn, 1986). S-CVI/Ave
   (`calcularScviMedio`) ≥ 0,90 (Polit; Beck, 2006).
@@ -146,7 +148,7 @@ Sem `VITE_PESQUISA_INSCRICAO_FORM_URL`, a cartilha mostra que a inscrição aind
 
 ## Fluxo de cada participante
 
-1. **Inscrição:** TCLE e identificação, na aba Inscrição de `/pesquisa/professores` ou pelo link
+1. **Inscrição:** termo e identificação, na aba Inscrição de `/pesquisa/professores` ou pelo link
    do convite. O e-mail informado é o login.
 2. **Aprovação, pela equipe:** na planilha de inscrições, coluna Decisão = `Aprovado`.
 3. **Acesso, pela planilha (`Planilha.gs`):** cria a conta, manda o e-mail de confirmação e, só
@@ -180,7 +182,7 @@ desconhecido (`{{...}}`) bloqueia o envio em vez de mandar o marcador para o pro
 
 ### Montar (uma vez por ambiente)
 
-Comece no banco de **dev**. Produção é só trocar os valores abaixo, depois da aprovação do CEP.
+Comece no banco de **dev**. Produção é só trocar os valores abaixo.
 
 1. **Banco:** a migration `20261123_01` aplicada (a API roda `alembic upgrade head` ao subir).
    Montar no console a turma-modelo, com a trilha que todos vão receber, e gravar:
@@ -227,10 +229,10 @@ TrailUp para na Situação "Erro: este e-mail já tem conta" e é resolvido à m
 | Identifica o participante (nome, e-mail, instituição, titulação, formação, papel) | A pesquisa se apoia na qualificação de quem avalia, e a monografia traz a avaliação de cada especialista |
 | E-mail é um campo do formulário, sem coleta automática nem login do Google | Não exige conta Google, e o e-mail serve só para contato e devolutiva |
 | Pergunta como a avaliação aparece na monografia: com nome, com código e perfil (E1…) ou só no conjunto | Res. CNS 510/2016: o participante decide se a identidade é divulgada (art. 9º, V), e o sigilo só cede por manifestação explícita (art. 17, IV). A escolha é separada do aceite, e recusar o nome não exclui da pesquisa |
-| Nenhuma pergunta obrigatória | Garantia do TCLE e orientação da CONEP |
-| TCLE na primeira página, e "Não quero participar" envia na hora | O aceite vem antes de qualquer pergunta |
+| Nenhuma pergunta obrigatória | Garantia do termo de consentimento |
+| Termo na primeira página, e "Não quero participar" envia na hora | O aceite vem antes de qualquer pergunta |
 | A forma de divulgação é a **última** pergunta, depois de toda a avaliação, e pode ser trocada a qualquer momento até a versão final pelo formulário de atualização (vale a resposta mais recente). Com o nome, só depois de ver o próprio quadro | Viés de cortesia: quem responde sabendo que o nome vai junto tende a avaliar melhor. Decidir depois, e poder voltar atrás, separa a avaliação da exposição |
-| A descrição do formulário, a página antes do roteiro e o TCLE dizem que resultado negativo vale tanto quanto positivo | Também contra a cortesia: crítica franca é o que orienta a correção |
+| A descrição do formulário, a página antes do roteiro e o termo dizem que resultado negativo vale tanto quanto positivo | Também contra a cortesia: crítica franca é o que orienta a correção |
 | Título das perguntas com o id da tarefa (`T4 · ...`) | A planilha de respostas fica legível |
 | Só a inscrição tem planilha vinculada; a avaliação não | A aprovação e o acesso precisam de uma linha por inscrito. As respostas da avaliação são baixadas e apagadas da nuvem ao fim; uma planilha seria mais uma cópia |
 
@@ -238,6 +240,6 @@ TrailUp para na Situação "Erro: este e-mail já tem conta" e é resolvido à m
 
 Baixar as respostas (Respostas → Fazer download em CSV), numerar os
 participantes (E1, E2…) e montar o quadro de cada um conforme a forma de divulgação escolhida, mandar
-o trecho para conferência de quem escolheu o nome, guardar com o pesquisador responsável e apagar as respostas do formulário, como diz o TCLE. A análise compara
+o trecho para conferência de quem escolheu o nome, guardar com o pesquisador responsável e apagar as respostas do formulário, como diz o termo. A análise compara
 os grupos pelo campo "Papel em que você avalia o sistema" (docentes de TI, de outras áreas e
 pedagogos), de forma descritiva.

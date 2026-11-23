@@ -1,7 +1,7 @@
 /**
  * Cria o formulário da pesquisa com professores do TrailUp: o professor usa o
  * sistema numa turma de demonstração, seguindo um roteiro de tarefas, e avalia
- * por escrito usabilidade, carga de trabalho, métricas, sugestões da IA,
+ * por escrito usabilidade, carga de trabalho, métricas,
  * material personalizado, tela do aluno, utilidade e esforço. Os instrumentos
  * e a origem de cada item estão no README.md.
  *
@@ -17,7 +17,7 @@
  * frontend/src/features/pesquisa/pesquisaProfessores.ts; o teste
  * pesquisaProfessores.test.ts falha se os dois se separarem.
  *
- * Nada é obrigatório (CONEP). O participante se identifica (a pesquisa se
+ * Nada é obrigatório. O participante se identifica (a pesquisa se
  * apoia na qualificação de quem avalia e o e-mail é o login), mas o e-mail não
  * é coletado pelo Google: é um campo do formulário, como o nome.
  */
@@ -28,41 +28,35 @@ const ACESSO_TCLE = 'O e-mail que você cadastrar é o seu login no TrailUp. O a
 
 const CONFIG = {
   // true: cria mesmo com [PREENCHER] e põe "RASCUNHO" no título, para conferir
-  // a forma. false: recusa enquanto faltar campo. O de verdade só vai aos
-  // professores depois da aprovação do CEP.
+  // a forma. false: recusa enquanto faltar campo. O de verdade vai aos
+  // professores com o aceite do orientador.
   rascunho: true,
 
   titulo: 'Avaliação do TrailUp por professores',
   cartilhaUrl: 'https://trailup.vercel.app/pesquisa/professores',
-  sistemaUrl: '[PREENCHER: endereço do sistema usado na pesquisa]',
-  linkCopiaTcle: '[PREENCHER: link para baixar o TCLE]',
+  sistemaUrl: 'https://trailup.vercel.app',
   // Link de resposta do formulário criado por criarFormularioDeAtualizacao.
   linkAtualizacao: '[PREENCHER: link do formulário de atualização]',
-  // Termo do piloto de validade de conteúdo (juízes fora da amostra).
-  linkTcleIvc: '[PREENCHER: link para baixar o termo do piloto]',
 
-  // TCLE, por seção (o texto de ajuda de cada bloco do Forms tem limite).
-  // Rascunho: precisa ser idêntico ao TCLE aprovado pelo CEP.
+  // Termo de consentimento, por seção (o texto de ajuda de cada bloco do Forms
+  // tem limite). Esta fase é a validação com especialistas, sem alunos, e não
+  // passa pelo CEP; a fase com alunos passa. A cópia do participante é o
+  // próprio link da inscrição, que mostra o termo na primeira página.
   tcle: [
-    ['1. Por que esta pesquisa existe',
-      'O TrailUp é uma plataforma de aprendizagem criada num Trabalho de Conclusão de Curso de Ciência da Computação da Ulbra Palmas. Antes de levá-lo a uma turma, a pesquisa quer saber, pela avaliação de especialistas em ensino (docentes da área de TI, docentes de outras áreas e pedagogos), se ele é fácil de usar, se as métricas e as sugestões da inteligência artificial ajudam o professor e quanto trabalho ele exige. Resultados negativos valem tanto quanto os positivos: o que não funcionar é o que mais orienta a correção do sistema.'],
+    ['1. Sobre a avaliação',
+      'O TrailUp é uma plataforma de aprendizagem criada num Trabalho de Conclusão de Curso de Ciência da Computação da Ulbra Palmas. Esta etapa é a validação com especialistas em ensino (docentes da área de TI, docentes de outras áreas e pedagogos): antes de levar o sistema a uma turma, a pesquisa quer saber se ele é fácil de usar, se as métricas ajudam o professor e quanto trabalho ele exige. Nenhum aluno participa desta etapa; a fase com alunos vem depois, com aprovação do Comitê de Ética em Pesquisa. Resultados negativos valem tanto quanto os positivos: o que não funcionar é o que mais orienta a correção do sistema.'],
     ['2. O que você vai fazer',
-      'Em duas etapas. Primeiro, a inscrição: este termo e a sua identificação. Depois, com o acesso que a equipe envia ao seu e-mail, usar o TrailUp numa turma de demonstração, com alunos fictícios, seguindo um roteiro de tarefas curtas no console do professor e na tela do aluno, e responder ao formulário de avaliação por escrito. Leva cerca de [PREENCHER] minutos e pode ser feito em mais de uma vez.\n\nNão há entrevista nem gravação. Nenhuma pergunta é obrigatória: você pode deixar qualquer uma em branco, sem explicar, e parar a qualquer momento fechando a página antes de enviar. Você pode usar conteúdo seu no console; o aluno é só o seu aluno de teste, e você não cadastra dados de alunos reais. O que for usado numa geração por IA é enviado ao modelo de linguagem, por isso não inclua dados pessoais nem material de terceiros que você não possa compartilhar.'],
-    ['3. Seus dados',
-      'O formulário pede a sua identificação (nome, e-mail, instituição, titulação e formação), porque a pesquisa se apoia na avaliação de especialistas e precisa relatar quem avaliou.\n\n' + ACESSO_TCLE + '\n\nA monografia apresenta a avaliação de cada especialista, e você escolhe, numa pergunta própria, como a sua aparece: (a) com o seu nome e titulação ao lado das suas notas e comentários, só depois de você ver o seu quadro e confirmar; (b) com um código (E1, E2…) e o seu perfil (titulação, formação e papel), sem o nome; ou (c) só nos resultados agregados. Você escolhe no fim do formulário de avaliação, depois de avaliar, e pode trocar a escolha a qualquer momento até a versão final da monografia, por um formulário de atualização ou pelo contato abaixo; vale sempre a mais recente. Qualquer escolha vale igual. Depois que a versão final for entregue, ela não pode mais ser alterada. Fora do que você autorizar, a identificação fica em sigilo, só com a equipe. Você pode pedir a retirada das suas respostas a qualquer momento, pelo contato abaixo.\n\nO que você fizer no sistema fica registrado nele, como qualquer uso. A pesquisa usa esse registro só para conferir se cada tarefa do roteiro foi feita (por exemplo, se uma sugestão foi decidida ou uma entrega corrigida); nenhum outro dado do seu uso entra. Ao fim, a turma, o conteúdo que você puser nela e os acessos de teste são apagados. As respostas do formulário são baixadas para um computador da equipe e apagadas do formulário online. Ficam com o pesquisador responsável por [PREENCHER: prazo] e depois são destruídas.'],
-    ['4. Desconfortos e riscos',
-      'O risco é mínimo. O uso do sistema e as perguntas podem cansar; você pode parar e voltar depois.\n\nSe você escolher aparecer com o nome, a sua opinião fica pública e ligada a você, inclusive para colegas e para a instituição; por isso você confere o trecho antes. Nas outras escolhas, como os participantes são poucos, ainda há o risco de alguém reconhecer você pelo perfil ou por um comentário; por isso os trechos citados são curtos e revisados.\n\nPor ser uma pesquisa pela internet, a equipe não consegue garantir confidencialidade total, por limites da própria tecnologia.'],
-    ['5. Benefícios',
-      'Não há benefício direto garantido. Suas respostas ajudam a corrigir o sistema antes que ele chegue a alunos. Você recebe um resumo dos resultados.'],
-    ['6. Custos, ressarcimento e indenização',
-      'Participar não tem custo e não é pago. Despesas decorrentes da participação são ressarcidas, e você tem direito a assistência e a buscar indenização por dano decorrente da pesquisa, nos termos da lei. Nada neste termo faz você abrir mão de qualquer direito.'],
-    ['7. Liberdade de recusar',
-      'Participar é voluntário. Recusar ou desistir não traz nenhum prejuízo, inclusive na sua relação com o curso e com a instituição, que não sabe quem participou.'],
-    ['8. Divulgação',
-      'Os resultados aparecem na monografia e, se for o caso, em eventos ou revistas científicas, com a avaliação de cada especialista identificada da forma que ele escolheu.'],
-    ['9. Contatos',
-      'Pesquisador responsável: Prof. Esp. Fábio Castro Araújo – [PREENCHER: e-mail e telefone]. Pesquisadora assistente: Geisbelly Victória Feitosa Moraes Domiciano – [PREENCHER: e-mail e telefone].\n\nO Comitê de Ética em Pesquisa (CEP) é um grupo independente que analisa as pesquisas com pessoas para proteger os participantes. Para dúvidas sobre os seus direitos ou reclamações: [PREENCHER: endereço e contato do CEP]. Instância Nacional de Ética em Pesquisa (INAEP): SRTV 701, Via W 5 Norte, lote D, Edifício PO 700, 5º andar, Asa Norte, Brasília-DF, 70719-040, tel. (61) 3315-5878, das 9h às 18h.'],
+      'Primeiro, a inscrição: este termo e a sua identificação. Depois, com o acesso que a equipe envia ao seu e-mail, usar o TrailUp numa turma de demonstração, sem alunos reais, seguindo um roteiro de tarefas curtas no console do professor e na tela do aluno, e responder ao formulário de avaliação. Leva cerca de uma hora (uns 35 minutos usando o sistema e uns 25 respondendo) e pode ser feito em mais de uma vez.\n\nNão há entrevista nem gravação. Nenhuma pergunta é obrigatória, e você pode parar a qualquer momento fechando a página antes de enviar. Você pode usar conteúdo seu no console. O que for usado numa geração por IA é enviado ao modelo de linguagem, por isso não inclua dados pessoais nem material de terceiros que você não possa compartilhar.'],
+    ['3. Seus dados e como você aparece',
+      'O formulário pede a sua identificação (nome, e-mail, instituição, titulação e formação), porque a validação se apoia na qualificação de quem avalia.\n\n' + ACESSO_TCLE + '\n\nNo fim da avaliação você escolhe como ela aparece na monografia: (a) com o seu nome e titulação, só depois de ver o seu quadro e confirmar; (b) com um código (E1, E2…) e o seu perfil, sem o nome; ou (c) só nos resultados agregados. Pode trocar a escolha até a versão final da monografia, pelo formulário de atualização ou pelo contato abaixo. Com o nome, a sua opinião fica pública; nas outras escolhas, como os participantes são poucos, alguém ainda pode reconhecer você por um comentário, por isso os trechos citados são curtos e revisados. Fora do que você autorizar, a identificação fica só com a equipe.\n\nDo seu uso do sistema, a pesquisa só confere se a tarefa de gerar material foi feita. As respostas são baixadas para um computador da equipe, apagadas do formulário online e guardadas até a entrega da versão final do TCC; depois, são destruídas. A turma, o conteúdo que você puser nela e os acessos de teste são apagados ao fim.'],
+    ['4. Participação voluntária',
+      'Participar é voluntário, não tem custo e não é pago. Você pode recusar, desistir ou pedir a retirada das suas respostas a qualquer momento, pelo contato abaixo, sem nenhum prejuízo. Você recebe um resumo dos resultados.'],
+    ['5. Contato',
+      'Orientador: Prof. Esp. Fábio Castro Araújo – fabio.araujo@ulbra.br. Pesquisadora: Geisbelly Victória Feitosa Moraes Domiciano – geisbelly@rede.ulbra.br.'],
   ],
+
+  // Termo dos juízes do piloto de validade de conteúdo (fora da amostra).
+  termoPiloto: 'Você vai julgar as perguntas do formulário da validação com especialistas do TrailUp, um Trabalho de Conclusão de Curso de Ciência da Computação da Ulbra Palmas. Não usa o sistema e não participa da coleta principal. O tempo depende de quantas sugestões você escrever, nenhuma pergunta é obrigatória e você pode parar a qualquer momento. O seu nome fica só com a equipe; na monografia, os juízes aparecem só no conjunto (número de juízes e formação). As respostas são guardadas até a entrega da versão final do TCC e depois destruídas. Participar é voluntário e não é pago. Contato: os mesmos do termo da avaliação.',
 };
 
 // [pergunta, opções ou null (texto livre)]
@@ -311,12 +305,13 @@ function criarFormularioDeInscricao() {
     .setConfirmationMessage(
       'Inscrição recebida. A equipe vai enviar ao e-mail informado o seu acesso ao TrailUp (com senha gerada aleatoriamente), ' +
       'o seu acesso de aluno de teste e o link do formulário de avaliação.\n' +
-      'Cópia do termo que você leu: ' + CONFIG.linkCopiaTcle);
+      'O termo que você leu continua neste mesmo link, na primeira página.');
 
-  // 1. TCLE e aceite.
-  form.addSectionHeaderItem().setTitle('Termo de Consentimento Livre e Esclarecido');
+  // 1. Termo e aceite. A cópia do participante é este link: o termo fica na
+  // primeira página, e ele pode reabri-lo quando quiser.
+  form.addSectionHeaderItem().setTitle('Termo de consentimento');
   CONFIG.tcle.forEach(([t, texto]) => form.addSectionHeaderItem().setTitle(t).setHelpText(texto));
-  form.addSectionHeaderItem().setTitle('10. Sua cópia').setHelpText('Guarde uma cópia deste termo: ' + CONFIG.linkCopiaTcle);
+  form.addSectionHeaderItem().setTitle('Sua cópia').setHelpText('Guarde o link desta página: o termo fica sempre aqui, na primeira página.');
   const aceite = form.addMultipleChoiceItem()
     .setTitle('Consentimento')
     .setHelpText('Ao marcar "Li e concordo em participar", declaro que sou docente de ensino superior ou profissional da área pedagógica, tenho 18 anos ou mais, li este termo e aceito participar.');
@@ -561,7 +556,7 @@ function criarFormularioDoPilotoIvc() {
       'Você não vai usar o sistema: vai julgar as perguntas do formulário que os professores vão responder. ' +
       'Para cada item, diga se ele é claro e se é pertinente ao que a seção quer medir, de 1 a 4. ' +
       'Item que não estiver claro ou pertinente é reescrito ou sai antes da coleta.\n\n' +
-      'Termo do piloto: ' + CONFIG.linkTcleIvc)
+      'Termo do piloto: ' + CONFIG.termoPiloto)
     .setCollectEmail(false)
     .setProgressBar(true)
     .setAllowResponseEdits(false)
@@ -570,7 +565,7 @@ function criarFormularioDoPilotoIvc() {
 
   const aceite = form.addMultipleChoiceItem()
     .setTitle('Consentimento')
-    .setHelpText('Li o termo do piloto (' + CONFIG.linkTcleIvc + ') e aceito participar como juiz. Sei que não participo da coleta principal.');
+    .setHelpText('Li o termo do piloto, na descrição deste formulário, e aceito participar como juiz.');
   aceite.setChoices([
     aceite.createChoice('Li e concordo em participar', FormApp.PageNavigationType.CONTINUE),
     aceite.createChoice('Não quero participar', FormApp.PageNavigationType.SUBMIT),

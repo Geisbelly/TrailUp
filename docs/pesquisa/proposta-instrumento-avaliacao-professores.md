@@ -289,7 +289,6 @@ que mantém a monografia coerente.
 - **README do script:** tabela de instrumentos e citações.
 - **TCLE:** tempo estimado.
 - **Roteiro do vídeo:** cena 7.
-- **Pacote do CEP:** o instrumento anexado muda.
 
 ## Ainda a conferir
 

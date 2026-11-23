@@ -76,8 +76,7 @@ function BotaoDoFormulario() {
       <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
         <p className="font-semibold text-foreground">O formulário ainda não está aberto.</p>
         <p>
-          A coleta só começa depois da aprovação do Comitê de Ética em Pesquisa. O link da inscrição chega no convite,
-          por e-mail individual.
+          A inscrição abre quando a equipe enviar os convites. O link chega no convite, por e-mail individual.
         </p>
       </div>
     );
@@ -497,8 +496,9 @@ function Cartilha() {
               </li>
             </ul>
             <p className="text-sm">
-              O texto completo, com os contatos da equipe e do Comitê de Ética, é o Termo de Consentimento, na
-              primeira página do formulário.
+              O texto completo, com o contato da equipe, é o Termo de Consentimento, na primeira página do
+              formulário de inscrição. Esta etapa é a validação com especialistas e não envolve alunos; a fase com
+              alunos vem depois, com aprovação do Comitê de Ética em Pesquisa.
             </p>
           </Secao>
 
