@@ -38,6 +38,8 @@ const CONFIG = {
   linkCopiaTcle: '[PREENCHER: link para baixar o TCLE]',
   // Link de resposta do formulário criado por criarFormularioDeAtualizacao.
   linkAtualizacao: '[PREENCHER: link do formulário de atualização]',
+  // Termo do piloto de validade de conteúdo (juízes fora da amostra).
+  linkTcleIvc: '[PREENCHER: link para baixar o termo do piloto]',
 
   // TCLE, por seção (o texto de ajuda de cada bloco do Forms tem limite).
   // Rascunho: precisa ser idêntico ao TCLE aprovado pelo CEP.
@@ -213,7 +215,7 @@ const PARES_UEQS = [
 ];
 const PERGUNTA_UEQS = 'Para você, a tela do aluno é:';
 
-// [titulo, opcional, itens[], pergunta aberta da página ou null].
+// [titulo, opcional, itens[], pergunta aberta da página ou null, o que o bloco mede].
 // Origem de cada item: README.md.
 const BLOCOS = [
   ['Sugestões da IA', false, [
@@ -227,7 +229,7 @@ const BLOCOS = [
     'Eu levaria uma sugestão do sistema tão a sério quanto a de um colega professor.',
     'Alguma sugestão me pareceu errada ou injusta com o aluno.',
     'Eu conferiria os dados antes de agir a partir de uma sugestão.',
-  ], null],
+  ], null, 'Se você entende por que a IA fez cada sugestão, se confia nela e se ela ajuda a decidir.'],
   ['Material personalizado', false, [
     'O conteúdo está correto, sem erros.',
     'O material está alinhado ao objetivo do tópico.',
@@ -235,39 +237,39 @@ const BLOCOS = [
     'A apresentação (texto, áudio ou slides) é clara.',
     'As versões para perfis diferentes são diferentes de um jeito que faz sentido.',
     'Eu liberaria esse material para os alunos sem precisar editar.',
-  ], 'Algum erro ou problema no material? Em que tópico e perfil? (opcional)'],
+  ], 'Algum erro ou problema no material? Em que tópico e perfil? (opcional)', 'O que você achou do material que viu em Personalizações e como aluno: correção, alinhamento, nível e apresentação.'],
   ['Interface do aluno', false, [
     'A interface do aluno deixa claro o que fazer a seguir.',
     'O material personalizado é fácil de encontrar e de abrir.',
     'Os textos e botões estão numa linguagem que o aluno entende.',
     'A interface do aluno é adequada a estudantes de graduação.',
-  ], 'Encontrou algum problema na tela do aluno? Qual e em que tela? (opcional)'],
+  ], 'Encontrou algum problema na tela do aluno? Qual e em que tela? (opcional)', 'O que você viu ao entrar como aluno.'],
   ['Utilidade e intenção de uso', false, [
     'Usar o TrailUp me ajudaria a acompanhar a aprendizagem da turma.',
     'Usar o TrailUp tornaria meu trabalho de professor mais eficaz.',
     'O TrailUp seria útil na minha disciplina.',
     'Eu usaria o TrailUp com uma turma minha, se estivesse disponível.',
     'Eu recomendaria o TrailUp a outro professor.',
-  ], null],
+  ], null, 'Se o sistema seria útil no seu trabalho e se você o usaria.'],
   ['Esforço e rotina', false, [
     'O tempo que o sistema exigiria por semana cabe na minha rotina.',
     'Montar a trilha de um tópico seria rápido o bastante.',
     'Revisar o material gerado pela IA antes de chegar ao aluno seria viável na minha rotina.',
     'Eu saberia por onde começar no console sem ajuda.',
-  ], null],
+  ], null, 'Quanto trabalho o sistema exigiria de você numa semana normal.'],
   ['Gamificação', true, [
     'Os elementos de jogo combinam com a minha disciplina.',
     'O jogo apoia o estudo, em vez de competir com ele.',
     'O ranking pode desmotivar alunos que estão atrás.',
     'Tenho controle suficiente sobre moedas, missões e eventos da turma.',
-  ], null],
+  ], null, 'Se o jogo (moedas, missões, batalhas, ranking) serve à sua disciplina.'],
   ['Dados dos alunos e ética', true, [
     'O sistema não considera fatores sociais e emocionais que só o professor conhece.',
     'O sistema preserva a minha autonomia de decidir.',
     'O uso de dados de emoção e de comportamento traz riscos à privacidade dos alunos.',
     'O perfil e os indicadores podem rotular o aluno de forma injusta.',
     'Eu saberia explicar a um aluno o que eu vejo sobre ele no console.',
-  ], null],
+  ], null, 'O que você achou do uso dos dados dos alunos e do papel da IA ao lado do professor.'],
 ];
 
 const PERGUNTAS_ABERTAS = [
@@ -514,4 +516,106 @@ function criarFormularioDeAtualizacao() {
     .setChoiceValues(DIVULGACAO[2]);
   form.addParagraphTextItem().setTitle('Algum comentário? (opcional)');
   Logger.log('Responder (vai para CONFIG.linkAtualizacao e VITE_PESQUISA_ATUALIZACAO_FORM_URL): ' + form.getPublishedUrl());
+}
+
+// Piloto de validade de conteúdo (Alexandre; Coluci, 2011; Lynn, 1986;
+// Polit; Beck, 2006). Os juízes não entram na amostra. Julgam só o que é
+// tradução ou item próprio: a SUS fica de fora, porque já é validada.
+// I-CVI = proporção de juízes que marcam 3 ou 4 (calcularIcvi, na cartilha).
+const ESCALA_CLAREZA = [
+  '1 · Não está claro',
+  '2 · Precisa de grande revisão',
+  '3 · Precisa de pequena revisão',
+  '4 · Está claro',
+];
+const ESCALA_PERTINENCIA = [
+  '1 · Não é pertinente',
+  '2 · Precisa de grande revisão',
+  '3 · Precisa de pequena revisão',
+  '4 · É pertinente',
+];
+
+// [seção, o que mede, itens[]], montado das mesmas constantes da avaliação.
+function secoesDoPiloto_() {
+  const secoes = [
+    ['Roteiro de tarefas', 'As instruções que o professor segue no sistema: se dá para entender o que fazer.',
+      TAREFAS.map(([id, titulo, passos]) => id + '. ' + titulo + ': ' + passos.join(' '))],
+    ['Perguntas de cada tarefa', 'Se a tarefa foi concluída, o esforço percebido (SEQ, traduzida) e o tempo, depois de cada tarefa.', [
+      PERGUNTA_CONCLUSAO + ' (' + OPCOES_CONCLUSAO.join(', ') + ')',
+      PERGUNTA_SEQ + ' (de 1, ' + EXTREMOS_SEQ[0].toLowerCase() + ', a 7, ' + EXTREMOS_SEQ[1].toLowerCase() + ')',
+      PERGUNTA_TEMPO + ' (' + OPCOES_TEMPO.join(', ') + ')',
+      PERGUNTA_DA_TAREFA,
+    ]],
+    ['Carga de trabalho', 'A carga de trabalho das tarefas do console (Raw TLX, perguntas adaptadas da versão brasileira).',
+      ITENS_TLX.map(([nome, pergunta, baixo, alto]) => nome + ': ' + pergunta + ' (0, ' + baixo.toLowerCase() + ', a 10, ' + alto.toLowerCase() + ')')],
+    ['As métricas do console', 'Se o painel deixaria o professor ciente da situação dos alunos, se estimularia reflexão e mudança de prática, e se as métricas levam a uma ação (EFLA, tradução livre, e acionabilidade).',
+      ITENS_EFLA.map(([id, , texto]) => 'EFLA ' + id + '. ' + texto)
+        .concat([ACIONABILIDADE.agiria, ACIONABILIDADE.qualAcao, ACIONABILIDADE.realidade])
+        .concat(COLUNAS_DAS_METRICAS.map(col => 'Para cada métrica: ' + col))],
+    ['Tela do aluno: pares de palavras', 'A primeira impressão da tela do aluno (UEQ-S, adaptação lexical para o Brasil): se cada par é claro e se os dois polos são opostos.',
+      PARES_UEQS.map(([a, b]) => a + ' – ' + b)],
+  ];
+  BLOCOS.forEach(([titulo, opcional, itens, aberta, sobre]) => {
+    secoes.push([titulo, sobre, aberta ? itens.concat([aberta]) : itens]);
+  });
+  secoes.push(['Perguntas abertas', 'O que o professor diz com as próprias palavras, no fim da avaliação.', PERGUNTAS_ABERTAS]);
+  return secoes;
+}
+
+function criarFormularioDoPilotoIvc() {
+  const faltando = verificar_();
+  const form = FormApp.create(titulo_('Avaliação do TrailUp por professores: piloto de validade de conteúdo'))
+    .setDescription(
+      'Pesquisa de Trabalho de Conclusão de Curso (Ciência da Computação, Ulbra Palmas).\n\n' +
+      'Você não vai usar o sistema: vai julgar as perguntas do formulário que os professores vão responder. ' +
+      'Para cada item, diga se ele é claro e se é pertinente ao que a seção quer medir, de 1 a 4. ' +
+      'Item que não estiver claro ou pertinente é reescrito ou sai antes da coleta.\n\n' +
+      'Termo do piloto: ' + CONFIG.linkTcleIvc)
+    .setCollectEmail(false)
+    .setProgressBar(true)
+    .setAllowResponseEdits(false)
+    .setShowLinkToRespondAgain(false)
+    .setConfirmationMessage('Obrigado. As suas notas e sugestões entram na revisão dos itens antes da coleta.');
+
+  const aceite = form.addMultipleChoiceItem()
+    .setTitle('Consentimento')
+    .setHelpText('Li o termo do piloto (' + CONFIG.linkTcleIvc + ') e aceito participar como juiz. Sei que não participo da coleta principal.');
+  aceite.setChoices([
+    aceite.createChoice('Li e concordo em participar', FormApp.PageNavigationType.CONTINUE),
+    aceite.createChoice('Não quero participar', FormApp.PageNavigationType.SUBMIT),
+  ]);
+
+  form.addPageBreakItem().setTitle('Sobre você');
+  form.addTextItem().setTitle('Nome completo');
+  form.addTextItem().setTitle('E-mail')
+    .setValidation(FormApp.createTextValidation().requireTextIsEmail().build());
+  form.addMultipleChoiceItem().setTitle('Papel').setChoiceValues(IDENTIFICACAO[3][1]);
+  form.addMultipleChoiceItem().setTitle('Maior titulação').setChoiceValues(IDENTIFICACAO[4][1]);
+  form.addTextItem().setTitle('Área da sua formação (graduação e pós)');
+
+  form.addPageBreakItem()
+    .setTitle('Como julgar')
+    .setHelpText(
+      'Clareza: o item é fácil de entender, sem ambiguidade, para um professor de qualquer área?\n' +
+      'Pertinência: o item mede o que a seção diz que quer medir?\n\n' +
+      '1 = não, 2 = precisa de grande revisão, 3 = precisa de pequena revisão, 4 = sim.\n' +
+      'Se marcar 1, 2 ou 3, diga no campo de sugestão o que mudaria (cite o começo do item).');
+
+  secoesDoPiloto_().forEach(([secao, mede, itens]) => {
+    form.addPageBreakItem().setTitle(secao).setHelpText('O que esta seção mede: ' + mede);
+    form.addGridItem().setTitle(secao + ' · Clareza').setRows(itens).setColumns(ESCALA_CLAREZA);
+    form.addGridItem().setTitle(secao + ' · Pertinência').setRows(itens).setColumns(ESCALA_PERTINENCIA);
+    form.addParagraphTextItem().setTitle(secao + ' · Sugestão de redação, ou o que falta medir (opcional)');
+  });
+
+  form.addPageBreakItem().setTitle('Para fechar');
+  form.addScaleItem()
+    .setTitle('O formulário, no conjunto, cobre o que a pesquisa quer saber sobre o sistema?')
+    .setBounds(1, 4)
+    .setLabels('Não cobre', 'Cobre bem');
+  form.addParagraphTextItem().setTitle('O que faltou ou sobrou no formulário? (opcional)');
+
+  Logger.log('Editar: ' + form.getEditUrl());
+  Logger.log('Responder (vai só por e-mail para os juízes do piloto): ' + form.getPublishedUrl());
+  if (faltando.length) Logger.log('RASCUNHO. Ainda falta preencher:\n' + faltando.join('\n'));
 }
