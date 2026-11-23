@@ -173,7 +173,7 @@ Há duas exceções, em que existe modelo de verdade:
    - a imagem não é gravada nem enviada a nenhum provedor;
    - sem câmera, ou sem rosto detectado, cai na regra.
    - O nó `agente_emocao` do *grafo* é outra coisa: usa `MockEmocaoAdapter`, uma regra fixa sobre os eventos, com `origem = mock_*`.
-2. **Knowledge tracing M2** (`m2_inference.py`, `models/m2_knowledge_tracing/v3/`):
+2. **Knowledge tracing M2** (`m2_inference.py`, `models/m2_knowledge_tracing/v3/`). *Correção de 23/11/2026:* o M2 **não está em uso**. Ele é um portão opcional do estágio de decisão (só pode dispensar uma geração de reforço) e vem desligado: `decision_model_provider` tem padrão `"xgboost"`, que é a regra, e `m2gated` é opt-in (`api/app/core/settings.py`). O desempenho do aluno é estimado por regra.
    - são dois `HistGradientBoostingClassifier` treinados no EdNet KT3;
    - o de domínio responde "o aluno acerta?" (AUC 0,753, ECE 0,002);
    - o gate responde "o aluno vai travar no tópico?" (AUC 0,779);
@@ -452,7 +452,7 @@ Em produção ainda não há evento de turma nem guilda criados: 0 de cada. [ban
 
 | Não escreva | Escreva |
 |---|---|
-| "modelos de ML (Random Forest, XGBoost, HMM…) analisam o aluno" | pipeline de seis estágios com regras heurísticas, preparado para modelos treinados; o único modelo treinado em uso é o M2 (knowledge tracing, dado externo) e o FER+ para emoção por imagem |
+| "modelos de ML (Random Forest, XGBoost, HMM…) analisam o aluno" | pipeline de seis estágios com regras heurísticas, preparado para modelos treinados; o único modelo treinado em uso é o FER+, para emoção por imagem; o M2 (knowledge tracing, dado externo) está integrado como portão opcional e desligado por padrão (correção de 23/11) |
 | "o RAG recupera evidências para o aluno" | o RAG está implementado e instrumentado, mas não indexado nem em uso; a evidência entra como texto derivado em regras determinísticas |
 | "o sistema detecta a emoção do aluno" | o sistema **estima** um estado a partir de imagem (opcional) ou de comportamento; telemetria mede engajamento, não emoção |
 | "o perfil BrainHex determina o melhor formato" | ordenar formatos pelo perfil é hipótese; todos os formatos ficam disponíveis |
@@ -506,7 +506,7 @@ As duas são defensáveis. A segunda cabe no prazo com o sistema como está.
 | 5.2 Arquitetura | 4 componentes: mobile, web, API Core e ApiBrainHex, com o banco "compartilhado" | O banco é a **camada de lógica** (regra de fronteira): 612 funções, 144 gatilhos, 16 rotinas agendadas, motor de notificações e fila de geração. Usar o diagrama da seção 2 |
 | 5.3 App do estudante | Jornada de turma, tópico, atividade, reforço e ranking | Também tem material por perfil (texto, áudio narrado, apresentação, cards), batalha com boss, social e guildas, loja, molduras, notificações, consentimentos e direitos LGPD (seção 3) |
 | 5.4 Interface do professor | Aciona personalização e vê indicadores | 16 abas (seção 4); a Lumi, assistente com alunos pseudonimizados; insights da turma gerados por IA; editor que já dispara a regeração |
-| 5.5 API | Endpoints de personalização, progresso, chat, jobs e telemetria | Falta o **grafo LangGraph** (supervisor e 13 especialistas), o **pipeline de 6 estágios** (heurístico, ver o aviso na seção 5.3) e o **M2** (único modelo treinado do desempenho) |
+| 5.5 API | Endpoints de personalização, progresso, chat, jobs e telemetria | Falta o **grafo LangGraph** (supervisor e 13 especialistas), o **pipeline de 6 estágios** (heurístico, ver o aviso na seção 5.3) e o **M2** (portão opcional da decisão, desligado por padrão; correção de 23/11) |
 | 5.8 BrainHex | "A etapa do RAG pretende reduzir o caráter engessado das regras" | Isso já existe sem RAG: o motor de sugestão diz ao aluno que ordenar por perfil é hipótese e deixa todos os formatos disponíveis (`evidencias_pedagogicas.py`). Descrever também o questionário autoral de 32 itens em 8 eixos (seção 7) |
 | 5.9 Gamificação | "progressão, conquistas e ranking" | Muito mais amplo: XP com 10 faixas, 45 conquistas do sistema (05/11), 40 molduras, moedas e loja, missões diárias, eventos de turma, guildas, boss por perfil e ranqueada com ELO (seção 10) |
 | 5.10 Telemetria | Tempo ativo, conclusão, acerto, interação | Confere. Falta citar os limites de coleta (seção 9), a câmera opcional com análise local YuNet + FER+, e que tempo é **tempo ativo** |

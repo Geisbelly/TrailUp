@@ -25,7 +25,11 @@ Um lote por minuto, montado em `MetricasContext.tsx` e tipado em
 
 Cada lote leva: tempo por escopo, `touch_count`, `scroll_distance_px`,
 `max_depth_px`, `touch_samples[]` (coordenadas em **percentual da tela**),
-`signals[]` (10 tipos), `eventos_app[]` (15 tipos em 5 grupos) e `camera`.
+`signals[]` (12 tipos), `eventos_app[]` (21 nomes de evento em 5 grupos) e `camera`.
+Contagem conferida no código em 23/11/2026: os sinais em `IATriggerSignalType`
+(`mobile/src/interfaces/personalizacao/IAContracts.ts`); os eventos nas chamadas a
+`recordAppEvent`, incluindo `session_end` e `session_interrupt` (`eventoDeFim`). A
+versão de 30/09 dizia 10 sinais e 15 eventos.
 
 Distribuição real dos eventos: **`scroll` é 72%** de tudo (3.081 de 4.269),
 `tap` 604. O grupo `chat` existe no contrato e tem **zero** registros.
