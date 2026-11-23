@@ -3,6 +3,10 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   ACIONABILIDADE,
+  calcularIcvi,
+  calcularScviMedio,
+  limiarDoIcvi,
+  META_DO_SCVI_MEDIO,
   AJUDA_TLX,
   EXTREMOS_EFLA,
   EXTREMOS_SUS,
@@ -54,6 +58,7 @@ describe("cartilha e formulário dizem a mesma coisa", () => {
 
   it.each(BLOCOS.map(b => [b.titulo, b] as const))("bloco %s", (_titulo, bloco) => {
     noFormulario(bloco.titulo);
+    noFormulario(bloco.sobre);
     bloco.itens.forEach(noFormulario);
     expect(CODIGO_DO_FORMULARIO).toMatch(new RegExp(`'${bloco.titulo}', ${bloco.opcional}`));
   });
@@ -177,6 +182,30 @@ describe("pontuações", () => {
     expect(pontuarTlx([0, 0, 0, 10, 0, 0])).toBe(0);
     expect(pontuarTlx([10, 10, 10, 0, 10, 10])).toBe(100);
     expect(pontuarTlx([5, 5, 5, 5, 5])).toBeNull();
+  });
+});
+
+describe("piloto de validade de conteúdo", () => {
+  it("existe e julga as mesmas constantes da avaliação, sem a SUS", () => {
+    const ini = CODIGO_DO_FORMULARIO.indexOf("function secoesDoPiloto_() {");
+    const fim = CODIGO_DO_FORMULARIO.indexOf("function criarFormularioDoPilotoIvc() {");
+    expect(ini).toBeGreaterThan(-1);
+    const secoes = CODIGO_DO_FORMULARIO.slice(ini, fim);
+    for (const fonte of ["TAREFAS", "ITENS_TLX", "ITENS_EFLA", "ACIONABILIDADE", "PARES_UEQS", "BLOCOS", "PERGUNTAS_ABERTAS"]) {
+      expect(secoes).toContain(fonte);
+    }
+    expect(secoes).not.toContain("ITENS_SUS");
+  });
+
+  it("I-CVI, S-CVI/Ave e limiares (Lynn, 1986; Polit; Beck, 2006)", () => {
+    expect(calcularIcvi([4, 4, 3, 4, 3])).toBe(1);
+    expect(calcularIcvi([4, 2, 3, 4, 1])).toBe(0.6);
+    expect(calcularIcvi([4, null, 3])).toBe(1);
+    expect(calcularIcvi([null, undefined])).toBeNull();
+    expect(calcularScviMedio([1, 0.8, null])).toBe(0.9);
+    expect(limiarDoIcvi(5)).toBe(1);
+    expect(limiarDoIcvi(8)).toBe(0.78);
+    expect(META_DO_SCVI_MEDIO).toBe(0.9);
   });
 });
 

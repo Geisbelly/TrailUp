@@ -506,6 +506,30 @@ export function pontuarUeqs(
   return { pragmatica: media(v.slice(0, 4)), hedonica: media(v.slice(4)), geral: media(v) };
 }
 
+/**
+ * Piloto de validade de conteúdo (criarFormularioDoPilotoIvc no Code.gs).
+ * I-CVI: proporção de juízes que deram 3 ou 4 ao item, numa escala de 1 a 4
+ * (Lynn, 1986). Juiz em branco não entra no denominador.
+ */
+export function calcularIcvi(notas: readonly (number | null | undefined)[]): number | null {
+  const validas = notas.filter((n): n is number => n === 1 || n === 2 || n === 3 || n === 4);
+  if (validas.length === 0) return null;
+  return validas.filter(n => n >= 3).length / validas.length;
+}
+
+/** S-CVI/Ave: média dos I-CVI (Polit; Beck, 2006). Meta: 0,90 ou mais. */
+export function calcularScviMedio(icvis: readonly (number | null)[]): number | null {
+  const validos = icvis.filter((v): v is number => v !== null);
+  if (validos.length === 0) return null;
+  return validos.reduce((a, b) => a + b, 0) / validos.length;
+}
+
+/** Limiar do I-CVI por número de juízes (Lynn, 1986): até 5, todos; de 6 a 10, 0,78. */
+export function limiarDoIcvi(juizes: number): number {
+  return juizes <= 5 ? 1 : 0.78;
+}
+export const META_DO_SCVI_MEDIO = 0.9;
+
 // Textos da cartilha (página, PDF, imagem e roteiro do vídeo leem daqui).
 
 export const TEMPO_ESTIMADO =

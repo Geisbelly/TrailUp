@@ -91,7 +91,8 @@ geração pedida. Nenhum outro dado de uso entra (TCLE, seção 3).
 1. Preencher em `CONFIG` o que está como `[PREENCHER ...]`: endereço do sistema, tempo estimado,
    prazo de guarda, contatos, CEP e o link da cópia do TCLE.
 2. **Validade de conteúdo:** passar as traduções e os itens próprios por um painel-piloto de 3 a 5
-   juízes que não entram na amostra. Cada juiz avalia clareza e pertinência de cada item numa escala
+   juízes que não entram na amostra, com o formulário de `criarFormularioDoPilotoIvc` (ver
+   "Piloto de validade de conteúdo", abaixo). Cada juiz avalia clareza e pertinência de cada item numa escala
    de 4 pontos. Limiares: I-CVI = 1,00 com até 5 juízes (Lynn, 1986, DOI
    10.1097/00006199-198611000-00017) e S-CVI/Ave ≥ 0,90 (Polit; Beck, 2006, DOI 10.1002/nur.20147),
    o mesmo método da fase 1 (Alexandre; Coluci, 2011). O que não passar é reescrito ou sai. Este
@@ -102,6 +103,24 @@ geração pedida. Nenhum outro dado de uso entra (TCLE, seção 3).
    versão com juízes anônimos avaliando material gerado, e precisa ser refeito para este desenho:
    participantes identificados, com sigilo, avaliando o uso do sistema. Com identificação, o
    registro do consentimento e o risco de quebra de sigilo mudam no protocolo.
+
+## Piloto de validade de conteúdo
+
+`criarFormularioDoPilotoIvc` cria o formulário dos juízes. Os itens saem das mesmas constantes da
+avaliação (`secoesDoPiloto_`), então o que o juiz vê é o que o professor vai responder. São 13
+seções: roteiro, perguntas por tarefa, Raw TLX, EFLA e acionabilidade, pares do UEQ-S, os 7 blocos
+e as abertas. **A SUS fica de fora**, porque já é validada.
+
+- **Por item:** clareza e pertinência ao que a seção diz medir, de 1 a 4 (1 = não; 2 = precisa de
+  grande revisão; 3 = precisa de pequena revisão; 4 = sim), mais um campo de sugestão por seção.
+- **Juízes:** 3 a 5, de fora da amostra, com termo próprio (`CONFIG.linkTcleIvc`), também dentro
+  do protocolo do CEP. O link vai só por e-mail.
+- **Conta:** I-CVI = proporção de juízes com 3 ou 4 (`calcularIcvi`), separado para clareza e para
+  pertinência. Limiar `limiarDoIcvi`: 1,00 com até 5 juízes, 0,78 de 6 a 10 (Lynn, 1986). S-CVI/Ave
+  (`calcularScviMedio`) ≥ 0,90 (Polit; Beck, 2006).
+- **Depois:** item abaixo do limiar é reescrito e volta aos juízes, ou sai. A mudança vai no módulo
+  e no `Code.gs` juntos (o teste de paridade cobra), e os valores de I-CVI entram no método da
+  monografia.
 
 ## Criar
 
