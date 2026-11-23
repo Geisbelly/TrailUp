@@ -6,7 +6,7 @@ const HOSTS_DO_FORMULARIO = new Set(["docs.google.com", "forms.gle"]);
 /**
  * Link do formulário vindo do ambiente. Só aceita formulário do Google em
  * https; qualquer outra coisa vira null e a página mostra "ainda não aberto".
- * Sem link é o estado certo antes da aprovação do CEP.
+ * Sem link é o estado certo antes de a equipe abrir a inscrição.
  */
 export function linkDoFormulario(bruto: unknown): string | null {
   if (typeof bruto !== "string" || !bruto.trim()) return null;

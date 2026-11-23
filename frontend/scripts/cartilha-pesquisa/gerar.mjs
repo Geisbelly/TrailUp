@@ -303,7 +303,7 @@ td.caixa { text-align: center; color: var(--primary); }
     <ul class="cadeado">
       <li>Participar é voluntário, sem custo e sem pagamento. Recusar ou desistir não traz prejuízo. O convite é feito pela pesquisadora, nunca por coordenação ou superior.</li>
       <li>Fora do que você autorizar, a identificação fica em sigilo, só com a equipe. Ao fim da coleta, as respostas são baixadas e apagadas do formulário online.</li>
-      <li>O texto completo, com os contatos da equipe e do Comitê de Ética, é o Termo de Consentimento, na primeira página da inscrição.</li>
+      <li>O texto completo, com o contato da equipe, é o Termo de Consentimento, na primeira página da inscrição. Esta etapa é a validação com especialistas e não envolve alunos; a fase com alunos vem depois, com aprovação do Comitê de Ética em Pesquisa.</li>
     </ul>
   </div>
   ${rodape(8)}
@@ -315,7 +315,7 @@ td.caixa { text-align: center; color: var(--primary); }
   ${c.PERGUNTAS_FREQUENTES.map(f => `<div class="faq"><b>${esc(f.pergunta)}</b><p>${esc(f.resposta)}</p></div>`).join("")}
   <div class="destaque" style="margin-top:12px">
     <h3>Pronto para começar?</h3>
-    <p>A inscrição abre depois da aprovação do Comitê de Ética em Pesquisa. O link chega no convite, por e-mail individual. A cartilha também está no site do TrailUp, em /pesquisa/professores.</p>
+    <p>A inscrição abre quando a equipe enviar os convites. O link chega no convite, por e-mail individual. A cartilha também está no site do TrailUp, em /pesquisa/professores.</p>
   </div>
   ${rodape(9)}
 </section>
