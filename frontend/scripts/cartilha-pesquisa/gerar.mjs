@@ -188,7 +188,7 @@ td.caixa { text-align: center; color: var(--primary); }
     <p class="eyebrow">Por que esta pesquisa</p>
     <h2>O que a pesquisa quer saber</h2>
     <p>O TrailUp é uma plataforma de aprendizagem criada num Trabalho de Conclusão de Curso. O professor monta a trilha da turma; o sistema personaliza o material para cada perfil de aluno, transforma o estudo em jogo e mostra ao professor métricas e sugestões feitas por inteligência artificial.</p>
-    <p>Antes de levar o sistema a uma turma de verdade, é preciso saber se ele funciona para quem dá aula: <strong>se é fácil de usar, se as métricas fazem sentido, se as sugestões da IA ajudam a decidir e quanto trabalho ele exige</strong>. Quem responde a isso são especialistas em ensino: docentes da área de TI, docentes de outras áreas e pedagogos.</p>
+    <p>Antes de levar o sistema a uma turma de verdade, é preciso saber se ele funciona para quem dá aula: <strong>se é fácil de usar, se as métricas fazem sentido, se o material personalizado serve ao aluno e quanto trabalho ele exige</strong>. Quem responde a isso são especialistas em ensino: docentes da área de TI, docentes de outras áreas e pedagogos.</p>
   </div>
   <div class="sec">
     <h2>Em resumo</h2>
@@ -228,6 +228,7 @@ td.caixa { text-align: center; color: var(--primary); }
   <p class="eyebrow">Roteiro de uso</p>
   <h2>${c.TAREFAS.length} tarefas curtas</h2>
   <p style="font-size:11px">Depois de cada tarefa, quatro perguntas rápidas. Ninguém cronometra, e dizer que não conseguiu é tão útil quanto dizer que conseguiu.</p>
+  <p style="font-size:10.5px"><b>Fora desta rodada.</b> ${esc(c.FORA_DESTA_RODADA)}</p>
   <ul class="porTarefa">
     <li><b>${esc(c.PERGUNTA_CONCLUSAO)}</b> ${esc(c.OPCOES_CONCLUSAO.join(" · "))}</li>
     <li><b>${esc(c.PERGUNTA_SEQ)}</b> de 1 (${esc(c.EXTREMOS_SEQ[0].toLowerCase())}) a 7 (${esc(c.EXTREMOS_SEQ[1].toLowerCase())})</li>
@@ -323,7 +324,7 @@ td.caixa { text-align: center; color: var(--primary); }
 }
 
 function htmlDoResumo(c, arte) {
-  const avalia = ["Usabilidade", "Carga de trabalho", "Métricas do console", "Sugestões da IA", "Material personalizado", "Tela do aluno", "Utilidade", "Esforço e rotina"];
+  const avalia = ["Usabilidade", "Carga de trabalho", "Métricas do console", "Material personalizado", "Tela do aluno", "Utilidade", "Esforço e rotina"];
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">${FONTES}<style>
 ${CSS_BASE}
 body { width: 1080px; height: 1350px; position: relative; overflow: hidden; }
@@ -352,7 +353,7 @@ h2 { font-size: 34px; margin-bottom: 18px; color: var(--fg); }
   <div class="marca"><img src="${arte.estrela}" alt="">TrailUp</div>
   <p class="eyebrow">Pesquisa com professores e pedagogos</p>
   <h1>Avalie o TrailUp</h1>
-  <p class="sub">De uma hora a uma hora e quinze: você usa o sistema numa turma de demonstração e conta, por escrito, o que funciona e o que não funciona.</p>
+  <p class="sub">Cerca de uma hora: você usa o sistema numa turma de demonstração e conta, por escrito, o que funciona e o que não funciona.</p>
   <div class="etapas">
     <div class="etapa"><b>1. Inscrição</b><span>Termo e identificação. O e-mail vira o seu login.</span></div>
     <div class="etapa"><b>2. Acesso</b><span>Senha aleatória enviada só ao seu e-mail.</span></div>
@@ -360,7 +361,7 @@ h2 { font-size: 34px; margin-bottom: 18px; color: var(--fg); }
   </div>
   <h2>O que você avalia</h2>
   <div class="chips">${avalia.map(a => `<span class="chip">${a}</span>`).join("")}</div>
-  <div class="destaque"><b>Resultado negativo também é resultado</b><span>Uma tarefa difícil ou uma sugestão errada da IA é exatamente o que a pesquisa precisa encontrar. Crítica franca ajuda; nota por gentileza atrapalha.</span></div>
+  <div class="destaque"><b>Resultado negativo também é resultado</b><span>Uma tarefa difícil ou uma métrica confusa é exatamente o que a pesquisa precisa encontrar. Crítica franca ajuda; nota por gentileza atrapalha.</span></div>
   <div class="rodape"><span>Cartilha completa: site do TrailUp · /pesquisa/professores</span><span>TCC · Ciência da Computação · Ulbra Palmas</span></div>
 </div>
 </body></html>`;

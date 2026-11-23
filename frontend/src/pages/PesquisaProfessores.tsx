@@ -28,6 +28,7 @@ import {
   ESCALA_CONCORDANCIA,
   EXTREMOS_SEQ,
   FRANQUEZA,
+  FORA_DESTA_RODADA,
   ITENS_SUS,
   METRICAS,
   OPCOES_DIVULGACAO,
@@ -215,8 +216,8 @@ function Cartilha() {
             </p>
             <p>
               Antes de levar o sistema a uma turma de verdade, é preciso saber se ele funciona para quem dá aula:{" "}
-              <strong>se é fácil de usar, se as métricas fazem sentido, se as sugestões da IA ajudam a decidir e quanto
-              trabalho ele exige</strong>. Quem consegue responder a isso são especialistas em ensino: docentes da
+              <strong>se é fácil de usar, se as métricas fazem sentido, se o material personalizado serve ao aluno e
+              quanto trabalho ele exige</strong>. Quem consegue responder a isso são especialistas em ensino: docentes da
               área de TI, docentes de outras áreas e pedagogos. Por isso esta etapa envolve só eles, sem alunos.
             </p>
           </Secao>
@@ -292,6 +293,9 @@ function Cartilha() {
           </Secao>
 
           <Secao id="roteiro" titulo="O roteiro de uso">
+            <p className="rounded-lg border border-warning/60 bg-warning/10 p-4 text-sm text-foreground">
+              <strong>O que fica fora desta rodada.</strong> {FORA_DESTA_RODADA}
+            </p>
             <p>São {TAREFAS.length} tarefas curtas. Depois de cada uma, o formulário faz quatro perguntas rápidas:</p>
             <ul className="ml-5 list-disc space-y-1 text-sm">
               <li>
@@ -307,8 +311,8 @@ function Cartilha() {
             </ul>
             <p className="text-sm">
               Ninguém cronometra: o tempo é uma estimativa sua. Dizer que não conseguiu é tão útil quanto dizer que
-              conseguiu. Onde a tarefa deixa registro na turma de demonstração (uma sugestão decidida, uma entrega
-              corrigida), a equipe confere só isso, para checar o roteiro.
+              conseguiu. Onde a tarefa deixa registro na turma de demonstração (uma personalização pedida), a equipe
+              confere só isso, para checar o roteiro.
             </p>
             <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
               <Monitor size={20} className="text-primary" aria-hidden="true" /> No console do professor
@@ -362,8 +366,9 @@ function Cartilha() {
                   ))}
                 </div>
                 <p className="text-sm">
-                  As métricas são: {METRICAS.join(", ")}. A última coluna é a mais importante: um número que você
-                  entende e em que confia, mas que não muda nada na sua aula, ocupa espaço sem ajudar.
+                  As métricas são: {METRICAS.join(", ")}. Os valores na turma de demonstração são de exemplo, com
+                  um selo: julgue o painel, não o número. A última coluna é a mais importante: um painel que você
+                  entende, mas que não mudaria nada na sua aula, ocupa espaço sem ajudar.
                 </p>
               </div>
 
@@ -401,7 +406,7 @@ function Cartilha() {
                 </ul>
                 <p className="text-sm">
                   Aqui vale escrever com as suas palavras. Um bom comentário diz a tela e o que aconteceu, por exemplo:
-                  “em Notas, não achei como devolver a entrega ao aluno”.
+                  “em Trilhas, não achei onde mudar a ordem dos tópicos”.
                 </p>
               </div>
             </div>

@@ -101,7 +101,7 @@ export const ACESSO = "O e-mail que você cadastrar é o seu login no TrailUp. O
  * Dito ao participante na cartilha, na descrição do formulário e no termo:
  * resultado negativo é resultado. Também contra o viés de cortesia.
  */
-export const FRANQUEZA = "A pesquisa se alimenta tanto de resultados negativos quanto de positivos. Uma tarefa difícil, uma métrica confusa ou uma sugestão errada da IA é exatamente o que precisa aparecer: é isso que mostra o que corrigir antes de o sistema chegar a alunos. Nota dada por gentileza atrapalha a pesquisa; crítica franca ajuda.";
+export const FRANQUEZA = "A pesquisa se alimenta tanto de resultados negativos quanto de positivos. Uma tarefa difícil, uma métrica confusa ou um material gerado com erro é exatamente o que precisa aparecer: é isso que mostra o que corrigir antes de o sistema chegar a alunos. Nota dada por gentileza atrapalha a pesquisa; crítica franca ajuda.";
 
 /** Roteiro de uso. No formulário, cada tarefa é seguida da SEQ. */
 export const TAREFAS: readonly Tarefa[] = [
@@ -135,32 +135,15 @@ export const TAREFAS: readonly Tarefa[] = [
   {
     id: "T4",
     onde: "console",
-    titulo: "Achar um aluno que precisa de atenção",
+    titulo: "Ler as métricas da turma",
     passos: [
-      "Na Visão geral, olhe os indicadores da turma.",
-      "Encontre um aluno com sinal de alerta e abra o detalhe dele.",
+      "Na Visão geral, com a turma de demonstração selecionada, veja os painéis com o selo de exemplo.",
+      "Em cada métrica, abra a explicação (o ícone ao lado do nome) e diga para você mesmo o que ela mostra.",
     ],
-    observar: "Quanto tempo levou para achar e se o número explica por que aquele aluno precisa de atenção.",
+    observar: "Se cada painel se entende sozinho e se a explicação diz o que o número mede. Os valores são de exemplo: julgue o formato, não o dado.",
   },
   {
     id: "T5",
-    onde: "console",
-    titulo: "Ler uma sugestão da IA",
-    passos: [
-      "Em Recomendações, leia um insight ou uma intervenção sugerida.",
-      "Decida se aceitaria, ignoraria ou deixaria para depois.",
-    ],
-    observar: "Se a sugestão diz por que foi feita e se ela bate com o que você viu nos dados.",
-  },
-  {
-    id: "T6",
-    onde: "console",
-    titulo: "Corrigir uma entrega",
-    passos: ["Em Notas, abra a fila e veja uma entrega de aluno."],
-    observar: "Se a fila mostra o que precisa da sua decisão primeiro.",
-  },
-  {
-    id: "T7",
     onde: "console",
     titulo: "Entender o jogo da turma",
     passos: [
@@ -170,14 +153,14 @@ export const TAREFAS: readonly Tarefa[] = [
     observar: "Se você saberia ajustar o jogo à sua turma e se ele apoia o estudo.",
   },
   {
-    id: "T8",
+    id: "T6",
     onde: "console",
     titulo: "Ver a competição",
     passos: ["Abra Rankings, Rank de batalhas e Guildas."],
     observar: "O que a competição mostra e o efeito que ela teria em quem está atrás.",
   },
   {
-    id: "T9",
+    id: "T7",
     onde: "aluno",
     titulo: "Estudar como aluno",
     passos: [
@@ -187,7 +170,7 @@ export const TAREFAS: readonly Tarefa[] = [
     observar: "Se o aluno sabe o que fazer a seguir e se o material é fácil de abrir.",
   },
   {
-    id: "T10",
+    id: "T8",
     onde: "aluno",
     titulo: "Ver o jogo pelo lado do aluno",
     passos: ["Ainda como aluno, abra as missões, a loja e o ranking."],
@@ -269,22 +252,26 @@ export const EXTREMOS_EFLA = ["Discordo totalmente", "Concordo totalmente"] as c
 
 /** Acionabilidade (Kasepalu et al., 2022); a ação é codificada por Wise e Jung (2019). */
 export const ACIONABILIDADE = {
-  agiria: "Com base nas métricas da Visão geral, eu tomaria alguma ação na turma.",
+  agiria: "Se as métricas da Visão geral fossem da minha turma, eu tomaria alguma ação.",
   qualAcao:
     "Que ação você tomaria, e para quem: a turma toda, alguns alunos, o planejamento do curso? Ou esperaria para ver? (opcional)",
   realidade: "Quanto você acha que essas métricas refletiriam a realidade de uma turma de verdade?",
   extremosRealidade: ["0% (nada)", "100% (totalmente)"],
 } as const;
 
-/** Métricas da Visão geral avaliadas uma a uma (nomes como aparecem no console). */
+/**
+ * Métricas da Visão geral avaliadas uma a uma (nomes como aparecem no console). Na turma de
+ * demonstração elas aparecem com valores de exemplo (`PainelDeExemplo`): o que se avalia é o formato.
+ */
 export const METRICAS: readonly string[] = [
   "Conclusão média",
   "Taxa de acertos",
   "Tempo ativo médio",
   "Retorno semanal",
   "Abandono médio",
-  "Sinais de alerta",
-  "Perfil BrainHex da turma",
+  "Abandono por perfil",
+  "Inatividade por perfil",
+  "Distribuição de notas",
 ];
 
 /**
@@ -293,7 +280,7 @@ export const METRICAS: readonly string[] = [
  */
 export const COLUNAS_DAS_METRICAS: readonly string[] = [
   "Entendi o que mostra",
-  "Confio no número",
+  "A visualização é clara",
   "Faria algo diferente na aula por causa dele",
 ];
 
@@ -339,25 +326,6 @@ export type Bloco = {
 };
 
 export const BLOCOS: readonly Bloco[] = [
-  {
-    id: "insights",
-    titulo: "Sugestões da IA",
-    opcional: false,
-    sobre: "Se você entende por que a IA fez cada sugestão, se confia nela e se ela ajuda a decidir.",
-    fontes: "Hoffman et al. (2023); S-TIAS (McGrath et al., 2025); Jian et al. (2000); Nazaretsky et al. (2022); Pu, Chen e Hu (2011)",
-    itens: [
-      "Entendi por que o sistema fez a sugestão para aquele aluno ou para a turma.",
-      "A explicação da sugestão tem detalhe suficiente.",
-      "A explicação é útil para eu decidir o que fazer.",
-      "A explicação deixa claro o quanto posso confiar na sugestão.",
-      "Confio nas sugestões do sistema.",
-      "As sugestões do sistema são confiáveis.",
-      "Desconfio das sugestões do sistema.",
-      "Eu levaria uma sugestão do sistema tão a sério quanto a de um colega professor.",
-      "Alguma sugestão me pareceu errada ou injusta com o aluno.",
-      "Eu conferiria os dados antes de agir a partir de uma sugestão.",
-    ],
-  },
   {
     id: "material",
     titulo: "Material personalizado",
@@ -533,7 +501,15 @@ export const META_DO_SCVI_MEDIO = 0.9;
 // Textos da cartilha (página, PDF, imagem e roteiro do vídeo leem daqui).
 
 export const TEMPO_ESTIMADO =
-  "De uma hora a uma hora e quinze no total: uns 40 minutos usando o sistema e uns 30 respondendo. O tempo exato será medido num teste antes da coleta, e você não precisa terminar no mesmo dia.";
+  "Cerca de uma hora no total: uns 35 minutos usando o sistema e uns 25 respondendo. O tempo exato será medido num teste antes da coleta, e você não precisa terminar no mesmo dia.";
+
+/**
+ * O que esta rodada NÃO avalia, dito ao participante. A turma de demonstração não tem alunos com
+ * histórico, e não criamos aluno fictício: o que depende de dado de aluno fica para uma rodada com
+ * cenários de aluno (limitação e trabalho futuro na monografia).
+ */
+export const FORA_DESTA_RODADA =
+  "Esta rodada avalia o TrailUp no formato base: as telas, as métricas e o material. Não avalia as sugestões da IA sobre alunos, a busca por aluno que precisa de atenção nem a correção de entregas, porque isso depende de alunos com histórico, e a turma de demonstração não tem. As métricas aparecem com valores de exemplo, marcados como tais: julgue se entende cada uma e se a visualização é clara, não o número.";
 
 export const RESUMO: readonly { titulo: string; texto: string }[] = [
   {
@@ -577,7 +553,7 @@ export const PASSOS: readonly { titulo: string; texto: string }[] = [
   },
   {
     titulo: "Responda aos blocos de avaliação",
-    texto: "Usabilidade, esforço, métricas, sugestões da IA, material personalizado, tela do aluno, utilidade e rotina. Gamificação e dados dos alunos são opcionais.",
+    texto: "Usabilidade, esforço, métricas, material personalizado, tela do aluno, utilidade e rotina. Gamificação e dados dos alunos são opcionais.",
   },
   {
     titulo: "Escreva o que pensa",
@@ -598,7 +574,7 @@ export const ITENS_DO_ACESSO: readonly string[] = [
 
 export const FACA: readonly string[] = [
   "Seja franco. Problemas e críticas valem tanto quanto elogios; nota dada por gentileza atrapalha a pesquisa.",
-  "Explore à vontade e, se quiser, use conteúdo seu: a turma é de demonstração e os alunos são fictícios. Errar ou clicar no lugar errado também é resultado.",
+  "Explore à vontade e, se quiser, use conteúdo seu: a turma é de demonstração e o único aluno é o seu aluno de teste. Errar ou clicar no lugar errado também é resultado.",
   "Avalie sozinho. Não combine respostas com outros professores antes de enviar.",
   "Responda pensando no que você viu, e não no que o sistema poderia ser.",
   "Deixe em branco o que você não souber avaliar, em vez de chutar.",
@@ -649,7 +625,7 @@ export const PERGUNTAS_FREQUENTES: readonly { pergunta: string; resposta: string
   },
   {
     pergunta: "O que eu fizer no sistema entra na pesquisa?",
-    resposta: "Só uma parte, e só para conferir o roteiro: a equipe olha, na turma de demonstração, se o que a tarefa pede ficou registrado (por exemplo, se a sugestão foi decidida ou a entrega corrigida). Nenhum outro dado do seu uso entra na pesquisa. Ao fim, a turma, o conteúdo que você puser nela e os acessos de teste são apagados.",
+    resposta: "Só uma parte, e só para conferir o roteiro: a equipe olha, na turma de demonstração, se o que a tarefa pede ficou registrado (por exemplo, se a personalização foi pedida). Nenhum outro dado do seu uso entra na pesquisa. Ao fim, a turma, o conteúdo que você puser nela e os acessos de teste são apagados.",
   },
   {
     pergunta: "Vou saber o resultado?",
