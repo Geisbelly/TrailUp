@@ -304,6 +304,8 @@ def test_guia_cobre_toda_aba_de_turma_do_console() -> None:
 
     fonte = (Path(__file__).resolve().parents[2] / "frontend/src/pages/consoleSections.ts").read_text(encoding="utf-8")
     so_do_dono = set(re.findall(r'"(\w+)"', fonte.split("VIEWS_SO_DO_DONO")[1].split(";")[0]))
+    # As abas da pesquisa com professores também ficam fora da Lumi (conversa.ts).
+    so_do_dono |= set(re.findall(r'"(\w+)"', fonte.split("VIEWS_DA_PESQUISA")[1].split(";")[0]))
     secoes = re.findall(r'\{ view: "(\w+)", slug: "([\w-]*)" \}', fonte)
     assert secoes, "formato de CONSOLE_SECTIONS mudou"
     guia = guia_do_produto()
@@ -418,6 +420,7 @@ def test_destinos_batem_com_as_abas_do_console() -> None:
     raiz = Path(__file__).resolve().parents[2] / "frontend/src"
     secoes = (raiz / "pages/consoleSections.ts").read_text(encoding="utf-8")
     so_do_dono = set(re.findall(r'"(\w+)"', secoes.split("VIEWS_SO_DO_DONO")[1].split(";")[0]))
+    so_do_dono |= set(re.findall(r'"(\w+)"', secoes.split("VIEWS_DA_PESQUISA")[1].split(";")[0]))
     views = {v for v in re.findall(r'\{ view: "(\w+)"', secoes) if v not in so_do_dono}
     economia = (raiz / "components/console/economia/economiaRegras.ts").read_text(encoding="utf-8")
     abas = set(re.findall(r'\{ id: "(\w+)", rotulo:', economia.split("const ABAS_DA_ECONOMIA")[1].split("];")[0]))

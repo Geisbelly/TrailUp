@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { ArrowRight, Check, ClipboardList, Clock, Lock, Monitor, Smartphone, Users, X } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { ArrowRight, Check, CheckCircle2, ClipboardList, Clock, Lock, Monitor, Smartphone, Users, X } from "lucide-react";
 import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
@@ -33,7 +34,11 @@ import {
   PERGUNTAS_ABERTAS,
   PERGUNTA_SEQ,
   TAREFAS,
+  abaDaPagina,
   linkDoFormulario,
+  linkEmbutido,
+  voltouDaConfirmacao,
+  type AbaDaPagina,
   type Tarefa,
 } from "@/features/pesquisa/pesquisaProfessores";
 
@@ -110,7 +115,64 @@ function ListaDeTarefas({ tarefas }: { tarefas: readonly Tarefa[] }) {
   );
 }
 
+const ROTULO_DA_ABA: Record<AbaDaPagina, string> = { cartilha: "Cartilha", inscricao: "Inscrição" };
+
+function AbasDaPagina({ ativa }: { ativa: AbaDaPagina }) {
+  return (
+    <nav aria-label="Partes da pesquisa" className="mb-8 flex gap-2 border-b border-border">
+      {(Object.keys(ROTULO_DA_ABA) as AbaDaPagina[]).map(aba => (
+        <Link
+          key={aba}
+          to={aba === "cartilha" ? "/pesquisa/professores" : `/pesquisa/professores?aba=${aba}`}
+          aria-current={ativa === aba ? "page" : undefined}
+          className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold ${
+            ativa === aba ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {ROTULO_DA_ABA[aba]}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+function Inscricao({ confirmado }: { confirmado: boolean }) {
+  const embutido = linkEmbutido(LINK_DO_FORMULARIO);
+  return (
+    <div className="space-y-6">
+      {confirmado && (
+        <div role="status" className="flex gap-3 rounded-lg border border-primary/40 bg-primary/10 p-5">
+          <CheckCircle2 className="mt-0.5 shrink-0 text-primary" size={22} aria-hidden="true" />
+          <div>
+            <p className="font-semibold text-foreground">E-mail confirmado.</p>
+            <p className="text-muted-foreground">
+              O seu acesso de professor, o do aluno de teste e o link da avaliação chegam no seu e-mail em até 15 minutos.
+              Se não chegar, confira a caixa de spam.
+            </p>
+          </div>
+        </div>
+      )}
+      <p className="text-muted-foreground">
+        A inscrição começa pelo Termo de Consentimento. Depois de concordar, você se identifica; o e-mail informado será o
+        seu login no TrailUp. A equipe confere cada inscrição e manda o acesso por e-mail.
+      </p>
+      <BotaoDoFormulario />
+      {embutido && (
+        <iframe
+          title="Formulário de inscrição na pesquisa"
+          src={embutido}
+          className="h-[1600px] w-full rounded-lg border border-border bg-white"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+        />
+      )}
+    </div>
+  );
+}
+
 export default function PesquisaProfessores() {
+  const { search } = useLocation();
+  const aba = abaDaPagina(search);
   return (
     <PublicLayout>
       <div className="public-article">
@@ -119,6 +181,17 @@ export default function PesquisaProfessores() {
           responder ao formulário.
         </PublicPageTitle>
 
+        <AbasDaPagina ativa={aba} />
+
+        {aba === "inscricao" ? <Inscricao confirmado={voltouDaConfirmacao(search)} /> : <Cartilha />}
+      </div>
+    </PublicLayout>
+  );
+}
+
+function Cartilha() {
+  return (
+    <>
         <div className="mb-10 flex flex-col gap-3">
           <BotaoDoFormulario />
         </div>
@@ -444,7 +517,6 @@ export default function PesquisaProfessores() {
             </p>
           </section>
         </article>
-      </div>
-    </PublicLayout>
+    </>
   );
 }

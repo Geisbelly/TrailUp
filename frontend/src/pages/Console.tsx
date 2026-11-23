@@ -34,6 +34,8 @@ const AdministracaoSection = lazyWithReload(() => import("@/components/console/a
 const PainelTecnicoSection = lazyWithReload(() => import("@/components/console/tecnico/PainelTecnicoSection"));
 const RecomendacoesSection = lazyWithReload(() => import("@/components/console/recomendacoes/RecomendacoesSection"));
 const PersonalizacoesSection = lazyWithReload(() => import("@/components/console/personalizacoes/PersonalizacoesSection"));
+const AvaliacaoDaPesquisaSection = lazyWithReload(() => import("@/components/console/pesquisa/AvaliacaoDaPesquisaSection"));
+import { lerMeuAcesso, type MeuAcessoNaPesquisa } from "@/features/pesquisa/links";
 
 // A Administração e o painel técnico só são visíveis para a dona do projeto (TCC);
 // os demais professores nunca veem nem conseguem acessar essa view. Quem é o
@@ -72,6 +74,25 @@ export default function Console() {
   const [ownerStatus, setOwnerStatus] = useState<boolean | null>(null);
   const isOwner = ownerStatus === true;
   const professorId = professorData?.id;
+  // Pesquisa com professores: undefined = conferindo; null = não participa (a aba some).
+  const [acessoDaPesquisa, setAcessoDaPesquisa] = useState<MeuAcessoNaPesquisa | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!professorId) return;
+    let ativo = true;
+    setAcessoDaPesquisa(undefined);
+    // Sem a função (migration 20261123_01 não aplicada) ou com erro, a aba só não aparece.
+    supabase
+      .rpc("pesquisa_meu_acesso" as never)
+      .then(({ data, error }) => {
+        if (ativo) setAcessoDaPesquisa(error ? null : lerMeuAcesso(data));
+      }, () => {
+        if (ativo) setAcessoDaPesquisa(null);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [professorId]);
 
   useEffect(() => {
     if (!professorId) return;
@@ -197,7 +218,7 @@ export default function Console() {
   }
 
   return (
-    <ConsoleShell view={view} name={professorData?.nome || "Professor"} institution={professorData?.instituicao} isOwner={isOwner} onSignOut={handleLogout}>
+    <ConsoleShell view={view} name={professorData?.nome || "Professor"} institution={professorData?.instituicao} isOwner={isOwner} isAvaliador={Boolean(acessoDaPesquisa?.avaliador)} onSignOut={handleLogout}>
         {professorData && <AceiteDosTermos onSair={handleLogout} />}
         <Suspense
           fallback={
@@ -244,6 +265,10 @@ export default function Console() {
               ) : view === "administracao" ? (
                 // Idem: cada função `admin_*` confere `app_e_dono()` antes de ler ou gravar.
                 isOwner ? <AdministracaoSection /> : professorData && ownerStatus === false ? <Navigate to={consolePathForView("dashboard")} replace /> : null
+              ) : view === "avaliacao" ? (
+                // Quem decide é o banco (`pesquisa_meu_acesso()`); a URL digitada por quem não participa
+                // volta para o dashboard depois da resposta.
+                acessoDaPesquisa ? <AvaliacaoDaPesquisaSection acesso={acessoDaPesquisa} /> : acessoDaPesquisa === null ? <Navigate to={consolePathForView("dashboard")} replace /> : null
               ) : (
                 <ClassManagementSection professorId={professorData?.id} />
               )}
