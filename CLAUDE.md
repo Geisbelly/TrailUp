@@ -895,6 +895,16 @@ Cada perfil carrega:
   a desligar a coleta no próximo início do app: decida isso antes de abrir revogação por aqui.
   `admin_aluno_nascimento_corrigir` pode tirar um menor do modo restrito, então exige motivo e guarda a
   data anterior.
+- `pesquisa_avaliador` — quem a equipe aprovou na pesquisa com professores (`20261123_01`).
+  **Criar conta é banco + edge function, não API:** a planilha de inscrições (Apps Script,
+  `scripts/apps-script-formulario-professores/Planilha.gs`) chama a edge function
+  `pesquisa-acesso`, que cria professor (já liberado, num INSERT: o UPDATE de `liberado` esbarra em
+  `professor_block_self_approve`), aluno de teste e uma **turma por avaliador**, cópia da
+  `app_config.pesquisa_classe_modelo_id`. A turma não é compartilhada de propósito: a posse é só
+  `classe.professor_id`, e numa turma comum um avaliador encontraria a entrega já corrigida pelo
+  outro. A senha só sai depois de o avaliador confirmar o e-mail e nunca é gravada. O link da
+  avaliação não vai no bundle: `pesquisa_meu_acesso()` o entrega só ao avaliador e ao dono, e é
+  ela que mostra a aba "Avaliar o TrailUp".
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
   intercambiáveis**: `notificacoes_ia` (o que a IA *sugeriu*; a API só insere

@@ -39,6 +39,10 @@ import {
   PERGUNTA_SEQ,
   TAREFAS,
   linkDoFormulario,
+  linkEmbutido,
+  abaDaPagina,
+  voltouDaConfirmacao,
+  lerMeuAcesso,
   pontuarSus,
 } from "./pesquisaProfessores";
 
@@ -220,5 +224,46 @@ describe("linkDoFormulario", () => {
     expect(linkDoFormulario("https://forms.gle.exemplo.com/x")).toBeNull();
     expect(linkDoFormulario("javascript:alert(1)")).toBeNull();
     expect(linkDoFormulario(undefined)).toBeNull();
+  });
+});
+
+describe("linkEmbutido", () => {
+  it("põe embedded=true no link longo do Google Forms", () => {
+    expect(linkEmbutido("https://docs.google.com/forms/d/e/abc/viewform?usp=sf_link")).toBe(
+      "https://docs.google.com/forms/d/e/abc/viewform?usp=sf_link&embedded=true",
+    );
+  });
+
+  it("não embute o link curto nem a ausência de link", () => {
+    expect(linkEmbutido("https://forms.gle/abc")).toBeNull();
+    expect(linkEmbutido(null)).toBeNull();
+  });
+});
+
+describe("abas da página pública", () => {
+  it("abre a cartilha por padrão e a inscrição só com ?aba=inscricao", () => {
+    expect(abaDaPagina("")).toBe("cartilha");
+    expect(abaDaPagina("?aba=qualquer")).toBe("cartilha");
+    expect(abaDaPagina("?aba=inscricao&confirmado=1")).toBe("inscricao");
+  });
+
+  it("reconhece a volta do link de confirmação", () => {
+    expect(voltouDaConfirmacao("?aba=inscricao&confirmado=1")).toBe(true);
+    expect(voltouDaConfirmacao("?confirmado=0")).toBe(false);
+  });
+});
+
+describe("lerMeuAcesso", () => {
+  it("null quando o banco não reconhece o professor", () => {
+    expect(lerMeuAcesso(null)).toBeNull();
+  });
+
+  it("só aceita link de formulário do Google", () => {
+    expect(lerMeuAcesso({ avaliador: true, classe_id: 7, aluno_teste_email: "a@t.app", link_avaliacao: "https://evil.example/x" })).toEqual({
+      avaliador: true, classeId: 7, alunoTesteEmail: "a@t.app", linkAvaliacao: null,
+    });
+    expect(lerMeuAcesso({ avaliador: false, link_avaliacao: "https://docs.google.com/forms/d/e/x/viewform" })?.linkAvaliacao).toBe(
+      "https://docs.google.com/forms/d/e/x/viewform",
+    );
   });
 });

@@ -23,6 +23,7 @@ export const CONSOLE_SECTIONS = [
   { view: "profile", slug: "meus-dados" },
   { view: "tecnico", slug: "tecnico" },
   { view: "administracao", slug: "administracao" },
+  { view: "avaliacao", slug: "avaliar" },
 ] as const;
 
 export type ConsoleView = (typeof CONSOLE_SECTIONS)[number]["view"];
@@ -45,6 +46,7 @@ export const ROTULO_DA_VIEW: Record<ConsoleView, string> = {
   profile: "Meus dados",
   tecnico: "Painel técnico",
   administracao: "Administração",
+  avaliacao: "Avaliar o TrailUp",
 };
 
 /**
@@ -56,6 +58,23 @@ export const VIEWS_SO_DO_DONO: readonly ConsoleView[] = ["tecnico", "administrac
 
 export function viewSoDoDono(view: ConsoleView): boolean {
   return VIEWS_SO_DO_DONO.includes(view);
+}
+
+/**
+ * Abas da pesquisa com professores: só aparecem para quem a equipe aprovou como avaliador (e para o
+ * dono). Quem decide é o banco, por `pesquisa_meu_acesso()`; a Lumi também não as acompanha.
+ */
+export const VIEWS_DA_PESQUISA: readonly ConsoleView[] = ["avaliacao"];
+
+export function viewDaPesquisa(view: ConsoleView): boolean {
+  return VIEWS_DA_PESQUISA.includes(view);
+}
+
+/** A aba aparece no menu de quem? Dono vê tudo; avaliador vê a da pesquisa; o resto, as de turma. */
+export function viewVisivel(view: ConsoleView, quem: { isOwner: boolean; isAvaliador: boolean }): boolean {
+  if (viewSoDoDono(view)) return quem.isOwner;
+  if (viewDaPesquisa(view)) return quem.isOwner || quem.isAvaliador;
+  return true;
 }
 
 export const CONSOLE_BASE_PATH = "/console";

@@ -1,7 +1,7 @@
 // Lumi (antes Escriba) — a guia do professor (docs/frontend/redesign-fase-2/01-analise-dashboard.md, 4.10).
 // Lógica pura do painel: o que mandar para a API e como traduzir as falhas.
 
-import { CONSOLE_SECTIONS, ROTULO_DA_VIEW, consolePathForView, viewSoDoDono, type ConsoleView } from "@/pages/consoleSections";
+import { CONSOLE_SECTIONS, ROTULO_DA_VIEW, consolePathForView, viewDaPesquisa, viewSoDoDono, type ConsoleView } from "@/pages/consoleSections";
 import { ABAS_DA_ECONOMIA } from "../economia/economiaRegras";
 import { TODAS } from "./constantes";
 import { tutorialPorId, type Tutorial } from "./tutoriais";
@@ -82,7 +82,7 @@ export function destinoParaLink(destino: string, turma: string): Destino | null 
   const [view, parte, ...resto] = String(destino ?? "").trim().split(".");
   if (resto.length > 0) return null;
   const secao = CONSOLE_SECTIONS.find((s) => s.view === view);
-  if (!secao || viewSoDoDono(secao.view)) return null;
+  if (!secao || viewSoDoDono(secao.view) || viewDaPesquisa(secao.view)) return null;
   const params = new URLSearchParams();
   if (turma !== TODAS && /^\d+$/.test(turma)) params.set("turma", turma);
   let rotulo = ROTULO_DA_VIEW[secao.view as ConsoleView];

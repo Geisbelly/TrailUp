@@ -130,8 +130,9 @@ e as abertas. **A SUS fica de fora**, porque já é validada.
    `CONFIG.linkAtualizacao` e para `VITE_PESQUISA_ATUALIZACAO_FORM_URL`.
 3. **Executar → `criarFormularioDeInscricao`**. O link de resposta vai para
    `VITE_PESQUISA_INSCRICAO_FORM_URL`: é o botão da cartilha.
-4. **Executar → `criarFormulario`** (a avaliação). Este link **não** vai para o site: segue só no
-   e-mail com os acessos.
+4. **Executar → `criarFormulario`** (a avaliação). Este link **não** vai para o bundle do site:
+   fica em `app_config.pesquisa_link_avaliacao` (abaixo), que só o avaliador aprovado lê, na aba
+   "Avaliar o TrailUp" do console, e segue no e-mail com os acessos.
 5. O registro de execução mostra os links. Com `rascunho: true`, lista também os campos que faltam.
 6. Conferir os três no modo de visualização, inclusive o "Não quero participar".
 7. Para os definitivos: `rascunho: false` e rodar de novo. As funções recusam se faltar algum campo.
@@ -141,16 +142,78 @@ Sem `VITE_PESQUISA_INSCRICAO_FORM_URL`, a cartilha mostra que a inscrição aind
 
 ## Fluxo de cada participante
 
-1. **Inscrição:** TCLE e identificação. O e-mail informado é o login.
-2. **Acesso, pela equipe:** criar a conta de professor com esse e-mail e uma senha aleatória
-   (por exemplo, `openssl rand -base64 18`), aprovar o professor e ligá-lo à turma de
-   demonstração. O acesso ao console é restrito por segurança: ele mostra dados de turmas e de
-   alunos, e todo professor passa pela aprovação da equipe. Enviar **só para o e-mail cadastrado**, numa
-   mensagem individual: o login e a senha de professor, o acesso de aluno de teste, o link da
-   avaliação e o da cartilha. A senha não fica registrada em nenhum outro lugar.
-3. **Avaliação:** começa pelo e-mail cadastrado, que liga a avaliação à inscrição.
-4. **Ao fim da pesquisa:** apagar as contas, a turma de demonstração e o conteúdo que os
-   professores puseram nela.
+1. **Inscrição:** TCLE e identificação, na aba Inscrição de `/pesquisa/professores` ou pelo link
+   do convite. O e-mail informado é o login.
+2. **Aprovação, pela equipe:** na planilha de inscrições, coluna Decisão = `Aprovado`.
+3. **Acesso, pela planilha (`Planilha.gs`):** cria a conta, manda o e-mail de confirmação e, só
+   depois do clique, manda o acesso. Ver a seção seguinte.
+4. **Avaliação:** na aba "Avaliar o TrailUp" do console (ou pelo link do e-mail). Começa pelo
+   e-mail cadastrado, que liga a avaliação à inscrição.
+5. **Ao fim da pesquisa:** apagar as contas (professor e aluno de teste), a turma de demonstração e
+   o conteúdo que os professores puseram nela. Apagar a conta de professor leva junto a linha de
+   `pesquisa_avaliador`.
+
+## Planilha de inscrições e acesso
+
+`Planilha.gs` liga o formulário de inscrição a uma planilha e leva cada aprovado por quatro passos,
+gravando a data de cada um na linha dele:
+
+| Coluna | O que acontece |
+|---|---|
+| Conta criada em | A edge function `pesquisa-acesso` cria o professor (já liberado, e-mail ainda não confirmado), o aluno de teste e a turma de demonstração dele, cópia da turma-modelo (`pesquisa_preparar_avaliador`, migration `20261123_01`). A Situação mostra o número da turma |
+| Confirmação enviada em | E-mail personalizado com o link que confirma o endereço. Sem clique em 24 h, reenvia (até 3 vezes) |
+| E-mail confirmado em | A função confere no Auth quem já clicou |
+| Acesso enviado em | Só para quem confirmou: senhas novas e aleatórias para o professor e o aluno de teste, num e-mail com os dois logins, a turma, o link da avaliação e o da cartilha |
+
+A senha passa pela execução e vai direto para o e-mail: não fica na planilha, no registro de
+execução nem nas propriedades. Se o envio falhar, a próxima rodada gera outras.
+
+O aluno de teste só existe em `alunos` depois de fazer o cadastro no app. No COMMIT desse
+cadastro, `trg_pesquisa_matricula_aluno_teste` o matricula na turma do avaliador.
+
+Os textos ficam na aba "Modelos de e-mail" da planilha e podem ser editados lá. Campo
+desconhecido (`{{...}}`) bloqueia o envio em vez de mandar o marcador para o professor.
+
+### Montar (uma vez por ambiente)
+
+Comece no banco de **dev**. Produção é só trocar os valores abaixo, depois da aprovação do CEP.
+
+1. **Banco:** a migration `20261123_01` aplicada (a API roda `alembic upgrade head` ao subir).
+   Montar no console a turma-modelo, com a trilha que todos vão receber, e gravar:
+
+   ```sql
+   INSERT INTO public.app_config (chave, valor, descricao, publico) VALUES
+     ('pesquisa_classe_modelo_id', '<id da turma-modelo>', 'Turma copiada para cada avaliador da pesquisa com professores', false),
+     ('pesquisa_link_avaliacao', '<link de resposta do formulário de avaliação>', 'Formulário da avaliação; só o avaliador lê (pesquisa_meu_acesso)', false)
+   ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor;
+   ```
+
+2. **Edge function:** gerar o segredo (`openssl rand -hex 32`) e, a partir de uma cópia limpa da
+   `main`:
+
+   ```sh
+   npx supabase secrets set --project-ref <ref> PESQUISA_ACESSO_SEGREDO=<segredo> PESQUISA_SITE_URL=<https://site>
+   npx supabase functions deploy pesquisa-acesso --project-ref <ref> --use-api
+   ```
+
+   `PESQUISA_ALUNO_DOMINIO` é opcional (padrão `trailup.app`, o da conta de demonstração). O
+   aluno de teste nunca recebe e-mail; o endereço é só login.
+3. **Auth do Supabase:** em URL Configuration, acrescentar `<site>/pesquisa/professores**` às
+   Redirect URLs (senão o link de confirmação cai na Site URL). Em Email, subir o "Email OTP
+   Expiration" para 86400 s: é a validade do link de confirmação.
+4. **Apps Script** (o mesmo projeto dos formulários): colar `Planilha.gs` ao lado de `Code.gs`,
+   atualizar `appsscript.json` (planilha, envio de e-mail, chamada externa e gatilho) e preencher as
+   propriedades do script: `PESQUISA_FUNCAO_URL`
+   (`https://<ref>.supabase.co/functions/v1/pesquisa-acesso`), `PESQUISA_FUNCAO_SEGREDO`,
+   `PESQUISA_FORM_INSCRICAO_ID`, `PESQUISA_LINK_AVALIACAO` e `PESQUISA_SITE_URL`.
+5. **Executar → `criarPlanilhaDeInscricoes`** e autorizar. **`enviarModelosDeTeste`** manda os dois
+   e-mails para a própria conta, com dados de exemplo.
+6. **`instalarProcessamentoAutomatico`**: `processarAprovados` passa a rodar a cada 15 minutos.
+   Também dá para rodá-lo à mão a qualquer hora; ele é idempotente.
+
+Limites: a cota do `MailApp` da conta (Gmail comum, cerca de 100 destinatários por dia; com o
+gatilho, quem passar disso fica "Aguardando" para o dia seguinte). E-mail que já tem conta no
+TrailUp para na Situação "Erro: este e-mail já tem conta" e é resolvido à mão.
 
 ## O que o script garante
 
@@ -165,7 +228,7 @@ Sem `VITE_PESQUISA_INSCRICAO_FORM_URL`, a cartilha mostra que a inscrição aind
 | A forma de divulgação é a **última** pergunta, depois de toda a avaliação, e pode ser trocada a qualquer momento até a versão final pelo formulário de atualização (vale a resposta mais recente). Com o nome, só depois de ver o próprio quadro | Viés de cortesia: quem responde sabendo que o nome vai junto tende a avaliar melhor. Decidir depois, e poder voltar atrás, separa a avaliação da exposição |
 | A descrição do formulário, a página antes do roteiro e o TCLE dizem que resultado negativo vale tanto quanto positivo | Também contra a cortesia: crítica franca é o que orienta a correção |
 | Título das perguntas com o id da tarefa (`T4 · ...`) | A planilha de respostas fica legível |
-| Não cria planilha vinculada | As respostas são baixadas e apagadas da nuvem ao fim; uma planilha seria mais uma cópia |
+| Só a inscrição tem planilha vinculada; a avaliação não | A aprovação e o acesso precisam de uma linha por inscrito. As respostas da avaliação são baixadas e apagadas da nuvem ao fim; uma planilha seria mais uma cópia |
 
 ## Depois da coleta
 

@@ -561,7 +561,7 @@ export const PASSOS: readonly { titulo: string; texto: string }[] = [
   },
   {
     titulo: "Receba o seu acesso",
-    texto: "A equipe cria o seu acesso com esse e-mail e uma senha gerada aleatoriamente, e envia só para ele: o acesso de professor, o de aluno de teste e o link do formulário de avaliação.",
+    texto: "Aprovada a inscrição, chega um e-mail para você confirmar o endereço. Depois do clique, a equipe envia só para ele, com senhas geradas aleatoriamente, o acesso de professor, o de aluno de teste (que entra sozinho na sua turma de demonstração) e o link do formulário de avaliação, que também fica na aba Avaliar o TrailUp do console.",
   },
   {
     titulo: "Abra o TrailUp e o formulário de avaliação",
@@ -657,22 +657,20 @@ export const PERGUNTAS_FREQUENTES: readonly { pergunta: string; resposta: string
   },
 ];
 
-const HOSTS_DO_FORMULARIO = new Set(["docs.google.com", "forms.gle"]);
+export { linkDoFormulario, linkEmbutido } from "./links";
 
-/**
- * Link do formulário vindo do ambiente. Só aceita formulário do Google em
- * https; qualquer outra coisa vira null e a página mostra "ainda não aberto".
- * Sem link é o estado certo antes da aprovação do CEP.
- */
-export function linkDoFormulario(bruto: unknown): string | null {
-  if (typeof bruto !== "string" || !bruto.trim()) return null;
-  let url: URL;
-  try {
-    url = new URL(bruto.trim());
-  } catch {
-    return null;
-  }
-  if (url.protocol !== "https:" || !HOSTS_DO_FORMULARIO.has(url.hostname)) return null;
-  if (url.hostname === "docs.google.com" && !url.pathname.startsWith("/forms/")) return null;
-  return url.toString();
+/** Abas da página pública da pesquisa: a cartilha e a inscrição. A URL (`?aba=`) é a fonte da verdade. */
+export const ABAS_DA_PAGINA = ["cartilha", "inscricao"] as const;
+export type AbaDaPagina = (typeof ABAS_DA_PAGINA)[number];
+
+export function abaDaPagina(search: string): AbaDaPagina {
+  const aba = new URLSearchParams(search).get("aba");
+  return aba === "inscricao" ? "inscricao" : "cartilha";
 }
+
+/** Quem abriu o link de confirmação do e-mail volta com `?confirmado=1` (edge function pesquisa-acesso). */
+export function voltouDaConfirmacao(search: string): boolean {
+  return new URLSearchParams(search).get("confirmado") === "1";
+}
+
+export { lerMeuAcesso, type MeuAcessoNaPesquisa } from "./links";

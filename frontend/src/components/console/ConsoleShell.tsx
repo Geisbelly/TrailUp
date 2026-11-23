@@ -1,11 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Activity, Award, Building2, CalendarDays, ClipboardCheck, Coins, Flag, GraduationCap, LayoutDashboard, Lightbulb, LogOut, Menu, Route, Settings, Sparkles, Trophy, X } from "lucide-react";
+import { Activity, Award, Building2, CalendarDays, ClipboardCheck, ClipboardList, Coins, Flag, GraduationCap, LayoutDashboard, Lightbulb, LogOut, Menu, Route, Settings, Sparkles, Trophy, X } from "lucide-react";
 import { Shield, Swords } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMinhaConta } from "@/hooks/useMinhaConta";
 import { DESIGN_ART } from "@/lib/design-art";
-import { CONSOLE_SECTIONS, ROTULO_DA_VIEW, consolePathForView, viewSoDoDono, type ConsoleView } from "@/pages/consoleSections";
+import { CONSOLE_SECTIONS, ROTULO_DA_VIEW, consolePathForView, viewDaPesquisa, viewSoDoDono, viewVisivel, type ConsoleView } from "@/pages/consoleSections";
 import Escriba from "./escriba/Escriba";
 import SinoDeNotificacoes from "./notificacoes/SinoDeNotificacoes";
 import { useContagemDeRecomendacoes } from "./recomendacoes/useRecomendacoesDaIA";
@@ -28,6 +28,7 @@ const navigation = {
   profile: { label: ROTULO_DA_VIEW.profile, icon: Settings },
   tecnico: { label: ROTULO_DA_VIEW.tecnico, icon: Activity },
   administracao: { label: ROTULO_DA_VIEW.administracao, icon: Building2 },
+  avaliacao: { label: ROTULO_DA_VIEW.avaliacao, icon: ClipboardList },
 };
 
 // Recomendações, conta e administração ficam no topo, ao lado do sino; o menu lateral fica com as
@@ -45,11 +46,13 @@ function useConsoleThemeOnDocument() {
   }, []);
 }
 
-export default function ConsoleShell({ view, name, institution, isOwner, onSignOut, children }: {
+export default function ConsoleShell({ view, name, institution, isOwner, isAvaliador = false, onSignOut, children }: {
   view: ConsoleView;
   name: string;
   institution?: string | null;
   isOwner: boolean;
+  /** Participa da pesquisa com professores: vê a aba "Avaliar o TrailUp". */
+  isAvaliador?: boolean;
   onSignOut: () => void;
   children?: ReactNode;
 }) {
@@ -88,7 +91,7 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         <span className="console-topbar-divider" aria-hidden="true" />
         <span className="console-workspace-name">Console do professor</span>
         <div className="console-account">
-          {ICONES_NO_TOPO.filter((secao) => !viewSoDoDono(secao) || isOwner).map((secao) => {
+          {ICONES_NO_TOPO.filter((secao) => viewVisivel(secao, { isOwner, isAvaliador })).map((secao) => {
             const Icon = navigation[secao].icon;
             const aviso = secao === "recomendacoes" ? selo : null;
             const rotulo = aviso ? `${navigation[secao].label}, ${aviso} aguardando decisão` : navigation[secao].label;
@@ -108,7 +111,7 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
         </div>
       </header>
       <nav id="console-sections-navigation" className="console-navigation" data-open={menuAberto} aria-label="Seções do console">
-        {CONSOLE_SECTIONS.filter(section => section.view !== "profile" && (!viewSoDoDono(section.view) || isOwner)).map(section => {
+        {CONSOLE_SECTIONS.filter(section => section.view !== "profile" && viewVisivel(section.view, { isOwner, isAvaliador })).map(section => {
           const item = navigation[section.view];
           const soNaGaveta = ICONES_NO_TOPO.includes(section.view);
           const Icon = item.icon;
@@ -118,7 +121,7 @@ export default function ConsoleShell({ view, name, institution, isOwner, onSignO
       </nav>
       <main className="console-main" aria-label={navigation[view].label}>{children}</main>
       {/* A Lumi acompanha as telas de trabalho; Aprovações e Painel técnico são administração, não turma. */}
-      {!viewSoDoDono(view) && <Escriba />}
+      {!viewSoDoDono(view) && !viewDaPesquisa(view) && <Escriba />}
     </div>
   );
 }
