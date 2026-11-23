@@ -216,6 +216,22 @@ Comece no banco de **dev**. Produção é só trocar os valores abaixo.
    e-mails para a própria conta, com dados de exemplo.
 6. **`instalarProcessamentoAutomatico`**: `processarAprovados` passa a rodar a cada 15 minutos.
    Também dá para rodá-lo à mão a qualquer hora; ele é idempotente.
+7. **Inscrição na página do site** (opcional; sem ela, a página mostra o Google Forms):
+   - **`acrescentarCodigoDoSite`** cria no formulário de inscrição o campo "Código do site" (os
+     formulários novos já nascem com ele) e mostra o `entry.*` dele no registro.
+   - **Implantar → Nova implantação → App da Web**, executar como "Eu", acesso "Qualquer pessoa". A
+     URL `…/exec` vai para `VITE_PESQUISA_INSCRICAO_CONFIRMACAO_URL` no Vercel. Depois de mudar o
+     `doGet`, é preciso **Gerenciar implantações → editar → Nova versão**, senão a URL continua
+     servindo o código antigo.
+   - O id do formulário e os `entry.*` de cada pergunta ficam em
+     `frontend/src/features/pesquisa/inscricaoNoSite.ts`. Recriou o formulário de inscrição? Os
+     números mudam: atualize lá (estão em `FB_PUBLIC_LOAD_DATA_`, no HTML da página de resposta).
+     Até atualizar, a página volta sozinha para o Google Forms.
+
+   A página manda as respostas direto ao Forms com um código aleatório e pergunta ao `doGet` se
+   ele chegou. O `doGet` só responde `{"recebida": true|false}`: a planilha continua privada, e
+   sem o código, que só o navegador de quem enviou conhece, não há o que perguntar. Por isso a
+   pergunta é pelo código, e não pelo e-mail, que diria a qualquer um quem se inscreveu.
 
 Limites: a cota do `MailApp` da conta (Gmail comum, cerca de 100 destinatários por dia; com o
 gatilho, quem passar disso fica "Aguardando" para o dia seguinte). E-mail que já tem conta no

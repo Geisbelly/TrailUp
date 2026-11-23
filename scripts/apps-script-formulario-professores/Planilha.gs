@@ -147,6 +147,58 @@ function enviarModelosDeTeste() {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Confirmação para o site
+// ---------------------------------------------------------------------------------------------
+
+// Formato de crypto.randomUUID(), que é o que a página gera para cada envio.
+const CODIGO_DO_SITE_FORMATO = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+/**
+ * A página de inscrição do site manda as respostas direto ao Forms, sem conseguir ler a resposta
+ * do Google, com um código aleatório no campo CAMPO_CODIGO_DO_SITE. Depois pergunta aqui se esse
+ * código chegou. Publicado como App da Web (executar como: eu; acesso: qualquer pessoa).
+ *
+ * Responde só {"recebida": true|false}. Nenhum dado da resposta nem da planilha sai daqui, e a
+ * planilha continua privada. Sem o código, que só o navegador de quem enviou conhece, não há o que
+ * perguntar: um e-mail no lugar dele diria a qualquer um quem se inscreveu.
+ */
+function doGet(e) {
+  const codigo = String((e && e.parameter && e.parameter.codigo) || '').toLowerCase();
+  const recebida = CODIGO_DO_SITE_FORMATO.test(codigo) && inscricaoComCodigo_(codigo);
+  return ContentService.createTextOutput(JSON.stringify({ recebida: recebida }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function inscricaoComCodigo_(codigo) {
+  const form = FormApp.openById(propriedadeObrigatoria_('PESQUISA_FORM_INSCRICAO_ID'));
+  const item = itemDoCodigoDoSite_(form);
+  if (!item) return false;
+  return form.getResponses().some(function (r) {
+    const resposta = r.getResponseForItem(item);
+    return resposta !== null && String(resposta.getResponse()).trim().toLowerCase() === codigo;
+  });
+}
+
+function itemDoCodigoDoSite_(form) {
+  return form.getItems(FormApp.ItemType.TEXT)
+    .filter(function (i) { return i.getTitle() === CAMPO_CODIGO_DO_SITE; })[0] || null;
+}
+
+/**
+ * Acrescenta o campo do código ao formulário de inscrição que já existe (os novos já nascem com
+ * ele) e mostra o entry.* que a página do site usa. Pode rodar de novo: não duplica.
+ */
+function acrescentarCodigoDoSite() {
+  const form = FormApp.openById(propriedadeObrigatoria_('PESQUISA_FORM_INSCRICAO_ID'));
+  if (!itemDoCodigoDoSite_(form)) {
+    form.addTextItem().setTitle(CAMPO_CODIGO_DO_SITE).setHelpText(AJUDA_CODIGO_DO_SITE);
+  }
+  const item = itemDoCodigoDoSite_(form).asTextItem();
+  const preenchido = form.createResponse().withItemResponse(item.createResponse('x')).toPrefilledUrl();
+  Logger.log('Campo do código: ' + (preenchido.match(/entry\.\d+/) || ['(não achei o entry)'])[0]);
+}
+
+// ---------------------------------------------------------------------------------------------
 // Processamento
 // ---------------------------------------------------------------------------------------------
 

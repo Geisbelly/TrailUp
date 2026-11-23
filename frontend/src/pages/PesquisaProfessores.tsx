@@ -42,9 +42,18 @@ import {
   type AbaDaPagina,
   type Tarefa,
 } from "@/features/pesquisa/pesquisaProfessores";
+import { formularioDoSite, linkDaConfirmacao } from "@/features/pesquisa/inscricaoNoSite";
+import { InscricaoNoSite } from "@/components/pesquisa/InscricaoNoSite";
 
 const LINK_DO_FORMULARIO = linkDoFormulario(import.meta.env.VITE_PESQUISA_INSCRICAO_FORM_URL);
 const LINK_DA_ATUALIZACAO = linkDoFormulario(import.meta.env.VITE_PESQUISA_ATUALIZACAO_FORM_URL);
+// Inscrição na própria página: só com um formulário cujos entry.* conhecemos e com o App da Web
+// que confirma o envio. Faltando um dos dois, a página usa o Google Forms, como antes.
+const FORMULARIO_DO_SITE = formularioDoSite(LINK_DO_FORMULARIO);
+const CONFIRMACAO = linkDaConfirmacao(import.meta.env.VITE_PESQUISA_INSCRICAO_CONFIRMACAO_URL);
+const INSCRICAO_NO_SITE = FORMULARIO_DO_SITE && CONFIRMACAO && LINK_DO_FORMULARIO
+  ? { formulario: FORMULARIO_DO_SITE, confirmacao: CONFIRMACAO, linkDoGoogle: LINK_DO_FORMULARIO }
+  : null;
 
 const TAREFAS_DO_CONSOLE = TAREFAS.filter(t => t.onde === "console");
 const TAREFAS_DO_ALUNO = TAREFAS.filter(t => t.onde === "aluno");
@@ -79,6 +88,13 @@ function BotaoDoFormulario() {
           A inscrição abre quando a equipe enviar os convites. O link chega no convite, por e-mail individual.
         </p>
       </div>
+    );
+  }
+  if (INSCRICAO_NO_SITE) {
+    return (
+      <Link className="journey-button journey-button-coral inline-flex" to="/pesquisa/professores?aba=inscricao">
+        Fazer a inscrição <ArrowRight size={18} aria-hidden="true" />
+      </Link>
     );
   }
   return (
@@ -137,7 +153,6 @@ function AbasDaPagina({ ativa }: { ativa: AbaDaPagina }) {
 }
 
 function Inscricao({ confirmado }: { confirmado: boolean }) {
-  const embutido = linkEmbutido(LINK_DO_FORMULARIO);
   return (
     <div className="space-y-6">
       {confirmado && (
@@ -156,6 +171,16 @@ function Inscricao({ confirmado }: { confirmado: boolean }) {
         A inscrição começa pelo Termo de Consentimento. Depois de concordar, você se identifica; o e-mail informado será o
         seu login no TrailUp. A equipe confere cada inscrição e manda o acesso por e-mail.
       </p>
+      {/* Quem volta do link de confirmação do e-mail já se inscreveu: o formulário do site não reaparece. */}
+      {INSCRICAO_NO_SITE ? !confirmado && <InscricaoNoSite {...INSCRICAO_NO_SITE} /> : <InscricaoPeloGoogle />}
+    </div>
+  );
+}
+
+function InscricaoPeloGoogle() {
+  const embutido = linkEmbutido(LINK_DO_FORMULARIO);
+  return (
+    <div className="space-y-6">
       <BotaoDoFormulario />
       {embutido && (
         <iframe
