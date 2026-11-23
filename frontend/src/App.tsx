@@ -11,6 +11,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH } from "./features/auth/resetPasswordRoute";
 import { CAMINHO_ANTIGO_DE_APROVACOES, CAMINHO_DE_APROVACOES, CONSOLE_SECTIONS, consolePathForView } from "./pages/consoleSections";
 import { MATERIAL_ROUTE_PATH } from "./components/console/personalizacoes/materialRoute";
+import { CAMINHO_DA_CARTILHA } from "./features/pesquisa/pesquisaProfessores";
 
 // Cada pagina vira o proprio chunk (import dinamico) em vez de entrar tudo
 // no bundle inicial — a home/landing nao precisa pagar o peso do console
@@ -33,6 +34,7 @@ const Termos = lazyWithReload(() => import("./pages/Termos"));
 const NotFound = lazyWithReload(() => import("./pages/NotFound"));
 const AuthConfirm = lazyWithReload(() => import("./pages/EmailConfirm"));
 const Download = lazyWithReload(() => import("./pages/Download"));
+const PesquisaProfessores = lazyWithReload(() => import("./pages/PesquisaProfessores"));
 
 function RouteFallback() {
   return (
@@ -103,6 +105,7 @@ const App = () => (
               <Route path="/privacidade" element={<Privacidade />} />
               <Route path="/termos" element={<Termos />} />
               <Route path="/download" element={<Download />} />
+              <Route path={CAMINHO_DA_CARTILHA} element={<PesquisaProfessores />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

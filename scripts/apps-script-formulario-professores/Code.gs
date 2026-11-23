@@ -1,0 +1,517 @@
+/**
+ * Cria o formulário da pesquisa com professores do TrailUp: o professor usa o
+ * sistema numa turma de demonstração, seguindo um roteiro de tarefas, e avalia
+ * por escrito usabilidade, carga de trabalho, métricas, sugestões da IA,
+ * material personalizado, tela do aluno, utilidade e esforço. Os instrumentos
+ * e a origem de cada item estão no README.md.
+ *
+ * São três formulários, cada um criado por uma função:
+ *   1. criarFormularioDeInscricao: TCLE e identificação. O e-mail cadastrado
+ *      vira o login do participante (acesso ao console é restrito). Link de
+ *      resposta → VITE_PESQUISA_INSCRICAO_FORM_URL (botão da cartilha).
+ *   2. criarFormulario: a avaliação. O link vai só por e-mail, junto com os
+ *      acessos e a senha aleatória, para quem se inscreveu.
+ *   3. criarFormularioDeAtualizacao: trocar a forma de divulgação.
+ *
+ * Tarefas, perguntas e escalas espelham
+ * frontend/src/features/pesquisa/pesquisaProfessores.ts; o teste
+ * pesquisaProfessores.test.ts falha se os dois se separarem.
+ *
+ * Nada é obrigatório (CONEP). O participante se identifica (a pesquisa se
+ * apoia na qualificação de quem avalia e o e-mail é o login), mas o e-mail não
+ * é coletado pelo Google: é um campo do formulário, como o nome.
+ */
+
+// Por que o e-mail vira login e a senha é aleatória. Fica antes do CONFIG
+// porque o TCLE o repete.
+const ACESSO_TCLE = 'O e-mail que você cadastrar é o seu login no TrailUp. O acesso ao console do professor é restrito, por segurança: ele mostra dados de turmas e de alunos, e só entra quem a equipe aprova. Por isso a equipe cria o seu acesso com esse e-mail e uma senha gerada aleatoriamente, e envia só para ele os acessos (professor e aluno de teste) e o link do formulário de avaliação. Você pode trocar a senha em Meus dados. A equipe nunca pede senha sua de outro serviço, e os acessos são apagados ao fim da pesquisa.';
+
+const CONFIG = {
+  // true: cria mesmo com [PREENCHER] e põe "RASCUNHO" no título, para conferir
+  // a forma. false: recusa enquanto faltar campo. O de verdade só vai aos
+  // professores depois da aprovação do CEP.
+  rascunho: true,
+
+  titulo: 'Avaliação do TrailUp por professores',
+  cartilhaUrl: 'https://trailup.vercel.app/pesquisa/professores',
+  sistemaUrl: '[PREENCHER: endereço do sistema usado na pesquisa]',
+  linkCopiaTcle: '[PREENCHER: link para baixar o TCLE]',
+  // Link de resposta do formulário criado por criarFormularioDeAtualizacao.
+  linkAtualizacao: '[PREENCHER: link do formulário de atualização]',
+
+  // TCLE, por seção (o texto de ajuda de cada bloco do Forms tem limite).
+  // Rascunho: precisa ser idêntico ao TCLE aprovado pelo CEP.
+  tcle: [
+    ['1. Por que esta pesquisa existe',
+      'O TrailUp é uma plataforma de aprendizagem criada num Trabalho de Conclusão de Curso de Ciência da Computação da Ulbra Palmas. Antes de levá-lo a uma turma, a pesquisa quer saber, pela avaliação de especialistas em ensino (docentes da área de TI, docentes de outras áreas e pedagogos), se ele é fácil de usar, se as métricas e as sugestões da inteligência artificial ajudam o professor e quanto trabalho ele exige. Resultados negativos valem tanto quanto os positivos: o que não funcionar é o que mais orienta a correção do sistema.'],
+    ['2. O que você vai fazer',
+      'Em duas etapas. Primeiro, a inscrição: este termo e a sua identificação. Depois, com o acesso que a equipe envia ao seu e-mail, usar o TrailUp numa turma de demonstração, com alunos fictícios, seguindo um roteiro de tarefas curtas no console do professor e na tela do aluno, e responder ao formulário de avaliação por escrito. Leva cerca de [PREENCHER] minutos e pode ser feito em mais de uma vez.\n\nNão há entrevista nem gravação. Nenhuma pergunta é obrigatória: você pode deixar qualquer uma em branco, sem explicar, e parar a qualquer momento fechando a página antes de enviar. Você pode usar conteúdo seu no console; o aluno é só o seu aluno de teste, e você não cadastra dados de alunos reais. O que for usado numa geração por IA é enviado ao modelo de linguagem, por isso não inclua dados pessoais nem material de terceiros que você não possa compartilhar.'],
+    ['3. Seus dados',
+      'O formulário pede a sua identificação (nome, e-mail, instituição, titulação e formação), porque a pesquisa se apoia na avaliação de especialistas e precisa relatar quem avaliou.\n\n' + ACESSO_TCLE + '\n\nA monografia apresenta a avaliação de cada especialista, e você escolhe, numa pergunta própria, como a sua aparece: (a) com o seu nome e titulação ao lado das suas notas e comentários, só depois de você ver o seu quadro e confirmar; (b) com um código (E1, E2…) e o seu perfil (titulação, formação e papel), sem o nome; ou (c) só nos resultados agregados. Você escolhe no fim do formulário de avaliação, depois de avaliar, e pode trocar a escolha a qualquer momento até a versão final da monografia, por um formulário de atualização ou pelo contato abaixo; vale sempre a mais recente. Qualquer escolha vale igual. Depois que a versão final for entregue, ela não pode mais ser alterada. Fora do que você autorizar, a identificação fica em sigilo, só com a equipe. Você pode pedir a retirada das suas respostas a qualquer momento, pelo contato abaixo.\n\nO que você fizer no sistema fica registrado nele, como qualquer uso. A pesquisa usa esse registro só para conferir se cada tarefa do roteiro foi feita (por exemplo, se uma sugestão foi decidida ou uma entrega corrigida); nenhum outro dado do seu uso entra. Ao fim, a turma, o conteúdo que você puser nela e os acessos de teste são apagados. As respostas do formulário são baixadas para um computador da equipe e apagadas do formulário online. Ficam com o pesquisador responsável por [PREENCHER: prazo] e depois são destruídas.'],
+    ['4. Desconfortos e riscos',
+      'O risco é mínimo. O uso do sistema e as perguntas podem cansar; você pode parar e voltar depois.\n\nSe você escolher aparecer com o nome, a sua opinião fica pública e ligada a você, inclusive para colegas e para a instituição; por isso você confere o trecho antes. Nas outras escolhas, como os participantes são poucos, ainda há o risco de alguém reconhecer você pelo perfil ou por um comentário; por isso os trechos citados são curtos e revisados.\n\nPor ser uma pesquisa pela internet, a equipe não consegue garantir confidencialidade total, por limites da própria tecnologia.'],
+    ['5. Benefícios',
+      'Não há benefício direto garantido. Suas respostas ajudam a corrigir o sistema antes que ele chegue a alunos. Você recebe um resumo dos resultados.'],
+    ['6. Custos, ressarcimento e indenização',
+      'Participar não tem custo e não é pago. Despesas decorrentes da participação são ressarcidas, e você tem direito a assistência e a buscar indenização por dano decorrente da pesquisa, nos termos da lei. Nada neste termo faz você abrir mão de qualquer direito.'],
+    ['7. Liberdade de recusar',
+      'Participar é voluntário. Recusar ou desistir não traz nenhum prejuízo, inclusive na sua relação com o curso e com a instituição, que não sabe quem participou.'],
+    ['8. Divulgação',
+      'Os resultados aparecem na monografia e, se for o caso, em eventos ou revistas científicas, com a avaliação de cada especialista identificada da forma que ele escolheu.'],
+    ['9. Contatos',
+      'Pesquisador responsável: Prof. Esp. Fábio Castro Araújo – [PREENCHER: e-mail e telefone]. Pesquisadora assistente: Geisbelly Victória Feitosa Moraes Domiciano – [PREENCHER: e-mail e telefone].\n\nO Comitê de Ética em Pesquisa (CEP) é um grupo independente que analisa as pesquisas com pessoas para proteger os participantes. Para dúvidas sobre os seus direitos ou reclamações: [PREENCHER: endereço e contato do CEP]. Instância Nacional de Ética em Pesquisa (INAEP): SRTV 701, Via W 5 Norte, lote D, Edifício PO 700, 5º andar, Asa Norte, Brasília-DF, 70719-040, tel. (61) 3315-5878, das 9h às 18h.'],
+  ],
+};
+
+// [pergunta, opções ou null (texto livre)]
+const IDENTIFICACAO = [
+  ['Nome completo', null],
+  ['E-mail (será o seu login no TrailUp e o contato da pesquisa)', null],
+  ['Instituição em que atua', null],
+  ['Papel em que você avalia o sistema', [
+    'Docente da área de Tecnologia da Informação',
+    'Docente de outra área',
+    'Pedagogo(a) ou coordenação pedagógica',
+    'Outro',
+  ]],
+  ['Maior titulação', ['Graduação', 'Especialização', 'Mestrado', 'Doutorado', 'Pós-doutorado']],
+  ['Área da sua formação (graduação e pós)', null],
+  ['Você tem formação pedagógica?', ['Pedagogia', 'Licenciatura', 'Pós-graduação em educação ou docência', 'Não tenho']],
+  ['Disciplinas que leciona ou acompanha', null],
+  ['Tempo de atuação no ensino superior', ['até 2 anos', 'de 3 a 5 anos', 'de 6 a 10 anos', 'de 11 a 20 anos', 'mais de 20 anos']],
+  ['Já usou em aula um ambiente virtual com painel de dados dos alunos?', ['Sim', 'Não']],
+  ['Já usou elementos de jogo (pontos, ranking, missões) em aula?', ['Sim', 'Não']],
+  ['Com que frequência usa IA generativa para preparar aulas?', ['Nunca', 'Às vezes', 'Com frequência']],
+  ['Em que aparelho você vai usar o sistema?', ['Computador', 'Celular', 'Tablet']],
+];
+
+// Res. CNS 510/2016, arts. 9º, V, e 17, IV: o participante decide se a
+// identidade é divulgada. Separado do aceite; recusar o nome não exclui.
+// Vem no fim, depois da avaliação, e pode ser trocado até a versão final
+// (formulário de atualização): menos viés de cortesia ao responder.
+const DIVULGACAO = [
+  'Como a sua avaliação pode aparecer na monografia?',
+  'A monografia traz a avaliação de cada especialista. A equipe sabe quem respondeu; esta escolha decide só o que é publicado. Você pode trocá-la a qualquer momento até a versão final da monografia, pelo formulário de atualização ou pelo contato do termo, e vale sempre a escolha mais recente. Com o nome, você vê o seu quadro antes e só aparece depois de confirmar.',
+  [
+    'Com meu nome: nome e titulação ao lado das minhas notas e comentários, só depois de eu ver o meu quadro e confirmar.',
+    'Com código e perfil: apareço como E1, E2…, com titulação, formação e papel, sem o nome.',
+    'Só no conjunto: minhas respostas entram apenas nos resultados agregados.',
+  ],
+];
+
+// [id, titulo, passos[]]
+const TAREFAS = [
+  ['T1', 'Conhecer a turma', ['Em Turmas, abra a turma de demonstração.', 'Veja quem está matriculado e o perfil de cada aluno.']],
+  ['T2', 'Explorar a trilha', ['Em Trilhas, abra a trilha da turma.', 'Entre num tópico e veja os conteúdos, as atividades e as questões.']],
+  ['T3', 'Ver e pedir uma personalização', ['Em Personalizações, veja os perfis da turma e o material de um perfil.', 'Se quiser, peça uma geração por IA, sobre o conteúdo da turma ou sobre um conteúdo seu (ela pode levar alguns minutos ou não sair, por causa do limite gratuito do modelo).']],
+  ['T4', 'Achar um aluno que precisa de atenção', ['Na Visão geral, olhe os indicadores da turma.', 'Encontre um aluno com sinal de alerta e abra o detalhe dele.']],
+  ['T5', 'Ler uma sugestão da IA', ['Em Recomendações, leia um insight ou uma intervenção sugerida.', 'Decida se aceitaria, ignoraria ou deixaria para depois.']],
+  ['T6', 'Corrigir uma entrega', ['Em Notas, abra a fila e veja uma entrega de aluno.']],
+  ['T7', 'Entender o jogo da turma', ['Passe por Economia, Missões, Eventos e Conquistas.', 'Veja como as moedas, a loja, as missões e os eventos estão configurados.']],
+  ['T8', 'Ver a competição', ['Abra Rankings, Rank de batalhas e Guildas.']],
+  ['T9', 'Estudar como aluno', ['Entre com o seu acesso de aluno de teste.', 'Abra a trilha, um tópico e o material personalizado (texto, áudio ou apresentação).']],
+  ['T10', 'Ver o jogo pelo lado do aluno', ['Ainda como aluno, abra as missões, a loja e o ranking.']],
+];
+
+// Depois de cada tarefa: conclusão (autodeclarada), SEQ, tempo em faixas e onde travou.
+const PERGUNTA_CONCLUSAO = 'Você conseguiu fazer a tarefa?';
+const OPCOES_CONCLUSAO = ['Sim', 'Em parte', 'Não', 'Não tentei'];
+const PERGUNTA_SEQ = 'No geral, esta tarefa foi:';
+const EXTREMOS_SEQ = ['Muito difícil', 'Muito fácil'];
+const PERGUNTA_TEMPO = 'Quanto tempo levou, mais ou menos?';
+const OPCOES_TEMPO = ['Menos de 2 min', 'De 2 a 5 min', 'De 5 a 10 min', 'Mais de 10 min'];
+const PERGUNTA_DA_TAREFA = 'Onde travou, o que confundiu ou o que faltou? (opcional)';
+
+const ACESSO = ACESSO_TCLE;
+
+const FRANQUEZA = 'A pesquisa se alimenta tanto de resultados negativos quanto de positivos. Uma tarefa difícil, uma métrica confusa ou uma sugestão errada da IA é exatamente o que precisa aparecer: é isso que mostra o que corrigir antes de o sistema chegar a alunos. Nota dada por gentileza atrapalha a pesquisa; crítica franca ajuda.';
+
+// SUS, versão brasileira (Lourenço; Carmona; Lopes, 2022), Tabela 1.
+const EXTREMOS_SUS = ['Discordo fortemente', 'Concordo fortemente'];
+const ITENS_SUS = [
+  'Eu acho que gostaria de usar esse sistema frequentemente.',
+  'Eu achei esse sistema desnecessariamente complexo.',
+  'Eu achei esse sistema fácil de usar.',
+  'Eu achei que precisaria de ajuda de uma pessoa técnica para ser capaz de usar esse sistema.',
+  'Eu achei que as várias funções desse sistema foram bem integradas.',
+  'Eu acho que o sistema apresenta muita inconsistência.',
+  'Eu imagino que a maioria das pessoas pode aprender a usar esse sistema rapidamente.',
+  'Eu achei esse sistema muito pesado para usar.',
+  'Eu me senti muito seguro usando o sistema.',
+  'Eu precisei aprender muitas coisas antes que pudesse utilizar esse sistema.',
+];
+
+// Raw TLX: dimensões e âncoras de Ciofi-Silva et al. (2023); perguntas
+// adaptadas (o texto final não foi publicado). [nome, pergunta, 0, 10]
+const AJUDA_TLX = 'Pensando nas tarefas do console como um todo, de 0 (pouquíssimo) a 10 (muitíssimo). Não há resposta certa: é a sua impressão.';
+const ITENS_TLX = [
+  ['Demanda mental', 'Quanto raciocínio, decisão ou cálculo as tarefas exigiram?', 'Pouquíssimo', 'Muitíssimo'],
+  ['Demanda física', 'Quanta atividade física as tarefas exigiram?', 'Pouquíssimo', 'Muitíssimo'],
+  ['Demanda temporal', 'Quanta pressão de tempo você sentiu para fazer as tarefas?', 'Pouquíssimo', 'Muitíssimo'],
+  ['Desempenho', 'Quanto você conseguiu fazer, de forma satisfatória, o que as tarefas pediam?', 'Pouquíssimo', 'Muitíssimo'],
+  ['Esforço', 'Quanto esforço foi necessário para atingir o seu nível de desempenho nas tarefas?', 'Pouquíssimo', 'Muitíssimo'],
+  ['Frustração', 'Quanta frustração (irritação, insegurança, desânimo) você sentiu durante as tarefas?', 'Pouquíssimo', 'Muitíssimo'],
+];
+
+// EFLA v4, professor (Scheffel et al., 2017), de 1 a 10. Tradução livre.
+// [id, dimensão, texto]
+const ITENS_EFLA = [
+  ['D1', 'Dados', 'Está claro quais dados dos alunos o console usa.'],
+  ['D2', 'Dados', 'Está claro por que esses dados são usados.'],
+  ['A1', 'Consciência', 'O console me deixaria ciente da situação atual de aprendizagem dos alunos.'],
+  ['A2', 'Consciência', 'O console me ajudaria a prever como os alunos vão estar, se continuarem como estão ou se mudarem.'],
+  ['R1', 'Reflexão', 'O console me estimularia a refletir sobre a minha prática de ensino.'],
+  ['R2', 'Reflexão', 'O console me estimularia a adaptar a minha prática, se necessário.'],
+  ['I2', 'Impacto', 'O console me estimularia a ensinar de forma mais eficiente.'],
+  ['I3', 'Impacto', 'O console me estimularia a ensinar de forma mais eficaz.'],
+];
+const EXTREMOS_EFLA = ['Discordo totalmente', 'Concordo totalmente'];
+
+// Acionabilidade (Kasepalu et al., 2022).
+const ACIONABILIDADE = {
+  agiria: 'Com base nas métricas da Visão geral, eu tomaria alguma ação na turma.',
+  qualAcao: 'Que ação você tomaria, e para quem: a turma toda, alguns alunos, o planejamento do curso? Ou esperaria para ver? (opcional)',
+  realidade: 'Quanto você acha que essas métricas refletiriam a realidade de uma turma de verdade?',
+  extremosRealidade: ['0% (nada)', '100% (totalmente)'],
+};
+
+const METRICAS = [
+  'Conclusão média',
+  'Taxa de acertos',
+  'Tempo ativo médio',
+  'Retorno semanal',
+  'Abandono médio',
+  'Sinais de alerta',
+  'Perfil BrainHex da turma',
+];
+const COLUNAS_DAS_METRICAS = [
+  'Entendi o que mostra',
+  'Confio no número',
+  'Faria algo diferente na aula por causa dele',
+];
+
+const ESCALA_CONCORDANCIA = [
+  'Discordo totalmente',
+  'Discordo',
+  'Nem concordo nem discordo',
+  'Concordo',
+  'Concordo totalmente',
+];
+const NAO_OBSERVEI = 'Não observei';
+
+// UEQ-S (Schrepp et al., 2017), adaptação lexical da versão de Portugal.
+// Polo negativo à esquerda, de 1 a 7.
+const PARES_UEQS = [
+  ['Atrapalha', 'Ajuda'],
+  ['Complicado', 'Fácil'],
+  ['Ineficiente', 'Eficiente'],
+  ['Confuso', 'Claro'],
+  ['Chato', 'Empolgante'],
+  ['Desinteressante', 'Interessante'],
+  ['Convencional', 'Original'],
+  ['Comum', 'Inovador'],
+];
+const PERGUNTA_UEQS = 'Para você, a tela do aluno é:';
+
+// [titulo, opcional, itens[], pergunta aberta da página ou null].
+// Origem de cada item: README.md.
+const BLOCOS = [
+  ['Sugestões da IA', false, [
+    'Entendi por que o sistema fez a sugestão para aquele aluno ou para a turma.',
+    'A explicação da sugestão tem detalhe suficiente.',
+    'A explicação é útil para eu decidir o que fazer.',
+    'A explicação deixa claro o quanto posso confiar na sugestão.',
+    'Confio nas sugestões do sistema.',
+    'As sugestões do sistema são confiáveis.',
+    'Desconfio das sugestões do sistema.',
+    'Eu levaria uma sugestão do sistema tão a sério quanto a de um colega professor.',
+    'Alguma sugestão me pareceu errada ou injusta com o aluno.',
+    'Eu conferiria os dados antes de agir a partir de uma sugestão.',
+  ], null],
+  ['Material personalizado', false, [
+    'O conteúdo está correto, sem erros.',
+    'O material está alinhado ao objetivo do tópico.',
+    'O nível e a linguagem servem a um aluno de graduação.',
+    'A apresentação (texto, áudio ou slides) é clara.',
+    'As versões para perfis diferentes são diferentes de um jeito que faz sentido.',
+    'Eu liberaria esse material para os alunos sem precisar editar.',
+  ], 'Algum erro ou problema no material? Em que tópico e perfil? (opcional)'],
+  ['Interface do aluno', false, [
+    'A interface do aluno deixa claro o que fazer a seguir.',
+    'O material personalizado é fácil de encontrar e de abrir.',
+    'Os textos e botões estão numa linguagem que o aluno entende.',
+    'A interface do aluno é adequada a estudantes de graduação.',
+  ], 'Encontrou algum problema na tela do aluno? Qual e em que tela? (opcional)'],
+  ['Utilidade e intenção de uso', false, [
+    'Usar o TrailUp me ajudaria a acompanhar a aprendizagem da turma.',
+    'Usar o TrailUp tornaria meu trabalho de professor mais eficaz.',
+    'O TrailUp seria útil na minha disciplina.',
+    'Eu usaria o TrailUp com uma turma minha, se estivesse disponível.',
+    'Eu recomendaria o TrailUp a outro professor.',
+  ], null],
+  ['Esforço e rotina', false, [
+    'O tempo que o sistema exigiria por semana cabe na minha rotina.',
+    'Montar a trilha de um tópico seria rápido o bastante.',
+    'Revisar o material gerado pela IA antes de chegar ao aluno seria viável na minha rotina.',
+    'Eu saberia por onde começar no console sem ajuda.',
+  ], null],
+  ['Gamificação', true, [
+    'Os elementos de jogo combinam com a minha disciplina.',
+    'O jogo apoia o estudo, em vez de competir com ele.',
+    'O ranking pode desmotivar alunos que estão atrás.',
+    'Tenho controle suficiente sobre moedas, missões e eventos da turma.',
+  ], null],
+  ['Dados dos alunos e ética', true, [
+    'O sistema não considera fatores sociais e emocionais que só o professor conhece.',
+    'O sistema preserva a minha autonomia de decidir.',
+    'O uso de dados de emoção e de comportamento traz riscos à privacidade dos alunos.',
+    'O perfil e os indicadores podem rotular o aluno de forma injusta.',
+    'Eu saberia explicar a um aluno o que eu vejo sobre ele no console.',
+  ], null],
+];
+
+const PERGUNTAS_ABERTAS = [
+  'O que você usaria toda semana?',
+  'O que confundiu ou atrapalhou?',
+  'O que preocupa você nos dados ou na IA?',
+  'O que falta para você usar o TrailUp com uma turma sua?',
+];
+
+function pendencias_() {
+  const achados = [];
+  const varrer = (valor, caminho) => {
+    if (typeof valor === 'string') {
+      if (valor.indexOf('[PREENCHER') !== -1) achados.push(caminho);
+    } else if (Array.isArray(valor)) {
+      valor.forEach((v, i) => varrer(v, caminho + '[' + i + ']'));
+    } else if (valor && typeof valor === 'object') {
+      Object.keys(valor).forEach(k => varrer(valor[k], caminho + '.' + k));
+    }
+  };
+  varrer(CONFIG, 'CONFIG');
+  return achados;
+}
+
+function verificar_() {
+  const faltando = pendencias_();
+  if (faltando.length && !CONFIG.rascunho) {
+    throw new Error('Campos ainda sem preencher:\n' + faltando.join('\n'));
+  }
+  return faltando;
+}
+
+function titulo_(texto) {
+  return (CONFIG.rascunho ? 'RASCUNHO – ' : '') + texto;
+}
+
+function criarFormularioDeInscricao() {
+  const faltando = verificar_();
+  const form = FormApp.create(titulo_('Avaliação do TrailUp por professores: inscrição'))
+    .setDescription(
+      'Pesquisa de Trabalho de Conclusão de Curso (Ciência da Computação, Ulbra Palmas).\n' +
+      'Antes de começar, veja a cartilha do professor: ' + CONFIG.cartilhaUrl + '\n\n' +
+      'Esta é a inscrição: o termo e a sua identificação. A avaliação vem depois, com o acesso que a equipe envia ao seu e-mail.\n\n' +
+      'Leia o termo abaixo. As perguntas só aparecem depois que você concordar.')
+    .setCollectEmail(false)
+    .setProgressBar(true)
+    .setAllowResponseEdits(false)
+    .setShowLinkToRespondAgain(false)
+    .setConfirmationMessage(
+      'Inscrição recebida. A equipe vai enviar ao e-mail informado o seu acesso ao TrailUp (com senha gerada aleatoriamente), ' +
+      'o seu acesso de aluno de teste e o link do formulário de avaliação.\n' +
+      'Cópia do termo que você leu: ' + CONFIG.linkCopiaTcle);
+
+  // 1. TCLE e aceite.
+  form.addSectionHeaderItem().setTitle('Termo de Consentimento Livre e Esclarecido');
+  CONFIG.tcle.forEach(([t, texto]) => form.addSectionHeaderItem().setTitle(t).setHelpText(texto));
+  form.addSectionHeaderItem().setTitle('10. Sua cópia').setHelpText('Guarde uma cópia deste termo: ' + CONFIG.linkCopiaTcle);
+  const aceite = form.addMultipleChoiceItem()
+    .setTitle('Consentimento')
+    .setHelpText('Ao marcar "Li e concordo em participar", declaro que sou docente de ensino superior ou profissional da área pedagógica, tenho 18 anos ou mais, li este termo e aceito participar.');
+  aceite.setChoices([
+    aceite.createChoice('Li e concordo em participar', FormApp.PageNavigationType.CONTINUE),
+    aceite.createChoice('Não quero participar', FormApp.PageNavigationType.SUBMIT),
+  ]);
+
+  // 2. Identificação. A pesquisa se apoia na qualificação de quem avalia, e o
+  // e-mail é o login; o que é publicado o participante escolhe no fim da
+  // avaliação (ver TCLE, seção 3).
+  form.addPageBreakItem()
+    .setTitle('Identificação')
+    .setHelpText(ACESSO + '\n\nO que é publicado na monografia você só escolhe no fim da avaliação, depois de avaliar.');
+  IDENTIFICACAO.forEach(([pergunta, opcoes]) => {
+    if (opcoes) {
+      form.addMultipleChoiceItem().setTitle(pergunta).setChoiceValues(opcoes);
+    } else if (pergunta.indexOf('E-mail') === 0) {
+      form.addTextItem().setTitle(pergunta)
+        .setValidation(FormApp.createTextValidation().requireTextIsEmail().build());
+    } else {
+      form.addTextItem().setTitle(pergunta);
+    }
+  });
+
+  Logger.log('Editar: ' + form.getEditUrl());
+  Logger.log('Responder (vai para VITE_PESQUISA_INSCRICAO_FORM_URL): ' + form.getPublishedUrl());
+  if (faltando.length) Logger.log('RASCUNHO. Ainda falta preencher:\n' + faltando.join('\n'));
+}
+
+function criarFormulario() {
+  const faltando = verificar_();
+  const form = FormApp.create(titulo_(CONFIG.titulo))
+    .setDescription(
+      'Pesquisa de Trabalho de Conclusão de Curso (Ciência da Computação, Ulbra Palmas).\n' +
+      'Este é o formulário de avaliação, para quem já se inscreveu e recebeu o acesso por e-mail. ' +
+      'Cartilha do professor: ' + CONFIG.cartilhaUrl + '\n\n' + FRANQUEZA)
+    .setCollectEmail(false)
+    .setProgressBar(true)
+    .setAllowResponseEdits(false)
+    .setShowLinkToRespondAgain(false)
+    .setConfirmationMessage(
+      'Obrigado pela sua avaliação. O resumo dos resultados será enviado ao e-mail cadastrado.\n' +
+      'Para trocar a forma como a sua avaliação aparece, a qualquer momento: ' + CONFIG.linkAtualizacao);
+
+  // 1. Liga a avaliação à inscrição.
+  form.addTextItem()
+    .setTitle('E-mail cadastrado na inscrição (o mesmo do seu login)')
+    .setValidation(FormApp.createTextValidation().requireTextIsEmail().build());
+
+  // 2. Antes do roteiro.
+  form.addPageBreakItem()
+    .setTitle('Antes de começar o roteiro')
+    .setHelpText(
+      'Abra o TrailUp em outra aba (' + CONFIG.sistemaUrl + ') e entre com o seu e-mail e a senha que a equipe enviou. ' +
+      'A turma é de demonstração, com alunos fictícios. Pode usar conteúdo seu, mas sem dados de alunos reais. O aluno é só o seu aluno de teste.\n\n' +
+      'Faça cada tarefa no sistema e volte aqui para responder.\n\n' + FRANQUEZA);
+
+  // 3. Uma página por tarefa: conclusão, SEQ, tempo e onde travou.
+  TAREFAS.forEach(([id, titulo, passos]) => {
+    form.addPageBreakItem()
+      .setTitle(id + '. ' + titulo)
+      .setHelpText(passos.map(p => '• ' + p).join('\n'));
+    form.addMultipleChoiceItem()
+      .setTitle(id + ' · ' + PERGUNTA_CONCLUSAO)
+      .setChoiceValues(OPCOES_CONCLUSAO);
+    form.addScaleItem()
+      .setTitle(id + ' · ' + PERGUNTA_SEQ)
+      .setBounds(1, 7)
+      .setLabels(EXTREMOS_SEQ[0], EXTREMOS_SEQ[1]);
+    form.addMultipleChoiceItem()
+      .setTitle(id + ' · ' + PERGUNTA_TEMPO)
+      .setChoiceValues(OPCOES_TEMPO);
+    form.addParagraphTextItem().setTitle(id + ' · ' + PERGUNTA_DA_TAREFA);
+  });
+
+  // 4. SUS.
+  form.addPageBreakItem()
+    .setTitle('Usabilidade')
+    .setHelpText('Pensando no sistema como um todo, de 1 (' + EXTREMOS_SUS[0].toLowerCase() + ') a 5 (' + EXTREMOS_SUS[1].toLowerCase() + ').');
+  ITENS_SUS.forEach((texto, i) => {
+    form.addScaleItem()
+      .setTitle('SUS ' + (i + 1) + '. ' + texto)
+      .setBounds(1, 5)
+      .setLabels(EXTREMOS_SUS[0], EXTREMOS_SUS[1]);
+  });
+
+  // 5. Raw TLX: a carga das tarefas do console.
+  form.addPageBreakItem()
+    .setTitle('Carga de trabalho')
+    .setHelpText(AJUDA_TLX);
+  ITENS_TLX.forEach(([nome, pergunta, baixo, alto]) => {
+    form.addScaleItem()
+      .setTitle('TLX · ' + nome)
+      .setHelpText(pergunta)
+      .setBounds(0, 10)
+      .setLabels(baixo, alto);
+  });
+
+  // 6. Métricas: EFLA, acionabilidade e a matriz por métrica.
+  form.addPageBreakItem()
+    .setTitle('As métricas do console')
+    .setHelpText('Pensando na Visão geral e no detalhe dos alunos, de 1 (discordo totalmente) a 10 (concordo totalmente). ' +
+      'A turma é de demonstração: responda como seria com uma turma sua.');
+  ITENS_EFLA.forEach(([id, , texto]) => {
+    form.addScaleItem()
+      .setTitle('EFLA ' + id + '. ' + texto)
+      .setBounds(1, 10)
+      .setLabels(EXTREMOS_EFLA[0], EXTREMOS_EFLA[1]);
+  });
+  form.addScaleItem()
+    .setTitle(ACIONABILIDADE.agiria)
+    .setBounds(1, 10)
+    .setLabels(EXTREMOS_EFLA[0], EXTREMOS_EFLA[1]);
+  form.addParagraphTextItem().setTitle(ACIONABILIDADE.qualAcao);
+  form.addScaleItem()
+    .setTitle(ACIONABILIDADE.realidade)
+    .setBounds(0, 10)
+    .setLabels(ACIONABILIDADE.extremosRealidade[0], ACIONABILIDADE.extremosRealidade[1]);
+  form.addCheckboxGridItem()
+    .setTitle('Métricas, uma a uma')
+    .setHelpText('Para cada métrica, marque o que vale para ela. Pode marcar mais de uma, ou nenhuma.')
+    .setRows(METRICAS)
+    .setColumns(COLUNAS_DAS_METRICAS);
+  form.addParagraphTextItem().setTitle('Alguma métrica faltou, sobrou ou confundiu? Qual e por quê? (opcional)');
+
+  // 7. Blocos de concordância, um por página. A tela do aluno começa pelo UEQ-S.
+  BLOCOS.forEach(([titulo, opcional, itens, aberta]) => {
+    form.addPageBreakItem()
+      .setTitle(titulo + (opcional ? ' (opcional)' : ''))
+      .setHelpText('Algumas frases são negativas de propósito: leia cada uma antes de marcar. ' +
+        'Se não viu o recurso, marque "' + NAO_OBSERVEI + '".' +
+        (opcional ? ' Se preferir, pule esta página.' : ''));
+    if (titulo === 'Interface do aluno') {
+      PARES_UEQS.forEach(([negativo, positivo], i) => {
+        form.addScaleItem()
+          .setTitle('UEQ-S ' + (i + 1) + '. ' + PERGUNTA_UEQS)
+          .setBounds(1, 7)
+          .setLabels(negativo, positivo);
+      });
+    }
+    form.addGridItem()
+      .setTitle(titulo)
+      .setRows(itens)
+      .setColumns(ESCALA_CONCORDANCIA.concat([NAO_OBSERVEI]));
+    if (aberta) form.addParagraphTextItem().setTitle(aberta);
+  });
+
+  // 8. Abertas.
+  form.addPageBreakItem().setTitle('Com as suas palavras');
+  PERGUNTAS_ABERTAS.forEach(p => form.addParagraphTextItem().setTitle(p));
+
+  // 9. Só agora, depois de avaliar, a forma de divulgação.
+  form.addPageBreakItem()
+    .setTitle('Por último: como a sua avaliação aparece')
+    .setHelpText('Você pode trocar esta escolha quando quiser: ' + CONFIG.linkAtualizacao);
+  form.addMultipleChoiceItem()
+    .setTitle(DIVULGACAO[0])
+    .setHelpText(DIVULGACAO[1])
+    .setChoiceValues(DIVULGACAO[2]);
+
+  Logger.log('Editar: ' + form.getEditUrl());
+  Logger.log('Responder (vai só no e-mail com os acessos, nunca público): ' + form.getPublishedUrl());
+  if (faltando.length) Logger.log('RASCUNHO. Ainda falta preencher:\n' + faltando.join('\n'));
+}
+
+/**
+ * Formulário curto para o participante trocar, a qualquer momento até a versão
+ * final da monografia, a forma como a avaliação dele aparece. Vale a resposta
+ * mais recente; a equipe casa pelo e-mail informado na avaliação. O link de
+ * resposta vai em CONFIG.linkAtualizacao (rodar este antes de criarFormulario).
+ */
+function criarFormularioDeAtualizacao() {
+  const form = FormApp.create((CONFIG.rascunho ? 'RASCUNHO – ' : '') + 'Avaliação do TrailUp: atualizar como a minha avaliação aparece')
+    .setDescription(
+      'Use quando quiser mudar a forma como a sua avaliação aparece na monografia, até a versão final. ' +
+      'Vale sempre a resposta mais recente. Sua avaliação não muda; muda só o que é publicado.')
+    .setCollectEmail(false)
+    .setAllowResponseEdits(false)
+    .setConfirmationMessage('Recebido. A equipe confirma a mudança pelo e-mail informado.');
+  form.addTextItem().setTitle('Nome completo');
+  form.addTextItem().setTitle('E-mail informado na avaliação')
+    .setValidation(FormApp.createTextValidation().requireTextIsEmail().build());
+  form.addMultipleChoiceItem()
+    .setTitle(DIVULGACAO[0])
+    .setHelpText(DIVULGACAO[1])
+    .setChoiceValues(DIVULGACAO[2]);
+  form.addParagraphTextItem().setTitle('Algum comentário? (opcional)');
+  Logger.log('Responder (vai para CONFIG.linkAtualizacao e VITE_PESQUISA_ATUALIZACAO_FORM_URL): ' + form.getPublishedUrl());
+}

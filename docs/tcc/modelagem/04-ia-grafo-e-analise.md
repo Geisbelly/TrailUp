@@ -67,13 +67,14 @@ flowchart LR
   L[lote] --> E1["1 Emoção<br/>YuNet + FER+ (ONNX) com frame<br/>regra sem frame"]
   E1 --> E2["2 Leitura<br/>WPM = palavras / active_sec<br/>&lt;120 lenta · &gt;400 por cima"]
   E2 --> E3["3 Interação<br/>regra"]
-  E3 --> E4["4 Desempenho<br/>regra + M2 (HistGradientBoosting,<br/>EdNet KT3, não calibrado)"]
+  E3 --> E4["4 Desempenho<br/>regra"]
   E4 --> E5["5 Atenção<br/>regra"]
   E5 --> E6["6 Decisão<br/>regra → ações + modo sugerido"]
+  M2(["M2: portão opcional<br/>HistGradientBoosting, EdNet KT3,<br/>não calibrado · desligado por padrão"]) -. só com m2gated .-> E6
   E6 --> G[graph_ephemeral]
 ```
 
-Os estágios têm nomes de algoritmos de ML (`DeepFace`, `IsolationForest`, `HiddenMarkov`, `DeepKnowledgeTracing`, `RandomForest`, `XGBoost`), mas, exceto onde o diagrama indica, **são regras heurísticas**. Ver o [dossiê, seção 5.3](../sistema-para-a-monografia-2026-11-04.md#53-pipeline-de-análise-da-telemetria-linear_analysis_pipelinepy).
+Os estágios têm nomes de algoritmos de ML (`DeepFace`, `IsolationForest`, `HiddenMarkov`, `DeepKnowledgeTracing`, `RandomForest`, `XGBoost`), mas, exceto a emoção com imagem, **são regras heurísticas**. O M2 não faz parte do estágio de desempenho: é um portão opcional da decisão, que só pode dispensar uma geração de reforço, e vem desligado (`decision_model_provider = "xgboost"`, que é a regra; `m2gated` liga o portão). Ver o [dossiê, seção 5.3](../sistema-para-a-monografia-2026-11-04.md#53-pipeline-de-análise-da-telemetria-linear_analysis_pipelinepy).
 
 Ações possíveis da decisão: `reduzir_ruido_visual`, `sugerir_pausa_curta`, `aumentar_dificuldade`, `manter_fluxo_atual`, além das ações de reforço. Modos sugeridos: `reforco`, `desafio` e `imediato`.
 

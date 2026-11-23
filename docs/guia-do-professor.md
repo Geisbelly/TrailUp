@@ -20,9 +20,9 @@ Este guia é para quem **dá a aula**, não para quem desenvolve o sistema. Ele 
 
 Faça uma vez por disciplina. Estimativa: **6 a 10 horas**, a maior parte na trilha.
 
-1. **Turmas.** Em **Turmas**, crie a turma e matricule os alunos. Cada aluno que entra recebe o material personalizado automaticamente, sem você pedir.
+1. **Turmas.** Em **Turmas**, crie a turma e matricule os alunos. Cada aluno que entra já vai para a fila de geração do material personalizado, sem você pedir. O material só chega ao aluno depois que você o aprova (passo 3).
 2. **Trilha.** Em **Trilhas**, escolha a turma e monte o mapa: um **tópico** por assunto, e dentro dele os **conteúdos** (texto, vídeo, link ou arquivo) e as **atividades** (múltipla escolha, verdadeiro/falso, completar, dissertação). Ligue os tópicos para dizer o que vem antes do quê.
-3. **Personalização.** Em **Personalizações**, escolha um tópico e confira como o material ficou para cada um dos 7 perfis. Se algum perfil falhou, use **Gerar** na linha dele.
+3. **Personalização.** Em **Personalizações**, escolha um tópico e confira como o material ficou para cada um dos 7 perfis e **aprove** ou recuse. Nada do que a IA gera chega ao aluno sem a sua aprovação, e o material que for gerado de novo volta a esperar por ela. Se algum perfil falhou, use **Gerar** na linha dele.
 4. **Meus dados.** Confira nome, instituição e se a *geração automática de personalização* está como você quer. Ligada, a IA gera o material dos 7 perfis assim que você cria ou edita um tópico. Desligada, você aciona manualmente em Personalizações.
 
 > Dica: comece com **um tópico completo** e confira o resultado nos 7 perfis antes de montar o resto. É mais barato corrigir cedo.
@@ -65,9 +65,9 @@ Onde: **Turmas** → botão **Registrar presença**.
 | A trilha (tópicos, conteúdos, atividades, questões, cards) | Duplique a turma e ajuste o que mudou. A cópia nasce sem alunos e sem histórico |
 | Configurações da loja da turma | Ficam por turma; confira na turma nova |
 
-> **Confira depois de duplicar.** Na versão atual do console a duplicação de turma pode não trazer tudo: arquivos anexados, pontuação e regras das atividades, mídia das questões e a cor dos cards já foram perdidos na cópia. Abra um tópico da turma nova e confirme antes de usar. (Há uma correção pronta em revisão que faz a cópia completa numa operação só.)
+> **Como a duplicação copia.** A turma é copiada inteira numa operação só, no banco: tópicos, conteúdos com os anexos, atividades com pontuação e regras, questões com mídia e cards com cor e ordem. Os arquivos não são copiados de novo: a turma nova aponta para os mesmos.
 
-**O que não vai junto:** matrículas, progresso, pontos, ranking e o material personalizado (a IA gera de novo para a turma nova).
+**O que não vai junto:** matrículas, progresso, pontos, ranking e o material personalizado (a IA gera de novo para a turma nova, e ele espera a sua aprovação como da primeira vez).
 
 > **Recomendação do estudo:** **troque parte do material a cada semestre** (algumas questões, alguns exemplos). Turmas seguintes tendem a se passar as respostas.
 
