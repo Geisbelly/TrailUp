@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { ArrowRight, Check, CheckCircle2, ClipboardList, Clock, Lock, Monitor, Smartphone, Users, X } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, ClipboardList, Clock, FileDown, Lock, Monitor, Smartphone, Users, X } from "lucide-react";
 import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
+import { VideosDaCartilha } from "@/components/pesquisa/VideosDaPesquisa";
+import { PDF_DA_CARTILHA, linkDoArquivo } from "@/features/pesquisa/videosDaPesquisa";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   ACESSO,
@@ -54,6 +56,8 @@ const CONFIRMACAO = linkDaConfirmacao(import.meta.env.VITE_PESQUISA_INSCRICAO_CO
 const INSCRICAO_NO_SITE = FORMULARIO_DO_SITE && CONFIRMACAO && LINK_DO_FORMULARIO
   ? { formulario: FORMULARIO_DO_SITE, confirmacao: CONFIRMACAO, linkDoGoogle: LINK_DO_FORMULARIO }
   : null;
+
+const LINK_DO_PDF = linkDoArquivo(PDF_DA_CARTILHA);
 
 const TAREFAS_DO_CONSOLE = TAREFAS.filter(t => t.onde === "console");
 const TAREFAS_DO_ALUNO = TAREFAS.filter(t => t.onde === "aluno");
@@ -217,8 +221,18 @@ export default function PesquisaProfessores() {
 function Cartilha() {
   return (
     <>
-        <div className="mb-10 flex flex-col gap-3">
+        <div className="mb-10 flex flex-col items-start gap-3">
           <BotaoDoFormulario />
+          {LINK_DO_PDF && (
+            <a
+              className="inline-flex items-center gap-2 text-sm font-semibold text-primary underline-offset-4 hover:underline"
+              href={LINK_DO_PDF}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <FileDown size={16} aria-hidden="true" /> Baixar a cartilha em PDF
+            </a>
+          )}
         </div>
 
         <aside
@@ -245,6 +259,16 @@ function Cartilha() {
               área de TI, docentes de outras áreas e pedagogos. Por isso esta etapa envolve só eles, sem alunos.
             </p>
           </Secao>
+
+          {LINK_DO_PDF && (
+            <Secao id="videos" titulo="Em vídeo">
+              <p>
+                Três vídeos curtos: o que é o TrailUp, por que ele foi pensado para o professor e o primeiro acesso,
+                passo a passo. Cada um tem página própria, para compartilhar sozinho.
+              </p>
+              <VideosDaCartilha />
+            </Secao>
+          )}
 
           <Secao id="resumo" titulo="Em resumo">
             <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">

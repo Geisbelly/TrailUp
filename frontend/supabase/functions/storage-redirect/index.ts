@@ -46,6 +46,11 @@
 // Link sem assinatura e' recusado com GATEWAY_EXIGE_LINK_ASSINADO = "true", ligado
 // em 04/11. Link com assinatura errada ou vencida e' recusado sempre.
 //
+// ARQUIVO PUBLICO (`publico/`, ver caminho.ts). Os videos e o PDF da cartilha da
+// pesquisa: sem link assinado, sem consulta a view e sem fallback para o Supabase
+// (nunca estiveram la'). Continua 302 para URL assinada do R2 - o byte nunca passa
+// por aqui -, e `proxy=1` nao vale para eles: sao videos de dezenas de MB.
+//
 // LEITURA DE SERVIDOR. API e microservice baixam fonte e material sem sessao de
 // usuario, entao pedem o link com a chave de servico (a mesma conferencia do
 // `storage-upload-url`). O link sai com `u` = USUARIO_DO_SERVICO e o GET continua
@@ -54,7 +59,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.86.0";
 
-import { normalizarStoragePath } from "./caminho.ts";
+import { ehCaminhoPublico, normalizarStoragePath } from "./caminho.ts";
 import { inicioDaJanela, presignR2GetUrl } from "./r2Presign.ts";
 import { bucketDoCaminho, urlAssinadaDoSupabase, validadeDaAssinatura } from "./destino.ts";
 import { caminhosDoPedido, conferirLink, expiracaoDoLink, identificarChamador, montarLink } from "./link.ts";
@@ -158,10 +163,15 @@ serve(async (req: Request) => {
   const caminho = normalizarStoragePath(parametros.get("path"));
   if (!caminho) return erro(400, "Parametro 'path' ausente ou invalido.");
 
+  const publico = ehCaminhoPublico(caminho);
+
   // Link curto (#632). Sem segredo configurado, so' o link antigo funciona:
   // assinatura que nao da' para conferir e' recusada, nunca aceita no escuro.
+  // Arquivo publico nao passa por aqui: o link dele e' o caminho e mais nada.
   const temAssinatura = parametros.has("u") || parametros.has("exp") || parametros.has("sig");
-  const link = segredoDoLink
+  const link = publico
+    ? "publico"
+    : segredoDoLink
     ? await conferirLink({
       segredo: segredoDoLink,
       caminho,
@@ -175,7 +185,7 @@ serve(async (req: Request) => {
   if (link === "sem_assinatura" && Deno.env.get("GATEWAY_EXIGE_LINK_ASSINADO") === "true") {
     return erro(401, "Link sem assinatura: peca um link com sessao.");
   }
-  const proxy = parametros.get("proxy") === "1";
+  const proxy = !publico && parametros.get("proxy") === "1";
 
   const contaR2 = Deno.env.get("R2_ACCOUNT_ID");
   const chaveR2 = Deno.env.get("R2_ACCESS_KEY_ID");
@@ -202,17 +212,19 @@ serve(async (req: Request) => {
     { auth: { persistSession: false } },
   );
 
-  const { data, error } = await supabase
-    .from("vw_material_storage_paths")
-    .select("storage_path")
-    .eq("storage_path", caminho)
-    .limit(1);
+  if (!publico) {
+    const { data, error } = await supabase
+      .from("vw_material_storage_paths")
+      .select("storage_path")
+      .eq("storage_path", caminho)
+      .limit(1);
 
-  if (error) {
-    console.error("[storage-redirect] consulta falhou", error.message);
-    return erro(500, "Falha ao resolver o material.");
+    if (error) {
+      console.error("[storage-redirect] consulta falhou", error.message);
+      return erro(500, "Falha ao resolver o material.");
+    }
+    if (!data || data.length === 0) return erro(404, "Material nao encontrado.");
   }
-  if (!data || data.length === 0) return erro(404, "Material nao encontrado.");
 
   const agoraMs = Date.now();
   const assinar = (metodo: "GET" | "HEAD") =>
@@ -257,11 +269,12 @@ serve(async (req: Request) => {
   let url: string | null;
   try {
     const noR2 = await fetch(await assinar("HEAD"), { method: "HEAD" });
-    url = noR2.ok ? await assinar("GET") : await urlDoSupabase();
+    // Arquivo publico so' existe no R2: sem ele la', e' 404, nunca o Storage.
+    url = noR2.ok ? await assinar("GET") : publico ? null : await urlDoSupabase();
   } catch (e) {
     // R2 inacessivel nao pode derrubar material que o Supabase ainda serve.
     console.error("[storage-redirect] R2 indisponivel, caindo no Supabase", (e as Error).message);
-    url = await urlDoSupabase().catch(() => null);
+    url = publico ? null : await urlDoSupabase().catch(() => null);
   }
   if (!url) return erro(404, "Arquivo indisponivel.");
 
