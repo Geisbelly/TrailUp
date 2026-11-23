@@ -28,6 +28,7 @@ import {
   ESCALA_CONCORDANCIA,
   EXTREMOS_SEQ,
   FRANQUEZA,
+  FORA_DESTA_RODADA,
   ITENS_SUS,
   METRICAS,
   ACESSO,
@@ -86,6 +87,20 @@ describe("cartilha e formulário dizem a mesma coisa", () => {
     expect(ITENS_SUS).toHaveLength(10);
     ITENS_SUS.forEach(noFormulario);
     EXTREMOS_SUS.forEach(noFormulario);
+  });
+
+  it("o que fica fora desta rodada é dito no formulário", () => {
+    noFormulario(FORA_DESTA_RODADA);
+    expect(CODIGO_DO_FORMULARIO).toContain("FORA_DESTA_RODADA + ");
+  });
+
+  it("cada métrica avaliada é um painel do console, com o mesmo nome", () => {
+    const painel = (arquivo: string) =>
+      readFileSync(fileURLToPath(new URL(`../../components/console/dashboard/${arquivo}`, import.meta.url)), "utf-8");
+    const paineis = ["KpisPrincipais.tsx", "KpisSecundarios.tsx", "AbandonoPorPerfil.tsx", "InatividadePorPerfil.tsx", "DistribuicaoNotas.tsx"]
+      .map(painel)
+      .join("\n");
+    for (const metrica of METRICAS) expect(paineis).toMatch(new RegExp(`(label: |>)"?${metrica}"?`));
   });
 
   it("perguntas de cada tarefa", () => {

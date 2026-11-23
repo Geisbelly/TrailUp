@@ -4,6 +4,18 @@
 Raw TLX. O instrumento vive em `Code.gs` e em `pesquisaProfessores.ts`, e a origem de cada item está
 no README do script. Este documento guarda o porquê.
 
+**Mudança de escopo (23/11/2026, decisão da autora):** a rodada avalia a plataforma no formato
+base, sem validar sugestões sobre alunos, porque não há cenários de aluno para isso. Saíram as
+tarefas "Achar um aluno que precisa de atenção", "Ler uma sugestão da IA" e "Corrigir uma entrega"
+e o **Bloco 3 (Sugestões da IA)**; entrou "Ler as métricas da turma", e o roteiro ficou com 8
+tarefas (T1–T8, renumeradas). Na turma de demonstração, as métricas da Visão geral aparecem com
+valores de exemplo marcados no console, e a coluna "confio no número" da matriz virou "a
+visualização é clara": o professor julga o formato, não o dado. A matriz passou a listar os painéis
+pelo nome no console (Abandono por perfil, Inatividade por perfil, Distribuição de notas) no lugar
+de "Sinais de alerta" e "Perfil BrainHex da turma". Fica registrado como limitação e trabalho
+futuro (rodada com cenários de aluno). O texto abaixo é a proposta como foi aprovada, inclusive o
+Bloco 3, guardado para essa rodada; os números de tarefa citados nele são os da versão anterior.
+
 **Conferido na fonte depois da proposta:**
 - **SUS:** a autora é Elenice Valentim **Carmona**: a citação é Lourenço, Carmona e Lopes (2022); o
   "Carmona Valentim" está só nos metadados da revista. A Tabela 1 é a versão aplicada no estudo, e

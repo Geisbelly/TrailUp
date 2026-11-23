@@ -18,20 +18,24 @@ A proposta completa, com o porquê de cada escolha, está em
 
 | Bloco | Instrumento | Situação em PT-BR |
 |---|---|---|
-| Por tarefa (×10) | Conclusão autodeclarada (sim / em parte / não / não tentei), SEQ de 1 a 7 (Sauro; Dumas, 2009, DOI 10.1145/1518701.1518946), tempo em faixas e onde travou | SEQ traduzida, **sem validação** |
+| Por tarefa (×8) | Conclusão autodeclarada (sim / em parte / não / não tentei), SEQ de 1 a 7 (Sauro; Dumas, 2009, DOI 10.1145/1518701.1518946), tempo em faixas e onde travou | SEQ traduzida, **sem validação** |
 | Usabilidade | SUS, versão brasileira: Lourenço, D. F.; Carmona, E. V.; Lopes, M. H. B. M. (2022), Aquichan 22(2), e2228, DOI 10.5294/aqui.2022.22.2.8. Itens da Tabela 1 (a versão aplicada no estudo); âncoras "discordo fortemente" e "concordo fortemente" | **Validada**. Os metadados da revista trazem "Carmona Valentim"; o PDF e a citação sugerida pelo próprio artigo dão o sobrenome Carmona |
 | Carga de trabalho | Raw TLX (Hart, 2006, DOI 10.1177/154193120605000909), 6 dimensões, Desempenho invertido. Nomes das dimensões, a pergunta de Esforço e as âncoras pouquíssimo/muitíssimo são de Ciofi-Silva et al. (2023), Rev Bras Enferm 76(3), e20220556, DOI 10.1590/0034-7167-2022-0556 | Versão brasileira com validade de conteúdo (profissionais de saúde). **O texto final das outras 5 perguntas não foi publicado** (o suplemento citado não está online): elas são adaptação dos autores a partir das definições do artigo. A linha de 20 intervalos virou escala de 0 a 10 |
 | Métricas do console | EFLA v4 do professor, 8 itens de 1 a 10 (Scheffel et al., 2017, DOI 10.1007/978-3-319-66610-5_15), no condicional; escore de 0 a 100 (`pontuarEfla`). Comparável com Roque da Silva et al. (2024), DOI 10.22456/1679-1916.141557 | Tradução livre, **sem validação** |
 | Acionabilidade | "Eu tomaria alguma ação" (1–10), qual ação (aberta, codificada por Wise; Jung, 2019, DOI 10.18608/jla.2019.62.4) e quanto as métricas refletiriam a realidade (0–100%), de Kasepalu et al. (2022), DOI 10.1007/s10758-021-09522-5 | Itens adaptados |
-| Métricas, uma a uma | Matriz entendi / confio / faria algo diferente | Item próprio |
-| Sugestões da IA | Ver a tabela abaixo | Tradução livre e itens próprios |
+| Métricas, uma a uma | Matriz entendi / a visualização é clara / faria algo diferente, sobre os painéis com valores de exemplo | Item próprio |
 | Material personalizado | Dimensões do LORI: Leacock; Nesbit (2007); versão brasileira de Marcos, Puricelli e Grosseman (2024), RBEP 105, DOI 10.24109/2176-6681.rbep.105.5651 (8 dimensões, 1 a 5 e "não se aplica"). "Pronto para uso" de Sarsa et al. (2022) e Doughty et al. (2024) | Itens próprios a partir das dimensões |
 | Tela do aluno | UEQ-S (Schrepp; Hinderks; Thomaschewski, 2017, DOI 10.9781/ijimai.2017.09.001), a partir da versão oficial de Portugal (Pérez Cota et al., 2014, DOI 10.1016/j.procs.2014.02.053), mais 4 itens próprios | **Adaptação lexical para o Brasil, não validada**, ver abaixo |
 | Utilidade e intenção de uso | Itens adaptados da utilidade percebida do TAM (Davis, 1989, DOI 10.2307/249008) | Itens próprios: não há TAM validado para docentes brasileiros |
 | Esforço e rotina, gamificação | Itens próprios (Hanus; Fox, 2015, para o ranking) | Itens próprios |
 | Dados e ética | Nazaretsky et al. (2022), Q10, Q14 e Q16; Drachsler e Greller (2016), DOI 10.1145/2883851.2883893; 2 itens próprios | Tradução livre |
 
-**Sugestões da IA, item a item:**
+**Fora desta rodada: sugestões da IA.** A rodada avalia a plataforma no formato base. A turma de
+demonstração não tem alunos com histórico, e não criamos aluno fictício para preenchê-la; por isso
+saíram as tarefas que dependem de dado de aluno (achar quem precisa de atenção, ler uma sugestão da
+IA, corrigir uma entrega) e o bloco "Sugestões da IA". As métricas aparecem com valores de exemplo,
+marcados no console (`PainelDeExemplo`), e a matriz julga o formato, não o número. Na monografia,
+isso é limitação e trabalho futuro: uma rodada com cenários de aluno. O bloco, guardado para ela:
 
 | Item | Origem |
 |---|---|
@@ -81,8 +85,7 @@ validada" só para a SUS; "tradução livre de…" e "elaborado pelos autores" p
 tabela.
 
 **Triangulação:** a conclusão autodeclarada é conferida contra o que a tarefa deixa registrado na
-turma de demonstração. A T5 deixa a decisão sobre a sugestão, a T6 a entrega corrigida e a T3 a
-geração pedida. Nenhum outro dado de uso entra (TCLE, seção 3).
+turma de demonstração. Hoje só a T3 deixa rastro: a geração pedida. Nenhum outro dado de uso entra (TCLE, seção 3).
 
 ## Antes de criar o de verdade
 
@@ -97,8 +100,9 @@ geração pedida. Nenhum outro dado de uso entra (TCLE, seção 3).
    10.1097/00006199-198611000-00017) e S-CVI/Ave ≥ 0,90 (Polit; Beck, 2006, DOI 10.1002/nur.20147),
    o mesmo método da fase 1 (Alexandre; Coluci, 2011). O que não passar é reescrito ou sai. Este
    piloto também mede o tempo real, que vai para o TCLE e a cartilha.
-3. Montar a turma de demonstração (alunos fictícios com dados nas métricas, insights, entregas na
-   fila de notas, missões, eventos e ranking) e criar os acessos de teste de professor e de aluno.
+3. Montar a turma-modelo (trilha, missões, eventos e ranking; sem alunos), que a planilha copia
+   para cada avaliador junto com os acessos de teste de professor e de aluno. As métricas da Visão
+   geral aparecem nela com valores de exemplo, marcados como tais.
 4. O TCLE do script precisa ser idêntico ao aprovado. O pacote da fase 1 no CEP ainda descreve a
    versão com juízes anônimos avaliando material gerado, e precisa ser refeito para este desenho:
    participantes identificados, com sigilo, avaliando o uso do sistema. Com identificação, o

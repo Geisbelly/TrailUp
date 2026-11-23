@@ -236,7 +236,7 @@ export default function Console() {
               {view === "profile" ? (
                 <ProfileSection professorData={professorData} onUpdate={handleProfileUpdate} isLoading={isLoadingProfessor} />
               ) : view === "dashboard" ? (
-                <DashboardSection />
+                <DashboardSection classeDeExemplo={acessoDaPesquisa?.avaliador ? acessoDaPesquisa.classeId : null} />
               ) : view === "ranks" ? (
                 <RanksSection />
               ) : view === "batalhas" ? (
