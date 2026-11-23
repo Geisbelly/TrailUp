@@ -1,12 +1,14 @@
 // Conteúdo da cartilha da pesquisa com professores: o professor usa o
 // sistema (console e interface do aluno) numa turma de demonstração e avalia,
-// por escrito, a usabilidade, as métricas, os insights da IA, o esforço e o
+// por escrito, a usabilidade, as métricas, o material, o esforço e o
 // resto do que viu. Ninguém avalia material gerado para a pesquisa.
 //
 // O formulário do Google sai de scripts/apps-script-formulario-professores/Code.gs
 // com estas mesmas tarefas, perguntas e escalas; pesquisaProfessores.test.ts falha se
-// os dois se separarem. Mudou um texto aqui, mude lá — e o protocolo do CEP
-// precisa dizer o mesmo.
+// os dois se separarem. Mudou um texto aqui, mude lá.
+//
+// Esta é a validação com especialistas (fase 1): sem alunos, com o aceite do
+// orientador, sem CEP. A fase com alunos (fase 2) é que passa pelo CEP.
 //
 // Instrumentos (origem item a item no README do script e em
 // docs/pesquisa/proposta-instrumento-avaliacao-professores.md):

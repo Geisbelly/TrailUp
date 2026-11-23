@@ -140,7 +140,7 @@ Gamificação e Dados dos alunos aparecem com a marca "opcional".
 
 **Narração:**
 > Participar é voluntário, e recusar ou desistir não traz prejuízo. O link da inscrição chega no
-> convite, por e-mail, depois da aprovação do Comitê de Ética. A cartilha completa está no site do
+> convite, por e-mail. A cartilha completa está no site do
 > TrailUp, em barra pesquisa barra professores. Obrigada.
 
 **Legenda na tela:** trailup.vercel.app/pesquisa/professores
@@ -149,7 +149,6 @@ Gamificação e Dados dos alunos aparecem com a marca "opcional".
 
 ## Antes de publicar o vídeo
 
-- O vídeo é material de recrutamento: entra no pacote do CEP junto com a cartilha e só circula
-  depois da aprovação.
+- O vídeo é material de recrutamento: circula junto com o convite, com o aceite do orientador.
 - Conferir que nenhuma tela gravada mostra aluno real, e-mail, senha ou dado de produção.
 - Se o roteiro de tarefas ou os blocos mudarem no módulo, atualizar as cenas 5 a 7.
