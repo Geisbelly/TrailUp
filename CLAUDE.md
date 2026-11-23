@@ -1594,8 +1594,9 @@ Antes de supor algo sobre o produto, o TCC ou o histórico, consulte:
   > contagem PRISMA em texto novo (resumo, artigo, monografia). A monografia e
   > `docs/rag/avaliacao-documentos.md` ainda falam em PRISMA: é texto anterior à
   > decisão, não precedente. A planilha de 47 documentos continua sendo a base
-  > de leitura (24 aprovados entre os 28 já decididos; 19 pendentes) — chame de
-  > análise crítica da literatura.
+  > de leitura — chame de análise crítica da literatura. Decisão final (22/11):
+  > 35 aprovados e 12 reprovados; os 19 que estavam pendentes em 30/10 ficaram
+  > como o parecer sugeriu. Os aprovados estão na pasta "Aprovados finais" do Drive.
 - **Google Drive:**
   [documentação TrailUp (raiz: TCC 1, TCC 2)](https://drive.google.com/drive/folders/1-hMe8qKLGvPTtDZ-b0HlvbSRwQhtZtug) ·
   [Segundo Cérebro](https://drive.google.com/drive/folders/1RiqTibVR9MTl9aYKAWs6g7dM1gSUcNqc) ·
