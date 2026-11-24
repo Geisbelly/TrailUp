@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
 import { DESIGN_ART } from "@/lib/design-art";
+import VideoDoSite from "@/components/VideoDoSite";
 
 const values = [
   { art: DESIGN_ART.compass, title: "Personalização", text: "Cada aluno recebe uma trilha adaptada ao seu perfil de aprendizado." },
@@ -18,6 +19,11 @@ export default function Sobre() {
       <section className="public-band public-editorial">
         <div><h2>Nossa missão</h2><p>O TrailUp nasceu para transformar a forma como universitários aprendem. Acreditamos que cada estudante merece uma experiência que respeite suas preferências, motivações e estilo cognitivo.</p></div>
         <div><h2>Uma ideia que virou jornada</h2><p>O projeto começou como um TCC para investigar como gamificação e personalização podem melhorar o engajamento de estudantes universitários. A pesquisa e a prototipagem deram origem à adaptação do modelo BrainHex ao contexto educacional.</p></div>
+      </section>
+      <section className="public-band text-center" aria-labelledby="video-title">
+        <h2 id="video-title">Pensado para quem dá aula</h2>
+        <p className="mx-auto mb-6 max-w-2xl">Várias turmas, ritmos diferentes e pouco tempo para acompanhar cada estudante: é desse dia a dia que o TrailUp parte.</p>
+        <VideoDoSite slug="para-o-professor" />
       </section>
       <section className="public-band" aria-labelledby="values-title">
         <h2 id="values-title">O que nos move</h2>

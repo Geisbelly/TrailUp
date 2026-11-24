@@ -1,7 +1,15 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { PDF_DA_CARTILHA, VIDEOS_DA_PESQUISA, caminhoDoVideo, linkPublico, videoPorSlug } from "./videosDaPesquisa";
+import {
+  PDF_DA_CARTILHA,
+  VIDEOS_DA_PESQUISA,
+  VIDEO_DO_ARTIGO,
+  caminhoDoVideo,
+  caminhoDoVideoNoSite,
+  linkPublico,
+  videoPorSlug,
+} from "./videosDaPesquisa";
 
 const SCRIPT = readFileSync(
   fileURLToPath(new URL("../../../../scripts/pesquisa-videos/subir-para-o-r2.mjs", import.meta.url)),
@@ -22,12 +30,24 @@ describe("vídeos da pesquisa", () => {
       expect(videoPorSlug(video.slug)).toBe(video);
       expect(caminhoDoVideo(video)).toBe(`/pesquisa/professores/videos/${video.slug}`);
     }
+    for (const video of VIDEOS_DA_PESQUISA) expect(caminhoDoVideoNoSite(video)).toBe(`/videos/${video.slug}`);
     expect(videoPorSlug("nao-existe")).toBeNull();
     expect(videoPorSlug(undefined)).toBeNull();
   });
 
   it("os três papéis: apresentação, professor e guia", () => {
     expect(VIDEOS_DA_PESQUISA.map(v => v.papel)).toEqual(["Apresentação", "Para o professor", "Guia"]);
+  });
+});
+
+describe("vídeo de cada artigo do Diário", () => {
+  const BLOG_POST = readFileSync(fileURLToPath(new URL("../../pages/BlogPost.tsx", import.meta.url)), "utf-8");
+
+  it("aponta para vídeo que existe e para artigo que existe", () => {
+    for (const [artigo, slug] of Object.entries(VIDEO_DO_ARTIGO)) {
+      expect(videoPorSlug(slug), slug).not.toBeNull();
+      expect(BLOG_POST, artigo).toMatch(new RegExp(`\\n  "?${artigo}"?: \\{`));
+    }
   });
 });
 

@@ -1,6 +1,7 @@
 import { ExternalLink, FileDown } from "lucide-react";
 import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
 import { DESIGN_ART } from "@/lib/design-art";
+import VideoDoSite from "@/components/VideoDoSite";
 
 const DOWNLOAD_CONFIG = {
   playStoreUrl: "https://play.google.com/apps/test/com.seuprojeto.trailup/20",
@@ -21,6 +22,11 @@ export default function Download() {
         <section className="download-option"><div><h2>Instalador Android</h2><p>Versão beta em formato APK.</p></div><a className="journey-button" href={DOWNLOAD_CONFIG.apkUrl} download><FileDown size={18} />Baixar APK</a></section>
         <section className="download-option"><div><h2>Android App Bundle</h2><p>Pacote AAB para distribuição.</p></div><a className="journey-link" href={DOWNLOAD_CONFIG.aabUrl} download><FileDown size={18} />Baixar AAB</a></section>
       </div>
+      <section className="public-band text-center" aria-labelledby="primeiro-acesso-titulo">
+        <h2 id="primeiro-acesso-titulo">Depois de instalar</h2>
+        <p className="mx-auto mb-6 max-w-2xl">Do cadastro à trilha introdutória: confirmar o e-mail, responder ao questionário de preferências e completar o perfil.</p>
+        <VideoDoSite slug="guia" />
+      </section>
     </PublicLayout>
   );
 }

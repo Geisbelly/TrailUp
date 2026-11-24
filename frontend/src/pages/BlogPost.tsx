@@ -2,6 +2,8 @@ import { ArrowLeft } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { PublicLayout } from "@/components/PublicLayout";
+import VideoDoSite from "@/components/VideoDoSite";
+import { VIDEO_DO_ARTIGO } from "@/features/pesquisa/videosDaPesquisa";
 
 // Divide o texto em partes normais, negrito (**assim**) e italico (*assim*), sem alterar o markdown de origem.
 function renderInline(text: string) {
@@ -471,6 +473,13 @@ const BlogPost = () => {
                 return <p key={index} className="text-muted-foreground leading-relaxed mb-4">{renderInline(paragraph)}</p>;
               })}
             </div>
+
+            {id && VIDEO_DO_ARTIGO[id] && (
+              <section className="mt-12 space-y-4" aria-labelledby="video-do-artigo">
+                <h2 id="video-do-artigo" className="text-center text-2xl font-bold text-primary">Veja em vídeo</h2>
+                <VideoDoSite slug={VIDEO_DO_ARTIGO[id]} />
+              </section>
+            )}
           </div>
         </div>
       </article>

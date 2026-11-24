@@ -5,8 +5,9 @@
 // Quem sobe é a equipe, com `scripts/pesquisa-videos/subir-para-o-r2.mjs`; os caminhos de lá e
 // daqui são os mesmos (o teste compara).
 //
-// Cada vídeo tem página própria (`/pesquisa/professores/videos/<slug>`), para ser compartilhado
-// sozinho, sem a cartilha inteira.
+// Cada vídeo tem página própria, para ser compartilhado sozinho: na pesquisa,
+// `/pesquisa/professores/videos/<slug>`; no resto do site (início, Sobre, Download, Diário),
+// `/videos/<slug>`. Os arquivos são os mesmos.
 
 import { CAMINHO_DA_CARTILHA } from "./pesquisaProfessores";
 
@@ -60,6 +61,24 @@ export const VIDEOS_DA_PESQUISA: readonly VideoDaPesquisa[] = [
 export const PDF_DA_CARTILHA = "publico/pesquisa/cartilha-pesquisa-professores.pdf";
 
 export const caminhoDoVideo = (video: Pick<VideoDaPesquisa, "slug">) => `${CAMINHO_DA_CARTILHA}/videos/${video.slug}`;
+
+/** Página do vídeo fora da pesquisa. */
+export const CAMINHO_DOS_VIDEOS = "/videos";
+export const caminhoDoVideoNoSite = (video: Pick<VideoDaPesquisa, "slug">) => `${CAMINHO_DOS_VIDEOS}/${video.slug}`;
+
+/** Vídeo no fim de cada artigo do Diário (`/blog/<id>`), pelo assunto. */
+export const VIDEO_DO_ARTIGO: Readonly<Record<string, string>> = {
+  // A apresentação mostra os sete guias, um por perfil BrainHex.
+  brainhex: "apresentacao",
+  seeker: "apresentacao",
+  survivor: "apresentacao",
+  daredevil: "apresentacao",
+  mastermind: "apresentacao",
+  conqueror: "apresentacao",
+  socializer: "apresentacao",
+  achiever: "apresentacao",
+  "pesquisa-tcc": "para-o-professor",
+};
 
 export function videoPorSlug(slug: string | undefined): VideoDaPesquisa | null {
   return VIDEOS_DA_PESQUISA.find(v => v.slug === slug) ?? null;
