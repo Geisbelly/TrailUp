@@ -264,7 +264,7 @@ export const ACIONABILIDADE = {
 
 /**
  * Métricas da Visão geral avaliadas uma a uma (nomes como aparecem no console). Na turma de
- * demonstração elas aparecem com valores de exemplo (`PainelDeExemplo`): o que se avalia é o formato.
+ * demonstração elas aparecem sobre alunos de exemplo (`PainelDeExemplo`): o que se avalia é o formato.
  */
 export const METRICAS: readonly string[] = [
   "Conclusão média",
