@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services import perfil_vetor
 from app.services.tentativas_atividade import decidir_desligar_cronometro
 
 ANALYZE_SPECIALIST_NODES = {
@@ -197,6 +198,12 @@ def compute_personalizacao_next(state: dict[str, Any]) -> list[str]:
     return ["finish"]
 
 
+def _perfil_dominante(perfil: Any) -> dict[str, Any]:
+    """O dominante da regra única (`perfil_vetor`), não o `[0]` da lista: com os 7 perfis em 0 do
+    aluno sem `aluno_perfil`, o `[0]` era Seeker, e o supervisor lia "Seeker, afinidade 0"."""
+    return perfil_vetor.vetor_com_dominante_primeiro(perfil if isinstance(perfil, list) else [], limite=1)[0]
+
+
 def build_state_summary(state: dict[str, Any]) -> dict[str, Any]:
     """Resumo do estado que vai ao modelo do supervisor. Sem o UUID do aluno:
     o supervisor so escolhe o proximo no, e dado pseudonimizado continua sendo
@@ -210,7 +217,7 @@ def build_state_summary(state: dict[str, Any]) -> dict[str, Any]:
             "classe_id": state.get("classe_id"),
             "topico_id": state.get("payload_topico_id"),
             "conteudo_foco_id": state.get("conteudo_boss_foco_id"),
-            "perfil_dominante": perfil[0] if perfil else None,
+            "perfil_dominante": _perfil_dominante(perfil),
             "media_acertos": desempenho.get("media_acertos"),
             "plano_pronto": bool(state.get("plano_personalizacao")),
             "ai_patch_pronto": bool(state.get("ai_patch")),
@@ -219,7 +226,7 @@ def build_state_summary(state: dict[str, Any]) -> dict[str, Any]:
     return {
         "classe_id": state.get("classe_id"),
         "gerar_materiais": state.get("gerar_materiais", False),
-        "perfil_dominante": perfil[0] if perfil else None,
+        "perfil_dominante": _perfil_dominante(perfil),
         "media_acertos": desempenho.get("media_acertos"),
         "percentual_concluido": desempenho.get("percentual_concluido"),
         "emocao_atual": emocao,

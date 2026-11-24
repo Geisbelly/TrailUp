@@ -132,7 +132,9 @@ class Settings(BaseSettings):
     # gemini-3.1-flash-lite e da mesma geracao confirmada funcionando
     # (gemini-3.6-flash), sem o mesmo risco de aposentadoria.
     gemini_model_multimodal_fallback: str = "gemini-3.1-flash-lite"
-    gemini_model_image: str = "gemini-2.0-flash-preview-image-generation"
+    # Era "gemini-2.0-flash-preview-image-generation": a serie 2.0 inteira da 404 desde 24/11 (medido em
+    # ia_uso_llm). Mesmo nome que o BrainHexPDF usa para ilustrar slides (brainhexpdf/server.ts).
+    gemini_model_image: str = "gemini-3.1-flash-image"
     gemini_model_tts: str = "gemini-2.5-flash-preview-tts"
     content_enrichment_gemini_model: str = "gemini-3.6-flash"
     # Cota diaria do free tier e por (chave, modelo) — varios desses modelos
@@ -141,14 +143,11 @@ class Settings(BaseSettings):
     # (mesmo parser de GEMINI_API_KEY): cada modelo e tentado em todas as
     # chaves configuradas, na ordem, so quando o anterior esgota a cota em
     # todas elas — antes de cair pro fallback pago da OpenAI.
-    # Ordem prioriza a serie 3.x: gemini-2.5-flash-lite tambem retornou 404
-    # "no longer available to new users" em producao (contas novas parecem
-    # so ter acesso a modelos 3.x) — os 2.x ficam no fim da lista como
-    # tentativa residual, caso algum outro tier ainda os aceite.
-    content_enrichment_gemini_fallback_models: str = (
-        "gemini-3.1-flash-lite,gemini-3.5-flash-lite,"
-        "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite"
-    )
+    # So a serie 3.x. gemini-2.5-flash-lite, gemini-2.0-flash e gemini-2.0-flash-lite davam 404
+    # (GoogleModelNotFoundError) em TODAS as chamadas de 24/11 em producao: eram "tentativa residual"
+    # e custavam uma chamada por chave a cada pedido. Modelo que der 404 sai da cadeia para todas as
+    # chaves pelo tempo da cota diaria (gemini_chaves), entao um nome velho no env so custa uma vez.
+    content_enrichment_gemini_fallback_models: str = "gemini-3.1-flash-lite,gemini-3.5-flash-lite"
     content_enrichment_gemini_quota_cooldown_sec: int = 300
     # RequestsPerDay so reseta amanha (nao em minutos) — cooldown curto faz o
     # worker martelar a mesma chave/modelo esgotado a cada poll pelo resto do
@@ -162,10 +161,8 @@ class Settings(BaseSettings):
     # do LangGraph, gerar_cards_direto, generate_plano_personalizacao etc. —
     # aparecia sem NENHUM fallback de modelo antes, so com a chave/modelo
     # unico configurado.
-    gemini_text_fallback_models: str = (
-        "gemini-3.1-flash-lite,gemini-3.5-flash-lite,"
-        "gemini-2.5-flash-lite,gemini-2.0-flash,gemini-2.0-flash-lite"
-    )
+    # Env GEMINI_TEXT_FALLBACK_MODELS. Sem os 2.x aposentados (ver a lista do enriquecimento acima).
+    gemini_text_fallback_models: str = "gemini-3.1-flash-lite,gemini-3.5-flash-lite"
     # Teto da resposta inteira nos chats, somando repeticao, juiz e rodizio de chaves. Sem ele, um 503
     # do Gemini percorre todas as chaves e modelos, e o console desiste aos 75 s sem resposta nenhuma.
     chat_prazo_total_seconds: float = 40.0

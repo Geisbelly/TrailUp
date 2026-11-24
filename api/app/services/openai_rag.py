@@ -91,7 +91,10 @@ class OpenAIRagService:
             api_key = str(self.settings.openai_rag_api_key or "").strip()
             if not api_key:
                 raise OpenAIRagError("OPENAI_RAG_API_KEY nao configurada")
-            self._client = AsyncOpenAI(api_key=api_key)
+            # Sem repetição do SDK (o padrão é 2, com espera): o 429 custava ~19,8 s antes de a pausa
+            # acima valer, metade do prazo de 40 s do chat (ia_decision_logs 19, 24/11). Quem chama já
+            # tem o caminho sem RAG (`sem_rag_se_falhar` no chat, `[True, False]` nos nós).
+            self._client = AsyncOpenAI(api_key=api_key, max_retries=0)
         return self._client
 
     def is_configured(self) -> bool:

@@ -887,7 +887,7 @@ async def gerar_imagem_slide(
         # #195: menor -> sem imagem do Gemini (o slide segue sem ilustracao).
         return None
 
-    model_name = str(getattr(settings, "gemini_model_image", "") or "").strip() or "gemini-2.0-flash-preview-image-generation"
+    model_name = str(getattr(settings, "gemini_model_image", "") or "").strip() or "gemini-3.1-flash-image"
     body = {
         "contents": [
             {

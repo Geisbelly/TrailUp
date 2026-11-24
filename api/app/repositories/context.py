@@ -10,15 +10,19 @@ from app.repositories.estudo import EstudoRepository
 from app.repositories.tentativas import TentativasRepository
 from app.schemas.common import DesempenhoSummary, Evento
 from app.schemas.perfil import PerfilScore
+from app.services import perfil_vetor
 
+# Aluno sem linha em `aluno_perfil`: os 7 com afinidade 0, com o `PERFIL_PADRAO` (mastermind) na
+# frente. Era Seeker na frente, e todo leitor de `[0]` (resumo do supervisor, reserva do Guia)
+# chamava esse aluno de Seeker, enquanto o app, o SQL e `perfil_vetor.dominante` o tratam como
+# mastermind (24/11).
 DEFAULT_PROFILES = [
-    "Seeker",
-    "Conqueror",
-    "Daredevil",
-    "Mastermind",
-    "Socialiser",
-    "Achiever",
-    "Survivor",
+    perfil_vetor.PERFIS_CANONICOS[perfil_vetor.PERFIL_PADRAO],
+    *(
+        rotulo
+        for chave, rotulo in perfil_vetor.PERFIS_CANONICOS.items()
+        if chave != perfil_vetor.PERFIL_PADRAO
+    ),
 ]
 
 
@@ -164,7 +168,7 @@ class ContextRepository:
                 FROM aluno_perfil ap
                 JOIN perfil p ON p.id = ap.perfil_id
                 WHERE ap.aluno_id = :aluno_id
-                ORDER BY ap.afinidade DESC, p.nome ASC
+                ORDER BY ap.afinidade DESC NULLS LAST, p.nome ASC
                 """
             ),
             {"aluno_id": aluno_id},
