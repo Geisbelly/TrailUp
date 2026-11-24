@@ -17,6 +17,7 @@ import {
   type RespostasDaAvaliacao,
 } from "@/features/pesquisa/formularioDeAvaliacao";
 import { ESPERAS_DA_CONFERENCIA_MS, lerConfirmacao, urlDaConferencia } from "@/features/pesquisa/inscricaoNoSite";
+import { marcarAvaliacaoEnviada } from "@/features/pesquisa/roteiroApi";
 
 type Etapa = "respondendo" | "enviando" | "conferindo" | "recebida" | "enviada" | "sem-confirmacao" | "erro";
 
@@ -373,6 +374,7 @@ export function FormularioDaAvaliacao({ formulario, usuario, email, confirmacao,
       await esperar(ms);
       if (await codigoChegou(confirmacao, codigo.current)) {
         setEtapa("recebida");
+        void marcarAvaliacaoEnviada();
         return;
       }
     }
@@ -401,7 +403,10 @@ export function FormularioDaAvaliacao({ formulario, usuario, email, confirmacao,
     }
     setEnviadoEm(new Date().toISOString());
     if (conferivel) await conferir();
-    else setEtapa("enviada");
+    else {
+      setEtapa("enviada");
+      void marcarAvaliacaoEnviada();
+    }
   };
 
   const apagarRascunho = () => {

@@ -35,8 +35,13 @@ describe("vídeos da pesquisa", () => {
     expect(videoPorSlug(undefined)).toBeNull();
   });
 
-  it("os três papéis: apresentação, professor e guia", () => {
-    expect(VIDEOS_DA_PESQUISA.map(v => v.papel)).toEqual(["Apresentação", "Para o professor", "Guia"]);
+  it("os quatro papéis, com o passo a passo da pesquisa primeiro", () => {
+    expect(VIDEOS_DA_PESQUISA.map(v => v.papel)).toEqual([
+      "Para quem vai avaliar",
+      "Apresentação",
+      "Para o professor",
+      "Guia",
+    ]);
   });
 });
 
