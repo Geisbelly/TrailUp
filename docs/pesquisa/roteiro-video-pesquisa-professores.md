@@ -58,8 +58,8 @@ O conteúdo segue a cartilha (`/pesquisa/professores`) e o módulo
 > Segundo, o acesso. O console do professor mostra dados de turmas e de alunos, então o acesso é
 > restrito, por segurança: só entra quem a equipe aprova. Por isso a equipe cria a sua conta com o
 > e-mail cadastrado e uma senha gerada aleatoriamente, e manda só para esse e-mail. Você pode
-> trocar a senha em Meus dados. A equipe nunca pede senha de outro serviço, e os acessos são
-> apagados ao fim da pesquisa.
+> trocar a senha em Meus dados. A equipe nunca pede senha de outro serviço, e os acessos não são
+> apagados ao fim da pesquisa: ficam guardados como dado da pesquisa.
 >
 > Terceiro, a avaliação: com o TrailUp numa aba e o formulário na outra, você segue o roteiro.
 

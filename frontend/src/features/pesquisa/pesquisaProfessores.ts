@@ -97,7 +97,7 @@ export const OPCOES_DIVULGACAO = [
  * alunos, e o cadastro de professor passa pela aprovação da dona do projeto.
  * A equipe cria o acesso com senha aleatória e manda só para esse e-mail.
  */
-export const ACESSO = "O e-mail que você cadastrar é o seu login no TrailUp. O acesso ao console do professor é restrito, por segurança: ele mostra dados de turmas e de alunos, e só entra quem a equipe aprova. Por isso a equipe cria o seu acesso com esse e-mail e uma senha gerada aleatoriamente, e envia só para ele os acessos (professor e aluno de teste) e o link do formulário de avaliação. Você pode trocar a senha em Meus dados. A equipe nunca pede senha sua de outro serviço, e os acessos são apagados ao fim da pesquisa.";
+export const ACESSO = "O e-mail que você cadastrar é o seu login no TrailUp. O acesso ao console do professor é restrito, por segurança: ele mostra dados de turmas e de alunos, e só entra quem a equipe aprova. Por isso a equipe cria o seu acesso com esse e-mail e uma senha gerada aleatoriamente, e envia só para ele os acessos (professor e aluno de teste) e o link do formulário de avaliação. Você pode trocar a senha em Meus dados. A equipe nunca pede senha sua de outro serviço, e os acessos não são apagados ao fim da pesquisa: a conta, a turma e o que você fizer nela ficam guardados como dado da pesquisa.";
 
 /**
  * Dito ao participante na cartilha, na descrição do formulário e no termo:
@@ -628,7 +628,7 @@ export const PERGUNTAS_FREQUENTES: readonly { pergunta: string; resposta: string
   },
   {
     pergunta: "O que eu fizer no sistema entra na pesquisa?",
-    resposta: "Só uma parte, e só para conferir o roteiro. A equipe olha na turma de demonstração se o que a tarefa pedia ficou registrado (se a personalização foi pedida, por exemplo). Nenhum outro dado do seu uso entra. No fim, a turma, o conteúdo que você puser nela e os acessos de teste são apagados.",
+    resposta: "Só uma parte, e só para conferir o roteiro. A equipe olha na turma de demonstração se o que a tarefa pedia ficou registrado (se a personalização foi pedida, por exemplo). Nenhum outro dado do seu uso entra. No fim, a turma, o conteúdo que você puser nela e os acessos de teste não são apagados: ficam guardados como dado da pesquisa.",
   },
   {
     pergunta: "Vou saber o resultado?",

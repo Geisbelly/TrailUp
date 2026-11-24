@@ -155,9 +155,10 @@ Sem `VITE_PESQUISA_INSCRICAO_FORM_URL`, a cartilha mostra que a inscrição aind
    depois do clique, manda o acesso. Ver a seção seguinte.
 4. **Avaliação:** na aba "Avaliar o TrailUp" do console (ou pelo link do e-mail). Começa pelo
    e-mail cadastrado, que liga a avaliação à inscrição.
-5. **Ao fim da pesquisa:** apagar as contas (professor e aluno de teste), a turma de demonstração e
-   o conteúdo que os professores puseram nela. Apagar a conta de professor leva junto a linha de
-   `pesquisa_avaliador`.
+5. **Ao fim da pesquisa: nada é apagado.** As contas (professor e aluno de teste), a turma de
+   demonstração e o conteúdo que os professores puseram nela são dado da pesquisa e ficam guardados,
+   como dizem o termo e a cartilha. Só sai o que o participante pedir para retirar (seção 4 do
+   termo). Apagar a conta de professor levaria junto a linha de `pesquisa_avaliador`.
 
 ## Planilha de inscrições e acesso
 
@@ -272,13 +273,13 @@ TrailUp para na Situação "Erro: este e-mail já tem conta" e é resolvido à m
 | A forma de divulgação é a **última** pergunta, depois de toda a avaliação, e pode ser trocada a qualquer momento até a versão final pelo formulário de atualização (vale a resposta mais recente). Com o nome, só depois de ver o próprio quadro | Viés de cortesia: quem responde sabendo que o nome vai junto tende a avaliar melhor. Decidir depois, e poder voltar atrás, separa a avaliação da exposição |
 | A descrição do formulário, a página antes do roteiro e o termo dizem que resultado negativo vale tanto quanto positivo | Também contra a cortesia: crítica franca é o que orienta a correção |
 | Título das perguntas com o id da tarefa (`T4 · ...`) | A planilha de respostas fica legível |
-| Só a inscrição tem planilha vinculada; a avaliação não | A aprovação e o acesso precisam de uma linha por inscrito. As respostas da avaliação são baixadas e apagadas da nuvem ao fim; uma planilha seria mais uma cópia |
+| Só a inscrição tem planilha vinculada; a avaliação não | A aprovação e o acesso precisam de uma linha por inscrito. As respostas da avaliação são baixadas para a equipe, que as guarda, e apagadas do formulário online; uma planilha seria mais uma cópia na nuvem |
 
 ## Depois da coleta
 
 Baixar as respostas (Respostas → Fazer download em CSV), numerar os
 participantes (E1, E2…) e montar o quadro de cada um conforme a forma de divulgação escolhida, mandar
-o trecho para conferência de quem escolheu o nome, guardar com o pesquisador responsável e apagar as respostas do formulário, como diz o termo. A análise compara
+o trecho para conferência de quem escolheu o nome, guardar com o pesquisador responsável, como dado da pesquisa, e apagar as respostas do formulário online, como diz o termo. A análise compara
 os grupos pelo campo "Papel em que você avalia o sistema" (docentes de TI, de outras áreas e
 pedagogos), de forma descritiva.
 
