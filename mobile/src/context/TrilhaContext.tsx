@@ -1589,29 +1589,34 @@ export const TrilhaProvider: React.FC<{ children: React.ReactNode }> = ({
         visual
       })
 
-      let data: any = null
-      try {
-        const edgeResult = await supabase.functions.invoke('personalize_path', {
-          body: {
-            userId,
-            classeId: classeAtual.classe_id,
-            perfil,
-            visual,
-          },
-        })
-        data = edgeResult.data ?? null
-        if (edgeResult.error) {
-          avisarFalha("trilha/grafo-edge", '[TrilhaContext] Erro na Edge Function personalize_path:', edgeResult.error)
+      // O grafo (edge) e o tema da turma não dependem um do outro: saem juntos, e a trilha
+      // espera o mais lento em vez da soma dos dois.
+      const grafoDaEdge = (async (): Promise<any> => {
+        try {
+          const edgeResult = await supabase.functions.invoke('personalize_path', {
+            body: {
+              userId,
+              classeId: classeAtual.classe_id,
+              perfil,
+              visual,
+            },
+          })
+          if (edgeResult.error) {
+            avisarFalha("trilha/grafo-edge", '[TrilhaContext] Erro na Edge Function personalize_path:', edgeResult.error)
+          }
+          return edgeResult.data ?? null
+        } catch (edgeError) {
+          avisarFalha("trilha/grafo-edge-chamada", '[TrilhaContext] Falha ao invocar Edge personalize_path:', edgeError)
+          return null
         }
-      } catch (edgeError) {
-        avisarFalha("trilha/grafo-edge-chamada", '[TrilhaContext] Falha ao invocar Edge personalize_path:', edgeError)
-      }
-
-      const { data: dbThemeRaw, error: dbThemeError } = await supabase
+      })()
+      const temaDoBanco = supabase
         .from('classe_mapa_tema')
         .select('world_name, world_subtitle, world_description, template_id, palette, countries')
         .eq('classe_id', classeAtual.classe_id)
         .maybeSingle()
+
+      const [data, { data: dbThemeRaw, error: dbThemeError }] = await Promise.all([grafoDaEdge, temaDoBanco])
 
       if (dbThemeError) {
         avisarFalha("trilha/tema", '[TrilhaContext] Falha ao carregar classe_mapa_tema:', dbThemeError)

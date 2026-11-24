@@ -1,5 +1,6 @@
 import { AtualizacaoObrigatoriaGate } from "@/components/AtualizacaoObrigatoriaGate";
 import { LoadingState } from "@/components/LoadingState";
+import { RaizDeGestos } from "@/components/RaizDeGestos";
 import { RolagemDoPerfil } from "@/components/RolagemDoPerfil";
 import { TelemetryConsentGate } from "@/components/TelemetryConsentGate";
 import LoadingScreen from "@/components/funcionais/Loading";
@@ -21,8 +22,6 @@ import { Redirect, Stack, usePathname, useSegments, type ErrorBoundaryProps, typ
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import { LogBox, Platform, Pressable, Text, View } from "react-native";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import "react-native-reanimated";
 
 // A âncora "(tabs)" garante, no celular, que o "voltar" de um link profundo caia
 // nas abas. Na web ela montava a área logada DUAS vezes (#505): "/" existe em
@@ -168,7 +167,7 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <RaizDeGestos style={{ flex: 1 }}>
       <StatusBar style="light" />
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <LoadingProvider>
@@ -196,6 +195,6 @@ export default function RootLayout() {
           </SessionProvider>
         </LoadingProvider>
       </ThemeProvider>
-    </GestureHandlerRootView>
+    </RaizDeGestos>
   );
 }

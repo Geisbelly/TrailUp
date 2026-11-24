@@ -3,12 +3,13 @@
  *
  * MathJax 4 (`@mathjax/src`) com a fonte New Computer Modern. Três escolhas que não são óbvias:
  *
- * - **Carregamento tardio.** Nada do MathJax é avaliado até a primeira fórmula: `require` dentro de
- *   função. O Metro embute os módulos (o nome é literal), mas a abertura do app não paga por eles.
+ * - **Carregamento tardio.** Nada do MathJax é baixado nem avaliado até a primeira fórmula: o miolo
+ *   mora em `conversorMathJax.ts`, carregado por `import()`. Na web ele vira um pedaço à parte do
+ *   export; no celular o Metro o embute no bundle, e só a avaliação espera.
  * - **Faixas da fonte embutidas à mão.** A fonte base cobre o essencial; o resto vem em faixas que o
  *   MathJax pede sob demanda por `asyncLoad`. O Metro não resolve `require` com nome calculado, então
  *   as faixas que um corpus escolar pede (medido em 08/11: acento em `\text{ação}`, `\mathbb`,
- *   `\mathcal`, `\mathbf`, setas, ângulo, `\star`…) estão listadas em `FAIXAS`. Faixa fora da lista
+ *   `\mathcal`, `\mathbf`, setas, ângulo, `\star`…) estão listadas em `FAIXAS`, em `conversorMathJax.ts`. Faixa fora da lista
  *   não quebra: a fórmula volta como erro e o componente mostra o texto legível.
  *   Ficaram de fora, de propósito, grego estendido (1 MB), cirílico, hebraico, árabe e braille.
  * - **Comando desconhecido é erro.** Sem o pacote `noundefined`, que o pintaria de vermelho dentro
@@ -20,7 +21,8 @@
  * o tamanho da fonte do texto ao redor (`EX_POR_EM`).
  */
 
-/* eslint-disable @typescript-eslint/no-require-imports */
+// Só o tipo: um import de valor levaria o MathJax para o pedaço de quem importa este arquivo.
+import type { Conversor } from "./conversorMathJax";
 
 export const EX_POR_EM = 0.5;
 
@@ -34,109 +36,21 @@ export type FormulaSvg = {
 
 export type ResultadoFormula = FormulaSvg | { erro: string };
 
-const PACOTES = [
-  "base",
-  "ams",
-  "newcommand",
-  "noerrors",
-  "mhchem",
-  "physics",
-  "boldsymbol",
-  "textmacros",
-  "cancel",
-  "units",
-] as const;
-
-const FAIXAS: Record<string, () => unknown> = {
-  latin: () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/latin.js"),
-  "latin-b": () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/latin-b.js"),
-  "latin-i": () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/latin-i.js"),
-  arrows: () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/arrows.js"),
-  math: () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/math.js"),
-  shapes: () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/shapes.js"),
-  script: () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/script.js"),
-  "double-struck": () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/double-struck.js"),
-  calligraphic: () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/calligraphic.js"),
-  fraktur: () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/fraktur.js"),
-  monospace: () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/monospace.js"),
-  "sans-serif": () => require("@mathjax/mathjax-newcm-font/cjs/svg/dynamic/sans-serif.js"),
-};
-
-/** Nomes das faixas embutidas, para o teste conferir que cada uma existe no pacote. */
-export const FAIXAS_EMBUTIDAS = Object.keys(FAIXAS);
-
-type Conversor = (tex: string, display: boolean) => Promise<string>;
-
-let conversor: Conversor | null = null;
-
-type Navegador = { appVersion?: unknown; userAgent?: unknown };
+let conversor: Promise<Conversor> | null = null;
 
 /**
- * `@mathjax/src/cjs/util/context.js`, ao ser carregado, vê `window.navigator` e chama
- * `navigator.appVersion.includes(...)` e `navigator.userAgent.includes(...)`. No React Native o
- * `navigator` existe sem esses dois campos, e o `require` estoura com "Cannot read property
- * 'includes' of undefined" (medido no Android, 10/11). Eles ficam como texto vazio só durante a
- * carga e voltam a não existir depois: nada fora do MathJax enxerga a troca.
+ * Carrega o MathJax na primeira fórmula, por `import()` (ver `conversorMathJax.ts`). A promessa fica
+ * guardada para as fórmulas da mesma tela não pedirem o pedaço várias vezes; se a carga falhar (rede
+ * caiu no meio do download, na web), ela é esquecida e a próxima fórmula tenta de novo.
  */
-function carregarSemNavegador<T>(carregar: () => T): T {
-  const navegador = (globalThis as { navigator?: Navegador }).navigator;
-  const faltando = navegador
-    ? (["appVersion", "userAgent"] as const).filter((campo) => typeof navegador[campo] !== "string")
-    : [];
-  for (const campo of faltando) navegador![campo] = "";
-  try {
-    return carregar();
-  } finally {
-    for (const campo of faltando) delete navegador![campo];
-  }
-}
-
-function criarConversor(): Conversor {
-  return carregarSemNavegador(montarConversor);
-}
-
-function montarConversor(): Conversor {
-  const { mathjax } = require("@mathjax/src/cjs/mathjax.js");
-  const { TeX } = require("@mathjax/src/cjs/input/tex.js");
-  const { SVG } = require("@mathjax/src/cjs/output/svg.js");
-  const { liteAdaptor } = require("@mathjax/src/cjs/adaptors/liteAdaptor.js");
-  const { RegisterHTMLHandler } = require("@mathjax/src/cjs/handlers/html.js");
-  require("@mathjax/src/cjs/input/tex/base/BaseConfiguration.js");
-  require("@mathjax/src/cjs/input/tex/ams/AmsConfiguration.js");
-  require("@mathjax/src/cjs/input/tex/newcommand/NewcommandConfiguration.js");
-  require("@mathjax/src/cjs/input/tex/noerrors/NoErrorsConfiguration.js");
-  require("@mathjax/src/cjs/input/tex/mhchem/MhchemConfiguration.js");
-  require("@mathjax/src/cjs/input/tex/physics/PhysicsConfiguration.js");
-  require("@mathjax/src/cjs/input/tex/boldsymbol/BoldsymbolConfiguration.js");
-  require("@mathjax/src/cjs/input/tex/textmacros/TextMacrosConfiguration.js");
-  require("@mathjax/src/cjs/input/tex/cancel/CancelConfiguration.js");
-  require("@mathjax/src/cjs/input/tex/units/UnitsConfiguration.js");
-  const { MathJaxNewcmFont } = require("@mathjax/mathjax-newcm-font/cjs/svg.js");
-  const { MathJaxMhchemFontExtension } = require("@mathjax/mathjax-mhchem-font-extension/cjs/svg.js");
-
-  MathJaxNewcmFont.addExtension(MathJaxMhchemFontExtension);
-  mathjax.asyncLoad = (nome: string) => {
-    const faixa = nome.split("/").pop()?.replace(/\.js$/, "") ?? nome;
-    const carregar = FAIXAS[faixa];
-    return carregar
-      ? Promise.resolve(carregar())
-      : Promise.reject(new Error(`faixa da fonte não embutida: ${faixa}`));
-  };
-
-  const adaptador = liteAdaptor();
-  RegisterHTMLHandler(adaptador);
-  const documento = mathjax.document("", {
-    InputJax: new TeX({ packages: [...PACOTES] }),
-    // Sem quebra em linha: o MathJax 4 parte a fórmula em linha em vários `<svg>`, um por trecho
-    // entre pontos de quebra, e a tela só desenha um bloco com uma medida (medido no Android:
-    // `n = 0` saía só `= 0`, pequeno). Quem quebra a linha do parágrafo é o `Text` em volta.
-    OutputJax: new SVG({ fontCache: "none", fontData: MathJaxNewcmFont, linebreaks: { inline: false } }),
-  });
-
-  return async (tex, display) => {
-    const no = await mathjax.handleRetriesFor(() => documento.convert(tex, { display }));
-    return adaptador.outerHTML(no) as string;
-  };
+function obterConversor(): Promise<Conversor> {
+  conversor ??= import("./conversorMathJax")
+    .then((modulo) => modulo.criarConversor())
+    .catch((falha: unknown) => {
+      conversor = null;
+      throw falha;
+    });
+  return conversor;
 }
 
 const LIMITE_CACHE = 200;
@@ -187,8 +101,8 @@ export async function formulaParaSvg(tex: string, opcoes: { display?: boolean } 
   if (lembrado) return lembrar(chave, lembrado);
   if (tex.trim() === "") return { erro: "fórmula vazia" };
   try {
-    conversor ??= criarConversor();
-    return lembrar(chave, extrairSvg(await conversor(tex, display)));
+    const converter = await obterConversor();
+    return lembrar(chave, extrairSvg(await converter(tex, display)));
   } catch (falha) {
     // Não guarda no cache: uma falha de carga pode ser passageira, e a próxima tentativa é barata.
     return { erro: falha instanceof Error ? falha.message : String(falha) };

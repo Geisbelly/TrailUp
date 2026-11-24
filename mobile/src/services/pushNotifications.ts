@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 
 import type { DadosDoToque } from '@/services/destinoDoToque';
 import { emFocoNoAparelho } from '@/services/focoLocal';
+import { carregarModuloDeNotificacoes } from '@/services/moduloDeNotificacoes';
 import type { PlataformaApp, RotinaNotificacao } from '@/services/notificacoesDb';
 
 /**
@@ -47,10 +48,9 @@ function executandoNoExpoGo() {
 async function carregarNotifications(): Promise<NotificationsModule | null> {
   if (Platform.OS === 'web' || executandoNoExpoGo()) return null;
   // Só avaliar o módulo depois da verificação: o import estático registra
-  // listeners nativos no Expo Go antes mesmo de chamar qualquer função.
-  // require local também evita o async-require do Metro usado por import().
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  notificationsModule ??= require('expo-notifications') as NotificationsModule;
+  // listeners nativos no Expo Go antes mesmo de chamar qualquer função. O
+  // `require` mora em `moduloDeNotificacoes.ts`, que na web não importa nada.
+  notificationsModule ??= carregarModuloDeNotificacoes();
   return notificationsModule;
 }
 

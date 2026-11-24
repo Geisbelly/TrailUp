@@ -1,4 +1,5 @@
 import { HallBackground } from "@/components/HallTheme";
+import { EsqueletoDasLinhasDoRank } from "@/components/ranking/EsqueletoDoRanking";
 import { RankEstadoVazio } from "@/components/ranking/RankEstadoVazio";
 import { ExplicacaoDaMetrica } from "@/components/metricas/ExplicacaoDaMetrica";
 import { UtilityIcon } from "@/components/UtilityIcon";
@@ -101,8 +102,13 @@ function RankingCelular() {
             ) : null}
             {idAberto !== null ? <RankDetalhe rankId={idAberto} semBarraDeVolta /> : null}
           </>
+        ) : motivoVazio === "carregando" ? (
+          // Enquanto o ranking chega, as linhas da tabela no lugar dela (antes, um cartão com spinner).
+          <ScrollView>
+            <EsqueletoDasLinhasDoRank palette={palette} />
+          </ScrollView>
         ) : (
-          // Sem categoria para abrir: o cartão diz por quê (carregando, erro, sem turma, sem ranking).
+          // Sem categoria para abrir: o cartão diz por quê (erro, sem turma, sem ranking).
           <ScrollView contentContainerStyle={s.vazioCelular}>
             <RankEstadoVazio
               motivo={motivoVazio ?? "sem_ranks"}

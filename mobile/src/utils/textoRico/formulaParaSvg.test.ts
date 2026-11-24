@@ -3,8 +3,8 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
+import { FAIXAS_EMBUTIDAS } from "./conversorMathJax";
 import {
-  FAIXAS_EMBUTIDAS,
   extrairSvg,
   formulaParaSvg,
   tamanhoDoCacheDeFormulas,

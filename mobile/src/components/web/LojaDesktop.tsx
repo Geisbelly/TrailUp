@@ -1,8 +1,9 @@
 import { textoDeErro } from "@/utils/textoDeErro";
 import { useFocusEffect } from "@react-navigation/native";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { EsqueletoBloco, EsqueletoGrupo, EsqueletoTexto } from "@/components/carregamento/Esqueleto";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { CartaoItemLoja } from "@/components/web/CartaoItemLoja";
 import { LateralLoja } from "@/components/web/LateralLoja";
@@ -174,8 +175,23 @@ export function LojaDesktop() {
           </View>
         ) : null}
       </View>
-      {carregando && !loja ? (
-        <ActivityIndicator color={palette.accent} style={s.vazio} />
+      {!loja && !erro && (carregando || (alunoId && classeId)) ? (
+        // Cartões falsos até a loja chegar. Também no primeiro quadro, antes de o efeito ligar
+        // `carregando`: antes ele mostrava "Nenhum item disponível" e trocava pelo spinner.
+        <EsqueletoGrupo rotulo="Carregando a loja" superficie={palette.surface} style={s.grade}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={[s.celula, s.cartaoFalso, { borderColor: palette.border, backgroundColor: palette.surface }]}>
+              <View style={s.cartaoFalsoTopo}>
+                <EsqueletoBloco largura={56} altura={56} raio={12} />
+                <View style={s.cartaoFalsoCopia}>
+                  <EsqueletoBloco largura="55%" altura={18} />
+                  <EsqueletoTexto linhas={2} />
+                </View>
+              </View>
+              <EsqueletoBloco largura={150} altura={38} raio={999} style={s.cartaoFalsoBotao} />
+            </View>
+          ))}
+        </EsqueletoGrupo>
       ) : loja?.items.length ? (
         <View style={s.grade}>
           {loja.items.map((item) => (
@@ -250,5 +266,10 @@ const s = StyleSheet.create({
   chipTexto: { fontFamily: FontFamily.interMedium, fontSize: 12 },
   grade: { flexDirection: "row", flexWrap: "wrap", gap: 16 },
   celula: { flexBasis: "48%", flexGrow: 1, minWidth: 300 },
+  // Medidas do `CartaoItemLoja` (borda, raio, respiro e o botão de comprar no rodapé).
+  cartaoFalso: { borderRadius: 16, borderWidth: 1, paddingVertical: 18, paddingHorizontal: 20, gap: 16 },
+  cartaoFalsoTopo: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
+  cartaoFalsoCopia: { flex: 1, minWidth: 0, gap: 10 },
+  cartaoFalsoBotao: { alignSelf: "flex-end" },
   vazio: { marginVertical: 40, textAlign: "center" },
 });

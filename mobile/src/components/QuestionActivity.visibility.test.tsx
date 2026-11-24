@@ -35,6 +35,15 @@ mockModule('@/services/questaoNoBanco', {
   responderQuestao: async () => { throw new Error('fora do teste'); },
   revelarGabarito: async () => { throw new Error('fora do teste'); },
 });
+// O gabarito no aparelho (`20261124_07`) usa o armazenamento e o Supabase; aqui ele fica vazio.
+mockModule('@/services/gabaritoNoAparelho', {
+  ...require('@/services/gabaritoNoAparelho.core'),
+  carregarGabaritos: async () => null,
+  gabaritosEmMemoria: () => null,
+  enviarFila: async () => [],
+  respostasNaFila: async () => [],
+  guardarNaFila: async () => undefined,
+});
 // Os editores do spec B têm o teste deles; aqui só importa qual abre e com que configuração.
 mockModule('@/components/resposta/EditorDeCodigo', { EditorDeCodigo: ({ linguagem, valor }: { linguagem: string | null; valor: string }) => <Host>{`editor-codigo:${linguagem}:${valor}`}</Host> });
 mockModule('@/components/resposta/EditorNumerico', { EditorNumerico: ({ dimensao }: { dimensao: string | null }) => <Host>{`editor-numerico:${dimensao}`}</Host> });
