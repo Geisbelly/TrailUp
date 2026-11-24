@@ -12,6 +12,7 @@ import { FORGOT_PASSWORD_PATH, RESET_PASSWORD_PATH } from "./features/auth/reset
 import { CAMINHO_ANTIGO_DE_APROVACOES, CAMINHO_DE_APROVACOES, CONSOLE_SECTIONS, consolePathForView } from "./pages/consoleSections";
 import { MATERIAL_ROUTE_PATH } from "./components/console/personalizacoes/materialRoute";
 import { CAMINHO_DA_CARTILHA } from "./features/pesquisa/pesquisaProfessores";
+import { CAMINHO_DOS_VIDEOS } from "./features/pesquisa/videosDaPesquisa";
 
 // Cada pagina vira o proprio chunk (import dinamico) em vez de entrar tudo
 // no bundle inicial — a home/landing nao precisa pagar o peso do console
@@ -108,6 +109,7 @@ const App = () => (
               <Route path="/download" element={<Download />} />
               <Route path={CAMINHO_DA_CARTILHA} element={<PesquisaProfessores />} />
               <Route path={`${CAMINHO_DA_CARTILHA}/videos/:slug`} element={<PesquisaVideo />} />
+              <Route path={`${CAMINHO_DOS_VIDEOS}/:slug`} element={<PesquisaVideo noSite />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

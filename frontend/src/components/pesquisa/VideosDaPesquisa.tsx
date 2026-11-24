@@ -34,10 +34,10 @@ export function PlayerDaPesquisa({ video }: { video: VideoDaPesquisa }) {
 }
 
 /** Compartilha a página do vídeo sozinho: a folha do sistema no celular, o link copiado no resto. */
-export function BotaoDeCompartilhar({ video }: { video: VideoDaPesquisa }) {
+export function BotaoDeCompartilhar({ video, caminho = caminhoDoVideo(video) }: { video: VideoDaPesquisa; caminho?: string }) {
   const [copiado, setCopiado] = useState(false);
   const [mostrarLink, setMostrarLink] = useState(false);
-  const url = `${window.location.origin}${caminhoDoVideo(video)}`;
+  const url = `${window.location.origin}${caminho}`;
 
   async function compartilhar() {
     if (typeof navigator.share === "function") {
@@ -60,7 +60,7 @@ export function BotaoDeCompartilhar({ video }: { video: VideoDaPesquisa }) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col items-center gap-2">
       <button type="button" className="journey-button inline-flex" onClick={compartilhar}>
         {copiado ? <Check size={18} aria-hidden="true" /> : <Share2 size={18} aria-hidden="true" />}
         <span aria-live="polite">{copiado ? "Link copiado" : "Compartilhar este vídeo"}</span>
@@ -71,16 +71,24 @@ export function BotaoDeCompartilhar({ video }: { video: VideoDaPesquisa }) {
           value={url}
           aria-label="Link do vídeo"
           onFocus={e => e.currentTarget.select()}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+          className="w-full max-w-md rounded-md border border-border bg-background px-3 py-2 text-center text-sm text-foreground"
         />
       )}
     </div>
   );
 }
 
-function CartaoDoVideo({ video }: { video: VideoDaPesquisa }) {
+/**
+ * Player, título, descrição e os dois atalhos (compartilhar e abrir só o vídeo). `caminho` é a
+ * página própria do vídeo: a da pesquisa na cartilha, `/videos/<slug>` no resto do site.
+ */
+export function VideoEmDestaque({ video, caminho = caminhoDoVideo(video), as: Tag = "div" }: {
+  video: VideoDaPesquisa;
+  caminho?: string;
+  as?: "div" | "li";
+}) {
   return (
-    <li className="space-y-3 rounded-lg border border-border bg-card p-4">
+    <Tag className="mx-auto w-full max-w-3xl space-y-4 rounded-lg border border-border bg-card p-4 text-center sm:p-6">
       <PlayerDaPesquisa video={video} />
       <div>
         <p className="text-sm font-semibold uppercase tracking-wide text-primary">
@@ -89,13 +97,13 @@ function CartaoDoVideo({ video }: { video: VideoDaPesquisa }) {
         <h3 className="text-lg font-semibold text-foreground">{video.titulo}</h3>
         <p className="text-sm">{video.descricao}</p>
       </div>
-      <div className="flex flex-wrap gap-3">
-        <BotaoDeCompartilhar video={video} />
-        <Link className="inline-flex items-center gap-2 text-sm font-semibold text-primary underline-offset-4 hover:underline" to={caminhoDoVideo(video)}>
+      <div className="flex flex-wrap items-center justify-center gap-4">
+        <BotaoDeCompartilhar video={video} caminho={caminho} />
+        <Link className="inline-flex items-center gap-2 text-sm font-semibold text-primary underline-offset-4 hover:underline" to={caminho}>
           <Link2 size={16} aria-hidden="true" /> Abrir só este vídeo
         </Link>
       </div>
-    </li>
+    </Tag>
   );
 }
 
@@ -105,7 +113,7 @@ export function VideosDaCartilha() {
   return (
     <ul className="space-y-6">
       {VIDEOS_DA_PESQUISA.map(video => (
-        <CartaoDoVideo key={video.slug} video={video} />
+        <VideoEmDestaque key={video.slug} video={video} as="li" />
       ))}
     </ul>
   );
