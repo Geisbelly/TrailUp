@@ -11,7 +11,7 @@
 //
 // Puro (sem Deno) para o vitest testar direto.
 
-import { normalizarStoragePath } from "../storage-redirect/caminho.ts";
+import { PREFIXO_PUBLICO, normalizarStoragePath } from "../storage-redirect/caminho.ts";
 import { bucketDoCaminho } from "../storage-redirect/destino.ts";
 
 /**
@@ -38,6 +38,14 @@ export const PREFIXOS_DE_TELEMETRIA = ["telemetria/"] as const;
  * retencao, e o worker da API pede aqui a URL para apaga-los.
  */
 export const PREFIXOS_DA_PESQUISA = ["pesquisa/"] as const;
+
+/**
+ * Arquivos publicos da cartilha da pesquisa (videos e PDF, ver `PREFIXO_PUBLICO`). PUT e DELETE,
+ * como o material: quem sobe e' a equipe, pelo `scripts/pesquisa-videos/subir-para-o-r2.mjs`, com a
+ * chave de servico. Fora de `PREFIXOS_PERMITIDOS` porque aquela lista e' espelhada na API, que
+ * decide o que e' material de turma - e estes nao sao.
+ */
+export const PREFIXOS_PUBLICOS = [PREFIXO_PUBLICO] as const;
 
 /** PUT para gravar; DELETE para a retencao apagar o que expirou. */
 export const METODOS = ["PUT", "DELETE"] as const;
@@ -143,7 +151,7 @@ export function lerPedido(corpo: unknown): Pedido | { erro: string } {
   if (!METODOS.includes(metodo as Metodo)) {
     return { erro: `Metodo invalido (${METODOS.join(", ")}).` };
   }
-  const prefixos = [...PREFIXOS_PERMITIDOS, ...PREFIXOS_DE_TELEMETRIA];
+  const prefixos = [...PREFIXOS_PERMITIDOS, ...PREFIXOS_DE_TELEMETRIA, ...PREFIXOS_PUBLICOS];
   // DELETE tambem alcanca `<uuid do professor>/...`: a fonte do professor
   // (bucket `conteudos`) que `scripts/copiar-storage-para-r2.ts` copiou para o
   // R2 com essa chave. A exclusao da conta do professor (20261024_07) poe esses
@@ -159,9 +167,10 @@ export function lerPedido(corpo: unknown): Pedido | { erro: string } {
 
 /**
  * URL de leitura pelo gateway, igual a `urlDoGateway` do microservice. `null`
- * para o que o gateway nao serve (telemetria).
+ * para o que o gateway nao serve (telemetria). Para `publico/`, e' o link que a
+ * pagina usa direto, sem sessao.
  */
 export function urlDeLeitura(supabaseUrl: string, caminho: string): string | null {
-  if (!PREFIXOS_PERMITIDOS.some((p) => caminho.startsWith(p))) return null;
+  if (![...PREFIXOS_PERMITIDOS, ...PREFIXOS_PUBLICOS].some((p) => caminho.startsWith(p))) return null;
   return `${supabaseUrl.replace(/\/+$/, "")}/functions/v1/storage-redirect?path=${caminho}`;
 }

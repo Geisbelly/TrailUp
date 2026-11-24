@@ -59,6 +59,12 @@ const CONFIG = {
   termoPiloto: 'Você vai julgar as perguntas do formulário da validação com especialistas do TrailUp, um Trabalho de Conclusão de Curso de Ciência da Computação da Ulbra Palmas. Não usa o sistema e não participa da coleta principal. O tempo depende de quantas sugestões você escrever, nenhuma pergunta é obrigatória e você pode parar a qualquer momento. O seu nome fica só com a equipe; na monografia, os juízes aparecem só no conjunto (número de juízes e formação). As respostas são guardadas até a entrega da versão final do TCC e depois destruídas. Participar é voluntário e não é pago. Contato: os mesmos do termo da avaliação.',
 };
 
+// Último campo da inscrição: o código com que a página do site confirma que a resposta chegou
+// (doGet, em Planilha.gs). Não começa por "E-mail" nem por "Nome completo", que é como a
+// planilha acha as colunas.
+const CAMPO_CODIGO_DO_SITE = 'Código do site (preenchido automaticamente)';
+const AJUDA_CODIGO_DO_SITE = 'Se você está respondendo por aqui, deixe em branco.';
+
 // [pergunta, opções ou null (texto livre)]
 const IDENTIFICACAO = [
   ['Nome completo', null],
@@ -336,6 +342,9 @@ function criarFormularioDeInscricao() {
       form.addTextItem().setTitle(pergunta);
     }
   });
+  // A página de inscrição do site preenche este campo com um código aleatório e pergunta ao
+  // doGet (Planilha.gs) se a resposta chegou. Quem responde pelo Forms deixa em branco.
+  form.addTextItem().setTitle(CAMPO_CODIGO_DO_SITE).setHelpText(AJUDA_CODIGO_DO_SITE);
 
   Logger.log('Editar: ' + form.getEditUrl());
   Logger.log('Responder (vai para VITE_PESQUISA_INSCRICAO_FORM_URL): ' + form.getPublishedUrl());

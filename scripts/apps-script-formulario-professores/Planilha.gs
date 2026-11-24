@@ -46,6 +46,12 @@ const PLANILHA_CONTROLE = [
 const PLANILHA_HORAS_PARA_REENVIAR = 24;
 const PLANILHA_MAXIMO_DE_CONFIRMACOES = 3;
 const PLANILHA_REMETENTE = 'Equipe TrailUp – pesquisa com professores';
+// O PDF da cartilha vai anexo ao e-mail de acesso. Ele mora no R2, em `publico/` (o único prefixo
+// que o gateway serve sem sessão), no mesmo projeto de PESQUISA_FUNCAO_URL; o mesmo arquivo é o
+// "Baixar a cartilha em PDF" do site. Gerar: frontend/scripts/cartilha-pesquisa/gerar.mjs; subir:
+// scripts/pesquisa-videos/subir-para-o-r2.mjs.
+const PLANILHA_PDF_DA_CARTILHA = 'publico/pesquisa/cartilha-pesquisa-professores.pdf';
+const PLANILHA_NOME_DO_ANEXO = 'Cartilha da pesquisa TrailUp.pdf';
 
 const PLANILHA_MODELOS = [
   ['confirmacao', 'Confirme o seu e-mail para receber o acesso ao TrailUp',
@@ -66,7 +72,7 @@ const PLANILHA_MODELOS = [
     + 'Baixar o app: {{link_app}}\n\n'
     + 'O formulário da avaliação fica na aba "Avaliar o TrailUp" do console ({{link_aba_avaliacao}}) e também neste link:\n\n'
     + '[[Abrir o formulário de avaliação|{{link_avaliacao}}]]\n\n'
-    + 'A cartilha com o roteiro das tarefas: {{link_cartilha}}\n\n'
+    + 'A cartilha, com o roteiro das tarefas e os vídeos de apresentação: {{link_cartilha}}\n\n'
     + 'As senhas foram geradas aleatoriamente e só existem neste e-mail. Não as repasse; se quiser, troque a do professor em Meus dados. Os acessos são apagados ao fim da pesquisa.\n\n'
     + 'Equipe TrailUp'],
 ];
@@ -140,10 +146,64 @@ function enviarModelosDeTeste() {
     senha_aluno: 'Exemplo-NaoUsar2',
     turma: 'Turma de demonstração – Ana Clara Souza',
   });
+  const pdf = pdfDaCartilha_();
   ['confirmacao', 'acesso'].forEach(function (chave) {
-    enviar_(eu, '[teste] ' + preencher_(modelos[chave].assunto, campos), preencher_(modelos[chave].texto, campos));
+    const anexos = chave === 'acesso' && pdf ? [pdf] : [];
+    enviar_(eu, '[teste] ' + preencher_(modelos[chave].assunto, campos), preencher_(modelos[chave].texto, campos), anexos);
   });
-  Logger.log('Dois e-mails de teste enviados para a sua própria conta.');
+  Logger.log('Dois e-mails de teste enviados para a sua própria conta' + (pdf ? ', o de acesso com a cartilha em PDF.' : '. A cartilha em PDF não foi anexada: veja o log acima.'));
+}
+
+// ---------------------------------------------------------------------------------------------
+// Confirmação para o site
+// ---------------------------------------------------------------------------------------------
+
+// Formato de crypto.randomUUID(), que é o que a página gera para cada envio.
+const CODIGO_DO_SITE_FORMATO = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+/**
+ * A página de inscrição do site manda as respostas direto ao Forms, sem conseguir ler a resposta
+ * do Google, com um código aleatório no campo CAMPO_CODIGO_DO_SITE. Depois pergunta aqui se esse
+ * código chegou. Publicado como App da Web (executar como: eu; acesso: qualquer pessoa).
+ *
+ * Responde só {"recebida": true|false}. Nenhum dado da resposta nem da planilha sai daqui, e a
+ * planilha continua privada. Sem o código, que só o navegador de quem enviou conhece, não há o que
+ * perguntar: um e-mail no lugar dele diria a qualquer um quem se inscreveu.
+ */
+function doGet(e) {
+  const codigo = String((e && e.parameter && e.parameter.codigo) || '').toLowerCase();
+  const recebida = CODIGO_DO_SITE_FORMATO.test(codigo) && inscricaoComCodigo_(codigo);
+  return ContentService.createTextOutput(JSON.stringify({ recebida: recebida }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function inscricaoComCodigo_(codigo) {
+  const form = FormApp.openById(propriedadeObrigatoria_('PESQUISA_FORM_INSCRICAO_ID'));
+  const item = itemDoCodigoDoSite_(form);
+  if (!item) return false;
+  return form.getResponses().some(function (r) {
+    const resposta = r.getResponseForItem(item);
+    return resposta !== null && String(resposta.getResponse()).trim().toLowerCase() === codigo;
+  });
+}
+
+function itemDoCodigoDoSite_(form) {
+  return form.getItems(FormApp.ItemType.TEXT)
+    .filter(function (i) { return i.getTitle() === CAMPO_CODIGO_DO_SITE; })[0] || null;
+}
+
+/**
+ * Acrescenta o campo do código ao formulário de inscrição que já existe (os novos já nascem com
+ * ele) e mostra o entry.* que a página do site usa. Pode rodar de novo: não duplica.
+ */
+function acrescentarCodigoDoSite() {
+  const form = FormApp.openById(propriedadeObrigatoria_('PESQUISA_FORM_INSCRICAO_ID'));
+  if (!itemDoCodigoDoSite_(form)) {
+    form.addTextItem().setTitle(CAMPO_CODIGO_DO_SITE).setHelpText(AJUDA_CODIGO_DO_SITE);
+  }
+  const item = itemDoCodigoDoSite_(form).asTextItem();
+  const preenchido = form.createResponse().withItemResponse(item.createResponse('x')).toPrefilledUrl();
+  Logger.log('Campo do código: ' + (preenchido.match(/entry\.\d+/) || ['(não achei o entry)'])[0]);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -259,7 +319,8 @@ function processarAprovados() {
           senha_aluno: r.corpo.senha_aluno,
           turma: r.corpo.turma || 'Turma de demonstração',
         });
-        const erro = enviarModelo_(modelos, 'acesso', a.email, campos);
+        const pdf = pdfDaCartilha_();
+        const erro = enviarModelo_(modelos, 'acesso', a.email, campos, pdf ? [pdf] : []);
         // Se o e-mail não saiu, a próxima rodada gera senhas novas: as de agora não ficam em lugar nenhum.
         if (erro) return situacao(a, 'Erro ao enviar o acesso (tenta de novo na próxima rodada): ' + erro);
         chamarFuncao_({ acao: 'acesso_enviado', email: a.email });
@@ -360,7 +421,7 @@ function preencher_(modelo, campos) {
   });
 }
 
-function enviarModelo_(modelos, chave, para, campos) {
+function enviarModelo_(modelos, chave, para, campos, anexos) {
   try {
     const modelo = modelos[chave];
     const assunto = preencher_(modelo.assunto, campos);
@@ -368,21 +429,54 @@ function enviarModelo_(modelos, chave, para, campos) {
     if (/\{\{[a-z_]+\}\}/.test(assunto + texto)) {
       return 'o modelo "' + chave + '" tem campo que não existe: ' + (assunto + texto).match(/\{\{[a-z_]+\}\}/)[0];
     }
-    enviar_(para, assunto, texto);
+    enviar_(para, assunto, texto, anexos);
     return null;
   } catch (e) {
     return String(e && e.message || e);
   }
 }
 
-function enviar_(para, assunto, texto) {
-  MailApp.sendEmail({
+function enviar_(para, assunto, texto, anexos) {
+  const mensagem = {
     to: para,
     subject: assunto,
     body: texto.replace(/^\[\[([^|\]]+)\|([^\]]+)\]\]$/gm, '$1: $2'),
     htmlBody: htmlDoEmail_(assunto, texto),
     name: PLANILHA_REMETENTE,
-  });
+  };
+  if (anexos && anexos.length) mensagem.attachments = anexos;
+  MailApp.sendEmail(mensagem);
+}
+
+// Baixado uma vez por execução: a mesma rodada pode mandar o acesso a vários aprovados.
+let pdfDaCartilhaDestaExecucao_;
+
+/**
+ * O PDF da cartilha, para anexar, ou null. Sem ele o acesso sai mesmo assim, com o link da
+ * cartilha no texto: o anexo é conveniência, e segurar as senhas por causa dele seria pior.
+ */
+function pdfDaCartilha_() {
+  if (pdfDaCartilhaDestaExecucao_ !== undefined) return pdfDaCartilhaDestaExecucao_;
+  pdfDaCartilhaDestaExecucao_ = null;
+  try {
+    const projeto = /^https:\/\/[^/]+/.exec(propriedadeObrigatoria_('PESQUISA_FUNCAO_URL'));
+    if (!projeto) throw new Error('PESQUISA_FUNCAO_URL não é https');
+    const resposta = UrlFetchApp.fetch(
+      projeto[0] + '/functions/v1/storage-redirect?path=' + encodeURIComponent(PLANILHA_PDF_DA_CARTILHA),
+      { followRedirects: true, muteHttpExceptions: true },
+    );
+    const bytes = resposta.getContent();
+    // Confere que veio um PDF, e não uma página de erro com status 200.
+    const ehPdf = bytes.length > 4 && String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]) === '%PDF';
+    if (resposta.getResponseCode() !== 200 || !ehPdf) {
+      Logger.log('Cartilha em PDF indisponível (HTTP ' + resposta.getResponseCode() + '): o acesso sai sem o anexo.');
+      return null;
+    }
+    pdfDaCartilhaDestaExecucao_ = resposta.getBlob().setContentType('application/pdf').setName(PLANILHA_NOME_DO_ANEXO);
+  } catch (e) {
+    Logger.log('Cartilha em PDF indisponível (' + (e && e.message || e) + '): o acesso sai sem o anexo.');
+  }
+  return pdfDaCartilhaDestaExecucao_;
 }
 
 /** Chama a edge function. Nunca registra o corpo da resposta: ele pode trazer senha. */

@@ -8,6 +8,20 @@
 // Sem regex de proposito: escapes em string sao facil de errar e este e' o
 // ponto onde errar tem consequencia de seguranca.
 
+/**
+ * Arquivos publicos de proposito: os videos e o PDF da cartilha da pesquisa, que a pagina aberta
+ * `/pesquisa/professores` mostra e que se compartilham soltos. O gateway serve o que esta aqui sem
+ * sessao e sem link assinado, e sem conferir `vw_material_storage_paths` (nenhum deles e' material de
+ * turma). Isso so' e' seguro porque so' a chave de servico grava aqui (`storage-upload-url`): nada de
+ * aluno ou de turma entra neste prefixo. Arquivo da pesquisa com dado de participante mora em
+ * `pesquisa/`, que continua fechado.
+ */
+export const PREFIXO_PUBLICO = 'publico/';
+
+export function ehCaminhoPublico(caminho: string): boolean {
+  return caminho.startsWith(PREFIXO_PUBLICO);
+}
+
 const SEGMENTOS_PROIBIDOS = new Set(['', '.', '..']);
 const TAMANHO_MAXIMO = 1024;
 
