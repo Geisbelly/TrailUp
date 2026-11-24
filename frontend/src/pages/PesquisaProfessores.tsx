@@ -172,7 +172,7 @@ function Inscricao({ confirmado }: { confirmado: boolean }) {
         </div>
       )}
       <p className="text-muted-foreground">
-        A inscrição começa pelo Termo de Consentimento. Depois de concordar, você se identifica; o e-mail informado será o
+        A inscrição começa pelo Termo de Consentimento. Se concordar, você se identifica, e o e-mail que informar vira o
         seu login no TrailUp. A equipe confere cada inscrição e manda o acesso por e-mail.
       </p>
       {/* Quem volta do link de confirmação do e-mail já se inscreveu: o formulário do site não reaparece. */}
@@ -249,22 +249,23 @@ function Cartilha() {
           <Secao id="por-que" titulo="O que a pesquisa quer saber">
             <p>
               O TrailUp é uma plataforma de aprendizagem criada num Trabalho de Conclusão de Curso. O professor monta a
-              trilha da turma; o sistema personaliza o material para cada perfil de aluno, transforma o estudo em jogo
-              e mostra ao professor métricas e sugestões feitas por inteligência artificial.
+              trilha da turma e o sistema adapta o material a cada perfil de aluno, com elementos de jogo. O professor
+              acompanha a turma por métricas e recebe sugestões feitas por inteligência artificial.
             </p>
             <p>
-              Antes de levar o sistema a uma turma de verdade, é preciso saber se ele funciona para quem dá aula:{" "}
-              <strong>se é fácil de usar, se as métricas fazem sentido, se o material personalizado serve ao aluno e
-              quanto trabalho ele exige</strong>. Quem consegue responder a isso são especialistas em ensino: docentes da
-              área de TI, docentes de outras áreas e pedagogos. Por isso esta etapa envolve só eles, sem alunos.
+              Antes de chegar a uma turma de verdade, o sistema precisa passar por quem dá aula. A pergunta é{" "}
+              <strong>se ele é fácil de usar, se as métricas fazem sentido, se o material personalizado serve ao aluno e
+              quanto trabalho ele dá</strong>. Para responder, a pesquisa convida especialistas em ensino (docentes de TI,
+              docentes de outras áreas e pedagogos). Nesta etapa não há alunos.
             </p>
           </Secao>
 
           {LINK_DO_PDF && (
             <Secao id="videos" titulo="Em vídeo">
               <p>
-                Três vídeos curtos: o que é o TrailUp, por que ele foi pensado para o professor e o primeiro acesso,
-                passo a passo. Cada um tem página própria, para compartilhar sozinho.
+                São três vídeos curtos. O primeiro apresenta o TrailUp, o segundo mostra por que ele foi pensado para o
+                professor e o terceiro acompanha o primeiro acesso. Cada um tem a sua página, se quiser mandar só um
+                para alguém.
               </p>
               <VideosDaCartilha />
             </Secao>
@@ -414,9 +415,9 @@ function Cartilha() {
                   ))}
                 </div>
                 <p className="text-sm">
-                  As métricas são: {METRICAS.join(", ")}. Os valores na turma de demonstração são de exemplo, com
-                  um selo: julgue o painel, não o número. A última coluna é a mais importante: um painel que você
-                  entende, mas que não mudaria nada na sua aula, ocupa espaço sem ajudar.
+                  As métricas são: {METRICAS.join(", ")}. Na turma de demonstração os valores são de exemplo e
+                  vêm marcados com um selo, então julgue o painel, não o número. Preste atenção na última coluna. Um
+                  painel que você entende, mas que não mudaria nada na sua aula, só ocupa espaço.
                 </p>
               </div>
 
@@ -472,10 +473,9 @@ function Cartilha() {
               ))}
             </ul>
             <p>
-              <strong>Você pode trocar essa escolha a qualquer momento</strong>, até a versão final da monografia, e
-              vale sempre a mais recente. Qualquer das três vale igual: recusar o nome não tira você da pesquisa. A
-              escolha fica para o fim, e é reversível, para que você responda sem pensar em quem vai ler: a avaliação
-              mais útil é a franca.
+              <strong>Dá para trocar essa escolha</strong> até a versão final da monografia, e vale sempre a mais
+              recente. As três opções valem o mesmo, e recusar o nome não tira você da pesquisa. Ela fica para o fim, e
+              pode ser desfeita, para você avaliar sem pensar em quem vai ler. A avaliação que mais ajuda é a franca.
             </p>
             {LINK_DA_ATUALIZACAO ? (
               <a className="journey-link inline-flex" href={LINK_DA_ATUALIZACAO} target="_blank" rel="noopener noreferrer">

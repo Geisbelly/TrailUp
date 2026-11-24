@@ -22,7 +22,7 @@ export default function Sobre() {
       </section>
       <section className="public-band text-center" aria-labelledby="video-title">
         <h2 id="video-title">Pensado para quem dá aula</h2>
-        <p className="mx-auto mb-6 max-w-2xl">Várias turmas, ritmos diferentes e pouco tempo para acompanhar cada estudante: é desse dia a dia que o TrailUp parte.</p>
+        <p className="mx-auto mb-6 max-w-2xl">Várias turmas, cada aluno num ritmo e pouco tempo para acompanhar todo mundo. O TrailUp começou dessa rotina.</p>
         <VideoDoSite slug="para-o-professor" />
       </section>
       <section className="public-band" aria-labelledby="values-title">

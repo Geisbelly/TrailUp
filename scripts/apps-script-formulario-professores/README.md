@@ -169,7 +169,7 @@ gravando a data de cada um na linha dele:
 | Conta criada em | A edge function `pesquisa-acesso` cria o professor (já liberado, e-mail ainda não confirmado), o aluno de teste e a turma de demonstração dele, cópia da turma-modelo (`pesquisa_preparar_avaliador`, migration `20261123_01`). A Situação mostra o número da turma |
 | Confirmação enviada em | E-mail personalizado com o link que confirma o endereço. Sem clique em 24 h, reenvia (até 3 vezes) |
 | E-mail confirmado em | A função confere no Auth quem já clicou |
-| Acesso enviado em | Só para quem confirmou: senhas novas e aleatórias para o professor e o aluno de teste, num e-mail com os dois logins, a turma, o link da avaliação e o da cartilha, e a cartilha em PDF anexa (ver abaixo) |
+| Acesso enviado em | Só para quem confirmou: senhas novas e aleatórias para o professor e o aluno de teste, num e-mail com os dois logins, a turma, o link da avaliação e a cartilha inteira no corpo da mensagem (ver abaixo) |
 
 A senha passa pela execução e vai direto para o e-mail: não fica na planilha, no registro de
 execução nem nas propriedades. Se o envio falhar, a próxima rodada gera outras.
@@ -207,13 +207,17 @@ Comece no banco de **dev**. Produção é só trocar os valores abaixo.
 3. **Auth do Supabase:** em URL Configuration, acrescentar `<site>/pesquisa/professores**` às
    Redirect URLs (senão o link de confirmação cai na Site URL). Em Email, subir o "Email OTP
    Expiration" para 86400 s: é a validade do link de confirmação.
-4. **Apps Script** (o mesmo projeto dos formulários): colar `Planilha.gs` ao lado de `Code.gs`,
+4. **Apps Script** (o mesmo projeto dos formulários): colar `Planilha.gs` e `CartilhaNoEmail.gs` ao lado de `Code.gs`,
    atualizar `appsscript.json` (planilha, envio de e-mail, chamada externa e gatilho) e preencher as
    propriedades do script: `PESQUISA_FUNCAO_URL`
    (`https://<ref>.supabase.co/functions/v1/pesquisa-acesso`), `PESQUISA_FUNCAO_SEGREDO`,
    `PESQUISA_FORM_INSCRICAO_ID`, `PESQUISA_LINK_AVALIACAO` e `PESQUISA_SITE_URL`.
-5. **Executar → `criarPlanilhaDeInscricoes`** e autorizar. **`enviarModelosDeTeste`** manda os dois
-   e-mails para a própria conta, com dados de exemplo.
+5. **Executar → `criarPlanilhaDeInscricoes`** e autorizar. Para testar, faça uma inscrição pela
+   página `/pesquisa/professores` e aprove a linha na planilha: o fluxo é o real, com conta criada e
+   senhas sorteadas pela `pesquisa-acesso`. Não existe mais e-mail de teste com dados de exemplo.
+   Ao terminar, apague a inscrição de teste: as contas do professor e do aluno de teste no Auth (a
+   linha de `pesquisa_avaliador` sai junto, por `ON DELETE CASCADE`), a turma de demonstração e a
+   linha da planilha.
 6. **`instalarProcessamentoAutomatico`**: `processarAprovados` passa a rodar a cada 15 minutos.
    Também dá para rodá-lo à mão a qualquer hora; ele é idempotente.
 7. **Inscrição na página do site** (opcional; sem ela, a página mostra o Google Forms):
@@ -232,6 +236,21 @@ Comece no banco de **dev**. Produção é só trocar os valores abaixo.
    ele chegou. O `doGet` só responde `{"recebida": true|false}`: a planilha continua privada, e
    sem o código, que só o navegador de quem enviou conhece, não há o que perguntar. Por isso a
    pergunta é pelo código, e não pelo e-mail, que diria a qualquer um quem se inscreveu.
+8. **Avaliação dentro do console.** A aba "Avaliar o TrailUp" desenha o formulário de avaliação a
+   partir de `frontend/src/features/pesquisa/formularioDeAvaliacao.gerado.ts` e manda as respostas
+   para o mesmo `formResponse`. As respostas continuam só no Google; nada vai para o banco do
+   TrailUp. Recriou o formulário de avaliação? Rode, na pasta `frontend`,
+   `node scripts/pesquisa-avaliacao/extrair-formulario.mjs <link de resposta>`. Até isso, a aba
+   volta sozinha para o Google Forms num iframe.
+
+   Conferência do envio (opcional; sem ela, a aba diz "enviada" sem confirmar e guarda o rascunho):
+   - **`acrescentarCodigoDoSiteNaAvaliacao`**, rodado numa conta que edite o formulário de
+     avaliação, com a propriedade `PESQUISA_FORM_AVALIACAO_ID` = id de edição dele. Depois, rode o
+     extrator de novo: ele acha o campo pelo título e passa a preenchê-lo.
+   - O `doGet` responde pelos dois formulários (`formulario=avaliacao`), então a mesma URL de
+     `VITE_PESQUISA_INSCRICAO_CONFIRMACAO_URL` serve. O projeto do App da Web precisa ter a
+     propriedade `PESQUISA_FORM_AVALIACAO_ID` e conseguir abrir o formulário; sem isso, a resposta
+     é sempre `false`.
 
 Limites: a cota do `MailApp` da conta (Gmail comum, cerca de 100 destinatários por dia; com o
 gatilho, quem passar disso fica "Aguardando" para o dia seguinte). E-mail que já tem conta no
@@ -260,12 +279,24 @@ o trecho para conferência de quem escolheu o nome, guardar com o pesquisador re
 os grupos pelo campo "Papel em que você avalia o sistema" (docentes de TI, de outras áreas e
 pedagogos), de forma descritiva.
 
-## Cartilha em PDF e vídeos
+## Cartilha no e-mail, em PDF e vídeos
 
-O e-mail de acesso leva a cartilha em PDF anexa, e a página `/pesquisa/professores` mostra três
-vídeos (apresentação do TrailUp, o vídeo para o professor e o guia do primeiro acesso), cada um com
-página própria para compartilhar (`/pesquisa/professores/videos/<slug>`). Os arquivos ficam no R2,
-em `publico/pesquisa/`, o único prefixo que o gateway (`storage-redirect`) serve sem sessão.
+O e-mail de acesso leva a cartilha **no corpo da mensagem**, logo abaixo dos acessos: resumo,
+passos, as tarefas do roteiro, o que fazer e evitar e as perguntas frequentes, em HTML no tema do
+TrailUp e também em texto puro. Não vai anexo. O conteúdo sai das mesmas constantes da página
+`/pesquisa/professores` (`frontend/src/features/pesquisa/cartilhaNoEmail.ts`):
+
+1. Mudou um texto da cartilha? Na pasta `frontend`: `node scripts/cartilha-pesquisa/gerar-email.mjs`.
+2. Cole o `CartilhaNoEmail.gs` gerado no projeto do Apps Script, num arquivo com o mesmo nome.
+
+O teste `cartilhaNoEmail.test.ts` roda o `Planilha.gs` e o `CartilhaNoEmail.gs` de verdade, com o
+`MailApp` trocado por um gravador. Ele falha se o `.gs` estiver atrás da cartilha, se sobrar marcador
+de tema ou se o HTML passar do corte do Gmail (102 KB).
+
+A página `/pesquisa/professores` oferece o PDF ("Baixar a cartilha em PDF") e mostra três vídeos
+(apresentação do TrailUp, o vídeo para o professor e o guia do primeiro acesso), cada um com página
+própria para compartilhar (`/pesquisa/professores/videos/<slug>`). Os arquivos ficam no R2, em
+`publico/pesquisa/`, o único prefixo que o gateway (`storage-redirect`) serve sem sessão.
 
 1. Gerar o PDF: `node scripts/cartilha-pesquisa/gerar.mjs <pasta>` (na pasta `frontend`).
 2. Montar a pasta com os nomes finais (lista no topo de `scripts/pesquisa-videos/subir-para-o-r2.mjs`).
@@ -273,6 +304,5 @@ em `publico/pesquisa/`, o único prefixo que o gateway (`storage-redirect`) serv
    `SUPABASE_URL=... SUPABASE_SERVICE_KEY=... node scripts/pesquisa-videos/subir-para-o-r2.mjs <pasta>`.
    O script confere cada arquivo pelo gateway, sem sessão, depois de subir.
 
-Exige `storage-redirect` e `storage-upload-url` publicadas com o prefixo `publico/`. Sem o PDF no R2,
-o acesso sai do mesmo jeito, com o link da cartilha e sem o anexo (o motivo fica no log da execução).
-Mudou a cartilha? Gere e suba o PDF de novo: o caminho é o mesmo.
+Exige `storage-redirect` e `storage-upload-url` publicadas com o prefixo `publico/`. Mudou a
+cartilha? Gere e suba o PDF de novo: o caminho é o mesmo.

@@ -46,12 +46,8 @@ const PLANILHA_CONTROLE = [
 const PLANILHA_HORAS_PARA_REENVIAR = 24;
 const PLANILHA_MAXIMO_DE_CONFIRMACOES = 3;
 const PLANILHA_REMETENTE = 'Equipe TrailUp – pesquisa com professores';
-// O PDF da cartilha vai anexo ao e-mail de acesso. Ele mora no R2, em `publico/` (o único prefixo
-// que o gateway serve sem sessão), no mesmo projeto de PESQUISA_FUNCAO_URL; o mesmo arquivo é o
-// "Baixar a cartilha em PDF" do site. Gerar: frontend/scripts/cartilha-pesquisa/gerar.mjs; subir:
-// scripts/pesquisa-videos/subir-para-o-r2.mjs.
-const PLANILHA_PDF_DA_CARTILHA = 'publico/pesquisa/cartilha-pesquisa-professores.pdf';
-const PLANILHA_NOME_DO_ANEXO = 'Cartilha da pesquisa TrailUp.pdf';
+// A cartilha vai no corpo do e-mail de acesso, abaixo dos acessos (CartilhaNoEmail.gs, gerado
+// pela cartilha do site). Nada de anexo: o PDF continua só no "Baixar a cartilha em PDF" do site.
 
 const PLANILHA_MODELOS = [
   ['confirmacao', 'Confirme o seu e-mail para receber o acesso ao TrailUp',
@@ -72,7 +68,7 @@ const PLANILHA_MODELOS = [
     + 'Baixar o app: {{link_app}}\n\n'
     + 'O formulário da avaliação fica na aba "Avaliar o TrailUp" do console ({{link_aba_avaliacao}}) e também neste link:\n\n'
     + '[[Abrir o formulário de avaliação|{{link_avaliacao}}]]\n\n'
-    + 'A cartilha, com o roteiro das tarefas e os vídeos de apresentação: {{link_cartilha}}\n\n'
+    + 'A cartilha vem logo abaixo, neste e-mail. Os vídeos e o termo completo ficam no site: {{link_cartilha}}\n\n'
     + 'As senhas foram geradas aleatoriamente e só existem neste e-mail. Não as repasse; se quiser, troque a do professor em Meus dados. Os acessos são apagados ao fim da pesquisa.\n\n'
     + 'Equipe TrailUp'],
 ];
@@ -134,26 +130,6 @@ function removerProcessamentoAutomatico() {
     .forEach(function (t) { ScriptApp.deleteTrigger(t); });
 }
 
-/** Manda para a própria conta os dois modelos preenchidos com dados de exemplo (nenhuma conta é criada). */
-function enviarModelosDeTeste() {
-  const planilha = SpreadsheetApp.openById(propriedadeObrigatoria_('PESQUISA_PLANILHA_ID'));
-  const modelos = lerModelos_(planilha);
-  const eu = Session.getEffectiveUser().getEmail();
-  const campos = camposDoEmail_({ nome: 'Ana Clara Souza', email: 'ana@exemplo.com' }, {
-    link_confirmacao: 'https://exemplo.com/confirmar',
-    senha_professor: 'Exemplo-NaoUsar1',
-    aluno_email: 'aluno.teste.00000000@trailup.app',
-    senha_aluno: 'Exemplo-NaoUsar2',
-    turma: 'Turma de demonstração – Ana Clara Souza',
-  });
-  const pdf = pdfDaCartilha_();
-  ['confirmacao', 'acesso'].forEach(function (chave) {
-    const anexos = chave === 'acesso' && pdf ? [pdf] : [];
-    enviar_(eu, '[teste] ' + preencher_(modelos[chave].assunto, campos), preencher_(modelos[chave].texto, campos), anexos);
-  });
-  Logger.log('Dois e-mails de teste enviados para a sua própria conta' + (pdf ? ', o de acesso com a cartilha em PDF.' : '. A cartilha em PDF não foi anexada: veja o log acima.'));
-}
-
 // ---------------------------------------------------------------------------------------------
 // Confirmação para o site
 // ---------------------------------------------------------------------------------------------
@@ -171,14 +147,25 @@ const CODIGO_DO_SITE_FORMATO = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9
  * perguntar: um e-mail no lugar dele diria a qualquer um quem se inscreveu.
  */
 function doGet(e) {
-  const codigo = String((e && e.parameter && e.parameter.codigo) || '').toLowerCase();
-  const recebida = CODIGO_DO_SITE_FORMATO.test(codigo) && inscricaoComCodigo_(codigo);
+  const parametros = (e && e.parameter) || {};
+  const codigo = String(parametros.codigo || '').toLowerCase();
+  // A aba "Avaliar o TrailUp" do console pergunta pelo formulário de avaliação. Sem a propriedade
+  // dele, a resposta é sempre false e a página mostra "enviada, sem confirmação".
+  const propriedade = parametros.formulario === 'avaliacao' ? 'PESQUISA_FORM_AVALIACAO_ID' : 'PESQUISA_FORM_INSCRICAO_ID';
+  let recebida = false;
+  try {
+    recebida = CODIGO_DO_SITE_FORMATO.test(codigo) && respostaComCodigo_(propriedade, codigo);
+  } catch (erro) {
+    recebida = false;
+  }
   return ContentService.createTextOutput(JSON.stringify({ recebida: recebida }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-function inscricaoComCodigo_(codigo) {
-  const form = FormApp.openById(propriedadeObrigatoria_('PESQUISA_FORM_INSCRICAO_ID'));
+function respostaComCodigo_(propriedade, codigo) {
+  const id = PropertiesService.getScriptProperties().getProperty(propriedade);
+  if (!id) return false;
+  const form = FormApp.openById(id);
   const item = itemDoCodigoDoSite_(form);
   if (!item) return false;
   return form.getResponses().some(function (r) {
@@ -197,7 +184,20 @@ function itemDoCodigoDoSite_(form) {
  * ele) e mostra o entry.* que a página do site usa. Pode rodar de novo: não duplica.
  */
 function acrescentarCodigoDoSite() {
-  const form = FormApp.openById(propriedadeObrigatoria_('PESQUISA_FORM_INSCRICAO_ID'));
+  acrescentarCodigoDoSiteEm_('PESQUISA_FORM_INSCRICAO_ID');
+}
+
+/**
+ * O mesmo campo no formulário de avaliação, para a aba "Avaliar o TrailUp" conferir o envio.
+ * Rode na conta dona do formulário (ou numa que o edite), com PESQUISA_FORM_AVALIACAO_ID = id de
+ * edição. Depois, na pasta frontend: node scripts/pesquisa-avaliacao/extrair-formulario.mjs <link>.
+ */
+function acrescentarCodigoDoSiteNaAvaliacao() {
+  acrescentarCodigoDoSiteEm_('PESQUISA_FORM_AVALIACAO_ID');
+}
+
+function acrescentarCodigoDoSiteEm_(propriedade) {
+  const form = FormApp.openById(propriedadeObrigatoria_(propriedade));
   if (!itemDoCodigoDoSite_(form)) {
     form.addTextItem().setTitle(CAMPO_CODIGO_DO_SITE).setHelpText(AJUDA_CODIGO_DO_SITE);
   }
@@ -319,8 +319,7 @@ function processarAprovados() {
           senha_aluno: r.corpo.senha_aluno,
           turma: r.corpo.turma || 'Turma de demonstração',
         });
-        const pdf = pdfDaCartilha_();
-        const erro = enviarModelo_(modelos, 'acesso', a.email, campos, pdf ? [pdf] : []);
+        const erro = enviarModelo_(modelos, 'acesso', a.email, campos, cartilhaNoEmail_(campos));
         // Se o e-mail não saiu, a próxima rodada gera senhas novas: as de agora não ficam em lugar nenhum.
         if (erro) return situacao(a, 'Erro ao enviar o acesso (tenta de novo na próxima rodada): ' + erro);
         chamarFuncao_({ acao: 'acesso_enviado', email: a.email });
@@ -421,7 +420,7 @@ function preencher_(modelo, campos) {
   });
 }
 
-function enviarModelo_(modelos, chave, para, campos, anexos) {
+function enviarModelo_(modelos, chave, para, campos, cartilha) {
   try {
     const modelo = modelos[chave];
     const assunto = preencher_(modelo.assunto, campos);
@@ -429,54 +428,43 @@ function enviarModelo_(modelos, chave, para, campos, anexos) {
     if (/\{\{[a-z_]+\}\}/.test(assunto + texto)) {
       return 'o modelo "' + chave + '" tem campo que não existe: ' + (assunto + texto).match(/\{\{[a-z_]+\}\}/)[0];
     }
-    enviar_(para, assunto, texto, anexos);
+    enviar_(para, assunto, texto, cartilha);
     return null;
   } catch (e) {
     return String(e && e.message || e);
   }
 }
 
-function enviar_(para, assunto, texto, anexos) {
-  const mensagem = {
+/** `cartilha` ({html, texto}) vai abaixo da mensagem, no e-mail de acesso; nos outros, null. */
+function enviar_(para, assunto, texto, cartilha) {
+  const corpo = texto.replace(/^\[\[([^|\]]+)\|([^\]]+)\]\]$/gm, '$1: $2');
+  MailApp.sendEmail({
     to: para,
     subject: assunto,
-    body: texto.replace(/^\[\[([^|\]]+)\|([^\]]+)\]\]$/gm, '$1: $2'),
-    htmlBody: htmlDoEmail_(assunto, texto),
+    body: cartilha ? corpo + '\n\n' + cartilha.texto : corpo,
+    htmlBody: htmlDoEmail_(assunto, texto, cartilha ? cartilha.html : ''),
     name: PLANILHA_REMETENTE,
-  };
-  if (anexos && anexos.length) mensagem.attachments = anexos;
-  MailApp.sendEmail(mensagem);
+  });
 }
 
-// Baixado uma vez por execução: a mesma rodada pode mandar o acesso a vários aprovados.
-let pdfDaCartilhaDestaExecucao_;
-
 /**
- * O PDF da cartilha, para anexar, ou null. Sem ele o acesso sai mesmo assim, com o link da
- * cartilha no texto: o anexo é conveniência, e segurar as senhas por causa dele seria pior.
+ * A cartilha de CartilhaNoEmail.gs com o tema e o link preenchidos. Marcador que sobrar vira
+ * erro: um e-mail com "@@cartao@@" no estilo sairia sem cor nenhuma.
  */
-function pdfDaCartilha_() {
-  if (pdfDaCartilhaDestaExecucao_ !== undefined) return pdfDaCartilhaDestaExecucao_;
-  pdfDaCartilhaDestaExecucao_ = null;
-  try {
-    const projeto = /^https:\/\/[^/]+/.exec(propriedadeObrigatoria_('PESQUISA_FUNCAO_URL'));
-    if (!projeto) throw new Error('PESQUISA_FUNCAO_URL não é https');
-    const resposta = UrlFetchApp.fetch(
-      projeto[0] + '/functions/v1/storage-redirect?path=' + encodeURIComponent(PLANILHA_PDF_DA_CARTILHA),
-      { followRedirects: true, muteHttpExceptions: true },
-    );
-    const bytes = resposta.getContent();
-    // Confere que veio um PDF, e não uma página de erro com status 200.
-    const ehPdf = bytes.length > 4 && String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]) === '%PDF';
-    if (resposta.getResponseCode() !== 200 || !ehPdf) {
-      Logger.log('Cartilha em PDF indisponível (HTTP ' + resposta.getResponseCode() + '): o acesso sai sem o anexo.');
-      return null;
-    }
-    pdfDaCartilhaDestaExecucao_ = resposta.getBlob().setContentType('application/pdf').setName(PLANILHA_NOME_DO_ANEXO);
-  } catch (e) {
-    Logger.log('Cartilha em PDF indisponível (' + (e && e.message || e) + '): o acesso sai sem o anexo.');
-  }
-  return pdfDaCartilhaDestaExecucao_;
+function cartilhaNoEmail_(campos) {
+  const valores = {
+    fonteTexto: PLANILHA_FONTE_TEXTO,
+    fonteTitulo: PLANILHA_FONTE_TITULO,
+    link_cartilha: campos.link_cartilha,
+  };
+  Object.keys(PLANILHA_TEMA).forEach(function (chave) { valores[chave] = PLANILHA_TEMA[chave]; });
+  const preencher = function (modelo, escapar) {
+    return modelo.replace(/@@([A-Za-z_]+)@@/g, function (inteiro, chave) {
+      if (!Object.prototype.hasOwnProperty.call(valores, chave)) throw new Error('cartilha com marcador desconhecido: ' + inteiro);
+      return escapar ? escaparHtml_(valores[chave]) : String(valores[chave]);
+    });
+  };
+  return { html: preencher(CARTILHA_NO_EMAIL_HTML, true), texto: preencher(CARTILHA_NO_EMAIL_TEXTO, false) };
 }
 
 /** Chama a edge function. Nunca registra o corpo da resposta: ele pode trazer senha. */
@@ -503,7 +491,7 @@ function chamarFuncao_(pedido) {
 // HTML no tema do TrailUp (o mesmo de scripts/apps-script-email)
 // ---------------------------------------------------------------------------------------------
 
-function htmlDoEmail_(assunto, texto) {
+function htmlDoEmail_(assunto, texto, depois) {
   const T = PLANILHA_TEMA;
   const miolo = texto.split(/\n{2,}/).map(function (bloco) {
     const botao = bloco.trim().match(/^\[\[([^|\]]+)\|([^\]]+)\]\]$/);
@@ -537,6 +525,7 @@ function htmlDoEmail_(assunto, texto) {
     + escaparHtml_(assunto) + '</h1>'
     + '<div style="font-family:' + PLANILHA_FONTE_TEXTO + ';font-size:15px;line-height:1.6;color:' + T.texto + ';">' + miolo + '</div>'
     + '</div></td></tr>'
+    + (depois || '')
     + '<tr><td align="center" style="padding:20px 8px 0;font-family:' + PLANILHA_FONTE_TEXTO + ';font-size:12px;color:' + T.textoSuave + ';">'
     + 'Pesquisa de avaliação do TrailUp com professores.</td></tr>'
     + '</table></td></tr></table></body></html>';
