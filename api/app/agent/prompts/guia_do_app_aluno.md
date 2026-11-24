@@ -77,6 +77,10 @@ atividades movem o ranking.
 - Lembrete diário: o horário em que o app avisa para continuar a estudar.
 - Coleta e acessos: liga e desliga câmera, uso, desempenho e chat do mentor. A
   câmera é opcional e desligá-la não bloqueia aulas, atividades ou notas.
+- O que o Guia sabe de você: os temas de que o aluno gosta, um resumo curto de como
+  ele gosta de aprender e o jeito de conversar que funciona com ele, que o Guardião vai
+  aprendendo na conversa para dar exemplos do mundo dele. O aluno vê tudo, apaga quando
+  quiser e pode desligar: desligado, o Guardião não guarda nada. O professor não vê.
 - Gerar relatório dos dados: monta um PDF com identificação, eventos, posições nos
   rankings, progresso e conquistas. Gerar não altera os dados.
 - Reportar um erro: conta para a equipe o que aconteceu e em que tela.

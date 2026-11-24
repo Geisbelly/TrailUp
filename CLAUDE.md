@@ -672,6 +672,23 @@ Cada perfil carrega:
   - A gravação vai numa transação própria, depois do `ia_decision_logs`: falhar não leva o log nem a
     resposta. Prazo de 395 dias (730 com pesquisa). O texto cru continua em `ia_decision_logs`, com o
     prazo da `20261003_09`.
+- `aluno_preferencias_guia` — **do que o aluno gosta e que jeito de conversar funciona com ele**
+  (`20261124_04`), uma linha por aluno, para o Guia explicar com exemplos do mundo dele.
+  - **Gostos de catálogo fixo** (16 temas, CHECK na tabela), **resumo livre** de até 400 caracteres
+    e **postura** (`instigar`, `acolher`, `pragmatico`). O catálogo está em três lugares com paridade
+    testada: a migration, `app/services/preferencias_do_guia.py` e `mobile/src/utils/preferenciasDoGuia.ts`.
+  - **O modelo escreve na mesma chamada que responde** (`registro.preferencias`, fora de "required":
+    só vem quando a mensagem revela algo novo, e então é o estado inteiro). A API filtra pelo
+    catálogo e mascara o resumo. O prompt proíbe dado sensível (saúde, religião, política,
+    sexualidade, origem, família, contato); **isso é prompt, não filtro**: o mascarador só tira nome,
+    contato e documento.
+  - **Só o aluno lê** (Perfil > O que o Guia sabe de você). O professor **não tem policy, de
+    propósito**: é o que o aluno conta da vida dele ao Guia. Não "conserte" a ausência.
+  - O cliente não escreve: apaga e liga ou desliga pelas RPCs `guia_preferencias_apagar` e
+    `guia_preferencias_coleta`. Desligar apaga. Com a coleta desligada a API não manda o bloco ao Guia
+    e o UPSERT dela não toca a linha (`WHERE coleta_ligada`). Leitura que falha conta como desligada.
+  - Gostos e resumo não vão ao `ia_decision_logs` (a rota tira `registro.preferencias` do log cru).
+    Prazo de 395 dias parada, pelo `atualizado_em`.
 - `consentimento_cuidado` + `aluno_momento_cuidado` — modo de cuidado (`20261120_04`, `_02`;
   spec `2026-11-20-modo-de-cuidado-design.md`): o app tira a pressão do estudo quando o uso sugere
   sobrecarga ou o aluno diz ao Guia que não está bem. Regras que não são óbvias:

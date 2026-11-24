@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import Aparencia from "@/app/(tabs)/perfil/appearance";
 import ColetaDados from "@/app/(tabs)/perfil/coleta-dados";
 import ExcluirConta from "@/app/(tabs)/perfil/excluir";
+import GuiaSabe from "@/app/(tabs)/perfil/guia-sabe";
 import { EmbutidoConfiguracoes } from "@/context/EmbutidoConfiguracoesContext";
 import InformacoesPessoais from "@/app/(tabs)/perfil/info";
 import InfoApp from "@/app/(tabs)/perfil/info-app";
@@ -32,6 +33,7 @@ const ICONES: Partial<Record<IdSubtela, React.ComponentProps<typeof Feather>["na
   info: "user",
   senha: "lock",
   coleta: "users",
+  guia: "smile",
   relatorio: "book",
   privacidade: "shield",
   termos: "file-text",
@@ -50,6 +52,7 @@ const TELAS: Partial<Record<IdSubtela, () => React.ReactElement>> = {
   info: () => <InformacoesPessoais />,
   senha: () => <ResetarSenha />,
   coleta: () => <ColetaDados />,
+  guia: () => <GuiaSabe />,
   excluir: () => <ExcluirConta />,
   lembrete: () => <LembreteDiario />,
   foco: () => <ModoFoco />,
