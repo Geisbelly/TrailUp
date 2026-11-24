@@ -1152,6 +1152,17 @@ recebe o gabarito antes da resposta. As duas leem o `reply` **e as seções**, q
 aluno. A violação do vazamento não é definitiva: o modelo tenta de novo, e a correção que ele
 recebe pede uma dica sem citar a resposta (citá-la a devolveria ao modelo que acabou de vazá-la).
 
+**O Guia sai do tópico só por uma ponte, e não concorda por concordar** (24/11). Ele pode ligar o
+conceito a outra matéria ou ao dia a dia em 3 ou 4 frases, dizendo a ligação e voltando ao tópico; não
+abre outra ponte se o histórico já saiu do tópico. As analogias seguem uma hierarquia: primeiro a
+`turma` (tema do mapa e arco narrativo, `app/services/turma_do_chat.py`, no começo do payload), depois
+a trilha do TrailUp e só então o aluno. A postura muda com o aluno (instigar com contraponto, acolher,
+ir direto), mas **o contraponto nunca mente** e, em questão e card, continua sendo só pergunta: não
+julga palpite. A censura é do juiz, que agora recebe a `mensagem` e a `turma`: reprova aula de outro
+assunto, fato inventado, concordar com erro do aluno e conteúdo impróprio, **exceto quando o próprio
+material do tópico trata do assunto** e a resposta fica no tom dele (biologia, história, literatura).
+Não volte a proibir qualquer assunto fora do material: era o que impedia a ponte.
+
 > Não ponha o gabarito no contexto do modelo "para ele saber o que não dizer". Modelo que vê a
 > resposta acaba dizendo, e o juiz sem gabarito não reconhece o vazamento. O mesmo princípio vale
 > na dissertativa: `validate-essay-answer-ai/protecaoDaResposta.ts` (#1060) troca comentário e
