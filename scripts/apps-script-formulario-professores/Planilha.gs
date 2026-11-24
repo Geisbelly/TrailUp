@@ -3,7 +3,8 @@
  *
  * Mesmo projeto do Apps Script de Code.gs (os formulários). As respostas da inscrição caem numa
  * planilha; a equipe marca "Aprovado" na coluna Decisão, e `processarAprovados` leva cada aprovado
- * pelos quatro passos, um de cada vez, gravando a data de cada um na própria linha:
+ * pelos quatro passos, um de cada vez, gravando a data de cada um na própria linha. Ele roda na hora
+ * da aprovação (gatilho ao editar) e a cada 15 minutos (ver instalarProcessamentoAutomatico):
  *
  *   1. Conta criada em         a edge function `pesquisa-acesso` cria o professor (e-mail ainda não
  *                              confirmado), o aluno de teste e a turma de demonstração;
@@ -114,20 +115,56 @@ function criarPlanilhaDeInscricoes() {
 
   props.setProperty('PESQUISA_PLANILHA_ID', planilha.getId());
   Logger.log('Planilha: ' + planilha.getUrl());
-  Logger.log('Marque "Aprovado" na coluna Decisão e rode processarAprovados (ou instalarProcessamentoAutomatico).');
+  Logger.log('Rode instalarProcessamentoAutomatico: depois disso, marcar "Aprovado" na Decisão já manda a confirmação.');
 }
 
-/** Roda processarAprovados a cada 15 minutos: quem confirmar o e-mail recebe o acesso sozinho. */
+/**
+ * Instala os dois gatilhos de processarAprovados:
+ * - ao editar a planilha: marcar "Aprovado" na Decisão cria a conta e manda a confirmação na hora;
+ * - a cada 15 minutos: quem clicou no link de confirmação recebe o acesso sozinho, e o reenvio da
+ *   confirmação sai sem ninguém mexer na planilha.
+ * Pode rodar de novo: remove os gatilhos antigos antes de criar.
+ */
 function instalarProcessamentoAutomatico() {
   removerProcessamentoAutomatico();
   ScriptApp.newTrigger('processarAprovados').timeBased().everyMinutes(15).create();
-  Logger.log('processarAprovados vai rodar a cada 15 minutos.');
+  // Instalável, não o onEdit simples: o simples não pode chamar a edge function nem mandar e-mail.
+  ScriptApp.newTrigger('aoEditarPlanilha')
+    .forSpreadsheet(propriedadeObrigatoria_('PESQUISA_PLANILHA_ID')).onEdit().create();
+  Logger.log('processarAprovados vai rodar a cada 15 minutos e sempre que alguém aprovar uma linha.');
 }
 
 function removerProcessamentoAutomatico() {
   ScriptApp.getProjectTriggers()
-    .filter(function (t) { return t.getHandlerFunction() === 'processarAprovados'; })
+    .filter(function (t) {
+      return ['processarAprovados', 'aoEditarPlanilha'].indexOf(t.getHandlerFunction()) >= 0;
+    })
     .forEach(function (t) { ScriptApp.deleteTrigger(t); });
+}
+
+/**
+ * Gatilho ao editar: só roda processarAprovados quando a edição pôs "Aprovado" na coluna Decisão da
+ * aba de respostas. A gravação do próprio script não dispara o gatilho, então não entra em ciclo, e
+ * a trava de processarAprovados segura o caso de a rodada de 15 minutos estar no meio.
+ */
+function aoEditarPlanilha(e) {
+  if (!e || !e.range || !aprovouNaEdicao_(e.range)) return;
+  processarAprovados();
+}
+
+function aprovouNaEdicao_(intervalo) {
+  const aba = intervalo.getSheet();
+  if (!aba.getFormUrl()) return false;
+  const cabecalho = aba.getRange(1, 1, 1, aba.getLastColumn()).getValues()[0].map(String);
+  const coluna = cabecalho.indexOf('Decisão') + 1;
+  const primeira = intervalo.getColumn();
+  if (coluna < 1 || coluna < primeira || coluna > primeira + intervalo.getNumColumns() - 1) return false;
+  const linha = Math.max(intervalo.getRow(), 2);
+  const ultima = intervalo.getRow() + intervalo.getNumRows() - 1;
+  if (ultima < linha) return false;
+  // Lê a coluna em vez de e.value: colar ou arrastar várias linhas chega sem e.value.
+  return aba.getRange(linha, coluna, ultima - linha + 1, 1).getValues()
+    .some(function (v) { return String(v[0]).trim() === 'Aprovado'; });
 }
 
 // ---------------------------------------------------------------------------------------------
