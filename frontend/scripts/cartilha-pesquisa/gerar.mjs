@@ -86,7 +86,7 @@ function htmlDaCartilha(c, arte) {
   const etapas = [
     ["1", "Inscrição", "Termo e identificação. O e-mail vira o seu login."],
     ["2", "Acesso", "A equipe cria a conta com senha aleatória e envia ao seu e-mail."],
-    ["3", "Avaliação", "Roteiro de 10 tarefas e os blocos de perguntas."],
+    ["3", "Avaliação", `Roteiro de ${c.TAREFAS.length} tarefas e os blocos de perguntas.`],
   ];
 
   return `<!doctype html><html lang="pt-BR" class="notranslate"><head><meta charset="utf-8">${FONTES}
@@ -187,13 +187,13 @@ td.caixa { text-align: center; color: var(--primary); }
   <div class="sec">
     <p class="eyebrow">Por que esta pesquisa</p>
     <h2>O que a pesquisa quer saber</h2>
-    <p>O TrailUp é uma plataforma de aprendizagem criada num Trabalho de Conclusão de Curso. O professor monta a trilha da turma; o sistema personaliza o material para cada perfil de aluno, transforma o estudo em jogo e mostra ao professor métricas e sugestões feitas por inteligência artificial.</p>
-    <p>Antes de levar o sistema a uma turma de verdade, é preciso saber se ele funciona para quem dá aula: <strong>se é fácil de usar, se as métricas fazem sentido, se o material personalizado serve ao aluno e quanto trabalho ele exige</strong>. Quem responde a isso são especialistas em ensino: docentes da área de TI, docentes de outras áreas e pedagogos.</p>
+    <p>O TrailUp é uma plataforma de aprendizagem criada num Trabalho de Conclusão de Curso. O professor monta a trilha da turma e o sistema adapta o material a cada perfil de aluno, com elementos de jogo. O professor acompanha a turma por métricas e recebe sugestões feitas por inteligência artificial.</p>
+    <p>Antes de chegar a uma turma de verdade, o sistema precisa passar por quem dá aula. A pergunta é <strong>se ele é fácil de usar, se as métricas fazem sentido, se o material personalizado serve ao aluno e quanto trabalho ele dá</strong>. Para responder, a pesquisa convida especialistas em ensino (docentes de TI, docentes de outras áreas e pedagogos).</p>
   </div>
   <div class="sec">
     <h2>Em resumo</h2>
     <div class="grid2">${c.RESUMO.map(r => `<div class="card"><h3>${esc(r.titulo)}</h3><p>${esc(r.texto)}</p></div>`).join("")}</div>
-    <p style="font-size:10.5px;margin-top:8px">Estimativa: ${esc(c.TEMPO_ESTIMADO)}</p>
+    <p style="font-size:10.5px;margin-top:8px"><strong>Quanto tempo leva.</strong> ${esc(c.TEMPO_ESTIMADO)}</p>
   </div>
   <div class="destaque sec">
     <h3>Resultado negativo também é resultado</h3>
@@ -227,7 +227,7 @@ td.caixa { text-align: center; color: var(--primary); }
 <section class="page">
   <p class="eyebrow">Roteiro de uso</p>
   <h2>${c.TAREFAS.length} tarefas curtas</h2>
-  <p style="font-size:11px">Depois de cada tarefa, quatro perguntas rápidas. Ninguém cronometra, e dizer que não conseguiu é tão útil quanto dizer que conseguiu.</p>
+  <p style="font-size:11px">Cada tarefa tem quatro perguntas rápidas. Ninguém cronometra, e contar que não conseguiu ajuda tanto quanto contar que conseguiu.</p>
   <p style="font-size:10.5px"><b>Fora desta rodada.</b> ${esc(c.FORA_DESTA_RODADA)}</p>
   <ul class="porTarefa">
     <li><b>${esc(c.PERGUNTA_CONCLUSAO)}</b> ${esc(c.OPCOES_CONCLUSAO.join(" · "))}</li>
@@ -261,7 +261,7 @@ td.caixa { text-align: center; color: var(--primary); }
 <section class="page">
   <div class="card sec">
     <h3>Métricas, uma a uma</h3>
-    <p style="margin-bottom:6px">Para cada métrica da Visão geral, marque o que vale (mais de uma, ou nenhuma). A última coluna é a mais importante: número que não muda nada na aula ocupa espaço sem ajudar.</p>
+    <p style="margin-bottom:6px">Para cada métrica da Visão geral, marque o que vale (mais de uma, ou nenhuma). Preste atenção na última coluna: um número que não muda nada na aula só ocupa espaço.</p>
     <table><thead><tr><th>Métrica</th>${c.COLUNAS_DAS_METRICAS.map(x => `<th>${esc(x)}</th>`).join("")}</tr></thead>
     <tbody>${c.METRICAS.map(m => `<tr><td>${esc(m)}</td>${c.COLUNAS_DAS_METRICAS.map(() => '<td class="caixa">☐</td>').join("")}</tr>`).join("")}</tbody></table>
   </div>
@@ -353,7 +353,7 @@ h2 { font-size: 34px; margin-bottom: 18px; color: var(--fg); }
   <div class="marca"><img src="${arte.estrela}" alt="">TrailUp</div>
   <p class="eyebrow">Pesquisa com professores e pedagogos</p>
   <h1>Avalie o TrailUp</h1>
-  <p class="sub">Cerca de uma hora: você usa o sistema numa turma de demonstração e conta, por escrito, o que funciona e o que não funciona.</p>
+  <p class="sub">Mais ou menos uma hora. Você usa o sistema numa turma de demonstração e conta, por escrito, o que deu certo e o que não deu.</p>
   <div class="etapas">
     <div class="etapa"><b>1. Inscrição</b><span>Termo e identificação. O e-mail vira o seu login.</span></div>
     <div class="etapa"><b>2. Acesso</b><span>Senha aleatória enviada só ao seu e-mail.</span></div>

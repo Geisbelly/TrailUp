@@ -503,7 +503,7 @@ export const META_DO_SCVI_MEDIO = 0.9;
 // Textos da cartilha (página, PDF, imagem e roteiro do vídeo leem daqui).
 
 export const TEMPO_ESTIMADO =
-  "Cerca de uma hora no total: uns 35 minutos usando o sistema e uns 25 respondendo. O tempo exato será medido num teste antes da coleta, e você não precisa terminar no mesmo dia.";
+  "Mais ou menos uma hora: uns 35 minutos no sistema e uns 25 respondendo. O tempo certo vai ser medido num teste antes da coleta. E não precisa terminar tudo no mesmo dia.";
 
 /**
  * O que esta rodada NÃO avalia, dito ao participante. A turma de demonstração não tem alunos com
@@ -516,122 +516,122 @@ export const FORA_DESTA_RODADA =
 export const RESUMO: readonly { titulo: string; texto: string }[] = [
   {
     titulo: "Quem participa",
-    texto: "Especialistas: docentes de ensino superior da área de Tecnologia da Informação e de fora dela, e pedagogos.",
+    texto: "Docentes de ensino superior, da área de Tecnologia da Informação ou de outras, e pedagogos.",
   },
   {
     titulo: "O que você faz",
-    texto: "Usa o TrailUp numa turma de demonstração: o console do professor, com o conteúdo da turma ou com um seu, e, depois, a tela do aluno, com o seu aluno de teste.",
+    texto: "Usa o TrailUp numa turma de demonstração. Primeiro como professor, no console, com o conteúdo que já está lá ou com um seu. Depois como aluno, com o seu aluno de teste.",
   },
   {
     titulo: "Como você avalia",
-    texto: "Em dois formulários do Google: a inscrição e, depois de receber o acesso, a avaliação, com quatro perguntas rápidas por tarefa e blocos de perguntas tirados de escalas publicadas.",
+    texto: "Em dois formulários, com as respostas guardadas no Google Forms. A inscrição vem antes. A avaliação chega junto com o acesso e fica no próprio console: quatro perguntas curtas depois de cada tarefa e alguns blocos de perguntas de escalas já publicadas.",
   },
   {
-    titulo: "Identificado, e você decide como aparece",
-    texto: "A equipe sabe quem respondeu, porque a sua formação conta. Como você aparece na monografia, você escolhe só no fim, e pode trocar quando quiser. Sem entrevista e sem gravação.",
+    titulo: "Você se identifica e escolhe como aparece",
+    texto: "A equipe sabe quem respondeu, porque a sua formação pesa na análise. Como você aparece na monografia, decide só no fim, e pode mudar de ideia depois. Não tem entrevista nem gravação.",
   },
 ];
 
 export const PASSOS: readonly { titulo: string; texto: string }[] = [
   {
     titulo: "Inscreva-se",
-    texto: "O formulário de inscrição começa pelo Termo de Consentimento. Depois de concordar, você se identifica: nome, e-mail, instituição, titulação, formação e o papel em que avalia. O e-mail informado será o seu login no TrailUp.",
+    texto: "A inscrição começa pelo Termo de Consentimento. Se concordar, você informa nome, e-mail, instituição, titulação, formação e o papel em que vai avaliar. Esse e-mail vira o seu login no TrailUp.",
   },
   {
     titulo: "Receba o seu acesso",
-    texto: "Aprovada a inscrição, chega um e-mail para você confirmar o endereço. Depois do clique, a equipe envia só para ele, com senhas geradas aleatoriamente, o acesso de professor, o de aluno de teste (que entra sozinho na sua turma de demonstração) e o link do formulário de avaliação, que também fica na aba Avaliar o TrailUp do console.",
+    texto: "Com a inscrição aprovada, chega um e-mail pedindo que você confirme o endereço. Depois disso, a equipe manda para ele, com senhas aleatórias, o acesso de professor e o do aluno de teste, que já entra sozinho na sua turma de demonstração. O formulário de avaliação fica na aba Avaliar o TrailUp do console, e o link dele também vai no e-mail.",
   },
   {
-    titulo: "Abra o TrailUp e o formulário de avaliação",
-    texto: "Entre no TrailUp numa aba e abra o formulário de avaliação na outra. Ele começa pedindo o e-mail que você cadastrou.",
+    titulo: "Abra o console em duas abas",
+    texto: "Numa aba, deixe aberta a Avaliar o TrailUp; na outra, faça as tarefas. O formulário já vem com o seu e-mail e guarda as respostas no navegador até você enviar.",
   },
   {
     titulo: "Siga o roteiro, uma tarefa por vez",
-    texto: "Faça a tarefa no sistema e volte ao formulário: diga se conseguiu, de 1 a 7 se foi difícil ou fácil, quanto tempo levou mais ou menos e, se quiser, onde travou.",
+    texto: "Faça uma tarefa e volte ao formulário. Ele pergunta se você conseguiu, quão difícil foi (de 1 a 7), mais ou menos quanto tempo levou e, se quiser contar, onde travou.",
   },
   {
     titulo: "Entre como aluno",
-    texto: "As duas últimas tarefas usam o seu acesso de aluno de teste, para você ver o que o estudante vê.",
+    texto: "As duas últimas tarefas são com o aluno de teste, para você ver o que o estudante vê.",
   },
   {
     titulo: "Responda aos blocos de avaliação",
-    texto: "Usabilidade, esforço, métricas, material personalizado, tela do aluno, utilidade e rotina. Gamificação e dados dos alunos são opcionais.",
+    texto: "Depois do roteiro vêm os blocos: usabilidade, esforço, métricas, material personalizado, tela do aluno, utilidade e rotina. Gamificação e dados dos alunos são opcionais.",
   },
   {
     titulo: "Escreva o que pensa",
-    texto: "Quatro perguntas abertas, com as suas palavras.",
+    texto: "São quatro perguntas abertas. Responda do seu jeito.",
   },
   {
-    titulo: "Só então escolha como aparece, e envie",
-    texto: "A forma de divulgação é a última pergunta, depois de toda a avaliação. Você pode trocá-la depois, a qualquer momento até a versão final da monografia.",
+    titulo: "Por último, escolha como aparece e envie",
+    texto: "A forma de divulgação é a última pergunta de propósito: você escolhe depois de avaliar tudo. Dá para trocar mais tarde, até a versão final da monografia.",
   },
 ];
 
 export const ITENS_DO_ACESSO: readonly string[] = [
-            "Por segurança, todo acesso de professor passa pela aprovação da equipe: o console mostra dados de turmas e de alunos.",
-            "Use o mesmo e-mail na inscrição e no formulário de avaliação: é ele que liga as duas partes.",
-            "A senha chega só ao seu e-mail. Não a repasse a ninguém, e troque-a em Meus dados, se quiser.",
-            "Se a mensagem com o acesso não chegar, confira a caixa de spam e escreva para o contato do termo.",
+  "Todo acesso de professor passa pela equipe, porque o console mostra dados de turmas e de alunos.",
+  "Use o mesmo e-mail na inscrição e na avaliação. É por ele que a equipe junta as duas partes.",
+  "A senha vai só para o seu e-mail. Não passe para ninguém. Se quiser, troque em Meus dados.",
+  "Não recebeu a mensagem com o acesso? Olhe a caixa de spam e, se não estiver lá, escreva para o contato do termo.",
 ];
 
 export const FACA: readonly string[] = [
-  "Seja franco. Problemas e críticas valem tanto quanto elogios; nota dada por gentileza atrapalha a pesquisa.",
-  "Explore à vontade e, se quiser, use conteúdo seu: a turma é de demonstração e o único aluno é o seu aluno de teste. Errar ou clicar no lugar errado também é resultado.",
-  "Avalie sozinho. Não combine respostas com outros professores antes de enviar.",
-  "Responda pensando no que você viu, e não no que o sistema poderia ser.",
-  "Deixe em branco o que você não souber avaliar, em vez de chutar.",
+  "Seja franco. Uma crítica ajuda tanto quanto um elogio, e nota dada por gentileza atrapalha a pesquisa.",
+  "Explore à vontade e use conteúdo seu, se quiser. A turma é de demonstração e o único aluno é o de teste. Se você errar ou clicar no lugar errado, isso também é resultado.",
+  "Avalie sozinho, sem combinar respostas com outros professores antes de enviar.",
+  "Responda sobre o que você viu, não sobre o que o sistema poderia ser.",
+  "Se não souber avaliar alguma coisa, deixe em branco. Não chute.",
 ];
 
 export const EVITE: readonly string[] = [
-  "Conteúdo seu pode, mas sem dados de alunos reais e sem material de terceiros que você não possa compartilhar: o que vai numa geração é enviado ao modelo de IA.",
-  "Não cadastre alunos reais nem dados pessoais de ninguém: por enquanto, o único aluno é o seu aluno de teste.",
-  "Não cite alunos ou colegas pelo nome nos comentários.",
+  "Pode usar conteúdo seu, desde que sem dados de alunos reais e sem material de terceiros que você não possa compartilhar. Tudo o que entra numa geração vai para o modelo de IA.",
+  "Não cadastre alunos reais nem dados pessoais de ninguém. Por enquanto, o único aluno é o de teste.",
+  "Nos comentários, não cite alunos ou colegas pelo nome.",
 ];
 
 export const PERGUNTAS_FREQUENTES: readonly { pergunta: string; resposta: string }[] = [
   {
     pergunta: "Por que o formulário pede meu nome e minha formação?",
-    resposta: "Porque a pesquisa se apoia na avaliação de especialistas: docentes da área, pedagogos e professores de outras áreas. A monografia apresenta a avaliação de cada um junto com a qualificação de quem avaliou, e compara os grupos. Se a avaliação sai com o seu nome, com um código e o seu perfil, ou só no conjunto, quem decide é você.",
+    resposta: "Porque a pesquisa se apoia na avaliação de especialistas (docentes da área, pedagogos e professores de outras áreas). A monografia mostra cada avaliação ao lado da qualificação de quem avaliou e compara os grupos. Se você aparece com o nome, com um código e o seu perfil ou só no conjunto, quem decide é você.",
   },
   {
     pergunta: "Tenho receio de criticar o trabalho de uma aluna. E agora?",
-    resposta: "Critique. A pesquisa precisa saber o que não funciona, e um resultado negativo bem descrito vale tanto quanto um positivo: é ele que mostra o que corrigir antes de o sistema chegar a alunos. Uma avaliação feita por gentileza esconde justamente o que a pesquisa quer encontrar. E você só decide se aparece com o nome depois de avaliar, podendo trocar quando quiser.",
+    resposta: "Pode criticar. A pesquisa precisa saber o que não funciona, e um problema bem descrito vale tanto quanto um acerto, porque mostra o que corrigir antes de o sistema chegar a alunos. Avaliar por gentileza esconde justamente isso. E a decisão de aparecer com o nome só vem depois, e pode ser trocada.",
   },
   {
     pergunta: "Posso mudar a forma como apareço na monografia?",
-    resposta: "Sim, a qualquer momento até a versão final da monografia, pelo formulário de atualização (o link aparece na mensagem de confirmação e nesta página) ou pelo contato do termo. Vale sempre a escolha mais recente. Se você escolheu o nome, só aparece com ele depois de ver o seu quadro e confirmar. Depois que a versão final é entregue, ela não muda mais.",
+    resposta: "Pode, até a versão final da monografia. Use o formulário de atualização (o link está na mensagem de confirmação e nesta página) ou escreva para o contato do termo. Vale a escolha mais recente. Se escolher o nome, ele só aparece depois que você vir o seu quadro e confirmar. Entregue a versão final, não dá mais para mudar.",
   },
   {
     pergunta: "Por que não posso criar a minha própria conta?",
-    resposta: "Porque o acesso ao console do professor é restrito, por segurança: ele mostra dados de turmas e de alunos. Por isso a equipe cria o acesso com o e-mail que você cadastrou e uma senha gerada aleatoriamente, enviada só para esse e-mail. A equipe nunca pede senha sua de outro serviço.",
+    resposta: "O console do professor mostra dados de turmas e de alunos, então o acesso é restrito. A equipe cria a sua conta com o e-mail que você cadastrou e uma senha aleatória, e manda só para esse e-mail. Ninguém da equipe vai pedir senha sua de outro serviço.",
   },
   {
     pergunta: "Quem está sendo avaliado: eu ou o sistema?",
-    resposta: "O sistema. Não há resposta certa nem nota para você. Se uma tarefa foi difícil, isso aponta um problema do TrailUp.",
+    resposta: "O sistema. Não existe resposta certa nem nota para você. Se uma tarefa foi difícil, o problema é do TrailUp.",
   },
   {
     pergunta: "Preciso saber programar ou entender de IA?",
-    resposta: "Não. A pesquisa quer justamente a visão de especialistas diferentes: docentes de TI, de outras áreas e pedagogos.",
+    resposta: "Não. A ideia é ouvir gente de formações diferentes: docentes de TI, de outras áreas e pedagogos.",
   },
   {
     pergunta: "Posso usar o celular?",
-    resposta: "O console funciona no celular, mas o roteiro foi pensado para o computador, com o formulário numa aba e o sistema na outra.",
+    resposta: "O console abre no celular, mas o roteiro foi pensado para o computador, com o formulário numa aba e as tarefas na outra.",
   },
   {
     pergunta: "A geração por IA não funcionou. E agora?",
-    resposta: "Anote no campo da tarefa e siga em frente. O modelo usado tem limite diário gratuito, e uma falha também é informação para a pesquisa.",
+    resposta: "Anote no campo da tarefa e continue. O modelo tem um limite diário gratuito, e a falha também conta como dado para a pesquisa.",
   },
   {
     pergunta: "Posso parar no meio e voltar depois?",
-    resposta: "Pode parar quando quiser. Se você estiver conectado a uma conta Google no navegador, o próprio Forms costuma guardar o rascunho; sem conta conectada, fechar a página antes de enviar perde o que foi marcado.",
+    resposta: "Pode. No console, as respostas ficam guardadas no navegador até você enviar, então dá para fechar e continuar depois, no mesmo computador e no mesmo navegador. Se preferir responder no Google Forms, ele só guarda rascunho quando você está conectado a uma conta Google; sem conta, fechar a página antes de enviar perde o que já foi marcado.",
   },
   {
     pergunta: "O que eu fizer no sistema entra na pesquisa?",
-    resposta: "Só uma parte, e só para conferir o roteiro: a equipe olha, na turma de demonstração, se o que a tarefa pede ficou registrado (por exemplo, se a personalização foi pedida). Nenhum outro dado do seu uso entra na pesquisa. Ao fim, a turma, o conteúdo que você puser nela e os acessos de teste são apagados.",
+    resposta: "Só uma parte, e só para conferir o roteiro. A equipe olha na turma de demonstração se o que a tarefa pedia ficou registrado (se a personalização foi pedida, por exemplo). Nenhum outro dado do seu uso entra. No fim, a turma, o conteúdo que você puser nela e os acessos de teste são apagados.",
   },
   {
     pergunta: "Vou saber o resultado?",
-    resposta: "Sim. Todos os participantes recebem um resumo pelo e-mail informado, e os resultados só são publicados de forma agregada.",
+    resposta: "Vai. Todo participante recebe um resumo no e-mail cadastrado, e os resultados só são publicados de forma agregada.",
   },
 ];
 
