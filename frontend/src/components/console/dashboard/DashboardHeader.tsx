@@ -79,7 +79,8 @@ export default function DashboardHeader({
         {/* A janela filtra o painel "Abandono por etapa" (RPC metricas_engajamento_turma, F5).
             Os cards agregados vem de views de estado atual (sinais) ou das ultimas 8 semanas
             completas (retorno semanal), e dizem isso no proprio texto. */}
-        <SegmentedPills ariaLabel="Janela temporal" opcoes={JANELAS} valor={janela} onChange={onJanelaChange} />
+        <span className="text-xs text-muted-foreground">Período de &ldquo;Abandono por etapa&rdquo;:</span>
+        <SegmentedPills ariaLabel="Período do painel Abandono por etapa" opcoes={JANELAS} valor={janela} onChange={onJanelaChange} />
         {ultimaCarga && <span className="text-xs text-muted-foreground">{formatarAtualizadoHa(ultimaCarga, agora)}</span>}
       </div>
     </div>

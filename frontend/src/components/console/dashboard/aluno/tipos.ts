@@ -84,7 +84,8 @@ export type EvolucaoAluno = {
   classe_id: number;
   aluno_id: string;
   dia: string;
-  nota_media_desempenho: number;
+  /** null = sem nota no dia (não é nota zero). */
+  nota_media_desempenho: number | null;
   taxa_acertos_pct: number;
   taxa_acertos_sem_erro_pct: number;
   eficiencia_aprendizagem: number;

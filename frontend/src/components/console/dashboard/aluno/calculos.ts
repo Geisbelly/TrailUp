@@ -38,9 +38,11 @@ const rotuloDoDia = (dia: string) =>
 export function montarSerieEvolucao(doAluno: EvolucaoAluno[], daTurma: EvolucaoAluno[]): PontoEvolucao[] {
   const turmaPorDia = new Map<string, { soma: number; n: number }>();
   for (const linha of daTurma) {
+    // Aluno sem nota no dia fica fora da média da turma: contar como zero a puxaria para baixo.
+    if (linha.nota_media_desempenho === null || linha.nota_media_desempenho === undefined) continue;
     const dia = linha.dia.slice(0, 10);
     const atual = turmaPorDia.get(dia) ?? { soma: 0, n: 0 };
-    atual.soma += Number(linha.nota_media_desempenho ?? 0);
+    atual.soma += Number(linha.nota_media_desempenho);
     atual.n += 1;
     turmaPorDia.set(dia, atual);
   }
@@ -54,7 +56,7 @@ export function montarSerieEvolucao(doAluno: EvolucaoAluno[], daTurma: EvolucaoA
       rotulo: rotuloDoDia(dia),
       acertos: a ? Number(a.taxa_acertos_pct ?? 0) : null,
       progresso: a ? Number(a.progresso_trilha_pct ?? 0) : null,
-      nota: a ? Number(a.nota_media_desempenho ?? 0) : null,
+      nota: a && a.nota_media_desempenho !== null && a.nota_media_desempenho !== undefined ? Number(a.nota_media_desempenho) : null,
       notaTurma: t ? t.soma / t.n : null,
     };
   });
