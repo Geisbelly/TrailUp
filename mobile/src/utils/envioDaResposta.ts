@@ -79,6 +79,29 @@ export function mensagemDaFalhaNoEnvio(erro: unknown): { titulo: string; descric
   };
 }
 
+/**
+ * O resultado de uma questão só abre o modal se o aluno ainda está nela.
+ *
+ * Em 24/11 (atividade 11, web), `questao_responder` levou de 5 a 7 s, e o aluno avançou para a
+ * questão seguinte enquanto esperava. O "Revise e tente de novo", com o gabarito da questão 1,
+ * abriu por cima da questão 2, que ele ainda não tinha respondido: a tela parecia corrigir todas
+ * com uma resposta só e marcar as outras como erradas. Fora da questão, o resultado fica só nela
+ * (certo/errado e gabarito), e aparece quando o aluno volta.
+ */
+export function resultadoAbreModal(questaoRespondida: number, questaoNaTela: number): boolean {
+  return questaoRespondida === questaoNaTela;
+}
+
+/** Trocar de questão espera o envio em curso: é a outra metade da mesma correção. */
+export function podeTrocarDeQuestao(params: { enviando: boolean; destino: number; total: number }): boolean {
+  return !params.enviando && params.destino >= 0 && params.destino < params.total;
+}
+
+/** Com mais de uma questão, o modal diz de qual questão é o resultado. */
+export function tituloDoResultado(titulo: string, indice: number, total: number): string {
+  return total > 1 ? `Questão ${indice + 1}: ${titulo}` : titulo;
+}
+
 /** O texto quando a resposta foi gravada, mas concluir a atividade falhou. */
 export function mensagemDaFalhaNaConclusao(erro: unknown): string {
   return envioEsgotado(erro)

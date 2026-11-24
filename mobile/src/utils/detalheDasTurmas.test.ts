@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { carregarDetalhesDasTurmas, comUmaNovaTentativa, manterDetalheAnterior } from "./detalheDasTurmas";
+import { carregarDetalhesDasTurmas, comUmaNovaTentativa, manterDetalheAnterior, umaLinhaPorTurma } from "./detalheDasTurmas";
 
 const semEspera = { esperar: async () => undefined };
 
@@ -80,4 +80,23 @@ test("não reaproveita detalhe de outro aluno", () => {
   manterDetalheAnterior(novas, [{ aluno_id: "a", classe_id: 32, topicos: ["do outro"], detalheErro: null }]);
   assert.equal(novas[0].detalheErro, erro);
   assert.deepEqual(novas[0].topicos, []);
+});
+
+test("matrícula repetida pela view vira uma turma só (aluno com duas linhas em iaDescricao, 24/11)", () => {
+  // O que vw_aluno_classe_resumo devolveu em produção para o aluno de teste da turma 3.
+  const aluno = "b0686991-c43f-4dee-9f56-b1423020530a";
+  const linhas = [
+    { aluno_id: aluno, classe_id: 3, porcentagemConcluida: 20, modoOperacao: null },
+    { aluno_id: aluno, classe_id: 3, porcentagemConcluida: 20, modoOperacao: "imediato" },
+    { aluno_id: aluno, classe_id: 7, porcentagemConcluida: 0, modoOperacao: null },
+  ];
+  const turmas = umaLinhaPorTurma(linhas);
+  assert.deepEqual(turmas.map((t) => t.classe_id), [3, 7]);
+  assert.equal(turmas[0].porcentagemConcluida, 20);
+  assert.equal(turmas[0], linhas[0]);
+});
+
+test("sem repetição, a lista sai igual e na mesma ordem", () => {
+  const linhas = [{ aluno_id: "a", classe_id: 9 }, { aluno_id: "a", classe_id: 2 }, { aluno_id: "b", classe_id: 9 }];
+  assert.deepEqual(umaLinhaPorTurma(linhas), linhas);
 });

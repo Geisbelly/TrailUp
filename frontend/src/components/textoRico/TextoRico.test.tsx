@@ -6,8 +6,11 @@ import casos from "@/lib/textoRico/casos.json";
 
 import { CORES_DO_CODIGO, FUNDO_DO_CODIGO, NUMERO_DA_LINHA } from "./coresDoCodigo";
 import { TextoRico } from "./TextoRico";
+import TextoRicoMarkdown from "./TextoRicoMarkdown";
 
-const html = (texto: string, formato = "rico") => renderToStaticMarkup(<TextoRico texto={texto} formato={formato} />);
+// O rico é desenhado por `TextoRicoMarkdown`, que `TextoRico` carrega sob demanda; o teste o chama direto.
+const html = (texto: string, formato = "rico") =>
+  renderToStaticMarkup(formato === "rico" ? <TextoRicoMarkdown texto={texto} /> : <TextoRico texto={texto} formato={formato} />);
 
 describe("TextoRico", () => {
   it("texto comum não vira markdown", () => {
@@ -21,6 +24,13 @@ describe("TextoRico", () => {
     expect(saida).toContain('aria-label="Código em SQL Server"');
     expect(saida).toMatch(/data-papel="palavra"[^>]*>SELECT/);
     expect(saida).not.toMatch(/data-papel="comentario"[^>]*>#notas/);
+  });
+
+  it("rico: enquanto o markdown baixa, aparece o esqueleto, nunca o markdown cru", () => {
+    const saida = renderToStaticMarkup(<TextoRico texto={"**forte** e $x^2$"} formato="rico" />);
+    expect(saida).toContain('aria-busy="true"');
+    expect(saida).not.toContain("**forte**");
+    expect(saida).not.toContain("$x^2$");
   });
 
   it("rico: fórmula e química saem pela leitura enquanto o MathJax carrega", () => {

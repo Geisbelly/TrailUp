@@ -42,6 +42,7 @@
     },
     "web": {
       "output": "static",
+      "lang": "pt-BR",
       "favicon": "./src/assets/images/trailup-estrela.png",
       "name": "TrailUp Plataforma"
     },

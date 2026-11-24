@@ -18,7 +18,7 @@ import { mensagemDeUso, podeResponderComCompra } from '@/services/loja/usoItem';
 import { linhasDoRetorno, mensagemDaRecusa, retornoDesde } from '@/services/tentativasAtividade.core';
 import { conferirNoServidor, fatorDaRegra, questaoDoBanco, responderQuestao, revelarGabarito, type RespostaCorrigida } from '@/services/questaoNoBanco';
 import { EssayValidationResult, validateEssayAnswerWithAi } from '@/utils/essayValidation';
-import { LIMITE_DO_ENVIO_MS, comLimiteDeTempo, enviarUmaVez, mensagemDaFalhaNaConclusao, mensagemDaFalhaNoEnvio } from '@/utils/envioDaResposta';
+import { LIMITE_DO_ENVIO_MS, comLimiteDeTempo, enviarUmaVez, mensagemDaFalhaNaConclusao, mensagemDaFalhaNoEnvio, podeTrocarDeQuestao, resultadoAbreModal, tituloDoResultado } from '@/utils/envioDaResposta';
 import { Ionicons } from '@expo/vector-icons';
 import { useTempoVisivel } from '@/hooks/trilha/useTempoVisivel';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -602,6 +602,10 @@ export default function QuestionActivity({
     acerto: false,
   });
 
+  // A questão que está na tela agora. O envio é assíncrono: o resultado de uma questão pode chegar
+  // com o aluno em outra, e aí não pode abrir o modal por cima dela (`resultadoAbreModal`).
+  const questaoNaTela = useRef(questaoIndex);
+  questaoNaTela.current = questaoIndex;
   const indiceDaTentativa = useRef(questaoIndex);
   const tentativaAplicada = useRef(0);
   indiceDaTentativa.current = questaoIndex;
@@ -1598,7 +1602,8 @@ export default function QuestionActivity({
               rico: rica || forma === 'expressao',
             });
           }
-          setModalVisivel(true);
+          setModalInfo((atual) => ({ ...atual, titulo: tituloDoResultado(atual.titulo, questaoIndex, questoes.length) }));
+          if (resultadoAbreModal(questaoIndex, questaoNaTela.current)) setModalVisivel(true);
           recordAppEvent({
             eventGroup: 'performance',
             eventName: 'question_attempt',
@@ -1944,8 +1949,9 @@ export default function QuestionActivity({
       {questoes.length > 1 && (
         <View style={{ flexDirection: 'row', justifyContent: 'flex-start', gap: 10, marginTop: 16 }}>
           <TouchableOpacity
-            disabled={questaoIndex === 0}
+            disabled={!podeTrocarDeQuestao({ enviando, destino: questaoIndex - 1, total: questoes.length })}
             onPress={() => {
+              if (!podeTrocarDeQuestao({ enviando: enviandoRef.current, destino: questaoIndex - 1, total: questoes.length })) return;
               setQuestaoIndex((i) => Math.max(0, i - 1));
               setModalVisivel(false);
             }}
@@ -1957,16 +1963,17 @@ export default function QuestionActivity({
               borderWidth: 1,
               borderColor: profilePalette.border,
               backgroundColor:
-                questaoIndex === 0 ? profilePalette.inactive : profilePalette.surface,
+                questaoIndex === 0 || enviando ? profilePalette.inactive : profilePalette.surface,
             }}
             accessibilityRole="button"
-            accessibilityState={{ disabled: questaoIndex === 0 }}
+            accessibilityState={{ disabled: questaoIndex === 0 || enviando }}
           >
             <Text style={{ color: profilePalette.text }}>Anterior</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            disabled={questaoIndex === questoes.length - 1}
+            disabled={!podeTrocarDeQuestao({ enviando, destino: questaoIndex + 1, total: questoes.length })}
             onPress={() => {
+              if (!podeTrocarDeQuestao({ enviando: enviandoRef.current, destino: questaoIndex + 1, total: questoes.length })) return;
               setQuestaoIndex((i) => Math.min(questoes.length - 1, i + 1));
               setModalVisivel(false);
             }}
@@ -1978,12 +1985,12 @@ export default function QuestionActivity({
               borderWidth: 1,
               borderColor: profilePalette.border,
               backgroundColor:
-                questaoIndex === questoes.length - 1
+                questaoIndex === questoes.length - 1 || enviando
                   ? profilePalette.inactive
                   : profilePalette.surface,
             }}
             accessibilityRole="button"
-            accessibilityState={{ disabled: questaoIndex === questoes.length - 1 }}
+            accessibilityState={{ disabled: questaoIndex === questoes.length - 1 || enviando }}
           >
             <Text style={{ color: profilePalette.text }}>Próxima</Text>
           </TouchableOpacity>

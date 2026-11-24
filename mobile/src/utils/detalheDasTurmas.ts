@@ -76,3 +76,20 @@ export function manterDetalheAnterior<C extends TurmaComDetalhe>(novas: C[], ant
   }
   return novas;
 }
+
+/**
+ * Uma linha por matrícula, na ordem em que chegaram. `vw_aluno_classe_resumo` já devolveu duas
+ * linhas para a mesma matrícula (aluno com duas linhas em `iaDescricao`, medido em 24/11; a view foi
+ * corrigida na `20261124_06`): a turma aparecia duas vezes, e o `.single()` do resumo falhava com
+ * `PGRST116`, que o app lia como "sem resumo" e deixava o percentual parado na tela. As colunas de
+ * progresso vêm de `classe_aluno` e são iguais nas duas linhas, então a primeira basta.
+ */
+export function umaLinhaPorTurma<R extends { aluno_id?: unknown; classe_id?: unknown }>(linhas: readonly R[]): R[] {
+  const vistas = new Set<string>();
+  return linhas.filter((linha) => {
+    const chave = `${String(linha.aluno_id ?? "")}:${String(linha.classe_id ?? "")}`;
+    if (vistas.has(chave)) return false;
+    vistas.add(chave);
+    return true;
+  });
+}
