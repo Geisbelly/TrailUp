@@ -25,13 +25,16 @@ import { kpisDosAlunos } from "./kpisDosAlunos";
 
 export const CLASSE_DE_EXEMPLO = -1;
 
-/** Prefixo do id dos alunos de exemplo: não abrem detalhe (não existem no banco). */
+/**
+ * Prefixo do id dos alunos de exemplo. O detalhe deles também é de exemplo (`aluno/exemploDoAluno.ts`):
+ * as leituras do banco pulam esses ids, porque eles não existem lá.
+ */
 export const PREFIXO_DO_EXEMPLO = "exemplo-";
 export const ehAlunoDeExemplo = (id: string) => id.startsWith(PREFIXO_DO_EXEMPLO);
 
 type Perfil = (typeof PERFIS_EM_ORDEM)[number];
 
-type Linha = {
+export type Linha = {
   nome: string;
   perfil: Perfil;
   /** O segundo perfil mais forte (recorte "segundo perfil" dos gráficos). */
@@ -50,6 +53,68 @@ type Linha = {
 };
 
 const TOPICO_PARADO = "Estruturas de repetição";
+
+export type TopicoDeExemplo = { id: number; nome: string; conteudos: string[]; atividades: string[] };
+
+/**
+ * A trilha dos alunos de exemplo. Ids positivos e altos, que só existem no navegador: o resumo das
+ * tentativas reconhece o bônus por `atividade:<número>`, então o id não pode ser negativo.
+ */
+export const TRILHA_DE_EXEMPLO: readonly TopicoDeExemplo[] = [
+  { id: 9101, nome: "Algoritmos e lógica", conteudos: ["O que é um algoritmo", "Fluxogramas"], atividades: ["Sequência de passos", "O algoritmo do dia a dia"] },
+  { id: 9102, nome: "Variáveis e tipos", conteudos: ["Guardando valores", "Tipos de dado"], atividades: ["Declarando variáveis", "Qual é o tipo?"] },
+  { id: 9103, nome: "Estruturas de decisão", conteudos: ["Se, senão", "Condições compostas"], atividades: ["Aprovado ou reprovado", "Faixas de idade"] },
+  { id: 9104, nome: TOPICO_PARADO, conteudos: ["Enquanto", "Para"], atividades: ["Contando até dez", "Somando uma lista"] },
+  { id: 9105, nome: "Vetores", conteudos: ["Uma variável, vários valores", "Percorrendo um vetor"], atividades: ["Maior valor do vetor", "Média das notas"] },
+  { id: 9106, nome: "Funções", conteudos: ["Dividindo o problema", "Parâmetros e retorno"], atividades: ["Função de soma", "Área do retângulo"] },
+];
+
+/**
+ * Quanto de cada tópico o aluno concluiu. A soma acompanha a conclusão da trilha
+ * (`conclusao` × número de tópicos), em ordem. Quem está parado fica preso em "Estruturas de repetição".
+ */
+export function percentuaisDosTopicos(l: Linha): number[] {
+  const n = TRILHA_DE_EXEMPLO.length;
+  const total = l.conclusao * n;
+  if (l.parado && total > 225 && total < 400) {
+    return TRILHA_DE_EXEMPLO.map((_, k) => (k < 2 ? 100 : k === 2 ? total - 225 : k === 3 ? 25 : 0));
+  }
+  return TRILHA_DE_EXEMPLO.map((_, k) => Math.max(0, Math.min(100, total - 100 * k)));
+}
+
+/** A linha que gerou o aluno de exemplo, pelo id (`exemplo-07` é a sétima). */
+export function linhaDoExemplo(id: string): { linha: Linha; indice: number } | null {
+  if (!ehAlunoDeExemplo(id)) return null;
+  const indice = Number(id.slice(PREFIXO_DO_EXEMPLO.length)) - 1;
+  const linha = LINHAS[indice];
+  return linha ? { linha, indice } : null;
+}
+
+/** Os tópicos como o detalhe do aluno os lê (`Aluno.topicos`): concluído, disponível ou bloqueado. */
+function topicosDoAluno(l: Linha): AlunoAnalisado["topicos"] {
+  const percentuais = percentuaisDosTopicos(l);
+  const proximo = percentuais.findIndex((p) => p < 100);
+  return TRILHA_DE_EXEMPLO.map((t, k) => ({
+    id: t.id,
+    nome: t.nome,
+    status: percentuais[k] >= 100 ? "concluido" : percentuais[k] > 0 || k === proximo ? "disponivel" : "bloqueado",
+    percentual: percentuais[k],
+  }));
+}
+
+/** O nome da última atividade aberta: o tópico mais adiantado que o aluno começou. */
+function ultimaAtividadeDe(l: Linha): string {
+  const percentuais = percentuaisDosTopicos(l);
+  let k = 0;
+  percentuais.forEach((p, i) => {
+    if (p > 0) k = i;
+  });
+  const topico = TRILHA_DE_EXEMPLO[k];
+  return percentuais[k] >= 50 ? topico.atividades[1] : topico.atividades[0];
+}
+
+/** Modo de resposta do aluno, como o app grava: varia pela posição para os dois aparecerem. */
+const modoDe = (indice: number) => (indice % 3 === 0 ? "Imediato" : "Padrão");
 
 // Nomes inventados, sem sobrenome: nenhum é de aluno real.
 const LINHAS: readonly Linha[] = [
@@ -138,11 +203,11 @@ export function alunosDeExemplo(classeId: number, classeNome: string, hoje: Date
       tempoPresencaMin: Math.round(l.tempoMin * 2.2),
       acertosPercentual: l.acertos,
       temAcertos: true,
-      ultimaAtividade: sinais.ultimaAtividadeEm,
+      ultimaAtividade: ultimaAtividadeDe(l),
       perfilDominante: NOME_DO_PERFIL[l.perfil],
       perfis: afinidades(l),
-      modoOperacao: "",
-      topicos: [],
+      modoOperacao: modoDe(i),
+      topicos: topicosDoAluno(l),
       ultimaAtividadeEm: sinais.ultimaAtividadeEm,
       riscoFaixa: l.faixa,
       risco: avaliarRisco({ sinais, nota: l.nota }, { notaMedia: mediaDaTurma, taxaAbandonoPct: taxaAlto }, hoje),

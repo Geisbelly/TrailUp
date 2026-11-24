@@ -1,3 +1,4 @@
+import { ehAlunoDeExemplo } from "../exemploDaPesquisa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { createRequestGuard } from "@/lib/requestGuard";
@@ -25,6 +26,8 @@ export function useSugestoesDaIAParaAluno(alunoId: string, classeId: number) {
   useEffect(() => {
     const request = guarda.current.next();
     setLinhas([]);
+    // Aluno de exemplo: não existe no banco, e a IA não escreveu nada sobre ele.
+    if (ehAlunoDeExemplo(alunoId)) return;
     void tabela()
       .select(COLUNAS)
       .eq("aluno_id", alunoId)

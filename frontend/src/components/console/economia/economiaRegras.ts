@@ -213,3 +213,17 @@ export function resumirCarteiras(
 
 /** "padrão: 5" — o que vale quando a turma não personaliza. */
 export const textoDoPadrao = (valor: number) => `padrão: ${valor}`;
+
+/** Critérios de meta coletiva, com o nome que o professor lê. A chave é a que o banco grava. */
+export const CRITERIOS_DA_META: { id: string; rotulo: string }[] = [
+  { id: "atividades_concluidas", rotulo: "Atividades concluídas" },
+  { id: "acertos", rotulo: "Acertos" },
+  { id: "presencas", rotulo: "Presenças" },
+  { id: "nota_minima", rotulo: "Nota mínima (%)" },
+];
+
+/** "Atividades concluídas: pelo menos 5". Critério que a tela não conhece aparece como veio. */
+export function resumoDoCriterioDaMeta(criterio: string, limiar: number): string {
+  const rotulo = CRITERIOS_DA_META.find((c) => c.id === criterio)?.rotulo ?? criterio;
+  return `${rotulo}: pelo menos ${limiar}`;
+}
