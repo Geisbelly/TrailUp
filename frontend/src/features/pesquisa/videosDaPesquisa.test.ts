@@ -35,13 +35,18 @@ describe("vídeos da pesquisa", () => {
     expect(videoPorSlug(undefined)).toBeNull();
   });
 
-  it("os quatro papéis, com o passo a passo da pesquisa primeiro", () => {
+  it("os cinco papéis, com o passo a passo da pesquisa primeiro", () => {
     expect(VIDEOS_DA_PESQUISA.map(v => v.papel)).toEqual([
       "Para quem vai avaliar",
       "Apresentação",
       "Para o professor",
-      "Guia",
+      "A rotina do professor",
+      "Para o aluno",
     ]);
+  });
+
+  it("capa com nome próprio, para não brigar com o cache da capa antiga", () => {
+    for (const video of VIDEOS_DA_PESQUISA) expect(video.poster).toMatch(/-capa\.jpg$/);
   });
 });
 

@@ -8,6 +8,9 @@
 // Cada vídeo tem página própria, para ser compartilhado sozinho: na pesquisa,
 // `/pesquisa/professores/videos/<slug>`; no resto do site (início, Sobre, Download, Diário),
 // `/videos/<slug>`. Os arquivos são os mesmos.
+//
+// As capas têm nome próprio (`-capa.jpg`) em vez do nome do vídeo: o R2 serve com cache de um dia,
+// e trocar a imagem no mesmo caminho deixaria a capa antiga na tela de quem já visitou.
 
 import { CAMINHO_DA_CARTILHA } from "./pesquisaProfessores";
 
@@ -34,7 +37,7 @@ export const VIDEOS_DA_PESQUISA: readonly VideoDaPesquisa[] = [
       "Quem pode participar, as três fases (inscrição, acesso e avaliação) e as oito tarefas do roteiro: seis no console e duas no app, com o aluno de teste. Vale ver antes de começar.",
     duracao: "4 min 36 s",
     arquivo: `${PASTA}pesquisa-passo-a-passo.mp4`,
-    poster: `${PASTA}pesquisa-passo-a-passo.jpg`,
+    poster: `${PASTA}pesquisa-passo-a-passo-capa.jpg`,
   },
   {
     slug: "apresentacao",
@@ -44,27 +47,39 @@ export const VIDEOS_DA_PESQUISA: readonly VideoDaPesquisa[] = [
       "O mesmo conteúdo da aula chega de um jeito diferente para cada aluno, com guias, missões e guildas. Antes de publicar, o professor revisa o material personalizado.",
     duracao: "3 min",
     arquivo: `${PASTA}apresentacao-trailup.mp4`,
-    poster: `${PASTA}apresentacao-trailup.jpg`,
+    poster: `${PASTA}apresentacao-trailup-capa.jpg`,
   },
   {
+    slug: "guia-do-professor",
+    titulo: "O console, do começo ao fim",
+    papel: "Para o professor",
+    descricao:
+      "Do cadastro à última aba do console, seguindo uma turma de Introdução à Programação: a trilha gerada com IA, o material dos sete perfis e a revisão antes de publicar, as missões, as notas e o que a Visão geral mostra da turma.",
+    duracao: "6 min",
+    arquivo: `${PASTA}guia-do-professor.mp4`,
+    poster: `${PASTA}guia-do-professor-capa.jpg`,
+  },
+  {
+    // Fica na cartilha, mas fora das páginas do site: a narração tem uma frase que o projeto não
+    // quer repetir em texto nenhum, e o guia do console já cobre o professor.
     slug: "para-o-professor",
     titulo: "O tempo de quem dá aula",
-    papel: "Para o professor",
+    papel: "A rotina do professor",
     descricao:
       "Várias turmas, cada aluno num ritmo e pouco tempo para acompanhar todo mundo. O vídeo mostra onde o painel, a Lumi e as missões entram nessa rotina.",
     duracao: "1 min 43 s",
     arquivo: `${PASTA}para-o-professor.mp4`,
-    poster: `${PASTA}para-o-professor.jpg`,
+    poster: `${PASTA}para-o-professor-capa.jpg`,
   },
   {
     slug: "guia",
     titulo: "Primeiro acesso, passo a passo",
-    papel: "Guia",
+    papel: "Para o aluno",
     descricao:
       "Do e-mail de confirmação até a trilha introdutória, passando pelo questionário de preferências e pelo perfil do aluno.",
     duracao: "3 min 10 s",
     arquivo: `${PASTA}guia-primeiro-acesso.mp4`,
-    poster: `${PASTA}guia-primeiro-acesso.jpg`,
+    poster: `${PASTA}guia-primeiro-acesso-capa.jpg`,
   },
 ];
 
@@ -87,7 +102,8 @@ export const VIDEO_DO_ARTIGO: Readonly<Record<string, string>> = {
   conqueror: "apresentacao",
   socializer: "apresentacao",
   achiever: "apresentacao",
-  "pesquisa-tcc": "para-o-professor",
+  // O artigo conta o que é o TrailUp e de onde ele veio.
+  "pesquisa-tcc": "apresentacao",
 };
 
 export function videoPorSlug(slug: string | undefined): VideoDaPesquisa | null {
