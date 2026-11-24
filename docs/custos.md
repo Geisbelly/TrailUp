@@ -35,7 +35,11 @@ as assinaturas ou só as APIs.
 O tier free não cobra em dinheiro, mas tem teto:
 
 - **Cota do Gemini:** quando acaba, a fila para e o chat cai na resposta de reserva. Nova tentativa
-  gasta a mesma cota diária. Um `402` é sinal de chave fora do tier free: avise, não contorne.
+  gasta a mesma cota diária. Um `402` é sinal de chave fora do tier free: avise, não contorne. Desde
+  24/11/2026, o chat não desce a cadeia de modelos quando o principal está sem cota em todas as chaves
+  (a reserva sai na hora), e a chave com `402` sai de todos os modelos por 6 h. Em 24/11, cada pergunta
+  ao Guia percorria a cadeia inteira até o prazo de 40 s: 11 chamadas de `mentor_personalizacao_chat`,
+  nenhuma com resposta (`ia_uso_llm`).
 - **Cota do RAG (OpenAI):** de 06/11 a 20/11/2026, toda chamada ao RAG voltou `RateLimitError` em
   `ia_uso_llm` (51 da notificação em 06/11 e 6 do chat), cada uma depois de ~19 s. Desde 20/11, o chat
   responde pelo Gemini quando o RAG falha: é uma chamada de Gemini a mais por pergunta enquanto o
@@ -114,6 +118,8 @@ Guardião custa essa chamada mais o juiz de grounding.
 
 | Data | Decisão | Efeito | Estado |
 |---|---|---|---|
+| 24/11/2026 | Modelos aposentados fora das cadeias de reserva (`gemini-2.5-flash-lite`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` na API; também `gemini-2.5-flash` e `gemini-1.5-*` no microservice) e imagem em `gemini-3.1-flash-image` no lugar de `gemini-2.0-flash-preview-image-generation`. Modelo com 404 sai da cadeia para todas as chaves por 6 h; no chat, cota do dia esgotada no modelo principal vai direto à reserva, e 5xx pula o modelo sem tentar as outras chaves. O RAG não repete o 429 (`max_retries=0`) | Menos chamadas, nenhuma nova. De 23 a 24/11 os três 2.x nunca responderam na API: 60 chamadas com 404 (20 cada) e 27 com o `ChatGoogleGenerativeAIError` genérico, 4xx sem classe própria, provavelmente o 402 de uma chave (`ia_uso_llm`); cada uma custava a vez de uma chave. Chamadas a menos por pergunta ao Guia: até 3 por chave nos 2.x, mais as 3 chaves restantes de um modelo em 5xx. Volume economizado: PENDENTE, sem medir depois do deploy. A env do Dokploy pode ainda ter a lista antiga: o 404 a corta depois da primeira chamada por processo | No PR, sem medir |
+| 24/11/2026 | Resposta de reserva do Guia sem modelo, ligada ao tópico (trecho do conteúdo por palavra, texto fixo da tela citada) | Nenhuma chamada nova: é texto montado na API | No PR |
 | 24/11/2026 | O Guia e a Lumi conhecem o site: páginas, Diário, vídeos, cartilha da pesquisa e resumo da monografia (`site_trailup`, `trechos_do_site`) | Nenhuma chamada nova; a escolha dos trechos é por palavra, sem modelo. Toda pergunta ao Guia, ao juiz e à Lumi leva o mapa do site (3.644 caracteres, estático, no começo do payload, onde o cache vale). Pergunta sobre o site leva também até 4 trechos, no máximo 6.000 caracteres, perto do fim; pergunta da matéria não leva nenhum. Tokens a mais: PENDENTE, sem medir | No PR, sem medir |
 | 24/11/2026 | O Guia aprende do que o aluno gosta e que postura funciona com ele (`aluno_preferencias_guia`) | Nenhuma chamada nova: o modelo devolve `registro.preferencias` na mesma resposta, e só quando a mensagem revela algo novo (o campo fica fora de "required"). A entrada cresce com `preferencias_do_aluno` (até 8 gostos, um resumo de até 400 caracteres e a postura, antes da memória) e o prompt, com um parágrafo fixo. Tokens a mais: PENDENTE, sem medir. Uma leitura no banco por pergunta e um UPSERT quando há algo novo | No PR, sem medir |
 | 24/11/2026 | Guia com pontes para outras matérias, postura que muda com o aluno e censura no juiz | Nenhuma chamada nova. O prompt do Guia e o do juiz crescem com regras fixas (sem mexer na ordem do payload); o Guia e o juiz recebem a `turma` (matéria, tema do mapa e arco, até 3.000 caracteres de arco) perto do começo, e o juiz passa a receber a mensagem do aluno antes da resposta. Uma leitura no banco por pergunta. Tokens a mais: PENDENTE, sem medir | No PR, sem medir |

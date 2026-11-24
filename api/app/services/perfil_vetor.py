@@ -116,3 +116,16 @@ def pesos_representativos(perfis: Iterable[Any] | None) -> list[tuple[str, float
     if total <= 0:
         return [(PERFIL_PADRAO, 1.0)]
     return [(chave, afinidade / total) for chave, afinidade in representativos]
+
+
+def vetor_com_dominante_primeiro(perfis: Iterable[Any] | None, limite: int | None = None) -> list[dict[str, Any]]:
+    """O vetor que vai a um modelo ou a um resumo: o dominante da regra única na frente e o resto na
+    ordem. Sem isto, quem lia `[0]` da lista do `context.py` (os 7 perfis com 0 do aluno sem
+    `aluno_perfil`) tomava o aluno por Seeker, o primeiro da lista, e não por mastermind."""
+    ordem = ordenar(perfis)
+    chave_dominante = dominante(perfis)
+    afinidades = dict(ordem)
+    lista = [(chave_dominante, afinidades.get(chave_dominante, 0.0))]
+    lista += [(chave, afinidade) for chave, afinidade in ordem if chave != chave_dominante]
+    vetor = [{"perfil": PERFIS_CANONICOS[chave], "afinidade": afinidade} for chave, afinidade in lista]
+    return vetor[:limite] if limite is not None else vetor

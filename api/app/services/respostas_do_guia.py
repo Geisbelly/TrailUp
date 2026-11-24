@@ -6,6 +6,10 @@ o lado da regra dá ao aluno uma resposta que não é a dele. Na dúvida, não c
 
 Os textos resumem `guia_do_app_aluno.md`: ao mudar uma tela, mude o trecho dela lá e aqui. Saem sem a
 voz do Guardião, de propósito: quem pergunta onde fica a Loja quer o botão.
+
+Os mesmos textos servem à resposta de reserva (`reserva_do_guia`), quando o modelo não respondeu e a
+pergunta cita uma tela ("o que é a loja?"). Lá o casamento é só pelo nome da tela, sem verbo, porque
+a alternativa é um texto genérico; aqui continua sendo a frase inteira (regra 8 do CLAUDE.md).
 """
 
 from __future__ import annotations
@@ -39,6 +43,8 @@ class RespostaPronta:
     telas: tuple[str, ...]
     # Depois de "como": a ação inteira, para "como desligo as notificações" não virar "onde ficam".
     acoes: tuple[str, ...] = ()
+    # Só na reserva: outros nomes da tela que, citados na pergunta, trazem este texto.
+    citacoes: tuple[str, ...] = ()
 
 
 _RESPOSTAS = (
@@ -48,6 +54,7 @@ _RESPOSTAS = (
         "gastar_moedas",
         ("loja",),
         (r"(?:gasto|gastar|uso|usar) (?:as |minhas )?moedas",),
+        ("moedas",),
     ),
     RespostaPronta(
         "A Biblioteca de conquistas fica no Perfil. Ela mostra as concluídas, as em progresso e as bloqueadas, "
@@ -55,6 +62,7 @@ _RESPOSTAS = (
         "perfil.conquistas",
         "ver_conquistas",
         ("conquistas", "biblioteca de conquistas"),
+        citacoes=("conquista",),
     ),
     RespostaPronta(
         "As Molduras se compram na Loja e se ganham nas Conquistas. As que você já tem ficam na Bag, "
@@ -62,6 +70,7 @@ _RESPOSTAS = (
         "perfil.molduras",
         "",
         ("molduras",),
+        citacoes=("moldura",),
     ),
     RespostaPronta(
         "O Estilo das métricas fica no Perfil. Ele muda só a aparência do painel de métricas.",
@@ -132,6 +141,7 @@ _RESPOSTAS = (
         "notificacoes",
         "ler_notificacoes",
         ("notificacoes", "avisos"),
+        citacoes=("notificacao",),
     ),
     RespostaPronta(
         "O Social é uma das abas do app, com amizades, guildas e desafios. Ele fica com cadeado até você concluir "
@@ -139,6 +149,49 @@ _RESPOSTAS = (
         "social",
         "fazer_amizades",
         ("social", "amizades", "guildas"),
+        citacoes=("guilda", "amizade"),
+    ),
+)
+
+# Só para a reserva: telas que o guia descreve e que não têm resposta de navegação sem modelo.
+# Sem `telas` nem `acoes`, de propósito: nunca casam em `resposta_sem_modelo`.
+_SO_NA_RESERVA = (
+    RespostaPronta(
+        "As Missões aparecem na Trilha e no Social. As do dia renovam depois da meia-noite, e cada uma rende "
+        "recompensa.",
+        "trilha",
+        "",
+        (),
+        citacoes=("missoes", "missao"),
+    ),
+    RespostaPronta(
+        "A Bag fica no Perfil e pode ser aberta durante o estudo. Ela guarda as anotações, os resumos e os cards "
+        "que você salva, as compras da Loja e os materiais gerados.",
+        "perfil",
+        "",
+        (),
+        citacoes=("bag",),
+    ),
+)
+
+# Palavras comuns demais para valer antes da matéria: "perfil" e "trilha" aparecem em pergunta de
+# conteúdo. Na reserva, só contam quando a pergunta não casou com nada do material.
+_TELAS_GENERICAS = (
+    RespostaPronta(
+        "O Perfil é uma das abas do app. Nele ficam a Loja, a Bag, a Biblioteca de conquistas, as Molduras, o "
+        "Modo foco, o Lembrete diário e o controle da coleta de dados.",
+        "perfil",
+        "",
+        (),
+        citacoes=("perfil",),
+    ),
+    RespostaPronta(
+        "A Trilha é uma das abas do app: mostra os tópicos da turma como um mapa, com a porcentagem de cada um. "
+        "\"Você parou aqui · Continuar\" retoma de onde você parou.",
+        "trilha",
+        "continuar_estudo",
+        (),
+        citacoes=("trilha",),
     ),
 )
 
@@ -162,7 +215,16 @@ def _padrao(resposta: RespostaPronta) -> re.Pattern[str]:
     return re.compile(rf"{_SAUDACAO}(?:{'|'.join(opcoes)}){_FIM}")
 
 
-_PADROES = tuple((_padrao(resposta), resposta) for resposta in _RESPOSTAS)
+_PADROES = tuple((_padrao(resposta), resposta) for resposta in _RESPOSTAS if resposta.telas or resposta.acoes)
+
+
+def _nomes(resposta: RespostaPronta) -> re.Pattern[str]:
+    nomes = sorted({*resposta.telas, *resposta.citacoes}, key=len, reverse=True)
+    return re.compile(rf"(?:^| )(?:{'|'.join(re.escape(nome) for nome in nomes)})(?: |$)")
+
+
+_NOMES_ESPECIFICOS = tuple((_nomes(r), r) for r in (*_RESPOSTAS, *_SO_NA_RESERVA) if r.telas or r.citacoes)
+_NOMES_GENERICOS = tuple((_nomes(r), r) for r in _TELAS_GENERICAS)
 
 
 def resposta_sem_modelo(mensagem: str) -> MentorChatLLMResult | None:
@@ -172,4 +234,22 @@ def resposta_sem_modelo(mensagem: str) -> MentorChatLLMResult | None:
     for padrao, resposta in _PADROES:
         if padrao.fullmatch(pergunta):
             return MentorChatLLMResult(reply=resposta.texto, destinos=[resposta.destino], tutorial=resposta.tutorial)
+    return None
+
+
+def _como_resultado(resposta: RespostaPronta) -> MentorChatLLMResult:
+    return MentorChatLLMResult(
+        reply=resposta.texto,
+        destinos=[resposta.destino],
+        tutorial=resposta.tutorial,
+    )
+
+
+def tela_citada(mensagem: str, *, generica: bool = False) -> MentorChatLLMResult | None:
+    """Só para a reserva: a tela que a pergunta cita pelo nome, com o texto fixo dela. `generica`
+    inclui Perfil e Trilha, que quem chama só tenta depois de procurar na matéria."""
+    pergunta = _normalizar(mensagem)
+    for padrao, resposta in _NOMES_GENERICOS if generica else _NOMES_ESPECIFICOS:
+        if padrao.search(pergunta):
+            return _como_resultado(resposta)
     return None
