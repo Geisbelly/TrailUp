@@ -3,6 +3,7 @@ import { BLOG_CONTENT, BLOG_POSTS } from "@/features/diario/artigosDoDiario";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  AVISO_DO_PDF,
   PDF_DA_CARTILHA,
   VIDEOS_DA_PESQUISA,
   VIDEO_DO_ARTIGO,
@@ -87,5 +88,16 @@ describe("linkPublico", () => {
     expect(linkPublico("nao e url", caminho)).toBeNull();
     expect(linkPublico("http://abc.supabase.co", caminho)).toBeNull();
     expect(linkPublico("http://localhost:54321", caminho)).toContain("http://localhost:54321/functions/v1/");
+  });
+});
+
+describe("avisos de correção", () => {
+  it("o vídeo do passo a passo e o PDF dizem que nada é apagado ao fim", () => {
+    const aviso = videoPorSlug("passo-a-passo")?.aviso ?? "";
+    for (const texto of [aviso, AVISO_DO_PDF]) {
+      expect(texto).toMatch(/^Correção: /);
+      expect(texto).toContain("Não são");
+      expect(texto).toContain("dado da pesquisa");
+    }
   });
 });

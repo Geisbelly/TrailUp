@@ -24,6 +24,11 @@ export type VideoDaPesquisa = {
   /** Caminho no R2 (sempre sob `publico/pesquisa/`). */
   arquivo: string;
   poster: string;
+  /**
+   * Correção do que a narração diz, mostrada junto do player. É o caminho barato de corrigir um
+   * vídeo já gravado: regravar fica para quando houver outro motivo.
+   */
+  aviso?: string;
 };
 
 const PASTA = "publico/pesquisa/videos/";
@@ -38,6 +43,8 @@ export const VIDEOS_DA_PESQUISA: readonly VideoDaPesquisa[] = [
     duracao: "4 min 36 s",
     arquivo: `${PASTA}pesquisa-passo-a-passo.mp4`,
     poster: `${PASTA}pesquisa-passo-a-passo-capa.jpg`,
+    aviso:
+      "Correção: o vídeo diz que os acessos são apagados ao fim da pesquisa. Não são: a conta, a turma e as respostas ficam guardadas como dado da pesquisa.",
   },
   {
     slug: "apresentacao",
@@ -84,6 +91,10 @@ export const VIDEOS_DA_PESQUISA: readonly VideoDaPesquisa[] = [
 ];
 
 export const PDF_DA_CARTILHA = "publico/pesquisa/cartilha-pesquisa-professores.pdf";
+
+/** O PDF foi gerado antes da correção de 24/11 e ficou como está; o aviso vai junto do link. */
+export const AVISO_DO_PDF =
+  "Correção: o PDF diz que a turma e os acessos são apagados ao fim da pesquisa. Não são: ficam guardados como dado da pesquisa, como diz esta página.";
 
 export const caminhoDoVideo = (video: Pick<VideoDaPesquisa, "slug">) => `${CAMINHO_DA_CARTILHA}/videos/${video.slug}`;
 

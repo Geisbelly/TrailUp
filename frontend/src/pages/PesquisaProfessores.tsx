@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, Check, CheckCircle2, ClipboardList, Clock, FileDown, Lock, Monitor, Smartphone, Users, X } from "lucide-react";
 import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
-import { VideosDaCartilha } from "@/components/pesquisa/VideosDaPesquisa";
-import { PDF_DA_CARTILHA, linkDoArquivo } from "@/features/pesquisa/videosDaPesquisa";
+import { AvisoDeCorrecao, VideosDaCartilha } from "@/components/pesquisa/VideosDaPesquisa";
+import { AVISO_DO_PDF, PDF_DA_CARTILHA, linkDoArquivo } from "@/features/pesquisa/videosDaPesquisa";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   ACESSO,
@@ -234,6 +234,7 @@ function Cartilha() {
               <FileDown size={16} aria-hidden="true" /> Baixar a cartilha em PDF
             </a>
           )}
+          {LINK_DO_PDF && <AvisoDeCorrecao centralizado={false}>{AVISO_DO_PDF}</AvisoDeCorrecao>}
         </div>
 
         <aside
@@ -533,7 +534,7 @@ function Cartilha() {
                   Você se identifica para a equipe. O que é publicado depende da sua escolha: com nome, com código e
                   perfil, ou só no conjunto. Fora do que você autorizar, a identificação fica em sigilo, só com a
                   equipe. Ao fim da coleta, as respostas são baixadas para um computador da equipe e apagadas do
-                  formulário online.
+                  formulário online, e ficam guardadas como dado da pesquisa.
                 </span>
               </li>
               <li className="flex gap-2">
