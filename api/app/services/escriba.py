@@ -29,6 +29,7 @@ from app.services.guia_do_app import guia_do_app
 from app.services.insights_turma import InsightsTurmaService
 from app.services.llm import JsonLLMService, load_prompt
 from app.services.pseudonimizacao import pseudonimizar_texto, refs_citadas, restaurar_refs
+from app.services.site_trailup import indice_do_site, trechos_da_conversa
 
 logger = logging.getLogger(__name__)
 
@@ -217,7 +218,8 @@ _PRODUTO = re.compile(
     r"duplic\w*|export\w*|ativ\w*|lig[ao]r?|deslig\w*|funciona\w*|edit\w*|gero|gerar|apag\w*|exclu\w*)|"
     r"onde\s+(fica|ficam|vejo|encontro|configuro|est[aá]|mudo|altero)|para\s+que\s+serve|o\s+que\s+(é|e|significa|faz)\b|"
     r"aba|abas|tela|bot[aã]o|console|menu|app|aplicativo|vers[aã]o\s+web|privacidade|lgpd|consentimento|termos|"
-    r"dados\s+pessoais|reten[cç][aã]o|passo\s+a\s+passo)\b",
+    r"dados\s+pessoais|reten[cç][aã]o|passo\s+a\s+passo|"
+    r"site|blog|di[aá]rio|v[ií]deos?|monografia|tcc|cartilha|pesquisa\s+com\s+professores|baixar|download)\b",
     re.IGNORECASE,
 )
 # Sinais de que a pergunta é sobre os dados da turma (ou de um aluno).
@@ -241,6 +243,8 @@ _VOCABULARIO = {
     "metas", "histórico", "prazos", "tempo", "perfil", "social", "notificações", "android", "google", "gemini",
     "lgpd", "coleta", "acessos", "web", "app", "csv", "pdf", "ia", "console", "privacidade", "termos", "presença",
     "matrículas", "seeker", "survivor", "daredevil", "mastermind", "conqueror", "socializer", "achiever",
+    "diário", "diario", "blog", "monografia", "cartilha", "tcc", "jic", "ulbra", "palmas", "play", "sobre",
+    "download", "vídeo", "vídeos", "pesquisa", "avaliar",
 }
 # Começo de frase também tem maiúscula; só estas palavras passam ali. Outra
 # palavra no começo pode ser nome ("Ana faltou?") e conta como citação.
@@ -281,6 +285,14 @@ def pergunta_de_produto(texto: str) -> bool:
 def guia_do_produto() -> str:
     # O lado do aluno e a privacidade são a mesma base dos Guardiões.
     return f"{load_prompt('lumi_conhecimento.md')}\n\n{guia_do_app()}"
+
+
+def _trechos(pergunta: str, falas: list[dict[str, str]]) -> dict[str, Any]:
+    """As seções do site que a pergunta pede. Só as perguntas do professor que não citam aluno
+    ajudam a escolher: a seleção é por palavra e nada dela vai a outro lugar além do payload."""
+    anteriores = [m["texto"] for m in falas if m.get("papel") == "professor" and not _parece_citar_aluno(m["texto"])]
+    trechos = trechos_da_conversa(pergunta.strip(), anteriores)
+    return {"trechos_do_site": trechos} if trechos else {}
 
 
 class TurmaNaoPermitida(Exception):
@@ -469,9 +481,12 @@ class EscribaService:
         # Pergunta por último: o cache do provedor só vale até a primeira diferença do pedido.
         payload = {
             "guia_do_produto": guia_do_produto(),
+            "site_trailup": indice_do_site(),
             # Chave com "_" é do servidor (ids, mapa de nomes): nunca vai ao modelo.
             "turmas": [{k: v for k, v in t.items() if not k.startswith("_")} for t in turmas_payload],
             **({"avaliacao_trailup": avaliacao} if avaliacao else {}),
+            # Pergunta de dado da turma só leva trecho do site se também falar do produto.
+            **(_trechos(pedido.pergunta, falas) if _PRODUTO.search(pedido.pergunta) else {}),
             "historico": [{**m, "texto": pseudonimizar_texto(m["texto"], nomes_por_ref)} for m in falas],
             "pergunta": pseudonimizar_texto(pedido.pergunta.strip(), nomes_por_ref),
         }
@@ -496,8 +511,10 @@ class EscribaService:
         da turma voltaram com o nome do aluno restaurado."""
         payload = {
             "guia_do_produto": guia_do_produto(),
+            "site_trailup": indice_do_site(),
             "turmas": [],
             **({"avaliacao_trailup": avaliacao} if avaliacao else {}),
+            **_trechos(pedido.pergunta, falas),
             "historico": [m for m in falas if m["papel"] == "professor" and not _parece_citar_aluno(m["texto"])],
             "pergunta": pedido.pergunta.strip(),
         }

@@ -291,6 +291,8 @@ async def checar_grounding_chat(
             payload={
                 # Sem o guia, explicar a Loja viraria "fora da base do tópico".
                 "guia_do_app": contexto.get("guia_do_app", ""),
+                # O mapa do site é estático: fica no começo, com o guia.
+                **({"site_trailup": contexto["site_trailup"]} if contexto.get("site_trailup") else {}),
                 "conteudo_materia": contexto.get("conteudo_materia", {}),
                 "contexto_personalizacao": contexto.get("contexto_personalizacao", {}),
                 # Tema do mapa e arco: analogia com a história da turma não é invenção.
@@ -304,6 +306,8 @@ async def checar_grounding_chat(
                     if contexto.get("avaliacao_trailup")
                     else {}
                 ),
+                # O que o Guia leu do site para esta pergunta: sem isto, citar um artigo seria invenção.
+                **({"trechos_do_site": contexto["trechos_do_site"]} if contexto.get("trechos_do_site") else {}),
                 # Por último, porque é o que muda: o cache só vale até a primeira diferença.
                 # A pergunta: sem ela o juiz não vê se a resposta concordou com um erro do aluno.
                 **({"mensagem": contexto["mensagem"]} if contexto.get("mensagem") else {}),
