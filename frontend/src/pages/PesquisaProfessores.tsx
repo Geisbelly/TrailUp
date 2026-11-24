@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, Check, CheckCircle2, ClipboardList, Clock, FileDown, Lock, Monitor, Smartphone, Users, X } from "lucide-react";
 import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
-import { AvisoDeCorrecao, VideosDaCartilha } from "@/components/pesquisa/VideosDaPesquisa";
-import { AVISO_DO_PDF, PDF_DA_CARTILHA, linkDoArquivo } from "@/features/pesquisa/videosDaPesquisa";
+import { VideosDaCartilha } from "@/components/pesquisa/VideosDaPesquisa";
+import { PDF_DA_CARTILHA, linkDoArquivo } from "@/features/pesquisa/videosDaPesquisa";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   ACESSO,
@@ -234,7 +234,6 @@ function Cartilha() {
               <FileDown size={16} aria-hidden="true" /> Baixar a cartilha em PDF
             </a>
           )}
-          {LINK_DO_PDF && <AvisoDeCorrecao centralizado={false}>{AVISO_DO_PDF}</AvisoDeCorrecao>}
         </div>
 
         <aside

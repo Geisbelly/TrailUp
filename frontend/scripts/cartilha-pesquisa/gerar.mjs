@@ -302,7 +302,7 @@ td.caixa { text-align: center; color: var(--primary); }
     <div class="grupo"><img src="${arte.bau}" alt=""><h3>Seus direitos</h3></div>
     <ul class="cadeado">
       <li>Participar é voluntário, sem custo e sem pagamento. Recusar ou desistir não traz prejuízo. O convite é feito pela pesquisadora, nunca por coordenação ou superior.</li>
-      <li>Fora do que você autorizar, a identificação fica em sigilo, só com a equipe. Ao fim da coleta, as respostas são baixadas e apagadas do formulário online.</li>
+      <li>Fora do que você autorizar, a identificação fica em sigilo, só com a equipe. Ao fim da coleta, as respostas são baixadas e apagadas do formulário online, e ficam guardadas como dado da pesquisa.</li>
       <li>O texto completo, com o contato da equipe, é o Termo de Consentimento, na primeira página da inscrição. Esta etapa é a validação com especialistas e não envolve alunos; a fase com alunos vem depois, com aprovação do Comitê de Ética em Pesquisa.</li>
     </ul>
   </div>
