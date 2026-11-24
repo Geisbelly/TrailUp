@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizarStoragePath } from "./caminho";
+import { ehCaminhoPublico, normalizarStoragePath } from "./caminho";
 
 const VALIDO = "brainhex/seeker/classe-54/topico-131/apresentacao/material-1.html";
 
@@ -37,5 +37,16 @@ describe("normalizarStoragePath", () => {
   it("nao tenta consertar: caminho torto vira null, nao versao limpa", () => {
     // Consertar produziria 404 confuso; recusar produz 400 claro.
     expect(normalizarStoragePath("brainhex/../brainhex/x.html")).toBeNull();
+  });
+});
+
+describe("ehCaminhoPublico", () => {
+  it("so o prefixo publico/ inteiro, depois de normalizado", () => {
+    expect(ehCaminhoPublico("publico/pesquisa/videos/apresentacao-trailup.mp4")).toBe(true);
+    expect(ehCaminhoPublico("publicox/a.mp4")).toBe(false);
+    expect(ehCaminhoPublico("pesquisa/arquivo/a.json")).toBe(false);
+    expect(ehCaminhoPublico(VALIDO)).toBe(false);
+    // subir de diretorio para fora de publico/ nem chega aqui: a normalizacao recusa antes
+    expect(normalizarStoragePath("publico/../pesquisa/a.json")).toBeNull();
   });
 });

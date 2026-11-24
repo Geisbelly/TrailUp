@@ -169,7 +169,7 @@ gravando a data de cada um na linha dele:
 | Conta criada em | A edge function `pesquisa-acesso` cria o professor (já liberado, e-mail ainda não confirmado), o aluno de teste e a turma de demonstração dele, cópia da turma-modelo (`pesquisa_preparar_avaliador`, migration `20261123_01`). A Situação mostra o número da turma |
 | Confirmação enviada em | E-mail personalizado com o link que confirma o endereço. Sem clique em 24 h, reenvia (até 3 vezes) |
 | E-mail confirmado em | A função confere no Auth quem já clicou |
-| Acesso enviado em | Só para quem confirmou: senhas novas e aleatórias para o professor e o aluno de teste, num e-mail com os dois logins, a turma, o link da avaliação e o da cartilha |
+| Acesso enviado em | Só para quem confirmou: senhas novas e aleatórias para o professor e o aluno de teste, num e-mail com os dois logins, a turma, o link da avaliação e o da cartilha, e a cartilha em PDF anexa (ver abaixo) |
 
 A senha passa pela execução e vai direto para o e-mail: não fica na planilha, no registro de
 execução nem nas propriedades. Se o envio falhar, a próxima rodada gera outras.
@@ -216,6 +216,22 @@ Comece no banco de **dev**. Produção é só trocar os valores abaixo.
    e-mails para a própria conta, com dados de exemplo.
 6. **`instalarProcessamentoAutomatico`**: `processarAprovados` passa a rodar a cada 15 minutos.
    Também dá para rodá-lo à mão a qualquer hora; ele é idempotente.
+7. **Inscrição na página do site** (opcional; sem ela, a página mostra o Google Forms):
+   - **`acrescentarCodigoDoSite`** cria no formulário de inscrição o campo "Código do site" (os
+     formulários novos já nascem com ele) e mostra o `entry.*` dele no registro.
+   - **Implantar → Nova implantação → App da Web**, executar como "Eu", acesso "Qualquer pessoa". A
+     URL `…/exec` vai para `VITE_PESQUISA_INSCRICAO_CONFIRMACAO_URL` no Vercel. Depois de mudar o
+     `doGet`, é preciso **Gerenciar implantações → editar → Nova versão**, senão a URL continua
+     servindo o código antigo.
+   - O id do formulário e os `entry.*` de cada pergunta ficam em
+     `frontend/src/features/pesquisa/inscricaoNoSite.ts`. Recriou o formulário de inscrição? Os
+     números mudam: atualize lá (estão em `FB_PUBLIC_LOAD_DATA_`, no HTML da página de resposta).
+     Até atualizar, a página volta sozinha para o Google Forms.
+
+   A página manda as respostas direto ao Forms com um código aleatório e pergunta ao `doGet` se
+   ele chegou. O `doGet` só responde `{"recebida": true|false}`: a planilha continua privada, e
+   sem o código, que só o navegador de quem enviou conhece, não há o que perguntar. Por isso a
+   pergunta é pelo código, e não pelo e-mail, que diria a qualquer um quem se inscreveu.
 
 Limites: a cota do `MailApp` da conta (Gmail comum, cerca de 100 destinatários por dia; com o
 gatilho, quem passar disso fica "Aguardando" para o dia seguinte). E-mail que já tem conta no
@@ -243,3 +259,20 @@ participantes (E1, E2…) e montar o quadro de cada um conforme a forma de divul
 o trecho para conferência de quem escolheu o nome, guardar com o pesquisador responsável e apagar as respostas do formulário, como diz o termo. A análise compara
 os grupos pelo campo "Papel em que você avalia o sistema" (docentes de TI, de outras áreas e
 pedagogos), de forma descritiva.
+
+## Cartilha em PDF e vídeos
+
+O e-mail de acesso leva a cartilha em PDF anexa, e a página `/pesquisa/professores` mostra três
+vídeos (apresentação do TrailUp, o vídeo para o professor e o guia do primeiro acesso), cada um com
+página própria para compartilhar (`/pesquisa/professores/videos/<slug>`). Os arquivos ficam no R2,
+em `publico/pesquisa/`, o único prefixo que o gateway (`storage-redirect`) serve sem sessão.
+
+1. Gerar o PDF: `node scripts/cartilha-pesquisa/gerar.mjs <pasta>` (na pasta `frontend`).
+2. Montar a pasta com os nomes finais (lista no topo de `scripts/pesquisa-videos/subir-para-o-r2.mjs`).
+3. Subir, com a URL e a chave de serviço do projeto de produção:
+   `SUPABASE_URL=... SUPABASE_SERVICE_KEY=... node scripts/pesquisa-videos/subir-para-o-r2.mjs <pasta>`.
+   O script confere cada arquivo pelo gateway, sem sessão, depois de subir.
+
+Exige `storage-redirect` e `storage-upload-url` publicadas com o prefixo `publico/`. Sem o PDF no R2,
+o acesso sai do mesmo jeito, com o link da cartilha e sem o anexo (o motivo fica no log da execução).
+Mudou a cartilha? Gere e suba o PDF de novo: o caminho é o mesmo.

@@ -35,6 +35,7 @@ const NotFound = lazyWithReload(() => import("./pages/NotFound"));
 const AuthConfirm = lazyWithReload(() => import("./pages/EmailConfirm"));
 const Download = lazyWithReload(() => import("./pages/Download"));
 const PesquisaProfessores = lazyWithReload(() => import("./pages/PesquisaProfessores"));
+const PesquisaVideo = lazyWithReload(() => import("./pages/PesquisaVideo"));
 
 function RouteFallback() {
   return (
@@ -106,6 +107,7 @@ const App = () => (
               <Route path="/termos" element={<Termos />} />
               <Route path="/download" element={<Download />} />
               <Route path={CAMINHO_DA_CARTILHA} element={<PesquisaProfessores />} />
+              <Route path={`${CAMINHO_DA_CARTILHA}/videos/:slug`} element={<PesquisaVideo />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

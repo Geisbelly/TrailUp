@@ -102,6 +102,17 @@ describe("lerPedido", () => {
     expect(lerPedido({ path: "outra/coisa.pdf", metodo: "DELETE" })).toHaveProperty("erro");
   });
 
+  it("publico/ aceita PUT e DELETE e tem link de leitura; pesquisa/ continua so DELETE", () => {
+    const video = "publico/pesquisa/videos/apresentacao-trailup.mp4";
+    expect(lerPedido({ path: video })).toEqual({ caminho: video, metodo: "PUT" });
+    expect(lerPedido({ path: video, metodo: "DELETE" })).toEqual({ caminho: video, metodo: "DELETE" });
+    expect(urlDeLeitura("https://x.supabase.co/", video)).toBe(
+      `https://x.supabase.co/functions/v1/storage-redirect?path=${video}`,
+    );
+    expect(lerPedido({ path: "pesquisa/arquivo/a.json" })).toHaveProperty("erro");
+    expect(lerPedido({ path: "publicox/a.mp4" })).toHaveProperty("erro");
+  });
+
   it.each([
     ["corpo vazio", undefined],
     ["sem path", {}],
