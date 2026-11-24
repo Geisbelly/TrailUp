@@ -9,6 +9,7 @@ import { AvisoDeExemplo } from "../comum/SeloDeExemplo";
 import { resumoDosEixos } from "../eixos/eixos";
 import { aproveitamento, posicoes, rotuloDoDesfecho, tituloDoDuelo } from "./batalha";
 import { lerBatalhas, type ResumoDasBatalhas } from "./batalhasApi";
+import { plural } from "../meusdados/conta";
 
 const rotulo = "text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground";
 
@@ -90,7 +91,7 @@ export default function BatalhasSection({ professorId }: { professorId?: string 
                       <li key={linha.guildaId} className="flex flex-wrap items-center gap-3 rounded-[16px] border bg-card px-4 py-3">
                         <span className="w-8 text-lg font-bold">{posicao}º</span>
                         <span className="min-w-0 flex-1 truncate font-semibold">{linha.nome}</span>
-                        <span className="text-sm text-muted-foreground">{linha.vitorias} vitórias · {linha.empates} empates · {linha.duelos} duelos</span>
+                        <span className="text-sm text-muted-foreground">{plural(linha.vitorias, "vitória", "vitórias")} · {plural(linha.empates, "empate", "empates")} · {plural(linha.duelos, "duelo", "duelos")}</span>
                         <span className="text-sm font-bold">{aproveitamento(linha)}%</span>
                       </li>
                     ))}
