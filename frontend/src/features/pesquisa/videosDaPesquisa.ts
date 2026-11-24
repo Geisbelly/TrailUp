@@ -91,19 +91,15 @@ export const caminhoDoVideo = (video: Pick<VideoDaPesquisa, "slug">) => `${CAMIN
 export const CAMINHO_DOS_VIDEOS = "/videos";
 export const caminhoDoVideoNoSite = (video: Pick<VideoDaPesquisa, "slug">) => `${CAMINHO_DOS_VIDEOS}/${video.slug}`;
 
-/** Vídeo no fim de cada artigo do Diário (`/blog/<id>`), pelo assunto. */
+/**
+ * Vídeo no fim de um artigo do Diário (`/blog/<id>`), só onde ele explica o mesmo assunto: um vídeo por
+ * artigo e cada vídeo num artigo só. Artigo sem vídeo próprio fica sem vídeo.
+ */
 export const VIDEO_DO_ARTIGO: Readonly<Record<string, string>> = {
-  // A apresentação mostra os sete guias, um por perfil BrainHex.
-  brainhex: "apresentacao",
-  seeker: "apresentacao",
-  survivor: "apresentacao",
-  daredevil: "apresentacao",
-  mastermind: "apresentacao",
-  conqueror: "apresentacao",
-  socializer: "apresentacao",
-  achiever: "apresentacao",
-  // O artigo conta o que é o TrailUp e de onde ele veio.
-  "pesquisa-tcc": "apresentacao",
+  "o-que-e-o-trailup": "apresentacao",
+  "primeiros-passos-no-app": "guia",
+  "guia-do-console": "guia-do-professor",
+  "avaliar-o-trailup": "passo-a-passo",
 };
 
 export function videoPorSlug(slug: string | undefined): VideoDaPesquisa | null {
