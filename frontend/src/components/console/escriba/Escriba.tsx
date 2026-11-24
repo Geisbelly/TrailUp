@@ -20,6 +20,7 @@ import {
   type Mensagem,
   type TurmaDoProfessor,
 } from "./conversa";
+import Respondendo from "./Respondendo";
 import TutorialGuiado from "./TutorialGuiado";
 import { useAreaVisivel } from "./useAreaVisivel";
 import { tutorialPorId, type Tutorial } from "./tutoriais";
@@ -311,16 +312,7 @@ export default function Escriba() {
                 </div>
               );
             })}
-            {pensando && (
-              <p role="status" className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                <span aria-hidden="true" className="flex gap-1">
-                  {[0, 1, 2].map((i) => (
-                    <span key={i} className="h-1.5 w-1.5 animate-pulse rounded-full bg-[hsl(var(--console-bronze-text))]" style={{ animationDelay: `${i * 150}ms` }} />
-                  ))}
-                </span>
-                {demorando ? "Pensando… o servidor pode estar acordando, isso leva até um minuto." : "Pensando…"}
-              </p>
-            )}
+            {pensando && <Respondendo demorando={demorando} />}
             {!conversou && (
               <div className="flex flex-wrap gap-2">
                 <button

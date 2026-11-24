@@ -23,3 +23,26 @@ export function painelAoLadoDoBotao({
   if (temAncora) return false;
   return larguraJanela >= larguraPainel + 3 * MARGEM_DO_PAINEL;
 }
+
+/**
+ * Distância do painel ABERTO até o pé da janela (24/11).
+ *
+ * Fechado, o botão fica acima da barra de "Continuar" (`bottomOffset`, 148 na trilha). Aberto na
+ * web em tela larga, o painel herdava essa mesma base e ficava pendurado no meio da tela, com o
+ * fim bem acima do rodapé. Lá ele desce até a margem, como um chat flutuante; a conversa cobre a
+ * barra só enquanto está aberta. No aparelho e no celular segue a base de antes (barra de abas e
+ * área segura), e com âncora a base já vem de fora.
+ */
+export function baseDoPainelAberto({
+  web,
+  aoLadoDoBotao,
+  base,
+}: {
+  web: boolean;
+  aoLadoDoBotao: boolean;
+  /** Base do botão fechado (`bottomOffset`). */
+  base: number;
+}): number {
+  if (web && aoLadoDoBotao) return Math.min(base, MARGEM_DO_PAINEL);
+  return base;
+}
