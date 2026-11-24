@@ -22,6 +22,7 @@ import { VigiaDePresenca } from "@/components/VigiaDePresenca";
 import DesbloqueioModal from "@/components/DesbloqueioModal";
 import { usePortoes } from "@/context/PortoesContext";
 import { FirstAccessTour } from "@/components/FirstAccessTour";
+import { PainelDoRoteiro } from "@/components/pesquisa/PainelDoRoteiro";
 import { useUsuario } from "@/context/SessaoContext";
 import { MetricasProvider } from "@/context/MetricasContext";
 import { user } from "@/database/mockUser";
@@ -317,6 +318,8 @@ export default function TabLayout() {
                 userId={usuario?.id}
                 profile={activeProfileName}
               />
+              {/* Só para o aluno de teste da pesquisa com professores; para os outros não desenha nada. */}
+              <PainelDoRoteiro palette={palette} usuarioId={usuario?.id} />
               <DesbloqueioModal
                 funcionalidade={cerimoniaAtual}
                 color={palette.accent}

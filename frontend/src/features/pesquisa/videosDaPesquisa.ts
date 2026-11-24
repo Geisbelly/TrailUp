@@ -27,6 +27,16 @@ const PASTA = "publico/pesquisa/videos/";
 
 export const VIDEOS_DA_PESQUISA: readonly VideoDaPesquisa[] = [
   {
+    slug: "passo-a-passo",
+    titulo: "A pesquisa, passo a passo",
+    papel: "Para quem vai avaliar",
+    descricao:
+      "Quem pode participar, as três fases (inscrição, acesso e avaliação) e as oito tarefas do roteiro: seis no console e duas no app, com o aluno de teste. Vale ver antes de começar.",
+    duracao: "4 min 36 s",
+    arquivo: `${PASTA}pesquisa-passo-a-passo.mp4`,
+    poster: `${PASTA}pesquisa-passo-a-passo.jpg`,
+  },
+  {
     slug: "apresentacao",
     titulo: "Conheça o TrailUp",
     papel: "Apresentação",

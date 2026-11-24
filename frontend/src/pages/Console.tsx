@@ -35,6 +35,7 @@ const PainelTecnicoSection = lazyWithReload(() => import("@/components/console/t
 const RecomendacoesSection = lazyWithReload(() => import("@/components/console/recomendacoes/RecomendacoesSection"));
 const PersonalizacoesSection = lazyWithReload(() => import("@/components/console/personalizacoes/PersonalizacoesSection"));
 const AvaliacaoDaPesquisaSection = lazyWithReload(() => import("@/components/console/pesquisa/AvaliacaoDaPesquisaSection"));
+const PainelDoRoteiro = lazyWithReload(() => import("@/components/console/pesquisa/PainelDoRoteiro"));
 import { lerMeuAcesso, type MeuAcessoNaPesquisa } from "@/features/pesquisa/links";
 
 // A Administração e o painel técnico só são visíveis para a dona do projeto (TCC);
@@ -220,6 +221,10 @@ export default function Console() {
   return (
     <ConsoleShell view={view} name={professorData?.nome || "Professor"} institution={professorData?.instituicao} isOwner={isOwner} isAvaliador={Boolean(acessoDaPesquisa?.avaliador)} onSignOut={handleLogout}>
         {professorData && <AceiteDosTermos onSair={handleLogout} />}
+        {/* Avaliador da pesquisa: o roteiro e as anotações ficam ao lado de toda aba. Os outros
+            professores não carregam nem o código do painel. */}
+        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Suspense
           fallback={
             <div className="flex-1 flex items-center justify-center">
@@ -275,6 +280,13 @@ export default function Console() {
             </div>
           )}
         </Suspense>
+        </div>
+        {acessoDaPesquisa?.avaliador && (
+          <Suspense fallback={null}>
+            <PainelDoRoteiro view={view} />
+          </Suspense>
+        )}
+        </div>
     </ConsoleShell>
   );
 }
