@@ -71,6 +71,7 @@ from app.schemas.personalizacao import (
 )
 from app.services import assinatura_chat, modo_restrito
 from app.services.auth import UserContext
+from app.services.avaliacao_trailup import contexto_da_avaliacao
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
 from app.services.contexto_chat_materia import montar_conteudo_materia, montar_gabarito_protegido
 from app.services.group_analysis import GroupAnalysisService
@@ -1687,6 +1688,9 @@ async def conversar_com_mentor_personalizacao(
         nomes_a_mascarar = nomes_para_mascarar(
             [aluno_ctx, *await registros_do_chat.nomes_da_turma(int(payload.classe_id))]
         )
+        # Só o aluno de teste de quem avalia o TrailUp: roteiro, progresso e anotações dele.
+        # Qualquer outra conta recebe None e o payload fica como sempre foi.
+        avaliacao_trailup = await contexto_da_avaliacao(session, user.user_id)
         async with rota_ia_para_alunos(session, [aluno_id]):
             provedor_do_chat = settings.llm_provider
             modelo_do_chat = (
@@ -1728,6 +1732,7 @@ async def conversar_com_mentor_personalizacao(
                     "metricas_aluno": _build_student_metrics_summary(context, para_llm=True),
                     "leituras_adaptativas": _build_student_reading_summary(context),
                     # Muda a cada pergunta: fica perto do fim, onde não derruba o cache do começo.
+                    **({"avaliacao_trailup": avaliacao_trailup} if avaliacao_trailup else {}),
                     "memoria_do_guia": memoria_do_guia,
                     "escopo": payload.escopo,
                     "historico": [{k: _sem_nome(v) for k, v in fala.items()} for fala in historico_do_chat],
@@ -1745,6 +1750,8 @@ async def conversar_com_mentor_personalizacao(
                     "guia_do_app": guia_do_app(),
                     # So o Guardian ve as respostas: o modelo do chat nao as recebe.
                     "gabarito_protegido": gabarito_protegido,
+                    # Sem isto, ajudar o avaliador com a avaliação viraria "fora da base do tópico".
+                    "avaliacao_trailup": avaliacao_trailup,
                 },
                 on_violation=_auditar_chat,
                 prazo_total=settings.chat_prazo_total_seconds,

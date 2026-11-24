@@ -1,0 +1,120 @@
+[
+  {
+    "id": "video",
+    "titulo": "Ver o passo a passo em vídeo",
+    "onde": "site",
+    "passos": [
+      "São uns quatro minutos e meio: as três fases da pesquisa, as oito tarefas e o que vem depois delas."
+    ],
+    "observar": null,
+    "tarefa": null
+  },
+  {
+    "id": "t1",
+    "titulo": "Conhecer a turma",
+    "onde": "console",
+    "passos": [
+      "Em Turmas, abra a turma de demonstração.",
+      "Veja quem está matriculado e o perfil de cada aluno."
+    ],
+    "observar": "Se fica claro quem são os alunos e em que pé cada um está.",
+    "tarefa": "T1"
+  },
+  {
+    "id": "t2",
+    "titulo": "Explorar a trilha",
+    "onde": "console",
+    "passos": [
+      "Em Trilhas, abra a trilha da turma.",
+      "Entre num tópico e veja os conteúdos, as atividades e as questões."
+    ],
+    "observar": "Se a organização em tópicos faz sentido e se você conseguiria montar uma trilha sua.",
+    "tarefa": "T2"
+  },
+  {
+    "id": "t3",
+    "titulo": "Ver e pedir uma personalização",
+    "onde": "console",
+    "passos": [
+      "Em Personalizações, veja os perfis da turma e o material de um perfil.",
+      "Se quiser, peça uma geração por IA, sobre o conteúdo da turma ou sobre um conteúdo seu (ela pode levar alguns minutos ou não sair, por causa do limite gratuito do modelo)."
+    ],
+    "observar": "Se você entende o que foi gerado, para quem, e o que precisaria revisar antes de liberar.",
+    "tarefa": "T3"
+  },
+  {
+    "id": "t4",
+    "titulo": "Ler as métricas da turma",
+    "onde": "console",
+    "passos": [
+      "Na Visão geral, com a turma de demonstração selecionada, veja os painéis com o selo de exemplo.",
+      "Em cada métrica, abra a explicação (o ícone ao lado do nome) e diga para você mesmo o que ela mostra."
+    ],
+    "observar": "Se cada painel se entende sozinho e se a explicação diz o que o número mede. Os valores são de exemplo, então avalie o formato de cada painel.",
+    "tarefa": "T4"
+  },
+  {
+    "id": "t5",
+    "titulo": "Entender o jogo da turma",
+    "onde": "console",
+    "passos": [
+      "Passe por Economia, Missões, Eventos e Conquistas.",
+      "Veja como as moedas, a loja, as missões e os eventos estão configurados."
+    ],
+    "observar": "Se você saberia ajustar o jogo à sua turma e se ele apoia o estudo.",
+    "tarefa": "T5"
+  },
+  {
+    "id": "t6",
+    "titulo": "Ver a competição",
+    "onde": "console",
+    "passos": [
+      "Abra Rankings, Rank de batalhas e Guildas."
+    ],
+    "observar": "O que a competição mostra e o efeito que ela teria em quem está atrás.",
+    "tarefa": "T6"
+  },
+  {
+    "id": "aluno-acesso",
+    "titulo": "Entrar no app como aluno",
+    "onde": "app",
+    "passos": [
+      "Instale o app do TrailUp (página Download do site) e entre com o acesso de aluno de teste que chegou por e-mail.",
+      "Faça o cadastro do aluno até o fim. A matrícula na sua turma de demonstração acontece sozinha."
+    ],
+    "observar": null,
+    "tarefa": null
+  },
+  {
+    "id": "t7",
+    "titulo": "Estudar como aluno",
+    "onde": "app",
+    "passos": [
+      "Entre com o seu acesso de aluno de teste.",
+      "Abra a trilha, um tópico e o material personalizado (texto, áudio ou apresentação)."
+    ],
+    "observar": "Se o aluno sabe o que fazer a seguir e se o material é fácil de abrir.",
+    "tarefa": "T7"
+  },
+  {
+    "id": "t8",
+    "titulo": "Ver o jogo pelo lado do aluno",
+    "onde": "app",
+    "passos": [
+      "Ainda como aluno, abra as missões, a loja e o ranking."
+    ],
+    "observar": "Como o aluno vê o próprio progresso e os colegas.",
+    "tarefa": "T8"
+  },
+  {
+    "id": "blocos",
+    "titulo": "Responder aos blocos e enviar",
+    "onde": "console",
+    "passos": [
+      "Depois das tarefas vêm os blocos de perguntas e as quatro perguntas abertas, na aba Avaliar o TrailUp.",
+      "Releia as suas anotações antes. A forma de divulgação é a última pergunta."
+    ],
+    "observar": null,
+    "tarefa": null
+  }
+]
