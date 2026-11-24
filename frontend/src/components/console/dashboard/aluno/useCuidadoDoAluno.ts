@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { selectView } from "@/lib/supabaseViews";
 import { createRequestGuard } from "@/lib/requestGuard";
+import { cuidadoDeExemplo } from "./exemploDoAluno";
 import { normalizarMomento, rpcAusente, type MomentoDeCuidado } from "./cuidado";
 
 export type EstadoDoCuidado =
@@ -40,6 +41,13 @@ export function useCuidadoDoAluno(alunoId: string, classeId: number) {
 
   useEffect(() => {
     const request = guarda.current.next();
+    // Aluno de exemplo da turma de demonstração: não existe no banco, o dado é do navegador.
+    const exemplo = cuidadoDeExemplo(alunoId, new Date());
+    if (exemplo) {
+      setDados(exemplo);
+      setEstado({ tipo: "pronto" });
+      return;
+    }
     setEstado({ tipo: "carregando" });
     Promise.all([
       ler(supabase.rpc("cuidado_da_turma" as never, { p_classe_id: classeId, p_aluno_id: alunoId } as never)),

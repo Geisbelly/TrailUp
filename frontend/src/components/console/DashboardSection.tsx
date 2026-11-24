@@ -45,7 +45,8 @@ import AbaEvolucao from "./dashboard/AbaEvolucao";
 import AbaInsights from "./dashboard/AbaInsights";
 import AbaGuia from "./dashboard/AbaGuia";
 import PainelDeExemplo from "./dashboard/PainelDeExemplo";
-import { alunosDeExemplo, mostraExemplo } from "./dashboard/exemploDaPesquisa";
+import { alunosDeExemplo, ehAlunoDeExemplo, mostraExemplo } from "./dashboard/exemploDaPesquisa";
+import { evolucaoDeExemplo, personalizacaoDeExemplo } from "./dashboard/aluno/exemploDoAluno";
 import { kpisDosAlunos } from "./dashboard/kpisDosAlunos";
 
 type AbaDaTurma = "visao" | "evolucao" | "conteudo" | "insights" | "guia";
@@ -398,9 +399,15 @@ export default function DashboardSection({ classeDeExemplo = null }: { classeDeE
 
   const selectedAluno = useMemo(() => {
     if (!alunoNaUrl) return null;
+    // Aluno de exemplo da turma de demonstração: o detalhe dele também é de exemplo.
+    if (ehAlunoDeExemplo(alunoNaUrl)) {
+      if (classeDeExemplo == null) return null;
+      const nome = classes.find((c) => c.id === classeDeExemplo)?.descricao || `Turma ${classeDeExemplo}`;
+      return alunosDeExemplo(classeDeExemplo, nome, new Date()).find((a) => a.id === alunoNaUrl) ?? null;
+    }
     const candidatos = alunosAnalisados.filter((a) => a.id === alunoNaUrl);
     return candidatos.find((a) => String(a.classe_id) === turmaNaUrl) ?? candidatos[0] ?? null;
-  }, [alunosAnalisados, alunoNaUrl, turmaNaUrl]);
+  }, [alunosAnalisados, alunoNaUrl, turmaNaUrl, classeDeExemplo, classes]);
 
   // A visao da turma continua montada (so escondida) enquanto o aluno esta
   // aberto, para voltar com a mesma pagina, busca e filtros da tabela; a
@@ -446,6 +453,23 @@ export default function DashboardSection({ classeDeExemplo = null }: { classeDeE
       setPersonalizacaoLoading(false);
       setAlunoEvolucao([]);
       setTurmaEvolucao([]);
+      return;
+    }
+
+    if (ehAlunoDeExemplo(selectedAluno.id)) {
+      const hoje = new Date();
+      const evolucao = evolucaoDeExemplo(selectedAluno.classe_id, hoje);
+      const personalizacao = personalizacaoDeExemplo(selectedAluno.id, hoje);
+      setTurmaEvolucao(evolucao);
+      setAlunoEvolucao(evolucao.filter((linha) => linha.aluno_id === selectedAluno.id));
+      setPersonalizacaoData({
+        aluno_id: selectedAluno.id,
+        classe_id: selectedAluno.classe_id,
+        personalizacoes: personalizacao?.personalizacoes ?? [],
+        progresso_itens: personalizacao?.progressoItens ?? [],
+      });
+      setPersonalizacaoError(null);
+      setPersonalizacaoLoading(false);
       return;
     }
 

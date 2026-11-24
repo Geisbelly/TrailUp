@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { FlaskConical } from "lucide-react";
-import { toast } from "sonner";
 import KpisPrincipais from "./KpisPrincipais";
 import KpisSecundarios from "./KpisSecundarios";
 import AbandonoPorPerfil from "./AbandonoPorPerfil";
@@ -9,7 +8,7 @@ import DistribuicaoNotas from "./DistribuicaoNotas";
 import { N_MINIMO_PADRAO, type SegmentoPerfil } from "./graficos";
 import PrecisamDeAtencao, { type AlunoEmRisco } from "./PrecisamDeAtencao";
 import TabelaAlunos from "./TabelaAlunos";
-import { distribuicaoDosAlunos, ehAlunoDeExemplo, perfisDosAlunos, resumoDosAlunos } from "./exemploDaPesquisa";
+import { distribuicaoDosAlunos, perfisDosAlunos, resumoDosAlunos } from "./exemploDaPesquisa";
 import { kpisDosAlunos } from "./kpisDosAlunos";
 import type { AlunoAnalisado } from "./aluno/tipos";
 import type { Disponibilidade } from "./disponibilidade";
@@ -29,7 +28,7 @@ const SEM_DISPONIBILIDADE = new Map<string, Disponibilidade>();
  * Visão geral da turma de demonstração da pesquisa: os componentes de verdade do console, sobre uma
  * lista de alunos que junta os de exemplo (`alunosDeExemplo`) aos de verdade da turma. Todo número
  * da tela sai dessa lista, então cabeçalho, cartões, gráficos, "precisam de atenção" e tabela batem.
- * Aluno de exemplo não abre detalhe: ele não existe no banco.
+ * O aluno de exemplo abre um detalhe também de exemplo (`aluno/exemploDoAluno.ts`), com o mesmo selo.
  */
 export default function PainelDeExemplo({
   alunos,
@@ -55,15 +54,6 @@ export default function PainelDeExemplo({
   }, [alunos, classeId, dia]);
   const inatividadePct = kpis.totalAlunos ? (100 * resumo.alunos_inativos) / kpis.totalAlunos : null;
   const temAbandono = alunos.some((a) => a.riscoFaixa !== null);
-  const abrir = (aluno: AlunoAnalisado) => {
-    if (ehAlunoDeExemplo(aluno.id)) {
-      toast.info("Aluno de exemplo", {
-        description: "Este aluno é ilustrativo e não tem detalhe. Os alunos sem o rótulo (exemplo) abrem normalmente.",
-      });
-      return;
-    }
-    onAbrir(aluno);
-  };
 
   return (
     <section aria-labelledby="painel-exemplo-titulo" className="space-y-6">
@@ -75,8 +65,9 @@ export default function PainelDeExemplo({
         <p className="max-w-3xl text-[13px] text-muted-foreground">
           A sua turma de demonstração ainda não tem alunos estudando, então ela ganhou alunos inventados,
           marcados com (exemplo) no nome. Todos os números da tela saem dessa mesma lista: o total do topo, os
-          cartões, os gráficos e a tabela batem entre si. O aluno de teste da sua conta entra junto, com o dado
-          real, e o que você fizer com ele no app aparece aqui. Avalie o formato: se entende o que cada painel
+          cartões, os gráficos e a tabela batem entre si. O aluno de teste da sua conta entra na lista assim que
+          você entrar no app com ele, e o que você fizer lá aparece aqui. Clique em um aluno para abrir o
+          detalhe: os de exemplo também têm evolução, trilha, tentativas, personalização e momentos de cuidado. Avalie o formato: se entende o que cada painel
           mostra, se a explicação (o ícone de interrogação ao lado do título) ajuda e se a visualização é clara.
           Nenhum aluno marcado como exemplo descreve uma turma real.
         </p>
@@ -93,7 +84,7 @@ export default function PainelDeExemplo({
         alunos={emRisco}
         totalDaTurma={kpis.totalAlunos}
         mostrarTurma={false}
-        onAbrir={abrir}
+        onAbrir={onAbrir}
       />
 
       <KpisSecundarios
@@ -123,7 +114,7 @@ export default function PainelDeExemplo({
       </div>
 
       <SeloDeExemplo />
-      <TabelaAlunos alunos={alunos} mostrarClasse={false} mostrarAbandono={temAbandono} onAbrir={abrir} />
+      <TabelaAlunos alunos={alunos} mostrarClasse={false} mostrarAbandono={temAbandono} onAbrir={onAbrir} />
     </section>
   );
 }

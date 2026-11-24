@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { concedido, descreverPadrao, faixaValida, filtrarExtrato, limiteDoTexto, mensagemDeErro, numeroOuNulo, precoDaUnidade, textoDoLimite, progressoDoFundo, ROTULO_DO_FUNDO } from "./economiaRegras";
+import { concedido, descreverPadrao, faixaValida, filtrarExtrato, limiteDoTexto, mensagemDeErro, numeroOuNulo, precoDaUnidade, textoDoLimite, progressoDoFundo, resumoDoCriterioDaMeta, ROTULO_DO_FUNDO } from "./economiaRegras";
 
 describe("faixa de prazo e tempo", () => {
   it("aceita mínimo dentro do máximo e máximo dentro do teto", () => {
@@ -113,5 +113,15 @@ describe("carteiras por aluno", () => {
       { id: "a", nome: "Ana", ganhou: 10, gastou: 6, devolvido: 6, saldo: 15 },
       { id: "b", nome: "Beto", ganhou: 0, gastou: 0, devolvido: 0, saldo: 0 },
     ]);
+  });
+});
+
+describe("critério da meta", () => {
+  it("mostra o nome do critério, não a chave do banco", () => {
+    expect(resumoDoCriterioDaMeta("atividades_concluidas", 5)).toBe("Atividades concluídas: pelo menos 5");
+  });
+
+  it("critério desconhecido aparece como veio", () => {
+    expect(resumoDoCriterioDaMeta("outro", 2)).toBe("outro: pelo menos 2");
   });
 });

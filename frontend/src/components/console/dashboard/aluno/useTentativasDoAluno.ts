@@ -11,6 +11,7 @@ import {
   resumirTentativas,
   type ResumoDaAtividade,
 } from "./tentativas";
+import { tentativasDeExemplo } from "./exemploDoAluno";
 
 type Erro = { message: string } | null;
 type Resposta<T> = PromiseLike<{ data: T | null; error: Erro }>;
@@ -51,8 +52,15 @@ export function useTentativasDoAluno(alunoId: string, classeId: number) {
 
   useEffect(() => {
     let vivo = true;
-    setCarregando(true);
     setErro(null);
+    // Aluno de exemplo da turma de demonstração: não existe no banco, o dado é do navegador.
+    const exemplo = tentativasDeExemplo(alunoId, new Date());
+    if (exemplo) {
+      setDados(exemplo);
+      setCarregando(false);
+      return;
+    }
+    setCarregando(true);
     (async () => {
       const [escolha, tentativas, config, pontuacao] = await Promise.all([
         ler<EscolhaDoCronometro | null>(
