@@ -955,7 +955,8 @@ Cada perfil carrega:
   O aluno de teste nasce cadastrado e matriculado (`20261124_05`, gatilho em `pesquisa_avaliador`):
   ele já foi só `auth.users`, e a turma ficava com 0 até o avaliador entrar no app. A linha em `alunos`
   é a mesma que o app cria no login (`Aluno.ensureCurrent`), sem perfil, e o cadastro pelo site grava
-  por cima. Ranking de exemplo tem id negativo e não tem editar nem excluir; nota dada a uma entrega de
+  por cima. O avaliador continua entrando no app com ele (T7 e T8): é lá que informa a data de
+  nascimento e aceita o termo. Não grave nascimento nem perfil pela migration. Ranking de exemplo tem id negativo e não tem editar nem excluir; nota dada a uma entrega de
   exemplo e guilda de exemplo renomeada ficam só no estado da tela, nunca no banco. A cópia publica os tópicos como a turma-modelo
   (`20261123_02`), porque `duplicar_classe` faz tudo nascer `rascunho`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.

@@ -2,9 +2,9 @@
 
 Até aqui, `pesquisa-acesso` criava o aluno de teste só em `auth.users`. A linha em `alunos` e a
 matrícula (`trg_pesquisa_matricula_aluno_teste`, 20261123_01) esperavam o primeiro cadastro no app.
-O avaliador da rodada não entra no app com o aluno de teste, então a turma de demonstração ficava
-com 0 matrículas: a aba Turmas dizia "Alunos 0" e a janela de Matrículas, "Nenhum aluno com acesso
-liberado".
+Até o avaliador chegar às tarefas do aluno (T7 e T8, as últimas do roteiro), a turma de demonstração
+ficava com 0 matrículas: nas tarefas do console, a aba Turmas dizia "Alunos 0" e a janela de
+Matrículas, "Nenhum aluno com acesso liberado".
 
 ## `fn_pesquisa_cadastrar_aluno_teste(p_avaliador bigint)`
 
@@ -18,8 +18,11 @@ Para o avaliador dado, se o aluno de teste existe em `auth.users`:
   matrícula pelo console (o job de personalização do aluno, `fn_enqueue_student_enrollment_job`).
 
 Não sobrescreve nada: aluno que já tem linha em `alunos` fica como está, e matrícula repetida não
-entra. Se o avaliador um dia entrar no app com o aluno de teste, `concluir_cadastro_aluno` grava o
-cadastro por cima (`ON CONFLICT (id) DO UPDATE`) e o questionário grava o perfil.
+entra. O avaliador continua entrando no app com o aluno de teste: `Aluno.ensureCurrent` acha a linha
+e segue, e o app pede a data de nascimento e o termo na entrada, como a qualquer aluno. Até lá, as
+Matrículas mostram o aluno de teste "Sem nascimento". O cadastro pelo site, se feito, grava por cima
+(`concluir_cadastro_aluno`, `ON CONFLICT (id) DO UPDATE`), e o questionário grava o perfil:
+`meu_cadastro_concluido` olha os perfis, não a linha em `alunos`.
 
 Falhar aqui não desfaz a conta: o erro vira `WARNING`, como nos exemplos da turma (20261124_01).
 
