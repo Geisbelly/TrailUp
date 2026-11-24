@@ -29,7 +29,7 @@ const Index = () => {
           <div className="journey-section-heading">
             <p className="journey-eyebrow">Em vídeo</p>
             <h2 id="video-title">O TrailUp em <em>três minutos.</em></h2>
-            <p>O mesmo conteúdo da aula, experiências diferentes para cada aluno.</p>
+            <p>A mesma aula chega de um jeito diferente para cada aluno.</p>
           </div>
           <VideoDoSite slug="apresentacao" />
         </section>

@@ -24,7 +24,7 @@ export default function Download() {
       </div>
       <section className="public-band text-center" aria-labelledby="primeiro-acesso-titulo">
         <h2 id="primeiro-acesso-titulo">Depois de instalar</h2>
-        <p className="mx-auto mb-6 max-w-2xl">Do cadastro à trilha introdutória: confirmar o e-mail, responder ao questionário de preferências e completar o perfil.</p>
+        <p className="mx-auto mb-6 max-w-2xl">Confirme o e-mail, responda ao questionário de preferências e complete o perfil. Depois disso, a trilha introdutória já abre.</p>
         <VideoDoSite slug="guia" />
       </section>
     </PublicLayout>

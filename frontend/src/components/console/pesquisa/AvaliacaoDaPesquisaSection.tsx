@@ -1,21 +1,43 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, BookOpen, GraduationCap } from "lucide-react";
 import { TAREFAS, linkEmbutido, type MeuAcessoNaPesquisa } from "@/features/pesquisa/pesquisaProfessores";
+import { formularioDeAvaliacao, type FormularioDeAvaliacao } from "@/features/pesquisa/formularioDeAvaliacao";
+import { linkDaConfirmacao } from "@/features/pesquisa/inscricaoNoSite";
+import { useAuth } from "@/hooks/useAuth";
 import { consolePathForView } from "@/pages/consoleSections";
+import { FormularioDaAvaliacao } from "./FormularioDaAvaliacao";
+
+// O mesmo App da Web da inscrição responde pelos dois formulários (`formulario=avaliacao`).
+const CONFIRMACAO = linkDaConfirmacao(import.meta.env.VITE_PESQUISA_INSCRICAO_CONFIRMACAO_URL);
 
 /**
  * Aba "Avaliar o TrailUp": o formulário da avaliação dentro do console, para quem a equipe aprovou
  * na pesquisa com professores. O link vem do banco (`pesquisa_meu_acesso()`), não do bundle.
+ * Quando ele é o formulário espelhado em formularioDeAvaliacao.gerado.ts, as perguntas são
+ * desenhadas aqui; senão, a aba mostra o Google Forms num iframe, como antes.
  */
 export default function AvaliacaoDaPesquisaSection({ acesso }: { acesso: MeuAcessoNaPesquisa }) {
-  const embutido = linkEmbutido(acesso.linkAvaliacao);
+  const { user } = useAuth();
+  // undefined = ainda conferindo o link (um hash, instantâneo); null = usa o iframe do Google.
+  const [nativo, setNativo] = useState<FormularioDeAvaliacao | null | undefined>(undefined);
+  useEffect(() => {
+    let vivo = true;
+    formularioDeAvaliacao(acesso.linkAvaliacao)
+      .catch(() => null)
+      .then(f => vivo && setNativo(f));
+    return () => {
+      vivo = false;
+    };
+  }, [acesso.linkAvaliacao]);
+  const embutido = nativo === null ? linkEmbutido(acesso.linkAvaliacao) : null;
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-2">
         <h1 className="text-xl font-bold text-foreground">Avaliar o TrailUp</h1>
         <p className="max-w-3xl text-[13px] text-muted-foreground">
-          Siga o roteiro com o console numa aba e o formulário na outra. Depois de cada tarefa, responda às quatro perguntas
-          rápidas. Dizer que não conseguiu é tão útil quanto dizer que conseguiu.
+          Faça as tarefas do roteiro com o console aberto em outra aba e volte aqui para responder. Cada tarefa tem quatro
+          perguntas rápidas. Contar que não conseguiu ajuda tanto quanto contar que conseguiu.
         </p>
         {!acesso.avaliador && (
           <p className="text-[12px] text-muted-foreground">Você vê esta aba porque administra o projeto.</p>
@@ -65,6 +87,21 @@ export default function AvaliacaoDaPesquisaSection({ acesso }: { acesso: MeuAces
           ))}
         </ol>
       </section>
+
+      {nativo && acesso.linkAvaliacao && (
+        <section aria-labelledby="avaliacao-formulario" className="flex flex-col gap-4 border-t border-border pt-6">
+          <h2 id="avaliacao-formulario" className="text-center font-semibold text-foreground">
+            Formulário
+          </h2>
+          <FormularioDaAvaliacao
+            formulario={nativo}
+            usuario={user?.id ?? "anonimo"}
+            email={user?.email ?? null}
+            confirmacao={CONFIRMACAO}
+            linkDoGoogle={acesso.linkAvaliacao}
+          />
+        </section>
+      )}
 
       {embutido && (
         <section aria-labelledby="avaliacao-formulario" className="flex flex-col gap-2">

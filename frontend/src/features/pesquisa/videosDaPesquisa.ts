@@ -31,27 +31,27 @@ export const VIDEOS_DA_PESQUISA: readonly VideoDaPesquisa[] = [
     titulo: "Conheça o TrailUp",
     papel: "Apresentação",
     descricao:
-      "O que é o TrailUp: o mesmo conteúdo da aula vira experiências diferentes para cada aluno, com guias, missões e guildas, e o professor revisa o material personalizado antes de publicar.",
+      "O mesmo conteúdo da aula chega de um jeito diferente para cada aluno, com guias, missões e guildas. Antes de publicar, o professor revisa o material personalizado.",
     duracao: "3 min",
     arquivo: `${PASTA}apresentacao-trailup.mp4`,
     poster: `${PASTA}apresentacao-trailup.jpg`,
   },
   {
     slug: "para-o-professor",
-    titulo: "Não é falta de vontade, é falta de tempo",
+    titulo: "O tempo de quem dá aula",
     papel: "Para o professor",
     descricao:
-      "O dia de quem dá aula: várias turmas, ritmos diferentes e pouco tempo para acompanhar cada estudante. E como o painel, a Lumi e as missões ajudam nisso.",
+      "Várias turmas, cada aluno num ritmo e pouco tempo para acompanhar todo mundo. O vídeo mostra onde o painel, a Lumi e as missões entram nessa rotina.",
     duracao: "1 min 43 s",
     arquivo: `${PASTA}para-o-professor.mp4`,
     poster: `${PASTA}para-o-professor.jpg`,
   },
   {
     slug: "guia",
-    titulo: "Guia em vídeo: do cadastro à trilha",
+    titulo: "Primeiro acesso, passo a passo",
     papel: "Guia",
     descricao:
-      "O primeiro acesso passo a passo: confirmar o cadastro pelo e-mail, responder ao questionário de preferências, completar o perfil e chegar à trilha introdutória.",
+      "Do e-mail de confirmação até a trilha introdutória, passando pelo questionário de preferências e pelo perfil do aluno.",
     duracao: "3 min 10 s",
     arquivo: `${PASTA}guia-primeiro-acesso.mp4`,
     poster: `${PASTA}guia-primeiro-acesso.jpg`,
