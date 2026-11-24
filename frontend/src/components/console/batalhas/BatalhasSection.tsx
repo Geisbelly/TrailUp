@@ -1,8 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Swords } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina, SeloDeStatus } from "../comum/PaginaDoConsole";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
+import { ehTurmaDeExemplo, useClasseDeExemplo } from "../comum/classeDeExemplo";
+import { batalhasDeExemplo } from "../comum/exemploDasAbas";
+import { AvisoDeExemplo } from "../comum/SeloDeExemplo";
 import { resumoDosEixos } from "../eixos/eixos";
 import { aproveitamento, posicoes, rotuloDoDesfecho, tituloDoDuelo } from "./batalha";
 import { lerBatalhas, type ResumoDasBatalhas } from "./batalhasApi";
@@ -36,7 +39,15 @@ export default function BatalhasSection({ professorId }: { professorId?: string 
     if (turmaId) void carregar(turmaId);
   }, [turmaId, carregar]);
 
-  const ranking = dados ? posicoes(dados.ranking) : [];
+  // Turma de demonstração da pesquisa: duelos e ranking de exemplo junto dos reais (só leitura, como a aba).
+  const exemplo = ehTurmaDeExemplo(useClasseDeExemplo(), turmaId);
+  const mostrados = useMemo<ResumoDasBatalhas | null>(() => {
+    if (!dados || !exemplo) return dados;
+    const ex = batalhasDeExemplo();
+    const duelos = [...dados.duelos, ...ex.duelos].sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
+    return { ...dados, duelos, ranking: [...dados.ranking, ...ex.ranking] };
+  }, [dados, exemplo]);
+  const ranking = mostrados ? posicoes(mostrados.ranking) : [];
 
   return (
     <div>
@@ -57,14 +68,17 @@ export default function BatalhasSection({ professorId }: { professorId?: string 
             </Select>
           )}
 
+          {exemplo && estado === "ok" && (
+            <AvisoDeExemplo texto="As guildas e os duelos marcados (exemplo) não existem no banco: mostram como o ranking fica com a turma jogando." />
+          )}
           {estado === "carregando" && <div role="status" aria-label="Carregando batalhas" className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
           {estado === "erro" && <ErroDaPagina titulo="Não foi possível carregar as batalhas" detalhe={detalhe} onTentarNovamente={() => void carregar(turmaId)} />}
 
-          {estado === "ok" && dados && dados.duelos.length === 0 && (
+          {estado === "ok" && mostrados && mostrados.duelos.length === 0 && (
             <EstadoVazioDaPagina icone={Swords} titulo="Nenhuma batalha ainda" texto="Os duelos são lançados pelos alunos, no app, entre guildas da turma. Quando o primeiro acontecer, o ranking aparece aqui." />
           )}
 
-          {estado === "ok" && dados && dados.duelos.length > 0 && (
+          {estado === "ok" && mostrados && mostrados.duelos.length > 0 && (
             <>
               <section aria-label="Ranking de guildas">
                 <h2 className={rotulo}>Ranking de guildas</h2>
@@ -87,7 +101,7 @@ export default function BatalhasSection({ professorId }: { professorId?: string 
               <section aria-label="Duelos recentes">
                 <h2 className={rotulo}>Duelos recentes</h2>
                 <ul className="mt-2 space-y-2">
-                  {dados.duelos.map((d) => (
+                  {mostrados.duelos.map((d) => (
                     <li key={d.id} className="rounded-[16px] border bg-card px-4 py-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="min-w-0 flex-1 truncate font-semibold">{tituloDoDuelo(d)}</h3>

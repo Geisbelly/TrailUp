@@ -17,6 +17,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina } from "../comum/PaginaDoConsole";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
+import { ehTurmaDeExemplo, useClasseDeExemplo } from "../comum/classeDeExemplo";
+import { entreguesDeExemplo } from "../comum/exemploDasAbas";
+import { AvisoDeExemplo } from "../comum/SeloDeExemplo";
+import { TOTAL_DE_ALUNOS } from "../dashboard/exemploDaPesquisa";
 import { CartaoDaMissao, type TrocaDePerfil } from "./CartaoDaMissao";
 import { FormularioDaMissao, type DadosDaTurma } from "./FormularioDaMissao";
 import { FORMULARIO_DE_MISSAO_VAZIO, prazoParaCampo, type FormularioDeMissao, type PayloadDaAtividade, type PayloadDaMissao } from "./missao";
@@ -73,6 +77,7 @@ const mensagem = (e: unknown, padrao: string) => (e as { message?: string })?.me
 
 export default function MissoesSection({ professorId }: { professorId?: string }) {
   const { turmas, turmaId, setTurmaId, carregando: carregandoTurmas, erro: erroTurmas, recarregar } = useTurmasDoProfessor(professorId);
+  const classeDeExemplo = useClasseDeExemplo();
   const [missoes, setMissoes] = useState<Missao[]>([]);
   const [topicos, setTopicos] = useState<{ id: number; nome: string | null }[]>([]);
   const [estado, setEstado] = useState<"carregando" | "ok" | "erro">("carregando");
@@ -279,10 +284,16 @@ export default function MissoesSection({ professorId }: { professorId?: string }
     await carregar(turmaId);
   };
 
+  // Turma de demonstração da pesquisa: a missão de entrega conta também os alunos de exemplo (só no
+  // cartão; editar, duplicar e corrigir continuam sobre a missão de verdade).
+  const exemplo = ehTurmaDeExemplo(classeDeExemplo, turmaId);
+  const comExemplo = (m: Missao): Missao =>
+    exemplo && m.caminho === "entrega" ? { ...m, entregues: m.entregues + entreguesDeExemplo(m.id), total: m.total + TOTAL_DE_ALUNOS } : m;
+
   const cartao = (m: Missao) => (
     <CartaoDaMissao
       key={m.id}
-      missao={m}
+      missao={comExemplo(m)}
       onEditar={() => { setErroDoServidor(null); setForm({ inicial: formularioDe(m, turmaId ?? 0), editando: m, chave: Date.now() }); }}
       onDuplicar={() => setAcao({ tipo: "duplicar", missao: m })}
       onExcluir={() => setAcao({ tipo: "excluir", missao: m })}
@@ -344,6 +355,9 @@ export default function MissoesSection({ professorId }: { professorId?: string }
           )}
           {estado === "ok" && topicos.length > 0 && missoes.length === 0 && (
             <EstadoVazioDaPagina icone={Flag} titulo="Nenhuma missão ainda" texto="Crie a primeira: objetivo, tópico, prazo e pontuação. Os itens você monta no editor do tópico." acao={{ rotulo: "Nova missão", onClick: abrirNova }} />
+          )}
+          {estado === "ok" && exemplo && missoes.some((m) => m.caminho === "entrega") && (
+            <AvisoDeExemplo texto={`As missões são as de verdade. As entregas das missões de entrega somam os ${TOTAL_DE_ALUNOS} alunos de exemplo, que não existem no banco.`} />
           )}
           {estado === "ok" && pendentes.length > 0 && (
             <section aria-labelledby="missoes-pendentes" className="space-y-3">

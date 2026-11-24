@@ -38,6 +38,9 @@ import {
   type Posicao,
 } from "./rankings/rankings";
 import ExplicacaoDaMetrica from "./comum/ExplicacaoDaMetrica";
+import { useClasseDeExemplo } from "./comum/classeDeExemplo";
+import { CRITERIOS_DO_EXEMPLO, perfisDeExemplo, posicoesDeExemplo } from "./comum/exemploDasAbas";
+import { AvisoDeExemplo } from "./comum/SeloDeExemplo";
 
 interface RankTipo {
   id: number;
@@ -108,6 +111,30 @@ export default function RanksSection() {
   // Confirmação do "Novo período": o nome sugerido já vem preenchido.
   const [novoPeriodo, setNovoPeriodo] = useState<{ rankId: number; nome: string; erro: string | null } | null>(null);
 
+  // Turma de demonstração da pesquisa. Os rankings dela mostram os alunos de exemplo junto dos reais, e
+  // cada critério de `CRITERIOS_DO_EXEMPLO` sem ranking aberto na turma ganha um ranking de exemplo, só
+  // de leitura e só nesta tela (id negativo: nunca existe no banco, e por isso não tem editar nem excluir).
+  const classeDeExemplo = useClasseDeExemplo();
+  const temTurmaDeExemplo = classeDeExemplo != null && classes.some((c) => c.id === classeDeExemplo);
+  const rankingsDeExemplo = useMemo<Rank[]>(() => {
+    if (!temTurmaDeExemplo) return [];
+    const criteriosAbertos = new Set(
+      ranks.filter((r) => r.classe_id === classeDeExemplo && estaAberto(r)).map((r) => criterioValido(tipos.find((t) => t.id === r.tipo_id)?.criterio)),
+    );
+    return CRITERIOS_DO_EXEMPLO.flatMap((criterio) => {
+      const tipo = tipos.find((t) => t.criterio === criterio);
+      if (!tipo || criteriosAbertos.has(criterio)) return [];
+      return [{ id: -tipo.id, tipo_id: tipo.id, classe_id: classeDeExemplo, periodo: "Exemplo", inicio: null, fim: null }];
+    });
+  }, [temTurmaDeExemplo, classeDeExemplo, ranks, tipos]);
+  const todosOsRanks = useMemo(() => [...ranks, ...rankingsDeExemplo], [ranks, rankingsDeExemplo]);
+  const ehDaTurmaDeExemplo = (rank: Rank | null) => rank != null && classeDeExemplo != null && rank.classe_id === classeDeExemplo;
+
+  useEffect(() => {
+    // Sem ranking de verdade selecionado, abre o primeiro de exemplo: a aba não começa vazia.
+    if (!selectedRank && rankingsDeExemplo.length > 0) setSelectedRank(rankingsDeExemplo[0]);
+  }, [selectedRank, rankingsDeExemplo]);
+
   const loadData = async (): Promise<Rank[] | undefined> => {
     if (!professorId) return;
     setIsLoading(true);
@@ -151,6 +178,13 @@ export default function RanksSection() {
   };
 
   const loadPosicoes = async (rank: Rank) => {
+    const criterioDoRank = criterioValido(tipos.find((t) => t.id === rank.tipo_id)?.criterio);
+    if (rank.id < 0) {
+      setPosicoes(posicoesDeExemplo(criterioDoRank));
+      setPerfis(perfisDeExemplo());
+      setVerTodas(false);
+      return;
+    }
     try {
       // Período aberto: vw_rank_posicoes_por_classe calcula posicao/pontuacao/medalha em tempo
       // real (ranks + eventos_aluno + classe_aluno, dentro da janela do período).
@@ -168,30 +202,34 @@ export default function RanksSection() {
       if (error) throw error;
 
       const linhas = (data ?? []) as unknown as { id_aluno: string; nome_aluno: string | null; posicao: number | null; pontuacao: number | null }[];
-      const mapped: Posicao[] = linhas.map((p) => ({
+      const reais: Posicao[] = linhas.map((p) => ({
         aluno_id: p.id_aluno,
         aluno_nome: p.nome_aluno ?? "",
         posicao: p.posicao,
         pontuacao: p.pontuacao,
       }));
+      // Ranking de verdade da turma de demonstração: os reais entram no meio dos exemplos e todo mundo
+      // é reordenado. Período encerrado fica como o banco congelou.
+      const exemplo = ehDaTurmaDeExemplo(rank) && estaAberto(rank);
+      const mapped = exemplo ? posicoesDeExemplo(criterioDoRank, reais) : reais;
       setPosicoes(mapped);
       setVerTodas(false);
 
       // Perfil dominante é enfeite da tabela: se falhar, a coluna só fica vazia.
-      const ids = mapped.map((m) => m.aluno_id).filter(Boolean);
+      const deExemplo = exemplo ? perfisDeExemplo() : new Map<string, BrainHexProfileKey>();
+      const ids = reais.map((m) => m.aluno_id).filter(Boolean);
       if (ids.length === 0) {
-        setPerfis(new Map());
+        setPerfis(deExemplo);
         return;
       }
       const { data: perfilData } = await supabase
         .from("aluno_perfil")
         .select("aluno_id, afinidade, perfil:perfil_id ( nome )")
         .in("aluno_id", ids);
-      setPerfis(
-        perfisDominantes(
-          (perfilData ?? []) as unknown as { aluno_id: string | null; afinidade: number | null; perfil: { nome: string } | null }[],
-        ),
+      const dosReais = perfisDominantes(
+        (perfilData ?? []) as unknown as { aluno_id: string | null; afinidade: number | null; perfil: { nome: string } | null }[],
       );
+      setPerfis(new Map([...deExemplo, ...dosReais]));
     } catch (error) {
       console.error("Erro ao carregar posicoes:", error);
       toast.error("Nao foi possivel carregar as posicoes.");
@@ -363,7 +401,7 @@ export default function RanksSection() {
     </div>
   );
 
-  const { abertos, historico } = separarPorPeriodo(ranks);
+  const { abertos, historico } = separarPorPeriodo(todosOsRanks);
   const selecionado = selectedRank;
   const tipoDoForm = rankFormData.tipo_id ? tipoDe(Number(rankFormData.tipo_id)) : undefined;
   const criterioSelecionado = selecionado ? rotuloDoCriterio(tipoDe(selecionado.tipo_id)?.criterio) : "";
@@ -532,6 +570,7 @@ export default function RanksSection() {
                     );
                   }
                   const ativo = selecionado?.id === rank.id;
+                  const virtual = rank.id < 0;
                   return (
                     <div
                       key={rank.id}
@@ -544,6 +583,9 @@ export default function RanksSection() {
                         </div>
                         <ChevronRight className={`h-[17px] w-[17px] flex-none ${ativo ? "text-primary" : "text-muted-foreground"}`} aria-hidden="true" />
                       </button>
+                      {virtual ? (
+                        <span className="whitespace-nowrap rounded-full border border-warning/60 bg-warning/10 px-2.5 py-1 text-[10.5px] font-semibold">Exemplo</span>
+                      ) : (
                       <div className="flex gap-1.5">
                         <button type="button" className={botaoRedondo} onClick={() => abrirNovoPeriodo(rank)} aria-label={`Novo período de ${titulo(rank)}`} title="Novo período">
                           <CalendarPlus className="h-[13px] w-[13px]" />
@@ -555,6 +597,7 @@ export default function RanksSection() {
                           <Trash2 className="h-[13px] w-[13px]" />
                         </button>
                       </div>
+                      )}
                     </div>
                   );
                 })
@@ -615,6 +658,17 @@ export default function RanksSection() {
                 </div>
               </div>
 
+              {ehDaTurmaDeExemplo(selecionado) && (
+                <div className="px-6 pt-4">
+                  <AvisoDeExemplo
+                    texto={
+                      selecionado.id < 0
+                        ? "Ranking de exemplo: não existe no banco. Mostra como as posições ficam com a turma estudando."
+                        : "Os alunos marcados (exemplo) não existem no banco: entram aqui junto dos alunos de verdade da turma."
+                    }
+                  />
+                </div>
+              )}
               {rankPosicoes.length === 0 ? (
                 <p className="px-6 py-12 text-center text-sm text-muted-foreground">
                   {estaAberto(selecionado) ? "Nenhuma posição registrada neste ranking ainda." : "Este período fechou sem nenhum aluno classificado."}

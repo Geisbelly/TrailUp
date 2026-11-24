@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Lock, LockOpen, Pencil, Shield, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina, SeloDeStatus } from "../comum/PaginaDoConsole";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
+import { ehTurmaDeExemplo, useClasseDeExemplo } from "../comum/classeDeExemplo";
+import { ehGuildaDeExemplo, guildasDeExemplo, SEM_GUILDA_NO_EXEMPLO } from "../comum/exemploDasAbas";
+import { AvisoDeExemplo } from "../comum/SeloDeExemplo";
+import { TOTAL_DE_ALUNOS } from "../dashboard/exemploDaPesquisa";
 import {
   DESCRICAO_MAX,
   NOME_MAX,
@@ -44,6 +48,16 @@ export default function GuildasSection({ professorId }: { professorId?: string }
   const [erros, setErros] = useState<ErrosDaFormacao>({});
   const [salvando, setSalvando] = useState(false);
   const [editando, setEditando] = useState<{ id: string; nome: string; descricao: string; erros: ErrosDaGuilda } | null>(null);
+  // Turma de demonstração da pesquisa: guildas de exemplo junto das reais. Renomear uma delas muda só
+  // este estado; a formação (tamanho, janela) continua a de verdade, gravada no banco.
+  const exemplo = ehTurmaDeExemplo(useClasseDeExemplo(), turmaId);
+  const [renomeadas, setRenomeadas] = useState<Record<string, { nome: string; descricao: string | null }>>({});
+  const guildasMostradas = useMemo(() => {
+    if (!formacao) return [];
+    if (!exemplo) return formacao.guildas;
+    const exemplos = guildasDeExemplo(formacao.tamanhoMaximo).map((g) => ({ ...g, ...renomeadas[g.id] }));
+    return [...formacao.guildas, ...exemplos];
+  }, [formacao, exemplo, renomeadas]);
 
   const carregar = useCallback(async (id: number) => {
     setEstado("carregando");
@@ -95,6 +109,12 @@ export default function GuildasSection({ professorId }: { professorId?: string }
       setEditando({ ...editando, erros: v.erros });
       return;
     }
+    if (ehGuildaDeExemplo(editando.id)) {
+      setRenomeadas((atual) => ({ ...atual, [editando.id]: { nome: v.nome, descricao: v.descricao || null } }));
+      toast.info("Guilda de exemplo: a mudança fica só nesta tela e não é gravada.");
+      setEditando(null);
+      return;
+    }
     setSalvando(true);
     try {
       await renomearGuilda(editando.id, v.nome, v.descricao);
@@ -114,6 +134,8 @@ export default function GuildasSection({ professorId }: { professorId?: string }
   const resumo = formacao ? resumoDaJanela(formacao, agoraDoBanco) : null;
   const situacao = formacao ? estadoDaJanela(formacao, agoraDoBanco) : null;
   const minimo = formacao ? tamanhoMinimoPermitido(formacao.guildas) : TAMANHO_MIN;
+  const naTurma = (formacao?.alunosNaTurma ?? 0) + (exemplo ? TOTAL_DE_ALUNOS : 0);
+  const semGuilda = (formacao?.alunosSemGuilda ?? 0) + (exemplo ? SEM_GUILDA_NO_EXEMPLO : 0);
 
   return (
     <div>
@@ -134,6 +156,9 @@ export default function GuildasSection({ professorId }: { professorId?: string }
             </Select>
           )}
 
+          {exemplo && estado === "ok" && (
+            <AvisoDeExemplo texto="As guildas marcadas (exemplo) e os alunos delas não existem no banco. Renomear uma delas muda só esta tela; a formação é a de verdade." />
+          )}
           {estado === "carregando" && <div role="status" aria-label="Carregando guildas" className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}
           {estado === "erro" && <ErroDaPagina titulo="Não foi possível carregar as guildas" detalhe={detalhe} onTentarNovamente={() => void carregar(turmaId)} />}
 
@@ -148,7 +173,7 @@ export default function GuildasSection({ professorId }: { professorId?: string }
                     </div>
                     <p className="mt-1.5 text-[13px] text-muted-foreground">{resumo.detalhe}</p>
                     <p className="mt-1 text-[11.5px] text-muted-foreground">
-                      {formacao.alunosNaTurma} {formacao.alunosNaTurma === 1 ? "aluno" : "alunos"} na turma · {formacao.alunosSemGuilda} sem guilda
+                      {naTurma} {naTurma === 1 ? "aluno" : "alunos"} na turma · {semGuilda} sem guilda
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -202,13 +227,13 @@ export default function GuildasSection({ professorId }: { professorId?: string }
                   <h2 className="text-lg font-bold">Guildas da turma</h2>
                   <p className="mt-1 text-xs text-muted-foreground">Os alunos criam as guildas no app. Aqui você acompanha quem está em cada uma e pode corrigir nome e descrição.</p>
                 </div>
-                {formacao.guildas.length === 0 ? (
+                {guildasMostradas.length === 0 ? (
                   <div className="px-[22px] pb-[22px]">
                     <EstadoVazioDaPagina icone={Users} titulo="Nenhuma guilda ainda" texto="Quando os alunos criarem a primeira guilda no app, ela aparece aqui." />
                   </div>
                 ) : (
                   <ul className="flex flex-col gap-2.5 px-[22px] pb-[22px]">
-                    {formacao.guildas.map((g) => (
+                    {guildasMostradas.map((g) => (
                       <li key={g.id} className="rounded-[14px] bg-muted px-4 py-3.5">
                         {editando?.id === g.id ? (
                           <div className="space-y-3" role="group" aria-label={`Editar ${g.nome}`}>
