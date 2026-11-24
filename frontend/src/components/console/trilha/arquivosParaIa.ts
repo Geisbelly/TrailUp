@@ -1,4 +1,4 @@
-import JSZip from "jszip";
+import type JSZip from "jszip";
 
 /**
  * Os arquivos do professor como a edge function `generate-content-ai` os manda
@@ -18,6 +18,12 @@ import JSZip from "jszip";
  * `A2#i3`. É assim que o texto gerado marca uma figura (`{{figura:A2#i3|…}}`),
  * e `figurasDaTrilha.ts` troca o marcador pela imagem ao aplicar a trilha.
  */
+
+/** O JSZip (~95 KB) só desce quando o professor anexa um PPTX ou DOCX: fora do pedaço da Trilha. */
+async function abrirZip(dados: ArrayBuffer | Uint8Array): Promise<JSZip> {
+  const { default: Zip } = await import("jszip");
+  return Zip.loadAsync(dados);
+}
 
 export type ImagemDoAnexo = { id: string; mimeType: string; base64: string };
 
@@ -172,7 +178,7 @@ async function coletarImagem(
 
 /** Texto slide a slide e as imagens de cada slide, na ordem dos slides. */
 export async function lerPptx(dados: ArrayBuffer | Uint8Array, id: string): Promise<{ texto: string; imagens: ImagemDoAnexo[] }> {
-  const zip = await JSZip.loadAsync(dados);
+  const zip = await abrirZip(dados);
   const slides = Object.keys(zip.files)
     .map((caminho) => ({ caminho, n: Number(/^ppt\/slides\/slide(\d+)\.xml$/.exec(caminho)?.[1]) }))
     .filter((s) => Number.isInteger(s.n) && s.n > 0)
@@ -202,7 +208,7 @@ export async function lerPptx(dados: ArrayBuffer | Uint8Array, id: string): Prom
 
 /** Parágrafos do documento, com `[imagem A3#i1]` onde a imagem está. */
 export async function lerDocx(dados: ArrayBuffer | Uint8Array, id: string): Promise<{ texto: string; imagens: ImagemDoAnexo[] }> {
-  const zip = await JSZip.loadAsync(dados);
+  const zip = await abrirZip(dados);
   const xml = (await zip.file("word/document.xml")?.async("string")) ?? "";
   const rels = await relacoes(zip, "word/_rels/document.xml.rels", "word");
   const imagens: ImagemDoAnexo[] = [];

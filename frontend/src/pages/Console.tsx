@@ -38,6 +38,7 @@ const AvaliacaoDaPesquisaSection = lazyWithReload(() => import("@/components/con
 const PainelDoRoteiro = lazyWithReload(() => import("@/components/console/pesquisa/PainelDoRoteiro"));
 import { lerMeuAcesso, type MeuAcessoNaPesquisa } from "@/features/pesquisa/links";
 import { ClasseDeExemplo } from "@/components/console/comum/classeDeExemplo";
+import { SecaoCarregando } from "@/components/console/comum/SecaoCarregando";
 
 // A Administração e o painel técnico só são visíveis para a dona do projeto (TCC);
 // os demais professores nunca veem nem conseguem acessar essa view. Quem é o
@@ -75,7 +76,10 @@ export default function Console() {
   // null = ainda conferindo; não decide o redirecionamento antes da resposta.
   const [ownerStatus, setOwnerStatus] = useState<boolean | null>(null);
   const isOwner = ownerStatus === true;
-  const professorId = professorData?.id;
+  // O id do professor é o da sessão (`professorData.id` sai de `user.id`). As duas conferências abaixo
+  // (`pesquisa_meu_acesso` e `app_e_dono`) leem `auth.uid()` no banco e não precisam da linha de
+  // `professor`: saem junto com ela, em vez de esperar a resposta dela.
+  const professorId = user?.id;
   // Pesquisa com professores: undefined = conferindo; null = não participa (a aba some).
   const [acessoDaPesquisa, setAcessoDaPesquisa] = useState<MeuAcessoNaPesquisa | null | undefined>(undefined);
   // A turma de demonstração do avaliador: as abas com exemplo (Visão geral, Rankings, Batalhas, Guildas, Notas) a leem do contexto.
@@ -231,8 +235,8 @@ export default function Console() {
         <ClasseDeExemplo.Provider value={classeDeExemplo}>
         <Suspense
           fallback={
-            <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <div className="console-section-content flex-1 overflow-auto">
+              <SecaoCarregando rotulo="Carregando a aba…" />
             </div>
           }
         >
@@ -270,14 +274,14 @@ export default function Console() {
                 // A URL é digitável: sem dono confirmado, manda para o dashboard em vez de uma página em
                 // branco, e espera professorData carregar para não expulsar o próprio dono no primeiro
                 // render. Quem de fato recusa é o banco (`painel_tecnico` confere `app_e_dono()`).
-                isOwner ? <PainelTecnicoSection /> : professorData && ownerStatus === false ? <Navigate to={consolePathForView("dashboard")} replace /> : null
+                isOwner ? <PainelTecnicoSection /> : professorData && ownerStatus === false ? <Navigate to={consolePathForView("dashboard")} replace /> : <SecaoCarregando />
               ) : view === "administracao" ? (
                 // Idem: cada função `admin_*` confere `app_e_dono()` antes de ler ou gravar.
-                isOwner ? <AdministracaoSection /> : professorData && ownerStatus === false ? <Navigate to={consolePathForView("dashboard")} replace /> : null
+                isOwner ? <AdministracaoSection /> : professorData && ownerStatus === false ? <Navigate to={consolePathForView("dashboard")} replace /> : <SecaoCarregando />
               ) : view === "avaliacao" ? (
                 // Quem decide é o banco (`pesquisa_meu_acesso()`); a URL digitada por quem não participa
                 // volta para o dashboard depois da resposta.
-                acessoDaPesquisa ? <AvaliacaoDaPesquisaSection acesso={acessoDaPesquisa} /> : acessoDaPesquisa === null ? <Navigate to={consolePathForView("dashboard")} replace /> : null
+                acessoDaPesquisa ? <AvaliacaoDaPesquisaSection acesso={acessoDaPesquisa} /> : acessoDaPesquisa === null ? <Navigate to={consolePathForView("dashboard")} replace /> : <SecaoCarregando />
               ) : (
                 <ClassManagementSection professorId={professorData?.id} />
               )}

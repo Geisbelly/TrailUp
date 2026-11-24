@@ -1104,7 +1104,11 @@ export default function TopicsManager() {
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-muted-foreground">Carregando tópicos...</div>
+        // Mesmo esqueleto das outras abas (`console-skeleton`), do tamanho do canvas: antes era uma linha de
+        // texto, e a tela saltava quando o mapa chegava.
+        <div role="status" aria-live="polite" className="console-skeleton min-h-[420px] flex-1">
+          <span className="sr-only">Carregando tópicos…</span>
+        </div>
       ) : !selectedClassFilter ? (
         <div className="flex flex-col items-center rounded-[20px] border bg-card px-6 py-20 text-center">
           <Workflow className="h-12 w-12 text-muted-foreground/60" aria-hidden="true" />

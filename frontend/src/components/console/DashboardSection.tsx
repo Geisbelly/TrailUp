@@ -204,28 +204,20 @@ export default function DashboardSection({ classeDeExemplo = null }: { classeDeE
       // = soma de `dwell_sec`), que ja' filtra `scope = 'topic'`. Filtrar o
       // escopo e' obrigatorio: os escopos sao aninhados de forma inclusiva e
       // somar topic+content+material multiplicaria o tempo (ver CLAUDE.md).
-      let presencaPorAlunoClasse = new Map<string, number>();
-      if (alunoIds.length > 0) {
-        const { data: presencaData, error: presencaError } = await supabase
-          // `as never`: os tipos gerados na main cobrem 26 entidades e nao
-          // incluem as views. O #296 regenera para 208 — quando entrar, este
-          // cast sai. Mesma convencao ja usada em personalizacoesApi.ts.
-          .from("vw_telemetria_tempo_topico_aluno" as never)
-          .select("aluno_id, classe_id, tempo_total_seg")
-          .in("classe_id", classIds)
-          .in("aluno_id", alunoIds);
-
-        if (presencaError) {
-          // Metrica secundaria: a tela vale sem ela. Sumir em silencio seria
-          // pior — viraria "0 min de presenca", indistinguivel do aluno que
-          // nunca abriu o app.
-          console.warn("[dashboard] presenca indisponivel:", presencaError);
-        } else {
-          presencaPorAlunoClasse = somarPresencaPorAluno(
-            (presencaData ?? []) as unknown as LinhaPresenca[],
-          );
-        }
-      }
+      //
+      // A presenca so' depende de turmas e alunos: vai no mesmo lote das
+      // leituras abaixo, em vez de esperar sozinha uma ida e volta ao banco.
+      const presencaPromise =
+        alunoIds.length > 0
+          ? supabase
+              // `as never`: os tipos gerados na main cobrem 26 entidades e nao
+              // incluem as views. O #296 regenera para 208 — quando entrar, este
+              // cast sai. Mesma convencao ja usada em personalizacoesApi.ts.
+              .from("vw_telemetria_tempo_topico_aluno" as never)
+              .select("aluno_id, classe_id, tempo_total_seg")
+              .in("classe_id", classIds)
+              .in("aluno_id", alunoIds)
+          : null;
 
       const [
         { data: alunosData, error: alunosError },
@@ -234,6 +226,7 @@ export default function DashboardSection({ classeDeExemplo = null }: { classeDeE
         { data: topicosData, error: topicosError },
         { data: topicoAlunoData, error: taError },
         { data: atividadesData, error: atividadesError },
+        presencaResposta,
       ] = await Promise.all([
         alunoIds.length > 0
           ? supabase.from("alunos").select("id, nome, email, modooperacao_id").in("id", alunoIds)
@@ -250,7 +243,22 @@ export default function DashboardSection({ classeDeExemplo = null }: { classeDeE
           ? supabase.from("topico_aluno").select("aluno_id, topico_id, status, percentual_concluido")
           : Promise.resolve({ data: [], error: null }),
         supabase.from("atividades").select("id, titulo"),
+        presencaPromise,
       ]);
+
+      let presencaPorAlunoClasse = new Map<string, number>();
+      if (presencaResposta) {
+        if (presencaResposta.error) {
+          // Metrica secundaria: a tela vale sem ela. Sumir em silencio seria
+          // pior — viraria "0 min de presenca", indistinguivel do aluno que
+          // nunca abriu o app.
+          console.warn("[dashboard] presenca indisponivel:", presencaResposta.error);
+        } else {
+          presencaPorAlunoClasse = somarPresencaPorAluno(
+            (presencaResposta.data ?? []) as unknown as LinhaPresenca[],
+          );
+        }
+      }
 
       if (alunosError) throw alunosError;
       if (modoError) throw modoError;
