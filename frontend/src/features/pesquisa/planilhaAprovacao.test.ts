@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
+import { ESPELHO_DA_AVALIACAO } from "./formularioDeAvaliacao.gerado";
 
 // Roda o Planilha.gs de verdade: o gatilho ao editar só pode disparar o processamento quando a
 // edição aprovou alguém, senão toda digitação na planilha chamaria a edge function.
@@ -103,5 +104,35 @@ describe("gatilho ao editar a planilha de inscrições", () => {
     (contexto.instalarProcessamentoAutomatico as () => void)();
     expect(apagados.sort()).toEqual(["aoEditarPlanilha", "processarAprovados"]);
     expect(criados.sort()).toEqual(["aoEditarPlanilha", "processarAprovados"]);
+  });
+});
+
+describe("link da avaliação no e-mail de acesso", () => {
+  const LINK = "https://docs.google.com/forms/d/e/1FAIpQLSdX/viewform";
+
+  function linkCom(email: string, propriedade: string | null = null) {
+    const contexto: Record<string, unknown> = {};
+    runInNewContext(PLANILHA_GS, contexto);
+    contexto.PropertiesService = { getScriptProperties: () => ({ getProperty: () => propriedade }) };
+    return (contexto.linkDaAvaliacaoComEmail_ as (l: string, e: string) => string)(LINK, email);
+  }
+
+  it("vem com o e-mail preenchido no entry do espelho", () => {
+    const entry = PLANILHA_GS.match(/const ENTRY_EMAIL_AVALIACAO = '([^']+)'/)?.[1];
+    const doEspelho = ESPELHO_DA_AVALIACAO.paginas
+      .flatMap(p => p.itens)
+      .find(i => i.tipo === "texto" && i.email);
+    expect(doEspelho && "entry" in doEspelho ? doEspelho.entry : null).toBe(entry);
+    const url = new URL(linkCom("ana@exemplo.com"));
+    expect(url.searchParams.get("usp")).toBe("pp_url");
+    expect(url.searchParams.get(entry!)).toBe("ana@exemplo.com");
+  });
+
+  it("a propriedade troca o entry, e link que não é do Forms volta como veio", () => {
+    expect(new URL(linkCom("ana@exemplo.com", "entry.9")).searchParams.get("entry.9")).toBe("ana@exemplo.com");
+    const contexto: Record<string, unknown> = {};
+    runInNewContext(PLANILHA_GS, contexto);
+    const f = contexto.linkDaAvaliacaoComEmail_ as (l: string, e: string) => string;
+    expect(f("https://trailup.vercel.app/console/avaliar", "ana@exemplo.com")).toBe("https://trailup.vercel.app/console/avaliar");
   });
 });

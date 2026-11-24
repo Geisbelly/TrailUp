@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowUpRight, BookOpen, GraduationCap, PlayCircle } from "lucide-react";
 import { TAREFAS, linkEmbutido, type MeuAcessoNaPesquisa } from "@/features/pesquisa/pesquisaProfessores";
-import { formularioDeAvaliacao, type FormularioDeAvaliacao } from "@/features/pesquisa/formularioDeAvaliacao";
+import { formularioDeAvaliacao, linkComEmail, type FormularioDeAvaliacao } from "@/features/pesquisa/formularioDeAvaliacao";
 import { linkDaConfirmacao } from "@/features/pesquisa/inscricaoNoSite";
 import { useAuth } from "@/hooks/useAuth";
 import { consolePathForView } from "@/pages/consoleSections";
@@ -33,6 +33,8 @@ export default function AvaliacaoDaPesquisaSection({ acesso }: { acesso: MeuAces
     };
   }, [acesso.linkAvaliacao]);
   const embutido = nativo === null ? linkEmbutido(acesso.linkAvaliacao) : null;
+  // Formulário reconhecido: o link do Google também já leva o e-mail do login.
+  const linkDoGoogle = nativo ? linkComEmail(nativo, user?.email ?? null) : acesso.linkAvaliacao;
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-2">
@@ -48,7 +50,7 @@ export default function AvaliacaoDaPesquisaSection({ acesso }: { acesso: MeuAces
 
       <div className="flex flex-wrap gap-3">
         {acesso.linkAvaliacao ? (
-          <a className="journey-button journey-button-coral inline-flex" href={acesso.linkAvaliacao} target="_blank" rel="noopener noreferrer">
+          <a className="journey-button journey-button-coral inline-flex" href={linkDoGoogle ?? acesso.linkAvaliacao} target="_blank" rel="noopener noreferrer">
             Abrir o formulário em outra aba <ArrowUpRight size={16} aria-hidden="true" />
           </a>
         ) : (
@@ -103,7 +105,7 @@ export default function AvaliacaoDaPesquisaSection({ acesso }: { acesso: MeuAces
             usuario={user?.id ?? "anonimo"}
             email={user?.email ?? null}
             confirmacao={CONFIRMACAO}
-            linkDoGoogle={acesso.linkAvaliacao}
+            linkDoGoogle={linkDoGoogle ?? acesso.linkAvaliacao}
           />
         </section>
       )}
