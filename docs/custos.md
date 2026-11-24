@@ -8,7 +8,7 @@ números publicados na v7, em [`analises/custos-jic-2026/`](analises/custos-jic-
 projeta planos pagos; este documento registra o que acontece de fato. Os R$ 435 de parte fixa são
 projeção, não gasto.
 
-Última atualização: 20/11/2026.
+Última atualização: 24/11/2026.
 
 ## O que é pago hoje
 
@@ -114,6 +114,7 @@ Guardião custa essa chamada mais o juiz de grounding.
 
 | Data | Decisão | Efeito | Estado |
 |---|---|---|---|
+| 24/11/2026 | O Guia e a Lumi de quem avalia o TrailUp conhecem a avaliação (`avaliacao_trailup`: roteiro, etapas marcadas e anotações) | Nenhuma chamada nova. Só nas contas de avaliador (12 a 16 pessoas), o pedido do Guia, do juiz e da Lumi cresce com o roteiro (3.422 caracteres) e até 30 anotações de até 600 caracteres, perto do fim do payload. As outras contas não mudam. Tokens a mais: PENDENTE, sem medir. Três leituras no banco por pergunta | No PR, sem medir |
 | 20/11/2026 | Desafios gerados sozinhos para os conteúdos parados (`desafios_auto_loop` → edge `generate-content-ai`, modo `desafios`, mesmas chaves Gemini da edge) | Teto de `desafios_auto_por_dia` (20) conteúdos reivindicados por dia, contado desde a meia-noite do Pacífico; uma tentativa por pedido, com o rodízio de chaves e modelo em 429/503 à parte. 429, 401 e falha de rede também ocupam vaga do dia, porque a vaga é a reivindicação. O conteúdo que volta de uma espera no mesmo dia é pedido de novo sem vaga nova; o ritmo (`desafios_auto_por_passada` = 2 a cada `desafios_auto_intervalo_seg` = 600 s) é o que limita esses pedidos. Chamadas ao modelo por pedido e tokens: PENDENTE, sem medir (a edge não registra uso) | No PR, sem medir |
 | 20/11/2026 | Modo de cuidado: o Guia classifica o bem-estar do aluno (`registro.bem_estar`) | Nenhuma chamada nova: o nível sai na mesma resposta do Guia, como o resto do `registro`. A saída ganha um campo curto e o prompt, um parágrafo fixo de conduta (no começo, sem mexer na ordem do payload). Os sinais de uso são contados no aparelho, sem modelo. Tokens a mais: PENDENTE, sem medir. Com consentimento, uma chamada de função no banco por resposta com mal-estar | No PR, sem medir |
 | 18/11/2026 | Desafios de lógica e cruzadinha sugeridos por conteúdo, no mesmo clique das sugestões | Até 3 chamadas a mais por clique com texto, 1 com material pesado; ver os limites acima. Sem medição: a edge não registra uso | Em revisão |

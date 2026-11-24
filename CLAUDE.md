@@ -906,6 +906,13 @@ Cada perfil carrega:
   avaliação não vai no bundle: `pesquisa_meu_acesso()` o entrega só ao avaliador e ao dono, e é
   ela que mostra a aba "Avaliar o TrailUp".
 
+  **O Guia do aluno de teste e a Lumi do professor avaliador conhecem a avaliação**
+  (`app/services/avaliacao_trailup.py`): o roteiro, o que ele marcou e as anotações dele, só nessas
+  duas contas (as outras não ganham a chave `avaliacao_trailup`). O roteiro é cópia
+  (`api/app/agent/prompts/pesquisa_roteiro.json`) de `roteiroDaPesquisa.ts`, com teste de paridade
+  no frontend. Os dois ajudam a fazer a avaliação e **nunca sugerem nota nem opinião**: o juiz do Guia
+  reprova a resposta que faz isso.
+
   **A Visão geral da turma de demonstração mostra números de EXEMPLO** (`PainelDeExemplo`,
   `exemploDaPesquisa.ts`): a rodada avalia o formato das métricas, não o dado, e não se cria aluno
   fictício para preenchê-la. Vale só com essa turma sozinha em tela e só para o avaliador; os
