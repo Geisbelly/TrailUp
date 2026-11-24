@@ -336,14 +336,14 @@ async def test_destinos_saem_filtrados_pela_lista_fechada(monkeypatch, pergunta)
 async def test_sem_destinos_do_modelo_o_botao_sai_do_texto(monkeypatch) -> None:
     llm = AsyncMock()
     llm.ainvoke_structured.return_value = EscribaSaida(
-        resposta="Em Economia > Prazos e tempo ajuste os limites. Depois, em Turmas, confira as matrículas e veja as Notas e Metas."
+        resposta="Em Economia > Loja ajuste os limites. Depois, em Turmas, confira as matrículas e veja as Notas e Metas."
     )
     service, _ = _servico(monkeypatch, llm)
 
     r = await service.perguntar("prof-1", PerguntaEscriba(pergunta="como usar a aba de economia?", classe_id=54))
 
     # "Notas" e "Metas" sem "em"/"aba"/"Economia >" são palavras da frase, não botões.
-    assert r.destinos == ["economia.prazos", "classes"]
+    assert r.destinos == ["economia.loja", "classes"]
 
 
 @pytest.mark.asyncio

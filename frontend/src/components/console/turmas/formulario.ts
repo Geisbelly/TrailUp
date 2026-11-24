@@ -2,6 +2,8 @@
 // Regras puras de validação e a ordem de gravação da criação, com o banco
 // injetado para poder testar o caminho de falha.
 
+import type { ConfigDaTurma } from "../economia/economiaApi";
+
 export type ModoDoFormulario = "criar" | "editar";
 
 export type CamposDaTurma = {
@@ -31,6 +33,8 @@ export type DadosDaTurma = {
   novaMateria: { nome: string; descricao: string | null } | null;
   /** Só ao editar, e só quando o banco já tem as colunas. */
   xpNota?: PesoDoXp;
+  /** Padrão de prazo e tempo extra da loja. Só ao editar, e só quando algum campo mudou. */
+  prazos?: ConfigDaTurma;
 };
 
 export type ErrosDoFormulario = Partial<Record<"nome" | "materia" | "xpPeso" | "xpMeta", string>>;

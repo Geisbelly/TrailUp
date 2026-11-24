@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MAX_NOME, PESO_XP_MAXIMO, notaComMetaCumprida, validarFormulario, type CamposDaTurma, type DadosDaTurma, type ErrosDoFormulario, type ModoDoFormulario } from "./formulario";
+import { carregarConfig, type ConfigDaTurma } from "../economia/economiaApi";
+import { CAMPOS_DA_TURMA, validarPrazosDaTurma, type ChaveDaTurma } from "../economia/economiaRegras";
 
 type Materia = { id: number; nome: string | null };
 
@@ -16,6 +18,7 @@ const CAMPO =
  */
 export function FormularioDeTurma({
   modo,
+  turmaId,
   inicial,
   materias,
   salvando,
@@ -23,6 +26,8 @@ export function FormularioDeTurma({
   onCancelar,
 }: {
   modo: ModoDoFormulario;
+  /** Ao editar: a turma cujo padrão de prazo e tempo extra o formulário carrega. */
+  turmaId?: number;
   inicial: CamposDaTurma;
   materias: Materia[];
   salvando: boolean;
@@ -43,6 +48,26 @@ export function FormularioDeTurma({
     primeiro.current?.focus();
   }, []);
 
+  // Padrão de prazo e tempo extra da loja (antes, aba Prazos da Economia). Sem leitura, a seção some
+  // e salvar a turma não mexe nele.
+  const [config, setConfig] = useState<ConfigDaTurma | null>(null);
+  const [prazos, setPrazos] = useState<Record<ChaveDaTurma, string> | null>(null);
+  const [erroPrazos, setErroPrazos] = useState("");
+  useEffect(() => {
+    if (modo !== "editar" || !turmaId) return;
+    let vivo = true;
+    carregarConfig(turmaId)
+      .then((c) => {
+        if (!vivo) return;
+        setConfig(c);
+        setPrazos(Object.fromEntries(CAMPOS_DA_TURMA.map((f) => [f.chave, String(c[f.chave])])) as Record<ChaveDaTurma, string>);
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [modo, turmaId]);
+
   const mudar = (campo: keyof CamposDaTurma, valor: string) => {
     setCampos((c) => ({ ...c, [campo]: valor }));
     if (campo === "nome" || campo === "xpPeso" || campo === "xpMeta") setErros((e) => ({ ...e, [campo]: undefined }));
@@ -57,7 +82,17 @@ export function FormularioDeTurma({
       if (v.erros.nome) primeiro.current?.focus();
       return;
     }
-    onSalvar(v.dados);
+    let dados = v.dados;
+    if (config && prazos) {
+      const p = validarPrazosDaTurma(prazos);
+      if ("erro" in p) {
+        setErroPrazos(p.erro);
+        return;
+      }
+      const mudou = CAMPOS_DA_TURMA.some((f) => p.valores[f.chave] !== config[f.chave]);
+      if (mudou) dados = { ...dados, prazos: { ...config, ...p.valores } };
+    }
+    onSalvar(dados);
   };
 
   const noTeclado = (e: KeyboardEvent<HTMLFormElement>) => {
@@ -227,6 +262,42 @@ export function FormularioDeTurma({
             A nota final mistura a nota das atividades com o XP do aluno, até a meta. O XP só soma: quem tem pouco XP fica
             com a nota das atividades. Com 0%, a nota final é a nota média.
             {exemplo !== null && ` Exemplo: nota 7 com a meta cumprida vira ${exemplo.toLocaleString("pt-BR")}.`}
+          </p>
+        </fieldset>
+      )}
+
+      {prazos && (
+        <fieldset className="mt-4 rounded-[14px] border border-border px-4 pb-4 pt-2">
+          <legend className="console-label-sm px-1">Prazo e tempo extra da loja</legend>
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr))]">
+            {CAMPOS_DA_TURMA.map((f) => (
+              <div key={f.chave}>
+                <label htmlFor={`${id}-${f.chave}`} className="text-[12.5px] font-semibold text-foreground">
+                  {f.rotulo}
+                </label>
+                <input
+                  id={`${id}-${f.chave}`}
+                  inputMode="numeric"
+                  value={prazos[f.chave]}
+                  onChange={(e) => {
+                    setPrazos((atual) => (atual ? { ...atual, [f.chave]: e.target.value } : atual));
+                    setErroPrazos("");
+                  }}
+                  aria-invalid={!!erroPrazos}
+                  aria-describedby={`${id}-prazos-ajuda${erroPrazos ? ` ${id}-erro-prazos` : ""}`}
+                  className={CAMPO}
+                />
+              </div>
+            ))}
+          </div>
+          {erroPrazos && (
+            <p id={`${id}-erro-prazos`} role="alert" className="mt-2 text-xs text-[hsl(var(--destructive))]">
+              {erroPrazos}
+            </p>
+          )}
+          <p id={`${id}-prazos-ajuda`} className="mt-2 text-xs leading-normal text-muted-foreground">
+            Quanto o aluno pode estender prazo e tempo com os itens da loja. É o padrão da turma: cada tópico e cada atividade pode ter
+            uma regra própria, no editor da trilha.
           </p>
         </fieldset>
       )}

@@ -25,6 +25,7 @@ import {
   type Visualizacao,
 } from "./turmas/listaDeTurmas";
 import SegmentedPills from "./dashboard/SegmentedPills";
+import { salvarConfig } from "./economia/economiaApi";
 import { FaixaTurmaCriada, FormularioDeTurma } from "./turmas/FormularioDeTurma";
 import { CAMPOS_VAZIOS, criarTurma, nomeDaTurma, type BancoDeTurmas, type DadosDaTurma, type PesoDoXp } from "./turmas/formulario";
 import { resumirTurmas, type MatriculaDaTurma, type ResumoDaTurma, type TopicoDaTurma } from "./turmas/resumo";
@@ -210,6 +211,7 @@ export default function ClassManagementSection({ professorId }: Props) {
           .select("id");
         if (error) throw new Error(error.message);
         if (!data?.length) throw new Error("sem permissão para alterar esta turma");
+        if (dados.prazos) await salvarConfig(formulario.turma.id, dados.prazos);
         toast.success(pesoMudou ? "Turma atualizada. A nota final dos alunos foi recalculada." : "Turma atualizada.");
         setFormulario(null);
         await loadData(true);
@@ -389,6 +391,7 @@ export default function ClassManagementSection({ professorId }: Props) {
         <FormularioDeTurma
           key={formulario.modo === "editar" ? `editar-${formulario.turma.id}` : "criar"}
           modo={formulario.modo}
+          turmaId={formulario.modo === "editar" ? formulario.turma.id : undefined}
           inicial={
             formulario.modo === "editar"
               ? {

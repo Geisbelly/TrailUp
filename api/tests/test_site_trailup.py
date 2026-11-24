@@ -31,7 +31,23 @@ REFERENCIA = [
     ("posso usar o app sendo menor de idade?", "pagina/privacidade/4"),
     ("o que a monografia concluiu?", "monografia/10"),
 ]
+# Perguntas sobre as páginas principais que a pontuação sozinha não pegava em 24/11 (os atalhos):
+# (pergunta, endereço que tem de vir primeiro).
+ATALHOS = [
+    ("o que é o TrailUp?", "/blog/o-que-e-o-trailup"),
+    ("pra que serve o trailup", "/blog/o-que-e-o-trailup"),
+    ("quem criou o TrailUp?", "/sobre"),
+    ("onde baixo o app?", "/download"),
+    ("tem apk?", "/download"),
+    ("onde fica a política de privacidade?", "/privacidade"),
+    ("cadê a cartilha?", "/pesquisa/professores"),
+    ("o que é a pesquisa com professores?", "/pesquisa/professores"),
+    ("como falo com a equipe?", "/contato"),
+    ("preciso de suporte", "/contato"),
+]
 DA_MATERIA = [
+    "o que é lógica?",
+    "o que é pseudo código?",
     "não entendi o que é uma função derivada",
     "me explica recursão com exemplo",
     "qual a diferença entre lista e vetor?",
@@ -89,6 +105,19 @@ def test_pergunta_sobre_o_site_traz_a_secao_certa_primeiro(pergunta: str, espera
     assert trechos, pergunta
     assert _id(trechos[0]["titulo"]) == esperado
     assert trechos[0]["endereco"].startswith("https://trailup.vercel.app/")
+
+
+@pytest.mark.parametrize(("pergunta", "endereco"), ATALHOS)
+def test_pergunta_sobre_o_trailup_traz_a_pagina_certa_primeiro(pergunta: str, endereco: str) -> None:
+    trechos = site.trechos_do_site(pergunta)
+    assert trechos, pergunta
+    assert trechos[0]["endereco"] == f"https://trailup.vercel.app{endereco}"
+
+
+def test_atalhos_apontam_secoes_que_existem() -> None:
+    _, secoes = site._site()
+    ids = {s.id for s in secoes}
+    assert {id_ for _, id_ in site._ATALHOS} <= ids
 
 
 @pytest.mark.parametrize("pergunta", DA_MATERIA)

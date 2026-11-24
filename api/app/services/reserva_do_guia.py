@@ -9,6 +9,9 @@ Agora a reserva é honesta e ligada ao que o aluno está vendo, sem modelo:
 
 1. pedido de resposta de atividade: não entrega, e aponta o conteúdo para reler;
 2. pergunta que cita uma tela do app: o texto fixo dela (`respostas_do_guia.tela_citada`);
+2b. pergunta sobre o TrailUp, o site, a pesquisa ou a privacidade: o endereço da página que trata
+   disso (`site_trailup.trechos_do_site`, o mesmo casamento que escolhe os trechos para o modelo).
+   Antes, "o que é o TrailUp?" recebia "releia o conteúdo";
 3. pergunta da matéria: o trecho do conteúdo do tópico que casa com as palavras da pergunta, por
    casamento simples de palavras;
 4. sem trecho: diz que o Guia não conseguiu responder agora e sugere reler o conteúdo, pelo nome.
@@ -26,6 +29,7 @@ from typing import Any
 
 from app.services.contexto_chat_materia import gabarito_na_resposta
 from app.services.respostas_do_guia import tela_citada
+from app.services.site_trailup import trechos_do_site
 
 MAX_TRECHO = 280
 MIN_RADICAL = 4
@@ -142,6 +146,30 @@ def trecho_relacionado(
     return (melhor[1], melhor[2]) if melhor else None
 
 
+MAX_PAGINAS = 2
+
+
+def paginas_do_site(mensagem: str) -> list[tuple[str, str]]:
+    """(título, endereço) das páginas do site que tratam da pergunta, sem repetir endereço."""
+    paginas: list[tuple[str, str]] = []
+    for trecho in trechos_do_site(mensagem):
+        endereco = trecho["endereco"]
+        if any(endereco == visto for _, visto in paginas):
+            continue
+        paginas.append((trecho["titulo"], endereco))
+        if len(paginas) == MAX_PAGINAS:
+            break
+    return paginas
+
+
+def _resposta_do_site(paginas: list[tuple[str, str]]) -> str:
+    lista = " e ".join(f"“{titulo}” ({endereco})" for titulo, endereco in paginas)
+    return (
+        "Não consegui pensar numa resposta agora, então não vou inventar uma. "
+        f"Mas isso está no site do TrailUp: {lista}. Se a dúvida continuar, pode me perguntar de novo."
+    )
+
+
 def _onde_reler(titulo_conteudo: str | None, titulo_topico: str | None) -> str:
     if titulo_conteudo and titulo_topico:
         return f"o conteúdo “{titulo_conteudo}” (tópico “{titulo_topico}”)"
@@ -182,6 +210,10 @@ def resposta_de_reserva(
     tela = tela_citada(mensagem)
     if tela is not None:
         return tela.model_dump(mode="json")
+
+    paginas = paginas_do_site(mensagem)
+    if paginas:
+        return {"reply": _resposta_do_site(paginas), "should_close": False, "hinted_actions": []}
 
     achado = trecho_relacionado(
         mensagem,

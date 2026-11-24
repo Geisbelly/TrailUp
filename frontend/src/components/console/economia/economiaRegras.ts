@@ -1,12 +1,11 @@
 /** Regras da economia que a tela precisa decidir antes de chamar o banco. */
 
-export type AbaDaEconomia = "valores" | "alunos" | "prazos" | "loja" | "fundo" | "metas" | "historico";
+export type AbaDaEconomia = "valores" | "alunos" | "loja" | "fundo" | "metas" | "historico";
 
 /** As partes da tela Economia. A Lumi leva o professor a uma delas por `?aba=`. */
 export const ABAS_DA_ECONOMIA: { id: AbaDaEconomia; rotulo: string }[] = [
   { id: "valores", rotulo: "Valores" },
   { id: "alunos", rotulo: "Moedas por aluno" },
-  { id: "prazos", rotulo: "Prazos e tempo" },
   { id: "loja", rotulo: "Loja" },
   { id: "fundo", rotulo: "Fundo da turma" },
   { id: "metas", rotulo: "Metas" },
@@ -15,6 +14,86 @@ export const ABAS_DA_ECONOMIA: { id: AbaDaEconomia; rotulo: string }[] = [
 
 export function abaDaEconomiaNaUrl(valor: string | null): AbaDaEconomia | null {
   return ABAS_DA_ECONOMIA.find((a) => a.id === valor)?.id ?? null;
+}
+
+/**
+ * Os campos de prazo e tempo que o professor ajusta no editor do tópico, no da atividade e no da
+ * turma. `max` é o CHECK de `economia_config_escopo` (o de `loja_config_classe` é o mesmo).
+ */
+export const CAMPOS_DE_PRAZO = [
+  { chave: "prazo_extensao_min_dias", rotulo: "Mínimo de dias por uso", max: 14 },
+  { chave: "prazo_extensao_max_dias", rotulo: "Máximo de dias por uso", max: 14 },
+  { chave: "prazo_max_por_ativ", rotulo: "Teto de dias na atividade", max: 14 },
+  { chave: "tempo_extra_min_minutos", rotulo: "Mínimo de minutos por uso", max: 180 },
+  { chave: "tempo_extra_max_minutos", rotulo: "Máximo de minutos por uso", max: 180 },
+  { chave: "tempo_max_por_ativ", rotulo: "Teto de minutos na atividade", max: 600 },
+] as const;
+
+export type ChaveDePrazo = (typeof CAMPOS_DE_PRAZO)[number]["chave"];
+
+/** Os campos que só a regra de tópico ou atividade tem. */
+export const CAMPOS_DO_ESCOPO = [
+  { chave: "uso_max_retry", rotulo: "Novas tentativas compradas", max: 5 },
+  { chave: "moedas_conclusao", rotulo: "Moedas na conclusão", max: 100_000 },
+  { chave: "moedas_aprovacao", rotulo: "Moedas na aprovação", max: 100_000 },
+] as const;
+
+export type ChaveDoEscopo = ChaveDePrazo | (typeof CAMPOS_DO_ESCOPO)[number]["chave"];
+
+/** O padrão da turma: os campos do tópico e da atividade, mais os dois que só a turma tem. */
+export const CAMPOS_DA_TURMA = [
+  CAMPOS_DE_PRAZO[0],
+  CAMPOS_DE_PRAZO[1],
+  CAMPOS_DE_PRAZO[2],
+  { chave: "prazo_max_dias_total", rotulo: "Teto de dias na turma", max: 14 },
+  CAMPOS_DE_PRAZO[3],
+  CAMPOS_DE_PRAZO[4],
+  CAMPOS_DE_PRAZO[5],
+  { chave: "retry_max_por_topico", rotulo: "Novas tentativas por tópico", max: 5 },
+] as const;
+
+export type ChaveDaTurma = (typeof CAMPOS_DA_TURMA)[number]["chave"];
+
+/** Na turma não há o que herdar: todo campo é obrigatório. */
+export function validarPrazosDaTurma(
+  textos: Record<ChaveDaTurma, string>,
+): { ok: true; valores: Record<ChaveDaTurma, number> } | { ok: false; erro: string } {
+  const valores = {} as Record<ChaveDaTurma, number>;
+  for (const c of CAMPOS_DA_TURMA) {
+    const n = lerCampoInteiro(textos[c.chave], c.max);
+    if (n === null || Number.isNaN(n)) return { ok: false, erro: `${c.rotulo}: use um número inteiro de 0 a ${c.max}.` };
+    valores[c.chave] = n;
+  }
+  const faixa = erroDaFaixa(valores, valores.prazo_max_dias_total);
+  return faixa ? { ok: false, erro: faixa } : { ok: true, valores };
+}
+
+/** Texto digitado → número, nulo (vazio = herda) ou NaN (inválido). Só inteiros de 0 a `max`. */
+export function lerCampoInteiro(texto: string, max: number): number | null {
+  const t = texto.trim();
+  if (!t) return null;
+  if (!/^\d+$/.test(t)) return Number.NaN;
+  const n = Number(t);
+  return n > max ? Number.NaN : n;
+}
+
+export type ValoresDePrazo = Record<ChaveDePrazo, number>;
+
+/**
+ * Confere a faixa que vai valer de fato: o que foi digitado e, no que ficou vazio, o que herdaria.
+ * Devolve a mensagem para a tela, ou null quando está tudo certo.
+ */
+export function erroDaFaixa(valores: ValoresDePrazo, tetoDaTurma?: number): string | null {
+  const prazo = faixaValida({
+    min: valores.prazo_extensao_min_dias,
+    max: valores.prazo_extensao_max_dias,
+    teto: valores.prazo_max_por_ativ,
+    tetoGeral: tetoDaTurma,
+  });
+  if (!prazo) return "Nos dias: o mínimo não pode passar do máximo, nem o máximo do teto da atividade, nem o teto da atividade o da turma.";
+  const tempo = faixaValida({ min: valores.tempo_extra_min_minutos, max: valores.tempo_extra_max_minutos, teto: valores.tempo_max_por_ativ });
+  if (!tempo) return "Nos minutos: o mínimo não pode passar do máximo, nem o máximo do teto da atividade.";
+  return null;
 }
 
 export type Faixa = { min: number; max: number; teto: number; tetoGeral?: number };
