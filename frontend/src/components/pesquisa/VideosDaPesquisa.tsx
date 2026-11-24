@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Link2, Play, Share2 } from "lucide-react";
+import { Check, Info, Link2, Play, Share2 } from "lucide-react";
 import {
   VIDEOS_DA_PESQUISA,
   caminhoDoVideo,
@@ -60,6 +60,16 @@ export function PlayerDaPesquisa({ video }: { video: VideoDaPesquisa }) {
         )}
       </div>
     </div>
+  );
+}
+
+/** Correção de um vídeo ou do PDF já gerado, sem regravar. */
+export function AvisoDeCorrecao({ children, centralizado = true }: { children: string; centralizado?: boolean }) {
+  return (
+    <p role="note" className={`${centralizado ? "mx-auto " : ""}flex max-w-xl items-start gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-left text-sm text-foreground`}>
+      <Info size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+      <span>{children}</span>
+    </p>
   );
 }
 
@@ -124,6 +134,7 @@ export function VideoEmDestaque({ video, caminho = caminhoDoVideo(video), as: Ta
         <p className="journey-eyebrow"><span aria-hidden="true" />{video.papel} · {video.duracao}<span aria-hidden="true" /></p>
         <h3>{video.titulo}</h3>
         <p className="video-descricao">{video.descricao}</p>
+        {video.aviso && <AvisoDeCorrecao>{video.aviso}</AvisoDeCorrecao>}
         <div className="video-acoes">
           <BotaoDeCompartilhar video={video} caminho={caminho} />
           <Link className="journey-link" to={caminho}>

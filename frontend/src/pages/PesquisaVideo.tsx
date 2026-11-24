@@ -1,7 +1,7 @@
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
-import { BotaoDeCompartilhar, PlayerDaPesquisa } from "@/components/pesquisa/VideosDaPesquisa";
+import { AvisoDeCorrecao, BotaoDeCompartilhar, PlayerDaPesquisa } from "@/components/pesquisa/VideosDaPesquisa";
 import { CAMINHO_DA_CARTILHA } from "@/features/pesquisa/pesquisaProfessores";
 import { VIDEOS_DA_PESQUISA, caminhoDoVideo, caminhoDoVideoNoSite, videoPorSlug } from "@/features/pesquisa/videosDaPesquisa";
 
@@ -45,6 +45,7 @@ export default function PesquisaVideo({ noSite = false }: { noSite?: boolean }) 
         <div className="space-y-6">
           <PlayerDaPesquisa key={video.slug} video={video} />
           <p className="text-center text-sm text-muted-foreground">Duração: {video.duracao}.</p>
+          {video.aviso && <AvisoDeCorrecao>{video.aviso}</AvisoDeCorrecao>}
           <div className="flex flex-wrap items-start justify-center gap-4">
             <BotaoDeCompartilhar video={video} caminho={caminho(video)} />
             {noSite ? (
