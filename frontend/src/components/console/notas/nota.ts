@@ -32,8 +32,9 @@ export function mensagemDeImpacto(l: Pick<LinhaDaFila, "alunoNome" | "avaliadoEm
   return `Isso soma ${pontos} ${nota === 1 ? "ponto" : "pontos"} ao desempenho de ${l.alunoNome} na turma.`;
 }
 
+/** Só as palavras que começam por letra: "Bruno (exemplo)" dá "B", não "B(". */
 export function iniciais(nome: string): string {
-  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  const partes = nome.trim().split(/\s+/).filter((p) => /^\p{L}/u.test(p));
   if (partes.length === 0) return "?";
   return (partes[0][0] + (partes.length > 1 ? partes[partes.length - 1][0] : "")).toUpperCase();
 }
