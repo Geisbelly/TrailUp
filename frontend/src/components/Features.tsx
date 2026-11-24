@@ -30,7 +30,7 @@ export default function Features() {
         <div className="journey-section-heading">
           <p className="journey-eyebrow">A jornada</p>
           <h2 id="experience-title">Aprender é explorar<br /><em>o que vem a seguir.</em></h2>
-          <p>Pequenos passos. Novas ideias. Um universo para descobrir.</p>
+          <p>Um passo de cada vez, num universo inteiro para descobrir.</p>
         </div>
         <div className="journey-feature-grid">
           {features.map(feature => (

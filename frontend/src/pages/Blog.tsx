@@ -6,15 +6,15 @@ import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
 import { DESIGN_ART, PROFILE_WORLDS } from "@/lib/design-art";
 
 const BLOG_POSTS = [
-  { id: "brainhex", title: "O que é o BrainHex?", excerpt: "Entenda o modelo de perfis de jogadores e como ele pode transformar seu aprendizado.", category: "Metodologia", date: "2025-01-15", readTime: "5 min" },
-  { id: "seeker", title: "Perfil Seeker: O Explorador", excerpt: "Descubra as características do perfil explorador e como otimizar seu aprendizado.", category: "Perfis BrainHex", date: "2025-01-14", readTime: "4 min" },
-  { id: "survivor", title: "Perfil Survivor: O Desafiador", excerpt: "Aprenda sobre o perfil que busca desafios intensos e pressão.", category: "Perfis BrainHex", date: "2025-01-13", readTime: "4 min" },
-  { id: "daredevil", title: "Perfil Daredevil: O Aventureiro", excerpt: "Conheça o perfil que adora tomar riscos e experimentar.", category: "Perfis BrainHex", date: "2025-01-12", readTime: "3 min" },
-  { id: "mastermind", title: "Perfil Mastermind: O Estrategista", excerpt: "Descubra como o pensamento estratégico define este perfil.", category: "Perfis BrainHex", date: "2025-01-11", readTime: "6 min" },
-  { id: "conqueror", title: "Perfil Conqueror: O Competidor", excerpt: "Entenda a motivação competitiva e como ela impulsiona o aprendizado.", category: "Perfis BrainHex", date: "2025-01-10", readTime: "5 min" },
-  { id: "socializer", title: "Perfil Socializer: O Colaborador", excerpt: "Saiba como a interação social potencializa o aprendizado.", category: "Perfis BrainHex", date: "2025-01-09", readTime: "4 min" },
-  { id: "achiever", title: "Perfil Achiever: O Completionista", excerpt: "Conheça o perfil motivado por conquistas e objetivos completos.", category: "Perfis BrainHex", date: "2025-01-08", readTime: "5 min" },
-  { id: "pesquisa-tcc", title: "Pesquisa Acadêmica: TrailUp", excerpt: "Conheça a pesquisa de TCC que fundamenta o desenvolvimento do TrailUp.", category: "Pesquisa", date: "2025-01-07", readTime: "10 min" },
+  { id: "pesquisa-tcc", title: "A pesquisa por trás do TrailUp", excerpt: "De onde o TrailUp veio, o que ele faz e em que fase a pesquisa está.", category: "Pesquisa", date: "2026-11-23", readTime: "4 min" },
+  { id: "brainhex", title: "O que é o BrainHex?", excerpt: "Os sete perfis de jogador e como o TrailUp usa cada um para contar o mesmo conteúdo de jeitos diferentes.", category: "Metodologia", date: "2026-11-23", readTime: "4 min" },
+  { id: "seeker", title: "Perfil Explorador (Seeker)", excerpt: "Para quem aprende descobrindo, uma pergunta puxando a outra.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
+  { id: "survivor", title: "Perfil Sobrevivente (Survivor)", excerpt: "Para quem encara o difícil com preparo e um plano para atravessar.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
+  { id: "daredevil", title: "Perfil Aventureiro (Daredevil)", excerpt: "Para quem aprende fazendo, tentando e ajustando no caminho.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
+  { id: "mastermind", title: "Perfil Estrategista (Mastermind)", excerpt: "Para quem quer entender o porquê antes de agir.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
+  { id: "conqueror", title: "Perfil Conquistador (Conqueror)", excerpt: "Para quem gosta de metas claras e de superar a própria marca.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
+  { id: "socializer", title: "Perfil Socializador (Socializer)", excerpt: "Para quem aprende trocando ideias e construindo junto.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
+  { id: "achiever", title: "Perfil Realizador (Achiever)", excerpt: "Para quem gosta de ver o progresso andar e de fechar cada etapa.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
 ];
 const CATEGORIES = ["Todos", ...new Set(BLOG_POSTS.map(post => post.category))];
 
@@ -28,7 +28,7 @@ export default function Blog() {
 
   return (
     <PublicLayout scene={DESIGN_ART.landscape}>
-      <PublicPageTitle title="Blog TrailUp" eyebrow="Diário da jornada">Perfis BrainHex, formas de aprender e a ciência por trás de cada descoberta.</PublicPageTitle>
+      <PublicPageTitle title="Diário do TrailUp" eyebrow="Artigos">Os sete perfis do BrainHex, jeitos de estudar e a pesquisa por trás do TrailUp.</PublicPageTitle>
       <div className="public-toolbar">
         <div className="public-search"><Search size={18} /><Input aria-label="Buscar artigos" placeholder="Buscar artigos..." value={searchTerm} onChange={event => setSearchTerm(event.target.value)} /></div>
         <div className="public-filters" role="group" aria-label="Categoria do artigo">{CATEGORIES.map(category => <button type="button" key={category} aria-pressed={selectedCategory === category} onClick={() => setSelectedCategory(category)}>{category}</button>)}</div>

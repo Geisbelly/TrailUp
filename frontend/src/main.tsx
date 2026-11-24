@@ -7,6 +7,7 @@ import { iniciarSaude } from "./lib/saude";
 import "./index.css";
 import "./styles/immersive.css";
 import "./styles/page-surfaces.css";
+import "./styles/video.css";
 import "./styles/console-theme.css";
 import "./styles/motion.css";
 

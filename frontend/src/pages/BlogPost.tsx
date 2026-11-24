@@ -5,10 +5,15 @@ import { PublicLayout } from "@/components/PublicLayout";
 import VideoDoSite from "@/components/VideoDoSite";
 import { VIDEO_DO_ARTIGO } from "@/features/pesquisa/videosDaPesquisa";
 
-// Divide o texto em partes normais, negrito (**assim**) e italico (*assim*), sem alterar o markdown de origem.
+// Divide o texto em partes normais, negrito (**assim**), italico (*assim*) e link interno
+// ([texto](/caminho)), sem alterar o markdown de origem.
 function renderInline(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\(\/[^)]*\))/g);
   return parts.map((part, i) => {
+    const link = part.match(/^\[([^\]]+)\]\((\/[^)]*)\)$/);
+    if (link) {
+      return <Link key={i} to={link[2]} className="text-primary underline-offset-4 hover:underline">{link[1]}</Link>;
+    }
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i}>{part.slice(2, -2)}</strong>;
     }
@@ -19,383 +24,276 @@ function renderInline(text: string) {
   });
 }
 
+// Os artigos do Diário. O que dizem do app tem de bater com o código: guias e cores em
+// `microservice/src/constants/brainHex.ts`, o tom de cada perfil em `_BRAINHEX_EDITORIAL_SIGNATURES`
+// (`api/app/services/personalizacao.py`), cronômetro e batalha em `mobile/src/utils/brainHexCapabilities.ts`.
+// Nada de recurso que o app não tem, nem resultado de pesquisa que ainda não existe.
 const BLOG_CONTENT: Record<string, { title: string; content: string; category: string; date: string }> = {
   brainhex: {
     title: "O que é o BrainHex?",
     category: "Metodologia",
-    date: "2025-01-15",
+    date: "2026-11-23",
     content: `
 # O que é o BrainHex?
 
-O BrainHex é um modelo desenvolvido por pesquisadores para entender as diferentes motivações que levam as pessoas a se engajarem em jogos e atividades lúdicas. No contexto educacional, adaptamos esse modelo para identificar perfis de aprendizado.
+O BrainHex é uma tipologia de jogadores proposta por Lennart Nacke, Chris Bateman e Regan Mandryk. Ela descreve sete formas de sentir prazer num jogo: descobrir, sobreviver a uma ameaça, arriscar, resolver, vencer, conviver e completar. Uma pessoa tem um pouco de cada uma, em doses diferentes.
 
-## Os 7 Perfis
+## Os sete perfis no TrailUp
 
-O modelo identifica 7 perfis principais, cada um com suas características e motivações únicas:
+### Explorador (Seeker)
+Gosta de descobrir caminhos e detalhes escondidos. Guia: Amara.
 
-### 1. Seeker (Explorador)
-Motivado pela curiosidade e descoberta. Gosta de explorar todos os aspectos disponíveis.
+### Sobrevivente (Survivor)
+Encara o que parece difícil com preparo e persistência. Guia: Kenji.
 
-### 2. Survivor (Desafiador)
-Busca situações de alta pressão e desafios intensos. Se motiva com prazos apertados.
+### Aventureiro (Daredevil)
+Prefere experimentar e aprender no meio da ação. Guia: Ember.
 
-### 3. Daredevil (Aventureiro)
-Gosta de tomar riscos e experimentar novas abordagens sem medo de errar.
+### Estrategista (Mastermind)
+Quer entender o porquê e montar um plano antes de agir. Guia: Idris.
 
-### 4. Mastermind (Estrategista)
-Prefere planejar e criar estratégias complexas antes de agir.
+### Conquistador (Conqueror)
+Gosta de metas claras e de superar a própria marca. Guia: Amina.
 
-### 5. Conqueror (Competidor)
-Motivado pela competição e pelo desejo de ser o melhor.
+### Socializador (Socializer)
+Aprende trocando ideias e construindo junto. Guias: Mateo e Zuri.
 
-### 6. Socializer (Colaborador)
-Prefere atividades em grupo e interação social.
+### Realizador (Achiever)
+Gosta de ver o progresso e de fechar cada etapa. Guia: Kwame.
 
-### 7. Achiever (Completionista)
-Motivado por completar 100% das atividades e conquistar todos os objetivos.
+## Como o TrailUp usa o BrainHex
 
-## Aplicação no TrailUp
+No cadastro, o aluno responde a um questionário curto de preferências. Dele sai uma afinidade de 0 a 100 com cada um dos sete perfis. O de maior afinidade é o perfil dominante, e o aluno vê as sete afinidades no próprio perfil, no app.
 
-No TrailUp, usamos o BrainHex para:
-- Personalizar trilhas de aprendizado
-- Adaptar o conteúdo ao estilo de cada aluno
-- Criar desafios apropriados para cada perfil
-- Aumentar o engajamento e motivação
+O professor cadastra o conteúdo da aula uma vez. Para cada tópico, o TrailUp gera texto, áudio e apresentação no jeito de cada perfil: o tom de voz, a forma de abrir o assunto e a forma de fechar mudam, e o conteúdo é o mesmo. O professor revisa esse material antes de ele chegar à turma.
 
-## Pesquisa Científica
-
-Este modelo é baseado em pesquisa acadêmica sólida e tem sido validado em diversos contextos educacionais e de entretenimento.
-    `,
-  },
-  seeker: {
-    title: "Perfil Seeker: O Explorador",
-    category: "Perfis BrainHex",
-    date: "2025-01-14",
-    content: `
-# Perfil Seeker: O Explorador
-
-## Características Principais
-
-O Seeker é movido pela curiosidade inata. Este perfil adora:
-- Explorar todos os cantos do ambiente de aprendizado
-- Descobrir conteúdos extras e materiais complementares
-- Encontrar informações ocultas e recursos adicionais
-- Experimentar diferentes caminhos e abordagens
-
-## Como o Seeker Aprende Melhor
-
-### Estratégias Eficazes
-1. **Exploração Livre**: Permita tempo para descobrir recursos por conta própria
-2. **Conteúdo Rico**: Ofereça materiais complementares e referencias extras
-3. **Múltiplos Caminhos**: Apresente várias formas de resolver problemas
-4. **Easter Eggs**: Inclua descobertas surpresas ao longo do aprendizado
-
-### Dicas para Seekers
-- Reserve tempo para explorar além do conteúdo obrigatório
-- Faça anotações sobre conexões interessantes que descobrir
-- Crie mapas mentais dos conteúdos
-- Busque aplicações práticas não óbvias
-
-## No TrailUp
-
-Para alunos com perfil Seeker dominante, o TrailUp oferece:
-- Trilhas com múltiplos caminhos opcionais
-- Conteúdos extras escondidos para descoberta
-- Badges especiais para exploração completa
-- Conexões entre tópicos para mapear
-    `,
-  },
-  survivor: {
-    title: "Perfil Survivor: O Desafiador",
-    category: "Perfis BrainHex",
-    date: "2025-01-13",
-    content: `
-# Perfil Survivor: O Desafiador
-
-## Características Principais
-
-O Survivor prospera sob pressão. Este perfil:
-- Adora desafios difíceis
-- Mantém a calma em situações estressantes
-- Se motiva mais com prazos apertados
-- Busca testar seus limites constantemente
-
-## Como o Survivor Aprende Melhor
-
-### Estratégias Eficazes
-1. **Desafios Progressivos**: Aumente a dificuldade gradualmente
-2. **Pressão Controlada**: Use timers e deadlines motivadores
-3. **Feedback Imediato**: Mostre progresso e áreas de melhoria rapidamente
-4. **Simulações Realistas**: Crie cenários que simulem pressão real
-
-### Dicas para Survivors
-- Use a técnica Pomodoro com intervalos curtos
-- Defina metas desafiadoras mas alcançáveis
-- Pratique com questões de alto nível desde cedo
-- Participe de competições e olimpíadas
-
-## No TrailUp
-
-Para alunos com perfil Survivor dominante, o TrailUp oferece:
-- Desafios cronometrados
-- Modos de dificuldade elevada
-- Rankings de velocidade de conclusão
-- Simulados de alta pressão
-    `,
-  },
-  daredevil: {
-    title: "Perfil Daredevil: O Aventureiro",
-    category: "Perfis BrainHex",
-    date: "2025-01-12",
-    content: `
-# Perfil Daredevil: O Aventureiro
-
-## Características Principais
-
-O Daredevil adora tomar riscos calculados. Este perfil:
-- Experimenta sem ler todas as instruções
-- Prefere descobrir por tentativa e erro
-- Gosta de testar os limites do sistema
-- Não tem medo de cometer erros
-
-## Como o Daredevil Aprende Melhor
-
-### Estratégias Eficazes
-1. **Aprendizado Experimental**: Permita tentativas sem penalização severa
-2. **Métodos Não Convencionais**: Incentive abordagens criativas
-3. **Desafios de Improviação**: Crie situações que exigem pensamento rápido
-4. **Ambiente Seguro para Falhar**: Erros como parte do processo
-
-### Dicas para Daredevils
-- Experimente diferentes métodos antes de escolher um
-- Use a gamificação como motivador
-- Participe de hackathons e desafios relâmpago
-- Documente suas experimentações
-
-## No TrailUp
-
-Para alunos com perfil Daredevil dominante, o TrailUp oferece:
-- Modo sandbox para experimentação livre
-- Desafios que recompensam criatividade
-- Sistema de tentativas ilimitadas
-- Badges para abordagens inovadoras
-    `,
-  },
-  mastermind: {
-    title: "Perfil Mastermind: O Estrategista",
-    category: "Perfis BrainHex",
-    date: "2025-01-11",
-    content: `
-# Perfil Mastermind: O Estrategista
-
-## Características Principais
-
-O Mastermind é o pensador estratégico. Este perfil:
-- Planeja antes de executar
-- Adora resolver problemas complexos
-- Busca entender a teoria por trás das práticas
-- Cria sistemas e estratégias eficientes
-
-## Como o Mastermind Aprende Melhor
-
-### Estratégias Eficazes
-1. **Compreensão Profunda**: Entenda o "porquê" antes do "como"
-2. **Quebra-Cabeças Lógicos**: Desafios que exigem raciocínio
-3. **Mapas Conceituais**: Visualize conexões entre conceitos
-4. **Planejamento Estruturado**: Organize o estudo metodicamente
-
-### Dicas para Masterminds
-- Crie um plano de estudos detalhado
-- Use diagramas e fluxogramas
-- Estude a fundamentação teórica primeiro
-- Documente suas estratégias
-
-## No TrailUp
-
-Para alunos com perfil Mastermind dominante, o TrailUp oferece:
-- Visualização de dependências entre tópicos
-- Desafios de lógica e estratégia
-- Ferramentas de planejamento de trilha
-- Explicações detalhadas de conceitos
-    `,
-  },
-  conqueror: {
-    title: "Perfil Conqueror: O Competidor",
-    category: "Perfis BrainHex",
-    date: "2025-01-10",
-    content: `
-# Perfil Conqueror: O Competidor
-
-## Características Principais
-
-O Conqueror é movido pela competição. Este perfil:
-- Adora rankings e classificações
-- Se motiva ao superar outros
-- Busca ser o melhor da turma
-- Prospera em ambientes competitivos
-
-## Como o Conqueror Aprende Melhor
-
-### Estratégias Eficazes
-1. **Competições Saudáveis**: Participe de olimpíadas e torneios
-2. **Metas de Superação**: Defina objetivos de ranqueamento
-3. **Feedback Comparativo**: Saiba onde está em relação aos outros
-4. **Reconhecimento Público**: Celebre conquistas visíveis
-
-### Dicas para Conquerors
-- Participe de rankings e leaderboards
-- Estabeleça metas de superação constante
-- Use a competição como motivador, não estressor
-- Celebre vitórias mas aprenda com derrotas
-
-## No TrailUp
-
-Para alunos com perfil Conqueror dominante, o TrailUp oferece:
-- Rankings globais e por turma
-- Desafios competitivos semanais
-- Badges de topo de ranking
-- Torneios e competições especiais
-    `,
-  },
-  socializer: {
-    title: "Perfil Socializer: O Colaborador",
-    category: "Perfis BrainHex",
-    date: "2025-01-09",
-    content: `
-# Perfil Socializer: O Colaborador
-
-## Características Principais
-
-O Socializer prospera na interação. Este perfil:
-- Prefere estudar em grupo
-- Adora ajudar colegas
-- Se motiva com atividades colaborativas
-- Valoriza conexões sociais no aprendizado
-
-## Como o Socializer Aprende Melhor
-
-### Estratégias Eficazes
-1. **Grupos de Estudo**: Organize sessões colaborativas
-2. **Peer Teaching**: Ensine o que aprendeu para outros
-3. **Projetos em Equipe**: Trabalhe em atividades colaborativas
-4. **Fóruns e Discussões**: Participe ativamente de debates
-
-### Dicas para Socializers
-- Forme grupos de estudo regulares
-- Use plataformas de discussão online
-- Ensine conceitos para solidificar conhecimento
-- Participe de comunidades de aprendizado
-
-## No TrailUp
-
-Para alunos com perfil Socializer dominante, o TrailUp oferece:
-- Desafios em equipe
-- Fóruns de discussão por tópico
-- Sistema de ajuda mútua
-- Badges por colaboração
-    `,
-  },
-  achiever: {
-    title: "Perfil Achiever: O Completionista",
-    category: "Perfis BrainHex",
-    date: "2025-01-08",
-    content: `
-# Perfil Achiever: O Completionista
-
-## Características Principais
-
-O Achiever busca completude. Este perfil:
-- Quer completar 100% das atividades
-- Coleciona conquistas e badges
-- Se motiva com metas claras
-- Não gosta de deixar nada incompleto
-
-## Como o Achiever Aprende Melhor
-
-### Estratégias Eficazes
-1. **Objetivos Claros**: Defina metas específicas e mensuráveis
-2. **Tracking de Progresso**: Acompanhe percentuais de conclusão
-3. **Checklists Detalhadas**: Use listas para marcar itens completos
-4. **Recompensas Graduais**: Celebre cada marco alcançado
-
-### Dicas para Achievers
-- Crie listas de tarefas detalhadas
-- Use apps de tracking de progresso
-- Defina mini-metas dentro das grandes
-- Celebre cada conquista, por menor que seja
-
-## No TrailUp
-
-Para alunos com perfil Achiever dominante, o TrailUp oferece:
-- Sistema completo de badges e conquistas
-- Visualização de progresso detalhada
-- Metas e objetivos claros por tópico
-- Certificados de conclusão
-    `,
-  },
-  "pesquisa-tcc": {
-    title: "Pesquisa Acadêmica: TrailUp",
-    category: "Pesquisa",
-    date: "2025-01-07",
-    content: `
-# Pesquisa Acadêmica: TrailUp
-
-## Fundamentação Científica
-
-O TrailUp foi desenvolvido como resultado de uma pesquisa acadêmica de TCC (Trabalho de Conclusão de Curso) que investigou a aplicação de gamificação e personalização no contexto educacional universitário.
-
-## Objetivos da Pesquisa
-
-1. **Mapear Perfis de Aprendizado**: Adaptar o modelo BrainHex para o contexto educacional
-2. **Personalização de Trilhas**: Criar algoritmos que adaptem o conteúdo ao perfil do aluno
-3. **Gamificação Efetiva**: Implementar elementos de jogo que realmente aumentem o engajamento
-4. **Validação Empírica**: Testar a eficácia da abordagem com alunos reais
-
-## Metodologia
-
-### Fase 1: Pesquisa Bibliográfica
-- Revisão de literatura sobre gamificação educacional
-- Estudo do modelo BrainHex original
-- Análise de plataformas educacionais existentes
-
-### Fase 2: Desenvolvimento
-- Adaptação do questionário BrainHex
-- Desenvolvimento do algoritmo de personalização
-- Criação da interface gamificada
-
-### Fase 3: Validação
-- Testes com grupo piloto de universitários
-- Coleta de dados de engajamento e desempenho
-- Análise estatística dos resultados
-
-## Principais Descobertas
-
-1. **Perfis Predominantes**: Identificamos os perfis mais comuns entre universitários
-2. **Impacto no Engajamento**: Aumento significativo no tempo de estudo
-3. **Melhoria de Desempenho**: Notas médias superiores no grupo que usou personalização
-4. **Satisfação do Usuário**: Alta avaliação da experiência gamificada
-
-## Documentação Completa
-
-A pesquisa completa, incluindo metodologia detalhada, análise de dados e conclusões, está disponível nos documentos de TCC fornecidos durante o desenvolvimento do projeto.
-
-## Continuidade
-
-O TrailUp continua sendo desenvolvido e aprimorado com base em:
-- Feedback contínuo dos usuários
-- Novas pesquisas na área
-- Avanços tecnológicos em IA e personalização
+O questionário mede preferências de engajamento, e o perfil só decide o formato do material. Inteligência e capacidade ficam fora da conta.
 
 ## Referências
 
-Este projeto se baseia em trabalhos de:
-- Nacke, L. E., Bateman, C., & Mandryk, R. L. (2011). BrainHex
-- Deterding, S. et al. (2011). Gamification: Design Elements
-- Kapp, K. M. (2012). The Gamification of Learning and Instruction
+- Nacke, L. E.; Bateman, C.; Mandryk, R. L. BrainHex: preliminary results from a neurobiological gamer typology survey. ICEC, 2011.
+- Nacke, L. E.; Bateman, C.; Mandryk, R. L. BrainHex: a neurobiological gamer typology survey. Entertainment Computing, v. 5, n. 1, 2014.
+    `,
+  },
+  seeker: {
+    title: "Perfil Explorador (Seeker)",
+    category: "Perfis BrainHex",
+    date: "2026-11-23",
+    content: `
+# Perfil Explorador (Seeker)
 
----
+Quem tem o Explorador como perfil dominante gosta de descobrir. Uma pergunta puxa outra, e o caminho lateral costuma ser tão interessante quanto o principal.
 
-*Para mais informações sobre a pesquisa, entre em contato através da página de contato.*
+## Como o material chega
+
+O texto, o áudio e a apresentação do Explorador abrem com uma pergunta e avançam como uma descoberta guiada por pistas. O tom é curioso, e o fim convida a continuar explorando sozinho. A guia do perfil é Amara, a Guardiã das Runas.
+
+## No app
+
+- A trilha aparece como um mapa, com o próximo tópico e os que dependem dele.
+- O Explorador estuda sem cronômetro: o ritmo é dele.
+- Missões, conquistas e guildas valem para todos os perfis da turma.
+
+## Para estudar melhor
+
+- Anote as ligações que você encontrar entre um tópico e outro.
+- Antes de abrir o material, escreva a pergunta que você quer responder.
+- Quando um assunto puxar outro, termine o tópico atual e volte depois.
+    `,
+  },
+  survivor: {
+    title: "Perfil Sobrevivente (Survivor)",
+    category: "Perfis BrainHex",
+    date: "2026-11-23",
+    content: `
+# Perfil Sobrevivente (Survivor)
+
+O Sobrevivente encara o difícil com preparo. Gosta de saber onde está o risco e de ter um plano para atravessar.
+
+## Como o material chega
+
+O material do Sobrevivente abre com um problema real e o risco que ele traz, e segue passo a passo, reduzindo esse risco. O tom é prático e seguro, e o fim é uma lista do que aplicar. O guia do perfil é Kenji, o Guardião da Montanha.
+
+## No app
+
+- Atividades com cronômetro, para treinar sob tempo.
+- Batalhas contra o chefe do conteúdo, com falas próprias de cada perfil.
+- Missões, conquistas e guildas, como os demais perfis da turma.
+
+## Para estudar melhor
+
+- Comece pelo que mais assusta, com tempo de sobra para errar.
+- Treine com o relógio antes da prova, e descanse depois.
+- Revise os erros: eles dizem onde está o risco de verdade.
+    `,
+  },
+  daredevil: {
+    title: "Perfil Aventureiro (Daredevil)",
+    category: "Perfis BrainHex",
+    date: "2026-11-23",
+    content: `
+# Perfil Aventureiro (Daredevil)
+
+O Aventureiro aprende fazendo. Prefere tentar, errar rápido e ajustar a ler tudo antes de começar.
+
+## Como o material chega
+
+O material do Aventureiro abre com um gancho de ação e segue como uma superação, com desafio e recompensa. O ritmo é rápido, e o fim propõe uma missão curta para executar na hora. A guia do perfil é Ember, a Fênix do Caos.
+
+## No app
+
+- Atividades com cronômetro.
+- Batalhas contra o chefe do conteúdo.
+- Missões, conquistas e guildas, como os demais perfis da turma.
+
+## Para estudar melhor
+
+- Tente o exercício primeiro e leia a explicação quando travar.
+- Depois de acertar, refaça de outro jeito.
+- Anote o que deu errado em cada tentativa: é o seu mapa do assunto.
+    `,
+  },
+  mastermind: {
+    title: "Perfil Estrategista (Mastermind)",
+    category: "Perfis BrainHex",
+    date: "2026-11-23",
+    content: `
+# Perfil Estrategista (Mastermind)
+
+O Estrategista quer entender o porquê. Gosta de problemas que pedem raciocínio e de montar o próprio plano de estudo.
+
+## Como o material chega
+
+O material do Estrategista abre com uma ideia central e avança de forma analítica, com lógica e evidência. O tom é preciso, e o fim resume o conceito e aponta os próximos passos. O guia do perfil é Idris, o Sábio das Constelações.
+
+## No app
+
+- A trilha mostra a ordem dos tópicos e os pré-requisitos de cada um.
+- Atividades com cronômetro.
+- Missões, conquistas e guildas, como os demais perfis da turma.
+
+## Para estudar melhor
+
+- Leia a ideia geral do tópico antes dos detalhes.
+- Desenhe o assunto: um diagrama ajuda a ver o que depende do quê.
+- Explique o conceito com as suas palavras antes de ir para o exercício.
+    `,
+  },
+  conqueror: {
+    title: "Perfil Conquistador (Conqueror)",
+    category: "Perfis BrainHex",
+    date: "2026-11-23",
+    content: `
+# Perfil Conquistador (Conqueror)
+
+O Conquistador gosta de metas claras e de vencer. Disputa com os colegas, e principalmente com a própria marca.
+
+## Como o material chega
+
+O material do Conquistador abre com a meta e o que muda quando ela é alcançada. O tom é direto e voltado a resultado, e o fim chama para a execução. A guia do perfil é Amina, a Rainha da Tempestade.
+
+## No app
+
+- Ranking da turma e o rank de batalhas dos eventos.
+- Batalhas contra o chefe do conteúdo e atividades com cronômetro.
+- Missões, conquistas e guildas, como os demais perfis da turma.
+
+## Para estudar melhor
+
+- Defina uma meta para a semana e confira no fim.
+- Compare o seu resultado com o seu da semana passada.
+- Depois de uma derrota, refaça a atividade com calma antes de tentar de novo.
+    `,
+  },
+  socializer: {
+    title: "Perfil Socializador (Socializer)",
+    category: "Perfis BrainHex",
+    date: "2026-11-23",
+    content: `
+# Perfil Socializador (Socializer)
+
+O Socializador aprende com os outros. Explicar para um colega e ouvir outra forma de ver o assunto é o que fixa o conteúdo.
+
+## Como o material chega
+
+O material do Socializador abre com uma história, com personagens ou uma situação do dia a dia, e acompanha uma transformação. O tom é humano, e o fim convida a compartilhar e aplicar em grupo. Os guias do perfil são Mateo e Zuri, os Gêmeos Espíritos da Aurora.
+
+## No app
+
+- Guildas, para estudar e cumprir missões com colegas.
+- O fundo coletivo e as metas da turma, na economia do app.
+- O Socializador estuda sem cronômetro.
+
+## Para estudar melhor
+
+- Combine um horário fixo de estudo com alguém da turma.
+- Explique o tópico para um colega antes da atividade.
+- Quando travar, pergunte cedo: na guilda ou para o professor.
+    `,
+  },
+  achiever: {
+    title: "Perfil Realizador (Achiever)",
+    category: "Perfis BrainHex",
+    date: "2026-11-23",
+    content: `
+# Perfil Realizador (Achiever)
+
+O Realizador gosta de ver o progresso andar. Fechar cada etapa e completar a coleção é o que mantém o ritmo.
+
+## Como o material chega
+
+O material do Realizador abre com um objetivo que dá para medir e avança por marcos. O tom é objetivo, e o fim aponta o próximo marco. O guia do perfil é Kwame, o Cavaleiro Solar.
+
+## No app
+
+- O percentual de cada tópico e da trilha.
+- Conquistas da turma, com marcos e pontos.
+- Atividades com cronômetro, além de missões e guildas.
+
+## Para estudar melhor
+
+- Quebre o tópico em partes pequenas e marque cada uma.
+- Comece o dia pela etapa mais curta: ela puxa as outras.
+- Celebre o fim de cada tópico antes de abrir o próximo.
+    `,
+  },
+  "pesquisa-tcc": {
+    title: "A pesquisa por trás do TrailUp",
+    category: "Pesquisa",
+    date: "2026-11-23",
+    content: `
+# A pesquisa por trás do TrailUp
+
+## De onde veio
+
+O TrailUp nasceu de uma inquietação com a educação no Brasil: faltam recursos, e alunos com tipos de inteligência diferentes acabam deixados para trás num ensino que trata todo mundo do mesmo jeito. A ideia virou o Trabalho de Conclusão de Curso de Geisbelly Victória, em Ciência da Computação na Ulbra Palmas.
+
+## O que o TrailUp faz
+
+O professor cadastra o conteúdo da aula, dividido em tópicos. Para cada tópico, o TrailUp gera texto, áudio e apresentação nos sete perfis do BrainHex. O conteúdo é o mesmo, e muda o jeito de contar: o tom, a abertura, o ritmo e o fechamento. O professor revisa esse material antes de liberar para a turma.
+
+No aplicativo, o aluno segue a trilha como um mapa, com o guia do seu perfil, missões, conquistas, eventos e guildas. No console, o professor acompanha a turma e conta com a Lumi, uma assistente que ajuda a ler os dados e a usar o sistema.
+
+## Como a pesquisa está organizada
+
+1. **Análise crítica da literatura** sobre gamificação, personalização e perfis de jogador.
+2. **Desenvolvimento do sistema**: o app do aluno, o console do professor e a geração do material por perfil.
+3. **Validação com especialistas**: professores e pedagogos usam o sistema numa turma de demonstração e respondem a um questionário. É a fase atual.
+4. **Teste com alunos em sala**, depois da validação e da aprovação no comitê de ética.
+
+## Resultados
+
+Ainda não há resultados publicados. Este artigo vai ser atualizado quando a validação com especialistas terminar.
+
+## Quer participar?
+
+Se você dá aula no ensino superior ou trabalha com pedagogia, pode avaliar o TrailUp. A cartilha da pesquisa explica as fases, o tempo e o que acontece com as suas respostas: [trailup.vercel.app/pesquisa/professores](/pesquisa/professores).
+
+## Referências
+
+- Nacke, L. E.; Bateman, C.; Mandryk, R. L. BrainHex: a neurobiological gamer typology survey. Entertainment Computing, v. 5, n. 1, 2014.
+- Deterding, S. et al. From game design elements to gamefulness: defining "gamification". MindTrek, 2011.
+- Kapp, K. M. The Gamification of Learning and Instruction. Pfeiffer, 2012.
     `,
   },
 };
@@ -408,8 +306,8 @@ const BlogPost = () => {
     return (
       <PublicLayout>
         <div className="public-empty">
-          <h1 className="text-4xl font-bold mb-4">Post não encontrado</h1>
-          <Button asChild><Link to="/blog"><ArrowLeft size={16} className="mr-2" />Voltar ao Blog</Link></Button>
+          <h1 className="text-4xl font-bold mb-4">Artigo não encontrado</h1>
+          <Button asChild><Link to="/blog"><ArrowLeft size={16} className="mr-2" />Voltar ao Diário</Link></Button>
         </div>
       </PublicLayout>
     );
@@ -421,7 +319,7 @@ const BlogPost = () => {
         <div>
             <Button asChild variant="ghost" className="mb-8 gap-2"><Link to="/blog">
               <ArrowLeft className="w-4 h-4" />
-              Voltar ao Blog
+              Voltar ao Diário
             </Link></Button>
 
           <div className="space-y-6">
@@ -429,7 +327,7 @@ const BlogPost = () => {
               <span className="px-3 py-1 rounded-full bg-primary/10 text-primary">
                 {post.category}
               </span>
-              <span>{new Date(post.date).toLocaleDateString('pt-BR')}</span>
+              <span>{new Date(`${post.date}T12:00:00`).toLocaleDateString('pt-BR')}</span>
             </div>
 
             <h1>
