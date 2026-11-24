@@ -56,8 +56,8 @@ export default function PainelDeExemplo({
         <p className="max-w-3xl text-[13px] text-muted-foreground">
           A sua turma de demonstração ainda não tem alunos estudando, então ela ganhou alunos inventados,
           marcados com (exemplo) no nome. Todos os números da tela saem dessa mesma lista: o total do topo, os
-          cartões, os gráficos e a tabela batem entre si. O aluno de teste da sua conta entra na lista assim que
-          você entrar no app com ele, e o que você fizer lá aparece aqui. Clique em um aluno para abrir o
+          cartões, os gráficos e a tabela batem entre si. O aluno de teste da sua conta já está na lista, e o que
+          você fizer no app com ele aparece aqui. Clique em um aluno para abrir o
           detalhe: os de exemplo também têm evolução, trilha, tentativas, personalização e momentos de cuidado. Avalie o formato: se entende o que cada painel
           mostra, se a explicação (o ícone de interrogação ao lado do título) ajuda e se a visualização é clara.
           Nenhum aluno marcado como exemplo descreve uma turma real.

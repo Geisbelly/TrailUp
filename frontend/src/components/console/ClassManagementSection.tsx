@@ -473,7 +473,7 @@ export default function ClassManagementSection({ professorId }: Props) {
 
           {exemplo && (
             <div className="mb-5">
-              <AvisoDeExemplo texto={`A turma de demonstração soma os ${exemplo.alunos.length} alunos de exemplo da Visão geral, que não existem no banco. O seu aluno de teste entra na turma quando fizer o primeiro login no app.`} />
+              <AvisoDeExemplo texto={`A turma de demonstração soma os ${exemplo.alunos.length} alunos de exemplo da Visão geral, que não existem no banco. O seu aluno de teste é o único aluno real da turma.`} />
             </div>
           )}
           {visiveis.length === 0 ? (
