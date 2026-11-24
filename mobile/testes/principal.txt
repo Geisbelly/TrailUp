@@ -86,6 +86,7 @@ src/utils/firstAccessTour.test.ts
 src/utils/graphNodeAccess.test.ts
 src/utils/htmlDeck.test.ts
 src/utils/iconeNotificacao.test.ts
+src/utils/idiomaDaPagina.test.ts
 src/utils/inlineSvgDataUri.test.ts
 src/utils/lockedNodeMessage.test.ts
 src/utils/markdownDataUri.test.ts

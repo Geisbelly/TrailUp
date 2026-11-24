@@ -2,7 +2,7 @@
 import { getSessionSafe, supabase } from '@/database/supabase'
 import { buildClasseAcademicMetrics } from '@/utils/classeMetrics'
 import { mapClasseResumoRow } from '@/utils/classeResumo'
-import { carregarDetalhesDasTurmas } from '@/utils/detalheDasTurmas'
+import { carregarDetalhesDasTurmas, umaLinhaPorTurma } from '@/utils/detalheDasTurmas'
 import { idsComTextoRico } from '@/utils/textoRico/formatoTexto'
 import { configsDaResposta } from '@/utils/textoRico/configResposta'
 import { Atividade } from './Atividade'
@@ -121,7 +121,7 @@ export class Classe {
       .eq('aluno_id', aluno_id)
 
     if (error) throw error
-    return (data ?? []).map(Classe.mapResumoRow)
+    return umaLinhaPorTurma(data ?? []).map(Classe.mapResumoRow)
   }
 
   static async listClasseIdsByAluno(aluno_id: string): Promise<number[]> {
@@ -144,7 +144,7 @@ export class Classe {
       .order('classe_id', { ascending: true })
 
     if (error) throw error
-    const rows = data ?? []
+    const rows = umaLinhaPorTurma(data ?? [])
 
     if (!withDetalhe) {
       return rows.map(Classe.fromResumoRow)
@@ -291,7 +291,11 @@ export class Classe {
       .select('*')
       .eq('aluno_id', aluno_id)
       .eq('classe_id', classe_id)
-      .single()
+      // Não `.single()`: com duas linhas para a matrícula ele dá PGRST116, lido como
+      // "sem resumo", e a recarga depois de cada progresso mantinha o percentual velho
+      // na tela (24/11). Ver `umaLinhaPorTurma` e a `20261124_06`.
+      .limit(1)
+      .maybeSingle()
 
     if (error && (error as any).code !== 'PGRST116') throw error
     return data ? Classe.mapResumoRow(data) : null
