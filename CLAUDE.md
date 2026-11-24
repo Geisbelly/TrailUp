@@ -910,7 +910,9 @@ Cada perfil carrega:
   `exemploDaPesquisa.ts`): a rodada avalia o formato das métricas, não o dado, e não se cria aluno
   fictício para preenchê-la. Vale só com essa turma sozinha em tela e só para o avaliador; os
   valores são fixos, nunca gravados, e cada bloco leva o selo "Exemplo: valores ilustrativos". Não
-  "conserte" isso ligando a turma às views reais. A cópia publica os tópicos como a turma-modelo
+  "conserte" isso ligando a turma às views reais. O aluno de exemplo abre um detalhe também de
+  exemplo (`aluno/exemploDoAluno.ts`, gerado da mesma linha que dá a nota e a conclusão dele): os
+  hooks do detalhe reconhecem o id `exemplo-NN` e devolvem dali, sem consultar o banco. A cópia publica os tópicos como a turma-modelo
   (`20261123_02`), porque `duplicar_classe` faz tudo nascer `rascunho`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não

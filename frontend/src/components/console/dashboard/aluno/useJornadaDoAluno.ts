@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { comGabarito } from "@/lib/gabaritoDoProfessor";
 import { createRequestGuard } from "@/lib/requestGuard";
+import { ehAlunoDeExemplo } from "../exemploDaPesquisa";
+import { jornadaDeExemplo } from "./exemploDoAluno";
 import type { EventoDoApp, SessaoDeTopico, TopicoDaTrilha } from "./jornada";
 
 type Erro = { message: string; code?: string } | null;
@@ -79,8 +81,15 @@ export function useJornadaDoAluno(alunoId: string, classeId: number) {
 
   useEffect(() => {
     const request = guarda.current.next();
-    setCarregando(true);
     setErro(null);
+    // Aluno de exemplo da turma de demonstração: não existe no banco, o dado é do navegador.
+    const exemplo = jornadaDeExemplo(alunoId, new Date());
+    if (exemplo) {
+      setDados(exemplo);
+      setCarregando(false);
+      return;
+    }
+    setCarregando(true);
     (async () => {
       const topicos = await ler<TopicoDaTrilha>(de("topicos").select("id, nome, ordem").eq("classe_id", classeId));
       const topicoIds = topicos.map((t) => t.id);
@@ -144,6 +153,12 @@ export function useIntervencoesDoPasso(alunoId: string, classeId: number) {
 
   useEffect(() => {
     let vivo = true;
+    // Aluno de exemplo: começa sem comentário, e o que o professor escrever fica só nesta tela.
+    if (ehAlunoDeExemplo(alunoId)) {
+      setLista([]);
+      setEstado("pronto");
+      return;
+    }
     setEstado("carregando");
     void de("professor_intervencoes_passo")
       .select("id, passo_ref, texto, created_at, professor_id")
@@ -166,6 +181,17 @@ export function useIntervencoesDoPasso(alunoId: string, classeId: number) {
 
   const salvar = useCallback(
     async (passoRef: string, topicoId: number, texto: string) => {
+      if (ehAlunoDeExemplo(alunoId)) {
+        const local: IntervencaoDoPasso = {
+          id: `exemplo-${Date.now()}`,
+          passo_ref: passoRef,
+          texto: texto.trim(),
+          created_at: new Date().toISOString(),
+          professor_id: "",
+        };
+        setLista((atual) => [...atual, local]);
+        return;
+      }
       const { data, error } = await de("professor_intervencoes_passo")
         .insert({ aluno_id: alunoId, classe_id: classeId, passo_ref: passoRef, topico_id: topicoId, texto: texto.trim() })
         .select("id, passo_ref, texto, created_at, professor_id")

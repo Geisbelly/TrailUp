@@ -151,7 +151,7 @@ export function PainelMissoesDiarias({
 
       {!carregando && !erro && dados && dados.missoes.length === 0 && (
         <p className="mt-4 text-sm text-muted-foreground">
-          Nenhuma missão do dia ainda. Elas nascem à meia-noite de Brasília, depois que a cadeia da fase 5b estiver aplicada.
+          Nenhuma missão do dia ainda. Elas são criadas à meia-noite, no horário de Brasília.
         </p>
       )}
 

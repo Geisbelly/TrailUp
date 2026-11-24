@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import SegmentedPills from "../SegmentedPills";
+import { SeloDeExemplo } from "../PainelDeExemplo";
+import { ehAlunoDeExemplo } from "../exemploDaPesquisa";
 import AbaCuidado from "./AbaCuidado";
 import AbaPerfil from "./AbaPerfil";
 import AbaPersonalizacao from "./AbaPersonalizacao";
@@ -48,6 +50,16 @@ export default function DetalheAluno({
 
   return (
     <div ref={topo} className="space-y-6">
+      {ehAlunoDeExemplo(aluno.id) && (
+        <div className="flex flex-col gap-2 rounded-[20px] border border-warning/60 bg-warning/5 p-4">
+          <SeloDeExemplo />
+          <p className="max-w-3xl text-[13px] text-muted-foreground">
+            Este aluno é inventado. Notas, trilha, tentativas, personalização e momentos de cuidado são de
+            exemplo, calculados no navegador para mostrar o formato de cada aba. Nada daqui foi gravado, e os
+            comentários que você escrever na jornada somem ao sair da tela.
+          </p>
+        </div>
+      )}
       <CabecalhoAluno aluno={aluno} taxaAbandonoDaTurmaPct={taxaAbandonoDaTurmaPct} rotuloVoltar={rotuloVoltar} onVoltar={onVoltar} />
       <SegmentedPills ariaLabel="Seções do aluno" opcoes={ABAS} valor={aba} onChange={(a) => setAba(a)} className="w-fit" />
       {aba === "visao" && <AbaVisaoGeral aluno={aluno} evolucaoAluno={evolucaoAluno} evolucaoTurma={evolucaoTurma} onVerTrilha={() => setAba("trilha")} />}

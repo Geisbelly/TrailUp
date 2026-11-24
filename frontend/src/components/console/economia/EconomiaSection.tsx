@@ -39,6 +39,7 @@ import {
 } from "./economiaApi";
 import {
   ABAS_DA_ECONOMIA,
+  CRITERIOS_DA_META,
   SITUACOES_DE_USO,
   abaDaEconomiaNaUrl,
   descreverPadrao,
@@ -46,6 +47,7 @@ import {
   filtrarExtrato,
   limiteDoTexto,
   numeroOuNulo,
+  resumoDoCriterioDaMeta,
   textoDoLimite,
   textoDoPadrao,
   type AbaDaEconomia,
@@ -549,10 +551,9 @@ function AbaMetas({ classeId }: { classeId: number }) {
           </label>
           <label className="text-sm">Critério
             <select aria-label="Critério da meta" value={criterio} onChange={(e) => setCriterio(e.target.value)} className="mt-1 block h-10 rounded-md border bg-background px-2">
-              <option value="atividades_concluidas">Atividades concluídas</option>
-              <option value="acertos">Acertos</option>
-              <option value="presencas">Presenças</option>
-              <option value="nota_minima">Nota mínima (%)</option>
+              {CRITERIOS_DA_META.map((c) => (
+                <option key={c.id} value={c.id}>{c.rotulo}</option>
+              ))}
             </select>
           </label>
           {criterio === "nota_minima" ? (
@@ -577,7 +578,7 @@ function AbaMetas({ classeId }: { classeId: number }) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold">{m.titulo}</p>
-              <p className="text-sm text-muted-foreground">{m.criterio} ≥ {m.limiar} · {m.moedas} moedas · {m.pontos} pontos</p>
+              <p className="text-sm text-muted-foreground">{resumoDoCriterioDaMeta(m.criterio, m.limiar)} · {m.moedas} moedas · {m.pontos} pontos</p>
             </div>
             <Button type="button" variant="outline" className="rounded-full" onClick={() => void arquivarMeta(m.id).then(() => carregar()).catch((e) => toast.error((e as Error).message))}>Desativar</Button>
           </div>
