@@ -24,12 +24,15 @@ Para reproduzir:
 python3 scripts/custos/memoria_de_calculo.py --saida docs/analises/custos-jic-2026/saida.md
 ```
 
+Na primeira execução o script clona os oito repositórios das horas; os do
+BitStudioLabs são privados e exigem acesso (git com credencial do GitHub).
+
 Entrada sem valor aparece como **PENDENTE**. O script não preenche lacuna com
 estimativa própria.
 
 ---
 
-## Situação em 04/11/2026
+## Situação em 04/11/2026 (horas atualizadas em 09/11)
 
 | Número da v7 | Reproduzível? | O que falta |
 |---|---|---|
@@ -39,7 +42,7 @@ estimativa própria.
 | R$ 435 de parte fixa | Não | Preço de cada plano pago, com data (só o VPS, R$ 80, tem fonte) |
 | R$ 1,32 por aluno ao mês | Não | Ciclos e mensagens ao mentor por aluno; preços |
 | R$ 314,24 gastos com IA | Não | As faturas, uma a uma |
-| 716 h (613–1.009 h) | **Não, e o período não fecha** | Os parâmetros do agrupamento e os repositórios anteriores a 24/06/2026 |
+| 716 h (613–1.009 h) | **Não.** Substituído pela medição de 09/11: 785 h (558–1.108 h), 132 dias, a mesma da monografia | Alinhar o resumo, se ainda der tempo (seção 1) |
 | R$ 80/mês de operação | Parcial | Fatura do VPS registrada como fonte |
 
 ## 1. Horas de desenvolvimento
@@ -54,33 +57,31 @@ estimativa própria.
 H(g, a) = Σ_sessões (fim − início) + a × nº de sessões
 ```
 
-O resultado depende muito de *g* e *a*. Neste repositório, ele vai de 430 h
-a 824 h (grade em [`saida.md`](saida.md)). Só a combinação *g* = 4 h,
-*a* = 1 h fica perto das 716 h (700 h). **Registre em
-`horas.parametro_escolhido` o par usado na v7.** Sem esse par, o número não se
-reproduz.
+**Fechado em 09/11/2026**, com o mesmo resultado da monografia (seção 4.4):
 
-**Inconsistência a resolver no texto:**
-
-- A v7 diz que o desenvolvimento foi "de setembro de 2025 a novembro de 2026",
-  com horas "pelo histórico de commits".
-- O histórico deste monorepo começa em **24/06/2026**.
-- Há duas saídas possíveis:
-  - acrescentar em `horas.repositorios` os repositórios com o trabalho
-    anterior (por exemplo, BrainHex, ApiBrainHex e o protótipo inicial);
-  - ou dizer no texto que as horas cobrem de junho a novembro de 2026.
-
-**Também precisa ser dito:**
-
-- 1.570 dos 2.797 commits têm coautoria de IA (Claude Code ou Cursor). O
+- **Repositórios:** os oito publicados no GitHub, em `horas.repositorios` (o
+  monorepo no Lab e no espelho, o app de 2025, brainhex-navigator, ApiTraiUp,
+  ApiBrainHex, BrainHexPDF e core-trailup). O script faz um clone bare de cada
+  um em `~/.cache/trailup-custos/repos` (ou em `--clones`). O commit que está no
+  Lab e no espelho conta uma vez.
+- **Fora de propósito:** o checkout local. Branches que nunca subiram somavam 49
+  commits e davam 789 h, número que outra máquina não reproduz.
+- **Corte:** commits até 08/11/2026 (`horas.periodo_declarado.fim`), dias pelo
+  horário de Brasília.
+- **Parâmetro:** *g* = 2 h, *a* = 1 h → **785 h** em 254 sessões.
+- **Grade:** de 558 h (*g* = 1 h, *a* = 0,5 h) a 1.108 h (*g* = 1 h, *a* = 2 h),
+  completa em [`saida.md`](saida.md).
+- **Base:** 3.555 commits, 132 dias com commit, de 21/09/2025 a 08/11/2026.
+  1.954 commits (55%) têm coautoria de IA (Claude Code ou Cursor), então o
   horário mede sessões com agente, não só trabalho humano.
-- Squash e rebase alteram horários.
-- Leitura, reuniões e escrita fora do git ficam de fora.
 
-**Sugestão para a faixa:**
+**O resumo v7 diverge:** 716 h (613–1.009 h) e 137 dias. Nenhum par da grade
+nem conjunto de repositórios encontrado reproduz esses números, e o parâmetro
+não foi registrado. Se o resumo ainda puder ser alterado, a troca é
+"716 h (613–1.009)" → "785 h (558–1.108)" e "137 dias" → "132 dias".
 
-- declarar a faixa como o mínimo e o máximo da grade publicada;
-- ou trocar a faixa 613–1.009 h pela grade efetivamente usada.
+**Também precisa ser dito:** squash e rebase alteram horários, e leitura,
+reuniões e escrita fora do git ficam de fora.
 
 ## 2. Tokens
 
@@ -184,8 +185,8 @@ O espaço do resumo não comporta a memória inteira. A frase de método pode
 apontar para este apêndice:
 
 > "O custo foi registrado como efeito secundário: o gasto, pelas faturas; as
-> horas, agrupando os commits em sessões (intervalo de *g* h e *a* h por
-> sessão, de junho a novembro de 2026); e o custo em planos pagos, por
+> horas, agrupando os commits em sessões (intervalo de 2 h e 1 h por
+> sessão, de setembro de 2025 a novembro de 2026); e o custo em planos pagos, por
 > estimativa, com preços de tabela de 3 e 4 de novembro de 2026, PTAX de 3 de
 > novembro (R$ 5,4935), turmas de 40 alunos e dois tópicos ao mês. Os tokens
 > foram estimados pelo tamanho dos prompts e do material, pois o projeto não
@@ -196,8 +197,9 @@ O link só funciona depois que este apêndice chegar à `main` do espelho.
 
 ## 5. Checklist para fechar as pendências
 
-- [ ] `horas.parametro_escolhido`: o par (*g*, *a*) usado nas 716 h.
-- [ ] `horas.repositorios`: os repositórios com o trabalho de set/2025 a jun/2026, ou corrigir o período no texto.
+- [x] `horas.parametro_escolhido`: *g* = 2 h, *a* = 1 h (785 h, igual à monografia).
+- [x] `horas.repositorios`: os oito repositórios publicados, de 21/09/2025 a 08/11/2026.
+- [ ] Resumo JIC: trocar 716 h / 137 dias por 785 h / 132 dias, se ainda for possível.
 - [ ] `precos`: modelo, preço por milhão de tokens (entrada e saída), TTS e imagem, com data e URL.
 - [ ] `tokens`: tamanho do material, da saída e do roteiro; fator de novas tentativas.
 - [ ] Amostra real: logs do microservice com `[gemini-diag]` → `--logs`.

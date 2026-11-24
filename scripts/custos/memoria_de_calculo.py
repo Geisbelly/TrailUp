@@ -24,7 +24,7 @@ import json
 import re
 import statistics
 import subprocess
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parents[2]
@@ -47,26 +47,43 @@ def num(valor: float | None, casas: int = 0) -> str:
 # --------------------------------------------------------------------- horas
 
 
-def _timestamps(repo: Path, autores: str) -> list[int]:
+BRASILIA = timezone(timedelta(hours=-3))
+CLONES_PADRAO = Path.home() / ".cache" / "trailup-custos" / "repos"
+
+
+def _resolver_repo(entrada: str, clones: Path) -> Path:
+    """Caminho local (".", "../outro") ou "dono/repo" do GitHub. O segundo vira
+    um clone bare em `clones`, criado na primeira vez e atualizado nas seguintes."""
+    if entrada.startswith((".", "/", "~")):
+        return (RAIZ / Path(entrada).expanduser()).resolve()
+    destino = clones / entrada.replace("/", "_")
+    if destino.exists():
+        subprocess.run(["git", "-C", str(destino), "fetch", "-q", "--all"], check=False)
+    else:
+        clones.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            ["git", "clone", "-q", "--bare", f"https://github.com/{entrada}", str(destino)], check=True
+        )
+    return destino
+
+
+def _commits(repo: Path, autores: str) -> dict[str, tuple[int, bool]]:
+    """hash -> (horário do commit, tem coautoria de IA)."""
     saida = subprocess.run(
-        ["git", "-C", str(repo), "log", "--all", f"--author={autores}", "--perl-regexp", "--format=%at"],
+        ["git", "-C", str(repo), "log", "--all", f"--author={autores}", "--perl-regexp",
+         "--format=%H%x00%at%x00%B%x01"],
         capture_output=True,
         text=True,
         check=True,
     ).stdout
-    return sorted({int(linha) for linha in saida.split() if linha.strip()})
-
-
-def _coautoria_ia(repo: Path, autores: str) -> tuple[int, int]:
-    saida = subprocess.run(
-        ["git", "-C", str(repo), "log", "--all", f"--author={autores}", "--perl-regexp", "--format=%H%x00%B%x01"],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout
-    commits = [c for c in saida.split("\x01") if c.strip()]
-    com_ia = sum(1 for c in commits if re.search(r"co-authored-by:\s*(claude|cursor)", c, re.IGNORECASE))
-    return len(commits), com_ia
+    commits: dict[str, tuple[int, bool]] = {}
+    for bloco in saida.split("\x01"):
+        partes = bloco.strip("\n").split("\x00")
+        if len(partes) < 3:
+            continue
+        ia = bool(re.search(r"co-authored-by:\s*(claude|cursor)", partes[2], re.IGNORECASE))
+        commits[partes[0]] = (int(partes[1]), ia)
+    return commits
 
 
 def horas_por_sessao(ts: list[int], intervalo_h: float, acrescimo_h: float) -> tuple[float, int]:
@@ -86,27 +103,48 @@ def horas_por_sessao(ts: list[int], intervalo_h: float, acrescimo_h: float) -> t
     return total, sessoes
 
 
-def secao_horas(p: dict) -> list[str]:
+def _dia(t: int) -> str:
+    return datetime.fromtimestamp(t, BRASILIA).date().isoformat()
+
+
+def secao_horas(p: dict, clones: Path) -> list[str]:
     cfg = p["horas"]
-    linhas = ["## 1. Horas de desenvolvimento (histórico de commits)", ""]
-    ts: list[int] = []
-    linhas += ["| Repositório | Commits (horários únicos) | Primeiro | Último | Commits com coautoria de IA |", "|---|---|---|---|---|"]
-    for rel in cfg["repositorios"]:
-        repo = (RAIZ / rel).resolve()
-        t = _timestamps(repo, cfg["autores_regex"])
-        total, com_ia = _coautoria_ia(repo, cfg["autores_regex"])
-        ts += t
-        primeiro = datetime.fromtimestamp(t[0], UTC).date().isoformat() if t else "-"
-        ultimo = datetime.fromtimestamp(t[-1], UTC).date().isoformat() if t else "-"
-        linhas.append(f"| `{rel}` | {len(t)} | {primeiro} | {ultimo} | {com_ia} de {total} |")
-    ts = sorted(set(ts))
-    linhas.append("")
+    linhas = [
+        "## 1. Horas de desenvolvimento (histórico de commits)",
+        "",
+        f"Commits até {cfg['periodo_declarado']['fim']} (corte em `horas.periodo_declarado.fim`, "
+        "para o número não mudar a cada commit novo).",
+        "",
+    ]
+    todos: dict[str, tuple[int, bool]] = {}
+    linhas += ["| Repositório | Commits da autora | Primeiro | Último | Com coautoria de IA |", "|---|---|---|---|---|"]
+    for entrada in cfg["repositorios"]:
+        c = {
+            h: v for h, v in _commits(_resolver_repo(entrada, clones), cfg["autores_regex"]).items()
+            if _dia(v[0]) <= cfg["periodo_declarado"]["fim"]
+        }
+        todos.update(c)
+        t = sorted(v[0] for v in c.values())
+        primeiro, ultimo = (_dia(t[0]), _dia(t[-1])) if t else ("-", "-")
+        linhas.append(f"| `{entrada}` | {len(c)} | {primeiro} | {ultimo} | {sum(v[1] for v in c.values())} |")
+    ts = sorted({v[0] for v in todos.values()})
+    com_ia = sum(v[1] for v in todos.values())
+    dias = len({_dia(t) for t in ts})
+    linhas += [
+        "",
+        f"Sem repetição entre repositórios (o mesmo commit no Lab e no espelho conta uma vez): "
+        f"**{num(len(todos))} commits**, {num(com_ia)} com coautoria de IA "
+        f"({num(100 * com_ia / len(todos)) if todos else PENDENTE}%), {num(len(ts))} horários únicos, "
+        f"**{dias} dias com commit** (horário de Brasília)"
+        + (f", de {_dia(ts[0])} a {_dia(ts[-1])}." if ts else "."),
+        "",
+    ]
 
     inicio_decl = cfg["periodo_declarado"]["inicio"]
-    if ts and datetime.fromtimestamp(ts[0], UTC).date().isoformat() > inicio_decl:
+    if ts and _dia(ts[0]) > inicio_decl:
         linhas += [
             f"> **Cobertura incompleta:** o período declarado começa em {inicio_decl}, mas o primeiro "
-            f"commit encontrado é de {datetime.fromtimestamp(ts[0], UTC).date().isoformat()}. "
+            f"commit encontrado é de {_dia(ts[0])}. "
             "As horas anteriores não saem deste histórico: acrescente os repositórios de onde vieram "
             "(em `horas.repositorios`) ou declare no texto que a estimativa cobre só este intervalo.",
             "",
@@ -125,31 +163,26 @@ def secao_horas(p: dict) -> list[str]:
             celulas.append(num(h))
         linhas.append(f"| {num(intervalo, 0)} h | " + " | ".join(celulas) + " |")
     linhas.append("")
+    if grade:
+        linhas.append(f"Faixa da grade: {num(min(g[2] for g in grade))} a {num(max(g[2] for g in grade))} h.")
 
-    publicado = cfg["valor_publicado_h"]
-    proximos = [g for g in grade if abs(g[2] - publicado) / publicado <= 0.03]
     escolhido = cfg["parametro_escolhido"]
     if escolhido["intervalo_sessao_h"] is not None and escolhido["acrescimo_por_sessao_h"] is not None:
         h, s = horas_por_sessao(ts, escolhido["intervalo_sessao_h"], escolhido["acrescimo_por_sessao_h"])
         linhas.append(
-            f"Parâmetro declarado: intervalo {escolhido['intervalo_sessao_h']} h, +{escolhido['acrescimo_por_sessao_h']} h "
-            f"por sessão → **{num(h)} h** em {s} sessões (v7: {publicado} h)."
+            f"Parâmetro declarado: intervalo {num(escolhido['intervalo_sessao_h'])} h, "
+            f"+{num(escolhido['acrescimo_por_sessao_h'])} h por sessão → **{num(h)} h** em {s} sessões."
         )
     else:
-        linhas.append(
-            f"Parâmetro usado na v7: **{PENDENTE}** (`horas.parametro_escolhido`). Valor publicado: {publicado} h, "
-            f"faixa {cfg['faixa_publicada_h'][0]}–{cfg['faixa_publicada_h'][1]} h."
-        )
-        if proximos:
-            pares = ", ".join(f"{i} h/+{a} h ({num(h)} h)" for i, a, h in proximos)
-            linhas.append(f"Combinações da grade a até 3% do publicado: {pares}.")
-        else:
-            linhas.append("Nenhuma combinação da grade chega a 3% do valor publicado.")
+        linhas.append(f"Parâmetro escolhido: **{PENDENTE}** (`horas.parametro_escolhido`).")
+    for rotulo, pub in cfg.get("valores_publicados", {}).items():
+        linhas.append(f"- {rotulo}: {pub}")
     linhas += [
         "",
         "Limites do método: horário de commit não é hora trabalhada; commits com coautoria de IA "
         "registram sessões com agente, não só trabalho humano; squash e rebase mudam horários; "
-        "leitura, reuniões e escrita fora do git não aparecem.",
+        "leitura, reuniões e escrita fora do git não aparecem; repositório privado só entra para "
+        "quem tem acesso a ele.",
         "",
     ]
     return linhas
@@ -371,6 +404,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--parametros", type=Path, default=PARAMETROS)
     ap.add_argument("--logs", type=Path, help="logs do microservice com linhas [gemini-diag]")
+    ap.add_argument("--clones", type=Path, default=CLONES_PADRAO,
+                    help="onde guardar os clones bare dos repositórios do GitHub")
     ap.add_argument("--saida", type=Path, help="grava o relatório em vez de imprimir")
     args = ap.parse_args()
 
@@ -382,7 +417,7 @@ def main() -> None:
         f"`{PENDENTE}` = entrada ainda não registrada em `parametros.json`.",
         "",
     ]
-    linhas += secao_horas(p)
+    linhas += secao_horas(p, args.clones)
     tok_linhas, tok = secao_tokens(p, args.logs)
     linhas += tok_linhas
     linhas += secao_custos(p, tok)
