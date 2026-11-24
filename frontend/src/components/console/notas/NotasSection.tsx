@@ -6,6 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina } from "../comum/PaginaDoConsole";
 import { useTurmasDoProfessor } from "../comum/useTurmasDoProfessor";
+import { ehTurmaDeExemplo, useClasseDeExemplo } from "../comum/classeDeExemplo";
+import { filaDeExemplo, TOPICOS_DE_EXEMPLO } from "../comum/exemploDasAbas";
+import { AvisoDeExemplo, SeloDeExemplo } from "../comum/SeloDeExemplo";
+import { ehAlunoDeExemplo } from "../dashboard/exemploDaPesquisa";
 import { exportarNotasDaTurma } from "../turmas/baixarCsv";
 import { FilaDeCorrecao } from "./FilaDeCorrecao";
 import { PainelDeCorrecao } from "./PainelDeCorrecao";
@@ -23,8 +27,14 @@ const TODOS = "todos";
 
 export default function NotasSection({ professorId }: { professorId?: string }) {
   const { turmas, turmaId, setTurmaId, carregando: carregandoTurmas, erro: erroTurmas, recarregar } = useTurmasDoProfessor(professorId);
-  const [fila, setFila] = useState<LinhaDaFila[]>([]);
-  const [topicos, setTopicos] = useState<{ id: number; nome: string | null }[]>([]);
+  const [filaReal, setFilaReal] = useState<LinhaDaFila[]>([]);
+  const [topicosReais, setTopicosReais] = useState<{ id: number; nome: string | null }[]>([]);
+  // Turma de demonstração da pesquisa: entregas de exemplo junto das reais. A nota dada nelas fica só
+  // neste estado (nunca vai ao banco), então sobrevive a recarregar a fila, mas não a sair da aba.
+  const exemplo = ehTurmaDeExemplo(useClasseDeExemplo(), turmaId);
+  const [filaDoExemplo, setFilaDoExemplo] = useState<LinhaDaFila[]>(() => filaDeExemplo());
+  const fila = useMemo(() => (exemplo ? [...filaReal, ...filaDoExemplo] : filaReal), [exemplo, filaReal, filaDoExemplo]);
+  const topicos = useMemo(() => (exemplo ? [...topicosReais, ...TOPICOS_DE_EXEMPLO] : topicosReais), [exemplo, topicosReais]);
   const [estado, setEstado] = useState<"carregando" | "ok" | "erro">("carregando");
   const [detalhe, setDetalhe] = useState("");
   const [status, setStatus] = useState<FiltroDeStatus>("pendentes");
@@ -55,8 +65,8 @@ export default function NotasSection({ professorId }: { professorId?: string }) 
         listarFila(id),
         supabase.from("topicos").select("id, nome").eq("classe_id", id).order("ordem"),
       ]);
-      setFila(linhas);
-      setTopicos((t.data ?? []) as { id: number; nome: string | null }[]);
+      setFilaReal(linhas);
+      setTopicosReais((t.data ?? []) as { id: number; nome: string | null }[]);
       setEstado("ok");
     } catch (e) {
       setDetalhe((e as { message?: string })?.message ?? "erro desconhecido");
@@ -76,6 +86,13 @@ export default function NotasSection({ professorId }: { professorId?: string }) 
 
   const salvar = async (nota: number, feedback: string) => {
     if (!aberta || !turmaId) return;
+    if (ehAlunoDeExemplo(aberta.alunoId)) {
+      const avaliada = { ...aberta, pontuacaoObtida: nota, feedback: feedback || null, avaliadoEm: new Date().toISOString() };
+      setFilaDoExemplo((atual) => atual.map((l) => (l.alunoId === aberta.alunoId && l.atividadeId === aberta.atividadeId ? avaliada : l)));
+      toast.info("Entrega de exemplo: a nota fica só nesta tela e não é gravada.");
+      setAberta(proxima);
+      return;
+    }
     setSalvando(true);
     setErroDoServidor(null);
     try {
@@ -120,6 +137,10 @@ export default function NotasSection({ professorId }: { professorId?: string }) 
 
       {!carregandoTurmas && !erroTurmas && turmaId && (
         <div className="space-y-4">
+          {exemplo && !aberta && (
+            <AvisoDeExemplo texto="As entregas marcadas (exemplo) não existem no banco. A nota que você der nelas fica só nesta tela." />
+          )}
+          {exemplo && aberta && ehAlunoDeExemplo(aberta.alunoId) && <SeloDeExemplo />}
           {!aberta && (
             <div className="flex flex-wrap items-center gap-3">
               <Select value={String(turmaId)} onValueChange={(v) => setTurmaId(Number(v))}>

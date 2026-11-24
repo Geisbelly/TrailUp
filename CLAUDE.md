@@ -945,7 +945,12 @@ Cada perfil carrega:
   valores são fixos, nunca gravados, e cada bloco leva o selo "Exemplo: valores ilustrativos". Não
   "conserte" isso ligando a turma às views reais. O aluno de exemplo abre um detalhe também de
   exemplo (`aluno/exemploDoAluno.ts`, gerado da mesma linha que dá a nota e a conclusão dele): os
-  hooks do detalhe reconhecem o id `exemplo-NN` e devolvem dali, sem consultar o banco. A cópia publica os tópicos como a turma-modelo
+  hooks do detalhe reconhecem o id `exemplo-NN` e devolvem dali, sem consultar o banco. As outras abas da
+  turma seguem o mesmo acordo (`comum/exemploDasAbas.ts`, com a turma em `comum/classeDeExemplo.ts`,
+  fornecida pelo `Console`): Rankings, Rank de batalhas, Guildas e Notas juntam itens de exemplo aos
+  reais, sobre os mesmos 32 alunos; Conquistas e Missões somam os alunos de exemplo só na contagem do
+  cartão. Ranking de exemplo tem id negativo e não tem editar nem excluir; nota dada a uma entrega de
+  exemplo e guilda de exemplo renomeada ficam só no estado da tela, nunca no banco. A cópia publica os tópicos como a turma-modelo
   (`20261123_02`), porque `duplicar_classe` faz tudo nascer `rascunho`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
 - **Notificações — motor inteiro no banco.** Quatro tabelas com papéis **não
