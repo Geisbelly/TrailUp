@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowUpRight, BookOpen, GraduationCap } from "lucide-react";
+import { ArrowUpRight, BookOpen, GraduationCap, PlayCircle } from "lucide-react";
 import { TAREFAS, linkEmbutido, type MeuAcessoNaPesquisa } from "@/features/pesquisa/pesquisaProfessores";
 import { formularioDeAvaliacao, type FormularioDeAvaliacao } from "@/features/pesquisa/formularioDeAvaliacao";
 import { linkDaConfirmacao } from "@/features/pesquisa/inscricaoNoSite";
 import { useAuth } from "@/hooks/useAuth";
 import { consolePathForView } from "@/pages/consoleSections";
+import { caminhoDoVideo } from "@/features/pesquisa/videosDaPesquisa";
+import { SLUG_DO_VIDEO_DO_ROTEIRO } from "@/features/pesquisa/roteiroDaPesquisa";
 import { FormularioDaAvaliacao } from "./FormularioDaAvaliacao";
 
 // O mesmo App da Web da inscrição responde pelos dois formulários (`formulario=avaliacao`).
@@ -56,6 +58,9 @@ export default function AvaliacaoDaPesquisaSection({ acesso }: { acesso: MeuAces
         )}
         <Link className="journey-button inline-flex" to="/pesquisa/professores" target="_blank" rel="noopener noreferrer">
           <BookOpen size={16} aria-hidden="true" /> Cartilha e roteiro
+        </Link>
+        <Link className="journey-button inline-flex" to={caminhoDoVideo({ slug: SLUG_DO_VIDEO_DO_ROTEIRO })} target="_blank" rel="noopener noreferrer">
+          <PlayCircle size={16} aria-hidden="true" /> Passo a passo em vídeo
         </Link>
       </div>
 
