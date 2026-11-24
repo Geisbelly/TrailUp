@@ -104,6 +104,7 @@ import {
   isProfessorUploadFileAllowed,
   isQuestionMediaFileAllowed,
 } from "@/lib/upload-file-policy";
+import { RegraDoEscopo } from "@/components/console/economia/RegraDoEscopo";
 
 function MidiaDaQuestaoPreview({ valor }: { valor: string }) {
   const url = useUrlDoConteudo(valor);
@@ -1233,6 +1234,9 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                     </div>
                   </div>
                 </div>
+                {editingTopic?.id && editingTopic.classe_id ? (
+                  <RegraDoEscopo classeId={Number(editingTopic.classe_id)} escopo="topico" alvoId={editingTopic.id} />
+                ) : null}
                 <Separator className="bg-muted" />
                 <OrientacaoDaIa estado={orientacaoIa} onde="as sugestões de cards e atividades desta turma" />
                 <div className="space-y-4">
@@ -1524,6 +1528,17 @@ export function TopicEditDrawer(props: TopicEditDrawerProps) {
                               </div>
                             </div>
                             <Button size="sm" onClick={handleSaveActivityWithSync} className="w-full bg-muted hover:bg-muted mb-4">Salvar Detalhes</Button>
+                            {editingTopic?.id && editingTopic.classe_id && Number(selectedActivityId) > 0 ? (
+                              <div className="mb-4">
+                                <RegraDoEscopo
+                                  key={selectedActivityId}
+                                  classeId={Number(editingTopic.classe_id)}
+                                  escopo="atividade"
+                                  alvoId={Number(selectedActivityId)}
+                                  topicoId={editingTopic.id}
+                                />
+                              </div>
+                            ) : null}
                             
                             {/* --- RENDERIZAÇÃO CONDICIONAL DA QUESTÃO --- */}
                             <div className="space-y-3 pt-4 border-t border-border">

@@ -125,10 +125,13 @@ Configurada por turma, em abas:
   independentes: gastar moeda não mexe no rank.
 - Moedas por aluno: o saldo de cada aluno (a carteira soma todas as turmas; é o
   que ele vê na loja).
-- Prazos e tempo: mínimo e máximo de dias por uso de prazo extra, tetos, e moedas
-  a mais na conclusão ou aprovação de um tópico. Moeda de conclusão só sai quando
-  você aprova a entrega (nota de 60% ou mais): o aluno marcar como concluída não
-  paga moeda.
+- Prazo e tempo extra não são uma aba: o padrão da turma (mínimo e máximo de dias
+  e de minutos por uso, tetos e novas tentativas) fica em Turmas, ao editar a
+  turma. Cada tópico e cada atividade pode ter regra própria no editor da trilha,
+  no bloco "Prazo, tempo e moedas da loja", com as moedas a mais na conclusão ou
+  na aprovação. Vazio herda: a atividade segue o tópico, que segue a turma. Moeda
+  de conclusão só sai quando você aprova a entrega (nota de 60% ou mais): o aluno
+  marcar como concluída não paga moeda.
 - Loja: preço (vazio herda o global), estoque (vazio é ilimitado), compras por
   aluno, aumento por compra (1 = preço fixo, até 5), dotação (o que todo aluno
   recebe antes de gastar moeda), item à venda ou não, e limites de uso por

@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { concedido, descreverPadrao, faixaValida, filtrarExtrato, limiteDoTexto, mensagemDeErro, numeroOuNulo, precoDaUnidade, textoDoLimite, progressoDoFundo, resumoDoCriterioDaMeta, ROTULO_DO_FUNDO } from "./economiaRegras";
+import {
+  ABAS_DA_ECONOMIA,
+  abaDaEconomiaNaUrl,
+  concedido,
+  descreverPadrao,
+  erroDaFaixa,
+  faixaValida,
+  filtrarExtrato,
+  lerCampoInteiro,
+  limiteDoTexto,
+  mensagemDeErro,
+  numeroOuNulo,
+  precoDaUnidade,
+  textoDoLimite,
+  progressoDoFundo,
+  resumoDoCriterioDaMeta,
+  ROTULO_DO_FUNDO,
+  validarPrazosDaTurma,
+  type ChaveDaTurma,
+} from "./economiaRegras";
 
 describe("faixa de prazo e tempo", () => {
   it("aceita mínimo dentro do máximo e máximo dentro do teto", () => {
@@ -124,4 +143,48 @@ describe("critério da meta", () => {
   it("critério desconhecido aparece como veio", () => {
     expect(resumoDoCriterioDaMeta("outro", 2)).toBe("outro: pelo menos 2");
   });
+});
+
+describe("prazo e tempo extra fora da aba", () => {
+  it("a Economia não tem mais a aba Prazos", () => {
+    expect(ABAS_DA_ECONOMIA.map((a) => a.id)).not.toContain("prazos");
+    expect(abaDaEconomiaNaUrl("prazos")).toBeNull();
+  });
+
+  it("lê campo vazio como herança e recusa o que não é inteiro na faixa", () => {
+    expect(lerCampoInteiro("", 14)).toBeNull();
+    expect(lerCampoInteiro("  ", 14)).toBeNull();
+    expect(lerCampoInteiro("3", 14)).toBe(3);
+    expect(lerCampoInteiro("0", 14)).toBe(0);
+    expect(lerCampoInteiro("15", 14)).toBeNaN();
+    expect(lerCampoInteiro("1,5", 14)).toBeNaN();
+    expect(lerCampoInteiro("-1", 14)).toBeNaN();
+  });
+
+  const turma = {
+    prazo_extensao_min_dias: 1,
+    prazo_extensao_max_dias: 2,
+    prazo_max_por_ativ: 3,
+    tempo_extra_min_minutos: 5,
+    tempo_extra_max_minutos: 15,
+    tempo_max_por_ativ: 30,
+  };
+
+  it("confere a faixa que vale de fato, com o teto da turma", () => {
+    expect(erroDaFaixa(turma, 3)).toBeNull();
+    expect(erroDaFaixa({ ...turma, prazo_extensao_min_dias: 3 }, 3)).toMatch(/dias/);
+    expect(erroDaFaixa({ ...turma, prazo_max_por_ativ: 4 }, 3)).toMatch(/teto da atividade o da turma/);
+    expect(erroDaFaixa({ ...turma, tempo_extra_max_minutos: 40 })).toMatch(/minutos/);
+  });
+
+  it("na turma todo campo é obrigatório", () => {
+    const textos = { ...Object.fromEntries(Object.entries(turma).map(([k, v]) => [k, String(v)])), prazo_max_dias_total: "3", retry_max_por_topico: "1" } as Record<ChaveDaTurma, string>;
+    const ok = validarPrazosDaTurma(textos);
+    expect("valores" in ok && ok.valores.prazo_max_dias_total).toBe(3);
+    const vazio = validarPrazosDaTurma({ ...textos, retry_max_por_topico: "" });
+    expect("erro" in vazio && vazio.erro).toMatch(/Novas tentativas por tópico/);
+    const acimaDaTurma = validarPrazosDaTurma({ ...textos, prazo_max_dias_total: "2" });
+    expect("erro" in acimaDaTurma).toBe(true);
+  });
+
 });

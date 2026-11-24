@@ -32,7 +32,7 @@ export const TUTORIAIS: Tutorial[] = [
       { view: "notas", alvo: "menu-notas", titulo: "Notas", texto: "Correção de dissertativas e entregas." },
       { view: "missoes", alvo: "menu-missoes", titulo: "Missões", texto: "Objetivos com prazo e pontuação para a turma." },
       { view: "eventos", alvo: "menu-eventos", titulo: "Eventos", texto: "Janelas de tempo com missões, desafios e arena." },
-      { view: "economia", alvo: "menu-economia", titulo: "Economia", texto: "Moedas, pontos, loja, prazos, fundo e metas da turma." },
+      { view: "economia", alvo: "menu-economia", titulo: "Economia", texto: "Moedas, pontos, loja, fundo e metas da turma." },
       { view: "ranks", alvo: "menu-ranks", titulo: "Rankings", texto: "Os critérios de classificação e as posições dos alunos." },
     ],
   },
@@ -107,7 +107,6 @@ export const TUTORIAIS: Tutorial[] = [
     passos: [
       { view: "economia", alvo: "menu-economia", titulo: "Abra Economia", texto: "Moedas, pontos e loja são configurados por turma." },
       { view: "economia", aba: "valores", alvo: "economia-valores", titulo: "Valores", texto: "Quantos pontos e moedas o aluno ganha por ação. Comece por aqui." },
-      { view: "economia", aba: "prazos", alvo: "economia-prazos", titulo: "Prazos e tempo", texto: "Os limites de prazo extra e o que o aluno recebe ao concluir um tópico." },
       { view: "economia", aba: "loja", alvo: "economia-loja", titulo: "Loja", texto: "Preços, estoques e limites dos itens de ajuda." },
       { view: "economia", aba: "fundo", alvo: "economia-fundo", titulo: "Fundo da turma", texto: "Uma meta coletiva: os alunos doam moedas por uma recompensa conjunta." },
       { view: "economia", aba: "metas", alvo: "economia-metas", titulo: "Metas", texto: "Créditos por critérios que a turma atinge." },
