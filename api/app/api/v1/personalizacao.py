@@ -129,6 +129,7 @@ from app.services.roteamento_ia import (
 from app.services.storage import BUCKET, SupabaseStorage, build_material_url
 from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
 from app.services.sugestao_metrica import montar_registros_do_log, resumo_efetividade
+from app.services.turma_do_chat import contexto_da_turma
 
 router = APIRouter(prefix="/personalizar", tags=["personalizar"])
 logger = logging.getLogger(__name__)
@@ -1691,6 +1692,9 @@ async def conversar_com_mentor_personalizacao(
         # Só o aluno de teste de quem avalia o TrailUp: roteiro, progresso e anotações dele.
         # Qualquer outra conta recebe None e o payload fica como sempre foi.
         avaliacao_trailup = await contexto_da_avaliacao(session, user.user_id)
+        # Matéria, tema do mapa e arco da turma: o primeiro degrau das analogias e das pontes
+        # (turma antes do aluno). Leitura que falha volta None e a chave não entra.
+        turma_do_chat = await contexto_da_turma(session, payload.classe_id)
         async with rota_ia_para_alunos(session, [aluno_id]):
             provedor_do_chat = settings.llm_provider
             modelo_do_chat = (
@@ -1708,6 +1712,8 @@ async def conversar_com_mentor_personalizacao(
                         "sem_gabarito": True,
                         "sem_resposta_direta_atividade": True,
                     },
+                    # Muda pouco (só quando o professor edita o tema ou o arco): fica no começo.
+                    **({"turma": turma_do_chat} if turma_do_chat else {}),
                     # Conteudo completo do topico (da turma) para o guia se especializar
                     # na materia e direcionar o estudo. Sem respostas de questoes.
                     # Conteudo do topico (da turma) + o material personalizado que o aluno le na
@@ -1748,10 +1754,15 @@ async def conversar_com_mentor_personalizacao(
                     "conteudo_materia": conteudo_materia,
                     "contexto_personalizacao": personalization_context,
                     "guia_do_app": guia_do_app(),
+                    # Sem o tema e o arco, a analogia com a história da turma pareceria invenção.
+                    "turma": turma_do_chat,
                     # So o Guardian ve as respostas: o modelo do chat nao as recebe.
                     "gabarito_protegido": gabarito_protegido,
                     # Sem isto, ajudar o avaliador com a avaliação viraria "fora da base do tópico".
                     "avaliacao_trailup": avaliacao_trailup,
+                    # Sem a pergunta, o juiz não vê se a resposta concordou com um erro do aluno
+                    # nem se a ponte para outra matéria voltou ao que ele perguntou.
+                    "mensagem": _sem_nome(payload.mensagem),
                 },
                 on_violation=_auditar_chat,
                 prazo_total=settings.chat_prazo_total_seconds,

@@ -293,6 +293,8 @@ async def checar_grounding_chat(
                 "guia_do_app": contexto.get("guia_do_app", ""),
                 "conteudo_materia": contexto.get("conteudo_materia", {}),
                 "contexto_personalizacao": contexto.get("contexto_personalizacao", {}),
+                # Tema do mapa e arco: analogia com a história da turma não é invenção.
+                **({"turma": contexto["turma"]} if contexto.get("turma") else {}),
                 # A resposta de cada questão e o verso de cada card: o juiz só reconhece um
                 # vazamento se souber o que é a resposta. O modelo que fala com o aluno não vê isto.
                 "gabarito_protegido": contexto.get("gabarito_protegido", []),
@@ -303,6 +305,8 @@ async def checar_grounding_chat(
                     else {}
                 ),
                 # Por último, porque é o que muda: o cache só vale até a primeira diferença.
+                # A pergunta: sem ela o juiz não vê se a resposta concordou com um erro do aluno.
+                **({"mensagem": contexto["mensagem"]} if contexto.get("mensagem") else {}),
                 "resposta": _texto_que_vai_ao_aluno(resposta),
             },
             schema=GroundingJudgment,
