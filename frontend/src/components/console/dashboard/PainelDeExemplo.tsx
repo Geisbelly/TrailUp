@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { FlaskConical } from "lucide-react";
 import KpisPrincipais from "./KpisPrincipais";
 import KpisSecundarios from "./KpisSecundarios";
 import AbandonoPorPerfil from "./AbandonoPorPerfil";
@@ -12,15 +11,7 @@ import { distribuicaoDosAlunos, perfisDosAlunos, resumoDosAlunos } from "./exemp
 import { kpisDosAlunos } from "./kpisDosAlunos";
 import type { AlunoAnalisado } from "./aluno/tipos";
 import type { Disponibilidade } from "./disponibilidade";
-
-/** Selo repetido em cada bloco: quem rola a página não pode perder de vista que o número é inventado. */
-export function SeloDeExemplo() {
-  return (
-    <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-warning/60 bg-warning/10 px-3 py-1 text-[12px] font-semibold text-foreground">
-      <FlaskConical size={14} aria-hidden="true" /> Exemplo: valores ilustrativos
-    </span>
-  );
-}
+import { SeloDeExemplo } from "../comum/SeloDeExemplo";
 
 const SEM_DISPONIBILIDADE = new Map<string, Disponibilidade>();
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import SegmentedPills from "../SegmentedPills";
-import { SeloDeExemplo } from "../PainelDeExemplo";
+import { SeloDeExemplo } from "../../comum/SeloDeExemplo";
 import { ehAlunoDeExemplo } from "../exemploDaPesquisa";
 import AbaCuidado from "./AbaCuidado";
 import AbaPerfil from "./AbaPerfil";

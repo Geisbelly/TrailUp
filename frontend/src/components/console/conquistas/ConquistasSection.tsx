@@ -16,6 +16,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { CabecalhoDePagina, EstadoVazioDaPagina, ErroDaPagina } from "../comum/PaginaDoConsole";
 import { CartaoDaConquista } from "./CartaoDaConquista";
+import { ehTurmaDeExemplo, useClasseDeExemplo } from "../comum/classeDeExemplo";
+import { ganhadoresDeExemplo } from "../comum/exemploDasAbas";
+import { AvisoDeExemplo } from "../comum/SeloDeExemplo";
+import { TOTAL_DE_ALUNOS } from "../dashboard/exemploDaPesquisa";
 import { FormularioDaConquista } from "./FormularioDaConquista";
 import {
   alternarConquista,
@@ -155,6 +159,8 @@ export default function ConquistasSection({ professorId }: { professorId?: strin
 
   const textoDoAlvo = useMemo(() => (alvo ? textoDeAlternar(alvo) : null), [alvo]);
   const cheio = noTeto(conquistas.length, teto);
+  // Turma de demonstração da pesquisa: o cartão soma quem ganhou entre os alunos de exemplo. A conquista é a de verdade.
+  const exemplo = ehTurmaDeExemplo(useClasseDeExemplo(), turmaId);
 
   return (
     <div>
@@ -203,6 +209,9 @@ export default function ConquistasSection({ professorId }: { professorId?: strin
             </Select>
           )}
 
+          {exemplo && conquistas.length > 0 && (
+            <AvisoDeExemplo texto={`As conquistas são as de verdade. O número de quem ganhou soma os ${TOTAL_DE_ALUNOS} alunos de exemplo, que não existem no banco.`} />
+          )}
           <p className="rounded-[14px] bg-muted px-4 py-3 text-[12.5px] text-muted-foreground">
             A plataforma já traz 27 conquistas globais — as conquistas abaixo são adicionais, só desta turma.
           </p>
@@ -217,7 +226,7 @@ export default function ConquistasSection({ professorId }: { professorId?: strin
           ) : (
             <ul className="space-y-3">
               {conquistas.map((c) => (
-                <CartaoDaConquista key={c.id} conquista={c} onEditar={() => abrirEdicao(c)} onAlternar={() => setAlvo(c)} />
+                <CartaoDaConquista key={c.id} conquista={exemplo ? { ...c, concedidas: c.concedidas + ganhadoresDeExemplo(c.id) } : c} onEditar={() => abrirEdicao(c)} onAlternar={() => setAlvo(c)} />
               ))}
             </ul>
           )}

@@ -37,6 +37,7 @@ const PersonalizacoesSection = lazyWithReload(() => import("@/components/console
 const AvaliacaoDaPesquisaSection = lazyWithReload(() => import("@/components/console/pesquisa/AvaliacaoDaPesquisaSection"));
 const PainelDoRoteiro = lazyWithReload(() => import("@/components/console/pesquisa/PainelDoRoteiro"));
 import { lerMeuAcesso, type MeuAcessoNaPesquisa } from "@/features/pesquisa/links";
+import { ClasseDeExemplo } from "@/components/console/comum/classeDeExemplo";
 
 // A Administração e o painel técnico só são visíveis para a dona do projeto (TCC);
 // os demais professores nunca veem nem conseguem acessar essa view. Quem é o
@@ -77,6 +78,8 @@ export default function Console() {
   const professorId = professorData?.id;
   // Pesquisa com professores: undefined = conferindo; null = não participa (a aba some).
   const [acessoDaPesquisa, setAcessoDaPesquisa] = useState<MeuAcessoNaPesquisa | null | undefined>(undefined);
+  // A turma de demonstração do avaliador: as abas com exemplo (Visão geral, Rankings, Batalhas, Guildas, Notas) a leem do contexto.
+  const classeDeExemplo = acessoDaPesquisa?.avaliador ? acessoDaPesquisa.classeId : null;
 
   useEffect(() => {
     if (!professorId) return;
@@ -225,6 +228,7 @@ export default function Console() {
             professores não carregam nem o código do painel. */}
         <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <ClasseDeExemplo.Provider value={classeDeExemplo}>
         <Suspense
           fallback={
             <div className="flex-1 flex items-center justify-center">
@@ -241,7 +245,7 @@ export default function Console() {
               {view === "profile" ? (
                 <ProfileSection professorData={professorData} onUpdate={handleProfileUpdate} isLoading={isLoadingProfessor} />
               ) : view === "dashboard" ? (
-                <DashboardSection classeDeExemplo={acessoDaPesquisa?.avaliador ? acessoDaPesquisa.classeId : null} />
+                <DashboardSection classeDeExemplo={classeDeExemplo} />
               ) : view === "ranks" ? (
                 <RanksSection />
               ) : view === "batalhas" ? (
@@ -280,6 +284,7 @@ export default function Console() {
             </div>
           )}
         </Suspense>
+        </ClasseDeExemplo.Provider>
         </div>
         {acessoDaPesquisa?.avaliador && (
           <Suspense fallback={null}>
