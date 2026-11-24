@@ -5,25 +5,8 @@ import { Input } from "@/components/ui/input";
 import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
 import { DESIGN_ART, PROFILE_WORLDS } from "@/lib/design-art";
 import { VIDEO_DO_ARTIGO } from "@/features/pesquisa/videosDaPesquisa";
+import { BLOG_POSTS } from "@/features/diario/artigosDoDiario";
 
-const BLOG_POSTS = [
-  { id: "o-que-e-o-trailup", title: "O que é o TrailUp", excerpt: "O app do aluno, o console do professor e o que muda de um aluno para outro.", category: "TrailUp", date: "2026-11-23", readTime: "3 min" },
-  { id: "como-o-material-e-personalizado", title: "Como o material é personalizado", excerpt: "As duas camadas da personalização e onde o professor entra.", category: "TrailUp", date: "2026-11-23", readTime: "3 min" },
-  { id: "dados-e-privacidade", title: "Seus dados no TrailUp", excerpt: "O que o app guarda, o que é opcional e o que o professor vê.", category: "TrailUp", date: "2026-11-23", readTime: "3 min" },
-  { id: "primeiros-passos-no-app", title: "Primeiros passos no app do aluno", excerpt: "Do cadastro à trilha introdutória, com o vídeo do primeiro acesso.", category: "Guias", date: "2026-11-23", readTime: "3 min" },
-  { id: "guia-do-console", title: "O console do professor, aba por aba", excerpt: "Turmas, trilhas, personalizações, missões, notas e a Visão geral, com o guia em vídeo.", category: "Guias", date: "2026-11-23", readTime: "5 min" },
-  { id: "avaliar-o-trailup", title: "Como avaliar o TrailUp na pesquisa com professores", excerpt: "Quem pode participar, as três fases, o roteiro e o tempo, com o passo a passo em vídeo.", category: "Pesquisa", date: "2026-11-23", readTime: "3 min" },
-  { id: "pesquisa-tcc", title: "A pesquisa por trás do TrailUp", excerpt: "De onde o TrailUp veio e em que fase a pesquisa está.", category: "Pesquisa", date: "2026-11-23", readTime: "4 min" },
-  { id: "artigos-da-pesquisa", title: "Os artigos da pesquisa", excerpt: "Os dois resumos expandidos preparados para a JIC 2026 e o que cada um investigou.", category: "Pesquisa", date: "2026-11-23", readTime: "4 min" },
-  { id: "brainhex", title: "O que é o BrainHex?", excerpt: "Os sete perfis de jogador e como o TrailUp usa cada um para contar o mesmo conteúdo de jeitos diferentes.", category: "Metodologia", date: "2026-11-23", readTime: "4 min" },
-  { id: "seeker", title: "Perfil Explorador (Seeker)", excerpt: "Para quem aprende descobrindo, uma pergunta puxando a outra.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
-  { id: "survivor", title: "Perfil Sobrevivente (Survivor)", excerpt: "Para quem encara o difícil com preparo e um plano para atravessar.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
-  { id: "daredevil", title: "Perfil Aventureiro (Daredevil)", excerpt: "Para quem aprende fazendo, tentando e ajustando no caminho.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
-  { id: "mastermind", title: "Perfil Estrategista (Mastermind)", excerpt: "Para quem quer entender o porquê antes de agir.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
-  { id: "conqueror", title: "Perfil Conquistador (Conqueror)", excerpt: "Para quem gosta de metas claras e de superar a própria marca.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
-  { id: "socializer", title: "Perfil Socializador (Socializer)", excerpt: "Para quem aprende trocando ideias e construindo junto.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
-  { id: "achiever", title: "Perfil Realizador (Achiever)", excerpt: "Para quem gosta de ver o progresso andar e de fechar cada etapa.", category: "Perfis BrainHex", date: "2026-11-23", readTime: "2 min" },
-];
 /** Arte de cada artigo que não é de perfil (os de perfil usam o emblema do perfil). */
 const ARTE_DO_ARTIGO: Record<string, string> = {
   "o-que-e-o-trailup": DESIGN_ART.star,

@@ -230,8 +230,12 @@ async def test_escriba_pseudonimiza_payload_pergunta_e_historico_e_restaura(monk
     from app.services.escriba import guia_do_produto
 
     # O cache do provedor só vale até a primeira diferença do pedido.
-    assert list(payload) == ["guia_do_produto", "turmas", "historico", "pergunta"]
+    assert list(payload) == ["guia_do_produto", "site_trailup", "turmas", "historico", "pergunta"]
     assert payload.pop("guia_do_produto") == guia_do_produto()
+    # O mapa do site também é fixo, e a pergunta não pede trecho dele.
+    from app.services.site_trailup import indice_do_site
+
+    assert payload.pop("site_trailup") == indice_do_site()
     _sem_identificador(payload)
     assert "Carla" not in json.dumps(payload)
     # refs unicas entre turmas (A1..A4) e citadas na pergunta/historico

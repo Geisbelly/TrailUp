@@ -1,0 +1,544 @@
+{
+  "base": "https://trailup.vercel.app",
+  "secoes": [
+    {
+      "id": "pagina/inicio/0",
+      "tipo": "pagina",
+      "titulo": "Início",
+      "url": "/",
+      "texto": "Conhecimento é uma aventura\n# TrailUp\nUm mundo de possibilidades.\nUma jornada que é sua.\nDescubra seu jeito de aprender e transforme cada novo conhecimento em uma conquista.\nComeçar minha jornada Sou professor\nUm novo caminho começa aqui\nA jornada"
+    },
+    {
+      "id": "pagina/inicio/1",
+      "tipo": "pagina",
+      "titulo": "Início: Aprender é explorar",
+      "url": "/",
+      "texto": "## Aprender é explorar\no que vem a seguir.\nUm passo de cada vez, num universo inteiro para descobrir.\n01\n### Abra novos caminhos\nUma trilha de aprendizado, uma descoberta de cada vez.\n02\n### Aprenda do seu jeito\nConhecimento que acompanha seu ritmo e sua forma de pensar.\n03\n### Celebre cada conquista\nDesafios, emblemas e a satisfação de ver o quanto você evoluiu.\n04\n### Vá mais longe, junto\nColegas de jornada para compartilhar o que você descobriu.\nOs guardiões da trilha"
+    },
+    {
+      "id": "pagina/inicio/2",
+      "tipo": "pagina",
+      "titulo": "Início: Encontre seu guia.",
+      "url": "/",
+      "texto": "## Encontre seu guia.\nSete jeitos de aprender. Um caminho que tem a ver com você.\nExplorador\nSobrevivente\nAventureiro\nEstrategista\nConquistador\nSocializador\nRealizador\nEstrategista\n### Idris\nO Sábio das Constelações\nTodo caminho começa com uma ideia.\nPara quem busca conexões, entende os porquês e transforma conhecimento em novas estratégias.\nDescobrir meu perfil\nEm vídeo"
+    },
+    {
+      "id": "pagina/inicio/3",
+      "tipo": "pagina",
+      "titulo": "Início: O TrailUp em três minutos.",
+      "url": "/",
+      "texto": "## O TrailUp em três minutos.\nA mesma aula chega de um jeito diferente para cada aluno.\nO próximo passo é seu"
+    },
+    {
+      "id": "pagina/inicio/4",
+      "tipo": "pagina",
+      "titulo": "Início: Sua jornada.",
+      "url": "/",
+      "texto": "## Sua jornada.\nOnde você estiver.\nLeve suas trilhas, descobertas e conquistas com você.\nBaixar para Android Criar minha conta"
+    },
+    {
+      "id": "pagina/sobre/0",
+      "tipo": "pagina",
+      "titulo": "Sobre: De onde veio",
+      "url": "/sobre",
+      "texto": "## De onde veio\nO TrailUp nasceu de uma inquietação com a educação no Brasil: faltam recursos, e alunos com tipos de inteligência diferentes acabam deixados para trás num ensino que trata todo mundo do mesmo jeito. A ideia virou o Trabalho de Conclusão de Curso de Geisbelly Victória, em Ciência da Computação na Ulbra Palmas."
+    },
+    {
+      "id": "pagina/sobre/1",
+      "tipo": "pagina",
+      "titulo": "Sobre: Como funciona",
+      "url": "/sobre",
+      "texto": "## Como funciona\nO professor cadastra o conteúdo da aula. Para cada tópico, o TrailUp gera texto, áudio e apresentação nos sete perfis do BrainHex, e o professor revisa o material antes de ele chegar à turma. No aplicativo, o aluno segue a trilha como um mapa, com o guia do seu perfil."
+    },
+    {
+      "id": "pagina/sobre/2",
+      "tipo": "pagina",
+      "titulo": "Sobre: Para quem dá aula",
+      "url": "/sobre",
+      "texto": "## Para quem dá aula\nUm guia do console inteiro, do cadastro às métricas da turma, com uma turma de exemplo do começo ao fim."
+    },
+    {
+      "id": "pagina/sobre/3",
+      "tipo": "pagina",
+      "titulo": "Sobre: O que nos move",
+      "url": "/sobre",
+      "texto": "## O que nos move\n### Personalização\nO conteúdo da aula chega no tom e no ritmo de cada perfil, e o professor revisa antes de liberar.\n### Engajamento\nMissões, conquistas e eventos marcam cada passo do aluno na trilha.\n### Comunidade\nGuildas e metas da turma para quem aprende melhor junto."
+    },
+    {
+      "id": "pagina/sobre/4",
+      "tipo": "pagina",
+      "titulo": "Sobre: A pesquisa",
+      "url": "/sobre",
+      "texto": "## A pesquisa\nO TrailUp está em avaliação. Nesta fase, professores e pedagogos usam o sistema numa turma de demonstração e respondem a um questionário; o teste com alunos em sala vem depois. O perfil do BrainHex indica preferências de engajamento, e quem decide o que chega à turma é o professor.\nComeçar minha jornada Ler sobre a pesquisa Avaliar o TrailUp como professor"
+    },
+    {
+      "id": "pagina/download/0",
+      "tipo": "pagina",
+      "titulo": "Baixar o app: Google Play",
+      "url": "/download",
+      "texto": "## Google Play\nAcesse a versão de teste disponível na loja.\nAbrir Google Play"
+    },
+    {
+      "id": "pagina/download/1",
+      "tipo": "pagina",
+      "titulo": "Baixar o app: Instalador Android",
+      "url": "/download",
+      "texto": "## Instalador Android\nVersão beta em formato APK.\nBaixar APK"
+    },
+    {
+      "id": "pagina/download/2",
+      "tipo": "pagina",
+      "titulo": "Baixar o app: Android App Bundle",
+      "url": "/download",
+      "texto": "## Android App Bundle\nPacote para publicar em loja. Para instalar no celular, use o APK.\nBaixar AAB"
+    },
+    {
+      "id": "pagina/download/3",
+      "tipo": "pagina",
+      "titulo": "Baixar o app: Depois de instalar",
+      "url": "/download",
+      "texto": "## Depois de instalar\nConfirme o e-mail, responda ao questionário de preferências e complete o perfil. Depois disso, a trilha introdutória já abre."
+    },
+    {
+      "id": "pagina/contato/0",
+      "tipo": "pagina",
+      "titulo": "Contato",
+      "url": "/contato",
+      "texto": "Nome completo\nEmail\nAssunto\nMensagem\nNão preencha este campo\nEnviar mensagem"
+    },
+    {
+      "id": "pagina/contato/1",
+      "tipo": "pagina",
+      "titulo": "Contato: Mensagem",
+      "url": "/contato",
+      "texto": "## Mensagem\nParcerias e dúvidas gerais: use o formulário ao lado. Respondemos no e-mail que você informar."
+    },
+    {
+      "id": "pagina/contato/2",
+      "tipo": "pagina",
+      "titulo": "Contato: Suporte e privacidade",
+      "url": "/contato",
+      "texto": "## Suporte e privacidade\nAjuda com a conta, relatório dos seus dados ou exclusão: no app, em Perfil › Privacidade, ou por este formulário."
+    },
+    {
+      "id": "pagina/pesquisa/professores/0",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores",
+      "url": "/pesquisa/professores",
+      "texto": "O formulário ainda não está aberto.\nA inscrição abre quando a equipe enviar os convites. O link chega no convite, por e-mail individual."
+    },
+    {
+      "id": "pagina/pesquisa/professores/1",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: Crítica franca ajuda a pesquisa",
+      "url": "/pesquisa/professores",
+      "texto": "## Crítica franca ajuda a pesquisa\nA pesquisa se alimenta tanto de resultados negativos quanto de positivos. Uma tarefa difícil, uma métrica confusa ou um material gerado com erro é exatamente o que precisa aparecer: é isso que mostra o que corrigir antes de o sistema chegar a alunos. Nota dada por gentileza atrapalha a pesquisa; crítica franca ajuda."
+    },
+    {
+      "id": "pagina/pesquisa/professores/2",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: O que a pesquisa quer saber",
+      "url": "/pesquisa/professores",
+      "texto": "## O que a pesquisa quer saber\nO TrailUp é uma plataforma de aprendizagem criada num Trabalho de Conclusão de Curso. O professor monta a trilha da turma e o sistema adapta o material a cada perfil de aluno, com elementos de jogo. O professor acompanha a turma por métricas e recebe sugestões feitas por inteligência artificial.\nAntes de chegar a uma turma de verdade, o sistema precisa passar por quem dá aula. A pergunta é se ele é fácil de usar, se as métricas fazem sentido, se o material personalizado serve ao aluno e quanto trabalho ele dá. Para responder, a pesquisa convida especialistas em ensino (docentes de TI, docentes de outras áreas e pedagogos). Nesta etapa não há alunos."
+    },
+    {
+      "id": "pagina/pesquisa/professores/3",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: Em resumo",
+      "url": "/pesquisa/professores",
+      "texto": "## Em resumo\nQuem participa\nDocentes de ensino superior, da área de Tecnologia da Informação ou de outras, e pedagogos.\nO que você faz\nUsa o TrailUp numa turma de demonstração. Primeiro como professor, no console, com o conteúdo que já está lá ou com um seu. Depois como aluno, com o seu aluno de teste.\nComo você avalia\nEm dois formulários, com as respostas guardadas no Google Forms. A inscrição vem antes. A avaliação chega junto com o acesso e fica no próprio console: quatro perguntas curtas depois de cada tarefa e alguns blocos de perguntas de escalas já publicadas.\nVocê se identifica e escolhe como aparece\nA equipe sabe quem respondeu, porque a sua formação pesa na análise. Como você aparece na monografia, decide só no fim, e pode mudar de ideia depois. Não tem entrevista nem gravação.\nEstimativa: Mais ou menos uma hora: uns 35 minutos no sistema e uns 25 respondendo. O tempo certo vai ser medido num teste antes da coleta. E não precisa terminar tudo no mesmo dia."
+    },
+    {
+      "id": "pagina/pesquisa/professores/4",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: Passo a passo",
+      "url": "/pesquisa/professores",
+      "texto": "## Passo a passo\n- 1\n### Inscreva-se\nA inscrição começa pelo Termo de Consentimento. Se concordar, você informa nome, e-mail, instituição, titulação, formação e o papel em que vai avaliar. Esse e-mail vira o seu login no TrailUp.\n- 2\n### Receba o seu acesso\nCom a inscrição aprovada, chega um e-mail pedindo que você confirme o endereço. Depois disso, a equipe manda para ele, com senhas aleatórias, o acesso de professor e o do aluno de teste, que já entra sozinho na sua turma de demonstração. O formulário de avaliação fica na aba Avaliar o TrailUp do console, e o link dele também vai no e-mail.\n- 3\n### Abra o console em duas abas\nNuma aba, deixe aberta a Avaliar o TrailUp; na outra, faça as tarefas. O formulário já vem com o seu e-mail e guarda as respostas no navegador até você enviar.\n- 4\n### Siga o roteiro, uma tarefa por vez\nFaça uma tarefa e volte ao formulário. Ele pergunta se você conseguiu, quão difícil foi (de 1 a 7), mais ou menos quanto tempo levou e, se quiser contar, onde travou.\n- 5\n### Entre como aluno\nAs duas últimas tarefas são com o aluno de teste, para você ver o que o estudante vê.\n- 6\n### Responda aos blocos de avaliação\nDepois do roteiro vêm os blocos: usabilidade, esforço, métricas, material personalizado, tela do aluno, utilidade e rotina. Gamificação e dados dos alunos são opcionais.\n- 7\n### Escreva o que pensa\nSão quatro perguntas abertas. Responda do seu jeito.\n- 8\n### Por último, escolha como aparece e envie\nA forma de divulgação é a última pergunta de propósito: você escolhe depois de avaliar tudo. Dá para trocar mais tarde, até a versão final da monografia."
+    },
+    {
+      "id": "pagina/pesquisa/professores/5",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: O que o formulário pergunta sobre você",
+      "url": "/pesquisa/professores",
+      "texto": "## O que o formulário pergunta sobre você\nA avaliação vale pela experiência de quem avalia. Por isso a primeira parte pede:\n- Nome completo\n- E-mail (será o seu login no TrailUp e o contato da pesquisa)\n- Instituição em que atua\n- Papel em que você avalia o sistema (Docente da área de Tecnologia da Informação, Docente de outra área, Pedagogo(a) ou coordenação pedagógica, Outro)\n- Maior titulação (Graduação, Especialização, Mestrado, Doutorado, Pós-doutorado)\n- Área da sua formação (graduação e pós)\n- Você tem formação pedagógica? (Pedagogia, Licenciatura, Pós-graduação em educação ou docência, Não tenho)\n- Disciplinas que leciona ou acompanha\n- Tempo de atuação no ensino superior (até 2 anos, de 3 a 5 anos, de 6 a 10 anos, de 11 a 20 anos, mais de 20 anos)\n- Já usou em aula um ambiente virtual com painel de dados dos alunos? (Sim, Não)\n- Já usou elementos de jogo (pontos, ranking, missões) em aula? (Sim, Não)\n- Com que frequência usa IA generativa para preparar aulas? (Nunca, Às vezes, Com frequência)\n- Em que aparelho você vai usar o sistema? (Computador, Celular, Tablet)\nNenhum campo é obrigatório, mas sem a formação a sua avaliação não entra na comparação entre grupos.\nComo a sua avaliação aparece na monografia, você só decide no fim (veja como você aparece )."
+    },
+    {
+      "id": "pagina/pesquisa/professores/6",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: Seu acesso ao TrailUp",
+      "url": "/pesquisa/professores",
+      "texto": "## Seu acesso ao TrailUp\nO e-mail que você cadastrar é o seu login no TrailUp. O acesso ao console do professor é restrito, por segurança: ele mostra dados de turmas e de alunos, e só entra quem a equipe aprova. Por isso a equipe cria o seu acesso com esse e-mail e uma senha gerada aleatoriamente, e envia só para ele os acessos (professor e aluno de teste) e o link do formulário de avaliação. Você pode trocar a senha em Meus dados. A equipe nunca pede senha sua de outro serviço, e os acessos são apagados ao fim da pesquisa.\n- Todo acesso de professor passa pela equipe, porque o console mostra dados de turmas e de alunos.\n- Use o mesmo e-mail na inscrição e na avaliação. É por ele que a equipe junta as duas partes.\n- A senha vai só para o seu e-mail. Não passe para ninguém. Se quiser, troque em Meus dados.\n- Não recebeu a mensagem com o acesso? Olhe a caixa de spam e, se não estiver lá, escreva para o contato do termo."
+    },
+    {
+      "id": "pagina/pesquisa/professores/7",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: O roteiro de uso",
+      "url": "/pesquisa/professores",
+      "texto": "## O roteiro de uso\nO que fica fora desta rodada. Esta rodada avalia o TrailUp no formato base: as telas, as métricas e o material. Não avalia as sugestões da IA sobre alunos, a busca por aluno que precisa de atenção nem a correção de entregas, porque isso depende de alunos com histórico, e a turma de demonstração não tem. As métricas aparecem com valores de exemplo, marcados como tais: julgue se entende cada uma e se a visualização é clara, não o número.\nSão 8 tarefas curtas. Depois de cada uma, o formulário faz quatro perguntas rápidas:\n- Você conseguiu fazer a tarefa? (sim, em parte, não, não tentei)\n- “No geral, esta tarefa foi:” de 1 (muito difícil) a 7 (muito fácil)\n- Quanto tempo levou, mais ou menos? (menos de 2 min, de 2 a 5 min, de 5 a 10 min, mais de 10 min)\n- Onde travou, o que confundiu ou o que faltou (opcional)\nNinguém cronometra: o tempo é uma estimativa sua. Dizer que não conseguiu é tão útil quanto dizer que conseguiu. Onde a tarefa deixa registro na turma de demonstração (uma personalização pedida), a equipe confere só isso, para checar o roteiro.\n### No console do professor\nT1 Conhecer a turma\n- Em Turmas, abra a turma de demonstração.\n- Veja quem está matriculado e o perfil de cada aluno.\nRepare: Se fica claro quem são os alunos e em que pé cada um está.\nT2 Explorar a trilha\n- Em Trilhas, abra a trilha da turma.\n- Entre num tópico e veja os conteúdos, as atividades e as questões.\nRepare: Se a organização em tópicos faz sentido e se você conseguiria montar uma trilha sua.\nT3 Ver e pedir uma personalização\n- Em Personalizações, veja os perfis da turma e o material de um perfil.\n- Se quiser, peça uma geração por IA, sobre o conteúdo da turma ou sobre um conteúdo seu (ela pode levar alguns minutos ou não sair, por causa do limite gratuito do modelo).\nRepare: Se você entende o que foi gerado, para quem, e o que precisaria revisar antes de liberar.\nT4 Ler as métricas da turma\n- Na Visão geral, com a turma de demonstração selecionada, veja os painéis com o selo de exemplo.\n- Em cada métrica, abra a explicação (o ícone ao lado do nome) e diga para você mesmo o que ela mostra.\nRepare: Se cada painel se entende sozinho e se a explicação diz o que o número mede. Os valores são de exemplo, então avalie o formato de cada painel.\nT5 Entender o jogo da turma\n- Passe por Economia, Missões, Eventos e Conquistas.\n- Veja como as moedas, a loja, as missões e os eventos estão configurados.\nRepare: Se você saberia ajustar o jogo à sua turma e se ele apoia o estudo.\nT6 Ver a competição\n- Abra Rankings, Rank de batalhas e Guildas.\nRepare: O que a competição mostra e o efeito que ela teria em quem está atrás.\n### Na tela do aluno\nT7 Estudar como aluno\n- Entre com o seu acesso de aluno de teste.\n- Abra a trilha, um tópico e o material personalizado (texto, áudio ou apresentação).\nRepare: Se o aluno sabe o que fazer a seguir e se o material é fácil de abrir.\nT8 Ver o jogo pelo lado do aluno\n- Ainda como aluno, abra as missões, a loja e o ranking.\nRepare: Como o aluno vê o próprio progresso e os colegas."
+    },
+    {
+      "id": "pagina/pesquisa/professores/8",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: O que você vai avaliar",
+      "url": "/pesquisa/professores",
+      "texto": "## O que você vai avaliar\n### Usabilidade\nDez frases da Escala de Usabilidade de Sistema, versão brasileira validada, de 1 (discordo fortemente) a 5 (concordo fortemente). Por exemplo: “Eu achei esse sistema fácil de usar.” Responda pensando no sistema como um todo.\n### Carga de trabalho\nSeis perguntas sobre as tarefas do console, de 0 (pouquíssimo) a 10 (muitíssimo), baseadas no Índice NASA de carga de tarefa: demanda mental, demanda física, demanda temporal, desempenho, esforço, frustração.\n### As métricas do console\nOito frases de um instrumento internacional para avaliar painéis de dados educacionais (EFLA), de 1 (discordo totalmente) a 10 (concordo totalmente). Elas perguntam se o console deixaria você ciente da situação dos alunos, se estimularia a refletir e a adaptar a sua prática, e se fica claro que dados ele usa. Como a turma é de demonstração, responda como seria com uma turma sua.\n- Está claro quais dados dos alunos o console usa.\n- Está claro por que esses dados são usados.\n- O console me deixaria ciente da situação atual de aprendizagem dos alunos.\n- O console me ajudaria a prever como os alunos vão estar, se continuarem como estão ou se mudarem.\n- O console me estimularia a refletir sobre a minha prática de ensino.\n- O console me estimularia a adaptar a minha prática, se necessário.\n- O console me estimularia a ensinar de forma mais eficiente.\n- O console me estimularia a ensinar de forma mais eficaz.\nDepois: “Se as métricas da Visão geral fossem da minha turma, eu tomaria alguma ação”, que ação seria essa e quanto as métricas refletiriam a realidade. Por fim, para cada métrica da Visão geral, você marca o que vale para ela:\nEntendi o que mostra A visualização é clara Faria algo diferente na aula por causa dele\nAs métricas são: Conclusão média, Taxa de acertos, Tempo ativo médio, Retorno semanal, Abandono médio, Abandono por perfil, Inatividade por perfil, Distribuição de notas. Na turma de demonstração os valores são de exemplo e vêm marcados com um selo, então avalie o painel pelo formato. Preste atenção na última coluna. Um painel que você entende, mas que não mudaria nada na sua aula, só ocupa espaço.\n### Primeira impressão da tela do aluno\nAntes do bloco “Interface do aluno”, oito pares de palavras opostas, de 1 a 7 (Questionário de Experiência do Usuário, versão curta): atrapalha–ajuda, complicado–fácil, ineficiente–eficiente, confuso–claro, chato–empolgante, desinteressante–interessante, convencional–original, comum–inovador.\n### Material personalizado\nO que você achou do material que viu em Personalizações e como aluno: correção, alinhamento, nível e apresentação.\n- O conteúdo está correto, sem erros.\n- O material está alinhado ao objetivo do tópico.\n- O nível e a linguagem servem a um aluno de graduação.\n- A apresentação (texto, áudio ou slides) é clara.\n- As versões para perfis diferentes são diferentes de um jeito que faz sentido.\n- Eu liberaria esse material para os alunos sem precisar editar.\n### Interface do aluno\nO que você viu ao entrar como aluno.\n- A interface do aluno deixa claro o que fazer a seguir.\n- O material personalizado é fácil de encontrar e de abrir.\n- Os textos e botões estão numa linguagem que o aluno entende.\n- A interface do aluno é adequada a estudantes de graduação.\n### Utilidade e intenção de uso\nSe o sistema seria útil no seu trabalho e se você o usaria.\n- Usar o TrailUp me ajudaria a acompanhar a aprendizagem da turma.\n- Usar o TrailUp tornaria meu trabalho de professor mais eficaz.\n- O TrailUp seria útil na minha disciplina.\n- Eu usaria o TrailUp com uma turma minha, se estivesse disponível.\n- Eu recomendaria o TrailUp a outro professor.\n### Esforço e rotina\nQuanto trabalho o sistema exigiria de você numa semana normal.\n- O tempo que o sistema exigiria por semana cabe na minha rotina.\n- Montar a trilha de um tópico seria rápido o bastante.\n- Revisar o material gerado pela IA antes de chegar ao aluno seria viável na minha rotina.\n- Eu saberia por onde começar no console sem ajuda.\n### Gamificação (opcional)\nSe o jogo (moedas, missões, batalhas, ranking) serve à sua disciplina.\n- Os elementos de jogo combinam com a minha disciplina.\n- O jogo apoia o estudo, em vez de competir com ele.\n- O ranking pode desmotivar alunos que estão atrás.\n- Tenho controle suficiente sobre moedas, missões e eventos da turma.\n### Dados dos alunos e ética (opcional)\nO que você achou do uso dos dados dos alunos e do papel da IA ao lado do professor.\n- O sistema não considera fatores sociais e emocionais que só o professor conhece.\n- O sistema preserva a minha autonomia de decidir.\n- O uso de dados de emoção e de comportamento traz riscos à privacidade dos alunos.\n- O perfil e os indicadores podem rotular o aluno de forma injusta.\n- Eu saberia explicar a um aluno o que eu vejo sobre ele no console.\nEsses blocos usam a mesma escala de cinco pontos, de “discordo totalmente” a “concordo totalmente”, mais “não observei” para o que você não viu. Algumas frases são negativas de propósito: leia cada uma antes de marcar.\n### Perguntas abertas\n- O que você usaria toda semana?\n- O que confundiu ou atrapalhou?\n- O que preocupa você nos dados ou na IA?\n- O que falta para você usar o TrailUp com uma turma sua?\nAqui vale escrever com as suas palavras. Um bom comentário diz a tela e o que aconteceu, por exemplo: “em Trilhas, não achei onde mudar a ordem dos tópicos”."
+    },
+    {
+      "id": "pagina/pesquisa/professores/9",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: Como você aparece na monografia",
+      "url": "/pesquisa/professores",
+      "texto": "## Como você aparece na monografia\nA monografia traz a avaliação de cada especialista, num quadro próprio: notas das tarefas, usabilidade, métricas e comentários. A última pergunta do formulário, depois de toda a avaliação, é como o seu quadro aparece:\n- Com meu nome: nome e titulação ao lado das minhas notas e comentários, só depois de eu ver o meu quadro e confirmar.\n- Com código e perfil: apareço como E1, E2…, com titulação, formação e papel, sem o nome.\n- Só no conjunto: minhas respostas entram apenas nos resultados agregados.\nDá para trocar essa escolha até a versão final da monografia, e vale sempre a mais recente. As três opções valem o mesmo, e recusar o nome não tira você da pesquisa. Ela fica para o fim, e pode ser desfeita, para você avaliar sem pensar em quem vai ler. A avaliação que mais ajuda é a franca.\nO link para trocar a escolha aparece na mensagem de confirmação do formulário e aqui, quando a coleta começar."
+    },
+    {
+      "id": "pagina/pesquisa/professores/10",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: Cuidados para a avaliação valer",
+      "url": "/pesquisa/professores",
+      "texto": "## Cuidados para a avaliação valer\nFaça\n- Seja franco. Uma crítica ajuda tanto quanto um elogio, e nota dada por gentileza atrapalha a pesquisa.\n- Explore à vontade e use conteúdo seu, se quiser. A turma é de demonstração e o único aluno é o de teste. Se você errar ou clicar no lugar errado, isso também entra na análise.\n- Avalie sozinho, sem combinar respostas com outros professores antes de enviar.\n- Responda sobre o que você viu, não sobre o que o sistema poderia ser.\n- Se não souber avaliar alguma coisa, deixe em branco. Não chute.\nEvite\n- Pode usar conteúdo seu, desde que sem dados de alunos reais e sem material de terceiros que você não possa compartilhar. Tudo o que entra numa geração vai para o modelo de IA.\n- Não cadastre alunos reais nem dados pessoais de ninguém. Por enquanto, o único aluno é o de teste.\n- Nos comentários, não cite alunos ou colegas pelo nome."
+    },
+    {
+      "id": "pagina/pesquisa/professores/11",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: Seus direitos e seus dados",
+      "url": "/pesquisa/professores",
+      "texto": "## Seus direitos e seus dados\n- Participar é voluntário, sem custo e sem pagamento. Recusar ou desistir não traz prejuízo, e a instituição não sabe quem participou. O convite é feito pela pesquisadora, nunca por coordenação ou superior.\n- Você se identifica para a equipe. O que é publicado depende da sua escolha: com nome, com código e perfil, ou só no conjunto. Fora do que você autorizar, a identificação fica em sigilo, só com a equipe. Ao fim da coleta, as respostas são baixadas para um computador da equipe e apagadas do formulário online.\n- Se você escolher aparecer com o nome, só aparece com ele depois de ver o seu quadro e confirmar. Como os participantes são poucos e muitos se conhecem, publicar com o nome expõe a sua opinião: escolha o nível com que você fica à vontade, e troque quando quiser.\nO texto completo, com o contato da equipe, é o Termo de Consentimento, na primeira página do formulário de inscrição. Esta etapa é a validação com especialistas e não envolve alunos; a fase com alunos vem depois, com aprovação do Comitê de Ética em Pesquisa."
+    },
+    {
+      "id": "pagina/pesquisa/professores/12",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: Dúvidas frequentes",
+      "url": "/pesquisa/professores",
+      "texto": "## Dúvidas frequentes\n###\nPor que o formulário pede meu nome e minha formação?\n###\nTenho receio de criticar o trabalho de uma aluna. E agora?\n###\nPosso mudar a forma como apareço na monografia?\n###\nPor que não posso criar a minha própria conta?\n###\nQuem está sendo avaliado: eu ou o sistema?\n###\nPreciso saber programar ou entender de IA?\n###\nPosso usar o celular?\n###\nA geração por IA não funcionou. E agora?\n###\nPosso parar no meio e voltar depois?\n###\nO que eu fizer no sistema entra na pesquisa?\n###\nVou saber o resultado?"
+    },
+    {
+      "id": "pagina/pesquisa/professores/13",
+      "tipo": "pagina",
+      "titulo": "Cartilha da pesquisa com professores: Pronto para começar?",
+      "url": "/pesquisa/professores",
+      "texto": "## Pronto para começar?\nO formulário ainda não está aberto.\nA inscrição abre quando a equipe enviar os convites. O link chega no convite, por e-mail individual.\nPesquisa de Trabalho de Conclusão de Curso de Ciência da Computação da Ulbra Palmas, orientada pelo Prof. Esp. Fábio Castro Araújo."
+    },
+    {
+      "id": "pagina/privacidade/0",
+      "tipo": "pagina",
+      "titulo": "Privacidade: Uso para pesquisa acadêmica",
+      "url": "/privacidade",
+      "texto": "## Uso para pesquisa acadêmica\nO TrailUp faz parte de um projeto de pesquisa acadêmica conduzido pela aluna de Ciência da Computação da Ulbra Palmas, Geisbelly Victória. Os dados são usados para o funcionamento do app, para apoiar o ensino e para a pesquisa. Eles podem ser vistos pelos professores das turmas participantes e são processados por fornecedores de tecnologia listados na seção 6, alguns fora do Brasil. Nenhum dado é vendido."
+    },
+    {
+      "id": "pagina/privacidade/1",
+      "tipo": "pagina",
+      "titulo": "Privacidade: 1. Finalidade do aplicativo",
+      "url": "/privacidade",
+      "texto": "## 1. Finalidade do aplicativo\nO TrailUp é um aplicativo educacional criado inicialmente para estudantes da ULBRA Palmas, especialmente da disciplina de Redes de Computadores. Ele tem dois objetivos:\n- Apoiar o aprendizado com trilhas adaptativas e atividades gamificadas.\n- Coletar informações educacionais e de uso para pesquisa acadêmica, visando aprimorar modelos de ensino, perfis de aprendizagem e estratégias pedagógicas."
+    },
+    {
+      "id": "pagina/privacidade/2",
+      "tipo": "pagina",
+      "titulo": "Privacidade: 2. Quais dados são coletados",
+      "url": "/privacidade",
+      "texto": "## 2. Quais dados são coletados\n2.1 Dados fornecidos por você\n- Nome, e-mail e data de nascimento (a data serve para saber se é preciso autorização do responsável)\n- Respostas de questionários de aprendizagem (BrainHex), quizzes, redações e atividades\n- Mensagens enviadas ao mentor do app e pelo formulário de contato\n- Preferências no app e as escolhas de consentimento\n2.2 Dados de uso e derivados\n- Ritmo de estudo, acertos e erros, tempo nas atividades, progresso, moedas e ranking\n- Perfil de aprendizagem e, se você permitir, estado emocional estimado (seção 3)\n- Token do aparelho para notificações\n2.3 Câmera (opcional, desligada por padrão)\nA câmera só é usada se você ligar e permitir as finalidades de câmera e personalização emocional. Para menores de 18 anos, também é necessária autorização do responsável. As imagens do rosto são enviadas ao servidor da TrailUp nos Estados Unidos. Lá, dois modelos que rodam no próprio servidor (YuNet e FER+) analisam a imagem na memória, sem enviá-la a provedores externos. Se a análise estiver desligada ou não der resultado, a emoção fica indisponível, e sinais de uso não entram no lugar dela. A imagem não é gravada; categoria, confiança e resumo ficam por 30 dias."
+    },
+    {
+      "id": "pagina/privacidade/3",
+      "tipo": "pagina",
+      "titulo": "Privacidade: 3. Inferência emocional",
+      "url": "/privacidade",
+      "texto": "## 3. Inferência emocional\nQuando a análise visual estiver explicitamente ativada e você tiver autorizado a câmera e a personalização emocional, o TrailUp estima uma expressão facial. Sem esse sinal, a emoção fica indisponível; sinais comportamentais não são usados para inferir emoção. Isso serve para:\n- adaptar ritmo, temas e a oferta de apoio no app;\n- avisar o professor de que um aluno pode precisar de apoio.\nO professor vê só uma faixa (\"precisa de apoio\" ou \"ok\"). Ele não vê pontuação, histórico nem imagem. A estimativa não é diagnóstico e não é usada para nota, ranking ou punição. O professor pode desconsiderar um alerta. Você (ou o seu responsável) pode ver e contestar a estimativa, e desligar a personalização emocional sem perder as demais funções. A emoção estimada, sem a imagem, faz parte das informações enviadas aos provedores de inteligência artificial (seção 6) para personalizar o conteúdo."
+    },
+    {
+      "id": "pagina/privacidade/4",
+      "tipo": "pagina",
+      "titulo": "Privacidade: 4. Menores de 18 anos",
+      "url": "/privacidade",
+      "texto": "## 4. Menores de 18 anos\n- Para menores, cada finalidade opcional (câmera, personalização emocional, pesquisa, notificações) depende da autorização do responsável legal. Ela pode ser dada no app ou no formulário em papel entregue ao professor. Sem autorização, o app funciona em modo restrito.\n- A inteligência artificial do TrailUp é só para maiores de 18 anos. Para o aluno menor, ou que não informou a data de nascimento, ficam desligados o mentor, a correção automática de respostas, a personalização por aluno, a geração de imagens e a leitura em voz alta, mesmo com a autorização do responsável: nada do que ele faz no app é enviado a provedor de inteligência artificial.\n- Há uma exceção: a Lumi, a assistente do professor no console. Quando o professor pergunta sobre a turma, a Lumi envia ao provedor de inteligência artificial (seção 6) os indicadores da turma e de cada aluno, inclusive dos menores: perfil de aprendizagem, progresso, respostas e acertos dos últimos 30 dias, dias sem estudar, tópico em que está parado e faixa de risco de abandono. Cada aluno vai identificado só por um código (A1, A2…), sem nome, e-mail ou identificador da conta, e o estado emocional não vai. O motivo: a regra de idade trata do aluno usar a inteligência artificial, e a Lumi é usada pelo professor, adulto, para acompanhar a própria turma. Sem esses indicadores ela não conseguiria responder sobre nenhuma turma em que haja um aluno menor ou sem data de nascimento. Perguntas do professor sobre como usar o TrailUp não enviam dado de aluno."
+    },
+    {
+      "id": "pagina/privacidade/5",
+      "tipo": "pagina",
+      "titulo": "Privacidade: 5. Como os dados são usados",
+      "url": "/privacidade",
+      "texto": "## 5. Como os dados são usados\n- Montar trilhas, missões e o feedback personalizado\n- Mostrar ao professor o progresso da turma e os alertas de apoio\n- Pesquisa acadêmica, com os dados tratados de forma agregada ou pseudonimizada nas publicações\n- Segurança e funcionamento do serviço\nNome e e-mail não são enviados nas instruções aos provedores de inteligência artificial: o aluno é identificado por um código interno. Textos que você mesmo escreve (redações, mensagens ao mentor) são enviados como estão, então evite incluir dados pessoais neles."
+    },
+    {
+      "id": "pagina/privacidade/6",
+      "tipo": "pagina",
+      "titulo": "Privacidade: 6. Compartilhamento e transferência internacional",
+      "url": "/privacidade",
+      "texto": "## 6. Compartilhamento e transferência internacional\nOs dados não são vendidos. Eles são compartilhados com os professores das turmas e com os fornecedores abaixo, que os tratam em nome do TrailUp. A maioria fica nos Estados Unidos, o que é uma transferência internacional de dados (LGPD, arts. 33 a 36).\n- Supabase (banco de dados, login e arquivos): Estados Unidos\n- Hetzner (servidor da API e análise de imagem da câmera): Estados Unidos\n- Vercel (hospedagem deste site): Estados Unidos e rede global\n- Google Gemini (inteligência artificial, só para maiores de 18 anos confirmados, exceto a Lumi do professor; ver seção 4): Estados Unidos e outros países. Usamos o plano gratuito, em que o Google pode usar o que é enviado para melhorar os produtos dele, inclusive com revisão humana\n- OpenAI (inteligência artificial de reserva, só para maiores de 18 anos confirmados, exceto a Lumi do professor; ver seção 4): Estados Unidos\n- Cloudflare R2 (armazenamento de arquivos): Estados Unidos (leste da América do Norte)\n- Expo, Google (FCM) e Apple (APNs) (notificações): Estados Unidos\n- Google (envio dos e-mails de contato e de aviso de conta inativa, pelo Gmail): Estados Unidos e outros países\n- Google (login com Google, vídeos do YouTube e fontes) e Microsoft (visualização de documentos)\nNão temos cláusulas-padrão da ANPD assinadas com esses fornecedores. Os EUA não têm adequação reconhecida pela ANPD; portanto, a transferência de imagens para o servidor da API exige mecanismo válido previsto na LGPD. A escolha e a validação desse mecanismo continuam pendentes e estão registradas na documentação do projeto. O consentimento não é apresentado como prova de que essa pendência jurídica foi resolvida."
+    },
+    {
+      "id": "pagina/privacidade/7",
+      "tipo": "pagina",
+      "titulo": "Privacidade: 7. Por quanto tempo guardamos",
+      "url": "/privacidade",
+      "texto": "## 7. Por quanto tempo guardamos\n- Telemetria bruta de uso: 90 dias (180 dias quando autorizada para pesquisa)\n- Indicadores derivados da telemetria: 13 meses (24 meses para pesquisa)\n- Estado emocional estimado: 30 dias\n- Imagens da câmera: não são guardadas\n- Conta de aluno inativa: apagada após 24 meses sem acesso, só depois de um aviso por e-mail e mais 30 dias de prazo (entrar de novo cancela)\n- Conta de professor excluída: os dados pessoais saem na hora, e as turmas dele também, com trilhas, matrículas, notas e o material das turmas; a conta de cada aluno continua\n- Ao sair de uma turma: o conteúdo gerado para você é apagado em 90 dias; notas, moedas e ranking, em 365 dias\n- Registro do consentimento: 5 anos depois de apagada a conta, como prova legal"
+    },
+    {
+      "id": "pagina/privacidade/8",
+      "tipo": "pagina",
+      "titulo": "Privacidade: 8. Segurança",
+      "url": "/privacidade",
+      "texto": "## 8. Segurança\nUsamos acesso autenticado, regras de acesso por usuário no banco de dados e conexões criptografadas. Cada pessoa vê só o que o seu papel permite (aluno, professor)."
+    },
+    {
+      "id": "pagina/privacidade/9",
+      "tipo": "pagina",
+      "titulo": "Privacidade: 9. Seus direitos (LGPD, art. 18)",
+      "url": "/privacidade",
+      "texto": "## 9. Seus direitos (LGPD, art. 18)\nVocê, ou o seu responsável legal se você for menor, pode:\n- confirmar e acessar seus dados (\"Gerar relatório dos dados\", em Perfil › Privacidade);\n- corrigir dados incompletos ou errados;\n- pedir a exclusão da conta (\"Solicitar exclusão da conta\");\n- revogar ou mudar consentimentos a qualquer momento (Perfil › Coleta e acessos);\n- contestar a estimativa emocional e pedir revisão humana;\n- saber com quem os dados são compartilhados (seção 6)."
+    },
+    {
+      "id": "pagina/privacidade/10",
+      "tipo": "pagina",
+      "titulo": "Privacidade: 10. Pesquisa com professores avaliadores",
+      "url": "/privacidade",
+      "texto": "## 10. Pesquisa com professores avaliadores\nQuem se inscreve para avaliar o TrailUp informa nome, e-mail, instituição, titulação, formação e o papel em que vai avaliar. A inscrição e as respostas da avaliação ficam em formulários e planilhas do Google, na conta da pesquisa.\nDurante a avaliação, as tarefas marcadas no roteiro e as anotações feitas no console e no app ficam no banco de dados do TrailUp. No sistema, só o próprio avaliador as vê, nas duas contas que recebe (professor e aluno de teste); a equipe da pesquisa as lê para a análise. Elas são apagadas junto com a conta.\nO avaliador escolhe como aparece na monografia: com o nome, com um código ou só nos resultados do conjunto. Pode mudar de ideia até a versão final. Os detalhes estão na cartilha da pesquisa ."
+    },
+    {
+      "id": "pagina/privacidade/11",
+      "tipo": "pagina",
+      "titulo": "Privacidade: 11. Contato",
+      "url": "/privacidade",
+      "texto": "## 11. Contato\nPara exercer seus direitos ou tirar dúvidas sobre esta política, use a nossa página de contato .\nEncarregado pelo tratamento de dados pessoais (LGPD, art. 41): geisbelly19@gmail.com .\nÚltima atualização: 23/11/2026"
+    },
+    {
+      "id": "pagina/termos/0",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 1. Aceitação dos termos",
+      "url": "/termos",
+      "texto": "## 1. Aceitação dos termos\nAo acessar e usar a plataforma TrailUp, você concorda em cumprir e estar vinculado a estes Termos de Uso. Se você não concorda com estes termos, por favor, não use nossa plataforma."
+    },
+    {
+      "id": "pagina/termos/1",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 2. Descrição do serviço",
+      "url": "/termos",
+      "texto": "## 2. Descrição do serviço\nO TrailUp é uma plataforma educacional gamificada que oferece:\n- Trilhas de estudo com material gerado no formato de cada perfil e revisado pelo professor\n- Missões, conquistas, eventos, guildas, ranking da turma e moedas virtuais\n- Perfil de preferências de engajamento, com base no modelo BrainHex\n- Acompanhamento de progresso e desempenho\n- Console do professor, com a assistente Lumi"
+    },
+    {
+      "id": "pagina/termos/2",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 3. Cadastro e conta",
+      "url": "/termos",
+      "texto": "## 3. Cadastro e conta\n3.1. Requisitos\n- Informar sua data de nascimento. A inteligência artificial do TrailUp (mentor, correção de respostas e personalização por aluno) é só para maiores de 18 anos: quem tem menos de 18, ou não informou a data, usa o app sem ela, mesmo com a autorização do responsável. Se você tiver menos de 18 anos, câmera, análise de emoções, telemetria de uso e pesquisa só são ligados depois que um dos pais ou o responsável legal autorizar, item por item, numa tela própria do aplicativo ou pelo termo em papel entregue ao professor (LGPD, art. 14). Até lá, trilhas, questões e progresso funcionam normalmente, e a autorização pode ser revogada a qualquer momento em Perfil › Coleta e acessos.\n- Fornecer informações precisas e atualizadas\n- Manter a segurança de sua senha\n- Notificar-nos sobre uso não autorizado de sua conta\n3.2. Responsabilidades\n- Você é responsável por toda atividade em sua conta\n- Não compartilhar credenciais de acesso\n- Manter seus dados de contato atualizados"
+    },
+    {
+      "id": "pagina/termos/3",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 4. Uso aceitável",
+      "url": "/termos",
+      "texto": "## 4. Uso aceitável\nVocê concorda em NÃO:\n- Usar a plataforma para fins ilegais\n- Tentar acessar áreas restritas do sistema\n- Interferir com a operação da plataforma\n- Fazer engenharia reversa ou copiar o código\n- Criar múltiplas contas para ganhar vantagem indevida\n- Assediar, intimidar ou prejudicar outros usuários\n- Compartilhar conteúdo ofensivo ou inapropriado\n- Usar bots ou automação não autorizada"
+    },
+    {
+      "id": "pagina/termos/4",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 5. Propriedade intelectual",
+      "url": "/termos",
+      "texto": "## 5. Propriedade intelectual\n5.1. Propriedade do TrailUp\nTodo o conteúdo, design, código, marca e materiais da plataforma são de propriedade exclusiva do TrailUp e protegidos por leis de direitos autorais.\n5.2. Licença de uso\nConcedemos a você uma licença limitada, não exclusiva e não transferível para usar a plataforma para fins educacionais pessoais.\n5.3. Conteúdo do usuário\nVocê mantém os direitos sobre o conteúdo que criar, mas nos concede licença para usar, modificar e exibir esse conteúdo na plataforma."
+    },
+    {
+      "id": "pagina/termos/5",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 6. Gamificação e ranking",
+      "url": "/termos",
+      "texto": "## 6. Gamificação e ranking\nQuanto aos elementos de gamificação:\n- Moedas, conquistas e pontos não têm valor em dinheiro e só valem dentro do TrailUp\n- Rankings são baseados em desempenho legítimo\n- Reservamo-nos o direito de ajustar ou remover conquistas\n- Tentativas de manipular o sistema resultarão em penalidades"
+    },
+    {
+      "id": "pagina/termos/6",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 7. Privacidade de dados",
+      "url": "/termos",
+      "texto": "## 7. Privacidade de dados\nO uso de seus dados pessoais é regido por nossa Política de Privacidade . Câmera, personalização emocional, pesquisa e notificações são opcionais e dependem de consentimento próprio (para menores de 18 anos, do responsável legal), que pode ser revogado a qualquer momento. Parte dos dados é processada por fornecedores de tecnologia e de inteligência artificial, em sua maioria nos Estados Unidos, conforme listado na política."
+    },
+    {
+      "id": "pagina/termos/7",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 8. Mudanças no serviço",
+      "url": "/termos",
+      "texto": "## 8. Mudanças no serviço\nReservamo-nos o direito de:\n- Modificar ou descontinuar recursos a qualquer momento\n- Atualizar conteúdo e funcionalidades\n- Realizar manutenção programada ou emergencial\n- Alterar estes termos de uso, com aviso prévio"
+    },
+    {
+      "id": "pagina/termos/8",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 9. Suspensão e encerramento",
+      "url": "/termos",
+      "texto": "## 9. Suspensão e encerramento\n9.1. Suspensão\nPodemos suspender sua conta temporariamente se detectarmos violação destes termos.\n9.2. Encerramento pelo usuário\nVocê pode encerrar sua conta a qualquer momento através das configurações ou entrando em contato conosco.\n9.3. Encerramento pela plataforma\nPodemos encerrar sua conta em caso de violação grave ou repetida destes termos."
+    },
+    {
+      "id": "pagina/termos/9",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 10. Isenção de garantias",
+      "url": "/termos",
+      "texto": "## 10. Isenção de garantias\nA plataforma é fornecida \"como está\" e \"conforme disponível\". Não garantimos que:\n- O serviço será ininterrupto ou livre de erros\n- Todos os bugs serão corrigidos\n- A plataforma atenderá suas expectativas específicas\n- Os resultados de aprendizado serão garantidos"
+    },
+    {
+      "id": "pagina/termos/10",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 11. Limitação de responsabilidade",
+      "url": "/termos",
+      "texto": "## 11. Limitação de responsabilidade\nNa máxima extensão permitida por lei, o TrailUp não será responsável por:\n- Danos indiretos, incidentais ou consequenciais\n- Perda de dados ou lucros\n- Interrupções de negócios ou estudos\n- Ações de terceiros"
+    },
+    {
+      "id": "pagina/termos/11",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 12. Lei aplicável",
+      "url": "/termos",
+      "texto": "## 12. Lei aplicável\nEstes termos são regidos pelas leis da República Federativa do Brasil. Qualquer disputa será resolvida nos tribunais brasileiros competentes."
+    },
+    {
+      "id": "pagina/termos/12",
+      "tipo": "pagina",
+      "titulo": "Termos de uso: 13. Contato",
+      "url": "/termos",
+      "texto": "## 13. Contato\nPara dúvidas sobre estes termos de uso:\nPela nossa página de contato ou pelo e-mail do encarregado, na Política de privacidade .\nÚltima atualização: 23/11/2026"
+    },
+    {
+      "id": "diario/o-que-e-o-trailup",
+      "tipo": "diario",
+      "titulo": "Diário: O que é o TrailUp",
+      "url": "/blog/o-que-e-o-trailup",
+      "texto": "Categoria: TrailUp. O app do aluno, o console do professor e o que muda de um aluno para outro.\n\nVídeo no artigo: /videos/apresentacao\n\n# O que é o TrailUp\n\nO TrailUp é um aplicativo de estudo para o ensino superior. O professor cadastra o conteúdo da aula, e cada aluno recebe esse conteúdo no jeito do seu perfil, dentro de uma trilha que parece um mapa de jogo.\n\n## Duas partes, dois públicos\n\nO **aplicativo do aluno** roda no Android. Nele ficam a trilha da turma, o material de cada tópico, as atividades, as missões, as conquistas e as guildas. Cada aluno tem um guia, um dos sete personagens do TrailUp, escolhido pelo seu perfil.\n\nO **console do professor** roda no navegador. É onde o professor cria turmas, monta a trilha, revisa o material gerado e acompanha como a turma está indo.\n\n## O que muda de um aluno para outro\n\nO conteúdo é o mesmo para a turma inteira. O que muda é a forma: o texto, o áudio e a apresentação de cada tópico são escritos no tom e no ritmo de um dos sete perfis do BrainHex. Quem gosta de explorar recebe uma pergunta para começar; quem gosta de metas recebe o objetivo logo na abertura.\n\n## Quem decide\n\nO professor revisa o material antes de ele chegar à turma, e pode ajustar o conteúdo-base ou pedir uma nova versão. As sugestões da IA no console também passam por ele: aprovar, editar ou recusar.\n\n## Para ir além\n\n- [Como o material é personalizado](/blog/como-o-material-e-personalizado)\n- [Primeiros passos no app do aluno](/blog/primeiros-passos-no-app)\n- [O console do professor, aba por aba](/blog/guia-do-console)"
+    },
+    {
+      "id": "diario/como-o-material-e-personalizado",
+      "tipo": "diario",
+      "titulo": "Diário: Como o material é personalizado",
+      "url": "/blog/como-o-material-e-personalizado",
+      "texto": "Categoria: TrailUp. As duas camadas da personalização e onde o professor entra.\n\n# Como o material é personalizado\n\nA personalização do TrailUp acontece em duas camadas. Entender as duas ajuda a saber o que esperar de cada tópico.\n\n## Primeira camada: o material de cada perfil\n\nPara cada tópico, o TrailUp gera um texto, um áudio narrado e uma apresentação para cada um dos sete perfis do BrainHex. Esse material é compartilhado: dois alunos com o mesmo perfil na mesma turma recebem a mesma versão.\n\nCada perfil tem uma assinatura própria. O Estrategista recebe uma ideia central e uma explicação analítica; o Socializador recebe uma história com personagens; o Aventureiro começa pela ação. O conteúdo, os conceitos e o objetivo do tópico ficam iguais em todas as versões.\n\n## Segunda camada: o ajuste para cada aluno\n\nSobre o material do perfil entra um ajuste leve para cada aluno, com base nas preferências dele e no que ele faz no app. Esse ajuste muda a ordem sugerida do material e a oferta de apoio. Ele usa o que já foi gerado, sem criar áudio ou apresentação novos para cada pessoa.\n\n## O papel do professor\n\nNada chega à turma sem passar pelo professor. No console, ele vê o material de cada perfil, aprova, ajusta o conteúdo-base ou gera de novo. Quando o professor muda um conteúdo que algum aluno já viu, o TrailUp avisa quem precisa revisar.\n\n## Inteligência artificial e idade\n\nA geração do material por perfil é feita uma vez, para a turma, e vale para todos. Já a IA que atende o aluno diretamente (o chat com o guia, a correção automática de respostas e o ajuste por aluno) é só para maiores de 18 anos. Quem tem menos de 18 usa o app com o material do perfil, sem chamadas de IA ligadas à conta.\n\n- [O que é o BrainHex?](/blog/brainhex)\n- [Seus dados no TrailUp](/blog/dados-e-privacidade)"
+    },
+    {
+      "id": "diario/dados-e-privacidade",
+      "tipo": "diario",
+      "titulo": "Diário: Seus dados no TrailUp",
+      "url": "/blog/dados-e-privacidade",
+      "texto": "Categoria: TrailUp. O que o app guarda, o que é opcional e o que o professor vê.\n\n# Seus dados no TrailUp\n\nUm resumo do que o TrailUp guarda e por quê. O texto completo está na [política de privacidade](/privacidade).\n\n## O que entra\n\nNome, e-mail, data de nascimento, as respostas do questionário de preferências e o que você faz no app: tópicos abertos, tempo de estudo ativo, acertos, moedas e conquistas. Esses dados montam a sua trilha e mostram ao professor como a turma está.\n\n## O que é opcional\n\nCâmera, personalização emocional, uso na pesquisa e notificações dependem do seu consentimento, item por item, e você muda de ideia quando quiser em Perfil › Coleta e acessos. A câmera vem desligada. Quando está ligada, a imagem é analisada na memória do servidor e não é gravada.\n\n## Menores de 18 anos\n\nPara quem tem menos de 18, cada item opcional depende da autorização do responsável. A inteligência artificial que atende o aluno diretamente (o chat com o guia, a correção automática de respostas e o ajuste por aluno) fica desligada até os 18, mesmo com autorização.\n\n## O que o professor vê\n\nO professor vê o progresso e o desempenho dos alunos das turmas dele. Sobre emoção, ele vê só uma faixa (\"precisa de apoio\" ou \"ok\"), sem imagem, pontuação ou histórico.\n\n## Seus direitos\n\nNo app, em Perfil › Privacidade, você gera um relatório com os seus dados e pode pedir a exclusão da conta. Dúvidas vão pela [página de contato](/contato)."
+    },
+    {
+      "id": "diario/primeiros-passos-no-app",
+      "tipo": "diario",
+      "titulo": "Diário: Primeiros passos no app do aluno",
+      "url": "/blog/primeiros-passos-no-app",
+      "texto": "Categoria: Guias. Do cadastro à trilha introdutória, com o vídeo do primeiro acesso.\n\nVídeo no artigo: /videos/guia\n\n# Primeiros passos no app do aluno\n\nEste guia acompanha o vídeo abaixo: do cadastro até a trilha introdutória.\n\n## 1. Instale o app\n\nO TrailUp roda no Android. A [página de download](/download) tem o link da versão de teste na Google Play e o instalador APK.\n\n## 2. Crie a conta\n\nCadastre-se com e-mail, senha e data de nascimento. A data serve para saber quais recursos ficam ligados: a inteligência artificial do TrailUp é só para maiores de 18 anos. Depois, confirme o e-mail pelo link que chega na sua caixa de entrada.\n\n## 3. Complete o perfil\n\nInforme nome, apelido e como você prefere estudar. Em seguida vem o questionário de preferências: afirmações curtas e uma lista para pôr em ordem, do que mais move você ao que menos move.\n\n## 4. Conheça o seu perfil\n\nDo questionário saem as afinidades com os sete perfis do BrainHex. O de maior afinidade define o seu guia e o jeito como o material vai chegar. O questionário mede preferências de estudo, e a sua capacidade fica fora dessa conta.\n\n## 5. Faça a trilha introdutória\n\nSão três etapas curtas que mostram como o TrailUp funciona. Você pode fazer antes mesmo de estar numa turma.\n\n## 6. Entre na turma\n\nO professor inclui você na turma pelo e-mail do cadastro. A partir daí, a trilha da disciplina aparece no app, tópico por tópico.\n\nFicou com dúvida? Escreva pela [página de contato](/contato)."
+    },
+    {
+      "id": "diario/guia-do-console",
+      "tipo": "diario",
+      "titulo": "Diário: O console do professor, aba por aba",
+      "url": "/blog/guia-do-console",
+      "texto": "Categoria: Guias. Turmas, trilhas, personalizações, missões, notas e a Visão geral, com o guia em vídeo.\n\nVídeo no artigo: /videos/guia-do-professor\n\n# O console do professor, aba por aba\n\nEste guia resume o vídeo abaixo, que segue uma turma de Introdução à Programação do cadastro às métricas.\n\n## Cadastro e aprovação\n\nO professor se cadastra com e-mail e senha, confirma o e-mail e completa o perfil: nome, instituição, disciplina principal e uma apresentação curta. Como o console mostra dados de alunos, todo cadastro de professor passa pela aprovação da equipe, e o aviso chega por e-mail.\n\n## Turmas\n\nEm **Turmas** ficam a criação da turma, as matrículas (busca de alunos por nome ou e-mail) e a presença.\n\n## Trilhas\n\nEm **Trilhas**, a disciplina vira um mapa de tópicos. As ligações mostram a sequência e os pré-requisitos. O botão \"Gerar trilha com IA\" propõe os tópicos a partir de uma descrição ou da ementa, e nada é publicado sem a sua confirmação. Em cada tópico, \"Editar tópico\" guarda o conteúdo-base.\n\n## Personalizações\n\nAqui o material é gerado para os sete perfis, um de cada vez ou todos juntos. Se algum perfil falhar, um aviso aparece para gerar de novo. Antes de chegar à turma, revise: se algo não estiver bom, ajuste o conteúdo-base ou gere outra versão.\n\n## Recomendações, missões e notas\n\n- **Recomendações**: sugestões da IA para a turma, para aprovar, editar ou recusar.\n- **Missões**: objetivos com prazo, pontuação e recompensa.\n- **Notas**: correção das respostas dissertativas, comparando com o gabarito e devolvendo um retorno ao aluno.\n\n## Jogo da turma\n\n**Conquistas** (marcos com métrica, limite e pontos), **Rankings**, **Eventos** (rascunho aberto na mão ou no horário marcado), **Rank de batalhas**, **Economia** (moedas, prazos, loja, fundo coletivo e metas) e **Guildas** (quando e como os alunos formam grupos).\n\n## Visão geral\n\nA **Visão geral** mostra o total de alunos, as médias, a conclusão e quem precisa de atenção, com as abas Evolução, Conteúdo e Insights. Os números apontam onde olhar; a leitura e a decisão pedagógica ficam com o professor.\n\n## Lumi e Meus dados\n\nA **Lumi** é a assistente do console: explica as telas e ajuda a ler os dados da turma. Em **Meus dados** ficam o perfil, a senha e a opção de gerar automaticamente o material dos sete perfis sempre que um conteúdo é criado."
+    },
+    {
+      "id": "diario/avaliar-o-trailup",
+      "tipo": "diario",
+      "titulo": "Diário: Como avaliar o TrailUp na pesquisa com professores",
+      "url": "/blog/avaliar-o-trailup",
+      "texto": "Categoria: Pesquisa. Quem pode participar, as três fases, o roteiro e o tempo, com o passo a passo em vídeo.\n\nVídeo no artigo: /videos/passo-a-passo\n\n# Como avaliar o TrailUp na pesquisa com professores\n\nA fase atual da pesquisa é a validação com especialistas. O vídeo abaixo mostra o caminho inteiro; este texto resume.\n\n## Quem pode participar\n\nDocentes da área de Tecnologia da Informação, docentes de outras áreas do ensino superior e pedagogos. Não precisa saber programar nem entender de IA. Participar é voluntário.\n\n## As três fases\n\n1. **Inscrição**: o termo de consentimento e os seus dados de identificação, na [cartilha da pesquisa](/pesquisa/professores).\n2. **Acesso**: a equipe cria a sua conta de professor e uma conta de aluno de teste, e manda as senhas só para o seu e-mail.\n3. **Avaliação**: você usa o TrailUp numa turma de demonstração e responde ao formulário, que fica no próprio console, na aba **Avaliar o TrailUp**.\n\n## O roteiro\n\nSão oito tarefas curtas: seis no console e duas no app, com o aluno de teste. Um painel ao lado da tela marca cada etapa feita e guarda as suas anotações, no console e no app. Depois de cada tarefa vêm quatro perguntas rápidas: se você conseguiu, se foi fácil, quanto tempo levou e onde travou.\n\n## Tempo\n\nMais ou menos uma hora: cerca de 35 minutos usando o sistema e 25 respondendo.\n\n## Crítica franca ajuda\n\nUma tarefa difícil, uma métrica confusa ou um material com erro é exatamente o que a pesquisa precisa saber. No fim, você escolhe como a sua avaliação aparece na monografia: com o nome, com um código ou só no conjunto.\n\n[Abrir a cartilha da pesquisa](/pesquisa/professores)"
+    },
+    {
+      "id": "diario/pesquisa-tcc",
+      "tipo": "diario",
+      "titulo": "Diário: A pesquisa por trás do TrailUp",
+      "url": "/blog/pesquisa-tcc",
+      "texto": "Categoria: Pesquisa. De onde o TrailUp veio e em que fase a pesquisa está.\n\n# A pesquisa por trás do TrailUp\n\n## De onde veio\n\nO TrailUp nasceu de uma inquietação com a educação no Brasil: faltam recursos, e alunos com tipos de inteligência diferentes acabam deixados para trás num ensino que trata todo mundo do mesmo jeito. A ideia virou o Trabalho de Conclusão de Curso de Geisbelly Victória, em Ciência da Computação na Ulbra Palmas.\n\n## O que o TrailUp faz\n\nO professor cadastra o conteúdo da aula, dividido em tópicos. Para cada tópico, o TrailUp gera texto, áudio e apresentação nos sete perfis do BrainHex. O conteúdo é o mesmo, e muda o jeito de contar: o tom, a abertura, o ritmo e o fechamento. O professor revisa esse material antes de liberar para a turma.\n\nNo aplicativo, o aluno segue a trilha como um mapa, com o guia do seu perfil, missões, conquistas, eventos e guildas. No console, o professor acompanha a turma e conta com a Lumi, uma assistente que ajuda a ler os dados e a usar o sistema.\n\n## Como a pesquisa está organizada\n\n1. **Análise crítica da literatura** sobre gamificação, personalização e perfis de jogador.\n2. **Desenvolvimento do sistema**: o app do aluno, o console do professor e a geração do material por perfil.\n3. **Validação com especialistas**: professores e pedagogos usam o sistema numa turma de demonstração e respondem a um questionário. É a fase atual.\n4. **Teste com alunos em sala**, depois da validação e da aprovação no comitê de ética.\n\n## Resultados e artigos\n\nA validação com especialistas ainda não tem resultados; este artigo vai ser atualizado quando ela terminar. Enquanto isso, dois resumos expandidos já tratam de partes do sistema: veja [os artigos da pesquisa](/blog/artigos-da-pesquisa).\n\n## Quer participar?\n\nSe você dá aula no ensino superior ou trabalha com pedagogia, pode avaliar o TrailUp. O passo a passo está em [como avaliar o TrailUp](/blog/avaliar-o-trailup), e a [cartilha da pesquisa](/pesquisa/professores) explica as fases, o tempo e o que acontece com as suas respostas.\n\n## Referências\n\n- Nacke, L. E.; Bateman, C.; Mandryk, R. L. BrainHex: a neurobiological gamer typology survey. Entertainment Computing, v. 5, n. 1, 2014.\n- Deterding, S. et al. From game design elements to gamefulness: defining \"gamification\". MindTrek, 2011.\n- Kapp, K. M. The Gamification of Learning and Instruction. Pfeiffer, 2012."
+    },
+    {
+      "id": "diario/artigos-da-pesquisa",
+      "tipo": "diario",
+      "titulo": "Diário: Os artigos da pesquisa",
+      "url": "/blog/artigos-da-pesquisa",
+      "texto": "Categoria: Pesquisa. Os dois resumos expandidos preparados para a JIC 2026 e o que cada um investigou.\n\n# Os artigos da pesquisa\n\nAlém da monografia, o TrailUp rendeu dois resumos expandidos preparados para a Jornada de Iniciação Científica (JIC) 2026 do CEULP/ULBRA. Os dois seguem a Design Science Research: constroem o TrailUp como artefato e avaliam uma parte dele.\n\n## Da tipologia à trilha\n\n*Personalização de conteúdo por perfil de jogador com modelos de linguagem.* Autores: Geisbelly Victoria Feitosa Moraes Domiciano, Guilherme Domiciano Feitosa Silva e Fábio Castro Araújo (orientador).\n\nA pergunta: quando um modelo de linguagem adapta o material a um perfil BrainHex, o texto segue as características desse perfil ou só leva o nome dele? O experimento comparou 252 textos em três condições de *prompt*. O nome do perfil bastou para um juiz automático reconhecê-lo, mas a aderência às características só aumentou com a especificação completa do perfil no *prompt*. O resultado virou correção no próprio TrailUp.\n\n[Ler o artigo](https://geisbelly.github.io/TrailUp/documentacao/artigo-da-tipologia-a-trilha.html)\n\n## IA onde importa\n\n*Princípios arquiteturais para personalização e acolhimento na educação gamificada.* Autores: Geisbelly Victoria Feitosa Moraes Domiciano e Fábio Castro Araújo (orientador).\n\nO trabalho tira cinco princípios de arquitetura dos problemas que o TrailUp enfrentou ao usar IA generativa, que é instável e cobrada por uso: regras e filas no banco de dados, material-base só para os perfis presentes na turma, nada gerado duas vezes, acolhimento com o mínimo de dados e pesquisa embutida no sistema. Os princípios foram avaliados em seis cenários, por inspeção do código e testes simulados.\n\n[Ler o artigo](https://geisbelly.github.io/TrailUp/documentacao/artigo-ia-onde-importa.html)\n\n## A monografia\n\nO Trabalho de Conclusão de Curso reúne o sistema, a fundamentação e a validação com especialistas, que está em andamento. Veja [a pesquisa por trás do TrailUp](/blog/pesquisa-tcc)."
+    },
+    {
+      "id": "diario/brainhex",
+      "tipo": "diario",
+      "titulo": "Diário: O que é o BrainHex?",
+      "url": "/blog/brainhex",
+      "texto": "Categoria: Metodologia. Os sete perfis de jogador e como o TrailUp usa cada um para contar o mesmo conteúdo de jeitos diferentes.\n\n# O que é o BrainHex?\n\nO BrainHex é uma tipologia de jogadores proposta por Lennart Nacke, Chris Bateman e Regan Mandryk. Ela descreve sete formas de sentir prazer num jogo: descobrir, sobreviver a uma ameaça, arriscar, resolver, vencer, conviver e completar. Uma pessoa tem um pouco de cada uma, em doses diferentes.\n\n## Os sete perfis no TrailUp\n\n### Explorador (Seeker)\nGosta de descobrir caminhos e detalhes escondidos. Guia: Amara.\n\n### Sobrevivente (Survivor)\nEncara o que parece difícil com preparo e persistência. Guia: Kenji.\n\n### Aventureiro (Daredevil)\nPrefere experimentar e aprender no meio da ação. Guia: Ember.\n\n### Estrategista (Mastermind)\nQuer entender o porquê e montar um plano antes de agir. Guia: Idris.\n\n### Conquistador (Conqueror)\nGosta de metas claras e de superar a própria marca. Guia: Amina.\n\n### Socializador (Socializer)\nAprende trocando ideias e construindo junto. Guias: Mateo e Zuri.\n\n### Realizador (Achiever)\nGosta de ver o progresso e de fechar cada etapa. Guia: Kwame.\n\n## Como o TrailUp usa o BrainHex\n\nNo cadastro, o aluno responde a um questionário curto de preferências. Dele sai uma afinidade de 0 a 100 com cada um dos sete perfis. O de maior afinidade é o perfil dominante, e o aluno vê as sete afinidades no próprio perfil, no app.\n\nO professor cadastra o conteúdo da aula uma vez. Para cada tópico, o TrailUp gera texto, áudio e apresentação no jeito de cada perfil: o tom de voz, a forma de abrir o assunto e a forma de fechar mudam, e o conteúdo é o mesmo. O professor revisa esse material antes de ele chegar à turma.\n\nO questionário mede preferências de engajamento, e o perfil só decide o formato do material. Inteligência e capacidade ficam fora da conta.\n\n## Referências\n\n- Nacke, L. E.; Bateman, C.; Mandryk, R. L. BrainHex: preliminary results from a neurobiological gamer typology survey. ICEC, 2011.\n- Nacke, L. E.; Bateman, C.; Mandryk, R. L. BrainHex: a neurobiological gamer typology survey. Entertainment Computing, v. 5, n. 1, 2014."
+    },
+    {
+      "id": "diario/seeker",
+      "tipo": "diario",
+      "titulo": "Diário: Perfil Explorador (Seeker)",
+      "url": "/blog/seeker",
+      "texto": "Categoria: Perfis BrainHex. Para quem aprende descobrindo, uma pergunta puxando a outra.\n\n# Perfil Explorador (Seeker)\n\nQuem tem o Explorador como perfil dominante gosta de descobrir. Uma pergunta puxa outra, e o caminho lateral costuma ser tão interessante quanto o principal.\n\n## Como o material chega\n\nO texto, o áudio e a apresentação do Explorador abrem com uma pergunta e avançam como uma descoberta guiada por pistas. O tom é curioso, e o fim convida a continuar explorando sozinho. A guia do perfil é Amara, a Guardiã das Runas.\n\n## No app\n\n- A trilha aparece como um mapa, com o próximo tópico e os que dependem dele.\n- O Explorador estuda sem cronômetro: o ritmo é dele.\n- Missões, conquistas e guildas valem para todos os perfis da turma.\n\n## Para estudar melhor\n\n- Anote as ligações que você encontrar entre um tópico e outro.\n- Antes de abrir o material, escreva a pergunta que você quer responder.\n- Quando um assunto puxar outro, termine o tópico atual e volte depois."
+    },
+    {
+      "id": "diario/survivor",
+      "tipo": "diario",
+      "titulo": "Diário: Perfil Sobrevivente (Survivor)",
+      "url": "/blog/survivor",
+      "texto": "Categoria: Perfis BrainHex. Para quem encara o difícil com preparo e um plano para atravessar.\n\n# Perfil Sobrevivente (Survivor)\n\nO Sobrevivente encara o difícil com preparo. Gosta de saber onde está o risco e de ter um plano para atravessar.\n\n## Como o material chega\n\nO material do Sobrevivente abre com um problema real e o risco que ele traz, e segue passo a passo, reduzindo esse risco. O tom é prático e seguro, e o fim é uma lista do que aplicar. O guia do perfil é Kenji, o Guardião da Montanha.\n\n## No app\n\n- Atividades com cronômetro, para treinar sob tempo.\n- Batalhas contra o chefe do conteúdo, com falas próprias de cada perfil.\n- Missões, conquistas e guildas, como os demais perfis da turma.\n\n## Para estudar melhor\n\n- Comece pelo que mais assusta, com tempo de sobra para errar.\n- Treine com o relógio antes da prova, e descanse depois.\n- Revise os erros: eles dizem onde está o risco de verdade."
+    },
+    {
+      "id": "diario/daredevil",
+      "tipo": "diario",
+      "titulo": "Diário: Perfil Aventureiro (Daredevil)",
+      "url": "/blog/daredevil",
+      "texto": "Categoria: Perfis BrainHex. Para quem aprende fazendo, tentando e ajustando no caminho.\n\n# Perfil Aventureiro (Daredevil)\n\nO Aventureiro aprende fazendo. Prefere tentar, errar rápido e ajustar a ler tudo antes de começar.\n\n## Como o material chega\n\nO material do Aventureiro abre com um gancho de ação e segue como uma superação, com desafio e recompensa. O ritmo é rápido, e o fim propõe uma missão curta para executar na hora. A guia do perfil é Ember, a Fênix do Caos.\n\n## No app\n\n- Atividades com cronômetro.\n- Batalhas contra o chefe do conteúdo.\n- Missões, conquistas e guildas, como os demais perfis da turma.\n\n## Para estudar melhor\n\n- Tente o exercício primeiro e leia a explicação quando travar.\n- Depois de acertar, refaça de outro jeito.\n- Anote o que deu errado em cada tentativa: é o seu mapa do assunto."
+    },
+    {
+      "id": "diario/mastermind",
+      "tipo": "diario",
+      "titulo": "Diário: Perfil Estrategista (Mastermind)",
+      "url": "/blog/mastermind",
+      "texto": "Categoria: Perfis BrainHex. Para quem quer entender o porquê antes de agir.\n\n# Perfil Estrategista (Mastermind)\n\nO Estrategista quer entender o porquê. Gosta de problemas que pedem raciocínio e de montar o próprio plano de estudo.\n\n## Como o material chega\n\nO material do Estrategista abre com uma ideia central e avança de forma analítica, com lógica e evidência. O tom é preciso, e o fim resume o conceito e aponta os próximos passos. O guia do perfil é Idris, o Sábio das Constelações.\n\n## No app\n\n- A trilha mostra a ordem dos tópicos e os pré-requisitos de cada um.\n- Atividades com cronômetro.\n- Missões, conquistas e guildas, como os demais perfis da turma.\n\n## Para estudar melhor\n\n- Leia a ideia geral do tópico antes dos detalhes.\n- Desenhe o assunto: um diagrama ajuda a ver o que depende do quê.\n- Explique o conceito com as suas palavras antes de ir para o exercício."
+    },
+    {
+      "id": "diario/conqueror",
+      "tipo": "diario",
+      "titulo": "Diário: Perfil Conquistador (Conqueror)",
+      "url": "/blog/conqueror",
+      "texto": "Categoria: Perfis BrainHex. Para quem gosta de metas claras e de superar a própria marca.\n\n# Perfil Conquistador (Conqueror)\n\nO Conquistador gosta de metas claras e de vencer. Disputa com os colegas, e principalmente com a própria marca.\n\n## Como o material chega\n\nO material do Conquistador abre com a meta e o que muda quando ela é alcançada. O tom é direto e voltado a resultado, e o fim chama para a execução. A guia do perfil é Amina, a Rainha da Tempestade.\n\n## No app\n\n- Ranking da turma e o rank de batalhas dos eventos.\n- Batalhas contra o chefe do conteúdo e atividades com cronômetro.\n- Missões, conquistas e guildas, como os demais perfis da turma.\n\n## Para estudar melhor\n\n- Defina uma meta para a semana e confira no fim.\n- Compare o seu resultado com o seu da semana passada.\n- Depois de uma derrota, refaça a atividade com calma antes de tentar de novo."
+    },
+    {
+      "id": "diario/socializer",
+      "tipo": "diario",
+      "titulo": "Diário: Perfil Socializador (Socializer)",
+      "url": "/blog/socializer",
+      "texto": "Categoria: Perfis BrainHex. Para quem aprende trocando ideias e construindo junto.\n\n# Perfil Socializador (Socializer)\n\nO Socializador aprende com os outros. Explicar para um colega e ouvir outra forma de ver o assunto é o que fixa o conteúdo.\n\n## Como o material chega\n\nO material do Socializador abre com uma história, com personagens ou uma situação do dia a dia, e acompanha uma transformação. O tom é humano, e o fim convida a compartilhar e aplicar em grupo. Os guias do perfil são Mateo e Zuri, os Gêmeos Espíritos da Aurora.\n\n## No app\n\n- Guildas, para estudar e cumprir missões com colegas.\n- O fundo coletivo e as metas da turma, na economia do app.\n- O Socializador estuda sem cronômetro.\n\n## Para estudar melhor\n\n- Combine um horário fixo de estudo com alguém da turma.\n- Explique o tópico para um colega antes da atividade.\n- Quando travar, pergunte cedo: na guilda ou para o professor."
+    },
+    {
+      "id": "diario/achiever",
+      "tipo": "diario",
+      "titulo": "Diário: Perfil Realizador (Achiever)",
+      "url": "/blog/achiever",
+      "texto": "Categoria: Perfis BrainHex. Para quem gosta de ver o progresso andar e de fechar cada etapa.\n\n# Perfil Realizador (Achiever)\n\nO Realizador gosta de ver o progresso andar. Fechar cada etapa e completar a coleção é o que mantém o ritmo.\n\n## Como o material chega\n\nO material do Realizador abre com um objetivo que dá para medir e avança por marcos. O tom é objetivo, e o fim aponta o próximo marco. O guia do perfil é Kwame, o Cavaleiro Solar.\n\n## No app\n\n- O percentual de cada tópico e da trilha.\n- Conquistas da turma, com marcos e pontos.\n- Atividades com cronômetro, além de missões e guildas.\n\n## Para estudar melhor\n\n- Quebre o tópico em partes pequenas e marque cada uma.\n- Comece o dia pela etapa mais curta: ela puxa as outras.\n- Celebre o fim de cada tópico antes de abrir o próximo."
+    },
+    {
+      "id": "video/passo-a-passo",
+      "tipo": "video",
+      "titulo": "Vídeo: A pesquisa, passo a passo",
+      "url": "/videos/passo-a-passo",
+      "texto": "Para quem vai avaliar. A pesquisa, passo a passo (4 min 36 s). Quem pode participar, as três fases (inscrição, acesso e avaliação) e as oito tarefas do roteiro: seis no console e duas no app, com o aluno de teste. Vale ver antes de começar.\nTambém na cartilha: /pesquisa/professores/videos/passo-a-passo"
+    },
+    {
+      "id": "video/apresentacao",
+      "tipo": "video",
+      "titulo": "Vídeo: Conheça o TrailUp",
+      "url": "/videos/apresentacao",
+      "texto": "Apresentação. Conheça o TrailUp (3 min). O mesmo conteúdo da aula chega de um jeito diferente para cada aluno, com guias, missões e guildas. Antes de publicar, o professor revisa o material personalizado.\nTambém na cartilha: /pesquisa/professores/videos/apresentacao"
+    },
+    {
+      "id": "video/guia-do-professor",
+      "tipo": "video",
+      "titulo": "Vídeo: O console, do começo ao fim",
+      "url": "/videos/guia-do-professor",
+      "texto": "Para o professor. O console, do começo ao fim (6 min). Do cadastro à última aba do console, seguindo uma turma de Introdução à Programação: a trilha gerada com IA, o material dos sete perfis e a revisão antes de publicar, as missões, as notas e o que a Visão geral mostra da turma.\nTambém na cartilha: /pesquisa/professores/videos/guia-do-professor"
+    },
+    {
+      "id": "video/para-o-professor",
+      "tipo": "video",
+      "titulo": "Vídeo: O tempo de quem dá aula",
+      "url": "/videos/para-o-professor",
+      "texto": "A rotina do professor. O tempo de quem dá aula (1 min 43 s). Várias turmas, cada aluno num ritmo e pouco tempo para acompanhar todo mundo. O vídeo mostra onde o painel, a Lumi e as missões entram nessa rotina.\nTambém na cartilha: /pesquisa/professores/videos/para-o-professor"
+    },
+    {
+      "id": "video/guia",
+      "tipo": "video",
+      "titulo": "Vídeo: Primeiro acesso, passo a passo",
+      "url": "/videos/guia",
+      "texto": "Para o aluno. Primeiro acesso, passo a passo (3 min 10 s). Do e-mail de confirmação até a trilha introdutória, passando pelo questionário de preferências e pelo perfil do aluno.\nTambém na cartilha: /pesquisa/professores/videos/guia"
+    }
+  ]
+}

@@ -930,6 +930,15 @@ Cada perfil carrega:
   no frontend. Os dois ajudam a fazer a avaliação e **nunca sugerem nota nem opinião**: o juiz do Guia
   reprova a resposta que faz isso.
 
+  **O Guia e a Lumi conhecem o site** (`app/services/site_trailup.py`): páginas públicas, Diário,
+  vídeos, cartilha e um resumo da monografia, e mandam o endereço da página. Toda pergunta leva só o
+  mapa (título e endereço, no começo do payload); os trechos entram quando a pergunta casa com uma
+  seção, por palavra e sem modelo, e vão também ao juiz. As páginas são cópia gerada
+  (`api/app/agent/prompts/site_trailup.json`) por `siteDosGuias.paridade.test.tsx`, que renderiza o
+  site e falha quando a cópia fica velha: mudou texto do site, rode
+  `ATUALIZAR_SITE_DOS_GUIAS=1 npx vitest run src/features/site/`. O resumo da monografia
+  (`monografia_trailup.md`) é escrito à mão e segue os limites do que o trabalho afirma.
+
   **A Visão geral da turma de demonstração mostra números de EXEMPLO** (`PainelDeExemplo`,
   `exemploDaPesquisa.ts`): a rodada avalia o formato das métricas, não o dado, e não se cria aluno
   fictício para preenchê-la. Vale só com essa turma sozinha em tela e só para o avaliador; os
