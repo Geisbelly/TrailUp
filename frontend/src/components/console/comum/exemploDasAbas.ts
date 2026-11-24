@@ -3,6 +3,8 @@ import type { Duelo, LinhaDoRanking } from "../batalhas/batalha";
 import { alunosDeExemplo, TRILHA_DE_EXEMPLO } from "../dashboard/exemploDaPesquisa";
 import { chaveDoPerfil } from "../dashboard/perfilCores";
 import type { AlunoAnalisado } from "../dashboard/aluno/tipos";
+import { metricasDosAlunosDeExemplo, type MetricasDoAlunoDeExemplo } from "../dashboard/aluno/exemploDoAluno";
+import type { ConquistaDaTurma } from "../conquistas/conquistasApi";
 import type { GuildaDaTurma } from "../guildas/formacao";
 import type { LinhaDaFila } from "../notas/fila";
 import type { CriterioChave, Posicao } from "../rankings/rankings";
@@ -294,12 +296,38 @@ export function filaDeExemplo(hoje: Date = new Date()): LinhaDaFila[] {
 // ---------------------------------------------------------------- conquistas e missões
 
 /**
- * Quantos alunos de exemplo ganharam a conquista. Depende só do id, para o número não mudar entre
- * recarregamentos, e nunca passa da turma de exemplo. Soma-se ao número real só no cartão: o aviso
- * de editar o critério continua contando só quem ganhou de verdade.
+ * Quantos alunos de exemplo ganharam a conquista, pelo critério dela: a métrica é lida do mesmo
+ * detalhe que o professor abre no aluno de exemplo (atividades entregues, dias de estudo, tempo,
+ * acertos, tópicos), então "Primeiro passo" conta os 32 e "Acertos ≥ 90%" conta só quem tem 90.
+ * Conquista por perfil conta só quem tem o perfil entre os representativos, como no banco. Soma-se
+ * ao número real só no cartão: o aviso de editar o critério continua contando só quem ganhou de verdade.
  */
-export function ganhadoresDeExemplo(conquistaId: number): number {
-  return 3 + (Math.abs(conquistaId) * 11) % 24;
+export function ganhadoresDeExemplo(
+  conquista: Pick<ConquistaDaTurma, "escopo" | "perfil" | "criterio">,
+  hoje: Date,
+): number {
+  const { metrica, limiar } = conquista.criterio;
+  const ganhou = (a: MetricasDoAlunoDeExemplo): boolean => {
+    switch (metrica.chave) {
+      case "atividades_concluidas":
+        return a.atividadesConcluidas >= Number(limiar);
+      case "dias_seguidos":
+        return a.diasSeguidos >= Number(limiar);
+      case "minutos_totais":
+        return a.minutosTotais >= Number(limiar);
+      case "acertos_percentual":
+        return a.acertosPercentual >= Number(limiar);
+      case "topicos_visitados":
+        return a.topicosVisitados >= (limiar === "todos" ? TRILHA_DE_EXEMPLO.length : Number(limiar));
+      case "atividade_rapida":
+        return a.atividadeMaisRapidaMin !== null && a.atividadeMaisRapidaMin <= Number(limiar);
+      default:
+        return false;
+    }
+  };
+  return metricasDosAlunosDeExemplo(hoje).filter(
+    (a) => (conquista.escopo !== "perfil" || (conquista.perfil !== null && a.perfis.includes(conquista.perfil))) && ganhou(a),
+  ).length;
 }
 
 /** Quantos alunos de exemplo entregaram a atividade de uma missão de entrega (mesma regra: só o id decide). */

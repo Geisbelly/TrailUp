@@ -949,7 +949,8 @@ Cada perfil carrega:
   turma seguem o mesmo acordo (`comum/exemploDasAbas.ts`, com a turma em `comum/classeDeExemplo.ts`,
   fornecida pelo `Console`): Rankings, Rank de batalhas, Guildas e Notas juntam itens de exemplo aos
   reais, sobre os mesmos 32 alunos; Conquistas e Missões somam os alunos de exemplo só na contagem do
-  cartão. Ranking de exemplo tem id negativo e não tem editar nem excluir; nota dada a uma entrega de
+  cartão. Em Conquistas, quem ganhou sai do critério, lido do mesmo detalhe do aluno de exemplo
+  (`metricasDosAlunosDeExemplo`), para o número bater com a Visão geral. Ranking de exemplo tem id negativo e não tem editar nem excluir; nota dada a uma entrega de
   exemplo e guilda de exemplo renomeada ficam só no estado da tela, nunca no banco. A cópia publica os tópicos como a turma-modelo
   (`20261123_02`), porque `duplicar_classe` faz tudo nascer `rascunho`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.
