@@ -448,3 +448,48 @@ export function personalizacaoDeExemplo(
   });
   return { personalizacoes: personalizacoes.reverse(), progressoItens };
 }
+
+// ---------------------------------------------------------------- conquistas
+
+/** O que as métricas das conquistas leem de um aluno de exemplo, tirado do mesmo detalhe que o professor abre. */
+export type MetricasDoAlunoDeExemplo = {
+  /** O perfil principal e o segundo: com afinidade 46 e 24, são os dois representativos. */
+  perfis: string[];
+  atividadesConcluidas: number;
+  diasSeguidos: number;
+  minutosTotais: number;
+  acertosPercentual: number;
+  topicosVisitados: number;
+  /** A entrega mais rápida, em minutos; null sem nenhuma atividade entregue. */
+  atividadeMaisRapidaMin: number | null;
+};
+
+/** A maior sequência de dias seguidos entre os dias de estudo (contados em dias atrás). */
+function maiorSequencia(diasAtras: number[]): number {
+  const dias = [...new Set(diasAtras)].sort((a, b) => a - b);
+  let maior = dias.length ? 1 : 0;
+  let atual = maior;
+  for (let k = 1; k < dias.length; k += 1) {
+    atual = dias[k] === dias[k - 1] + 1 ? atual + 1 : 1;
+    maior = Math.max(maior, atual);
+  }
+  return maior;
+}
+
+export function metricasDosAlunosDeExemplo(hoje: Date): MetricasDoAlunoDeExemplo[] {
+  return Array.from({ length: TOTAL_DE_ALUNOS }, (_, i) => {
+    const achado = linhaDoExemplo(`exemplo-${String(i + 1).padStart(2, "0")}`);
+    const { linha: l, indice } = achado!;
+    const entregues = atividadesFeitas(l, indice, hoje).filter((f) => f.acertos.length > 0);
+    const duracoes = entregues.map((f) => f.duracoesSeg[f.duracoesSeg.length - 1] / 60);
+    return {
+      perfis: [l.perfil, l.segundo],
+      atividadesConcluidas: entregues.length,
+      diasSeguidos: maiorSequencia(diasDasVisitas(l)),
+      minutosTotais: l.tempoMin,
+      acertosPercentual: l.acertos,
+      topicosVisitados: percentuaisDosTopicos(l).filter((p) => p > 0).length,
+      atividadeMaisRapidaMin: duracoes.length ? Math.min(...duracoes) : null,
+    };
+  });
+}

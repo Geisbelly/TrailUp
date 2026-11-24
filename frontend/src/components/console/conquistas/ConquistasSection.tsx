@@ -161,6 +161,7 @@ export default function ConquistasSection({ professorId }: { professorId?: strin
   const cheio = noTeto(conquistas.length, teto);
   // Turma de demonstração da pesquisa: o cartão soma quem ganhou entre os alunos de exemplo. A conquista é a de verdade.
   const exemplo = ehTurmaDeExemplo(useClasseDeExemplo(), turmaId);
+  const hojeDoExemplo = useMemo(() => new Date(), []);
 
   return (
     <div>
@@ -226,7 +227,7 @@ export default function ConquistasSection({ professorId }: { professorId?: strin
           ) : (
             <ul className="space-y-3">
               {conquistas.map((c) => (
-                <CartaoDaConquista key={c.id} conquista={exemplo ? { ...c, concedidas: c.concedidas + ganhadoresDeExemplo(c.id) } : c} onEditar={() => abrirEdicao(c)} onAlternar={() => setAlvo(c)} />
+                <CartaoDaConquista key={c.id} conquista={exemplo ? { ...c, concedidas: c.concedidas + ganhadoresDeExemplo(c, hojeDoExemplo) } : c} onEditar={() => abrirEdicao(c)} onAlternar={() => setAlvo(c)} />
               ))}
             </ul>
           )}

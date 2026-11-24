@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { estadoDaEntrega } from "../notas/fila";
-import { ehAlunoDeExemplo, TOTAL_DE_ALUNOS } from "../dashboard/exemploDaPesquisa";
+import { ehAlunoDeExemplo, TOTAL_DE_ALUNOS, TRILHA_DE_EXEMPLO } from "../dashboard/exemploDaPesquisa";
 import {
   batalhasDeExemplo,
   ehGuildaDeExemplo,
@@ -13,6 +13,9 @@ import {
   SEM_GUILDA_NO_EXEMPLO,
   TOPICOS_DE_EXEMPLO,
 } from "./exemploDasAbas";
+
+import { metricaPorChave, type Limiar, type MetricaChave } from "../conquistas/criterio";
+import type { BrainHexProfileKey } from "@/features/signup/brainhex";
 
 const HOJE = new Date("2026-11-24T12:00:00Z");
 
@@ -87,13 +90,44 @@ describe("exemplos das abas da turma de demonstração", () => {
     expect(new Set(chaves).size).toBe(chaves.length);
   });
 
-  it("ganhadores e entregas de exemplo ficam dentro da turma de exemplo e não mudam entre leituras", () => {
+  it("entregas de exemplo ficam dentro da turma de exemplo e não mudam entre leituras", () => {
     for (const id of [1, 2, 33, 150, 9999]) {
-      for (const n of [ganhadoresDeExemplo(id), entreguesDeExemplo(id)]) {
-        expect(n).toBeGreaterThan(0);
-        expect(n).toBeLessThanOrEqual(TOTAL_DE_ALUNOS);
-      }
-      expect(ganhadoresDeExemplo(id)).toBe(ganhadoresDeExemplo(id));
+      expect(entreguesDeExemplo(id)).toBeGreaterThan(0);
+      expect(entreguesDeExemplo(id)).toBeLessThanOrEqual(TOTAL_DE_ALUNOS);
+      expect(entreguesDeExemplo(id)).toBe(entreguesDeExemplo(id));
     }
+  });
+
+  describe("ganhadores de exemplo seguem o critério da conquista", () => {
+    const conquista = (chave: MetricaChave, limiar: Limiar, perfil: BrainHexProfileKey | null = null) => ({
+      escopo: perfil ? ("perfil" as const) : ("comum" as const),
+      perfil,
+      criterio: { metrica: metricaPorChave(chave)!, limiar, aparencia: null },
+    });
+    const n = (chave: MetricaChave, limiar: Limiar, perfil: BrainHexProfileKey | null = null) =>
+      ganhadoresDeExemplo(conquista(chave, limiar, perfil), HOJE);
+
+    it("uma atividade entregue: todos os alunos de exemplo, que já avançaram na trilha", () => {
+      expect(n("atividades_concluidas", 1)).toBe(TOTAL_DE_ALUNOS);
+    });
+
+    it("limiar mais alto nunca tem mais ganhadores", () => {
+      for (const chave of ["atividades_concluidas", "minutos_totais", "acertos_percentual", "topicos_visitados"] as const) {
+        expect(n(chave, 4)).toBeGreaterThanOrEqual(n(chave, 8));
+      }
+      expect(n("acertos_percentual", 50)).toBeGreaterThan(n("acertos_percentual", 90));
+      expect(n("acertos_percentual", 90)).toBeGreaterThan(0);
+      expect(n("atividade_rapida", 5)).toBeLessThanOrEqual(n("atividade_rapida", 30));
+    });
+
+    it("todos os tópicos é o mesmo que o número de tópicos da trilha", () => {
+      expect(n("topicos_visitados", "todos")).toBe(n("topicos_visitados", TRILHA_DE_EXEMPLO.length));
+    });
+
+    it("conquista por perfil conta só quem tem o perfil entre os representativos", () => {
+      const porPerfil = n("atividades_concluidas", 1, "seeker");
+      expect(porPerfil).toBeGreaterThan(0);
+      expect(porPerfil).toBeLessThan(TOTAL_DE_ALUNOS);
+    });
   });
 });
