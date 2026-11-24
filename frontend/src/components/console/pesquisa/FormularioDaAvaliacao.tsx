@@ -180,12 +180,15 @@ function Pergunta({
   responder,
   alternar,
   erroDoEmail,
+  emailDoLogin,
 }: {
   item: ItemDaAvaliacao;
   respostas: RespostasDaAvaliacao;
   responder: (entry: string, valor: string | string[]) => void;
   alternar: (entry: string, opcao: string) => void;
   erroDoEmail: boolean;
+  /** Com o login conhecido, a pergunta do e-mail vira só leitura: a resposta é o e-mail da conta. */
+  emailDoLogin: string | null;
 }) {
   const id = useId();
   const texto = (entry: string) => {
@@ -219,7 +222,14 @@ function Pergunta({
     <fieldset aria-labelledby={`${id}-titulo`} className="space-y-3 rounded-xl border border-border bg-card p-4 sm:p-5">
       {cabecalho}
 
-      {item.tipo === "texto" && (
+      {item.tipo === "texto" && item.email && emailDoLogin && (
+        <p className="rounded-lg border border-border bg-background/60 px-4 py-3 text-sm text-muted-foreground">
+          Você responde como <span className="font-semibold text-foreground">{emailDoLogin}</span>, o e-mail do seu login. Ele vai
+          junto com a avaliação, sem precisar digitar.
+        </p>
+      )}
+
+      {item.tipo === "texto" && !(item.email && emailDoLogin) && (
         <>
           <Input
             aria-labelledby={`${id}-titulo`}
@@ -329,7 +339,8 @@ export function FormularioDaAvaliacao({ formulario, usuario, email, confirmacao,
   const [pagina, setPagina] = useState(inicial?.pagina ?? 0);
   const comEmail = (salvas: RespostasDaAvaliacao): RespostasDaAvaliacao => {
     const itemDoEmail = formulario.paginas[0]?.itens.find(i => i.tipo === "texto" && i.email);
-    if (email && itemDoEmail && itemDoEmail.tipo === "texto" && !salvas[itemDoEmail.entry]) {
+    // O e-mail da conta sempre vence o do rascunho: é por ele que a equipe liga a avaliação à inscrição.
+    if (email && itemDoEmail && itemDoEmail.tipo === "texto") {
       return { ...salvas, [itemDoEmail.entry]: email };
     }
     return salvas;
@@ -551,6 +562,7 @@ export function FormularioDaAvaliacao({ formulario, usuario, email, confirmacao,
             responder={responder}
             alternar={alternar}
             erroDoEmail={emailInvalido && item === entryDoEmail}
+            emailDoLogin={email}
           />
         ))}
       </div>

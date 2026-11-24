@@ -10,10 +10,11 @@
 //
 // <pasta> tem os arquivos com o nome final (é o que o caminho no R2 usa):
 //   cartilha-pesquisa-professores.pdf
-//   videos/pesquisa-passo-a-passo.mp4 videos/pesquisa-passo-a-passo.jpg
-//   videos/apresentacao-trailup.mp4   videos/apresentacao-trailup.jpg
-//   videos/para-o-professor.mp4       videos/para-o-professor.jpg
-//   videos/guia-primeiro-acesso.mp4   videos/guia-primeiro-acesso.jpg
+//   videos/pesquisa-passo-a-passo.mp4 videos/pesquisa-passo-a-passo-capa.jpg
+//   videos/apresentacao-trailup.mp4   videos/apresentacao-trailup-capa.jpg
+//   videos/guia-do-professor.mp4      videos/guia-do-professor-capa.jpg
+//   videos/para-o-professor.mp4       videos/para-o-professor-capa.jpg
+//   videos/guia-primeiro-acesso.mp4   videos/guia-primeiro-acesso-capa.jpg
 //
 // Os caminhos são os de frontend/src/features/pesquisa/videosDaPesquisa.ts (o teste compara).
 // Depois de subir, confere cada um pelo gateway, sem sessão, como a página vai fazer.
@@ -24,13 +25,15 @@ import { join, resolve } from "node:path";
 export const ARQUIVOS = [
   ["cartilha-pesquisa-professores.pdf", "publico/pesquisa/cartilha-pesquisa-professores.pdf", "application/pdf"],
   ["videos/pesquisa-passo-a-passo.mp4", "publico/pesquisa/videos/pesquisa-passo-a-passo.mp4", "video/mp4"],
-  ["videos/pesquisa-passo-a-passo.jpg", "publico/pesquisa/videos/pesquisa-passo-a-passo.jpg", "image/jpeg"],
+  ["videos/pesquisa-passo-a-passo-capa.jpg", "publico/pesquisa/videos/pesquisa-passo-a-passo-capa.jpg", "image/jpeg"],
   ["videos/apresentacao-trailup.mp4", "publico/pesquisa/videos/apresentacao-trailup.mp4", "video/mp4"],
-  ["videos/apresentacao-trailup.jpg", "publico/pesquisa/videos/apresentacao-trailup.jpg", "image/jpeg"],
+  ["videos/apresentacao-trailup-capa.jpg", "publico/pesquisa/videos/apresentacao-trailup-capa.jpg", "image/jpeg"],
+  ["videos/guia-do-professor.mp4", "publico/pesquisa/videos/guia-do-professor.mp4", "video/mp4"],
+  ["videos/guia-do-professor-capa.jpg", "publico/pesquisa/videos/guia-do-professor-capa.jpg", "image/jpeg"],
   ["videos/para-o-professor.mp4", "publico/pesquisa/videos/para-o-professor.mp4", "video/mp4"],
-  ["videos/para-o-professor.jpg", "publico/pesquisa/videos/para-o-professor.jpg", "image/jpeg"],
+  ["videos/para-o-professor-capa.jpg", "publico/pesquisa/videos/para-o-professor-capa.jpg", "image/jpeg"],
   ["videos/guia-primeiro-acesso.mp4", "publico/pesquisa/videos/guia-primeiro-acesso.mp4", "video/mp4"],
-  ["videos/guia-primeiro-acesso.jpg", "publico/pesquisa/videos/guia-primeiro-acesso.jpg", "image/jpeg"],
+  ["videos/guia-primeiro-acesso-capa.jpg", "publico/pesquisa/videos/guia-primeiro-acesso-capa.jpg", "image/jpeg"],
 ];
 
 function exigir(nome) {

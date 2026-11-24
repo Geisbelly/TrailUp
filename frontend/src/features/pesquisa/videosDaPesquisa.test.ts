@@ -35,18 +35,36 @@ describe("vídeos da pesquisa", () => {
     expect(videoPorSlug(undefined)).toBeNull();
   });
 
-  it("os quatro papéis, com o passo a passo da pesquisa primeiro", () => {
+  it("os cinco papéis, com o passo a passo da pesquisa primeiro", () => {
     expect(VIDEOS_DA_PESQUISA.map(v => v.papel)).toEqual([
       "Para quem vai avaliar",
       "Apresentação",
       "Para o professor",
-      "Guia",
+      "A rotina do professor",
+      "Para o aluno",
     ]);
+  });
+
+  it("capa com nome próprio, para não brigar com o cache da capa antiga", () => {
+    for (const video of VIDEOS_DA_PESQUISA) expect(video.poster).toMatch(/-capa\.jpg$/);
   });
 });
 
 describe("vídeo de cada artigo do Diário", () => {
   const BLOG_POST = readFileSync(fileURLToPath(new URL("../../pages/BlogPost.tsx", import.meta.url)), "utf-8");
+
+  it("a lista do Diário e os artigos têm os mesmos ids", () => {
+    const BLOG = readFileSync(fileURLToPath(new URL("../../pages/Blog.tsx", import.meta.url)), "utf-8");
+    const naLista = [...BLOG.matchAll(/\{ id: "([^"]+)"/g)].map(m => m[1]).sort();
+    const artigos = [...BLOG_POST.matchAll(/\n {2}"?([a-z-]+)"?: \{\n {4}title:/g)].map(m => m[1]).sort();
+    expect(naLista).toEqual(artigos);
+    expect(naLista.length).toBeGreaterThan(9);
+  });
+
+  it("cada vídeo vai para um artigo só", () => {
+    const slugs = Object.values(VIDEO_DO_ARTIGO);
+    expect(new Set(slugs).size).toBe(slugs.length);
+  });
 
   it("aponta para vídeo que existe e para artigo que existe", () => {
     for (const [artigo, slug] of Object.entries(VIDEO_DO_ARTIGO)) {

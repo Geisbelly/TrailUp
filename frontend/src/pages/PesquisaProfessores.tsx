@@ -30,6 +30,7 @@ import {
   ESCALA_CONCORDANCIA,
   EXTREMOS_SEQ,
   FRANQUEZA,
+  TITULO_DA_FRANQUEZA,
   FORA_DESTA_RODADA,
   ITENS_SUS,
   METRICAS,
@@ -240,7 +241,7 @@ function Cartilha() {
           className="mb-10 rounded-lg border border-primary/40 bg-primary/10 p-5"
         >
           <h2 id="franqueza-titulo" className="mb-2 text-lg font-semibold text-foreground">
-            Resultado negativo também é resultado
+            {TITULO_DA_FRANQUEZA}
           </h2>
           <p className="text-muted-foreground">{FRANQUEZA}</p>
         </aside>
@@ -416,7 +417,7 @@ function Cartilha() {
                 </div>
                 <p className="text-sm">
                   As métricas são: {METRICAS.join(", ")}. Na turma de demonstração os valores são de exemplo e
-                  vêm marcados com um selo, então julgue o painel, não o número. Preste atenção na última coluna. Um
+                  vêm marcados com um selo, então avalie o painel pelo formato. Preste atenção na última coluna. Um
                   painel que você entende, mas que não mudaria nada na sua aula, só ocupa espaço.
                 </p>
               </div>

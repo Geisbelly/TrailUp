@@ -1,0 +1,54 @@
+/* Vídeos do site (início, Sobre, Download, Diário, cartilha da pesquisa).
+   A moldura repete a das capas: borda em degradê lilás, coral e verde-água, e o brilho roxo
+   do resto do site. Nada de cartão: o vídeo fica direto sobre a cena da página. */
+
+.video-cena { width: min(100%, 960px); margin-inline: auto; display: grid; gap: 28px; text-align: center; list-style: none; }
+
+.video-moldura { position: relative; padding: 7px; border-radius: 16px; background: linear-gradient(140deg, #a986d866, #ffae9733 55%, #97e4d244); box-shadow: 0 30px 70px #0b0613b3, 0 0 90px #63428c55; }
+.video-tela { position: relative; overflow: hidden; aspect-ratio: 16 / 9; border-radius: 10px; background: #0d0816; }
+.video-tela video { display: block; width: 100%; height: 100%; object-fit: contain; background: #0d0816; }
+.video-tela video:focus-visible { outline: 2px solid #a9f0de; outline-offset: -2px; }
+
+.video-play { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; width: 100%; color: #321523; background: radial-gradient(circle at 50% 50%, #180f2633, #180f2600 60%); cursor: pointer; }
+.video-play-icone { display: grid; place-items: center; width: 84px; height: 84px; padding-left: 5px; border-radius: 50%; background: #ffae97; border: 1px solid #ffcab9; box-shadow: 0 5px 0 #7e4158, 0 0 0 10px #ffae9726, 0 18px 40px #0b0613a0; transition: transform 160ms, background-color 160ms; }
+.video-play-rotulo { padding: 6px 14px; border-radius: 999px; background: #180f26cc; color: #f3e9fb; font-size: 13px; font-weight: 600; line-height: 1.4; }
+.video-play:hover .video-play-icone { background: #ffcab5; transform: translateY(-2px) scale(1.04); }
+.video-play:focus-visible { outline: none; }
+.video-play:focus-visible .video-play-icone { outline: 3px solid #a9f0de; outline-offset: 6px; }
+
+.video-sem-arquivo { display: grid; place-items: center; padding: 24px; background-size: cover; background-position: center; }
+.video-sem-arquivo::before { content: ""; position: absolute; inset: 0; background: #180f26d9; }
+.video-sem-arquivo p { position: relative; max-width: 360px; color: #e5dbea; font-size: 14px; line-height: 1.7; }
+
+.video-legenda { display: grid; justify-items: center; gap: 10px; }
+.video-legenda .journey-eyebrow { justify-content: center; margin: 0; }
+.video-legenda .journey-eyebrow > span { width: 6px; height: 6px; background: #97e4d2; transform: rotate(45deg); }
+.video-legenda h3 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: 28px; line-height: 1.25; color: #faf5ff; }
+.video-descricao { max-width: 640px; margin: 0; color: #d1bfdc; font-size: 15px; line-height: 1.75; }
+.video-acoes { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px 28px; margin-top: 8px; }
+
+.video-lista { display: grid; gap: 72px; padding: 0; margin: 0; }
+
+/* Seção do vídeo na página inicial: a cena do site atrás, mascarada nas bordas, como a do download. */
+.journey-video { position: relative; isolation: isolate; padding-block: 88px 96px; }
+.journey-video-cena { position: absolute; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; }
+.journey-video-cena img { width: 100%; height: 100%; object-fit: cover; object-position: center 40%; opacity: .45; mask-image: linear-gradient(transparent, #000 22%, #000 70%, transparent); }
+.journey-video .journey-section-heading { margin-bottom: 40px; }
+
+@media (max-width: 720px) {
+  .video-cena { gap: 22px; }
+  .video-moldura { padding: 5px; border-radius: 12px; }
+  .video-tela { border-radius: 8px; }
+  .video-play-icone { width: 64px; height: 64px; }
+  .video-play-icone svg { width: 24px; height: 24px; }
+  .video-play-rotulo { font-size: 12px; }
+  .video-legenda h3 { font-size: 23px; }
+  .video-descricao { font-size: 14px; }
+  .video-lista { gap: 56px; }
+  .journey-video { padding-block: 64px 72px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-play-icone { transition: none; }
+  .video-play:hover .video-play-icone { transform: none; }
+}
