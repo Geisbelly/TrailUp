@@ -92,11 +92,12 @@ export function nomeExibidoDoPerfil(nome: string): string {
   return chave ? NOME_DO_PERFIL[chave] : nome;
 }
 
+/** Só as palavras que começam por letra: "Bruno (exemplo)" dá "B", não "B(". */
 export function iniciaisDe(nome: string): string {
   return (
     nome
       .split(" ")
-      .filter(Boolean)
+      .filter((p) => /^\p{L}/u.test(p))
       .map((parte) => parte[0])
       .slice(0, 2)
       .join("")

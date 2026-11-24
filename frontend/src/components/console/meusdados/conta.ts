@@ -27,8 +27,9 @@ export function desdeQuando(iso: string | null | undefined): string | null {
   return d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 }
 
+/** Só as palavras que começam por letra: "Bruno (exemplo)" dá "B", não "B(". */
 export function iniciais(nome: string): string {
-  const partes = nome.trim().split(/\s+/).filter(Boolean);
+  const partes = nome.trim().split(/\s+/).filter((p) => /^\p{L}/u.test(p));
   if (partes.length === 0) return "?";
   const a = partes[0][0];
   const b = partes.length > 1 ? partes[partes.length - 1][0] : "";
