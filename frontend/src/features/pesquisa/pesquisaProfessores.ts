@@ -103,6 +103,7 @@ export const ACESSO = "O e-mail que você cadastrar é o seu login no TrailUp. O
  * Dito ao participante na cartilha, na descrição do formulário e no termo:
  * resultado negativo é resultado. Também contra o viés de cortesia.
  */
+export const TITULO_DA_FRANQUEZA = "Crítica franca ajuda a pesquisa";
 export const FRANQUEZA = "A pesquisa se alimenta tanto de resultados negativos quanto de positivos. Uma tarefa difícil, uma métrica confusa ou um material gerado com erro é exatamente o que precisa aparecer: é isso que mostra o que corrigir antes de o sistema chegar a alunos. Nota dada por gentileza atrapalha a pesquisa; crítica franca ajuda.";
 
 /** Roteiro de uso. No formulário, cada tarefa é seguida da SEQ. */
@@ -142,7 +143,7 @@ export const TAREFAS: readonly Tarefa[] = [
       "Na Visão geral, com a turma de demonstração selecionada, veja os painéis com o selo de exemplo.",
       "Em cada métrica, abra a explicação (o ícone ao lado do nome) e diga para você mesmo o que ela mostra.",
     ],
-    observar: "Se cada painel se entende sozinho e se a explicação diz o que o número mede. Os valores são de exemplo: julgue o formato, não o dado.",
+    observar: "Se cada painel se entende sozinho e se a explicação diz o que o número mede. Os valores são de exemplo, então avalie o formato de cada painel.",
   },
   {
     id: "T5",
@@ -576,7 +577,7 @@ export const ITENS_DO_ACESSO: readonly string[] = [
 
 export const FACA: readonly string[] = [
   "Seja franco. Uma crítica ajuda tanto quanto um elogio, e nota dada por gentileza atrapalha a pesquisa.",
-  "Explore à vontade e use conteúdo seu, se quiser. A turma é de demonstração e o único aluno é o de teste. Se você errar ou clicar no lugar errado, isso também é resultado.",
+  "Explore à vontade e use conteúdo seu, se quiser. A turma é de demonstração e o único aluno é o de teste. Se você errar ou clicar no lugar errado, isso também entra na análise.",
   "Avalie sozinho, sem combinar respostas com outros professores antes de enviar.",
   "Responda sobre o que você viu, não sobre o que o sistema poderia ser.",
   "Se não souber avaliar alguma coisa, deixe em branco. Não chute.",

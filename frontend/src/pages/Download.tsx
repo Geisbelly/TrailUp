@@ -20,11 +20,13 @@ export default function Download() {
       <div className="download-options">
         <section className="download-option"><div><h2>Google Play</h2><p>Acesse a versão de teste disponível na loja.</p></div><a className="journey-button journey-button-coral" href={DOWNLOAD_CONFIG.playStoreUrl} target="_blank" rel="noopener noreferrer">Abrir Google Play <ExternalLink size={18} /></a></section>
         <section className="download-option"><div><h2>Instalador Android</h2><p>Versão beta em formato APK.</p></div><a className="journey-button" href={DOWNLOAD_CONFIG.apkUrl} download><FileDown size={18} />Baixar APK</a></section>
-        <section className="download-option"><div><h2>Android App Bundle</h2><p>Pacote AAB para distribuição.</p></div><a className="journey-link" href={DOWNLOAD_CONFIG.aabUrl} download><FileDown size={18} />Baixar AAB</a></section>
+        <section className="download-option"><div><h2>Android App Bundle</h2><p>Pacote para publicar em loja. Para instalar no celular, use o APK.</p></div><a className="journey-link" href={DOWNLOAD_CONFIG.aabUrl} download><FileDown size={18} />Baixar AAB</a></section>
       </div>
-      <section className="public-band text-center" aria-labelledby="primeiro-acesso-titulo">
-        <h2 id="primeiro-acesso-titulo">Depois de instalar</h2>
-        <p className="mx-auto mb-6 max-w-2xl">Confirme o e-mail, responda ao questionário de preferências e complete o perfil. Depois disso, a trilha introdutória já abre.</p>
+      <section className="public-band" aria-labelledby="primeiro-acesso-titulo">
+        <div className="public-page-title mb-10">
+          <h2 id="primeiro-acesso-titulo">Depois de instalar</h2>
+          <p>Confirme o e-mail, responda ao questionário de preferências e complete o perfil. Depois disso, a trilha introdutória já abre.</p>
+        </div>
         <VideoDoSite slug="guia" />
       </section>
     </PublicLayout>

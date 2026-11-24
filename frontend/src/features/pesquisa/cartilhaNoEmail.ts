@@ -9,7 +9,7 @@
 // fontes ficam como marcadores @@chave@@ e o Apps Script troca pelo PLANILHA_TEMA na hora de enviar;
 // @@link_cartilha@@ vira o link da cartilha.
 
-import { EVITE, FACA, FRANQUEZA, PASSOS, PERGUNTAS_FREQUENTES, RESUMO, TAREFAS, TEMPO_ESTIMADO } from "./pesquisaProfessores";
+import { EVITE, FACA, FRANQUEZA, PASSOS, TITULO_DA_FRANQUEZA, PERGUNTAS_FREQUENTES, RESUMO, TAREFAS, TEMPO_ESTIMADO } from "./pesquisaProfessores";
 
 /** Os marcadores que o Apps Script precisa preencher. O teste confere que o .gs conhece todos. */
 export const MARCADORES_DA_CARTILHA = [
@@ -82,7 +82,7 @@ export function cartilhaNoEmailHtml(): string {
   const franqueza =
     `<tr><td style="padding:18px 0 0;">` +
     cartao(
-      `<h3 style="${H3}color:${m("primaria")};text-align:center;">Resultado negativo também é resultado</h3><p style="${P}margin:0;text-align:center;color:${m("texto")};">${esc(FRANQUEZA)}</p>`,
+      `<h3 style="${H3}color:${m("primaria")};text-align:center;">${esc(TITULO_DA_FRANQUEZA)}</h3><p style="${P}margin:0;text-align:center;color:${m("texto")};">${esc(FRANQUEZA)}</p>`,
       "18px 20px",
     ) +
     `</td></tr>`;
@@ -140,7 +140,7 @@ export function cartilhaNoEmailTexto(): string {
     `${linha}\nCARTILHA DO PROFESSOR: COMO VAI SER A AVALIAÇÃO\n${linha}`,
     TEMPO_ESTIMADO,
     RESUMO.map(r => `${r.titulo}\n${r.texto}`).join("\n\n"),
-    `Resultado negativo também é resultado\n${FRANQUEZA}`,
+    `${TITULO_DA_FRANQUEZA}\n${FRANQUEZA}`,
     `DO CONVITE AO ENVIO\n\n${PASSOS.map((p, i) => `${i + 1}. ${p.titulo}\n${p.texto}`).join("\n\n")}`,
     `${TAREFAS.length} TAREFAS CURTAS\n\n${TAREFAS.map(
       t => `${t.id}. ${t.titulo}${t.onde === "aluno" ? " (como aluno)" : ""}\n${t.passos.map(p => `- ${p}`).join("\n")}\nRepare: ${t.observar}`,

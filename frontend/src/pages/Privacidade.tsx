@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PublicLayout, PublicPageTitle } from "@/components/PublicLayout";
 
-const PRIVACIDADE_ATUALIZADA_EM = "05/11/2026";
+const PRIVACIDADE_ATUALIZADA_EM = "23/11/2026";
 
 const Secao = ({ titulo, children }: { titulo: string; children: ReactNode }) => (
   <section>
@@ -19,10 +19,10 @@ const Privacidade = () => {
   return (
     <PublicLayout>
         <div className="public-article">
-          <PublicPageTitle title="Política de Privacidade" eyebrow="TrailUp" />
+          <PublicPageTitle title="Política de privacidade" eyebrow="TrailUp" />
           <article className="space-y-8">
             <section className="bg-accent/10 p-4 rounded-lg border border-accent/20">
-              <h2 className="text-xl font-bold mb-3 text-accent">Uso para Pesquisa Acadêmica</h2>
+              <h2 className="text-xl font-bold mb-3 text-accent">Uso para pesquisa acadêmica</h2>
               <p className="text-muted-foreground leading-relaxed">
                 O TrailUp faz parte de um projeto de pesquisa acadêmica conduzido pela aluna de Ciência da
                 Computação da Ulbra Palmas, Geisbelly Victória. Os dados são usados para o funcionamento do
@@ -32,7 +32,7 @@ const Privacidade = () => {
               </p>
             </section>
 
-            <Secao titulo="1. Finalidade do Aplicativo">
+            <Secao titulo="1. Finalidade do aplicativo">
               <p>
                 O TrailUp é um aplicativo educacional criado inicialmente para estudantes da ULBRA Palmas,
                 especialmente da disciplina de Redes de Computadores. Ele tem dois objetivos:
@@ -46,7 +46,7 @@ const Privacidade = () => {
               </ol>
             </Secao>
 
-            <Secao titulo="2. Quais Dados São Coletados">
+            <Secao titulo="2. Quais dados são coletados">
               <p className="font-semibold text-foreground">2.1 Dados fornecidos por você</p>
               <Lista>
                 <li>Nome, e-mail e data de nascimento (a data serve para saber se é preciso autorização do responsável)</li>
@@ -64,15 +64,15 @@ const Privacidade = () => {
               <p>
                 A câmera só é usada se você ligar e permitir as finalidades de câmera e personalização
                 emocional. Para menores de 18 anos, também é necessária autorização do responsável. As imagens
-                do rosto são enviadas ao servidor da TrailUp nos Estados Unidos. Quando o provedor local
-                `local_vision` está explicitamente configurado — como na API de produção —, YuNet e FER+
-                analisam as imagens na memória, sem enviá-las a provedores externos. Sem essa configuração
-                ou sem resultado de análise, a emoção fica indisponível; sinais de uso não são usados como
-                substituto. A imagem não é gravada; categoria, confiança e resumo ficam por 30 dias.
+                do rosto são enviadas ao servidor da TrailUp nos Estados Unidos. Lá, dois modelos que rodam no
+                próprio servidor (YuNet e FER+) analisam a imagem na memória, sem enviá-la a provedores
+                externos. Se a análise estiver desligada ou não der resultado, a emoção fica indisponível, e
+                sinais de uso não entram no lugar dela. A imagem não é gravada; categoria, confiança e
+                resumo ficam por 30 dias.
               </p>
             </Secao>
 
-            <Secao titulo="3. Inferência Emocional">
+            <Secao titulo="3. Inferência emocional">
               <p>
                 Quando a análise visual estiver explicitamente ativada e você tiver autorizado a câmera e a
                 personalização emocional, o TrailUp estima uma expressão facial. Sem esse sinal, a emoção fica
@@ -92,7 +92,7 @@ const Privacidade = () => {
               </p>
             </Secao>
 
-            <Secao titulo="4. Menores de 18 Anos">
+            <Secao titulo="4. Menores de 18 anos">
               <Lista>
                 <li>
                   Para menores, cada finalidade opcional (câmera, personalização emocional, pesquisa,
@@ -122,7 +122,7 @@ const Privacidade = () => {
               </Lista>
             </Secao>
 
-            <Secao titulo="5. Como os Dados São Usados">
+            <Secao titulo="5. Como os dados são usados">
               <Lista>
                 <li>Montar trilhas, missões e o feedback personalizado</li>
                 <li>Mostrar ao professor o progresso da turma e os alertas de apoio</li>
@@ -136,7 +136,7 @@ const Privacidade = () => {
               </p>
             </Secao>
 
-            <Secao titulo="6. Compartilhamento e Transferência Internacional">
+            <Secao titulo="6. Compartilhamento e transferência internacional">
               <p>
                 Os dados não são vendidos. Eles são compartilhados com os professores das turmas e com os
                 fornecedores abaixo, que os tratam em nome do TrailUp. A maioria fica nos Estados Unidos,
@@ -161,13 +161,12 @@ const Privacidade = () => {
                 Não temos cláusulas-padrão da ANPD assinadas com esses fornecedores. Os EUA não têm
                 adequação reconhecida pela ANPD; portanto, a transferência de imagens para o servidor
                 da API exige mecanismo válido previsto na LGPD. A escolha e a validação desse mecanismo
-                continuam pendentes e estão registradas em
-                <code>docs/lgpd/transferencias-internacionais.md</code>. O consentimento não é apresentado
-                como prova de que essa pendência jurídica foi resolvida.
+                continuam pendentes e estão registradas na documentação do projeto. O consentimento não é
+                apresentado como prova de que essa pendência jurídica foi resolvida.
               </p>
             </Secao>
 
-            <Secao titulo="7. Por Quanto Tempo Guardamos">
+            <Secao titulo="7. Por quanto tempo guardamos">
               <Lista>
                 <li>Telemetria bruta de uso: 90 dias (180 dias quando autorizada para pesquisa)</li>
                 <li>Indicadores derivados da telemetria: 13 meses (24 meses para pesquisa)</li>
@@ -190,7 +189,7 @@ const Privacidade = () => {
               </p>
             </Secao>
 
-            <Secao titulo="9. Seus Direitos (LGPD, art. 18)">
+            <Secao titulo="9. Seus direitos (LGPD, art. 18)">
               <p>Você, ou o seu responsável legal se você for menor, pode:</p>
               <Lista>
                 <li>confirmar e acessar seus dados ("Gerar relatório dos dados", em Perfil › Privacidade);</li>
@@ -202,7 +201,26 @@ const Privacidade = () => {
               </Lista>
             </Secao>
 
-            <Secao titulo="10. Contato">
+            <Secao titulo="10. Pesquisa com professores avaliadores">
+              <p>
+                Quem se inscreve para avaliar o TrailUp informa nome, e-mail, instituição, titulação,
+                formação e o papel em que vai avaliar. A inscrição e as respostas da avaliação ficam em
+                formulários e planilhas do Google, na conta da pesquisa.
+              </p>
+              <p>
+                Durante a avaliação, as tarefas marcadas no roteiro e as anotações feitas no console e no
+                app ficam no banco de dados do TrailUp. No sistema, só o próprio avaliador as vê, nas duas
+                contas que recebe (professor e aluno de teste); a equipe da pesquisa as lê para a análise.
+                Elas são apagadas junto com a conta.
+              </p>
+              <p>
+                O avaliador escolhe como aparece na monografia: com o nome, com um código ou só nos
+                resultados do conjunto. Pode mudar de ideia até a versão final. Os detalhes estão na{" "}
+                <Link to="/pesquisa/professores" className="text-primary hover:underline">cartilha da pesquisa</Link>.
+              </p>
+            </Secao>
+
+            <Secao titulo="11. Contato">
               <p>
                 Para exercer seus direitos ou tirar dúvidas sobre esta política, use a nossa{" "}
                 <Link to="/contato" className="text-primary hover:underline">página de contato</Link>.

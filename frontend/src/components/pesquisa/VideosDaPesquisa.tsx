@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, Link2, Share2 } from "lucide-react";
+import { Check, Link2, Play, Share2 } from "lucide-react";
 import {
   VIDEOS_DA_PESQUISA,
   caminhoDoVideo,
@@ -8,28 +8,58 @@ import {
   type VideoDaPesquisa,
 } from "@/features/pesquisa/videosDaPesquisa";
 
-/** O player. Sem o arquivo no R2 (ou sem rede), troca o player quebrado por um aviso. */
+/**
+ * O player, numa moldura no estilo das capas. Antes do play, a capa fica sozinha com um botão
+ * próprio no centro; os controles do navegador só entram quando o vídeo começa. Sem o arquivo no
+ * R2 (ou sem rede), a capa continua na moldura com um aviso no lugar do botão.
+ */
 export function PlayerDaPesquisa({ video }: { video: VideoDaPesquisa }) {
   const [falhou, setFalhou] = useState(false);
+  const [tocando, setTocando] = useState(false);
+  const player = useRef<HTMLVideoElement>(null);
   const src = linkDoArquivo(video.arquivo);
+  const capa = linkDoArquivo(video.poster) ?? undefined;
+
   if (!src || falhou) {
     return (
-      <div className="flex aspect-video w-full items-center justify-center rounded-lg border border-border bg-card p-4 text-center text-sm text-muted-foreground">
-        Este vídeo não carregou agora. Tente de novo mais tarde.
+      <div className="video-moldura">
+        <div className="video-tela video-sem-arquivo" style={capa ? { backgroundImage: `url("${capa}")` } : undefined}>
+          <p role="status">Este vídeo não carregou agora. Tente de novo mais tarde.</p>
+        </div>
       </div>
     );
   }
+
+  function assistir() {
+    setTocando(true);
+    const elemento = player.current;
+    if (!elemento) return;
+    void elemento.play().catch(() => undefined);
+    elemento.focus();
+  }
+
   return (
-    <video
-      className="aspect-video w-full rounded-lg border border-border bg-black"
-      controls
-      playsInline
-      preload="metadata"
-      poster={linkDoArquivo(video.poster) ?? undefined}
-      src={src}
-      onError={() => setFalhou(true)}
-      aria-label={video.titulo}
-    />
+    <div className="video-moldura">
+      <div className="video-tela">
+        <video
+          ref={player}
+          controls={tocando}
+          playsInline
+          preload="metadata"
+          poster={capa}
+          src={src}
+          onPlay={() => setTocando(true)}
+          onError={() => setFalhou(true)}
+          aria-label={video.titulo}
+        />
+        {!tocando && (
+          <button type="button" className="video-play" onClick={assistir}>
+            <span className="video-play-icone" aria-hidden="true"><Play size={30} fill="currentColor" /></span>
+            <span className="video-play-rotulo">Assistir<span className="sr-only">: {video.titulo}</span> · {video.duracao}</span>
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -61,7 +91,7 @@ export function BotaoDeCompartilhar({ video, caminho = caminhoDoVideo(video) }: 
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <button type="button" className="journey-button inline-flex" onClick={compartilhar}>
+      <button type="button" className="journey-button journey-button-small" onClick={compartilhar}>
         {copiado ? <Check size={18} aria-hidden="true" /> : <Share2 size={18} aria-hidden="true" />}
         <span aria-live="polite">{copiado ? "Link copiado" : "Compartilhar este vídeo"}</span>
       </button>
@@ -79,8 +109,8 @@ export function BotaoDeCompartilhar({ video, caminho = caminhoDoVideo(video) }: 
 }
 
 /**
- * Player, título, descrição e os dois atalhos (compartilhar e abrir só o vídeo). `caminho` é a
- * página própria do vídeo: a da pesquisa na cartilha, `/videos/<slug>` no resto do site.
+ * Player, título, descrição e os dois atalhos (compartilhar e abrir só o vídeo), tudo centralizado.
+ * `caminho` é a página própria do vídeo: a da pesquisa na cartilha, `/videos/<slug>` no resto do site.
  */
 export function VideoEmDestaque({ video, caminho = caminhoDoVideo(video), as: Tag = "div" }: {
   video: VideoDaPesquisa;
@@ -88,20 +118,18 @@ export function VideoEmDestaque({ video, caminho = caminhoDoVideo(video), as: Ta
   as?: "div" | "li";
 }) {
   return (
-    <Tag className="mx-auto w-full max-w-3xl space-y-4 rounded-lg border border-border bg-card p-4 text-center sm:p-6">
+    <Tag className="video-cena">
       <PlayerDaPesquisa video={video} />
-      <div>
-        <p className="text-sm font-semibold uppercase tracking-wide text-primary">
-          {video.papel} · {video.duracao}
-        </p>
-        <h3 className="text-lg font-semibold text-foreground">{video.titulo}</h3>
-        <p className="text-sm">{video.descricao}</p>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-4">
-        <BotaoDeCompartilhar video={video} caminho={caminho} />
-        <Link className="inline-flex items-center gap-2 text-sm font-semibold text-primary underline-offset-4 hover:underline" to={caminho}>
-          <Link2 size={16} aria-hidden="true" /> Abrir só este vídeo
-        </Link>
+      <div className="video-legenda">
+        <p className="journey-eyebrow"><span aria-hidden="true" />{video.papel} · {video.duracao}<span aria-hidden="true" /></p>
+        <h3>{video.titulo}</h3>
+        <p className="video-descricao">{video.descricao}</p>
+        <div className="video-acoes">
+          <BotaoDeCompartilhar video={video} caminho={caminho} />
+          <Link className="journey-link" to={caminho}>
+            <Link2 size={16} aria-hidden="true" /> Abrir só este vídeo
+          </Link>
+        </div>
       </div>
     </Tag>
   );
@@ -111,7 +139,7 @@ export function VideoEmDestaque({ video, caminho = caminhoDoVideo(video), as: Ta
 export function VideosDaCartilha() {
   if (!linkDoArquivo(VIDEOS_DA_PESQUISA[0].arquivo)) return null;
   return (
-    <ul className="space-y-6">
+    <ul className="video-lista">
       {VIDEOS_DA_PESQUISA.map(video => (
         <VideoEmDestaque key={video.slug} video={video} as="li" />
       ))}
