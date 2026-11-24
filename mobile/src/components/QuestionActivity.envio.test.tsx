@@ -46,11 +46,13 @@ mockModule('@/services/loja/lojaService', { gastarSegundaChance: async () => ({ 
 const gabarito: Record<number, string> = { 31: 'Depender', 32: 'Fluxograma', 33: 'Decomposição' };
 const enviados: { questaoId: number; resposta: string }[] = [];
 let atrasoMs = 0;
+let semRede = false;
 mockModule('@/services/questaoNoBanco', {
   ...require('@/services/questaoNoBanco.core'),
   responderQuestao: async (p: { questaoId: number; resposta: string }) => {
     enviados.push({ questaoId: p.questaoId, resposta: p.resposta });
     if (atrasoMs) await new Promise((r) => setTimeout(r, atrasoMs));
+    if (semRede) throw new TypeError('Failed to fetch');
     const correta = p.resposta === gabarito[p.questaoId];
     return {
       correta, acertosPercentual: correta ? 100 : 0, regra: 'primeira', tentativa: 1,
@@ -58,6 +60,19 @@ mockModule('@/services/questaoNoBanco', {
     };
   },
   revelarGabarito: async (id: number) => ({ respostaCorreta: gabarito[id] }),
+});
+// Gabarito no aparelho (`20261124_07`): o que o aparelho acha que é certo, e a fila sem rede.
+let gabaritoLocal: Record<number, string[]> | null = null;
+const naFila: { questaoId: number; resposta: string }[] = [];
+mockModule('@/services/gabaritoNoAparelho', {
+  ...require('@/services/gabaritoNoAparelho.core'),
+  carregarGabaritos: async () => gabaritoLocal,
+  gabaritosEmMemoria: () => gabaritoLocal,
+  enviarFila: async () => [],
+  respostasNaFila: async () => [...naFila],
+  guardarNaFila: async (_aluno: string, item: { questaoId: number; resposta: string }) => {
+    naFila.push({ questaoId: item.questaoId, resposta: item.resposta });
+  },
 });
 mockModule('@/components/resposta/EditorDeCodigo', { EditorDeCodigo: () => null });
 mockModule('@/components/resposta/EditorNumerico', { EditorNumerico: () => null });
@@ -89,10 +104,10 @@ const atividade = {
   ],
 };
 
-async function montar() {
+async function montar(extra: Record<string, unknown> = {}) {
   let tela: { root: { findAll: (f: (n: No) => boolean) => No[] }; toJSON: () => unknown; unmount: () => void } | null = null;
   await TR.act(async () => {
-    tela = TR.create(React.createElement(QuestionActivity, { atividade, topicoId: 1, onComplete: async () => undefined }));
+    tela = TR.create(React.createElement(QuestionActivity, { atividade: structuredClone(atividade), topicoId: 1, onComplete: async () => undefined, ...extra }));
   });
   const t = tela!;
   const achar = (f: (n: No) => boolean) => t.root.findAll((n) => n.type === 'toque' && f(n))[0];
@@ -158,5 +173,69 @@ test('com o banco lento, não se avança durante o envio, e o resultado da 1 nã
   } finally {
     await t.desmontar();
     atrasoMs = 0;
+  }
+});
+
+const daTurma = { alunoId: 'aluno', classeId: 68 };
+
+test('com o gabarito no aparelho, o resultado sai antes de o banco responder', async () => {
+  enviados.length = 0;
+  atrasoMs = 400;
+  gabaritoLocal = { 31: ['Depender'], 32: ['Fluxograma'], 33: ['Decomposição'] };
+  const t = await montar(daTurma);
+  try {
+    await t.tocar(t.alternativa('Depender'));
+    await t.tocar(t.comTexto('Confirmar resposta'));
+    assert.doesNotMatch(t.texto(), /Enviando resposta/);
+    assert.equal(t.modalAberto(), true);
+    assert.match(t.texto(), /Questão 1: /);
+    assert.doesNotMatch(t.texto(), /Revise e tente de novo/);
+    // O banco recebeu a mesma resposta, e é ele que grava.
+    assert.deepEqual(enviados, [{ questaoId: 31, resposta: 'Depender' }]);
+    await t.tocar(t.comTexto('Fechar'), 500);
+    assert.equal(t.modalAberto(), false);
+  } finally {
+    await t.desmontar();
+    atrasoMs = 0;
+    gabaritoLocal = null;
+  }
+});
+
+test('se o banco discordar do aparelho, vale o banco', async () => {
+  enviados.length = 0;
+  atrasoMs = 50;
+  // O aparelho está desatualizado: acha que a 31 é "Ter passos"; o banco diz "Depender".
+  gabaritoLocal = { 31: ['Ter passos'] };
+  const t = await montar(daTurma);
+  try {
+    await t.tocar(t.alternativa('Ter passos'));
+    await t.tocar(t.comTexto('Confirmar resposta'));
+    await t.tocar(t.comTexto('Fechar'), 150);
+    assert.equal(t.modalAberto(), true);
+    assert.match(t.texto(), /Vale a correção do servidor/);
+  } finally {
+    await t.desmontar();
+    atrasoMs = 0;
+    gabaritoLocal = null;
+  }
+});
+
+test('sem rede, a resposta corrigida no aparelho fica na fila para o banco', async () => {
+  enviados.length = 0;
+  naFila.length = 0;
+  semRede = true;
+  gabaritoLocal = { 31: ['Depender'] };
+  const t = await montar(daTurma);
+  try {
+    await t.tocar(t.alternativa('Depender'));
+    await t.tocar(t.comTexto('Confirmar resposta'), 50);
+    assert.doesNotMatch(t.texto(), /Revise e tente de novo/);
+    assert.deepEqual(naFila, [{ questaoId: 31, resposta: 'Depender' }]);
+    assert.match(t.texto(), /Sem conexão: 1 resposta guardada/);
+  } finally {
+    await t.desmontar();
+    semRede = false;
+    gabaritoLocal = null;
+    naFila.length = 0;
   }
 });

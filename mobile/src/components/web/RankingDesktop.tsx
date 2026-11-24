@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { RankDetalhe } from "@/app/(tabs)/ranking/[id]";
 import { HallBackground } from "@/components/HallTheme";
+import { EsqueletoDasLinhasDoRank } from "@/components/ranking/EsqueletoDoRanking";
 import { RankEstadoVazio } from "@/components/ranking/RankEstadoVazio";
 import { UtilityIcon } from "@/components/UtilityIcon";
 import { useConquistaRank } from "@/context/ConquistaRankContext";
@@ -139,7 +140,12 @@ export function RankingDesktop() {
       </View>
 
       {/* A categoria aberta fica num cartão, como no protótipo v4. */}
-      {motivoVazio ? (
+      {motivoVazio === "carregando" ? (
+        // Enquanto o ranking chega, as linhas da tabela no lugar dela, como na categoria aberta.
+        <View style={[s.direita, { borderColor: palette.border, backgroundColor: palette.background }]}>
+          <EsqueletoDasLinhasDoRank palette={palette} embutido />
+        </View>
+      ) : motivoVazio ? (
         <View style={[s.direita, s.direitaVazia]}>
           <View style={s.cartaoVazio}>
             <RankEstadoVazio motivo={motivoVazio} palette={palette} profile={perfil} onTentarDeNovo={reloadRanking} />

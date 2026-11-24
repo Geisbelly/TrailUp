@@ -20,9 +20,15 @@ function loadService(os: string, executionEnvironment: string, appOwnership?: st
       if (name === 'expo-constants') return { executionEnvironment, appOwnership };
       if (name === 'react-native') return { Platform: { OS: os } };
       if (name === '@/services/focoLocal') return { emFocoNoAparelho: () => false };
-      if (name === 'expo-notifications') {
-        loads += 1;
-        return { setNotificationHandler() { handlers += 1; } };
+      // No app, a web resolve `moduloDeNotificacoes.web.ts`, que nunca carrega a biblioteca; aqui
+      // o carregador do celular vale para todas, e é `pushNotifications` quem barra a web.
+      if (name === '@/services/moduloDeNotificacoes') {
+        return {
+          carregarModuloDeNotificacoes() {
+            loads += 1;
+            return { setNotificationHandler() { handlers += 1; } };
+          },
+        };
       }
       throw new Error(`Unexpected module: ${name}`);
     },
