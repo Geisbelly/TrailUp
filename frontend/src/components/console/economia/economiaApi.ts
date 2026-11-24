@@ -221,23 +221,78 @@ export async function estornar(compraId: number, motivo: string) {
   await chamar("loja_estornar", { p_compra_id: compraId, p_motivo: motivo });
 }
 
-export async function salvarEscopo(classeId: number, escopo: "topico" | "atividade", alvoId: number, moedasConclusao: number | null, moedasAprovacao: number | null, prazoMin: number | null, prazoMax: number | null) {
+/** A regra própria de um tópico ou de uma atividade. NULL herda (atividade → tópico → turma). */
+export type RegraDoEscopo = {
+  moedas_conclusao: number | null;
+  moedas_aprovacao: number | null;
+  pontos: number | null;
+  prazo_extensao_min_dias: number | null;
+  prazo_extensao_max_dias: number | null;
+  prazo_max_por_ativ: number | null;
+  tempo_extra_min_minutos: number | null;
+  tempo_extra_max_minutos: number | null;
+  tempo_max_por_ativ: number | null;
+  uso_max_prazo: number | null;
+  uso_max_tempo: number | null;
+  uso_max_retry: number | null;
+};
+
+export const REGRA_VAZIA: RegraDoEscopo = {
+  moedas_conclusao: null,
+  moedas_aprovacao: null,
+  pontos: null,
+  prazo_extensao_min_dias: null,
+  prazo_extensao_max_dias: null,
+  prazo_max_por_ativ: null,
+  tempo_extra_min_minutos: null,
+  tempo_extra_max_minutos: null,
+  tempo_max_por_ativ: null,
+  uso_max_prazo: null,
+  uso_max_tempo: null,
+  uso_max_retry: null,
+};
+
+const COLUNAS_DA_REGRA = Object.keys(REGRA_VAZIA).join(", ");
+
+export async function carregarRegraDoEscopo(classeId: number, escopo: "topico" | "atividade", alvoId: number): Promise<RegraDoEscopo> {
+  const { data, error } = await db
+    .from("economia_config_escopo")
+    .select(COLUNAS_DA_REGRA)
+    .eq("classe_id", classeId)
+    .eq("escopo", escopo)
+    .eq("alvo_id", alvoId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return REGRA_VAZIA;
+  const linha = data as Record<string, unknown>;
+  const regra = { ...REGRA_VAZIA };
+  for (const chave of Object.keys(REGRA_VAZIA) as (keyof RegraDoEscopo)[]) {
+    regra[chave] = linha[chave] == null ? null : Number(linha[chave]);
+  }
+  return regra;
+}
+
+/**
+ * A função do banco regrava a linha inteira: quem chama manda a regra toda, inclusive o que a tela
+ * não mostra (`pontos`, `uso_max_prazo`, `uso_max_tempo`), senão esses voltariam a herdar.
+ */
+export async function salvarRegraDoEscopo(classeId: number, escopo: "topico" | "atividade", alvoId: number, regra: RegraDoEscopo) {
   await chamar("economia_salvar_escopo", {
     p_classe_id: classeId,
     p_escopo: escopo,
     p_alvo_id: alvoId,
-    p_moedas_conclusao: moedasConclusao,
-    p_moedas_aprovacao: moedasAprovacao,
-    p_pontos: null,
-    p_prazo_extensao_min_dias: prazoMin,
-    p_prazo_extensao_max_dias: prazoMax,
-    p_prazo_max_por_ativ: null,
-    p_tempo_extra_min_minutos: null,
-    p_tempo_extra_max_minutos: null,
-    p_tempo_max_por_ativ: null,
-    p_uso_max_prazo: null,
-    p_uso_max_tempo: null,
-    p_uso_max_retry: null,
+    p_moedas_conclusao: regra.moedas_conclusao,
+    p_moedas_aprovacao: regra.moedas_aprovacao,
+    p_pontos: regra.pontos,
+    p_prazo_extensao_min_dias: regra.prazo_extensao_min_dias,
+    p_prazo_extensao_max_dias: regra.prazo_extensao_max_dias,
+    p_prazo_max_por_ativ: regra.prazo_max_por_ativ,
+    p_tempo_extra_min_minutos: regra.tempo_extra_min_minutos,
+    p_tempo_extra_max_minutos: regra.tempo_extra_max_minutos,
+    p_tempo_max_por_ativ: regra.tempo_max_por_ativ,
+    p_uso_max_prazo: regra.uso_max_prazo,
+    p_uso_max_tempo: regra.uso_max_tempo,
+    p_uso_max_retry: regra.uso_max_retry,
   });
 }
 

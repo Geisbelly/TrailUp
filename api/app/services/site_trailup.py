@@ -64,6 +64,32 @@ _PALAVRAS_VAZIAS = set(
 
 _SIGLAS = {"tcc", "jic", "rag", "sus", "cvv"}
 
+# Perguntas sobre as páginas principais que a pontuação não pega: "trailup" é palavra vazia (está em
+# toda seção), "pesquisa" e "professores" aparecem em muitas, e "baixo" não casa com "baixar". Medido
+# em 24/11: "o que é o TrailUp?", "onde baixo o app?", "cadê a cartilha" e "como falo com a equipe"
+# voltavam sem trecho nenhum, e "onde fica a política de privacidade" trazia os Termos primeiro. O
+# atalho põe a página na frente: a melhor seção dela que a pontuação achou, ou, sem nenhuma, a seção
+# do atalho. Casa na pergunta sem acento.
+_ATALHOS: tuple[tuple[re.Pattern[str], str], ...] = tuple(
+    (re.compile(padrao), secao)
+    for padrao, secao in (
+        (r"\bquem (?:criou|fez|desenvolveu|criaram|fizeram|desenvolveram|esta por tras)\b.*\btrailup\b", "pagina/sobre/0"),
+        (
+            r"\b(?:o que e|que e|oque e|o q e|pra que serve|para que serve|como funciona|sobre)"
+            r"(?: o| esse| este)? (?:app )?trailup\b",
+            "diario/o-que-e-o-trailup",
+        ),
+        (r"\b(?:baix|instal)\w* (?:o |esse |este )?(?:app|aplicativo|trailup)\b|\b(?:apk|play store|google play)\b", "pagina/download/0"),
+        (r"\b(?:politica de privacidade|privacidade|lgpd)\b", "pagina/privacidade/0"),
+        (r"\bcartilha\b|\bpesquisa com (?:os )?professor|\bavaliar o trailup\b|\bavaliador", "pagina/pesquisa/professores/2"),
+        (
+            r"\b(?:falar|falo|fale|falamos|conversar|contatar|contactar|escrever|mandar mensagem)"
+            r" (?:com |para |pra )?(?:a )?equipe\b|\b(?:contato|suporte)\b",
+            "pagina/contato/1",
+        ),
+    )
+)
+
 
 @dataclass(frozen=True)
 class SecaoDoSite:
@@ -205,8 +231,6 @@ def trechos_do_site(pergunta: str) -> list[dict[str, str]]:
 
     Sem seção que passe do mínimo, lista vazia: a pergunta é da matéria, não do site."""
     termos = set(palavras(pergunta))
-    if not termos:
-        return []
     base, secoes = _site()
     candidatas = []
     for ordem, secao in enumerate(secoes):
@@ -214,9 +238,19 @@ def trechos_do_site(pergunta: str) -> list[dict[str, str]]:
         if (no_titulo and pontos >= PONTOS_COM_TITULO) or pontos >= PONTOS_SEM_TITULO:
             candidatas.append((-pontos, ordem, secao))
     candidatas.sort()
+    escolhidas = [secao for _, _, secao in candidatas]
+    frase = " ".join(re.findall(r"[a-z0-9]+", _sem_acento(str(pergunta or "")).lower()))
+    por_id = {secao.id: secao for secao in secoes}
+    for padrao, id_ in reversed(_ATALHOS):
+        secao = por_id.get(id_)
+        if secao is None or not padrao.search(frase):
+            continue
+        # A página já veio pela pontuação: a melhor seção dela passa para a frente.
+        da_pagina = next((s for s in escolhidas if s.url == secao.url), secao)
+        escolhidas = [da_pagina] + [s for s in escolhidas if s is not da_pagina]
     saida: list[dict[str, str]] = []
     usados = 0
-    for _, _, secao in candidatas[:MAX_TRECHOS]:
+    for secao in escolhidas[:MAX_TRECHOS]:
         texto = secao.texto[:MAX_CARACTERES_POR_TRECHO]
         if usados + len(texto) > MAX_CARACTERES_DOS_TRECHOS:
             break

@@ -436,3 +436,35 @@ def test_rag_nao_repete_o_429_por_conta_propria() -> None:
 
     cliente = OpenAIRagService(_settings(openai_rag_api_key="sk-teste"))._get_client()
     assert cliente.max_retries == 0
+
+
+# --- Pergunta sobre o TrailUp na reserva -------------------------------------------------------
+
+
+def _texto_da_reserva(mensagem: str) -> str:
+    return resposta_de_reserva(
+        mensagem=mensagem,
+        titulo_topico="Lógica",
+        titulo_conteudo=None,
+        conteudo_materia={},
+        gabarito_protegido=None,
+    )["reply"]
+
+
+@pytest.mark.parametrize(
+    ("pergunta", "endereco"),
+    [
+        ("o que é o TrailUp?", "https://trailup.vercel.app/blog/o-que-e-o-trailup"),
+        ("onde baixo o app?", "https://trailup.vercel.app/download"),
+        ("cadê a cartilha da pesquisa?", "https://trailup.vercel.app/pesquisa/professores"),
+    ],
+)
+def test_reserva_aponta_a_pagina_do_site(pergunta: str, endereco: str) -> None:
+    resposta = _texto_da_reserva(pergunta)
+    assert endereco in resposta
+    assert "releia" not in resposta.casefold()
+
+
+def test_reserva_do_site_nao_passa_na_frente_da_tela_nem_da_materia() -> None:
+    assert "Loja fica no Perfil" in _texto_da_reserva("o que é a loja?")
+    assert "trailup.vercel.app" not in _texto_da_reserva("o que é lógica?")

@@ -92,9 +92,6 @@ export const VIDEOS_DA_PESQUISA: readonly VideoDaPesquisa[] = [
 
 export const PDF_DA_CARTILHA = "publico/pesquisa/cartilha-pesquisa-professores.pdf";
 
-/** O PDF foi gerado antes da correção de 24/11 e ficou como está; o aviso vai junto do link. */
-export const AVISO_DO_PDF =
-  "Correção: o PDF diz que a turma e os acessos são apagados ao fim da pesquisa. Não são: ficam guardados como dado da pesquisa, como diz esta página.";
 
 export const caminhoDoVideo = (video: Pick<VideoDaPesquisa, "slug">) => `${CAMINHO_DA_CARTILHA}/videos/${video.slug}`;
 

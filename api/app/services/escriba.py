@@ -50,7 +50,7 @@ _VIEWS_DO_CONSOLE = (
     "dashboard", "recomendacoes", "trilha", "missoes", "conquistas", "notas", "eventos", "economia",
     "classes", "personalizacoes", "ranks", "batalhas", "guildas", "profile",
 )
-_ABAS_DA_ECONOMIA = ("valores", "alunos", "prazos", "loja", "fundo", "metas", "historico")
+_ABAS_DA_ECONOMIA = ("valores", "alunos", "loja", "fundo", "metas", "historico")
 DESTINOS_DO_CONSOLE = frozenset(_VIEWS_DO_CONSOLE) | {f"economia.{aba}" for aba in _ABAS_DA_ECONOMIA}
 
 
@@ -91,7 +91,6 @@ _NOMES_DAS_VIEWS = {
 _NOMES_DA_ECONOMIA = {
     "Valores": "economia.valores",
     "Moedas por aluno": "economia.alunos",
-    "Prazos e tempo": "economia.prazos",
     "Loja": "economia.loja",
     "Fundo da turma": "economia.fundo",
     "Metas": "economia.metas",

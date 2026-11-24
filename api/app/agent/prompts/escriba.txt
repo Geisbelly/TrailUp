@@ -76,8 +76,8 @@ Regras:
    eventos, economia, classes (Turmas), personalizacoes, ranks (Rankings),
    batalhas (Rank de batalhas), guildas, profile (Meus dados), e as abas da
    Economia: economia.valores, economia.alunos (Moedas por aluno),
-   economia.prazos (Prazos e tempo), economia.loja, economia.fundo (Fundo da
-   turma), economia.metas, economia.historico.
+   economia.loja, economia.fundo (Fundo da turma), economia.metas,
+   economia.historico.
    O console desenha um botao para cada destino; nao escreva o caminho
    (/console/...) na resposta, escreva o nome da aba. Sem parte do console a
    abrir, devolva lista vazia.

@@ -12,22 +12,18 @@ import {
   arquivarMeta,
   carregarAlunos,
   carregarCarteiras,
-  carregarConfig,
   carregarExtrato,
   carregarItens,
   carregarLimites,
   carregarMetas,
   carregarUsos,
   carregarValores,
-  salvarConfig,
   salvarDotacao,
-  salvarEscopo,
   salvarLimiteUso,
   salvarMeta,
   salvarPreco,
   salvarValor,
   type AlunoDaTurma,
-  type ConfigDaTurma,
   type EscopoDeLimite,
   type ItemDaLoja,
   type LimiteDeUso,
@@ -43,7 +39,6 @@ import {
   SITUACOES_DE_USO,
   abaDaEconomiaNaUrl,
   descreverPadrao,
-  faixaValida,
   filtrarExtrato,
   limiteDoTexto,
   numeroOuNulo,
@@ -67,11 +62,6 @@ const FILTROS = [
   { id: "estorno", rotulo: "Estornos" },
 ] as const;
 
-function inteiro(texto: string, padrao: number): number {
-  const n = Number(texto);
-  return Number.isInteger(n) ? n : padrao;
-}
-
 export default function EconomiaSection({ professorId }: { professorId?: string }) {
   const { turmas, turmaId, setTurmaId, carregando, erro, recarregar } = useTurmasDoProfessor(professorId);
   // `?aba=` abre direto numa parte (é por onde a Lumi leva o professor); muda
@@ -87,7 +77,7 @@ export default function EconomiaSection({ professorId }: { professorId?: string 
     <div>
       <CabecalhoDePagina
         titulo="Economia"
-        subtitulo="Moedas, pontos, preços da loja e até onde um item pode estender prazo ou tempo. O saldo do aluno continua sendo a soma do razão."
+        subtitulo="Moedas, pontos e preços da loja. Até onde um item estende prazo ou tempo fica no editor de cada tópico e atividade, e o padrão em Turmas → Editar. O saldo do aluno continua sendo a soma do razão."
       />
       {carregando && (
         <div role="status" aria-label="Carregando" className="flex justify-center py-16">
@@ -123,7 +113,6 @@ export default function EconomiaSection({ professorId }: { professorId?: string 
           </div>
           {aba === "valores" && <AbaValores classeId={turmaId} />}
           {aba === "alunos" && <AbaMoedasPorAluno classeId={turmaId} />}
-          {aba === "prazos" && <AbaPrazos classeId={turmaId} />}
           {aba === "loja" && <AbaLoja classeId={turmaId} />}
           {aba === "fundo" && <AbaFundo classeId={turmaId} />}
           {aba === "metas" && <AbaMetas classeId={turmaId} />}
@@ -206,8 +195,8 @@ function ValorLinha({ classeId, linha, onSalvou }: { classeId: number; linha: Va
           </p>
           {linha.tipo === "atividade_concluida" && (
             <p className="mt-1 text-xs text-muted-foreground">
-              As moedas da conclusão só saem quando você aprova a entrega (nota de pelo menos 60% da máxima). Se o tópico tiver valor
-              próprio em Prazos e tempo, ele vale antes deste.
+              As moedas da conclusão só saem quando você aprova a entrega (nota de pelo menos 60% da máxima). Se a atividade ou o tópico
+              tiver valor próprio (no editor da trilha), ele vale antes deste.
             </p>
           )}
         </div>
@@ -220,102 +209,6 @@ function ValorLinha({ classeId, linha, onSalvou }: { classeId: number; linha: Va
         <Button type="button" className="rounded-full" disabled={salvando} onClick={() => void salvar()}>{salvando ? "Salvando…" : "Salvar"}</Button>
       </div>
     </Caixa>
-  );
-}
-
-function AbaPrazos({ classeId }: { classeId: number }) {
-  const [config, setConfig] = useState<ConfigDaTurma | null>(null);
-  const [erro, setErro] = useState("");
-  const [salvando, setSalvando] = useState(false);
-  const [topicoId, setTopicoId] = useState("");
-  const [moedasConclusao, setMoedasConclusao] = useState("");
-  const [moedasAprovacao, setMoedasAprovacao] = useState("");
-  const carregar = useCallback(async () => {
-    try {
-      setConfig(await carregarConfig(classeId));
-      setErro("");
-    } catch (e) {
-      setErro((e as Error).message);
-    }
-  }, [classeId]);
-  useEffect(() => { void carregar(); }, [carregar]);
-  if (erro) return <ErroDaPagina titulo="Não foi possível carregar os prazos" detalhe={erro} onTentarNovamente={() => void carregar()} />;
-  if (!config) return <Loader2 className="mx-auto my-10 h-6 w-6 animate-spin text-primary" />;
-  const campo = (chave: keyof ConfigDaTurma, rotulo: string) => (
-    <label key={chave} className="text-sm">
-      {rotulo}
-      <Input aria-label={rotulo} value={String(config[chave] ?? "")} onChange={(e) => setConfig({ ...config, [chave]: inteiro(e.target.value, Number(config[chave])) })} className="mt-1 w-28" />
-    </label>
-  );
-  const salvar = async () => {
-    const prazoOk = faixaValida({ min: config.prazo_extensao_min_dias, max: config.prazo_extensao_max_dias, teto: config.prazo_max_por_ativ, tetoGeral: config.prazo_max_dias_total });
-    const tempoOk = faixaValida({ min: config.tempo_extra_min_minutos, max: config.tempo_extra_max_minutos, teto: config.tempo_max_por_ativ });
-    if (!prazoOk || !tempoOk) {
-      toast.error("O mínimo não pode passar do máximo, nem o máximo do teto.");
-      return;
-    }
-    setSalvando(true);
-    try {
-      await salvarConfig(classeId, config);
-      toast.success("Prazos e tempo salvos.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setSalvando(false);
-    }
-  };
-  const salvarTopico = async () => {
-    const id = Number(topicoId);
-    if (!id) {
-      toast.error("Informe o id do tópico desta turma.");
-      return;
-    }
-    const conclusao = numeroOuNulo(moedasConclusao);
-    const aprovacao = numeroOuNulo(moedasAprovacao);
-    if (Number.isNaN(conclusao) || Number.isNaN(aprovacao)) {
-      toast.error("Moedas inválidas.");
-      return;
-    }
-    try {
-      await salvarEscopo(classeId, "topico", id, conclusao, aprovacao, null, null);
-      toast.success("Regra do tópico salva. Vazio herda a turma.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    }
-  };
-  return (
-    <div className="space-y-4">
-      <Caixa>
-        <h3 className="mb-3 text-lg font-semibold">Turma</h3>
-        <div className="flex flex-wrap gap-4">
-          {campo("prazo_extensao_min_dias", "Mínimo de dias por uso")}
-          {campo("prazo_extensao_max_dias", "Máximo de dias por uso")}
-          {campo("prazo_max_por_ativ", "Teto na atividade")}
-          {campo("prazo_max_dias_total", "Teto na turma")}
-          {campo("tempo_extra_min_minutos", "Mínimo de minutos por uso")}
-          {campo("tempo_extra_max_minutos", "Máximo de minutos por uso")}
-          {campo("tempo_max_por_ativ", "Teto de minutos na atividade")}
-          {campo("retry_max_por_topico", "Novas tentativas por tópico")}
-        </div>
-        <Button type="button" className="mt-4 rounded-full" disabled={salvando} onClick={() => void salvar()}>{salvando ? "Salvando…" : "Salvar prazos"}</Button>
-      </Caixa>
-      <Caixa>
-        <h3 className="mb-1 text-lg font-semibold">Por tópico</h3>
-        <p className="mb-3 text-sm text-muted-foreground">Moedas a mais na conclusão ou na aprovação deste tópico. As duas só saem quando você aprova a entrega (nota de 60% ou mais): o aluno marcar como concluída não paga moeda. Vazio herda e não cria um segundo crédito.</p>
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="text-sm">Id do tópico
-            <Input aria-label="Id do tópico" value={topicoId} onChange={(e) => setTopicoId(e.target.value)} className="mt-1 w-32" />
-          </label>
-          <label className="text-sm">Moedas na conclusão
-            <Input aria-label="Moedas na conclusão" value={moedasConclusao} onChange={(e) => setMoedasConclusao(e.target.value)} className="mt-1 w-32" />
-          </label>
-          <label className="text-sm">Moedas na aprovação
-            <Input aria-label="Moedas na aprovação" value={moedasAprovacao} onChange={(e) => setMoedasAprovacao(e.target.value)} className="mt-1 w-32" />
-          </label>
-          <Button type="button" variant="outline" className="rounded-full" onClick={() => void salvarTopico()}>Salvar tópico</Button>
-        </div>
-      </Caixa>
-    </div>
   );
 }
 
