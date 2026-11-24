@@ -296,6 +296,12 @@ async def checar_grounding_chat(
                 # A resposta de cada questão e o verso de cada card: o juiz só reconhece um
                 # vazamento se souber o que é a resposta. O modelo que fala com o aluno não vê isto.
                 "gabarito_protegido": contexto.get("gabarito_protegido", []),
+                # Só nas contas de quem avalia o TrailUp; nas outras, a chave nem vai.
+                **(
+                    {"avaliacao_trailup": contexto["avaliacao_trailup"]}
+                    if contexto.get("avaliacao_trailup")
+                    else {}
+                ),
                 # Por último, porque é o que muda: o cache só vale até a primeira diferença.
                 "resposta": _texto_que_vai_ao_aluno(resposta),
             },

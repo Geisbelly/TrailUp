@@ -24,6 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent.graph.guardrails import GuardrailViolation, gerar_validado
 from app.schemas.escriba import EscribaSaida, PerguntaEscriba, RespostaEscriba, SecaoDaResposta
 from app.services import assinatura_chat
+from app.services.avaliacao_trailup import contexto_da_avaliacao
 from app.services.guia_do_app import guia_do_app
 from app.services.insights_turma import InsightsTurmaService
 from app.services.llm import JsonLLMService, load_prompt
@@ -449,8 +450,10 @@ class EscribaService:
             escopo = turmas[:MAX_TURMAS]
 
         falas = self._falas_confiaveis(professor_id, pedido)
+        # Só na conta de quem avalia o TrailUp: roteiro, progresso e anotações dele. Nas outras, None.
+        avaliacao = await contexto_da_avaliacao(self.session, professor_id)
         if pergunta_de_produto(pedido.pergunta):
-            return await self._responder_sobre_o_produto(pedido, falas, agora)
+            return await self._responder_sobre_o_produto(pedido, falas, agora, avaliacao)
 
         if not escopo:
             return RespostaEscriba(
@@ -468,6 +471,7 @@ class EscribaService:
             "guia_do_produto": guia_do_produto(),
             # Chave com "_" é do servidor (ids, mapa de nomes): nunca vai ao modelo.
             "turmas": [{k: v for k, v in t.items() if not k.startswith("_")} for t in turmas_payload],
+            **({"avaliacao_trailup": avaliacao} if avaliacao else {}),
             "historico": [{**m, "texto": pseudonimizar_texto(m["texto"], nomes_por_ref)} for m in falas],
             "pergunta": pseudonimizar_texto(pedido.pergunta.strip(), nomes_por_ref),
         }
@@ -480,7 +484,11 @@ class EscribaService:
         return _montar_resposta(saida, [int(t["id"]) for t in escopo], agora, nomes_por_ref)
 
     async def _responder_sobre_o_produto(
-        self, pedido: PerguntaEscriba, falas: list[dict[str, str]], agora: datetime
+        self,
+        pedido: PerguntaEscriba,
+        falas: list[dict[str, str]],
+        agora: datetime,
+        avaliacao: dict[str, Any] | None = None,
     ) -> RespostaEscriba:
         """Pergunta sobre o produto: nenhuma turma é lida e nenhum dado de aluno
         vai ao modelo. Do histórico só seguem as perguntas do professor que não
@@ -489,6 +497,7 @@ class EscribaService:
         payload = {
             "guia_do_produto": guia_do_produto(),
             "turmas": [],
+            **({"avaliacao_trailup": avaliacao} if avaliacao else {}),
             "historico": [m for m in falas if m["papel"] == "professor" and not _parece_citar_aluno(m["texto"])],
             "pergunta": pedido.pergunta.strip(),
         }
