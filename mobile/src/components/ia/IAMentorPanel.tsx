@@ -33,7 +33,9 @@ import { type Href, router } from "expo-router";
 import { ModoRestritoError } from "@/utils/consentimentoResponsavel";
 import { shadowStyle } from "@/utils/webShadow";
 import { falaAssinadaDaResposta, falaParaHistorico, type FalaAssinada } from "./historicoDoGuia";
-import { painelAoLadoDoBotao } from "./ladoDoPainel";
+import { buildTutorialTips, type TutorialTip } from "./dicasDoTutorial";
+import { IndicadorRespondendo } from "./IndicadorRespondendo";
+import { baseDoPainelAberto, painelAoLadoDoBotao } from "./ladoDoPainel";
 import { ligarCuidadoSeOGuiaPediu } from "./modoCuidadoDoGuia";
 
 const IS_WEB = Platform.OS === "web";
@@ -60,12 +62,6 @@ type ChatMessage = {
   falaAssinada?: FalaAssinada;
 };
 
-type TutorialTip = {
-  id: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  label: string;
-  message: string;
-};
 
 function buildDefaultGuideMessage(
   scope: "modulo" | "trilha_home",
@@ -99,89 +95,6 @@ function normalizeMentorReplyTone(raw: string) {
     .replace(/\bo guia\b/gi, "eu");
 
   return text;
-}
-
-function buildTutorialTips(
-  scope: "modulo" | "trilha_home",
-  options: {
-    hasBattle: boolean;
-    hasReadingTimer: boolean;
-    hasActivityTimer: boolean;
-  }
-): TutorialTip[] {
-  if (scope === "trilha_home") {
-    return [
-      {
-        id: "trilha-overview",
-        icon: "compass-outline",
-        label: "Trilha",
-        message:
-          "Na tela inicial da trilha você encontra os módulos liberados, a ordem sugerida de estudo e o acesso ao chat comigo. Eu não abro sozinho aqui: você decide quando conversar.",
-      },
-      {
-        id: "trilha-personalizacao",
-        icon: "auto-fix",
-        label: "Personalização",
-        message:
-          "A personalização usa seu perfil, histórico e métricas para reorganizar o estudo. Eu posso explicar por que um módulo recebeu certo formato, ritmo ou apoio.",
-      },
-      {
-        id: "trilha-metricas",
-        icon: "chart-line",
-        label: "Métricas",
-        message:
-          "Eu também consigo resumir métricas simples da sua jornada, como progresso recente, tempo de estudo e sinais de leitura adaptativa observados na trilha.",
-      },
-    ];
-  }
-
-  const tips: TutorialTip[] = [
-    {
-      id: "modulo-overview",
-      icon: "message-text-outline",
-      label: "Conversa",
-      message:
-        "Neste módulo eu apareço como guia em formato de conversa. Você pode me responder para pedir explicações sobre a personalização, o fluxo do módulo e a melhor estratégia de estudo.",
-    },
-    {
-      id: "modulo-progresso",
-      icon: "chart-timeline-variant",
-      label: "Progresso",
-      message:
-        "A barra horizontal mostra quanto do módulo já foi concluído. O contador ao lado indica quantas etapas já foram finalizadas dentro da sequência atual.",
-    },
-  ];
-
-  if (options.hasReadingTimer || options.hasActivityTimer) {
-    tips.push({
-      id: "modulo-tempo",
-      icon: "timer-outline",
-      label: "Tempo",
-      message: options.hasActivityTimer
-        ? "O tempo regressivo vale para atividades quando a mecânica pede pressão. Já o tempo de leitura acompanha quanto você permaneceu no módulo ou no conteúdo ativo."
-        : "Quando o módulo exibe o contador de tempo, ele acompanha sua permanência no conteúdo ativo e para assim que você sai da etapa atual.",
-    });
-  }
-
-  if (options.hasBattle) {
-    tips.push({
-      id: "modulo-boss",
-      icon: "sword-cross",
-      label: "Boss",
-      message:
-        "O boss representa o desafio do módulo. Conforme você avança no conteúdo e acerta atividades, causa dano nele. Se o inimigo já tiver sido derrotado, o resumo do confronto continua disponível.",
-    });
-  }
-
-  tips.push({
-    id: "modulo-guardrail",
-    icon: "shield-check-outline",
-    label: "Limites",
-    message:
-      "Eu posso orientar, resumir métricas e explicar a personalização, mas não entrego respostas de atividades. Quando você pedir ajuda, eu respondo dentro desses limites.",
-  });
-
-  return tips;
 }
 
 const MENSAGEM_MENTOR_BLOQUEADO =
@@ -365,7 +278,16 @@ export function IAMentorPanel({
       scrollRef.current?.scrollToEnd({ animated: true });
     }, 40);
     return () => clearTimeout(timer);
-  }, [isOpen, messages.length, ultimaMensagem]);
+    // `sending` entra para a lista descer até o "respondendo" logo depois do envio.
+  }, [isOpen, messages.length, ultimaMensagem, sending]);
+
+  // Na web o painel recém-aberto ainda não tem altura medida aos 40 ms, e a conversa abria no
+  // meio. Quando o conteúdo ganha altura, desce para a mensagem mais recente, exceto a resposta
+  // em seções, que é lida de cima (`mostrarInicioDaResposta`).
+  const descerAoCrescer = () => {
+    if (!isOpen || ultimaMensagem?.resposta?.secoes.length) return;
+    scrollRef.current?.scrollToEnd({ animated: false });
+  };
 
   const mostrarInicioDaResposta = (message: ChatMessage, y: number) => {
     if (message.id !== ultimaMensagem?.id || !message.resposta?.secoes.length) return;
@@ -430,7 +352,13 @@ export function IAMentorPanel({
       : scope === "modulo"
       ? Math.min(windowWidth - 16, 496)
       : Math.min(windowWidth - 16, 438);
-  const alturaDisponivelWeb = windowHeight - (ancora ? ancora.base : bottomOffset) - 16;
+  const telaCheia = celularWeb && isOpen;
+  // Tela larga: aberto, o painel fica à direita, junto do botão (ladoDoPainel.ts).
+  const aoLadoDoBotao =
+    !telaCheia && painelAoLadoDoBotao({ temAncora: Boolean(ancora), larguraJanela: windowWidth, larguraPainel: panelWidth });
+  // Aberto na web larga, o painel desce até o pé da janela, como chat flutuante.
+  const baseAberta = baseDoPainelAberto({ web: IS_WEB, aoLadoDoBotao, base: bottomOffset });
+  const alturaDisponivelWeb = windowHeight - (ancora ? ancora.base : isOpen ? baseAberta : bottomOffset) - 16;
   const panelMaxHeight = Math.min(
     scope === "modulo" ? Math.min(windowHeight * 0.76, 640) : Math.min(windowHeight * 0.76, 620),
     IS_WEB ? alturaDisponivelWeb : Number.POSITIVE_INFINITY,
@@ -714,13 +642,9 @@ export function IAMentorPanel({
     );
   };
 
-  const telaCheia = celularWeb && isOpen;
   const alturaVisivel = areaVisivel?.height ?? windowHeight;
   // Com o teclado aberto, sobra pouco: fica só o que serve para conversar.
   const compacta = telaCheia && alturaVisivel < 480;
-  // Tela larga: aberto, o painel fica à direita, junto do botão (ladoDoPainel.ts).
-  const aoLadoDoBotao =
-    !telaCheia && painelAoLadoDoBotao({ temAncora: Boolean(ancora), larguraJanela: windowWidth, larguraPainel: panelWidth });
 
   return (
     <View
@@ -728,6 +652,7 @@ export function IAMentorPanel({
         styles.overlay,
         posicao,
         isOpen && !ancora ? (aoLadoDoBotao ? styles.overlayOpenAoLadoDoBotao : styles.overlayOpen) : null,
+        isOpen && !ancora ? { bottom: baseAberta } : null,
         { pointerEvents: "box-none" },
       ]}
     >
@@ -926,8 +851,22 @@ export function IAMentorPanel({
             contentContainerStyle={styles.messageStack}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            onContentSizeChange={descerAoCrescer}
           >
             {messages.map(renderMessage)}
+            {sending ? (
+              <View style={scope === "modulo" ? styles.moduleAssistantRow : null}>
+                {scope === "modulo" ? (
+                  <Image source={avatarSource} style={styles.inlineAvatar} resizeMode="cover" />
+                ) : null}
+                <IndicadorRespondendo
+                  nome={speakerName}
+                  cor={palette.accent}
+                  fundo={scope === "modulo" ? palette.surfaceElevated : palette.surface}
+                  borda={palette.border}
+                />
+              </View>
+            ) : null}
           </ScrollView>
 
           <View

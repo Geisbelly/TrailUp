@@ -83,12 +83,13 @@ describe("o app tem o mesmo roteiro", () => {
     expect(doApp).toEqual(ETAPAS_DO_ROTEIRO.map(e => [e.id, titulo(e)]));
   });
 
-  it("as etapas do app têm o mesmo texto", () => {
-    for (const etapa of ETAPAS_DO_ROTEIRO.filter(e => e.onde === "app")) {
+  it("todas as etapas têm o mesmo texto: o app mostra o roteiro inteiro, como o console", () => {
+    for (const etapa of ETAPAS_DO_ROTEIRO) {
       expect(DO_APP, etapa.id).toContain(`id: "${etapa.id}"`);
       expect(DO_APP, etapa.id).toContain(`titulo: "${etapa.titulo}"`);
       for (const passo of etapa.passos) expect(DO_APP, etapa.id).toContain(JSON.stringify(passo));
       if (etapa.observar) expect(DO_APP, etapa.id).toContain(`observar: ${JSON.stringify(etapa.observar)}`);
+      if (etapa.onde !== "app") expect(DO_APP, etapa.id).toContain(`onde: "${etapa.onde}"`);
     }
   });
 });
