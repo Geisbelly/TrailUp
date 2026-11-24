@@ -218,8 +218,11 @@ Comece no banco de **dev**. Produção é só trocar os valores abaixo.
    Ao terminar, apague a inscrição de teste: as contas do professor e do aluno de teste no Auth (a
    linha de `pesquisa_avaliador` sai junto, por `ON DELETE CASCADE`), a turma de demonstração e a
    linha da planilha.
-6. **`instalarProcessamentoAutomatico`**: `processarAprovados` passa a rodar a cada 15 minutos.
-   Também dá para rodá-lo à mão a qualquer hora; ele é idempotente.
+6. **`instalarProcessamentoAutomatico`**: `processarAprovados` passa a rodar em dois momentos.
+   Ao marcar "Aprovado" na coluna Decisão, a conta é criada e a confirmação sai na hora (gatilho
+   ao editar a planilha). A cada 15 minutos, ele confere quem clicou no link, manda o acesso e
+   reenvia a confirmação vencida. Também dá para rodá-lo à mão a qualquer hora; ele é idempotente.
+   Já tinha instalado antes desta versão? Rode de novo: ele troca os gatilhos antigos pelos dois.
 7. **Inscrição na página do site** (opcional; sem ela, a página mostra o Google Forms):
    - **`acrescentarCodigoDoSite`** cria no formulário de inscrição o campo "Código do site" (os
      formulários novos já nascem com ele) e mostra o `entry.*` dele no registro.
