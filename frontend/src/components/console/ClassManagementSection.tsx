@@ -29,6 +29,9 @@ import { FaixaTurmaCriada, FormularioDeTurma } from "./turmas/FormularioDeTurma"
 import { CAMPOS_VAZIOS, criarTurma, nomeDaTurma, type BancoDeTurmas, type DadosDaTurma, type PesoDoXp } from "./turmas/formulario";
 import { resumirTurmas, type MatriculaDaTurma, type ResumoDaTurma, type TopicoDaTurma } from "./turmas/resumo";
 import { deleteClasseCascade, removeClassStudent } from "./trilha/classDeletion";
+import { useClasseDeExemplo } from "./comum/classeDeExemplo";
+import { AvisoDeExemplo } from "./comum/SeloDeExemplo";
+import { exemploNaTurma, resumoComExemplo } from "./turmas/exemploNaTurma";
 
 // Tipos
 type Classe = { id: number; descricao: string | null; materia_id: number | null; created_at: string | null };
@@ -313,16 +316,27 @@ export default function ClassManagementSection({ professorId }: Props) {
     return falhas;
   };
 
+  // Turma de demonstração da pesquisa: os 32 alunos de exemplo da Visão geral aparecem no card e nas
+  // matrículas, só na tela. O banco continua sem eles.
+  const classeDeExemplo = useClasseDeExemplo();
+  const exemplo = useMemo(() => {
+    const c = classes.find((x) => x.id === classeDeExemplo);
+    return c ? exemploNaTurma(c.id, nomeDaTurma(c), new Date()) : null;
+  }, [classes, classeDeExemplo]);
+
   const turmasDaLista = useMemo<TurmaDaLista[]>(
     () =>
-      classes.map((c) => ({
-        id: c.id,
-        nome: nomeDaTurma(c),
-        materia: materias.find((m) => m.id === c.materia_id)?.nome?.trim() || null,
-        criadaEm: c.created_at,
-        resumo: resumos.get(c.id) ?? { alunos: (classStudents[c.id] || []).length, topicos: 0, conclusaoPct: null },
-      })),
-    [classes, materias, resumos, classStudents],
+      classes.map((c) => {
+        const resumo = resumos.get(c.id) ?? { alunos: (classStudents[c.id] || []).length, topicos: 0, conclusaoPct: null };
+        return {
+          id: c.id,
+          nome: nomeDaTurma(c),
+          materia: materias.find((m) => m.id === c.materia_id)?.nome?.trim() || null,
+          criadaEm: c.created_at,
+          resumo: exemplo && c.id === classeDeExemplo ? resumoComExemplo(resumo, exemplo.conclusoes) : resumo,
+        };
+      }),
+    [classes, materias, resumos, classStudents, exemplo, classeDeExemplo],
   );
   const contagens = useMemo(() => contarPorFiltro(turmasDaLista), [turmasDaLista]);
   const visiveis = useMemo(() => organizarTurmas(turmasDaLista, busca, filtro, ordem), [turmasDaLista, busca, filtro, ordem]);
@@ -457,6 +471,11 @@ export default function ClassManagementSection({ professorId }: Props) {
             </div>
           )}
 
+          {exemplo && (
+            <div className="mb-5">
+              <AvisoDeExemplo texto={`A turma de demonstração soma os ${exemplo.alunos.length} alunos de exemplo da Visão geral, que não existem no banco. O seu aluno de teste entra na turma quando fizer o primeiro login no app.`} />
+            </div>
+          )}
           {visiveis.length === 0 ? (
             <div className="flex flex-col items-center gap-3 rounded-[20px] border border-border bg-card px-6 py-14 text-center">
               <p className="text-[15px] font-semibold text-foreground">Nenhuma turma com esses filtros</p>
@@ -518,6 +537,7 @@ export default function ClassManagementSection({ professorId }: Props) {
         turma={selectedClassForStudents}
         candidatos={students}
         matriculadosIds={selectedClassForStudents ? classStudents[selectedClassForStudents.id] || [] : []}
+        exemplo={exemplo && selectedClassForStudents?.id === classeDeExemplo ? exemplo : null}
         onMatricularVarios={handleAddManyStudentsToClass}
         onRemover={handleRemoveStudentsFromClass}
         onFechar={() => setSelectedClassForStudents(null)}

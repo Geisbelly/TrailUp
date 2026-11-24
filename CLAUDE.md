@@ -950,7 +950,9 @@ Cada perfil carrega:
   fornecida pelo `Console`): Rankings, Rank de batalhas, Guildas e Notas juntam itens de exemplo aos
   reais, sobre os mesmos 32 alunos; Conquistas e Missões somam os alunos de exemplo só na contagem do
   cartão. Em Conquistas, quem ganhou sai do critério, lido do mesmo detalhe do aluno de exemplo
-  (`metricasDosAlunosDeExemplo`), para o número bater com a Visão geral. Ranking de exemplo tem id negativo e não tem editar nem excluir; nota dada a uma entrega de
+  (`metricasDosAlunosDeExemplo`), para o número bater com a Visão geral. Na aba Turmas, o card soma os alunos de exemplo (Alunos e
+  Conclusão) e as Matrículas os listam depois dos reais, sem remover nem termo (`turmas/exemploNaTurma.ts`):
+  o aluno de teste só é matriculado no primeiro login no app, e até lá a turma real tem 0. Ranking de exemplo tem id negativo e não tem editar nem excluir; nota dada a uma entrega de
   exemplo e guilda de exemplo renomeada ficam só no estado da tela, nunca no banco. A cópia publica os tópicos como a turma-modelo
   (`20261123_02`), porque `duplicar_classe` faz tudo nascer `rascunho`.
 - `telemetria_sessoes`, `telemetria_lotes` — telemetria bruta + payload JSONB.

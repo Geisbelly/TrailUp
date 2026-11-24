@@ -8,6 +8,8 @@ import { CaixaDeSelecao } from "./CaixaDeSelecao";
 import { FormTermoPapel } from "./FormTermoPapel";
 import { alternarUm, alternarVisiveis, estadoDaSelecao, filtrarMatriculados, formatarDesde, resumirNomes, rotuloDaContagem } from "./matriculas";
 import { rotuloCurtoDoTermo, rotuloDaSituacao, type TermoDoAluno } from "./termosResponsavel";
+import { SeloDeExemplo } from "../comum/SeloDeExemplo";
+import type { ExemploNaTurma } from "./exemploNaTurma";
 
 export type Matriculado = { id: string; nome: string; email: string | null; desde: string | null };
 
@@ -29,6 +31,7 @@ export function AbaNaTurma({
   onTermoSalvo,
   onIrParaAdicionar,
   cancelarConfirmacao,
+  exemplo = null,
 }: {
   matriculados: Matriculado[];
   total: number;
@@ -43,6 +46,8 @@ export function AbaNaTurma({
   onIrParaAdicionar: () => void;
   /** Preenchida enquanto há confirmação aberta: o Esc do modal cancela só ela, sem fechar a janela. */
   cancelarConfirmacao: MutableRefObject<(() => void) | null>;
+  /** Alunos de exemplo da turma de demonstração: listados depois dos reais, só para ver. */
+  exemplo?: ExemploNaTurma | null;
 }) {
   const id = useId();
   const [termo, setTermo] = useState("");
@@ -57,6 +62,7 @@ export function AbaNaTurma({
   const qtdPendentes = useMemo(() => (erroDosTermos ? 0 : matriculados.filter((a) => rotuloCurtoDoTermo(termos.get(a.id)).pendente).length), [matriculados, termos, erroDosTermos]);
   const visiveis = useMemo(() => filtrarMatriculados(matriculados, termo, filtro === "pendentes" ? (a) => pendente(a.id) : undefined), [matriculados, termo, filtro, termos, erroDosTermos]); // eslint-disable-line react-hooks/exhaustive-deps
   const idsVisiveis = visiveis.map((a) => a.id);
+  const exemplosVisiveis = useMemo(() => (exemplo && filtro === "todos" ? filtrarMatriculados(exemplo.alunos, termo) : []), [exemplo, termo, filtro]);
   // Quem saiu da turma por outro caminho deixa de contar como selecionado.
   const selecionados = useMemo(() => new Set(matriculados.filter((a) => marcados.has(a.id)).map((a) => a.id)), [matriculados, marcados]);
   const emLote = selecionados.size > 0;
@@ -103,7 +109,7 @@ export function AbaNaTurma({
       </div>
     );
   }
-  if (total === 0) {
+  if (total === 0 && !exemplo) {
     return (
       <div className="flex flex-col items-center gap-3 px-[26px] py-16 text-center">
         <p className="text-[15px] font-semibold text-foreground">Nenhum aluno nesta turma ainda</p>
@@ -118,7 +124,7 @@ export function AbaNaTurma({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-none flex-col gap-2.5 px-[26px] pb-3 pt-4">
-        <CampoDeBusca rotulo="Buscar na turma" placeholder="Buscar por nome ou e-mail" valor={termo} onChange={setTermo} contagem={rotuloDaContagem(visiveis.length, termo)} />
+        <CampoDeBusca rotulo="Buscar na turma" placeholder="Buscar por nome ou e-mail" valor={termo} onChange={setTermo} contagem={rotuloDaContagem(visiveis.length + exemplosVisiveis.length, termo)} />
         {erroDosTermos ? (
           <p role="status" className="text-[12px] text-muted-foreground">Situação do termo do responsável indisponível: {erroDosTermos}</p>
         ) : (
@@ -173,7 +179,7 @@ export function AbaNaTurma({
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {visiveis.length === 0 ? (
+        {visiveis.length === 0 && exemplosVisiveis.length > 0 ? null : visiveis.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-[26px] py-10 text-center">
             <p className="text-[13px] text-muted-foreground">Nenhum aluno com esses filtros.</p>
             <button type="button" onClick={() => { setTermo(""); setFiltro("todos"); }} className={cn(BOTAO, "border border-border text-foreground hover:bg-muted")}>
@@ -263,7 +269,45 @@ export function AbaNaTurma({
             </tbody>
           </table>
         )}
+        {exemplosVisiveis.length > 0 && exemplo && <TabelaDeExemplo alunos={exemplosVisiveis} perfis={exemplo.perfis} />}
       </div>
     </div>
+  );
+}
+
+/** Os alunos de exemplo: mesma leitura da tabela de cima, sem seleção, remoção nem termo. */
+function TabelaDeExemplo({ alunos, perfis }: { alunos: Matriculado[]; perfis: Map<string, string> }) {
+  return (
+    <section aria-label="Alunos de exemplo" className="border-t border-border">
+      <div className="flex flex-wrap items-center gap-3 px-[26px] py-3">
+        <SeloDeExemplo />
+        <p className="min-w-0 flex-1 text-[12px] text-muted-foreground">
+          Os mesmos alunos de exemplo da Visão geral. Não existem no banco, então não dá para remover nem registrar termo.
+        </p>
+      </div>
+      <table className="w-full text-left text-[13px]">
+        <caption className="sr-only">Alunos de exemplo desta turma</caption>
+        <tbody>
+          {alunos.map((a) => {
+            const perfil = perfis.get(a.id) ?? "";
+            return (
+              <tr key={a.id} className="border-b border-border">
+                <td className={cn(COL, "w-full max-w-0 pl-[26px]")}>
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <PerfilAvatar nome={a.nome} perfil={perfil} tamanho={28} />
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold text-foreground">{a.nome}</div>
+                      <div className="text-[11.5px] text-muted-foreground md:hidden">{perfil ? nomeExibidoDoPerfil(perfil) : "sem perfil"}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className={cn(COL, "hidden whitespace-nowrap text-[12.5px] text-muted-foreground md:table-cell")}>{perfil ? nomeExibidoDoPerfil(perfil) : "sem perfil"}</td>
+                <td className={cn(COL, "hidden whitespace-nowrap pr-[26px] text-[12.5px] text-muted-foreground md:table-cell")}>{formatarDesde(a.desde) ?? "—"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </section>
   );
 }

@@ -9,6 +9,7 @@ import { AdicionarPorLista } from "./AdicionarPorLista";
 import { siglaDaTurma } from "./resumo";
 import { perfilDominantePorAluno, type AlunoCandidato, type PerfilDoAluno } from "./matriculas";
 import { listarTermosDaTurma, type TermoDoAluno } from "./termosResponsavel";
+import type { ExemploNaTurma } from "./exemploNaTurma";
 
 type Aba = "turma" | "busca" | "lista";
 
@@ -95,6 +96,7 @@ export function ModalMatriculas({
   onMatricularVarios,
   onRemover,
   onFechar,
+  exemplo = null,
 }: {
   turma: { id: number; descricao: string | null } | null;
   candidatos: AlunoCandidato[];
@@ -104,6 +106,8 @@ export function ModalMatriculas({
   /** Remove um a um e devolve quem não saiu. */
   onRemover: (alunoIds: string[]) => Promise<string[]>;
   onFechar: () => void;
+  /** Turma de demonstração da pesquisa: os alunos de exemplo, só para ver (sem remover nem termo). */
+  exemplo?: ExemploNaTurma | null;
 }) {
   const [aba, setAba] = useState<Aba>("turma");
   const celular = useIsMobile();
@@ -115,7 +119,7 @@ export function ModalMatriculas({
   // Turma vazia abre direto em adicionar: não há o que ver na outra aba.
   const turmaAberta = turma?.id ?? null;
   useEffect(() => {
-    if (turmaAberta !== null) setAba(matriculadosIds.length === 0 ? "busca" : "turma");
+    if (turmaAberta !== null) setAba(matriculadosIds.length === 0 && !exemplo ? "busca" : "turma");
     // Só ao trocar de turma: matricular o primeiro aluno não pode tirar o professor de onde está.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turmaAberta]);
@@ -153,7 +157,7 @@ export function ModalMatriculas({
             valor={aba}
             onChange={setAba}
             opcoes={[
-              { value: "turma", label: `Na turma (${matriculadosIds.length})` },
+              { value: "turma", label: `Na turma (${matriculadosIds.length + (exemplo?.alunos.length ?? 0)})` },
               // No celular os rótulos inteiros jogariam a última aba para fora da tela.
               { value: "busca", label: celular ? "Buscar" : "Adicionar por busca" },
               { value: "lista", label: celular ? "Lista" : "Colar ou importar lista" },
@@ -175,6 +179,7 @@ export function ModalMatriculas({
             onTermoSalvo={termosDaTurma.recarregar}
             onIrParaAdicionar={() => setAba("busca")}
             cancelarConfirmacao={cancelarConfirmacao}
+            exemplo={exemplo}
           />
         ) : aba === "busca" ? (
           <AdicionarPorBusca key={turmaAberta ?? "nenhuma"} candidatos={candidatos} matriculadosIds={matriculadosIds} perfis={perfis} onMatricularVarios={onMatricularVarios} />
