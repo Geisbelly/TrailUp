@@ -128,3 +128,10 @@ export function mensagemDaResposta(id: number, r: RespostaDaLumi | null | undefi
     ...(typeof r?.assinatura === "string" && r.assinatura ? { assinatura: r.assinatura } : {}),
   };
 }
+
+/** O que o "respondendo" da Lumi diz; na demora, avisa que o servidor pode estar acordando. */
+export function textoDoRespondendo(demorando: boolean): string {
+  return demorando
+    ? "Lumi está respondendo… o servidor pode estar acordando, isso leva até um minuto."
+    : "Lumi está respondendo…";
+}
