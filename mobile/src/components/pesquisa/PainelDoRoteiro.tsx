@@ -3,16 +3,20 @@ import type { ProfileShellPalette } from "@/utils/profileShellTheme";
 import {
   DEPOIS_DO_APP,
   ETAPAS_DO_ALUNO,
+  ETAPAS_DO_ROTEIRO,
+  ONDE_E_A_ETAPA,
   LIMITE_DA_ANOTACAO,
   PRIVACIDADE_DAS_ANOTACOES,
   andamentoDoRoteiro,
   anotacoesPorEtapa,
   mostraPainelDoRoteiro,
   proximaEtapaDoAluno,
+  rotuloCurtoDaEtapa,
   textoDaAnotacao,
   tituloDaEtapaDoAluno,
   type Anotacao,
   type EtapaDoAluno,
+  type EtapaDoRoteiro,
   type MeuRoteiro,
 } from "@/services/pesquisa/roteiro";
 import {
@@ -91,7 +95,8 @@ export function PainelDoRoteiro({ palette, usuarioId }: { palette: ProfileShellP
 
   if (!roteiro || !mostraPainelDoRoteiro(roteiro)) return null;
 
-  const { doApp, totalDoApp } = andamentoDoRoteiro(roteiro.marcadas);
+  // O mesmo andamento do console: o roteiro inteiro, marcado em qualquer uma das duas contas.
+  const { feitas, total } = andamentoDoRoteiro(roteiro.marcadas);
   const larguraDaGaveta = Math.min(420, Math.round(width * 0.92));
 
   async function alternarMarca(etapa: EtapaDoAluno) {
@@ -116,13 +121,13 @@ export function PainelDoRoteiro({ palette, usuarioId }: { palette: ProfileShellP
       <Pressable
         onPress={() => setAberto(true)}
         accessibilityRole="button"
-        accessibilityLabel={`Roteiro da avaliação, ${doApp} de ${totalDoApp} etapas do app feitas`}
+        accessibilityLabel={`Roteiro da avaliação, ${feitas} de ${total} etapas feitas`}
         style={[styles.aba, { backgroundColor: cores.aba, borderColor: cores.borda }]}
         hitSlop={8}
       >
         <MaterialCommunityIcons name="clipboard-check-outline" size={22} color={cores.textoDaAba} />
         <Text style={[styles.abaContagem, { color: cores.textoDaAba }]}>
-          {doApp}/{totalDoApp}
+          {feitas}/{total}
         </Text>
       </Pressable>
 
@@ -246,44 +251,17 @@ function ConteudoDoRoteiro({
         </Text>
       )}
 
-      <Text style={[styles.secao, { color: cores.textoSuave }]}>No app</Text>
-      {ETAPAS_DO_ALUNO.map((e) => {
-        const feita = roteiro.marcadas.has(e.id);
-        const ehProxima = proxima?.id === e.id;
-        return (
-          <View key={e.id} style={[styles.cartao, { backgroundColor: cores.cartao, borderColor: ehProxima ? cores.destaque : cores.borda }]}>
-            <Pressable
-              onPress={() => aoAlternar(e)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: feita }}
-              accessibilityLabel={tituloDaEtapaDoAluno(e)}
-              style={styles.linha}
-            >
-              <MaterialCommunityIcons
-                name={feita ? "checkbox-marked" : "checkbox-blank-outline"}
-                size={24}
-                color={feita ? cores.destaque : cores.textoSuave}
-              />
-              <View style={styles.flex}>
-                {ehProxima && <Text style={[styles.rotulo, { color: cores.destaque }]}>Próxima etapa</Text>}
-                <Text style={[styles.forte, { color: cores.texto }, feita && styles.riscado]}>{tituloDaEtapaDoAluno(e)}</Text>
-              </View>
-            </Pressable>
-            {!feita &&
-              e.passos.map((passo) => (
-                <Text key={passo} style={[styles.passo, { color: cores.textoSuave }]}>
-                  • {passo}
-                </Text>
-              ))}
-            {!feita && e.observar && (
-              <Text style={[styles.passo, { color: cores.textoSuave }]}>
-                <Text style={{ color: cores.texto, fontWeight: "700" }}>Repare: </Text>
-                {e.observar}
-              </Text>
-            )}
-          </View>
-        );
-      })}
+      <Text style={[styles.secao, { color: cores.textoSuave }]}>Todas as etapas</Text>
+      {ETAPAS_DO_ROTEIRO.map((e) => (
+        <CartaoDaEtapa
+          key={e.id}
+          etapa={e}
+          feita={roteiro.marcadas.has(e.id)}
+          ehProxima={proxima?.id === e.id}
+          cores={cores}
+          aoAlternar={aoAlternar}
+        />
+      ))}
       <Text style={[styles.passo, { color: cores.textoSuave }]}>{DEPOIS_DO_APP}</Text>
 
       <Text style={[styles.secao, { color: cores.textoSuave }]}>Anotações</Text>
@@ -298,7 +276,7 @@ function ConteudoDoRoteiro({
         style={[styles.campo, { color: cores.texto, borderColor: cores.borda, backgroundColor: cores.cartao }]}
       />
       <View style={styles.chips} accessibilityRole="radiogroup" accessibilityLabel="Etapa da anotação">
-        {[...ETAPAS_DO_ALUNO.map((e) => [e.id, e.tarefa ?? "Entrar"] as const), [SEM_ETAPA, "Sem etapa"] as const].map(([id, rotulo]) => {
+        {[...ETAPAS_DO_ROTEIRO.map((e) => [e.id, rotuloCurtoDaEtapa(e)] as const), [SEM_ETAPA, "Sem etapa"] as const].map(([id, rotulo]) => {
           const ativo = etapa === id;
           return (
             <Pressable
@@ -334,6 +312,74 @@ function ConteudoDoRoteiro({
             ))}
           </View>
         ))
+      )}
+    </View>
+  );
+}
+
+/**
+ * Uma etapa do roteiro. As do app abrem os passos enquanto não estão feitas; as do console e do site
+ * ficam fechadas (quem as faz é a conta de professor) e abrem num toque, para conferir o que pediam.
+ */
+function CartaoDaEtapa({
+  etapa,
+  feita,
+  ehProxima,
+  cores,
+  aoAlternar,
+}: {
+  etapa: EtapaDoRoteiro;
+  feita: boolean;
+  ehProxima: boolean;
+  cores: Cores;
+  aoAlternar: (etapa: EtapaDoAluno) => void;
+}) {
+  const doApp = etapa.onde === "app";
+  const [aberta, setAberta] = useState(false);
+  const mostraPassos = doApp ? !feita : aberta;
+  return (
+    <View style={[styles.cartao, { backgroundColor: cores.cartao, borderColor: ehProxima ? cores.destaque : cores.borda }]}>
+      <View style={styles.linha}>
+        <Pressable
+          onPress={() => aoAlternar(etapa)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: feita }}
+          accessibilityLabel={tituloDaEtapaDoAluno(etapa)}
+          hitSlop={6}
+        >
+          <MaterialCommunityIcons
+            name={feita ? "checkbox-marked" : "checkbox-blank-outline"}
+            size={24}
+            color={feita ? cores.destaque : cores.textoSuave}
+          />
+        </Pressable>
+        <Pressable
+          onPress={() => (doApp ? aoAlternar(etapa) : setAberta((v) => !v))}
+          accessibilityRole={doApp ? undefined : "button"}
+          accessibilityLabel={doApp ? undefined : `${aberta ? "Esconder" : "Ver"} os passos de ${tituloDaEtapaDoAluno(etapa)}`}
+          accessibilityState={doApp ? undefined : { expanded: aberta }}
+          style={styles.flex}
+        >
+          <Text style={[styles.rotulo, { color: ehProxima ? cores.destaque : cores.textoSuave }]}>
+            {ehProxima ? `Próxima etapa · ${ONDE_E_A_ETAPA[etapa.onde]}` : ONDE_E_A_ETAPA[etapa.onde]}
+          </Text>
+          <Text style={[styles.forte, { color: cores.texto }, feita && styles.riscado]}>{tituloDaEtapaDoAluno(etapa)}</Text>
+        </Pressable>
+        {!doApp && (
+          <MaterialCommunityIcons name={aberta ? "chevron-up" : "chevron-down"} size={20} color={cores.textoSuave} />
+        )}
+      </View>
+      {mostraPassos &&
+        etapa.passos.map((passo) => (
+          <Text key={passo} style={[styles.passo, { color: cores.textoSuave }]}>
+            • {passo}
+          </Text>
+        ))}
+      {mostraPassos && etapa.observar && (
+        <Text style={[styles.passo, { color: cores.textoSuave }]}>
+          <Text style={{ color: cores.texto, fontWeight: "700" }}>Repare: </Text>
+          {etapa.observar}
+        </Text>
       )}
     </View>
   );

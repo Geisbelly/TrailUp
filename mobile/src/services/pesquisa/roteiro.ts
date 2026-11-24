@@ -2,8 +2,9 @@
  * Roteiro da avaliação para o aluno de teste da pesquisa com professores.
  *
  * O avaliador usa duas contas: a de professor, no console (site), e a do aluno de teste, aqui. As
- * marcas e as anotações são as mesmas nas duas (migration `20261123_03`). O app mostra as etapas
- * que acontecem nele e as anotações das duas plataformas.
+ * marcas e as anotações são as mesmas nas duas (migration `20261123_03`). O app mostra o roteiro
+ * inteiro, como o console: as etapas do app abertas e as do console e do site também, para marcar
+ * e para anotar. O andamento é um só nas duas contas.
  *
  * Cópia do roteiro do site (`frontend/src/features/pesquisa/roteiroDaPesquisa.ts`, que tira as
  * tarefas de `TAREFAS`). O teste do site compara as duas, então mudar o texto lá sem mudar aqui
@@ -16,6 +17,16 @@ export type EtapaDoAluno = {
   passos: readonly string[];
   observar?: string;
   tarefa?: string;
+};
+
+export type OndeEAEtapa = "site" | "console" | "app";
+
+export type EtapaDoRoteiro = EtapaDoAluno & { onde: OndeEAEtapa };
+
+export const ONDE_E_A_ETAPA: Record<OndeEAEtapa, string> = {
+  site: "No site",
+  console: "No console",
+  app: "No app",
 };
 
 /** Todas as etapas do roteiro, na ordem, só com o título (para rotular anotações feitas no console). */
@@ -62,6 +73,100 @@ export const ETAPAS_DO_ALUNO: readonly EtapaDoAluno[] = [
   },
 ];
 
+/** As etapas fora do app (site e console), com o mesmo texto do roteiro do site. */
+const ETAPAS_FORA_DO_APP: readonly EtapaDoRoteiro[] = [
+  {
+    id: "video",
+    titulo: "Ver o passo a passo em vídeo",
+    onde: "site",
+    passos: [
+      "São uns quatro minutos e meio: as três fases da pesquisa, as oito tarefas e o que vem depois delas.",
+    ],
+  },
+  {
+    id: "t1",
+    tarefa: "T1",
+    titulo: "Conhecer a turma",
+    onde: "console",
+    passos: [
+      "Em Turmas, abra a turma de demonstração.",
+      "Veja quem está matriculado e o perfil de cada aluno.",
+    ],
+    observar: "Se fica claro quem são os alunos e em que pé cada um está.",
+  },
+  {
+    id: "t2",
+    tarefa: "T2",
+    titulo: "Explorar a trilha",
+    onde: "console",
+    passos: [
+      "Em Trilhas, abra a trilha da turma.",
+      "Entre num tópico e veja os conteúdos, as atividades e as questões.",
+    ],
+    observar: "Se a organização em tópicos faz sentido e se você conseguiria montar uma trilha sua.",
+  },
+  {
+    id: "t3",
+    tarefa: "T3",
+    titulo: "Ver e pedir uma personalização",
+    onde: "console",
+    passos: [
+      "Em Personalizações, veja os perfis da turma e o material de um perfil.",
+      "Se quiser, peça uma geração por IA, sobre o conteúdo da turma ou sobre um conteúdo seu (ela pode levar alguns minutos ou não sair, por causa do limite gratuito do modelo).",
+    ],
+    observar: "Se você entende o que foi gerado, para quem, e o que precisaria revisar antes de liberar.",
+  },
+  {
+    id: "t4",
+    tarefa: "T4",
+    titulo: "Ler as métricas da turma",
+    onde: "console",
+    passos: [
+      "Na Visão geral, com a turma de demonstração selecionada, veja os painéis com o selo de exemplo.",
+      "Em cada métrica, abra a explicação (o ícone ao lado do nome) e diga para você mesmo o que ela mostra.",
+    ],
+    observar: "Se cada painel se entende sozinho e se a explicação diz o que o número mede. Os valores são de exemplo, então avalie o formato de cada painel.",
+  },
+  {
+    id: "t5",
+    tarefa: "T5",
+    titulo: "Entender o jogo da turma",
+    onde: "console",
+    passos: [
+      "Passe por Economia, Missões, Eventos e Conquistas.",
+      "Veja como as moedas, a loja, as missões e os eventos estão configurados.",
+    ],
+    observar: "Se você saberia ajustar o jogo à sua turma e se ele apoia o estudo.",
+  },
+  {
+    id: "t6",
+    tarefa: "T6",
+    titulo: "Ver a competição",
+    onde: "console",
+    passos: [
+      "Abra Rankings, Rank de batalhas e Guildas.",
+    ],
+    observar: "O que a competição mostra e o efeito que ela teria em quem está atrás.",
+  },
+  {
+    id: "blocos",
+    titulo: "Responder aos blocos e enviar",
+    onde: "console",
+    passos: [
+      "Depois das tarefas vêm os blocos de perguntas e as quatro perguntas abertas, na aba Avaliar o TrailUp.",
+      "Releia as suas anotações antes. A forma de divulgação é a última pergunta.",
+    ],
+  },
+];
+
+/** O roteiro inteiro, na ordem de `TITULOS_DO_ROTEIRO`: o mesmo que o console mostra. */
+export const ETAPAS_DO_ROTEIRO: readonly EtapaDoRoteiro[] = TITULOS_DO_ROTEIRO.map(([id]) => {
+  const doApp = ETAPAS_DO_ALUNO.find((e) => e.id === id);
+  const etapa: EtapaDoRoteiro | undefined = doApp ? { ...doApp, onde: "app" } : ETAPAS_FORA_DO_APP.find((e) => e.id === id);
+  if (!etapa) throw new Error(`Etapa do roteiro sem texto: ${id}`);
+  return etapa;
+});
+
 export const DEPOIS_DO_APP =
   "Terminou as tarefas do aluno? Volte ao console, na aba Avaliar o TrailUp, para responder às perguntas da T7 e da T8 e aos blocos finais.";
 
@@ -72,6 +177,11 @@ export const LIMITE_DA_ANOTACAO = 2000;
 
 export const tituloDaEtapaDoAluno = (etapa: EtapaDoAluno) =>
   etapa.tarefa ? `${etapa.tarefa}. ${etapa.titulo}` : etapa.titulo;
+
+const ROTULO_CURTO: Record<string, string> = { video: "Vídeo", "aluno-acesso": "Entrar", blocos: "Blocos" };
+
+/** Rótulo curto da etapa, para os botões de escolher a etapa da anotação. */
+export const rotuloCurtoDaEtapa = (etapa: EtapaDoAluno) => etapa.tarefa ?? ROTULO_CURTO[etapa.id] ?? etapa.titulo;
 
 export function tituloDaEtapa(id: string | null | undefined): string | null {
   return TITULOS_DO_ROTEIRO.find(([etapa]) => etapa === id)?.[1] ?? null;

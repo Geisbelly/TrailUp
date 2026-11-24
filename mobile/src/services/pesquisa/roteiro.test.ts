@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   ETAPAS_DO_ALUNO,
+  ETAPAS_DO_ROTEIRO,
   TITULOS_DO_ROTEIRO,
   andamentoDoRoteiro,
   anotacoesPorEtapa,
@@ -10,6 +11,7 @@ import {
   lerMeuRoteiro,
   mostraPainelDoRoteiro,
   proximaEtapaDoAluno,
+  rotuloCurtoDaEtapa,
   textoDaAnotacao,
   tituloDaEtapa,
 } from "./roteiro";
@@ -72,4 +74,23 @@ test("texto da anotação: sem espaço sobrando e com limite", () => {
   assert.equal(textoDaAnotacao("   "), null);
   assert.equal(textoDaAnotacao("  oi  "), "oi");
   assert.equal(textoDaAnotacao("x".repeat(2500))?.length, 2000);
+});
+
+test("o app tem o roteiro inteiro, como o console, na mesma ordem", () => {
+  assert.deepEqual(
+    ETAPAS_DO_ROTEIRO.map((e) => e.id),
+    TITULOS_DO_ROTEIRO.map(([id]) => id),
+  );
+  for (const e of ETAPAS_DO_ROTEIRO) {
+    assert.equal(tituloDaEtapa(e.id), e.tarefa ? `${e.tarefa}. ${e.titulo}` : e.titulo);
+    assert.ok(e.passos.length > 0, e.id);
+  }
+  assert.deepEqual(
+    ETAPAS_DO_ROTEIRO.filter((e) => e.onde === "app").map((e) => e.id),
+    ETAPAS_DO_ALUNO.map((e) => e.id),
+  );
+  assert.deepEqual(
+    ETAPAS_DO_ROTEIRO.map(rotuloCurtoDaEtapa),
+    ["Vídeo", "T1", "T2", "T3", "T4", "T5", "T6", "Entrar", "T7", "T8", "Blocos"],
+  );
 });
