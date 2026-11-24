@@ -151,6 +151,14 @@ function SettingsLista() {
           ),
         },
         {
+          label: "O que o Guia sabe de você",
+          render: (
+            <LinhaConfig icone="smile" onPress={() => router.push("/(tabs)/perfil/guia-sabe")} palette={palette}>
+              O que o Guia sabe de você
+            </LinhaConfig>
+          ),
+        },
+        {
           label: "Solicitar exclusão da conta",
           render: (
             <LinhaConfig icone="trash-2" perigo onPress={() => router.push("/(tabs)/perfil/excluir")} palette={palette}>

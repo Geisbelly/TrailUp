@@ -6,6 +6,7 @@ export type IdSubtela =
   | "info"
   | "senha"
   | "coleta"
+  | "guia"
   | "relatorio"
   | "privacidade"
   | "termos"
@@ -61,6 +62,14 @@ export const GRUPOS_CONFIGURACAO: GrupoSubtelas[] = [
         titulo: "Coleta e acessos",
         descricao:
           "Você decide o que a plataforma pode observar durante seu estudo. Desativar um item não te tira do app — só reduz a personalização baseada naquele sinal.",
+      },
+      {
+        id: "guia",
+        rotulo: "O que o Guia sabe de você",
+        grupo: PRIVACIDADE,
+        titulo: "O que o Guia sabe de você",
+        descricao:
+          "Os gostos e o jeito de conversar que o Guia aprendeu com você. Só você vê; dá para apagar e desligar.",
       },
       { id: "relatorio", rotulo: "Gerar relatório dos dados", grupo: PRIVACIDADE, titulo: "Gerar relatório dos dados", acao: true },
       { id: "privacidade", rotulo: "Política de privacidade", grupo: PRIVACIDADE, titulo: "Política de privacidade", acao: true },
