@@ -6,6 +6,7 @@ import { filtrarGrupos, GRUPOS_CONFIGURACAO, subtelaDaUrl } from "./subtelasConf
 test("a URL escolhe a subtela; sem valor ou inválida, abre Informações pessoais", () => {
   assert.equal(subtelaDaUrl("lembrete").id, "lembrete");
   assert.equal(subtelaDaUrl(["coleta"]).id, "coleta");
+  assert.equal(subtelaDaUrl("guia").id, "guia");
   assert.equal(subtelaDaUrl(undefined).id, "info");
   assert.equal(subtelaDaUrl("nao-existe").id, "info");
 });

@@ -8,6 +8,20 @@ class SecaoDoGuia(BaseModel):
     destino: str = ""
 
 
+class PreferenciasDoRegistro(BaseModel):
+    """O que esta mensagem revelou sobre o aluno, para `aluno_preferencias_guia` (20261124_04).
+
+    Fora de "required": o modelo só preenche quando há algo novo, e a omissão custa zero token.
+    A API filtra pelo catálogo e mascara (`preferencias_do_guia.normalizar_preferencias`)."""
+
+    # false = não grava nada; true = as listas abaixo são o estado inteiro, não um acréscimo.
+    atualizar: bool = False
+    gostos: list[str] = Field(default_factory=list)
+    resumo: str = ""
+    # instigar | acolher | pragmatico | ""
+    postura: str = ""
+
+
 class RegistroDaConversa(BaseModel):
     """O que a pergunta do aluno era, para `chat_guia_registros` (20261118_01). Nunca vai ao aluno.
 
@@ -27,6 +41,8 @@ class RegistroDaConversa(BaseModel):
     dificuldade: str = "nenhuma"
     # nenhum | desconforto | crise | risco. Vai so ao modo de cuidado: nunca a chat_guia_registros.
     bem_estar: str = "nenhum"
+    # Gostos e postura do aluno. Vai so a aluno_preferencias_guia: nunca a chat_guia_registros.
+    preferencias: PreferenciasDoRegistro = Field(default_factory=PreferenciasDoRegistro)
 
 
 class MentorChatLLMResult(BaseModel):

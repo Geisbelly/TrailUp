@@ -238,3 +238,4 @@ src/components/cuidado/TecnicasDeCalma.test.tsx
 src/components/consentimento/ItemNovoDoTermo.test.tsx
 src/components/ia/IAMentorPanel.cuidado.test.tsx
 src/services/pesquisa/roteiro.test.ts
+src/utils/preferenciasDoGuia.test.ts

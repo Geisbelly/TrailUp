@@ -111,6 +111,11 @@ from app.services.personalizacao_jobs import (
     enqueue_personalizacao_job,
     get_job_detail,
 )
+from app.services.preferencias_do_guia import (
+    PreferenciasDoGuiaRepository,
+    bloco_para_o_guia,
+    normalizar_preferencias,
+)
 from app.services.pseudonimizacao import (
     PLACEHOLDER_NOME,
     pseudonimizar_nome_proprio,
@@ -1661,6 +1666,9 @@ async def conversar_com_mentor_personalizacao(
     registros_do_chat = ChatGuiaRegistrosRepository(session)
     # Para o mascarador do registro (20261118_01): o aluno e os colegas da turma.
     nomes_a_mascarar: set[str] = set()
+    # Gostos e postura que o Guia aprendeu (20261124_04). Desligada ou ilegível, não lê nem grava.
+    preferencias_repo = PreferenciasDoGuiaRepository(session)
+    coleta_de_preferencias = False
     usou_reserva: list[bool] = []
 
     def _reserva_do_chat() -> dict:
@@ -1695,6 +1703,7 @@ async def conversar_com_mentor_personalizacao(
         # Matéria, tema do mapa e arco da turma: o primeiro degrau das analogias e das pontes
         # (turma antes do aluno). Leitura que falha volta None e a chave não entra.
         turma_do_chat = await contexto_da_turma(session, payload.classe_id)
+        linha_de_preferencias, coleta_de_preferencias = await preferencias_repo.ler(aluno_id)
         async with rota_ia_para_alunos(session, [aluno_id]):
             provedor_do_chat = settings.llm_provider
             modelo_do_chat = (
@@ -1737,6 +1746,13 @@ async def conversar_com_mentor_personalizacao(
                     "perfil_brainhex": context.get("perfil_brainhex", [])[:4],
                     "metricas_aluno": _build_student_metrics_summary(context, para_llm=True),
                     "leituras_adaptativas": _build_student_reading_summary(context),
+                    # Muda de vez em quando: depois do que é fixo do aluno, antes da memória. Sem a
+                    # chave, o aluno desligou a coleta e o Guia não registra preferência nenhuma.
+                    **(
+                        {"preferencias_do_aluno": bloco_para_o_guia(linha_de_preferencias)}
+                        if coleta_de_preferencias
+                        else {}
+                    ),
                     # Muda a cada pergunta: fica perto do fim, onde não derruba o cache do começo.
                     **({"avaliacao_trailup": avaliacao_trailup} if avaliacao_trailup else {}),
                     "memoria_do_guia": memoria_do_guia,
@@ -1797,6 +1813,8 @@ async def conversar_com_mentor_personalizacao(
         nivel_de_cuidado = nivel_de_bem_estar(mentor_result.registro)
     result = mentor_result.model_dump(mode="json")
     result.get("registro", {}).pop("bem_estar", None)
+    # Gostos e resumo vão só à tabela própria, mascarados: não ao log cru da decisão.
+    result.get("registro", {}).pop("preferencias", None)
     tem_acao = bool(resposta_do_guia["destinos"] or resposta_do_guia["tutorial"])
     response = MentorChatResponse(
         scope=payload.escopo,
@@ -1873,6 +1891,21 @@ async def conversar_com_mentor_personalizacao(
     except Exception as exc:  # pragma: no cover
         await session.rollback()
         logger.warning("chat_guia.gravar_falhou: %s", type(exc).__name__)
+
+    # Gostos e postura (20261124_04): só do modelo, só com a coleta ligada e só quando a mensagem
+    # revelou algo. Transação própria: falhar aqui não leva o registro acima nem a resposta.
+    preferencias_novas = (
+        normalizar_preferencias(mentor_result.registro.preferencias, nomes_a_mascarar)
+        if coleta_de_preferencias and origem_do_registro == "modelo"
+        else None
+    )
+    if preferencias_novas is not None:
+        try:
+            await preferencias_repo.gravar(aluno_id, preferencias_novas)
+            await session.commit()
+        except Exception as exc:  # pragma: no cover
+            await session.rollback()
+            logger.warning("preferencias_do_guia.gravar_falhou: %s", type(exc).__name__)
 
     if response.modo_cuidado is not None:
         response.modo_cuidado.expira_em = await _gravar_momento_de_cuidado(
