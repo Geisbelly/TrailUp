@@ -70,7 +70,7 @@ const PLANILHA_MODELOS = [
     + 'O formulário da avaliação fica na aba "Avaliar o TrailUp" do console ({{link_aba_avaliacao}}) e também neste link:\n\n'
     + '[[Abrir o formulário de avaliação|{{link_avaliacao}}]]\n\n'
     + 'A cartilha vem logo abaixo, neste e-mail. Os vídeos e o termo completo ficam no site: {{link_cartilha}}\n\n'
-    + 'As senhas foram geradas aleatoriamente e só existem neste e-mail. Não as repasse; se quiser, troque a do professor em Meus dados. Os acessos são apagados ao fim da pesquisa.\n\n'
+    + 'As senhas foram geradas aleatoriamente e só existem neste e-mail. Não as repasse; se quiser, troque a do professor em Meus dados. Os acessos não são apagados ao fim da pesquisa: ficam guardados como dado da pesquisa.\n\n'
     + 'Equipe TrailUp'],
 ];
 
