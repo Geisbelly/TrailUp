@@ -146,26 +146,28 @@ test("cooldown de cota e por (chave, modelo) - uma chave esgotada no modelo prin
   });
 });
 
-test("resolveGeminiTextFallbackModels devolve os 11 modelos default, priorizando a serie 3.x", () => {
-  // gemini-2.5-flash-lite (e outros 2.x) retornaram 404 "no longer available
-  // to new users" em producao — 3.x vem primeiro por ter mais chance de
-  // funcionar de fato numa conta nova. Variantes nao-lite da mesma geracao
-  // geralmente vem depois da lite — exceto gemini-2.0-flash/-lite, que ja
-  // estava na ordem inversa antes desta ampliacao e nao foi reordenado.
-  // gemini-1.5-* fica por ultimo, mais residual ainda que a serie 2.x.
-  assert.deepEqual(resolveGeminiTextFallbackModels({}), [
+test("resolveGeminiTextFallbackModels devolve a serie 3.x e o 2.5-pro, sem modelo aposentado", () => {
+  // gemini-2.5-flash-lite, gemini-2.0-flash e gemini-2.0-flash-lite deram 404
+  // em todas as chamadas de 24/11; gemini-2.5-flash e gemini-1.5-* ja estavam
+  // aposentados. Cada nome velho custava uma chamada por chave a cada geracao.
+  const modelos = resolveGeminiTextFallbackModels({});
+  assert.deepEqual(modelos, [
     "gemini-3.1-flash-lite",
     "gemini-3.1-flash",
     "gemini-3.5-flash-lite",
     "gemini-3.6-flash-lite",
+    "gemini-2.5-pro",
+  ]);
+  for (const aposentado of [
     "gemini-2.5-flash-lite",
     "gemini-2.5-flash",
-    "gemini-2.5-pro",
     "gemini-2.0-flash",
     "gemini-2.0-flash-lite",
     "gemini-1.5-flash",
     "gemini-1.5-pro",
-  ]);
+  ]) {
+    assert.ok(!modelos.includes(aposentado), aposentado);
+  }
 });
 
 test("resolveGeminiTextFallbackModels respeita a lista configurada via env, separada por virgula", () => {
@@ -210,7 +212,8 @@ test("geminiApiKeys inclui GEMINI_API_KEY_1..4 e GEMINI_API_KEYS, nao so GEMINI_
 test("resolveGeminiTtsFallbackModels/resolveGeminiImageFallbackModels tem defaults proprios, sem depender do texto", () => {
   assert.deepEqual(resolveGeminiTtsFallbackModels({}), ["gemini-2.5-flash-preview-tts"]);
   assert.deepEqual(resolveGeminiImageFallbackModels({}), [
-    "gemini-2.0-flash-preview-image-generation",
+    "gemini-3.1-flash-image",
+    "gemini-3.1-flash-lite-image",
   ]);
   assert.deepEqual(
     resolveGeminiTtsFallbackModels({ GEMINI_TTS_FALLBACK_MODELS: "tts-a,tts-b" }),

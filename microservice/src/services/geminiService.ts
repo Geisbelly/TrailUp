@@ -271,30 +271,20 @@ const GEMINI_KEY_QUOTA_COOLDOWN_MS = 5 * 60 * 1_000;
 // Varios desses modelos aparecem com cota diária muito maior (ou ilimitada)
 // que gemini-3.6-flash nas tabelas do AI Studio — tentados em ordem, cada um
 // em todas as chaves configuradas, quando o modelo anterior esgota a cota em
-// todas elas, antes de cair pro fallback pago da OpenAI. Ordem prioriza a
-// série 3.x: gemini-2.5-flash-lite (e outros modelos 2.x) retornaram 404
-// "no longer available to new users" em produção — contas novas parecem só
-// ter acesso à série 3.x. Dentro de cada geração a ordem geralmente vai de
-// "-lite" (cota mais generosa/mais barata) pra "-flash" e, por fim, "-pro"
-// (mais capaz) — de "mais generoso/simples" pra "mais capaz/restrito" (não
-// está confirmado que "-pro" tenha cota maior que as demais, só que é o mais
-// capaz). Exceção: o par gemini-2.0-flash/gemini-2.0-flash-lite já estava na
-// ordem inversa antes desta lista ser ampliada de 5 pra 11 modelos e não foi
-// reordenado aqui. A família gemini-1.5-* fica anexada no fim como tentativa
-// residual mais antiga, ainda mais incerta que a série 2.x quanto à
-// disponibilidade pra contas novas.
+// todas elas, antes de cair pro fallback pago da OpenAI. Só a série 3.x e o
+// gemini-2.5-pro: os nomes aposentados saíram (24/11). gemini-2.5-flash-lite,
+// gemini-2.0-flash e gemini-2.0-flash-lite deram 404 em todas as chamadas da
+// API Python nesse dia (ia_uso_llm), gemini-2.5-flash já dava 404 "no longer
+// available to new users" (settings.py da API) e a família gemini-1.5-* foi
+// aposentada antes deles (401, api/.env.example). gemini-2.5-pro fica: nunca
+// foi medido. Dentro de cada geração a ordem vai de "-lite" (cota mais
+// generosa) para "-flash" e, por fim, "-pro".
 const DEFAULT_GEMINI_TEXT_FALLBACK_MODELS = [
   "gemini-3.1-flash-lite",
   "gemini-3.1-flash",
   "gemini-3.5-flash-lite",
   "gemini-3.6-flash-lite",
-  "gemini-2.5-flash-lite",
-  "gemini-2.5-flash",
   "gemini-2.5-pro",
-  "gemini-2.0-flash",
-  "gemini-2.0-flash-lite",
-  "gemini-1.5-flash",
-  "gemini-1.5-pro",
 ];
 
 export function resolveGeminiTextFallbackModels(
@@ -317,9 +307,10 @@ export function resolveGeminiTtsFallbackModels(
   return configured.length > 0 ? configured : DEFAULT_GEMINI_TTS_FALLBACK_MODELS;
 }
 
-// Idem para imagem de slide — gemini-2.0-flash-preview-image-generation é o
-// mesmo modelo já referenciado como GEMINI_MODEL_IMAGE no lado da API.
-const DEFAULT_GEMINI_IMAGE_FALLBACK_MODELS = ["gemini-2.0-flash-preview-image-generation"];
+// Idem para imagem de slide. Era gemini-2.0-flash-preview-image-generation:
+// a série 2.0 dá 404 desde 24/11. Os mesmos nomes que o BrainHexPDF usa para
+// ilustrar slides (brainhexpdf/server.ts) e o GEMINI_MODEL_IMAGE da API.
+const DEFAULT_GEMINI_IMAGE_FALLBACK_MODELS = ["gemini-3.1-flash-image", "gemini-3.1-flash-lite-image"];
 
 export function resolveGeminiImageFallbackModels(
   environment: Record<string, string | undefined> = process.env,

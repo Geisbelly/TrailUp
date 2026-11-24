@@ -69,7 +69,7 @@ from app.schemas.personalizacao import (
     SugestaoMaterialItem,
     SugestaoMaterialResponse,
 )
-from app.services import assinatura_chat, modo_restrito
+from app.services import assinatura_chat, modo_restrito, perfil_vetor
 from app.services.auth import UserContext
 from app.services.avaliacao_trailup import contexto_da_avaliacao
 from app.services.content_enrichment import ContentEnrichmentError, derive_base_blocks_and_topic
@@ -122,6 +122,7 @@ from app.services.pseudonimizacao import (
     restaurar_nome,
 )
 from app.services.rag_observabilidade import gravar_buscas_rag, iniciar_coleta_rag
+from app.services.reserva_do_guia import resposta_de_reserva
 from app.services.respostas_do_guia import resposta_sem_modelo
 from app.services.risco_no_chat import TEXTO_DO_CVV, garantir_cvv, sinal_de_risco
 from app.services.roteamento_ia import (
@@ -995,83 +996,9 @@ def _looks_like_answer_request(text: str) -> bool:
     return any(pattern in normalized for pattern in patterns)
 
 
-def _mentor_tone_intro(perfil: str | None) -> str:
-    profile = (perfil or "").strip().lower()
-    mapping = {
-        "achiever": "Vamos focar em metas claras e progresso constante. ",
-        "conqueror": "Vamos encarar isso como um desafio direto. ",
-        "daredevil": "Vamos em um ritmo dinamico e pratico. ",
-        "mastermind": "Vou explicar a logica das escolhas para voce. ",
-        "socialiser": "Vamos juntos, passo a passo. ",
-        "seeker": "Vamos explorar o tema com curiosidade. ",
-        "survivor": "Vamos com calma e seguranca, um passo de cada vez. ",
-    }
-    return mapping.get(profile, "")
-
-
-def _fallback_mentor_chat_reply(
-    *,
-    payload: MentorChatPayload,
-    latest_record: dict | None,
-    context: dict[str, object],
-) -> dict[str, object]:
-    justification = ""
-    if latest_record:
-        justification = str(((latest_record.get("plano") or {}).get("justificativa")) or "").strip()
-    metrics_summary = _build_student_metrics_summary(context)
-    reading_summary = _build_student_reading_summary(context)
-    top_profile = (
-        ((context.get("perfil_brainhex") or [{}])[0] or {}).get("perfil")
-        if isinstance(context.get("perfil_brainhex"), list)
-        else None
-    )
-    tone_intro = _mentor_tone_intro(str(top_profile or "").strip())
-
-    if _looks_like_answer_request(payload.mensagem):
-        return {
-            "reply": (
-                f"{tone_intro}Nao posso entregar a resposta da atividade. Posso te explicar por que esse modulo foi personalizado "
-                "desse jeito e sugerir como revisar o material antes de tentar de novo."
-            ),
-            "should_close": False,
-            "hinted_actions": ["revisar_material", "explicar_personalizacao"],
-        }
-
-    profile_label = str(top_profile or "seu perfil").strip()
-    message_normalized = payload.mensagem.lower()
-
-    if any(keyword in message_normalized for keyword in ["metrica", "desempenho", "tempo", "progresso", "acerto", "leitura", "dados"]):
-        return {
-            "reply": (
-                f"{tone_intro}Ate aqui, seu progresso registrado nesta classe esta em {metrics_summary['percentual_concluido_pct']}, "
-                f"com media recente de {metrics_summary['media_acertos_pct']} e tempo medio de {metrics_summary['tempo_medio_min']} por atividade. "
-                f"Na leitura adaptativa, eu observo seu ritmo ({reading_summary['ritmo_geral']}) e o historico recente para sugerir ajustes sem entregar respostas."
-            ),
-            "should_close": False,
-            "hinted_actions": ["resumir_metricas", "explicar_personalizacao"],
-        }
-
-    if payload.escopo == "trilha_home":
-        reply = (
-            f"{tone_intro}Na sua trilha eu considero {profile_label} e seu historico recente para escolher formato, ritmo e apoio. "
-            "Posso te explicar o motivo de um modulo personalizado especifico, comentar metricas simples da sua jornada e resumir o que ja foi observado nas leituras adaptativas, sem entrar no gabarito das atividades."
-        )
-    elif justification:
-        reply = (
-            f"{tone_intro}Eu personalizei este modulo assim: {justification} "
-            "Se quiser, eu tambem posso sugerir a melhor ordem para estudar esse material e resumir como suas metricas mais recentes influenciaram essa decisao."
-        )
-    else:
-        reply = (
-            f"{tone_intro}Eu consigo comentar a decisao de personalizacao, o ritmo sugerido e a melhor estrategia para estudar este modulo, "
-            "alem de resumir metricas e leituras recentes, mas nao entrego respostas de atividade."
-        )
-
-    return {
-        "reply": reply,
-        "should_close": False,
-        "hinted_actions": ["explicar_personalizacao", "sugerir_ordem_estudo"],
-    }
+def _titulo(valor: object) -> str | None:
+    texto = str(valor or "").strip()
+    return texto or None
 
 
 def _fill_plano_editorial_fields(plano: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -1615,11 +1542,6 @@ async def conversar_com_mentor_personalizacao(
         ),
     )
 
-    fallback = _fallback_mentor_chat_reply(
-        payload=payload,
-        latest_record=latest_record,
-        context=context,
-    )
     conteudo_materia = montar_conteudo_materia(
         conteudos=conteudos_topico,
         atividades=atividades_topico,
@@ -1632,6 +1554,23 @@ async def conversar_com_mentor_personalizacao(
         questoes=questoes_topico,
         registros=records,
         cards=cards_topico,
+    )
+    # Sem modelo: honesta, com acento, ligada ao tópico e ao conteúdo abertos, e sem perfil (24/11).
+    fallback = resposta_de_reserva(
+        mensagem=payload.mensagem,
+        titulo_topico=_titulo(topico.get("nome")) if isinstance(topico, dict) else None,
+        titulo_conteudo=next(
+            (
+                _titulo(item.get("titulo"))
+                for item in conteudos_topico
+                if isinstance(item, dict)
+                and payload.conteudo_id is not None
+                and str(item.get("id")) == str(payload.conteudo_id)
+            ),
+            None,
+        ),
+        conteudo_materia=conteudo_materia,
+        gabarito_protegido=gabarito_protegido,
     )
 
     llm = JsonLLMService(request.app.state.settings)
@@ -1752,7 +1691,11 @@ async def conversar_com_mentor_personalizacao(
                         "modo_operacao": (context.get("aluno") or {}).get("modo_operacao") if isinstance(context.get("aluno"), dict) else None,
                         "modo_resposta": (context.get("aluno") or {}).get("modo_resposta") if isinstance(context.get("aluno"), dict) else None,
                     },
-                    "perfil_brainhex": context.get("perfil_brainhex", [])[:4],
+                    # O dominante da regra única na frente: o `[0]` cru era Seeker para quem não
+                    # tem `aluno_perfil`, e o prompt ajusta o tom pelo dominante.
+                    "perfil_brainhex": perfil_vetor.vetor_com_dominante_primeiro(
+                        context.get("perfil_brainhex"), limite=4
+                    ),
                     "metricas_aluno": _build_student_metrics_summary(context, para_llm=True),
                     "leituras_adaptativas": _build_student_reading_summary(context),
                     # Muda de vez em quando: depois do que é fixo do aluno, antes da memória. Sem a
@@ -1804,6 +1747,9 @@ async def conversar_com_mentor_personalizacao(
                 sem_rag_se_falhar=True,
             )
 
+    if usou_reserva:
+        # O log dizia gemini/gemini-3.6-flash numa resposta que nenhum modelo escreveu (id 18, 24/11).
+        provedor_do_chat, modelo_do_chat = "reserva", "reserva_do_guia"
     resposta_do_guia = montar_resposta_do_guia(
         mentor_result,
         lambda texto: restaurar_nome(texto, aluno_ctx.get("apelido") or aluno_ctx.get("nome")) or "",

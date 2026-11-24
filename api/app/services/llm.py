@@ -117,6 +117,11 @@ class ProvedorIndisponivelError(StructuredOutputError):
     dobra a espera de quem está na tela, e o rodízio de chaves já tentou o que dava."""
 
 
+class CotaDoChatEsgotadaError(ProvedorIndisponivelError):
+    """Na faixa do chat, o modelo principal está sem cota em todas as chaves. A cadeia de reserva
+    não é tentada: quem espera na tela recebe a resposta de reserva na hora."""
+
+
 class SchemaRecusadoError(ProvedorIndisponivelError):
     """O provedor devolveu 400 antes de gerar. Pode ser o schema, que tem limite de complexidade: só
     dá para saber com ele no ar, e `ainvoke_json` volta ao JSON livre em vez de perder a geração."""
@@ -215,6 +220,7 @@ class JsonLLMService:
             item for item in self._gemini_fallback_models() if item != primary_model
         ]
         cooldown_sec, cooldown_diario_sec = gemini_chaves.cooldowns_de(self.settings)
+        no_chat = gemini_chaves.na_faixa_do_chat()
         last_exc: Exception | None = None
         for model in candidate_models:
             for _ in range(len(api_keys)):
@@ -237,8 +243,16 @@ class JsonLLMService:
                         cooldown_sec=cooldown_sec,
                         cooldown_diario_sec=cooldown_diario_sec,
                     ):
+                        # No chat, 5xx e sobrecarga do modelo, nao da chave (#1095 na edge): as
+                        # outras chaves levariam 7 a 11 s cada para dar o mesmo erro.
+                        if no_chat and gemini_chaves.is_transient_error(exc):
+                            break
                         continue
                     raise
+            if no_chat and model == primary_model and gemini_chaves.sem_cota_em_todas(api_keys, model):
+                # Cota do dia acabou em todas as chaves: descer a cadeia so gastava o prazo de quem
+                # esta na tela (24/11: 40 s e a reserva do mesmo jeito). A reserva sai agora.
+                raise CotaDoChatEsgotadaError(f"{model} sem cota em todas as chaves")
         if last_exc is not None:
             raise last_exc
         return None
@@ -374,6 +388,8 @@ class JsonLLMService:
                         if client is not None
                         else None
                     )
+            except StructuredOutputError:
+                raise
             except Exception as exc:
                 if (erro := erro_do_fim(chamada.fim, prompt_name)) is not None:
                     raise erro from exc
