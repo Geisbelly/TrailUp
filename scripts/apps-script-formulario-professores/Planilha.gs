@@ -434,6 +434,27 @@ function lerModelos_(planilha) {
   return modelos;
 }
 
+// Entry da pergunta de e-mail do formulário de avaliação. É o mesmo do espelho
+// (frontend/src/features/pesquisa/formularioDeAvaliacao.gerado.ts), e o teste
+// planilhaAprovacao.test.ts falha se os dois se separarem. Recriou o formulário? Troque aqui
+// ou ponha o novo na propriedade PESQUISA_ENTRY_EMAIL_AVALIACAO.
+const ENTRY_EMAIL_AVALIACAO = 'entry.641205283';
+
+/**
+ * Link de resposta do Google já com o e-mail do avaliador ("link preenchido": usp=pp_url e o
+ * entry). Ele não digita o e-mail de novo nem erra a grafia, e a avaliação casa com a inscrição.
+ * Link que não é de resposta do Forms volta como veio.
+ */
+function linkDaAvaliacaoComEmail_(link, email) {
+  if (!link) return '';
+  const id = /\/forms\/d\/e\/([A-Za-z0-9_-]+)\//.exec(String(link));
+  if (!id || !email) return String(link);
+  const entry = PropertiesService.getScriptProperties().getProperty('PESQUISA_ENTRY_EMAIL_AVALIACAO')
+    || ENTRY_EMAIL_AVALIACAO;
+  return 'https://docs.google.com/forms/d/e/' + id[1] + '/viewform?usp=pp_url&'
+    + encodeURIComponent(entry) + '=' + encodeURIComponent(String(email).trim());
+}
+
 function camposDoEmail_(avaliador, extras) {
   const props = PropertiesService.getScriptProperties();
   const site = String(props.getProperty('PESQUISA_SITE_URL') || '').replace(/\/+$/, '');
@@ -445,7 +466,8 @@ function camposDoEmail_(avaliador, extras) {
     link_app: site + '/download',
     link_cartilha: site + '/pesquisa/professores',
     link_aba_avaliacao: site + '/console/avaliar',
-    link_avaliacao: props.getProperty('PESQUISA_LINK_AVALIACAO') || site + '/console/avaliar',
+    link_avaliacao: linkDaAvaliacaoComEmail_(props.getProperty('PESQUISA_LINK_AVALIACAO'), avaliador.email)
+      || site + '/console/avaliar',
   };
   Object.keys(extras || {}).forEach(function (k) { campos[k] = extras[k]; });
   return campos;

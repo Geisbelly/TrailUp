@@ -38,7 +38,6 @@ import type { Aluno, AlunoAnalisado, AlunoPerfil, EvolucaoAluno, PersonalizacaoD
 import PrecisamDeAtencao, { type AlunoEmRisco } from "./dashboard/PrecisamDeAtencao";
 import { avaliarRisco, notaParaRisco, observacaoNotaEAbandono } from "./dashboard/risco";
 import { chaveAlunoTurma } from "./dashboard/sinais";
-import { mediaDosPreenchidos } from "./dashboard/medias";
 import { useSinaisDosAlunos } from "./dashboard/useSinaisDosAlunos";
 import SegmentedPills from "./dashboard/SegmentedPills";
 import AbaConteudo from "./dashboard/AbaConteudo";
@@ -46,7 +45,8 @@ import AbaEvolucao from "./dashboard/AbaEvolucao";
 import AbaInsights from "./dashboard/AbaInsights";
 import AbaGuia from "./dashboard/AbaGuia";
 import PainelDeExemplo from "./dashboard/PainelDeExemplo";
-import { mostraExemplo } from "./dashboard/exemploDaPesquisa";
+import { alunosDeExemplo, mostraExemplo } from "./dashboard/exemploDaPesquisa";
+import { kpisDosAlunos } from "./dashboard/kpisDosAlunos";
 
 type AbaDaTurma = "visao" | "evolucao" | "conteudo" | "insights" | "guia";
 
@@ -61,7 +61,7 @@ const ABAS_NA_URL = new Set<string>(ABAS_DA_TURMA.map((a) => a.value).filter((v)
 
 /**
  * `classeDeExemplo`: a turma de demonstração de quem avalia o TrailUp na pesquisa com professores.
- * Com ela sozinha em tela, a visão geral mostra as métricas com valores de exemplo (PainelDeExemplo).
+ * Com ela sozinha em tela, a visão geral junta alunos de exemplo aos de verdade (PainelDeExemplo).
  */
 export default function DashboardSection({ classeDeExemplo = null }: { classeDeExemplo?: number | null } = {}) {
   const { user, session } = useAuth();
@@ -467,12 +467,7 @@ export default function DashboardSection({ classeDeExemplo = null }: { classeDeE
     [alunosDaTurma]
   );
 
-  const totalAlunos = alunosDaTurma.length;
-  const mediaNotas = mediaDosPreenchidos(alunosDaTurma.map((a) => (a.temNota ? a.notaMedia : null)));
-  const mediaConclusao =
-    alunosDaTurma.reduce((acc, a) => acc + (isNaN(a.porcentagemConcluida) ? 0 : a.porcentagemConcluida), 0) /
-    (totalAlunos || 1);
-  const mediaAcertos = mediaDosPreenchidos(alunosDaTurma.map((a) => (a.temAcertos ? a.acertosPercentual : null)));
+  const { totalAlunos, mediaNotas, mediaConclusao, mediaAcertos } = kpisDosAlunos(alunosDaTurma);
   // Sem alunos no escopo, as médias acima são 0/(0||1) = 0 — um zero
   // fabricado, nao um dado real. Usa essa flag pra mostrar estado vazio
   // em vez do numero, senao "0% de acertos" parece um resultado de verdade.
@@ -493,6 +488,16 @@ export default function DashboardSection({ classeDeExemplo = null }: { classeDeE
         ? classes.map((item) => item.id)
         : [Number(selectedClassFilter)].filter((id) => Number.isFinite(id)),
     [classes, selectedClassFilter]
+  );
+  // Turma de demonstração da pesquisa: os alunos de exemplo entram na MESMA lista dos de verdade, e o
+  // cabeçalho conta essa lista. Antes o topo dizia 1 aluno e os cartões, 32.
+  const emExemplo = mostraExemplo(classeDeExemplo, classScopeIds);
+  const alunosDoExemplo = useMemo(
+    () =>
+      emExemplo && classeDeExemplo != null
+        ? [...alunosDaTurma, ...alunosDeExemplo(classeDeExemplo, nomeDaTurma(classeDeExemplo), new Date())]
+        : [],
+    [emExemplo, classeDeExemplo, alunosDaTurma, nomeDaTurma]
   );
   const turmaMetricasEscopo = useMemo(
     () => turmaMetricas.filter((row) => classScopeIds.includes(Number(row.classe_id))),
@@ -568,7 +573,7 @@ export default function DashboardSection({ classeDeExemplo = null }: { classeDeE
           classes={classes}
           turmaSelecionada={selectedClassFilter}
           onTurmaChange={setSelectedClassFilter}
-          totalAlunos={totalAlunos}
+          totalAlunos={emExemplo ? alunosDoExemplo.length : totalAlunos}
           janela={janelaTemporal}
           onJanelaChange={setJanelaTemporal}
           ultimaCarga={ultimaCarga}
@@ -578,8 +583,8 @@ export default function DashboardSection({ classeDeExemplo = null }: { classeDeE
           <DashboardErro detalhe={loadError} onTentarNovamente={loadData} />
         ) : isLoading || !ultimaCarga ? (
           <DashboardCarregando />
-        ) : mostraExemplo(classeDeExemplo, classScopeIds) ? (
-          <PainelDeExemplo />
+        ) : emExemplo ? (
+          <PainelDeExemplo alunos={alunosDoExemplo} onAbrir={abrirAluno} />
         ) : alunosDaTurma.length === 0 ? (
           <DashboardVazio semTurmas={classes.length === 0} />
         ) : (

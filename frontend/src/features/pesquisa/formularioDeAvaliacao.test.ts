@@ -6,6 +6,7 @@ import {
   emailsInvalidos,
   entriesDoItem,
   formularioDeAvaliacao,
+  linkComEmail,
   lerRascunho,
   pedacosComLinks,
   type EspelhoDaAvaliacao,
@@ -173,5 +174,22 @@ describe("pedacosComLinks", () => {
       { texto: "https://trailup.vercel.app/pesquisa", link: true },
       { texto: ". Depois volte.", link: false },
     ]);
+  });
+});
+
+describe("linkComEmail", () => {
+  const ID = "1FAIpQLSdX16qXGVT8w7Yucf0xO_bi2PRgn1gvKIhSn2VeURYkXQE1xg";
+  const formulario = { ...PUBLICADO, id: ID } as unknown as Parameters<typeof linkComEmail>[0];
+
+  it("leva o e-mail do login no entry da pergunta de e-mail", () => {
+    const url = new URL(linkComEmail(formulario, " ana+teste@exemplo.com "));
+    expect(url.pathname).toBe(`/forms/d/e/${ID}/viewform`);
+    expect(url.searchParams.get("usp")).toBe("pp_url");
+    expect(url.searchParams.get("entry.641205283")).toBe("ana+teste@exemplo.com");
+  });
+
+  it("sem e-mail, volta o link de resposta puro", () => {
+    expect(linkComEmail(formulario, null)).toBe(`https://docs.google.com/forms/d/e/${ID}/viewform`);
+    expect(linkComEmail(formulario, "  ")).toBe(`https://docs.google.com/forms/d/e/${ID}/viewform`);
   });
 });

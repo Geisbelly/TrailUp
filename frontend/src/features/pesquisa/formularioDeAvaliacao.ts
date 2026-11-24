@@ -71,6 +71,24 @@ export async function formularioDeAvaliacao(
   return { ...resto, id };
 }
 
+/**
+ * O link do Google já com o e-mail do login preenchido (o "link preenchido" do Forms: `usp=pp_url` e
+ * o entry da pergunta). Quem prefere responder no Google, ou abre o formulário em outra aba, não
+ * digita o e-mail de novo nem erra a grafia. Sem e-mail, ou formulário sem a pergunta, volta o link
+ * como veio.
+ */
+export function linkComEmail(formulario: FormularioDeAvaliacao, email: string | null): string {
+  const base = `https://docs.google.com/forms/d/e/${formulario.id}/viewform`;
+  const item = formulario.paginas
+    .flatMap(p => p.itens)
+    .find((i): i is Extract<ItemDaAvaliacao, { tipo: "texto" }> => i.tipo === "texto" && i.email);
+  const limpo = email?.trim();
+  if (!item || !limpo) return base;
+  const busca = new URLSearchParams({ usp: "pp_url" });
+  busca.set(item.entry, limpo);
+  return `${base}?${busca.toString()}`;
+}
+
 export const urlDoEnvioDaAvaliacao = (formulario: FormularioDeAvaliacao) =>
   `https://docs.google.com/forms/d/e/${formulario.id}/formResponse`;
 
