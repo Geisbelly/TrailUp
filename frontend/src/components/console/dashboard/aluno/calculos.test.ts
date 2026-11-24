@@ -27,7 +27,7 @@ describe("itemConcluido", () => {
 });
 
 describe("montarSerieEvolucao", () => {
-  const linha = (aluno_id: string, dia: string, nota: number, extra: Partial<EvolucaoAluno> = {}): EvolucaoAluno => ({
+  const linha = (aluno_id: string, dia: string, nota: number | null, extra: Partial<EvolucaoAluno> = {}): EvolucaoAluno => ({
     classe_id: 1,
     aluno_id,
     dia,
@@ -48,5 +48,14 @@ describe("montarSerieEvolucao", () => {
     expect(serie[0]).toMatchObject({ nota: null, acertos: null, progresso: null, notaTurma: 5 });
     expect(serie[1]).toMatchObject({ nota: 8, acertos: 60, progresso: 30, notaTurma: 7 });
     expect(serie[1].rotulo).toBe("02/09");
+  });
+
+  it("sem nota no dia não vira zero, nem na linha do aluno nem na média da turma", () => {
+    const serie = montarSerieEvolucao(
+      [linha("a", "2026-09-02", null)],
+      [linha("a", "2026-09-02", null), linha("b", "2026-09-02", 6), linha("c", "2026-09-03", null)],
+    );
+    expect(serie.map((p) => p.dia)).toEqual(["2026-09-02"]);
+    expect(serie[0]).toMatchObject({ nota: null, acertos: 60, notaTurma: 6 });
   });
 });
