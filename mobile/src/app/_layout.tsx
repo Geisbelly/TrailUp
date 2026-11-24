@@ -14,6 +14,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { estaNaAreaLogada } from "@/utils/areaLogada";
 import { consumePendingRoute, setPendingRoute } from "@/utils/pendingRoute";
 import { getProfileShellPalette } from "@/utils/profileShellTheme";
+import { fixarIdiomaDaPagina } from "@/utils/idiomaDaPagina";
 import { preloadIconFontsWithSwap } from "@/utils/preloadIconFonts";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import { Redirect, Stack, usePathname, useSegments, type ErrorBoundaryProps, type Href } from "expo-router";
@@ -36,6 +37,8 @@ export const unstable_settings = Platform.OS === "web" ? {} : {
 
 iniciarSaude();
 preloadIconFontsWithSwap();
+// Sem isto o navegador "traduzia" a página para português e congelava os textos (ver o arquivo).
+if (Platform.OS === "web" && typeof document !== "undefined") fixarIdiomaDaPagina(document);
 
 // Aviso de DESENVOLVIMENTO vindo da biblioteca, não do app: no Fabric, o
 // `onHeaderHeightChange` do NativeStackView (@react-navigation/native-stack 7.3)

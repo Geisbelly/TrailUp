@@ -1394,7 +1394,10 @@ estimaria o WPM de quem só fez uma pausa no meio da leitura.
 - **Encoding: UTF-8 sem BOM, sempre.** Já houve mojibake (UTF-8 salvo como
   Windows-1252) commitado em `frontend`/`brainhex-navigator`. Nunca gravar texto
   PT-BR em outra codificação. `index.html` deve ter `lang="pt-BR"` + `notranslate`
-  (tradução automática do navegador quebra o React — `removeChild`).
+  (tradução automática do navegador quebra o React — `removeChild`). Vale também para o app do
+  aluno na web: `mobile/app.json` declara `web.lang` e `fixarIdiomaDaPagina` põe `translate="no"`.
+  Com `lang="en"` (24/11) o Chrome traduziu a barra lateral ("Não", "Classificação") e congelou os
+  textos da Trilha no primeiro valor: "0 % concluído" com a barra já em 20%.
 - **Telemetria é transversal:** qualquer correção em personalização deve manter o
   fluxo de coleta e a realimentação por ciclo intactos.
 - **Não quebrar o existente:** os 7 perfis, o grafo LangGraph, os endpoints e os
