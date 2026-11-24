@@ -28,8 +28,20 @@ import { shadowStyle } from "@/utils/webShadow";
 import { TextoRico } from '@/components/textoRico/TextoRico';
 import { BlocoDeCodigo } from '@/components/textoRico/BlocoDeCodigo';
 import { formatoDoTexto } from '@/utils/textoRico/formatoTexto';
-import { alternativaDaResposta, letraDaAlternativa, textoRicoLegivel } from '@/utils/textoRico/respostaRica';
+import { alternativaDaResposta, textoRicoLegivel } from '@/utils/textoRico/respostaRica';
 import { avisarFalha } from '@/services/saude/medicao';
+import {
+  carregarGabaritos,
+  corrigirNoAparelho,
+  enviarFila,
+  gabaritoParaMostrar,
+  gabaritosEmMemoria,
+  guardarNaFila,
+  respostaDaAlternativa,
+  respostasNaFila,
+  type GabaritosObjetivos,
+} from '@/services/gabaritoNoAparelho';
+import { falhaDeRede, respostaProvisoria } from '@/services/gabaritoNoAparelho.core';
 import { formaDaResposta, previaDaExpressao } from '@/utils/textoRico/editorDeResposta';
 import { lerConfigResposta } from '@/utils/textoRico/configResposta';
 import { codigoDoErroDaEdge, mensagemDoErroDaEdge, textoDoMotivo, type MotivoDaConferencia } from '@/services/conferenciaNoServidor.core';
@@ -590,6 +602,16 @@ export default function QuestionActivity({
   // Um envio por vez: toque duplo gravava duas respostas, e a segunda valia metade.
   const enviandoRef = useRef(false);
   const [enviando, setEnviando] = useState(false);
+  // Gabarito das objetivas no aparelho (decisão da autora em 24/11, `20261124_07`): múltipla
+  // escolha e V/F são corrigidos na hora, e a resposta vai ao banco por trás. Questão fora dele,
+  // ou sem ele, espera o banco como antes.
+  const [gabaritosLocais, setGabaritosLocais] = useState<GabaritosObjetivos | null>(() =>
+    gabaritosEmMemoria(alunoId, classeId)
+  );
+  // Respostas dadas sem rede, guardadas no aparelho até o banco recebê-las.
+  const [guardadasSemRede, setGuardadasSemRede] = useState(0);
+  // Envios ao banco ainda em curso: concluir a atividade espera por eles.
+  const enviosEmCurso = useRef<Promise<unknown>[]>([]);
   const [, setFeedbackIA] = useState<Record<number, EssayValidationResult | null>>({});
   const [avisoCompra, setAvisoCompra] = useState<string | null>(null);
   const [gastandoCompra, setGastandoCompra] = useState(false);
@@ -618,6 +640,28 @@ export default function QuestionActivity({
     setConfirmados((prev) => ({ ...prev, [indice]: false }));
     setTimeoutLocked((prev) => ({ ...prev, [indice]: false }));
   }, [novaTentativa, setMostrarResposta, setReResponder]);
+
+  useEffect(() => {
+    if (!alunoId || classeId == null) return;
+    let vivo = true;
+    void carregarGabaritos(alunoId, classeId).then((g) => {
+      if (vivo && g) setGabaritosLocais(g);
+    });
+    // O que ficou na fila sem rede vai agora, e de novo a cada meio minuto com a tela aberta.
+    const esvaziar = () =>
+      enviarFila(alunoId)
+        .catch(() => [])
+        .then(() => respostasNaFila(alunoId))
+        .then((fila) => {
+          if (vivo) setGuardadasSemRede(fila.length);
+        });
+    void esvaziar();
+    const relogio = setInterval(() => void esvaziar(), 30_000);
+    return () => {
+      vivo = false;
+      clearInterval(relogio);
+    };
+  }, [alunoId, classeId]);
 
   useEffect(() => {
     const maxIndex = Math.max(0, questoes.length - 1);
@@ -1255,11 +1299,13 @@ export default function QuestionActivity({
             ? respostaTextoAtual.replace(/\s+$/, '')
             : respostaPorTexto
             ? respostaDigitada
-            : multiplaRica
-            ? escolhido != null && escolhido >= 0 && escolhido < alternativas.length
-              ? letraDaAlternativa(escolhido)
-              : ''
-            : String(alternativas[escolhido ?? -1] ?? '');
+            : // A mesma regra das candidatas de `questao_gabaritos_offline` (letra na múltipla rica).
+              respostaDaAlternativa({
+                alternativas,
+                indice: escolhido,
+                rica: multiplaRica,
+                verdadeiroOuFalso: isTrueFalseActivity,
+              });
           const tempoGastoSeg = segundosNaQuestao();
 
           // Dissertativa: valida por IA (contexto do enunciado + gabarito do
@@ -1336,6 +1382,79 @@ export default function QuestionActivity({
               }
               setFeedbackIA((prev) => ({ ...prev, [questaoIndex]: corrigida ? resultadoIA : null }));
               if (!corrigida) resultadoIA = null;
+            }
+            const local =
+              !corrigida && !respostaPorTexto && alunoId
+                ? corrigirNoAparelho(gabaritosLocais, questaoId, respostaSelecionada)
+                : null;
+            if (!corrigida && local != null && alunoId) {
+              // Objetiva com gabarito no aparelho: o resultado sai agora, e o banco, que grava a
+              // nota, confirma por trás. Se discordar, vale o banco e a tela acompanha.
+              const provisoria = respostaProvisoria({
+                correta: local,
+                viuGabarito: viuRespostaAntes,
+                respondeuDeNovo: reResponder,
+                novaTentativa: refazendoEsta,
+                fatorDaNovaTentativa: fatorRefeita,
+                pensante: isPensante,
+                gabarito: gabaritoParaMostrar(gabaritosLocais?.[questaoId], alternativas),
+              });
+              corrigida = provisoria;
+              const indice = questaoIndex;
+              const aluno = alunoId;
+              const pedido = { questaoId, resposta: respostaSelecionada, tempoGastoSeg };
+              const naTela = () => resultadoAbreModal(indice, questaoNaTela.current);
+              const envio = comLimiteDeTempo(responderQuestao(pedido), LIMITE_DO_ENVIO_MS, 'questao_responder')
+                .then(async (doBanco) => {
+                  if (doBanco.gabaritoLiberado) {
+                    setGabaritosDoBanco((prev) => ({ ...prev, [questaoId]: doBanco.respostaCorreta }));
+                  }
+                  if (
+                    doBanco.correta === provisoria.correta &&
+                    Math.round(doBanco.acertosPercentual) === provisoria.acertosPercentual
+                  ) {
+                    return;
+                  }
+                  setStas((prev) => ({ ...prev, [indice]: doBanco.correta ? 'certo' : 'errado' }));
+                  if (topicoId != null) {
+                    await registrarRespostaQuestao({
+                      topicoId: Number(topicoId), atividadeId: Number(atividade.id), questaoId,
+                      resposta: pedido.resposta, correta: doBanco.correta,
+                      acertosPercentual: Math.round(doBanco.acertosPercentual),
+                      tempoGastoSeg, jaGravada: { tentativa: doBanco.tentativa },
+                    }).catch(() => undefined);
+                  }
+                  if (doBanco.correta !== provisoria.correta && naTela()) {
+                    setModalInfo({
+                      titulo: doBanco.correta ? 'Resposta correta' : 'Resposta conferida',
+                      descricao: doBanco.correta
+                        ? 'O servidor conferiu sua resposta e ela está certa.'
+                        : 'O servidor conferiu sua resposta e ela não está certa. Vale a correção do servidor.',
+                      acerto: doBanco.correta,
+                    });
+                    setModalVisivel(true);
+                  }
+                })
+                .catch(async (error) => {
+                  if (falhaDeRede(error)) {
+                    // Sem rede: a resposta fica no aparelho e vai quando a conexão voltar.
+                    await guardarNaFila(aluno, { ...pedido, em: Date.now() }).catch((falha) =>
+                      avisarFalha('questao/fila', '[QuestionActivity] Falha ao guardar a resposta sem rede:', falha)
+                    );
+                    setGuardadasSemRede((n) => n + 1);
+                    return;
+                  }
+                  // O banco recusou (prazo, tentativas): a resposta não valeu.
+                  setConfirmados((prev) => ({ ...prev, [indice]: false }));
+                  setStas((prev) => ({ ...prev, [indice]: null }));
+                  avisarFalha('questao/responder', '[QuestaoAluno] O banco recusou a resposta:', error);
+                  setModalInfo(
+                    mensagemDaRecusa(error as { message?: unknown; code?: unknown } | null) ??
+                      mensagemDaFalhaNoEnvio(error)
+                  );
+                  setModalVisivel(true);
+                });
+              enviosEmCurso.current.push(envio);
             }
             if (!corrigida) {
               try {
@@ -1684,6 +1803,13 @@ export default function QuestionActivity({
               return;
             }
           }
+          if (atividadeCompleta && enviosEmCurso.current.length) {
+            // Concluir é do banco (#136) e conta as respostas gravadas: as corrigidas no aparelho
+            // precisam ter chegado lá antes.
+            const envios = enviosEmCurso.current;
+            enviosEmCurso.current = [];
+            await Promise.allSettled(envios);
+          }
           const pedidoEm = Date.now();
           try {
             await onComplete?.({
@@ -1753,6 +1879,14 @@ export default function QuestionActivity({
             : 'Confirmar resposta'}
         </Text>
       </TouchableOpacity>
+
+      {guardadasSemRede > 0 ? (
+        <Text style={{ marginTop: 8, color: profilePalette.textMuted, fontFamily: FontFamily.interMedium }}>
+          {guardadasSemRede === 1
+            ? 'Sem conexão: 1 resposta guardada no aparelho será enviada quando a internet voltar.'
+            : `Sem conexão: ${guardadasSemRede} respostas guardadas no aparelho serão enviadas quando a internet voltar.`}
+        </Text>
+      ) : null}
 
       {blockedByTimeout ? (
         <Text style={{ marginTop: 8, color: '#fca5a5', fontFamily: FontFamily.interMedium }}>

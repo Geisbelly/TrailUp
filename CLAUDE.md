@@ -852,6 +852,16 @@ Cada perfil carrega:
     `authenticated` o SELECT em `questoes.resposta_correta`, e o professor também é
     `authenticated`. A migration do corte está na #1082, marcada para **não aplicar antes de
     `app_versao_minima = 1.0.8`** (em 12/11 a chave estava vazia em produção).
+  - **Exceção: o gabarito das objetivas vai ao aparelho** (`20261124_07`, decisão da autora em
+    24/11, que aceitou o risco de extração). Na web, `questao_responder` levava de 5 a 7 s por
+    questão. `questao_gabaritos_offline(p_classe_id)` devolve, por múltipla escolha e V/F de tópico
+    liberado da turma do aluno, as respostas que `fn_questao_confere` aceita (`aceitas`); dissertativa,
+    lacuna, código, numérica e expressão ficam de fora. O app guarda isso cifrado (AES-GCM, chave por
+    aluno no mesmo armazenamento: protege da leitura casual, não de quem tem o aparelho) e corrige na
+    hora, inclusive sem rede (`mobile/src/services/gabaritoNoAparelho*.ts`). **A nota continua do
+    banco:** a resposta vai a `questao_responder` por trás, sem rede entra numa fila no aparelho, e se o
+    banco discordar vale o banco. A resposta que o app manda sai de `respostaDaAlternativa`, com as
+    mesmas candidatas da migration (teste de paridade): mudou um lado, mude o outro.
 - **Respostas em código, numérica e expressão** (spec B, `20261110_02`, #1083–#1085, #1094,
   #1096). Os tipos novos nascem **sem passar por `questoes.resposta_correta`**: o console grava a
   esperada direto em `questao_gabarito` (a única policy é a do professor), o CHECK
