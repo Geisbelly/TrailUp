@@ -131,6 +131,7 @@ from app.services.roteamento_ia import (
     rota_ia_para_alunos,
     rota_ia_se_tiver_aluno,
 )
+from app.services.site_trailup import indice_do_site, trechos_da_conversa
 from app.services.storage import BUCKET, SupabaseStorage, build_material_url
 from app.services.sugestao_ciclo import garantir_sugestao_do_aluno
 from app.services.sugestao_metrica import montar_registros_do_log, resumo_efetividade
@@ -1704,6 +1705,12 @@ async def conversar_com_mentor_personalizacao(
         # (turma antes do aluno). Leitura que falha volta None e a chave não entra.
         turma_do_chat = await contexto_da_turma(session, payload.classe_id)
         linha_de_preferencias, coleta_de_preferencias = await preferencias_repo.ler(aluno_id)
+        # Site, Diário, vídeos, cartilha e monografia: só as seções que a pergunta pede, por palavra,
+        # sem chamada de modelo. Pergunta da matéria não casa com nada e a chave não entra.
+        trechos_do_site = trechos_da_conversa(
+            _sem_nome(payload.mensagem),
+            [_sem_nome(f["content"]) for f in historico_do_chat if f.get("role") == "user"],
+        )
         async with rota_ia_para_alunos(session, [aluno_id]):
             provedor_do_chat = settings.llm_provider
             modelo_do_chat = (
@@ -1717,6 +1724,8 @@ async def conversar_com_mentor_personalizacao(
                     # pedido. A mensagem do aluno na frente derrubava o cache logo depois do prompt.
                     # Texto estatico sobre as telas do app; nenhum dado do aluno.
                     "guia_do_app": guia_do_app(),
+                    # O mapa do site (título e endereço de cada seção): estático, logo atrás do guia.
+                    "site_trailup": indice_do_site(),
                     "guardrails": {
                         "sem_gabarito": True,
                         "sem_resposta_direta_atividade": True,
@@ -1755,6 +1764,7 @@ async def conversar_com_mentor_personalizacao(
                     ),
                     # Muda a cada pergunta: fica perto do fim, onde não derruba o cache do começo.
                     **({"avaliacao_trailup": avaliacao_trailup} if avaliacao_trailup else {}),
+                    **({"trechos_do_site": trechos_do_site} if trechos_do_site else {}),
                     "memoria_do_guia": memoria_do_guia,
                     "escopo": payload.escopo,
                     "historico": [{k: _sem_nome(v) for k, v in fala.items()} for fala in historico_do_chat],
@@ -1776,6 +1786,9 @@ async def conversar_com_mentor_personalizacao(
                     "gabarito_protegido": gabarito_protegido,
                     # Sem isto, ajudar o avaliador com a avaliação viraria "fora da base do tópico".
                     "avaliacao_trailup": avaliacao_trailup,
+                    # Sem o site, explicar o Diário ou a cartilha pareceria invenção.
+                    "site_trailup": indice_do_site(),
+                    "trechos_do_site": trechos_do_site,
                     # Sem a pergunta, o juiz não vê se a resposta concordou com um erro do aluno
                     # nem se a ponte para outra matéria voltou ao que ele perguntou.
                     "mensagem": _sem_nome(payload.mensagem),

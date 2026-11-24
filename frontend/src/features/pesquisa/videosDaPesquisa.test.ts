@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { BLOG_CONTENT, BLOG_POSTS } from "@/features/diario/artigosDoDiario";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
@@ -51,13 +52,9 @@ describe("vídeos da pesquisa", () => {
 });
 
 describe("vídeo de cada artigo do Diário", () => {
-  const BLOG_POST = readFileSync(fileURLToPath(new URL("../../pages/BlogPost.tsx", import.meta.url)), "utf-8");
-
   it("a lista do Diário e os artigos têm os mesmos ids", () => {
-    const BLOG = readFileSync(fileURLToPath(new URL("../../pages/Blog.tsx", import.meta.url)), "utf-8");
-    const naLista = [...BLOG.matchAll(/\{ id: "([^"]+)"/g)].map(m => m[1]).sort();
-    const artigos = [...BLOG_POST.matchAll(/\n {2}"?([a-z-]+)"?: \{\n {4}title:/g)].map(m => m[1]).sort();
-    expect(naLista).toEqual(artigos);
+    const naLista = BLOG_POSTS.map(p => p.id).sort();
+    expect(naLista).toEqual(Object.keys(BLOG_CONTENT).sort());
     expect(naLista.length).toBeGreaterThan(9);
   });
 
@@ -69,7 +66,7 @@ describe("vídeo de cada artigo do Diário", () => {
   it("aponta para vídeo que existe e para artigo que existe", () => {
     for (const [artigo, slug] of Object.entries(VIDEO_DO_ARTIGO)) {
       expect(videoPorSlug(slug), slug).not.toBeNull();
-      expect(BLOG_POST, artigo).toMatch(new RegExp(`\\n  "?${artigo}"?: \\{`));
+      expect(BLOG_CONTENT[artigo], artigo).toBeDefined();
     }
   });
 });
