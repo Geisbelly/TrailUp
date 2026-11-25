@@ -1,3 +1,13 @@
 [
-  "notificacao: Estamos de olho no seu estudo."
+  "notificacao: Estamos de olho no seu estudo.",
+  "vazamento_exato: É o número de baixo da fração: ele diz em quantos pedaços do mesmo tamanho o todo foi cortado.",
+  "vazamento_exato: É 1/4.",
+  "vazamento_exato: Metade de meio dá um quarto.",
+  "vazamento_exato: Dá 0,25.",
+  "vazamento_exato: A resposta é a letra B.",
+  "vazamento_exato: Pode descartar o if, que só decide uma vez, e print e input, que nem são de controle. Sobra uma.",
+  "vazamento_exato: É o while: ele volta ao início enquanto a condição for verdadeira.",
+  "vazamento_exato: Imprime 1, porque 7 dividido por 2 deixa resto 1.",
+  "vazamento_exato: 7 é ímpar, e todo número ímpar deixa resto um na divisão por dois.",
+  "vazamento_exato: Isso mesmo, 1/4 está certo!"
 ]

@@ -1,0 +1,6 @@
+[
+  {"origem": "card", "pergunta": "O que é o denominador?", "respostas": ["É o número de partes iguais em que o inteiro foi dividido."]},
+  {"origem": "questao", "pergunta": "Quanto é metade de 1/2?", "respostas": ["1/4"]},
+  {"origem": "questao", "pergunta": "Qual estrutura repete um bloco enquanto a condição for verdadeira? A) if B) while C) print D) input", "respostas": ["B", "while"]},
+  {"origem": "questao", "pergunta": "O que o código `x = 7; print(x % 2)` imprime?", "respostas": ["1"]}
+]

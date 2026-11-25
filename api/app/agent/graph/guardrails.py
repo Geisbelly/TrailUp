@@ -266,13 +266,88 @@ def checar_vazamento_de_gabarito(
     if item is None:
         return None
     origem = "do verso de um card" if item.get("origem") == "card" else "de uma questão"
+    return _violacao_de_vazamento("vazamento_gabarito", f"a resposta repete a resposta {origem} do tópico")
+
+
+def _violacao_de_vazamento(regra: str, o_que: str) -> GuardrailViolation:
     return GuardrailViolation(
-        regra="vazamento_gabarito",
+        regra=regra,
         mensagem=(
-            f"a resposta repete a resposta {origem} do tópico. Reescreva sem ela: dê uma dica, "
+            f"{o_que}. Reescreva sem ela: dê uma dica, "
             "uma pergunta que faça o aluno pensar ou um exemplo com outros dados, e aponte o "
             "trecho do material que ajuda."
         ),
+    )
+
+
+_PERGUNTA_DO_VAZAMENTO = (
+    "A fala do guia entrega ao aluno a resposta de algum item do gabarito protegido, seja copiando, "
+    "com outras palavras, em outra notação, por eliminação das alternativas, fazendo a conta ou "
+    "confirmando a resposta que o aluno deu? Dica, pergunta, método ou exemplo com outros números "
+    "não entregam."
+)
+
+
+def _texto_para_decisao(gabarito: list[dict[str, Any]], mensagem: str | None, fala: str) -> str:
+    # Ordem é cache: o gabarito do tópico se repete entre perguntas, a fala muda sempre.
+    linhas = [
+        f"- {item.get('pergunta') or ''} → resposta: {' / '.join(str(r) for r in item.get('respostas') or [])}"
+        for item in gabarito
+    ]
+    partes = ["Gabarito protegido (o aluno não pode receber):", *linhas]
+    if mensagem:
+        partes += ["", f"Pergunta do aluno: {mensagem}"]
+    partes += ["", f"Fala do guia: {fala}"]
+    return "\n".join(partes)
+
+
+async def checar_vazamento_por_decisao(
+    resposta: MentorChatLLMResult, contexto: dict[str, Any]
+) -> GuardrailViolation | None:
+    """Guardian, barreira do meio (24/11): o gemini-decision-1 dá a probabilidade de a fala entregar
+    a resposta de um item do gabarito por outras palavras (paráfrase, notação, eliminação, conta
+    feita, confirmar a resposta do aluno), que a comparação exata não pega. Ele não escreve, só
+    classifica: ~0,6 s e só tokens de entrada.
+
+    Falha aberta, ao contrário do juiz: sem resposta dele, a fala segue para o juiz, que também
+    recebe o gabarito, então nada chega ao aluno sem conferência. Não é definitiva: o modelo
+    reescreve, e a correção não repete a resposta."""
+    gabarito = contexto.get("gabarito_protegido") or []
+    if not gabarito:
+        return None
+    from app.core.settings import get_settings
+    from app.services import gemini_http
+
+    settings = contexto.get("settings") or get_settings()
+    if not getattr(settings, "guia_decision_vazamento_ativo", False):
+        return None
+    try:
+        corpo = await gemini_http.gemini_decidir(
+            settings=settings,
+            model=settings.guia_decision_modelo,
+            body={
+                "input": [
+                    {
+                        "type": "text",
+                        "text": _texto_para_decisao(
+                            gabarito, contexto.get("mensagem"), _texto_que_vai_ao_aluno(resposta)
+                        ),
+                    }
+                ],
+                "questions": {"vaza": {"type": "noul", "instructions": _PERGUNTA_DO_VAZAMENTO}},
+            },
+            timeout=settings.guia_decision_timeout_seconds,
+            origem="guia_vazamento_decisao",
+        )
+        probabilidade = float(corpo["answers"]["vaza"]["noul"])
+    except Exception as exc:
+        logger.warning("guardian.decisao_indisponivel: %s", type(exc).__name__)
+        return None
+    if probabilidade < settings.guia_decision_limiar:
+        return None
+    logger.info("guardian.vazamento_por_decisao p=%.2f", probabilidade)
+    return _violacao_de_vazamento(
+        "vazamento_gabarito_decisao", "a resposta entrega, com outras palavras, a resposta de um item do tópico"
     )
 
 

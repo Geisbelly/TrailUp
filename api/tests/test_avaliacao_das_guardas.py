@@ -16,6 +16,7 @@ import pytest
 
 from app.agent.graph.nodes.agente_notificacao import problemas_do_texto
 from app.schemas.escriba import EscribaSaida
+from app.services.contexto_chat_materia import gabarito_na_resposta
 from app.services.escriba import checar_refs_existem
 from app.services.guia_do_app import montar_resposta_do_guia
 from app.services.respostas_do_guia import resposta_sem_modelo
@@ -23,6 +24,7 @@ from app.services.respostas_do_guia import resposta_sem_modelo
 PASTA = Path(__file__).parent / "avaliacao"
 CASOS: dict[str, list[dict[str, Any]]] = json.loads((PASTA / "casos.json").read_text(encoding="utf-8"))
 CONHECIDOS: list[str] = json.loads((PASTA / "erros_conhecidos.json").read_text(encoding="utf-8"))
+GABARITO_VAZAMENTO: list[dict[str, Any]] = json.loads((PASTA / "gabarito_vazamento.json").read_text(encoding="utf-8"))
 
 
 def _notificacao(caso: dict[str, Any]) -> bool:
@@ -41,7 +43,19 @@ def _lumi(caso: dict[str, Any]) -> bool:
     return (checar_refs_existem(saida, contexto) is None) == caso["aprova"]
 
 
-GUARDAS = {"notificacao": _notificacao, "guia_sem_modelo": _guia, "lumi_refs": _lumi}
+def _vazamento_exato(caso: dict[str, Any]) -> bool:
+    # Só a comparação exata, que não gasta cota. Os furos dela (paráfrase, notação, eliminação, conta
+    # feita) ficam em erros_conhecidos.json: quem os pega é `checar_vazamento_por_decisao`, medida à
+    # parte porque chama o modelo (24/11: 21 de 21 nestes casos, contra 11 daqui).
+    return (gabarito_na_resposta(caso["resposta"], GABARITO_VAZAMENTO) is not None) == caso["vaza"]
+
+
+GUARDAS = {
+    "notificacao": _notificacao,
+    "guia_sem_modelo": _guia,
+    "lumi_refs": _lumi,
+    "vazamento_exato": _vazamento_exato,
+}
 
 
 def _id(guarda: str, caso: dict[str, Any]) -> str:
