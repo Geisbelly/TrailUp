@@ -11,6 +11,7 @@ import { restaApenasUmaAlternativa } from '@/utils/questionRetryPolicy';
 import { normalizeContentBlock } from '@/utils/contentBlocks';
 import { getProfileShellPalette } from '@/utils/profileShellTheme';
 import { canShowQuestionAnswer, getQuestionPreviousAnswer, hasQuestionAttempt } from '@/utils/questionAnswerVisibility';
+import { posicaoDaAlternativa } from '@/utils/posicaoDaAlternativa';
 import { QuestaoAluno } from '@/models/QuestaoAluno';
 import { gastarSegundaChance } from '@/services/loja/lojaService';
 import { mensagemDeUso, podeResponderComCompra } from '@/services/loja/usoItem';
@@ -760,14 +761,13 @@ export default function QuestionActivity({
       if (altBool && corretoBool) return altBool === corretoBool
     }
 
+    // Gabarito como texto da alternativa, letra (A/B/C...) ou índice, nessa ordem: com uma
+    // alternativa chamada "B", o gabarito "B" é ela, não a 2ª (`posicaoDaAlternativa`).
     const norm = (v: any) => String(v ?? '').trim().toLowerCase()
-    // cobre: resposta igual ao texto da alternativa, indice, letra (A/B/C...)
     if (norm(alt) === norm(correto)) return true
-    if (norm(idx) === norm(correto)) return true
-    const letra = String.fromCharCode(65 + idx) // A, B, C...
-    if (norm(letra) === norm(correto)) return true
-    return false
-  }, [acceptedAnswers, forma, isDissertativaActivity, isFillBlankActivity, isTrueFalseActivity, questao?.resposta_correta])
+    const posicaoCerta = posicaoDaAlternativa(alternativas, correto)
+    return posicaoCerta >= 0 && posicaoCerta === idx
+  }, [acceptedAnswers, alternativas, forma, isDissertativaActivity, isFillBlankActivity, isTrueFalseActivity, questao?.resposta_correta])
 
   useEffect(() => {
     if (reResponder || !respondidaAntes || respostaAnterior == null) return;
@@ -784,20 +784,14 @@ export default function QuestionActivity({
       return;
     }
 
-    const norm = (v: any) => String(v ?? '').trim().toLowerCase();
-    const idx = alternativas.findIndex((alt, i) => {
-      if (isTrueFalseActivity) {
-        const respostaBool = normalizeBooleanValue(respostaAnterior)
-        const altBool = normalizeBooleanValue(alt) ?? (i === 0 ? 'true' : i === 1 ? 'false' : null)
-        return respostaBool != null && altBool === respostaBool
-      }
-
-      return (
-        norm(alt) === norm(respostaAnterior) ||
-        norm(i) === norm(respostaAnterior) ||
-        norm(String.fromCharCode(65 + i)) === norm(respostaAnterior)
-      )
-    });
+    // Texto antes da letra, como na conferência (`posicaoDaAlternativa`).
+    const idx = isTrueFalseActivity
+      ? alternativas.findIndex((alt, i) => {
+          const respostaBool = normalizeBooleanValue(respostaAnterior)
+          const altBool = normalizeBooleanValue(alt) ?? (i === 0 ? 'true' : i === 1 ? 'false' : null)
+          return respostaBool != null && altBool === respostaBool
+        })
+      : posicaoDaAlternativa(alternativas, respostaAnterior);
     if (idx >= 0) {
       setSelecionados((prev) => ({ ...prev, [questaoIndex]: idx }));
       if (atividadeConcluidaPersistida) {
