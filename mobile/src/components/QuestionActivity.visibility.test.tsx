@@ -62,6 +62,9 @@ test('revisão de questão personalizada realmente respondida permite consultar 
   const local = { ...question, id: -2, isPersonalizedLocal: true, resposta_aluno: 'Alpha' };
   const html = renderToString(<QuestionActivity reviewMode atividade={{ id: 5, status: 'concluido', questoes: [local] }} />);
   assert.match(html, /Gabarito: (<!-- -->)?Beta/);
+  // Resposta e gabarito em texto simples saem numa linha só, e não há botão para escondê-los.
+  assert.match(html, /Sua ultima resposta: Alpha {3}· {3}Gabarito: Beta/);
+  assert.doesNotMatch(html, /Ocultar respostas/);
 });
 test('questão da turma não usa o gabarito que vier no payload: ele só chega pelo banco', () => {
   // #1065: o gabarito da turma vem de `revelarGabarito`, num efeito que o `renderToString`
