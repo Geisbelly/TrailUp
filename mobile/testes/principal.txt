@@ -162,6 +162,7 @@ src/utils/rolagemTematica.test.ts
 src/utils/minhaPosicaoRank.test.ts
 src/utils/gruposNotificacao.test.ts
 src/utils/activityType.test.ts
+src/utils/posicaoDaAlternativa.test.ts
 src/utils/paginasDoTopico.test.ts
 src/utils/realtimeDeleteObservavel.test.ts
 src/utils/eixosDoDesafio.test.ts
