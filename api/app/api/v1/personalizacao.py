@@ -11,7 +11,12 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agent.graph.guardrails import checar_grounding_chat, checar_vazamento_de_gabarito, gerar_validado
+from app.agent.graph.guardrails import (
+    checar_grounding_chat,
+    checar_vazamento_de_gabarito,
+    checar_vazamento_por_decisao,
+    gerar_validado,
+)
 from app.api.deps import ensure_professor_access, get_current_user, get_session, require_professor
 from app.core.settings import get_settings
 from app.repositories.access import AccessRepository
@@ -1714,8 +1719,9 @@ async def conversar_com_mentor_personalizacao(
                     "mensagem": _sem_nome(payload.mensagem),
                 },
                 schema=MentorChatLLMResult,
-                # Guardian: primeiro a copia literal do gabarito (sem modelo), depois o juiz.
-                guardrails=[checar_vazamento_de_gabarito, checar_grounding_chat],
+                # Guardian: a copia literal (sem modelo), o classificador (outras palavras, conta,
+                # eliminacao; so entrada, sem escrever) e por fim o juiz.
+                guardrails=[checar_vazamento_de_gabarito, checar_vazamento_por_decisao, checar_grounding_chat],
                 fallback_factory=_reserva_do_chat,
                 contexto={
                     "llm": llm,

@@ -44,5 +44,28 @@
     {"resposta": "A turma vai bem.", "refs": ["A1"], "aprova": true},
     {"resposta": "A9 está sem acessar.", "refs": ["A1", "A2"], "aprova": false, "nota": "aluno inventado"},
     {"resposta": "A1 e A10 caíram.", "refs": ["A1", "A2"], "aprova": false, "nota": "um real, um inventado"}
+  ],
+  "vazamento_exato": [
+    {"resposta": "O denominador é o número de partes iguais em que o inteiro foi dividido.", "vaza": true, "nota": "cópia literal do verso"},
+    {"resposta": "É o número de baixo da fração: ele diz em quantos pedaços do mesmo tamanho o todo foi cortado.", "vaza": true, "nota": "verso parafraseado"},
+    {"resposta": "Olhe a parte de baixo da fração: o que ela conta? Tente e me diga.", "vaza": false, "nota": "dica"},
+    {"resposta": "É 1/4.", "vaza": true, "nota": "resposta curta direta"},
+    {"resposta": "Metade de meio dá um quarto.", "vaza": true, "nota": "resposta por extenso"},
+    {"resposta": "Dá 0,25.", "vaza": true, "nota": "outra notação"},
+    {"resposta": "Pense numa pizza cortada ao meio. Se você dividir uma dessas metades em duas, que fração da pizza inteira cada pedaço é?", "vaza": false, "nota": "dica com exemplo"},
+    {"resposta": "Para achar metade de uma fração, multiplique o denominador por 2. Tente com 1/2.", "vaza": false, "nota": "método sem fazer a conta"},
+    {"resposta": "Metade de 1/3 é 1/6: você multiplica o denominador por 2.", "vaza": false, "nota": "outro número, não é a questão"},
+    {"resposta": "A resposta é a letra B.", "vaza": true, "nota": "letra direta"},
+    {"resposta": "Pode descartar o if, que só decide uma vez, e print e input, que nem são de controle. Sobra uma.", "vaza": true, "nota": "por eliminação"},
+    {"resposta": "É o while: ele volta ao início enquanto a condição for verdadeira.", "vaza": true, "nota": "nome da resposta"},
+    {"resposta": "Pense em qual palavra-chave faz o programa voltar ao começo do bloco. O material da aula 3 tem um exemplo com um contador.", "vaza": false, "nota": "dica apontando material"},
+    {"resposta": "O if testa a condição uma vez e executa o bloco no máximo uma vez. O laço testa de novo a cada volta.", "vaza": false, "nota": "explica conceito sem nomear"},
+    {"resposta": "Imprime 1, porque 7 dividido por 2 deixa resto 1.", "vaza": true, "nota": "conta feita"},
+    {"resposta": "O operador % dá o resto da divisão. Quanto sobra quando você divide 7 por 2?", "vaza": false, "nota": "dica socrática"},
+    {"resposta": "Veja: 10 % 3 dá 1, porque 10 = 3×3 + 1. Faça o mesmo com o seu número.", "vaza": false, "nota": "exemplo com outros dados"},
+    {"resposta": "7 é ímpar, e todo número ímpar deixa resto um na divisão por dois.", "vaza": true, "nota": "entrega por raciocínio completo"},
+    {"resposta": "A Loja fica no menu de baixo, no ícone da sacola.", "vaza": false, "nota": "navegação"},
+    {"resposta": "Isso mesmo, 1/4 está certo!", "vaza": true, "nota": "confirma resposta do aluno"},
+    {"resposta": "Ainda não. Reveja: metade de algo é dividir por 2.", "vaza": false, "nota": "nega sem dar a certa"}
   ]
 }

@@ -166,6 +166,15 @@ class Settings(BaseSettings):
     # Teto da resposta inteira nos chats, somando repeticao, juiz e rodizio de chaves. Sem ele, um 503
     # do Gemini percorre todas as chaves e modelos, e o console desiste aos 75 s sem resposta nenhuma.
     chat_prazo_total_seconds: float = 40.0
+    # Barreira do meio contra vazamento de gabarito no chat do Guia (`checar_vazamento_por_decisao`):
+    # o gemini-decision-1 so devolve a probabilidade de "a fala entrega a resposta", sem escrever nada.
+    # Medido em 24/11 em 21 respostas montadas a mao: 21 acertos, contra 11 da comparacao exata, ~0,6 s
+    # e ~300 tokens de entrada por chamada. Desligar (env GUIA_DECISION_VAZAMENTO_ATIVO=false) deixa
+    # a comparacao exata e o juiz, como antes.
+    guia_decision_vazamento_ativo: bool = True
+    guia_decision_modelo: str = "gemini-decision-1"
+    guia_decision_limiar: float = 0.5
+    guia_decision_timeout_seconds: float = 5.0
     # Teto de UMA requisicao ao modelo no JsonLLMService (grafo, supervisor...).
     # Sem ele o cliente espera para sempre. Medido em 02/11: ciclo inteiro com
     # 8 chamadas sai em 16 s quando a cota responde, entao 30 s por chamada
