@@ -23,7 +23,17 @@
     {"titulo": "Oi {nome}", "corpo": "Bora, {nome}?", "aprova": false, "nota": "{nome} duas vezes"},
     {"titulo": "Oi", "corpo": "Sua turma {turma} avançou.", "aprova": false, "nota": "marcador desconhecido"},
     {"titulo": "Oi", "corpo": "O Aluno deve voltar ao estudo.", "aprova": false, "nota": "placeholder"},
-    {"titulo": "Oi", "corpo": "O aluno deve voltar ao estudo.", "aprova": false, "nota": "placeholder em minúscula"}
+    {"titulo": "Oi", "corpo": "O aluno deve voltar ao estudo.", "aprova": false, "nota": "placeholder em minúscula"},
+    {"titulo": "Oi", "corpo": "Parece que a semana foi pesada para você.", "aprova": false, "nota": "emoção sem palavra da lista"},
+    {"titulo": "Oi", "corpo": "Sabemos que frações te chateiam.", "aprova": false, "nota": "emoção sem palavra da lista"},
+    {"titulo": "Oi", "corpo": "Reparamos que você saiu do app às 22h.", "aprova": false, "nota": "vigilância com outro verbo"},
+    {"titulo": "Oi", "corpo": "A gente viu que você travou na questão 3.", "aprova": false, "nota": "vigilância coloquial"},
+    {"titulo": "Oi", "corpo": "Seu ritmo de leitura caiu 30% hoje.", "aprova": false, "nota": "métrica observada dita ao aluno"},
+    {"titulo": "Oi", "corpo": "Nosso algoritmo escolheu este conteúdo.", "aprova": false, "nota": "palavra de sistema fora da lista"},
+    {"titulo": "Tudo certo", "corpo": "Tudo bem se hoje render menos.", "aprova": true, "nota": "acolhe sem atribuir emoção"},
+    {"titulo": "Metade do caminho", "corpo": "A turma já chegou na metade. Bora junto?", "aprova": true, "nota": "fato da turma"},
+    {"titulo": "Pausa curta", "corpo": "Que tal 10 minutos de cards agora?", "aprova": true, "nota": "convite"},
+    {"titulo": "Novo material", "corpo": "Seu professor liberou o próximo tópico.", "aprova": true, "nota": "fato do professor"}
   ],
   "guia_sem_modelo": [
     {"pergunta": "onde fica a loja?", "destino": "perfil.loja"},

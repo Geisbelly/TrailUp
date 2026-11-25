@@ -175,6 +175,10 @@ class Settings(BaseSettings):
     guia_decision_modelo: str = "gemini-decision-1"
     guia_decision_limiar: float = 0.5
     guia_decision_timeout_seconds: float = 5.0
+    # A mesma camada nas notificações (`problemas_por_decisao`): emoção e vigilância ditas com outras
+    # palavras. Usa o modelo e o timeout acima. Env NOTIFICACAO_DECISION_ATIVA=false desliga.
+    notificacao_decision_ativa: bool = True
+    notificacao_decision_limiar: float = 0.5
     # Teto de UMA requisicao ao modelo no JsonLLMService (grafo, supervisor...).
     # Sem ele o cliente espera para sempre. Medido em 02/11: ciclo inteiro com
     # 8 chamadas sai em 16 s quando a cota responde, entao 30 s por chamada
