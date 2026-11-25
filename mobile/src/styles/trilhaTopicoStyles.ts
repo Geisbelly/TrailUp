@@ -21,7 +21,8 @@ export const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 772,
     alignSelf: "center",
-    paddingTop: 20,
+    // Cada questão e cada bloco é uma página: menos respiro em cima para caber sem rolar.
+    paddingTop: 12,
   },
   // Com o confronto aberto à direita: 740 de leitura + 32 + 360 de coluna.
   colunaLeituraComLateralDesktop: {
@@ -40,8 +41,8 @@ export const styles = StyleSheet.create({
   },
   cardAtividadeDesktop: {
     marginHorizontal: 0,
-    marginTop: 24,
-    padding: 22,
+    marginTop: 12,
+    padding: 18,
     borderRadius: 14,
     ...shadowStyle({ opacity: 0 }, IS_WEB),
     elevation: 0,
