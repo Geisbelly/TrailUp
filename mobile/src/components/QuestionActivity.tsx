@@ -916,6 +916,10 @@ export default function QuestionActivity({
       : null;
   // A expressão é LaTeX: resposta e gabarito saem desenhados, mesmo em questão sem a marca de rica.
   const exibicaoRica = rica || forma === 'expressao';
+  const mostraRespostaDoAluno = Boolean(mostrarRespostaAluno) && respostaAnteriorExibida != null;
+  const mostraGabarito = podeVerGabarito && gabaritoExibido != null;
+  // Texto simples (nem código nem fórmula): resposta e gabarito cabem numa linha.
+  const retornoEmUmaLinha = forma !== 'codigo' && !exibicaoRica;
 
   return (
     <ScrollView
@@ -1924,7 +1928,7 @@ export default function QuestionActivity({
       {stas[questaoIndex] && (
         <Text
           style={{
-            marginTop: 12,
+            marginTop: 10,
             fontWeight: '700',
             color: stas[questaoIndex] === 'certo' ? '#2ecc71' : '#e74c3c',
           }}
@@ -1941,7 +1945,19 @@ export default function QuestionActivity({
         </Text>
       )}
 
-      {mostrarRespostaAluno && respostaAnteriorExibida != null && (
+      {/* Resposta e gabarito em texto simples: uma linha só, para a questão caber sem rolar. */}
+      {retornoEmUmaLinha && (mostraRespostaDoAluno || mostraGabarito) ? (
+        <Text style={{ marginTop: 4, color: profilePalette.textMuted, fontFamily: FontFamily.interMedium }}>
+          {[
+            mostraRespostaDoAluno ? `Sua ultima resposta: ${respostaAnteriorExibida}` : null,
+            mostraGabarito ? `Gabarito: ${gabaritoExibido}` : null,
+          ]
+            .filter(Boolean)
+            .join('   ·   ')}
+        </Text>
+      ) : null}
+
+      {!retornoEmUmaLinha && mostraRespostaDoAluno && (
         forma === 'codigo' ? (
           <View style={{ marginTop: 6 }}>
             <Text style={{ color: profilePalette.textMuted, fontFamily: FontFamily.interMedium }}>Sua ultima resposta:</Text>
@@ -1963,7 +1979,7 @@ export default function QuestionActivity({
         )
       )}
 
-      {podeVerGabarito && gabaritoExibido != null && (
+      {!retornoEmUmaLinha && mostraGabarito && (
         exibicaoRica ? (
           <View style={{ marginTop: 6 }}>
             <TextoRico
@@ -2071,15 +2087,13 @@ export default function QuestionActivity({
         </TouchableOpacity>
       )}
 
-      {jaTemTentativa && !reResponder && (
+      {/* Só abre: esconder de novo não desfaz ter visto (a nota já considera) e só ocupava espaço. */}
+      {jaTemTentativa && !reResponder && !mostrarResposta && (
         <TouchableOpacity
-          onPress={() =>
-            setMostrarResposta((v) => {
-              const next = !v;
-              if (next) setViuRespostas((prev) => ({ ...prev, [questaoIndex]: true }));
-              return next;
-            })
-          }
+          onPress={() => {
+            setMostrarResposta(true);
+            setViuRespostas((prev) => ({ ...prev, [questaoIndex]: true }));
+          }}
           style={{
             marginTop: 12,
             padding: 10,
@@ -2092,11 +2106,7 @@ export default function QuestionActivity({
           accessibilityRole="button"
         >
           <Text style={{ color: profilePalette.text, fontWeight: '700' }}>
-            {mostrarResposta
-              ? 'Ocultar respostas'
-              : isPensante
-              ? 'Ver minha resposta e gabarito'
-              : 'Ver respostas anteriores'}
+            {isPensante ? 'Ver minha resposta e gabarito' : 'Ver respostas anteriores'}
           </Text>
         </TouchableOpacity>
       )}
