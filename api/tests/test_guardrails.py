@@ -7,6 +7,7 @@ from app.agent.graph.guardrails import (
     checar_ordem_sequencial,
     checar_topicos_existem,
     checar_vazamento_de_gabarito,
+    checar_vazamento_por_decisao,
     gerar_validado,
 )
 from app.schemas.mentor_chat import MentorChatLLMResult
@@ -372,3 +373,74 @@ def test_juiz_recebe_o_gabarito_protegido_antes_da_resposta() -> None:
     assert payload["gabarito_protegido"] == _GABARITO
     # A resposta fica por último: o cache do provedor só vale até a primeira diferença.
     assert list(payload)[-1] == "resposta"
+
+
+# --- Guardian: barreira do meio, gemini-decision-1 (24/11) ------------------------------------
+
+
+class _SettingsDecisao:
+    guia_decision_vazamento_ativo = True
+    guia_decision_modelo = "gemini-decision-1"
+    guia_decision_limiar = 0.5
+    guia_decision_timeout_seconds = 5.0
+
+
+def _decisao_falsa(monkeypatch, probabilidade=None, erro=None):
+    chamadas: list[dict] = []
+
+    async def gemini_decidir(**kwargs):
+        chamadas.append(kwargs)
+        if erro is not None:
+            raise erro
+        return {"answers": {"vaza": {"type": "noul", "noul": probabilidade, "confidence": probabilidade}}}
+
+    from app.services import gemini_http
+
+    monkeypatch.setattr(gemini_http, "gemini_decidir", gemini_decidir)
+    return chamadas
+
+
+def _fala(texto: str) -> MentorChatLLMResult:
+    return MentorChatLLMResult(reply=texto, should_close=False, hinted_actions=[])
+
+
+def test_decisao_barra_resposta_dada_com_outras_palavras_sem_repeti_la(monkeypatch) -> None:
+    chamadas = _decisao_falsa(monkeypatch, probabilidade=0.96)
+    contexto = {"gabarito_protegido": _GABARITO, "settings": _SettingsDecisao(), "mensagem": "quanto é metade de 1/2?"}
+
+    violacao = asyncio.run(checar_vazamento_por_decisao(_fala("Metade de meio dá um quarto."), contexto))
+
+    assert violacao is not None
+    assert violacao.regra == "vazamento_gabarito_decisao"
+    assert violacao.definitiva is False
+    assert "1/4" not in violacao.mensagem and "quarto" not in violacao.mensagem
+    corpo = chamadas[0]["body"]
+    assert corpo["questions"]["vaza"]["type"] == "noul"
+    texto = corpo["input"][0]["text"]
+    # Ordem é cache: gabarito antes, a fala por último.
+    assert texto.index("1/4") < texto.index("Pergunta do aluno") < texto.index("Fala do guia: Metade")
+
+
+def test_decisao_deixa_passar_dica(monkeypatch) -> None:
+    _decisao_falsa(monkeypatch, probabilidade=0.07)
+    contexto = {"gabarito_protegido": _GABARITO, "settings": _SettingsDecisao()}
+    assert asyncio.run(checar_vazamento_por_decisao(_fala("Pense numa pizza cortada ao meio."), contexto)) is None
+
+
+def test_decisao_fora_do_ar_deixa_para_o_juiz(monkeypatch) -> None:
+    _decisao_falsa(monkeypatch, erro=RuntimeError("503"))
+    contexto = {"gabarito_protegido": _GABARITO, "settings": _SettingsDecisao()}
+    # Falha aberta: o juiz, que vem depois e também vê o gabarito, continua conferindo.
+    assert asyncio.run(checar_vazamento_por_decisao(_fala("É 1/4."), contexto)) is None
+
+
+def test_decisao_nao_chama_sem_gabarito_nem_desligada(monkeypatch) -> None:
+    chamadas = _decisao_falsa(monkeypatch, probabilidade=0.99)
+    desligada = _SettingsDecisao()
+    desligada.guia_decision_vazamento_ativo = False
+
+    assert asyncio.run(checar_vazamento_por_decisao(_fala("É 1/4."), {"settings": _SettingsDecisao()})) is None
+    assert asyncio.run(
+        checar_vazamento_por_decisao(_fala("É 1/4."), {"gabarito_protegido": _GABARITO, "settings": desligada})
+    ) is None
+    assert chamadas == []

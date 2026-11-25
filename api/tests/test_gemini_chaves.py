@@ -198,3 +198,38 @@ async def test_tts_do_guardiao_com_varias_chaves_manda_uma_so(monkeypatch) -> No
     assert usadas == ["k1"]
     # Gemini sem audio nao vira voz generica: sai sem audio.
     assert resultado is None
+
+
+@pytest.mark.asyncio
+async def test_decisao_vai_ao_endpoint_decisions_com_o_rodizio(monkeypatch) -> None:
+    urls: list[str] = []
+    corpos: list[Any] = []
+    respostas = {
+        "k1": [_resposta(429, _COTA_MINUTO)],
+        "k2": [_resposta(200, {"answers": {"q": {"type": "noul", "noul": 0.9}}, "usage": {"total_input_tokens": 10}})],
+    }
+
+    class _Cliente:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            pass
+
+        async def __aenter__(self) -> "_Cliente":
+            return self
+
+        async def __aexit__(self, *args: Any) -> None:
+            return None
+
+        async def post(self, url: str, *, json: Any, headers: dict[str, str]) -> httpx.Response:
+            urls.append(url)
+            corpos.append(json)
+            return respostas[headers["x-goog-api-key"]].pop(0)
+
+    monkeypatch.setattr(gemini_http.httpx, "AsyncClient", _Cliente)
+
+    corpo = await gemini_http.gemini_decidir(
+        settings=_settings(), model="gemini-decision-1", body={"input": [], "questions": {}}, timeout=5, origem="t"
+    )
+
+    assert corpo["answers"]["q"]["noul"] == 0.9
+    assert urls == [gemini_http.GEMINI_DECISIONS_URL] * 2
+    assert corpos[0]["model"] == "models/gemini-decision-1"

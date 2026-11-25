@@ -1194,9 +1194,14 @@ anteriores do Guardião; `personalizacao.chat.falas_sem_assinatura` no log mostr
 enunciados e as alternativas das questões (sem marcar a certa) e a frente dos cards
 (`app/services/contexto_chat_materia.py`). O gabarito e o verso dos cards vão em
 `contexto["gabarito_protegido"]`, que **só as guardas leem**. A ordem é
-`[checar_vazamento_de_gabarito, checar_grounding_chat]`: a primeira é texto puro (resposta de 12
-caracteres ou mais, inteira, ou um trecho de 8 palavras) e não gasta cota; a segunda é o juiz, que
-recebe o gabarito antes da resposta. As duas leem o `reply` **e as seções**, que também chegam ao
+`[checar_vazamento_de_gabarito, checar_vazamento_por_decisao, checar_grounding_chat]`: a primeira é
+texto puro (resposta de 12 caracteres ou mais, inteira, ou um trecho de 8 palavras) e não gasta cota; a
+segunda é o `gemini-decision-1` (24/11), que não escreve, só dá a probabilidade de a fala entregar a
+resposta por outras palavras, notação, eliminação ou conta feita (`POST v1beta/decisions`, pergunta
+`noul`, ~300 tokens de entrada); a terceira é o juiz, que recebe o gabarito antes da resposta. Ao
+contrário do juiz, o Decision **falha aberto**: fora do ar, a fala segue para o juiz, que confere do
+mesmo jeito. Os casos estão em `tests/avaliacao` (`vazamento_exato`); os furos da comparação exata ficam
+em `erros_conhecidos.json`, e `scripts/medir_vazamento_decisao.py` mede o Decision neles (gasta cota). As duas leem o `reply` **e as seções**, que também chegam ao
 aluno. A violação do vazamento não é definitiva: o modelo tenta de novo, e a correção que ele
 recebe pede uma dica sem citar a resposta (citá-la a devolveria ao modelo que acabou de vazá-la).
 

@@ -261,6 +261,25 @@ def registrar_resposta_openai(
         logger.debug("Uso da OpenAI ilegivel", exc_info=True)
 
 
+def registrar_resposta_gemini_decisao(
+    corpo: dict[str, Any], *, prompt: str, modelo: str, latencia_ms: int | None = None
+) -> None:
+    """JSON cru do `decisions`: só entrada; o modelo não escreve, então a saída é 0."""
+    try:
+        uso = corpo.get("usage") or {}
+        registrar(
+            prompt=prompt,
+            provedor="gemini",
+            modelo=modelo,
+            tokens_entrada=uso.get("total_input_tokens"),
+            tokens_saida=uso.get("total_output_tokens") if uso else None,
+            tokens_cache=None,
+            latencia_ms=latencia_ms,
+        )
+    except Exception:  # pragma: no cover
+        logger.debug("Uso do Gemini Decision ilegivel", exc_info=True)
+
+
 def registrar_resposta_gemini_http(
     corpo: dict[str, Any], *, prompt: str, modelo: str, latencia_ms: int | None = None
 ) -> None:
