@@ -6,7 +6,8 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agent.graph.nodes.agente_intervencao import _NOTIFICACAO_DA_REGRA
-from app.agent.graph.nodes.agente_notificacao import TEXTO_GUARDA_VERSAO, problemas_do_texto
+from app.agent.graph.nodes.agente_notificacao import TEXTO_GUARDA_VERSAO, problemas_do_texto, problemas_por_decisao
+from app.core.settings import get_settings
 from app.repositories.evento import EventoRepository
 from app.repositories.ia_descricao import IADescricaoRepository
 from app.repositories.intervencao import IntervencaoRepository
@@ -165,6 +166,11 @@ async def executor(
                         ):
 
                             titulo, corpo = aviso_da_intervencao(intervencao)
+                            # Texto do modelo que passou pela guarda exata ainda pergunta ao Decision.
+                            if titulo != _NOTIFICACAO_DA_REGRA["titulo"] and await problemas_por_decisao(
+                                titulo, corpo, get_settings()
+                            ):
+                                titulo, corpo = _NOTIFICACAO_DA_REGRA["titulo"], _NOTIFICACAO_DA_REGRA["corpo"]
 
                             async def _aviso_ao_aluno() -> None:
                                 await notificacao_repo.enfileirar(

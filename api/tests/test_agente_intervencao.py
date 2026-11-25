@@ -290,3 +290,30 @@ async def test_executor_com_intervencao_ja_pendente_nao_notifica(monkeypatch) ->
     r = await executor({"aluno_id": "a", "classe_id": 7, "ciclo_id": "c", "intervencao_payload": payload}, _Fabrica())
     assert "intervencao_ja_pendente" in r["acoes_aplicadas"]
     enfileirar.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_aviso_que_passa_na_guarda_exata_mas_nao_na_decisao_vira_o_texto_pronto(monkeypatch) -> None:
+    _, enfileirar = _mock_executor(monkeypatch, "uuid-1")
+    perguntas: list[str] = []
+
+    async def problemas_por_decisao(titulo, corpo, settings):
+        perguntas.append(corpo)
+        return ["diz com outras palavras que o aluno foi observado ou medido"]
+
+    monkeypatch.setattr(modulo_executor, "problemas_por_decisao", problemas_por_decisao)
+    sugestao = IntervencaoSugestao(
+        texto="Converse com o aluno sobre o ritmo das entregas.",
+        acao="notificacao",
+        notificacao_titulo="Bora retomar?",
+        notificacao_corpo="A gente viu que você parou na questão 3.",
+    )
+    payload = montar_intervencao("abandono", 3, sugestao).model_dump(mode="json")
+    await executor({"aluno_id": "a", "classe_id": 7, "ciclo_id": "c", "intervencao_payload": payload}, _Fabrica())
+
+    notificacao = enfileirar.await_args.args[1]
+    assert perguntas == ["A gente viu que você parou na questão 3."]
+    assert (notificacao.titulo, notificacao.corpo) == (
+        modulo._NOTIFICACAO_DA_REGRA["titulo"],
+        modulo._NOTIFICACAO_DA_REGRA["corpo"],
+    )

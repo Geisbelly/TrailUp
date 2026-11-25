@@ -334,3 +334,70 @@ def test_guarda_aceita_um_nome_e_recusa_outros_marcadores():
     assert problemas_do_texto("Bora ver, {nome}?", "Os gráficos estão prontos.") == []
     assert problemas_do_texto("Oi, {nome}", "Vamos, {nome}?")
     assert problemas_do_texto("Oi", "Veja {topico} hoje.")
+
+
+# --- Camada do gemini-decision-1 (25/11) --------------------------------------------------------
+
+
+def _decisao(monkeypatch, *respostas, erro=None):
+    """Troca a chamada ao Decision; cada resposta é {"emocao": p, "vigilancia": p}."""
+    from app.services import gemini_http
+
+    chamadas: list[dict] = []
+    fila = list(respostas)
+
+    async def gemini_decidir(**kwargs):
+        chamadas.append(kwargs)
+        if erro is not None:
+            raise erro
+        p = fila.pop(0)
+        return {"answers": {k: {"type": "noul", "noul": v} for k, v in p.items()}}
+
+    monkeypatch.setattr(gemini_http, "gemini_decidir", gemini_decidir)
+    return chamadas
+
+
+@pytest.mark.asyncio
+async def test_decisao_recusa_emocao_dita_com_outras_palavras(monkeypatch) -> None:
+    chamadas = _decisao(monkeypatch, {"emocao": 0.86, "vigilancia": 0.3})
+    problemas = await modulo.problemas_por_decisao("Oi", "Parece que a semana foi pesada para você.", Settings())
+    assert problemas == ["atribui emoção ao aluno com outras palavras"]
+    corpo = chamadas[0]["body"]
+    assert set(corpo["questions"]) == {"emocao", "vigilancia"}
+    assert "Parece que a semana" in corpo["input"][0]["text"]
+
+
+@pytest.mark.asyncio
+async def test_decisao_fora_do_ar_ou_desligada_nao_recusa(monkeypatch) -> None:
+    _decisao(monkeypatch, erro=RuntimeError("503"))
+    assert await modulo.problemas_por_decisao("Oi", "A gente viu que você travou.", Settings()) == []
+
+    chamadas = _decisao(monkeypatch, {"emocao": 0.99, "vigilancia": 0.99})
+    desligada = Settings(notificacao_decision_ativa=False)
+    assert await modulo.problemas_por_decisao("Oi", "A gente viu que você travou.", desligada) == []
+    assert chamadas == []
+
+
+@pytest.mark.asyncio
+async def test_texto_que_a_decisao_recusa_volta_ao_modelo_e_a_guarda_exata_vem_antes(monkeypatch) -> None:
+    _rag(monkeypatch, False)
+    chamadas = _decisao(monkeypatch, {"emocao": 0.1, "vigilancia": 0.98}, {"emocao": 0.1, "vigilancia": 0.1})
+    chamada = AsyncMock(
+        side_effect=[_gerada(corpo="A gente viu que você travou na questão 3."), _gerada(corpo="Bora tentar a 3 de novo?")]
+    )
+    monkeypatch.setattr(modulo.JsonLLMService, "ainvoke_structured", chamada)
+
+    r = await modulo.agente_notificacao(ESTADO, Settings(openai_api_key=None), agora=AGORA)
+
+    revisar = chamada.await_args_list[1].kwargs["payload"]["revisar"]
+    assert revisar["problemas"] == ["diz com outras palavras que o aluno foi observado ou medido"]
+    assert r["notificacao_payload"]["corpo"] == "Bora tentar a 3 de novo?"
+    assert r["notificacao_payload"]["contexto"]["revisado"] is True
+    assert len(chamadas) == 2
+
+
+@pytest.mark.asyncio
+async def test_texto_que_a_guarda_exata_recusa_nem_chega_a_decisao(monkeypatch) -> None:
+    chamadas = _decisao(monkeypatch)
+    problemas = await modulo._recusa("Oi", "Estamos monitorando seu estudo.", None, Settings())
+    assert problemas and chamadas == []
