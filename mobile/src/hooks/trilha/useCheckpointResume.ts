@@ -49,10 +49,13 @@ export function useCheckpointResume(args: {
   mostrarResumo: boolean;
   primeiraVez: boolean;
   activityQuestionIndices: Record<number, number>;
+  /** Página aberta dentro de cada conteúdo (bloco de texto, áudio...), por id do conteúdo. */
+  contentBlockIndices: Record<number, number>;
   setIndex: Dispatch<SetStateAction<number>>;
   setMostrarResumo: Dispatch<SetStateAction<boolean>>;
   setPrimeiraVez: Dispatch<SetStateAction<boolean>>;
   setActivityQuestionIndices: Dispatch<SetStateAction<Record<number, number>>>;
+  setContentBlockIndices: Dispatch<SetStateAction<Record<number, number>>>;
   checkpointHydratedRef: MutableRefObject<boolean>;
 } {
   const {
@@ -73,6 +76,7 @@ export function useCheckpointResume(args: {
   const [activityQuestionIndices, setActivityQuestionIndices] = useState<
     Record<number, number>
   >({});
+  const [contentBlockIndices, setContentBlockIndices] = useState<Record<number, number>>({});
   const checkpointHydratedRef = useRef(false);
 
   useEffect(() => {
@@ -153,6 +157,17 @@ export function useCheckpointResume(args: {
             [Number(checkpoint.blockId)]: Math.max(0, checkpoint.questionIndex ?? 0),
           }));
         }
+        // No conteúdo, `stepIndex` guarda a página (bloco) em que o aluno parou.
+        if (
+          checkpoint?.blockKind === "conteudo" &&
+          checkpoint.blockId != null &&
+          checkpoint.stepIndex != null
+        ) {
+          setContentBlockIndices((prev) => ({
+            ...prev,
+            [Number(checkpoint.blockId)]: Math.max(0, checkpoint.stepIndex ?? 0),
+          }));
+        }
       } else if (topicoJaIniciado || topicoConcluido) {
         decisao("sem checkpoint utilizavel -> posicao legada");
         const posicao = resolveLegacyStartPosition(blocks, topico?.ultima_atividade ?? null);
@@ -195,10 +210,12 @@ export function useCheckpointResume(args: {
     mostrarResumo,
     primeiraVez,
     activityQuestionIndices,
+    contentBlockIndices,
     setIndex,
     setMostrarResumo,
     setPrimeiraVez,
     setActivityQuestionIndices,
+    setContentBlockIndices,
     checkpointHydratedRef,
   };
 }

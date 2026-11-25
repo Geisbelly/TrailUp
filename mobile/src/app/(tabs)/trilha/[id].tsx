@@ -22,7 +22,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ActivityCompletePayload, ActivityRenderer, normalizeActivityType } from "@/components/ActivityRenderer";
+import { ActivityCompletePayload, ActivityRenderer, normalizeActivityType, paginasDaAtividadeNaTela } from "@/components/ActivityRenderer";
 import CardSemDados from "@/components/CardSemDados";
 import { ContentRenderer } from "@/components/ContentRenderer";
 import { BagEditorModal } from "@/components/bag/BagEditorModal";
@@ -31,7 +31,7 @@ import { IABattleHeaderChip } from "@/components/ia/IABattleHeaderChip";
 import { IAHeaderTimer } from "@/components/ia/IAHeaderTimer";
 import { IAMentorPanel } from "@/components/ia/IAMentorPanel";
 import { BarraPartesTopico } from "@/components/trilhas/BarraPartesTopico";
-import { CabecalhoTopicoDesktop, type EstadoBlocoTopico } from "@/components/web/CabecalhoTopicoDesktop";
+import { CabecalhoTopicoDesktop } from "@/components/web/CabecalhoTopicoDesktop";
 import { useDesktopWeb } from "@/hooks/useDesktopWeb";
 import { useFalasDoBoss } from "@/hooks/useFalasDoBoss";
 import { getBrainHexConfig } from "@/constants/profileImages";
@@ -61,6 +61,7 @@ import {
 } from "@/interfaces/personalizacao/IAContracts";
 import { styles } from "@/styles/trilhaTopicoStyles";
 import { buildContentBlocks } from "@/utils/contentBlocks";
+import { limitarSub, paginasDoTopico, posicaoDaPagina, type BlocoParaPaginas } from "@/utils/paginasDoTopico";
 import { getBrainHexProfileCapabilities } from "@/utils/brainHexCapabilities";
 import { ordenarBlocosPorSugestao } from "@/utils/materialSuggestion";
 import { inferModoApresentacao } from "@/utils/presentationOrder";
@@ -575,9 +576,11 @@ export default function TrilhaConteudoScreen() {
     index,
     mostrarResumo,
     activityQuestionIndices,
+    contentBlockIndices,
     setIndex,
     setMostrarResumo,
     setActivityQuestionIndices,
+    setContentBlockIndices,
     checkpointHydratedRef,
   } = useCheckpointResume({
     blocks,
@@ -652,10 +655,18 @@ export default function TrilhaConteudoScreen() {
     });
   }, [conteudos, atividades, topicoId]);
 
+  // Cada questão é uma página (ver `paginasDoTopico`): quantas a atividade mostra agora e quais
+  // já têm resposta vêm do próprio `ActivityRenderer`.
+  const [paginasDasAtividades, setPaginasDasAtividades] = useState<Record<number, number>>({});
+  const [respondidasDasAtividades, setRespondidasDasAtividades] = useState<Record<number, boolean[]>>({});
+
   useEffect(() => {
     setActivityQuestionIndices({});
+    setContentBlockIndices({});
+    setPaginasDasAtividades({});
+    setRespondidasDasAtividades({});
     setActivityTimeoutMap({});
-  }, [topicoId, setActivityQuestionIndices]);
+  }, [topicoId, setActivityQuestionIndices, setContentBlockIndices]);
 
   const total = displayedBlocks.length;
   const atualBlock =
@@ -664,6 +675,9 @@ export default function TrilhaConteudoScreen() {
     atualBlock?.kind === "atividade"
       ? activityQuestionIndices[Number(atualBlock.atividade.id)] ?? 0
       : 0;
+  // Página guardada do conteúdo aberto; o limite pelo total de blocos é aplicado na leitura.
+  const paginaBrutaDoConteudo =
+    atualBlock?.kind === "conteudo" ? contentBlockIndices[Number(atualBlock.conteudo.id)] ?? 0 : 0;
 
   useEffect(() => {
     if (index >= total && total > 0) {
@@ -732,7 +746,8 @@ export default function TrilhaConteudoScreen() {
       blockKind: atualBlock.kind,
       blockId,
       questionIndex: atualBlock.kind === "atividade" ? currentActivityQuestionIndex : null,
-      stepIndex: null,
+      // No conteúdo, a página (bloco) em que o aluno está.
+      stepIndex: atualBlock.kind === "conteudo" ? paginaBrutaDoConteudo : null,
     });
   }, [
     atualBlock,
@@ -740,6 +755,7 @@ export default function TrilhaConteudoScreen() {
     isScreenFocused,
     checkpointParams,
     currentActivityQuestionIndex,
+    paginaBrutaDoConteudo,
     index,
     mostrarResumo,
     topicoConcluido,
@@ -747,7 +763,6 @@ export default function TrilhaConteudoScreen() {
   ]);
 
   const canBack = index > -1;
-  const canContinue = index < total - 1;
   const atividadeAtualResolvida = useMemo(() => {
     if (!atualBlock || atualBlock.kind !== "atividade") return true;
     return isAtividadeConcluida(atualBlock.atividade, atividadesResolvidasLocal);
@@ -848,16 +863,35 @@ export default function TrilhaConteudoScreen() {
     }
   }, [alteracoes, chaveDoBlocoAtual, marcarVista]);
 
+  // Os blocos de cada conteúdo exibido: cada um é uma página, então a contagem dos pontos do
+  // cabeçalho precisa deles todos, não só os do conteúdo aberto.
+  const blocosPorConteudo = useMemo(() => {
+    const mapa = new Map<number, ReturnType<typeof buildContentBlocks>>();
+    displayedBlocks.forEach((bloco) => {
+      if (bloco.kind !== "conteudo") return;
+      // A sugestao entra APOS a montagem dos blocos, nao no lugar dela: ela
+      // opina sobre a ordem dos formatos do mesmo conteudo, e o que nao e
+      // formato sugerivel continua onde o professor deixou.
+      // Usa a sugestao congelada: a mesma que ordenou os passos.
+      mapa.set(Number(bloco.conteudo.id), ordenarBlocosPorSugestao(buildContentBlocks(bloco.conteudo), sugestaoDaTela));
+    });
+    return mapa;
+  }, [displayedBlocks, sugestaoDaTela]);
   const conteudoBlocks = useMemo(
     () =>
       atualBlock?.kind === "conteudo"
-        ? // A sugestao entra APOS a montagem dos blocos, nao no lugar dela: ela
-          // opina sobre a ordem dos formatos do mesmo conteudo, e o que nao e
-          // formato sugerivel continua onde o professor deixou.
-          // Usa a sugestao congelada: a mesma que ordenou os passos.
+        ? blocosPorConteudo.get(Number(atualBlock.conteudo.id)) ??
           ordenarBlocosPorSugestao(buildContentBlocks(atualBlock.conteudo), sugestaoDaTela)
         : [],
-    [atualBlock, sugestaoDaTela]
+    [atualBlock, blocosPorConteudo, sugestaoDaTela]
+  );
+  const currentContentBlockIndex =
+    atualBlock?.kind === "conteudo"
+      ? limitarSub(contentBlockIndices[Number(atualBlock.conteudo.id)], conteudoBlocks.length)
+      : 0;
+  const blocoDeConteudoNaTela = useMemo(
+    () => conteudoBlocks.slice(currentContentBlockIndex, currentContentBlockIndex + 1),
+    [conteudoBlocks, currentContentBlockIndex]
   );
   const currentContentItemKey = useMemo(() => {
     if (!atualBlock || atualBlock.kind !== "conteudo") return null;
@@ -1163,19 +1197,98 @@ export default function TrilhaConteudoScreen() {
     navigation.setOptions({ headerRight: renderAcoesCabecalho });
   }, [navigation, renderAcoesCabecalho]);
 
-  // Estado de cada bloco para os pontos do cabeçalho da tela larga.
-  const estadosBlocos = useMemo<EstadoBlocoTopico[]>(
+  // Uma página por questão e por bloco de conteúdo; os pontos do cabeçalho só levam às liberadas.
+  const blocosParaPaginas = useMemo<BlocoParaPaginas[]>(
     () =>
-      displayedBlocks.map((bloco, i) => {
-        if (i === index) return "atual";
-        const feito =
-          bloco.kind === "conteudo"
-            ? isConteudoConcluido(bloco.conteudo, conteudosVistosLocal)
-            : isAtividadeConcluida(bloco.atividade, atividadesResolvidasLocal) &&
-              !revisaoDaAtividade(bloco.atividade);
-        return feito ? "feito" : "pendente";
+      displayedBlocks.map((bloco) => {
+        if (bloco.kind === "conteudo") {
+          return {
+            tipo: "conteudo",
+            paginas: blocosPorConteudo.get(Number(bloco.conteudo.id))?.length ?? 1,
+            feito: isConteudoConcluido(bloco.conteudo, conteudosVistosLocal),
+            liberaSeguinte: true,
+          };
+        }
+        const id = Number(bloco.atividade.id);
+        const resolvida = isAtividadeConcluida(bloco.atividade, atividadesResolvidasLocal);
+        const concluidaNoBanco =
+          String(bloco.atividade?.status ?? "").toLowerCase().includes("concl") ||
+          Number(bloco.atividade?.percentual_concluido ?? 0) >= 100;
+        return {
+          tipo: "atividade",
+          paginas:
+            paginasDasAtividades[id] ??
+            paginasDaAtividadeNaTela(bloco.atividade, { mostrandoResumo: concluidaNoBanco }),
+          feito: resolvida && !revisaoDaAtividade(bloco.atividade),
+          // A mesma regra do "Continuar" (`bloqueiaAvanco`).
+          liberaSeguinte: topicoConcluido || resolvida,
+          respondidas: respondidasDasAtividades[id],
+        };
       }),
-    [atividadesResolvidasLocal, conteudosVistosLocal, displayedBlocks, index, revisaoDaAtividade]
+    [
+      atividadesResolvidasLocal,
+      blocosPorConteudo,
+      conteudosVistosLocal,
+      displayedBlocks,
+      paginasDasAtividades,
+      respondidasDasAtividades,
+      revisaoDaAtividade,
+      topicoConcluido,
+    ]
+  );
+  const subAtual =
+    atualBlock?.kind === "atividade"
+      ? limitarSub(currentActivityQuestionIndex, blocosParaPaginas[index]?.paginas ?? 1)
+      : currentContentBlockIndex;
+  const paginas = useMemo(
+    () =>
+      paginasDoTopico(
+        blocosParaPaginas,
+        !mostrarResumo && atualBlock && index >= 0 ? { bloco: index, sub: subAtual } : null
+      ),
+    [atualBlock, blocosParaPaginas, index, mostrarResumo, subAtual]
+  );
+  const paginaAtual =
+    !mostrarResumo && atualBlock && index >= 0 ? posicaoDaPagina(paginas, index, subAtual) : -1;
+  const canContinue = paginaAtual >= 0 ? paginaAtual < paginas.length - 1 : index < total - 1;
+  const irParaPagina = useCallback(
+    (posicao: number) => {
+      const pagina = paginas[posicao];
+      if (!pagina) return;
+      const bloco = displayedBlocks[pagina.bloco];
+      if (!bloco) return;
+      if (bloco.kind === "atividade") {
+        const id = Number(bloco.atividade.id);
+        setActivityQuestionIndices((prev) => (prev[id] === pagina.sub ? prev : { ...prev, [id]: pagina.sub }));
+      } else {
+        const id = Number(bloco.conteudo.id);
+        setContentBlockIndices((prev) => (prev[id] === pagina.sub ? prev : { ...prev, [id]: pagina.sub }));
+      }
+      setMostrarResumo(false);
+      setIndex(pagina.bloco);
+    },
+    [displayedBlocks, paginas, setActivityQuestionIndices, setContentBlockIndices, setIndex, setMostrarResumo]
+  );
+  const idDaAtividadeAtual = atualBlock?.kind === "atividade" ? Number(atualBlock.atividade.id) : null;
+  const handlePaginasDaAtividade = useCallback(
+    (total: number) => {
+      if (idDaAtividadeAtual == null) return;
+      setPaginasDasAtividades((prev) =>
+        prev[idDaAtividadeAtual] === total ? prev : { ...prev, [idDaAtividadeAtual]: total }
+      );
+    },
+    [idDaAtividadeAtual]
+  );
+  const handleRespondidasDaAtividade = useCallback(
+    (respondidas: boolean[]) => {
+      if (idDaAtividadeAtual == null) return;
+      setRespondidasDasAtividades((prev) => {
+        const antes = prev[idDaAtividadeAtual];
+        if (antes && antes.length === respondidas.length && antes.every((r, i) => r === respondidas[i])) return prev;
+        return { ...prev, [idDaAtividadeAtual]: respondidas };
+      });
+    },
+    [idDaAtividadeAtual]
   );
   const chaveBatalha =
     atualBlock?.kind === "atividade" && atualBlock.vinculadoConteudoId != null
@@ -1826,13 +1939,13 @@ export default function TrilhaConteudoScreen() {
   }, [handleConcluirTopico]);
 
   const handleVoltar = useCallback(() => {
-    if (index === 0) {
-      setIndex(-1);
-      setMostrarResumo(true);
-    } else {
-      setIndex((p) => Math.max(-1, p - 1));
+    if (paginaAtual > 0) {
+      irParaPagina(paginaAtual - 1);
+      return;
     }
-  }, [index, setIndex, setMostrarResumo]);
+    setIndex(-1);
+    setMostrarResumo(true);
+  }, [irParaPagina, paginaAtual, setIndex, setMostrarResumo]);
   if (carregando && !classeAtual) {
     return (
       <SafeAreaView style={styles.screen}>
@@ -1889,8 +2002,9 @@ export default function TrilhaConteudoScreen() {
           regiao={regiaoTopico}
           numero={numeroTopico}
           titulo={String(topico.nome ?? "Tópico")}
-          blocos={estadosBlocos}
-          atual={!mostrarResumo && atualBlock ? index + 1 : 0}
+          paginas={paginas}
+          atual={paginaAtual + 1}
+          onIr={irParaPagina}
           aviso={personalizacaoCarregando ? "Atualizando conteúdo personalizado..." : null}
           acoes={renderAcoesCabecalho()}
           onVoltar={() => router.push("/(tabs)")}
@@ -1898,14 +2012,11 @@ export default function TrilhaConteudoScreen() {
       ) : (
         <BarraPartesTopico
           palette={profilePalette}
-          blocos={estadosBlocos}
-          atual={!mostrarResumo && atualBlock ? index + 1 : 0}
+          paginas={paginas}
+          atual={paginaAtual + 1}
           alvoRef={progressGuideTargetRef}
           aviso={personalizacaoCarregando ? "Atualizando conteúdo..." : null}
-          onIr={(i) => {
-            setMostrarResumo(false);
-            setIndex(i);
-          }}
+          onIr={irParaPagina}
         />
       )}
 
@@ -2177,7 +2288,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
             {atualBlock.kind === "conteudo" ? (
               <>
                 <ContentRenderer
-                  blocks={conteudoBlocks}
+                  blocks={blocoDeConteudoNaTela}
                   WebView={WebView}
                   topicoId={topicoId}
                   onDeckProgressEvent={handleDeckProgressEvent}
@@ -2190,6 +2301,9 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 classeId={classeAtual?.classe_id ?? topico?.classe_id ?? null}
                 onComplete={handleAtividadeComplete}
                 initialQuestionIndex={currentActivityQuestionIndex}
+                navegacaoExterna
+                onPaginasChange={handlePaginasDaAtividade}
+                onRespondidasChange={handleRespondidasDaAtividade}
                 onQuestionIndexChange={(questionIndex) => {
                   const atividadeId = Number(atualBlock.atividade.id);
                   setActivityQuestionIndices((prev) =>
@@ -2335,7 +2449,17 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                 // dialog de orientacao quando bloqueado. Com `disabled` o onPress
                 // nao dispara e o botao fica "morto" (nao avanca e parece travado).
                 onPress={async () => {
-                  if (bloqueiaAvanco) {
+                  const proxima = paginas[paginaAtual + 1];
+                  // Próxima questão da mesma atividade: só depois de responder esta.
+                  if (proxima && proxima.bloco === index && !proxima.liberada) {
+                    showDialog({
+                      title: "Responda a questão",
+                      description: "Confirme a resposta desta questão para ir à próxima.",
+                      tone: "warning",
+                    });
+                    return;
+                  }
+                  if (bloqueiaAvanco && (!proxima || proxima.bloco !== index)) {
                     showDialog({
                       title: "Responda a atividade",
                       description: "Confirme a resposta da atividade para liberar o avanço.",
@@ -2344,7 +2468,7 @@ Nesta versão: {progressoVisual.concluidos} de {progressoVisual.total} blocos co
                     return;
                   }
                   if (canContinue) {
-                    setIndex((p) => p + 1);
+                    irParaPagina(paginaAtual + 1);
                   } else {
                     await handleConcluirTopico();
                   }

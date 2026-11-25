@@ -42,6 +42,14 @@ type Props = {
   onComplete?: (result?: ActivityCompletePayload) => void;
   initialQuestionIndex?: number;
   onQuestionIndexChange?: (questionIndex: number) => void;
+  /** A tela do Tópico pagina as questões (ver `QuestionActivity`). */
+  navegacaoExterna?: boolean;
+  onRespondidasChange?: (respondidas: boolean[]) => void;
+  /**
+   * Quantas páginas a atividade mostra agora: uma por questão, ou uma só no resumo da atividade
+   * concluída e nos tipos sem questão.
+   */
+  onPaginasChange?: (paginas: number) => void;
   timedOut?: boolean;
   reviewMode?: boolean;
   classeId?: number | null;
@@ -54,6 +62,16 @@ type Props = {
 };
 
 export { normalizeActivityType } from '@/utils/activityType';
+
+/**
+ * Páginas que a atividade ocupa no Tópico: uma por questão quando ela abre as questões, uma só no
+ * resumo da concluída e nos tipos sem questão (vídeo, texto).
+ */
+export function paginasDaAtividadeNaTela(atividade: any, { mostrandoResumo }: { mostrandoResumo: boolean }): number {
+  const questoes = Array.isArray(atividade?.questoes) ? atividade.questoes.length : 0;
+  if (mostrandoResumo || questoes === 0) return 1;
+  return activityRendererKey(normalizeActivityType(atividade?.tipo), true) === 'question' ? questoes : 1;
+}
 
 export function ActivityRenderer(props: Props) {
   const { usuario } = useUsuario();
@@ -68,6 +86,9 @@ function ActivityRendererContent({
   topicoId,
   initialQuestionIndex,
   onQuestionIndexChange,
+  navegacaoExterna = false,
+  onRespondidasChange,
+  onPaginasChange,
   timedOut = false,
   reviewMode = false,
   classeId = null,
@@ -161,6 +182,14 @@ function ActivityRendererContent({
         payload: { plataforma: Platform.OS },
       })
   );
+
+  const paginasVisiveis = paginasDaAtividadeNaTela(atividade, {
+    mostrandoResumo:
+      concluidaAgora && !localReviewMode && !retryLiberada && !refazendoRevisao && !refazendoErradas,
+  });
+  React.useEffect(() => {
+    onPaginasChange?.(paginasVisiveis);
+  }, [onPaginasChange, paginasVisiveis]);
 
   if (!atividade) return null;
 
@@ -309,6 +338,8 @@ function ActivityRendererContent({
         topicoId={topicoId}
         initialQuestionIndex={initialQuestionIndex}
         onQuestionIndexChange={onQuestionIndexChange}
+        navegacaoExterna={navegacaoExterna}
+        onRespondidasChange={onRespondidasChange}
         timedOut={timedOut}
         reviewMode={localReviewMode}
         novaTentativa={novaTentativa}
