@@ -8,7 +8,7 @@ números publicados na v7, em [`analises/custos-jic-2026/`](analises/custos-jic-
 projeta planos pagos; este documento registra o que acontece de fato. Os R$ 435 de parte fixa são
 projeção, não gasto.
 
-Última atualização: 24/11/2026.
+Última atualização: 25/11/2026.
 
 ## O que é pago hoje
 
@@ -119,6 +119,7 @@ Guardião custa essa chamada mais o juiz de grounding, e desde 24/11 uma chamada
 
 | Data | Decisão | Efeito | Estado |
 |---|---|---|---|
+| 25/11/2026 | Guarda das notificações pergunta também ao `gemini-decision-1` (`problemas_por_decisao`: emoção e vigilância com outras palavras) | Uma chamada a mais por texto de notificação ou aviso de intervenção que a guarda de palavras aprova, e mais uma se o texto voltar para revisão. Medido em 24/11: ~330 tokens de entrada por chamada (34 chamadas, 11.136 tokens com três perguntas; agora são duas), 0 de saída. A diária sai todo dia para cada aluno com o modelo no ar, então o número de chamadas acompanha o de alunos. Desligável por `NOTIFICACAO_DECISION_ATIVA=false` | No PR, medido só com casos montados à mão |
 | 24/11/2026 | Barreira do meio contra vazamento de gabarito no Guia: `gemini-decision-1` (`checar_vazamento_por_decisao`, entre a comparação exata e o juiz) | Uma chamada nova por resposta do Guia em tópico com gabarito, nas mesmas 4 chaves do tier free. O modelo não escreve: em 21 chamadas de medição foram 6.200 tokens de entrada no total (~295 por chamada), 0 de saída, 0,6 s em média. Se barrar, o Guia reescreve, o que custa mais uma resposta e, depois, mais um juiz. Se o Decision tem cota diária separada dos outros modelos no tier free: PENDENTE. Desligável por `GUIA_DECISION_VAZAMENTO_ATIVO=false` | No PR, medido só com casos montados à mão |
 | 24/11/2026 | Modelos aposentados fora das cadeias de reserva (`gemini-2.5-flash-lite`, `gemini-2.0-flash`, `gemini-2.0-flash-lite` na API; também `gemini-2.5-flash` e `gemini-1.5-*` no microservice) e imagem em `gemini-3.1-flash-image` no lugar de `gemini-2.0-flash-preview-image-generation`. Modelo com 404 sai da cadeia para todas as chaves por 6 h; no chat, cota do dia esgotada no modelo principal vai direto à reserva, e 5xx pula o modelo sem tentar as outras chaves. O RAG não repete o 429 (`max_retries=0`) | Menos chamadas, nenhuma nova. De 23 a 24/11 os três 2.x nunca responderam na API: 60 chamadas com 404 (20 cada) e 27 com o `ChatGoogleGenerativeAIError` genérico, 4xx sem classe própria, provavelmente o 402 de uma chave (`ia_uso_llm`); cada uma custava a vez de uma chave. Chamadas a menos por pergunta ao Guia: até 3 por chave nos 2.x, mais as 3 chaves restantes de um modelo em 5xx. Volume economizado: PENDENTE, sem medir depois do deploy. A env do Dokploy pode ainda ter a lista antiga: o 404 a corta depois da primeira chamada por processo | No PR, sem medir |
 | 24/11/2026 | Resposta de reserva do Guia sem modelo, ligada ao tópico (trecho do conteúdo por palavra, texto fixo da tela citada) | Nenhuma chamada nova: é texto montado na API | No PR |

@@ -40,6 +40,7 @@ a sugestão espera na fila até o horário do aluno: o texto de 01/11, escrito a
 que antes passava? Suba `TEXTO_GUARDA_VERSAO` e, numa migração, o mínimo do banco.
 """
 
+import logging
 import re
 import unicodedata
 from datetime import UTC, datetime, timedelta, timezone
@@ -53,6 +54,8 @@ from app.schemas.notificacao import NotificacaoPayload
 from app.services.llm import JsonLLMService, StructuredOutputError
 from app.services.openai_rag import OpenAIRagService
 from app.services.personalizacao import _build_profile_editorial_context, _normalize_profile_label
+
+logger = logging.getLogger(__name__)
 
 BRASILIA = timezone(timedelta(hours=-3))
 _SILENCIO_INICIO = 22
@@ -172,7 +175,8 @@ _TERCEIRA_PESSOA = re.compile(r"\b[oa] (alun[oa]|estudante)\b")
 _PLACEHOLDER = re.compile(r"[\[\]{}<>]|\bMOCK\b|\bAlun[oa]\b|\bEstudante\b")
 _PALAVRAS_POR_FRASE = 18
 # Versão desta guarda, gravada em `contexto.texto_guarda`. O banco não entrega abaixo do mínimo dele.
-TEXTO_GUARDA_VERSAO = 3
+# 4: a pergunta ao gemini-decision-1 (`problemas_por_decisao`), 25/11.
+TEXTO_GUARDA_VERSAO = 4
 
 
 def _sem_acento(texto: str) -> str:
@@ -212,6 +216,66 @@ def problemas_do_texto(titulo: str, corpo: str, foco: dict[str, Any] | None = No
     if any(len(f.split()) > _PALAVRAS_POR_FRASE for f in frases):
         problemas.append(f"tem frase com mais de {_PALAVRAS_POR_FRASE} palavras")
     return problemas
+
+
+# Perguntas de sim ou não ao gemini-decision-1. A ressalva de cada uma ("não conta") existe porque, sem
+# ela, "Dá uma olhada quando puder" saiu com 0,80 de vigilância e "Tudo bem se hoje render menos" com
+# 0,57 de emoção (medição de 24/11, tests/avaliacao: 34 de 34 com a guarda exata, contra 28 dela só).
+_PERGUNTAS_DA_DECISAO = {
+    "emocao": (
+        "O texto afirma como o aluno ou a turma ESTÁ se sentindo agora (ansioso, triste, cansado, "
+        "frustrado, chateado, numa semana pesada)? Acolher sem afirmar o sentimento, como tudo bem "
+        "render menos, não conta."
+    ),
+    "vigilancia": (
+        "O texto relata algo que o app observou ou mediu sobre o aluno, como o que ele fez, quando "
+        "saiu, onde travou ou uma métrica dele, ou diz que ele está sendo acompanhado? Convidar o aluno "
+        "a olhar ou acompanhar algo por conta própria não conta."
+    ),
+}
+_PROBLEMA_DA_DECISAO = {
+    "emocao": "atribui emoção ao aluno com outras palavras",
+    "vigilancia": "diz com outras palavras que o aluno foi observado ou medido",
+}
+
+
+async def problemas_por_decisao(titulo: str, corpo: str, settings: Any) -> list[str]:
+    """O que `problemas_do_texto` não pega por palavra: emoção e vigilância ditas de outro jeito
+    ("Parece que a semana foi pesada", "A gente viu que você travou na questão 3").
+
+    Roda só depois da guarda exata, que é de graça. Falha aberta: sem resposta do modelo, vale o que
+    a guarda exata decidiu, como antes desta camada. Desligável por NOTIFICACAO_DECISION_ATIVA."""
+    if not getattr(settings, "notificacao_decision_ativa", False):
+        return []
+    from app.services import gemini_http
+
+    try:
+        corpo_resposta = await gemini_http.gemini_decidir(
+            settings=settings,
+            model=settings.guia_decision_modelo,
+            body={
+                "input": [{"type": "text", "text": f"Notificação para um aluno.\nTítulo: {titulo}\nCorpo: {corpo}"}],
+                "questions": {
+                    chave: {"type": "noul", "instructions": pergunta} for chave, pergunta in _PERGUNTAS_DA_DECISAO.items()
+                },
+            },
+            timeout=settings.guia_decision_timeout_seconds,
+            origem="notificacao_texto_decisao",
+        )
+        respostas = corpo_resposta["answers"]
+        probabilidades = {chave: float(respostas[chave]["noul"]) for chave in _PERGUNTAS_DA_DECISAO}
+    except Exception as exc:  # noqa: BLE001 - camada extra: sem ela vale a guarda exata
+        logger.warning("notificacao.decisao_indisponivel: %s", type(exc).__name__)
+        return []
+    return [
+        _PROBLEMA_DA_DECISAO[chave]
+        for chave, probabilidade in probabilidades.items()
+        if probabilidade >= settings.notificacao_decision_limiar
+    ]
+
+
+async def _recusa(titulo: str, corpo: str, foco: dict[str, Any] | None, settings: Any) -> list[str]:
+    return problemas_do_texto(titulo, corpo, foco) or await problemas_por_decisao(titulo, corpo, settings)
 
 
 def _motivo(state: dict[str, Any]) -> str:
@@ -399,12 +463,12 @@ async def agente_notificacao(state: dict[str, Any], settings: Settings, agora: d
         candidata = await gerar(payload, usar_rag)
         if candidata is None:
             continue
-        recusa = problemas_do_texto(candidata.titulo, candidata.corpo, payload["foco"])
+        recusa = await _recusa(candidata.titulo, candidata.corpo, payload["foco"], settings)
         if recusa:
             # Uma revisão só, sem RAG: o modelo vê o próprio texto e o que estava errado.
             pedido = {"titulo": candidata.titulo, "corpo": candidata.corpo, "problemas": recusa}
             candidata = await gerar({**payload, "revisar": pedido}, False)
-            if candidata is not None and not problemas_do_texto(candidata.titulo, candidata.corpo, payload["foco"]):
+            if candidata is not None and not await _recusa(candidata.titulo, candidata.corpo, payload["foco"], settings):
                 recusa, revisada = [], True
             else:
                 candidata = None

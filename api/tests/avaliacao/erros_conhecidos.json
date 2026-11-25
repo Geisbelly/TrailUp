@@ -9,5 +9,10 @@
   "vazamento_exato: É o while: ele volta ao início enquanto a condição for verdadeira.",
   "vazamento_exato: Imprime 1, porque 7 dividido por 2 deixa resto 1.",
   "vazamento_exato: 7 é ímpar, e todo número ímpar deixa resto um na divisão por dois.",
-  "vazamento_exato: Isso mesmo, 1/4 está certo!"
+  "vazamento_exato: Isso mesmo, 1/4 está certo!",
+  "notificacao: Parece que a semana foi pesada para você.",
+  "notificacao: Sabemos que frações te chateiam.",
+  "notificacao: Reparamos que você saiu do app às 22h.",
+  "notificacao: A gente viu que você travou na questão 3.",
+  "notificacao: Seu ritmo de leitura caiu 30% hoje."
 ]

@@ -1015,6 +1015,12 @@ Cada perfil carrega:
   `contexto.texto_guarda` (`TEXTO_GUARDA_VERSAO`, também no aviso da intervenção),
   e `notificacoes_entregar` suprime a sugestão `origem = 'ciclo'` abaixo de
   `texto_guarda_versao_minima`. Endureceu a guarda? Suba as duas.
+  **A guarda tem duas camadas desde a versão 4** (`20261125_01`): a de palavras
+  (`problemas_do_texto`, de graça) e, só para o que ela aprova, duas perguntas de
+  sim ou não ao `gemini-decision-1` (`problemas_por_decisao`: emoção e vigilância
+  ditas com outras palavras). O Decision **falha aberto**: fora do ar, vale a de
+  palavras, e o texto sai com a versão 4 mesmo assim. Desliga com
+  `NOTIFICACAO_DECISION_ATIVA=false`. O aviso da intervenção passa pelas duas.
   **`novo_material` e `sequencia` também saem do banco** (`20261102_21`), por gatilhos que
   entram por `notificacoes_enfileirar_evento`. O de `novo_material` fica em
   `conteudo_personalizado` e avisa quando o tópico termina de gerar para o perfil

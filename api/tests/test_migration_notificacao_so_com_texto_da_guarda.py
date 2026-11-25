@@ -9,7 +9,7 @@ from tests import _f5_banco as f5
 M = f5.modulo("20261102_24_notificacao_so_com_texto_da_guarda.py")
 UP = "\n".join(f5.sql_de(M))
 DOWN = "\n".join(f5.sql_de(M, "downgrade"))
-ATUAL = f5.modulo("20261105_08_guarda_sem_cansaco_nem_terceira_pessoa.py")
+ATUAL = f5.modulo("20261125_01_guarda_com_decisao.py")
 notificacao = import_module("app.agent.graph.nodes.agente_notificacao")
 
 
@@ -46,3 +46,9 @@ def test_downgrade_volta_a_entrega_da_18():
     assert M.entregar_anterior() in DOWN
     assert "texto_fora_da_guarda" not in DOWN
     assert f"DELETE FROM public.notificacoes_config WHERE chave = '{M.CHAVE}'" in DOWN
+
+
+def test_a_guarda_com_decisao_encadeia_depois_da_08_de_24_11():
+    assert ATUAL.revision == "20261125_01"
+    assert ATUAL.down_revision == "20261124_08"
+    assert ATUAL.VERSAO_ANTERIOR == 3
