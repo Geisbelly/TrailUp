@@ -56,6 +56,13 @@ type Props = {
   topicoId?: number;
   initialQuestionIndex?: number;
   onQuestionIndexChange?: (questionIndex: number) => void;
+  /**
+   * A tela do Tópico troca de questão pelo rodapé e pelos pontos do cabeçalho (cada questão é uma
+   * página). Com isso, o "Anterior"/"Próxima" daqui some: seria uma paginação dentro da outra.
+   */
+  navegacaoExterna?: boolean;
+  /** Quais questões já têm resposta (mesma regra da conclusão): libera a página seguinte. */
+  onRespondidasChange?: (respondidas: boolean[]) => void;
   timedOut?: boolean;
   reviewMode?: boolean;
   /** Incrementa quando o aluno gasta uma segunda chance comprada. */
@@ -467,6 +474,8 @@ export default function QuestionActivity({
   topicoId: topicoIdProp,
   initialQuestionIndex = 0,
   onQuestionIndexChange,
+  navegacaoExterna = false,
+  onRespondidasChange,
   timedOut = false,
   reviewMode = false,
   novaTentativa = 0,
@@ -589,6 +598,22 @@ export default function QuestionActivity({
   const [respostasTexto, setRespostasTexto] = useState<Record<number, string>>({});
   const [stas, setStas] = useState<Record<number, 'certo' | 'errado' | null>>({});
   const [confirmados, setConfirmados] = useState<Record<number, boolean>>({});
+  // Mesma regra de "respondida" que fecha a atividade (ver `onComplete`): na revisão pedida e na
+  // nova tentativa, só vale o que foi respondido agora.
+  const respondidas = useMemo(
+    () =>
+      questoes.map((item: any, idx: number) => {
+        const soValeAgora = refazendoRevisao || aRefazer.has(Number(item?.id));
+        return soValeAgora ? !!confirmados[idx] : item?.resposta_aluno != null || !!confirmados[idx];
+      }),
+    [aRefazer, confirmados, questoes, refazendoRevisao]
+  );
+  const respondidasChave = respondidas.map((r: boolean) => (r ? '1' : '0')).join('');
+  useEffect(() => {
+    onRespondidasChange?.(respondidas);
+    // A chave evita avisar a cada render: o array é novo a cada cálculo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onRespondidasChange, respondidasChave]);
   const [viuRespostas, setViuRespostas] = useState<Record<number, boolean>>({});
   // Indices de alternativa ja confirmados nesta questao. Sem este registro,
   // "tentar novamente" nao tinha como saber quantas opcoes sobraram -- e em
@@ -1173,10 +1198,12 @@ export default function QuestionActivity({
                 : profilePalette.accent;
 
             if (desktop) {
+              // Uma questão por página (tela do Tópico): alternativa mais baixa para a
+              // questão caber sem rolar.
               return {
-                paddingVertical: 13,
+                paddingVertical: 10,
                 paddingHorizontal: 14,
-                marginTop: 10,
+                marginTop: 8,
                 backgroundColor: isSelected ? selectedBackground : profilePalette.surface,
                 borderRadius: 10,
                 borderWidth: 1,
@@ -2080,7 +2107,7 @@ export default function QuestionActivity({
         </TouchableOpacity>
       )}
 
-      {questoes.length > 1 && (
+      {questoes.length > 1 && !navegacaoExterna && (
         <View style={{ flexDirection: 'row', justifyContent: 'flex-start', gap: 10, marginTop: 16 }}>
           <TouchableOpacity
             disabled={!podeTrocarDeQuestao({ enviando, destino: questaoIndex - 1, total: questoes.length })}
